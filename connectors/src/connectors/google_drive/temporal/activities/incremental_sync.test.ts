@@ -1,6 +1,9 @@
 import { randomUUID } from "node:crypto";
 
-import { GoogleDriveFilesModel } from "@connectors/lib/models/google_drive";
+import {
+  GoogleDriveFilesModel,
+  GoogleDriveSyncTokenModel,
+} from "@connectors/lib/models/google_drive";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { GoogleDriveObjectType } from "@connectors/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -182,6 +185,32 @@ function makeGoogleDriveFolder({
   };
 }
 
+function makeGoogleDriveFile({
+  id,
+  name,
+  parent,
+}: {
+  id: string;
+  name: string;
+  parent: string | null;
+}): GoogleDriveObjectType {
+  return {
+    capabilities: {
+      canDownload: true,
+    },
+    createdAtMs: Date.now(),
+    driveId: "drive-1",
+    id,
+    isInSharedDrive: false,
+    labels: [],
+    mimeType: "application/vnd.google-apps.document",
+    name,
+    parent,
+    size: null,
+    trashed: false,
+  };
+}
+
 async function makeConnector(suffix: string) {
   return ConnectorResource.makeNew(
     "google_drive",
@@ -199,7 +228,7 @@ async function makeConnector(suffix: string) {
   );
 }
 
-describe("google drive incremental sync folder metadata", () => {
+describe("google drive incremental sync", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
@@ -581,5 +610,131 @@ describe("google drive incremental sync folder metadata", () => {
     });
     expect(folder).toBeNull();
     expect(mocks.upsertDataSourceFolder).not.toHaveBeenCalled();
+  });
+
+  it("records a relevant sync when a selected file is synced", async () => {
+    const suffix = randomUUID();
+    const connector = await makeConnector(suffix);
+    const driveFile = makeGoogleDriveFile({
+      id: `file-${suffix}`,
+      name: "Planning Notes",
+      parent: `parent-${suffix}`,
+    });
+    const beforeSync = Date.now();
+
+    mocks.changeList.mockResolvedValue({
+      data: {
+        changes: [makeFolderChange(driveFile)],
+        newStartPageToken: "sync-token",
+        nextPageToken: undefined,
+      },
+      status: 200,
+    });
+    mocks.driveObjectToDustType.mockResolvedValue(driveFile);
+
+    await incrementalSync(
+      connector.id,
+      "drive-1",
+      false,
+      Date.now(),
+      "page-token"
+    );
+
+    const syncToken = await GoogleDriveSyncTokenModel.findOne({
+      where: {
+        connectorId: connector.id,
+        driveId: "drive-1",
+      },
+    });
+
+    expect(syncToken?.syncToken).toBe("sync-token");
+    expect(syncToken?.lastSyncAt?.getTime()).toBeGreaterThanOrEqual(
+      beforeSync
+    );
+    expect(
+      syncToken?.lastRelevantChangeAt?.getTime()
+    ).toBeGreaterThanOrEqual(beforeSync);
+  });
+
+  it("records only lastSyncAt when a completed sync has no relevant changes", async () => {
+    const suffix = randomUUID();
+    const connector = await makeConnector(suffix);
+    const previousLastSyncAt = new Date("2025-01-02T00:00:00.000Z");
+    const previousLastRelevantChangeAt = new Date("2025-01-01T00:00:00.000Z");
+
+    await GoogleDriveSyncTokenModel.create({
+      connectorId: connector.id,
+      driveId: "drive-1",
+      syncToken: "previous-sync-token",
+      lastSyncAt: previousLastSyncAt,
+      lastRelevantChangeAt: previousLastRelevantChangeAt,
+    });
+
+    mocks.changeList.mockResolvedValue({
+      data: {
+        changes: [],
+        newStartPageToken: "sync-token",
+        nextPageToken: undefined,
+      },
+      status: 200,
+    });
+
+    await incrementalSync(
+      connector.id,
+      "drive-1",
+      false,
+      Date.now(),
+      "page-token"
+    );
+
+    const syncToken = await GoogleDriveSyncTokenModel.findOne({
+      where: {
+        connectorId: connector.id,
+        driveId: "drive-1",
+      },
+    });
+
+    expect(syncToken?.syncToken).toBe("sync-token");
+    expect(syncToken?.lastSyncAt?.getTime()).toBeGreaterThan(
+      previousLastSyncAt.getTime()
+    );
+    expect(syncToken?.lastRelevantChangeAt?.toISOString()).toBe(
+      previousLastRelevantChangeAt.toISOString()
+    );
+  });
+
+  it("keeps sync cadence state unchanged when the sync throws", async () => {
+    const suffix = randomUUID();
+    const connector = await makeConnector(suffix);
+    const previousLastSyncAt = new Date("2025-01-02T00:00:00.000Z");
+    const previousLastRelevantChangeAt = new Date("2025-01-01T00:00:00.000Z");
+
+    await GoogleDriveSyncTokenModel.create({
+      connectorId: connector.id,
+      driveId: "drive-1",
+      syncToken: "previous-sync-token",
+      lastSyncAt: previousLastSyncAt,
+      lastRelevantChangeAt: previousLastRelevantChangeAt,
+    });
+
+    mocks.changeList.mockRejectedValue(new Error("transient failure"));
+
+    await expect(
+      incrementalSync(connector.id, "drive-1", false, Date.now(), "page-token")
+    ).rejects.toThrow("transient failure");
+
+    const syncToken = await GoogleDriveSyncTokenModel.findOne({
+      where: {
+        connectorId: connector.id,
+        driveId: "drive-1",
+      },
+    });
+
+    expect(syncToken?.lastSyncAt?.toISOString()).toBe(
+      previousLastSyncAt.toISOString()
+    );
+    expect(syncToken?.lastRelevantChangeAt?.toISOString()).toBe(
+      previousLastRelevantChangeAt.toISOString()
+    );
   });
 });

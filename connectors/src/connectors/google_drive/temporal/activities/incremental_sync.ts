@@ -83,6 +83,7 @@ export async function incrementalSync(
     origin: "google_drive_incremental_sync",
   });
   const newFolders = [];
+  let hadRelevantChange = false;
   try {
     if (!nextPageToken) {
       nextPageToken = await getSyncPageToken(
@@ -161,6 +162,7 @@ export async function incrementalSync(
         });
         if (localFile) {
           await deleteFile(localFile);
+          hadRelevantChange = true;
         }
         continue;
       }
@@ -214,6 +216,7 @@ export async function incrementalSync(
         });
         if (localFile) {
           await deleteOneFile(connectorId, file);
+          hadRelevantChange = true;
         }
         await markAsSeenAndIgnored({
           fileId: change.file.id,
@@ -294,6 +297,7 @@ export async function incrementalSync(
               parents,
               localLogger
             );
+            hadRelevantChange = true;
           }
         } else if (localFolder) {
           if (localFolder.skipReason) {
@@ -313,6 +317,7 @@ export async function incrementalSync(
               parents,
               localLogger
             );
+            hadRelevantChange = true;
           }
         }
 
@@ -322,6 +327,7 @@ export async function incrementalSync(
             "Adding new folder to sync"
           );
           newFolders.push(driveFile.id);
+          hadRelevantChange = true;
         }
 
         localLogger.info({ fileId: change.file.id }, "done syncing file");
@@ -336,6 +342,7 @@ export async function incrementalSync(
           driveFile,
           startSyncTs
         );
+        hadRelevantChange = true;
       }
       localLogger.info({ fileId: change.file.id }, "done syncing file");
     }
@@ -344,10 +351,11 @@ export async function incrementalSync(
       ? changesRes.data.nextPageToken
       : undefined;
     if (changesRes.data.newStartPageToken) {
-      await GoogleDriveSyncTokenModel.upsert({
+      await upsertCompletedSyncToken({
         connectorId: connectorId,
         driveId: driveId,
         syncToken: changesRes.data.newStartPageToken,
+        hadRelevantChange,
       });
     }
 
@@ -368,6 +376,11 @@ export async function incrementalSync(
         },
         `Looks like we lost access to this drive. Skipping`
       );
+      await updateCompletedSyncTokenState({
+        connectorId,
+        driveId,
+        hadRelevantChange: false,
+      });
       return undefined;
     } else if (
       isSharedDriveNotFoundError(e) ||
@@ -381,11 +394,63 @@ export async function incrementalSync(
         },
         `Shared drive not found. Skipping`
       );
+      await updateCompletedSyncTokenState({
+        connectorId,
+        driveId,
+        hadRelevantChange: false,
+      });
       return undefined;
     } else {
       throw e;
     }
   }
+}
+
+async function upsertCompletedSyncToken({
+  connectorId,
+  driveId,
+  syncToken,
+  hadRelevantChange,
+}: {
+  connectorId: ModelId;
+  driveId: string;
+  syncToken: string;
+  hadRelevantChange: boolean;
+}) {
+  const completedAt = new Date();
+
+  await GoogleDriveSyncTokenModel.upsert({
+    connectorId,
+    driveId,
+    syncToken,
+    lastSyncAt: completedAt,
+    ...(hadRelevantChange ? { lastRelevantChangeAt: completedAt } : {}),
+  });
+}
+
+async function updateCompletedSyncTokenState({
+  connectorId,
+  driveId,
+  hadRelevantChange,
+}: {
+  connectorId: ModelId;
+  driveId: string;
+  hadRelevantChange: boolean;
+}) {
+  const completedAt = new Date();
+
+  await GoogleDriveSyncTokenModel.update(
+    {
+      lastSyncAt: completedAt,
+      ...(hadRelevantChange ? { lastRelevantChangeAt: completedAt } : {}),
+    },
+    {
+      where: {
+        connectorId,
+        driveId,
+      },
+    }
+  );
 }
 
 async function recurseUpdateParents(
