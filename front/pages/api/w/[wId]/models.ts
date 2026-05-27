@@ -14,13 +14,13 @@ import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-export type GetAvailableModelsResponseType = {
+export type GetEnabledModelsResponseType = {
   models: ModelConfigurationType[];
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetAvailableModelsResponseType>>,
+  res: NextApiResponse<WithAPIErrorResponse<GetEnabledModelsResponseType>>,
   auth: Authenticator
 ): Promise<void> {
   switch (req.method) {

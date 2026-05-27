@@ -8,14 +8,14 @@ import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
-export type GetAvailableModelsResponseType = {
+export type GetEnabledModelsResponseType = {
   models: ModelConfigurationType[];
 };
 
 // Mounted at /api/w/:wId/models.
 const app = workspaceApp();
 
-app.get("/", async (ctx): HandlerResult<GetAvailableModelsResponseType> => {
+app.get("/", async (ctx): HandlerResult<GetEnabledModelsResponseType> => {
   const auth = ctx.get("auth");
 
   const featureFlags = await getFeatureFlags(auth);
