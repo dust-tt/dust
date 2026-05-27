@@ -1181,6 +1181,13 @@ export const ClariCallListResourceSchema = z.object({
   uri: z.literal(""),
   text: z.string(),
   calls: z.array(ClariCallSchema),
+  pagination: z
+    .object({
+      matched: z.number().optional(),
+      hasMore: z.boolean().optional(),
+      nextPageSkip: z.number().optional(),
+    })
+    .optional(),
 });
 
 export type ClariCallListResourceType = z.infer<
