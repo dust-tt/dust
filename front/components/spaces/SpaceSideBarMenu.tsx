@@ -152,7 +152,7 @@ export default function SpaceSideBarMenu({
 
   return (
     <div className="flex h-0 min-h-full w-full overflow-y-auto">
-      <NavigationList className="w-full px-3">
+      <NavigationList className="w-full mx-sidebar-side-spacing">
         {sortedGroupedSpaces.map(({ section, spaces }, index) => {
           if (section === "restricted" && !spaces.length && !isAdmin) {
             return null;
@@ -163,10 +163,7 @@ export default function SpaceSideBarMenu({
           return (
             <Fragment key={`space-section-${index}`}>
               <div className="flex items-center justify-between pr-1">
-                <NavigationListLabel
-                  label={sectionDetails.label}
-                  variant="primary"
-                />
+                <NavigationListLabel label={sectionDetails.label} />
                 {sectionDetails.displayCreateSpaceButton &&
                   isAdmin &&
                   openSpaceCreationModal && (

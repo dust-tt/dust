@@ -133,7 +133,7 @@ Tree.Item = React.forwardRef<
       type = "node",
       className = "",
       labelClassName = "",
-      tailwindIconTextColor = "s-text-foreground dark:s-text-foreground-night",
+      tailwindIconTextColor = "s-text-muted-foreground dark:s-text-muted-foreground-night",
       visual,
       checkbox,
       onChevronClick,
@@ -254,7 +254,7 @@ Tree.Item = React.forwardRef<
             <div className="s-w-[24px] s-flex-shrink-0"></div>
           )}
           {checkbox && <Checkbox {...checkbox} size="xs" />}
-          <Icon visual={visual} size="sm" className={tailwindIconTextColor} />
+          <Icon visual={visual} size="xs" className={tailwindIconTextColor} />
           {isTruncated ? (
             <TooltipProvider>
               <TooltipRoot>

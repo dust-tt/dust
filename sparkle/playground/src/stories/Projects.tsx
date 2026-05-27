@@ -664,7 +664,6 @@ function DustMain() {
               <NavigationListCollapsibleSection
                 label="Inbox"
                 className="s-border-b s-border-t s-border-border dark:s-border-border-night s-bg-background/50 s-px-2 s-pb-2 dark:s-bg-background-night/50"
-                actionOnHover={false}
                 action={
                   <Button
                     size="xmini"

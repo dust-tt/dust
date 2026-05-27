@@ -67,7 +67,6 @@ import {
   Button,
   ChatBubbleBottomCenterPlusIcon,
   Checkbox,
-  CheckDoubleIcon,
   Chip,
   cn,
   DocumentIcon,
@@ -271,7 +270,7 @@ function SearchResults({
 
   return (
     <div className="h-full overflow-y-auto">
-      <NavigationList className="px-2">
+      <NavigationList>
         <NavigationListCollapsibleSection
           label="Pods"
           type="collapse"
@@ -283,7 +282,7 @@ function SearchResults({
                 size="xs"
                 icon={PlusIcon}
                 label="New"
-                variant="ghost"
+                variant="ghost-secondary"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -299,7 +298,7 @@ function SearchResults({
               <Spinner size="sm" />
             </div>
           ) : allProjects.length === 0 ? (
-            <div className="px-3 py-2 text-sm text-muted-foreground">
+            <div className="py-2 text-sm text-muted-foreground">
               No results found
             </div>
           ) : (
@@ -340,7 +339,7 @@ function SearchResults({
                   <Button
                     size="xmini"
                     icon={MoreIcon}
-                    variant="ghost"
+                    variant="ghost-secondary"
                     aria-label="Conversations options"
                     onClick={(e) => {
                       e.preventDefault();
@@ -368,7 +367,7 @@ function SearchResults({
           }
         >
           {allConversations.length === 0 && !showConversationsLoading ? (
-            <div className="px-3 py-2 text-sm text-muted-foreground">
+            <div className="py-2 text-sm text-muted-foreground">
               No results found
             </div>
           ) : (
@@ -704,7 +703,7 @@ export function AgentSidebarMenu({
     return (
       <NavigationList className="px-2">
         <NavigationListCollapsibleSection
-          label={showCount ? `Starred (${starredCountInSummary})` : "Starred"}
+          label={showCount ? `Starred` : "Starred"}
           icon={StarIcon}
           type="collapse"
           visibleItems={VISIBLE_STARRED}
@@ -740,8 +739,6 @@ export function AgentSidebarMenu({
     const nonStarredSummary = summary.filter(
       (project) => !project.space.isStarred
     );
-    const projectCountInSummary = nonStarredSummary.length;
-    const showCount = isProjectsSectionCollapsed && projectCountInSummary > 0;
 
     const VISIBLE_PROJECTS = 4;
     const hiddenSummary = nonStarredSummary.slice(VISIBLE_PROJECTS);
@@ -758,7 +755,7 @@ export function AgentSidebarMenu({
     return (
       <NavigationList className="px-2">
         <NavigationListCollapsibleSection
-          label={showCount ? `Pods (${projectCountInSummary})` : "Pods"}
+          label="Pods"
           type="collapse"
           visibleItems={VISIBLE_PROJECTS}
           overflowCount={hiddenOverflowCount}
@@ -772,7 +769,7 @@ export function AgentSidebarMenu({
                   size="xs"
                   icon={PlusIcon}
                   label="New"
-                  variant="ghost"
+                  variant="ghost-secondary"
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -904,7 +901,7 @@ export function AgentSidebarMenu({
                 />
               </div>
             ) : (
-              <div className="z-50 flex justify-end gap-2 p-2">
+              <div className="z-50 flex justify-end gap-2 py-4 mx-sidebar-side-spacing">
                 {hasSpaceConversations ? (
                   <div className="flex-1">
                     <SidebarSearch
@@ -935,7 +932,11 @@ export function AgentSidebarMenu({
                   {!hideActions && (
                     <DropdownMenu modal={false}>
                       <DropdownMenuTrigger asChild>
-                        <Button size="sm" icon={MoreIcon} variant="outline" />
+                        <Button
+                          icon={MoreIcon}
+                          variant="outline"
+                          size="icon-sm"
+                        />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
                         {!isRestrictedFromAgentCreation && (
@@ -1100,7 +1101,7 @@ export function AgentSidebarMenu({
               </div>
             )}
             {isConversationsError && (
-              <Label className="px-3 py-4 text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
+              <Label className="px-sidebar-bottom-spacing py-4 text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
                 Error loading conversations
               </Label>
             )}
@@ -1166,7 +1167,7 @@ interface ConversationListContainerProps {
 const ConversationListContainer = ({
   children,
 }: ConversationListContainerProps) => {
-  return <div className="sm:flex sm:flex-col sm:gap-0.5">{children}</div>;
+  return <div className="sm:flex sm:flex-col sm:gap-1">{children}</div>;
 };
 
 const GRID_ANIMATE = { gridTemplateRows: "1fr", opacity: 1 };
@@ -1192,19 +1193,17 @@ function UnreadConversationsSection({
 
   return (
     <NavigationListCollapsibleSection
-      label={`${label} (${totalCount})`}
-      className="border-b border-t border-border bg-background/50 px-2 pb-2 dark:border-border-night dark:bg-background-night/50"
+      label={label}
+      className="bg-background dark:bg-background-night rounded-xl border border-border dark:border-border-night p-1"
       defaultOpen
-      actionOnHover={false}
       action={
         shouldShowMarkAllAsReadButton ? (
           <Button
-            size="xmini"
-            variant="ghost"
-            icon={CheckDoubleIcon}
-            tooltip="Mark all as read"
+            size="xs"
+            variant="ghost-secondary"
             onClick={() => onMarkAllAsRead(conversations.map((c) => c.sId))}
             isLoading={isMarkingAllAsRead}
+            label="Mark as read"
           />
         ) : null
       }
@@ -1256,11 +1255,7 @@ const ConversationList = ({
   return (
     <ConversationListContainer>
       {dateLabel !== "Today" && (
-        <NavigationListLabel
-          label={dateLabel}
-          isSticky
-          className="bg-muted-background dark:bg-muted-background-night"
-        />
+        <NavigationListLabel label={dateLabel} isSticky />
       )}
 
       {conversations.map((conversation) => (
@@ -1351,7 +1346,7 @@ const ConversationListItem = memo(
     );
 
     return isMultiSelect ? (
-      <div className="flex items-center px-2 py-2">
+      <div className="flex items-center py-2">
         <Checkbox
           id={`conversation-${conversation.sId}`}
           className="bg-background dark:bg-background-night"
@@ -1398,7 +1393,9 @@ const ConversationListItem = memo(
             activeConversationId={conversation.sId}
             conversation={conversation}
             owner={owner}
-            trigger={() => <NavigationListItemAction />}
+            trigger={() => (
+              <NavigationListItemAction forceVisible={isMenuOpen} />
+            )}
             isConversationDisplayed={activeConversationId === conversation.sId}
             isOpen={isMenuOpen}
             onOpenChange={handleMenuOpenChange}
@@ -1514,7 +1511,7 @@ function NavigationListWithInbox({
   return (
     <div
       ref={scrollContainerRef}
-      className="dd-privacy-mask h-full w-full overflow-y-auto"
+      className="dd-privacy-mask h-full w-full overflow-y-auto flex flex-col gap-4"
     >
       <AnimatePresence initial={false}>
         {skillSuggestionConversations.length > 0 && (
@@ -1525,7 +1522,7 @@ function NavigationListWithInbox({
             exit={GRID_EXIT}
             transition={{ duration: 0.2, ease: "easeOut" }}
           >
-            <div className="overflow-hidden">
+            <div className="overflow-hidden mx-sidebar-side-spacing">
               <UnreadConversationsSection
                 label="Skill suggestions"
                 conversations={skillSuggestionConversations}
@@ -1549,7 +1546,7 @@ function NavigationListWithInbox({
             exit={{ gridTemplateRows: "0fr" }}
             transition={{ duration: 0.2, ease: "easeOut" }}
           >
-            <div className="overflow-hidden">
+            <div className="overflow-hidden mx-sidebar-side-spacing">
               <UnreadConversationsSection
                 label="Inbox"
                 conversations={inboxConversations}
@@ -1577,9 +1574,9 @@ function NavigationListWithInbox({
               <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <Button
-                    size="xmini"
+                    size="icon-xs"
                     icon={MoreIcon}
-                    variant="ghost"
+                    variant="ghost-secondary"
                     aria-label="Conversations options"
                     onClick={(e) => {
                       e.preventDefault();

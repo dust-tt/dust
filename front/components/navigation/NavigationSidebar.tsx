@@ -18,10 +18,10 @@ import {
   NavigationList,
   NavigationListItem,
   NavigationListLabel,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
+  NavTabPill,
+  NavTabPillContent,
+  NavTabPillList,
+  NavTabPillTrigger,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import React, { useCallback, useContext, useMemo, useState } from "react";
@@ -81,45 +81,40 @@ export const NavigationSidebar = React.forwardRef<
           <SidebarBanners />
         </div>
         {navs.length > 1 && (
-          <Tabs value={currentTab?.id ?? "conversations"}>
-            <div className="border-b border-separator px-2 dark:border-separator-night">
-              <TabsList border={false}>
-                {navs.map((tab) => (
-                  <div key={tab.id} ref={tab.ref ?? undefined}>
-                    <TabsTrigger
-                      key={tab.id}
-                      value={tab.id}
-                      label={tab.hideLabel ? undefined : tab.label}
-                      tooltip={tab.hideLabel ? tab.label : undefined}
-                      icon={tab.icon}
-                      href={tab.href}
-                    />
-                  </div>
-                ))}
-                {isMobile && (
-                  <div className="flex flex-grow justify-end">
-                    <TabsTrigger
-                      value="close-icon"
-                      icon={XMarkIcon}
-                      onClick={() => setSidebarOpen(false)}
-                    />
-                  </div>
-                )}
-              </TabsList>
-            </div>
+          <NavTabPill
+            value={currentTab?.id ?? "conversations"}
+            className="mx-sidebar-side-spacing"
+          >
+            <NavTabPillList>
+              {navs.map((tab) => (
+                <div key={tab.id} ref={tab.ref ?? undefined}>
+                  <NavTabPillTrigger
+                    value={tab.id}
+                    icon={tab.icon}
+                    href={tab.href}
+                  >
+                    {tab.hideLabel ? undefined : tab.label}
+                  </NavTabPillTrigger>
+                </div>
+              ))}
+              {isMobile && (
+                <div className="flex flex-grow justify-end">
+                  <NavTabPillTrigger
+                    value="close-icon"
+                    icon={XMarkIcon}
+                    onClick={() => setSidebarOpen(false)}
+                  />
+                </div>
+              )}
+            </NavTabPillList>
             {navs.map((tab) => (
-              <TabsContent key={tab.id} value={tab.id}>
-                <NavigationList className="px-3">
+              <NavTabPillContent key={tab.id} value={tab.id}>
+                <NavigationList>
                   {subNavigation &&
                     tab.isCurrent(activePath) &&
                     subNavigation.map((nav) => (
                       <React.Fragment key={`nav-${nav.label}`}>
-                        {nav.label && (
-                          <NavigationListLabel
-                            label={nav.label}
-                            variant={nav.variant}
-                          />
-                        )}
+                        {nav.label && <NavigationListLabel label={nav.label} />}
                         {nav.menus
                           .filter(
                             (menu) =>
@@ -140,12 +135,19 @@ export const NavigationSidebar = React.forwardRef<
                       </React.Fragment>
                     ))}
                 </NavigationList>
-              </TabsContent>
+              </NavTabPillContent>
             ))}
-          </Tabs>
+          </NavTabPill>
         )}
       </div>
-      <div className="flex grow flex-col">{children}</div>
+      <div
+        className={cn(
+          "flex grow flex-col"
+          // currentTab?.id !== "conversations" && "mx-sidebar-side-spacing"
+        )}
+      >
+        {children}
+      </div>
       {subscription.plan.code === FREE_TRIAL_PHONE_PLAN_CODE && (
         <div className="mx-3 mb-3">
           <TrialMessageUsage isAdmin={isAdmin(owner)} workspaceId={owner.sId} />

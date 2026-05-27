@@ -149,7 +149,7 @@ function ConversationInnerLayout({
 }: ConversationInnerLayoutProps) {
   return (
     <ErrorBoundary fallback={<UncaughtConversationErrorFallback />}>
-      <div className="flex h-full w-full flex-col">
+      <div className="flex h-full w-full flex-col bg-background dark:bg-background-night">
         <ResizablePanelGroup
           direction="horizontal"
           className="flex h-full w-full flex-1"
