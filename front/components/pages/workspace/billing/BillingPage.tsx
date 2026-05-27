@@ -1,6 +1,7 @@
 import { BillingInformation } from "@app/components/workspace/billing/BillingInformation";
 import { BillingOverview } from "@app/components/workspace/billing/BillingOverview";
 import { BillingSeatsOverview } from "@app/components/workspace/billing/BillingSeatsOverview";
+import { RecentInvoices } from "@app/components/workspace/billing/RecentInvoices";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { CardIcon, Page } from "@dust-tt/sparkle";
 
@@ -18,6 +19,7 @@ export function BillingPage() {
       <BillingOverview owner={owner} subscription={subscription} />
       <BillingSeatsOverview owner={owner} />
       <BillingInformation owner={owner} />
+      <RecentInvoices owner={owner} />
     </Page.Vertical>
   );
 }
