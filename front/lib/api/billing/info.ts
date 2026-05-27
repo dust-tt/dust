@@ -115,6 +115,12 @@ function serializePaymentMethod(
   }
 }
 
+function isExpandedPaymentMethod(
+  paymentMethod: Stripe.Customer.InvoiceSettings["default_payment_method"]
+): paymentMethod is Stripe.PaymentMethod {
+  return typeof paymentMethod === "object" && paymentMethod !== null;
+}
+
 async function getAttachedPaymentMethod({
   stripeCustomerId,
 }: {
@@ -143,6 +149,29 @@ async function getAttachedPaymentMethod({
   return null;
 }
 
+async function getCustomerPaymentMethod({
+  customer,
+  stripeCustomerId,
+}: {
+  customer: Stripe.Customer;
+  stripeCustomerId: string;
+}): Promise<BillingPaymentMethod | null> {
+  const defaultPaymentMethod = customer.invoice_settings.default_payment_method;
+
+  if (isExpandedPaymentMethod(defaultPaymentMethod)) {
+    return serializePaymentMethod(defaultPaymentMethod);
+  }
+
+  if (defaultPaymentMethod) {
+    const paymentMethod =
+      await getStripeClient().paymentMethods.retrieve(defaultPaymentMethod);
+
+    return serializePaymentMethod(paymentMethod);
+  }
+
+  return getAttachedPaymentMethod({ stripeCustomerId });
+}
+
 export async function getWorkspaceBillingInfo(
   auth: Authenticator
 ): Promise<Result<BillingInfo | null, Error>> {
@@ -166,7 +195,10 @@ export async function getWorkspaceBillingInfo(
 
   try {
     const customer = await getStripeClient().customers.retrieve(
-      stripeCustomerIdRes.value
+      stripeCustomerIdRes.value,
+      {
+        expand: ["invoice_settings.default_payment_method"],
+      }
     );
 
     if (customer.deleted) {
@@ -180,7 +212,8 @@ export async function getWorkspaceBillingInfo(
         phone: customer.phone ?? null,
         address: serializeAddress(customer.address),
       },
-      paymentMethod: await getAttachedPaymentMethod({
+      paymentMethod: await getCustomerPaymentMethod({
+        customer,
         stripeCustomerId: stripeCustomerIdRes.value,
       }),
     });
