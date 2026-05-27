@@ -99,19 +99,9 @@ function applyClientIp(auth: Authenticator, headers: HeaderRecord): void {
  * sandbox token, OAuth bearer, or API key) and stashes the resolved
  * `Authenticator` on the Hono context under `auth`. Mirrors
  * `withPublicAPIAuthentication` in `front/lib/api/auth_wrappers.ts`.
- *
- * When `allowSystemKeyBypassBuilderCheck` is true, system keys bypass the
- * `isUser()` check even if their role is downgraded via the X-Dust-Role
- * header (the key must still belong to the target workspace). Mirrors the
- * option of the same name on `withPublicAPIAuthentication` — used by
- * `run_dust_app`.
  */
-function createPublicApiAuth({
-  allowSystemKeyBypassBuilderCheck = false,
-}: {
-  allowSystemKeyBypassBuilderCheck?: boolean;
-} = {}) {
-  return createMiddleware<PublicApiCtx>(async (ctx, next) => {
+export const publicApiAuth = createMiddleware<PublicApiCtx>(
+  async (ctx, next) => {
     const wId = ctx.req.param("wId");
     if (!wId) {
       return apiError(ctx, {
@@ -225,15 +215,7 @@ function createPublicApiAuth({
       return apiError(ctx, workspaceError);
     }
 
-    // Authenticator created from a key carries the role assigned at key
-    // creation. System keys can bypass this check when
-    // allowSystemKeyBypassBuilderCheck is set (key must belong to workspace).
-    const owner = workspaceAuth.getNonNullableWorkspace();
-    const isSystemKeyAllowed =
-      allowSystemKeyBypassBuilderCheck &&
-      workspaceAuth.isSystemKey() &&
-      keyRes.value.workspaceId === owner.id;
-    if (!workspaceAuth.isUser() && !isSystemKeyAllowed) {
+    if (!workspaceAuth.isUser()) {
       return apiError(ctx, {
         status_code: 401,
         api_error: {
@@ -271,12 +253,5 @@ function createPublicApiAuth({
     applyClientIp(workspaceAuth, headers);
     ctx.set("auth", workspaceAuth);
     await next();
-  });
-}
-
-export const publicApiAuth = createPublicApiAuth();
-
-// Variant used by the run-app POST endpoint: system keys with a downgraded
-// role (via X-Dust-Role) are still trusted.
-export const publicApiAuthAllowSystemKeyBypassBuilderCheck =
-  createPublicApiAuth({ allowSystemKeyBypassBuilderCheck: true });
+  }
+);

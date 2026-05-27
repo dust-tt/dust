@@ -1,6 +1,7 @@
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import { publicApiAuth } from "@front-api/middlewares/public_api_auth";
 import analytics from "./analytics";
+import apps from "./apps";
 import assistant from "./assistant";
 import dataSourceViews from "./data_source_views";
 import dataSources from "./data_sources";
@@ -21,6 +22,7 @@ const app = publicApiApp();
 app.use("*", publicApiAuth);
 
 app.route("/analytics", analytics);
+app.route("/apps", apps);
 app.route("/assistant", assistant);
 app.route("/data_sources", dataSources);
 app.route("/data_source_views", dataSourceViews);

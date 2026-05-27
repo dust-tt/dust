@@ -55,6 +55,10 @@ function deriveAccessMethod(auth: Authenticator): string {
  * context under `space`. Mirrors `withSpaceFromRoute` from
  * `front/lib/api/resource_wrappers.ts`.
  *
+ * When the route param is absent (legacy public-API endpoints that omit the
+ * space from the path, e.g. `/v1/w/:wId/apps/...`), the workspace global space
+ * is used as a fallback — matching the legacy support in `withSpaceFromRoute`.
+ *
  * Apply after the auth middleware so `ctx.get("auth")` is available.
  */
 export function withSpace(options: WithSpaceOptions) {
@@ -62,18 +66,10 @@ export function withSpace(options: WithSpaceOptions) {
   return createMiddleware<SpaceCtx>(async (ctx, next) => {
     const auth = ctx.get("auth");
     const spaceId = ctx.req.param(routeParam);
-    if (!spaceId) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message:
-            routeParam === "podId" ? "Invalid pod id." : "Invalid space id.",
-        },
-      });
-    }
 
-    const space = await SpaceResource.fetchById(auth, spaceId);
+    const space = spaceId
+      ? await SpaceResource.fetchById(auth, spaceId)
+      : await SpaceResource.fetchWorkspaceGlobalSpace(auth);
     if (
       !space ||
       space.isConversations() ||
