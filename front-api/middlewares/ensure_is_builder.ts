@@ -16,7 +16,7 @@ export const ensureIsBuilder = () =>
         api_error: {
           type: "workspace_auth_error",
           message:
-            "Only users that are `builders` or `admins` for the current workspace can access this endpoint.",
+            "Only users that are `builders` can perform this action.",
         },
       });
     }

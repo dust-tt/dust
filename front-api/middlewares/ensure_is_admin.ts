@@ -16,7 +16,7 @@ export const ensureIsAdmin = () =>
         api_error: {
           type: "workspace_auth_error",
           message:
-            "Only users that are `admins` for the current workspace can access this endpoint.",
+            "Only users that are `admins` can perform this action.",
         },
       });
     }
