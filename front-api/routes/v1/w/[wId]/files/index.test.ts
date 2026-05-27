@@ -1,14 +1,11 @@
+import config from "@app/lib/api/config";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock(import("@app/lib/api/config"), (() => ({
-  default: {
-    getApiBaseUrl: vi.fn().mockReturnValue("http://localhost:9999"),
-  },
-})) as any);
+vi.spyOn(config, "getApiBaseUrl").mockReturnValue("http://localhost:9999");
 
 function postFile(
   workspace: { sId: string },
