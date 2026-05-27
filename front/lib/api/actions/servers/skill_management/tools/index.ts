@@ -29,18 +29,12 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
       );
     }
 
-    const enableResult = await skill.enableForAgent(auth, {
+    const { wasAlreadyEnabled } = await skill.enableForAgent(auth, {
       agentConfiguration,
       conversation,
     });
 
-    if (enableResult.isErr()) {
-      return new Err(
-        new MCPError(enableResult.error.message, { tracked: false })
-      );
-    }
-
-    if (enableResult.value.alreadyEnabled) {
+    if (wasAlreadyEnabled) {
       return new Ok([
         {
           type: "text" as const,
