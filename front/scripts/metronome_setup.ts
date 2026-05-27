@@ -524,21 +524,13 @@ function buildSeatTierRates({
   );
 }
 
-// Per-category AWU price for Tool Usage rates. 1 AWU per invocation by default;
-// deep_research costs 2 AWU. Shared across all AWU-priced rate cards
-// (Business USD, Business EUR, Enterprise EUR).
+// Per-tier AWU price for Tool Usage rates. Shared across all AWU-priced rate cards
 const TOOL_CATEGORY_PRICES_AWU: Record<
   (typeof TOOL_CATEGORIES)[number],
   number
 > = {
-  retrieval: 1,
-  deep_research: 2,
-  reasoning: 1,
-  connectors: 1,
-  generation: 1,
-  agents: 1,
-  actions: 1,
-  platform: 1,
+  basic: 1,
+  advanced: 3,
 };
 
 // usage_type splits each AWU usage rate: "user" and "programmatic" use the
