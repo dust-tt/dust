@@ -707,8 +707,6 @@ export async function renameProjectFile(
     return new Ok(undefined);
   }
 
-  // Look up the linked FileResource by either the new `pods/` form or the old
-  // `projects/` form, since old DB rows are not yet backfilled.
   const podsPrefix = getPodFilesBasePath({
     workspaceId: owner.sId,
     podId: space.sId,

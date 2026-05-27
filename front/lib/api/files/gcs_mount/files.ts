@@ -410,22 +410,6 @@ export async function renameGCSMountDirectory(
     }
     await bucket.deleteByPrefix(oldDirPrefix);
 
-    if (scope.useCase === "pod") {
-      const projectsPrefix = getProjectFilesBasePath({
-        workspaceId: owner.sId,
-        projectId: scope.podId,
-      });
-      const oldProjectsDirPrefix = `${projectsPrefix}${normalized}/`;
-      for (const obj of objects) {
-        const newPodsPath = obj.name.replace(oldDirPrefix, newDirPrefix);
-        const newProjectsPath = toProjectMountFilePath(newPodsPath);
-        if (newProjectsPath) {
-          await bucket.copyFile(newPodsPath, newProjectsPath);
-        }
-      }
-      await bucket.deleteByPrefix(oldProjectsDirPrefix);
-    }
-
     return new Ok({ newRelativeDirPath });
   } catch (err) {
     return new Err(normalizeError(err));
@@ -575,14 +559,6 @@ export async function deleteGCSMountFile(
 
       if (isDirectoryDelete) {
         await bucket.deleteByPrefix(dirGcsPrefix);
-
-        if (scope.useCase === "pod") {
-          const projectPrefix = getProjectFilesBasePath({
-            workspaceId: owner.sId,
-            projectId: scope.podId,
-          });
-          await bucket.deleteByPrefix(`${projectPrefix}${normalized}/`);
-        }
 
         return new Ok(undefined);
       }
