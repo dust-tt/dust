@@ -138,7 +138,7 @@ export function ActivityReport({
           </DialogHeader>
           <DialogContainer>
             <ContentMessage variant="warning" title="Scheduled for removal">
-              This activity report download will be removed on June 1st, 2026.
+              This activity report download will be removed on July 1st, 2026.
               Switch to the new analytics export API before then.{" "}
               <Hoverable
                 variant="highlight"

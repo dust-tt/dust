@@ -16,7 +16,13 @@ export type ContentNodeEntry = {
   connectorProvider: ConnectorProvider | null;
 };
 
-export type FileExplorerEntry = FileEntry | ContentNodeEntry;
+export type FolderEntry = {
+  kind: "folder";
+  path: string;
+  name: string;
+};
+
+export type FileExplorerEntry = FileEntry | ContentNodeEntry | FolderEntry;
 
 export type FileExplorerMenuAction = {
   label: string;

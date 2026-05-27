@@ -7,14 +7,14 @@ import {
   getConversationDotStatus,
 } from "@app/lib/utils/conversation_dot_status";
 import type { ProjectTaskType } from "@app/types/project_task";
-import type { ProjectType } from "@app/types/space";
+import type { PodType } from "@app/types/space";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 
 export interface GetWorkspaceProjectTaskResponseBody {
   task: ProjectTaskType;
-  /** Project space (same shape as entries in `GET /api/w/{wId}/spaces` for projects). */
-  space: ProjectType;
+  /** Pod space (same shape as entries in `GET /api/w/{wId}/spaces` for pods). */
+  space: PodType;
 }
 
 // Mounted at /api/w/:wId/project_tasks/:taskSId.

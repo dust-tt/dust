@@ -166,6 +166,96 @@ async function createCompactionHistoryFile(
   return new Ok(entryRes.value);
 }
 
+export async function failCompactionMessage(
+  auth: Authenticator,
+  {
+    conversationId,
+    compactionMessageId,
+    compactionMessageVersion,
+  }: {
+    conversationId: string;
+    compactionMessageId: string;
+    compactionMessageVersion: number;
+  }
+): Promise<void> {
+  const owner = auth.getNonNullableWorkspace();
+
+  const targetConversationRes = await getConversation(
+    auth,
+    conversationId,
+    false,
+    null,
+    PREVIOUS_INTERACTIONS_TO_PRESERVE + 1
+  );
+  if (targetConversationRes.isErr()) {
+    logger.error(
+      {
+        workspaceId: owner.sId,
+        conversationId,
+        compactionMessageId,
+        error: targetConversationRes.error,
+      },
+      "Compaction cleanup: failed to fetch conversation"
+    );
+    return;
+  }
+  const targetConversation = targetConversationRes.value;
+
+  const compactionMessage = findCompactionMessage(
+    targetConversation,
+    compactionMessageId,
+    compactionMessageVersion
+  );
+
+  if (!compactionMessage) {
+    logger.error(
+      {
+        workspaceId: owner.sId,
+        conversationId,
+        compactionMessageId,
+      },
+      "Compaction cleanup: compaction message not found"
+    );
+    return;
+  }
+
+  // Only mark as failed if still in "created" state (the main activity may
+  // have already updated the status before timing out).
+  if (compactionMessage.status !== "created") {
+    return;
+  }
+
+  const result = await updateCompactionMessageWithContentAndFinalStatus(auth, {
+    conversation: targetConversation,
+    compactionMessage,
+    clearEnabledSkillsOnSuccess: false,
+    status: "failed",
+    content: null,
+  });
+
+  compactionMessage.status = result.status;
+  compactionMessage.content = null;
+
+  await publishConversationEvent(
+    {
+      type: "compaction_message_done",
+      created: Date.now(),
+      messageId: compactionMessage.sId,
+      message: compactionMessage,
+    },
+    { conversationId: targetConversation.sId }
+  );
+
+  logger.info(
+    {
+      workspaceId: owner.sId,
+      conversationId,
+      compactionMessageId,
+    },
+    "Compaction cleanup: marked compaction message as failed"
+  );
+}
+
 export async function runCompaction(
   auth: Authenticator,
   {

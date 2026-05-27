@@ -117,10 +117,6 @@ async function handler(
         : null;
 
       if (!workspace) {
-        logger.info(
-          { eventId: event.id, eventType: event.type, customerId },
-          "[Metronome Webhook] No workspace mapped to customer, ack and skip"
-        );
         return res.status(200).json({ success: true });
       }
 

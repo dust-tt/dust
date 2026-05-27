@@ -1,3 +1,5 @@
+// @migration-status: MIGRATED_TO_HONO
+
 import { editUserMessage } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";

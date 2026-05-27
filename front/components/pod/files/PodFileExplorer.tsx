@@ -2,9 +2,6 @@ import {
   FileDropProvider,
   useFileDrop,
 } from "@app/components/assistant/conversation/FileUploaderContext";
-import { CreateFolderDialog } from "@app/components/assistant/conversation/space/CreateFolderDialog";
-import { ProjectFrameSheet } from "@app/components/assistant/conversation/space/ProjectFrameSheet";
-import { RenameFileDialog } from "@app/components/assistant/conversation/space/RenameFileDialog";
 import { ConfirmContext } from "@app/components/Confirm";
 import { FileExplorer } from "@app/components/file_explorer/FileExplorer";
 import type {
@@ -12,6 +9,7 @@ import type {
   FileEntry,
   FileExplorerEntry,
   FileExplorerMenuAction,
+  FolderEntry,
 } from "@app/components/file_explorer/types";
 import { useFileDownload } from "@app/components/file_explorer/useFileDownload";
 import {
@@ -19,6 +17,9 @@ import {
   joinMountRelativePath,
 } from "@app/components/file_explorer/utils";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
+import { CreateFolderDialog } from "@app/components/pod/files/CreateFolderDialog";
+import { PodFrameSheet } from "@app/components/pod/files/PodFrameSheet";
+import { RenameFileDialog } from "@app/components/pod/files/RenameFileDialog";
 import SpaceManagedDatasourcesViewsModal from "@app/components/spaces/SpaceManagedDatasourcesViewsModal";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { usePinPodBanner } from "@app/hooks/usePinPodBanner";
@@ -29,15 +30,14 @@ import { useAppRouter } from "@app/lib/platform";
 import { downloadPodFile } from "@app/lib/swr/files";
 import { useMoveMountFile } from "@app/lib/swr/mount_files";
 import {
-  useAddProjectContextContentNodes,
-  useDeleteProjectFile,
+  useAddPodContextContentNodes,
+  useDeletePodFile,
+  usePodContextAttachments,
   usePodFiles,
-  useProjectContextAttachments,
-  useRemoveProjectContextContentNodes,
+  useRemovePodContextContentNodes,
 } from "@app/lib/swr/pods";
 import { useSpaceDataSourceViews, useSpaces } from "@app/lib/swr/spaces";
-import { isManualProjectKnowledgeManagementAllowed } from "@app/lib/workspace_policies";
-import type { RichSpaceType } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
+import { isManualPodFilesManagementAllowed } from "@app/lib/workspace_policies";
 import type { ConnectorProvider } from "@app/types/data_source";
 import type {
   DataSourceViewSelectionConfigurations,
@@ -47,6 +47,7 @@ import {
   getSupportedFileExtensions,
   isInteractiveContentType,
 } from "@app/types/files";
+import type { PodType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
   ActionPushpinIcon,
@@ -77,7 +78,7 @@ import {
   useState,
 } from "react";
 
-const PROJECT_KNOWLEDGE_MANAGEMENT_DISABLED_TOOLTIP =
+const POD_FILE_MANAGEMENT_DISABLED_TOOLTIP =
   "Adding files to Pods is disabled by your workspace admin.";
 
 interface AttachKnowledgeDropdownProps {
@@ -127,18 +128,18 @@ function AttachKnowledgeDropdown({
 }
 
 interface AttachKnowledgeButtonProps extends AttachKnowledgeDropdownProps {
-  canManuallyManageProjectKnowledge: boolean;
+  canManuallyManagePodFiles: boolean;
 }
 
 function AttachKnowledgeButton({
   buttonLabel,
-  canManuallyManageProjectKnowledge,
+  canManuallyManagePodFiles,
   isDisabled,
   onCreateFolderClick,
   onShowCompanyDataClick,
   onUploadFileClick,
 }: AttachKnowledgeButtonProps) {
-  if (canManuallyManageProjectKnowledge) {
+  if (canManuallyManagePodFiles) {
     return (
       <AttachKnowledgeDropdown
         buttonLabel={buttonLabel}
@@ -151,7 +152,7 @@ function AttachKnowledgeButton({
   }
   return (
     <Tooltip
-      label={PROJECT_KNOWLEDGE_MANAGEMENT_DISABLED_TOOLTIP}
+      label={POD_FILE_MANAGEMENT_DISABLED_TOOLTIP}
       trigger={
         <div>
           <AttachKnowledgeDropdown
@@ -212,19 +213,16 @@ function NoCompanyDataDialog({
   );
 }
 
-interface ProjectFileExplorerProps {
+interface PodFileExplorerProps {
   owner: WorkspaceType;
-  space: RichSpaceType;
+  pod: PodType;
 }
 
-export function ProjectFileExplorer({
-  owner,
-  space,
-}: ProjectFileExplorerProps) {
-  const isArchived = !!space.archivedAt;
+export function PodFileExplorer({ owner, pod }: PodFileExplorerProps) {
+  const isArchived = !!pod.archivedAt;
 
   if (isArchived) {
-    return <ProjectFileExplorerContent owner={owner} space={space} />;
+    return <PodFileExplorerContent owner={owner} pod={pod} />;
   }
 
   return (
@@ -233,16 +231,13 @@ export function ProjectFileExplorer({
         description="Drop files here to upload them."
         title="Upload files"
       >
-        <ProjectFileExplorerContent owner={owner} space={space} />
+        <PodFileExplorerContent owner={owner} pod={pod} />
       </DropzoneContainer>
     </FileDropProvider>
   );
 }
 
-function ProjectFileExplorerContent({
-  owner,
-  space,
-}: ProjectFileExplorerProps) {
+function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
   const [framePreview, setFramePreview] = useState<{
     fileId: string;
     path: string;
@@ -253,21 +248,22 @@ function ProjectFileExplorerContent({
   const [navigationResetKey, setNavigationResetKey] = useState(0);
   const [showRenameDialog, setShowRenameDialog] = useState(false);
   const [showCreateFolderDialog, setShowCreateFolderDialog] = useState(false);
-  const [fileToRename, setFileToRename] = useState<{
-    path: string;
-    fileName: string;
-  } | null>(null);
+  const [itemToRename, setItemToRename] = useState<
+    | { kind: "file"; path: string; name: string }
+    | { kind: "folder"; path: string; name: string }
+    | null
+  >(null);
   const [activeOverlay, setActiveOverlay] = useState<
     "companyData" | "noCompanyData" | null
   >(null);
 
   const podMountParentRelativePath = currentFolderPath;
-  const isArchived = !!space.archivedAt;
-  const isEditor = space.isEditor;
+  const isArchived = !!pod.archivedAt;
+  const isEditor = pod.isEditor;
   const { togglePin, isPinned } = usePinPodBanner({
     owner,
-    podId: space.sId,
-    pinnedFramePath: space.pinnedFramePath ?? null,
+    podId: pod.sId,
+    pinnedFramePath: pod.pinnedFramePath ?? null,
     isEditor,
   });
 
@@ -297,8 +293,8 @@ function ProjectFileExplorerContent({
     [isArchived, isEditor, isPinned, togglePin]
   );
 
-  const canManuallyManageProjectKnowledge =
-    isManualProjectKnowledgeManagementAllowed(owner);
+  const canManuallyManagePodKnowledge =
+    isManualPodFilesManagementAllowed(owner);
   const confirm = useContext(ConfirmContext);
 
   const { spaces } = useSpaces({
@@ -316,33 +312,30 @@ function ProjectFileExplorerContent({
   const router = useAppRouter();
 
   const {
-    attachments: contextAttachments,
-    isProjectContextAttachmentsLoading,
-    refreshProjectContextAttachments,
-  } = useProjectContextAttachments({
+    attachments,
+    isPodContextAttachmentsLoading,
+    refreshPodContextAttachments,
+  } = usePodContextAttachments({
     owner,
-    spaceId: space.sId,
+    podId: pod.sId,
   });
 
   const {
-    files: projectGCSFiles,
-    isPodFilesLoading: isProjectFilesLoading,
-    refreshPodFiles: refreshProjectFiles,
+    files: podGCSFiles,
+    isPodFilesLoading,
+    refreshPodFiles,
   } = usePodFiles({
     owner,
-    podId: space.sId,
+    podId: pod.sId,
   });
 
-  const refreshProjectKnowledge = useCallback(async () => {
-    await Promise.all([
-      refreshProjectFiles(),
-      refreshProjectContextAttachments(),
-    ]);
-  }, [refreshProjectContextAttachments, refreshProjectFiles]);
+  const refreshPodKnowledge = useCallback(async () => {
+    await Promise.all([refreshPodFiles(), refreshPodContextAttachments()]);
+  }, [refreshPodContextAttachments, refreshPodFiles]);
 
   const contentNodeAttachments = useMemo<ContentNodeAttachmentType[]>(
-    () => contextAttachments.filter(isContentNodeAttachmentType),
-    [contextAttachments]
+    () => attachments.filter(isContentNodeAttachmentType),
+    [attachments]
   );
 
   const connectorProviderByDsvId = useMemo(() => {
@@ -369,41 +362,41 @@ function ProjectFileExplorerContent({
     [contentNodeAttachments, connectorProviderByDsvId]
   );
 
-  const deleteProjectFile = useDeleteProjectFile({
+  const deletePodFile = useDeletePodFile({
     owner,
-    spaceId: space.sId,
+    podId: pod.sId,
   });
 
-  const removeProjectContextContentNodes = useRemoveProjectContextContentNodes({
+  const removePodContextContentNodes = useRemovePodContextContentNodes({
     owner,
-    spaceId: space.sId,
+    podId: pod.sId,
   });
 
-  const addProjectContextContentNodes = useAddProjectContextContentNodes({
+  const addPodContextContentNodes = useAddPodContextContentNodes({
     owner,
-    spaceId: space.sId,
+    podId: pod.sId,
   });
 
-  const projectFileUpload = useFileUploaderService({
+  const podFileUpload = useFileUploaderService({
     hasSandboxTools: false,
     owner,
     useCase: "project_context",
     useCaseMetadata: {
-      spaceId: space.sId,
+      spaceId: pod.sId,
     },
   });
 
   const moveMountFile = useMoveMountFile({
-    filesApiBasePath: `/api/w/${owner.sId}/spaces/${space.sId}/files`,
+    filesApiBasePath: `/api/w/${owner.sId}/spaces/${pod.sId}/files`,
   });
 
-  const uploadFilesToProject = useCallback(
+  const uploadFilesToPod = useCallback(
     async (files: File[]) => {
       if (files.length === 0) {
         return;
       }
 
-      const uploadedBlobs = await projectFileUpload.handleFilesUpload(files);
+      const uploadedBlobs = await podFileUpload.handleFilesUpload(files);
       if (!uploadedBlobs) {
         return;
       }
@@ -436,14 +429,9 @@ function ProjectFileExplorerContent({
         }
       }
 
-      await refreshProjectFiles();
+      await refreshPodFiles();
     },
-    [
-      moveMountFile,
-      podMountParentRelativePath,
-      projectFileUpload,
-      refreshProjectFiles,
-    ]
+    [moveMountFile, podMountParentRelativePath, podFileUpload, refreshPodFiles]
   );
 
   const handleFileChange = useCallback(
@@ -452,9 +440,9 @@ function ProjectFileExplorerContent({
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
-      await uploadFilesToProject(files);
+      await uploadFilesToPod(files);
     },
-    [uploadFilesToProject]
+    [uploadFilesToPod]
   );
 
   const { droppedFiles, setDroppedFiles } = useFileDrop();
@@ -465,8 +453,8 @@ function ProjectFileExplorerContent({
 
     const files = [...droppedFiles];
     setDroppedFiles([]);
-    void uploadFilesToProject(files);
-  }, [droppedFiles, setDroppedFiles, uploadFilesToProject]);
+    void uploadFilesToPod(files);
+  }, [droppedFiles, setDroppedFiles, uploadFilesToPod]);
 
   const onDelete = useCallback(
     async (entry: FileExplorerEntry) => {
@@ -478,14 +466,27 @@ function ProjectFileExplorerContent({
           validateVariant: "warning",
         });
         if (confirmed) {
-          const result = await removeProjectContextContentNodes([
+          const result = await removePodContextContentNodes([
             {
               nodeId: entry.nodeId,
               nodeDataSourceViewId: entry.nodeDataSourceViewId,
             },
           ]);
           if (result.isOk()) {
-            await refreshProjectContextAttachments();
+            await refreshPodContextAttachments();
+          }
+        }
+      } else if (entry.kind === "folder") {
+        const confirmed = await confirm({
+          title: "Delete folder?",
+          message: `Are you sure you want to delete "${entry.name}" and all its contents? This action cannot be undone.`,
+          validateLabel: "Delete",
+          validateVariant: "warning",
+        });
+        if (confirmed) {
+          const result = await deletePodFile(entry.path);
+          if (result.isOk()) {
+            await refreshPodFiles();
           }
         }
       } else {
@@ -496,24 +497,36 @@ function ProjectFileExplorerContent({
           validateVariant: "warning",
         });
         if (confirmed) {
-          const result = await deleteProjectFile(entry.path);
+          const result = await deletePodFile(entry.path);
           if (result.isOk()) {
-            await refreshProjectFiles();
+            await refreshPodFiles();
           }
         }
       }
     },
     [
       confirm,
-      deleteProjectFile,
-      refreshProjectContextAttachments,
-      refreshProjectFiles,
-      removeProjectContextContentNodes,
+      deletePodFile,
+      refreshPodContextAttachments,
+      refreshPodFiles,
+      removePodContextContentNodes,
     ]
   );
 
-  const onRename = useCallback((entry: FileEntry) => {
-    setFileToRename({ path: entry.path, fileName: entry.fileName });
+  const onRename = useCallback((entry: FileEntry | FolderEntry) => {
+    if (entry.kind === "file") {
+      setItemToRename({
+        kind: "file",
+        path: entry.path,
+        name: entry.fileName,
+      });
+    } else {
+      setItemToRename({
+        kind: "folder",
+        path: entry.path,
+        name: entry.name,
+      });
+    }
     setShowRenameDialog(true);
   }, []);
 
@@ -527,22 +540,22 @@ function ProjectFileExplorerContent({
         ),
       });
       if (result.isOk()) {
-        await refreshProjectFiles();
+        await refreshPodFiles();
       }
       return result;
     },
-    [moveMountFile, refreshProjectFiles]
+    [moveMountFile, refreshPodFiles]
   );
 
   const getFileUrl = useCallback(
     (path: string) =>
-      `${config.getApiBaseUrl()}/api/w/${owner.sId}/spaces/${space.sId}/files/${path}`,
-    [owner.sId, space.sId]
+      `${config.getApiBaseUrl()}/api/w/${owner.sId}/spaces/${pod.sId}/files/${path}`,
+    [owner.sId, pod.sId]
   );
 
   const getFileResponse = useCallback(
-    (path: string) => downloadPodFile(owner, space.sId, path),
-    [owner, space.sId]
+    (path: string) => downloadPodFile(owner, pod.sId, path),
+    [owner, pod.sId]
   );
 
   const onFileDownload = useFileDownload({ getFileResponse });
@@ -572,13 +585,12 @@ function ProjectFileExplorerContent({
     );
   }, [globalSpaceDSVs.length]);
 
-  const isUploading = projectFileUpload.isProcessingFiles;
+  const isUploading = podFileUpload.isProcessingFiles;
   const uploadButtonLabel = isUploading ? "Uploading..." : "Add";
-  const isAddKnowledgeDisabled =
-    !canManuallyManageProjectKnowledge || isUploading;
+  const isAddKnowledgeDisabled = !canManuallyManagePodKnowledge || isUploading;
 
-  const hasFiles = projectGCSFiles.length > 0 || contentNodeEntries.length > 0;
-  const isLoading = isProjectContextAttachmentsLoading || isProjectFilesLoading;
+  const hasFiles = podGCSFiles.length > 0 || contentNodeEntries.length > 0;
+  const isLoading = isPodContextAttachmentsLoading || isPodFilesLoading;
 
   const initialSelectedDataSources = useMemo<DataSourceViewType[]>(() => {
     const dsvById = new Map(globalSpaceDSVs.map((dsv) => [dsv.sId, dsv]));
@@ -626,7 +638,7 @@ function ProjectFileExplorerContent({
       );
 
       if (toAdd.length > 0) {
-        const addResult = await addProjectContextContentNodes(
+        const addResult = await addPodContextContentNodes(
           toAdd.map((n) => ({
             title: n.title,
             nodeId: n.nodeId,
@@ -640,7 +652,7 @@ function ProjectFileExplorerContent({
       }
 
       if (toRemove.length > 0) {
-        const removeResult = await removeProjectContextContentNodes(
+        const removeResult = await removePodContextContentNodes(
           toRemove.map((n) => ({
             nodeId: n.nodeId,
             nodeDataSourceViewId: n.nodeDataSourceViewId,
@@ -651,22 +663,22 @@ function ProjectFileExplorerContent({
         }
       }
 
-      await refreshProjectKnowledge();
+      await refreshPodKnowledge();
       setNavigationResetKey((key) => key + 1);
       return true;
     },
     [
-      addProjectContextContentNodes,
+      addPodContextContentNodes,
       contentNodeAttachments,
-      refreshProjectKnowledge,
-      removeProjectContextContentNodes,
+      refreshPodKnowledge,
+      removePodContextContentNodes,
     ]
   );
 
   const addButton = !isArchived ? (
     <AttachKnowledgeButton
       buttonLabel={uploadButtonLabel}
-      canManuallyManageProjectKnowledge={canManuallyManageProjectKnowledge}
+      canManuallyManagePodFiles={canManuallyManagePodKnowledge}
       isDisabled={isAddKnowledgeDisabled}
       onCreateFolderClick={handleCreateFolderClick}
       onShowCompanyDataClick={handleShowCompanyDataClick}
@@ -687,13 +699,13 @@ function ProjectFileExplorerContent({
 
   return (
     <>
-      <ProjectFrameSheet
+      <PodFrameSheet
         owner={owner}
         fileId={framePreview?.fileId ?? null}
         framePath={framePreview?.path ?? null}
         fileName={framePreview?.fileName}
-        spaceId={space.sId}
-        pinnedFramePath={space.pinnedFramePath ?? null}
+        podId={pod.sId}
+        pinnedFramePath={pod.pinnedFramePath ?? null}
         isEditor={isEditor}
         isArchived={isArchived}
         isOpen={framePreview !== null}
@@ -703,19 +715,19 @@ function ProjectFileExplorerContent({
       <RenameFileDialog
         isOpen={showRenameDialog}
         onClose={() => setShowRenameDialog(false)}
-        onRenamed={() => void refreshProjectFiles()}
+        onRenamed={() => void refreshPodFiles()}
         owner={owner}
-        spaceId={space.sId}
-        file={fileToRename}
+        podId={pod.sId}
+        item={itemToRename}
       />
 
       <CreateFolderDialog
         isOpen={showCreateFolderDialog}
         onClose={() => setShowCreateFolderDialog(false)}
-        onCreated={() => void refreshProjectFiles()}
+        onCreated={() => void refreshPodFiles()}
         owner={owner}
         parentRelativePath={podMountParentRelativePath}
-        spaceId={space.sId}
+        podId={pod.sId}
       />
 
       {globalSpace && (
@@ -755,7 +767,7 @@ function ProjectFileExplorerContent({
         contentNodes={contentNodeEntries}
         defaultViewMode="list"
         emptyState={hasFiles ? undefined : emptyState}
-        files={projectGCSFiles}
+        files={podGCSFiles}
         getFileUrl={getFileUrl}
         hideTitleBorder
         navigationResetKey={navigationResetKey}

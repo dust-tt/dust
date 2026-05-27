@@ -46,14 +46,14 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { type Fetcher, useSWRConfig } from "swr";
 
-export function useProjectContextAttachments({
+export function usePodContextAttachments({
   owner,
-  spaceId,
+  podId,
   query,
   disabled,
 }: {
   owner: LightWorkspaceType;
-  spaceId: string;
+  podId: string;
   query?: string;
   disabled?: boolean;
 }) {
@@ -69,23 +69,23 @@ export function useProjectContextAttachments({
       params.set("query", query);
     }
     const qs = params.toString();
-    return `/api/w/${owner.sId}/spaces/${spaceId}/project_context${qs ? `?${qs}` : ""}`;
-  }, [disabled, owner.sId, spaceId, query]);
+    return `/api/w/${owner.sId}/spaces/${podId}/project_context${qs ? `?${qs}` : ""}`;
+  }, [disabled, owner.sId, podId, query]);
 
   const { data, error, mutate, mutateRegardlessOfQueryParams } =
     useSWRWithDefaults(key, projectContextFetcher);
 
-  const refreshProjectContextAttachments = useCallback(async () => {
+  const refreshPodContextAttachments = useCallback(async () => {
     // Do not pass `undefined` as data — it clears the cache and causes UI flicker.
     await mutateRegardlessOfQueryParams();
   }, [mutateRegardlessOfQueryParams]);
 
   return {
     attachments: data?.attachments ?? [],
-    isProjectContextAttachmentsLoading: !disabled && !error && !data,
-    isProjectContextAttachmentsError: !!error,
-    mutateProjectContextAttachments: mutate,
-    refreshProjectContextAttachments,
+    isPodContextAttachmentsLoading: !disabled && !error && !data,
+    isPodContextAttachmentsError: !!error,
+    mutatePodContextAttachments: mutate,
+    refreshPodContextAttachments,
   };
 }
 
@@ -125,12 +125,12 @@ export function usePodFiles({
 export type ProjectContextContentNodeFragment =
   PostProjectContextContentNodeResponseBody["contentFragments"][number];
 
-export function useAddProjectContextContentNodes({
+export function useAddPodContextContentNodes({
   owner,
-  spaceId,
+  podId,
 }: {
   owner: LightWorkspaceType;
-  spaceId: string;
+  podId: string;
 }) {
   const sendNotification = useSendNotification();
 
@@ -142,7 +142,7 @@ export function useAddProjectContextContentNodes({
     }
     try {
       const res = await clientFetch(
-        `/api/w/${owner.sId}/spaces/${spaceId}/project_context`,
+        `/api/w/${owner.sId}/spaces/${podId}/project_context`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -193,19 +193,19 @@ export function useAddProjectContextContentNodes({
   };
 }
 
-export function useRemoveProjectContextFile({
+export function useRemovePodContextFile({
   owner,
-  spaceId,
+  podId,
 }: {
   owner: LightWorkspaceType;
-  spaceId: string;
+  podId: string;
 }) {
   const sendNotification = useSendNotification();
 
   return async (fileId: string): Promise<Result<void, Error>> => {
     try {
       const res = await clientFetch(
-        `/api/w/${owner.sId}/spaces/${spaceId}/project_context/files/${fileId}`,
+        `/api/w/${owner.sId}/spaces/${podId}/project_context/files/${fileId}`,
         {
           method: "DELETE",
         }
@@ -239,12 +239,12 @@ export function useRemoveProjectContextFile({
   };
 }
 
-export function useRemoveProjectContextContentNodes({
+export function useRemovePodContextContentNodes({
   owner,
-  spaceId,
+  podId,
 }: {
   owner: LightWorkspaceType;
-  spaceId: string;
+  podId: string;
 }) {
   const sendNotification = useSendNotification();
 
@@ -256,7 +256,7 @@ export function useRemoveProjectContextContentNodes({
     }
     try {
       const res = await clientFetch(
-        `/api/w/${owner.sId}/spaces/${spaceId}/project_context/content_nodes`,
+        `/api/w/${owner.sId}/spaces/${podId}/project_context/content_nodes`,
         {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
@@ -295,12 +295,12 @@ export function useRemoveProjectContextContentNodes({
   };
 }
 
-export function useRenameProjectFile({
+export function useRenamePodFile({
   owner,
-  spaceId,
+  podId,
 }: {
   owner: LightWorkspaceType;
-  spaceId: string;
+  podId: string;
 }) {
   const sendNotification = useSendNotification();
 
@@ -310,7 +310,7 @@ export function useRenameProjectFile({
   ): Promise<Result<void, Error>> => {
     try {
       const res = await clientFetch(
-        `/api/w/${owner.sId}/spaces/${spaceId}/files/${relPath}`,
+        `/api/w/${owner.sId}/spaces/${podId}/files/${relPath}`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -346,12 +346,12 @@ export function useRenameProjectFile({
   };
 }
 
-export function useCreateProjectFolder({
+export function useCreatePodFolder({
   owner,
-  spaceId,
+  podId,
 }: {
   owner: LightWorkspaceType;
-  spaceId: string;
+  podId: string;
 }) {
   const sendNotification = useSendNotification();
 
@@ -364,7 +364,7 @@ export function useCreateProjectFolder({
   }): Promise<Result<void, Error>> => {
     try {
       const res = await clientFetch(
-        `/api/w/${owner.sId}/spaces/${spaceId}/files`,
+        `/api/w/${owner.sId}/spaces/${podId}/files`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -400,19 +400,19 @@ export function useCreateProjectFolder({
   };
 }
 
-export function useDeleteProjectFile({
+export function useDeletePodFile({
   owner,
-  spaceId,
+  podId: podId,
 }: {
   owner: LightWorkspaceType;
-  spaceId: string;
+  podId: string;
 }) {
   const sendNotification = useSendNotification();
 
   return async (relPath: string): Promise<Result<void, Error>> => {
     try {
       const res = await clientFetch(
-        `/api/w/${owner.sId}/spaces/${spaceId}/files/${relPath}`,
+        `/api/w/${owner.sId}/spaces/${podId}/files/${relPath}`,
         { method: "DELETE" }
       );
 
@@ -444,7 +444,7 @@ export function useDeleteProjectFile({
   };
 }
 
-export function useCheckProjectName({
+export function useCheckPodName({
   owner,
   initialName = "",
   whitelistedName,

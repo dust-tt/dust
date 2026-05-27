@@ -199,7 +199,50 @@ export function useEventSource(
     const abortController = new AbortController();
     connect(abortController.signal);
 
+    // iOS Safari puts pages in bfcache (Back/Forward Cache) when switching apps
+    // or closing the browser. While frozen, JS cannot react to the OS killing
+    // the underlying SSE/XHR connection, so onerror never fires and the stream
+    // appears permanently stuck when the user returns.
+    //
+    // We listen for two complementary events:
+    //  - "pageshow" with event.persisted === true  → bfcache restoration
+    //  - "visibilitychange" to visible             → app switch / tab return
+    //
+    // If the EventSource is found CLOSED in either case, we reset the reconnect
+    // attempt counter (the drop was caused by the OS, not a real error storm)
+    // and trigger a reconnect via setReconnectCounter. The existing lastEventId
+    // mechanism in buildEventSourceURL guarantees the reconnect picks up exactly
+    // where the stream left off.
+    const triggerReconnectIfClosed = () => {
+      const source = sourceManager.get(uniqueId);
+      if (!source || source.readyState === EventSourcePolyfill.CLOSED) {
+        // Reset attempt counter: the connection was dropped by the OS/bfcache,
+        // not by consecutive network errors. We don't want the user to hit the
+        // MAX_RECONNECT_ATTEMPTS wall just because they switched apps.
+        reconnectAttempts.current = 0;
+        setReconnectCounter((c) => c + 1);
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        triggerReconnectIfClosed();
+      }
+    };
+
+    const handlePageShow = (event: PageTransitionEvent) => {
+      // event.persisted === true means the page was restored from bfcache.
+      if (event.persisted) {
+        triggerReconnectIfClosed();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("pageshow", handlePageShow);
+
     return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("pageshow", handlePageShow);
       abortController.abort();
       sourceManager.remove(uniqueId);
 

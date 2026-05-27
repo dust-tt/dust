@@ -1,9 +1,9 @@
 import { SpaceAboutTab } from "@app/components/assistant/conversation/space/about/SpaceAboutTab";
 import type { TaskOwnerFilter } from "@app/components/assistant/conversation/space/conversations/project_tasks/projectTasksListScope";
 import { ManageUsersPanel } from "@app/components/assistant/conversation/space/ManageUsersPanel";
-import { SpaceKnowledgeTab } from "@app/components/assistant/conversation/space/SpaceKnowledgeTab";
 import { SpaceTasksTab } from "@app/components/assistant/conversation/space/SpaceTasksTab";
 import { PodConversationsTab } from "@app/components/pod/conversation/PodConversationsTab";
+import { PodFilesTab } from "@app/components/pod/files/PodFilesTab";
 import { PodHeaderActions } from "@app/components/pod/PodHeaderActions";
 import {
   type PodConversationListFilter,
@@ -355,7 +355,7 @@ export function PodPage() {
         </TabsContent>
 
         <TabsContent value="files">
-          <SpaceKnowledgeTab owner={owner} space={podInfo} />
+          <PodFilesTab owner={owner} pod={podInfo} />
         </TabsContent>
 
         <TabsContent value="tasks">

@@ -14,6 +14,7 @@ import type {
   ToolAskUserQuestionEvent,
   ToolEarlyExitEvent,
   ToolFileAuthRequiredEvent,
+  ToolPausedEvent,
   ToolPersonalAuthRequiredEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
 import { getExitOrPauseEvents } from "@app/lib/actions/mcp_internal_actions/exit_events";
@@ -61,7 +62,8 @@ export async function* runToolWithStreaming(
   | ToolFileAuthRequiredEvent
   | ToolPersonalAuthRequiredEvent
   | ToolEarlyExitEvent
-  | ToolAskUserQuestionEvent,
+  | ToolAskUserQuestionEvent
+  | ToolPausedEvent,
   void
 > {
   const { toolConfiguration, status, augmentedInputs: inputs } = action;

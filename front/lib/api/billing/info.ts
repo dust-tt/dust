@@ -65,12 +65,6 @@ function serializeAddress(
     : null;
 }
 
-function isExpandedPaymentMethod(
-  paymentMethod: Stripe.Customer.InvoiceSettings["default_payment_method"]
-): paymentMethod is Stripe.PaymentMethod {
-  return typeof paymentMethod === "object" && paymentMethod !== null;
-}
-
 function serializePaymentMethod(
   paymentMethod: Stripe.PaymentMethod
 ): BillingPaymentMethod {
@@ -121,21 +115,61 @@ function serializePaymentMethod(
   }
 }
 
-async function getDefaultPaymentMethod(
-  customer: Stripe.Customer
-): Promise<BillingPaymentMethod | null> {
-  const defaultPaymentMethod = customer.invoice_settings.default_payment_method;
-  if (!defaultPaymentMethod) {
-    return null;
+function isExpandedPaymentMethod(
+  paymentMethod: Stripe.Customer.InvoiceSettings["default_payment_method"]
+): paymentMethod is Stripe.PaymentMethod {
+  return typeof paymentMethod === "object" && paymentMethod !== null;
+}
+
+async function getAttachedPaymentMethod({
+  stripeCustomerId,
+}: {
+  stripeCustomerId: string;
+}): Promise<BillingPaymentMethod | null> {
+  const stripe = getStripeClient();
+  const paymentMethodTypes: Array<Stripe.PaymentMethodListParams.Type> = [
+    "card",
+    "sepa_debit",
+    "us_bank_account",
+  ];
+
+  for (const type of paymentMethodTypes) {
+    const paymentMethods = await stripe.paymentMethods.list({
+      customer: stripeCustomerId,
+      type,
+      limit: 1,
+    });
+
+    const paymentMethod = paymentMethods.data[0];
+    if (paymentMethod) {
+      return serializePaymentMethod(paymentMethod);
+    }
   }
+
+  return null;
+}
+
+async function getCustomerPaymentMethod({
+  customer,
+  stripeCustomerId,
+}: {
+  customer: Stripe.Customer;
+  stripeCustomerId: string;
+}): Promise<BillingPaymentMethod | null> {
+  const defaultPaymentMethod = customer.invoice_settings.default_payment_method;
 
   if (isExpandedPaymentMethod(defaultPaymentMethod)) {
     return serializePaymentMethod(defaultPaymentMethod);
   }
 
-  const paymentMethod =
-    await getStripeClient().paymentMethods.retrieve(defaultPaymentMethod);
-  return serializePaymentMethod(paymentMethod);
+  if (defaultPaymentMethod) {
+    const paymentMethod =
+      await getStripeClient().paymentMethods.retrieve(defaultPaymentMethod);
+
+    return serializePaymentMethod(paymentMethod);
+  }
+
+  return getAttachedPaymentMethod({ stripeCustomerId });
 }
 
 export async function getWorkspaceBillingInfo(
@@ -178,7 +212,10 @@ export async function getWorkspaceBillingInfo(
         phone: customer.phone ?? null,
         address: serializeAddress(customer.address),
       },
-      paymentMethod: await getDefaultPaymentMethod(customer),
+      paymentMethod: await getCustomerPaymentMethod({
+        customer,
+        stripeCustomerId: stripeCustomerIdRes.value,
+      }),
     });
   } catch (error) {
     return new Err(new Error(errorToString(error)));

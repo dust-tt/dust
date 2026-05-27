@@ -344,6 +344,15 @@ async function executeToolStreaming(
 
         return { deferredEvents, shouldPauseAgentLoop: true };
 
+      case "tool_paused":
+        // Internal sentinel emitted by `exit_events` whenever a tool returned
+        // a `tool_blocked_awaiting_input` resource. Carries no UI payload —
+        // user-facing blocking events (if any) flowed through earlier
+        // iterations of this for-await and already populated `deferredEvents`.
+        // Sole purpose: pause the loop on the event channel rather than
+        // relying on `action.status` introspection.
+        return { deferredEvents, shouldPauseAgentLoop: true };
+
       case "tool_personal_auth_required":
       case "tool_file_auth_required":
       case "tool_approve_execution":

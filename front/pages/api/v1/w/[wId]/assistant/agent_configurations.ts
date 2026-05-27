@@ -1,3 +1,4 @@
+// @migration-status: MIGRATED_TO_HONO
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";

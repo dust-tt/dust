@@ -1,3 +1,5 @@
+// @migration-status: MIGRATED_TO_HONO
+
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { getConversationFeedbacksForUser } from "@app/lib/api/assistant/feedback";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";

@@ -96,6 +96,13 @@ export function isFileExplorerMovableFile(entry: FileEntry): boolean {
   return true;
 }
 
+function getEntryLastModifiedMs(entry: FileExplorerEntry | undefined): number {
+  if (!entry || entry.kind === "folder") {
+    return 0;
+  }
+  return entry.lastModifiedMs ?? 0;
+}
+
 /** Display order: Company Data refs, then folders, then GCS files. */
 function getExplorerNodeSortRank(
   node: FileSystemTreeNode,
@@ -137,8 +144,8 @@ export function compareTreeNodesForSort(
     case "last-modified": {
       // Folders have no timestamp on the tree (they're inferred from file paths). Among files,
       // sort by recency; tie-break by name.
-      const ta = entryByRelativePath.get(a.path)?.lastModifiedMs ?? 0;
-      const tb = entryByRelativePath.get(b.path)?.lastModifiedMs ?? 0;
+      const ta = getEntryLastModifiedMs(entryByRelativePath.get(a.path));
+      const tb = getEntryLastModifiedMs(entryByRelativePath.get(b.path));
       if (tb !== ta) {
         return tb - ta;
       }

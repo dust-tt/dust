@@ -1,5 +1,8 @@
 import { Authenticator, type AuthenticatorType } from "@app/lib/auth";
-import { runCompaction } from "@app/temporal/agent_loop/lib/compaction";
+import {
+  failCompactionMessage,
+  runCompaction,
+} from "@app/temporal/agent_loop/lib/compaction";
 import type { CompactionSourceConversation } from "@app/types/assistant/compaction";
 import type { SupportedModel } from "@app/types/assistant/models/types";
 
@@ -37,4 +40,30 @@ export async function compactionActivity(
   if (compactionRes.isErr()) {
     throw new Error(`Compaction failed: ${compactionRes.error}`);
   }
+}
+
+export async function compactionCleanupActivity(
+  authType: AuthenticatorType,
+  {
+    conversationId,
+    compactionMessageId,
+    compactionMessageVersion,
+  }: {
+    conversationId: string;
+    compactionMessageId: string;
+    compactionMessageVersion: number;
+  }
+): Promise<void> {
+  const authResult = await Authenticator.fromJSON(authType);
+  if (authResult.isErr()) {
+    throw new Error(
+      `Failed to deserialize authenticator: ${authResult.error.code}`
+    );
+  }
+  const auth = authResult.value;
+  await failCompactionMessage(auth, {
+    conversationId,
+    compactionMessageId,
+    compactionMessageVersion,
+  });
 }

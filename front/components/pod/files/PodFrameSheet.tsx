@@ -1,7 +1,7 @@
 import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
 import { ExportContentDropdown } from "@app/components/assistant/conversation/interactive_content/ExportContentDropdown";
 import { ShareFrameSheet } from "@app/components/assistant/conversation/interactive_content/frame/ShareFrameSheet";
-import { PinPodBannerButton } from "@app/components/assistant/conversation/space/PinPodBannerButton";
+import { PinPodBannerButton } from "@app/components/pod/files/PinPodBannerButton";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useFileContent, useFileMetadata } from "@app/lib/swr/files";
 import type { WorkspaceType } from "@app/types/user";
@@ -17,11 +17,11 @@ import {
 } from "@dust-tt/sparkle";
 import { useRef } from "react";
 
-interface ProjectFrameSheetProps {
+interface PodFrameSheetProps {
   fileId: string | null;
   framePath: string | null;
   fileName?: string;
-  spaceId: string;
+  podId: string;
   pinnedFramePath: string | null;
   isEditor: boolean;
   isArchived: boolean;
@@ -30,18 +30,18 @@ interface ProjectFrameSheetProps {
   owner: WorkspaceType;
 }
 
-export function ProjectFrameSheet({
+export function PodFrameSheet({
   fileId,
   framePath,
   fileName,
-  spaceId,
+  podId,
   pinnedFramePath,
   isEditor,
   isArchived,
   isOpen,
   onClose,
   owner,
-}: ProjectFrameSheetProps) {
+}: PodFrameSheetProps) {
   const { vizUrl } = useAuth();
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
@@ -76,7 +76,7 @@ export function ProjectFrameSheet({
                 <ShareFrameSheet fileId={fileId} owner={owner} />
                 <PinPodBannerButton
                   owner={owner}
-                  spaceId={spaceId}
+                  spaceId={podId}
                   pinnedFramePath={pinnedFramePath}
                   isEditor={isEditor}
                   framePath={framePath}

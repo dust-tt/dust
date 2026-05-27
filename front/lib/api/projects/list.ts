@@ -1,7 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import type { ProjectType, SpaceType } from "@app/types/space";
+import type { PodType, SpaceType } from "@app/types/space";
 
 /**
  * Spaces the user is a member of, with project metadata loaded, excluding
@@ -30,7 +30,7 @@ export async function listNonArchivedMemberSpacesWithMetadata(
 export async function enrichProjectsWithMetadata(
   auth: Authenticator,
   spaces: SpaceResource[]
-): Promise<Array<ProjectType & { isMember: boolean }>> {
+): Promise<Array<PodType & { isMember: boolean }>> {
   if (spaces.length === 0) {
     return [];
   }
@@ -49,6 +49,7 @@ export async function enrichProjectsWithMetadata(
     ...space.toJSON(),
     description: metadataMap.get(space.id)?.description ?? null,
     isMember: space.isMember(auth),
+    isEditor: space.canAdministrate(auth),
     archivedAt: metadataMap.get(space.id)?.archivedAt?.getTime() ?? null,
   }));
 }

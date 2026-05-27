@@ -23,7 +23,7 @@ import { fromError } from "zod-validation-error";
  *     summary: Get workspace usage data
  *     deprecated: true
  *     description: |
- *       Deprecated: this endpoint will be removed after 2026-06-01.
+ *       Deprecated: this endpoint will be removed after 2026-07-01.
  *       Use GET /api/v1/w/{wId}/analytics/export instead.
  *
  *       Get usage data for the workspace identified by {wId} in CSV or JSON format.

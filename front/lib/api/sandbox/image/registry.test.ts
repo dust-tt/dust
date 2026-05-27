@@ -68,7 +68,7 @@ describe("sandbox image registry", () => {
   test("pins the current dust-base image tag", () => {
     expect(getDustBaseImage().imageId).toEqual({
       imageName: "dust-base",
-      tag: "0.8.23",
+      tag: "0.8.25",
     });
   });
 
@@ -248,21 +248,45 @@ describe("sandbox image registry", () => {
     // test rather than silently shipping a stale env file.
     const expectedEnvironment =
       Object.entries(SANDBOX_TRUST_ENV_VARS)
-        .map(([k, v]) => `${k}=${v}`)
+        .map(([k, v]) => `${k}=${formatExpectedEnvironmentValue(v)}`)
         .join("\n") + "\n";
     const expectedProfile =
       Object.entries(SANDBOX_TRUST_ENV_VARS)
-        .map(([k, v]) => `export ${k}=${v}`)
+        .map(([k, v]) => `export ${k}=${formatExpectedShellValue(v)}`)
         .join("\n") + "\n";
 
     expect(environment).toBe(expectedEnvironment);
     expect(profileScript).toBe(expectedProfile);
+    expect(environment).toContain(
+      `JAVA_TOOL_OPTIONS=${JSON.stringify(SANDBOX_TRUST_ENV_VARS.JAVA_TOOL_OPTIONS)}\n`
+    );
+    expect(profileScript).toContain(
+      `export JAVA_TOOL_OPTIONS='${SANDBOX_TRUST_ENV_VARS.JAVA_TOOL_OPTIONS}'\n`
+    );
 
     expect(tmpfilesConfig).toBe("d /run/dust 0755 root root -\n");
     expect(installer).toContain("update-ca-certificates");
     expect(installer).toContain('cat "$SYSTEM_CA_BUNDLE"');
     expect(installer).toContain('cat "$CA_PATH"');
+    expect(installer).toContain("/etc/ssl/certs/java/cacerts");
+    expect(installer).toContain("if command -v keytool >/dev/null 2>&1");
     expect(installer).toContain("keytool -importcert -noprompt -trustcacerts");
     expect(installer).toContain("already exists");
   });
 });
+
+function formatExpectedEnvironmentValue(value: string): string {
+  return isBareExpectedEnvironmentValue(value) ? value : JSON.stringify(value);
+}
+
+function formatExpectedShellValue(value: string): string {
+  if (isBareExpectedEnvironmentValue(value)) {
+    return value;
+  }
+
+  return `'${value.replace(/'/g, "'\\''")}'`;
+}
+
+function isBareExpectedEnvironmentValue(value: string): boolean {
+  return /^[A-Za-z0-9_./:,@%+=-]+$/.test(value);
+}

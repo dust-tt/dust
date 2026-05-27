@@ -1,6 +1,6 @@
 import { usePodConversationsSummary } from "@app/hooks/conversations";
 import { useAppRouter } from "@app/lib/platform";
-import { useCheckProjectName } from "@app/lib/swr/pods";
+import { useCheckPodName } from "@app/lib/swr/pods";
 import { useCreateSpace } from "@app/lib/swr/spaces";
 import { getPodRoute } from "@app/lib/utils/router";
 import { areOpenProjectsAllowed } from "@app/lib/workspace_policies";
@@ -42,7 +42,7 @@ export function CreateProjectModal({
   const areWorkspaceOpenProjectsAllowed = areOpenProjectsAllowed(owner);
   const [projectName, setProjectName] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
-  const [isPublic, setIsPublic] = useState(false);
+  const [isPodOpen, setIsPodOpen] = useState(false);
 
   const doCreate = useCreateSpace({ owner });
   const router = useAppRouter();
@@ -56,7 +56,7 @@ export function CreateProjectModal({
     isNameAvailable,
     isChecking,
     setValue: setNameToCheck,
-  } = useCheckProjectName({
+  } = useCheckPodName({
     owner,
   });
 
@@ -64,23 +64,23 @@ export function CreateProjectModal({
     if (isOpen) {
       setProjectName("");
       setIsSaving(false);
-      setIsPublic(false);
+      setIsPodOpen(false);
       setNameToCheck("");
     }
   }, [isOpen, setNameToCheck]);
 
   useEffect(() => {
-    if (!areWorkspaceOpenProjectsAllowed && isPublic) {
-      setIsPublic(false);
+    if (!areWorkspaceOpenProjectsAllowed && isOpen) {
+      setIsPodOpen(false);
     }
-  }, [areWorkspaceOpenProjectsAllowed, isPublic]);
+  }, [areWorkspaceOpenProjectsAllowed, isOpen]);
 
   const handleClose = useCallback(() => {
     onClose();
     setTimeout(() => {
       setProjectName("");
       setIsSaving(false);
-      setIsPublic(false);
+      setIsPodOpen(false);
       setNameToCheck("");
     }, 500);
   }, [onClose, setNameToCheck]);
@@ -95,7 +95,7 @@ export function CreateProjectModal({
     const createdSpace = await doCreate(
       {
         name: trimmedName,
-        isRestricted: !isPublic,
+        isRestricted: !isPodOpen,
         managementMode: "manual",
         memberIds: [],
         spaceKind: "project",
@@ -117,7 +117,7 @@ export function CreateProjectModal({
   }, [
     projectName,
     isNameAvailable,
-    isPublic,
+    isPodOpen,
     doCreate,
     onCreated,
     handleClose,
@@ -167,16 +167,16 @@ export function CreateProjectModal({
               )}
             </div>
             <div className="flex flex-col items-start gap-1">
-              <Label>Visibility</Label>
-              <VisibilitySwitch
-                isPublic={isPublic}
+              <Label>Access</Label>
+              <AccessSwitch
+                isOpen={isPodOpen}
                 disabled={!areWorkspaceOpenProjectsAllowed}
-                onChange={setIsPublic}
+                onChange={setIsPodOpen}
               />
               <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-                {isPublic
-                  ? "Anyone in the workspace can find and join this Pod."
-                  : "Only invited members can access this Pod."}
+                {isPodOpen
+                  ? "Anyone in the workspace can find and join the Pod."
+                  : "Only invited members can access the Pod."}
               </div>
             </div>
           </div>
@@ -196,21 +196,17 @@ export function CreateProjectModal({
   );
 }
 
-interface VisibilitySwitchProps {
-  isPublic: boolean;
+interface AccessSwitchProps {
+  isOpen: boolean;
   disabled: boolean;
-  onChange: (isPublic: boolean) => void;
+  onChange: (isOpen: boolean) => void;
 }
 
-function VisibilitySwitch({
-  isPublic,
-  disabled,
-  onChange,
-}: VisibilitySwitchProps) {
+function AccessSwitch({ isOpen, disabled, onChange }: AccessSwitchProps) {
   const switchList = (
     <ButtonsSwitchList
       size="xs"
-      defaultValue={isPublic ? "open" : "restricted"}
+      defaultValue={isOpen ? "open" : "restricted"}
       onValueChange={(value) => onChange(value === "open")}
       disabled={disabled}
     >

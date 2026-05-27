@@ -18,4 +18,6 @@ export const SANDBOX_TRUST_ENV_VARS: Record<string, string> = {
   NODE_EXTRA_CA_CERTS: "/run/dust/egress-ca.pem",
   DENO_CERT: "/run/dust/egress-ca.pem",
   DENO_TLS_CA_STORE: "system,mozilla",
+  JAVA_TOOL_OPTIONS:
+    "-Djavax.net.ssl.trustStore=/etc/ssl/certs/java/cacerts -Djavax.net.ssl.trustStorePassword=changeit",
 };

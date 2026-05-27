@@ -4,7 +4,7 @@ import { ConfigurationSectionContainer } from "@app/components/agent_builder/cap
 import type { ProjectConfiguration } from "@app/lib/api/assistant/configuration/types";
 import { getSpaceIcon } from "@app/lib/spaces";
 import { useSpaces } from "@app/lib/swr/spaces";
-import type { ProjectType } from "@app/types/space";
+import type { PodType } from "@app/types/space";
 import { isProjectType } from "@app/types/space";
 import {
   Button,
@@ -76,7 +76,7 @@ export function ProjectSection() {
   }, [field.value, allProjects]);
 
   const handleSelectProject = useCallback(
-    (project: ProjectType) => {
+    (project: PodType) => {
       const newProject: ProjectConfiguration = {
         workspaceId: owner.sId,
         projectId: project.sId,

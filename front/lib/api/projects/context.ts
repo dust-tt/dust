@@ -10,6 +10,7 @@ import {
   deleteGCSMountFile,
   type GCSMountDirectoryEntry,
   moveFile,
+  renameGCSMountDirectory,
   renameGCSMountFile,
 } from "@app/lib/api/files/gcs_mount/files";
 import { moveMountFileWithinScope } from "@app/lib/api/files/mount_file_ops";
@@ -23,6 +24,7 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import type { DustError } from "@app/lib/error";
+import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { MessageModel } from "@app/lib/models/agent/conversation";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -648,7 +650,64 @@ export async function renameProjectFile(
   }
 ): Promise<Result<void, Error>> {
   const owner = auth.getNonNullableWorkspace();
-  const oldGcsPath = `${getProjectFilesBasePath({ workspaceId: owner.sId, projectId: space.sId })}${relativeFilePath}`;
+  const normalized = relativeFilePath.replace(/^\/+|\/+$/g, "");
+  const mountBasePath = getProjectFilesBasePath({
+    workspaceId: owner.sId,
+    projectId: space.sId,
+  });
+  const dirPrefix = `${mountBasePath}${normalized}/`;
+
+  const bucket = getPrivateUploadBucket();
+  const [dirPlaceholderExists] = await bucket.file(dirPrefix).exists();
+  const { files: dirContents } = await bucket.getAllFilesByPrefix({
+    prefix: dirPrefix,
+  });
+  const isDirectoryRename =
+    dirPlaceholderExists || dirContents.some((f) => !f.name.endsWith("/"));
+
+  if (isDirectoryRename) {
+    const folderNameRes = validateMountFolderName(newFileName);
+    if (folderNameRes.isErr()) {
+      return folderNameRes;
+    }
+
+    const mountPaths = dirContents
+      .filter((f) => !f.name.endsWith("/"))
+      .map((f) => f.name);
+    const fileResources = await FileResource.fetchByMountFilePaths(
+      auth,
+      mountPaths
+    );
+
+    const renameResult = await renameGCSMountDirectory(
+      auth,
+      { useCase: "project", projectId: space.sId },
+      {
+        relativeDirPath: normalized,
+        newFolderName: folderNameRes.value,
+      }
+    );
+    if (renameResult.isErr()) {
+      return renameResult;
+    }
+
+    const oldDirMountPrefix = `${mountBasePath}${normalized}/`;
+    const newDirMountPrefix = `${mountBasePath}${renameResult.value.newRelativeDirPath}/`;
+    for (const file of fileResources) {
+      if (!file.mountFilePath?.startsWith(oldDirMountPrefix)) {
+        continue;
+      }
+      const newMountPath = file.mountFilePath.replace(
+        oldDirMountPrefix,
+        newDirMountPrefix
+      );
+      await file.renameMountFile(file.fileName, newMountPath);
+    }
+
+    return new Ok(undefined);
+  }
+
+  const oldGcsPath = `${mountBasePath}${normalized}`;
 
   const fileResources = await FileResource.fetchByMountFilePaths(auth, [
     oldGcsPath,
@@ -657,7 +716,7 @@ export async function renameProjectFile(
   const renameResult = await renameGCSMountFile(
     auth,
     { useCase: "project", projectId: space.sId },
-    { relativeFilePath, newFileName }
+    { relativeFilePath: normalized, newFileName }
   );
   if (renameResult.isErr()) {
     return renameResult;
@@ -691,7 +750,51 @@ export async function deleteProjectFile(
   }
 ): Promise<Result<void, Error>> {
   const owner = auth.getNonNullableWorkspace();
-  const gcsPath = `${getProjectFilesBasePath({ workspaceId: owner.sId, projectId: space.sId })}${relativeFilePath}`;
+  const normalized = relativeFilePath.replace(/^\/+|\/+$/g, "");
+  const mountBasePath = getProjectFilesBasePath({
+    workspaceId: owner.sId,
+    projectId: space.sId,
+  });
+  const gcsPath = `${mountBasePath}${normalized}`;
+  const dirPrefix = `${mountBasePath}${normalized}/`;
+
+  const bucket = getPrivateUploadBucket();
+  const [fileExists] = await bucket.file(gcsPath).exists();
+
+  if (!fileExists) {
+    const [dirPlaceholderExists] = await bucket.file(dirPrefix).exists();
+    const { files: dirContents } = await bucket.getAllFilesByPrefix({
+      prefix: dirPrefix,
+      pageSize: 200,
+    });
+    const isDirectoryDelete =
+      dirPlaceholderExists || dirContents.some((f) => !f.name.endsWith("/"));
+
+    if (isDirectoryDelete) {
+      const mountPaths = dirContents
+        .filter((f) => !f.name.endsWith("/"))
+        .map((f) => f.name);
+      const fileResources = await FileResource.fetchByMountFilePaths(
+        auth,
+        mountPaths
+      );
+      for (const file of fileResources) {
+        const result = await removeFileFromProject(auth, {
+          space,
+          fileId: file.sId,
+        });
+        if (result.isErr()) {
+          return result;
+        }
+      }
+
+      return deleteGCSMountFile(
+        auth,
+        { useCase: "project", projectId: space.sId },
+        { relativeFilePath: normalized }
+      );
+    }
+  }
 
   const fileResources = await FileResource.fetchByMountFilePaths(auth, [
     gcsPath,
@@ -706,7 +809,7 @@ export async function deleteProjectFile(
   return deleteGCSMountFile(
     auth,
     { useCase: "project", projectId: space.sId },
-    { relativeFilePath }
+    { relativeFilePath: normalized }
   );
 }
 

@@ -9,8 +9,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use anyhow::{bail, Context, Result};
 use lru::LruCache;
 use rcgen::{
-    BasicConstraints, Certificate, CertificateParams, DistinguishedName, DnType, IsCa, KeyPair,
-    KeyUsagePurpose, SanType,
+    BasicConstraints, Certificate, CertificateParams, DistinguishedName, DnType,
+    ExtendedKeyUsagePurpose, IsCa, KeyPair, KeyUsagePurpose, SanType,
 };
 use rustls::pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs8KeyDer};
 use rustls::server::ResolvesServerCert;
@@ -179,6 +179,10 @@ impl MitmCa {
                 .try_into()
                 .context("invalid SNI for leaf cert")?,
         )];
+        params.is_ca = IsCa::ExplicitNoCa;
+        params.key_usages = vec![KeyUsagePurpose::DigitalSignature];
+        params.extended_key_usages = vec![ExtendedKeyUsagePurpose::ServerAuth];
+        params.use_authority_key_identifier_extension = true;
 
         let leaf_key = KeyPair::generate().context("failed to generate leaf key pair")?;
         let leaf = params
@@ -283,6 +287,9 @@ mod tests {
     use std::os::unix::fs::PermissionsExt;
 
     use super::*;
+    use x509_parser::certificate::X509Certificate;
+    use x509_parser::extensions::{GeneralName, ParsedExtension};
+    use x509_parser::prelude::FromDer;
 
     #[test]
     fn load_or_generate_writes_and_reuses_persistent_ca() -> Result<()> {
@@ -414,6 +421,63 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn minted_leaf_contains_strict_x509_server_extensions() -> Result<()> {
+        let ca = Arc::new(MitmCa::generate()?);
+
+        let certified = ca.get_or_mint_leaf("api.openai.com").await?;
+        let leaf_der = certified
+            .cert
+            .first()
+            .context("minted leaf did not contain a certificate")?;
+        let leaf = parse_cert(leaf_der.as_ref())?;
+
+        let san = leaf
+            .subject_alternative_name()
+            .map_err(|err| anyhow::anyhow!("failed to parse leaf SAN: {err}"))?
+            .context("leaf missing subjectAltName")?;
+        assert!(san.value.general_names.iter().any(|name| {
+            matches!(name, GeneralName::DNSName(dns_name) if *dns_name == "api.openai.com")
+        }));
+
+        let basic_constraints = leaf
+            .basic_constraints()
+            .map_err(|err| anyhow::anyhow!("failed to parse leaf basicConstraints: {err}"))?
+            .context("leaf missing basicConstraints")?;
+        assert!(basic_constraints.critical);
+        assert!(!basic_constraints.value.ca);
+
+        let key_usage = leaf
+            .key_usage()
+            .map_err(|err| anyhow::anyhow!("failed to parse leaf keyUsage: {err}"))?
+            .context("leaf missing keyUsage")?;
+        assert!(key_usage.critical);
+        assert!(key_usage.value.digital_signature());
+        assert!(!key_usage.value.key_cert_sign());
+        assert!(!key_usage.value.crl_sign());
+
+        let extended_key_usage = leaf
+            .extended_key_usage()
+            .map_err(|err| anyhow::anyhow!("failed to parse leaf extendedKeyUsage: {err}"))?
+            .context("leaf missing extendedKeyUsage")?;
+        assert!(!extended_key_usage.critical);
+        assert!(extended_key_usage.value.server_auth);
+        assert!(!extended_key_usage.value.client_auth);
+
+        let ca_cert = parse_cert(ca.ca_cert.der().as_ref())?;
+        let ca_subject_key_identifier =
+            subject_key_identifier(&ca_cert).context("CA missing subjectKeyIdentifier")?;
+        let leaf_authority_key_identifier =
+            authority_key_identifier(&leaf).context("leaf missing authorityKeyIdentifier")?;
+        assert_eq!(leaf_authority_key_identifier, ca_subject_key_identifier);
+        assert!(
+            subject_key_identifier(&leaf).is_some(),
+            "leaf missing subjectKeyIdentifier"
+        );
+
+        Ok(())
+    }
+
+    #[tokio::test]
     async fn leaf_cache_is_lru_bounded() -> Result<()> {
         let ca = Arc::new(MitmCa::generate()?);
 
@@ -424,5 +488,29 @@ mod tests {
 
         assert_eq!(ca.leaf_cache.lock().await.len(), LEAF_CACHE_CAPACITY);
         Ok(())
+    }
+
+    fn parse_cert(der: &[u8]) -> Result<X509Certificate<'_>> {
+        let (_, cert) = X509Certificate::from_der(der)
+            .map_err(|err| anyhow::anyhow!("failed to parse certificate DER: {err}"))?;
+        Ok(cert)
+    }
+
+    fn subject_key_identifier(cert: &X509Certificate<'_>) -> Option<Vec<u8>> {
+        cert.iter_extensions()
+            .find_map(|ext| match ext.parsed_extension() {
+                ParsedExtension::SubjectKeyIdentifier(key_id) => Some(key_id.0.to_vec()),
+                _ => None,
+            })
+    }
+
+    fn authority_key_identifier(cert: &X509Certificate<'_>) -> Option<Vec<u8>> {
+        cert.iter_extensions()
+            .find_map(|ext| match ext.parsed_extension() {
+                ParsedExtension::AuthorityKeyIdentifier(key_id) => {
+                    key_id.key_identifier.as_ref().map(|id| id.0.to_vec())
+                }
+                _ => None,
+            })
     }
 }

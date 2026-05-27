@@ -1,7 +1,7 @@
 import { usePodConversationsSummary } from "@app/hooks/conversations";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
-import { useCheckProjectName } from "@app/lib/swr/pods";
+import { useCheckPodName } from "@app/lib/swr/pods";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -37,7 +37,7 @@ export const EditProjectTitleDialog = ({
     isNameAvailable,
     isChecking: isCheckingName,
     setValue: setNameToCheck,
-  } = useCheckProjectName({
+  } = useCheckPodName({
     owner,
     whitelistedName: currentTitle,
   });

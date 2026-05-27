@@ -25,6 +25,7 @@ import {
 } from "@app/lib/plans/stripe";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { isCreditPricedPlan } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
@@ -213,6 +214,11 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
     },
   },
 
+  isApplicableTo: (auth) => {
+    const plan = auth.plan();
+    return plan !== null && !isCreditPricedPlan(plan);
+  },
+
   populateAsyncArgs: async (auth) => {
     const workspace = auth.getNonNullableWorkspace();
     const userCount = await countEligibleUsersForFreeCredits(workspace);
@@ -269,6 +275,16 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
   },
 
   execute: async (auth, _, args) => {
+    const plan = auth.plan();
+    if (plan && isCreditPricedPlan(plan)) {
+      return new Err(
+        new Error(
+          "This plugin is not applicable to credit-priced plan workspaces. " +
+            "Use 'Manage Credit Usage Configuration' instead."
+        )
+      );
+    }
+
     const parseResult = ProgrammaticUsageConfigurationSchema.safeParse(args);
 
     if (!parseResult.success) {

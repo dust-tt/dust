@@ -9,11 +9,11 @@ import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
-import type { ProjectType } from "@app/types/space";
+import type { PodType } from "@app/types/space";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export type SearchProjectsResponseBody = {
-  spaces: Array<ProjectType & { isMember: boolean }>;
+  spaces: Array<PodType & { isMember: boolean }>;
   hasMore: boolean;
   lastValue: string | null;
 };

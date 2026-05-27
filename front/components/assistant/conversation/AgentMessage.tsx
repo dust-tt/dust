@@ -59,6 +59,7 @@ import { useConversationWakeUps } from "@app/lib/swr/wakeups";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import { getNextWakeUpFireAt } from "@app/lib/utils/wakeup_description";
+import datadogLogger from "@app/logger/datadogLogger";
 import type { FetchConversationMessageResponseLight } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages/[mId]";
 import {
   canShowAgentConversationActions,
@@ -541,6 +542,17 @@ export function AgentMessage({
   const isGlobalAgent = isGlobalAgentId(agentMessage.configuration.sId);
 
   async function handleCopyToClipboard() {
+    if (agentMessage.content === null) {
+      datadogLogger.warn(
+        {
+          messageId: agentMessage.sId,
+          conversationId,
+          status: agentMessage.status,
+        },
+        "handleCopyToClipboard: message content is null"
+      );
+    }
+
     const messageContent = agentMessage.content ?? "";
     let footnotesMarkdown = "";
     let footnotesHtml = "";

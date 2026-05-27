@@ -1,3 +1,4 @@
+// @migration-status: MIGRATED_TO_HONO
 import { exportAgentConfigurationAsYAML } from "@app/lib/api/assistant/configuration/yaml_export";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";

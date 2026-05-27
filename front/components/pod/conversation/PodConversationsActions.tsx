@@ -2,7 +2,7 @@ import { useSeedInitialPodTasks } from "@app/lib/swr/pods";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Card, CardGrid, CheckIcon, Icon, Spinner } from "@dust-tt/sparkle";
 
-interface SpaceConversationsActionsProps {
+interface PodConversationsActionsProps {
   owner: LightWorkspaceType;
   podId: string;
   isEditor: boolean;
@@ -15,7 +15,7 @@ export function PodConversationsActions({
   podId,
   isEditor,
   onNavigateToTasks,
-}: SpaceConversationsActionsProps) {
+}: PodConversationsActionsProps) {
   const { seedInitialPodTasks, isSeeding } = useSeedInitialPodTasks({
     owner,
     podId: podId,

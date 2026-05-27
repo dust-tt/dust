@@ -1,3 +1,4 @@
+// @migration-status: MIGRATED_TO_HONO
 import { searchAgentConfigurationsByName } from "@app/lib/api/assistant/configuration/agent";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import { addBackwardCompatibleAgentConfigurationFields } from "@app/lib/api/v1/backward_compatibility";

@@ -1,3 +1,5 @@
+// @migration-status: MIGRATED_TO_HONO
+
 import { timingSafeEqual } from "node:crypto";
 
 import { Authenticator } from "@app/lib/auth";
