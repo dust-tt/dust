@@ -1206,9 +1206,7 @@ export class Authenticator {
     };
   }
 
-  static async fromJSON(
-    authType: AuthenticatorType
-  ): Promise<Result<Authenticator, { code: "subscription_mismatch" }>> {
+  static async fromJSON(authType: AuthenticatorType): Promise<Authenticator> {
     const [workspace, user] = await Promise.all([
       authType.workspaceId
         ? WorkspaceResource.fetchById(authType.workspaceId)
@@ -1216,16 +1214,9 @@ export class Authenticator {
       authType.userId ? UserResource.fetchById(authType.userId) : null,
     ]);
 
-    const lightWorkspace = workspace
-      ? renderLightWorkspaceType({ workspace })
+    const subscription = workspace
+      ? await SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id)
       : null;
-
-    const subscription =
-      authType.subscriptionId && lightWorkspace
-        ? await SubscriptionResource.fetchActiveByWorkspaceModelId(
-            lightWorkspace.id
-          )
-        : null;
 
     // Skip mismatch check for no-plan subscriptions: they have ephemeral random sIds
     // that change on every fetch, so they can never match the original.
@@ -1235,7 +1226,14 @@ export class Authenticator {
       subscription.sId !== authType.subscriptionId &&
       !subscription.isLegacyFreeNoPlan()
     ) {
-      return new Err({ code: "subscription_mismatch" });
+      logger.info(
+        {
+          workspaceId: authType.workspaceId,
+          originalSubscriptionId: authType.subscriptionId,
+          currentSubscriptionId: subscription.sId,
+        },
+        "Subscription changed since auth was serialized, using current active subscription"
+      );
     }
 
     const groupIds = removeNulls(
@@ -1247,19 +1245,17 @@ export class Authenticator {
       subscription
     );
 
-    return new Ok(
-      new Authenticator({
-        authMethod: authType.authMethod,
-        workspace,
-        user,
-        role: authType.role,
-        groupModelIds: groupIds,
-        subscription,
-        key: authType.key,
-        providersHealth,
-        clientIp: authType.clientIp,
-      })
-    );
+    return new Authenticator({
+      authMethod: authType.authMethod,
+      workspace,
+      user,
+      role: authType.role,
+      groupModelIds: groupIds,
+      subscription,
+      key: authType.key,
+      providersHealth,
+      clientIp: authType.clientIp,
+    });
   }
 }
 

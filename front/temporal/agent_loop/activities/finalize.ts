@@ -23,11 +23,7 @@ export async function finalizeSuccessfulAgentLoopActivity(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
-  const authResult = await Authenticator.fromJSON(authType);
-  if (authResult.isErr()) {
-    return;
-  }
-  const auth = authResult.value;
+  const auth = await Authenticator.fromJSON(authType);
 
   await Promise.all([
     snapshotAgentMessageSkills(auth, agentLoopArgs),
@@ -52,11 +48,7 @@ export async function finalizeGracefullyStoppedAgentLoopActivity(
 ): Promise<void> {
   await finalizeGracefulStop(authType, agentLoopArgs);
 
-  const authResult = await Authenticator.fromJSON(authType);
-  if (authResult.isErr()) {
-    return;
-  }
-  const auth = authResult.value;
+  const auth = await Authenticator.fromJSON(authType);
 
   await Promise.all([
     snapshotAgentMessageSkills(auth, agentLoopArgs),
@@ -83,11 +75,7 @@ export async function finalizeInterruptedAgentLoopActivity(
 ): Promise<void> {
   await finalizeInterruption(authType, agentLoopArgs);
 
-  const authResult = await Authenticator.fromJSON(authType);
-  if (authResult.isErr()) {
-    return;
-  }
-  const auth = authResult.value;
+  const auth = await Authenticator.fromJSON(authType);
 
   await Promise.all([
     snapshotAgentMessageSkills(auth, agentLoopArgs),
@@ -105,11 +93,7 @@ export async function finalizeCancelledAgentLoopActivity(
 ): Promise<void> {
   await finalizeCancellation(authType, agentLoopArgs);
 
-  const authResult = await Authenticator.fromJSON(authType);
-  if (authResult.isErr()) {
-    return;
-  }
-  const auth = authResult.value;
+  const auth = await Authenticator.fromJSON(authType);
 
   await Promise.all([
     snapshotAgentMessageSkills(auth, agentLoopArgs),
@@ -131,11 +115,7 @@ export async function finalizeErroredAgentLoopActivity(
 ): Promise<void> {
   await notifyWorkflowError(authType, agentLoopArgs, error);
 
-  const authResult = await Authenticator.fromJSON(authType);
-  if (authResult.isErr()) {
-    return;
-  }
-  const auth = authResult.value;
+  const auth = await Authenticator.fromJSON(authType);
 
   await Promise.all([
     snapshotAgentMessageSkills(auth, agentLoopArgs),
