@@ -4,18 +4,12 @@
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import {
   type GetBillingInvoicesResponseBody,
-  listWorkspaceBillingInvoices,
+  listRecentBillingInvoices,
 } from "@app/lib/api/billing/invoices";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
-import { fromError } from "zod-validation-error";
-
-const GetBillingInvoicesQuerySchema = z.object({
-  cursor: z.string().optional(),
-});
 
 async function handler(
   req: NextApiRequest,
@@ -43,21 +37,7 @@ async function handler(
     });
   }
 
-  const queryValidation = GetBillingInvoicesQuerySchema.safeParse(req.query);
-  if (!queryValidation.success) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: `Invalid query parameters: ${fromError(queryValidation.error).toString()}`,
-      },
-    });
-  }
-
-  const result = await listWorkspaceBillingInvoices({
-    auth,
-    cursor: queryValidation.data.cursor,
-  });
+  const result = await listRecentBillingInvoices(auth);
   if (result.isErr()) {
     return apiError(req, res, {
       status_code: 502,

@@ -15,7 +15,6 @@ export type BillingInvoice = {
   id: string;
   number: string | null;
   status: Stripe.Invoice.Status | null;
-  billingReason: Stripe.Invoice.BillingReason | null;
   description: string | null;
   currency: string;
   total: number;
@@ -28,14 +27,8 @@ export type BillingInvoice = {
   invoicePdf: string | null;
 };
 
-export type BillingInvoicesPage = {
-  invoices: BillingInvoice[];
-  hasMore: boolean;
-  nextCursor: string | null;
-};
-
 export type GetBillingInvoicesResponseBody = {
-  billingInvoices: BillingInvoicesPage;
+  billingInvoices: BillingInvoice[];
 };
 
 function serializeInvoice(invoice: Stripe.Invoice): BillingInvoice {
@@ -43,7 +36,6 @@ function serializeInvoice(invoice: Stripe.Invoice): BillingInvoice {
     id: invoice.id,
     number: invoice.number ?? null,
     status: invoice.status ?? null,
-    billingReason: invoice.billing_reason ?? null,
     description: invoice.description ?? null,
     currency: invoice.currency,
     total: invoice.total,
@@ -57,22 +49,14 @@ function serializeInvoice(invoice: Stripe.Invoice): BillingInvoice {
   };
 }
 
-export async function listWorkspaceBillingInvoices({
-  auth,
-  cursor,
-}: {
-  auth: Authenticator;
-  cursor?: string;
-}): Promise<Result<BillingInvoicesPage, Error>> {
+export async function listRecentBillingInvoices(
+  auth: Authenticator
+): Promise<Result<BillingInvoice[], Error>> {
   const owner = auth.workspace() ?? null;
   const subscription = auth.subscription() ?? null;
 
   if (!owner || !subscription || !isCreditPricedPlan(subscription.plan)) {
-    return new Ok({
-      invoices: [],
-      hasMore: false,
-      nextCursor: null,
-    });
+    return new Ok([]);
   }
 
   const stripeCustomerIdRes = await getBillingStripeCustomerId({
@@ -83,27 +67,16 @@ export async function listWorkspaceBillingInvoices({
     return stripeCustomerIdRes;
   }
   if (!stripeCustomerIdRes.value) {
-    return new Ok({
-      invoices: [],
-      hasMore: false,
-      nextCursor: null,
-    });
+    return new Ok([]);
   }
 
   try {
     const invoices = await getStripeClient().invoices.list({
       customer: stripeCustomerIdRes.value,
       limit: BILLING_INVOICES_PAGE_SIZE,
-      ...(cursor ? { starting_after: cursor } : {}),
     });
 
-    return new Ok({
-      invoices: invoices.data.map(serializeInvoice),
-      hasMore: invoices.has_more,
-      nextCursor: invoices.has_more
-        ? (invoices.data[invoices.data.length - 1]?.id ?? null)
-        : null,
-    });
+    return new Ok(invoices.data.map(serializeInvoice));
   } catch (error) {
     return new Err(new Error(errorToString(error)));
   }
