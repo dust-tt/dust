@@ -113,7 +113,6 @@ describe("sandbox image registry", () => {
     expect(hardeningCommand).toContain("AllowUsers agent");
     expect(hardeningCommand).toContain("DenyUsers root agent-proxied");
     expect(hardeningCommand).toContain("pam_permit\\.so");
-    expect(hardeningCommand).toContain("pkill -KILL -x sshd");
     expect(hardeningCommand).toContain(
       "systemctl disable --now ssh.service sshd.service"
     );

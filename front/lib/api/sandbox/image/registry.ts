@@ -180,6 +180,11 @@ function getEgressResolverUserSetupCommand(): string {
 }
 
 function getSshHardeningCommand(): string {
+  // Layered on purpose, not redundant. `AllowUsers agent` is the load-bearing
+  // lock (whitelist). The other lines defend the case where a future bedrock
+  // bump reorders the Include directive, re-enables PAM, or restores a
+  // permissive AuthorizedKeysCommand from the base image. Don't "clean up"
+  // any of these without checking what happens if exactly one of them flips.
   const sshdConfig = [
     "# Managed by Dust. Untrusted sandbox code must not reach root through sshd.",
     "PermitRootLogin no",
@@ -217,7 +222,6 @@ function getSshHardeningCommand(): string {
     writeSshdConfig,
     "chmod 644 /etc/ssh/sshd_config /etc/ssh/sshd_config.d/00-dust-sandbox-hardening.conf",
     "if [ -f /etc/pam.d/sshd ]; then sed -i -E '/^[[:space:]]*auth[[:space:]].*pam_permit\\.so/s/^/# Disabled by Dust sandbox SSH hardening: /' /etc/pam.d/sshd; fi",
-    "if command -v pkill >/dev/null 2>&1; then pkill -KILL -x sshd >/dev/null 2>&1 || true; fi",
     disableSshdServices,
     maskSshdServices,
   ].join(" && ");
