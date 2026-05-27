@@ -21,9 +21,7 @@ import {
   _getDustAntHighOmittedGlobalAgent,
   _getDustAntMediumGlobalAgent,
   _getDustAntMediumOmittedGlobalAgent,
-  _getDustChawiGlobalAgent,
-  _getDustChawiHighGlobalAgent,
-  _getDustChawiMediumGlobalAgent,
+  _getCustomModelDustLikeGlobalAgent,
   _getDustDeepseekGlobalAgent,
   _getDustEdgeGlobalAgent,
   _getDustGlmGlobalAgent,
@@ -55,12 +53,6 @@ import {
   _getDustOmittedGlobalAgent,
   _getDustQuickGlobalAgent,
   _getDustQuickMediumGlobalAgent,
-  _getDustSoupinouGlobalAgent,
-  _getDustSoupinouHighGlobalAgent,
-  _getDustSoupinouMediumGlobalAgent,
-  _getDustSundaeGlobalAgent,
-  _getDustSundaeHighGlobalAgent,
-  _getDustSundaeMediumGlobalAgent,
   getCustomModelDustGlobalAgentIndex,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
 import { _getNoopAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/noop";
@@ -1166,76 +1158,24 @@ function getGlobalAgent({
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_CHAWI:
-      agentConfiguration = _getDustChawiGlobalAgent(auth, {
-        settings,
-        preFetchedDataSources,
-        mcpServerViews,
-        hasDeepDive,
-      });
-      break;
     case GLOBAL_AGENTS_SID.DUST_CHAWI_MEDIUM:
-      agentConfiguration = _getDustChawiMediumGlobalAgent(auth, {
-        settings,
-        preFetchedDataSources,
-        mcpServerViews,
-        hasDeepDive,
-      });
-      break;
     case GLOBAL_AGENTS_SID.DUST_CHAWI_HIGH:
-      agentConfiguration = _getDustChawiHighGlobalAgent(auth, {
-        settings,
-        preFetchedDataSources,
-        mcpServerViews,
-        hasDeepDive,
-      });
-      break;
     case GLOBAL_AGENTS_SID.DUST_SOUPINOU:
-      agentConfiguration = _getDustSoupinouGlobalAgent(auth, {
-        settings,
-        preFetchedDataSources,
-        mcpServerViews,
-        hasDeepDive,
-      });
-      break;
     case GLOBAL_AGENTS_SID.DUST_SOUPINOU_MEDIUM:
-      agentConfiguration = _getDustSoupinouMediumGlobalAgent(auth, {
-        settings,
-        preFetchedDataSources,
-        mcpServerViews,
-        hasDeepDive,
-      });
-      break;
     case GLOBAL_AGENTS_SID.DUST_SOUPINOU_HIGH:
-      agentConfiguration = _getDustSoupinouHighGlobalAgent(auth, {
-        settings,
-        preFetchedDataSources,
-        mcpServerViews,
-        hasDeepDive,
-      });
-      break;
     case GLOBAL_AGENTS_SID.DUST_SUNDAE:
-      agentConfiguration = _getDustSundaeGlobalAgent(auth, {
-        settings,
-        preFetchedDataSources,
-        mcpServerViews,
-        hasDeepDive,
-      });
-      break;
     case GLOBAL_AGENTS_SID.DUST_SUNDAE_MEDIUM:
-      agentConfiguration = _getDustSundaeMediumGlobalAgent(auth, {
-        settings,
-        preFetchedDataSources,
-        mcpServerViews,
-        hasDeepDive,
-      });
-      break;
     case GLOBAL_AGENTS_SID.DUST_SUNDAE_HIGH:
-      agentConfiguration = _getDustSundaeHighGlobalAgent(auth, {
-        settings,
-        preFetchedDataSources,
-        mcpServerViews,
-        hasDeepDive,
-      });
+      agentConfiguration = _getCustomModelDustLikeGlobalAgent(
+        auth,
+        {
+          settings,
+          preFetchedDataSources,
+          mcpServerViews,
+          hasDeepDive,
+        },
+        sId
+      );
       break;
     case GLOBAL_AGENTS_SID.DEEP_DIVE:
       agentConfiguration = _getDeepDiveGlobalAgent(auth, {

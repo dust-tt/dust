@@ -1130,7 +1130,7 @@ export function getCustomModelDustGlobalAgentIndex(
   );
 }
 
-function _getCustomModelDustLikeGlobalAgent(
+export function _getCustomModelDustLikeGlobalAgent(
   auth: Authenticator,
   args: DustLikeGlobalAgentArgs,
   agentId: GLOBAL_AGENTS_SID
@@ -1149,103 +1149,4 @@ function _getCustomModelDustLikeGlobalAgent(
     preferredReasoningEffort: config.preferredReasoningEffort,
     requiredPreferredModelConfiguration: true,
   });
-}
-
-export function _getDustChawiGlobalAgent(
-  auth: Authenticator,
-  args: DustLikeGlobalAgentArgs
-): AgentConfigurationType | null {
-  return _getCustomModelDustLikeGlobalAgent(
-    auth,
-    args,
-    GLOBAL_AGENTS_SID.DUST_CHAWI
-  );
-}
-
-export function _getDustChawiMediumGlobalAgent(
-  auth: Authenticator,
-  args: DustLikeGlobalAgentArgs
-): AgentConfigurationType | null {
-  return _getCustomModelDustLikeGlobalAgent(
-    auth,
-    args,
-    GLOBAL_AGENTS_SID.DUST_CHAWI_MEDIUM
-  );
-}
-
-export function _getDustChawiHighGlobalAgent(
-  auth: Authenticator,
-  args: DustLikeGlobalAgentArgs
-): AgentConfigurationType | null {
-  return _getCustomModelDustLikeGlobalAgent(
-    auth,
-    args,
-    GLOBAL_AGENTS_SID.DUST_CHAWI_HIGH
-  );
-}
-
-export function _getDustSoupinouGlobalAgent(
-  auth: Authenticator,
-  args: DustLikeGlobalAgentArgs
-): AgentConfigurationType | null {
-  return _getCustomModelDustLikeGlobalAgent(
-    auth,
-    args,
-    GLOBAL_AGENTS_SID.DUST_SOUPINOU
-  );
-}
-
-export function _getDustSoupinouMediumGlobalAgent(
-  auth: Authenticator,
-  args: DustLikeGlobalAgentArgs
-): AgentConfigurationType | null {
-  return _getCustomModelDustLikeGlobalAgent(
-    auth,
-    args,
-    GLOBAL_AGENTS_SID.DUST_SOUPINOU_MEDIUM
-  );
-}
-
-export function _getDustSoupinouHighGlobalAgent(
-  auth: Authenticator,
-  args: DustLikeGlobalAgentArgs
-): AgentConfigurationType | null {
-  return _getCustomModelDustLikeGlobalAgent(
-    auth,
-    args,
-    GLOBAL_AGENTS_SID.DUST_SOUPINOU_HIGH
-  );
-}
-
-export function _getDustSundaeGlobalAgent(
-  auth: Authenticator,
-  args: DustLikeGlobalAgentArgs
-): AgentConfigurationType | null {
-  return _getCustomModelDustLikeGlobalAgent(
-    auth,
-    args,
-    GLOBAL_AGENTS_SID.DUST_SUNDAE
-  );
-}
-
-export function _getDustSundaeMediumGlobalAgent(
-  auth: Authenticator,
-  args: DustLikeGlobalAgentArgs
-): AgentConfigurationType | null {
-  return _getCustomModelDustLikeGlobalAgent(
-    auth,
-    args,
-    GLOBAL_AGENTS_SID.DUST_SUNDAE_MEDIUM
-  );
-}
-
-export function _getDustSundaeHighGlobalAgent(
-  auth: Authenticator,
-  args: DustLikeGlobalAgentArgs
-): AgentConfigurationType | null {
-  return _getCustomModelDustLikeGlobalAgent(
-    auth,
-    args,
-    GLOBAL_AGENTS_SID.DUST_SUNDAE_HIGH
-  );
 }
