@@ -26,6 +26,7 @@ vi.mock("@app/lib/api/config", () => ({
     getVizPublicUrl: vi.fn().mockReturnValue("https://viz.dust.tt"),
     getAppUrl: vi.fn().mockReturnValue("http://localhost:3000"),
     getVizJwtSecret: vi.fn().mockReturnValue("test-secret"),
+    getWorkOSClientId: vi.fn(() => "test-workos-client-id"),
   },
 }));
 

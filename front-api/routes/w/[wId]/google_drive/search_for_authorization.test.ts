@@ -63,6 +63,7 @@ vi.mock("@app/lib/api/config", () => ({
       url: "https://oauth-api.example.com",
       apiKey: "test-api-key",
     })),
+    getWorkOSClientId: vi.fn(() => "test-workos-client-id"),
   },
 }));
 

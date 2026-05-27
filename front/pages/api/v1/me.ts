@@ -1,3 +1,4 @@
+// @migration-status: MIGRATED_TO_HONO
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { withTokenAuthentication } from "@app/lib/api/auth_wrappers";
 import { getUserWithWorkspaces } from "@app/lib/api/user";

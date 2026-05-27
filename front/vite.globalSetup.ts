@@ -44,6 +44,7 @@ export default async function setup() {
     DUST_DEVELOPERS_SECRETS_SECRET: "test-developer-secret",
     REGION: "us-central1",
     DUST_MCP_SERVER_CREDENTIALS_SECRET: "test-secret",
+    WORKOS_CLIENT_ID: "test-workos-client-id",
     OAUTH_API: process.env.OAUTH_API ?? "http://fake-oauth-api",
     CORE_API: "http://fake-core-api",
     CONNECTORS_API: "http://fake-connectors-api",
