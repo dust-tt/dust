@@ -9,7 +9,7 @@ import { UsageNotificationsCard } from "@app/components/workspace/usage/UsageNot
 import { UsageSettingsCard } from "@app/components/workspace/usage/UsageSettingsCard";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
-import { isEntreprisePlanPrefix, isUpgraded } from "@app/lib/plans/plan_codes";
+import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
 import {
   useAwuPoolSummary,
@@ -18,7 +18,6 @@ import {
 } from "@app/lib/swr/credits";
 import { useMembersUsage } from "@app/lib/swr/memberships";
 import {
-  useMetronomeContract,
   usePerSeatPricing,
   useWorkspaceSeatAvailability,
 } from "@app/lib/swr/workspaces";
@@ -202,12 +201,7 @@ export function UsagePage() {
     workspaceId: owner.sId,
   });
 
-  const { contract } = useMetronomeContract({
-    workspaceId: owner.sId,
-  });
-
-  const isEnterprise = isEntreprisePlanPrefix(subscription.plan.code);
-  const hasSeatSubscription = contract?.hasSeatSubscription ?? false;
+  const isSeatBased = Object.keys(seatPlans).length > 0;
 
   const plan = subscription.plan;
   const isManualInvitationsEnabled =
@@ -350,7 +344,7 @@ export function UsagePage() {
               />
             )}
           </div>
-          {hasSeatSubscription && (
+          {isSeatBased && (
             <div className="flex flex-row justify-end">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -398,8 +392,7 @@ export function UsagePage() {
             isLoading={isMembersUsageLoading}
             searchTerm={searchTerm}
             seatTypeFilter={seatTypeFilter}
-            hasSeatSubscription={hasSeatSubscription}
-            isEnterprise={isEnterprise}
+            isSeatBased={isSeatBased}
             onChangeSeat={setChangeSeatMember}
             onEditSpendLimit={setEditSpendLimitMember}
           />

@@ -323,25 +323,24 @@ const actionsColumn: ColumnDef<RowData, string> = {
 };
 
 function buildColumns({
-  hasSeatSubscription,
-  isEnterprise,
+  isSeatBased,
+  displayPeriodColumn,
 }: {
-  hasSeatSubscription: boolean;
-  isEnterprise: boolean;
+  isSeatBased: boolean;
+  displayPeriodColumn: boolean;
 }): ColumnDef<RowData, string>[] {
-  const showActions = hasSeatSubscription || isEnterprise;
   const optionalColumns = [];
-  if (hasSeatSubscription) {
+  if (isSeatBased) {
     optionalColumns.push(seatTypeColumn);
   }
-  if (!isEnterprise) {
+  if (displayPeriodColumn) {
     optionalColumns.push(billingFrequencyColumn);
   }
   return [
     nameColumn,
     ...optionalColumns,
     consumedAwuCreditsColumn,
-    ...(showActions ? [actionsColumn] : []),
+    actionsColumn,
   ];
 }
 
@@ -350,8 +349,7 @@ interface MembersUsageTableProps {
   isLoading: boolean;
   searchTerm: string;
   seatTypeFilter: MembershipSeatType | "none" | null;
-  hasSeatSubscription: boolean;
-  isEnterprise: boolean;
+  isSeatBased: boolean;
   onChangeSeat: (member: MemberUsageType) => void;
   onEditSpendLimit: (member: MemberUsageType) => void;
 }
@@ -361,8 +359,7 @@ export function MembersUsageTable({
   isLoading,
   searchTerm,
   seatTypeFilter,
-  hasSeatSubscription,
-  isEnterprise,
+  isSeatBased,
   onChangeSeat,
   onEditSpendLimit,
 }: MembersUsageTableProps) {
@@ -412,7 +409,7 @@ export function MembersUsageTable({
     scheduledSeatType: m.scheduledSeatType,
     scheduledSeatChangeAt: m.scheduledSeatChangeAt,
     menuItems: [
-      ...(hasSeatSubscription
+      ...(isSeatBased
         ? [
             {
               kind: "item" as const,
@@ -429,10 +426,12 @@ export function MembersUsageTable({
     ],
   }));
 
+  const displayPeriodColumn = rows.some((row) => !!row.billingFrequency);
+
   return (
     <DataTable
       data={rows}
-      columns={buildColumns({ hasSeatSubscription, isEnterprise })}
+      columns={buildColumns({ isSeatBased, displayPeriodColumn })}
     />
   );
 }
