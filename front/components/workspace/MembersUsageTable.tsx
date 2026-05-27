@@ -99,7 +99,11 @@ function AwuUsageBar({
 
   if (!hasSeatAllocation) {
     const percent =
-      limit !== null && limit > 0 ? Math.min((consumed / limit) * 100, 100) : 0;
+      limit === null
+        ? 100
+        : limit > 0
+          ? Math.min((consumed / limit) * 100, 100)
+          : 0;
     return (
       <div className="flex w-full flex-col gap-1">
         <div className="flex justify-between text-xs tabular-nums text-foreground dark:text-foreground-night">
@@ -120,23 +124,25 @@ function AwuUsageBar({
 
   const seatColors = getSeatBarClasses(seatType);
   const seatConsumed = Math.min(consumed, memberUsageLimit);
-  const seatFillPercent = (seatConsumed / memberUsageLimit) * 100;
   const overflow = Math.max(0, consumed - memberUsageLimit);
   const overflowRange =
     limit !== null ? Math.max(0, limit - memberUsageLimit) : null;
+  const seatFillPercent =
+    limit === null ? 100 : (seatConsumed / memberUsageLimit) * 100;
   const overflowFillPercent =
-    overflowRange !== null && overflowRange > 0
-      ? Math.min((overflow / overflowRange) * 100, 100)
-      : overflow > 0
-        ? 100
-        : 0;
+    limit === null
+      ? 100
+      : overflowRange !== null && overflowRange > 0
+        ? Math.min((overflow / overflowRange) * 100, 100)
+        : overflow > 0
+          ? 100
+          : 0;
   const seatWidthPercent =
     limit !== null && limit > memberUsageLimit
       ? (memberUsageLimit / limit) * 100
       : 50;
   const overflowWidthPercent = 100 - seatWidthPercent;
   const remaining = limit !== null ? Math.max(0, limit - consumed) : null;
-
   return (
     <div className="flex w-full flex-col gap-1">
       <div className="flex justify-between text-xs tabular-nums text-foreground dark:text-foreground-night">
