@@ -15,8 +15,8 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.7.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.25";
-const DSBX_CLI_VERSION = "0.1.21";
+const DUST_BASE_IMAGE_VERSION = "0.8.26";
+const DSBX_CLI_VERSION = "0.1.22";
 // Identity, not coverage list: agent-proxied is a specific Linux user. The
 // nftables ruleset covers SANDBOX_UNTRUSTED_UIDS as a set; reordering that
 // list must not silently change this user's UID.
@@ -179,6 +179,50 @@ function getEgressResolverUserSetupCommand(): string {
   ].join(" && ");
 }
 
+function getSshHardeningCommand(): string {
+  const sshdConfig = [
+    "# Managed by Dust. Untrusted sandbox code must not reach root through sshd.",
+    "PermitRootLogin no",
+    "PasswordAuthentication no",
+    "KbdInteractiveAuthentication no",
+    "ChallengeResponseAuthentication no",
+    "PermitEmptyPasswords no",
+    "UsePAM no",
+    "AuthorizedKeysCommand none",
+    "AuthorizedKeysFile /etc/ssh/authorized_keys/%u",
+    "AllowUsers agent",
+    "DenyUsers root agent-proxied",
+  ];
+
+  const ensureSshdConfigInclude =
+    "if ! grep -Eq '^[[:space:]]*Include[[:space:]]+/etc/ssh/sshd_config.d/\\*.conf([[:space:]]|$)' /etc/ssh/sshd_config; then " +
+    "sed -i '1i Include /etc/ssh/sshd_config.d/*.conf' /etc/ssh/sshd_config; fi";
+  const writeSshdConfig = [
+    "printf '%s\\n'",
+    ...sshdConfig.map(formatShellValue),
+    "> /etc/ssh/sshd_config.d/00-dust-sandbox-hardening.conf",
+  ].join(" ");
+  const disableSshdServices =
+    "if command -v systemctl >/dev/null 2>&1; then " +
+    "systemctl disable --now ssh.service sshd.service ssh.socket sshd.socket >/dev/null 2>&1 || true; fi";
+  const maskSshdServices =
+    "if command -v systemctl >/dev/null 2>&1; then " +
+    "systemctl mask ssh.service sshd.service ssh.socket sshd.socket >/dev/null 2>&1 || true; fi";
+
+  return [
+    "mkdir -p /etc/ssh/sshd_config.d /etc/ssh/authorized_keys",
+    "chmod 755 /etc/ssh /etc/ssh/sshd_config.d /etc/ssh/authorized_keys",
+    "touch /etc/ssh/sshd_config",
+    ensureSshdConfigInclude,
+    writeSshdConfig,
+    "chmod 644 /etc/ssh/sshd_config /etc/ssh/sshd_config.d/00-dust-sandbox-hardening.conf",
+    "if [ -f /etc/pam.d/sshd ]; then sed -i -E '/^[[:space:]]*auth[[:space:]].*pam_permit\\.so/s/^/# Disabled by Dust sandbox SSH hardening: /' /etc/pam.d/sshd; fi",
+    "if command -v pkill >/dev/null 2>&1; then pkill -KILL -x sshd >/dev/null 2>&1 || true; fi",
+    disableSshdServices,
+    maskSshdServices,
+  ].join(" && ");
+}
+
 const DUST_BASE_IMAGE = SandboxImage.fromDocker(
   `dust-sbx-bedrock:${DUST_BEDROCK_IMAGE_VERSION}`
 )
@@ -195,6 +239,7 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
     }
   )
   .runCmd(getAgentProxiedSetupCommand(), { user: "root" })
+  .runCmd(getSshHardeningCommand(), { user: "root" })
   // Create simple netcat-based token server script.
   .runCmd("mkdir -p /home/agent/.bin", { user: "root" })
   // TODO(2026-03-06 SANDBOX): .copy is broken, use file once fixed.

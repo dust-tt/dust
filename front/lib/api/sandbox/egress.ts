@@ -153,6 +153,7 @@ const EgressHealthcheckOutputSchema = z.object({
   nft_dns_tcp_redirect_ok: z.boolean(),
   nft_dns_udp_accept_ok: z.boolean(),
   nft_tcp_forward_redirect_ok: z.boolean(),
+  nft_loopback_ssh_drop_ok: z.boolean(),
   nft_udp_drop_ok: z.boolean(),
   nft_icmp_drop_ok: z.boolean(),
   nft_ipv6_drop_ok: z.boolean(),
@@ -192,14 +193,16 @@ function parseEgressHealthcheckOutput(
 
   const data = validation.data;
   // nftablesOk mirrors the full enforcement boundary, not just the DNS rules:
-  // DNS interception alone isn't load-bearing without the generic UDP/ICMP/
-  // IPv6 drops and the broad TCP redirect to the forwarder. Treating a
-  // partially damaged table as healthy would silently reopen non-53 UDP.
+  // DNS interception alone isn't load-bearing without the loopback SSH block,
+  // generic UDP/ICMP/IPv6 drops, and broad TCP redirect to the forwarder.
+  // Treating a partially damaged table as healthy would silently reopen part
+  // of the agent escape or egress surface.
   const nftablesOk =
     data.nft_dns_udp_redirect_ok &&
     data.nft_dns_tcp_redirect_ok &&
     data.nft_dns_udp_accept_ok &&
     data.nft_tcp_forward_redirect_ok &&
+    data.nft_loopback_ssh_drop_ok &&
     data.nft_udp_drop_ok &&
     data.nft_icmp_drop_ok &&
     data.nft_ipv6_drop_ok;

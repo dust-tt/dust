@@ -28,6 +28,7 @@ nft add rule ip dust-egress nat_output meta skuid $PROXIED_UID ip daddr 192.168.
 nft add rule ip dust-egress nat_output meta skuid $PROXIED_UID tcp dport != 0 redirect to :9990
 
 nft add rule ip dust-egress filter_output meta skuid $PROXIED_UID ip daddr 127.0.0.1 udp dport $DNS_STUB_PORT accept
+nft add rule ip dust-egress filter_output meta skuid $PROXIED_UID ip daddr 127.0.0.0/8 tcp dport 22 drop
 nft add rule ip dust-egress filter_output meta skuid $PROXIED_UID ip daddr 169.254.169.254 drop
 nft add rule ip dust-egress filter_output meta skuid $PROXIED_UID ip daddr 10.0.0.0/8 drop
 nft add rule ip dust-egress filter_output meta skuid $PROXIED_UID ip daddr 172.16.0.0/12 drop
