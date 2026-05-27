@@ -27,7 +27,6 @@ export const streamingTag = createMiddleware<StreamingEnv>(async (c, next) => {
   const span = tracer.scope().active();
   if (span) {
     span.setTag("streaming", true);
-    span.setOperationName("hono.request.streaming");
   }
   await next();
 });
