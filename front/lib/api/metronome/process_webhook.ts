@@ -480,7 +480,7 @@ export async function processMetronomeWebhook({
     case "alerts.low_remaining_contract_credit_and_commit_balance_resolved": {
       await dispatchCreditsAdded({
         workspace,
-        newBalance: event.properties.remaining_balance ?? 0,
+        newBalanceAwu: event.properties.remaining_balance ?? 0,
       });
       logger.info(
         {

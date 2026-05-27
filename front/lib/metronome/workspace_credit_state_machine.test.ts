@@ -134,7 +134,7 @@ describe("WorkspaceCreditStateMachine — transitions", () => {
     const workspace = makeWorkspace("overage");
     const result = await transitionWorkspaceCreditState(
       workspace,
-      { type: "credits_added", balance: 500 },
+      { type: "credits_added", balanceAwu: 500 },
       baseCtxPayg
     );
     expect(result.isOk()).toBe(true);
@@ -148,7 +148,7 @@ describe("WorkspaceCreditStateMachine — transitions", () => {
     const workspace = makeWorkspace("depleted");
     const result = await transitionWorkspaceCreditState(
       workspace,
-      { type: "credits_added", balance: 500 },
+      { type: "credits_added", balanceAwu: 500 },
       baseCtxNoPayg
     );
     expect(result.isOk()).toBe(true);
@@ -471,7 +471,7 @@ describe("WorkspaceCreditStateMachine — low balance transitions", () => {
     const workspace = makeWorkspace("active_low_balance");
     const result = await transitionWorkspaceCreditState(
       workspace,
-      { type: "credits_added", balance: 500 },
+      { type: "credits_added", balanceAwu: 500 },
       baseCtxNoPayg
     );
     expect(result.isOk()).toBe(true);
@@ -488,7 +488,7 @@ describe("WorkspaceCreditStateMachine — low balance transitions", () => {
     const workspace = makeWorkspace("active_critical_balance");
     const result = await transitionWorkspaceCreditState(
       workspace,
-      { type: "credits_added", balance: 500 },
+      { type: "credits_added", balanceAwu: 500 },
       baseCtxNoPayg
     );
     expect(result.isOk()).toBe(true);
@@ -511,7 +511,7 @@ describe("WorkspaceCreditStateMachine — credits_added balance routing", () => 
     const workspace = makeWorkspace("depleted");
     const result = await transitionWorkspaceCreditState(
       workspace,
-      { type: "credits_added", balance: 50 },
+      { type: "credits_added", balanceAwu: 50 },
       baseCtxNoPayg
     );
     expect(result.isOk()).toBe(true);
@@ -528,7 +528,7 @@ describe("WorkspaceCreditStateMachine — credits_added balance routing", () => 
     const workspace = makeWorkspace("depleted");
     const result = await transitionWorkspaceCreditState(
       workspace,
-      { type: "credits_added", balance: 5 },
+      { type: "credits_added", balanceAwu: 5 },
       baseCtxNoPayg
     );
     expect(result.isOk()).toBe(true);
@@ -545,7 +545,7 @@ describe("WorkspaceCreditStateMachine — credits_added balance routing", () => 
     const workspace = makeWorkspace("depleted");
     const result = await transitionWorkspaceCreditState(
       workspace,
-      { type: "credits_added", balance: 100 },
+      { type: "credits_added", balanceAwu: 100 },
       baseCtxNoPayg
     );
     expect(result.isOk()).toBe(true);
@@ -558,7 +558,7 @@ describe("WorkspaceCreditStateMachine — credits_added balance routing", () => 
     const workspace = makeWorkspace("depleted");
     const result = await transitionWorkspaceCreditState(
       workspace,
-      { type: "credits_added", balance: 10 },
+      { type: "credits_added", balanceAwu: 10 },
       baseCtxNoPayg
     );
     expect(result.isOk()).toBe(true);
@@ -571,7 +571,7 @@ describe("WorkspaceCreditStateMachine — credits_added balance routing", () => 
     const workspace = makeWorkspace("depleted");
     const result = await transitionWorkspaceCreditState(
       workspace,
-      { type: "credits_added", balance: 101 },
+      { type: "credits_added", balanceAwu: 101 },
       baseCtxNoPayg
     );
     expect(result.isOk()).toBe(true);
@@ -584,7 +584,7 @@ describe("WorkspaceCreditStateMachine — credits_added balance routing", () => 
     const workspace = makeWorkspace("overage");
     const result = await transitionWorkspaceCreditState(
       workspace,
-      { type: "credits_added", balance: 50 },
+      { type: "credits_added", balanceAwu: 50 },
       baseCtxPayg
     );
     expect(result.isOk()).toBe(true);
@@ -597,7 +597,7 @@ describe("WorkspaceCreditStateMachine — credits_added balance routing", () => 
     const workspace = makeWorkspace("active_critical_balance");
     const result = await transitionWorkspaceCreditState(
       workspace,
-      { type: "credits_added", balance: 50 },
+      { type: "credits_added", balanceAwu: 50 },
       baseCtxNoPayg
     );
     expect(result.isOk()).toBe(true);

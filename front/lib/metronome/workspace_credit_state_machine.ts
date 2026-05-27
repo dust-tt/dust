@@ -28,7 +28,7 @@ export type WorkspaceCreditEvent =
    * machine's point of view these are indistinguishable and both bring the
    * pool back online.
    */
-  | { type: "credits_added"; balance: number }
+  | { type: "credits_added"; balanceAwu: number }
   /**
    * PAYG was turned off by an operator. Workspaces in `overage` were
    * surviving on PAYG: with PAYG gone they have nothing left to spend, so
@@ -77,10 +77,10 @@ function activeStateForBalance(
       `[WorkspaceCreditStateMachine] activeStateForBalance called with unexpected event: ${event.type}`
     );
   }
-  if (event.balance <= CRITICAL_BALANCE_THRESHOLD) {
+  if (event.balanceAwu <= CRITICAL_BALANCE_THRESHOLD) {
     return "active_critical_balance";
   }
-  if (event.balance <= LOW_BALANCE_THRESHOLD) {
+  if (event.balanceAwu <= LOW_BALANCE_THRESHOLD) {
     return "active_low_balance";
   }
   return "active";

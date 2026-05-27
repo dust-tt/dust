@@ -123,14 +123,14 @@ export async function dispatchPaygCapReached({
 
 export async function dispatchCreditsAdded({
   workspace,
-  newBalance,
+  newBalanceAwu,
 }: {
   workspace: WorkspaceResource;
-  newBalance: number;
+  newBalanceAwu: number;
 }): Promise<void> {
   await transitionWorkspacePool(workspace, {
     type: "credits_added",
-    balance: newBalance,
+    balanceAwu: newBalanceAwu,
   });
 }
 
@@ -220,7 +220,7 @@ export async function syncPoolCreditStateFromBalance({
   }, 0);
 
   if (awuBalance > 0) {
-    await dispatchCreditsAdded({ workspace, newBalance: awuBalance });
+    await dispatchCreditsAdded({ workspace, newBalanceAwu: awuBalance });
   } else {
     await dispatchPoolExhausted({ workspace });
   }
