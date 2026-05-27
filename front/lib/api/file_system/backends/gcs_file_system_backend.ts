@@ -354,13 +354,9 @@ export class GCSFileSystemBackend implements FileSystemBackend {
   ): Promise<Result<void, DustFileSystemError>> {
     const gcsPath = this.toGCSPath(scopedPath);
     if (!gcsPath) {
-      if (ignoreNotFound) {
-        return new Ok(undefined);
-      }
-
       return new Err(
         new DustFileSystemError(
-          "not_found",
+          "invalid_path",
           `GCSFileSystemBackend.delete: unrecognised scoped path: ${scopedPath}`
         )
       );
