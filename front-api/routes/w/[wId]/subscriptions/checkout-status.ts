@@ -1,7 +1,6 @@
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_is_admin";
 import type { HandlerResult } from "@front-api/middlewares/utils";
-import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 

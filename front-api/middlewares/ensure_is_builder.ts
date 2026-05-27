@@ -15,8 +15,7 @@ export const ensureIsBuilder = () =>
         status_code: 403,
         api_error: {
           type: "workspace_auth_error",
-          message:
-            "Only users that are `builders` can perform this action.",
+          message: "Only users that are `builders` can perform this action.",
         },
       });
     }
