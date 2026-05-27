@@ -72,7 +72,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       {
         name: "Test Agent",
         description: "A test agent for prompt stability",
-      }
+      },
     );
 
     conversation1 = await ConversationFactory.create(authenticator1, {
@@ -103,7 +103,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       {
         name: "Test Agent",
         description: "A test agent for prompt stability",
-      }
+      },
     );
 
     conversation2 = await ConversationFactory.create(authenticator2, {
@@ -123,7 +123,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     // Get a real model config.
     const modelConfigs = getSupportedModelConfigs();
     const gpt4Config = modelConfigs.find(
-      (m) => m.providerId === "openai" && m.modelId === "gpt-4-turbo"
+      (m) => m.providerId === "openai" && m.modelId === "gpt-4-turbo",
     );
     modelConfig = gpt4Config ?? modelConfigs[0];
   });
@@ -322,14 +322,14 @@ describe("constructPromptMultiActions - system prompt stability", () => {
 
     // Workspace context belongs in the shared tier (cached across users).
     const wsSection = sharedContext.find((s) =>
-      s.content.includes("<workspace_context>")
+      s.content.includes("<workspace_context>"),
     );
     expect(wsSection).toBeDefined();
     expect(wsSection?.content).toContain("<available_models>");
 
     // User context belongs in the ephemeral tier (per-user).
     const userSection = ephemeralContext.find((s) =>
-      s.content.includes("<user_context>")
+      s.content.includes("<user_context>"),
     );
     expect(userSection).toBeDefined();
     expect(userSection?.content).toContain("Engineering");
@@ -356,16 +356,16 @@ describe("constructPromptMultiActions - system prompt stability", () => {
 
     expect(text).toContain("# BRANCH CONTEXT");
     expect(text).toContain(
-      'This conversation was branched from "Parent conversation".'
+      'This conversation was branched from "Parent conversation".',
     );
     expect(text).toContain(
-      "This conversation starts from a summary of the parent conversation at the branch point."
+      "This conversation starts from a summary of the parent conversation at the branch point.",
     );
     expect(text).toContain(
-      "Available tools and enabled skills from the parent conversation were carried over into this conversation."
+      "Available tools and enabled skills from the parent conversation were carried over into this conversation.",
     );
     expect(text).toContain(
-      "Conversation attachments and tool outputs available at the branch point were also carried over into this conversation."
+      "Conversation attachments and tool outputs available at the branch point were also carried over into this conversation.",
     );
     expect(text).not.toContain("child conversation");
     expect(text).not.toContain("source message");
@@ -400,16 +400,16 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     expect(instructions[0]?.content).not.toContain("# BRANCH CONTEXT");
     expect(
       sharedContext.some((section) =>
-        section.content.includes("# BRANCH CONTEXT")
-      )
+        section.content.includes("# BRANCH CONTEXT"),
+      ),
     ).toBe(false);
 
     const branchSection = ephemeralContext.find((section) =>
-      section.content.includes("# BRANCH CONTEXT")
+      section.content.includes("# BRANCH CONTEXT"),
     );
     expect(branchSection).toBeDefined();
     expect(branchSection?.content).toContain(
-      'This conversation was branched from "Parent conversation".'
+      'This conversation was branched from "Parent conversation".',
     );
   });
 
@@ -447,10 +447,10 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       {
         agentConfiguration: agentConfig1,
         conversation: conversation1,
-      }
+      },
     );
     const discoverSkills = systemSkills.find(
-      (skill) => skill.sId === "discover_skills"
+      (skill) => skill.sId === "discover_skills",
     );
     if (!discoverSkills) {
       throw new Error("Expected discover_skills system skill to exist.");
@@ -472,7 +472,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
 
     expect(text).toContain("### ENABLED SKILLS");
     expect(text).toContain(
-      "Some of the available skills come from the workspace"
+      "Some of the available skills come from the workspace",
     );
   });
 
@@ -522,11 +522,11 @@ describe("constructPromptMultiActions - system prompt stability", () => {
 
     expect(text).toContain("## SKILLS");
     expect(text).toContain(
-      "Skills are modular capabilities that extend your abilities for specific tasks."
+      "Skills are modular capabilities that extend your abilities for specific tasks.",
     );
     expect(text).toContain("skill_management__enable_skill");
     expect(text).not.toContain(
-      "Create a git commit with a descriptive message."
+      "Create a git commit with a descriptive message.",
     );
     expect(text).not.toContain("## AVAILABLE SKILLS");
   });
@@ -556,7 +556,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
 
     expect(text).toContain("## AVAILABLE SKILLS");
     expect(text).toContain(
-      "- **commit**: Create a git commit with a descriptive message."
+      "- **commit**: Create a git commit with a descriptive message.",
     );
   });
 
@@ -583,14 +583,14 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     expect(text).toContain("### ENABLED SKILLS");
     expect(text).not.toContain("### AVAILABLE SKILLS");
     expect(text).not.toContain(
-      "- **commit**: Create a git commit with a descriptive message."
+      "- **commit**: Create a git commit with a descriptive message.",
     );
   });
 
   it("should keep system skill instructions in the system prompt", async () => {
     const discoverSkills = await SkillResource.fetchById(
       authenticator1,
-      "discover_skills"
+      "discover_skills",
     );
     expect(discoverSkills).not.toBeNull();
     if (!discoverSkills) {
@@ -650,7 +650,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
 
     // existing_memories should be in the ephemeral tier (per-user).
     const memoriesSection = ephemeralContext.find((s) =>
-      s.content.includes("<existing_memories>")
+      s.content.includes("<existing_memories>"),
     );
     expect(memoriesSection).toBeDefined();
     expect(memoriesSection?.content).toContain("Some memory");
@@ -666,8 +666,13 @@ describe("globalAgentInjectsMemory", () => {
     expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.DUST_GOOG)).toBe(true);
     expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.DUST_NEXT)).toBe(true);
     expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.DUST_NEXT_HIGH)).toBe(
-      true
+      true,
     );
+    expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.DUST_CHAWI)).toBe(true);
+    expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.DUST_SOUPINOU)).toBe(
+      true,
+    );
+    expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.DUST_SUNDAE)).toBe(true);
   });
 
   it("should return false for non-dust global agents", () => {
@@ -687,14 +692,14 @@ describe("globalAgentInjectsMemory", () => {
 describe("globalAgentInjectsUserContext", () => {
   it("should return true for sidekick agents", () => {
     expect(globalAgentInjectsUserContext(GLOBAL_AGENTS_SID.SIDEKICK)).toBe(
-      true
+      true,
     );
   });
 
   it("should return false for non-sidekick agents", () => {
     expect(globalAgentInjectsUserContext(GLOBAL_AGENTS_SID.DUST)).toBe(false);
     expect(globalAgentInjectsUserContext(GLOBAL_AGENTS_SID.DEEP_DIVE)).toBe(
-      false
+      false,
     );
     expect(globalAgentInjectsUserContext(GLOBAL_AGENTS_SID.GPT4)).toBe(false);
   });
@@ -703,16 +708,16 @@ describe("globalAgentInjectsUserContext", () => {
 describe("globalAgentInjectsWorkspaceContext", () => {
   it("should return true for sidekick agents", () => {
     expect(globalAgentInjectsWorkspaceContext(GLOBAL_AGENTS_SID.SIDEKICK)).toBe(
-      true
+      true,
     );
   });
 
   it("should return false for non-sidekick agents", () => {
     expect(globalAgentInjectsWorkspaceContext(GLOBAL_AGENTS_SID.DUST)).toBe(
-      false
+      false,
     );
     expect(
-      globalAgentInjectsWorkspaceContext(GLOBAL_AGENTS_SID.DEEP_DIVE)
+      globalAgentInjectsWorkspaceContext(GLOBAL_AGENTS_SID.DEEP_DIVE),
     ).toBe(false);
   });
 });

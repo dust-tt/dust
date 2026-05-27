@@ -22,6 +22,7 @@ import {
   O3_MODEL_ID,
   O4_MINI_MODEL_ID,
 } from "@app/types/assistant/models/openai";
+import { CUSTOM_OPENAI_MODEL_IDS } from "@app/types/assistant/models/custom_models.generated";
 import type {
   ModelIdType,
   ReasoningEffort,
@@ -49,6 +50,7 @@ export const OPENAI_WHITELISTED_MODEL_IDS = [
   GPT_5_2_MODEL_ID,
   GPT_5_4_MODEL_ID,
   GPT_5_5_MODEL_ID,
+  ...CUSTOM_OPENAI_MODEL_IDS,
 ] as const;
 export type OpenAIWhitelistedModelId =
   (typeof OPENAI_WHITELISTED_MODEL_IDS)[number];
@@ -60,14 +62,16 @@ const THINKING_OVERWRITES: LLMParameterOverwrites = {
   temperature: null,
 };
 
-export const OPENAI_MODEL_CONFIGS: Record<
-  OpenAIWhitelistedModelId,
-  {
-    overwrites: LLMParameterOverwrites;
-    reasoningConfigMapping?: Partial<
-      Record<ReasoningEffort, OpenAIReasoningEffort>
-    >;
-  }
+export const OPENAI_MODEL_CONFIGS: Partial<
+  Record<
+    OpenAIWhitelistedModelId,
+    {
+      overwrites: LLMParameterOverwrites;
+      reasoningConfigMapping?: Partial<
+        Record<ReasoningEffort, OpenAIReasoningEffort>
+      >;
+    }
+  >
 > = {
   [O1_MODEL_ID]: { overwrites: THINKING_OVERWRITES },
   [O3_MINI_MODEL_ID]: { overwrites: THINKING_OVERWRITES },
@@ -101,16 +105,17 @@ export const OPENAI_MODEL_CONFIGS: Record<
 export function overwriteLLMParameters(
   llmParameters: LLMParameters & {
     modelId: OpenAIWhitelistedModelId;
-  }
+  },
 ): LLMParameters & { modelId: OpenAIWhitelistedModelId } {
   return {
     ...llmParameters,
-    ...OPENAI_MODEL_CONFIGS[llmParameters.modelId].overwrites,
+    ...(OPENAI_MODEL_CONFIGS[llmParameters.modelId]?.overwrites ??
+      THINKING_OVERWRITES),
   };
 }
 
 export const isOpenAIResponsesWhitelistedModelId = (
-  modelId: ModelIdType
+  modelId: ModelIdType,
 ): modelId is OpenAIWhitelistedModelId => {
   return (OPENAI_WHITELISTED_MODEL_IDS as readonly string[]).includes(modelId);
 };

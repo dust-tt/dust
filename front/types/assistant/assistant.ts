@@ -20,7 +20,7 @@ export const DEFAULT_TOKEN_COUNT_ADJUSTMENT = 1.15;
 
 export function isSupportedModel(
   model: unknown,
-  checkProvider: boolean = true
+  checkProvider: boolean = true,
 ): model is SupportedModel {
   if (
     typeof model !== "object" ||
@@ -35,13 +35,13 @@ export function isSupportedModel(
     (m) =>
       m.modelId === model.modelId &&
       (!checkProvider ||
-        ("providerId" in model && m.providerId === model.providerId))
+        ("providerId" in model && m.providerId === model.providerId)),
   );
 }
 
 export function isSupportingResponseFormat(modelId: ModelIdType) {
   const model = SUPPORTED_MODEL_CONFIGS.find(
-    (config) => config.modelId === modelId
+    (config) => config.modelId === modelId,
   );
   return model?.supportsResponseFormat;
 }
@@ -70,6 +70,15 @@ export enum GLOBAL_AGENTS_SID {
   DUST_GOOG_PRO_HIGH = "dust-goog-pro-high",
   DUST_NEXT = "dust-next",
   DUST_NEXT_MEDIUM = "dust-next-medium",
+  DUST_CHAWI = "dust-chawi",
+  DUST_CHAWI_MEDIUM = "dust-chawi-medium",
+  DUST_CHAWI_HIGH = "dust-chawi-high",
+  DUST_SOUPINOU = "dust-soupinou",
+  DUST_SOUPINOU_MEDIUM = "dust-soupinou-medium",
+  DUST_SOUPINOU_HIGH = "dust-soupinou-high",
+  DUST_SUNDAE = "dust-sundae",
+  DUST_SUNDAE_MEDIUM = "dust-sundae-medium",
+  DUST_SUNDAE_HIGH = "dust-sundae-high",
   DUST_ANT = "dust-ant",
   DUST_ANT_MEDIUM = "dust-ant-medium",
   DUST_ANT_HIGH = "dust-ant-high",
@@ -197,9 +206,18 @@ const GLOBAL_AGENTS_SORT_ORDER: string[] = [
   GLOBAL_AGENTS_SID.DUST_OAI,
   GLOBAL_AGENTS_SID.DUST_OAI_MEDIUM,
   GLOBAL_AGENTS_SID.DUST_OAI_HIGH,
+  GLOBAL_AGENTS_SID.DUST_CHAWI,
+  GLOBAL_AGENTS_SID.DUST_CHAWI_MEDIUM,
+  GLOBAL_AGENTS_SID.DUST_CHAWI_HIGH,
+  GLOBAL_AGENTS_SID.DUST_SOUPINOU,
+  GLOBAL_AGENTS_SID.DUST_SOUPINOU_MEDIUM,
+  GLOBAL_AGENTS_SID.DUST_SOUPINOU_HIGH,
+  GLOBAL_AGENTS_SID.DUST_SUNDAE,
+  GLOBAL_AGENTS_SID.DUST_SUNDAE_MEDIUM,
+  GLOBAL_AGENTS_SID.DUST_SUNDAE_HIGH,
 ];
 const globalAgentIndexMap = new Map(
-  GLOBAL_AGENTS_SORT_ORDER.map((id, index) => [id, index])
+  GLOBAL_AGENTS_SORT_ORDER.map((id, index) => [id, index]),
 );
 
 // This function implements our general strategy to sort agents to users (input bar, agent list,

@@ -69,7 +69,7 @@ import { GROK_4_MODEL_ID } from "@app/types/assistant/models/xai";
 type CustomModelId = (typeof CUSTOM_MODEL_IDS)[number];
 
 export const MODELS: Record<
-  | OpenAIWhitelistedModelId
+  | Exclude<OpenAIWhitelistedModelId, CustomModelId>
   | Exclude<AnthropicWhitelistedModelId, CustomModelId>
   | GoogleAIStudioWhitelistedModelId
   | MistralWhitelistedModelId

@@ -58,7 +58,7 @@ const REGION_MAPPING: { [key in RegionType]: "us" | "eu" } = {
 };
 
 function toAssistantInputItem(
-  content: AgentContentItemType
+  content: AgentContentItemType,
 ): ResponseInputItem | null {
   switch (content.type) {
     case "text_content":
@@ -89,7 +89,7 @@ function toAssistantInputItem(
       const reasoning = content.value.reasoning;
       const id = extractIdFromMetadata(content.value.metadata);
       const encryptedContent = extractEncryptedContentFromMetadata(
-        content.value.metadata
+        content.value.metadata,
       );
       return {
         id,
@@ -110,7 +110,7 @@ function toAssistantInputItem(
 }
 
 function toUserInputMessage(
-  message: UserMessageTypeModel
+  message: UserMessageTypeModel,
 ): ResponseInputItem.Message {
   return {
     role: "user",
@@ -119,7 +119,7 @@ function toUserInputMessage(
 }
 
 function toToolCallOutputItem(
-  message: FunctionMessageTypeModel
+  message: FunctionMessageTypeModel,
 ): ResponseFunctionToolCallOutputItem {
   // @ts-expect-error id property required in ResponseFunctionToolCallOutputItem however not required in practice
   return {
@@ -135,7 +135,7 @@ function toToolCallOutputItem(
 export function toInput(
   prompt: string,
   conversation: ModelConversationTypeMultiActions,
-  promptRole: "system" | "developer" = "developer"
+  promptRole: "system" | "developer" = "developer",
 ): ResponseInput {
   const inputs: ResponseInput = [];
   inputs.push({
@@ -150,7 +150,7 @@ export function toInput(
         break;
       case "assistant":
         const assistantItems = compact(
-          message.contents.map(toAssistantInputItem)
+          message.contents.map(toAssistantInputItem),
         );
         inputs.push(...assistantItems);
         break;
@@ -193,7 +193,7 @@ const REASONING_CONFIG_MAPPING: Record<ReasoningEffort, OpenAIReasoningEffort> =
 
 export function toReasoning(
   modelId: OpenAIWhitelistedModelId | XaiWhitelistedModelId,
-  reasoningEffort: ReasoningEffort | null
+  reasoningEffort: ReasoningEffort | null,
 ): Reasoning | null {
   if (!reasoningEffort) {
     return null;
@@ -202,7 +202,7 @@ export function toReasoning(
   const reasoningConfigMapping = isOpenAIResponsesWhitelistedModelId(modelId)
     ? {
         ...REASONING_CONFIG_MAPPING,
-        ...OPENAI_MODEL_CONFIGS[modelId].reasoningConfigMapping,
+        ...OPENAI_MODEL_CONFIGS[modelId]?.reasoningConfigMapping,
       }
     : REASONING_CONFIG_MAPPING;
 
@@ -214,7 +214,7 @@ export function toReasoning(
 
 export function toToolOption(
   specifications: AgentActionSpecification[],
-  forceToolCall: string | undefined
+  forceToolCall: string | undefined,
 ): ToolChoiceFunction | undefined {
   return forceToolCall && specifications.some((s) => s.name === forceToolCall)
     ? {
@@ -226,11 +226,11 @@ export function toToolOption(
 
 export function toResponseFormat(
   responseFormat: string | null,
-  providerId: ModelProviderIdType
+  providerId: ModelProviderIdType,
 ): ResponseFormatTextJSONSchemaConfig | undefined {
   const responseFormatObject = parseResponseFormatSchema(
     responseFormat,
-    providerId
+    providerId,
   );
   if (!responseFormatObject) {
     return;

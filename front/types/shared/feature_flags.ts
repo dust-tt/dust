@@ -23,7 +23,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   dust_internal_global_agents: {
     description:
-      "Access to internal global agents (dust-edge, dust-quick, dust-oai, dust-goog, dust-next and their variants)",
+      "Access to internal global agents (dust-edge, dust-quick, dust-oai, dust-goog, custom model agents and their variants)",
     stage: "dust_only",
   },
   notion_private_integration: {
@@ -320,11 +320,11 @@ export type FeatureFlag = {
 export type WhitelistableFeature = keyof typeof WHITELISTABLE_FEATURES_CONFIG;
 
 export const WHITELISTABLE_FEATURES = Object.keys(
-  WHITELISTABLE_FEATURES_CONFIG
+  WHITELISTABLE_FEATURES_CONFIG,
 ) as WhitelistableFeature[];
 
 export function isWhitelistableFeature(
-  feature: unknown
+  feature: unknown,
 ): feature is WhitelistableFeature {
   return WHITELISTABLE_FEATURES.includes(feature as WhitelistableFeature);
 }
