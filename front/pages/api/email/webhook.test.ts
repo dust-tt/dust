@@ -41,6 +41,7 @@ vi.mock("@app/lib/api/assistant/email/inbound_auth", () => ({
 }));
 
 vi.mock("@app/lib/api/regions/config", () => ({
+  SUPPORTED_REGIONS: ["europe-west1", "us-central1"],
   config: {
     getCurrentRegion: vi.fn(() => "us-central1"),
     getLookupApiSecret: vi.fn(() => "test-relay-secret"),
