@@ -92,10 +92,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Transcript feature (Labs)",
     stage: "on_demand",
   },
-  openai_o1_custom_assistants_feature: {
-    description: "OpenAI o1 model for custom assistants",
-    stage: "on_demand",
-  },
   openai_o1_feature: {
     description: "Access to OpenAI o1 model",
     stage: "on_demand",
