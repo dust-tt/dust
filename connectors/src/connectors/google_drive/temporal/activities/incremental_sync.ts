@@ -345,7 +345,8 @@ export async function incrementalSync(
           authCredentials,
           dataSourceConfig,
           driveFile,
-          startSyncTs
+          startSyncTs,
+          { skipRecentlySeen: false }
         );
         if (didSyncFile) {
           hadRelevantChange = true;

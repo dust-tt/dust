@@ -152,6 +152,7 @@ export async function handleFileExportWithResult(
       connectorId,
       parents,
       tags: file.labels,
+      failOnInvalidRows: true,
     });
   } else if (file.mimeType === "text/markdown") {
     const textContent = handleTextFile(res.data, maxDocumentLen);

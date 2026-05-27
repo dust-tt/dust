@@ -807,6 +807,14 @@ describe("google drive incremental sync", () => {
     });
 
     expect(result?.hadRelevantChange).toBe(false);
+    expect(mocks.syncOneFile).toHaveBeenCalledWith(
+      connector.id,
+      expect.any(Object),
+      expect.any(Object),
+      driveFile,
+      expect.any(Number),
+      { skipRecentlySeen: false }
+    );
     expect(syncToken?.lastRelevantChangeAt?.toISOString()).toBe(
       previousLastRelevantChangeAt.toISOString()
     );
