@@ -74,7 +74,7 @@ export async function listActiveAgentsUsingNonRegionalModels(
   // still-supported models no longer surfaced in the picker.
   const regionalModelKeys = new Set<string>();
   for (const m of SUPPORTED_MODEL_CONFIGS) {
-    if (m.regionalAvailability[region] === true) {
+    if (m.regionalAvailability?.[region] === true) {
       regionalModelKeys.add(`${m.providerId}:${m.modelId}`);
     }
   }

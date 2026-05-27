@@ -2,6 +2,7 @@ import { getWhitelistedProviders } from "@app/lib/api/assistant/models";
 import type { RegionType } from "@app/lib/api/regions/config";
 import {
   filterCustomAvailableAndWhitelistedModels,
+  isModelAvailable,
   isModelCustomAvailable,
 } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
@@ -365,6 +366,78 @@ describe("isModelCustomAvailable", () => {
         region: TEST_REGION,
       })
     ).toBe(false);
+  });
+});
+
+describe("isModelAvailable regional availability", () => {
+  it("returns false (instead of throwing) when regionalModelsOnly is set and the model has no regionalAvailability", () => {
+    // Custom models loaded from GCS are parsed with ModelConfigurationSchema,
+    // which omits regionalAvailability, so the field is undefined at runtime.
+    const model = createMockModel({
+      regionalAvailability: undefined,
+      availableIfOneOf: undefined,
+    });
+    const owner = LightWorkspaceFactory.build({ regionalModelsOnly: true });
+
+    expect(
+      isModelAvailable(model, {
+        featureFlags: [],
+        plan: null,
+        owner,
+        region: TEST_REGION,
+      })
+    ).toBe(false);
+  });
+
+  it("returns true when regionalModelsOnly is set and the model is available in the region", () => {
+    const model = createMockModel({
+      regionalAvailability: { "us-central1": true, "europe-west1": false },
+      availableIfOneOf: undefined,
+    });
+    const owner = LightWorkspaceFactory.build({ regionalModelsOnly: true });
+
+    expect(
+      isModelAvailable(model, {
+        featureFlags: [],
+        plan: null,
+        owner,
+        region: TEST_REGION,
+      })
+    ).toBe(true);
+  });
+
+  it("returns false when regionalModelsOnly is set and the model is not available in the region", () => {
+    const model = createMockModel({
+      regionalAvailability: { "us-central1": false, "europe-west1": true },
+      availableIfOneOf: undefined,
+    });
+    const owner = LightWorkspaceFactory.build({ regionalModelsOnly: true });
+
+    expect(
+      isModelAvailable(model, {
+        featureFlags: [],
+        plan: null,
+        owner,
+        region: TEST_REGION,
+      })
+    ).toBe(false);
+  });
+
+  it("ignores regional availability when regionalModelsOnly is not set", () => {
+    const model = createMockModel({
+      regionalAvailability: undefined,
+      availableIfOneOf: undefined,
+    });
+    const owner = LightWorkspaceFactory.build({ regionalModelsOnly: false });
+
+    expect(
+      isModelAvailable(model, {
+        featureFlags: [],
+        plan: null,
+        owner,
+        region: TEST_REGION,
+      })
+    ).toBe(true);
   });
 });
 

@@ -39,7 +39,7 @@ export function isModelAvailable(
     return false;
   }
 
-  if (owner.regionalModelsOnly && m.regionalAvailability[region] !== true) {
+  if (owner.regionalModelsOnly && m.regionalAvailability?.[region] !== true) {
     return false;
   }
 

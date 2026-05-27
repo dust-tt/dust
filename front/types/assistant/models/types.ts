@@ -80,7 +80,7 @@ export type ModelConfigurationType = Omit<
   modelId: ModelIdType;
   defaultReasoningEffort: ReasoningEffort;
   // Specify if the model is available in specific regions.
-  regionalAvailability: Record<RegionType, boolean>;
+  regionalAvailability?: Record<RegionType, boolean>;
   // If undefined, model is available.
   // If object is empty, model is not available.
   // If defined, model must satisfy one of the conditions to be available.

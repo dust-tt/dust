@@ -121,7 +121,7 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
                   isDark={isDark}
                   onModelSelection={handleModelSelection}
                   regionalComponent={
-                    selectedModel.regionalAvailability[regionInfo.name]
+                    selectedModel.regionalAvailability?.[regionInfo.name]
                       ? flag
                       : null
                   }
@@ -139,7 +139,7 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
                 isDark={isDark}
                 onModelSelection={handleModelSelection}
                 regionalComponent={
-                  modelConfig.regionalAvailability[regionInfo.name]
+                  modelConfig.regionalAvailability?.[regionInfo.name]
                     ? flag
                     : null
                 }
@@ -169,7 +169,7 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
                               isDark={isDark}
                               onModelSelection={handleModelSelection}
                               regionalComponent={
-                                modelConfig.regionalAvailability[
+                                modelConfig.regionalAvailability?.[
                                   regionInfo.name
                                 ]
                                   ? flag
@@ -195,7 +195,7 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
                               isDark={isDark}
                               onModelSelection={handleModelSelection}
                               regionalComponent={
-                                modelConfig.regionalAvailability[
+                                modelConfig.regionalAvailability?.[
                                   regionInfo.name
                                 ]
                                   ? flag
