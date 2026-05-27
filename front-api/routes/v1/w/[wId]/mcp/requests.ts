@@ -2,7 +2,7 @@ import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_re
 import { getMCPEventsForServer } from "@app/lib/api/assistant/mcp_events";
 import { PostMCPRequestsRequestQuerySchema } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
-import { streamingTag } from "@front-api/middlewares/streaming";
+import { setSSEHeaders, streamingTag } from "@front-api/middlewares/streaming";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { stream } from "hono/streaming";
@@ -91,11 +91,7 @@ app.get(
       });
     }
 
-    ctx.header("Content-Type", "text/event-stream");
-    ctx.header("Cache-Control", "no-cache");
-    ctx.header("Connection", "keep-alive");
-    ctx.header("X-Accel-Buffering", "no");
-    ctx.header("Content-Encoding", "none");
+    setSSEHeaders(ctx);
 
     return stream(ctx, async (s) => {
       const controller = new AbortController();
