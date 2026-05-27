@@ -11,7 +11,7 @@ import type { LightWorkspaceType } from "@app/types/user";
 import {
   ActionMailIcon,
   ActionMapPinIcon,
-  ActionNumbersIcon,
+  ActionHashtagIcon,
   Button,
   Icon,
   Spinner,
@@ -88,7 +88,7 @@ export function BillingInformation({ owner }: BillingInformationProps) {
   const addressRows = [
     { icon: UserIcon, value: billingInfo?.profile.name },
     { icon: ActionMailIcon, value: billingInfo?.profile.email },
-    { icon: ActionNumbersIcon, value: billingInfo?.profile.phone },
+    { icon: ActionHashtagIcon, value: billingInfo?.profile.phone },
     { icon: ActionMapPinIcon, value: address },
   ].filter((row) => row.value);
   const paymentMethod = billingInfo?.paymentMethod ?? null;
