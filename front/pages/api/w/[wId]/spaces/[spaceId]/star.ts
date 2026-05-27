@@ -13,7 +13,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
-export type PostUserProjectStarResponseBody = {
+export type PostUserPodStarResponseBody = {
   sId: string;
   spaceId: string;
   userId: string;
@@ -26,7 +26,7 @@ const PostUserProjectStarBodySchema = z.object({
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<PostUserProjectStarResponseBody>>,
+  res: NextApiResponse<WithAPIErrorResponse<PostUserPodStarResponseBody>>,
   auth: Authenticator,
   { space }: { space: SpaceResource }
 ): Promise<void> {

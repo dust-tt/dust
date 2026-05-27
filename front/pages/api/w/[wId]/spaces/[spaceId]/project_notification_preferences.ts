@@ -116,17 +116,17 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import {
   NOTIFICATION_CONDITION_OPTIONS,
-  type UserProjectNotificationPreference,
+  type UserPodNotificationPreference,
 } from "@app/types/notification_preferences";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
-export type GetUserProjectNotificationPreferenceResponseBody = {
-  userProjectNotificationPreference: UserProjectNotificationPreference | null;
+export type GetUserPodNotificationPreferenceResponseBody = {
+  userProjectNotificationPreference: UserPodNotificationPreference | null;
 };
 
-export type PatchUserProjectNotificationPreferenceResponseBody = {
-  userProjectNotificationPreference: UserProjectNotificationPreference | null;
+export type PatchUserPodNotificationPreferenceResponseBody = {
+  userProjectNotificationPreference: UserPodNotificationPreference | null;
 };
 
 const PatchUserProjectNotificationPreferenceBodySchema = z.object({
@@ -137,8 +137,8 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorResponse<
-      | GetUserProjectNotificationPreferenceResponseBody
-      | PatchUserProjectNotificationPreferenceResponseBody
+      | GetUserPodNotificationPreferenceResponseBody
+      | PatchUserPodNotificationPreferenceResponseBody
     >
   >,
   auth: Authenticator,

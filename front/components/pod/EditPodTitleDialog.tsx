@@ -17,21 +17,21 @@ import {
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
-type EditProjectTitleDialogProps = {
+type EditPodTitleDialogProps = {
   isOpen: boolean;
   onClose: () => void;
   owner: LightWorkspaceType;
-  spaceId: string;
+  podId: string;
   currentTitle: string;
 };
 
-export const EditProjectTitleDialog = ({
+export const EditPodTitleDialog = ({
   isOpen,
   onClose,
   owner,
-  spaceId,
+  podId,
   currentTitle,
-}: EditProjectTitleDialogProps) => {
+}: EditPodTitleDialogProps) => {
   const [title, setTitle] = useState<string>(currentTitle);
   const {
     isNameAvailable,
@@ -47,10 +47,10 @@ export const EditProjectTitleDialog = ({
   const sendNotification = useSendNotification();
   const { mutateSpaceInfo } = useSpaceInfo({
     workspaceId: owner.sId,
-    spaceId,
+    spaceId: podId,
     disabled: true, // Needed just to mutate
   });
-  const { mutate: mutateSpaceSummary } = usePodConversationsSummary({
+  const { mutate: mutatePodConversationsSummary } = usePodConversationsSummary({
     workspaceId: owner.sId,
     options: { disabled: true },
   });
@@ -72,16 +72,13 @@ export const EditProjectTitleDialog = ({
       return;
     }
 
-    const response = await clientFetch(
-      `/api/w/${owner.sId}/spaces/${spaceId}`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ name: trimmedTitle }),
-      }
-    );
+    const response = await clientFetch(`/api/w/${owner.sId}/spaces/${podId}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ name: trimmedTitle }),
+    });
 
     if (!response.ok) {
       const errorData = await getErrorFromResponse(response);
@@ -94,7 +91,7 @@ export const EditProjectTitleDialog = ({
     }
 
     void mutateSpaceInfo();
-    void mutateSpaceSummary();
+    void mutatePodConversationsSummary();
 
     sendNotification({ type: "success", title: "Title edited" });
     onClose();
@@ -102,9 +99,9 @@ export const EditProjectTitleDialog = ({
     title,
     currentTitle,
     owner.sId,
-    spaceId,
+    podId,
     mutateSpaceInfo,
-    mutateSpaceSummary,
+    mutatePodConversationsSummary,
     sendNotification,
     onClose,
   ]);

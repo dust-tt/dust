@@ -10,23 +10,23 @@ import {
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React from "react";
 
-interface LeaveProjectDialogProps {
+interface LeavePodDialogProps {
   isOpen: boolean;
   isLeaving?: boolean;
   isRestricted: boolean;
   onClose: () => void;
   onLeave: () => void;
-  spaceName: string;
+  podName: string;
 }
 
-export const LeaveProjectDialog = ({
+export const LeavePodDialog = ({
   isLeaving,
   isRestricted,
   onLeave,
   onClose,
   isOpen,
-  spaceName,
-}: LeaveProjectDialogProps) => {
+  podName,
+}: LeavePodDialogProps) => {
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent>
@@ -36,7 +36,7 @@ export const LeaveProjectDialog = ({
             {isRestricted ? (
               <>
                 You will no longer have access to conversations and context in{" "}
-                <strong>{spaceName}</strong>.
+                <strong>{podName}</strong>.
               </>
             ) : (
               "You can rejoin this Pod anytime."

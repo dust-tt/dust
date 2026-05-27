@@ -5,7 +5,7 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import { notifyProjectMembersAdded } from "@app/lib/notifications/workflows/project-added-as-member";
 import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
-import { areOpenProjectsAllowed } from "@app/lib/workspace_policies";
+import { areOpenPodsAllowed } from "@app/lib/workspace_policies";
 import { auditLog } from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -75,7 +75,7 @@ app.patch(
     if (
       space.isProjectAndRestricted() &&
       !body.isRestricted &&
-      !areOpenProjectsAllowed(owner)
+      !areOpenPodsAllowed(owner)
     ) {
       return apiError(ctx, {
         status_code: 403,

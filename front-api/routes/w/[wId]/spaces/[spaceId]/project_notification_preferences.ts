@@ -1,5 +1,5 @@
 import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
-import type { UserProjectNotificationPreference } from "@app/types/notification_preferences";
+import type { UserPodNotificationPreference } from "@app/types/notification_preferences";
 import { NOTIFICATION_CONDITION_OPTIONS } from "@app/types/notification_preferences";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -9,11 +9,11 @@ import { withSpace } from "@front-api/middlewares/with_space";
 import { z } from "zod";
 
 export type GetUserProjectNotificationPreferenceResponseBody = {
-  userProjectNotificationPreference: UserProjectNotificationPreference | null;
+  userProjectNotificationPreference: UserPodNotificationPreference | null;
 };
 
 export type PatchUserProjectNotificationPreferenceResponseBody = {
-  userProjectNotificationPreference: UserProjectNotificationPreference | null;
+  userProjectNotificationPreference: UserPodNotificationPreference | null;
 };
 
 const PatchUserProjectNotificationPreferenceBodySchema = z.object({

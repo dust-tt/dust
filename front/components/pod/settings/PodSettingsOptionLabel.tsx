@@ -5,7 +5,7 @@ type IconProps = {
   "aria-hidden"?: boolean;
 };
 
-export function ProjectSettingsOptionLabel({
+export function PodSettingsOptionLabel({
   icon: Icon,
   title,
   description,

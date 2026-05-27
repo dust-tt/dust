@@ -1,9 +1,8 @@
 import { usePodConversationsSummary } from "@app/hooks/conversations";
 import { useAppRouter } from "@app/lib/platform";
-import { getSpaceName } from "@app/lib/spaces";
 import { useDeleteSpace } from "@app/lib/swr/spaces";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type { SpaceType } from "@app/types/space";
+import type { PodType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -20,30 +19,30 @@ import {
 } from "@dust-tt/sparkle";
 import { type ChangeEvent, useCallback, useState } from "react";
 
-interface DeleteSpaceDialogProps {
+interface DeletePodDialogProps {
   owner: LightWorkspaceType;
-  space: SpaceType;
+  pod: PodType;
 }
 
-export function DeleteSpaceDialog({ owner, space }: DeleteSpaceDialogProps) {
+export function DeletePodDialog({ owner, pod }: DeletePodDialogProps) {
   const router = useAppRouter();
   const [isDeleting, setIsDeleting] = useState(false);
   const [confirmText, setConfirmText] = useState("");
   const doDelete = useDeleteSpace({ owner, force: true });
-  const { mutate: mutateSpaceSummary } = usePodConversationsSummary({
+  const { mutate: mutatePodConversationsSummary } = usePodConversationsSummary({
     workspaceId: owner.sId,
     options: { disabled: true },
   });
 
   const onDelete = useCallback(async () => {
     setIsDeleting(true);
-    const deleted = await doDelete(space);
+    const deleted = await doDelete(pod);
     if (deleted) {
       void router.push(getConversationRoute(owner.sId));
-      void mutateSpaceSummary();
+      void mutatePodConversationsSummary();
     }
     setIsDeleting(false);
-  }, [doDelete, space, mutateSpaceSummary, owner.sId, router]);
+  }, [doDelete, pod, mutatePodConversationsSummary, owner.sId, router]);
 
   return (
     <Dialog
@@ -60,7 +59,7 @@ export function DeleteSpaceDialog({ owner, space }: DeleteSpaceDialogProps) {
       </DialogTrigger>
       <DialogContent size="md">
         <DialogHeader>
-          <DialogTitle>{`Delete ${getSpaceName(space)}?`}</DialogTitle>
+          <DialogTitle>{`Delete ${pod.name}?`}</DialogTitle>
         </DialogHeader>
         {isDeleting ? (
           <div className="flex justify-center py-8">

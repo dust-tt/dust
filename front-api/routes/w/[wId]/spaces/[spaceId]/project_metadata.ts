@@ -1,12 +1,13 @@
 import { validatePinnedFramePath } from "@app/lib/api/projects/pinned_frame";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
+import type { PatchPodMetadataResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_metadata";
 import {
   launchOrSignalProjectTodoWorkflow,
   startImmediateProjectTodoWorkflowOnce,
   stopProjectTodoWorkflow,
 } from "@app/temporal/project_task/client";
-import { PatchProjectMetadataBodySchema } from "@app/types/api/internal/spaces";
-import type { ProjectMetadataType } from "@app/types/project_metadata";
+import { PatchPodMetadataBodySchema } from "@app/types/api/internal/spaces";
+import type { PodMetadataType } from "@app/types/project_metadata";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -14,11 +15,11 @@ import { validate } from "@front-api/middlewares/validator";
 import { withSpace } from "@front-api/middlewares/with_space";
 
 export type GetProjectMetadataResponseBody = {
-  projectMetadata: ProjectMetadataType | null;
+  projectMetadata: PodMetadataType | null;
 };
 
 export type PatchProjectMetadataResponseBody = {
-  projectMetadata: ProjectMetadataType;
+  projectMetadata: PodMetadataType;
 };
 
 // Mounted under /api/w/:wId/spaces/:spaceId/project_metadata. All routes
@@ -52,8 +53,8 @@ app.get(
 app.patch(
   "/",
   withSpace({ requireCanReadOrAdministrate: true }),
-  validate("json", PatchProjectMetadataBodySchema),
-  async (ctx): HandlerResult<PatchProjectMetadataResponseBody> => {
+  validate("json", PatchPodMetadataBodySchema),
+  async (ctx): HandlerResult<PatchPodMetadataResponseBody> => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");
 

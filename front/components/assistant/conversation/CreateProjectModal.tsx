@@ -3,7 +3,7 @@ import { useAppRouter } from "@app/lib/platform";
 import { useCheckPodName } from "@app/lib/swr/pods";
 import { useCreateSpace } from "@app/lib/swr/spaces";
 import { getPodRoute } from "@app/lib/utils/router";
-import { areOpenProjectsAllowed } from "@app/lib/workspace_policies";
+import { areOpenPodsAllowed } from "@app/lib/workspace_policies";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -39,7 +39,7 @@ export function CreateProjectModal({
   onCreated,
   owner,
 }: CreateProjectModalProps) {
-  const areWorkspaceOpenProjectsAllowed = areOpenProjectsAllowed(owner);
+  const areWorkspaceOpenProjectsAllowed = areOpenPodsAllowed(owner);
   const [projectName, setProjectName] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
   const [isPodOpen, setIsPodOpen] = useState(false);

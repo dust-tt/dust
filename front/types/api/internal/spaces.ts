@@ -33,7 +33,7 @@ export type GetPostNotionSyncResponseBody = z.infer<
   typeof GetPostNotionSyncResponseBodySchema
 >;
 
-export const PatchProjectMetadataBodySchema = z.object({
+export const PatchPodMetadataBodySchema = z.object({
   description: z.string().optional(),
   archive: z.boolean().optional(),
   todoGenerationEnabled: z.boolean().optional(),
@@ -41,6 +41,6 @@ export const PatchProjectMetadataBodySchema = z.object({
   pinnedFramePath: z.string().nullable().optional(),
 });
 
-export type PatchProjectMetadataBodyType = z.infer<
-  typeof PatchProjectMetadataBodySchema
+export type PatchPodMetadataBodyType = z.infer<
+  typeof PatchPodMetadataBodySchema
 >;

@@ -1,9 +1,9 @@
-import { SpaceAboutTab } from "@app/components/assistant/conversation/space/about/SpaceAboutTab";
 import type { TaskOwnerFilter } from "@app/components/assistant/conversation/space/conversations/project_tasks/projectTasksListScope";
 import { ManageUsersPanel } from "@app/components/assistant/conversation/space/ManageUsersPanel";
 import { PodConversationsTab } from "@app/components/pod/conversation/PodConversationsTab";
 import { PodFilesTab } from "@app/components/pod/files/PodFilesTab";
 import { PodHeaderActions } from "@app/components/pod/PodHeaderActions";
+import { PodSettingsTab } from "@app/components/pod/settings/PodSettingsTab";
 import { PodTasksTab } from "@app/components/pod/tasks/PodTasksTab";
 import {
   type PodConversationListFilter,
@@ -95,7 +95,7 @@ export function PodPage() {
     isLoadingMore,
   } = usePodConversations({
     workspaceId: owner.sId,
-    podId: podId,
+    podId,
     filter: conversationFilter,
   });
 
@@ -368,10 +368,10 @@ export function PodPage() {
         </TabsContent>
 
         <TabsContent value="settings">
-          <SpaceAboutTab
+          <PodSettingsTab
             key={podId}
             owner={owner}
-            space={podInfo}
+            pod={podInfo}
             onOpenMembersPanel={() => setIsInvitePanelOpen(true)}
           />
         </TabsContent>

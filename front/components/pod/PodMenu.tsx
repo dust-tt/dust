@@ -1,19 +1,20 @@
-import { EditProjectTitleDialog } from "@app/components/assistant/conversation/EditProjectTitleDialog";
-import { LeaveProjectDialog } from "@app/components/assistant/conversation/LeaveProjectDialog";
-import { useArchiveProject } from "@app/hooks/useArchiveProject";
+import { EditPodTitleDialog } from "@app/components/pod/EditPodTitleDialog";
+import { LeavePodDialog } from "@app/components/pod/LeavePodDialog";
+import { useArchivePod } from "@app/hooks/useArchivePod";
 import { useLeavePodDialog } from "@app/hooks/useLeaveProjectDialog";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useURLSheet } from "@app/hooks/useURLSheet";
 import config from "@app/lib/api/config";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
-import { useSpaceInfo, useStarProject } from "@app/lib/swr/spaces";
+import { useStarPod } from "@app/lib/swr/pods";
+import { useSpaceInfo } from "@app/lib/swr/spaces";
 import {
   getConversationRoute,
   getPodRoute,
   setQueryParam,
 } from "@app/lib/utils/router";
-import type { SpaceType } from "@app/types/space";
+import type { PodType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Avatar,
@@ -37,7 +38,7 @@ import {
 import type React from "react";
 import type { ReactElement } from "react";
 import { useCallback, useEffect, useState } from "react";
-import { ProjectNotificationMenu } from "./ProjectNotificationMenu";
+import { PodNotificationMenu } from "./settings/PodNotificationMenu";
 
 /**
  * Hook for handling right-click context menu with timing protection
@@ -49,7 +50,7 @@ import { ProjectNotificationMenu } from "./ProjectNotificationMenu";
  * while the menu is open still trigger our handlers. Due to React's async state updates,
  * when the menu closes, our right-click handler sees isMenuOpen as false and reopens the menu.
  */
-export function useProjectMenu() {
+export function usePodMenu() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [menuTriggerPosition, setMenuTriggerPosition] = useState<
     { x: number; y: number } | undefined
@@ -107,27 +108,29 @@ export function useProjectMenu() {
   };
 }
 
-export function ProjectMenu({
-  activeSpaceId,
-  space,
-  owner,
-  isStarred,
-  trigger,
-  isProjectDisplayed,
-  isOpen,
-  onOpenChange,
-  triggerPosition,
-}: {
-  activeSpaceId: string | null;
-  space?: SpaceType;
+interface PodMenuProps {
+  activePodId: string | null;
+  pod?: PodType;
   owner: WorkspaceType;
   isStarred: boolean;
   trigger: ReactElement;
-  isProjectDisplayed: boolean;
+  isPodDisplayed: boolean;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   triggerPosition?: { x: number; y: number };
-}) {
+}
+
+export function PodMenu({
+  activePodId,
+  pod,
+  owner,
+  isStarred,
+  trigger,
+  isPodDisplayed,
+  isOpen,
+  onOpenChange,
+  triggerPosition,
+}: PodMenuProps) {
   const { user } = useAuth();
   const router = useAppRouter();
   const sendNotification = useSendNotification();
@@ -140,92 +143,90 @@ export function ProjectMenu({
   };
 
   const shouldWaitBeforeFetching =
-    activeSpaceId === null || user?.sId === undefined || !isOpen;
+    activePodId === null || user?.sId === undefined || !isOpen;
 
-  const { spaceInfo } = useSpaceInfo({
+  const { spaceInfo: podInfo } = useSpaceInfo({
     workspaceId: owner.sId,
-    spaceId: activeSpaceId,
+    spaceId: activePodId,
     disabled: shouldWaitBeforeFetching,
     includeAllMembers: true,
   });
   const [showRenameDialog, setShowRenameDialog] = useState<boolean>(false);
 
-  const starProject = useStarProject({
+  const starPod = useStarPod({
     workspaceId: owner.sId,
-    spaceId: activeSpaceId,
+    podId: activePodId,
   });
 
-  const shareLink = activeSpaceId
-    ? `${config.getApiBaseUrl()}${getPodRoute(owner.sId, activeSpaceId)}`
+  const shareLink = activePodId
+    ? `${config.getApiBaseUrl()}${getPodRoute(owner.sId, activePodId)}`
     : undefined;
 
-  const spaceName = space?.name ?? spaceInfo?.name ?? "";
+  const spaceName = pod?.name ?? podInfo?.name ?? "";
   const userName = user?.fullName ?? user?.username ?? "";
 
   const handleLeaveSuccess = useCallback(() => {
-    if (isProjectDisplayed) {
+    if (isPodDisplayed) {
       void router.push(getConversationRoute(owner.sId));
     }
-  }, [isProjectDisplayed, owner.sId, router]);
+  }, [isPodDisplayed, owner.sId, router]);
 
   const { leaveDialogProps, openLeaveDialog } = useLeavePodDialog({
     owner,
-    podId: activeSpaceId ?? "",
+    podId: activePodId ?? "",
     podName: spaceName,
-    isRestricted: spaceInfo?.isRestricted ?? true,
+    isRestricted: podInfo?.isRestricted ?? true,
     userName,
     onSuccess: handleLeaveSuccess,
   });
 
-  const copyProjectLink = useCallback(async () => {
+  const copyPodLink = useCallback(async () => {
     await navigator.clipboard.writeText(shareLink ?? "");
     sendNotification({ type: "success", title: "Link copied !" });
   }, [shareLink, sendNotification]);
 
   const handleArchiveSuccess = useCallback(() => {
-    if (isProjectDisplayed) {
+    if (isPodDisplayed) {
       void router.push(getConversationRoute(owner.sId));
     }
-  }, [isProjectDisplayed, owner.sId, router]);
+  }, [isPodDisplayed, owner.sId, router]);
 
-  const { archiveProject } = useArchiveProject({
+  const { archivePod } = useArchivePod({
     owner,
-    spaceId: activeSpaceId ?? "",
+    podId: activePodId ?? "",
     onSuccess: handleArchiveSuccess,
   });
 
-  if (!activeSpaceId) {
+  if (!activePodId) {
     return null;
   }
 
   // Determine permissions based on spaceInfo
-  const isProject = space?.kind === "project" || spaceInfo?.kind === "project";
-  const isMember = spaceInfo?.isMember ?? false;
-  const projectEditors =
-    spaceInfo?.members?.filter((member) => member.isEditor) ?? [];
-  const isProjectEditor = projectEditors.some(
-    (member) => member.sId === user.sId
-  );
+  const isPod = pod?.kind === "project" || podInfo?.kind === "project";
+  const isMember = podInfo?.isMember ?? false;
+  const podEditors =
+    podInfo?.members?.filter((member) => member.isEditor) ?? [];
+  const isPodEditor = podEditors.some((member) => member.sId === user.sId);
   const canLeave =
-    ((isMember && !isProjectEditor) || // regular members can leave the project
-      (isProjectEditor && projectEditors.length > 1)) && // editors can leave if there's at least another editor
-    isProject;
-  // Must match PATCH /spaces/[spaceId] (canAdministrate). canWrite is true for project members too.
-  const canRename = spaceInfo?.isEditor ?? false;
+    ((isMember && !isPodEditor) || // regular members can leave the pod
+      (isPodEditor && podEditors.length > 1)) && // editors can leave if there's at least another editor
+    isPod;
+  // Must match PATCH /spaces/[spaceId] (canAdministrate). canWrite is true for pod members too.
+  const canRename = podInfo?.isEditor ?? false;
 
   return (
     <div
       onClick={(e) => e.stopPropagation()}
       onContextMenu={(e) => e.stopPropagation()}
     >
-      <LeaveProjectDialog {...leaveDialogProps} />
-      {showRenameDialog && space && (
-        <EditProjectTitleDialog
+      <LeavePodDialog {...leaveDialogProps} />
+      {showRenameDialog && pod && (
+        <EditPodTitleDialog
           isOpen={showRenameDialog}
           onClose={() => setShowRenameDialog(false)}
           owner={owner}
-          spaceId={activeSpaceId}
-          currentTitle={space.name}
+          podId={activePodId}
+          currentTitle={pod.name}
         />
       )}
       <DropdownMenu modal={false} open={isOpen} onOpenChange={onOpenChange}>
@@ -253,7 +254,7 @@ export function ProjectMenu({
           <DropdownMenuItem
             label={isStarred ? "Remove from starred" : "Add to starred"}
             icon={StarIcon}
-            onClick={() => void starProject(!isStarred)}
+            onClick={() => void starPod(!isStarred)}
           />
           {canLeave && (
             <DropdownMenuItem
@@ -262,8 +263,8 @@ export function ProjectMenu({
               icon={XMarkIcon}
             />
           )}
-          <ProjectNotificationMenu
-            activeSpaceId={activeSpaceId}
+          <PodNotificationMenu
+            activePodId={activePodId}
             owner={owner}
             shouldWaitBeforeFetching={shouldWaitBeforeFetching}
           />
@@ -279,12 +280,12 @@ export function ProjectMenu({
           <DropdownMenuSub>
             <DropdownMenuSubTrigger
               icon={ContactsUserIcon}
-              disabled={!spaceInfo?.members?.length}
+              disabled={!podInfo?.members?.length}
               label="Member list"
             />
             <DropdownMenuPortal>
               <DropdownMenuSubContent>
-                {spaceInfo?.members.map((member) => (
+                {podInfo?.members.map((member) => (
                   <DropdownMenuItem
                     key={member.sId}
                     label={member.fullName ?? member.username}
@@ -304,10 +305,10 @@ export function ProjectMenu({
               </DropdownMenuSubContent>
             </DropdownMenuPortal>
           </DropdownMenuSub>
-          {isProjectEditor && (
+          {isPodEditor && (
             <DropdownMenuItem
               label="Archive"
-              onClick={archiveProject}
+              onClick={archivePod}
               icon={EyeSlashIcon}
               variant="warning"
             />
@@ -318,7 +319,7 @@ export function ProjectMenu({
               <DropdownMenuLabel label="Share" />
               <DropdownMenuItem
                 label="Copy link"
-                onClick={copyProjectLink}
+                onClick={copyPodLink}
                 icon={LinkIcon}
               />
             </>
