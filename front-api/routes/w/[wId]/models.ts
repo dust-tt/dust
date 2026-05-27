@@ -1,7 +1,7 @@
 import { USED_MODEL_CONFIGS } from "@app/components/providers/model_configs";
 import { getWhitelistedProviders } from "@app/lib/api/assistant/models";
 import { config as regionConfig } from "@app/lib/api/regions/config";
-import { filterCustomAvailableAndWhitelistedModels } from "@app/lib/assistant";
+import { filterEnabledModels } from "@app/lib/assistant";
 import { getFeatureFlags } from "@app/lib/auth";
 import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
@@ -26,10 +26,10 @@ app.get("/", async (ctx): HandlerResult<GetEnabledModelsResponseType> => {
 
   // Include both standard models and custom models (from GCS at build time).
   const allUsedModels = [...USED_MODEL_CONFIGS, ...CUSTOM_MODEL_CONFIGS];
-  const models = filterCustomAvailableAndWhitelistedModels(allUsedModels, {
+  const models = filterEnabledModels(allUsedModels, {
     featureFlags,
     plan,
-    owner,
+    regionalModelsOnly: owner.regionalModelsOnly,
     region,
     whitelistedProviders,
   });
