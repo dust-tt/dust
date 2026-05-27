@@ -92,10 +92,6 @@ export class GroupSpaceMemberResource extends GroupSpaceBaseResource {
     const groupModelsByModelId = new Map(
       groupModels.map((groupModel) => [groupModel.id, groupModel])
     );
-    assert(
-      groupModelsByModelId.size === groupSpaces.length,
-      "All member group spaces must have exactly one associated group"
-    );
 
     const groupSpacesResources = groupSpaces.map((groupSpace) => {
       const groupModel = groupModelsByModelId.get(groupSpace.groupId);
