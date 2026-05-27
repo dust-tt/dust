@@ -1,7 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import {
-  ceilToHourISO,
-  floorToHourISO,
+  ceilToMidnightUTC,
+  floorToMidnightUTC,
   listMetronomeBalances,
   listMetronomeDraftInvoices,
   listMetronomeUsageWithGroups,
@@ -107,7 +107,9 @@ export async function handleAwuPoolSummaryRequest(
         });
       }
 
-      const resetDate = ceilToHourISO(new Date(currentInvoice.end_timestamp));
+      const resetDate = ceilToMidnightUTC(
+        new Date(currentInvoice.end_timestamp)
+      ).toISOString();
 
       // Filter to active, non-seat AWU pool credits and commits. The set of
       // seat product IDs is derived from the contract's tagged subscriptions
@@ -155,12 +157,12 @@ export async function handleAwuPoolSummaryRequest(
         }
       }
 
-      const startingOn = floorToHourISO(
+      const startingOn = floorToMidnightUTC(
         new Date(currentInvoice.start_timestamp)
-      );
-      const endingBefore = ceilToHourISO(
+      ).toISOString();
+      const endingBefore = ceilToMidnightUTC(
         new Date(currentInvoice.end_timestamp)
-      );
+      ).toISOString();
 
       // Query usage per user and seat allocations in parallel.
       // Per-user breakdown is needed to compute pool overflow correctly:
