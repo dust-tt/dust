@@ -20,7 +20,7 @@ export interface GetPokeFileResponseBody {
   file: FileTypeWithMetadata;
   shareInfo: {
     scope: FileShareScope;
-    sharedAt: Date;
+    sharedAt: number;
     shareUrl: string;
   } | null;
   sharingGrants: SharingGrantType[];

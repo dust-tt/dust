@@ -13,7 +13,7 @@ export interface GetPokeFileResponseBody {
   file: FileTypeWithMetadata;
   shareInfo: {
     scope: FileShareScope;
-    sharedAt: Date;
+    sharedAt: number;
     shareUrl: string;
   } | null;
   sharingGrants: SharingGrantType[];
@@ -47,6 +47,7 @@ app.get("/", async (ctx): HandlerResult<GetPokeFileResponseBody> => {
             message: "File not found.",
           },
         });
+
       case "not_interactive_content":
         return apiError(ctx, {
           status_code: 400,
@@ -55,6 +56,7 @@ app.get("/", async (ctx): HandlerResult<GetPokeFileResponseBody> => {
             message: "Only interactive content files can be viewed.",
           },
         });
+
       default:
         return assertNever(err);
     }

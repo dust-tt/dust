@@ -17,7 +17,7 @@ export type InteractiveContentFile = {
   content: string;
   shareInfo: {
     scope: FileShareScope;
-    sharedAt: Date;
+    sharedAt: number;
     shareUrl: string;
   } | null;
   sharingGrants: SharingGrantType[];
