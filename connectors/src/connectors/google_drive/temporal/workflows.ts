@@ -287,6 +287,16 @@ export async function googleDriveIncrementalSync(
     currentToken = undefined;
     currentDriveHadRelevantChange = false;
     drivesToSync.shift();
+
+    if (drivesToSync.length > 0 && workflowInfo().historyLength > 4000) {
+      await continueAsNew<typeof googleDriveIncrementalSync>(
+        connectorId,
+        startSyncTs,
+        drivesToSync,
+        currentToken,
+        currentDriveHadRelevantChange
+      );
+    }
   }
 
   const shouldGc = await shouldGarbageCollect(connectorId);

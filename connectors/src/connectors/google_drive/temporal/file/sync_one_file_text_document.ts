@@ -74,9 +74,10 @@ export async function syncOneFileTextDocument(
   }
 
   if (documentContent) {
+    let didUpsert = false;
     let upsertTimestampMs: number | undefined;
     try {
-      upsertTimestampMs = await upsertGdriveDocument(
+      const upsertResult = await upsertGdriveDocument(
         dataSourceConfig,
         file,
         documentContent,
@@ -88,6 +89,10 @@ export async function syncOneFileTextDocument(
         startSyncTs,
         isBatchSync
       );
+      didUpsert = upsertResult.didUpsert;
+      upsertTimestampMs = upsertResult.didUpsert
+        ? upsertResult.upsertTimestampMs
+        : undefined;
     } catch (error) {
       if (error instanceof DataSourceQuotaExceededError) {
         localLogger.warn(
@@ -106,7 +111,7 @@ export async function syncOneFileTextDocument(
       skipReason,
       upsertTimestampMs
     );
-    return true;
+    return didUpsert;
   }
 
   if (skipReason) {

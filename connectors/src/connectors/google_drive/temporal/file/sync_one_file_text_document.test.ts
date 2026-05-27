@@ -1,7 +1,7 @@
-import type { Logger } from "@connectors/logger/logger";
+import logger from "@connectors/logger/logger";
 import type { DataSourceConfig, GoogleDriveObjectType } from "@connectors/types";
-import { describe, expect, it, vi } from "vitest";
-import type { OAuth2Client } from "googleapis-common";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { OAuth2Client } from "googleapis-common";
 
 const mocks = vi.hoisted(() => ({
   handleFileExport: vi.fn(),
@@ -46,13 +46,7 @@ const dataSourceConfig: DataSourceConfig = {
   workspaceId: "workspace-id",
 };
 
-const localLogger = {
-  error: vi.fn(),
-  info: vi.fn(),
-  warn: vi.fn(),
-} as unknown as Logger;
-
-const oauth2Client = {} as OAuth2Client;
+const oauth2Client = new OAuth2Client();
 
 function makeGoogleDriveFile(): GoogleDriveObjectType {
   return {
@@ -73,6 +67,10 @@ function makeGoogleDriveFile(): GoogleDriveObjectType {
 }
 
 describe("syncOneFileTextDocument", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("returns false when an exported Google document has no content", async () => {
     mocks.handleGoogleDriveExport.mockResolvedValue({
       content: null,
@@ -82,7 +80,7 @@ describe("syncOneFileTextDocument", () => {
       1,
       oauth2Client,
       makeGoogleDriveFile(),
-      localLogger,
+      logger,
       null,
       dataSourceConfig,
       Date.now(),
@@ -93,5 +91,41 @@ describe("syncOneFileTextDocument", () => {
     expect(result).toBe(false);
     expect(mocks.upsertGdriveDocument).not.toHaveBeenCalled();
     expect(mocks.updateGoogleDriveFiles).not.toHaveBeenCalled();
+  });
+
+  it("returns false when the upsert helper skips the document", async () => {
+    const file = makeGoogleDriveFile();
+
+    mocks.handleGoogleDriveExport.mockResolvedValue({
+      content: {
+        content: "content",
+        prefix: null,
+        sections: [],
+      },
+    });
+    mocks.upsertGdriveDocument.mockResolvedValue({
+      didUpsert: false,
+    });
+
+    const result = await syncOneFileTextDocument(
+      1,
+      oauth2Client,
+      file,
+      logger,
+      null,
+      dataSourceConfig,
+      Date.now(),
+      false,
+      1000
+    );
+
+    expect(result).toBe(false);
+    expect(mocks.updateGoogleDriveFiles).toHaveBeenCalledWith(
+      1,
+      "gdrive-file-1",
+      file,
+      undefined,
+      undefined
+    );
   });
 });
