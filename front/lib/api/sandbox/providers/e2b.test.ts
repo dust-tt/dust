@@ -138,7 +138,10 @@ describe("E2BSandboxProvider", () => {
     );
 
     expect(result).toEqual(new Ok({ providerId: "sandbox-id" }));
-    const hardeningCommand = mockCreateCommandRun.mock.calls[0][0] as string;
+    const hardeningCommand = mockCreateCommandRun.mock.calls[0][0];
+    if (typeof hardeningCommand !== "string") {
+      throw new Error("expected hardeningCommand to be a string");
+    }
     expect(hardeningCommand).toContain(
       `PATH='${SANDBOX_ROOT_SAFE_PATH}' HOME=/root`
     );
@@ -182,7 +185,10 @@ describe("E2BSandboxProvider", () => {
     );
 
     expect(result).toEqual(new Ok({ exitCode: 0, stdout: "ok", stderr: "" }));
-    const command = mockRun.mock.calls[0][0] as string;
+    const command = mockRun.mock.calls[0][0];
+    if (typeof command !== "string") {
+      throw new Error("expected command to be a string");
+    }
     expect(command).toContain(`PATH='${SANDBOX_ROOT_SAFE_PATH}'`);
     expect(command).toContain("HOME=/root");
     expect(command).toContain("BASH_ENV=/dev/null");
@@ -305,7 +311,10 @@ describe("E2BSandboxProvider", () => {
     );
 
     expect(result).toEqual(new Ok({ exitCode: 0, stdout: "ok", stderr: "" }));
-    const wrappedCommand = mockRun.mock.calls[0][0] as string;
+    const wrappedCommand = mockRun.mock.calls[0][0];
+    if (typeof wrappedCommand !== "string") {
+      throw new Error("expected wrappedCommand to be a string");
+    }
     expect(wrappedCommand).toContain(`PATH='${SANDBOX_ROOT_SAFE_PATH}'`);
     expect(wrappedCommand).toContain("/bin/bash --noprofile --norc -c");
     expect(wrappedCommand).toContain(command);
