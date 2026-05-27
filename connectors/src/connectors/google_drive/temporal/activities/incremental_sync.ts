@@ -49,6 +49,10 @@ const SEEN_AND_IGNORED_REDIS_VALUE = "ignored";
 const SEEN_AND_IGNORED_RELEVANT_DELETION_REDIS_VALUE =
   "relevant_deletion";
 const RELEVANT_DELETION_REDIS_VALUE = "1";
+const PERMANENT_GOOGLE_DRIVE_ACCESS_ERROR_REASONS = new Set([
+  "driveMembershipRequired",
+  "teamDriveMembershipRequired",
+]);
 
 type ParentsUpdate = {
   file: GoogleDriveFilesModel;
@@ -417,18 +421,10 @@ export async function incrementalSync(
 
     return { nextPageToken, newFolders, hadRelevantChange };
   } catch (e) {
-    if (
-      (e instanceof GaxiosError && e.response?.status === 403) ||
-      (e instanceof WithRetriesError &&
-        e.errors.every(
-          (error) =>
-            error.error instanceof GaxiosError &&
-            error.error.response?.status === 403
-        ))
-    ) {
+    if (isPermanentGoogleDriveAccessError(e)) {
       localLogger.error(
         {
-          error: e.message,
+          error: e instanceof Error ? e.message : "Unknown error",
         },
         `Looks like we lost access to this drive. Skipping`
       );
@@ -712,6 +708,37 @@ async function getSeenAndIgnoredState({
     wasSeen: val !== null,
     hadRelevantDeletion: val === SEEN_AND_IGNORED_RELEVANT_DELETION_REDIS_VALUE,
   };
+}
+
+function isPermanentGoogleDriveAccessError(error: unknown): boolean {
+  if (error instanceof WithRetriesError) {
+    return (
+      error.errors.length > 0 &&
+      error.errors.every((retryError) =>
+        isPermanentGoogleDriveAccessError(retryError.error)
+      )
+    );
+  }
+
+  if (!(error instanceof GaxiosError) || error.response?.status !== 403) {
+    return false;
+  }
+
+  const errorData = error.response.data?.error;
+  if (!errorData) {
+    return false;
+  }
+
+  const errors = errorData.errors;
+  if (!Array.isArray(errors)) {
+    return false;
+  }
+
+  return errors.some(
+    (entry) =>
+      typeof entry.reason === "string" &&
+      PERMANENT_GOOGLE_DRIVE_ACCESS_ERROR_REASONS.has(entry.reason)
+  );
 }
 
 async function markAsSeenAndIgnored({

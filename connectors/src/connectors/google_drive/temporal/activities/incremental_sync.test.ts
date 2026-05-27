@@ -1132,7 +1132,7 @@ describe("google drive incremental sync", () => {
     const connector = await makeConnector(suffix);
 
     mocks.getSyncPageToken.mockRejectedValue(
-      makeGoogleDriveError(403, "forbidden")
+      makeGoogleDriveError(403, "teamDriveMembershipRequired")
     );
 
     const result = await incrementalSync(
@@ -1152,6 +1152,43 @@ describe("google drive incremental sync", () => {
 
     expect(result).toBeUndefined();
     expect(syncToken).toBeNull();
+  });
+
+  it("keeps sync cadence state unchanged when Google returns a transient 403", async () => {
+    const suffix = randomUUID();
+    const connector = await makeConnector(suffix);
+    const previousLastSyncAt = new Date("2025-01-02T00:00:00.000Z");
+    const previousLastRelevantChangeAt = new Date("2025-01-01T00:00:00.000Z");
+
+    await GoogleDriveSyncTokenModel.create({
+      connectorId: connector.id,
+      driveId: "drive-1",
+      syncToken: "previous-sync-token",
+      lastSyncAt: previousLastSyncAt,
+      lastRelevantChangeAt: previousLastRelevantChangeAt,
+    });
+
+    mocks.changeList.mockRejectedValue(
+      makeGoogleDriveError(403, "rateLimitExceeded")
+    );
+
+    await expect(
+      incrementalSync(connector.id, "drive-1", false, Date.now(), "page-token")
+    ).rejects.toThrow("Google Drive error");
+
+    const syncToken = await GoogleDriveSyncTokenModel.findOne({
+      where: {
+        connectorId: connector.id,
+        driveId: "drive-1",
+      },
+    });
+
+    expect(syncToken?.lastSyncAt?.toISOString()).toBe(
+      previousLastSyncAt.toISOString()
+    );
+    expect(syncToken?.lastRelevantChangeAt?.toISOString()).toBe(
+      previousLastRelevantChangeAt.toISOString()
+    );
   });
 
   it("keeps relevant changes carried from earlier pages on a permanent drive skip", async () => {
