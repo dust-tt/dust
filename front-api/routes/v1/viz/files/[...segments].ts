@@ -2,7 +2,7 @@
 
 import {
   getConversationFilesBasePath,
-  getProjectFilesBasePath,
+  getPodFilesBasePath,
   scopedFilePathPrefixSchema,
 } from "@app/lib/api/files/mount_path";
 import { extractAndVerifyVizAccessTokenFromHeader } from "@app/lib/api/viz/access_tokens";
@@ -145,17 +145,17 @@ app.get("/:scope/:rel{.+}", async (ctx) => {
   } else {
     // Project-scoped frames have spaceId directly. Conversation-scoped frames that live in
     // a project space get conversationSpaceId resolved by fetchByShareToken.
-    const projectId = frameFile.useCaseMetadata?.spaceId ?? conversationSpaceId;
-    if (!isString(projectId)) {
+    const podId = frameFile.useCaseMetadata?.spaceId ?? conversationSpaceId;
+    if (!isString(podId)) {
       return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
-          message: "Frame has no project context for this path.",
+          message: "Frame has no pod context for this path.",
         },
       });
     }
-    basePath = getProjectFilesBasePath({ workspaceId, projectId });
+    basePath = getPodFilesBasePath({ workspaceId, podId });
   }
 
   const gcsPath = `${basePath}${normalizedRel}`;
