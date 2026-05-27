@@ -83,7 +83,8 @@ export function MCPRunAgentActionDetails({
     disabled: addedMCPServerViewIds.length === 0,
   });
 
-  const queryResource = toolOutput?.find(isRunAgentQueryResourceType) ?? null;
+  const queryResource =
+    toolOutput?.findLast(isRunAgentQueryResourceType) ?? null;
   const resultResource = toolOutput?.find(isRunAgentResultResourceType) ?? null;
   const handoverResource =
     toolOutput?.find(isAgentPauseOutputResourceType) ?? null;
@@ -91,40 +92,62 @@ export function MCPRunAgentActionDetails({
   const generatedFiles =
     toolOutput?.filter(isToolGeneratedFile).map((o) => o.resource) ?? [];
 
-  const [query, setQuery] = useState<string | null>(null);
-  const [childAgentId, setChildAgentId] = useState<string | null>(null);
-  const [childStreamIds, setChildStreamIds] = useState<{
+  const [query, setQuery] = useState<string | null>(
+    () => queryResource?.resource.text ?? null
+  );
+  const [childAgentId, setChildAgentId] = useState<string | null>(
+    () => queryResource?.resource.childAgentId ?? null
+  );
+
+  useEffect(() => {
+    if (queryResource?.resource.text) {
+      setQuery(queryResource.resource.text);
+    }
+    if (queryResource?.resource.childAgentId) {
+      setChildAgentId(queryResource.resource.childAgentId);
+    }
+  }, [queryResource]);
+
+  // Primary path: IDs are stored in the query resource once the child agent message exists.
+  const childStreamIds = useMemo(() => {
+    const { conversationId, agentMessageId } = queryResource?.resource ?? {};
+    if (conversationId && agentMessageId) {
+      return { conversationId, agentMessageId };
+    }
+    return null;
+  }, [queryResource]);
+
+  // Fast path: IDs from the live notification when the panel is open during streaming.
+  const [streamIdsFromNotification, setStreamIdsFromNotification] = useState<{
     conversationId: string;
     agentMessageId: string;
   } | null>(null);
 
-  // Extract query, childAgentId, conversationId, and agentMessageId from
-  // notifications and tool output.
   useEffect(() => {
-    if (queryResource) {
-      setQuery(queryResource.resource.text);
-      setChildAgentId(queryResource.resource.childAgentId);
+    const output = lastNotification?._meta.data.output;
+    if (!output) {
+      return;
     }
-    if (lastNotification?._meta.data.output) {
-      const output = lastNotification._meta.data.output;
-      if (isStoreResourceProgressOutput(output)) {
-        const runAgentQueryResource = output.contents.find(
-          isRunAgentQueryResourceType
-        );
-        if (runAgentQueryResource) {
-          setQuery(runAgentQueryResource.resource.text);
-          setChildAgentId(runAgentQueryResource.resource.childAgentId);
-        }
+    // Populate query/childAgentId from the store_resource notification (fast path for live runs,
+    // since toolOutput is null until agent_action_success fires).
+    if (isStoreResourceProgressOutput(output)) {
+      const r = output.contents.find(isRunAgentQueryResourceType);
+      if (r?.resource.text) {
+        setQuery(r.resource.text);
       }
-      // Extract stream connection IDs from run_agent progress notification.
-      if (isRunAgentQueryProgressOutput(output) && output.agentMessageId) {
-        setChildStreamIds({
-          conversationId: output.conversationId,
-          agentMessageId: output.agentMessageId,
-        });
+      if (r?.resource.childAgentId) {
+        setChildAgentId(r.resource.childAgentId);
       }
     }
-  }, [queryResource, lastNotification]);
+    if (isRunAgentQueryProgressOutput(output) && output.agentMessageId) {
+      setStreamIdsFromNotification({
+        conversationId: output.conversationId,
+        agentMessageId: output.agentMessageId,
+      });
+    }
+  }, [lastNotification]);
+
+  const resolvedStreamIds = childStreamIds ?? streamIdsFromNotification;
 
   // Subscribe to the child agent's event stream.
   const {
@@ -136,7 +159,7 @@ export function MCPRunAgentActionDetails({
     isDone: isStreamDone,
     isError: isStreamError,
   } = useChildAgentStream({
-    childStreamIds,
+    childStreamIds: resolvedStreamIds,
     owner,
     // We only stream when we are in the sidebar, in the conversation we only show the query.
     disabled: displayContext === "conversation",
@@ -153,11 +176,11 @@ export function MCPRunAgentActionDetails({
     if (resultResource) {
       return resultResource.resource.uri;
     }
-    if (childStreamIds) {
-      return `/w/${owner.sId}/conversation/${childStreamIds.conversationId}`;
+    if (resolvedStreamIds) {
+      return `/w/${owner.sId}/conversation/${resolvedStreamIds.conversationId}`;
     }
     return null;
-  }, [resultResource, childStreamIds, owner.sId]);
+  }, [resultResource, resolvedStreamIds, owner.sId]);
 
   const references = useMemo(() => {
     if (!resultResource?.resource.refs) {
