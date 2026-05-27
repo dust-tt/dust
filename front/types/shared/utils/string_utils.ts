@@ -1,15 +1,3 @@
-import { replaceMentionsWithAt } from "@app/lib/mentions/format";
-import removeMarkdown from "remove-markdown";
-
-const CONTENT_NODE_MENTION_REGEX =
-  /:content_node_mention\[([^\]]+)](\{url=([^}]+)})?/;
-
-function replaceContentNodeMarkdownWithQuotedTitle(markdown: string) {
-  return markdown.replace(CONTENT_NODE_MENTION_REGEX, (_match, title) => {
-    return `"${title}"`;
-  });
-}
-
 /**
  * Substring that ensures we don't cut a string in the middle of a unicode
  * character.
@@ -63,35 +51,6 @@ export function escapeXml(text: string): string {
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
-}
-
-const HTML_ENTITIES: Record<string, string> = {
-  "&nbsp;": " ",
-  "&amp;": "&",
-  "&lt;": "<",
-  "&gt;": ">",
-  "&quot;": '"',
-  "&#39;": "'",
-};
-
-const HTML_ENTITY_PATTERN = new RegExp(
-  Object.keys(HTML_ENTITIES).join("|"),
-  "g"
-);
-
-function decodeHtmlEntities(text: string): string {
-  return text.replace(
-    HTML_ENTITY_PATTERN,
-    (match) => HTML_ENTITIES[match] ?? match
-  );
-}
-
-export function stripMarkdown(text: string): string {
-  return decodeHtmlEntities(
-    removeMarkdown(
-      replaceMentionsWithAt(replaceContentNodeMarkdownWithQuotedTitle(text))
-    )
-  );
 }
 
 // Conjugates a verb based on a count, assuming it only comes down to adding an

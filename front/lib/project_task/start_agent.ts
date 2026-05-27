@@ -267,7 +267,7 @@ export async function startAgentForProjectTask(
   const content =
     "Let's work on: " +
     taskDirective +
-    "\n\n" +
+    ".\n\n" +
     (customMessage ?? "") +
     "\n\n" +
     "Read the attached file in full for more instructions.";
