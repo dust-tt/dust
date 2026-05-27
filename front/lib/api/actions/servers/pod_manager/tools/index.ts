@@ -816,7 +816,7 @@ export function createProjectManagerTools(
         }
 
         const { space } = contextRes.value;
-        const user = auth.getNonNullableUser();
+        const user = auth.user();
         const owner = auth.getNonNullableWorkspace();
 
         // Get origin and timezone from the current conversation
@@ -871,7 +871,9 @@ export function createProjectManagerTools(
           mentions,
           context: {
             username: agentName,
-            fullName: `@${agentName} on behalf of ${user.fullName()}`,
+            fullName: user
+              ? `@${agentName} on behalf of ${user.fullName()}`
+              : `@${agentName}`,
             email: null,
             profilePictureUrl: agentProfilePictureUrl,
             timezone,
@@ -1072,7 +1074,7 @@ export function createProjectManagerTools(
         }
 
         const { space } = contextRes.value;
-        const user = auth.getNonNullableUser();
+        const user = auth.user();
         const owner = auth.getNonNullableWorkspace();
 
         const conversationId =
@@ -1151,7 +1153,9 @@ export function createProjectManagerTools(
           mentions,
           context: {
             username: agentName,
-            fullName: `@${agentName} on behalf of ${user.fullName()}`,
+            fullName: user
+              ? `@${agentName} on behalf of ${user.fullName()}`
+              : `@${agentName}`,
             email: null,
             profilePictureUrl: agentProfilePictureUrl,
             timezone,
