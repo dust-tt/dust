@@ -23,10 +23,7 @@ import {
 import { useAppRouter } from "@app/lib/platform";
 import { usePokePlans } from "@app/lib/swr/poke";
 import type { PlanType, SubscriptionType } from "@app/types/plan";
-import {
-  isSubscriptionMetronomeBilled,
-  isSubscriptionStripeBilled,
-} from "@app/types/plan";
+import { isSubscriptionMetronomeBilled } from "@app/types/plan";
 import type { ProgrammaticUsageConfigurationType } from "@app/types/programmatic_usage";
 import { isDevelopment } from "@app/types/shared/env";
 import type { WorkspaceType } from "@app/types/user";
@@ -297,14 +294,12 @@ export function ActiveSubscriptionTable({
   const status = getSubscriptionDisplayStatus(subscription);
   const { chipColor, chipLabel, cardClass } = STATUS_CONFIG[status];
 
-  // For workspaces with no paid subscription yet, the flow is selected by the
-  // Metronome billing feature; otherwise it follows the active billing rail.
-  const hasNoBillingYet =
-    !isSubscriptionStripeBilled(subscription) &&
-    !isSubscriptionMetronomeBilled(subscription);
+  // Show the Metronome flow whenever the workspace is already Metronome-billed,
+  // or whenever the Metronome billing feature is enabled for it (FF or
+  // kill-switch off). This includes Stripe-billed + shadow-Metronome workspaces
+  // mid-migration, so operators can invoke switch_contract from poke.
   const useMetronomeFlow =
-    isSubscriptionMetronomeBilled(subscription) ||
-    (hasNoBillingYet && hasMetronomeBillingFeature);
+    isSubscriptionMetronomeBilled(subscription) || hasMetronomeBillingFeature;
 
   return (
     <div className="flex flex-col gap-3">
