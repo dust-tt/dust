@@ -53,7 +53,7 @@ export async function getAvailableModelsForWorkspace(
   return filterEnabledModels(allUsedModels, {
     featureFlags,
     plan,
-    owner,
+    regionalModelsOnly: owner.regionalModelsOnly,
     region,
     whitelistedProviders,
   });

@@ -757,7 +757,7 @@ export async function postUserMessage(
       !isModelAvailable(supportedModelConfig, {
         featureFlags,
         plan,
-        owner,
+        regionalModelsOnly: owner.regionalModelsOnly,
         region: regionConfig.getCurrentRegion(),
       })
     ) {

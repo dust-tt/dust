@@ -44,7 +44,7 @@ export function ModelProvidersPageContent({
       isModelAvailable(model, {
         featureFlags,
         plan,
-        owner: workspace,
+        regionalModelsOnly: workspace.regionalModelsOnly,
         region: regionInfo.name,
       })
   );

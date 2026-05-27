@@ -91,7 +91,7 @@ describe("isModelAvailable", () => {
       isModelAvailable(model, {
         featureFlags: [],
         plan,
-        owner,
+        regionalModelsOnly: owner.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(true);
@@ -108,7 +108,7 @@ describe("isModelAvailable", () => {
       isModelAvailable(model, {
         featureFlags: ["deepseek_feature"],
         plan,
-        owner,
+        regionalModelsOnly: owner.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(true);
@@ -125,7 +125,7 @@ describe("isModelAvailable", () => {
       isModelAvailable(model, {
         featureFlags: [],
         plan,
-        owner,
+        regionalModelsOnly: owner.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(false);
@@ -139,7 +139,7 @@ describe("isModelAvailable", () => {
       isModelAvailable(model, {
         featureFlags: [],
         plan,
-        owner,
+        regionalModelsOnly: owner.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(true);
@@ -153,7 +153,7 @@ describe("isModelAvailable", () => {
       isModelAvailable(model, {
         featureFlags: [],
         plan,
-        owner,
+        regionalModelsOnly: owner.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(true);
@@ -170,7 +170,7 @@ describe("isModelAvailable", () => {
       isModelAvailable(model, {
         featureFlags: [],
         plan,
-        owner,
+        regionalModelsOnly: owner.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(false);
@@ -186,7 +186,7 @@ describe("isModelAvailable", () => {
       isModelAvailable(model, {
         featureFlags: [],
         plan: null,
-        owner,
+        regionalModelsOnly: owner.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(false);
@@ -203,7 +203,7 @@ describe("isModelAvailable", () => {
       isModelAvailable(model, {
         featureFlags: [],
         plan,
-        owner,
+        regionalModelsOnly: owner.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(false);
@@ -220,7 +220,7 @@ describe("isModelAvailable", () => {
       isModelAvailable(model, {
         featureFlags: [],
         plan,
-        owner,
+        regionalModelsOnly: owner.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(true);
@@ -237,7 +237,7 @@ describe("isModelAvailable", () => {
       isModelAvailable(model, {
         featureFlags: [],
         plan,
-        owner,
+        regionalModelsOnly: owner.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(true);
@@ -254,7 +254,7 @@ describe("isModelAvailable", () => {
       isModelAvailable(model, {
         featureFlags: [],
         plan,
-        owner,
+        regionalModelsOnly: owner.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(true);
@@ -271,7 +271,7 @@ describe("isModelAvailable", () => {
       isModelAvailable(model, {
         featureFlags: ["deepseek_feature"],
         plan,
-        owner,
+        regionalModelsOnly: owner.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(true);
@@ -288,7 +288,7 @@ describe("isModelAvailable", () => {
       isModelAvailable(model, {
         featureFlags: [],
         plan,
-        owner,
+        regionalModelsOnly: owner.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(false);
@@ -304,7 +304,7 @@ describe("filterEnabledModels", () => {
     const result = filterEnabledModels([model], {
       featureFlags: [],
       plan: auth.plan(),
-      owner: auth.getNonNullableWorkspace(),
+      regionalModelsOnly: auth.getNonNullableWorkspace().regionalModelsOnly,
       region: TEST_REGION,
       whitelistedProviders: getWhitelistedProviders(auth),
     });
@@ -324,7 +324,7 @@ describe("filterEnabledModels", () => {
     const result = filterEnabledModels([model], {
       featureFlags: [],
       plan: auth.plan(),
-      owner: auth.getNonNullableWorkspace(),
+      regionalModelsOnly: auth.getNonNullableWorkspace().regionalModelsOnly,
       region: TEST_REGION,
       whitelistedProviders: getWhitelistedProviders(auth),
     });
@@ -343,7 +343,7 @@ describe("filterEnabledModels", () => {
     const result = filterEnabledModels([model], {
       featureFlags: [],
       plan: auth.plan(),
-      owner: auth.getNonNullableWorkspace(),
+      regionalModelsOnly: auth.getNonNullableWorkspace().regionalModelsOnly,
       region: TEST_REGION,
       whitelistedProviders: getWhitelistedProviders(auth),
     });
@@ -362,7 +362,7 @@ describe("filterEnabledModels", () => {
     const result = filterEnabledModels([model], {
       featureFlags: ["deepseek_feature"],
       plan: auth.plan(),
-      owner: auth.getNonNullableWorkspace(),
+      regionalModelsOnly: auth.getNonNullableWorkspace().regionalModelsOnly,
       region: TEST_REGION,
       whitelistedProviders: getWhitelistedProviders(auth),
     });
@@ -386,7 +386,7 @@ describe("filterEnabledModels", () => {
     const result = filterEnabledModels([openaiModel, xaiModel], {
       featureFlags: [],
       plan: auth.plan(),
-      owner: auth.getNonNullableWorkspace(),
+      regionalModelsOnly: auth.getNonNullableWorkspace().regionalModelsOnly,
       region: TEST_REGION,
       whitelistedProviders: getWhitelistedProviders(auth),
     });
@@ -404,7 +404,7 @@ describe("filterEnabledModels", () => {
     const result = filterEnabledModels([model], {
       featureFlags: [],
       plan: auth.plan(),
-      owner: auth.getNonNullableWorkspace(),
+      regionalModelsOnly: auth.getNonNullableWorkspace().regionalModelsOnly,
       region: TEST_REGION,
       whitelistedProviders: getWhitelistedProviders(auth),
     });

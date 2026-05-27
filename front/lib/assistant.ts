@@ -11,7 +11,6 @@ import type {
 } from "@app/types/assistant/models/types";
 import type { PlanType } from "@app/types/plan";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
-import type { WorkspaceType } from "@app/types/user";
 
 export function isEnterpriseOrDust(plan: PlanType | null): boolean {
   return (
@@ -26,12 +25,12 @@ export function isModelAvailable(
   {
     featureFlags,
     plan,
-    owner,
+    regionalModelsOnly,
     region,
   }: {
     featureFlags: WhitelistableFeature[];
     plan: PlanType | null;
-    owner: WorkspaceType;
+    regionalModelsOnly: boolean;
     region: RegionType;
   }
 ) {
@@ -43,7 +42,7 @@ export function isModelAvailable(
     return false;
   }
 
-  if (owner.regionalModelsOnly && m.regionalAvailability[region] !== true) {
+  if (regionalModelsOnly && m.regionalAvailability[region] !== true) {
     return false;
   }
 
@@ -70,19 +69,19 @@ export function isModelEnabled(
   {
     featureFlags,
     plan,
-    owner,
+    regionalModelsOnly,
     region,
     whitelistedProviders,
   }: {
     featureFlags: WhitelistableFeature[];
     plan: PlanType | null;
-    owner: WorkspaceType;
+    regionalModelsOnly: boolean;
     region: RegionType;
     whitelistedProviders: Set<ModelProviderIdType>;
   }
 ) {
   return (
-    isModelAvailable(m, { featureFlags, plan, owner, region }) &&
+    isModelAvailable(m, { featureFlags, plan, regionalModelsOnly, region }) &&
     whitelistedProviders.has(m.providerId)
   );
 }
@@ -92,13 +91,13 @@ export function filterEnabledModels(
   {
     featureFlags,
     plan,
-    owner,
+    regionalModelsOnly,
     region,
     whitelistedProviders,
   }: {
     featureFlags: WhitelistableFeature[];
     plan: PlanType | null;
-    owner: WorkspaceType;
+    regionalModelsOnly: boolean;
     region: RegionType;
     whitelistedProviders: Set<ModelProviderIdType>;
   }
@@ -107,7 +106,7 @@ export function filterEnabledModels(
     isModelEnabled(m, {
       featureFlags,
       plan,
-      owner,
+      regionalModelsOnly,
       region,
       whitelistedProviders,
     })

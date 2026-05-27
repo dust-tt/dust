@@ -36,7 +36,7 @@ async function handler(
       const models = filterEnabledModels(allUsedModels, {
         featureFlags,
         plan,
-        owner,
+        regionalModelsOnly: owner.regionalModelsOnly,
         region,
         whitelistedProviders,
       });
