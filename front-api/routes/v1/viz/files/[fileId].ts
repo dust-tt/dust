@@ -1,4 +1,3 @@
-// @migration-status: MIGRATED_TO_HONO
 /* eslint-disable dust/enforce-client-types-in-public-api */
 
 import { extractAndVerifyVizAccessTokenFromHeader } from "@app/lib/api/viz/access_tokens";
@@ -10,13 +9,19 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types/error";
 import { isInteractiveContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
-import { isString } from "@app/types/shared/utils/general";
-import assert from "assert";
-import type { NextApiRequest, NextApiResponse } from "next";
+import { unauthedApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  fileId: z.string().min(1),
+});
+
+// Mounted at /api/v1/viz/files; serves single-segment file IDs (fil_xxx).
+const app = unauthedApp();
 
 /**
  * @ignoreswagger
@@ -24,36 +29,14 @@ import type { NextApiRequest, NextApiResponse } from "next";
  * Undocumented API endpoint to get files used in a vizualisation. This endpoint is only called
  * when rendering vizualisations with an access token.
  */
-async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<never>>
-): Promise<void> {
-  if (req.method !== "GET") {
-    return apiError(req, res, {
-      status_code: 405,
-      api_error: {
-        type: "method_not_supported_error",
-        message: "Only GET method is supported.",
-      },
-    });
-  }
-
-  const { fileId } = req.query;
-  if (!isString(fileId)) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Missing token or fileId parameter.",
-      },
-    });
-  }
+app.get("/:fileId", validate("param", ParamsSchema), async (ctx) => {
+  const { fileId } = ctx.req.valid("param");
 
   const tokenRes = extractAndVerifyVizAccessTokenFromHeader(
-    req.headers.authorization
+    ctx.req.header("authorization")
   );
   if (tokenRes.isErr()) {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 401,
       api_error: {
         type: "workspace_auth_error",
@@ -68,7 +51,7 @@ async function handler(
     tokenPayload.fileToken
   );
   if (!result) {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "file_not_found",
@@ -81,7 +64,7 @@ async function handler(
     result.file.workspaceId
   );
   if (!workspace) {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "file_not_found",
@@ -94,7 +77,7 @@ async function handler(
 
   // If current share scope differs from token scope, reject. It means share scope changed.
   if (shareScope !== tokenPayload.shareScope) {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "file_not_found",
@@ -108,7 +91,7 @@ async function handler(
     !frameFile.isInteractiveContent ||
     !isInteractiveContentType(frameFile.contentType)
   ) {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -119,7 +102,7 @@ async function handler(
 
   // Check if file is safe to display.
   if (!frameFile.isSafeToDisplay()) {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -133,7 +116,7 @@ async function handler(
     shareScope === "public" &&
     !workspace.canShareInteractiveContentPublicly
   ) {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "file_not_found",
@@ -146,7 +129,7 @@ async function handler(
   const frameConversationId = frameFile.useCaseMetadata?.conversationId;
   const frameSpaceId = frameFile.useCaseMetadata?.spaceId;
   if (!frameConversationId && !frameSpaceId) {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -163,7 +146,7 @@ async function handler(
     fileId
   );
   if (!targetFile) {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: { type: "file_not_found", message: "File not found." },
     });
@@ -181,8 +164,7 @@ async function handler(
       requestedProjectId: frameSpaceId,
     });
   } else {
-    assert(
-      false,
+    throw new Error(
       "Invalid file context: both conversationId and spaceId are missing"
     );
   }
@@ -195,26 +177,31 @@ async function handler(
       "Error checking file access in conversation"
     );
 
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: { type: "file_not_found", message: "File not found." },
     });
   }
 
   const readStream = targetFile.getSharedReadStream(owner, "original");
-  readStream.on("error", () => {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "file_not_found",
-        message: "File not found.",
-      },
-    });
+  const webStream = new ReadableStream({
+    start(controller) {
+      readStream.on("data", (chunk) => controller.enqueue(chunk));
+      readStream.on("end", () => controller.close());
+      readStream.on("error", (err) => {
+        logger.error({ err, fileId }, "Error streaming viz file");
+        controller.error(err);
+      });
+    },
+    cancel() {
+      readStream.destroy();
+    },
   });
-  res.setHeader("Content-Type", targetFile.contentType);
-  readStream.pipe(res);
 
-  return;
-}
+  return new Response(webStream, {
+    status: 200,
+    headers: { "Content-Type": targetFile.contentType },
+  });
+});
 
-export default handler;
+export default app;

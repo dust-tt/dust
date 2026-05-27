@@ -1,3 +1,4 @@
+// @migration-status: MIGRATED_TO_HONO
 /* eslint-disable dust/enforce-client-types-in-public-api */
 import handler from "@app/pages/api/v1/w/[wId]/spaces/[spaceId]/apps/[aId]/runs/[runId]";
 
