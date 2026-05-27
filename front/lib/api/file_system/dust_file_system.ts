@@ -98,11 +98,11 @@ export class DustFileSystem {
    */
   static async forConversation(
     auth: Authenticator,
+    // TODO(FILE SYSTEM MIGRATION): Ideally, we accept a ConversationResource directly.
     conversation: ConversationWithoutContentType
   ): Promise<Result<DustFileSystem, DustFileSystemError>> {
     const owner = auth.getNonNullableWorkspace();
 
-    // TODO: Can't we use conversation resource so we can check the canWrite or canRead?!
     const convMount: FileSystemMount = {
       kind: "conversation",
       id: conversation.sId,
