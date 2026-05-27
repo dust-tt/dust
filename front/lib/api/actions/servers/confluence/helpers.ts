@@ -22,6 +22,8 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { isString } from "@app/types/shared/utils/general";
+import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type { z } from "zod";
 
@@ -87,13 +89,62 @@ async function confluenceApiCall<T extends z.ZodTypeAny>(
   }
 }
 
+type ConfluenceResourceInfo = { id: string; url: string; name: string };
+
+async function getConfluenceBaseUrlAndResourceInfo(
+  accessToken: string,
+  cloudUrl: string | null
+): Promise<{ baseUrl: string; resourceInfo: ConfluenceResourceInfo } | null> {
+  const result = await confluenceApiCall(
+    { endpoint: "/oauth/token/accessible-resources", accessToken },
+    AtlassianResourceSchema,
+    { baseUrl: "https://api.atlassian.com" }
+  );
+
+  if (result.isErr()) {
+    logger.error("Failed to get accessible resources", { error: result.error });
+    return null;
+  }
+
+  const resources = result.value;
+  if (!resources || resources.length === 0) {
+    logger.error("No accessible resources found");
+    return null;
+  }
+
+  const resource = !cloudUrl
+    ? resources[0]
+    : (resources.find((r) => r.url === cloudUrl) ?? null);
+
+  if (!resource) {
+    return null;
+  }
+
+  return {
+    baseUrl: `https://api.atlassian.com/ex/confluence/${resource.id}`,
+    resourceInfo: { id: resource.id, url: resource.url, name: resource.name },
+  };
+}
+
+function getConfluenceCloudUrl(authInfo?: AuthInfo): string | null {
+  if (!authInfo?.extra) {
+    return null;
+  }
+  const cloudUrl = authInfo.extra.confluence_cloud_url;
+  if (!isString(cloudUrl)) {
+    return null;
+  }
+  return cloudUrl;
+}
+
 export async function withAuth<T>(
-  accessToken: string | undefined,
+  authInfo: AuthInfo | undefined,
   action: (baseUrl: string, accessToken: string) => Promise<T>
 ): Promise<
   | { success: true; result: T }
   | { success: false; error: CallToolResult["content"] }
 > {
+  const accessToken = authInfo?.token;
   if (!accessToken) {
     return {
       success: false,
@@ -102,19 +153,26 @@ export async function withAuth<T>(
   }
 
   try {
-    const baseUrl = await getConfluenceBaseUrl(accessToken);
-    if (!baseUrl) {
+    const cloudUrl = getConfluenceCloudUrl(authInfo);
+    const resolved = await getConfluenceBaseUrlAndResourceInfo(
+      accessToken,
+      cloudUrl
+    );
+    if (!resolved) {
       return {
         success: false,
         error: [
           {
             type: "text" as const,
-            text: "Failed to determine Confluence instance URL. Please check your connection.",
+            text: cloudUrl
+              ? `Confluence resource could not be found for url: ${cloudUrl}`
+              : "Failed to determine Confluence instance URL. Please check your connection.",
           },
         ],
       };
     }
 
+    const { baseUrl } = resolved;
     const result = await action(baseUrl, accessToken);
     return { success: true, result };
   } catch (error) {
@@ -129,48 +187,6 @@ export async function withAuth<T>(
       ],
     };
   }
-}
-
-async function getConfluenceBaseUrl(
-  accessToken: string
-): Promise<string | null> {
-  const resourceInfo = await getConfluenceResourceInfo(accessToken);
-  if (resourceInfo?.id) {
-    return `https://api.atlassian.com/ex/confluence/${resourceInfo.id}`;
-  }
-  return null;
-}
-
-async function getConfluenceResourceInfo(
-  accessToken: string
-): Promise<{ id: string; name: string; url: string } | null> {
-  const result = await confluenceApiCall(
-    {
-      endpoint: "/oauth/token/accessible-resources",
-      accessToken,
-    },
-    AtlassianResourceSchema,
-    {
-      baseUrl: "https://api.atlassian.com",
-    }
-  );
-
-  if (result.isErr()) {
-    logger.error("Failed to get accessible resources", { error: result.error });
-    return null;
-  }
-
-  const resources = result.value;
-  if (!resources || resources.length === 0) {
-    logger.error("No accessible resources found");
-    return null;
-  }
-  const resource = resources[0];
-  return {
-    id: resource.id,
-    name: resource.name,
-    url: resource.url,
-  };
 }
 
 export async function getCurrentUser(

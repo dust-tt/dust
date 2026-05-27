@@ -111,6 +111,7 @@ const SUPPORTED_OAUTH_CREDENTIALS = [
   "snowflake_warehouse",
   "ukg_ready_company_id",
   "jira_cloud_url",
+  "confluence_cloud_url",
 ] as const;
 
 export type SupportedOAuthCredentials =
@@ -316,7 +317,23 @@ export function getProviderRequiredOAuthCredentialInputs({
             helpMessage:
               "Your Atlassian Cloud URL (e.g. https://company.atlassian.net). " +
               "Optional — leave blank to use the first accessible instance.",
-            validator: isValidJiraCloudUrlOrEmpty,
+            validator: isValidAtlassianCloudUrlOrEmpty,
+            overridableAtPersonalAuth: false,
+          },
+        };
+        return result;
+      }
+      return null;
+    case "confluence_tools":
+      if (useCase === "platform_actions" || useCase === "personal_actions") {
+        const result: OAuthCredentialInputs = {
+          confluence_cloud_url: {
+            label: "Confluence Cloud URL",
+            value: undefined,
+            helpMessage:
+              "Your Atlassian Cloud URL (e.g. https://company.atlassian.net). " +
+              "Optional — leave blank to use the first accessible instance.",
+            validator: isValidAtlassianCloudUrlOrEmpty,
             overridableAtPersonalAuth: false,
           },
         };
@@ -332,7 +349,6 @@ export function getProviderRequiredOAuthCredentialInputs({
     case "monday":
     case "notion":
     case "confluence":
-    case "confluence_tools":
     case "github":
     case "google_drive":
     case "intercom":
@@ -498,7 +514,7 @@ export function isValidZendeskSubdomain(s: unknown): s is string {
 const ATLASSIAN_CLOUD_URL_REGEX =
   /^https:\/\/[a-z0-9][a-z0-9-]*\.atlassian\.net$/i;
 
-export function normalizeJiraCloudUrl(raw: string): string {
+export function normalizeAtlassianCloudUrl(raw: string): string {
   let url = raw.trim();
   if (!url.startsWith("http://") && !url.startsWith("https://")) {
     url = "https://" + url;
@@ -506,20 +522,22 @@ export function normalizeJiraCloudUrl(raw: string): string {
   return url.replace(/\/+$/, "");
 }
 
-export function isValidJiraCloudUrl(cloudUrl: string | undefined): boolean {
+export function isValidAtlassianCloudUrl(
+  cloudUrl: string | undefined
+): boolean {
   if (!cloudUrl) {
     return false;
   }
-  return ATLASSIAN_CLOUD_URL_REGEX.test(normalizeJiraCloudUrl(cloudUrl));
+  return ATLASSIAN_CLOUD_URL_REGEX.test(normalizeAtlassianCloudUrl(cloudUrl));
 }
 
-export function isValidJiraCloudUrlOrEmpty(
+export function isValidAtlassianCloudUrlOrEmpty(
   cloudUrl: string | undefined
 ): boolean {
   if (!cloudUrl || cloudUrl.trim() === "") {
     return true;
   }
-  return ATLASSIAN_CLOUD_URL_REGEX.test(normalizeJiraCloudUrl(cloudUrl));
+  return ATLASSIAN_CLOUD_URL_REGEX.test(normalizeAtlassianCloudUrl(cloudUrl));
 }
 
 export function isValidSalesforceDomain(s: unknown): s is string {
