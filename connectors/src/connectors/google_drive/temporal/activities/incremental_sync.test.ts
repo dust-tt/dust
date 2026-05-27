@@ -629,7 +629,7 @@ describe("google drive incremental sync", () => {
       name: "Planning Notes",
       parent: `parent-${suffix}`,
     });
-    const beforeSync = Date.now();
+    const beforeSyncMs = Date.now();
 
     mocks.changeList.mockResolvedValue({
       data: {
@@ -659,11 +659,11 @@ describe("google drive incremental sync", () => {
     expect(result?.hadRelevantChange).toBe(true);
     expect(syncToken?.syncToken).toBe("sync-token");
     expect(syncToken?.lastSyncAt?.getTime()).toBeGreaterThanOrEqual(
-      beforeSync
+      beforeSyncMs
     );
     expect(
       syncToken?.lastRelevantChangeAt?.getTime()
-    ).toBeGreaterThanOrEqual(beforeSync);
+    ).toBeGreaterThanOrEqual(beforeSyncMs);
   });
 
   it("records only lastSyncAt when a completed sync has no relevant changes", async () => {
@@ -816,7 +816,7 @@ describe("google drive incremental sync", () => {
     const suffix = randomUUID();
     const connector = await makeConnector(suffix);
     const previousLastRelevantChangeAt = new Date("2025-01-01T00:00:00.000Z");
-    const beforeSync = Date.now();
+    const beforeSyncMs = Date.now();
 
     await GoogleDriveSyncTokenModel.create({
       connectorId: connector.id,
@@ -853,7 +853,7 @@ describe("google drive incremental sync", () => {
 
     expect(result?.hadRelevantChange).toBe(true);
     expect(syncToken?.lastRelevantChangeAt?.getTime()).toBeGreaterThanOrEqual(
-      beforeSync
+      beforeSyncMs
     );
   });
 

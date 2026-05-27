@@ -1,4 +1,4 @@
-import { handleFileExport } from "@connectors/connectors/google_drive/temporal/file/handle_file_export";
+import { handleFileExportWithResult } from "@connectors/connectors/google_drive/temporal/file/handle_file_export";
 import { updateGoogleDriveFiles } from "@connectors/connectors/google_drive/temporal/file/update_google_drive_files";
 import { isGoogleDriveSpreadSheetFile } from "@connectors/connectors/google_drive/temporal/mime_types";
 import { syncSpreadSheet } from "@connectors/connectors/google_drive/temporal/spreadsheets";
@@ -20,6 +20,7 @@ export async function syncOneFileTable(
   maxDocumentLen: number,
   startSyncTs: number
 ) {
+  let didSyncFile = false;
   let skipReason: string | undefined;
   const upsertTimestampMs = undefined;
 
@@ -36,15 +37,17 @@ export async function syncOneFileTable(
     if (!res.isSupported) {
       return false;
     }
+    didSyncFile = true;
     if (res.skipReason) {
       localLogger.info(
         {},
         `Google Spreadsheet document skipped with skip reason ${res.skipReason}`
       );
       skipReason = res.skipReason;
+      didSyncFile = false;
     }
   } else {
-    await handleFileExport(
+    const exportResult = await handleFileExportWithResult(
       oauth2client,
       documentId,
       file,
@@ -54,6 +57,7 @@ export async function syncOneFileTable(
       connectorId,
       startSyncTs
     );
+    didSyncFile = exportResult.didProcessContent;
   }
   await updateGoogleDriveFiles(
     connectorId,
@@ -63,5 +67,5 @@ export async function syncOneFileTable(
     upsertTimestampMs
   );
 
-  return !skipReason;
+  return didSyncFile;
 }
