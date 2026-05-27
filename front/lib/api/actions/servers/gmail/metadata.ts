@@ -30,14 +30,13 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
   create_draft: {
     description: `Create a new email draft in Gmail, or a reply draft to an existing message.
 - The draft will be saved in the user's Gmail account and can be reviewed and sent later.
-- If replyToMessageId is provided, the draft will be created as a reply in the existing thread, with the original message quoted.
 - The draft will include proper email headers and formatting.`,
     schema: {
       to: z
         .array(z.string())
         .optional()
         .describe(
-          "The email addresses of the recipients (optional if replyToMessageId is set, acts as override)."
+          "The email addresses of the recipients (optional if replyToMessageId is set, defaults to the original sender, acts as override)."
         ),
       cc: z
         .array(z.string())
@@ -55,11 +54,13 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
         .string()
         .optional()
         .describe(
-          "The subject line of the email (required if replyToMessageId is not set, should be omitted if replyToMessageId is set)."
+          "The subject line of the email (required if replyToMessageId is not set, must be omitted if replyToMessageId is set)."
         ),
       contentType: z
         .enum(["text/plain", "text/html"])
-        .describe("The content type of the email (text/plain or text/html)."),
+        .describe(
+          "The content type of the email body. Use text/plain for plain text or text/html for HTML. Must be text/html when replyToMessageId is set."
+        ),
       body: z.string().describe("The body of the email"),
       replyToMessageId: z
         .string()
@@ -187,14 +188,13 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
     description: `Send an email directly via Gmail.
 - The email will be sent immediately without creating a draft.
 - Use this to send emails when you have all the required information.
-- If replyToMessageId is provided, the email will be sent as a reply in the existing thread, with the original message quoted.
 - The email will include proper headers and formatting.`,
     schema: {
       to: z
         .array(z.string())
         .optional()
         .describe(
-          "The email addresses of the recipients (optional if replyToMessageId is set, acts as override)."
+          "The email addresses of the recipients (optional if replyToMessageId is set, defaults to the original sender, acts as override)."
         ),
       cc: z
         .array(z.string())
@@ -219,11 +219,13 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
         .string()
         .optional()
         .describe(
-          "The subject line of the email (required if replyToMessageId is not set, should be omitted if replyToMessageId is set)."
+          "The subject line of the email (required if replyToMessageId is not set, must be omitted if replyToMessageId is set)."
         ),
       contentType: z
         .enum(["text/plain", "text/html"])
-        .describe("The content type of the email (text/plain or text/html)."),
+        .describe(
+          "The content type of the email body. Use text/plain for plain text or text/html for HTML. Must be text/html when replyToMessageId is set."
+        ),
       body: z.string().describe("The body of the email"),
       replyToMessageId: z
         .string()
