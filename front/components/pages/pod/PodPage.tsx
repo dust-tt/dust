@@ -1,10 +1,10 @@
 import { SpaceAboutTab } from "@app/components/assistant/conversation/space/about/SpaceAboutTab";
 import type { TaskOwnerFilter } from "@app/components/assistant/conversation/space/conversations/project_tasks/projectTasksListScope";
 import { ManageUsersPanel } from "@app/components/assistant/conversation/space/ManageUsersPanel";
-import { SpaceTasksTab } from "@app/components/assistant/conversation/space/SpaceTasksTab";
 import { PodConversationsTab } from "@app/components/pod/conversation/PodConversationsTab";
 import { PodFilesTab } from "@app/components/pod/files/PodFilesTab";
 import { PodHeaderActions } from "@app/components/pod/PodHeaderActions";
+import { PodTasksTab } from "@app/components/pod/tasks/PodTasksTab";
 import {
   type PodConversationListFilter,
   usePodConversations,
@@ -359,9 +359,9 @@ export function PodPage() {
         </TabsContent>
 
         <TabsContent value="tasks">
-          <SpaceTasksTab
+          <PodTasksTab
             owner={owner}
-            spaceInfo={podInfo}
+            podInfo={podInfo}
             taskOwnerFilter={podUiPreferences.tasksOwnerFilter}
             onTaskOwnerFilterChange={handleTaskOwnerFilterChange}
           />

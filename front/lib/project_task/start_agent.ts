@@ -10,10 +10,7 @@ import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { APIErrorType } from "@app/types/error";
-import type {
-  ProjectTaskSourceInfo,
-  ProjectTaskType,
-} from "@app/types/project_task";
+import type { PodTaskSourceInfo, PodTaskType } from "@app/types/project_task";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
@@ -45,7 +42,7 @@ function linkLabelForUrlOnly(url: string): string {
   }
 }
 
-function formatTaskSourcesMarkdown(sources: ProjectTaskSourceInfo[]): string {
+function formatTaskSourcesMarkdown(sources: PodTaskSourceInfo[]): string {
   const lines = sources
     .map((s) => {
       const title = s.sourceTitle?.trim();
@@ -77,7 +74,7 @@ function buildTaskKickoffPrompt({
 }: {
   taskId: string;
   taskText: string;
-  sources: ProjectTaskSourceInfo[];
+  sources: PodTaskSourceInfo[];
   agentInstructions: string | null;
 }): string {
   const trimmedAgentInstructions = agentInstructions?.trim();
@@ -132,7 +129,7 @@ export async function startAgentForProjectTask(
 ): Promise<
   Result<
     {
-      task: ProjectTaskType;
+      task: PodTaskType;
       conversationId: string;
       userMessageId: string;
       action: "created" | "appended";

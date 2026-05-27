@@ -1,15 +1,15 @@
 import type {
-  ProjectTasksPanelData,
-  UseProjectTasksPanelArgs,
+  PodTasksPanelData,
+  UsePodTasksPanelArgs,
 } from "@app/components/assistant/conversation/space/conversations/project_tasks/projectTasksPanelTypes";
-import { useAgentNameById } from "@app/components/assistant/conversation/space/conversations/project_tasks/TaskSubComponents";
 import {
   DELETE_TASK_CONFIRM_PREVIEW_MAX_CHARS,
   isOnboardingTask,
-  normalizeProjectTaskSearchNeedle,
-  projectTaskMatchesLocalSearch,
+  normalizePodTaskSearchNeedle,
+  podTaskMatchesLocalSearch,
 } from "@app/components/assistant/conversation/space/conversations/project_tasks/utils";
 import { ConfirmContext } from "@app/components/Confirm";
+import { useAgentNameById } from "@app/components/pod/tasks/TaskSubComponents";
 import {
   usePodConversations,
   usePodConversationsSummary,
@@ -17,37 +17,36 @@ import {
 import { useTaskDiffAnimations } from "@app/hooks/useTaskDiffAnimations";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
-import { compareProjectTaskAssignees } from "@app/lib/project_task/display_order";
+import { comparePodTaskAssignees } from "@app/lib/project_task/display_order";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
-  useBulkUpdateProjectTaskStatus,
-  useCreateProjectTask,
-  useDeleteProjectTask,
-  useMarkProjectTasksRead,
-  useProjectTasks,
-  useStartProjectTaskConversation,
-  useUpdateProjectTask,
+  useCreatePodTask,
+  useDeletePodTask,
+  useMarkPodTasksRead,
+  usePodTasks,
+  useStartPodTaskConversation,
+  useUpdatePodTask,
 } from "@app/lib/swr/pods";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { BulkActionsBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_tasks/bulk-actions";
-import type { GetProjectTasksResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_tasks/index";
+import type { GetPodTasksResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_tasks/index";
 import { compareAgentsForSort } from "@app/types/assistant/assistant";
 import {
-  PROJECT_TASK_UNASSIGNED_GROUP_KEY,
-  type ProjectTaskAssigneeType,
-  type ProjectTaskStatus,
-  type ProjectTaskType,
+  POD_TASK_UNASSIGNED_GROUP_KEY,
+  type PodTaskAssigneeType,
+  type PodTaskStatus,
+  type PodTaskType,
 } from "@app/types/project_task";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 
-export function useProjectTasksPanelState({
+export function usePodTasksPanelState({
   owner,
-  spaceId,
+  podId,
   isReadOnly,
   taskOwnerFilter,
   onTaskOwnerFilterChange,
-}: UseProjectTasksPanelArgs): ProjectTasksPanelData {
+}: UsePodTasksPanelArgs): PodTasksPanelData {
   const [debouncedTaskSearchQuery, setDebouncedTaskSearchQuery] = useState("");
   const {
     tasks,
@@ -56,24 +55,23 @@ export function useProjectTasksPanelState({
     isTasksLoading,
     isTasksError,
     mutateTasks,
-  } = useProjectTasks({
+  } = usePodTasks({
     owner,
-    spaceId,
+    podId: podId,
     taskOwnerFilter,
   });
   const agentNameById = useAgentNameById(owner);
-  const doUpdate = useUpdateProjectTask({ owner, spaceId });
-  const doBulkUpdateStatus = useBulkUpdateProjectTaskStatus({ owner, spaceId });
-  const doDelete = useDeleteProjectTask({ owner, spaceId });
-  const doStartConversation = useStartProjectTaskConversation({
+  const doUpdate = useUpdatePodTask({ owner, podId: podId });
+  const doDelete = useDeletePodTask({ owner, podId: podId });
+  const doStartConversation = useStartPodTaskConversation({
     owner,
-    spaceId,
+    podId,
   });
-  const markRead = useMarkProjectTasksRead({ owner, spaceId });
-  const doCreateTask = useCreateProjectTask({ owner, spaceId });
+  const markRead = useMarkPodTasksRead({ owner, podId: podId });
+  const doCreateTask = useCreatePodTask({ owner, podId: podId });
   const { spaceInfo, isSpaceInfoLoading } = useSpaceInfo({
     workspaceId: owner.sId,
-    spaceId,
+    spaceId: podId,
   });
   const confirm = useContext(ConfirmContext);
   const router = useAppRouter();
@@ -81,7 +79,7 @@ export function useProjectTasksPanelState({
   const { mutateConversations: mutateSpaceConversations } = usePodConversations(
     {
       workspaceId: owner.sId,
-      podId: spaceId,
+      podId,
       options: { disabled: true },
     }
   );
@@ -104,7 +102,7 @@ export function useProjectTasksPanelState({
     return agents;
   }, [agentConfigurations]);
 
-  const projectMembers = useMemo(() => {
+  const podMembers = useMemo(() => {
     const members = spaceInfo?.members ?? [];
     return [...members].sort((a, b) =>
       a.fullName.localeCompare(b.fullName, undefined, { sensitivity: "base" })
@@ -122,14 +120,14 @@ export function useProjectTasksPanelState({
   }, [tasks]);
 
   const defaultNewAssigneeId = useMemo(() => {
-    if (projectMembers.length === 0) {
+    if (podMembers.length === 0) {
       return null;
     }
-    if (viewerUserId && projectMembers.some((m) => m.sId === viewerUserId)) {
+    if (viewerUserId && podMembers.some((m) => m.sId === viewerUserId)) {
       return viewerUserId;
     }
-    return projectMembers[0]!.sId;
-  }, [projectMembers, viewerUserId]);
+    return podMembers[0]!.sId;
+  }, [podMembers, viewerUserId]);
 
   // ── Diff animation state ────────────────────────────────────────────────────
 
@@ -149,7 +147,7 @@ export function useProjectTasksPanelState({
   }, [isTasksLoading, frozenLastReadAt, lastReadAt]);
 
   const { newItemKeys, doneFlashKeys } = useTaskDiffAnimations({
-    ledgerScopeKey: `${owner.sId}:${spaceId}:${taskOwnerFilter.periodScope}:${taskOwnerFilter.peopleScope}`,
+    ledgerScopeKey: `${owner.sId}:${podId}:${taskOwnerFilter.periodScope}:${taskOwnerFilter.peopleScope}`,
     tasks,
     frozenLastReadAt,
     isTasksLoading,
@@ -159,7 +157,7 @@ export function useProjectTasksPanelState({
   const assigneeScopedTasks = tasks;
 
   const normalizedTaskSearchNeedle = useMemo(
-    () => normalizeProjectTaskSearchNeedle(debouncedTaskSearchQuery),
+    () => normalizePodTaskSearchNeedle(debouncedTaskSearchQuery),
     [debouncedTaskSearchQuery]
   );
 
@@ -168,13 +166,11 @@ export function useProjectTasksPanelState({
       return assigneeScopedTasks;
     }
     return assigneeScopedTasks.filter((task) =>
-      projectTaskMatchesLocalSearch(task, normalizedTaskSearchNeedle)
+      podTaskMatchesLocalSearch(task, normalizedTaskSearchNeedle)
     );
   }, [assigneeScopedTasks, normalizedTaskSearchNeedle]);
 
-  const getFirstOnboardingTaskId = (
-    tasks: ProjectTaskType[]
-  ): string | null => {
+  const getFirstOnboardingTaskId = (tasks: PodTaskType[]): string | null => {
     for (const task of tasks) {
       if (isOnboardingTask(task) && task.status !== "done") {
         return task.sId;
@@ -188,15 +184,15 @@ export function useProjectTasksPanelState({
     const groups = new Map<
       string,
       {
-        user: ProjectTaskAssigneeType | null;
-        suggestedTasks: ProjectTaskType[];
-        regularTasks: ProjectTaskType[];
+        user: PodTaskAssigneeType | null;
+        suggestedTasks: PodTaskType[];
+        regularTasks: PodTaskType[];
       }
     >();
 
     for (const task of filteredTasks) {
       const user = task.user ?? null;
-      const key = user?.sId ?? PROJECT_TASK_UNASSIGNED_GROUP_KEY;
+      const key = user?.sId ?? POD_TASK_UNASSIGNED_GROUP_KEY;
       let group = groups.get(key);
       if (!group) {
         group = { user, suggestedTasks: [], regularTasks: [] };
@@ -210,27 +206,27 @@ export function useProjectTasksPanelState({
     }
 
     return [...groups.values()].sort((a, b) =>
-      compareProjectTaskAssignees(a.user, b.user, viewerUserId)
+      comparePodTaskAssignees(a.user, b.user, viewerUserId)
     );
   }, [filteredTasks, viewerUserId]);
 
-  const isSoleProjectMember = projectMembers.length === 1;
+  const isSolePodMember = podMembers.length === 1;
 
   const hideAssigneeHeaders = useMemo(() => {
-    if (!isSoleProjectMember || viewerUserId === null) {
+    if (!isSolePodMember || viewerUserId === null) {
       return false;
     }
     if (filteredTasks.length === 0) {
       return false;
     }
     return filteredTasks.every((t) => t.user?.sId === viewerUserId);
-  }, [filteredTasks, isSoleProjectMember, viewerUserId]);
+  }, [filteredTasks, isSolePodMember, viewerUserId]);
 
   // Optimistically update a task's status in the SWR cache and send the PATCH.
   // On failure the cache is revalidated from the server.
   const handleSetStatus = useCallback(
-    async (task: ProjectTaskType, status: ProjectTaskStatus) => {
-      const optimistic = (prev: GetProjectTasksResponseBody | undefined) => ({
+    async (task: PodTaskType, status: PodTaskStatus) => {
+      const optimistic = (prev: GetPodTasksResponseBody | undefined) => ({
         lastReadAt: prev?.lastReadAt ?? null,
         viewerUserId: prev?.viewerUserId ?? viewerUserId,
         tasks: (prev?.tasks ?? []).map((t) =>
@@ -249,7 +245,7 @@ export function useProjectTasksPanelState({
   );
 
   const handleToggleDone = useCallback(
-    (task: ProjectTaskType) => {
+    (task: PodTaskType) => {
       if (task.status === "done") {
         void handleSetStatus(task, "todo");
       } else {
@@ -260,9 +256,9 @@ export function useProjectTasksPanelState({
   );
 
   const onApproveAgentSuggestion = useCallback(
-    async (task: ProjectTaskType) => {
+    async (task: PodTaskType) => {
       await clientFetch(
-        `/api/w/${owner.sId}/spaces/${spaceId}/project_tasks/bulk-actions`,
+        `/api/w/${owner.sId}/spaces/${podId}/project_tasks/bulk-actions`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -274,7 +270,7 @@ export function useProjectTasksPanelState({
       );
       await mutateTasks();
     },
-    [owner.sId, spaceId, mutateTasks]
+    [owner.sId, podId, mutateTasks]
   );
 
   const onApproveAllSuggestedForAssignee = useCallback(
@@ -288,7 +284,7 @@ export function useProjectTasksPanelState({
         taskIds,
       };
       await clientFetch(
-        `/api/w/${owner.sId}/spaces/${spaceId}/project_tasks/bulk-actions`,
+        `/api/w/${owner.sId}/spaces/${podId}/project_tasks/bulk-actions`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -297,7 +293,7 @@ export function useProjectTasksPanelState({
       );
       await mutateTasks();
     },
-    [owner.sId, spaceId, mutateTasks]
+    [owner.sId, podId, mutateTasks]
   );
 
   const onRejectAllSuggestedForAssignee = useCallback(
@@ -310,7 +306,7 @@ export function useProjectTasksPanelState({
         taskIds,
       };
       await clientFetch(
-        `/api/w/${owner.sId}/spaces/${spaceId}/project_tasks/bulk-actions`,
+        `/api/w/${owner.sId}/spaces/${podId}/project_tasks/bulk-actions`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -319,7 +315,7 @@ export function useProjectTasksPanelState({
       );
       await mutateTasks();
     },
-    [owner.sId, spaceId, mutateTasks]
+    [owner.sId, podId, mutateTasks]
   );
 
   const patchTaskItem = useCallback(
@@ -333,7 +329,7 @@ export function useProjectTasksPanelState({
       }
       const updated = result.value;
       void mutateTasks(
-        (prev: GetProjectTasksResponseBody | undefined) => ({
+        (prev: GetPodTasksResponseBody | undefined) => ({
           lastReadAt: prev?.lastReadAt ?? null,
           viewerUserId: prev?.viewerUserId ?? viewerUserId,
           tasks: (prev?.tasks ?? []).map((t) =>
@@ -354,39 +350,8 @@ export function useProjectTasksPanelState({
     [doUpdate, mutateTasks, viewerUserId]
   );
 
-  // Bulk set the status of every task in a category in a single request.
-  // Optimistically updates the SWR cache, then revalidates on failure.
-  const _handleSetStatusForSection = useCallback(
-    async (status: ProjectTaskStatus) => {
-      const targetIds = tasks
-        .filter((t) => t.status !== status)
-        .map((t) => t.sId);
-
-      if (targetIds.length === 0) {
-        return;
-      }
-
-      const targetIdSet = new Set(targetIds);
-      const optimistic = (prev: GetProjectTasksResponseBody | undefined) => ({
-        lastReadAt: prev?.lastReadAt ?? null,
-        viewerUserId: prev?.viewerUserId ?? viewerUserId,
-        tasks: (prev?.tasks ?? []).map((t) =>
-          targetIdSet.has(t.sId) ? { ...t, status } : t
-        ),
-      });
-
-      void mutateTasks(optimistic, { revalidate: false });
-
-      const result = await doBulkUpdateStatus(targetIds, status);
-      if (result.isErr()) {
-        void mutateTasks();
-      }
-    },
-    [doBulkUpdateStatus, mutateTasks, tasks, viewerUserId]
-  );
-
   const handleDelete = useCallback(
-    async (task: ProjectTaskType) => {
+    async (task: PodTaskType) => {
       const result = await doDelete(task.sId);
       if (result.isOk()) {
         void mutateTasks();
@@ -396,7 +361,7 @@ export function useProjectTasksPanelState({
   );
 
   const requestDelete = useCallback(
-    async (task: ProjectTaskType) => {
+    async (task: PodTaskType) => {
       const preview =
         task.text.length > DELETE_TASK_CONFIRM_PREVIEW_MAX_CHARS
           ? `${task.text.slice(0, DELETE_TASK_CONFIRM_PREVIEW_MAX_CHARS)}…`
@@ -424,13 +389,13 @@ export function useProjectTasksPanelState({
       if (!result.isOk()) {
         return false;
       }
-      const created: ProjectTaskType = {
+      const created: PodTaskType = {
         ...result.value,
         conversationId: null,
         conversationSidebarStatus: null,
       };
       await mutateTasks(
-        (prev: GetProjectTasksResponseBody | undefined) => ({
+        (prev: GetPodTasksResponseBody | undefined) => ({
           lastReadAt: prev?.lastReadAt ?? null,
           viewerUserId: prev?.viewerUserId ?? null,
           tasks: [created, ...(prev?.tasks ?? [])],
@@ -444,7 +409,7 @@ export function useProjectTasksPanelState({
 
   const handleStartWorking = useCallback(
     async (
-      task: ProjectTaskType,
+      task: PodTaskType,
       options?: {
         customMessage?: string;
         agentConfigurationId?: string;
@@ -469,7 +434,7 @@ export function useProjectTasksPanelState({
         // Only patch conversationId — the server-side toJSON doesn't rehydrate
         // sources, so replacing the whole task would transiently drop them.
         void mutateTasks(
-          (prev: GetProjectTasksResponseBody | undefined) => ({
+          (prev: GetPodTasksResponseBody | undefined) => ({
             lastReadAt: prev?.lastReadAt ?? null,
             viewerUserId: prev?.viewerUserId ?? viewerUserId,
             tasks: (prev?.tasks ?? []).map((t) =>
@@ -527,8 +492,8 @@ export function useProjectTasksPanelState({
     hideAssigneeHeaders,
     isAgentsLoading,
     isReadOnly,
-    isSoleProjectMember,
-    isSpaceInfoLoading,
+    isSolePodMember: isSolePodMember,
+    isPodInfoLoading: isSpaceInfoLoading,
     isTasksError,
     isTasksLoading,
     membersWithActiveTaskIds,
@@ -539,7 +504,7 @@ export function useProjectTasksPanelState({
     onTaskOwnerFilterChange,
     owner,
     patchTaskItem,
-    projectMembers,
+    podMembers: podMembers,
     requestDelete,
     setDebouncedTaskSearchQuery,
     startingTaskIds,

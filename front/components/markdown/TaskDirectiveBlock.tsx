@@ -1,21 +1,18 @@
 import { ConversationSidebarStatusDot } from "@app/components/assistant/conversation/ConversationSidebarStatusDot";
-import { ProjectTaskStartWorkingDropdown } from "@app/components/assistant/conversation/space/conversations/project_tasks/ProjectTaskStartWorkingDropdown";
+import { PodTaskStartWorkingDropdown } from "@app/components/pod/tasks/PodTaskStartWorkingDropdown";
 import { useAppRouter } from "@app/lib/platform";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
-  useStartProjectTaskConversation,
-  useWorkspaceProjectTask,
+  useStartPodTaskConversation,
+  useWorkspacePodTask,
 } from "@app/lib/swr/pods";
 import { timeAgoFrom } from "@app/lib/utils";
 import type { ConversationDotStatus } from "@app/lib/utils/conversation_dot_status";
 import { getConversationRoute, getPodRoute } from "@app/lib/utils/router";
-import type { GetWorkspaceProjectTaskResponseBody } from "@app/pages/api/w/[wId]/project_tasks/[taskSId]/index";
+import type { GetWorkspacePodTaskResponseBody } from "@app/pages/api/w/[wId]/project_tasks/[taskSId]/index";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { compareAgentsForSort } from "@app/types/assistant/assistant";
-import type {
-  ProjectTaskStatus,
-  ProjectTaskType,
-} from "@app/types/project_task";
+import type { PodTaskStatus, PodTaskType } from "@app/types/project_task";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -33,7 +30,7 @@ import {
 import { useMemo, useState } from "react";
 import { visit } from "unist-util-visit";
 
-function formatTaskStatusLabel(status: ProjectTaskStatus): string {
+function formatTaskStatusLabel(status: PodTaskStatus): string {
   switch (status) {
     case "todo":
       return "Open";
@@ -85,14 +82,14 @@ function TaskMarkdownPopoverStartChrome({
   owner: LightWorkspaceType;
   taskSId: string;
   spaceId: string;
-  task: ProjectTaskType;
+  task: PodTaskType;
   activeAgents: LightAgentConfigurationType[];
   agentsLoading: boolean;
   onStarted?: () => void;
   triggerSize?: "xs" | "icon-xs";
 }) {
   const router = useAppRouter();
-  const doStart = useStartProjectTaskConversation({ owner, spaceId });
+  const doStart = useStartPodTaskConversation({ owner, podId: spaceId });
   const [isStarting, setIsStarting] = useState(false);
 
   const hasConversationLink =
@@ -106,9 +103,9 @@ function TaskMarkdownPopoverStartChrome({
   }
 
   return (
-    <ProjectTaskStartWorkingDropdown
+    <PodTaskStartWorkingDropdown
       owner={owner}
-      taskSId={taskSId}
+      taskId={taskSId}
       activeAgents={activeAgents}
       agentsLoading={agentsLoading}
       disabled={isDoneWithoutConversation}
@@ -158,7 +155,7 @@ function TaskDirectivePopoverBodyLoaded({
 }: {
   owner: LightWorkspaceType;
   taskSId: string;
-  data: GetWorkspaceProjectTaskResponseBody;
+  data: GetWorkspacePodTaskResponseBody;
   activeAgents: LightAgentConfigurationType[];
   agentsLoading: boolean;
   onTaskUpdated?: () => void;
@@ -310,13 +307,13 @@ function TaskDirectivePopoverContent({
 }) {
   const {
     task,
-    space,
-    isWorkspaceProjectTaskLoading,
-    isWorkspaceProjectTaskError,
-    mutateWorkspaceProjectTask,
-  } = useWorkspaceProjectTask({
+    pod: space,
+    isWorkspacePodTaskLoading: isWorkspaceProjectTaskLoading,
+    isWorkspacePodTaskError: isWorkspaceProjectTaskError,
+    mutateWorkspacePodTask: mutateWorkspaceProjectTask,
+  } = useWorkspacePodTask({
     workspaceId: owner.sId,
-    taskSId,
+    taskId: taskSId,
   });
 
   const { agentConfigurations, isLoading: agentsLoading } =

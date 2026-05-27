@@ -1,23 +1,20 @@
 import type { TaskOwnerFilter } from "@app/components/assistant/conversation/space/conversations/project_tasks/projectTasksListScope";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
-import type {
-  ProjectTaskAssigneeType,
-  ProjectTaskType,
-} from "@app/types/project_task";
+import type { PodTaskAssigneeType, PodTaskType } from "@app/types/project_task";
 import type { LightWorkspaceType, SpaceUserType } from "@app/types/user";
 
 export type GroupedTasksByAssignee = Array<{
-  user: ProjectTaskAssigneeType | null;
-  tasks: ProjectTaskType[];
+  user: PodTaskAssigneeType | null;
+  tasks: PodTaskType[];
 }>;
 
 export type CombinedGroupedTasksByUser = Array<{
-  user: ProjectTaskAssigneeType | null;
-  suggestedTasks: ProjectTaskType[];
-  regularTasks: ProjectTaskType[];
+  user: PodTaskAssigneeType | null;
+  suggestedTasks: PodTaskType[];
+  regularTasks: PodTaskType[];
 }>;
 
-export type ProjectTasksPanelData = {
+export type PodTasksPanelData = {
   taskOwnerFilter: TaskOwnerFilter;
   onTaskOwnerFilterChange: (value: TaskOwnerFilter) => void;
   viewerUserId: string | null;
@@ -31,15 +28,15 @@ export type ProjectTasksPanelData = {
   doneFlashKeys: Set<string>;
   startingTaskIds: Set<string>;
   firstOnboardingTaskId: string | null;
-  projectMembers: SpaceUserType[];
+  podMembers: SpaceUserType[];
   membersWithActiveTaskIds: Set<string>;
-  handleToggleDone: (task: ProjectTaskType) => void;
-  requestDelete: (task: ProjectTaskType) => Promise<void>;
-  onApproveAgentSuggestion: (task: ProjectTaskType) => Promise<void>;
+  handleToggleDone: (task: PodTaskType) => void;
+  requestDelete: (task: PodTaskType) => Promise<void>;
+  onApproveAgentSuggestion: (task: PodTaskType) => Promise<void>;
   onApproveAllSuggestedForAssignee: (taskIds: string[]) => Promise<void>;
   onRejectAllSuggestedForAssignee: (taskIds: string[]) => Promise<void>;
   handleStartWorking: (
-    task: ProjectTaskType,
+    task: PodTaskType,
     options?: {
       customMessage?: string;
       agentConfigurationId?: string;
@@ -50,29 +47,29 @@ export type ProjectTasksPanelData = {
     taskId: string,
     updates: { text?: string; assigneeUserId?: string | null }
   ) => Promise<void>;
-  isSpaceInfoLoading: boolean;
+  isPodInfoLoading: boolean;
   defaultNewAssigneeId: string | null;
   handleAddTask: (text: string, assigneeSId: string | null) => Promise<boolean>;
   isTasksLoading: boolean;
   isTasksError: boolean;
   frozenLastReadAt: string | null | undefined;
-  tasks: ProjectTaskType[];
+  tasks: PodTaskType[];
   /** List returned for the current period & people filters (includes server-side filtering). */
-  assigneeScopedTasks: ProjectTaskType[];
+  assigneeScopedTasks: PodTaskType[];
   /** After debounced description search (`debouncedTodoSearchQuery`). */
-  filteredTasks: ProjectTaskType[];
+  filteredTasks: PodTaskType[];
   /** Debounced query from ProjectTodoLocalSearch; tables filter on this. */
   debouncedTaskSearchQuery: string;
   setDebouncedTaskSearchQuery: (value: string) => void;
   /** Single project member — hide member lists, reassign, and add-row assignee picker. */
-  isSoleProjectMember: boolean;
+  isSolePodMember: boolean;
   /** Solo project + every visible task is assigned to the viewer — flat list, no assignee headers. */
   hideAssigneeHeaders: boolean;
 };
 
-export type UseProjectTasksPanelArgs = {
+export type UsePodTasksPanelArgs = {
   owner: LightWorkspaceType;
-  spaceId: string;
+  podId: string;
   isReadOnly?: boolean;
   taskOwnerFilter: TaskOwnerFilter;
   onTaskOwnerFilterChange: (value: TaskOwnerFilter) => void;

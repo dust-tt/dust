@@ -13,22 +13,20 @@ import {
 } from "@app/lib/utils/conversation_dot_status";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { ProjectTaskType } from "@app/types/project_task";
+import type { PodTaskType } from "@app/types/project_task";
 import { isString } from "@app/types/shared/utils/general";
 import type { PodType } from "@app/types/space";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-export interface GetWorkspaceProjectTaskResponseBody {
-  task: ProjectTaskType;
-  /** Project space (same shape as entries in `GET /api/w/{wId}/spaces` for projects). */
+export interface GetWorkspacePodTaskResponseBody {
+  task: PodTaskType;
+  /** Pod space (same shape as entries in `GET /api/w/{wId}/spaces` for pods). */
   space: PodType;
 }
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<
-    WithAPIErrorResponse<GetWorkspaceProjectTaskResponseBody>
-  >,
+  res: NextApiResponse<WithAPIErrorResponse<GetWorkspacePodTaskResponseBody>>,
   auth: Authenticator,
   _session: SessionWithUser | null
 ): Promise<void> {
@@ -91,7 +89,7 @@ async function handler(
       }
 
       const sources = sourcesByTaskId.get(taskRow.sId) ?? [];
-      const taskPayload: ProjectTaskType = {
+      const taskPayload: PodTaskType = {
         ...serializedBase,
         conversationId,
         conversationSidebarStatus,

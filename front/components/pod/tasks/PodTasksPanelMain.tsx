@@ -1,10 +1,10 @@
-import { useProjectTasksPanel } from "@app/components/assistant/conversation/space/conversations/project_tasks/ProjectTasksPanelContext";
-import { ProjectTaskUserSection } from "@app/components/assistant/conversation/space/conversations/project_tasks/ProjectTaskUserSection";
-import { normalizeProjectTaskSearchNeedle } from "@app/components/assistant/conversation/space/conversations/project_tasks/utils";
-import { PROJECT_TASK_UNASSIGNED_GROUP_KEY } from "@app/types/project_task";
+import { normalizePodTaskSearchNeedle } from "@app/components/assistant/conversation/space/conversations/project_tasks/utils";
+import { usePodTasksPanel } from "@app/components/pod/tasks/PodTasksPanelContext";
+import { PodTaskUserSection } from "@app/components/pod/tasks/PodTaskUserSection";
+import { POD_TASK_UNASSIGNED_GROUP_KEY } from "@app/types/project_task";
 import { Spinner } from "@dust-tt/sparkle";
 
-export function ProjectTasksPanelMain() {
+export function PodTasksPanelMain() {
   const {
     isTasksLoading,
     isTasksError,
@@ -14,10 +14,10 @@ export function ProjectTasksPanelMain() {
     assigneeScopedTasks,
     debouncedTaskSearchQuery,
     hideAssigneeHeaders,
-  } = useProjectTasksPanel();
+  } = usePodTasksPanel();
 
   const hasActiveLocalSearch =
-    normalizeProjectTaskSearchNeedle(debouncedTaskSearchQuery) !== "";
+    normalizePodTaskSearchNeedle(debouncedTaskSearchQuery) !== "";
 
   return (
     <div className="flex flex-col gap-3">
@@ -28,8 +28,8 @@ export function ProjectTasksPanelMain() {
       ) : (
         <>
           {combinedGroupedTasksByUser.map((group) => (
-            <ProjectTaskUserSection
-              key={group.user?.sId ?? PROJECT_TASK_UNASSIGNED_GROUP_KEY}
+            <PodTaskUserSection
+              key={group.user?.sId ?? POD_TASK_UNASSIGNED_GROUP_KEY}
               user={group.user}
               suggestedTasks={group.suggestedTasks}
               regularTasks={group.regularTasks}

@@ -1,11 +1,11 @@
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type { ProjectTaskType } from "@app/types/project_task";
+import type { PodTaskType } from "@app/types/project_task";
 import type { WorkspaceType } from "@app/types/user";
 import { Chip, LinkWrapper, Tooltip } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
-function statusChip(task: ProjectTaskType) {
+function statusChip(task: PodTaskType) {
   switch (task.status) {
     case "todo":
       return <Chip color="info" label="todo" size="xs" />;
@@ -18,7 +18,7 @@ function statusChip(task: ProjectTaskType) {
 
 export function makeColumnsForProjectTasks(
   owner: WorkspaceType
-): ColumnDef<ProjectTaskType>[] {
+): ColumnDef<PodTaskType>[] {
   return [
     {
       accessorKey: "sId",

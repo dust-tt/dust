@@ -1,42 +1,40 @@
-import {
-  ProjectTaskCreateBar,
-  ProjectTasksPanelMain,
-  ProjectTasksPanelProvider,
-  ProjectTasksToolbar,
-} from "@app/components/assistant/conversation/space/conversations/project_tasks/EditableProjectTasksPanel";
 import type { TaskOwnerFilter } from "@app/components/assistant/conversation/space/conversations/project_tasks/projectTasksListScope";
-import type { GetSpaceResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
+import { PodTaskCreateBar } from "@app/components/pod/tasks/PodTaskCreateBar";
+import { PodTasksPanelProvider } from "@app/components/pod/tasks/PodTasksPanelContext";
+import { PodTasksPanelMain } from "@app/components/pod/tasks/PodTasksPanelMain";
+import { PodTasksToolbar } from "@app/components/pod/tasks/PodTasksToolbar";
+import type { PodType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 
-interface SpaceTasksTabProps {
+interface PodTasksTabProps {
   owner: WorkspaceType;
-  spaceInfo: GetSpaceResponseBody["space"];
+  podInfo: PodType;
   taskOwnerFilter: TaskOwnerFilter;
   onTaskOwnerFilterChange: (value: TaskOwnerFilter) => void;
 }
 
-export function SpaceTasksTab({
+export function PodTasksTab({
   owner,
-  spaceInfo,
+  podInfo,
   taskOwnerFilter,
   onTaskOwnerFilterChange,
-}: SpaceTasksTabProps) {
+}: PodTasksTabProps) {
   return (
     <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-y-auto px-6">
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 py-8">
-        <ProjectTasksPanelProvider
+        <PodTasksPanelProvider
           owner={owner}
-          spaceId={spaceInfo.sId}
-          isReadOnly={!!spaceInfo.archivedAt || !spaceInfo.isMember}
+          podId={podInfo.sId}
+          isReadOnly={!!podInfo.archivedAt || !podInfo.isMember}
           taskOwnerFilter={taskOwnerFilter}
           onTaskOwnerFilterChange={onTaskOwnerFilterChange}
         >
           <div className="flex flex-col gap-3">
-            <ProjectTaskCreateBar />
-            <ProjectTasksToolbar />
-            <ProjectTasksPanelMain />
+            <PodTaskCreateBar />
+            <PodTasksToolbar />
+            <PodTasksPanelMain />
           </div>
-        </ProjectTasksPanelProvider>
+        </PodTasksPanelProvider>
       </div>
     </div>
   );
