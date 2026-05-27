@@ -1,5 +1,5 @@
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureRole } from "@front-api/middlewares/ensure_role";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_is_admin";
 import { withFeatureFlag } from "@front-api/middlewares/with_feature_flag";
 
 import egressPolicy from "./egress-policy";
@@ -9,7 +9,7 @@ import envVars from "./env-vars";
 // applied here so every leaf below inherits them.
 const app = workspaceApp();
 
-app.use("*", ensureRole({ admin: true }));
+app.use("*", ensureIsAdmin());
 app.use(
   "*",
   withFeatureFlag("sandbox_tools", {

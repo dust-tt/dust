@@ -2,7 +2,7 @@ import apiConfig from "@app/lib/api/config";
 import logger from "@app/logger/logger";
 import { OAuthAPI } from "@app/types/oauth/oauth_api";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureRole } from "@front-api/middlewares/ensure_role";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_is_admin";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -21,7 +21,7 @@ const SlackIsLegacyQuerySchema = z.object({
 
 const app = workspaceApp();
 
-app.use("*", ensureRole({ admin: true }));
+app.use("*", ensureIsAdmin());
 
 app.get(
   "/",

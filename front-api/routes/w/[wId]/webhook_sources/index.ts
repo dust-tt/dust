@@ -15,7 +15,7 @@ import type {
 } from "@app/types/triggers/webhooks";
 import { WebhookSourcesSchema } from "@app/types/triggers/webhooks";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureRole } from "@front-api/middlewares/ensure_role";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_is_admin";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 
@@ -38,7 +38,7 @@ const app = workspaceApp();
 
 app.get(
   "/",
-  ensureRole({ admin: true }),
+  ensureIsAdmin(),
   async (ctx): HandlerResult<GetWebhookSourcesResponseBody> => {
     const auth = ctx.get("auth");
 
@@ -80,7 +80,7 @@ app.get(
 
 app.post(
   "/",
-  ensureRole({ admin: true }),
+  ensureIsAdmin(),
   validate("json", WebhookSourcesSchema),
   async (ctx): HandlerResult<PostWebhookSourcesResponseBody> => {
     const auth = ctx.get("auth");

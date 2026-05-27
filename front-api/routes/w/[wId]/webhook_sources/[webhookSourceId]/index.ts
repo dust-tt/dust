@@ -1,7 +1,7 @@
 import { deleteWebhookSource } from "@app/lib/api/webhook_source";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureRole } from "@front-api/middlewares/ensure_role";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_is_admin";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -30,7 +30,7 @@ const app = workspaceApp();
 
 app.patch(
   "/",
-  ensureRole({ admin: true }),
+  ensureIsAdmin(),
   validate("json", PatchWebhookSourceBodySchema),
   async (ctx): HandlerResult<PatchWebhookSourceResponseBody> => {
     const auth = ctx.get("auth");
@@ -77,7 +77,7 @@ app.patch(
 
 app.delete(
   "/",
-  ensureRole({ admin: true }),
+  ensureIsAdmin(),
   async (ctx): HandlerResult<DeleteWebhookSourceResponseBody> => {
     const auth = ctx.get("auth");
     const webhookSourceId = ctx.req.param("webhookSourceId") ?? "";

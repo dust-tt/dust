@@ -6,7 +6,7 @@ import type {
 } from "@app/pages/api/w/[wId]/invitations/index";
 import { PostInvitationRequestBodySchema } from "@app/pages/api/w/[wId]/invitations/index";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureRole } from "@front-api/middlewares/ensure_role";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_is_admin";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 
@@ -15,7 +15,7 @@ import invitationById from "./[iId]";
 // Mounted under /api/w/:wId/invitations.
 const app = workspaceApp();
 
-app.use("*", ensureRole({ admin: true }));
+app.use("*", ensureIsAdmin());
 
 app.get(
   "/",
