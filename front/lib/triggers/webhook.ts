@@ -5,6 +5,7 @@ import type { DustError } from "@app/lib/error";
 import { getWebhookRequestsBucket } from "@app/lib/file_storage";
 import { isGCSPreconditionFailedError } from "@app/lib/file_storage/types";
 import { matchPayload, parseMatcherExpression } from "@app/lib/matcher";
+import { isApiBlocked } from "@app/lib/metronome/user_block";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import type { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
@@ -258,26 +259,43 @@ async function checkWorkspaceRateLimit({
 }): Promise<RateLimitCheckResult> {
   let errorMessage: string | null = null;
 
+  const plan = auth.subscription()?.plan;
+  const owner = auth.getNonNullableWorkspace();
+
+  // Credit-priced pool gate: applies to any execution mode. If the pool is
+  // depleted, no downstream message can be posted, so reject early instead of
+  // spinning up the trigger workflow only to fail in `checkMessagesLimit`.
+  if (
+    plan &&
+    isCreditPricedPlan(plan) &&
+    owner.metronomeCustomerId &&
+    (await isApiBlocked(owner.sId))
+  ) {
+    errorMessage =
+      "Your workspace has run out of credits. Please purchase more credits to continue.";
+  }
+
   /**
    * Check for workspace-level rate limits
    * - for fair use execution mode, check global rate limits
    * - for programmatic usage mode, check public API limits
    */
-  if (!trigger.executionMode || trigger.executionMode === "fair_use") {
-    const { rateLimited, message } =
-      await checkWebhookRequestForRateLimit(auth);
-    if (rateLimited) {
-      errorMessage = message;
-    }
-  } else {
-    // Programmatic execution mode: legacy programmatic-credit gate applies to
-    // legacy plans only. Credit-priced plans are gated by the workspace pool
-    // upstream (in `checkMessagesLimit`).
-    const plan = auth.subscription()?.plan;
-    if (!plan || !isCreditPricedPlan(plan)) {
-      const limitsResult = await checkProgrammaticUsageLimits(auth);
-      if (limitsResult.isErr()) {
-        errorMessage = limitsResult.error.message;
+  if (!errorMessage) {
+    if (!trigger.executionMode || trigger.executionMode === "fair_use") {
+      const { rateLimited, message } =
+        await checkWebhookRequestForRateLimit(auth);
+      if (rateLimited) {
+        errorMessage = message;
+      }
+    } else {
+      // Programmatic execution mode: legacy programmatic-credit gate applies
+      // to legacy plans only. Credit-priced plans are already gated above by
+      // the workspace pool check.
+      if (!plan || !isCreditPricedPlan(plan)) {
+        const limitsResult = await checkProgrammaticUsageLimits(auth);
+        if (limitsResult.isErr()) {
+          errorMessage = limitsResult.error.message;
+        }
       }
     }
   }
