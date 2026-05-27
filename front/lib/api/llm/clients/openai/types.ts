@@ -105,7 +105,7 @@ export const OPENAI_MODEL_CONFIGS: Partial<
 export function overwriteLLMParameters(
   llmParameters: LLMParameters & {
     modelId: OpenAIWhitelistedModelId;
-  },
+  }
 ): LLMParameters & { modelId: OpenAIWhitelistedModelId } {
   return {
     ...llmParameters,
@@ -115,7 +115,7 @@ export function overwriteLLMParameters(
 }
 
 export const isOpenAIResponsesWhitelistedModelId = (
-  modelId: ModelIdType,
+  modelId: ModelIdType
 ): modelId is OpenAIWhitelistedModelId => {
   return (OPENAI_WHITELISTED_MODEL_IDS as readonly string[]).includes(modelId);
 };

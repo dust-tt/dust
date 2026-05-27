@@ -237,14 +237,14 @@ ${memoryList.trim()}
 }
 
 export function buildToolsetsContext(
-  availableToolsets: MCPServerViewResource[],
+  availableToolsets: MCPServerViewResource[]
 ): string {
   const toolsetsList = availableToolsets
     .sort((a, b) => {
       const aView = a.toJSON();
       const bView = b.toJSON();
       const nameCompare = getMcpServerViewDisplayName(aView).localeCompare(
-        getMcpServerViewDisplayName(bView),
+        getMcpServerViewDisplayName(bView)
       );
       if (nameCompare !== 0) {
         return nameCompare;
@@ -328,7 +328,7 @@ function _getDustLikeGlobalAgent(
     preferredReasoningEffort?: ReasoningEffort;
     requiredPreferredModelConfiguration?: boolean;
     omittedThinking?: boolean;
-  },
+  }
 ): (AgentConfigurationType & { omittedThinking?: boolean }) | null {
   const {
     agent_memory: agentMemoryMCPServerView,
@@ -352,21 +352,27 @@ function _getDustLikeGlobalAgent(
       return NOOP_MODEL_CONFIG;
     }
 
+    const isPreferredModelConfigurationAvailable =
+      preferredModelConfiguration &&
+      !excludeProviders.has(preferredModelConfiguration.providerId) &&
+      isProviderWhitelisted(auth, preferredModelConfiguration.providerId);
+
+    if (requiredPreferredModelConfiguration) {
+      if (isPreferredModelConfigurationAvailable) {
+        isPreferredModel = true;
+        return preferredModelConfiguration;
+      }
+
+      return null;
+    }
+
     if (!auth.isUpgraded()) {
       return getSmallWhitelistedModel(auth, excludeProviders);
     }
 
-    if (
-      preferredModelConfiguration &&
-      !excludeProviders.has(preferredModelConfiguration.providerId) &&
-      isProviderWhitelisted(auth, preferredModelConfiguration.providerId)
-    ) {
+    if (isPreferredModelConfigurationAvailable) {
       isPreferredModel = true;
       return preferredModelConfiguration;
-    }
-
-    if (requiredPreferredModelConfiguration) {
-      return null;
     }
 
     return getLargeWhitelistedModel(auth, excludeProviders);
@@ -393,12 +399,12 @@ function _getDustLikeGlobalAgent(
 
   const companyDataAction = getCompanyDataAction(
     preFetchedDataSources,
-    mcpServerViews,
+    mcpServerViews
   );
 
   const dataWarehousesAction = getCompanyDataWarehousesAction(
     preFetchedDataSources,
-    mcpServerViews,
+    mcpServerViews
   );
 
   const instructions = buildInstructions({
@@ -479,7 +485,7 @@ function _getDustLikeGlobalAgent(
     ..._getAgentRouterToolsConfiguration({
       agentId,
       mcpServerViews,
-    }),
+    })
   );
 
   if (hasAgentMemory) {
@@ -555,7 +561,7 @@ export function shouldUseOpus(auth: Authenticator): boolean {
 
 export function _getDustGlobalAgent(
   auth: Authenticator,
-  args: DustLikeGlobalAgentArgs,
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST,
@@ -567,7 +573,7 @@ export function _getDustGlobalAgent(
 
 export function _getDustHighGlobalAgent(
   auth: Authenticator,
-  args: DustLikeGlobalAgentArgs,
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_HIGH,
@@ -579,7 +585,7 @@ export function _getDustHighGlobalAgent(
 
 export function _getDustHighOmittedGlobalAgent(
   auth: Authenticator,
-  args: DustLikeGlobalAgentArgs,
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_HIGH_OMITTED,
@@ -592,7 +598,7 @@ export function _getDustHighOmittedGlobalAgent(
 
 export function _getDustOmittedGlobalAgent(
   auth: Authenticator,
-  args: DustLikeGlobalAgentArgs,
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_OMITTED,
@@ -605,7 +611,7 @@ export function _getDustOmittedGlobalAgent(
 
 export function _getDustEdgeGlobalAgent(
   auth: Authenticator,
-  args: DustLikeGlobalAgentArgs,
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_EDGE,
@@ -617,7 +623,7 @@ export function _getDustEdgeGlobalAgent(
 
 export function _getDustAntGlobalAgent(
   auth: Authenticator,
-  args: DustLikeGlobalAgentArgs,
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_ANT,
@@ -629,7 +635,7 @@ export function _getDustAntGlobalAgent(
 
 export function _getDustAntMediumGlobalAgent(
   auth: Authenticator,
-  args: DustLikeGlobalAgentArgs,
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM,
@@ -641,7 +647,7 @@ export function _getDustAntMediumGlobalAgent(
 
 export function _getDustAntHighGlobalAgent(
   auth: Authenticator,
-  args: DustLikeGlobalAgentArgs,
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_ANT_HIGH,
@@ -653,7 +659,7 @@ export function _getDustAntHighGlobalAgent(
 
 export function _getDustKimiGlobalAgent(
   auth: Authenticator,
-  args: DustLikeGlobalAgentArgs,
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_KIMI,
@@ -665,7 +671,7 @@ export function _getDustKimiGlobalAgent(
 
 export function _getDustKimiMediumGlobalAgent(
   auth: Authenticator,
-  args: DustLikeGlobalAgentArgs,
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_KIMI_MEDIUM,
@@ -677,7 +683,7 @@ export function _getDustKimiMediumGlobalAgent(
 
 export function _getDustKimiHighGlobalAgent(
   auth: Authenticator,
-  args: DustLikeGlobalAgentArgs,
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_KIMI_HIGH,
@@ -689,7 +695,7 @@ export function _getDustKimiHighGlobalAgent(
 
 export function _getDustGlmGlobalAgent(
   auth: Authenticator,
-  args: DustLikeGlobalAgentArgs,
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_GLM,
@@ -701,7 +707,7 @@ export function _getDustGlmGlobalAgent(
 
 export function _getDustGlmMediumGlobalAgent(
   auth: Authenticator,
-  args: DustLikeGlobalAgentArgs,
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_GLM_MEDIUM,
@@ -713,7 +719,7 @@ export function _getDustGlmMediumGlobalAgent(
 
 export function _getDustGlmHighGlobalAgent(
   auth: Authenticator,
-  args: DustLikeGlobalAgentArgs,
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_GLM_HIGH,
@@ -725,7 +731,7 @@ export function _getDustGlmHighGlobalAgent(
 
 export function _getDustMinimaxGlobalAgent(
   auth: Authenticator,
-  args: DustLikeGlobalAgentArgs,
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_MINIMAX,
@@ -737,7 +743,7 @@ export function _getDustMinimaxGlobalAgent(
 
 export function _getDustMinimaxMediumGlobalAgent(
   auth: Authenticator,
-  args: DustLikeGlobalAgentArgs,
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_MINIMAX_MEDIUM,
@@ -749,7 +755,7 @@ export function _getDustMinimaxMediumGlobalAgent(
 
 export function _getDustMinimaxHighGlobalAgent(
   auth: Authenticator,
-  args: DustLikeGlobalAgentArgs,
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_MINIMAX_HIGH,
@@ -761,7 +767,7 @@ export function _getDustMinimaxHighGlobalAgent(
 
 export function _getDustDeepseekGlobalAgent(
   auth: Authenticator,
-  args: DustLikeGlobalAgentArgs,
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_DEEPSEEK,
@@ -773,7 +779,7 @@ export function _getDustDeepseekGlobalAgent(
 
 export function _getDustMistralMediumNoneGlobalAgent(
   auth: Authenticator,
-  args: DustLikeGlobalAgentArgs,
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_MISTRAL_MEDIUM_NONE,
@@ -785,7 +791,7 @@ export function _getDustMistralMediumNoneGlobalAgent(
 
 export function _getDustMistralMediumHighGlobalAgent(
   auth: Authenticator,
-  args: DustLikeGlobalAgentArgs,
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_MISTRAL_MEDIUM_HIGH,
@@ -797,7 +803,7 @@ export function _getDustMistralMediumHighGlobalAgent(
 
 export function _getDustGoogGlobalAgent(
   auth: Authenticator,
-  args: DustLikeGlobalAgentArgs,
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_GOOG,
@@ -809,7 +815,7 @@ export function _getDustGoogGlobalAgent(
 
 export function _getDustGoogMediumGlobalAgent(
   auth: Authenticator,
-  args: DustLikeGlobalAgentArgs,
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_GOOG_MEDIUM,
@@ -821,7 +827,7 @@ export function _getDustGoogMediumGlobalAgent(
 
 export function _getDustGoogHighGlobalAgent(
   auth: Authenticator,
-  args: DustLikeGlobalAgentArgs,
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_GOOG_HIGH,
@@ -833,7 +839,7 @@ export function _getDustGoogHighGlobalAgent(
 
 export function _getDustGoogProGlobalAgent(
   auth: Authenticator,
-  args: DustLikeGlobalAgentArgs,
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_GOOG_PRO,
@@ -845,7 +851,7 @@ export function _getDustGoogProGlobalAgent(
 
 export function _getDustGoogProMediumGlobalAgent(
   auth: Authenticator,
-  args: DustLikeGlobalAgentArgs,
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_GOOG_PRO_MEDIUM,
@@ -857,7 +863,7 @@ export function _getDustGoogProMediumGlobalAgent(
 
 export function _getDustGoogProHighGlobalAgent(
   auth: Authenticator,
-  args: DustLikeGlobalAgentArgs,
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_GOOG_PRO_HIGH,
@@ -869,7 +875,7 @@ export function _getDustGoogProHighGlobalAgent(
 
 export function _getDustOaiGlobalAgent(
   auth: Authenticator,
-  args: DustLikeGlobalAgentArgs,
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_OAI,
@@ -881,7 +887,7 @@ export function _getDustOaiGlobalAgent(
 
 export function _getDustOaiMediumGlobalAgent(
   auth: Authenticator,
-  args: DustLikeGlobalAgentArgs,
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_OAI_MEDIUM,
@@ -893,7 +899,7 @@ export function _getDustOaiMediumGlobalAgent(
 
 export function _getDustOaiHighGlobalAgent(
   auth: Authenticator,
-  args: DustLikeGlobalAgentArgs,
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_OAI_HIGH,
@@ -914,7 +920,7 @@ export function _getDustOaiHighGlobalAgent(
 
 export function _getDustAntMediumOmittedGlobalAgent(
   auth: Authenticator,
-  args: DustLikeGlobalAgentArgs,
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM_OMITTED,
@@ -927,7 +933,7 @@ export function _getDustAntMediumOmittedGlobalAgent(
 
 export function _getDustAntHighOmittedGlobalAgent(
   auth: Authenticator,
-  args: DustLikeGlobalAgentArgs,
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_ANT_HIGH_OMITTED,
@@ -940,7 +946,7 @@ export function _getDustAntHighOmittedGlobalAgent(
 
 export function _getDustQuickGlobalAgent(
   auth: Authenticator,
-  args: DustLikeGlobalAgentArgs,
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_QUICK,
@@ -952,7 +958,7 @@ export function _getDustQuickGlobalAgent(
 
 export function _getDustQuickMediumGlobalAgent(
   auth: Authenticator,
-  args: DustLikeGlobalAgentArgs,
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_QUICK_MEDIUM,
@@ -964,7 +970,7 @@ export function _getDustQuickMediumGlobalAgent(
 
 export function _getDustNextGlobalAgent(
   auth: Authenticator,
-  args: DustLikeGlobalAgentArgs,
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   const customModel = CUSTOM_MODEL_CONFIGS[0];
   return _getDustLikeGlobalAgent(auth, args, {
@@ -978,7 +984,7 @@ export function _getDustNextGlobalAgent(
 
 export function _getDustNextMediumGlobalAgent(
   auth: Authenticator,
-  args: DustLikeGlobalAgentArgs,
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   const customModel = CUSTOM_MODEL_CONFIGS[0];
   return _getDustLikeGlobalAgent(auth, args, {
@@ -992,7 +998,7 @@ export function _getDustNextMediumGlobalAgent(
 
 export function _getDustNextHighGlobalAgent(
   auth: Authenticator,
-  args: DustLikeGlobalAgentArgs,
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   const customModel = CUSTOM_MODEL_CONFIGS[0];
   return _getDustLikeGlobalAgent(auth, args, {
@@ -1017,7 +1023,7 @@ function _getCustomModelDustLikeGlobalAgent(
     name: string;
     customModelIndex: number;
     preferredReasoningEffort: ReasoningEffort;
-  },
+  }
 ): AgentConfigurationType | null {
   return _getDustLikeGlobalAgent(auth, args, {
     agentId,
@@ -1030,7 +1036,7 @@ function _getCustomModelDustLikeGlobalAgent(
 
 export function _getDustChawiGlobalAgent(
   auth: Authenticator,
-  args: DustLikeGlobalAgentArgs,
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   return _getCustomModelDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_CHAWI,
@@ -1042,7 +1048,7 @@ export function _getDustChawiGlobalAgent(
 
 export function _getDustChawiMediumGlobalAgent(
   auth: Authenticator,
-  args: DustLikeGlobalAgentArgs,
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   return _getCustomModelDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_CHAWI_MEDIUM,
@@ -1054,7 +1060,7 @@ export function _getDustChawiMediumGlobalAgent(
 
 export function _getDustChawiHighGlobalAgent(
   auth: Authenticator,
-  args: DustLikeGlobalAgentArgs,
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   return _getCustomModelDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_CHAWI_HIGH,
@@ -1066,7 +1072,7 @@ export function _getDustChawiHighGlobalAgent(
 
 export function _getDustSoupinouGlobalAgent(
   auth: Authenticator,
-  args: DustLikeGlobalAgentArgs,
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   return _getCustomModelDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_SOUPINOU,
@@ -1078,7 +1084,7 @@ export function _getDustSoupinouGlobalAgent(
 
 export function _getDustSoupinouMediumGlobalAgent(
   auth: Authenticator,
-  args: DustLikeGlobalAgentArgs,
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   return _getCustomModelDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_SOUPINOU_MEDIUM,
@@ -1090,7 +1096,7 @@ export function _getDustSoupinouMediumGlobalAgent(
 
 export function _getDustSoupinouHighGlobalAgent(
   auth: Authenticator,
-  args: DustLikeGlobalAgentArgs,
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   return _getCustomModelDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_SOUPINOU_HIGH,
@@ -1102,7 +1108,7 @@ export function _getDustSoupinouHighGlobalAgent(
 
 export function _getDustSundaeGlobalAgent(
   auth: Authenticator,
-  args: DustLikeGlobalAgentArgs,
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   return _getCustomModelDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_SUNDAE,
@@ -1114,7 +1120,7 @@ export function _getDustSundaeGlobalAgent(
 
 export function _getDustSundaeMediumGlobalAgent(
   auth: Authenticator,
-  args: DustLikeGlobalAgentArgs,
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   return _getCustomModelDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_SUNDAE_MEDIUM,
@@ -1126,7 +1132,7 @@ export function _getDustSundaeMediumGlobalAgent(
 
 export function _getDustSundaeHighGlobalAgent(
   auth: Authenticator,
-  args: DustLikeGlobalAgentArgs,
+  args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   return _getCustomModelDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_SUNDAE_HIGH,

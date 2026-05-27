@@ -145,13 +145,13 @@ export const ResponseFormatSchema = z.object({
 export type ResponseFormat = z.infer<typeof ResponseFormatSchema>;
 
 export function getAvailableReasoningEfforts(
-  support: ReasoningEffortSupport,
+  support: ReasoningEffortSupport
 ): ReasoningEffort[] {
   return ORDERED_REASONING_EFFORTS.filter((effort) => support[effort]);
 }
 
 export function getMinimumReasoningEffort(
-  support: ReasoningEffortSupport,
+  support: ReasoningEffortSupport
 ): ReasoningEffort {
   return ORDERED_REASONING_EFFORTS.find((effort) => support[effort]) || "none";
 }

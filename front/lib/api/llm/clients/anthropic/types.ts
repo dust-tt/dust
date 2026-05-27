@@ -82,7 +82,7 @@ const STATIC_ANTHROPIC_MODEL_CONFIGS: Partial<
 export function overwriteLLMParameters(
   llmParameters: LLMParameters & {
     modelId: AnthropicWhitelistedModelId;
-  },
+  }
 ): LLMParameters & { modelId: AnthropicWhitelistedModelId } {
   // Custom models default to THINKING_OVERWRITES
   const config = STATIC_ANTHROPIC_MODEL_CONFIGS[llmParameters.modelId];
@@ -94,10 +94,10 @@ export function overwriteLLMParameters(
 }
 
 export const isAnthropicWhitelistedModelId = (
-  modelId: ModelIdType,
+  modelId: ModelIdType
 ): modelId is AnthropicWhitelistedModelId => {
   return (ANTHROPIC_WHITELISTED_MODEL_IDS as readonly string[]).includes(
-    modelId,
+    modelId
   );
 };
 

@@ -17,7 +17,7 @@ import { z } from "zod";
 const LOCAL_JSON_PATH = path.join(__dirname, "../custom-models.json");
 const OUTPUT_PATH = path.join(
   __dirname,
-  "../types/assistant/models/custom_models.generated.ts",
+  "../types/assistant/models/custom_models.generated.ts"
 );
 
 const CustomModelsFileSchema = z.object({
@@ -67,11 +67,9 @@ async function fetchFromGCS(): Promise<CustomModelConfig[] | null> {
 }
 
 function generateTypeScript(models: CustomModelConfig[]): string {
-  const openaiModelIds = models.filter(
-    (model) => model.providerId === "openai",
-  );
+  const openaiModelIds = models.filter((model) => model.providerId === "openai");
   const anthropicModelIds = models.filter(
-    (model) => model.providerId === "anthropic",
+    (model) => model.providerId === "anthropic"
   );
 
   const modelConstants = models

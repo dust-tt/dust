@@ -320,11 +320,11 @@ export type FeatureFlag = {
 export type WhitelistableFeature = keyof typeof WHITELISTABLE_FEATURES_CONFIG;
 
 export const WHITELISTABLE_FEATURES = Object.keys(
-  WHITELISTABLE_FEATURES_CONFIG,
+  WHITELISTABLE_FEATURES_CONFIG
 ) as WhitelistableFeature[];
 
 export function isWhitelistableFeature(
-  feature: unknown,
+  feature: unknown
 ): feature is WhitelistableFeature {
   return WHITELISTABLE_FEATURES.includes(feature as WhitelistableFeature);
 }
