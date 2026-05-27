@@ -1731,6 +1731,137 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       },
     },
   },
+  {
+    id: 10022,
+    name: "Costory",
+    description:
+      "Costory tools to explore cloud cost data, compare periods, set alerts, and share reports across AWS, GCP, Azure, Datadog, Anthropic, OpenAI, and more.",
+    url: "https://app-api.costory.io/mcp",
+    icon: "CostoryLogo",
+    documentationUrl: "https://docs.costory.io/features/mcp",
+    connectionInstructions:
+      "Costory uses OAuth. You will be prompted to sign in with your Costory account in a browser window to authorize access.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      search: "never_ask",
+      search_documentation: "never_ask",
+      get_documentation_page: "never_ask",
+      get_context: "never_ask",
+      suggest_actions: "never_ask",
+      suggest_groupby: "never_ask",
+      suggest_usage_metrics: "never_ask",
+      query: "never_ask",
+      get: "never_ask",
+      get_dashboard_widget_data: "never_ask",
+      get_dashboard_widget_image: "never_ask",
+      list_metrics: "never_ask",
+      list_events: "never_ask",
+      list_alerts: "never_ask",
+      list_available_destinations: "never_ask",
+      list_organizations: "never_ask",
+      list_teams: "never_ask",
+      list_tags: "never_ask",
+      create_dashboard: "low",
+      update_dashboard: "high",
+      create_alert: "low",
+      create_event: "low",
+      create_report: "low",
+    },
+    toolDisplayLabels: {
+      search: {
+        running: "Searching on Costory",
+        done: "Searched on Costory",
+      },
+      search_documentation: {
+        running: "Searching Costory docs",
+        done: "Searched Costory docs",
+      },
+      get_documentation_page: {
+        running: "Fetching docs page from Costory",
+        done: "Fetched docs page from Costory",
+      },
+      get_context: {
+        running: "Loading workspace context from Costory",
+        done: "Loaded workspace context from Costory",
+      },
+      suggest_actions: {
+        running: "Suggesting actions on Costory",
+        done: "Suggested actions on Costory",
+      },
+      suggest_groupby: {
+        running: "Suggesting group-by on Costory",
+        done: "Suggested group-by on Costory",
+      },
+      suggest_usage_metrics: {
+        running: "Suggesting usage metrics on Costory",
+        done: "Suggested usage metrics on Costory",
+      },
+      query: {
+        running: "Querying costs on Costory",
+        done: "Queried costs on Costory",
+      },
+      get: {
+        running: "Fetching record from Costory",
+        done: "Fetched record from Costory",
+      },
+      get_dashboard_widget_data: {
+        running: "Fetching widget data from Costory",
+        done: "Fetched widget data from Costory",
+      },
+      get_dashboard_widget_image: {
+        running: "Rendering widget image on Costory",
+        done: "Rendered widget image on Costory",
+      },
+      list_metrics: {
+        running: "Listing metrics on Costory",
+        done: "Listed metrics on Costory",
+      },
+      list_events: {
+        running: "Listing events on Costory",
+        done: "Listed events on Costory",
+      },
+      list_alerts: {
+        running: "Listing alerts on Costory",
+        done: "Listed alerts on Costory",
+      },
+      list_available_destinations: {
+        running: "Listing destinations on Costory",
+        done: "Listed destinations on Costory",
+      },
+      list_organizations: {
+        running: "Listing organizations on Costory",
+        done: "Listed organizations on Costory",
+      },
+      list_teams: {
+        running: "Listing teams on Costory",
+        done: "Listed teams on Costory",
+      },
+      list_tags: {
+        running: "Listing tags on Costory",
+        done: "Listed tags on Costory",
+      },
+      create_dashboard: {
+        running: "Creating dashboard on Costory",
+        done: "Created dashboard on Costory",
+      },
+      update_dashboard: {
+        running: "Updating dashboard on Costory",
+        done: "Updated dashboard on Costory",
+      },
+      create_alert: {
+        running: "Creating alert on Costory",
+        done: "Created alert on Costory",
+      },
+      create_event: {
+        running: "Logging event on Costory",
+        done: "Logged event on Costory",
+      },
+      create_report: {
+        running: "Scheduling report on Costory",
+        done: "Scheduled report on Costory",
+      },
+    },
+  },
 ];
 
 export const isDefaultRemoteMcpServerURL = (url: string | undefined) => {

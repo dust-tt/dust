@@ -3264,6 +3264,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "CommandLineIcon"
   | "ConfluenceLogo"
   | "ContentsquareLogo"
+  | "CostoryLogo"
   | "DriveLogo"
   | "FathomLogo"
   | "FreshserviceLogo"
