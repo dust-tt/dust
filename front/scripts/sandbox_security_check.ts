@@ -45,6 +45,10 @@ function combinedOutput(result: ExecResult): string {
   return [result.stdout, result.stderr].filter((s) => s.length > 0).join("\n");
 }
 
+export function buildBashCommand(script: string): string {
+  return `/bin/bash -c ${shellQuote(script)}`;
+}
+
 async function runCommand(
   provider: E2BSandboxProvider,
   providerId: string,
@@ -72,15 +76,10 @@ async function runBashScript(
   script: string,
   options: { user: string; timeoutMs?: number }
 ): Promise<ExecResult> {
-  return runCommand(
-    provider,
-    providerId,
-    `/bin/bash -lc ${shellQuote(script)}`,
-    {
-      timeoutMs: options.timeoutMs,
-      user: options.user,
-    }
-  );
+  return runCommand(provider, providerId, buildBashCommand(script), {
+    timeoutMs: options.timeoutMs,
+    user: options.user,
+  });
 }
 
 function assertNoRootIdentity(label: string, result: ExecResult): void {
@@ -315,7 +314,7 @@ while IFS=: read -r name _uid _gid _gecos _home _shell; do
     fi
   fi
   rm -f "$out"
-done < <(getent passwd)
+done < <(getent passwd | awk -F: '$3 == 0 || $3 >= 1000')
 exit "$bad"
 `,
     { timeoutMs: 60_000, user: AGENT_PROXIED_USER }
@@ -329,11 +328,14 @@ exit "$bad"
 }
 
 export function assertNoPrivilegedGroupMembers(output: string): void {
-  const groupPattern = /^(sudo|wheel|admin):[^:]*:[^:]*:(.*)$/gm;
+  const privilegedGroupIds = new Map<string, string>();
+  const groupPattern = /^(sudo|wheel|admin):[^:]*:([^:]*):(.*)$/gm;
   let match = groupPattern.exec(output);
 
   while (match) {
-    const members = match[2]
+    privilegedGroupIds.set(match[2], match[1]);
+
+    const members = match[3]
       .split(",")
       .map((member) => member.trim())
       .filter((member) => member.length > 0 && member !== "root");
@@ -347,6 +349,25 @@ export function assertNoPrivilegedGroupMembers(output: string): void {
     }
 
     match = groupPattern.exec(output);
+  }
+
+  for (const line of output.split("\n")) {
+    const fields = line.split(":");
+    if (fields.length < 4) {
+      continue;
+    }
+
+    const [name, , uid, gid] = fields;
+    if (name === "root" || uid === "0") {
+      continue;
+    }
+
+    const privilegedGroup = privilegedGroupIds.get(gid);
+    if (privilegedGroup) {
+      throw new Error(
+        `privileged group ${privilegedGroup} is the primary group for non-root account ${name}:\n${output}`
+      );
+    }
   }
 }
 

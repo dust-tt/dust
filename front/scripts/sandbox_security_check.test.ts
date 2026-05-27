@@ -5,11 +5,18 @@ import {
   assertNoPrivilegedGroupMembers,
   assertPrivilegedDirsSafe,
   assertSudoAbsent,
+  buildBashCommand,
   containsUnrestrictedSudo,
 } from "@app/scripts/sandbox_security_check";
 import { describe, expect, test } from "vitest";
 
 describe("sandbox security check assertions", () => {
+  test("runs audit scripts in a non-login bash shell", () => {
+    expect(buildBashCommand("echo 'ok'")).toBe(
+      "/bin/bash -c 'echo '\\''ok'\\'''"
+    );
+  });
+
   test("detects unrestricted passwordless sudo while ignoring comments", () => {
     expect(
       containsUnrestrictedSudo("/etc/sudoers:10:user ALL=(ALL) NOPASSWD: ALL")
@@ -31,6 +38,11 @@ describe("sandbox security check assertions", () => {
     expect(() =>
       assertNoPrivilegedGroupMembers("sudo:x:27:user,agent\n")
     ).toThrow("privileged group sudo still has non-root members");
+    expect(() =>
+      assertNoPrivilegedGroupMembers(
+        "user:x:1001:27::/home/user:/bin/bash\nsudo:x:27:\n"
+      )
+    ).toThrow("privileged group sudo is the primary group");
   });
 
   test("detects passwordless sudoers entries", () => {
