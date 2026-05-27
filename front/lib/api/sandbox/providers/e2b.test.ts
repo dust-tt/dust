@@ -4,6 +4,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   mockCommandHandleWait,
   mockConnect,
+  mockCreate,
+  mockCreateCommandRun,
+  mockKill,
+  mockLoggerError,
   mockLoggerInfo,
   mockRun,
   mockSendStdin,
@@ -12,6 +16,10 @@ const {
 } = vi.hoisted(() => ({
   mockCommandHandleWait: vi.fn(),
   mockConnect: vi.fn(),
+  mockCreate: vi.fn(),
+  mockCreateCommandRun: vi.fn(),
+  mockKill: vi.fn(),
+  mockLoggerError: vi.fn(),
   mockLoggerInfo: vi.fn(),
   mockRun: vi.fn(),
   mockSendStdin: vi.fn(),
@@ -21,6 +29,7 @@ const {
 
 vi.mock("@app/logger/logger", () => ({
   default: {
+    error: mockLoggerError,
     info: mockLoggerInfo,
   },
 }));
@@ -60,8 +69,8 @@ vi.mock("e2b", () => {
     NotFoundError,
     Sandbox: {
       connect: mockConnect,
-      create: vi.fn(),
-      kill: vi.fn(),
+      create: mockCreate,
+      kill: mockKill,
     },
   };
 });
@@ -89,12 +98,89 @@ describe("E2BSandboxProvider", () => {
     });
     mockSendStdin.mockResolvedValue(undefined);
     mockCloseStdin.mockResolvedValue(undefined);
+    mockCreateCommandRun.mockResolvedValue({
+      exitCode: 0,
+      stdout: "",
+      stderr: "",
+    });
+    mockCreate.mockResolvedValue({
+      sandboxId: "sandbox-id",
+      commands: {
+        run: mockCreateCommandRun,
+      },
+    });
+    mockKill.mockResolvedValue(undefined);
     mockConnect.mockResolvedValue({
       commands: {
         run: mockRun,
         sendStdin: mockSendStdin,
         closeStdin: mockCloseStdin,
       },
+    });
+  });
+
+  it("hardens E2B-created local accounts before returning a sandbox", async () => {
+    const provider = new E2BSandboxProvider({
+      apiKey: "api-key",
+      domain: undefined,
+    });
+
+    const result = await provider.create(
+      {
+        imageId: { imageName: "dust-base", tag: "0.8.27" },
+        network: { mode: "deny_all" },
+        resources: { vcpu: 2, memoryMb: 2048 },
+      },
+      { workspaceId: "workspace-id" }
+    );
+
+    expect(result).toEqual(new Ok({ providerId: "sandbox-id" }));
+    expect(mockCreateCommandRun).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "usermod --lock --expiredate 1 --shell /usr/sbin/nologin user"
+      ),
+      {
+        timeoutMs: 120_000,
+        user: "root",
+      }
+    );
+    expect(mockCreateCommandRun.mock.calls[0][0]).toContain(
+      "sudo must not be installed in sandbox images"
+    );
+    expect(mockCreateCommandRun.mock.calls[0][0]).toContain(
+      "install -d -o root -g root -m 755 /opt/bin /usr/local/bin"
+    );
+    expect(mockKill).not.toHaveBeenCalled();
+  });
+
+  it("kills a sandbox if local account hardening fails after create", async () => {
+    mockCreateCommandRun.mockResolvedValueOnce({
+      exitCode: 1,
+      stdout: "",
+      stderr: "user still in sudo",
+    });
+    const provider = new E2BSandboxProvider({
+      apiKey: "api-key",
+      domain: undefined,
+    });
+
+    const result = await provider.create(
+      {
+        imageId: { imageName: "dust-base", tag: "0.8.27" },
+        network: { mode: "deny_all" },
+        resources: { vcpu: 2, memoryMb: 2048 },
+      },
+      { workspaceId: "workspace-id" }
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain(
+        "E2B sandbox local account hardening failed"
+      );
+    }
+    expect(mockKill).toHaveBeenCalledWith("sandbox-id", {
+      apiKey: "api-key",
     });
   });
 

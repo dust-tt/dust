@@ -5,11 +5,18 @@ import {
   assertNoPrivilegedGroupMembers,
   assertPrivilegedDirsSafe,
   assertSudoAbsent,
+  buildBashCommand,
   containsUnrestrictedSudo,
 } from "@app/scripts/sandbox_security_check";
 import { describe, expect, test } from "vitest";
 
 describe("sandbox security check assertions", () => {
+  test("runs audit scripts in a non-login bash shell", () => {
+    expect(buildBashCommand("echo 'ok'")).toBe(
+      "/bin/bash -c 'echo '\\''ok'\\'''"
+    );
+  });
+
   test("detects unrestricted passwordless sudo while ignoring comments", () => {
     expect(
       containsUnrestrictedSudo("/etc/sudoers:10:user ALL=(ALL) NOPASSWD: ALL")

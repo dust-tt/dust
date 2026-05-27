@@ -131,11 +131,17 @@ describe("sandbox image registry", () => {
       expect(command).toContain("/usr/bin/su");
       expect(command).toContain("/usr/bin/passwd");
       expect(command).toContain("chmod u-s");
+      expect(command).toContain(
+        "install -d -o root -g root -m 755 /opt/bin /usr/local/bin"
+      );
       expect(command).toContain("empty-password local accounts must not exist");
       expect(command).toContain(
         "passwordless unrestricted sudoers entries must not exist"
       );
       expect(command).toContain("local auth helper must not be setuid");
+      expect(command).toContain(
+        "privileged executable directory must be root-owned"
+      );
     }
     expect(firstHardeningIndex).toBeGreaterThanOrEqual(0);
     expect(agentProxiedIndex).toBeGreaterThan(firstHardeningIndex);

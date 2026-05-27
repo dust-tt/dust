@@ -1,3 +1,4 @@
+import { getLocalAccountPrivilegeHardeningCommand } from "@app/lib/api/sandbox/hardening";
 import {
   formatSandboxImageId,
   type NetworkPolicy,
@@ -33,6 +34,7 @@ const SANDBOX_LIFETIME_MS = 24 * ONE_HOUR_MS;
 
 /** Timeout for individual API calls to E2B (create, connect, etc.). */
 const REQUEST_TIMEOUT_MS = 30_000;
+const LOCAL_ACCOUNT_HARDENING_TIMEOUT_MS = 120_000;
 
 const ALL_TRAFFIC = "0.0.0.0/0";
 
@@ -163,6 +165,35 @@ export class E2BSandboxProvider implements SandboxProvider {
               : { allowPublicTraffic: false },
           });
         } catch (err) {
+          return new Err(normalizeError(err));
+        }
+
+        try {
+          const hardeningResult = await sandbox.commands.run(
+            getLocalAccountPrivilegeHardeningCommand(),
+            {
+              timeoutMs: LOCAL_ACCOUNT_HARDENING_TIMEOUT_MS,
+              user: "root",
+            }
+          );
+          if (hardeningResult.exitCode !== 0) {
+            throw new Error(
+              `E2B sandbox local account hardening failed: ${hardeningResult.stderr}`
+            );
+          }
+        } catch (err) {
+          try {
+            await Sandbox.kill(sandbox.sandboxId, this.connectionOpts());
+          } catch (killErr) {
+            logger.error(
+              {
+                err: normalizeError(killErr),
+                sandboxId: sandbox.sandboxId,
+                templateId,
+              },
+              "Failed to kill E2B sandbox after local account hardening failure"
+            );
+          }
           return new Err(normalizeError(err));
         }
 
