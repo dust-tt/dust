@@ -118,6 +118,12 @@ const { compactionActivity } = proxyActivities<typeof compactionActivities>({
   },
 });
 
+const { compactionCleanupActivity } = proxyActivities<
+  typeof compactionActivities
+>({
+  startToCloseTimeout: "1 minute",
+});
+
 const {
   finalizeSuccessfulAgentLoopActivity,
   finalizeGracefullyStoppedAgentLoopActivity,
@@ -153,13 +159,23 @@ export async function compactionWorkflow({
   model: SupportedModel;
   sourceConversation?: CompactionSourceConversation;
 }) {
-  await compactionActivity(authType, {
-    conversationId,
-    compactionMessageId,
-    compactionMessageVersion,
-    model,
-    sourceConversation,
-  });
+  try {
+    await compactionActivity(authType, {
+      conversationId,
+      compactionMessageId,
+      compactionMessageVersion,
+      model,
+      sourceConversation,
+    });
+  } catch (_error) {
+    // If the compactionActivity has failed, it may be a timeout and the
+    // compaction message remained stuck in a "created" state.
+    await compactionCleanupActivity(authType, {
+      conversationId,
+      compactionMessageId,
+      compactionMessageVersion,
+    });
+  }
 }
 
 export async function agentLoopWorkflow({
