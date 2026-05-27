@@ -224,6 +224,8 @@ describe("sandbox egress helpers", () => {
     // exports on the agent process. Pinning the strip list to the canonical
     // SANDBOX_TRUST_ENV_VARS keys here catches drift between the two sites.
     const spawnCall = sandbox.exec.mock.calls[1][1] as string;
+    expect(spawnCall).toContain("/usr/bin/nohup /usr/bin/env");
+    expect(spawnCall).not.toContain("nohup env");
     for (const key of Object.keys(SANDBOX_TRUST_ENV_VARS)) {
       expect(spawnCall).toContain(`-u ${key}`);
     }
@@ -259,6 +261,7 @@ describe("sandbox egress helpers", () => {
       "if [ -x '/usr/local/bin/dust-install-trust-bundle' ]"
     );
     expect(installCall).toContain("update-ca-certificates");
+    expect(installCall).toContain("/bin/cat");
     expect(installCall).toContain("/etc/ssl/certs/ca-certificates.crt");
     expect(mockLoggerInfo).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -830,10 +833,10 @@ describe("sandbox egress helpers", () => {
       expect(sandbox.exec).toHaveBeenCalledTimes(1);
       const command = sandbox.exec.mock.calls[0][1] as string;
       expect(command).toContain(
-        "systemctl disable --now dust-egress-resolver.service dust-egress-nftables.service"
+        "/usr/bin/systemctl disable --now dust-egress-resolver.service dust-egress-nftables.service"
       );
-      expect(command).toContain("nft delete table ip dust-egress");
-      expect(command).toContain("nft delete table ip6 dust-egress");
+      expect(command).toContain("/usr/sbin/nft delete table ip dust-egress");
+      expect(command).toContain("/usr/sbin/nft delete table ip6 dust-egress");
       expect(sandbox.exec).toHaveBeenCalledWith(auth, expect.any(String), {
         user: "root",
       });

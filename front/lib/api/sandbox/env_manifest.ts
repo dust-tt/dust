@@ -94,9 +94,9 @@ export async function writeSandboxEnvManifestFile(
 
   const tmpPath = `${SANDBOX_ENV_MANIFEST_DIR}/.sandbox-env-manifest.json.${randomBytes(8).toString("hex")}.tmp`;
   const command =
-    `mkdir -p ${shellEscape(SANDBOX_ENV_MANIFEST_DIR)} && ` +
-    `install -o root -g root -m 644 /dev/stdin ${shellEscape(tmpPath)} && ` +
-    `mv ${shellEscape(tmpPath)} ${shellEscape(SANDBOX_ENV_MANIFEST_PATH)}`;
+    `/usr/bin/mkdir -p ${shellEscape(SANDBOX_ENV_MANIFEST_DIR)} && ` +
+    `/usr/bin/install -o root -g root -m 644 /dev/stdin ${shellEscape(tmpPath)} && ` +
+    `/usr/bin/mv ${shellEscape(tmpPath)} ${shellEscape(SANDBOX_ENV_MANIFEST_PATH)}`;
 
   const result = await sandbox.exec(auth, command, {
     stdin: JSON.stringify(manifestResult.value),

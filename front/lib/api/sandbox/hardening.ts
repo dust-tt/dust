@@ -1,4 +1,26 @@
+import { shellEscape } from "@app/lib/api/sandbox/shell";
+
+export const SANDBOX_ROOT_SAFE_PATH = "/usr/sbin:/usr/bin:/sbin:/bin:/opt/bin";
+const ROOT_SAFE_PATH_PROFILE = "/etc/profile.d/zz-dust-root-safe-path.sh";
+
 export function getLocalAccountPrivilegeHardeningCommand(): string {
+  const installRootSafePathProfile = [
+    "/usr/bin/mkdir -p /etc/profile.d",
+    [
+      "printf '%s\\n'",
+      shellEscape(
+        "# Managed by Dust. Root must not resolve agent-writable paths."
+      ),
+      shellEscape('if [ "$(/usr/bin/id -u)" = "0" ]; then'),
+      shellEscape(`  export PATH=${shellEscape(SANDBOX_ROOT_SAFE_PATH)}`),
+      shellEscape("  export HOME=/root"),
+      shellEscape("  export BASH_ENV=/dev/null"),
+      shellEscape("  export ENV=/dev/null"),
+      shellEscape("fi"),
+      `> ${shellEscape(ROOT_SAFE_PATH_PROFILE)}`,
+    ].join(" "),
+    `/usr/bin/chmod 644 ${shellEscape(ROOT_SAFE_PATH_PROFILE)}`,
+  ].join(" && ");
   const lockRootPassword = [
     "if getent passwd root >/dev/null 2>&1; then",
     "passwd -l root >/dev/null 2>&1 || usermod --lock root >/dev/null 2>&1 || true;",
@@ -105,6 +127,7 @@ export function getLocalAccountPrivilegeHardeningCommand(): string {
   ].join(" ");
 
   return [
+    installRootSafePathProfile,
     lockRootPassword,
     lockEmptyPasswordAccounts,
     lockProviderUser,

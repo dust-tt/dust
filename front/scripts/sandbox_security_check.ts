@@ -1,4 +1,5 @@
 import config from "@app/lib/api/config";
+import { SANDBOX_ROOT_SAFE_PATH } from "@app/lib/api/sandbox/hardening";
 import {
   formatSandboxImageId,
   getRegisteredImages,
@@ -20,6 +21,7 @@ const ROOT_ID_PATTERN = /\buid=0\(root\)\b/;
 const UNRESTRICTED_SUDO_PATTERN =
   /\([^)]*ALL[^)]*\)\s*NOPASSWD:\s*ALL|NOPASSWD:\s*ALL/;
 const PRIVILEGED_GROUP_PATTERN = /\b\d+\((sudo|wheel|admin)\)/;
+const ROOT_PATH_PREFIXES = ["ROOT_EXEC_PATH=", "ROOT_LOGIN_PATH="] as const;
 const LOCAL_AUTH_HELPER_PATHS = [
   "/bin/su",
   "/usr/bin/su",
@@ -456,6 +458,27 @@ export function assertPrivilegedDirsSafe(output: string): void {
   }
 }
 
+export function assertRootPathSafe(output: string): void {
+  const rootPathLines = output
+    .split("\n")
+    .filter((line) =>
+      ROOT_PATH_PREFIXES.some((prefix) => line.startsWith(prefix))
+    );
+
+  if (rootPathLines.length !== ROOT_PATH_PREFIXES.length) {
+    throw new Error(`missing root PATH audit lines:\n${output}`);
+  }
+
+  for (const line of rootPathLines) {
+    const [, path] = line.split("=", 2);
+    if (path !== SANDBOX_ROOT_SAFE_PATH) {
+      throw new Error(
+        `root PATH must only contain root-owned executable directories (${SANDBOX_ROOT_SAFE_PATH}):\n${line}`
+      );
+    }
+  }
+}
+
 async function checkSystemAccountAudit(
   provider: E2BSandboxProvider,
   providerId: string
@@ -495,6 +518,9 @@ echo "--- privileged-dirs ---"
 for dir in /opt/bin /usr/local/bin; do
   stat -c '%n %U:%G %a %A' "$dir"
 done
+echo "--- root-path ---"
+printf 'ROOT_EXEC_PATH=%s\n' "$PATH"
+/bin/bash --noprofile --norc -c 'source /etc/profile; printf "ROOT_LOGIN_PATH=%s\n" "$PATH"'
 `,
     { user: "root" }
   );
@@ -506,6 +532,111 @@ done
   assertNoEmptyPasswordAccounts(output);
   assertLocalAuthHelpersNotSetuid(output);
   assertPrivilegedDirsSafe(output);
+  assertRootPathSafe(output);
+}
+
+async function checkRootExecPathHijack(
+  provider: E2BSandboxProvider,
+  providerId: string
+): Promise<void> {
+  const marker = `root-exec-path-proof-${Date.now()}`;
+  const secretPath = `/run/dust/${marker}.secret`;
+  const leakDir = `/tmp/${marker}`;
+  const plantedPath = "/opt/venv/bin/nohup";
+
+  try {
+    const seed = await runBashScript(
+      provider,
+      providerId,
+      `
+set -euo pipefail
+/usr/bin/mkdir -p /run/dust
+printf %s ${shellQuote(marker)} > ${shellQuote(secretPath)}
+/usr/bin/chown root:root ${shellQuote(secretPath)}
+/usr/bin/chmod 600 ${shellQuote(secretPath)}
+/usr/bin/rm -rf ${shellQuote(leakDir)}
+`,
+      { user: "root" }
+    );
+    assertCommandSucceeded("root exec path hijack seed", seed);
+
+    const plant = await runBashScript(
+      provider,
+      providerId,
+      `
+set -euo pipefail
+/usr/bin/cat > ${shellQuote(plantedPath)} <<'DUST_HIJACK_EOF'
+#!/bin/sh
+/bin/mkdir -p ${leakDir}
+/usr/bin/id > ${leakDir}/id
+/bin/cat ${secretPath} > ${leakDir}/leaked 2>${leakDir}/cat.err || true
+/bin/chmod -R a+rX ${leakDir}
+exec /usr/bin/nohup "$@"
+DUST_HIJACK_EOF
+/usr/bin/chmod 755 ${shellQuote(plantedPath)}
+`,
+      { user: AGENT_PROXIED_USER }
+    );
+    assertCommandSucceeded("root exec path hijack plant", plant);
+
+    const trigger = await runBashScript(
+      provider,
+      providerId,
+      `
+set -euo pipefail
+/usr/bin/rm -rf ${shellQuote(leakDir)}
+nohup /bin/true >/tmp/dust-root-path-hijack-nohup.log 2>&1 &
+/usr/bin/sleep 1
+if [ -f ${shellQuote(`${leakDir}/leaked`)} ]; then
+  echo "CRITICAL: root command resolved agent-writable ${plantedPath}"
+  cat ${shellQuote(`${leakDir}/id`)} || true
+  exit 1
+fi
+command -v nohup
+`,
+      { user: "root" }
+    );
+    assertCommandSucceeded("root exec path hijack trigger", trigger);
+    if (combinedOutput(trigger).trim() !== "/usr/bin/nohup") {
+      throw new Error(
+        `root nohup did not resolve to /usr/bin/nohup:\n${combinedOutput(
+          trigger
+        )}`
+      );
+    }
+
+    const readback = await runBashScript(
+      provider,
+      providerId,
+      `
+set -euo pipefail
+if [ -f ${shellQuote(`${leakDir}/leaked`)} ]; then
+  echo "CRITICAL: agent can read leaked root file"
+  cat ${shellQuote(`${leakDir}/leaked`)}
+  exit 1
+fi
+`,
+      { user: AGENT_PROXIED_USER }
+    );
+    assertCommandSucceeded("root exec path hijack readback", readback);
+  } finally {
+    try {
+      await runBashScript(
+        provider,
+        providerId,
+        `
+/usr/bin/rm -f ${shellQuote(plantedPath)} ${shellQuote(secretPath)}
+/usr/bin/rm -rf ${shellQuote(leakDir)}
+`,
+        { user: "root" }
+      );
+    } catch (error) {
+      logger.warn(
+        { err: normalizeError(error), providerId },
+        "Failed to clean up root exec path hijack regression probe"
+      );
+    }
+  }
 }
 
 function assertSshAndDnsHardening(output: string): void {
@@ -552,30 +683,30 @@ async function checkSshAndDnsHardening(
     providerId,
     `
 set -euo pipefail
-if awk '$2 ~ /:0016$/ && $4 == "0A" { found=1 } END { exit found ? 0 : 1 }' /proc/net/tcp /proc/net/tcp6; then
+if /usr/bin/awk '$2 ~ /:0016$/ && $4 == "0A" { found=1 } END { exit found ? 0 : 1 }' /proc/net/tcp /proc/net/tcp6; then
   echo "SSH_PORT_22_LISTENING=1"
 else
   echo "SSH_PORT_22_LISTENING=0"
 fi
 echo "--- sshd-hardening ---"
-cat /etc/ssh/sshd_config.d/00-dust-sandbox-hardening.conf
+/usr/bin/cat /etc/ssh/sshd_config.d/00-dust-sandbox-hardening.conf
 echo "--- dns-systemd ---"
-if systemctl is-active --quiet dust-egress-resolver.service; then
+if /usr/bin/systemctl is-active --quiet dust-egress-resolver.service; then
   echo "DNS_RESOLVER_ACTIVE=1"
 else
-  systemctl status dust-egress-resolver.service --no-pager || true
+  /usr/bin/systemctl status dust-egress-resolver.service --no-pager || true
   echo "DNS_RESOLVER_ACTIVE=0"
 fi
-if systemctl is-active --quiet dust-egress-nftables.service; then
+if /usr/bin/systemctl is-active --quiet dust-egress-nftables.service; then
   echo "DNS_NFTABLES_ACTIVE=1"
 else
-  systemctl status dust-egress-nftables.service --no-pager || true
+  /usr/bin/systemctl status dust-egress-nftables.service --no-pager || true
   echo "DNS_NFTABLES_ACTIVE=0"
 fi
 echo "--- nft-ip ---"
-nft -n list table ip dust-egress
+/usr/sbin/nft -n list table ip dust-egress
 echo "--- nft-ip6 ---"
-nft -n list table ip6 dust-egress
+/usr/sbin/nft -n list table ip6 dust-egress
 `,
     { user: "root" }
   );
@@ -614,6 +745,7 @@ async function checkImage(image: SandboxImage): Promise<void> {
     await checkEquivalentAccountEscalation(provider, providerId);
     await checkSystemAccountAudit(provider, providerId);
     await checkSshAndDnsHardening(provider, providerId);
+    await checkRootExecPathHijack(provider, providerId);
 
     logger.info(
       { imageId, providerId },

@@ -1,9 +1,11 @@
+import { SANDBOX_ROOT_SAFE_PATH } from "@app/lib/api/sandbox/hardening";
 import {
   assertLocalAuthHelpersNotSetuid,
   assertNoEmptyPasswordAccounts,
   assertNoPasswordlessSudoers,
   assertNoPrivilegedGroupMembers,
   assertPrivilegedDirsSafe,
+  assertRootPathSafe,
   assertSudoAbsent,
   buildBashCommand,
   containsUnrestrictedSudo,
@@ -103,5 +105,18 @@ describe("sandbox security check assertions", () => {
         "/opt/bin root:root 777 drwxrwxrwx\n/usr/local/bin root:root 755 drwxr-xr-x"
       )
     ).toThrow("privileged directory /opt/bin is not root-owned");
+  });
+
+  test("detects root PATH entries that can resolve agent-writable binaries", () => {
+    expect(() =>
+      assertRootPathSafe(
+        `ROOT_EXEC_PATH=${SANDBOX_ROOT_SAFE_PATH}\nROOT_LOGIN_PATH=${SANDBOX_ROOT_SAFE_PATH}`
+      )
+    ).not.toThrow();
+    expect(() =>
+      assertRootPathSafe(
+        `ROOT_EXEC_PATH=${SANDBOX_ROOT_SAFE_PATH}\nROOT_LOGIN_PATH=/root/.local/bin:/opt/bin:/opt/venv/bin:/usr/bin`
+      )
+    ).toThrow("root PATH must only contain root-owned executable directories");
   });
 });

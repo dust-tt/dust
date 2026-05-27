@@ -90,9 +90,9 @@ export async function writeEgressSecretsFile(
   // dsbx's call.
   const tmpPath = `${EGRESS_SECRETS_DIR}/.egress-secrets.json.${randomBytes(8).toString("hex")}.tmp`;
   const command =
-    `mkdir -p ${shellEscape(EGRESS_SECRETS_DIR)} && ` +
-    `install -o root -g root -m 600 /dev/stdin ${shellEscape(tmpPath)} && ` +
-    `mv ${shellEscape(tmpPath)} ${shellEscape(EGRESS_SECRETS_PATH)}`;
+    `/usr/bin/mkdir -p ${shellEscape(EGRESS_SECRETS_DIR)} && ` +
+    `/usr/bin/install -o root -g root -m 600 /dev/stdin ${shellEscape(tmpPath)} && ` +
+    `/usr/bin/mv ${shellEscape(tmpPath)} ${shellEscape(EGRESS_SECRETS_PATH)}`;
 
   const result = await sandbox.exec(auth, command, {
     stdin: JSON.stringify(entriesResult.value),

@@ -1,3 +1,4 @@
+import { SANDBOX_ROOT_SAFE_PATH } from "@app/lib/api/sandbox/hardening";
 import { getSandboxImageFromRegistry } from "@app/lib/api/sandbox/image/registry";
 import {
   type Operation,
@@ -68,7 +69,7 @@ describe("sandbox image registry", () => {
   test("pins the current dust-base image tag", () => {
     expect(getDustBaseImage().imageId).toEqual({
       imageName: "dust-base",
-      tag: "0.8.28",
+      tag: "0.8.29",
     });
   });
 
@@ -118,6 +119,8 @@ describe("sandbox image registry", () => {
     expect(hardeningCommands.length).toBeGreaterThanOrEqual(2);
     for (const command of hardeningCommands) {
       expect(command).toContain("passwd -l root");
+      expect(command).toContain("zz-dust-root-safe-path.sh");
+      expect(command).toContain(SANDBOX_ROOT_SAFE_PATH);
       expect(command).toContain("awk -F: '$2 == \"\" {print $1}'");
       expect(command).toContain('passwd -l "$account"');
       expect(command).toContain(
