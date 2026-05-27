@@ -54,6 +54,7 @@ vi.mock(
   () => ({
     deleteFile: mocks.deleteFile,
     deleteOneFile: mocks.deleteOneFile,
+    GOOGLE_DRIVE_INACCESSIBLE_SYNC_TOKEN: "__dust_inaccessible_drive__",
     getSyncPageToken: mocks.getSyncPageToken,
     objectIsInFolderSelection: mocks.objectIsInFolderSelection,
   })
@@ -1151,7 +1152,9 @@ describe("google drive incremental sync", () => {
     });
 
     expect(result).toBeUndefined();
-    expect(syncToken).toBeNull();
+    expect(syncToken?.syncToken).toBe("__dust_inaccessible_drive__");
+    expect(syncToken?.lastSyncAt).toBeInstanceOf(Date);
+    expect(syncToken?.lastRelevantChangeAt).toBeInstanceOf(Date);
   });
 
   it("keeps sync cadence state unchanged when Google returns a transient 403", async () => {

@@ -17,6 +17,9 @@ import type { GoogleDriveObjectType, ModelId } from "@connectors/types";
 import type { drive_v3 } from "googleapis";
 import type { GaxiosResponse, OAuth2Client } from "googleapis-common";
 
+export const GOOGLE_DRIVE_INACCESSIBLE_SYNC_TOKEN =
+  "__dust_inaccessible_drive__";
+
 export async function deleteOneFile(
   connectorId: ModelId,
   file: GoogleDriveObjectType
@@ -106,7 +109,7 @@ export async function getSyncPageToken(
       driveId: driveId,
     },
   });
-  if (last) {
+  if (last && last.syncToken !== GOOGLE_DRIVE_INACCESSIBLE_SYNC_TOKEN) {
     return last.syncToken;
   }
   const driveClient = await getDriveClient(connector.connectionId);

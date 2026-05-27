@@ -6,6 +6,7 @@ import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/
 import {
   deleteFile,
   deleteOneFile,
+  GOOGLE_DRIVE_INACCESSIBLE_SYNC_TOKEN,
   getSyncPageToken,
   objectIsInFolderSelection,
 } from "@connectors/connectors/google_drive/temporal/activities/common/utils";
@@ -523,14 +524,10 @@ async function updateCompletedSyncTokenState({
   if (updatedCount > 0) {
     return;
   }
-  if (!syncToken) {
-    return;
-  }
-
   await GoogleDriveSyncTokenModel.upsert({
     connectorId,
     driveId,
-    syncToken,
+    syncToken: syncToken ?? GOOGLE_DRIVE_INACCESSIBLE_SYNC_TOKEN,
     ...syncTokenState,
   });
 }
