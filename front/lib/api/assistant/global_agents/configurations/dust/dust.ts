@@ -267,34 +267,6 @@ function buildInstructions({
   return parts.join("\n\n");
 }
 
-function shouldEnableDiscoverKnowledge({
-  preFetchedDataSources,
-  mcpServerViews,
-}: {
-  preFetchedDataSources: PrefetchedDataSourcesType | null;
-  mcpServerViews: MCPServerViewsForGlobalAgentsMap;
-}): boolean {
-  if (!preFetchedDataSources) {
-    return false;
-  }
-
-  const hasCompanyData =
-    mcpServerViews.data_sources_file_system !== null &&
-    preFetchedDataSources.dataSourceViews.some(
-      (dsView) =>
-        dsView.isInGlobalSpace &&
-        isIncludedInDefaultCompanyData(dsView.dataSource)
-    );
-
-  const hasDataWarehouses =
-    mcpServerViews.data_warehouses !== null &&
-    preFetchedDataSources.dataSourceViews.some(
-      (dsView) => dsView.isInGlobalSpace && isRemoteDatabase(dsView.dataSource)
-    );
-
-  return hasCompanyData || hasDataWarehouses;
-}
-
 function _getDustLikeGlobalAgent(
   auth: Authenticator,
   {
@@ -375,10 +347,6 @@ function _getDustLikeGlobalAgent(
     : dummyModelConfiguration;
 
   const hasAgentMemory = agentMemoryMCPServerView !== null;
-  const hasDiscoverKnowledge = shouldEnableDiscoverKnowledge({
-    preFetchedDataSources,
-    mcpServerViews,
-  });
 
   const instructions = buildInstructions({
     hasDeepDive,
@@ -503,7 +471,7 @@ function _getDustLikeGlobalAgent(
     status: "active",
     actions,
     skills: [
-      ...(hasDiscoverKnowledge ? ["discover_knowledge"] : []),
+      "discover_knowledge",
       "discover_skills",
       "frames",
       "go-deep",
