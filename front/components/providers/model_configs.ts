@@ -27,7 +27,6 @@ import {
   GPT_5_5_MODEL_CONFIG,
   GPT_5_MINI_MODEL_CONFIG,
   GPT_5_NANO_MODEL_CONFIG,
-  O4_MINI_MODEL_CONFIG,
 } from "@app/types/assistant/models/openai";
 import type { ModelConfig } from "@app/types/assistant/models/types";
 import { GROK_4_MODEL_CONFIG } from "@app/types/assistant/models/xai";
@@ -36,7 +35,6 @@ export const USED_MODEL_CONFIGS: readonly ModelConfig[] = [
   GPT_5_5_MODEL_CONFIG,
   GPT_5_MINI_MODEL_CONFIG,
   GPT_5_NANO_MODEL_CONFIG,
-  O4_MINI_MODEL_CONFIG,
   CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
