@@ -113,8 +113,8 @@ export function MCPSandboxActionDetails({
   const isRunning = toolOutput === null;
 
   const actionName = isRunning
-    ? "Executing command in the Computer"
-    : "Executed command in the Computer";
+    ? "Executing command"
+    : "Executed command";
 
   const viewProps: SandboxViewProps = {
     command,
