@@ -1,15 +1,26 @@
 import type { Authenticator } from "@app/lib/auth";
 import {
+  getCachedDefaultCapThreshold,
+  getCachedPerUserCapThresholds,
   getMetronomeDefaultUserCapAlert,
   listMetronomePerUserCapsForWorkspace,
 } from "@app/lib/metronome/alerts/spend_limits";
-import { fetchPerUserAwuUsage } from "@app/lib/metronome/per_user_usage";
-import { buildSeatDataByUserId, type SeatData } from "@app/lib/metronome/seats";
+import {
+  fetchPerUserAwuUsage,
+  getCachedPerUserAwuUsage,
+} from "@app/lib/metronome/per_user_usage";
+import {
+  buildSeatDataByUserId,
+  getCachedSeatDataByUserId,
+  type SeatData,
+} from "@app/lib/metronome/seats";
 import type { BillingFrequency } from "@app/lib/metronome/types";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { resolveEffectiveSpendLimitAwuCredits } from "@app/lib/spend_limits/effective";
+import logger from "@app/logger/logger";
 import type { MembershipSeatType } from "@app/types/memberships";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { z } from "zod";
 
 export type MemberUsageType = {
@@ -57,6 +68,27 @@ export type MembersUsagePaginationInput = z.infer<
   typeof MembersUsagePaginationSchema
 >;
 
+async function fetchPerUserUsageCreditsForMembersTableUncached({
+  metronomeCustomerId,
+  metronomeContractId,
+}: {
+  metronomeCustomerId: string;
+  metronomeContractId: string;
+}): Promise<Map<string, number>> {
+  const result = await fetchPerUserAwuUsage({
+    metronomeCustomerId,
+    metronomeContractId,
+  });
+  if (result.isErr()) {
+    logger.warn(
+      { err: result.error, metronomeCustomerId },
+      "[MembersUsage] Failed to fetch per-user usage"
+    );
+    return new Map();
+  }
+  return result.value;
+}
+
 async function fetchPerUserUsageCreditsForMembersTable({
   metronomeCustomerId,
   metronomeContractId,
@@ -67,14 +99,38 @@ async function fetchPerUserUsageCreditsForMembersTable({
   if (!metronomeCustomerId || !metronomeContractId) {
     return new Map();
   }
-  const result = await fetchPerUserAwuUsage({
-    metronomeCustomerId,
-    metronomeContractId,
-  });
-  if (result.isErr()) {
-    return new Map();
+  try {
+    return new Map(
+      Object.entries(
+        await getCachedPerUserAwuUsage({
+          metronomeCustomerId,
+          metronomeContractId,
+        })
+      )
+    );
+  } catch (err) {
+    logger.warn(
+      { err: normalizeError(err), metronomeCustomerId },
+      "[MembersUsage] Failed to read cached per-user usage, falling back to uncached fetch"
+    );
+    return fetchPerUserUsageCreditsForMembersTableUncached({
+      metronomeCustomerId,
+      metronomeContractId,
+    });
   }
-  return result.value;
+}
+
+async function fetchSeatDataForMembersTableUncached({
+  metronomeCustomerId,
+  metronomeContractId,
+}: {
+  metronomeCustomerId: string;
+  metronomeContractId: string;
+}): Promise<Map<string, SeatData>> {
+  return buildSeatDataByUserId({
+    metronomeCustomerId,
+    contractId: metronomeContractId,
+  });
 }
 
 async function fetchSeatDataForMembersTable({
@@ -87,10 +143,74 @@ async function fetchSeatDataForMembersTable({
   if (!metronomeCustomerId || !metronomeContractId) {
     return new Map();
   }
-  return buildSeatDataByUserId({
+  try {
+    return new Map(
+      Object.entries(
+        await getCachedSeatDataByUserId({
+          metronomeCustomerId,
+          contractId: metronomeContractId,
+        })
+      )
+    );
+  } catch (err) {
+    logger.warn(
+      { err: normalizeError(err), metronomeCustomerId },
+      "[MembersUsage] Failed to read cached seat data, falling back to uncached fetch"
+    );
+    return fetchSeatDataForMembersTableUncached({
+      metronomeCustomerId,
+      metronomeContractId,
+    });
+  }
+}
+
+async function fetchPerUserCapOverridesUncached({
+  metronomeCustomerId,
+  workspaceId,
+}: {
+  metronomeCustomerId: string;
+  workspaceId: string;
+}): Promise<Map<string, number>> {
+  const result = await listMetronomePerUserCapsForWorkspace({
     metronomeCustomerId,
-    contractId: metronomeContractId,
+    workspaceId,
   });
+  if (result.isErr()) {
+    logger.warn(
+      { err: result.error, workspaceId },
+      "[MembersUsage] Failed to fetch per-user spend caps"
+    );
+    return new Map();
+  }
+
+  const thresholds = new Map<string, number>();
+  for (const [userId, entry] of result.value) {
+    thresholds.set(userId, entry.alert.threshold);
+  }
+
+  return thresholds;
+}
+
+async function fetchDefaultCapUncached({
+  metronomeCustomerId,
+  workspaceId,
+}: {
+  metronomeCustomerId: string;
+  workspaceId: string;
+}): Promise<number | null> {
+  const result = await getMetronomeDefaultUserCapAlert({
+    metronomeCustomerId,
+    workspaceId,
+  });
+  if (result.isErr()) {
+    logger.warn(
+      { err: result.error, workspaceId },
+      "[MembersUsage] Failed to fetch default spend cap"
+    );
+    return null;
+  }
+
+  return result.value?.alert.threshold ?? null;
 }
 
 /**
@@ -117,29 +237,65 @@ async function fetchEffectivePerUserSpendLimits({
     return { perUserOverrides: new Map(), defaultAwuCredits: null };
   }
 
-  const [overridesResult, defaultResult] = await Promise.all([
-    listMetronomePerUserCapsForWorkspace({
-      metronomeCustomerId,
-      workspaceId,
-    }),
-    getMetronomeDefaultUserCapAlert({
-      metronomeCustomerId,
-      workspaceId,
-    }),
+  const [perUserOverrides, defaultAwuCredits] = await Promise.all([
+    fetchPerUserCapOverrides({ metronomeCustomerId, workspaceId }),
+    fetchDefaultCap({ metronomeCustomerId, workspaceId }),
   ]);
 
-  const perUserOverrides = new Map<string, number>();
-  if (overridesResult.isOk()) {
-    for (const [userId, entry] of overridesResult.value) {
-      perUserOverrides.set(userId, entry.alert.threshold);
-    }
-  }
-
-  const defaultAwuCredits = defaultResult.isOk()
-    ? (defaultResult.value?.alert.threshold ?? null)
-    : null;
-
   return { perUserOverrides, defaultAwuCredits };
+}
+
+async function fetchPerUserCapOverrides({
+  metronomeCustomerId,
+  workspaceId,
+}: {
+  metronomeCustomerId: string;
+  workspaceId: string;
+}): Promise<Map<string, number>> {
+  try {
+    return new Map(
+      Object.entries(
+        await getCachedPerUserCapThresholds({
+          metronomeCustomerId,
+          workspaceId,
+        })
+      )
+    );
+  } catch (err) {
+    logger.warn(
+      { err: normalizeError(err), workspaceId },
+      "[MembersUsage] Failed to read cached per-user spend caps, falling back to uncached fetch"
+    );
+    return fetchPerUserCapOverridesUncached({
+      metronomeCustomerId,
+      workspaceId,
+    });
+  }
+}
+
+async function fetchDefaultCap({
+  metronomeCustomerId,
+  workspaceId,
+}: {
+  metronomeCustomerId: string;
+  workspaceId: string;
+}): Promise<number | null> {
+  try {
+    const { threshold } = await getCachedDefaultCapThreshold({
+      metronomeCustomerId,
+      workspaceId,
+    });
+    return threshold;
+  } catch (err) {
+    logger.warn(
+      { err: normalizeError(err), workspaceId },
+      "[MembersUsage] Failed to read cached default spend cap, falling back to uncached fetch"
+    );
+    return fetchDefaultCapUncached({
+      metronomeCustomerId,
+      workspaceId,
+    });
+  }
 }
 
 export async function getMembersUsage({

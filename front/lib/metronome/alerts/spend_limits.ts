@@ -5,6 +5,10 @@ import {
 } from "@app/lib/metronome/alerts";
 import { listMetronomeAlerts } from "@app/lib/metronome/client";
 import { getCreditTypeAwuId } from "@app/lib/metronome/constants";
+import {
+  bestEffortInvalidateCacheWithRedis,
+  cacheWithRedis,
+} from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -90,6 +94,10 @@ export async function upsertMetronomeDefaultUserCapAlert({
     },
     "[Metronome DefaultUserCap] Synced default per-user cap alert"
   );
+  await invalidateCachedDefaultCapThreshold({
+    metronomeCustomerId,
+    workspaceId,
+  });
   return new Ok({ alertId: upsertResult.value.alertId });
 }
 
@@ -148,6 +156,66 @@ export async function listMetronomePerUserCapsForWorkspace({
   }
 }
 
+const SPEND_LIMIT_CACHE_TTL_MS = 60 * 1000;
+
+const spendLimitCacheResolver = ({
+  metronomeCustomerId,
+  workspaceId,
+}: {
+  metronomeCustomerId: string;
+  workspaceId: string;
+}) => `${metronomeCustomerId}-${workspaceId}`;
+
+async function fetchPerUserCapThresholds(args: {
+  metronomeCustomerId: string;
+  workspaceId: string;
+}): Promise<Record<string, number>> {
+  const result = await listMetronomePerUserCapsForWorkspace(args);
+  if (result.isErr()) {
+    throw result.error;
+  }
+  const thresholds: Record<string, number> = {};
+  for (const [userId, entry] of result.value) {
+    thresholds[userId] = entry.alert.threshold;
+  }
+  return thresholds;
+}
+
+export const getCachedPerUserCapThresholds = cacheWithRedis(
+  fetchPerUserCapThresholds,
+  spendLimitCacheResolver,
+  { ttlMs: SPEND_LIMIT_CACHE_TTL_MS }
+);
+
+const invalidateCachedPerUserCapThresholds = bestEffortInvalidateCacheWithRedis(
+  fetchPerUserCapThresholds,
+  spendLimitCacheResolver,
+  "members-usage per-user spend caps"
+);
+
+async function fetchDefaultCapThreshold(args: {
+  metronomeCustomerId: string;
+  workspaceId: string;
+}): Promise<{ threshold: number | null }> {
+  const result = await getMetronomeDefaultUserCapAlert(args);
+  if (result.isErr()) {
+    throw result.error;
+  }
+  return { threshold: result.value?.alert.threshold ?? null };
+}
+
+export const getCachedDefaultCapThreshold = cacheWithRedis(
+  fetchDefaultCapThreshold,
+  spendLimitCacheResolver,
+  { ttlMs: SPEND_LIMIT_CACHE_TTL_MS }
+);
+
+const invalidateCachedDefaultCapThreshold = bestEffortInvalidateCacheWithRedis(
+  fetchDefaultCapThreshold,
+  spendLimitCacheResolver,
+  "members-usage default spend cap"
+);
+
 /**
  * Idempotently ensure a Metronome `spend_threshold_reached` alert exists on
  * the customer for this user, with the given AWU threshold. If an alert
@@ -188,6 +256,10 @@ export async function upsertMetronomePerUserCapAlert({
     },
     "[Metronome PerUserCap] Synced per-user cap alert"
   );
+  await invalidateCachedPerUserCapThresholds({
+    metronomeCustomerId,
+    workspaceId,
+  });
   return new Ok({ alertId: upsertResult.value.alertId });
 }
 
@@ -223,5 +295,9 @@ export async function clearMetronomePerUserCapAlert({
       "[Metronome PerUserCap] Cleared per-user cap alert"
     );
   }
+  await invalidateCachedPerUserCapThresholds({
+    metronomeCustomerId,
+    workspaceId,
+  });
   return new Ok(undefined);
 }
