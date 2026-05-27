@@ -66,9 +66,9 @@ export async function createHandler(
     }
   }
 
-  const verb = exists ? "Updated" : "Created";
   const fileName = path.split("/").pop() ?? path;
   const sizeKb = Math.ceil(contentBuffer.byteLength / 1024);
+  const verb = exists ? "Updated" : "Created";
 
   const items: Array<
     | { type: "text"; text: string }

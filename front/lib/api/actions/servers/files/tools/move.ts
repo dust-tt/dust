@@ -102,9 +102,7 @@ export async function moveHandler(
 
   const fsResult = await DustFileSystem.forConversation(auth, conversation);
   if (fsResult.isErr()) {
-    return new Err(
-      new MCPError(fsResult.error.message, { tracked: false })
-    );
+    return new Err(new MCPError(fsResult.error.message, { tracked: false }));
   }
   const fs = fsResult.value;
 
@@ -114,19 +112,21 @@ export async function moveHandler(
     switch (err.code) {
       case "legacy_path":
         return new Err(new MCPError(err.message, { tracked: false }));
+
       case "invalid_path":
         return new Err(
           new MCPError(`Invalid path: \`${source}\`.`, { tracked: false })
         );
+
       default:
         return new Err(
-          new MCPError(
-            `Failed to read source \`${source}\`: ${err.message}`,
-            { tracked: false }
-          )
+          new MCPError(`Failed to read source \`${source}\`: ${err.message}`, {
+            tracked: false,
+          })
         );
     }
   }
+
   if (statResult.value === null) {
     return new Err(
       new MCPError(`Source file not found: \`${source}\`.`, { tracked: false })
@@ -143,10 +143,7 @@ export async function moveHandler(
     ? await FileResource.fetchByMountFilePaths(auth, [
         sourceGcsPath,
         // Also try the legacy projects/ mirror path so we find records written before the pods/ switch.
-        sourceGcsPath.replace(
-          /^(w\/[^/]+\/)pods\//,
-          "$1projects/"
-        ),
+        sourceGcsPath.replace(/^(w\/[^/]+\/)pods\//, "$1projects/"),
       ])
     : [];
   const linkedFileResource = linkedFileResources[0];
@@ -158,10 +155,12 @@ export async function moveHandler(
       case "legacy_path":
       case "unauthorized":
         return new Err(new MCPError(err.message, { tracked: false }));
+
       case "invalid_path":
         return new Err(
           new MCPError(`Invalid path: \`${dest}\`.`, { tracked: false })
         );
+
       default:
         return new Err(
           new MCPError(

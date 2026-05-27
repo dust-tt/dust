@@ -9,7 +9,10 @@ import {
   FILES_SERVER_NAME,
 } from "@app/lib/api/actions/servers/files/metadata";
 import { DustFileSystem } from "@app/lib/api/file_system";
-import { isInteractiveContentType, stripMimeParameters } from "@app/types/files";
+import {
+  isInteractiveContentType,
+  stripMimeParameters,
+} from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 
 export async function copyHandler(
@@ -33,10 +36,9 @@ export async function copyHandler(
 
   const fsResult = await DustFileSystem.forConversation(auth, conversation);
   if (fsResult.isErr()) {
-    return new Err(
-      new MCPError(fsResult.error.message, { tracked: false })
-    );
+    return new Err(new MCPError(fsResult.error.message, { tracked: false }));
   }
+
   const fs = fsResult.value;
 
   const statResult = await fs.stat(source);
@@ -45,19 +47,21 @@ export async function copyHandler(
     switch (err.code) {
       case "legacy_path":
         return new Err(new MCPError(err.message, { tracked: false }));
+
       case "invalid_path":
         return new Err(
           new MCPError(`Invalid path: \`${source}\`.`, { tracked: false })
         );
+
       default:
         return new Err(
-          new MCPError(
-            `Failed to read source \`${source}\`: ${err.message}`,
-            { tracked: false }
-          )
+          new MCPError(`Failed to read source \`${source}\`: ${err.message}`, {
+            tracked: false,
+          })
         );
     }
   }
+
   if (statResult.value === null) {
     return new Err(
       new MCPError(`Source file not found: \`${source}\`.`, { tracked: false })
@@ -81,10 +85,12 @@ export async function copyHandler(
       case "legacy_path":
       case "unauthorized":
         return new Err(new MCPError(err.message, { tracked: false }));
+
       case "invalid_path":
         return new Err(
           new MCPError(`Invalid path: \`${dest}\`.`, { tracked: false })
         );
+
       default:
         return new Err(
           new MCPError(
