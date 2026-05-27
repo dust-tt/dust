@@ -36,7 +36,7 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
         .array(z.string())
         .optional()
         .describe(
-          "The email addresses of the recipients (optional if replyToMessageId is set, defaults to the original sender, acts as override)."
+          "The email addresses of the recipients. Required if replyToMessageId is not set. If replyToMessageId is set and to is not provided, will fall back to the From field of the original message. If you are the sender of the original message, you must provide to explicitly."
         ),
       cc: z
         .array(z.string())
@@ -194,7 +194,7 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
         .array(z.string())
         .optional()
         .describe(
-          "The email addresses of the recipients (optional if replyToMessageId is set, defaults to the original sender, acts as override)."
+          "The email addresses of the recipients. Required if replyToMessageId is not set. If replyToMessageId is set and to is not provided, will fall back to the From field of the original message. If you are the sender of the original message, you must provide to explicitly."
         ),
       cc: z
         .array(z.string())
