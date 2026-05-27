@@ -5,27 +5,57 @@ import {
   TimeoutType,
 } from "@temporalio/common";
 
-const RUN_MODEL_AND_CREATE_ACTIONS_ACTIVITY_NAME =
+export const RUN_MODEL_AND_CREATE_ACTIONS_ACTIVITY_NAME =
   "runModelAndCreateActionsActivity";
 
-export function isTerminalRunModelAndCreateActionsTimeout(
+function isRunModelAndCreateActionsActivityFailure(
   error: unknown
 ): error is ActivityFailure {
   if (!(error instanceof ActivityFailure)) {
     return false;
   }
 
-  if (error.activityType !== RUN_MODEL_AND_CREATE_ACTIONS_ACTIVITY_NAME) {
-    return false;
+  return error.activityType === RUN_MODEL_AND_CREATE_ACTIONS_ACTIVITY_NAME;
+}
+
+function isTerminalRetryState(retryState: RetryState): boolean {
+  return (
+    retryState === RetryState.MAXIMUM_ATTEMPTS_REACHED ||
+    retryState === RetryState.TIMEOUT
+  );
+}
+
+export function getTerminalRunModelAndCreateActionsTimeout(error: unknown): {
+  activityType: typeof RUN_MODEL_AND_CREATE_ACTIONS_ACTIVITY_NAME;
+  timeoutType: TimeoutType;
+} | null {
+  if (!isRunModelAndCreateActionsActivityFailure(error)) {
+    return null;
   }
 
-  if (error.retryState !== RetryState.MAXIMUM_ATTEMPTS_REACHED) {
-    return false;
+  if (!isTerminalRetryState(error.retryState)) {
+    return null;
   }
 
   if (!(error.cause instanceof TimeoutFailure)) {
-    return false;
+    return null;
   }
 
-  return error.cause.timeoutType === TimeoutType.START_TO_CLOSE;
+  if (
+    error.cause.timeoutType !== TimeoutType.START_TO_CLOSE &&
+    error.cause.timeoutType !== TimeoutType.HEARTBEAT
+  ) {
+    return null;
+  }
+
+  return {
+    activityType: RUN_MODEL_AND_CREATE_ACTIONS_ACTIVITY_NAME,
+    timeoutType: error.cause.timeoutType,
+  };
+}
+
+export function isTerminalRunModelAndCreateActionsTimeout(
+  error: unknown
+): error is ActivityFailure {
+  return getTerminalRunModelAndCreateActionsTimeout(error) !== null;
 }

@@ -9,6 +9,7 @@ import {
   finalizeGracefulStop,
   finalizeInterruption,
   notifyWorkflowError,
+  type WorkflowErrorInfo,
 } from "@app/temporal/agent_loop/activities/common";
 import { handleMentions } from "@app/temporal/agent_loop/activities/mentions";
 import { conversationUnreadNotification } from "@app/temporal/agent_loop/activities/notification";
@@ -127,7 +128,7 @@ export async function finalizeCancelledAgentLoopActivity(
 export async function finalizeErroredAgentLoopActivity(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs,
-  error: { message: string; name: string }
+  error: WorkflowErrorInfo
 ): Promise<void> {
   await notifyWorkflowError(authType, agentLoopArgs, error);
 
