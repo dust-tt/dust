@@ -9,6 +9,7 @@ import type {
   GroupByType,
 } from "@app/lib/api/analytics/programmatic_cost";
 import type { GetBillingInfoResponseBody } from "@app/lib/api/billing/info";
+import type { GetBillingInvoicesResponseBody } from "@app/lib/api/billing/invoices";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
@@ -756,6 +757,36 @@ export function useBillingInfo({
     isBillingInfoError: error,
     isBillingInfoValidating: isValidating,
     mutateBillingInfo: mutate,
+  };
+}
+
+export function useRecentBillingInvoices({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const billingInvoicesFetcher: Fetcher<GetBillingInvoicesResponseBody> =
+    fetcher;
+
+  const { data, error, isValidating, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/billing/invoices`,
+    billingInvoicesFetcher,
+    {
+      disabled,
+      revalidateOnFocus: false,
+      dedupingInterval: 60_000,
+    }
+  );
+
+  return {
+    billingInvoices: data?.billingInvoices ?? emptyArray(),
+    isBillingInvoicesLoading: !error && !data && !disabled,
+    isBillingInvoicesError: error,
+    isBillingInvoicesValidating: isValidating,
+    mutateBillingInvoices: mutate,
   };
 }
 
