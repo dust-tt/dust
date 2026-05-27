@@ -10,7 +10,11 @@ import type * as finalizeActivities from "@app/temporal/agent_loop/activities/fi
 import type * as publishDeferredEventsActivities from "@app/temporal/agent_loop/activities/publish_deferred_events";
 import type * as runModelAndCreateWrapperActivities from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
 import type * as runToolActivities from "@app/temporal/agent_loop/activities/run_tool";
-import { RUN_MODEL_MAX_RETRIES } from "@app/temporal/agent_loop/config";
+import {
+  MODEL_ACTIVITY_HEARTBEAT_TIMEOUT_MS,
+  RUN_MODEL_MAX_RETRIES,
+  TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS,
+} from "@app/temporal/agent_loop/config";
 import { isTerminalRunModelAndCreateActionsTimeout } from "@app/temporal/agent_loop/lib/workflow_failures";
 import { makeAgentLoopConversationTitleWorkflowId } from "@app/temporal/agent_loop/lib/workflow_ids";
 import {
@@ -43,9 +47,6 @@ import {
 const toolActivityStartToCloseTimeoutMs =
   Math.max(RUN_AGENT_CALL_TOOL_TIMEOUT_MS, DEFAULT_MCP_REQUEST_TIMEOUT_MS) +
   60 * 1000;
-
-const TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS = 60 * 1000;
-const MODEL_ACTIVITY_HEARTBEAT_TIMEOUT_MS = 60 * 1000;
 
 import {
   OpenTelemetryInboundInterceptor,

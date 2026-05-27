@@ -25,7 +25,7 @@ import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { withPeriodicHeartbeat } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-
+import { TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS } from "@app/temporal/agent_loop/config";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentMessageType,
@@ -34,7 +34,10 @@ import type {
 import { removeNulls } from "@app/types/shared/utils/general";
 import { heartbeat } from "@temporalio/activity";
 
-const TOOL_RESULT_PROCESSING_HEARTBEAT_INTERVAL_MS = 10_000;
+const TOOL_RESULT_PROCESSING_HEARTBEAT_TIMEOUT_MARGIN_MS = 5 * 1000;
+const TOOL_RESULT_PROCESSING_HEARTBEAT_INTERVAL_MS =
+  TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS -
+  TOOL_RESULT_PROCESSING_HEARTBEAT_TIMEOUT_MARGIN_MS;
 
 /**
  * Runs a tool with streaming for the given MCP action configuration.
@@ -139,7 +142,10 @@ export async function* runToolWithStreaming(
       }),
     {
       intervalMs: TOOL_RESULT_PROCESSING_HEARTBEAT_INTERVAL_MS,
-      heartbeatFn: heartbeat,
+      heartbeatFn: () => {
+        heartbeat();
+        localLogger.info("MCP tool result processing heartbeat");
+      },
     }
   );
 
