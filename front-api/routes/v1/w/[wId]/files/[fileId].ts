@@ -15,9 +15,7 @@ import {
   isConversationFileUseCase,
   isPubliclySupportedUseCase,
 } from "@app/types/files";
-import type { FileUploadedRequestResponseType } from "@dust-tt/client";
 import type { PublicApiCtx } from "@front-api/middlewares/ctx";
-import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import type { HttpBindings } from "@hono/node-server";
 import type { Context } from "hono";
@@ -213,131 +211,130 @@ app.delete("/", async (ctx) => {
 });
 
 app.post("/", async (ctx) => {
-    const auth = ctx.get("auth");
-    const fileId = ctx.req.param("fileId") ?? "";
+  const auth = ctx.get("auth");
+  const fileId = ctx.req.param("fileId") ?? "";
 
-    if (!fileId) {
+  if (!fileId) {
+    return apiError(ctx, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "The `fileId` query parameter is required.",
+      },
+    });
+  }
+
+  const file = await FileResource.fetchById(auth, fileId);
+  if (!file) {
+    return apiError(ctx, {
+      status_code: 404,
+      api_error: {
+        type: "file_not_found",
+        message: "The file was not found.",
+      },
+    });
+  }
+
+  if (!auth.isSystemKey()) {
+    if (!isPubliclySupportedUseCase(file.useCase)) {
       return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
-          message: "The `fileId` query parameter is required.",
+          message: "The file use case is not supported by the API.",
         },
       });
     }
+  }
 
-    const file = await FileResource.fetchById(auth, fileId);
-    if (!file) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: {
-          type: "file_not_found",
-          message: "The file was not found.",
-        },
-      });
-    }
+  const accessError = await checkFileAccess(ctx, auth, file);
+  if (accessError) {
+    return accessError;
+  }
 
-    if (!auth.isSystemKey()) {
-      if (!isPubliclySupportedUseCase(file.useCase)) {
-        return apiError(ctx, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "The file use case is not supported by the API.",
-          },
-        });
-      }
-    }
-
-    const accessError = await checkFileAccess(ctx, auth, file);
-    if (accessError) {
-      return accessError;
-    }
-
-    if (!auth.isBuilder() && file.useCase !== "conversation") {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "workspace_auth_error",
-          message:
-            "Only users that are `builders` for the current workspace can modify files.",
-        },
-      });
-    }
-
-    // processAndStoreFile.parseUploadRequest expects a Node IncomingMessage to
-    // stream multipart parsing; @hono/node-server exposes it on ctx.env. In
-    // tests using `honoApp.request()` (Web fetch API) env is undefined; that's
-    // fine because the test mocks `processAndStoreFile` and never reads the
-    // value.
-    const r = await processAndStoreFile(auth, {
-      file,
-      content: {
-        type: "incoming_message",
-        value: ctx.env?.incoming as HttpBindings["incoming"],
+  if (!auth.isBuilder() && file.useCase !== "conversation") {
+    return apiError(ctx, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message:
+          "Only users that are `builders` for the current workspace can modify files.",
       },
     });
+  }
 
-    if (r.isErr()) {
-      return apiError(ctx, {
-        status_code: r.error.code === "internal_server_error" ? 500 : 400,
-        api_error: {
-          type: r.error.code,
-          message: r.error.message,
-        },
+  // processAndStoreFile.parseUploadRequest expects a Node IncomingMessage to
+  // stream multipart parsing; @hono/node-server exposes it on ctx.env. In
+  // tests using `honoApp.request()` (Web fetch API) env is undefined; that's
+  // fine because the test mocks `processAndStoreFile` and never reads the
+  // value.
+  const r = await processAndStoreFile(auth, {
+    file,
+    content: {
+      type: "incoming_message",
+      value: ctx.env?.incoming as HttpBindings["incoming"],
+    },
+  });
+
+  if (r.isErr()) {
+    return apiError(ctx, {
+      status_code: r.error.code === "internal_server_error" ? 500 : 400,
+      api_error: {
+        type: r.error.code,
+        message: r.error.message,
+      },
+    });
+  }
+
+  // For files with useCase "conversation" that support upsert, directly add them to the data source.
+  if (
+    file.useCase === "conversation" &&
+    !isSandboxRawDelimitedConversationFile(file) &&
+    isFileTypeUpsertableForUseCase(file)
+  ) {
+    const jitDataSource = await getOrCreateConversationDataSourceFromFile(
+      auth,
+      file
+    );
+    if (jitDataSource.isErr()) {
+      logger.warn({
+        fileModelId: file.id,
+        workspaceId: auth.workspace()?.sId,
+        contentType: file.contentType,
+        useCase: file.useCase,
+        useCaseMetadata: file.useCaseMetadata,
+        message: "Failed to get or create JIT data source.",
+        error: jitDataSource.error,
       });
-    }
-
-    // For files with useCase "conversation" that support upsert, directly add them to the data source.
-    if (
-      file.useCase === "conversation" &&
-      !isSandboxRawDelimitedConversationFile(file) &&
-      isFileTypeUpsertableForUseCase(file)
-    ) {
-      const jitDataSource = await getOrCreateConversationDataSourceFromFile(
+    } else {
+      const rUpsert = await processAndUpsertToDataSource(
         auth,
-        file
+        jitDataSource.value,
+        { file }
       );
-      if (jitDataSource.isErr()) {
-        logger.warn({
+      if (rUpsert.isErr()) {
+        logger.error({
           fileModelId: file.id,
           workspaceId: auth.workspace()?.sId,
           contentType: file.contentType,
           useCase: file.useCase,
           useCaseMetadata: file.useCaseMetadata,
-          message: "Failed to get or create JIT data source.",
-          error: jitDataSource.error,
+          message: "Failed to upsert the file.",
+          error: rUpsert.error,
         });
-      } else {
-        const rUpsert = await processAndUpsertToDataSource(
-          auth,
-          jitDataSource.value,
-          { file }
-        );
-        if (rUpsert.isErr()) {
-          logger.error({
-            fileModelId: file.id,
-            workspaceId: auth.workspace()?.sId,
-            contentType: file.contentType,
-            useCase: file.useCase,
-            useCaseMetadata: file.useCaseMetadata,
+        return apiError(ctx, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
             message: "Failed to upsert the file.",
-            error: rUpsert.error,
-          });
-          return apiError(ctx, {
-            status_code: 500,
-            api_error: {
-              type: "internal_server_error",
-              message: "Failed to upsert the file.",
-            },
-          });
-        }
+          },
+        });
       }
     }
-
-    return ctx.json({ file: file.toPublicJSON(auth) });
   }
-);
+
+  return ctx.json({ file: file.toPublicJSON(auth) });
+});
 
 /**
  * Validates that the caller can access the file based on its use case and
