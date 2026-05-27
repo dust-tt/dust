@@ -1554,6 +1554,7 @@ export async function listMetronomeBalances(
     includeArchived = false,
     coveringDate = new Date(),
     effectiveBefore,
+    onlyPoolCredits = true,
   }: {
     // Pass `null` to drop the `covering_date` filter and return balances of any
     // date (including expired and, depending on `effectiveBefore`, future ones).
@@ -1562,6 +1563,8 @@ export async function listMetronomeBalances(
     // future-dated balances while still returning expired ones.
     effectiveBefore?: Date;
     includeArchived?: boolean;
+    // Restrict to balances related to pool credits
+    onlyPoolCredits?: boolean;
   } = {}
 ): Promise<Result<MetronomeBalance[], Error>> {
   if (!config.getMetronomeApiKey()) {
@@ -1590,6 +1593,7 @@ export async function listMetronomeBalances(
       // excluded — they're not part of the workspace pool balance the
       // alert tracks. Commits are not stamped and pass through unchanged.
       if (
+        onlyPoolCredits &&
         entry.type === "CREDIT" &&
         entry.custom_fields?.[CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY] !==
           CONTRACT_CREDIT_TYPE_POOL
