@@ -120,6 +120,8 @@ type AuditAction =
   // Audit Logs.
   | "audit_log.viewed"
   | "audit_log.export_configured"
+  // Billing & Subscriptions.
+  | "subscription.changed"
   // Coupons.
   | "coupon.redeemed"
   | "coupon.revoked";

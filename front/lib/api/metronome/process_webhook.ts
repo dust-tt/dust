@@ -23,6 +23,7 @@ import {
   getMetronomeDefaultUserCapAlert,
   getMetronomePerUserCap,
 } from "@app/lib/metronome/alerts/spend_limits";
+import { emitSubscriptionChangedAuditEvent } from "@app/lib/metronome/audit";
 import {
   getMetronomeContractById,
   listMetronomeContracts,
@@ -995,6 +996,7 @@ export async function processMetronomeWebhook({
         pendingSubscription &&
         pendingSubscription.status === "created_backend_only"
       ) {
+        const previousPlanCode = activeSubscription.getPlan().code;
         await pendingSubscription.activatePending();
         await invalidateContractCache(workspace.sId);
         const auth = await Authenticator.internalAdminForWorkspace(
@@ -1005,6 +1007,12 @@ export async function processMetronomeWebhook({
           workspace,
           planCode: targetPlan.code,
           contractId,
+        });
+        emitSubscriptionChangedAuditEvent({
+          auth,
+          planCode: targetPlanCode,
+          previousPlanCode,
+          metronomeContractId: contractId,
         });
         logger.info(
           {
@@ -1038,6 +1046,7 @@ export async function processMetronomeWebhook({
 
       // End the current subscription as `ended_backend_only` and create
       // a new active subscription on the target plan + new contract.
+      const legacyPreviousPlanCode = activeSubscription.getPlan().code;
       await activeSubscription.swapMetronomeContract({
         metronomeContractId: contractId,
         planCode: targetPlan.code,
@@ -1049,6 +1058,12 @@ export async function processMetronomeWebhook({
       // triggers. Idempotent — safe to call regardless of prior state.
       const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
       await restoreWorkspaceAfterSubscription(auth);
+      emitSubscriptionChangedAuditEvent({
+        auth,
+        planCode: targetPlan.code,
+        previousPlanCode: legacyPreviousPlanCode,
+        metronomeContractId: contractId,
+      });
 
       await ensureWorkOSOrganizationForPaidPlan({
         workspace,

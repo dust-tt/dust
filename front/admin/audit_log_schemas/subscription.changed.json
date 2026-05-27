@@ -1,0 +1,9 @@
+{
+  "action": "subscription.changed",
+  "targets": [{ "type": "workspace" }],
+  "metadata": {
+    "plan_code": "string",
+    "previous_plan_code": "string",
+    "metronome_contract_id": "string"
+  }
+}
