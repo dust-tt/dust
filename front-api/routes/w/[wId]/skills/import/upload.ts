@@ -16,6 +16,7 @@ import { Hono } from "hono";
 const app = new Hono<WorkspaceAwareCtx & { Bindings: HttpBindings }>();
 
 app.post("/", ensureIsBuilder(), async (ctx) => {
+  const auth = ctx.get("auth");
   const incoming = ctx.env?.incoming;
   if (!incoming) {
     return apiError(ctx, {

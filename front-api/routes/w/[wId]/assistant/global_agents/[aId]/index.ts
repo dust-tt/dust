@@ -22,6 +22,7 @@ app.patch(
   ensureIsBuilder(),
   validate("json", PatchGlobalAgentSettingsRequestBodySchema),
   async (ctx): HandlerResult<PatchGlobalAgentSettingResponseBody> => {
+    const auth = ctx.get("auth");
     const agentId = ctx.req.param("aId") ?? "";
     const body = ctx.req.valid("json");
 

@@ -108,6 +108,7 @@ app.patch(
   ensureIsAdmin(),
   validate("json", PatchMetronomeContractRequestBody),
   async (ctx): HandlerResult<PatchMetronomeContractResponseBody> => {
+    const auth = ctx.get("auth");
     const { action } = ctx.req.valid("json");
 
     switch (action) {
