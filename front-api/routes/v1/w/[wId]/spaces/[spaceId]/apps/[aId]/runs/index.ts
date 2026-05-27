@@ -16,6 +16,7 @@ import type { CredentialsType } from "@app/types/provider";
 import type { RunType } from "@app/types/run";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { publicApiApp } from "@front-api/middlewares/ctx";
+import { setSSEHeaders } from "@front-api/middlewares/streaming";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { withSpace } from "@front-api/middlewares/with_space";
@@ -299,11 +300,7 @@ app.post(
 
     switch (runFlavor) {
       case "streaming": {
-        ctx.header("Content-Type", "text/event-stream");
-        ctx.header("Cache-Control", "no-cache");
-        ctx.header("Connection", "keep-alive");
-        ctx.header("X-Accel-Buffering", "no");
-        ctx.header("Content-Encoding", "none");
+        setSSEHeaders(ctx);
 
         return stream(ctx, async (s) => {
           try {
