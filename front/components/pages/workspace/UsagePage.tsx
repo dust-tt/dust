@@ -201,7 +201,7 @@ export function UsagePage() {
     workspaceId: owner.sId,
   });
 
-  const isSeatBased = Object.keys(seatPlans).length > 0;
+  const isSeatBased = Object.keys(seatPlans).length > 1;
 
   const plan = subscription.plan;
   const isManualInvitationsEnabled =
