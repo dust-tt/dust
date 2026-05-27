@@ -38,12 +38,10 @@ const LOCAL_ACCOUNT_HARDENING_TIMEOUT_MS = 120_000;
 
 const ALL_TRAFFIC = "0.0.0.0/0";
 
-function formatCommandOutput(stdout: string, stderr: string): string {
-  return [stderr, stdout].filter((output) => output.length > 0).join("\n");
-}
-
 function getLocalAccountHardeningError(result: ExecResult): Error {
-  const output = formatCommandOutput(result.stdout, result.stderr);
+  const output = [result.stderr, result.stdout]
+    .filter((text) => text.length > 0)
+    .join("\n");
   return new Error(
     [
       `E2B sandbox local account hardening failed with exit code ${result.exitCode}`,
