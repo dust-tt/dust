@@ -72,8 +72,6 @@ const VariantQuerySchema = z.object({
  *         description: Unauthorized. Invalid or missing authentication token.
  *       404:
  *         description: Agent configuration not found.
- *       405:
- *         description: Method not supported. Only GET or PATCH is expected.
  *       500:
  *         description: Internal Server Error.
  *   patch:
@@ -207,8 +205,6 @@ const VariantQuerySchema = z.object({
  *         description: Unauthorized. Invalid or missing authentication token.
  *       404:
  *         description: Agent configuration not found.
- *       405:
- *         description: Method not supported. Only GET or PATCH is expected.
  *       500:
  *         description: Internal Server Error.
  *   delete:
@@ -249,8 +245,6 @@ const VariantQuerySchema = z.object({
  *         description: Forbidden. The caller is not allowed to archive this agent.
  *       404:
  *         description: Agent configuration not found.
- *       405:
- *         description: Method not supported. Only GET, PATCH or DELETE is expected.
  *       500:
  *         description: Internal Server Error.
  */

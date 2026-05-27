@@ -77,8 +77,6 @@ const ParamsSchema = z.object({
  *              type: array
  *              items:
  *                $ref: '#/components/schemas/Datasource'
- *      405:
- *        description: Method not supported
  *  post:
  *    summary: Upsert rows
  *    description: Upsert rows in the table identified by {tId} in the data source identified by {dsId} in the workspace identified by {wId}.
@@ -159,8 +157,6 @@ const ParamsSchema = z.object({
  *        description: Internal Server Error.
  *      404:
  *        description: Data source or workspace not found.
- *      405:
- *        description: Method not supported.
  */
 const app = publicApiApp();
 

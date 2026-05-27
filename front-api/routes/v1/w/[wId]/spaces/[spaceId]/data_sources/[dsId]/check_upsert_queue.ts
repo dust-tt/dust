@@ -60,8 +60,6 @@ const ParamsSchema = z.object({
  *         description: Forbidden. Only system keys can access this endpoint.
  *       404:
  *         description: Data source not found.
- *       405:
- *         description: Method not supported.
  *       500:
  *         description: Internal Server Error.
  */

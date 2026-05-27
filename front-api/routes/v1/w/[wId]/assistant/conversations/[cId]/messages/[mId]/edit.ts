@@ -90,8 +90,6 @@ const app = publicApiApp();
  *                   description: Optional array of agent messages generated in response
  *       400:
  *         description: Invalid request (message not found or not a user message)
- *       405:
- *         description: Method not supported
  */
 app.post(
   "/",

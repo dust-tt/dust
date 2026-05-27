@@ -47,8 +47,6 @@ import dsvId from "./[dsvId]";
  *         description: Unauthorized. Invalid or missing authentication token.
  *       404:
  *         description: Workspace not found.
- *       405:
- *         description: Method not supported.
  *       500:
  *         description: Internal Server Error.
  */

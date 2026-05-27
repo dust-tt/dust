@@ -141,8 +141,6 @@ import { fromError } from "zod-validation-error";
  *                         description: Score of the document
  *       400:
  *         description: Invalid request error
- *       405:
- *         description: Method not supported error
  */
 // Mounted at /api/v1/w/:wId/spaces/:spaceId/data_source_views/:dsvId/search.
 const app = publicApiApp();
