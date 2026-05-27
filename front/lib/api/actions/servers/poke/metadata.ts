@@ -75,7 +75,7 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
       "Get full plan and subscription details for a workspace: billing info, " +
       "verified domains, and creation date.",
     schema: { ...workspaceIdSchema },
-    stake: "high",
+    stake: "low",
     displayLabels: {
       running: "Fetching plan and subscription",
       done: "Fetched plan and subscription",
