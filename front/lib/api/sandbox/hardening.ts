@@ -76,6 +76,14 @@ export function getLocalAccountPrivilegeHardeningCommand(): string {
     'IFS="$old_ifs";',
     "done",
   ].join(" ");
+  const assertNoPrivilegedPrimaryGroups = [
+    "for group in sudo admin wheel; do",
+    "gid=$(getent group \"$group\" | awk -F: '{print $3}') || continue;",
+    '[ -z "$gid" ] && continue;',
+    "primary_members=$(getent passwd | awk -F: -v gid=\"$gid\" '$3 != 0 && $4 == gid {print $1}');",
+    'if [ -n "$primary_members" ]; then echo "privileged primary group $group must not include $primary_members" >&2; exit 1; fi;',
+    "done",
+  ].join(" ");
   const assertNoPasswordlessSudoers = [
     "if grep -RIsnE '^[[:space:]]*[^#].*NOPASSWD[[:space:]]*:[[:space:]]*ALL' /etc/sudoers /etc/sudoers.d 2>/dev/null | grep -q .; then",
     "echo 'passwordless unrestricted sudoers entries must not exist' >&2;",
@@ -107,6 +115,7 @@ export function getLocalAccountPrivilegeHardeningCommand(): string {
     hardenPrivilegedExecutableDirs,
     assertNoEmptyPasswordAccounts,
     assertNoPrivilegedGroupMembers,
+    assertNoPrivilegedPrimaryGroups,
     assertNoPasswordlessSudoers,
     assertLocalAuthHelpersNotSetuid,
     assertPrivilegedExecutableDirsSafe,

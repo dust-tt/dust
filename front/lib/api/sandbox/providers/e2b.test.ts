@@ -75,6 +75,8 @@ vi.mock("e2b", () => {
   };
 });
 
+import { CommandExitError } from "e2b";
+
 import { E2BSandboxProvider } from "./e2b";
 
 describe("E2BSandboxProvider", () => {
@@ -127,7 +129,7 @@ describe("E2BSandboxProvider", () => {
 
     const result = await provider.create(
       {
-        imageId: { imageName: "dust-base", tag: "0.8.27" },
+        imageId: { imageName: "dust-base", tag: "0.8.28" },
         network: { mode: "deny_all" },
         resources: { vcpu: 2, memoryMb: 2048 },
       },
@@ -150,6 +152,9 @@ describe("E2BSandboxProvider", () => {
     expect(mockCreateCommandRun.mock.calls[0][0]).toContain(
       "install -d -o root -g root -m 755 /opt/bin /usr/local/bin"
     );
+    expect(mockCreateCommandRun.mock.calls[0][0]).toContain(
+      "privileged primary group"
+    );
     expect(mockKill).not.toHaveBeenCalled();
   });
 
@@ -166,7 +171,7 @@ describe("E2BSandboxProvider", () => {
 
     const result = await provider.create(
       {
-        imageId: { imageName: "dust-base", tag: "0.8.27" },
+        imageId: { imageName: "dust-base", tag: "0.8.28" },
         network: { mode: "deny_all" },
         resources: { vcpu: 2, memoryMb: 2048 },
       },
@@ -177,6 +182,42 @@ describe("E2BSandboxProvider", () => {
     if (result.isErr()) {
       expect(result.error.message).toContain(
         "E2B sandbox local account hardening failed"
+      );
+    }
+    expect(mockKill).toHaveBeenCalledWith("sandbox-id", {
+      apiKey: "api-key",
+    });
+  });
+
+  it("preserves hardening context when the E2B SDK throws a command exit error", async () => {
+    mockCreateCommandRun.mockRejectedValueOnce(
+      new CommandExitError({
+        exitCode: 1,
+        stdout: "",
+        stderr: "privileged primary group sudo must not include user",
+      })
+    );
+    const provider = new E2BSandboxProvider({
+      apiKey: "api-key",
+      domain: undefined,
+    });
+
+    const result = await provider.create(
+      {
+        imageId: { imageName: "dust-base", tag: "0.8.28" },
+        network: { mode: "deny_all" },
+        resources: { vcpu: 2, memoryMb: 2048 },
+      },
+      { workspaceId: "workspace-id" }
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain(
+        "E2B sandbox local account hardening failed with exit code 1"
+      );
+      expect(result.error.message).toContain(
+        "privileged primary group sudo must not include user"
       );
     }
     expect(mockKill).toHaveBeenCalledWith("sandbox-id", {

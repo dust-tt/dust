@@ -38,6 +38,11 @@ describe("sandbox security check assertions", () => {
     expect(() =>
       assertNoPrivilegedGroupMembers("sudo:x:27:user,agent\n")
     ).toThrow("privileged group sudo still has non-root members");
+    expect(() =>
+      assertNoPrivilegedGroupMembers(
+        "user:x:1001:27::/home/user:/bin/bash\nsudo:x:27:\n"
+      )
+    ).toThrow("privileged group sudo is the primary group");
   });
 
   test("detects passwordless sudoers entries", () => {

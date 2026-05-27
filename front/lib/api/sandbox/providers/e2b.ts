@@ -38,6 +38,22 @@ const LOCAL_ACCOUNT_HARDENING_TIMEOUT_MS = 120_000;
 
 const ALL_TRAFFIC = "0.0.0.0/0";
 
+function formatCommandOutput(stdout: string, stderr: string): string {
+  return [stderr, stdout].filter((output) => output.length > 0).join("\n");
+}
+
+function getLocalAccountHardeningError(result: ExecResult): Error {
+  const output = formatCommandOutput(result.stdout, result.stderr);
+  return new Error(
+    [
+      `E2B sandbox local account hardening failed with exit code ${result.exitCode}`,
+      output,
+    ]
+      .filter((message) => message.length > 0)
+      .join(":\n")
+  );
+}
+
 interface E2BNetworkOpts {
   allowOut?: string[];
   denyOut?: string[];
@@ -130,6 +146,24 @@ export class E2BSandboxProvider implements SandboxProvider {
     };
   }
 
+  private async killSandboxAfterLocalAccountHardeningFailure(
+    sandboxId: string,
+    templateId: string
+  ): Promise<void> {
+    try {
+      await Sandbox.kill(sandboxId, this.connectionOpts());
+    } catch (killErr) {
+      logger.error(
+        {
+          err: normalizeError(killErr),
+          sandboxId,
+          templateId,
+        },
+        "Failed to kill E2B sandbox after local account hardening failure"
+      );
+    }
+  }
+
   async create(
     config: SandboxCreateConfig,
     tracingOpts: { workspaceId: string }
@@ -168,33 +202,43 @@ export class E2BSandboxProvider implements SandboxProvider {
           return new Err(normalizeError(err));
         }
 
+        let hardeningResult: ExecResult;
         try {
-          const hardeningResult = await sandbox.commands.run(
+          const result = await sandbox.commands.run(
             getLocalAccountPrivilegeHardeningCommand(),
             {
               timeoutMs: LOCAL_ACCOUNT_HARDENING_TIMEOUT_MS,
               user: "root",
             }
           );
-          if (hardeningResult.exitCode !== 0) {
-            throw new Error(
-              `E2B sandbox local account hardening failed: ${hardeningResult.stderr}`
-            );
-          }
+          hardeningResult = {
+            exitCode: result.exitCode,
+            stdout: result.stdout,
+            stderr: result.stderr,
+          };
         } catch (err) {
-          try {
-            await Sandbox.kill(sandbox.sandboxId, this.connectionOpts());
-          } catch (killErr) {
-            logger.error(
-              {
-                err: normalizeError(killErr),
-                sandboxId: sandbox.sandboxId,
-                templateId,
-              },
-              "Failed to kill E2B sandbox after local account hardening failure"
-            );
-          }
-          return new Err(normalizeError(err));
+          const createError =
+            err instanceof CommandExitError
+              ? getLocalAccountHardeningError({
+                  exitCode: err.exitCode,
+                  stdout: err.stdout,
+                  stderr: err.stderr,
+                })
+              : normalizeError(err);
+
+          await this.killSandboxAfterLocalAccountHardeningFailure(
+            sandbox.sandboxId,
+            templateId
+          );
+          return new Err(createError);
+        }
+
+        if (hardeningResult.exitCode !== 0) {
+          await this.killSandboxAfterLocalAccountHardeningFailure(
+            sandbox.sandboxId,
+            templateId
+          );
+          return new Err(getLocalAccountHardeningError(hardeningResult));
         }
 
         logger.info(

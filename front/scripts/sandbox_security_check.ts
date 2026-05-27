@@ -328,11 +328,14 @@ exit "$bad"
 }
 
 export function assertNoPrivilegedGroupMembers(output: string): void {
-  const groupPattern = /^(sudo|wheel|admin):[^:]*:[^:]*:(.*)$/gm;
+  const privilegedGroupIds = new Map<string, string>();
+  const groupPattern = /^(sudo|wheel|admin):[^:]*:([^:]*):(.*)$/gm;
   let match = groupPattern.exec(output);
 
   while (match) {
-    const members = match[2]
+    privilegedGroupIds.set(match[2], match[1]);
+
+    const members = match[3]
       .split(",")
       .map((member) => member.trim())
       .filter((member) => member.length > 0 && member !== "root");
@@ -346,6 +349,25 @@ export function assertNoPrivilegedGroupMembers(output: string): void {
     }
 
     match = groupPattern.exec(output);
+  }
+
+  for (const line of output.split("\n")) {
+    const fields = line.split(":");
+    if (fields.length < 4) {
+      continue;
+    }
+
+    const [name, , uid, gid] = fields;
+    if (name === "root" || uid === "0") {
+      continue;
+    }
+
+    const privilegedGroup = privilegedGroupIds.get(gid);
+    if (privilegedGroup) {
+      throw new Error(
+        `privileged group ${privilegedGroup} is the primary group for non-root account ${name}:\n${output}`
+      );
+    }
   }
 }
 
