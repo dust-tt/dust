@@ -1,4 +1,4 @@
-import { useCreateProjectFolder } from "@app/lib/swr/pods";
+import { useCreatePodFolder } from "@app/lib/swr/pods";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Dialog,
@@ -17,7 +17,7 @@ interface CreateFolderDialogProps {
   onCreated: () => void | Promise<void>;
   owner: LightWorkspaceType;
   parentRelativePath: string;
-  spaceId: string;
+  podId: string;
 }
 
 export function CreateFolderDialog({
@@ -26,12 +26,12 @@ export function CreateFolderDialog({
   onCreated,
   owner,
   parentRelativePath,
-  spaceId,
+  podId,
 }: CreateFolderDialogProps) {
   const [folderName, setFolderName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const createFolder = useCreateProjectFolder({ owner, spaceId });
+  const createFolder = useCreatePodFolder({ owner, podId: podId });
 
   useEffect(() => {
     if (isOpen) {

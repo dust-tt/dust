@@ -15,13 +15,13 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { ProjectTaskType } from "@app/types/project_task";
 import { isString } from "@app/types/shared/utils/general";
-import type { ProjectType } from "@app/types/space";
+import type { PodType } from "@app/types/space";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export interface GetWorkspaceProjectTaskResponseBody {
   task: ProjectTaskType;
   /** Project space (same shape as entries in `GET /api/w/{wId}/spaces` for projects). */
-  space: ProjectType;
+  space: PodType;
 }
 
 async function handler(

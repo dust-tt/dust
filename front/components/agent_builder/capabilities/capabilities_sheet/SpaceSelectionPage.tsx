@@ -2,7 +2,7 @@ import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getSpaceIcon, getSpaceName } from "@app/lib/spaces";
 import { useSpaceProjectsLookup } from "@app/lib/swr/spaces";
-import type { ProjectType, SpaceType } from "@app/types/space";
+import type { PodType, SpaceType } from "@app/types/space";
 import { isProjectType } from "@app/types/space";
 import {
   Checkbox,
@@ -27,7 +27,7 @@ type SpaceRowData = {
   sId: string;
   name: string;
   description?: string;
-  space: SpaceType | ProjectType;
+  space: SpaceType | PodType;
   isSelected: boolean;
   isAlreadyRequested: boolean;
   onToggle: () => void;
@@ -180,7 +180,7 @@ export function SpaceSelectionPageContent({
   );
 
   const handleSpaceToggle = useCallback(
-    (space: SpaceType | ProjectType) => {
+    (space: SpaceType | PodType) => {
       setSelectedSpaces((prev) => {
         const newSpaces = prev.includes(space.sId)
           ? prev.filter((id) => id !== space.sId)
@@ -214,7 +214,7 @@ export function SpaceSelectionPageContent({
 
   const projectsTableData: SpaceRowData[] = useMemo(() => {
     return selectableSpaces
-      .filter((s): s is ProjectType => isProjectType(s))
+      .filter((s): s is PodType => isProjectType(s))
       .map((project) => {
         const isAlreadyRequested = alreadyRequestedSpaceIds.has(project.sId);
         return {

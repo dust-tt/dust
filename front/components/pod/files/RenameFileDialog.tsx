@@ -1,4 +1,4 @@
-import { useRenameProjectFile } from "@app/lib/swr/pods";
+import { useRenamePodFile } from "@app/lib/swr/pods";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Dialog,
@@ -37,7 +37,7 @@ interface RenameFileDialogProps {
   onClose: () => void;
   onRenamed: () => void;
   owner: LightWorkspaceType;
-  spaceId: string;
+  podId: string;
   file: { path: string; fileName: string } | null;
 }
 
@@ -46,13 +46,13 @@ export function RenameFileDialog({
   onClose,
   onRenamed,
   owner,
-  spaceId,
+  podId,
   file,
 }: RenameFileDialogProps) {
   const [baseName, setBaseName] = useState<string>("");
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const renameFile = useRenameProjectFile({ owner, spaceId });
+  const renameFile = useRenamePodFile({ owner, podId });
 
   const extension = useMemo(() => {
     if (!file) {
