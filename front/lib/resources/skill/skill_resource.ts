@@ -2430,7 +2430,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       agentConfiguration: AgentConfigurationType;
       conversation: ConversationType;
     }
-  ): Promise<Result<{ alreadyEnabled: boolean }, Error>> {
+  ): Promise<{ wasAlreadyEnabled: boolean }> {
     const workspace = auth.getNonNullableWorkspace();
 
     const conversationSkillBlob: ConversationSkillCreationAttributes = {
@@ -2447,12 +2447,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
 
     if (existingConversationSkill) {
-      return new Ok({ alreadyEnabled: true });
+      return { wasAlreadyEnabled: true };
     }
 
     await ConversationSkillModel.create(conversationSkillBlob);
 
-    return new Ok({ alreadyEnabled: false });
+    return { wasAlreadyEnabled: false };
   }
 
   static async snapshotConversationSkillsForMessage(
