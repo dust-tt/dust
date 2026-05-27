@@ -38,10 +38,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Access to Claude 4.5 Opus model in the agent builder",
     stage: "on_demand",
   },
-  confluence_tool: {
-    description: "Confluence MCP tool",
-    stage: "on_demand",
-  },
   deepseek_feature: {
     description:
       "Access to DeepSeek models (they cannot use tool so can't be selected in the agent builder)",
@@ -143,10 +139,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Access to noop model in the agent builder",
     stage: "dust_only",
   },
-  monday_tool: {
-    description: "Monday MCP tool",
-    stage: "rolling_out",
-  },
   gemini_3_1_pro_feature: {
     description: "Access to Gemini 3.1 Pro model in the agent builder",
     stage: "on_demand",
@@ -168,10 +160,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Slideshow MCP tool",
     stage: "dust_only",
   },
-  snowflake_tool: {
-    description: "Snowflake MCP tool for read-only SQL queries",
-    stage: "on_demand",
-  },
   slack_message_splitting: {
     description:
       "Enable splitting agent responses into multiple Slack messages for Slack (instead of truncation)",
@@ -179,10 +167,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   legacy_dust_apps: {
     description: "Access to legacy Dust Apps (editor and associated tools)",
-    stage: "on_demand",
-  },
-  luma_tool: {
-    description: "Luma MCP tool for event management and guest tracking",
     stage: "on_demand",
   },
   power_bi_mcp: {

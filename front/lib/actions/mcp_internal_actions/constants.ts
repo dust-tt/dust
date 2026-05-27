@@ -449,9 +449,7 @@ export const INTERNAL_MCP_SERVERS = {
     id: 20,
     availability: "manual",
     allowMultipleInstances: true,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("monday_tool");
-    },
+    isRestricted: undefined,
     isPreview: true,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
@@ -587,9 +585,7 @@ export const INTERNAL_MCP_SERVERS = {
     id: 33,
     availability: "manual",
     allowMultipleInstances: true,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("confluence_tool");
-    },
+    isRestricted: undefined,
     isPreview: true,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
@@ -773,9 +769,7 @@ export const INTERNAL_MCP_SERVERS = {
     id: 47,
     availability: "manual",
     allowMultipleInstances: true,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("snowflake_tool");
-    },
+    isRestricted: undefined,
     isPreview: false,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
@@ -809,9 +803,7 @@ export const INTERNAL_MCP_SERVERS = {
     id: 51,
     availability: "manual",
     allowMultipleInstances: false,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("luma_tool");
-    },
+    isRestricted: undefined,
     isPreview: true,
     requiresBearerToken: true,
     tools_arguments_requiring_approval: undefined,
