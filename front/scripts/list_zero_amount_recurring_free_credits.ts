@@ -114,10 +114,12 @@ async function computeAmountMicroUsd({
 async function fixSegment({
   workspace,
   finding,
+  execute,
   logger,
 }: {
   workspace: LightWorkspaceType;
   finding: Finding;
+  execute: boolean;
   logger: Logger;
 }): Promise<void> {
   if (!finding.contractId) {
@@ -142,6 +144,14 @@ async function fixSegment({
     logger.warn(
       finding,
       "[ZeroAmountFreeCredits] Computed amount is 0 — leaving segment as-is for manual review"
+    );
+    return;
+  }
+
+  if (!execute) {
+    logger.info(
+      finding,
+      "[ZeroAmountFreeCredits] [DRY RUN] Would update segment amount and ensure DB credit"
     );
     return;
   }
@@ -279,9 +289,7 @@ async function findZeroAmountSegments(
         : "[ZeroAmountFreeCredits] Active segment has amount=0 (dry run)"
     );
 
-    if (execute) {
-      await fixSegment({ workspace, finding, logger });
-    }
+    await fixSegment({ workspace, finding, execute, logger });
   }
 }
 
