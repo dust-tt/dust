@@ -37,31 +37,36 @@ export async function createHandler(
 
   const fsResult = await DustFileSystem.forConversation(auth, conversation);
   if (fsResult.isErr()) {
-    return new Err(
-      new MCPError(fsResult.error.message, { tracked: false })
-    );
+    return new Err(new MCPError(fsResult.error.message, { tracked: false }));
   }
+
   const fs = fsResult.value;
+
+  // Check existence before writing so we can report "Created" vs "Updated".
+  const statResult = await fs.stat(path);
+  const exists = statResult.isOk() && statResult.value !== null;
 
   const writeResult = await fs.write(path, contentBuffer, content_type);
   if (writeResult.isErr()) {
     const err = writeResult.error;
-    if (err.code === "legacy_path") {
-      return new Err(new MCPError(err.message, { tracked: false }));
+    switch (err.code) {
+      case "legacy_path":
+      case "unauthorized":
+        return new Err(new MCPError(err.message, { tracked: false }));
+
+      case "invalid_path":
+        return new Err(
+          new MCPError(`Invalid path: \`${path}\`.`, { tracked: false })
+        );
+
+      default:
+        return new Err(
+          new MCPError(`Failed to write file \`${path}\`: ${err.message}`)
+        );
     }
-    if (err.code === "invalid_path") {
-      return new Err(
-        new MCPError(`Invalid path: \`${path}\`.`, { tracked: false })
-      );
-    }
-    if (err.code === "unauthorized") {
-      return new Err(new MCPError(err.message, { tracked: false }));
-    }
-    return new Err(
-      new MCPError(`Failed to write file \`${path}\`: ${err.message}`)
-    );
   }
 
+  const verb = exists ? "Updated" : "Created";
   const fileName = path.split("/").pop() ?? path;
   const sizeKb = Math.ceil(contentBuffer.byteLength / 1024);
 
@@ -71,7 +76,7 @@ export async function createHandler(
   > = [
     {
       type: "text",
-      text: `Saved \`${path}\` (${content_type}, ${sizeKb} KB)`,
+      text: `${verb} \`${path}\` (${content_type}, ${sizeKb} KB)`,
     },
   ];
 
@@ -79,7 +84,7 @@ export async function createHandler(
     items.push({
       type: "resource",
       resource: {
-        text: `Saved \`${path}\``,
+        text: `${verb} \`${path}\``,
         uri: path,
         mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE_PATH,
         path,

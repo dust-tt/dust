@@ -25,28 +25,26 @@ export async function deleteHandler(
   const deleteResult = await fsResult.value.delete(path);
   if (deleteResult.isErr()) {
     const err = deleteResult.error;
-    if (err.code === "legacy_path") {
-      return new Err(new MCPError(err.message, { tracked: false }));
-    }
+    switch (err.code) {
+      case "legacy_path":
+      case "unauthorized":
+        return new Err(new MCPError(err.message, { tracked: false }));
 
-    if (err.code === "invalid_path") {
-      return new Err(
-        new MCPError(`Invalid path: \`${path}\`.`, { tracked: false })
-      );
-    }
+      case "invalid_path":
+        return new Err(
+          new MCPError(`Invalid path: \`${path}\`.`, { tracked: false })
+        );
 
-    if (err.code === "unauthorized") {
-      return new Err(new MCPError(err.message, { tracked: false }));
-    }
+      case "not_found":
+        return new Err(
+          new MCPError(`File not found: \`${path}\`.`, { tracked: false })
+        );
 
-    if (err.code === "not_found") {
-      return new Err(
-        new MCPError(`File not found: \`${path}\`.`, { tracked: false })
-      );
+      default:
+        return new Err(
+          new MCPError(`Failed to delete file \`${path}\`: ${err.message}`)
+        );
     }
-    return new Err(
-      new MCPError(`Failed to delete file \`${path}\`: ${err.message}`)
-    );
   }
 
   return new Ok([{ type: "text", text: `Deleted \`${path}\`.` }]);

@@ -696,7 +696,7 @@ describe("DustFileSystem.move", () => {
   });
 
   it("returns Ok with sourceDeletionFailed true when delete fails after a successful copy", async () => {
-    deleteMock.mockRejectedValue(new Error("GCS delete failed"));
+    deleteMock.mockRejectedValue(new Error("storage delete failed"));
 
     const convRes = await ConversationResource.fetchById(auth, conversationId);
     assert(convRes !== null);
@@ -714,7 +714,7 @@ describe("DustFileSystem.move", () => {
   });
 
   it("returns Err when the copy itself fails", async () => {
-    copyFileMock.mockRejectedValue(new Error("GCS copy failed"));
+    copyFileMock.mockRejectedValue(new Error("storage copy failed"));
 
     const convRes = await ConversationResource.fetchById(auth, conversationId);
     assert(convRes !== null);

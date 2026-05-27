@@ -17,6 +17,7 @@ function getDirAndFileName(path: string): { dir: string; fileName: string } {
   if (lastSlash < 0) {
     return { dir: "", fileName: path };
   }
+
   return {
     dir: path.substring(0, lastSlash),
     fileName: path.substring(lastSlash + 1),
@@ -39,9 +40,7 @@ export async function listHandler(
     conversation
   );
   if (fsResult.isErr()) {
-    return new Err(
-      new MCPError(fsResult.error.message, { tracked: false })
-    );
+    return new Err(new MCPError(fsResult.error.message, { tracked: false }));
   }
   const fs = fsResult.value;
 
@@ -50,6 +49,7 @@ export async function listHandler(
 
   if (useCase === "conversation") {
     const mount = fs.getMounts().find((m) => m.kind === "conversation");
+
     scopedPrefix = mount ? `${mount.scopedPrefix}/` : undefined;
   } else {
     const mount = fs.getMounts().find((m) => m.kind === "pod");
@@ -61,14 +61,15 @@ export async function listHandler(
         )
       );
     }
+
     if (!mount.permissions.canRead) {
       return new Err(
-        new MCPError(
-          "You do not have read permissions for this project.",
-          { tracked: false }
-        )
+        new MCPError("You do not have read permissions for this project.", {
+          tracked: false,
+        })
       );
     }
+
     scopedPrefix = `${mount.scopedPrefix}/`;
   }
 
@@ -80,6 +81,8 @@ export async function listHandler(
     return new Ok([{ type: "text", text: "No files available." }]);
   }
 
+  // Build the set of all ancestor dir paths that contain at least one file.
+  // O(m × depth). Deph is typically small.
   const nonEmptyDirPaths = new Set<string>();
   for (const file of files) {
     const parts = file.path.split("/");
@@ -88,6 +91,8 @@ export async function listHandler(
     }
   }
 
+  // Index sources by `<dir>/<basename-without-extension>` so we can look up the source for each
+  // `*.processed.<ext>` sibling.
   const sourcePathByKey = new Map<string, string>();
   for (const file of files) {
     const { dir, fileName } = getDirAndFileName(file.path);
@@ -99,14 +104,18 @@ export async function listHandler(
     sourcePathByKey.set(`${dir}/${base}`, file.path);
   }
 
+  // For each file, compute (sortKey, isProcessed) so that processed siblings sort right after
+  // their source. Falls back to the file's own path when no source is found (orphan processed file).
   const annotated = files.map((file) => {
     const { dir, fileName } = getDirAndFileName(file.path);
     const parsed = parseProcessedFilename(fileName);
     if (!parsed.isProcessed) {
       return { file, sortKey: file.path, tieBreak: 0, sourcePath: null };
     }
+
     const sourcePath =
       sourcePathByKey.get(`${dir}/${parsed.sourceBaseName}`) ?? null;
+
     return {
       file,
       sortKey: sourcePath ?? file.path,
@@ -131,11 +140,15 @@ export async function listHandler(
     if (file.isDirectory) {
       continue;
     }
+
     const mimeType = stripMimeParameters(file.contentType);
     const kb = Math.ceil(file.sizeBytes / 1024);
     const annotation = sourcePath
       ? ` (processed version of ${sourcePath})`
       : "";
+    // Frames are created and updated via the interactive_content MCP server, which
+    // identifies them by file ID rather than path. Exposing the ID here lets the agent
+    // reference the correct frame when calling those tools.
     const fileIdSuffix =
       isInteractiveContentType(mimeType) && file.fileId
         ? ` [id: ${file.fileId}]`

@@ -74,7 +74,7 @@ describe("deleteHandler", () => {
     } as unknown as ReturnType<typeof getPrivateUploadBucket>);
   });
 
-  it("deletes a file from a pod mount at the correct GCS path", async () => {
+  it("deletes a file from a pod mount at the correct storage path", async () => {
     const { auth, conversation, projectId } = await setupProjectConversation();
     const workspaceId = auth.getNonNullableWorkspace().sId;
 
@@ -91,7 +91,7 @@ describe("deleteHandler", () => {
     expect(deleteMock).toHaveBeenCalledTimes(1);
   });
 
-  it("deletes a file from a conversation mount at the correct GCS path", async () => {
+  it("deletes a file from a conversation mount at the correct storage path", async () => {
     const { auth, conversation } = await setupProjectConversation();
     const workspaceId = auth.getNonNullableWorkspace().sId;
     const conversationId = conversation.sId;

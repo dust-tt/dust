@@ -156,12 +156,7 @@ export async function catHandler(
 
   const statResult = await fs.stat(path);
   if (statResult.isErr()) {
-    const err = statResult.error;
-    if (err.code === "legacy_path") {
-      return new Err(new MCPError(err.message, { tracked: false }));
-    }
-
-    return new Err(new MCPError(err.message, { tracked: false }));
+    return new Err(new MCPError(statResult.error.message, { tracked: false }));
   }
 
   if (statResult.value === null) {
@@ -197,7 +192,7 @@ export async function catHandler(
   }
 
   return catText(
-    readResult.value, // Readable stream; readline will stop early when limit is reached
+    readResult.value, // Readable stream. readline will stop early when limit is reached
     path,
     offset ?? 1,
     limit ?? CAT_LINES_DEFAULT,

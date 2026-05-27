@@ -48,6 +48,18 @@ import { removeNulls } from "@app/types/shared/utils/general";
 
 const RENDER_ACTIONS_CONCURRENCY = 5;
 
+async function getDustFileSystemDownloadUrl(
+  auth: Authenticator,
+  filePath: string
+) {
+  const fsResult = await DustFileSystem.fromScopedPath(auth, filePath);
+  if (fsResult.isErr()) {
+    return fsResult;
+  }
+
+  return fsResult.value.getDownloadUrl(filePath);
+}
+
 /**
  * Type for a step in agent message processing
  */
@@ -167,13 +179,7 @@ async function renderActionForMultiActionsModel(
               { useCase: "conversation", conversationId },
               filePath
             )
-          : await (async () => {
-              const fsResult = await DustFileSystem.fromScopedPath(auth, filePath);
-              if (fsResult.isErr()) {
-                return fsResult;
-              }
-              return fsResult.value.getDownloadUrl(filePath);
-            })();
+          : await getDustFileSystemDownloadUrl(auth, filePath);
 
         if (urlRes.isOk()) {
           contentArray.push({

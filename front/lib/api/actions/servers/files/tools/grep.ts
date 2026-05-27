@@ -28,25 +28,21 @@ export async function grepHandler(
 
   const fsResult = await DustFileSystem.forConversation(auth, conversation);
   if (fsResult.isErr()) {
-    return new Err(
-      new MCPError(fsResult.error.message, { tracked: false })
-    );
+    return new Err(new MCPError(fsResult.error.message, { tracked: false }));
   }
   const fs = fsResult.value;
 
   const statResult = await fs.stat(path);
   if (statResult.isErr()) {
-    const err = statResult.error;
-    if (err.code === "legacy_path") {
-      return new Err(new MCPError(err.message, { tracked: false }));
-    }
-    return new Err(new MCPError(err.message, { tracked: false }));
+    return new Err(new MCPError(statResult.error.message, { tracked: false }));
   }
+
   if (statResult.value === null) {
     return new Err(
       new MCPError(`File not found: \`${path}\`.`, { tracked: false })
     );
   }
+
   const { contentType: mimeType } = statResult.value;
 
   if (!isReadableAsText(mimeType)) {
@@ -76,6 +72,7 @@ export async function grepHandler(
   if (readResult.isErr()) {
     return new Err(new MCPError(readResult.error.message, { tracked: false }));
   }
+
   if (readResult.value === null) {
     return new Err(
       new MCPError(`File not found: \`${path}\`.`, { tracked: false })

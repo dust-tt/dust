@@ -28,7 +28,11 @@ function makeExtra(
   return { auth, agentLoopContext } as unknown as ToolHandlerExtra;
 }
 
-function gcsFile(name: string, contentType = "text/plain", size = 1024) {
+function makeStorageFile(
+  name: string,
+  contentType = "text/plain",
+  size = 1024
+) {
   return {
     name,
     metadata: {
@@ -152,7 +156,7 @@ describe("listHandler", () => {
 
     const prefix = `w/${workspaceId}/conversations/${conversation.sId}/files/`;
     getAllFilesByPrefixMock.mockResolvedValue({
-      files: [gcsFile(`${prefix}report.pdf`, "application/pdf", 8192)],
+      files: [makeStorageFile(`${prefix}report.pdf`, "application/pdf", 8192)],
       pageFetchCount: 1,
     });
 
@@ -161,9 +165,7 @@ describe("listHandler", () => {
     assert(result.isOk());
     const text = result.value[0];
     assert(text.type === "text");
-    expect(text.text).toContain(
-      `conversation-${conversation.sId}/report.pdf`
-    );
+    expect(text.text).toContain(`conversation-${conversation.sId}/report.pdf`);
   });
 
   it("shows [id: ...] suffix for interactive content types when fileId is set", async () => {
@@ -179,9 +181,13 @@ describe("listHandler", () => {
     const prefix = `w/${workspaceId}/conversations/${conversation.sId}/files/`;
     getAllFilesByPrefixMock.mockResolvedValue({
       files: [
-        gcsFile(`${prefix}chart.html`, frameContentType, 2048),
-        gcsFile(`${prefix}slides.html`, frameSlideshowContentType, 4096),
-        gcsFile(`${prefix}report.pdf`, "application/pdf", 8192),
+        makeStorageFile(`${prefix}chart.html`, frameContentType, 2048),
+        makeStorageFile(
+          `${prefix}slides.html`,
+          frameSlideshowContentType,
+          4096
+        ),
+        makeStorageFile(`${prefix}report.pdf`, "application/pdf", 8192),
       ],
       pageFetchCount: 1,
     });
@@ -192,7 +198,7 @@ describe("listHandler", () => {
     const text = result.value[0];
     assert(text.type === "text");
 
-    // fileId is null until the DB migration (GCSFileSystemBackend always returns null for now).
+    // fileId is null until the DB migration (the backend always returns null for now).
     // Verify the interactive files are listed but without an ID suffix.
     expect(text.text).toContain("chart.html");
     expect(text.text).toContain("slides.html");
