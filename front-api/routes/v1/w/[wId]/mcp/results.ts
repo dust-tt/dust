@@ -1,14 +1,14 @@
-// @migration-status: MIGRATED_TO_HONO
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
 import { publishMCPResults } from "@app/lib/api/assistant/mcp_events";
-import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
-import type { Authenticator } from "@app/lib/auth";
-import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types/error";
 import type { PostMCPResultsResponseType } from "@dust-tt/client";
 import { PublicPostMCPResultsRequestBodySchema } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
-import { fromError } from "zod-validation-error";
+import { publicApiApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+
+// Mounted at /api/v1/w/:wId/mcp/results.
+const app = publicApiApp();
 
 /**
  * @swagger
@@ -60,49 +60,37 @@ import { fromError } from "zod-validation-error";
  *       500:
  *         description: Internal Server Error.
  */
-async function handler(
-  req: NextApiRequest,
+app.post(
+  "/",
+  validate("json", PublicPostMCPResultsRequestBodySchema),
+  async (ctx): HandlerResult<PostMCPResultsResponseType> => {
+    const auth = ctx.get("auth");
+    const { result, serverId } = ctx.req.valid("json");
 
-  res: NextApiResponse<WithAPIErrorResponse<PostMCPResultsResponseType>>,
-  auth: Authenticator
-): Promise<void> {
-  const r = PublicPostMCPResultsRequestBodySchema.safeParse(req.body);
-  if (r.error) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: fromError(r.error).toString(),
-      },
+    const isValidAccess = await validateMCPServerAccess(auth, {
+      serverId,
+    });
+    if (!isValidAccess) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "mcp_auth_error",
+          message:
+            "You don't have access to this MCP server or it has expired.",
+        },
+      });
+    }
+
+    // Publish MCP action results.
+    await publishMCPResults(auth, {
+      mcpServerId: serverId,
+      result,
+    });
+
+    return ctx.json({
+      success: true,
     });
   }
+);
 
-  const { result, serverId } = r.data;
-
-  const isValidAccess = await validateMCPServerAccess(auth, {
-    serverId,
-  });
-  if (!isValidAccess) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "mcp_auth_error",
-        message: "You don't have access to this MCP server or it has expired.",
-      },
-    });
-  }
-
-  // Publish MCP action results.
-  await publishMCPResults(auth, {
-    mcpServerId: serverId,
-    result,
-  });
-
-  res.status(200).json({
-    success: true,
-  });
-
-  return;
-}
-
-export default withPublicAPIAuthentication(handler);
+export default app;
