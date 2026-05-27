@@ -15,8 +15,7 @@ export const ensureIsAdmin = () =>
         status_code: 403,
         api_error: {
           type: "workspace_auth_error",
-          message:
-            "Only users that are `admins` can perform this action.",
+          message: "Only users that are `admins` can perform this action.",
         },
       });
     }
