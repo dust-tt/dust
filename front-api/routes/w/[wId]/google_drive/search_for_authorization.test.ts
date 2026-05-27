@@ -57,19 +57,15 @@ function createMockMetadataResponse({
 }
 
 // Mock config
-vi.mock(import("@app/lib/api/config"), async (importOriginal) => {
-  const mod = await importOriginal();
-  return {
-    ...mod,
-    default: {
-      ...mod.default,
-      getOAuthAPIConfig: vi.fn(() => ({
-        url: "https://oauth-api.example.com",
-        apiKey: "test-api-key",
-      })),
-    },
-  };
-});
+vi.mock("@app/lib/api/config", () => ({
+  default: {
+    getOAuthAPIConfig: vi.fn(() => ({
+      url: "https://oauth-api.example.com",
+      apiKey: "test-api-key",
+    })),
+    getWorkOSClientId: vi.fn(() => "test-workos-client-id"),
+  },
+}));
 
 // Mock rate limiter
 vi.mock("@app/lib/utils/rate_limiter", () => ({
