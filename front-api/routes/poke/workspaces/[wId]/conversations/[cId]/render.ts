@@ -12,7 +12,6 @@ import { getSkillServers } from "@app/lib/api/assistant/skill_actions";
 import { renderEquippedSkillsUserMessage } from "@app/lib/api/assistant/skills_rendering";
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
-import { hasFeatureFlag } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { constructProjectContext } from "@app/lib/resources/skill/code_defined/projects";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -122,11 +121,6 @@ app.post(
       attachments,
     });
 
-    const renderSkillsAsUserMessages = await hasFeatureFlag(
-      auth,
-      "skills_as_user_messages"
-    );
-
     const { enabledSkills, systemSkills, equippedSkills } =
       await SkillResource.listForAgentLoop(auth, {
         agentConfiguration,
@@ -221,14 +215,13 @@ app.post(
       enabledSkills,
       systemSkills,
       equippedSkills,
-      renderSkillsAsUserMessages,
       projectContext,
       isNewFileExplorer,
     });
     const prompt = systemPromptToText(promptSections);
-    const leadingMessages = renderSkillsAsUserMessages
-      ? removeNulls([renderEquippedSkillsUserMessage(equippedSkills)])
-      : [];
+    const leadingMessages = removeNulls([
+      renderEquippedSkillsUserMessage(equippedSkills),
+    ]);
 
     const specifications = availableActions.map((t) =>
       buildToolSpecification(t)
@@ -262,7 +255,6 @@ app.post(
       agentConfiguration,
       leadingMessages,
       enabledSkills,
-      renderSkillsAsUserMessages,
     });
 
     if (convoRes.isErr()) {
