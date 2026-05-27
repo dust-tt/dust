@@ -29,6 +29,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { FileResource } from "@app/lib/resources/file_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import {
   createResourcePermissionsFromSpacesWithMap,
   createSpaceIdToGroupsMap,
@@ -2004,11 +2005,29 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     const allUserIds = [...new Set(Object.values(membershipsByGroupId).flat())];
 
-    const allUsers =
-      allUserIds.length > 0
-        ? await UserResource.fetchByModelIds(allUserIds)
-        : [];
-    const userById = new Map(allUsers.map((u) => [u.id, u]));
+    if (allUserIds.length === 0) {
+      return result;
+    }
+
+    const allUsers = await UserResource.fetchByModelIds(allUserIds);
+
+    // Filter to only keep users with an active workspace membership,
+    // matching the behavior of getActiveMembers.
+    const workspace = auth.getNonNullableWorkspace();
+    const { memberships: workspaceMemberships } =
+      await MembershipResource.getActiveMemberships({
+        users: allUsers,
+        workspace,
+      });
+    const activeWorkspaceUserIds = new Set(
+      workspaceMemberships.map((m) => m.userId)
+    );
+
+    const userById = new Map(
+      allUsers
+        .filter((u) => activeWorkspaceUserIds.has(u.id))
+        .map((u) => [u.id, u])
+    );
 
     for (const skill of skillsWithEditorGroups) {
       const groupId = skill.editorGroup!.id;
