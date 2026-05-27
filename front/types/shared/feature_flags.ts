@@ -8,11 +8,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Fallback to Vertex Anthropic for some Anthropic models",
     stage: "dust_only",
   },
-  use_vertex_for_anthropic_models: {
-    description:
-      "Route Claude model LLM calls through Vertex AI instead of the direct Anthropic API",
-    stage: "dust_only",
-  },
   use_vertex_for_supported_models: {
     description:
       "Route LLM calls through Vertex AI when supported instead of the direct provider's API",
