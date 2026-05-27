@@ -9,10 +9,6 @@ import {
   AGENT_ROUTER_SERVER_NAME,
   SUGGEST_AGENTS_TOOL_NAME,
 } from "@app/lib/api/actions/servers/agent_router/metadata";
-import {
-  getCompanyDataAction,
-  getCompanyDataWarehousesAction,
-} from "@app/lib/api/assistant/global_agents/configurations/dust/shared";
 import { globalAgentGuidelines } from "@app/lib/api/assistant/global_agents/guidelines";
 import type {
   MCPServerViewsForGlobalAgentsMap,
@@ -30,6 +26,10 @@ import {
   isProviderWhitelisted,
 } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
+import {
+  isIncludedInDefaultCompanyData,
+  isRemoteDatabase,
+} from "@app/lib/data_sources";
 import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
 import {
   isDustCompanyPlan,
@@ -115,37 +115,6 @@ Only use the ${AGENT_ROUTER_SERVER_NAME}${TOOL_NAME_SEPARATOR}${SUGGEST_AGENTS_T
 </instructions>`,
 
   goDeepInstructions: `If a request is particularly complex (requires deep exploration of company data, multiple web searches, SQL queries, or 3+ steps of tool use), or if the user explicitly asks for a "deep dive", "deep research", or "comprehensive analysis", enable the "Go Deep" skill to delegate work across sub-agents for more thorough research.`,
-
-  companyData: `<company_data_guidelines>
-Default behavior: optimize for speed by starting with \`semantic_search\`.
-Provide \`nodeIds\` only when you already know the relevant folder(s) or document(s) to target;
-otherwise, search across all available content and refine your query before exploring the tree.
-
-Use tree-navigation tools when thoroughness is required:
-- Use \`list\` to enumerate direct children of a node (folders and documents). If no node is provided, list from data source roots.
-- Use \`find\` to locate nodes by title recursively from a given node (partial titles are OK). Helpful to narrow scope when search is too broad.
-- Use \`locate_in_tree\` to display the full path from a node up to its data source root when you need to understand or show where it sits.
-
-Search and reading:
-- Use \`semantic_search\` to retrieve relevant content quickly. Pass \`nodeIds\` to limit scope only when needed; otherwise search globally.
-- Use \`cat\` sparingly to extract short, relevant snippets you need to quote or verify facts. Prefer searching over reading large files end-to-end.
-
-<cat_tool_guidelines>
-ALWAYS provide a \`limit\` when using \`cat\`. The maximum \`limit\` is 10,000 characters. For long documents, read in chunks using \`offset\` and \`limit\`. Optionally use \`grep\` to narrow to relevant lines.
-</cat_tool_guidelines>
-</company_data_guidelines>`,
-
-  warehouses: `<data_warehouses_guidelines>
-You can use the Data Warehouses tools to:
-- explore what tables are available in the user's data warehouses
-- describe the tables structure
-- execute a SQL query against a set of tables
-
-In order to properly use the data warehouses, it is useful to also search through company data in case there is some documentation available about the tables, some additional semantic layer, or some code that may define how the tables are built in the first place.
-Tables are identified by ids in the format 'table-<dataSourceId>-<nodeId>'.
-The dataSourceId can typically be found by exploring the warehouse, each warehouse is identified by an id in the format 'warehouse-<dataSourceId>'.
-A dataSourceId typically starts with the prefix "dts_".
-</data_warehouses_guidelines>`,
 
   help: `<dust_platform_support_guidelines>
 Follow these guidelines when the user unambiguously asks support questions specifically about how to use Dust features, or needs help understanding Dust.
@@ -282,26 +251,48 @@ Toolsets remain valuable for **write operations** (posting a Slack message, crea
 
 function buildInstructions({
   hasDeepDive,
-  hasFilesystemTools,
-  hasDataWarehouses,
   hasAgentMemory,
 }: {
   hasDeepDive: boolean;
-  hasFilesystemTools: boolean;
-  hasDataWarehouses: boolean;
   hasAgentMemory: boolean;
 }): string {
   const parts: string[] = [
     INSTRUCTION_SECTIONS.primary,
     INSTRUCTION_SECTIONS.instructions,
     hasDeepDive && INSTRUCTION_SECTIONS.goDeepInstructions,
-    hasFilesystemTools && INSTRUCTION_SECTIONS.companyData,
-    hasDataWarehouses && INSTRUCTION_SECTIONS.warehouses,
     INSTRUCTION_SECTIONS.help,
     hasAgentMemory && INSTRUCTION_SECTIONS.memory,
   ].filter((part): part is string => typeof part === "string");
 
   return parts.join("\n\n");
+}
+
+function shouldEnableDiscoverKnowledge({
+  preFetchedDataSources,
+  mcpServerViews,
+}: {
+  preFetchedDataSources: PrefetchedDataSourcesType | null;
+  mcpServerViews: MCPServerViewsForGlobalAgentsMap;
+}): boolean {
+  if (!preFetchedDataSources) {
+    return false;
+  }
+
+  const hasCompanyData =
+    mcpServerViews.data_sources_file_system !== null &&
+    preFetchedDataSources.dataSourceViews.some(
+      (dsView) =>
+        dsView.isInGlobalSpace &&
+        isIncludedInDefaultCompanyData(dsView.dataSource)
+    );
+
+  const hasDataWarehouses =
+    mcpServerViews.data_warehouses !== null &&
+    preFetchedDataSources.dataSourceViews.some(
+      (dsView) => dsView.isInGlobalSpace && isRemoteDatabase(dsView.dataSource)
+    );
+
+  return hasCompanyData || hasDataWarehouses;
 }
 
 function _getDustLikeGlobalAgent(
@@ -384,21 +375,13 @@ function _getDustLikeGlobalAgent(
     : dummyModelConfiguration;
 
   const hasAgentMemory = agentMemoryMCPServerView !== null;
-
-  const companyDataAction = getCompanyDataAction(
+  const hasDiscoverKnowledge = shouldEnableDiscoverKnowledge({
     preFetchedDataSources,
-    mcpServerViews
-  );
-
-  const dataWarehousesAction = getCompanyDataWarehousesAction(
-    preFetchedDataSources,
-    mcpServerViews
-  );
+    mcpServerViews,
+  });
 
   const instructions = buildInstructions({
     hasDeepDive,
-    hasFilesystemTools: companyDataAction !== null,
-    hasDataWarehouses: dataWarehousesAction !== null,
     hasAgentMemory,
   });
 
@@ -452,14 +435,6 @@ function _getDustLikeGlobalAgent(
   }
 
   const actions: MCPServerConfigurationType[] = [];
-
-  if (companyDataAction) {
-    actions.push(companyDataAction);
-  }
-
-  if (dataWarehousesAction) {
-    actions.push(dataWarehousesAction);
-  }
 
   actions.push(
     ..._getDefaultWebActionsForGlobalAgent({
@@ -528,6 +503,7 @@ function _getDustLikeGlobalAgent(
     status: "active",
     actions,
     skills: [
+      ...(hasDiscoverKnowledge ? ["discover_knowledge"] : []),
       "discover_skills",
       "frames",
       "go-deep",
