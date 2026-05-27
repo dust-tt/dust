@@ -4,8 +4,6 @@ import {
   ASSISTANT_EMAIL_SUBDOMAIN,
   buildEmailUserMessage,
   buildReplyThreadingHeaders,
-  emailAssistantMatcher,
-  getEmailBlacklistedAgentIds,
   parseEmailReplyContext,
   sendToolValidationEmail,
 } from "@app/lib/api/assistant/email/email_trigger";
@@ -100,91 +98,6 @@ describe("buildEmailUserMessage", () => {
     );
     expect(message).not.toContain("<email_response_cc>");
     expect(message).toContain("only to me, the sender above.");
-  });
-});
-
-describe("getEmailBlacklistedAgentIds", () => {
-  it("returns an empty set when the workspace has no email agent blacklist", () => {
-    const noMetadataRes = getEmailBlacklistedAgentIds({ metadata: null });
-    expect(noMetadataRes.isOk()).toBe(true);
-    if (noMetadataRes.isOk()) {
-      expect(noMetadataRes.value.size).toBe(0);
-    }
-
-    const emptyBlacklistRes = getEmailBlacklistedAgentIds({
-      metadata: {
-        emailBlacklistedAgentIds: [],
-      },
-    });
-    expect(emptyBlacklistRes.isOk()).toBe(true);
-    if (emptyBlacklistRes.isOk()) {
-      expect(emptyBlacklistRes.value.size).toBe(0);
-    }
-  });
-
-  it("returns configured blacklisted agent ids", () => {
-    const res = getEmailBlacklistedAgentIds({
-      metadata: {
-        emailBlacklistedAgentIds: ["agent-1", "agent-2"],
-      },
-    });
-
-    expect(res.isOk()).toBe(true);
-    if (res.isOk()) {
-      expect(res.value).toEqual(new Set(["agent-1", "agent-2"]));
-    }
-  });
-
-  it("rejects invalid metadata shapes", () => {
-    for (const metadata of [
-      { emailBlacklistedAgentIds: "agent-1" },
-      { emailBlacklistedAgentIds: ["agent-1", 2] },
-    ]) {
-      const res = getEmailBlacklistedAgentIds({ metadata });
-
-      expect(res.isErr()).toBe(true);
-      if (res.isErr()) {
-        expect(res.error.type).toBe("invalid_email_blacklist_metadata");
-      }
-    }
-  });
-});
-
-describe("emailAssistantMatcher", () => {
-  it("returns the matched agent when it is not blacklisted", () => {
-    const agent = makeAgentConfiguration({
-      name: "Approvals",
-      sId: "agent-1",
-    });
-
-    const res = emailAssistantMatcher({
-      allAgentConfigurations: [agent],
-      emailBlacklistedAgentIds: new Set(["agent-2"]),
-      targetEmail: `approvals@${ASSISTANT_EMAIL_SUBDOMAIN}`,
-    });
-
-    expect(res.isOk()).toBe(true);
-    if (res.isOk()) {
-      expect(res.value.agentConfiguration.sId).toBe("agent-1");
-    }
-  });
-
-  it("returns assistant_email_blacklisted for a blacklisted matched agent", () => {
-    const agent = makeAgentConfiguration({
-      name: "Approvals",
-      sId: "agent-1",
-    });
-
-    const res = emailAssistantMatcher({
-      allAgentConfigurations: [agent],
-      emailBlacklistedAgentIds: new Set(["agent-1"]),
-      targetEmail: `approvals@${ASSISTANT_EMAIL_SUBDOMAIN}`,
-    });
-
-    expect(res.isErr()).toBe(true);
-    if (res.isErr()) {
-      expect(res.error.type).toBe("assistant_email_blacklisted");
-    }
   });
 });
 
@@ -375,19 +288,6 @@ function makeInboundEmail(): InboundEmail {
     },
     attachments: [],
   };
-}
-
-function makeAgentConfiguration({
-  name,
-  sId,
-}: {
-  name: string;
-  sId: string;
-}): LightAgentConfigurationType {
-  return {
-    name,
-    sId,
-  } as LightAgentConfigurationType;
 }
 
 function makeBlockedAction(): BlockedToolExecution {
