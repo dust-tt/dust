@@ -80,6 +80,71 @@ export async function getUserForWorkspace(
 }
 
 /**
+ * Batch version of hasSharedMembership: filters users that share at least one
+ * workspace with the authenticated user and have a membership in the auth workspace.
+ * Returns the subset of `users` that pass the privacy check.
+ */
+export async function filterUsersWithSharedMembership(
+  auth: Authenticator,
+  users: UserResource[]
+): Promise<UserResource[]> {
+  if (users.length === 0) {
+    return [];
+  }
+
+  const workspace = auth.workspace();
+  const authUser = auth.user();
+  if (!workspace || !authUser) {
+    return [];
+  }
+
+  // Check which users have a membership in the auth workspace.
+  const { memberships: workspaceMemberships } =
+    await MembershipResource.getActiveMemberships({
+      users,
+      workspace,
+    });
+  const usersInWorkspace = new Set(workspaceMemberships.map((m) => m.userId));
+
+  const usersWithWorkspaceMembership = users.filter((u) =>
+    usersInWorkspace.has(u.id)
+  );
+
+  if (usersWithWorkspaceMembership.length === 0) {
+    return [];
+  }
+
+  // Superusers can see all users that have a workspace membership.
+  if (auth.isDustSuperUser()) {
+    return usersWithWorkspaceMembership;
+  }
+
+  // For regular users: check shared workspaces.
+  const { memberships: authUserMemberships } =
+    await MembershipResource.getActiveMemberships({
+      users: [authUser],
+    });
+  const authUserWorkspaceIds = new Set(
+    authUserMemberships.map((m) => m.workspaceId)
+  );
+
+  const { memberships: candidateMemberships } =
+    await MembershipResource.getActiveMemberships({
+      users: usersWithWorkspaceMembership,
+    });
+
+  // Collect user IDs that share at least one workspace with the auth user.
+  const visibleUserIds = new Set<number>();
+  for (const m of candidateMemberships) {
+    if (authUserWorkspaceIds.has(m.workspaceId)) {
+      visibleUserIds.add(m.userId);
+    }
+  }
+
+  return usersWithWorkspaceMembership.filter((u) => visibleUserIds.has(u.id));
+}
+
+/**
  * This function checks that both the auth user and the requested user share at least one
  * workspace membership, and that the requested user had at least one membership in the past
  * for the auth workspace. Returns false otherwise.

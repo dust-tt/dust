@@ -5,7 +5,6 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type {
   SkillType,
@@ -139,40 +138,44 @@ app.get(
     });
 
     if (withRelations === "true") {
-      const extendedSkills = await SkillResource.fetchByIds(
-        auth,
-        removeNulls(uniq(skills.map((s) => s.extendedSkillId)))
-      );
+      const [extendedSkills, usageMap, editorsMap, editedByUsersMap] =
+        await Promise.all([
+          SkillResource.fetchByIds(
+            auth,
+            removeNulls(uniq(skills.map((s) => s.extendedSkillId)))
+          ),
+          SkillResource.batchFetchUsage(auth, skills),
+          SkillResource.batchListEditors(auth, skills),
+          SkillResource.batchFetchEditedByUsers(auth, skills),
+        ]);
+
       const extendedSkillsMap = new Map(extendedSkills.map((s) => [s.sId, s]));
 
-      const skillsWithRelations = await concurrentExecutor(
-        skills,
-        async (sc) => {
-          const {
-            instructions,
-            instructionsHtml,
-            tools,
-            ...skillWithoutInstructionsAndTools
-          } = sc.toJSON(auth);
-          const usage = await sc.fetchUsage(auth);
-          const editors = await sc.listEditors(auth);
-          const editedByUser = await sc.fetchEditedByUser(auth);
+      const skillsWithRelations = skills.map((sc) => {
+        const {
+          instructions,
+          instructionsHtml,
+          tools,
+          ...skillWithoutInstructionsAndTools
+        } = sc.toJSON(auth);
 
-          return {
-            ...skillWithoutInstructionsAndTools,
-            relations: {
-              usage,
-              editors: editors ? editors.map((e) => e.toJSON()) : null,
-              editedByUser: editedByUser ? editedByUser.toJSON() : null,
-              extendedSkill: sc.extendedSkillId
-                ? (extendedSkillsMap.get(sc.extendedSkillId)?.toJSON(auth) ??
-                  null)
-                : null,
-            },
-          } satisfies SkillWithoutInstructionsAndToolsWithRelationsType;
-        },
-        { concurrency: 10 }
-      );
+        const usage = usageMap.get(sc.sId) ?? { count: 0, agents: [] };
+        const editors = editorsMap.get(sc.sId) ?? null;
+        const editedByUser = editedByUsersMap.get(sc.sId) ?? null;
+
+        return {
+          ...skillWithoutInstructionsAndTools,
+          relations: {
+            usage,
+            editors: editors ? editors.map((e) => e.toJSON()) : null,
+            editedByUser: editedByUser ? editedByUser.toJSON() : null,
+            extendedSkill: sc.extendedSkillId
+              ? (extendedSkillsMap.get(sc.extendedSkillId)?.toJSON(auth) ??
+                null)
+              : null,
+          },
+        } satisfies SkillWithoutInstructionsAndToolsWithRelationsType;
+      });
 
       return ctx.json({ skills: skillsWithRelations });
     }
