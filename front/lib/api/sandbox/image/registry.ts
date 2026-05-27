@@ -14,9 +14,9 @@ import { Err, Ok } from "@app/types/shared/result";
 import fs from "fs";
 import path from "path";
 
-const DUST_BEDROCK_IMAGE_VERSION = "1.7.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.26";
-const DSBX_CLI_VERSION = "0.1.22";
+const DUST_BEDROCK_IMAGE_VERSION = "1.10.0";
+const DUST_BASE_IMAGE_VERSION = "0.8.27";
+const DSBX_CLI_VERSION = "0.1.23";
 // Identity, not coverage list: agent-proxied is a specific Linux user. The
 // nftables ruleset covers SANDBOX_UNTRUSTED_UIDS as a set; reordering that
 // list must not silently change this user's UID.
@@ -164,11 +164,81 @@ function getAgentProxiedSetupCommand(): string {
   // group-writable, regardless of the creating process's umask — avoids
   // a perms handoff footgun during the PR1→PR2 rollout window.
   return [
+    "install -d -o agent -g agent -m 2775 /home/agent/.local /home/agent/.local/bin",
     `useradd --create-home --uid ${AGENT_PROXIED_UID} --gid agent --shell /bin/bash agent-proxied`,
-    "chgrp agent /home/agent /files/conversation /files/project",
-    "chmod g+ws /home/agent /files/conversation /files/project",
-    "setfacl -R -d -m g::rwx /home/agent /files/conversation /files/project",
-    "setfacl -R -m g::rwx /home/agent /files/conversation /files/project",
+    "chgrp agent /home/agent /home/agent/.local /home/agent/.local/bin /files/conversation /files/project",
+    "chmod g+ws /home/agent /home/agent/.local /home/agent/.local/bin /files/conversation /files/project",
+    "setfacl -R -d -m g::rwx /home/agent /home/agent/.local /home/agent/.local/bin /files/conversation /files/project",
+    "setfacl -R -m g::rwx /home/agent /home/agent/.local /home/agent/.local/bin /files/conversation /files/project",
+  ].join(" && ");
+}
+
+function getLocalAccountPrivilegeHardeningCommand(): string {
+  const lockRootPassword = [
+    "if getent passwd root >/dev/null 2>&1; then",
+    "passwd -l root >/dev/null 2>&1 || usermod --lock root >/dev/null 2>&1 || true;",
+    "fi",
+  ].join(" ");
+  const lockEmptyPasswordAccounts = [
+    "if getent shadow >/dev/null 2>&1; then",
+    `getent shadow | awk -F: '$2 == "" {print $1}' | while IFS= read -r account; do`,
+    '[ -z "$account" ] && continue;',
+    'passwd -l "$account" >/dev/null 2>&1 || usermod --lock "$account" >/dev/null 2>&1 || true;',
+    "done;",
+    "fi",
+  ].join(" ");
+  const lockProviderUser = [
+    "if getent passwd user >/dev/null 2>&1; then",
+    "usermod --lock --expiredate 1 --shell /usr/sbin/nologin user",
+    "&& for group in sudo admin wheel; do",
+    'if getent group "$group" >/dev/null 2>&1; then',
+    'gpasswd -d user "$group" >/dev/null 2>&1 || true;',
+    "fi;",
+    "done;",
+    "fi",
+  ].join(" ");
+  const removePrivilegedGroupMembers = [
+    "for group in sudo admin wheel; do",
+    "members=$(getent group \"$group\" | awk -F: '{print $4}') || continue;",
+    'old_ifs="$IFS";',
+    "IFS=,;",
+    "for member in $members; do",
+    '[ -z "$member" ] || [ "$member" = root ] || gpasswd -d "$member" "$group" >/dev/null 2>&1 || true;',
+    "done;",
+    'IFS="$old_ifs";',
+    "done",
+  ].join(" ");
+  const removePasswordlessSudoersRules = [
+    "if [ -f /etc/sudoers ]; then",
+    "sed -i -E '/^[[:space:]]*#/!{/NOPASSWD[[:space:]]*:[[:space:]]*ALL/d;}' /etc/sudoers;",
+    "fi",
+    "&& if [ -d /etc/sudoers.d ]; then",
+    "find /etc/sudoers.d -maxdepth 1 -type f",
+    "-exec sed -i -E '/^[[:space:]]*#/!{/NOPASSWD[[:space:]]*:[[:space:]]*ALL/d;}' {} +;",
+    "fi",
+  ].join(" ");
+  const removeSudoBinary = [
+    "if command -v sudo >/dev/null 2>&1; then",
+    "DEBIAN_FRONTEND=noninteractive apt-get purge -y sudo >/dev/null 2>&1",
+    '|| { sudo_path=$(command -v sudo); chmod u-s "$sudo_path"; mv "$sudo_path" "$sudo_path.disabled-by-dust"; };',
+    "hash -r 2>/dev/null || true;",
+    "fi",
+  ].join(" ");
+  const hardenLocalAuthHelpers = [
+    "for path in /bin/su /usr/bin/su /bin/sg /usr/bin/sg /usr/bin/newgrp /usr/bin/passwd /usr/bin/chsh /usr/bin/chfn /usr/bin/gpasswd; do",
+    'if [ -e "$path" ]; then chmod u-s "$path"; fi;',
+    "done",
+  ].join(" ");
+
+  return [
+    lockRootPassword,
+    lockEmptyPasswordAccounts,
+    lockProviderUser,
+    removePrivilegedGroupMembers,
+    removePasswordlessSudoersRules,
+    removeSudoBinary,
+    hardenLocalAuthHelpers,
+    "if command -v sudo >/dev/null 2>&1; then echo 'sudo must not be installed in sandbox images' >&2; exit 1; fi",
   ].join(" && ");
 }
 
@@ -176,6 +246,14 @@ function getEgressResolverUserSetupCommand(): string {
   return [
     "groupadd --system dust-egress-resolver",
     "useradd --system --no-create-home --gid dust-egress-resolver --shell /usr/sbin/nologin dust-egress-resolver",
+  ].join(" && ");
+}
+
+function getPrivilegedExecutablePathHardeningCommand(): string {
+  return [
+    "install -d -o root -g root -m 755 /opt/bin /usr/local/bin",
+    "chown root:root /opt/bin /usr/local/bin",
+    "chmod 755 /opt/bin /usr/local/bin",
   ].join(" && ");
 }
 
@@ -246,6 +324,7 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
       user: "root",
     }
   )
+  .runCmd(getLocalAccountPrivilegeHardeningCommand(), { user: "root" })
   .runCmd(getAgentProxiedSetupCommand(), { user: "root" })
   .runCmd(getSshHardeningCommand(), { user: "root" })
   // Create simple netcat-based token server script.
@@ -484,6 +563,10 @@ SHELLEOF`,
     "systemctl daemon-reload && systemctl enable dust-egress-resolver.service dust-egress-nftables.service",
     { user: "root" }
   )
+  // Run after all apt/npm installs as a final guard against a dependency
+  // reintroducing sudo or privileged account state.
+  .runCmd(getLocalAccountPrivilegeHardeningCommand(), { user: "root" })
+  .runCmd(getPrivilegedExecutablePathHardeningCommand(), { user: "root" })
   // Profile functions (no install needed, provided by profile scripts)
   // --- read_file: anthropic/openai use offset/limit, gemini uses start/end ---
   .registerTool({
