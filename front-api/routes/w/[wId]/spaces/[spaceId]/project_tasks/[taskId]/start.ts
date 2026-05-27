@@ -6,7 +6,7 @@ import { validate } from "@front-api/middlewares/validator";
 import { withSpace } from "@front-api/middlewares/with_space";
 import { z } from "zod";
 
-const PostStartProjectTaskBodySchema = z.object({
+const PostStartPodTaskBodySchema = z.object({
   customMessage: z.string().optional(),
   agentConfigurationId: z.string().optional(),
 });
@@ -17,7 +17,7 @@ const app = workspaceApp();
 app.post(
   "/",
   withSpace({ requireCanRead: true }),
-  validate("json", PostStartProjectTaskBodySchema),
+  validate("json", PostStartPodTaskBodySchema),
   async (ctx) => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");
