@@ -14,10 +14,11 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { headersArrayToRecord } from "@app/types/shared/utils/http_headers";
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureIsUser } from "@front-api/middlewares/ensure_is_user";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import type { Context, MiddlewareHandler } from "hono";
+import type { Context } from "hono";
 import { z } from "zod";
 
 import sync from "./sync";
@@ -68,26 +69,9 @@ export type DeleteMCPServerResponseBody = {
 // Mounted under /api/w/:wId/mcp/:serverId.
 const app = workspaceApp();
 
-// Require an authenticated workspace user for any per-server operation on this
-// route. Sub-routes (sync, tools) are unaffected.
-const requireUser: MiddlewareHandler = async (ctx, next) => {
-  const auth = ctx.get("auth") as Authenticator | undefined;
-  if (!auth?.isUser()) {
-    return apiError(ctx, {
-      status_code: 401,
-      api_error: {
-        type: "mcp_auth_error",
-        message:
-          "You are not authorized to make request to inspect an MCP server.",
-      },
-    });
-  }
-  await next();
-};
-
 app.get(
   "/",
-  requireUser,
+  ensureIsUser(),
   async (ctx): HandlerResult<GetMCPServerResponseBody> => {
     const auth = ctx.get("auth");
     const serverId = ctx.req.param("serverId") ?? "";
@@ -137,7 +121,7 @@ app.get(
 
 app.patch(
   "/",
-  requireUser,
+  ensureIsUser(),
   validate("json", PatchMCPServerBodySchema),
   async (ctx): HandlerResult<PatchMCPServerResponseBody> => {
     const auth = ctx.get("auth");
@@ -184,7 +168,7 @@ app.patch(
 
 app.delete(
   "/",
-  requireUser,
+  ensureIsUser(),
   async (ctx): HandlerResult<DeleteMCPServerResponseBody> => {
     const auth = ctx.get("auth");
     const serverId = ctx.req.param("serverId") ?? "";
