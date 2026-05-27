@@ -52,6 +52,7 @@ vi.mock(import("@app/lib/api/config"), (() => ({
       apiKey: "foo",
     }),
     getApiBaseUrl: vi.fn().mockReturnValue("http://localhost:3000"),
+    getWorkOSClientId: vi.fn(() => "test-workos-client-id"),
   },
 })) as any);
 

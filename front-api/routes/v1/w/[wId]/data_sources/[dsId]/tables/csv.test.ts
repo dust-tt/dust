@@ -64,6 +64,7 @@ vi.mock(import("@app/lib/api/config"), (() => ({
       url: "http://localhost:9999",
       apiKey: "foo",
     }),
+    getWorkOSClientId: vi.fn(() => "test-workos-client-id"),
   },
 })) as any);
 
