@@ -6,9 +6,8 @@ import type { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
 import type { Authenticator } from "@app/lib/auth";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import logger from "@app/logger/logger";
-import { Err, Ok, type Result } from "@app/types/shared/result";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { concurrentExecutor } from "@app/temporal/workflow_utils";
+import { Err, Ok, type Result } from "@app/types/shared/result";
 
 import type { SandboxMountAdapter } from "./sandbox_mount_adapter";
 
@@ -62,12 +61,20 @@ export class GCSSandboxMountAdapter implements SandboxMountAdapter {
     const prefixes = targets.map((t) => t.gcsPrefix);
     const workspaceId = auth.getNonNullableWorkspace().sId;
 
-    const childLogger = logger.child({ sandboxId: sandbox.sId, workspaceId, bucket, prefixes });
+    const childLogger = logger.child({
+      sandboxId: sandbox.sId,
+      workspaceId,
+      bucket,
+      prefixes,
+    });
 
     // 1. Mint a CAB-scoped token covering every prefix.
     const tokenResult = await mintDownscopedGcsToken({ bucket, prefixes });
     if (tokenResult.isErr()) {
-      childLogger.error({ err: tokenResult.error }, "GCS sandbox mount: failed to mint token");
+      childLogger.error(
+        { err: tokenResult.error },
+        "GCS sandbox mount: failed to mint token"
+      );
       return tokenResult;
     }
 
@@ -78,7 +85,10 @@ export class GCSSandboxMountAdapter implements SandboxMountAdapter {
       `printf '%s' '${escapeSingleQuotes(tokenJson)}' > /tmp/token.json`
     );
     if (writeResult.isErr()) {
-      childLogger.error({ err: writeResult.error }, "GCS sandbox mount: failed to write token file");
+      childLogger.error(
+        { err: writeResult.error },
+        "GCS sandbox mount: failed to write token file"
+      );
       return writeResult;
     }
 
@@ -88,7 +98,10 @@ export class GCSSandboxMountAdapter implements SandboxMountAdapter {
       "bash /home/agent/.bin/token-server.sh > /tmp/server.log 2>&1 &"
     );
     if (startResult.isErr()) {
-      childLogger.error({ err: startResult.error }, "GCS sandbox mount: failed to start token server");
+      childLogger.error(
+        { err: startResult.error },
+        "GCS sandbox mount: failed to start token server"
+      );
       return startResult;
     }
 
@@ -117,7 +130,11 @@ export class GCSSandboxMountAdapter implements SandboxMountAdapter {
 
         const mountResult = await sandbox.exec(
           auth,
-          buildMountCommand({ bucket, prefix: target.gcsPrefix, mountPoint: target.sandboxMountPoint }),
+          buildMountCommand({
+            bucket,
+            prefix: target.gcsPrefix,
+            mountPoint: target.sandboxMountPoint,
+          }),
           { timeoutMs: MOUNT_TIMEOUT_MS, user: "root" }
         );
 
@@ -131,7 +148,13 @@ export class GCSSandboxMountAdapter implements SandboxMountAdapter {
 
         if (mountResult.value.exitCode !== 0) {
           const msg = `gcsfuse exited with code ${mountResult.value.exitCode} for ${target.sandboxMountPoint}: ${mountResult.value.stderr}`;
-          childLogger.error({ stderr: mountResult.value.stderr, mountPoint: target.sandboxMountPoint }, msg);
+          childLogger.error(
+            {
+              stderr: mountResult.value.stderr,
+              mountPoint: target.sandboxMountPoint,
+            },
+            msg
+          );
           return new Err(new Error(msg));
         }
 
@@ -145,7 +168,10 @@ export class GCSSandboxMountAdapter implements SandboxMountAdapter {
           if (symlinkResult.isErr()) {
             // Non-fatal: canonical path works, old code hitting the legacy path will just fail.
             childLogger.warn(
-              { err: symlinkResult.error, legacyMountPoint: target.legacySandboxMountPoint },
+              {
+                err: symlinkResult.error,
+                legacyMountPoint: target.legacySandboxMountPoint,
+              },
               "GCS sandbox mount: legacy symlink failed (non-fatal)"
             );
           }
@@ -180,7 +206,10 @@ export class GCSSandboxMountAdapter implements SandboxMountAdapter {
     }
 
     const prefixes = this.targets.map((t) => t.gcsPrefix);
-    const tokenResult = await mintDownscopedGcsToken({ bucket: this.bucket, prefixes });
+    const tokenResult = await mintDownscopedGcsToken({
+      bucket: this.bucket,
+      prefixes,
+    });
     if (tokenResult.isErr()) {
       return tokenResult;
     }
@@ -194,7 +223,11 @@ export class GCSSandboxMountAdapter implements SandboxMountAdapter {
     }
 
     logger.info(
-      { sandboxId: sandbox.sId, workspaceId: auth.getNonNullableWorkspace().sId, prefixes },
+      {
+        sandboxId: sandbox.sId,
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        prefixes,
+      },
       "GCS sandbox mount: credential refreshed"
     );
 
@@ -203,7 +236,10 @@ export class GCSSandboxMountAdapter implements SandboxMountAdapter {
 
   /** Exposed for testing and diagnostics. */
   getAccessBoundaryRules() {
-    return buildAccessBoundaryRules(this.bucket, this.targets.map((t) => t.gcsPrefix));
+    return buildAccessBoundaryRules(
+      this.bucket,
+      this.targets.map((t) => t.gcsPrefix)
+    );
   }
 }
 

@@ -11,8 +11,8 @@
  *   DustFileSystem.fromScopedPath(auth, scopedPath)     infers context from the path prefix
  */
 
-import { GCSFileSystemBackend } from "@app/lib/api/file_system/backends/gcs_file_system_backend";
 import type { FileSystemBackend } from "@app/lib/api/file_system/backends/file_system_backend";
+import { GCSFileSystemBackend } from "@app/lib/api/file_system/backends/gcs_file_system_backend";
 import type {
   FileSystemEntry,
   FileSystemMount,
@@ -22,15 +22,18 @@ import type { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
 import type { Authenticator } from "@app/lib/auth";
 import fileStorageConfig from "@app/lib/file_storage/config";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
-import { isProjectConversation } from "@app/types/assistant/conversation";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { isProjectConversation } from "@app/types/assistant/conversation";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
-export type { FileSystemEntry, FileSystemMount } from "@app/lib/api/file_system/types";
+export type {
+  FileSystemEntry,
+  FileSystemMount,
+} from "@app/lib/api/file_system/types";
 export { DustFileSystemError } from "@app/lib/api/file_system/types";
 
 // ---------------------------------------------------------------------------
@@ -50,10 +53,12 @@ function parseScopedPrefix(scopedPath: string): ParsedScopedPrefix | null {
     const id = prefix.slice("conversation-".length);
     return id ? { kind: "conversation", id } : null;
   }
+
   if (prefix.startsWith("pod-")) {
     const id = prefix.slice("pod-".length);
     return id ? { kind: "pod", id } : null;
   }
+
   return null;
 }
 
@@ -84,6 +89,7 @@ export class DustFileSystem {
   ): Promise<Result<DustFileSystem, DustFileSystemError>> {
     const owner = auth.getNonNullableWorkspace();
 
+    // TODO: Can't we use conversation resource so we can check the canWrite or canRead?!
     const convMount: FileSystemMount = {
       kind: "conversation",
       id: conversation.sId,
@@ -134,7 +140,10 @@ export class DustFileSystem {
   ): Promise<Result<DustFileSystem, DustFileSystemError>> {
     if (!space.canRead(auth)) {
       return new Err(
-        new DustFileSystemError("unauthorized", "You do not have read access to this space.")
+        new DustFileSystemError(
+          "unauthorized",
+          "You do not have read access to this space."
+        )
       );
     }
 
@@ -185,12 +194,19 @@ export class DustFileSystem {
 
     switch (parsed.kind) {
       case "conversation": {
-        const conversation = await ConversationResource.fetchById(auth, parsed.id);
+        const conversation = await ConversationResource.fetchById(
+          auth,
+          parsed.id
+        );
         if (!conversation) {
           return new Err(
-            new DustFileSystemError("not_found", `Conversation not found: ${parsed.id}`)
+            new DustFileSystemError(
+              "not_found",
+              `Conversation not found: ${parsed.id}`
+            )
           );
         }
+
         return DustFileSystem.forConversation(auth, conversation.toJSON());
       }
 
@@ -198,9 +214,13 @@ export class DustFileSystem {
         const space = await SpaceResource.fetchById(auth, parsed.id);
         if (!space) {
           return new Err(
-            new DustFileSystemError("not_found", `Space not found: ${parsed.id}`)
+            new DustFileSystemError(
+              "not_found",
+              `Space not found: ${parsed.id}`
+            )
           );
         }
+
         return DustFileSystem.forPod(auth, space);
       }
     }
@@ -309,7 +329,10 @@ export class DustFileSystem {
     if (scopedPath !== undefined) {
       const resolved = this.requireReadMount(scopedPath);
       if (resolved.isErr()) {
-        logger.warn({ err: resolved.error, scopedPath }, "DustFileSystem.list: access check failed");
+        logger.warn(
+          { err: resolved.error, scopedPath },
+          "DustFileSystem.list: access check failed"
+        );
         return [];
       }
       return this.backend.list(resolved.value.path, opts);
@@ -348,7 +371,9 @@ export class DustFileSystem {
       await this.backend.write(resolved.value.path, content, contentType);
       return new Ok(undefined);
     } catch (err) {
-      return new Err(new DustFileSystemError("internal", normalizeError(err).message));
+      return new Err(
+        new DustFileSystemError("internal", normalizeError(err).message)
+      );
     }
   }
 
@@ -364,7 +389,9 @@ export class DustFileSystem {
       await this.backend.delete(resolved.value.path, opts);
       return new Ok(undefined);
     } catch (err) {
-      return new Err(new DustFileSystemError("internal", normalizeError(err).message));
+      return new Err(
+        new DustFileSystemError("internal", normalizeError(err).message)
+      );
     }
   }
 
@@ -385,7 +412,9 @@ export class DustFileSystem {
       await this.backend.copy(resolvedSrc.value.path, resolvedDest.value.path);
       return new Ok(undefined);
     } catch (err) {
-      return new Err(new DustFileSystemError("internal", normalizeError(err).message));
+      return new Err(
+        new DustFileSystemError("internal", normalizeError(err).message)
+      );
     }
   }
 
@@ -412,14 +441,20 @@ export class DustFileSystem {
     try {
       await this.backend.copy(resolvedSrc.value.path, resolvedDest.value.path);
     } catch (err) {
-      return new Err(new DustFileSystemError("internal", normalizeError(err).message));
+      return new Err(
+        new DustFileSystemError("internal", normalizeError(err).message)
+      );
     }
 
     try {
       await this.backend.delete(resolvedSrc.value.path);
     } catch (err) {
       logger.error(
-        { err: normalizeError(err), src: resolvedSrc.value.path, dest: resolvedDest.value.path },
+        {
+          err: normalizeError(err),
+          src: resolvedSrc.value.path,
+          dest: resolvedDest.value.path,
+        },
         "DustFileSystem.move: source delete failed after successful copy"
       );
       return new Ok({ sourceDeletionFailed: true });
@@ -440,7 +475,9 @@ export class DustFileSystem {
       const url = await this.backend.getDownloadUrl(resolved.value.path, opts);
       return new Ok(url);
     } catch (err) {
-      return new Err(new DustFileSystemError("internal", normalizeError(err).message));
+      return new Err(
+        new DustFileSystemError("internal", normalizeError(err).message)
+      );
     }
   }
 

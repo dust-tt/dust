@@ -1,8 +1,11 @@
 import config from "@app/lib/api/config";
-import type { FileSystemEntry, FileSystemMount } from "@app/lib/api/file_system/types";
 import type { GCSMountTarget } from "@app/lib/api/file_system/sandbox/gcs_sandbox_mount_adapter";
 import { GCSSandboxMountAdapter } from "@app/lib/api/file_system/sandbox/gcs_sandbox_mount_adapter";
 import type { SandboxMountAdapter } from "@app/lib/api/file_system/sandbox/sandbox_mount_adapter";
+import type {
+  FileSystemEntry,
+  FileSystemMount,
+} from "@app/lib/api/file_system/types";
 import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import fileStorageConfig from "@app/lib/file_storage/config";
@@ -134,9 +137,15 @@ export class GCSFileSystemBackend implements FileSystemBackend {
     let rawFiles: { name: string; metadata: Record<string, unknown> }[];
 
     if (maxFiles !== undefined) {
-      rawFiles = await bucket.getFiles({ prefix: gcsPrefix, maxResults: maxFiles });
+      rawFiles = await bucket.getFiles({
+        prefix: gcsPrefix,
+        maxResults: maxFiles,
+      });
     } else {
-      const result = await bucket.getAllFilesByPrefix({ prefix: gcsPrefix, pageSize: 200 });
+      const result = await bucket.getAllFilesByPrefix({
+        prefix: gcsPrefix,
+        pageSize: 200,
+      });
       if (result.pageFetchCount > 1) {
         logger.warn(
           {
@@ -169,7 +178,10 @@ export class GCSFileSystemBackend implements FileSystemBackend {
     const folderEntries: FileSystemEntry[] = folderPlaceholders.flatMap((f) => {
       const trimmed = f.name.replace(/\/$/, "");
       const name = trimmed.split("/").pop() ?? "";
-      if (!name || (name.startsWith(".") && name !== TOOL_OUTPUTS_FOLDER_NAME)) {
+      if (
+        !name ||
+        (name.startsWith(".") && name !== TOOL_OUTPUTS_FOLDER_NAME)
+      ) {
         return [];
       }
       const scopedFilePath = this.fromGCSPath(trimmed);
@@ -214,7 +226,10 @@ export class GCSFileSystemBackend implements FileSystemBackend {
     return [...folderEntries, ...fileEntries];
   }
 
-  private buildThumbnailUrl(contentType: string, scopedFilePath: string): string | null {
+  private buildThumbnailUrl(
+    contentType: string,
+    scopedFilePath: string
+  ): string | null {
     if (!isSupportedImageContentType(contentType)) {
       return null;
     }
@@ -268,7 +283,9 @@ export class GCSFileSystemBackend implements FileSystemBackend {
   ): Promise<void> {
     const gcsPath = this.toGCSPath(scopedPath);
     if (!gcsPath) {
-      throw new Error(`GCSFileSystemBackend.write: unrecognised scoped path: ${scopedPath}`);
+      throw new Error(
+        `GCSFileSystemBackend.write: unrecognised scoped path: ${scopedPath}`
+      );
     }
     const buf = typeof content === "string" ? Buffer.from(content) : content;
     await getPrivateUploadBucket().file(gcsPath).save(buf, { contentType });
@@ -283,7 +300,9 @@ export class GCSFileSystemBackend implements FileSystemBackend {
       if (ignoreNotFound) {
         return;
       }
-      throw new Error(`GCSFileSystemBackend.delete: unrecognised scoped path: ${scopedPath}`);
+      throw new Error(
+        `GCSFileSystemBackend.delete: unrecognised scoped path: ${scopedPath}`
+      );
     }
 
     const bucket = getPrivateUploadBucket();
@@ -295,7 +314,10 @@ export class GCSFileSystemBackend implements FileSystemBackend {
 
     const dirPrefix = gcsPath.endsWith("/") ? gcsPath : `${gcsPath}/`;
     const [dirExists] = await bucket.file(dirPrefix).exists();
-    const { files: sample } = await bucket.getAllFilesByPrefix({ prefix: dirPrefix, pageSize: 1 });
+    const { files: sample } = await bucket.getAllFilesByPrefix({
+      prefix: dirPrefix,
+      pageSize: 1,
+    });
 
     if (dirExists || sample.length > 0) {
       await bucket.deleteByPrefix(dirPrefix);
@@ -303,7 +325,9 @@ export class GCSFileSystemBackend implements FileSystemBackend {
     }
 
     if (!ignoreNotFound) {
-      throw new Error(`GCSFileSystemBackend.delete: path not found: ${scopedPath}`);
+      throw new Error(
+        `GCSFileSystemBackend.delete: path not found: ${scopedPath}`
+      );
     }
   }
 
@@ -311,10 +335,14 @@ export class GCSFileSystemBackend implements FileSystemBackend {
     const srcGCS = this.toGCSPath(src);
     const destGCS = this.toGCSPath(dest);
     if (!srcGCS) {
-      throw new Error(`GCSFileSystemBackend.copy: unrecognised source path: ${src}`);
+      throw new Error(
+        `GCSFileSystemBackend.copy: unrecognised source path: ${src}`
+      );
     }
     if (!destGCS) {
-      throw new Error(`GCSFileSystemBackend.copy: unrecognised destination path: ${dest}`);
+      throw new Error(
+        `GCSFileSystemBackend.copy: unrecognised destination path: ${dest}`
+      );
     }
     await getPrivateUploadBucket().copyFile(srcGCS, destGCS);
   }
@@ -332,7 +360,9 @@ export class GCSFileSystemBackend implements FileSystemBackend {
     return getPrivateUploadBucket().getSignedUrl(gcsPath);
   }
 
-  createSandboxAdapter(mounts: ReadonlyArray<FileSystemMount>): SandboxMountAdapter {
+  createSandboxAdapter(
+    mounts: ReadonlyArray<FileSystemMount>
+  ): SandboxMountAdapter {
     const bucket = fileStorageConfig.getGcsPrivateUploadsBucket();
     const targets: GCSMountTarget[] = mounts.map((mount) => ({
       gcsPrefix: this.mountRootGCSPrefix(mount),

@@ -1,5 +1,8 @@
-import type { FileSystemEntry, FileSystemMount } from "@app/lib/api/file_system/types";
 import type { SandboxMountAdapter } from "@app/lib/api/file_system/sandbox/sandbox_mount_adapter";
+import type {
+  FileSystemEntry,
+  FileSystemMount,
+} from "@app/lib/api/file_system/types";
 
 export type { FileSystemEntry } from "@app/lib/api/file_system/types";
 
