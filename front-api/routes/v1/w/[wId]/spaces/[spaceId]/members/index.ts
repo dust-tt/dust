@@ -9,7 +9,7 @@ import type {
 import { PostSpaceMembersRequestBodySchema } from "@dust-tt/client";
 import type { PublicApiCtx } from "@front-api/middlewares/ctx";
 import { publicApiApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_is_admin";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";

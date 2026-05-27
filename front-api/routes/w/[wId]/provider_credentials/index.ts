@@ -1,7 +1,7 @@
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import type { ProviderCredentialType } from "@app/types/provider_credential";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_is_admin";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 
 export type GetProviderCredentialsResponseBody = {

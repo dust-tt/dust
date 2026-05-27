@@ -4,7 +4,7 @@ import type {
   UserType,
 } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_is_admin";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
 // Mounted at /api/v1/w/:wId/members. publicApiAuth is applied by the parent

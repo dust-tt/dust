@@ -1,7 +1,7 @@
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { DataSourceType } from "@app/types/data_source";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_is_admin";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
 export type GetBotDataSourcesResponseBody = {

@@ -1,7 +1,7 @@
 import { TagResource } from "@app/lib/resources/tags_resource";
 import type { TagTypeWithUsage } from "@app/types/tag";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_is_admin";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
 export type GetTagsUsageResponseBody = {

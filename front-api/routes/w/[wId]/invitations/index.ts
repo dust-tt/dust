@@ -6,7 +6,7 @@ import type {
 } from "@app/pages/api/w/[wId]/invitations/index";
 import { PostInvitationRequestBodySchema } from "@app/pages/api/w/[wId]/invitations/index";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_is_admin";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 

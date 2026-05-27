@@ -2,7 +2,7 @@ import { importSkillsFromFiles } from "@app/lib/api/skills/detection/files/impor
 import { MAX_ZIP_SIZE_BYTES } from "@app/lib/api/skills/detection/zip/detect_skills";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WorkspaceAwareCtx } from "@front-api/middlewares/ctx";
-import { ensureIsBuilder } from "@front-api/middlewares/ensure_is_builder";
+import { ensureIsBuilder } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
 import type { HttpBindings } from "@hono/node-server";
 import formidable from "formidable";

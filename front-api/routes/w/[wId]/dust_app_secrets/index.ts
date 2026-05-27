@@ -8,7 +8,7 @@ import logger from "@app/logger/logger";
 import type { DustAppSecretType } from "@app/types/dust_app_secret";
 import { encrypt } from "@app/types/shared/utils/encryption";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsBuilder } from "@front-api/middlewares/ensure_is_builder";
+import { ensureIsBuilder } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";

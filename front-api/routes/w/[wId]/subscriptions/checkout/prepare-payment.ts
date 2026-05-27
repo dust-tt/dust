@@ -6,7 +6,7 @@ import { CouponResource } from "@app/lib/resources/coupon_resource";
 import type { SupportedCurrency } from "@app/types/currency";
 import { isString } from "@app/types/shared/utils/general";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_is_admin";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 
 export type GetPreparePaymentResponseBody =

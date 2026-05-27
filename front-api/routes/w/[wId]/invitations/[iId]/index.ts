@@ -7,7 +7,7 @@ import { MembershipInvitationResource } from "@app/lib/resources/membership_invi
 import type { PostMemberInvitationsResponseBody } from "@app/pages/api/w/[wId]/invitations/[iId]/index";
 import { PostMemberInvitationBodySchema } from "@app/pages/api/w/[wId]/invitations/[iId]/index";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_is_admin";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 

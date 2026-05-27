@@ -1,5 +1,5 @@
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_is_admin";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { withFeatureFlag } from "@front-api/middlewares/with_feature_flag";
 
 import egressPolicy from "./egress-policy";

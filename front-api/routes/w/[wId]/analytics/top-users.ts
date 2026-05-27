@@ -4,7 +4,7 @@ import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { estypes } from "@elastic/elasticsearch";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_is_admin";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
