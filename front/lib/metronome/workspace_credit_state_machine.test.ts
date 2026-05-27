@@ -15,10 +15,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   mockSetWorkspacePoolDepleted,
   mockClearWorkspacePoolDepleted,
+  mockSetWorkspaceCreditPoolStatus,
   mockInvalidateCacheAfterCommit,
 } = vi.hoisted(() => ({
   mockSetWorkspacePoolDepleted: vi.fn(),
   mockClearWorkspacePoolDepleted: vi.fn(),
+  mockSetWorkspaceCreditPoolStatus: vi.fn(),
   mockInvalidateCacheAfterCommit: vi.fn(
     (_tx: Transaction | undefined, fn: () => Promise<void>) => {
       void fn();
@@ -29,6 +31,7 @@ const {
 vi.mock("@app/lib/metronome/user_block", () => ({
   setWorkspacePoolDepleted: mockSetWorkspacePoolDepleted,
   clearWorkspacePoolDepleted: mockClearWorkspacePoolDepleted,
+  setWorkspaceCreditPoolStatus: mockSetWorkspaceCreditPoolStatus,
 }));
 
 vi.mock("@app/lib/utils/cache", () => ({
@@ -127,11 +130,11 @@ describe("WorkspaceCreditStateMachine — transitions", () => {
     expect(mockSetWorkspacePoolDepleted).toHaveBeenCalledWith("ws_test");
   });
 
-  it("overage + credits_added → active (clears depleted cache)", async () => {
+  it("overage + credits_added (high balance) → active (clears depleted cache)", async () => {
     const workspace = makeWorkspace("overage");
     const result = await transitionWorkspaceCreditState(
       workspace,
-      { type: "credits_added" },
+      { type: "credits_added", balance: 500 },
       baseCtxPayg
     );
     expect(result.isOk()).toBe(true);
@@ -141,11 +144,11 @@ describe("WorkspaceCreditStateMachine — transitions", () => {
     expect(mockClearWorkspacePoolDepleted).toHaveBeenCalledWith("ws_test");
   });
 
-  it("depleted + credits_added → active (clears depleted flag)", async () => {
+  it("depleted + credits_added (high balance) → active (clears depleted flag)", async () => {
     const workspace = makeWorkspace("depleted");
     const result = await transitionWorkspaceCreditState(
       workspace,
-      { type: "credits_added" },
+      { type: "credits_added", balance: 500 },
       baseCtxNoPayg
     );
     expect(result.isOk()).toBe(true);
@@ -256,6 +259,351 @@ describe("WorkspaceCreditStateMachine — transitions", () => {
       expect(result.value).toBe(from);
     }
     expect(workspace.updatePoolCreditState).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Low balance transitions
+// ---------------------------------------------------------------------------
+
+describe("WorkspaceCreditStateMachine — low balance transitions", () => {
+  it("active + low_balance_100 (no PAYG) → active_low_balance", async () => {
+    const workspace = makeWorkspace("active");
+    const result = await transitionWorkspaceCreditState(
+      workspace,
+      { type: "low_balance_100" },
+      baseCtxNoPayg
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("active_low_balance");
+    }
+    expect(workspace.updatePoolCreditState).toHaveBeenCalledWith(
+      "active_low_balance",
+      undefined
+    );
+    expect(mockClearWorkspacePoolDepleted).toHaveBeenCalledWith("ws_test");
+    expect(mockSetWorkspaceCreditPoolStatus).toHaveBeenCalledWith(
+      "ws_test",
+      "active_low_balance"
+    );
+  });
+
+  it("active + low_balance_100 (PAYG enabled) → active (no-op)", async () => {
+    const workspace = makeWorkspace("active");
+    const result = await transitionWorkspaceCreditState(
+      workspace,
+      { type: "low_balance_100" },
+      baseCtxPayg
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("active");
+    }
+    expect(workspace.updatePoolCreditState).not.toHaveBeenCalled();
+  });
+
+  it("active + low_balance_10 (no PAYG) → active_critical_balance", async () => {
+    const workspace = makeWorkspace("active");
+    const result = await transitionWorkspaceCreditState(
+      workspace,
+      { type: "low_balance_10" },
+      baseCtxNoPayg
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("active_critical_balance");
+    }
+    expect(workspace.updatePoolCreditState).toHaveBeenCalledWith(
+      "active_critical_balance",
+      undefined
+    );
+    expect(mockSetWorkspaceCreditPoolStatus).toHaveBeenCalledWith(
+      "ws_test",
+      "active_critical_balance"
+    );
+  });
+
+  it("active + low_balance_10 (PAYG enabled) → active (no-op)", async () => {
+    const workspace = makeWorkspace("active");
+    const result = await transitionWorkspaceCreditState(
+      workspace,
+      { type: "low_balance_10" },
+      baseCtxPayg
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("active");
+    }
+    expect(workspace.updatePoolCreditState).not.toHaveBeenCalled();
+  });
+
+  it("active_low_balance + low_balance_10 (no PAYG) → active_critical_balance", async () => {
+    const workspace = makeWorkspace("active_low_balance");
+    const result = await transitionWorkspaceCreditState(
+      workspace,
+      { type: "low_balance_10" },
+      baseCtxNoPayg
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("active_critical_balance");
+    }
+    expect(workspace.updatePoolCreditState).toHaveBeenCalledWith(
+      "active_critical_balance",
+      undefined
+    );
+  });
+
+  it("active_low_balance + low_balance_10 (PAYG enabled) → active_low_balance (no-op)", async () => {
+    const workspace = makeWorkspace("active_low_balance");
+    const result = await transitionWorkspaceCreditState(
+      workspace,
+      { type: "low_balance_10" },
+      baseCtxPayg
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("active_low_balance");
+    }
+    expect(workspace.updatePoolCreditState).not.toHaveBeenCalled();
+  });
+
+  it("active_low_balance + low_balance_100 is idempotent", async () => {
+    const workspace = makeWorkspace("active_low_balance");
+    const result = await transitionWorkspaceCreditState(
+      workspace,
+      { type: "low_balance_100" },
+      baseCtxNoPayg
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("active_low_balance");
+    }
+    expect(workspace.updatePoolCreditState).not.toHaveBeenCalled();
+  });
+
+  it("active_critical_balance + low_balance_10 is idempotent", async () => {
+    const workspace = makeWorkspace("active_critical_balance");
+    const result = await transitionWorkspaceCreditState(
+      workspace,
+      { type: "low_balance_10" },
+      baseCtxNoPayg
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("active_critical_balance");
+    }
+    expect(workspace.updatePoolCreditState).not.toHaveBeenCalled();
+  });
+
+  it("active_critical_balance + low_balance_100 stays in active_critical_balance", async () => {
+    const workspace = makeWorkspace("active_critical_balance");
+    const result = await transitionWorkspaceCreditState(
+      workspace,
+      { type: "low_balance_100" },
+      baseCtxNoPayg
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("active_critical_balance");
+    }
+    expect(workspace.updatePoolCreditState).not.toHaveBeenCalled();
+  });
+
+  it("active_low_balance + pool_exhausted (no PAYG) → depleted", async () => {
+    const workspace = makeWorkspace("active_low_balance");
+    const result = await transitionWorkspaceCreditState(
+      workspace,
+      { type: "pool_exhausted" },
+      baseCtxNoPayg
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("depleted");
+    }
+    expect(mockSetWorkspacePoolDepleted).toHaveBeenCalledWith("ws_test");
+  });
+
+  it("active_low_balance + pool_exhausted (PAYG) → overage", async () => {
+    const workspace = makeWorkspace("active_low_balance");
+    const result = await transitionWorkspaceCreditState(
+      workspace,
+      { type: "pool_exhausted" },
+      baseCtxPayg
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("overage");
+    }
+    expect(mockClearWorkspacePoolDepleted).toHaveBeenCalledWith("ws_test");
+  });
+
+  it("active_critical_balance + pool_exhausted (no PAYG) → depleted", async () => {
+    const workspace = makeWorkspace("active_critical_balance");
+    const result = await transitionWorkspaceCreditState(
+      workspace,
+      { type: "pool_exhausted" },
+      baseCtxNoPayg
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("depleted");
+    }
+    expect(mockSetWorkspacePoolDepleted).toHaveBeenCalledWith("ws_test");
+  });
+
+  it("active_critical_balance + pool_exhausted (PAYG) → overage", async () => {
+    const workspace = makeWorkspace("active_critical_balance");
+    const result = await transitionWorkspaceCreditState(
+      workspace,
+      { type: "pool_exhausted" },
+      baseCtxPayg
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("overage");
+    }
+    expect(mockClearWorkspacePoolDepleted).toHaveBeenCalledWith("ws_test");
+  });
+
+  it("active_low_balance + credits_added (high balance) → active", async () => {
+    const workspace = makeWorkspace("active_low_balance");
+    const result = await transitionWorkspaceCreditState(
+      workspace,
+      { type: "credits_added", balance: 500 },
+      baseCtxNoPayg
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("active");
+    }
+    expect(workspace.updatePoolCreditState).toHaveBeenCalledWith(
+      "active",
+      undefined
+    );
+  });
+
+  it("active_critical_balance + credits_added (high balance) → active", async () => {
+    const workspace = makeWorkspace("active_critical_balance");
+    const result = await transitionWorkspaceCreditState(
+      workspace,
+      { type: "credits_added", balance: 500 },
+      baseCtxNoPayg
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("active");
+    }
+    expect(workspace.updatePoolCreditState).toHaveBeenCalledWith(
+      "active",
+      undefined
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Balance-based routing for credits_added
+// ---------------------------------------------------------------------------
+
+describe("WorkspaceCreditStateMachine — credits_added balance routing", () => {
+  it("depleted + credits_added (balance=50) → active_low_balance", async () => {
+    const workspace = makeWorkspace("depleted");
+    const result = await transitionWorkspaceCreditState(
+      workspace,
+      { type: "credits_added", balance: 50 },
+      baseCtxNoPayg
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("active_low_balance");
+    }
+    expect(workspace.updatePoolCreditState).toHaveBeenCalledWith(
+      "active_low_balance",
+      undefined
+    );
+  });
+
+  it("depleted + credits_added (balance=5) → active_critical_balance", async () => {
+    const workspace = makeWorkspace("depleted");
+    const result = await transitionWorkspaceCreditState(
+      workspace,
+      { type: "credits_added", balance: 5 },
+      baseCtxNoPayg
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("active_critical_balance");
+    }
+    expect(workspace.updatePoolCreditState).toHaveBeenCalledWith(
+      "active_critical_balance",
+      undefined
+    );
+  });
+
+  it("depleted + credits_added (balance=100) → active_low_balance (boundary)", async () => {
+    const workspace = makeWorkspace("depleted");
+    const result = await transitionWorkspaceCreditState(
+      workspace,
+      { type: "credits_added", balance: 100 },
+      baseCtxNoPayg
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("active_low_balance");
+    }
+  });
+
+  it("depleted + credits_added (balance=10) → active_critical_balance (boundary)", async () => {
+    const workspace = makeWorkspace("depleted");
+    const result = await transitionWorkspaceCreditState(
+      workspace,
+      { type: "credits_added", balance: 10 },
+      baseCtxNoPayg
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("active_critical_balance");
+    }
+  });
+
+  it("depleted + credits_added (balance=101) → active", async () => {
+    const workspace = makeWorkspace("depleted");
+    const result = await transitionWorkspaceCreditState(
+      workspace,
+      { type: "credits_added", balance: 101 },
+      baseCtxNoPayg
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("active");
+    }
+  });
+
+  it("overage + credits_added (balance=50) → active_low_balance", async () => {
+    const workspace = makeWorkspace("overage");
+    const result = await transitionWorkspaceCreditState(
+      workspace,
+      { type: "credits_added", balance: 50 },
+      baseCtxPayg
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("active_low_balance");
+    }
+  });
+
+  it("active_critical_balance + credits_added (balance=50) → active_low_balance", async () => {
+    const workspace = makeWorkspace("active_critical_balance");
+    const result = await transitionWorkspaceCreditState(
+      workspace,
+      { type: "credits_added", balance: 50 },
+      baseCtxNoPayg
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("active_low_balance");
+    }
   });
 });
 

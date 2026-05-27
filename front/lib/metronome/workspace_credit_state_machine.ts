@@ -1,5 +1,6 @@
 import {
   clearWorkspacePoolDepleted,
+  setWorkspaceCreditPoolStatus,
   setWorkspacePoolDepleted,
 } from "@app/lib/metronome/user_block";
 import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -27,7 +28,7 @@ export type WorkspaceCreditEvent =
    * machine's point of view these are indistinguishable and both bring the
    * pool back online.
    */
-  | { type: "credits_added" }
+  | { type: "credits_added"; balance: number }
   /**
    * PAYG was turned off by an operator. Workspaces in `overage` were
    * surviving on PAYG: with PAYG gone they have nothing left to spend, so
@@ -41,14 +42,49 @@ export type WorkspaceCreditEvent =
    * so they move to `overage`. `active` and `overage` workspaces are
    * unaffected.
    */
-  | { type: "payg_enabled" };
+  | { type: "payg_enabled" }
+  /** Pool balance dropped to ≤100 credits remaining. */
+  | { type: "low_balance_100" }
+  /** Pool balance dropped to ≤10 credits remaining. */
+  | { type: "low_balance_10" };
+
+// Thresholds for low-balance state routing (in credits).
+const LOW_BALANCE_THRESHOLD = 100;
+const CRITICAL_BALANCE_THRESHOLD = 10;
 
 type WorkspaceCreditTransition = {
   from: WorkspacePoolCreditState | WorkspacePoolCreditState[];
   event: WorkspaceCreditEvent["type"];
   guard?: (ctx: WorkspaceCreditContext) => boolean;
-  to: WorkspacePoolCreditState;
+  to:
+    | WorkspacePoolCreditState
+    | ((event: WorkspaceCreditEvent) => WorkspacePoolCreditState);
 };
+
+function resolveTargetState(
+  to: WorkspaceCreditTransition["to"],
+  event: WorkspaceCreditEvent
+): WorkspacePoolCreditState {
+  return typeof to === "function" ? to(event) : to;
+}
+
+function activeStateForBalance(
+  event: WorkspaceCreditEvent
+): WorkspacePoolCreditState {
+  // Only valid for credits_added events, enforced by transition table
+  if (event.type !== "credits_added") {
+    throw new Error(
+      `[WorkspaceCreditStateMachine] activeStateForBalance called with unexpected event: ${event.type}`
+    );
+  }
+  if (event.balance <= CRITICAL_BALANCE_THRESHOLD) {
+    return "active_critical_balance";
+  }
+  if (event.balance <= LOW_BALANCE_THRESHOLD) {
+    return "active_low_balance";
+  }
+  return "active";
+}
 
 function syncWorkspacePoolCacheForState(
   state: WorkspacePoolCreditState,
@@ -61,11 +97,27 @@ function syncWorkspacePoolCacheForState(
       invalidateCacheAfterCommit(transaction, () =>
         clearWorkspacePoolDepleted(ctx.workspaceId)
       );
+      invalidateCacheAfterCommit(transaction, () =>
+        setWorkspaceCreditPoolStatus(ctx.workspaceId, state)
+      );
+      return;
+
+    case "active_low_balance":
+    case "active_critical_balance":
+      invalidateCacheAfterCommit(transaction, () =>
+        clearWorkspacePoolDepleted(ctx.workspaceId)
+      );
+      invalidateCacheAfterCommit(transaction, () =>
+        setWorkspaceCreditPoolStatus(ctx.workspaceId, state)
+      );
       return;
 
     case "depleted":
       invalidateCacheAfterCommit(transaction, () =>
         setWorkspacePoolDepleted(ctx.workspaceId)
+      );
+      invalidateCacheAfterCommit(transaction, () =>
+        setWorkspaceCreditPoolStatus(ctx.workspaceId, state)
       );
       return;
 
@@ -75,24 +127,45 @@ function syncWorkspacePoolCacheForState(
 }
 
 const TRANSITIONS: WorkspaceCreditTransition[] = [
-  // active -> ...
+  // Common transitions
+
+  // A new commit segment starting (admin top-up or billing-cycle renewal of
+  // the recurring pool commit) always set the state back to active (with potential low balance)
   {
-    from: "active",
+    from: [
+      "active",
+      "active_low_balance",
+      "active_critical_balance",
+      "depleted",
+      "overage",
+    ],
+    event: "credits_added",
+    to: activeStateForBalance,
+  },
+  {
+    from: [
+      "active",
+      "active_low_balance",
+      "active_critical_balance",
+      "overage",
+    ],
     event: "pool_exhausted",
     guard: (ctx) => ctx.paygEnabled,
     to: "overage",
   },
   {
-    from: "active",
+    from: [
+      "active",
+      "active_low_balance",
+      "active_critical_balance",
+      "depleted",
+    ],
     event: "pool_exhausted",
     guard: (ctx) => !ctx.paygEnabled,
     to: "depleted",
   },
-  {
-    from: "active",
-    event: "credits_added",
-    to: "active",
-  },
+
+  // active -> ...
   {
     from: "active",
     event: "payg_enabled",
@@ -103,26 +176,90 @@ const TRANSITIONS: WorkspaceCreditTransition[] = [
     event: "payg_disabled",
     to: "active",
   },
+  // No throttling due to low balance when PAYG is enabled.
+  {
+    from: "active",
+    event: "low_balance_100",
+    guard: (ctx) => !ctx.paygEnabled,
+    to: "active_low_balance",
+  },
+  {
+    from: "active",
+    event: "low_balance_100",
+    guard: (ctx) => ctx.paygEnabled,
+    to: "active",
+  },
+  // If the 10-credit alert fires before the 100-credit one (race), jump
+  // directly to active_critical_balance.
+  {
+    from: "active",
+    event: "low_balance_10",
+    guard: (ctx) => !ctx.paygEnabled,
+    to: "active_critical_balance",
+  },
+  {
+    from: "active",
+    event: "low_balance_10",
+    guard: (ctx) => ctx.paygEnabled,
+    to: "active",
+  },
+
+  // active_low_balance -> ...
+  {
+    from: "active_low_balance",
+    event: "low_balance_100",
+    to: "active_low_balance",
+  },
+  {
+    from: "active_low_balance",
+    event: "low_balance_10",
+    guard: (ctx) => !ctx.paygEnabled,
+    to: "active_critical_balance",
+  },
+  {
+    from: "active_low_balance",
+    event: "low_balance_10",
+    guard: (ctx) => ctx.paygEnabled, // should not happen
+    to: "active_low_balance",
+  },
+  {
+    from: "active_low_balance",
+    event: "payg_enabled",
+    to: "active",
+  },
+  {
+    from: "active_low_balance",
+    event: "payg_disabled",
+    to: "active_low_balance",
+  },
+
+  // active_critical_balance -> ...
+  {
+    from: "active_critical_balance",
+    event: "low_balance_10", // should not happen
+    to: "active_critical_balance",
+  },
+  {
+    from: "active_critical_balance",
+    event: "low_balance_100", // should not happen
+    to: "active_critical_balance",
+  },
+  {
+    from: "active_critical_balance",
+    event: "payg_enabled",
+    to: "active",
+  },
+  {
+    from: "active_critical_balance",
+    event: "payg_disabled",
+    to: "active_critical_balance",
+  },
 
   // overage -> ...
   {
     from: "overage",
-    event: "pool_exhausted",
-    guard: (ctx) => ctx.paygEnabled,
-    to: "overage",
-  },
-  {
-    from: "overage",
     event: "payg_cap_reached",
     to: "depleted",
-  },
-  // A new commit segment starting (admin top-up or billing-cycle renewal of
-  // the recurring pool commit) while in PAYG mode brings the pool back online
-  // no need to keep spending against PAYG
-  {
-    from: "overage",
-    event: "credits_added",
-    to: "active",
   },
   {
     from: "overage",
@@ -138,19 +275,8 @@ const TRANSITIONS: WorkspaceCreditTransition[] = [
   // depleted -> ...
   {
     from: "depleted",
-    event: "pool_exhausted",
-    guard: (ctx) => !ctx.paygEnabled,
-    to: "depleted",
-  },
-  {
-    from: "depleted",
     event: "payg_cap_reached",
     to: "depleted",
-  },
-  {
-    from: "depleted",
-    event: "credits_added",
-    to: "active",
   },
   {
     from: "depleted",
@@ -202,20 +328,22 @@ export async function transitionWorkspaceCreditState(
     );
   }
 
-  if (currentState !== match.to) {
-    await workspace.updatePoolCreditState(match.to, transaction);
+  const targetState = resolveTargetState(match.to, event);
+
+  if (currentState !== targetState) {
+    await workspace.updatePoolCreditState(targetState, transaction);
   }
-  syncWorkspacePoolCacheForState(match.to, ctx, transaction);
+  syncWorkspacePoolCacheForState(targetState, ctx, transaction);
   logger.info(
     {
       workspaceId: ctx.workspaceId,
       fromState: currentState,
-      toState: match.to,
+      toState: targetState,
       eventType: event.type,
-      wasStateChanged: currentState !== match.to,
+      wasStateChanged: currentState !== targetState,
     },
     "[WorkspaceCreditStateMachine] Transition applied"
   );
 
-  return new Ok(match.to);
+  return new Ok(targetState);
 }
