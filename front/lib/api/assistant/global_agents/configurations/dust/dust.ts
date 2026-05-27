@@ -909,6 +909,242 @@ export function _getDustOaiHighGlobalAgent(
   });
 }
 
+type CustomModelDustGlobalAgentConfig = {
+  name: string;
+  customModelIndex: number;
+  preferredReasoningEffort: ReasoningEffort;
+};
+
+export const CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS = new Map<
+  GLOBAL_AGENTS_SID,
+  CustomModelDustGlobalAgentConfig
+>([
+  [
+    GLOBAL_AGENTS_SID.DUST_NEXT,
+    {
+      name: "dust-next",
+      customModelIndex: 0,
+      preferredReasoningEffort: "light",
+    },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM,
+    {
+      name: "dust-next-medium",
+      customModelIndex: 0,
+      preferredReasoningEffort: "medium",
+    },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_NEXT_HIGH,
+    {
+      name: "dust-next-high",
+      customModelIndex: 0,
+      preferredReasoningEffort: "high",
+    },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_CHAWI,
+    {
+      name: "dust-chawi",
+      customModelIndex: 0,
+      preferredReasoningEffort: "light",
+    },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_CHAWI_MEDIUM,
+    {
+      name: "dust-chawi-medium",
+      customModelIndex: 0,
+      preferredReasoningEffort: "medium",
+    },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_CHAWI_HIGH,
+    {
+      name: "dust-chawi-high",
+      customModelIndex: 0,
+      preferredReasoningEffort: "high",
+    },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_SOUPINOU,
+    {
+      name: "dust-soupinou",
+      customModelIndex: 1,
+      preferredReasoningEffort: "light",
+    },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_SOUPINOU_MEDIUM,
+    {
+      name: "dust-soupinou-medium",
+      customModelIndex: 1,
+      preferredReasoningEffort: "medium",
+    },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_SOUPINOU_HIGH,
+    {
+      name: "dust-soupinou-high",
+      customModelIndex: 1,
+      preferredReasoningEffort: "high",
+    },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_SUNDAE,
+    {
+      name: "dust-sundae",
+      customModelIndex: 2,
+      preferredReasoningEffort: "light",
+    },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_SUNDAE_MEDIUM,
+    {
+      name: "dust-sundae-medium",
+      customModelIndex: 2,
+      preferredReasoningEffort: "medium",
+    },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_SUNDAE_HIGH,
+    {
+      name: "dust-sundae-high",
+      customModelIndex: 2,
+      preferredReasoningEffort: "high",
+    },
+  ],
+]);
+
+export function getCustomModelDustGlobalAgentIndex(
+  agentId: GLOBAL_AGENTS_SID
+): number | null {
+  return (
+    CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS.get(agentId)?.customModelIndex ?? null
+  );
+}
+
+function _getCustomModelDustLikeGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs,
+  agentId: GLOBAL_AGENTS_SID
+): AgentConfigurationType | null {
+  const config = CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS.get(agentId);
+
+  if (!config) {
+    return null;
+  }
+
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId,
+    name: config.name,
+    preferredModelConfiguration:
+      CUSTOM_MODEL_CONFIGS[config.customModelIndex] ?? null,
+    preferredReasoningEffort: config.preferredReasoningEffort,
+    requiredPreferredModelConfiguration: true,
+  });
+}
+
+export function _getDustChawiGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getCustomModelDustLikeGlobalAgent(
+    auth,
+    args,
+    GLOBAL_AGENTS_SID.DUST_CHAWI
+  );
+}
+
+export function _getDustChawiMediumGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getCustomModelDustLikeGlobalAgent(
+    auth,
+    args,
+    GLOBAL_AGENTS_SID.DUST_CHAWI_MEDIUM
+  );
+}
+
+export function _getDustChawiHighGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getCustomModelDustLikeGlobalAgent(
+    auth,
+    args,
+    GLOBAL_AGENTS_SID.DUST_CHAWI_HIGH
+  );
+}
+
+export function _getDustSoupinouGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getCustomModelDustLikeGlobalAgent(
+    auth,
+    args,
+    GLOBAL_AGENTS_SID.DUST_SOUPINOU
+  );
+}
+
+export function _getDustSoupinouMediumGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getCustomModelDustLikeGlobalAgent(
+    auth,
+    args,
+    GLOBAL_AGENTS_SID.DUST_SOUPINOU_MEDIUM
+  );
+}
+
+export function _getDustSoupinouHighGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getCustomModelDustLikeGlobalAgent(
+    auth,
+    args,
+    GLOBAL_AGENTS_SID.DUST_SOUPINOU_HIGH
+  );
+}
+
+export function _getDustSundaeGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getCustomModelDustLikeGlobalAgent(
+    auth,
+    args,
+    GLOBAL_AGENTS_SID.DUST_SUNDAE
+  );
+}
+
+export function _getDustSundaeMediumGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getCustomModelDustLikeGlobalAgent(
+    auth,
+    args,
+    GLOBAL_AGENTS_SID.DUST_SUNDAE_MEDIUM
+  );
+}
+
+export function _getDustSundaeHighGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getCustomModelDustLikeGlobalAgent(
+    auth,
+    args,
+    GLOBAL_AGENTS_SID.DUST_SUNDAE_HIGH
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Retired dust-* global agents.
 //
@@ -1006,138 +1242,6 @@ export function _getDustNextHighGlobalAgent(
     name: "dust-next-high",
     preferredModelConfiguration:
       customModel ?? CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
-    preferredReasoningEffort: "high",
-  });
-}
-
-function _getCustomModelDustLikeGlobalAgent(
-  auth: Authenticator,
-  args: DustLikeGlobalAgentArgs,
-  {
-    agentId,
-    name,
-    customModelIndex,
-    preferredReasoningEffort,
-  }: {
-    agentId: GLOBAL_AGENTS_SID;
-    name: string;
-    customModelIndex: number;
-    preferredReasoningEffort: ReasoningEffort;
-  }
-): AgentConfigurationType | null {
-  return _getDustLikeGlobalAgent(auth, args, {
-    agentId,
-    name,
-    preferredModelConfiguration: CUSTOM_MODEL_CONFIGS[customModelIndex] ?? null,
-    preferredReasoningEffort,
-    requiredPreferredModelConfiguration: true,
-  });
-}
-
-export function _getDustChawiGlobalAgent(
-  auth: Authenticator,
-  args: DustLikeGlobalAgentArgs
-): AgentConfigurationType | null {
-  return _getCustomModelDustLikeGlobalAgent(auth, args, {
-    agentId: GLOBAL_AGENTS_SID.DUST_CHAWI,
-    name: "dust-chawi",
-    customModelIndex: 0,
-    preferredReasoningEffort: "light",
-  });
-}
-
-export function _getDustChawiMediumGlobalAgent(
-  auth: Authenticator,
-  args: DustLikeGlobalAgentArgs
-): AgentConfigurationType | null {
-  return _getCustomModelDustLikeGlobalAgent(auth, args, {
-    agentId: GLOBAL_AGENTS_SID.DUST_CHAWI_MEDIUM,
-    name: "dust-chawi-medium",
-    customModelIndex: 0,
-    preferredReasoningEffort: "medium",
-  });
-}
-
-export function _getDustChawiHighGlobalAgent(
-  auth: Authenticator,
-  args: DustLikeGlobalAgentArgs
-): AgentConfigurationType | null {
-  return _getCustomModelDustLikeGlobalAgent(auth, args, {
-    agentId: GLOBAL_AGENTS_SID.DUST_CHAWI_HIGH,
-    name: "dust-chawi-high",
-    customModelIndex: 0,
-    preferredReasoningEffort: "high",
-  });
-}
-
-export function _getDustSoupinouGlobalAgent(
-  auth: Authenticator,
-  args: DustLikeGlobalAgentArgs
-): AgentConfigurationType | null {
-  return _getCustomModelDustLikeGlobalAgent(auth, args, {
-    agentId: GLOBAL_AGENTS_SID.DUST_SOUPINOU,
-    name: "dust-soupinou",
-    customModelIndex: 1,
-    preferredReasoningEffort: "light",
-  });
-}
-
-export function _getDustSoupinouMediumGlobalAgent(
-  auth: Authenticator,
-  args: DustLikeGlobalAgentArgs
-): AgentConfigurationType | null {
-  return _getCustomModelDustLikeGlobalAgent(auth, args, {
-    agentId: GLOBAL_AGENTS_SID.DUST_SOUPINOU_MEDIUM,
-    name: "dust-soupinou-medium",
-    customModelIndex: 1,
-    preferredReasoningEffort: "medium",
-  });
-}
-
-export function _getDustSoupinouHighGlobalAgent(
-  auth: Authenticator,
-  args: DustLikeGlobalAgentArgs
-): AgentConfigurationType | null {
-  return _getCustomModelDustLikeGlobalAgent(auth, args, {
-    agentId: GLOBAL_AGENTS_SID.DUST_SOUPINOU_HIGH,
-    name: "dust-soupinou-high",
-    customModelIndex: 1,
-    preferredReasoningEffort: "high",
-  });
-}
-
-export function _getDustSundaeGlobalAgent(
-  auth: Authenticator,
-  args: DustLikeGlobalAgentArgs
-): AgentConfigurationType | null {
-  return _getCustomModelDustLikeGlobalAgent(auth, args, {
-    agentId: GLOBAL_AGENTS_SID.DUST_SUNDAE,
-    name: "dust-sundae",
-    customModelIndex: 2,
-    preferredReasoningEffort: "light",
-  });
-}
-
-export function _getDustSundaeMediumGlobalAgent(
-  auth: Authenticator,
-  args: DustLikeGlobalAgentArgs
-): AgentConfigurationType | null {
-  return _getCustomModelDustLikeGlobalAgent(auth, args, {
-    agentId: GLOBAL_AGENTS_SID.DUST_SUNDAE_MEDIUM,
-    name: "dust-sundae-medium",
-    customModelIndex: 2,
-    preferredReasoningEffort: "medium",
-  });
-}
-
-export function _getDustSundaeHighGlobalAgent(
-  auth: Authenticator,
-  args: DustLikeGlobalAgentArgs
-): AgentConfigurationType | null {
-  return _getCustomModelDustLikeGlobalAgent(auth, args, {
-    agentId: GLOBAL_AGENTS_SID.DUST_SUNDAE_HIGH,
-    name: "dust-sundae-high",
-    customModelIndex: 2,
     preferredReasoningEffort: "high",
   });
 }

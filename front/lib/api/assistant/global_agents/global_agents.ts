@@ -61,6 +61,7 @@ import {
   _getDustSundaeGlobalAgent,
   _getDustSundaeHighGlobalAgent,
   _getDustSundaeMediumGlobalAgent,
+  getCustomModelDustGlobalAgentIndex,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
 import { _getNoopAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/noop";
 import { _getReinforcementGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/reinforcement";
@@ -1323,30 +1324,12 @@ const RETIRED_GLOBAL_AGENTS_SID = [
   GLOBAL_AGENTS_SID.DUST_ANT_HIGH_OMITTED,
 ];
 
-const CUSTOM_MODEL_GLOBAL_AGENT_MODEL_INDEX = new Map<
-  GLOBAL_AGENTS_SID,
-  number
->([
-  [GLOBAL_AGENTS_SID.DUST_NEXT, 0],
-  [GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM, 0],
-  [GLOBAL_AGENTS_SID.DUST_NEXT_HIGH, 0],
-  [GLOBAL_AGENTS_SID.DUST_CHAWI, 0],
-  [GLOBAL_AGENTS_SID.DUST_CHAWI_MEDIUM, 0],
-  [GLOBAL_AGENTS_SID.DUST_CHAWI_HIGH, 0],
-  [GLOBAL_AGENTS_SID.DUST_SOUPINOU, 1],
-  [GLOBAL_AGENTS_SID.DUST_SOUPINOU_MEDIUM, 1],
-  [GLOBAL_AGENTS_SID.DUST_SOUPINOU_HIGH, 1],
-  [GLOBAL_AGENTS_SID.DUST_SUNDAE, 2],
-  [GLOBAL_AGENTS_SID.DUST_SUNDAE_MEDIUM, 2],
-  [GLOBAL_AGENTS_SID.DUST_SUNDAE_HIGH, 2],
-]);
-
 function getCustomModelIndexForGlobalAgent(sId: string): number | null {
   if (!isGlobalAgentId(sId)) {
     return null;
   }
 
-  return CUSTOM_MODEL_GLOBAL_AGENT_MODEL_INDEX.get(sId) ?? null;
+  return getCustomModelDustGlobalAgentIndex(sId);
 }
 
 export async function getGlobalAgents(
