@@ -1490,8 +1490,12 @@ export async function getGlobalAgents(
       return true;
     }
 
-    const customModelFlag =
-      CUSTOM_MODEL_CONFIGS[customModelIndex]?.availableIfOneOf?.featureFlag;
+    const customModel = CUSTOM_MODEL_CONFIGS[customModelIndex];
+    if (!customModel) {
+      return false;
+    }
+
+    const customModelFlag = customModel.availableIfOneOf?.featureFlag;
 
     return !customModelFlag || flags.includes(customModelFlag);
   });
