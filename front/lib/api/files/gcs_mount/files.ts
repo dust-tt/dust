@@ -433,20 +433,20 @@ export async function renameGCSMountDirectory(
     }
     await bucket.deleteByPrefix(oldDirPrefix);
 
-    if (scope.useCase === "project") {
-      const podsPrefix = getPodFilesBasePath({
+    if (scope.useCase === "pod") {
+      const projectsPrefix = getProjectFilesBasePath({
         workspaceId: owner.sId,
-        projectId: scope.projectId,
+        projectId: scope.podId,
       });
-      const oldPodsDirPrefix = `${podsPrefix}${normalized}/`;
+      const oldProjectsDirPrefix = `${projectsPrefix}${normalized}/`;
       for (const obj of objects) {
-        const newProjectsPath = obj.name.replace(oldDirPrefix, newDirPrefix);
-        const newPodsPath = toPodMountFilePath(newProjectsPath);
-        if (newPodsPath) {
-          await bucket.copyFile(newProjectsPath, newPodsPath);
+        const newPodsPath = obj.name.replace(oldDirPrefix, newDirPrefix);
+        const newProjectsPath = toProjectMountFilePath(newPodsPath);
+        if (newProjectsPath) {
+          await bucket.copyFile(newPodsPath, newProjectsPath);
         }
       }
-      await bucket.deleteByPrefix(oldPodsDirPrefix);
+      await bucket.deleteByPrefix(oldProjectsDirPrefix);
     }
 
     return new Ok({ newRelativeDirPath });

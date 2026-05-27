@@ -1040,12 +1040,12 @@ describe("renameGCSMountDirectory", () => {
   it("moves all objects under the folder prefix and deletes the old prefix", async () => {
     const result = await renameGCSMountDirectory(
       auth,
-      { useCase: "project", projectId: "proj123" },
+      { useCase: "pod", podId: "pod123" },
       { relativeDirPath: "archive", newFolderName: "backup" }
     );
 
-    const prefix = `w/${workspaceId}/projects/proj123/files/`;
-    const podsPrefix = `w/${workspaceId}/pods/proj123/files/`;
+    const prefix = `w/${workspaceId}/projects/pod123/files/`;
+    const podsPrefix = `w/${workspaceId}/pods/pod123/files/`;
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
@@ -1072,7 +1072,7 @@ describe("renameGCSMountDirectory", () => {
 
     const result = await renameGCSMountDirectory(
       auth,
-      { useCase: "project", projectId: "proj123" },
+      { useCase: "pod", podId: "pod123" },
       { relativeDirPath: "archive", newFolderName: "backup" }
     );
 
@@ -1111,11 +1111,11 @@ describe("deleteGCSMountFile", () => {
   it("calls bucket.delete with the correct GCS path and ignoreNotFound", async () => {
     const result = await deleteGCSMountFile(
       auth,
-      { useCase: "pod", podId: "proj123" },
+      { useCase: "pod", podId: "pod123" },
       { relativeFilePath: "archive/old.pdf" }
     );
 
-    const prefix = `w/${workspaceId}/pods/proj123/files/`;
+    const prefix = `w/${workspaceId}/pods/pod123/files/`;
     expect(result.isOk()).toBe(true);
     expect(deleteMock).toHaveBeenCalledWith(`${prefix}archive/old.pdf`, {
       ignoreNotFound: true,
@@ -1127,7 +1127,7 @@ describe("deleteGCSMountFile", () => {
 
     const result = await deleteGCSMountFile(
       auth,
-      { useCase: "pod", podId: "proj123" },
+      { useCase: "pod", podId: "pod123" },
       { relativeFilePath: "file.pdf" }
     );
 
@@ -1140,12 +1140,12 @@ describe("deleteGCSMountFile", () => {
   it("mirrors delete on projects/ for pod use-case", async () => {
     await deleteGCSMountFile(
       auth,
-      { useCase: "pod", podId: "proj123" },
+      { useCase: "pod", podId: "pod123" },
       { relativeFilePath: "archive/old.pdf" }
     );
 
-    const podsPath = `w/${workspaceId}/pods/proj123/files/archive/old.pdf`;
-    const projectsPath = `w/${workspaceId}/projects/proj123/files/archive/old.pdf`;
+    const podsPath = `w/${workspaceId}/pods/pod123/files/archive/old.pdf`;
+    const projectsPath = `w/${workspaceId}/projects/pod123/files/archive/old.pdf`;
 
     expect(deleteMock).toHaveBeenCalledTimes(2);
     expect(deleteMock).toHaveBeenNthCalledWith(1, podsPath, {
@@ -1177,8 +1177,8 @@ describe("deleteGCSMountFile", () => {
       { relativeFilePath: "archive" }
     );
 
-    const prefix = `w/${workspaceId}/projects/proj123/files/`;
-    const podsPrefix = `w/${workspaceId}/pods/proj123/files/`;
+    const prefix = `w/${workspaceId}/projects/pod123/files/`;
+    const podsPrefix = `w/${workspaceId}/pods/pod123/files/`;
 
     expect(result.isOk()).toBe(true);
     expect(deleteByPrefixMock).toHaveBeenCalledWith(`${prefix}archive/`);
@@ -1188,7 +1188,7 @@ describe("deleteGCSMountFile", () => {
 });
 
 describe("scoped path ↔ GCS path", () => {
-  const prefix = "w/ws1/pods/proj1/files/";
+  const prefix = "w/ws1/pods/pod123/files/";
 
   it("getScopedPathFromGCSPath is the inverse of getGCSPathFromScopedPath", () => {
     const scopedPath = "pod/reports/report_fil_abc.pdf";
