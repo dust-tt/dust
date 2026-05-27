@@ -898,13 +898,12 @@ describe("renameGCSMountDirectory", () => {
     );
 
     const podsPrefix = `w/${workspaceId}/pods/pod123/files/`;
-    const projectsPrefix = `w/${workspaceId}/projects/pod123/files/`;
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
       expect(result.value.newRelativeDirPath).toBe("backup");
     }
-    // Canonical copies happen on the pods/ side.
+    // Each object is copied to its new path on the pods/ side.
     expect(copyFileMock).toHaveBeenCalledWith(
       `${podsPrefix}archive/`,
       `${podsPrefix}backup/`
@@ -913,24 +912,10 @@ describe("renameGCSMountDirectory", () => {
       `${podsPrefix}archive/report.pdf`,
       `${podsPrefix}backup/report.pdf`
     );
-    // Old prefix is deleted on both the pods/ and projects/ sides.
+    // The old prefix is deleted once, on the pods/ side.
     expect(deleteByPrefixMock).toHaveBeenCalledWith(`${podsPrefix}archive/`);
-    expect(deleteByPrefixMock).toHaveBeenCalledWith(
-      `${projectsPrefix}archive/`
-    );
-    // Mirror copies from the new canonical pods/ path to the projects/ side.
-    expect(copyFileMock).toHaveBeenCalledWith(
-      `${podsPrefix}backup/`,
-      `${projectsPrefix}backup/`
-    );
-    expect(copyFileMock).toHaveBeenCalledWith(
-      `${podsPrefix}backup/report.pdf`,
-      `${projectsPrefix}backup/report.pdf`
-    );
-    // Double write: each of the 2 objects is copied on the pods/ side and
-    // mirrored to the projects/ side (2 canonical + 2 mirror = 4).
-    expect(copyFileMock).toHaveBeenCalledTimes(4);
-    expect(deleteByPrefixMock).toHaveBeenCalledTimes(2);
+    expect(copyFileMock).toHaveBeenCalledTimes(2);
+    expect(deleteByPrefixMock).toHaveBeenCalledTimes(1);
   });
 
   it("returns Err when the destination folder already exists", async () => {
