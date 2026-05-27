@@ -114,11 +114,9 @@ describe("sandbox image registry", () => {
     expect(hardeningCommand).toContain("DenyUsers root agent-proxied");
     expect(hardeningCommand).toContain("pam_permit\\.so");
     expect(hardeningCommand).toContain(
-      "systemctl disable --now ssh.service sshd.service"
+      "systemctl disable --now ssh.service ssh.socket"
     );
-    expect(hardeningCommand).toContain(
-      "systemctl mask ssh.service sshd.service"
-    );
+    expect(hardeningCommand).toContain("systemctl mask ssh.service ssh.socket");
   });
 
   test("copies the egress boot assets and enables the systemd units", () => {

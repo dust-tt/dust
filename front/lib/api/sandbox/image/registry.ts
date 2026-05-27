@@ -207,12 +207,16 @@ function getSshHardeningCommand(): string {
     ...sshdConfig.map(formatShellValue),
     "> /etc/ssh/sshd_config.d/00-dust-sandbox-hardening.conf",
   ].join(" ");
+  // In the bedrock image `sshd.service` is a symlink alias to `ssh.service`
+  // and `sshd.socket` does not exist. Masking only the canonical units covers
+  // both and keeps the build log free of the spurious "already a symlink" /
+  // "does not exist" warnings that would otherwise mask real failures.
   const disableSshdServices =
     "if command -v systemctl >/dev/null 2>&1; then " +
-    "systemctl disable --now ssh.service sshd.service ssh.socket sshd.socket >/dev/null 2>&1 || true; fi";
+    "systemctl disable --now ssh.service ssh.socket >/dev/null 2>&1 || true; fi";
   const maskSshdServices =
     "if command -v systemctl >/dev/null 2>&1; then " +
-    "systemctl mask ssh.service sshd.service ssh.socket sshd.socket >/dev/null 2>&1 || true; fi";
+    "systemctl mask ssh.service ssh.socket >/dev/null 2>&1 || true; fi";
 
   return [
     "mkdir -p /etc/ssh/sshd_config.d /etc/ssh/authorized_keys",
