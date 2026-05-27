@@ -2438,6 +2438,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       workspaceId: workspace.id,
       conversationId: conversation.id,
       addedByUserId: null,
+      source: "agent_enabled",
       agentConfigurationId: agentConfiguration.sId,
     };
 
