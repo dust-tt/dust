@@ -450,6 +450,16 @@ const PaymentGateExternalInitiateSchema = z.object({
 });
 
 // ============================================================================
+// Webhook test event — sent by Metronome when c/licking "Test" in the dashboard.
+// No customer_id; used purely to verify the endpoint is reachable.
+// ============================================================================
+
+const WebhooksTestSchema = z.object({
+  id: z.string(),
+  type: z.literal("webhooks.test"),
+});
+
+// ============================================================================
 // Discriminated union of all known event schemas.
 // ============================================================================
 
@@ -495,6 +505,7 @@ export const MetronomeWebhookEventSchema = z.discriminatedUnion("type", [
   PaymentGatePaymentPendingActionRequiredSchema,
   PaymentGateThresholdReachedSchema,
   PaymentGateExternalInitiateSchema,
+  WebhooksTestSchema,
 ]);
 
 export type MetronomeWebhookEvent = z.infer<typeof MetronomeWebhookEventSchema>;
@@ -507,7 +518,7 @@ export type MetronomeWebhookEventType = MetronomeWebhookEvent["type"];
 export function getCustomerIdFromEvent(
   event: MetronomeWebhookEvent
 ): string | null {
-  if (event.type === "integration.issue") {
+  if (event.type === "integration.issue" || event.type === "webhooks.test") {
     return null;
   }
   if ("customer_id" in event) {
