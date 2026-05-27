@@ -1,15 +1,16 @@
-// @migration-status: MIGRATED_TO_HONO
 import {
   parseMentionSelectParam,
   suggestionsOfMentions,
 } from "@app/lib/api/assistant/conversation/mention_suggestions";
-import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
-import type { Authenticator } from "@app/lib/auth";
-import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types/error";
 import type { GetMentionSuggestionsResponseBodyType } from "@dust-tt/client";
 import { GetMentionSuggestionsRequestQuerySchema } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
+import { publicApiApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+import { fromError } from "zod-validation-error";
+
+// Mounted at /api/v1/w/:wId/assistant/mentions/suggestions.
+const app = publicApiApp();
 
 /**
  * @swagger
@@ -72,49 +73,48 @@ import type { NextApiRequest, NextApiResponse } from "next";
  *       500:
  *         description: Internal Server Error.
  */
-async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<
-    WithAPIErrorResponse<GetMentionSuggestionsResponseBodyType>
-  >,
-  auth: Authenticator
-): Promise<void> {
-  if (req.method !== "GET") {
-    return apiError(req, res, {
-      status_code: 405,
-      api_error: {
-        type: "method_not_supported_error",
-        message: "The method passed is not supported, GET is expected.",
-      },
+app.get(
+  "/",
+  async (ctx): HandlerResult<GetMentionSuggestionsResponseBodyType> => {
+    const auth = ctx.get("auth");
+
+    // Extract query params preserving array semantics (multiple `select` values)
+    // to match the Next.js req.query shape the schema expects.
+    const url = new URL(ctx.req.url);
+    const rawQuery: Record<string, string | string[]> = {};
+    for (const [key, value] of url.searchParams.entries()) {
+      const existing = rawQuery[key];
+      if (existing !== undefined) {
+        rawQuery[key] = Array.isArray(existing)
+          ? [...existing, value]
+          : [existing, value];
+      } else {
+        rawQuery[key] = value;
+      }
+    }
+
+    const parsedQuery =
+      GetMentionSuggestionsRequestQuerySchema.safeParse(rawQuery);
+    if (!parsedQuery.success) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: `Invalid query parameters: ${fromError(parsedQuery.error).toString()}`,
+        },
+      });
+    }
+
+    const { query, select: selectParam, current } = parsedQuery.data;
+
+    const suggestions = await suggestionsOfMentions(auth, {
+      query,
+      select: parseMentionSelectParam(selectParam),
+      current,
     });
+
+    return ctx.json({ suggestions });
   }
+);
 
-  const parsedQuery = GetMentionSuggestionsRequestQuerySchema.safeParse(
-    req.query
-  );
-  if (!parsedQuery.success) {
-    const errorMessages = parsedQuery.error.errors
-      .map((e) => `${e.path.join(".")}: ${e.message}`)
-      .join(", ");
-
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: `Invalid query parameters: ${errorMessages}`,
-      },
-    });
-  }
-
-  const { query, select: selectParam, current } = parsedQuery.data;
-
-  const suggestions = await suggestionsOfMentions(auth, {
-    query,
-    select: parseMentionSelectParam(selectParam),
-    current,
-  });
-
-  return res.status(200).json({ suggestions });
-}
-
-export default withPublicAPIAuthentication(handler);
+export default app;

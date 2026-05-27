@@ -1,35 +1,40 @@
-// @migration-status: MIGRATED_TO_HONO
-import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import {
   importSkillsFromFiles,
   isImportConflictStrategy,
 } from "@app/lib/api/skills/detection/files/import_skills";
 import { MAX_ZIP_SIZE_BYTES } from "@app/lib/api/skills/detection/zip/detect_skills";
-import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { apiError } from "@app/logger/withlogging";
-import type { ImportSkillsResponseBody } from "@app/pages/api/w/[wId]/skills/import";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
-import type { WithAPIErrorResponse } from "@app/types/error";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { PublicApiCtx } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import type { HttpBindings } from "@hono/node-server";
 import formidable from "formidable";
-import type { NextApiRequest, NextApiResponse } from "next";
+import { Hono } from "hono";
 import { z } from "zod";
-import { fromError } from "zod-validation-error";
-
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
 
 export type GetPublicSkillsResponseBody = {
   skills: SkillType[];
 };
 
+export type ImportSkillsResponseBody = {
+  imported: SkillType[];
+  updated: SkillType[];
+  skipped: { name: string; message: string }[];
+};
+
 const GetSkillsQuerySchema = z.object({
   status: z.enum(["active", "archived", "suggested"]).optional(),
 });
+
+// Mounted at /api/v1/w/:wId/skills.
+//
+// We extend the public API context with `HttpBindings` so we can reach the
+// underlying Node `IncomingMessage` via `ctx.env.incoming` and hand it to
+// `formidable.parse(...)` for multipart parsing in the POST handler.
+const app = new Hono<PublicApiCtx & { Bindings: HttpBindings }>();
 
 /**
  * @swagger
@@ -147,114 +152,101 @@ const GetSkillsQuerySchema = z.object({
  *       405:
  *         description: Method not supported.
  */
-async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<
-    WithAPIErrorResponse<ImportSkillsResponseBody | GetPublicSkillsResponseBody>
-  >,
-  auth: Authenticator
-): Promise<void> {
-  switch (req.method) {
-    case "GET": {
-      const r = GetSkillsQuerySchema.safeParse(req.query);
-      if (r.error) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: `Invalid query parameters: ${fromError(r.error).toString()}`,
-          },
-        });
-      }
+app.get(
+  "/",
+  validate("query", GetSkillsQuerySchema),
+  async (ctx): HandlerResult<GetPublicSkillsResponseBody> => {
+    const auth = ctx.get("auth");
+    const { status } = ctx.req.valid("query");
 
-      const { status } = r.data;
+    const skills = await SkillResource.listByWorkspace(auth, {
+      status,
+      onlyCustom: true,
+    });
 
-      const skills = await SkillResource.listByWorkspace(auth, {
-        status,
-        onlyCustom: true,
-      });
-
-      return res.status(200).json({
-        skills: skills.map((skill) => skill.toJSON(auth)),
-      });
-    }
-
-    case "POST": {
-      let fields: formidable.Fields;
-      let files: formidable.Files;
-      try {
-        const form = formidable({
-          multiples: true,
-          maxFileSize: MAX_ZIP_SIZE_BYTES,
-        });
-        [fields, files] = await form.parse(req);
-      } catch (err) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: `File upload failed: ${normalizeError(err).message}`,
-          },
-        });
-      }
-
-      const uploadedFiles = files.files;
-      if (!uploadedFiles || uploadedFiles.length === 0) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "No files uploaded.",
-          },
-        });
-      }
-
-      const { names } = fields;
-
-      const onConflict = fields.onConflict?.[0] ?? "error";
-      if (!isImportConflictStrategy(onConflict)) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: `Invalid onConflict value: "${onConflict}". Must be one of: error, skip, override.`,
-          },
-        });
-      }
-
-      const result = await importSkillsFromFiles(auth, {
-        uploadedFiles,
-        names,
-        source: "api",
-        onConflict,
-      });
-      if (result.isErr()) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: result.error.message,
-          },
-        });
-      }
-
-      return res.status(200).json({
-        imported: result.value.imported.map((skill) => skill.toJSON(auth)),
-        updated: result.value.updated.map((skill) => skill.toJSON(auth)),
-        skipped: result.value.skipped,
-      });
-    }
-
-    default:
-      return apiError(req, res, {
-        status_code: 405,
-        api_error: {
-          type: "method_not_supported_error",
-          message:
-            "The method passed is not supported, GET or POST is expected.",
-        },
-      });
+    return ctx.json({
+      skills: skills.map((skill) => skill.toJSON(auth)),
+    });
   }
-}
+);
 
-export default withPublicAPIAuthentication(handler);
+app.post("/", async (ctx): HandlerResult<ImportSkillsResponseBody> => {
+  const auth = ctx.get("auth");
+
+  const incoming = ctx.env?.incoming;
+  if (!incoming) {
+    return apiError(ctx, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: "Multipart upload is not supported in this runtime.",
+      },
+    });
+  }
+
+  let fields: formidable.Fields;
+  let files: formidable.Files;
+  try {
+    const form = formidable({
+      multiples: true,
+      maxFileSize: MAX_ZIP_SIZE_BYTES,
+    });
+    [fields, files] = await form.parse(incoming);
+  } catch (err) {
+    return apiError(ctx, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: `File upload failed: ${normalizeError(err).message}`,
+      },
+    });
+  }
+
+  const uploadedFiles = files.files;
+  if (!uploadedFiles || uploadedFiles.length === 0) {
+    return apiError(ctx, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "No files uploaded.",
+      },
+    });
+  }
+
+  const { names } = fields;
+
+  const onConflict = fields.onConflict?.[0] ?? "error";
+  if (!isImportConflictStrategy(onConflict)) {
+    return apiError(ctx, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: `Invalid onConflict value: "${onConflict}". Must be one of: error, skip, override.`,
+      },
+    });
+  }
+
+  const result = await importSkillsFromFiles(auth, {
+    uploadedFiles,
+    names,
+    source: "api",
+    onConflict,
+  });
+  if (result.isErr()) {
+    return apiError(ctx, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: result.error.message,
+      },
+    });
+  }
+
+  return ctx.json({
+    imported: result.value.imported.map((skill) => skill.toJSON(auth)),
+    updated: result.value.updated.map((skill) => skill.toJSON(auth)),
+    skipped: result.value.skipped,
+  });
+});
+
+export default app;
