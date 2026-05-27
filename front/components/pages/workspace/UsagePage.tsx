@@ -18,7 +18,6 @@ import {
 } from "@app/lib/swr/credits";
 import { useMembersUsage } from "@app/lib/swr/memberships";
 import {
-  useMetronomeContract,
   usePerSeatPricing,
   useWorkspaceSeatAvailability,
 } from "@app/lib/swr/workspaces";
@@ -40,6 +39,7 @@ import {
   Page,
   SearchInput,
   Spinner,
+  Tooltip,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useState } from "react";
 
@@ -111,13 +111,25 @@ function CreditPoolUsageBar({
         aria-valuemin={0}
         aria-valuemax={100}
       >
-        <div
-          className="h-full shrink-0 bg-yellow-400 transition-all"
-          style={{ width: `${usersPercentage}%` }}
+        <Tooltip
+          tooltipTriggerAsChild
+          label={`Users: ${formatCredits(consumedByUsersCredits)} credits`}
+          trigger={
+            <div
+              className="h-full shrink-0 bg-yellow-400 transition-all"
+              style={{ width: `${usersPercentage}%` }}
+            />
+          }
         />
-        <div
-          className="h-full shrink-0 bg-purple-500 transition-all"
-          style={{ width: `${programmaticPercentage}%` }}
+        <Tooltip
+          tooltipTriggerAsChild
+          label={`Programmatic usage: ${formatCredits(consumedByProgrammaticCredits)} credits`}
+          trigger={
+            <div
+              className="h-full shrink-0 bg-purple-500 transition-all"
+              style={{ width: `${programmaticPercentage}%` }}
+            />
+          }
         />
       </div>
       <div className="flex gap-4 text-xs text-muted-foreground dark:text-muted-foreground-night">
@@ -189,11 +201,7 @@ export function UsagePage() {
     workspaceId: owner.sId,
   });
 
-  const { contract } = useMetronomeContract({
-    workspaceId: owner.sId,
-  });
-
-  const hasSeatSubscription = contract?.hasSeatSubscription ?? false;
+  const isSeatBased = Object.keys(seatPlans).length > 1;
 
   const plan = subscription.plan;
   const isManualInvitationsEnabled =
@@ -336,7 +344,7 @@ export function UsagePage() {
               />
             )}
           </div>
-          {hasSeatSubscription && (
+          {isSeatBased && (
             <div className="flex flex-row justify-end">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -384,7 +392,7 @@ export function UsagePage() {
             isLoading={isMembersUsageLoading}
             searchTerm={searchTerm}
             seatTypeFilter={seatTypeFilter}
-            showSeatColumns={hasSeatSubscription}
+            isSeatBased={isSeatBased}
             onChangeSeat={setChangeSeatMember}
             onEditSpendLimit={setEditSpendLimitMember}
           />

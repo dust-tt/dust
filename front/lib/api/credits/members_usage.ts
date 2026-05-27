@@ -16,8 +16,9 @@ export type MemberUsageType = {
   email: string | null;
   image: string | null;
   seatType: MembershipSeatType | null;
-  // Percentage of seat allocation consumed (0–100), null when seat balances are unavailable.
-  seatUsagePercent: number | null;
+  // Per-user AWU allocation granted by the seat (in credits). Null when the
+  // user has no seat or the seat carries no allocation.
+  memberUsageLimit: number | null;
   // Total user AWU consumption for the period, regardless of whether it
   // was covered by the seat allocation or overflowed into the workspace
   // pool.
@@ -150,7 +151,7 @@ export async function getMembersUsage({
 
   const [
     membershipsResult,
-    perUserTotalCredits,
+    perUserTotalConsumedCredits,
     seatDataByUserId,
     perUserSpendLimits,
   ] = await Promise.all([
@@ -185,15 +186,9 @@ export async function getMembersUsage({
       return [];
     }
     const userId = m.user.sId;
-    const totalCredits = perUserTotalCredits.get(userId) ?? 0;
+    const totalConsumedCredits = perUserTotalConsumedCredits.get(userId) ?? 0;
     const seatData = seatDataByUserId.get(userId);
     const awuAllocation = seatData?.awuAllocation ?? 0;
-
-    let seatUsagePercent: number | null = null;
-    if (awuAllocation > 0) {
-      const seatConsumed = Math.min(totalCredits, awuAllocation);
-      seatUsagePercent = (seatConsumed / awuAllocation) * 100;
-    }
 
     const scheduled = scheduledByUserId.get(m.userId);
 
@@ -204,8 +199,8 @@ export async function getMembersUsage({
         email: m.user.email ?? null,
         image: m.user.imageUrl ?? null,
         seatType: m.seatType ?? null,
-        seatUsagePercent,
-        consumedAwuCredits: totalCredits,
+        memberUsageLimit: awuAllocation > 0 ? awuAllocation : null,
+        consumedAwuCredits: totalConsumedCredits,
         billingFrequency: seatData?.billingFrequency ?? null,
         scheduledSeatType: scheduled?.seatType ?? null,
         scheduledSeatChangeAt: scheduled?.startAt.toISOString() ?? null,
