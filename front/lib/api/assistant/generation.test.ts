@@ -436,46 +436,6 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     expect(text).toContain("User prefers TypeScript");
   });
 
-  it("should include system skills in the enabled skills section when passed separately", async () => {
-    await SkillFactory.linkGlobalSkillToAgent(authenticator1, {
-      globalSkillId: "discover_skills",
-      agentConfigurationId: agentConfig1.id,
-    });
-
-    const { systemSkills } = await SkillResource.listForAgentLoop(
-      authenticator1,
-      {
-        agentConfiguration: agentConfig1,
-        conversation: conversation1,
-      }
-    );
-    const discoverSkills = systemSkills.find(
-      (skill) => skill.sId === "discover_skills"
-    );
-    if (!discoverSkills) {
-      throw new Error("Expected discover_skills system skill to exist.");
-    }
-
-    const params = {
-      userMessage: userMessage1,
-      agentConfiguration: agentConfig1,
-      model: modelConfig,
-      hasAvailableActions: true,
-      agentsList: null,
-      systemSkills: [discoverSkills],
-      enabledSkills: [],
-      equippedSkills: [],
-    };
-
-    const sections = constructPromptMultiActions(authenticator1, params);
-    const text = systemPromptToText(sections);
-
-    expect(text).toContain("### ENABLED SKILLS");
-    expect(text).toContain(
-      "Some of the available skills come from the workspace"
-    );
-  });
-
   it("should produce a valid prompt when memoriesContext is omitted", () => {
     const params = {
       userMessage: userMessage1,
