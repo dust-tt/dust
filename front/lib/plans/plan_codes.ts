@@ -16,6 +16,7 @@ export const PRO_PLAN_SEAT_39_CODE = "PRO_PLAN_SEAT_39";
 export const CREDIT_PRICED_BUSINESS_PLAN_CODE = "CP_BUSINESS_PLAN";
 export const CREDIT_PRICED_FREE_PLAN_CODE = "CP_FREE_PLAN";
 export const CREDIT_PRICED_ENTERPRISE_DEFAULT_PLAN_CODE = "CP_ENT_DEFAULT_PLAN";
+export const CREDIT_PRICED_DUST_COMPANY_PLAN_CODE = "CP_DUST_COMPANY";
 
 // BYOK plan:
 export const FREE_BYOK_TRANSITIONING_PLAN_CODE = "FREE_BYOK_TRANSITIONING";
@@ -43,7 +44,8 @@ export const isEntreprisePlanPrefix = (planCode: string) =>
   planCode.startsWith("ENT_") || planCode.startsWith("CP_ENT_");
 
 export const isDustCompanyPlan = (planCode: string) =>
-  planCode === DUST_COMPANY_PLAN_CODE;
+  planCode === DUST_COMPANY_PLAN_CODE ||
+  planCode === CREDIT_PRICED_DUST_COMPANY_PLAN_CODE;
 
 // If the plan code starts with PRO_, it's a pro plan
 export const isProPlanPrefix = (planCode: string) =>
