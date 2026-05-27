@@ -5,10 +5,12 @@ import tracer from "@app/logger/tracer";
 import { getSequelizeErrorDetails } from "@app/logger/withlogging";
 import type {
   APIErrorResponse,
+  APIErrorType,
   APIErrorWithContentfulStatusCode,
 } from "@app/types/error";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { Context, ErrorHandler, TypedResponse } from "hono";
+import { HTTPException } from "hono/http-exception";
 
 /**
  * Return type for a Hono JSON handler. Wraps the success body type with the
@@ -79,6 +81,35 @@ export function apiError(
  * throughput / latency metrics.
  */
 export const unhandledErrorHandler: ErrorHandler = (err, ctx) => {
+  // Hono throws `HTTPException` for client-facing errors raised inside the app
+  // before our handlers run — most notably the JSON body parse failure in
+  // `@hono/zod-validator` ("Malformed JSON in request body"). These are client
+  // mistakes (4xx), not server errors: log them at `info` and return their
+  // intended status instead of treating them as an unhandled 500.
+  if (err instanceof HTTPException) {
+    const type: APIErrorType =
+      err.status >= 500 ? "internal_server_error" : "invalid_request_error";
+
+    logger.info(
+      {
+        method: ctx.req.method,
+        route: ctx.req.routePath ?? ctx.req.path,
+        url: ctx.req.url,
+        statusCode: err.status,
+        error: { name: err.name, message: err.message },
+      },
+      "Client API Error"
+    );
+
+    getStatsDClient().increment("api_errors.count", 1, [
+      `method:${ctx.req.method}`,
+      `status_code:${err.status}`,
+      `error_type:${type}`,
+    ]);
+
+    return ctx.json({ error: { type, message: err.message } }, err.status);
+  }
+
   const error = normalizeError(err);
   const sequelizeDetails = getSequelizeErrorDetails(error);
 
