@@ -58,6 +58,24 @@ function makeGoogleDriveCsvFile(): GoogleDriveObjectType {
   };
 }
 
+function makeGoogleDriveSpreadsheetFile(): GoogleDriveObjectType {
+  return {
+    capabilities: {
+      canDownload: true,
+    },
+    createdAtMs: Date.now(),
+    driveId: "drive-1",
+    id: "spreadsheet-1",
+    isInSharedDrive: false,
+    labels: [],
+    mimeType: "application/vnd.google-apps.spreadsheet",
+    name: "Budget",
+    parent: "parent-1",
+    size: null,
+    trashed: false,
+  };
+}
+
 describe("syncOneFileTable", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -100,6 +118,44 @@ describe("syncOneFileTable", () => {
       1,
       oauth2Client,
       makeGoogleDriveCsvFile(),
+      logger,
+      dataSourceConfig,
+      1000,
+      Date.now()
+    );
+
+    expect(result).toBe(true);
+  });
+
+  it("returns false when a Google spreadsheet sync skips table imports", async () => {
+    mocks.syncSpreadSheet.mockResolvedValue({
+      didSyncFile: false,
+      isSupported: true,
+    });
+
+    const result = await syncOneFileTable(
+      1,
+      oauth2Client,
+      makeGoogleDriveSpreadsheetFile(),
+      logger,
+      dataSourceConfig,
+      1000,
+      Date.now()
+    );
+
+    expect(result).toBe(false);
+  });
+
+  it("returns true when a Google spreadsheet sync imports a table", async () => {
+    mocks.syncSpreadSheet.mockResolvedValue({
+      didSyncFile: true,
+      isSupported: true,
+    });
+
+    const result = await syncOneFileTable(
+      1,
+      oauth2Client,
+      makeGoogleDriveSpreadsheetFile(),
       logger,
       dataSourceConfig,
       1000,

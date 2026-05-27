@@ -7,6 +7,7 @@ import {
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { GoogleDriveObjectType } from "@connectors/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { GaxiosError } from "googleapis-common";
 
 const mocks = vi.hoisted(() => ({
   changeList: vi.fn(),
@@ -247,6 +248,27 @@ function mockRedisStore() {
     redisStore.set(key, value);
     return "OK";
   });
+}
+
+function makeGoogleDriveError(status: number, reason: string) {
+  return new GaxiosError(
+    "Google Drive error",
+    {},
+    {
+      config: {},
+      data: {
+        error: {
+          errors: [{ reason }],
+        },
+      },
+      headers: {},
+      request: {
+        responseURL: "https://www.googleapis.com/drive/v3/changes/startPageToken",
+      },
+      status,
+      statusText: "Google Drive error",
+    }
+  );
 }
 
 describe("google drive incremental sync", () => {
@@ -1103,6 +1125,33 @@ describe("google drive incremental sync", () => {
     expect(
       syncToken?.lastRelevantChangeAt?.getTime()
     ).toBeGreaterThanOrEqual(beforeSyncMs);
+  });
+
+  it("skips a permanent drive error when no sync token can be fetched", async () => {
+    const suffix = randomUUID();
+    const connector = await makeConnector(suffix);
+
+    mocks.getSyncPageToken.mockRejectedValue(
+      makeGoogleDriveError(403, "forbidden")
+    );
+
+    const result = await incrementalSync(
+      connector.id,
+      "drive-1",
+      false,
+      Date.now(),
+      undefined
+    );
+
+    const syncToken = await GoogleDriveSyncTokenModel.findOne({
+      where: {
+        connectorId: connector.id,
+        driveId: "drive-1",
+      },
+    });
+
+    expect(result).toBeUndefined();
+    expect(syncToken).toBeNull();
   });
 
   it("keeps relevant changes carried from earlier pages on a permanent drive skip", async () => {

@@ -528,9 +528,7 @@ async function updateCompletedSyncTokenState({
     return;
   }
   if (!syncToken) {
-    throw new Error(
-      `Cannot record completed Google Drive sync token state for drive ${driveId} without a sync token.`
-    );
+    return;
   }
 
   await GoogleDriveSyncTokenModel.upsert({

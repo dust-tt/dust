@@ -37,7 +37,7 @@ export async function syncOneFileTable(
     if (!res.isSupported) {
       return false;
     }
-    didSyncFile = true;
+    didSyncFile = res.didSyncFile;
     if (res.skipReason) {
       localLogger.info(
         {},

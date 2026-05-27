@@ -171,9 +171,12 @@ async function processSheet(
   sheet: Sheet,
   parents: string[],
   tags: string[]
-): Promise<boolean> {
+): Promise<{
+  didUpsertTable: boolean;
+  shouldKeepLocalSheet: boolean;
+}> {
   if (!sheet.values) {
-    return false;
+    return { didUpsertTable: false, shouldKeepLocalSheet: false };
   }
   const { id, spreadsheet, title } = sheet;
   const localLogger = getActivityLogger(connector).child({
@@ -216,14 +219,17 @@ async function processSheet(
 
     await upsertSheetInDb(connector, sheet, upsertError);
 
-    return true;
+    return {
+      didUpsertTable: upsertError === null,
+      shouldKeepLocalSheet: true,
+    };
   }
 
   localLogger.info(
     "[Spreadsheet] Failed to import sheet. Will be deleted if already synced."
   );
 
-  return false;
+  return { didUpsertTable: false, shouldKeepLocalSheet: false };
 }
 
 async function batchGetSheets(
@@ -402,6 +408,7 @@ export async function syncSpreadSheet(
     }
   | {
       isSupported: true;
+      didSyncFile: boolean;
       skipReason?: string;
     }
 > {
@@ -468,6 +475,7 @@ export async function syncSpreadSheet(
                 );
                 return {
                   isSupported: true,
+                  didSyncFile: false,
                   skipReason: "google_internal_server_error",
                 };
               }
@@ -527,6 +535,7 @@ export async function syncSpreadSheet(
                 );
                 return {
                   isSupported: true,
+                  didSyncFile: false,
                   skipReason: "google_internal_server_error",
                 };
               }
@@ -575,15 +584,19 @@ export async function syncSpreadSheet(
       });
 
       const successfulSheetIdImports: number[] = [];
+      let didSyncFile = false;
       for (const sheet of sheets) {
-        const isImported = await processSheet(
+        const sheetSyncResult = await processSheet(
           connector,
           sheet,
           parents,
           file.labels
         );
-        if (isImported) {
+        if (sheetSyncResult.shouldKeepLocalSheet) {
           successfulSheetIdImports.push(sheet.id);
+        }
+        if (sheetSyncResult.didUpsertTable) {
+          didSyncFile = true;
         }
       }
 
@@ -601,9 +614,10 @@ export async function syncSpreadSheet(
         await deleteAllSheets(connector, deletedSyncedSheets, {
           driveFileId: spreadsheet.data.spreadsheetId ?? "",
         });
+        didSyncFile = true;
       }
 
-      return { isSupported: true };
+      return { isSupported: true, didSyncFile };
     }
   );
 }
