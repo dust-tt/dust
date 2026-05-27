@@ -1,0 +1,8 @@
+{
+  "action": "workspace.default_user_spend_limit_updated",
+  "targets": [{ "type": "workspace" }],
+  "metadata": {
+    "previous_awu_credits": "string",
+    "new_awu_credits": "string"
+  }
+}
