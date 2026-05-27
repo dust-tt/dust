@@ -82,6 +82,11 @@ FileModel.init(
       allowNull: true,
       defaultValue: null,
     },
+    // TODO: migrate mountFilePath from raw GCS paths (e.g. `w/{wId}/conversations/{cId}/files/report.pdf`)
+    // to DustFileSystem scoped paths (e.g. `conversation-{cId}/report.pdf`).
+    // Once done, update FileResource.fetchByMountFilePaths to accept scoped paths, remove
+    // GCS path derivation in move.ts and resolve.ts, and enable fileId population in
+    // GCSFileSystemBackend.list.
     mountFilePath: {
       type: DataTypes.STRING(4096),
       allowNull: true,
