@@ -84,13 +84,6 @@ export const PEOPLE: Record<string, TeamMember> = {
     github: "https://github.com/thib-martin",
     linkedIn: "https://www.linkedin.com/in/thibault-martin-27b19b5a/",
   },
-  jbelveze: {
-    name: "Jules Belveze",
-    title: "Software Engineer",
-    image: "https://avatars.githubusercontent.com/u/32683010",
-    github: "https://github.com/JulesBelveze",
-    linkedIn: "https://www.linkedin.com/in/jules-belveze",
-  },
   tdraier: {
     name: "Thomas Draier",
     title: "Software Engineer",
@@ -573,6 +566,48 @@ export const PEOPLE: Record<string, TeamMember> = {
     image: "https://ca.slack-edge.com/T050RH73H9P-U0B61DY1HE1-7f81ecbf82db-512",
     linkedIn: "https://www.linkedin.com/in/nils-fedrigo/",
     github: "https://github.com/Nils-Fedrigo",
+  },
+  mhaguenauer: {
+    name: "Matthieu Haguenauer",
+    title: "GTM Engineer",
+    image: "https://media.licdn.com/dms/image/v2/D4E03AQFnSd8l-60siQ/profile-displayphoto-shrink_800_800/profile-displayphoto-shrink_800_800/0/1695038658665?e=1781136000&v=beta&t=4UlXijsLqRpV_QmeddsDrf6fMS9pe0U5hdWsmjBLVNE",
+    linkedIn: "https://www.linkedin.com/in/matthieu-haguenauer/",
+    github: "",
+  },
+  mdemorest: {
+    name: "Maia Demorest",
+    title: "Workplace Experience Manager",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U0B3B7ELCCU-6403b134f7a5-512",
+    linkedIn: "https://www.linkedin.com/in/maia-demorest/",
+    github: "",
+  },
+  tvicaire: {
+    name: "Thomas Vicaire",
+    title: "Solution Engineer",
+    image: "https://media.licdn.com/dms/image/v2/C4D03AQGgFKULD9Qwvg/profile-displayphoto-shrink_800_800/profile-displayphoto-shrink_800_800/0/1633956310446?e=1781136000&v=beta&t=x8bi4CWTFoZ0N2jD5KBqiSWbCRRrcmFYR2bPGBKG4Ys",
+    linkedIn: "https://www.linkedin.com/in/thomasvicaire/",
+    github: "https://github.com/thomasvicaire-dust",
+  },
+  ewoodcock: {
+    name: "Ellen Woodcock",
+    title: "Marketing",
+    image: "https://media.licdn.com/dms/image/v2/D4E03AQGlo2QQTR1cLg/profile-displayphoto-crop_800_800/B4EZp7srH6GoAI-/0/1763011900536?e=1781136000&v=beta&t=umYHaffHu4ywhTVBMVJbl65iOx3sCvL9UBqfVpk_fss",
+    linkedIn: "https://www.linkedin.com/in/ellen-woodcock/",
+    github: "",
+  },
+  lroussel: {
+    name: "Louni Roussel",
+    title: "Community Workshops",
+    image: "https://media.licdn.com/dms/image/v2/D4E03AQE2-twvaPrmVA/profile-displayphoto-crop_800_800/B4EZ2wEptmJoAI-/0/1776775505512?e=1781136000&v=beta&t=xJPLxE_gFMRPgTuergpXBr_q_t1cDmoD5OEE2SyYaXw",
+    linkedIn: "https://www.linkedin.com/in/louisnicolas-roussel",
+    github: "",
+  },
+  spalmer: {
+    name: "Sophie Palmer",
+    title: "Community Ambassadors & Events",
+    image: "https://media.licdn.com/dms/image/v2/D4E03AQFIXeJ0v2kvYA/profile-displayphoto-shrink_800_800/B4EZRppy73HgAc-/0/1736939352559?e=1781136000&v=beta&t=1AbMzs0wktz165Va6iMx3rkw6KLDanLXuf7_sBSYLSQ",
+    linkedIn: "https://www.linkedin.com/in/sophie-palmer1/",
+    github: "",
   },
 };
 
