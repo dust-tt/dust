@@ -1,7 +1,10 @@
 import logger from "@connectors/logger/logger";
-import type { DataSourceConfig, GoogleDriveObjectType } from "@connectors/types";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import type {
+  DataSourceConfig,
+  GoogleDriveObjectType,
+} from "@connectors/types";
 import { OAuth2Client } from "googleapis-common";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   handleFileExport: vi.fn(),

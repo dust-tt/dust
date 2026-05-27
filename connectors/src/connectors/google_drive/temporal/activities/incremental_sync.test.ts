@@ -6,8 +6,8 @@ import {
 } from "@connectors/lib/models/google_drive";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { GoogleDriveObjectType } from "@connectors/types";
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GaxiosError } from "googleapis-common";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   changeList: vi.fn(),
@@ -264,7 +264,8 @@ function makeGoogleDriveError(status: number, reason: string) {
       },
       headers: {},
       request: {
-        responseURL: "https://www.googleapis.com/drive/v3/changes/startPageToken",
+        responseURL:
+          "https://www.googleapis.com/drive/v3/changes/startPageToken",
       },
       status,
       statusText: "Google Drive error",
@@ -707,9 +708,9 @@ describe("google drive incremental sync", () => {
     expect(syncToken?.lastSyncAt?.getTime()).toBeGreaterThanOrEqual(
       beforeSyncMs
     );
-    expect(
-      syncToken?.lastRelevantChangeAt?.getTime()
-    ).toBeGreaterThanOrEqual(beforeSyncMs);
+    expect(syncToken?.lastRelevantChangeAt?.getTime()).toBeGreaterThanOrEqual(
+      beforeSyncMs
+    );
   });
 
   it("carries removed-file relevance across an activity retry", async () => {
@@ -1123,9 +1124,9 @@ describe("google drive incremental sync", () => {
     expect(syncToken?.lastSyncAt?.getTime()).toBeGreaterThanOrEqual(
       beforeSyncMs
     );
-    expect(
-      syncToken?.lastRelevantChangeAt?.getTime()
-    ).toBeGreaterThanOrEqual(beforeSyncMs);
+    expect(syncToken?.lastRelevantChangeAt?.getTime()).toBeGreaterThanOrEqual(
+      beforeSyncMs
+    );
   });
 
   it("skips a permanent drive error when no sync token can be fetched", async () => {
