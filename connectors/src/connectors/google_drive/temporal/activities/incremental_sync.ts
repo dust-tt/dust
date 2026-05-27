@@ -52,15 +52,20 @@ type ParentsUpdate = {
 
 type EnqueueParentsUpdate = (update: ParentsUpdate) => Promise<void>;
 
+type IncrementalSyncResult = {
+  nextPageToken: string | undefined;
+  newFolders: string[];
+  hadRelevantChange: boolean;
+};
+
 export async function incrementalSync(
   connectorId: ModelId,
   driveId: string,
   isSharedDrive: boolean,
   startSyncTs: number,
-  nextPageToken?: string
-): Promise<
-  { nextPageToken: string | undefined; newFolders: string[] } | undefined
-> {
+  nextPageToken?: string,
+  hadRelevantChangeInPreviousPages = false
+): Promise<IncrementalSyncResult | undefined> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
@@ -83,7 +88,7 @@ export async function incrementalSync(
     origin: "google_drive_incremental_sync",
   });
   const newFolders = [];
-  let hadRelevantChange = false;
+  let hadRelevantChange = hadRelevantChangeInPreviousPages;
   try {
     if (!nextPageToken) {
       nextPageToken = await getSyncPageToken(
@@ -335,14 +340,16 @@ export async function incrementalSync(
         continue;
       } else {
         await heartbeat();
-        await syncOneFile(
+        const didSyncFile = await syncOneFile(
           connectorId,
           authCredentials,
           dataSourceConfig,
           driveFile,
           startSyncTs
         );
-        hadRelevantChange = true;
+        if (didSyncFile) {
+          hadRelevantChange = true;
+        }
       }
       localLogger.info({ fileId: change.file.id }, "done syncing file");
     }
@@ -359,7 +366,7 @@ export async function incrementalSync(
       });
     }
 
-    return { nextPageToken, newFolders };
+    return { nextPageToken, newFolders, hadRelevantChange };
   } catch (e) {
     if (
       (e instanceof GaxiosError && e.response?.status === 403) ||
@@ -418,13 +425,19 @@ async function upsertCompletedSyncToken({
   hadRelevantChange: boolean;
 }) {
   const completedAt = new Date();
+  const lastRelevantChangeAt = await getLastRelevantChangeAtForCompletedSync({
+    connectorId,
+    driveId,
+    completedAt,
+    hadRelevantChange,
+  });
 
   await GoogleDriveSyncTokenModel.upsert({
     connectorId,
     driveId,
     syncToken,
     lastSyncAt: completedAt,
-    ...(hadRelevantChange ? { lastRelevantChangeAt: completedAt } : {}),
+    ...(lastRelevantChangeAt ? { lastRelevantChangeAt } : {}),
   });
 }
 
@@ -438,11 +451,17 @@ async function updateCompletedSyncTokenState({
   hadRelevantChange: boolean;
 }) {
   const completedAt = new Date();
+  const lastRelevantChangeAt = await getLastRelevantChangeAtForCompletedSync({
+    connectorId,
+    driveId,
+    completedAt,
+    hadRelevantChange,
+  });
 
   await GoogleDriveSyncTokenModel.update(
     {
       lastSyncAt: completedAt,
-      ...(hadRelevantChange ? { lastRelevantChangeAt: completedAt } : {}),
+      ...(lastRelevantChangeAt ? { lastRelevantChangeAt } : {}),
     },
     {
       where: {
@@ -451,6 +470,39 @@ async function updateCompletedSyncTokenState({
       },
     }
   );
+}
+
+async function getLastRelevantChangeAtForCompletedSync({
+  connectorId,
+  driveId,
+  completedAt,
+  hadRelevantChange,
+}: {
+  connectorId: ModelId;
+  driveId: string;
+  completedAt: Date;
+  hadRelevantChange: boolean;
+}): Promise<Date | undefined> {
+  if (hadRelevantChange) {
+    return completedAt;
+  }
+
+  const syncToken = await GoogleDriveSyncTokenModel.findOne({
+    attributes: ["createdAt", "lastRelevantChangeAt"],
+    where: {
+      connectorId,
+      driveId,
+    },
+  });
+  if (!syncToken) {
+    return completedAt;
+  }
+  if (syncToken.lastRelevantChangeAt) {
+    return undefined;
+  }
+
+  // A quiet drive still needs a baseline so the adaptive cadence can back off.
+  return syncToken.createdAt;
 }
 
 async function recurseUpdateParents(
