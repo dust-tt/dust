@@ -110,7 +110,7 @@ function AwuUsageBar({
           <span>{limit === null ? "∞" : formatCredits(limit)}</span>
         </div>
         <div
-          className={`h-0.5 w-full overflow-hidden rounded-full ${MUTED_BAR_CLASSES.track}`}
+          className={`h-1 w-full overflow-hidden rounded-full ${MUTED_BAR_CLASSES.track}`}
         >
           <div
             className={`h-full ${MUTED_BAR_CLASSES.fill} transition-all`}
@@ -148,7 +148,7 @@ function AwuUsageBar({
         <span>{formatCredits(consumed)}</span>
         <span>{limit === null ? "∞" : formatCredits(limit)}</span>
       </div>
-      <div className="flex w-full items-center gap-0.5">
+      <div className="flex w-full items-center gap-px">
         <Tooltip
           tooltipTriggerAsChild
           label={`${formatCredits(seatConsumed)} credits consumed over ${formatCredits(memberUsageLimit)} seat limit`}
@@ -158,7 +158,7 @@ function AwuUsageBar({
               style={{ width: `${seatWidthPercent}%` }}
             >
               <div
-                className={`h-0.5 w-full overflow-hidden rounded-full ${seatColors.track}`}
+                className={`h-1 w-full overflow-hidden rounded-full ${seatColors.track}`}
               >
                 <div
                   className={`h-full ${seatColors.fill} transition-all`}
@@ -177,7 +177,7 @@ function AwuUsageBar({
               style={{ width: `${overflowWidthPercent}%` }}
             >
               <div
-                className={`h-0.5 w-full overflow-hidden rounded-full ${MUTED_BAR_CLASSES.track}`}
+                className={`h-1 w-full overflow-hidden rounded-full ${MUTED_BAR_CLASSES.track}`}
               >
                 <div
                   className={`h-full ${MUTED_BAR_CLASSES.fill} transition-all`}
