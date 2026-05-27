@@ -229,6 +229,34 @@ function getLocalAccountPrivilegeHardeningCommand(): string {
     'if [ -e "$path" ]; then chmod u-s "$path"; fi;',
     "done",
   ].join(" ");
+  const assertNoEmptyPasswordAccounts = [
+    `if getent shadow | awk -F: '$2 == "" {print $1}' | grep -q .; then`,
+    "echo 'empty-password local accounts must not exist' >&2;",
+    "exit 1;",
+    "fi",
+  ].join(" ");
+  const assertNoPrivilegedGroupMembers = [
+    "for group in sudo admin wheel; do",
+    "members=$(getent group \"$group\" | awk -F: '{print $4}') || continue;",
+    'old_ifs="$IFS";',
+    "IFS=,;",
+    "for member in $members; do",
+    'if [ -n "$member" ] && [ "$member" != root ]; then echo "privileged group $group must not include $member" >&2; exit 1; fi;',
+    "done;",
+    'IFS="$old_ifs";',
+    "done",
+  ].join(" ");
+  const assertNoPasswordlessSudoers = [
+    "if grep -RIsnE '^[[:space:]]*[^#].*NOPASSWD[[:space:]]*:[[:space:]]*ALL' /etc/sudoers /etc/sudoers.d 2>/dev/null | grep -q .; then",
+    "echo 'passwordless unrestricted sudoers entries must not exist' >&2;",
+    "exit 1;",
+    "fi",
+  ].join(" ");
+  const assertLocalAuthHelpersNotSetuid = [
+    "for path in /bin/su /usr/bin/su /bin/sg /usr/bin/sg /usr/bin/newgrp /usr/bin/passwd /usr/bin/chsh /usr/bin/chfn /usr/bin/gpasswd; do",
+    'if [ -e "$path" ] && [ -u "$path" ]; then echo "local auth helper must not be setuid: $path" >&2; exit 1; fi;',
+    "done",
+  ].join(" ");
 
   return [
     lockRootPassword,
@@ -238,6 +266,10 @@ function getLocalAccountPrivilegeHardeningCommand(): string {
     removePasswordlessSudoersRules,
     removeSudoBinary,
     hardenLocalAuthHelpers,
+    assertNoEmptyPasswordAccounts,
+    assertNoPrivilegedGroupMembers,
+    assertNoPasswordlessSudoers,
+    assertLocalAuthHelpersNotSetuid,
     "if command -v sudo >/dev/null 2>&1; then echo 'sudo must not be installed in sandbox images' >&2; exit 1; fi",
   ].join(" && ");
 }

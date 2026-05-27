@@ -96,7 +96,7 @@ function assertCommandSucceeded(label: string, result: ExecResult): void {
   }
 }
 
-function containsUnrestrictedSudo(output: string): boolean {
+export function containsUnrestrictedSudo(output: string): boolean {
   return output
     .split("\n")
     .map((line) => {
@@ -328,7 +328,7 @@ exit "$bad"
   }
 }
 
-function assertNoPrivilegedGroupMembers(output: string): void {
+export function assertNoPrivilegedGroupMembers(output: string): void {
   const groupPattern = /^(sudo|wheel|admin):[^:]*:[^:]*:(.*)$/gm;
   let match = groupPattern.exec(output);
 
@@ -350,7 +350,7 @@ function assertNoPrivilegedGroupMembers(output: string): void {
   }
 }
 
-function assertNoPasswordlessSudoers(output: string): void {
+export function assertNoPasswordlessSudoers(output: string): void {
   const passwordlessSudoers = output
     .split("\n")
     .filter((line) => line.includes("/etc/sudoers"))
@@ -374,13 +374,13 @@ function assertNoPasswordlessSudoers(output: string): void {
   }
 }
 
-function assertSudoAbsent(output: string): void {
+export function assertSudoAbsent(output: string): void {
   if (output.split("\n").some((line) => line.startsWith("SUDO_BINARY="))) {
     throw new Error(`sudo binary is still installed:\n${output}`);
   }
 }
 
-function assertNoEmptyPasswordAccounts(output: string): void {
+export function assertNoEmptyPasswordAccounts(output: string): void {
   const emptyPasswordAccounts = output
     .split("\n")
     .filter((line) => line.startsWith("EMPTY_PASSWORD_ACCOUNT="));
@@ -394,7 +394,7 @@ function assertNoEmptyPasswordAccounts(output: string): void {
   }
 }
 
-function assertLocalAuthHelpersNotSetuid(output: string): void {
+export function assertLocalAuthHelpersNotSetuid(output: string): void {
   const setuidHelpers = output
     .split("\n")
     .filter((line) => line.startsWith("LOCAL_AUTH_HELPER="))
@@ -411,7 +411,7 @@ function assertLocalAuthHelpersNotSetuid(output: string): void {
   }
 }
 
-function assertPrivilegedDirsSafe(output: string): void {
+export function assertPrivilegedDirsSafe(output: string): void {
   for (const dir of ["/opt/bin", "/usr/local/bin"]) {
     const line = output
       .split("\n")
@@ -651,7 +651,7 @@ function getImagesToCheck(args: CheckArgs): readonly SandboxImage[] {
   return getRegisteredImages();
 }
 
-async function main(): Promise<void> {
+export async function main(): Promise<void> {
   const args = await parseCheckArgs();
   const images = getImagesToCheck(args);
 
@@ -660,12 +660,14 @@ async function main(): Promise<void> {
   }
 }
 
-main()
-  .then(() => process.exit(0))
-  .catch((err: unknown) => {
-    logger.error(
-      { err: normalizeError(err) },
-      "Sandbox security regression check failed"
-    );
-    process.exit(1);
-  });
+if (process.argv[1]?.endsWith("sandbox_security_check.ts")) {
+  main()
+    .then(() => process.exit(0))
+    .catch((err: unknown) => {
+      logger.error(
+        { err: normalizeError(err) },
+        "Sandbox security regression check failed"
+      );
+      process.exit(1);
+    });
+}
