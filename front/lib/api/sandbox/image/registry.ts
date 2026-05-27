@@ -15,8 +15,8 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.7.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.24";
-const DSBX_CLI_VERSION = "0.1.20";
+const DUST_BASE_IMAGE_VERSION = "0.8.25";
+const DSBX_CLI_VERSION = "0.1.21";
 // Identity, not coverage list: agent-proxied is a specific Linux user. The
 // nftables ruleset covers SANDBOX_UNTRUSTED_UIDS as a set; reordering that
 // list must not silently change this user's UID.
@@ -112,7 +112,7 @@ function getLocalContent(dir: string, filename: string): () => string {
 function buildTrustEnvironmentFile(): string {
   return (
     Object.entries(SANDBOX_TRUST_ENV_VARS)
-      .map(([k, v]) => `${k}=${v}`)
+      .map(([k, v]) => `${k}=${formatEnvironmentValue(v)}`)
       .join("\n") + "\n"
   );
 }
@@ -120,9 +120,25 @@ function buildTrustEnvironmentFile(): string {
 function buildTrustProfileScript(): string {
   return (
     Object.entries(SANDBOX_TRUST_ENV_VARS)
-      .map(([k, v]) => `export ${k}=${v}`)
+      .map(([k, v]) => `export ${k}=${formatShellValue(v)}`)
       .join("\n") + "\n"
   );
+}
+
+function formatEnvironmentValue(value: string): string {
+  return isBareEnvironmentValue(value) ? value : JSON.stringify(value);
+}
+
+function formatShellValue(value: string): string {
+  if (isBareEnvironmentValue(value)) {
+    return value;
+  }
+
+  return `'${value.replace(/'/g, "'\\''")}'`;
+}
+
+function isBareEnvironmentValue(value: string): boolean {
+  return /^[A-Za-z0-9_./:,@%+=-]+$/.test(value);
 }
 
 function getLocalDirContent(
