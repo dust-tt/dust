@@ -2433,30 +2433,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   ): Promise<Result<{ alreadyEnabled: boolean }, Error>> {
     const workspace = auth.getNonNullableWorkspace();
 
-    const refs = await SkillResource.getSkillReferencesForAgent(
-      auth,
-      agentConfiguration
-    );
-
-    const hasSkill = refs.some(
-      (ref) =>
-        (ref.globalSkillId !== null && ref.globalSkillId === this.globalSId) ||
-        (ref.customSkillId !== null && ref.customSkillId === this.id)
-    );
-
-    // Allow enabling default skills if the agent has the discover_skills skill.
-    const hasDiscoverSkills =
-      this.isDefault &&
-      refs.some((ref) => ref.globalSkillId === "discover_skills");
-
-    if (!hasSkill && !hasDiscoverSkills) {
-      return new Err(
-        new Error(
-          `Skill ${this.name} is not equipped by agent ${agentConfiguration.name}.`
-        )
-      );
-    }
-
     const conversationSkillBlob: ConversationSkillCreationAttributes = {
       ...this.skillReference,
       workspaceId: workspace.id,
