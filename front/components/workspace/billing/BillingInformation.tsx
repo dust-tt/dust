@@ -49,7 +49,9 @@ function formatPaymentMethod(
   }
 
   if (paymentMethod.type === "sepa_debit") {
-    return paymentMethod.last4 ? `IBAN ${paymentMethod.last4}` : "IBAN";
+    return paymentMethod.last4
+      ? `SEPA Direct Debit •••• ${paymentMethod.last4}`
+      : "IBAN";
   }
 
   if (paymentMethod.type === "us_bank_account") {

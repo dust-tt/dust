@@ -65,12 +65,6 @@ function serializeAddress(
     : null;
 }
 
-function isExpandedPaymentMethod(
-  paymentMethod: Stripe.Customer.InvoiceSettings["default_payment_method"]
-): paymentMethod is Stripe.PaymentMethod {
-  return typeof paymentMethod === "object" && paymentMethod !== null;
-}
-
 function serializePaymentMethod(
   paymentMethod: Stripe.PaymentMethod
 ): BillingPaymentMethod {
@@ -121,6 +115,12 @@ function serializePaymentMethod(
   }
 }
 
+function isExpandedPaymentMethod(
+  paymentMethod: Stripe.Customer.InvoiceSettings["default_payment_method"]
+): paymentMethod is Stripe.PaymentMethod {
+  return typeof paymentMethod === "object" && paymentMethod !== null;
+}
+
 async function getAttachedPaymentMethod({
   stripeCustomerId,
 }: {
@@ -149,7 +149,7 @@ async function getAttachedPaymentMethod({
   return null;
 }
 
-async function getDefaultPaymentMethod({
+async function getCustomerPaymentMethod({
   customer,
   stripeCustomerId,
 }: {
@@ -157,17 +157,19 @@ async function getDefaultPaymentMethod({
   stripeCustomerId: string;
 }): Promise<BillingPaymentMethod | null> {
   const defaultPaymentMethod = customer.invoice_settings.default_payment_method;
-  if (!defaultPaymentMethod) {
-    return getAttachedPaymentMethod({ stripeCustomerId });
-  }
 
   if (isExpandedPaymentMethod(defaultPaymentMethod)) {
     return serializePaymentMethod(defaultPaymentMethod);
   }
 
-  const paymentMethod =
-    await getStripeClient().paymentMethods.retrieve(defaultPaymentMethod);
-  return serializePaymentMethod(paymentMethod);
+  if (defaultPaymentMethod) {
+    const paymentMethod =
+      await getStripeClient().paymentMethods.retrieve(defaultPaymentMethod);
+
+    return serializePaymentMethod(paymentMethod);
+  }
+
+  return getAttachedPaymentMethod({ stripeCustomerId });
 }
 
 export async function getWorkspaceBillingInfo(
@@ -210,7 +212,7 @@ export async function getWorkspaceBillingInfo(
         phone: customer.phone ?? null,
         address: serializeAddress(customer.address),
       },
-      paymentMethod: await getDefaultPaymentMethod({
+      paymentMethod: await getCustomerPaymentMethod({
         customer,
         stripeCustomerId: stripeCustomerIdRes.value,
       }),
