@@ -127,12 +127,12 @@ describe("listHandler", () => {
     );
   });
 
-  it("lists the project mount when scope=project in a project conversation", async () => {
+  it("lists the project mount when scope=pod in a project conversation", async () => {
     const { auth, conversation, projectId } = await setupProjectConversation();
     const workspaceId = auth.getNonNullableWorkspace().sId;
 
     const result = await listHandler(
-      { scope: "project" },
+      { scope: "pod" },
       makeExtra(auth, conversation)
     );
 
@@ -206,7 +206,7 @@ describe("listHandler", () => {
     expect(text.text).not.toContain("[id:");
   });
 
-  it("returns Err when scope=project in a non-project conversation", async () => {
+  it("returns Err when scope=pod in a non-project conversation", async () => {
     const { authenticator: auth } = await createResourceTest({ role: "admin" });
 
     const conversation = await createConversation(auth, {
@@ -216,7 +216,7 @@ describe("listHandler", () => {
     });
 
     const result = await listHandler(
-      { scope: "project" },
+      { scope: "pod" },
       makeExtra(auth, conversation)
     );
 
