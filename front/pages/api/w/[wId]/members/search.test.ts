@@ -73,22 +73,21 @@ vi.mock("@app/lib/user_search/search", () => ({
 }));
 
 describe("GET /api/w/[wId]/members/search", () => {
-  // We need search to work for all users as they can be added as editors of an agent by anyone.
-  it("allows users to search members", async () => {
-    const { req, res, user } = await createPrivateApiMockRequest({
+  it("returns 403 for non-admin users", async () => {
+    const { req, res } = await createPrivateApiMockRequest({
       method: "GET",
       role: "user",
     });
 
     await handler(req, res);
 
-    expect(res._getStatusCode()).toBe(200);
-
-    const data = res._getJSONData();
-    expect(data.total).toBe(1);
-    expect(data.members).toHaveLength(1);
-    expect(data.members[0].id).toBe(user.id);
-    expect(data.members[0].workspace.role).toBe("user");
+    expect(res._getStatusCode()).toBe(403);
+    expect(res._getJSONData()).toEqual({
+      error: {
+        type: "workspace_auth_error",
+        message: "Only workspace admins can search members.",
+      },
+    });
   });
 
   it("returns 405 for non-GET methods", async () => {
