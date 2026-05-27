@@ -1,10 +1,14 @@
-// TODO: Wire up real API endpoints once the backend for usage settings and
-// notifications is implemented. The hooks below expose the shape the rest of
-// the frontend should expect; the data is currently held in a module-level
-// store so toggling/editing in the UI works during development.
-
 import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress/client";
+import {
+  getErrorFromResponse,
+  useFetcher,
+  useSWRWithDefaults,
+} from "@app/lib/swr/swr";
+import type { GetCreditUsageConfigurationResponseBody } from "@app/pages/api/w/[wId]/credits/usage-configuration";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { useCallback, useSyncExternalStore } from "react";
+import type { Fetcher } from "swr";
 
 export interface UsageSettings {
   allowUpgradeRequest: boolean;
@@ -95,21 +99,37 @@ export function useUpdateUsageSettings({
   return { doUpdateUsageSettings };
 }
 
+function getCreditUsageConfigurationEndpoint(workspaceId: string): string {
+  return `/api/w/${workspaceId}/credits/usage-configuration`;
+}
+
 export function useUsageNotifications({
   workspaceId,
 }: {
   workspaceId: string;
 }) {
-  const notifications = useSyncExternalStore(
-    subscribe,
-    () => getUsageNotifications(workspaceId),
-    () => DEFAULT_USAGE_NOTIFICATIONS
+  const { fetcher } = useFetcher();
+  const configurationFetcher: Fetcher<GetCreditUsageConfigurationResponseBody> =
+    fetcher;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    getCreditUsageConfigurationEndpoint(workspaceId),
+    configurationFetcher
   );
 
+  const fromServer: Partial<UsageNotifications> = data
+    ? { creditCapWarning: !data.configuration.disableCreditCapWarning }
+    : {};
+
+  const usageNotifications: UsageNotifications = {
+    ...DEFAULT_USAGE_NOTIFICATIONS,
+    ...fromServer,
+  };
+
   return {
-    usageNotifications: notifications,
-    isUsageNotificationsLoading: false,
-    isUsageNotificationsError: false,
+    usageNotifications,
+    isUsageNotificationsLoading: !data && !error && isValidating,
+    isUsageNotificationsError: !!error,
   };
 }
 
@@ -119,21 +139,58 @@ export function useUpdateUsageNotifications({
   workspaceId: string;
 }) {
   const sendNotification = useSendNotification();
+  const { mutate } = useSWRWithDefaults(
+    getCreditUsageConfigurationEndpoint(workspaceId),
+    null
+  );
 
   const doUpdateUsageNotifications = useCallback(
     async (patch: Partial<UsageNotifications>): Promise<boolean> => {
+      const body: Record<string, unknown> = {};
+      if (patch.creditCapWarning !== undefined) {
+        body.disableCreditCapWarning = !patch.creditCapWarning;
+      }
+
+      if (Object.keys(body).length > 0) {
+        try {
+          const res = await clientFetch(
+            getCreditUsageConfigurationEndpoint(workspaceId),
+            {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(body),
+            }
+          );
+          if (!res.ok) {
+            const errorData = await getErrorFromResponse(res);
+            sendNotification({
+              type: "error",
+              title: "Failed to update notification settings",
+              description: errorData.message,
+            });
+            return false;
+          }
+        } catch (e) {
+          sendNotification({
+            type: "error",
+            title: "Failed to update notification settings",
+            description: normalizeError(e).message,
+          });
+          return false;
+        }
+        await mutate();
+      }
+
       const next = { ...getUsageNotifications(workspaceId), ...patch };
       usageNotificationsStore.set(workspaceId, next);
       notify();
-      // TODO: replace with a real POST request once the backend is available.
       sendNotification({
         type: "success",
         title: "Notification settings updated",
-        description: "Changes are not persisted yet — backend coming soon.",
       });
       return true;
     },
-    [workspaceId, sendNotification]
+    [workspaceId, sendNotification, mutate]
   );
 
   return { doUpdateUsageNotifications };

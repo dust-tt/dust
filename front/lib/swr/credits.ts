@@ -253,7 +253,7 @@ export function useAwuPoolSummary({
   );
 
   return {
-    totalCredits: data?.totalCredits ?? 0,
+    totalRemainingCredits: data?.totalRemainingCredits ?? 0,
     consumedByUsersCredits: data?.consumedByUsersCredits ?? 0,
     consumedByProgrammaticCredits: data?.consumedByProgrammaticCredits ?? 0,
     resetDate: data?.resetDate ?? "",

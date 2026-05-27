@@ -21,7 +21,7 @@ import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export type AwuPoolSummaryResponseBody = {
-  totalCredits: number;
+  totalRemainingCredits: number;
   consumedByUsersCredits: number;
   consumedByProgrammaticCredits: number;
   resetDate: string;
@@ -100,7 +100,7 @@ export async function handleAwuPoolSummaryRequest(
 
       if (!currentInvoice?.start_timestamp || !currentInvoice.end_timestamp) {
         return res.status(200).json({
-          totalCredits: 0,
+          totalRemainingCredits: 0,
           consumedByUsersCredits: 0,
           consumedByProgrammaticCredits: 0,
           resetDate: "",
@@ -143,7 +143,7 @@ export async function handleAwuPoolSummaryRequest(
       // top-off that was partially consumed in a previous billing cycle). Upcoming and
       // expired schedule segments contribute 0 to the balance, so this is safe for
       // multi-period recurring credits too.
-      let totalCredits = 0;
+      let totalRemainingCredits = 0;
       for (const entry of awuBalances) {
         const isActive = (entry.access_schedule?.schedule_items ?? []).some(
           (item) => {
@@ -153,7 +153,7 @@ export async function handleAwuPoolSummaryRequest(
           }
         );
         if (isActive) {
-          totalCredits += entry.balance ?? 0;
+          totalRemainingCredits += entry.balance ?? 0;
         }
       }
 
@@ -222,7 +222,7 @@ export async function handleAwuPoolSummaryRequest(
       }
 
       return res.status(200).json({
-        totalCredits,
+        totalRemainingCredits,
         consumedByUsersCredits,
         consumedByProgrammaticCredits,
         resetDate,
