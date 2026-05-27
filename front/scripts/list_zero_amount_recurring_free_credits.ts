@@ -26,7 +26,6 @@ import {
   YEARLY_MULTIPLIER,
 } from "@app/lib/credits/free";
 import {
-  getMetronomeContractById,
   listMetronomeCustomerCredits,
   updateMetronomeCreditSegmentAmount,
 } from "@app/lib/metronome/client";
@@ -260,29 +259,6 @@ async function findZeroAmountSegments(
       continue;
     }
 
-    // Confirm cadence against the contract's recurring_credits when we can —
-    // the name match above is the primary signal, but the contract gives us
-    // the canonical recurrence_frequency.
-    let confirmedCadence: Cadence = cadence;
-    if (credit.contract?.id) {
-      const contractResult = await paceMetronome(() =>
-        getMetronomeContractById({
-          metronomeCustomerId,
-          metronomeContractId: credit.contract!.id,
-        })
-      );
-      if (contractResult.isOk()) {
-        const rc = contractResult.value.recurring_credits?.find(
-          (r) => r.id === credit.recurring_credit_id
-        );
-        if (rc?.recurrence_frequency === "ANNUAL") {
-          confirmedCadence = "ANNUAL";
-        } else if (rc?.recurrence_frequency === "MONTHLY") {
-          confirmedCadence = "MONTHLY";
-        }
-      }
-    }
-
     const finding: Finding = {
       workspaceSId: workspace.sId,
       workspaceName: workspace.name,
@@ -290,7 +266,7 @@ async function findZeroAmountSegments(
       contractId: credit.contract?.id,
       creditId: credit.id,
       recurringCreditId: credit.recurring_credit_id,
-      cadence: confirmedCadence,
+      cadence,
       segmentId: activeSegment.id,
       startingAt: activeSegment.starting_at,
       endingBefore: activeSegment.ending_before,
