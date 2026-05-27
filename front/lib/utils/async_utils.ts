@@ -99,3 +99,24 @@ export async function withRetry<T>(
 
   return new Err(normalizeError(lastErr));
 }
+
+export async function withPeriodicHeartbeat<T>(
+  fn: () => Promise<T>,
+  {
+    intervalMs,
+    heartbeatFn,
+  }: {
+    intervalMs: number;
+    heartbeatFn: () => void;
+  }
+): Promise<T> {
+  const interval = setInterval(() => {
+    heartbeatFn();
+  }, intervalMs);
+
+  try {
+    return await fn();
+  } finally {
+    clearInterval(interval);
+  }
+}
