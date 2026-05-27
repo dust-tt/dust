@@ -7,6 +7,7 @@ import { invalidateKeyCapCache } from "@app/lib/api/programmatic_usage/key_cap";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import type { KeyType } from "@app/types/key";
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_is_admin";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -34,22 +35,12 @@ app.route("/disable", disable);
 
 app.patch(
   "/",
+  ensureIsAdmin(),
   validate("param", KeyIdParamSchema),
   validate("json", PatchKeyBodySchema),
   async (ctx): HandlerResult<PatchKeyResponseBody> => {
     const auth = ctx.get("auth");
     const owner = auth.getNonNullableWorkspace();
-
-    if (!auth.isAdmin()) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "app_auth_error",
-          message:
-            "Only the users that are `admins` for the current workspace can update a key.",
-        },
-      });
-    }
 
     const { id } = ctx.req.valid("param");
     const { monthly_cap_micro_usd } = ctx.req.valid("json");

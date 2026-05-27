@@ -8,6 +8,7 @@ import logger from "@app/logger/logger";
 import type { DustAppSecretType } from "@app/types/dust_app_secret";
 import { encrypt } from "@app/types/shared/utils/encryption";
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureIsBuilder } from "@front-api/middlewares/ensure_is_builder";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -30,58 +31,41 @@ const PostDustAppSecretBodySchema = z.object({
 // Mounted at /api/w/:wId/dust_app_secrets.
 const app = workspaceApp();
 
-app.get("/", async (ctx): HandlerResult<GetDustAppSecretsResponseBody> => {
-  const auth = ctx.get("auth");
-
-  if (!auth.isBuilder()) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "app_auth_error",
-        message: "You do not have the required permissions.",
-      },
-    });
-  }
-
-  const owner = auth.getNonNullableWorkspace();
-
-  const remaining = await rateLimiter({
-    key: `workspace:${owner.id}:dust_app_secrets`,
-    maxPerTimeframe: 60,
-    timeframeSeconds: 60,
-    logger,
-  });
-
-  if (remaining < 0) {
-    return apiError(ctx, {
-      status_code: 429,
-      api_error: {
-        type: "rate_limit_error",
-        message: "You have reached the rate limit for this workspace.",
-      },
-    });
-  }
-
-  const secrets = await getDustAppSecrets(auth);
-  return ctx.json({ secrets });
-});
-
-app.post(
+app.get(
   "/",
-  validate("json", PostDustAppSecretBodySchema),
-  async (ctx): HandlerResult<PostDustAppSecretsResponseBody> => {
+  ensureIsBuilder(),
+  async (ctx): HandlerResult<GetDustAppSecretsResponseBody> => {
     const auth = ctx.get("auth");
+    const owner = auth.getNonNullableWorkspace();
 
-    if (!auth.isBuilder()) {
+    const remaining = await rateLimiter({
+      key: `workspace:${owner.id}:dust_app_secrets`,
+      maxPerTimeframe: 60,
+      timeframeSeconds: 60,
+      logger,
+    });
+
+    if (remaining < 0) {
       return apiError(ctx, {
-        status_code: 403,
+        status_code: 429,
         api_error: {
-          type: "app_auth_error",
-          message: "You do not have the required permissions.",
+          type: "rate_limit_error",
+          message: "You have reached the rate limit for this workspace.",
         },
       });
     }
 
+    const secrets = await getDustAppSecrets(auth);
+    return ctx.json({ secrets });
+  }
+);
+
+app.post(
+  "/",
+  ensureIsBuilder(),
+  validate("json", PostDustAppSecretBodySchema),
+  async (ctx): HandlerResult<PostDustAppSecretsResponseBody> => {
+    const auth = ctx.get("auth");
     const owner = auth.getNonNullableWorkspace();
     const user = auth.getNonNullableUser();
 

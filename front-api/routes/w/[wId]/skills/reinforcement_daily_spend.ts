@@ -1,8 +1,8 @@
 import { getCurrentPeriod } from "@app/lib/reinforcement/billing";
 import { SelfImprovingSkillsUsageResource } from "@app/lib/resources/self_improving_skills_usage_resource";
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_is_admin";
 import type { HandlerResult } from "@front-api/middlewares/utils";
-import { apiError } from "@front-api/middlewares/utils";
 
 export type GetReinforcementDailySpendResponseBody = {
   // ISO date strings ("YYYY-MM-DD") → spend in microUSD for that day.
@@ -16,18 +16,9 @@ const app = workspaceApp();
 
 app.get(
   "/",
+  ensureIsAdmin(),
   async (ctx): HandlerResult<GetReinforcementDailySpendResponseBody> => {
     const auth = ctx.get("auth");
-
-    if (!auth.isAdmin()) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "workspace_auth_error",
-          message: "Only admins can view self-improving skills daily spend.",
-        },
-      });
-    }
 
     const period = await getCurrentPeriod(auth);
 
