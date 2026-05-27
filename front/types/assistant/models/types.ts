@@ -1,4 +1,4 @@
-import { SUPPORTED_REGIONS } from "@app/lib/api/regions/config";
+import { SUPPORTED_REGIONS } from "@app/types/region";
 import { z } from "zod";
 import type { WhitelistableFeature } from "../../shared/feature_flags";
 import type { ExtractSpecificKeys } from "../../shared/typescipt_utils";

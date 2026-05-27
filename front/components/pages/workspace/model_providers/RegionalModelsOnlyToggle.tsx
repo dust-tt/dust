@@ -1,8 +1,8 @@
 import { RegionalFlag } from "@app/components/shared/RegionalFlag";
-import type { RegionType } from "@app/lib/api/regions/config";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { useUpdateWorkspaceRegionalModelsOnly } from "@app/lib/swr/workspaces";
+import type { RegionType } from "@app/types/region";
 import type { LightWorkspaceType } from "@app/types/user";
 import { ContextItem, SliderToggle } from "@dust-tt/sparkle";
 

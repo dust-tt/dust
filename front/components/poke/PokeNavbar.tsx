@@ -6,13 +6,13 @@ import {
   PokeCommandItem,
   PokeCommandList,
 } from "@app/components/poke/shadcn/ui/command";
-import type { RegionType } from "@app/lib/api/regions/config";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { getRegionChipColor, getRegionDisplay } from "@app/lib/poke/regions";
 import { usePokeRegion } from "@app/lib/swr/poke";
 import { classNames } from "@app/lib/utils";
 import { usePokeSearchAllRegions } from "@app/poke/swr/search";
 import type { PokeItemBase } from "@app/types/poke";
+import type { RegionType } from "@app/types/region";
 import { isDevelopment } from "@app/types/shared/env";
 import {
   Button,

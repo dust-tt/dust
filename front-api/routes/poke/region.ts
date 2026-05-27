@@ -1,5 +1,6 @@
-import type { RegionType } from "@app/lib/api/regions/config";
-import { config, SUPPORTED_REGIONS } from "@app/lib/api/regions/config";
+import { config } from "@app/lib/api/regions/config";
+import type { RegionType } from "@app/types/region";
+import { SUPPORTED_REGIONS } from "@app/types/region";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 

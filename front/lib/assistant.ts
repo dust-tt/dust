@@ -1,4 +1,3 @@
-import type { RegionType } from "@app/lib/api/regions/config";
 import {
   isDustCompanyPlan,
   isEntreprisePlanPrefix,
@@ -10,6 +9,7 @@ import type {
   ModelProviderIdType,
 } from "@app/types/assistant/models/types";
 import type { PlanType } from "@app/types/plan";
+import type { RegionType } from "@app/types/region";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
 export function isEnterpriseOrDust(plan: PlanType | null): boolean {

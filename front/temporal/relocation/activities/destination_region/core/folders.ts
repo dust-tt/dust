@@ -1,5 +1,4 @@
 import config from "@app/lib/api/config";
-import type { RegionType } from "@app/lib/api/regions/config";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type {
@@ -12,6 +11,7 @@ import {
   readFromRelocationStorage,
 } from "@app/temporal/relocation/lib/file_storage/relocation";
 import { CoreAPI } from "@app/types/core/core_api";
+import type { RegionType } from "@app/types/region";
 
 export async function processDataSourceFolders({
   destIds,

@@ -1,8 +1,8 @@
 // Okay to use public API types because it's front/connectors communication.
 
-import type { RegionType } from "@app/lib/api/regions/config";
 import { CONVERSATION_ERROR_TYPES } from "@app/types/assistant/conversation";
 import type { CoreAPIError } from "@app/types/core/core_api";
+import type { RegionType } from "@app/types/region";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import type { ConnectorsAPIError } from "@dust-tt/client";
 import type { ContentfulStatusCode } from "hono/utils/http-status";

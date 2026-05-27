@@ -1,5 +1,4 @@
 import { getWhitelistedProviders } from "@app/lib/api/assistant/models";
-import type { RegionType } from "@app/lib/api/regions/config";
 import { filterEnabledModels, isModelAvailable } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
 import {
@@ -13,6 +12,7 @@ import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { PlanType } from "@app/types/plan";
+import type { RegionType } from "@app/types/region";
 import type { WorkspaceType } from "@app/types/user";
 import { describe, expect, it } from "vitest";
 

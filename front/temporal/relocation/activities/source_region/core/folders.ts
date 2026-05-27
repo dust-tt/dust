@@ -1,5 +1,4 @@
 import config from "@app/lib/api/config";
-import type { RegionType } from "@app/lib/api/regions/config";
 import logger from "@app/logger/logger";
 import type {
   CoreFolderAPIRelocationBlob,
@@ -12,6 +11,7 @@ import type {
   CoreAPISearchCursorRequest,
 } from "@app/types/core/core_api";
 import { CoreAPI } from "@app/types/core/core_api";
+import type { RegionType } from "@app/types/region";
 
 export async function getDataSourceFolders({
   dataSourceCoreIds,
