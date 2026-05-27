@@ -425,8 +425,9 @@ export function buildEmailUserMessage({
 }
 
 export function getEmailBlacklistedAgentIds({
+  sId: workspaceId,
   metadata,
-}: Pick<LightWorkspaceType, "metadata">): Result<
+}: Pick<LightWorkspaceType, "metadata" | "sId">): Result<
   Set<string>,
   EmailTriggerError
 > {
@@ -437,11 +438,21 @@ export function getEmailBlacklistedAgentIds({
   const value = metadata[EMAIL_BLACKLISTED_AGENT_IDS_METADATA_KEY];
 
   if (!Array.isArray(value) || !value.every(isString)) {
+    logger.error(
+      {
+        workspaceId,
+        metadataKey: EMAIL_BLACKLISTED_AGENT_IDS_METADATA_KEY,
+        metadataValueType: typeof value,
+        isArray: Array.isArray(value),
+      },
+      "[email] Invalid Email Agents blacklist metadata"
+    );
+
     return new Err({
       type: "invalid_email_blacklist_metadata",
       message:
-        "Invalid Email Agents blacklist metadata for this workspace. " +
-        `Expected ${EMAIL_BLACKLISTED_AGENT_IDS_METADATA_KEY} to be an array of agent configuration IDs.`,
+        "Email interactions with agents are temporarily unavailable for this workspace. " +
+        "Please contact Dust support.",
     });
   }
 
