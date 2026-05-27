@@ -6,6 +6,7 @@ import {
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureIsUser } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -37,20 +38,10 @@ const app = workspaceApp();
 
 app.patch(
   "/",
+  ensureIsUser(),
   validate("json", PatchMCPServerViewBodySchema),
   async (ctx): HandlerResult<PatchMCPServerViewResponseBody> => {
     const auth = ctx.get("auth");
-
-    if (!auth.isUser()) {
-      return apiError(ctx, {
-        status_code: 401,
-        api_error: {
-          type: "mcp_auth_error",
-          message:
-            "You are not authorized to make request to inspect an MCP server view.",
-        },
-      });
-    }
 
     const viewId = ctx.req.param("viewId") ?? "";
     const body = ctx.req.valid("json");
