@@ -470,6 +470,21 @@ await sandbox.exec(auth, "/opt/bin/dust-install-trust-bundle", {
 });
 ```
 
+### [SEC4] Sandbox root-consumed lookup directories must not be workload-writable
+
+Sandbox workloads must not be able to write to any directory that privileged sandbox services use
+for discovery or activation. This includes systemd unit directories, tmpfiles/profile directories,
+dynamic library lookup directories, plugin directories, and every parent directory that controls
+those paths.
+
+Treat this separately from command `PATH` hardening: root can execute attacker-controlled code by
+loading a systemd unit, tmpfiles config, profile script, library, or plugin from a higher-precedence
+lookup directory even when every command uses absolute executable paths.
+
+Reviewer: If sandbox code adds or depends on a root-consumed lookup path, require image/runtime
+hardening that makes the path root-owned and not group/other writable, plus a regression test that
+attempts to write the attacker-controlled file as the workload user.
+
 ## ERROR
 
 ### [ERR1] Do not rely on throw + catch

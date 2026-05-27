@@ -1,11 +1,53 @@
 import { shellEscape } from "@app/lib/api/sandbox/shell";
 
 export const SANDBOX_ROOT_SAFE_PATH = "/usr/sbin:/usr/bin:/sbin:/bin:/opt/bin";
+export const SANDBOX_ROOT_CONSUMED_DIRS = [
+  "/opt/bin",
+  "/usr/local",
+  "/usr/local/sbin",
+  "/usr/local/bin",
+  "/usr/local/lib",
+  "/usr/local/lib/systemd",
+  "/usr/local/lib/systemd/system",
+  "/usr/local/lib/systemd/system-generators",
+  "/usr/local/lib/tmpfiles.d",
+  "/usr/local/share",
+  "/usr/local/share/dbus-1",
+  "/usr/local/share/dbus-1/system-services",
+  "/etc/dbus-1",
+  "/etc/dbus-1/system.d",
+  "/etc/environment.d",
+  "/etc/ld.so.conf.d",
+  "/etc/profile.d",
+  "/etc/systemd",
+  "/etc/systemd/system",
+  "/etc/systemd/system-generators",
+  "/etc/tmpfiles.d",
+  "/run/environment.d",
+  "/run/systemd",
+  "/run/systemd/system",
+  "/run/systemd/system-generators",
+  "/run/tmpfiles.d",
+  "/usr/lib/environment.d",
+  "/usr/lib/systemd",
+  "/usr/lib/systemd/system",
+  "/usr/lib/systemd/system-generators",
+  "/usr/lib/tmpfiles.d",
+  "/usr/share/dbus-1",
+  "/usr/share/dbus-1/system-services",
+  "/lib/systemd",
+  "/lib/systemd/system",
+  "/lib/systemd/system-generators",
+  "/lib/tmpfiles.d",
+] as const;
+export const SANDBOX_ROOT_INVOKED_HELPERS = [
+  "/opt/bin/dsbx",
+  "/usr/local/bin/dust-install-trust-bundle",
+] as const;
+
 const ROOT_SAFE_PATH_PROFILE = "/etc/profile.d/zz-dust-root-safe-path.sh";
-const PRIVILEGED_EXECUTABLE_DIRS =
-  "/opt/bin /usr/local /usr/local/sbin /usr/local/bin";
-const ROOT_INVOKED_HELPERS =
-  "/opt/bin/dsbx /usr/local/bin/dust-install-trust-bundle";
+const ROOT_CONSUMED_DIRS = SANDBOX_ROOT_CONSUMED_DIRS.join(" ");
+const ROOT_INVOKED_HELPERS = SANDBOX_ROOT_INVOKED_HELPERS.join(" ");
 
 export function getLocalAccountPrivilegeHardeningCommand(): string {
   const installRootSafePathProfile = [
@@ -80,14 +122,14 @@ export function getLocalAccountPrivilegeHardeningCommand(): string {
     'if [ -e "$path" ]; then chmod u-s "$path"; fi;',
     "done",
   ].join(" ");
-  const hardenPrivilegedExecutableDirs = [
-    `install -d -o root -g root -m 755 ${PRIVILEGED_EXECUTABLE_DIRS}`,
-    `chown root:root ${PRIVILEGED_EXECUTABLE_DIRS}`,
-    `chmod 755 ${PRIVILEGED_EXECUTABLE_DIRS}`,
+  const hardenRootConsumedDirs = [
+    `/usr/bin/install -d -o root -g root -m 755 ${ROOT_CONSUMED_DIRS}`,
+    `/usr/bin/chown root:root ${ROOT_CONSUMED_DIRS}`,
+    `/usr/bin/chmod 755 ${ROOT_CONSUMED_DIRS}`,
   ].join(" && ");
   const hardenRootInvokedHelpers = [
     `for path in ${ROOT_INVOKED_HELPERS}; do`,
-    'if [ -e "$path" ]; then chown root:root "$path"; chmod 755 "$path"; fi;',
+    'if [ -e "$path" ]; then /usr/bin/chown root:root "$path"; /usr/bin/chmod 755 "$path"; fi;',
     "done",
   ].join(" ");
   const assertNoEmptyPasswordAccounts = [
@@ -126,10 +168,10 @@ export function getLocalAccountPrivilegeHardeningCommand(): string {
     'if [ -e "$path" ] && [ -u "$path" ]; then echo "local auth helper must not be setuid: $path" >&2; exit 1; fi;',
     "done",
   ].join(" ");
-  const assertPrivilegedExecutableDirsSafe = [
-    `for dir in ${PRIVILEGED_EXECUTABLE_DIRS}; do`,
+  const assertRootConsumedDirsSafe = [
+    `for dir in ${ROOT_CONSUMED_DIRS}; do`,
     'if [ "$(stat -c \'%U:%G\' "$dir")" != root:root ] || find "$dir" -maxdepth 0 -perm /022 | grep -q .; then',
-    'echo "privileged executable directory must be root-owned and not group/other writable: $dir" >&2;',
+    'echo "root-consumed directory must be root-owned and not group/other writable: $dir" >&2;',
     "exit 1;",
     "fi;",
     "done",
@@ -153,14 +195,14 @@ export function getLocalAccountPrivilegeHardeningCommand(): string {
     removePasswordlessSudoersRules,
     removeSudoBinary,
     hardenLocalAuthHelpers,
-    hardenPrivilegedExecutableDirs,
+    hardenRootConsumedDirs,
     hardenRootInvokedHelpers,
     assertNoEmptyPasswordAccounts,
     assertNoPrivilegedGroupMembers,
     assertNoPrivilegedPrimaryGroups,
     assertNoPasswordlessSudoers,
     assertLocalAuthHelpersNotSetuid,
-    assertPrivilegedExecutableDirsSafe,
+    assertRootConsumedDirsSafe,
     assertRootInvokedHelpersSafe,
     "if command -v sudo >/dev/null 2>&1; then echo 'sudo must not be installed in sandbox images' >&2; exit 1; fi",
   ].join(" && ");

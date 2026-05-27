@@ -1,5 +1,9 @@
 import config from "@app/lib/api/config";
-import { SANDBOX_ROOT_SAFE_PATH } from "@app/lib/api/sandbox/hardening";
+import {
+  SANDBOX_ROOT_CONSUMED_DIRS,
+  SANDBOX_ROOT_INVOKED_HELPERS,
+  SANDBOX_ROOT_SAFE_PATH,
+} from "@app/lib/api/sandbox/hardening";
 import {
   formatSandboxImageId,
   getRegisteredImages,
@@ -434,19 +438,14 @@ export function assertLocalAuthHelpersNotSetuid(output: string): void {
   }
 }
 
-export function assertPrivilegedDirsSafe(output: string): void {
-  for (const dir of [
-    "/opt/bin",
-    "/usr/local",
-    "/usr/local/sbin",
-    "/usr/local/bin",
-  ]) {
+export function assertRootConsumedDirsSafe(output: string): void {
+  for (const dir of SANDBOX_ROOT_CONSUMED_DIRS) {
     const line = output
       .split("\n")
       .find((candidate) => candidate.startsWith(`${dir} `));
     if (!line) {
       throw new Error(
-        `missing privileged directory audit for ${dir}:\n${output}`
+        `missing root-consumed directory audit for ${dir}:\n${output}`
       );
     }
 
@@ -457,17 +456,14 @@ export function assertPrivilegedDirsSafe(output: string): void {
 
     if (owner !== "root:root" || Number.isNaN(mode) || (mode & 0o022) !== 0) {
       throw new Error(
-        `privileged directory ${dir} is not root-owned and non-writable by group/other:\n${line}`
+        `root-consumed directory ${dir} is not root-owned and non-writable by group/other:\n${line}`
       );
     }
   }
 }
 
 export function assertRootInvokedHelpersSafe(output: string): void {
-  for (const path of [
-    "/opt/bin/dsbx",
-    "/usr/local/bin/dust-install-trust-bundle",
-  ]) {
+  for (const path of SANDBOX_ROOT_INVOKED_HELPERS) {
     const line = output
       .split("\n")
       .find((candidate) => candidate.startsWith(`${path} `));
@@ -544,12 +540,16 @@ for path in ${LOCAL_AUTH_HELPER_PATHS.map((path) => shellQuote(path)).join(
     stat -c 'LOCAL_AUTH_HELPER=%n %a %A %U:%G' "$path"
   fi
 done
-echo "--- privileged-dirs ---"
-for dir in /opt/bin /usr/local /usr/local/sbin /usr/local/bin; do
+echo "--- root-consumed-dirs ---"
+for dir in ${SANDBOX_ROOT_CONSUMED_DIRS.map((dir) => shellQuote(dir)).join(
+      " "
+    )}; do
   stat -c '%n %U:%G %a %A' "$dir"
 done
 echo "--- root-invoked-helpers ---"
-for path in /opt/bin/dsbx /usr/local/bin/dust-install-trust-bundle; do
+for path in ${SANDBOX_ROOT_INVOKED_HELPERS.map((path) => shellQuote(path)).join(
+      " "
+    )}; do
   if [ -e "$path" ]; then
     stat -c '%n %U:%G %a %A' "$path"
   fi
@@ -567,7 +567,7 @@ printf 'ROOT_EXEC_PATH=%s\n' "$PATH"
   assertNoPasswordlessSudoers(output);
   assertNoEmptyPasswordAccounts(output);
   assertLocalAuthHelpersNotSetuid(output);
-  assertPrivilegedDirsSafe(output);
+  assertRootConsumedDirsSafe(output);
   assertRootInvokedHelpersSafe(output);
   assertRootPathSafe(output);
 }
@@ -671,6 +671,77 @@ fi
       logger.warn(
         { err: normalizeError(error), providerId },
         "Failed to clean up root exec path hijack regression probe"
+      );
+    }
+  }
+}
+
+async function checkSystemdUnitSearchPathShadow(
+  provider: E2BSandboxProvider,
+  providerId: string
+): Promise<void> {
+  const marker = `systemd-unit-shadow-proof-${Date.now()}`;
+  const unitPath =
+    "/usr/local/lib/systemd/system/dbus-org.freedesktop.hostname1.service";
+  const proofDir = `/tmp/${marker}`;
+
+  try {
+    const plant = await runBashScript(
+      provider,
+      providerId,
+      `
+set -euo pipefail
+/usr/bin/mkdir -p ${shellQuote(proofDir)}
+/usr/bin/cat > ${shellQuote(unitPath)} <<'DUST_SYSTEMD_UNIT_EOF'
+[Unit]
+Description=Dust systemd lookup hardening proof
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c '/usr/bin/mkdir -p ${proofDir}; /usr/bin/id > ${proofDir}/id; /usr/bin/touch ${proofDir}/triggered; /usr/bin/chmod -R a+rX ${proofDir}'
+DUST_SYSTEMD_UNIT_EOF
+`,
+      { user: AGENT_PROXIED_USER }
+    );
+
+    const trigger = await runBashScript(
+      provider,
+      providerId,
+      `
+set -euo pipefail
+/usr/bin/hostnamectl status >/dev/null 2>&1 || true
+if [ -f ${shellQuote(`${proofDir}/triggered`)} ]; then
+  echo "CRITICAL: systemd executed agent-controlled unit from ${unitPath}"
+  /bin/cat ${shellQuote(`${proofDir}/id`)} || true
+  exit 1
+fi
+`,
+      { user: AGENT_PROXIED_USER }
+    );
+    assertCommandSucceeded("systemd unit search path shadow trigger", trigger);
+
+    if (plant.exitCode === 0) {
+      throw new Error(
+        `agent-proxied can create a systemd unit shadow at ${unitPath}`
+      );
+    }
+  } finally {
+    try {
+      await runBashScript(
+        provider,
+        providerId,
+        `
+/bin/rm -f ${shellQuote(unitPath)}
+/bin/rm -rf ${shellQuote(proofDir)}
+/usr/bin/systemctl daemon-reload >/dev/null 2>&1 || true
+/usr/bin/systemctl reset-failed dbus-org.freedesktop.hostname1.service systemd-hostnamed.service >/dev/null 2>&1 || true
+`,
+        { user: "root" }
+      );
+    } catch (error) {
+      logger.warn(
+        { err: normalizeError(error), providerId },
+        "Failed to clean up systemd unit search path regression probe"
       );
     }
   }
@@ -783,6 +854,7 @@ async function checkImage(image: SandboxImage): Promise<void> {
     await checkSystemAccountAudit(provider, providerId);
     await checkSshAndDnsHardening(provider, providerId);
     await checkRootExecPathHijack(provider, providerId);
+    await checkSystemdUnitSearchPathShadow(provider, providerId);
 
     logger.info(
       { imageId, providerId },

@@ -1,10 +1,13 @@
-import { SANDBOX_ROOT_SAFE_PATH } from "@app/lib/api/sandbox/hardening";
+import {
+  SANDBOX_ROOT_CONSUMED_DIRS,
+  SANDBOX_ROOT_SAFE_PATH,
+} from "@app/lib/api/sandbox/hardening";
 import {
   assertLocalAuthHelpersNotSetuid,
   assertNoEmptyPasswordAccounts,
   assertNoPasswordlessSudoers,
   assertNoPrivilegedGroupMembers,
-  assertPrivilegedDirsSafe,
+  assertRootConsumedDirsSafe,
   assertRootInvokedHelpersSafe,
   assertRootPathSafe,
   assertSudoAbsent,
@@ -90,22 +93,30 @@ describe("sandbox security check assertions", () => {
     ).toThrow("local auth helpers are still setuid");
   });
 
-  test("detects unsafe privileged directory ownership or modes", () => {
+  test("detects unsafe root-consumed directory ownership or modes", () => {
+    const safeOutput = SANDBOX_ROOT_CONSUMED_DIRS.map(
+      (dir) => `${dir} root:root 755 drwxr-xr-x`
+    ).join("\n");
+
+    expect(() => assertRootConsumedDirsSafe(safeOutput)).not.toThrow();
     expect(() =>
-      assertPrivilegedDirsSafe(
-        "/opt/bin root:root 755 drwxr-xr-x\n/usr/local root:root 755 drwxr-xr-x\n/usr/local/sbin root:root 755 drwxr-xr-x\n/usr/local/bin root:root 755 drwxr-xr-x"
+      assertRootConsumedDirsSafe(
+        safeOutput.replace(
+          "/usr/local/lib root:root 755",
+          "/usr/local/lib agent:agent 755"
+        )
       )
-    ).not.toThrow();
+    ).toThrow("root-consumed directory /usr/local/lib is not root-owned");
     expect(() =>
-      assertPrivilegedDirsSafe(
-        "/opt/bin agent:agent 755 drwxr-xr-x\n/usr/local root:root 755 drwxr-xr-x\n/usr/local/sbin root:root 755 drwxr-xr-x\n/usr/local/bin root:root 755 drwxr-xr-x"
+      assertRootConsumedDirsSafe(
+        safeOutput.replace(
+          "/usr/local/lib/systemd/system root:root 755",
+          "/usr/local/lib/systemd/system root:root 777"
+        )
       )
-    ).toThrow("privileged directory /opt/bin is not root-owned");
-    expect(() =>
-      assertPrivilegedDirsSafe(
-        "/opt/bin root:root 777 drwxrwxrwx\n/usr/local root:root 755 drwxr-xr-x\n/usr/local/sbin root:root 755 drwxr-xr-x\n/usr/local/bin root:root 755 drwxr-xr-x"
-      )
-    ).toThrow("privileged directory /opt/bin is not root-owned");
+    ).toThrow(
+      "root-consumed directory /usr/local/lib/systemd/system is not root-owned"
+    );
   });
 
   test("detects unsafe root-invoked helper ownership or modes", () => {

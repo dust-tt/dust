@@ -1,4 +1,7 @@
-import { SANDBOX_ROOT_SAFE_PATH } from "@app/lib/api/sandbox/hardening";
+import {
+  SANDBOX_ROOT_CONSUMED_DIRS,
+  SANDBOX_ROOT_SAFE_PATH,
+} from "@app/lib/api/sandbox/hardening";
 import { getSandboxImageFromRegistry } from "@app/lib/api/sandbox/image/registry";
 import {
   type Operation,
@@ -69,7 +72,7 @@ describe("sandbox image registry", () => {
   test("pins the current dust-base image tag", () => {
     expect(getDustBaseImage().imageId).toEqual({
       imageName: "dust-base",
-      tag: "0.8.29",
+      tag: "0.8.30",
     });
   });
 
@@ -135,8 +138,10 @@ describe("sandbox image registry", () => {
       expect(command).toContain("/usr/bin/passwd");
       expect(command).toContain("chmod u-s");
       expect(command).toContain(
-        "install -d -o root -g root -m 755 /opt/bin /usr/local /usr/local/sbin /usr/local/bin"
+        "install -d -o root -g root -m 755 /opt/bin /usr/local /usr/local/sbin /usr/local/bin /usr/local/lib"
       );
+      expect(command).toContain("/usr/local/lib/systemd/system");
+      expect(command).toContain("/run/systemd/system");
       expect(command).toContain(
         "for path in /opt/bin/dsbx /usr/local/bin/dust-install-trust-bundle"
       );
@@ -146,22 +151,25 @@ describe("sandbox image registry", () => {
         "passwordless unrestricted sudoers entries must not exist"
       );
       expect(command).toContain("local auth helper must not be setuid");
-      expect(command).toContain(
-        "privileged executable directory must be root-owned"
-      );
+      expect(command).toContain("root-consumed directory must be root-owned");
     }
     expect(firstHardeningIndex).toBeGreaterThanOrEqual(0);
     expect(agentProxiedIndex).toBeGreaterThan(firstHardeningIndex);
   });
 
-  test("keeps privileged executable directories root-owned", () => {
+  test("keeps root-consumed lookup directories root-owned", () => {
     const runCommands = getRunCommands(getDustBaseImageOperations());
+    const rootConsumedDirs = SANDBOX_ROOT_CONSUMED_DIRS.join(" ");
 
     expect(runCommands).toEqual(
       expect.arrayContaining([
-        "install -d -o root -g root -m 755 /opt/bin /usr/local /usr/local/sbin /usr/local/bin && chown root:root /opt/bin /usr/local /usr/local/sbin /usr/local/bin && chmod 755 /opt/bin /usr/local /usr/local/sbin /usr/local/bin",
+        expect.stringContaining(
+          `/usr/bin/install -d -o root -g root -m 755 ${rootConsumedDirs}`
+        ),
       ])
     );
+    expect(runCommands.join("\n")).toContain("/usr/local/lib/systemd/system");
+    expect(runCommands.join("\n")).toContain("/run/systemd/system");
   });
 
   test("disables and hardens sshd in the base image", () => {
