@@ -1,3 +1,4 @@
+import { SANDBOX_ROOT_SAFE_PATH } from "@app/lib/api/sandbox/hardening";
 import { getSandboxImageFromRegistry } from "@app/lib/api/sandbox/image/registry";
 import {
   type Operation,
@@ -68,7 +69,7 @@ describe("sandbox image registry", () => {
   test("pins the current dust-base image tag", () => {
     expect(getDustBaseImage().imageId).toEqual({
       imageName: "dust-base",
-      tag: "0.8.28",
+      tag: "0.8.29",
     });
   });
 
@@ -118,6 +119,8 @@ describe("sandbox image registry", () => {
     expect(hardeningCommands.length).toBeGreaterThanOrEqual(2);
     for (const command of hardeningCommands) {
       expect(command).toContain("passwd -l root");
+      expect(command).toContain("zz-dust-root-safe-path.sh");
+      expect(command).toContain(SANDBOX_ROOT_SAFE_PATH);
       expect(command).toContain("awk -F: '$2 == \"\" {print $1}'");
       expect(command).toContain('passwd -l "$account"');
       expect(command).toContain(
@@ -132,7 +135,10 @@ describe("sandbox image registry", () => {
       expect(command).toContain("/usr/bin/passwd");
       expect(command).toContain("chmod u-s");
       expect(command).toContain(
-        "install -d -o root -g root -m 755 /opt/bin /usr/local/bin"
+        "install -d -o root -g root -m 755 /opt/bin /usr/local /usr/local/sbin /usr/local/bin"
+      );
+      expect(command).toContain(
+        "for path in /opt/bin/dsbx /usr/local/bin/dust-install-trust-bundle"
       );
       expect(command).toContain("empty-password local accounts must not exist");
       expect(command).toContain("privileged primary group");
@@ -153,7 +159,7 @@ describe("sandbox image registry", () => {
 
     expect(runCommands).toEqual(
       expect.arrayContaining([
-        "install -d -o root -g root -m 755 /opt/bin /usr/local/bin && chown root:root /opt/bin /usr/local/bin && chmod 755 /opt/bin /usr/local/bin",
+        "install -d -o root -g root -m 755 /opt/bin /usr/local /usr/local/sbin /usr/local/bin && chown root:root /opt/bin /usr/local /usr/local/sbin /usr/local/bin && chmod 755 /opt/bin /usr/local /usr/local/sbin /usr/local/bin",
       ])
     );
   });
@@ -301,6 +307,9 @@ describe("sandbox image registry", () => {
         expect.stringContaining(
           "https://github.com/dust-tt/dust/releases/download/dsbx-v0.1.23/dsbx-linux-x86_64"
         ),
+        expect.stringContaining(
+          "chown root:root /opt/bin/dsbx && chmod 755 /opt/bin/dsbx"
+        ),
       ])
     );
   });
@@ -344,7 +353,7 @@ describe("sandbox image registry", () => {
           "cat /etc/dust/dust-trust.environment >> /etc/environment"
         ),
         "chmod 644 /etc/profile.d/dust-trust.sh",
-        "chmod 755 /usr/local/bin/dust-install-trust-bundle",
+        "chown root:root /usr/local/bin/dust-install-trust-bundle && chmod 755 /usr/local/bin/dust-install-trust-bundle",
       ])
     );
 

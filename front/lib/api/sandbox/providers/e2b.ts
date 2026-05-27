@@ -1,4 +1,7 @@
-import { getLocalAccountPrivilegeHardeningCommand } from "@app/lib/api/sandbox/hardening";
+import {
+  getLocalAccountPrivilegeHardeningCommand,
+  SANDBOX_ROOT_SAFE_PATH,
+} from "@app/lib/api/sandbox/hardening";
 import {
   formatSandboxImageId,
   type NetworkPolicy,
@@ -15,6 +18,7 @@ import {
   SandboxNotFoundError,
   traceSandboxOperation,
 } from "@app/lib/api/sandbox/provider";
+import { shellEscape } from "@app/lib/api/sandbox/shell";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -37,6 +41,17 @@ const REQUEST_TIMEOUT_MS = 30_000;
 const LOCAL_ACCOUNT_HARDENING_TIMEOUT_MS = 120_000;
 
 const ALL_TRAFFIC = "0.0.0.0/0";
+
+function getRootSafeSandboxCommand(command: string): string {
+  return [
+    `PATH=${shellEscape(SANDBOX_ROOT_SAFE_PATH)}`,
+    "HOME=/root",
+    "BASH_ENV=/dev/null",
+    "ENV=/dev/null",
+    "/bin/bash --noprofile --norc -c",
+    shellEscape(command),
+  ].join(" ");
+}
 
 function getLocalAccountHardeningError(result: ExecResult): Error {
   const output = [result.stderr, result.stdout]
@@ -203,7 +218,9 @@ export class E2BSandboxProvider implements SandboxProvider {
         let hardeningResult: ExecResult;
         try {
           const result = await sandbox.commands.run(
-            getLocalAccountPrivilegeHardeningCommand(),
+            getRootSafeSandboxCommand(
+              getLocalAccountPrivilegeHardeningCommand()
+            ),
             {
               timeoutMs: LOCAL_ACCOUNT_HARDENING_TIMEOUT_MS,
               user: "root",
@@ -384,10 +401,14 @@ export class E2BSandboxProvider implements SandboxProvider {
             user: execOpts?.user,
           };
           const stdin = execOpts?.stdin;
+          const commandToRun =
+            execOpts?.user === "root"
+              ? getRootSafeSandboxCommand(command)
+              : command;
           const result =
             stdin === undefined
-              ? await sandbox.commands.run(command, commandOpts)
-              : await runWithStdin(sandbox, command, commandOpts, stdin);
+              ? await sandbox.commands.run(commandToRun, commandOpts)
+              : await runWithStdin(sandbox, commandToRun, commandOpts, stdin);
 
           return new Ok({
             exitCode: result.exitCode,

@@ -1,9 +1,12 @@
+import { SANDBOX_ROOT_SAFE_PATH } from "@app/lib/api/sandbox/hardening";
 import {
   assertLocalAuthHelpersNotSetuid,
   assertNoEmptyPasswordAccounts,
   assertNoPasswordlessSudoers,
   assertNoPrivilegedGroupMembers,
   assertPrivilegedDirsSafe,
+  assertRootInvokedHelpersSafe,
+  assertRootPathSafe,
   assertSudoAbsent,
   buildBashCommand,
   containsUnrestrictedSudo,
@@ -90,18 +93,49 @@ describe("sandbox security check assertions", () => {
   test("detects unsafe privileged directory ownership or modes", () => {
     expect(() =>
       assertPrivilegedDirsSafe(
-        "/opt/bin root:root 755 drwxr-xr-x\n/usr/local/bin root:root 755 drwxr-xr-x"
+        "/opt/bin root:root 755 drwxr-xr-x\n/usr/local root:root 755 drwxr-xr-x\n/usr/local/sbin root:root 755 drwxr-xr-x\n/usr/local/bin root:root 755 drwxr-xr-x"
       )
     ).not.toThrow();
     expect(() =>
       assertPrivilegedDirsSafe(
-        "/opt/bin agent:agent 755 drwxr-xr-x\n/usr/local/bin root:root 755 drwxr-xr-x"
+        "/opt/bin agent:agent 755 drwxr-xr-x\n/usr/local root:root 755 drwxr-xr-x\n/usr/local/sbin root:root 755 drwxr-xr-x\n/usr/local/bin root:root 755 drwxr-xr-x"
       )
     ).toThrow("privileged directory /opt/bin is not root-owned");
     expect(() =>
       assertPrivilegedDirsSafe(
-        "/opt/bin root:root 777 drwxrwxrwx\n/usr/local/bin root:root 755 drwxr-xr-x"
+        "/opt/bin root:root 777 drwxrwxrwx\n/usr/local root:root 755 drwxr-xr-x\n/usr/local/sbin root:root 755 drwxr-xr-x\n/usr/local/bin root:root 755 drwxr-xr-x"
       )
     ).toThrow("privileged directory /opt/bin is not root-owned");
+  });
+
+  test("detects unsafe root-invoked helper ownership or modes", () => {
+    expect(() =>
+      assertRootInvokedHelpersSafe(
+        "/opt/bin/dsbx root:root 755 -rwxr-xr-x\n/usr/local/bin/dust-install-trust-bundle root:root 755 -rwxr-xr-x"
+      )
+    ).not.toThrow();
+    expect(() =>
+      assertRootInvokedHelpersSafe(
+        "/opt/bin/dsbx root:root 777 -rwxrwxrwx\n/usr/local/bin/dust-install-trust-bundle root:root 755 -rwxr-xr-x"
+      )
+    ).toThrow("root-invoked helper is not root-owned");
+    expect(() =>
+      assertRootInvokedHelpersSafe("/opt/bin/dsbx root:root 755 -rwxr-xr-x")
+    ).toThrow(
+      "missing root-invoked helper audit for /usr/local/bin/dust-install-trust-bundle"
+    );
+  });
+
+  test("detects root PATH entries that can resolve agent-writable binaries", () => {
+    expect(() =>
+      assertRootPathSafe(
+        `ROOT_EXEC_PATH=${SANDBOX_ROOT_SAFE_PATH}\nROOT_LOGIN_PATH=${SANDBOX_ROOT_SAFE_PATH}`
+      )
+    ).not.toThrow();
+    expect(() =>
+      assertRootPathSafe(
+        `ROOT_EXEC_PATH=${SANDBOX_ROOT_SAFE_PATH}\nROOT_LOGIN_PATH=/root/.local/bin:/opt/bin:/opt/venv/bin:/usr/bin`
+      )
+    ).toThrow("root PATH must only contain root-owned executable directories");
   });
 });

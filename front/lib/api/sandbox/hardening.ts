@@ -1,4 +1,30 @@
+import { shellEscape } from "@app/lib/api/sandbox/shell";
+
+export const SANDBOX_ROOT_SAFE_PATH = "/usr/sbin:/usr/bin:/sbin:/bin:/opt/bin";
+const ROOT_SAFE_PATH_PROFILE = "/etc/profile.d/zz-dust-root-safe-path.sh";
+const PRIVILEGED_EXECUTABLE_DIRS =
+  "/opt/bin /usr/local /usr/local/sbin /usr/local/bin";
+const ROOT_INVOKED_HELPERS =
+  "/opt/bin/dsbx /usr/local/bin/dust-install-trust-bundle";
+
 export function getLocalAccountPrivilegeHardeningCommand(): string {
+  const installRootSafePathProfile = [
+    "/usr/bin/mkdir -p /etc/profile.d",
+    [
+      "printf '%s\\n'",
+      shellEscape(
+        "# Managed by Dust. Root must not resolve agent-writable paths."
+      ),
+      shellEscape('if [ "$(/usr/bin/id -u)" = "0" ]; then'),
+      shellEscape(`  export PATH=${shellEscape(SANDBOX_ROOT_SAFE_PATH)}`),
+      shellEscape("  export HOME=/root"),
+      shellEscape("  export BASH_ENV=/dev/null"),
+      shellEscape("  export ENV=/dev/null"),
+      shellEscape("fi"),
+      `> ${shellEscape(ROOT_SAFE_PATH_PROFILE)}`,
+    ].join(" "),
+    `/usr/bin/chmod 644 ${shellEscape(ROOT_SAFE_PATH_PROFILE)}`,
+  ].join(" && ");
   const lockRootPassword = [
     "if getent passwd root >/dev/null 2>&1; then",
     "passwd -l root >/dev/null 2>&1 || usermod --lock root >/dev/null 2>&1 || true;",
@@ -55,10 +81,15 @@ export function getLocalAccountPrivilegeHardeningCommand(): string {
     "done",
   ].join(" ");
   const hardenPrivilegedExecutableDirs = [
-    "install -d -o root -g root -m 755 /opt/bin /usr/local/bin",
-    "chown root:root /opt/bin /usr/local/bin",
-    "chmod 755 /opt/bin /usr/local/bin",
+    `install -d -o root -g root -m 755 ${PRIVILEGED_EXECUTABLE_DIRS}`,
+    `chown root:root ${PRIVILEGED_EXECUTABLE_DIRS}`,
+    `chmod 755 ${PRIVILEGED_EXECUTABLE_DIRS}`,
   ].join(" && ");
+  const hardenRootInvokedHelpers = [
+    `for path in ${ROOT_INVOKED_HELPERS}; do`,
+    'if [ -e "$path" ]; then chown root:root "$path"; chmod 755 "$path"; fi;',
+    "done",
+  ].join(" ");
   const assertNoEmptyPasswordAccounts = [
     `if getent shadow | awk -F: '$2 == "" {print $1}' | grep -q .; then`,
     "echo 'empty-password local accounts must not exist' >&2;",
@@ -96,15 +127,25 @@ export function getLocalAccountPrivilegeHardeningCommand(): string {
     "done",
   ].join(" ");
   const assertPrivilegedExecutableDirsSafe = [
-    "for dir in /opt/bin /usr/local/bin; do",
+    `for dir in ${PRIVILEGED_EXECUTABLE_DIRS}; do`,
     'if [ "$(stat -c \'%U:%G\' "$dir")" != root:root ] || find "$dir" -maxdepth 0 -perm /022 | grep -q .; then',
     'echo "privileged executable directory must be root-owned and not group/other writable: $dir" >&2;',
     "exit 1;",
     "fi;",
     "done",
   ].join(" ");
+  const assertRootInvokedHelpersSafe = [
+    `for path in ${ROOT_INVOKED_HELPERS}; do`,
+    '[ -e "$path" ] || continue;',
+    'if [ "$(stat -c \'%U:%G\' "$path")" != root:root ] || find "$path" -maxdepth 0 -perm /022 | grep -q .; then',
+    'echo "root-invoked helper must be root-owned and not group/other writable: $path" >&2;',
+    "exit 1;",
+    "fi;",
+    "done",
+  ].join(" ");
 
   return [
+    installRootSafePathProfile,
     lockRootPassword,
     lockEmptyPasswordAccounts,
     lockProviderUser,
@@ -113,12 +154,14 @@ export function getLocalAccountPrivilegeHardeningCommand(): string {
     removeSudoBinary,
     hardenLocalAuthHelpers,
     hardenPrivilegedExecutableDirs,
+    hardenRootInvokedHelpers,
     assertNoEmptyPasswordAccounts,
     assertNoPrivilegedGroupMembers,
     assertNoPrivilegedPrimaryGroups,
     assertNoPasswordlessSudoers,
     assertLocalAuthHelpersNotSetuid,
     assertPrivilegedExecutableDirsSafe,
+    assertRootInvokedHelpersSafe,
     "if command -v sudo >/dev/null 2>&1; then echo 'sudo must not be installed in sandbox images' >&2; exit 1; fi",
   ].join(" && ");
 }

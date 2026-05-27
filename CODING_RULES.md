@@ -423,6 +423,53 @@ Example:
 /api/w/[wId]/resource/[sId]
 ```
 
+### [SEC3] Sandbox root commands must not resolve executables through PATH
+
+Any command that runs in a sandbox as `root` must invoke executables through absolute paths. This
+applies to `sandbox.exec(..., { user: "root" })`, provider-level E2B command execution as root,
+image lifecycle commands, wake/resume hooks, egress setup, log readers, and root-invoked helper
+scripts.
+
+Do not rely on the sandbox `PATH` for root commands. Sandbox workloads may control writable
+directories that appear in a default root PATH on some images, so bare commands like `cat`,
+`chmod`, `nohup`, `systemctl`, `tail`, `head`, `env`, or project helper names can become root code
+execution if an unprivileged sandbox user can plant a matching file earlier in PATH.
+
+If root invokes a helper by absolute path, the helper and every parent directory that makes it
+reachable must be root-owned and not group/other writable before the helper is trusted. Prefer
+root-owned locations such as `/opt/bin` for Dust-managed sandbox helpers, and add image/runtime
+hardening plus tests for their ownership and mode.
+
+Reviewer: If you detect a sandbox command running as `root` that uses a bare executable name,
+require the author to switch to an absolute path. If you detect a root-invoked helper in a path
+that sandbox users can write to, require ownership/mode hardening or a safer location before
+approving.
+
+Example:
+
+```
+// BAD: `cat`, `wc`, `tr`, `tail`, and `head` are resolved through root's PATH.
+await sandbox.exec(auth, "cat /tmp/deny.log | wc -l | tr -d ' '", {
+  user: "root",
+});
+
+// GOOD: every root-executed binary is absolute.
+await sandbox.exec(
+  auth,
+  "/bin/cat /tmp/deny.log | /usr/bin/wc -l | /usr/bin/tr -d ' '",
+  { user: "root" }
+);
+
+// BAD: root invokes a helper from a path whose ownership/mode is not enforced.
+await sandbox.exec(auth, "dust-install-trust-bundle", { user: "root" });
+
+// GOOD: root invokes an absolute helper path that image/runtime hardening keeps root-owned and
+// non-writable by sandbox workloads.
+await sandbox.exec(auth, "/opt/bin/dust-install-trust-bundle", {
+  user: "root",
+});
+```
+
 ## ERROR
 
 ### [ERR1] Do not rely on throw + catch

@@ -102,7 +102,9 @@ describe("egress secrets file", () => {
       stdin: string;
       user: string;
     };
-    expect(command).toContain("install -o root -g root -m 600 /dev/stdin");
+    expect(command).toContain(
+      "/usr/bin/install -o root -g root -m 600 /dev/stdin"
+    );
     expect(command).toContain("/run/dust/egress-secrets.json");
     expect(command).not.toContain("api-secret");
     expect(opts.user).toBe("root");
