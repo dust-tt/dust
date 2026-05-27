@@ -2,4 +2,4 @@
 // creation POST and run retrieval GET /:runId), the same way the Next legacy
 // route re-exports the canonical handler. Reached without a :spaceId in the
 // path — `withSpace` falls back to the workspace global space.
-export { default } from "../../../spaces/[spaceId]/apps/[aId]/runs";
+export { default } from "@front-api/routes/v1/w/[wId]/spaces/[spaceId]/apps/[aId]/runs";
