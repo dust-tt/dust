@@ -78,6 +78,7 @@ export const CUSTOM_RESOURCE_ALLOWED = [
   "ActionHandHeartIcon",
   "ActionHandThumbDownIcon",
   "ActionHandThumbUpIcon",
+  "ActionHashtagIcon",
   "ActionHeartIcon",
   "ActionHomeIcon",
   "ActionHospitalIcon",
