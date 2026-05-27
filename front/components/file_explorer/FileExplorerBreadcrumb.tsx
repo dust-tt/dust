@@ -51,7 +51,7 @@ function BreadcrumbDropZone({
         isDragOver
           ? cn(
               "rounded-xl",
-              "ring-2 ring-highlight-400 dark:ring-highlight-400-night"
+              "ring-2 ring-highlight-300 dark:ring-highlight-300-night"
             )
           : undefined
       }
