@@ -168,7 +168,6 @@ app.post(
     const conversation = conversationRes.value;
 
     const selectedSkillIds = extractUniqueSkillIds(content);
-
     if (selectedSkillIds.length > 0) {
       const skills = await SkillResource.fetchByIds(auth, selectedSkillIds);
 
