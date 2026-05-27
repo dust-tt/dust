@@ -107,19 +107,19 @@ ${modelConstants}
 
 // Cast needed because ModelConfigurationType.modelId is the union type
 export const CUSTOM_MODEL_CONFIGS = [
-${configsArray},
+${configsArray}
 ] as unknown as ModelConfigurationType[];
 
 export const CUSTOM_MODEL_IDS = [
-${idsArray},
+${idsArray}
 ] as const;
 
 export const CUSTOM_OPENAI_MODEL_IDS = [
-${openaiIdsArray},
+${openaiIdsArray}
 ] as const;
 
 export const CUSTOM_ANTHROPIC_MODEL_IDS = [
-${anthropicIdsArray},
+${anthropicIdsArray}
 ] as const;
 `;
 }
