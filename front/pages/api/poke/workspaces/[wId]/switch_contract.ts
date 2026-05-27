@@ -32,7 +32,10 @@ import {
   isProPlanPrefix,
   PRO_PLAN_SEAT_39_CODE,
 } from "@app/lib/plans/plan_codes";
-import { getStripeCustomer } from "@app/lib/plans/stripe";
+import {
+  getStripeCustomer,
+  scheduleSubscriptionCancellation,
+} from "@app/lib/plans/stripe";
 import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
@@ -172,14 +175,14 @@ async function handler(
   const body = validation.data;
 
   // Workspace must be Metronome-billed (current sub Metronome-only) or
-  // freshly Metronome-eligible (Metronome billing enabled + no Stripe sub).
+  // Metronome-eligible (Metronome billing enabled). Stripe-billed workspaces
+  // that have opted into Metronome billing land here too — their Stripe sub
+  // is scheduled to end at the swap time further down.
   const currentSubscription = auth.subscriptionResource();
   const isCurrentlyMetronomeOnlyBilled =
     currentSubscription?.isMetronomeOnlyBilled ?? false;
   const metronomeBillingEnabled = await isMetronomeBillingEnabled(auth);
-  const canStartFreshMetronomeContract =
-    metronomeBillingEnabled && !currentSubscription?.stripeSubscriptionId;
-  if (!isCurrentlyMetronomeOnlyBilled && !canStartFreshMetronomeContract) {
+  if (!isCurrentlyMetronomeOnlyBilled && !metronomeBillingEnabled) {
     const errorMessage =
       "switch_contract is only available for Metronome-billed workspaces. " +
       "Migrate the workspace to Metronome billing before invoking this flow.";
@@ -383,6 +386,33 @@ async function handler(
       status_code: 502,
       api_error: { type: "internal_server_error", message: errorMessage },
     });
+  }
+
+  // If the workspace is currently Stripe-billed (incl. shadow-Metronome),
+  // schedule the Stripe sub to cancel at the swap moment so the two rails
+  // don't double-bill.
+  const stripeSubscriptionIdToCancel =
+    currentSubscription?.stripeSubscriptionId ?? null;
+  if (stripeSubscriptionIdToCancel) {
+    try {
+      await scheduleSubscriptionCancellation({
+        stripeSubscriptionId: stripeSubscriptionIdToCancel,
+        cancelAt: alignedStart,
+      });
+    } catch (err) {
+      const errorMessage =
+        `Provisioned Metronome contract ${metronomeContractId} and pending ` +
+        `subscription, but failed to schedule cancellation of Stripe ` +
+        `subscription ${stripeSubscriptionIdToCancel}: ` +
+        `${err instanceof Error ? err.message : String(err)}. ` +
+        `URGENT: cancel the Stripe subscription manually at ${alignedStart.toISOString()} ` +
+        "to avoid double-billing.";
+      await pluginRun.recordError(errorMessage);
+      return apiError(req, res, {
+        status_code: 502,
+        api_error: { type: "internal_server_error", message: errorMessage },
+      });
+    }
   }
 
   // Ensure the workspace has a WorkOS organization for any paid tier.
