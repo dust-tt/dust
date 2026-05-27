@@ -387,6 +387,7 @@ export async function incrementalSync(
       await updateCompletedSyncTokenState({
         connectorId,
         driveId,
+        syncToken: nextPageToken,
         hadRelevantChange: false,
       });
       return undefined;
@@ -405,6 +406,7 @@ export async function incrementalSync(
       await updateCompletedSyncTokenState({
         connectorId,
         driveId,
+        syncToken: nextPageToken,
         hadRelevantChange: false,
       });
       return undefined;
@@ -445,10 +447,12 @@ async function upsertCompletedSyncToken({
 async function updateCompletedSyncTokenState({
   connectorId,
   driveId,
+  syncToken,
   hadRelevantChange,
 }: {
   connectorId: ModelId;
   driveId: string;
+  syncToken: string | undefined;
   hadRelevantChange: boolean;
 }) {
   const completedAt = new Date();
@@ -458,12 +462,13 @@ async function updateCompletedSyncTokenState({
     completedAt,
     hadRelevantChange,
   });
+  const syncTokenState = {
+    lastSyncAt: completedAt,
+    ...(lastRelevantChangeAt ? { lastRelevantChangeAt } : {}),
+  };
 
-  await GoogleDriveSyncTokenModel.update(
-    {
-      lastSyncAt: completedAt,
-      ...(lastRelevantChangeAt ? { lastRelevantChangeAt } : {}),
-    },
+  const [updatedCount] = await GoogleDriveSyncTokenModel.update(
+    syncTokenState,
     {
       where: {
         connectorId,
@@ -471,6 +476,21 @@ async function updateCompletedSyncTokenState({
       },
     }
   );
+  if (updatedCount > 0) {
+    return;
+  }
+  if (!syncToken) {
+    throw new Error(
+      `Cannot record completed Google Drive sync token state for drive ${driveId} without a sync token.`
+    );
+  }
+
+  await GoogleDriveSyncTokenModel.upsert({
+    connectorId,
+    driveId,
+    syncToken,
+    ...syncTokenState,
+  });
 }
 
 async function getLastRelevantChangeAtForCompletedSync({

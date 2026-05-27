@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
   getFoldersToSync: vi.fn(),
   getSyncPageToken: vi.fn(),
   heartbeat: vi.fn(),
+  isSharedDriveNotFoundError: vi.fn(),
   objectIsInFolderSelection: vi.fn(),
   redisGet: vi.fn(),
   redisSet: vi.fn(),
@@ -86,7 +87,7 @@ vi.mock(
       getAuthObject: mocks.getAuthObject,
       getCachedLabels: mocks.getCachedLabels,
       getDriveClient: mocks.getDriveClient,
-      isSharedDriveNotFoundError: vi.fn(() => false),
+      isSharedDriveNotFoundError: mocks.isSharedDriveNotFoundError,
     };
   }
 );
@@ -243,6 +244,8 @@ describe("google drive incremental sync", () => {
     });
     mocks.getFileParentsMemoized.mockReset();
     mocks.getFoldersToSync.mockResolvedValue(["root-folder"]);
+    mocks.getSyncPageToken.mockResolvedValue("page-token");
+    mocks.isSharedDriveNotFoundError.mockReturnValue(false);
     mocks.objectIsInFolderSelection.mockResolvedValue(true);
     mocks.redisGet.mockResolvedValue(null);
     mocks.redisSet.mockResolvedValue("OK");
@@ -898,5 +901,39 @@ describe("google drive incremental sync", () => {
     expect(syncToken?.lastRelevantChangeAt?.toISOString()).toBe(
       previousLastRelevantChangeAt.toISOString()
     );
+  });
+
+  it("creates cadence state for a completed permanent drive skip", async () => {
+    const suffix = randomUUID();
+    const connector = await makeConnector(suffix);
+    const beforeSyncMs = Date.now();
+
+    mocks.changeList.mockRejectedValue(new Error("shared drive not found"));
+    mocks.getSyncPageToken.mockResolvedValue("initial-token");
+    mocks.isSharedDriveNotFoundError.mockReturnValue(true);
+
+    const result = await incrementalSync(
+      connector.id,
+      "drive-1",
+      false,
+      Date.now(),
+      undefined
+    );
+
+    const syncToken = await GoogleDriveSyncTokenModel.findOne({
+      where: {
+        connectorId: connector.id,
+        driveId: "drive-1",
+      },
+    });
+
+    expect(result).toBeUndefined();
+    expect(syncToken?.syncToken).toBe("initial-token");
+    expect(syncToken?.lastSyncAt?.getTime()).toBeGreaterThanOrEqual(
+      beforeSyncMs
+    );
+    expect(
+      syncToken?.lastRelevantChangeAt?.getTime()
+    ).toBeGreaterThanOrEqual(beforeSyncMs);
   });
 });
