@@ -66,6 +66,7 @@ export { default as ActionGraduationCapIcon } from "./GraduationCap";
 export { default as ActionHandHeartIcon } from "./HandHeart";
 export { default as ActionHandThumbDownIcon } from "./HandThumbDown";
 export { default as ActionHandThumbUpIcon } from "./HandThumbUp";
+export { default as ActionHashtagIcon } from "./Hashtag";
 export { default as ActionHeartIcon } from "./Heart";
 export { default as ActionHomeIcon } from "./Home";
 export { default as ActionHospitalIcon } from "./Hospital";
