@@ -35,6 +35,17 @@ app.get(
   validate("query", SearchMembersQuerySchema),
   async (ctx): HandlerResult<SearchMembersResponseBody> => {
     const auth = ctx.get("auth");
+
+    if (!auth.isAdmin()) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "Only workspace admins can search members.",
+        },
+      });
+    }
+
     const query = ctx.req.valid("query");
 
     const emails = query.searchEmails?.split(",");

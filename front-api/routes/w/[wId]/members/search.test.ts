@@ -82,17 +82,12 @@ function searchUrl(wId: string, params: Record<string, string> = {}) {
 }
 
 describe("GET /api/w/:wId/members/search", () => {
-  it("allows users to search members", async () => {
-    const { workspace, user } = await setup("user");
+  it("returns 403 for non-admin users", async () => {
+    const { workspace } = await setup("user");
 
     const response = await honoApp.request(searchUrl(workspace.sId));
 
-    expect(response.status).toBe(200);
-    const data = await response.json();
-    expect(data.total).toBe(1);
-    expect(data.members).toHaveLength(1);
-    expect(data.members[0].id).toBe(user.id);
-    expect(data.members[0].workspace.role).toBe("user");
+    expect(response.status).toBe(403);
   });
 
   it("handles search by term", async () => {

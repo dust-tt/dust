@@ -29,6 +29,17 @@ app.get(
   validate("query", MembersLookupQuerySchema),
   async (ctx): HandlerResult<MembersLookupResponseBody> => {
     const auth = ctx.get("auth");
+
+    if (!auth.isAdmin()) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "Only workspace admins can look up members.",
+        },
+      });
+    }
+
     const { ids: rawIds } = ctx.req.valid("query");
     const ids = Array.isArray(rawIds) ? rawIds : [rawIds];
 
