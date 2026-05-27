@@ -452,7 +452,9 @@ function isRunModelTimeout(
   );
 }
 
-function toWorkflowErrorContent(error: WorkflowErrorInfo): GenericErrorContent {
+export function getWorkflowErrorContent(
+  error: WorkflowErrorInfo
+): GenericErrorContent {
   if (isRunModelTimeout(error)) {
     return {
       code: "multi_actions_error",
@@ -552,7 +554,7 @@ export async function notifyWorkflowError(
     created: Date.now(),
     configurationId: messageRow.agentMessage.agentConfigurationId || "",
     messageId: agentMessageId,
-    error: toWorkflowErrorContent(error),
+    error: getWorkflowErrorContent(error),
     // Workflow errors occur outside of LLM execution, so use existing runIds from DB
     runIds: messageRow.agentMessage.runIds ?? [],
   };
