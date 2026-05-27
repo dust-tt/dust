@@ -555,19 +555,9 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
       <div
         className={classNames(
           "relative w-full",
-          effectiveIsCompact && "flex justify-center"
+          effectiveIsCompact && "flex items-center gap-2"
         )}
       >
-        {effectiveIsCompact && showNavigationContainer && (
-          <div className="absolute right-0 top-1/2 z-10 -translate-y-1/2">
-            <div className={INPUT_BAR_COMPACT_NAV_ENTER_ANIMATION_CLASSES}>
-              <InputBarMessageNavigation
-                variant="compact"
-                {...messageNavigationProps}
-              />
-            </div>
-          </div>
-        )}
         <InputBar
           owner={context.owner}
           user={context.user}
@@ -587,6 +577,16 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
           onOverlayOpenChange={onOverlayOpenChange}
           onVoiceActiveChange={onVoiceActiveChange}
         />
+        {effectiveIsCompact && showNavigationContainer && (
+          <div className="shrink-0">
+            <div className={INPUT_BAR_COMPACT_NAV_ENTER_ANIMATION_CLASSES}>
+              <InputBarMessageNavigation
+                variant="compact"
+                {...messageNavigationProps}
+              />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
