@@ -1126,7 +1126,8 @@ export function getCustomModelDustGlobalAgentIndex(
   agentId: GLOBAL_AGENTS_SID
 ): number | null {
   return (
-    CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS.get(agentId)?.customModelIndex ?? null
+    CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS.get(agentId)?.customModelIndex ??
+    null
   );
 }
 

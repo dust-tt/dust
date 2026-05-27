@@ -20,7 +20,7 @@ export const DEFAULT_TOKEN_COUNT_ADJUSTMENT = 1.15;
 
 export function isSupportedModel(
   model: unknown,
-  checkProvider: boolean = true,
+  checkProvider: boolean = true
 ): model is SupportedModel {
   if (
     typeof model !== "object" ||
@@ -35,13 +35,13 @@ export function isSupportedModel(
     (m) =>
       m.modelId === model.modelId &&
       (!checkProvider ||
-        ("providerId" in model && m.providerId === model.providerId)),
+        ("providerId" in model && m.providerId === model.providerId))
   );
 }
 
 export function isSupportingResponseFormat(modelId: ModelIdType) {
   const model = SUPPORTED_MODEL_CONFIGS.find(
-    (config) => config.modelId === modelId,
+    (config) => config.modelId === modelId
   );
   return model?.supportsResponseFormat;
 }
@@ -217,7 +217,7 @@ const GLOBAL_AGENTS_SORT_ORDER: string[] = [
   GLOBAL_AGENTS_SID.DUST_SUNDAE_HIGH,
 ];
 const globalAgentIndexMap = new Map(
-  GLOBAL_AGENTS_SORT_ORDER.map((id, index) => [id, index]),
+  GLOBAL_AGENTS_SORT_ORDER.map((id, index) => [id, index])
 );
 
 // This function implements our general strategy to sort agents to users (input bar, agent list,

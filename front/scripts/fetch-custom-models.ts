@@ -67,7 +67,9 @@ async function fetchFromGCS(): Promise<CustomModelConfig[] | null> {
 }
 
 function generateTypeScript(models: CustomModelConfig[]): string {
-  const openaiModelIds = models.filter((model) => model.providerId === "openai");
+  const openaiModelIds = models.filter(
+    (model) => model.providerId === "openai"
+  );
   const anthropicModelIds = models.filter(
     (model) => model.providerId === "anthropic"
   );

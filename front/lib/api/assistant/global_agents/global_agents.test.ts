@@ -5,37 +5,32 @@ import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { describe, expect, it, vi } from "vitest";
 
-const CUSTOM_MODEL_ID = vi.hoisted(
-  () => "custom-model-for-global-agent-test"
-);
+const CUSTOM_MODEL_ID = vi.hoisted(() => "custom-model-for-global-agent-test");
 
-vi.mock(
-  "@app/types/assistant/models/custom_models.generated",
-  async () => {
-    const { GPT_5_5_MODEL_CONFIG } = await vi.importActual<
-      typeof import("@app/types/assistant/models/openai")
-    >("@app/types/assistant/models/openai");
+vi.mock("@app/types/assistant/models/custom_models.generated", async () => {
+  const { GPT_5_5_MODEL_CONFIG } = await vi.importActual<
+    typeof import("@app/types/assistant/models/openai")
+  >("@app/types/assistant/models/openai");
 
-    const customModelConfig = {
-      ...GPT_5_5_MODEL_CONFIG,
-      modelId: CUSTOM_MODEL_ID,
-      displayName: "Custom Model Test",
-      availableIfOneOf: {
-        featureFlag: "custom_model_feature" as const,
-      },
-      customAvailableIf: {
-        featureFlag: "custom_model_feature" as const,
-      },
-    };
+  const customModelConfig = {
+    ...GPT_5_5_MODEL_CONFIG,
+    modelId: CUSTOM_MODEL_ID,
+    displayName: "Custom Model Test",
+    availableIfOneOf: {
+      featureFlag: "custom_model_feature" as const,
+    },
+    customAvailableIf: {
+      featureFlag: "custom_model_feature" as const,
+    },
+  };
 
-    return {
-      CUSTOM_MODEL_CONFIGS: [customModelConfig],
-      CUSTOM_MODEL_IDS: [CUSTOM_MODEL_ID],
-      CUSTOM_OPENAI_MODEL_IDS: [CUSTOM_MODEL_ID],
-      CUSTOM_ANTHROPIC_MODEL_IDS: [],
-    };
-  }
-);
+  return {
+    CUSTOM_MODEL_CONFIGS: [customModelConfig],
+    CUSTOM_MODEL_IDS: [CUSTOM_MODEL_ID],
+    CUSTOM_OPENAI_MODEL_IDS: [CUSTOM_MODEL_ID],
+    CUSTOM_ANTHROPIC_MODEL_IDS: [],
+  };
+});
 
 async function createAuthenticatorWithFlags(flags: WhitelistableFeature[]) {
   const { authenticator } = await createResourceTest({ role: "admin" });

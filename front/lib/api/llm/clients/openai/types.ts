@@ -2,6 +2,7 @@ import type {
   LLMParameterOverwrites,
   LLMParameters,
 } from "@app/lib/api/llm/types/options";
+import { CUSTOM_OPENAI_MODEL_IDS } from "@app/types/assistant/models/custom_models.generated";
 import {
   GPT_3_5_TURBO_MODEL_ID,
   GPT_4_1_MINI_MODEL_ID,
@@ -22,7 +23,6 @@ import {
   O3_MODEL_ID,
   O4_MINI_MODEL_ID,
 } from "@app/types/assistant/models/openai";
-import { CUSTOM_OPENAI_MODEL_IDS } from "@app/types/assistant/models/custom_models.generated";
 import type {
   ModelIdType,
   ReasoningEffort,

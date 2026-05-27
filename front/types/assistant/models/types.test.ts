@@ -62,7 +62,7 @@ describe("ModelConfigurationSchema", () => {
         availableIfOneOf: {
           featureFlag: "unknown_feature",
         },
-      }),
+      })
     ).toThrow();
   });
 });

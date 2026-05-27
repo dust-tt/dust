@@ -16,12 +16,12 @@ import {
   _getPlanningAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/deep-dive";
 import {
+  _getCustomModelDustLikeGlobalAgent,
   _getDustAntGlobalAgent,
   _getDustAntHighGlobalAgent,
   _getDustAntHighOmittedGlobalAgent,
   _getDustAntMediumGlobalAgent,
   _getDustAntMediumOmittedGlobalAgent,
-  _getCustomModelDustLikeGlobalAgent,
   _getDustDeepseekGlobalAgent,
   _getDustEdgeGlobalAgent,
   _getDustGlmGlobalAgent,
@@ -1397,13 +1397,13 @@ export async function getGlobalAgents(
   ];
   if (!flags.includes("dust_internal_global_agents")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) => !isGlobalAgentId(sId) || !DUST_INTERNAL_AGENTS.includes(sId),
+      (sId) => !isGlobalAgentId(sId) || !DUST_INTERNAL_AGENTS.includes(sId)
     );
   }
 
   if (!flags.includes("custom_model_feature")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) => getCustomModelIndexForGlobalAgent(sId) === null,
+      (sId) => getCustomModelIndexForGlobalAgent(sId) === null
     );
   }
 
