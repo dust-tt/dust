@@ -89,6 +89,65 @@ describe("moveConversationToProject", () => {
     expect(isProjectConversation(updatedConversation)).toBe(true);
   });
 
+  it("returns conversation_agent_running when an agent loop is running", async () => {
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Test Agent",
+      description: "Test Agent Description",
+    });
+
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+    });
+
+    const projectSpace = await SpaceFactory.project(workspace);
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const user = auth.getNonNullableUser();
+    const userJson = user.toJSON();
+
+    const projectSpaceGroup = projectSpace.groups.find(
+      (g) => g.kind === "regular"
+    );
+    if (!projectSpaceGroup) {
+      throw new Error("Project space regular group not found");
+    }
+    const addRes = await projectSpaceGroup.dangerouslyAddMember(
+      internalAdminAuth,
+      {
+        user: userJson,
+      }
+    );
+    if (addRes.isErr()) {
+      throw new Error(
+        `Failed to add user to project space group: ${addRes.error.message}`
+      );
+    }
+
+    await auth.refresh();
+
+    const result = await moveConversationToProject(auth, {
+      conversation: { ...conversation, isRunningAgentLoop: true },
+      spaceId: projectSpace.sId,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).toBeInstanceOf(DustError);
+      expect(result.error.code).toBe("conversation_agent_running");
+      expect(result.error.message).toContain(
+        "Wait for the agent to finish before moving this conversation."
+      );
+    }
+
+    const updatedConversationResource = await ConversationResource.fetchById(
+      auth,
+      conversation.sId
+    );
+    expect(updatedConversationResource?.spaceId).toBeNull();
+  });
+
   it("returns unauthorized when user is not a member of the project", async () => {
     const agentConfig = await AgentConfigurationFactory.createTestAgent(auth);
     const conversation = await ConversationFactory.create(auth, {

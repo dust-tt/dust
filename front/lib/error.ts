@@ -62,6 +62,7 @@ export type DustErrorCode =
   | "no_whitelisted_model_found"
   | "generation_failed"
   | "invalid_conversation"
+  | "conversation_agent_running"
   // Subscription / billing errors
   | "subscription_already_exists"
   | "workspace_not_found"
