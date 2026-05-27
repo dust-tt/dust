@@ -6,15 +6,16 @@ import { useEffect, useState } from "react";
 // Set to null when there's nothing to promote.
 // =============================================================================
 const CURRENT_PROMO: PromoConfig | null = {
-  id: "dust-for-seo-marketing-webinar",
+  id: "may-product-update",
   image: "/static/landing/SEO_Marketing_Webinar_Banner.png",
-  link: "https://watch.getcontrast.io/register/dust-dust-agents-for-seo-teams?utm_source=website",
-  title: "Dust for SEO Marketing",
-  time: "May 26",
-  host: "Davis · SEO Lead @ Dust",
+  link: "https://watch.getcontrast.io/register/dust-working-sessions-hot-of-the-grill?utm_source=website",
+  badge: "Online Event",
+  title: "May Product Update",
+  time: "May 28",
+  host: "Elia Kemp · Solutions Engineer",
   linkLabel: "Register Now",
-  // Banner auto-hides after this date (May 26th 7:00 PM Paris / CEST).
-  expiresAt: new Date("2026-05-26T19:00:00+02:00"),
+  // Banner auto-hides after this date (May 28th 7:00 PM Paris / CEST).
+  expiresAt: new Date("2026-05-28T19:00:00+02:00"),
 };
 // =============================================================================
 
@@ -25,6 +26,8 @@ interface PromoConfig {
   image: string;
   /** Registration / event URL. */
   link: string;
+  /** Badge label shown above the title (e.g. "Webinar", "Online Event"). */
+  badge: string;
   title: string;
   /** Event time line, shown with a clock icon. */
   time: string;
@@ -58,7 +61,7 @@ export function PromoBanner() {
     return null;
   }
 
-  const { link, title, time, host, linkLabel, id } = CURRENT_PROMO;
+  const { link, badge, title, time, host, linkLabel, id } = CURRENT_PROMO;
 
   return (
     <div className="fixed bottom-4 right-4 z-40 max-w-[180px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg sm:max-w-[210px]">
@@ -79,7 +82,7 @@ export function PromoBanner() {
         className="block px-2.5 py-2 pr-7 sm:px-3 sm:py-2.5 sm:pr-3"
       >
         <div className="mb-1 inline-block rounded-full bg-blue-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-blue-700">
-          Webinar
+          {badge}
         </div>
         <div className="text-xs font-semibold text-slate-900">{title}</div>
         <div className="mt-1 space-y-0.5 text-[11px] text-slate-600">
