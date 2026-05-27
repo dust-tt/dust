@@ -9,8 +9,14 @@ import type { DataSourceSearchResponseType } from "@dust-tt/client";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { DataSourceSearchQuerySchema } from "@dust-tt/client";
 import { pokeApp } from "@front-api/middlewares/ctx";
-import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
+import {
+  apiError,
+  type HandlerResult,
+  reshapeQueryWithArrayFields,
+} from "@front-api/middlewares/utils";
 import { fromError } from "zod-validation-error";
+
+const ARRAYABLE_QUERY_KEYS = ["tags_in", "tags_not"] as const;
 
 // Mounted at /api/poke/workspaces/:wId/data_sources/:dsId/search.
 const app = pokeApp();
@@ -30,19 +36,9 @@ app.get("/", async (ctx): HandlerResult<DataSourceSearchResponseType> => {
     });
   }
 
-  // Allow tags_in / tags_not as either a single string or an array.
-  const rawQuery: Record<string, string | string[]> = {};
-  for (const [key, value] of Object.entries(ctx.req.query())) {
-    rawQuery[key] = value;
-  }
-  for (const key of ["tags_in", "tags_not"] as const) {
-    const all = ctx.req.queries(key);
-    if (all && all.length > 0) {
-      rawQuery[key] = all;
-    }
-  }
-
-  const r = DataSourceSearchQuerySchema.safeParse(rawQuery);
+  const r = DataSourceSearchQuerySchema.safeParse(
+    reshapeQueryWithArrayFields(ctx, ARRAYABLE_QUERY_KEYS)
+  );
   if (r.error) {
     return apiError(ctx, {
       status_code: 400,

@@ -4,10 +4,20 @@ import type { DataSourceSearchResponseType } from "@dust-tt/client";
 import { DataSourceSearchQuerySchema } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
-import { apiError } from "@front-api/middlewares/utils";
+import {
+  apiError,
+  reshapeQueryWithArrayFields,
+} from "@front-api/middlewares/utils";
 import { withDataSourceView } from "@front-api/middlewares/with_data_source_view";
 import { withSpace } from "@front-api/middlewares/with_space";
 import { fromError } from "zod-validation-error";
+
+const ARRAYABLE_QUERY_KEYS = [
+  "tags_in",
+  "tags_not",
+  "parents_in",
+  "parents_not",
+] as const;
 
 /**
  * @swagger
@@ -153,25 +163,9 @@ app.get(
     const auth = ctx.get("auth");
     const dataSourceView = ctx.get("dataSourceView");
 
-    // Allow tags_in / tags_not / parents_in / parents_not as either a single
-    // string or an array of strings.
-    const rawQuery: Record<string, string | string[]> = {};
-    for (const [key, value] of Object.entries(ctx.req.query())) {
-      rawQuery[key] = value;
-    }
-    for (const key of [
-      "tags_in",
-      "tags_not",
-      "parents_in",
-      "parents_not",
-    ] as const) {
-      const all = ctx.req.queries(key);
-      if (all && all.length > 0) {
-        rawQuery[key] = all;
-      }
-    }
-
-    const r = DataSourceSearchQuerySchema.safeParse(rawQuery);
+    const r = DataSourceSearchQuerySchema.safeParse(
+      reshapeQueryWithArrayFields(ctx, ARRAYABLE_QUERY_KEYS)
+    );
 
     if (r.error) {
       return apiError(ctx, {

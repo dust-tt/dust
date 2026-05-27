@@ -68,6 +68,31 @@ export function apiError(
 }
 
 /**
+ * Hono parses repeated query params (`?k=a&k=b`) as a single string under
+ * `ctx.req.query()` (last value wins) and as an array under
+ * `ctx.req.queries(k)`. Some public-API schemas accept either form for the
+ * same field (e.g. `tags_in`, `parents_in` on data source search), so the
+ * raw query needs to be reshaped into a `string | string[]` map before being
+ * fed to `safeParse`.
+ *
+ * Returns a shallow copy of `ctx.req.query()` with any listed
+ * `arrayableKeys` replaced by `ctx.req.queries(key)` when present.
+ */
+export function reshapeQueryWithArrayFields(
+  ctx: Context,
+  arrayableKeys: readonly string[]
+): Record<string, string | string[]> {
+  const reshaped: Record<string, string | string[]> = { ...ctx.req.query() };
+  for (const key of arrayableKeys) {
+    const values = ctx.req.queries(key);
+    if (values && values.length > 0) {
+      reshaped[key] = values;
+    }
+  }
+  return reshaped;
+}
+
+/**
  * Hono `onError` handler for unhandled exceptions thrown by middlewares or
  * route handlers. Mirrors the `catch` branch of `withLogging` in
  * `front/logger/withlogging.ts` so the Hono service produces the same
