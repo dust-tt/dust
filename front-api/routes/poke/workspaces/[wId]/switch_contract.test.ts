@@ -9,7 +9,10 @@ import {
   CREDIT_PRICED_BUSINESS_PLAN_CODE,
   PRO_PLAN_SEAT_29_CODE,
 } from "@app/lib/plans/plan_codes";
-import { getStripeCustomer } from "@app/lib/plans/stripe";
+import {
+  getStripeCustomer,
+  scheduleSubscriptionCancellation,
+} from "@app/lib/plans/stripe";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
@@ -59,6 +62,7 @@ vi.mock("@app/lib/plans/stripe", async () => {
   return {
     ...actual,
     getStripeCustomer: vi.fn(),
+    scheduleSubscriptionCancellation: vi.fn(),
   };
 });
 
@@ -488,19 +492,36 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — guards", () => {
     expect(data.error.message).toContain("does not match");
   });
 
-  it("rejects when the workspace is Stripe-billed", async () => {
+  it("schedules the Stripe subscription to cancel at the swap moment when the workspace is Stripe-billed", async () => {
+    const STRIPE_SUB_ID = "sub_stripe_xxx";
     const { workspace } = await createPrivateApiMockRequest({
       isSuperUser: true,
     });
     await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID, {
-      stripeSubscriptionId: "sub_stripe_xxx",
+      stripeSubscriptionId: STRIPE_SUB_ID,
     });
 
     const response = await postSwitchContract(workspace.sId, proBody());
 
-    expect(response.status).toBe(400);
-    const data = await response.json();
-    expect(data.error.message).toContain("Metronome-billed");
+    expect(response.status).toBe(200);
+    expect(scheduleSubscriptionCancellation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        stripeSubscriptionId: STRIPE_SUB_ID,
+        cancelAt: expect.any(Date),
+      })
+    );
+  });
+
+  it("does not call scheduleSubscriptionCancellation when the workspace has no Stripe subscription", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      isSuperUser: true,
+    });
+    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
+
+    const response = await postSwitchContract(workspace.sId, proBody());
+
+    expect(response.status).toBe(200);
+    expect(scheduleSubscriptionCancellation).not.toHaveBeenCalled();
   });
 });
 
