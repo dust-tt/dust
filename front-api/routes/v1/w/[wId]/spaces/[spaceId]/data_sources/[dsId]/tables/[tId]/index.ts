@@ -64,8 +64,6 @@ const ParamsSchema = z.object({
  *               $ref: '#/components/schemas/Table'
  *       404:
  *         description: The table was not found
- *       405:
- *         description: Method not supported
  *   delete:
  *     summary: Delete a table
  *     description: Delete a table in the data source identified by {dsId} in the workspace identified by {wId}.
@@ -103,8 +101,6 @@ const ParamsSchema = z.object({
  *         description: The table was deleted
  *       404:
  *         description: The table was not found
- *       405:
- *         description: Method not supported
  */
 const app = publicApiApp();
 

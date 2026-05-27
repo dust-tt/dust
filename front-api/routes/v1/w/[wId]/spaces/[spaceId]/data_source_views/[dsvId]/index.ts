@@ -45,8 +45,6 @@ import search from "./search";
  *               $ref: '#/components/schemas/DatasourceView'
  *       '404':
  *         description: Data source view not found
- *       '405':
- *         description: Method not allowed
  *   patch:
  *     tags:
  *       - DatasourceViews
@@ -107,8 +105,6 @@ import search from "./search";
  *         description: Unauthorized - Only admins or builders can administrate spaces
  *       '404':
  *         description: Data source view not found
- *       '405':
- *         description: Method not allowed
  *       '500':
  *         description: Internal server error - The data source view cannot be updated
  *   delete:
@@ -142,8 +138,6 @@ import search from "./search";
  *         description: Forbidden - Only admins or builders can delete data source views
  *       '404':
  *         description: Data source view not found
- *       '405':
- *         description: Method not allowed
  */
 // Mounted at /api/v1/w/:wId/spaces/:spaceId/data_source_views/:dsvId.
 const app = publicApiApp();

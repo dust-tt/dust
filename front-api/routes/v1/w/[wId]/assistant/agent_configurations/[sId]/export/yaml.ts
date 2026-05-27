@@ -46,8 +46,6 @@ import type { TypedResponse } from "hono";
  *         description: Unauthorized. Invalid or missing authentication token.
  *       404:
  *         description: Agent configuration not found.
- *       405:
- *         description: Method not supported. Only GET is expected.
  *       500:
  *         description: Internal Server Error.
  */

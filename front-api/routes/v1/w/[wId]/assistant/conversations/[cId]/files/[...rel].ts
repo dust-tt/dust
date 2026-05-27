@@ -68,8 +68,6 @@ const app = publicApiApp();
  *         description: Resolved path is outside the conversation scope.
  *       404:
  *         description: Conversation or file not found.
- *       405:
- *         description: Method not supported.
  */
 app.get("/:rel{.+}", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");

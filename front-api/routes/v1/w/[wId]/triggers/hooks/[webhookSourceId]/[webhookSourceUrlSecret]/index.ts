@@ -62,8 +62,6 @@ const WEBHOOK_REQUEST_MAX_SIZE_BYTES = 2 * 1024 * 1024;
  *         description: Invalid request
  *       404:
  *         description: Workspace or webhook source not found
- *       405:
- *         description: Method not allowed
  */
 
 // Mounted at /api/v1/w/:wId/triggers/hooks/:webhookSourceId/:webhookSourceUrlSecret.

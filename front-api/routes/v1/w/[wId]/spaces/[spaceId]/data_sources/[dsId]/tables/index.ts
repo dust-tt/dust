@@ -132,8 +132,6 @@ const ParamsSchema = z.object({
  *               $ref: '#/components/schemas/Table'
  *       400:
  *         description: Invalid request
- *       405:
- *         description: Method not supported
  */
 const app = publicApiApp();
 

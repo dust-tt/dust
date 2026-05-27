@@ -140,8 +140,6 @@ const PostRunRequestBodySchema = z.object({
  *         description: Unauthorized. Invalid or missing authentication token.
  *       404:
  *         description: Workspace or app not found.
- *       405:
- *         description: Method not supported.
  *       500:
  *         description: Internal Server Error.
  */

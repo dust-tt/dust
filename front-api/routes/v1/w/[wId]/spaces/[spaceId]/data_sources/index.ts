@@ -44,8 +44,6 @@ import dsId from "./[dsId]";
  *                     $ref: '#/components/schemas/Datasource'
  *       404:
  *         description: The workspace was not found
- *       405:
- *         description: Method not supported
  */
 const app = publicApiApp();
 
