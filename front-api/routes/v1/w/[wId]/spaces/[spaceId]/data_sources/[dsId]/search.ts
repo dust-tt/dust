@@ -149,8 +149,6 @@ const ParamsSchema = z.object({
  *                         description: Score of the document
  *       400:
  *         description: Invalid request error
- *       405:
- *         description: Method not supported error
  */
 const app = publicApiApp();
 

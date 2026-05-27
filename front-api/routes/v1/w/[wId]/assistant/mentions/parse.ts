@@ -55,8 +55,6 @@ const app = publicApiApp();
  *         description: Bad Request. Missing or invalid request body.
  *       401:
  *         description: Unauthorized. Invalid or missing authentication token.
- *       405:
- *         description: Method not supported. Only POST is expected.
  *       500:
  *         description: Internal Server Error.
  */

@@ -1,3 +1,5 @@
+import { performance } from "node:perf_hooks";
+
 import config from "@app/lib/api/config";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
@@ -9,6 +11,17 @@ export type { RedisClientType };
 import { createClient } from "redis";
 
 const clients = new Map<string, RedisClientType>();
+
+function redactRedisUri(redisUri: string): string {
+  try {
+    const u = new URL(redisUri);
+    const port = u.port ? `:${u.port}` : "";
+    const db = u.pathname && u.pathname !== "/" ? u.pathname : "";
+    return `${u.protocol}//${u.hostname}${port}${db}`;
+  } catch {
+    return "<unparseable>";
+  }
+}
 
 export interface RedisClientOptions {
   socket?: {
@@ -78,6 +91,10 @@ async function createRedisClient({
   redisUri: string;
   options?: RedisClientOptions;
 }): Promise<RedisClientType> {
+  const safeUri = redactRedisUri(redisUri);
+  const callStartedAt = performance.now();
+  const elapsed = () => Math.round(performance.now() - callStartedAt);
+
   const newClient: RedisClientType = createClient({
     url: redisUri,
     socket: options?.socket,
@@ -85,22 +102,39 @@ async function createRedisClient({
       options?.isolationPoolOptions ?? DEFAULT_ISOLATION_POOL_OPTIONS,
     disableClientInfo: true,
   });
-  newClient.on("error", (err) => logger.info({ err }, "Redis Client Error"));
-  newClient.on("ready", () => logger.info({}, "Redis Client Ready"));
+  newClient.on("error", (err) =>
+    logger.info({ err, origin, safeUri }, "Redis Client Error")
+  );
+  newClient.on("ready", () =>
+    logger.info({ origin, safeUri, elapsedMs: elapsed() }, "Redis Client Ready")
+  );
   newClient.on("connect", () => {
-    logger.info({ origin }, "Redis Client Connected");
+    logger.info(
+      { origin, safeUri, elapsedMs: elapsed() },
+      "Redis Client Connected"
+    );
     getStatsDClient().increment("redis.connection.count", 1, [
       `origin:${origin}`,
     ]);
   });
   newClient.on("end", () => {
-    logger.info({ origin }, "Redis Client End");
+    logger.info({ origin, safeUri }, "Redis Client End");
     getStatsDClient().decrement("redis.connection.count", 1, [
       `origin:${origin}`,
     ]);
   });
 
+  logger.info({ origin, safeUri }, "Redis client connect starting");
+  const awaitStartedAt = performance.now();
   await newClient.connect();
+  logger.info(
+    {
+      origin,
+      safeUri,
+      awaitMs: Math.round(performance.now() - awaitStartedAt),
+    },
+    "Redis client connect awaited"
+  );
   return newClient;
 }
 
@@ -113,6 +147,10 @@ async function getRedisClientByUri({
 }): Promise<RedisClientType> {
   const existingClient = clients.get(redisUri);
   if (existingClient) {
+    logger.debug(
+      { origin, safeUri: redactRedisUri(redisUri) },
+      "Redis client reused"
+    );
     return existingClient;
   }
 

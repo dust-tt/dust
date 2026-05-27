@@ -1,11 +1,11 @@
 import type {
-  ProjectTaskSourceInfo,
-  ProjectTaskSourceType,
+  PodTaskSourceInfo,
+  PodTaskSourceType,
 } from "@app/types/project_task";
 
 const CONVERSATION_PATH_RE = /\/w\/[^/]+\/conversation\/([^/?#]+)/;
 
-function inferSourceTypeFromHostname(hostname: string): ProjectTaskSourceType {
+function inferSourceTypeFromHostname(hostname: string): PodTaskSourceType {
   if (hostname.includes("slack.com")) {
     return "slack";
   }
@@ -37,7 +37,7 @@ export function inferProjectTaskSourceFromUrl({
 }: {
   url: string;
   title: string;
-}): ProjectTaskSourceInfo {
+}): PodTaskSourceInfo {
   try {
     const parsed = new URL(url);
     const conversationMatch = parsed.pathname.match(CONVERSATION_PATH_RE);

@@ -2,6 +2,7 @@ import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configurat
 import {
   ASSISTANT_EMAIL_SUBDOMAIN,
   emailAssistantMatcher,
+  getEmailBlacklistedAgentIds,
   triggerFromEmail,
   userAndWorkspaceFromEmail,
 } from "@app/lib/api/assistant/email/email_trigger";
@@ -230,6 +231,13 @@ app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
         return;
       }
 
+      const emailBlacklistedAgentIdsRes =
+        getEmailBlacklistedAgentIds(workspace);
+      if (emailBlacklistedAgentIdsRes.isErr()) {
+        await replyToError(email, emailBlacklistedAgentIdsRes.error);
+        return;
+      }
+
       const allAgentConfigurations = await getAgentConfigurationsForView({
         auth,
         agentsGetView: "list",
@@ -242,6 +250,7 @@ app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
       for (const targetEmail of targetEmails) {
         const matchResult = emailAssistantMatcher({
           allAgentConfigurations,
+          emailBlacklistedAgentIds: emailBlacklistedAgentIdsRes.value,
           targetEmail,
         });
         if (matchResult.isErr()) {

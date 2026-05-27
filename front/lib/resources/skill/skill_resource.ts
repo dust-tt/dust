@@ -2430,32 +2430,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       agentConfiguration: AgentConfigurationType;
       conversation: ConversationType;
     }
-  ): Promise<Result<{ alreadyEnabled: boolean }, Error>> {
+  ): Promise<{ wasAlreadyEnabled: boolean }> {
     const workspace = auth.getNonNullableWorkspace();
-
-    const refs = await SkillResource.getSkillReferencesForAgent(
-      auth,
-      agentConfiguration
-    );
-
-    const hasSkill = refs.some(
-      (ref) =>
-        (ref.globalSkillId !== null && ref.globalSkillId === this.globalSId) ||
-        (ref.customSkillId !== null && ref.customSkillId === this.id)
-    );
-
-    // Allow enabling default skills if the agent has the discover_skills skill.
-    const hasDiscoverSkills =
-      this.isDefault &&
-      refs.some((ref) => ref.globalSkillId === "discover_skills");
-
-    if (!hasSkill && !hasDiscoverSkills) {
-      return new Err(
-        new Error(
-          `Skill ${this.name} is not equipped by agent ${agentConfiguration.name}.`
-        )
-      );
-    }
 
     const conversationSkillBlob: ConversationSkillCreationAttributes = {
       ...this.skillReference,
@@ -2472,12 +2448,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
 
     if (existingConversationSkill) {
-      return new Ok({ alreadyEnabled: true });
+      return { wasAlreadyEnabled: true };
     }
 
     await ConversationSkillModel.create(conversationSkillBlob);
 
-    return new Ok({ alreadyEnabled: false });
+    return { wasAlreadyEnabled: false };
   }
 
   static async snapshotConversationSkillsForMessage(

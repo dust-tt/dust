@@ -5,3 +5,7 @@ import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 export const CUSTOM_MODEL_CONFIGS: ModelConfigurationType[] = [];
 
 export const CUSTOM_MODEL_IDS = [] as const;
+
+export const CUSTOM_OPENAI_MODEL_IDS = [] as const;
+
+export const CUSTOM_ANTHROPIC_MODEL_IDS = [] as const;

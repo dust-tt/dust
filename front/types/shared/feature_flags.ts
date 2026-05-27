@@ -8,11 +8,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Fallback to Vertex Anthropic for some Anthropic models",
     stage: "dust_only",
   },
-  use_vertex_for_anthropic_models: {
-    description:
-      "Route Claude model LLM calls through Vertex AI instead of the direct Anthropic API",
-    stage: "dust_only",
-  },
   use_vertex_for_supported_models: {
     description:
       "Route LLM calls through Vertex AI when supported instead of the direct provider's API",
@@ -28,7 +23,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   dust_internal_global_agents: {
     description:
-      "Access to internal global agents (dust-edge, dust-quick, dust-oai, dust-goog, dust-next and their variants)",
+      "Access to internal global agents (dust-edge, dust-quick, dust-oai, dust-goog, custom model agents and their variants)",
     stage: "dust_only",
   },
   notion_private_integration: {
@@ -41,10 +36,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   claude_4_5_opus_feature: {
     description: "Access to Claude 4.5 Opus model in the agent builder",
-    stage: "on_demand",
-  },
-  confluence_tool: {
-    description: "Confluence MCP tool",
     stage: "on_demand",
   },
   deepseek_feature: {
@@ -148,10 +139,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Access to noop model in the agent builder",
     stage: "dust_only",
   },
-  monday_tool: {
-    description: "Monday MCP tool",
-    stage: "rolling_out",
-  },
   gemini_3_1_pro_feature: {
     description: "Access to Gemini 3.1 Pro model in the agent builder",
     stage: "on_demand",
@@ -173,10 +160,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Slideshow MCP tool",
     stage: "dust_only",
   },
-  snowflake_tool: {
-    description: "Snowflake MCP tool for read-only SQL queries",
-    stage: "on_demand",
-  },
   slack_message_splitting: {
     description:
       "Enable splitting agent responses into multiple Slack messages for Slack (instead of truncation)",
@@ -184,10 +167,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   legacy_dust_apps: {
     description: "Access to legacy Dust Apps (editor and associated tools)",
-    stage: "on_demand",
-  },
-  luma_tool: {
-    description: "Luma MCP tool for event management and guest tracking",
     stage: "on_demand",
   },
   power_bi_mcp: {

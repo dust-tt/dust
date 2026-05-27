@@ -1,5 +1,8 @@
 import type { Authenticator } from "@app/lib/auth";
-import { listMetronomePerUserCapsForWorkspace } from "@app/lib/metronome/alerts/spend_limits";
+import {
+  getMetronomeDefaultUserCapAlert,
+  listMetronomePerUserCapsForWorkspace,
+} from "@app/lib/metronome/alerts/spend_limits";
 import { fetchPerUserAwuUsage } from "@app/lib/metronome/per_user_usage";
 import { buildSeatDataByUserId, type SeatData } from "@app/lib/metronome/seats";
 import type { BillingFrequency } from "@app/lib/metronome/types";
@@ -7,6 +10,7 @@ import {
   MembershipResource,
   type MembershipsPaginationParams,
 } from "@app/lib/resources/membership_resource";
+import { resolveEffectiveSpendLimitAwuCredits } from "@app/lib/spend_limits/effective";
 import type { MembershipSeatType } from "@app/types/memberships";
 import { z } from "zod";
 
@@ -16,8 +20,9 @@ export type MemberUsageType = {
   email: string | null;
   image: string | null;
   seatType: MembershipSeatType | null;
-  // Percentage of seat allocation consumed (0–100), null when seat balances are unavailable.
-  seatUsagePercent: number | null;
+  // Per-user AWU allocation granted by the seat (in credits). Null when the
+  // user has no seat or the seat carries no allocation.
+  memberUsageLimit: number | null;
   // Total user AWU consumption for the period, regardless of whether it
   // was covered by the seat allocation or overflowed into the workspace
   // pool.
@@ -110,28 +115,53 @@ async function fetchSeatDataForMembersTable({
   });
 }
 
-async function fetchPerUserSpendLimitsForMembersTable({
+/**
+ * Resolve the effective per-user spend limit for the members table:
+ *   - if the user has a per-user override, the override threshold wins
+ *   - otherwise, the workspace default (if any) applies
+ *   - otherwise, the user is uncapped (`null`)
+ *
+ * Returns a `{ perUser, default }` pair so the caller can compute the
+ * effective value with `perUser.get(userId) ?? default` for each member —
+ * including members that don't appear in the overrides map.
+ */
+async function fetchEffectivePerUserSpendLimits({
   metronomeCustomerId,
   workspaceId,
 }: {
   metronomeCustomerId: string | null;
   workspaceId: string;
-}): Promise<Map<string, number>> {
+}): Promise<{
+  perUserOverrides: Map<string, number>;
+  defaultAwuCredits: number | null;
+}> {
   if (!metronomeCustomerId) {
-    return new Map();
+    return { perUserOverrides: new Map(), defaultAwuCredits: null };
   }
-  const result = await listMetronomePerUserCapsForWorkspace({
-    metronomeCustomerId,
-    workspaceId,
-  });
-  if (result.isErr()) {
-    return new Map();
+
+  const [overridesResult, defaultResult] = await Promise.all([
+    listMetronomePerUserCapsForWorkspace({
+      metronomeCustomerId,
+      workspaceId,
+    }),
+    getMetronomeDefaultUserCapAlert({
+      metronomeCustomerId,
+      workspaceId,
+    }),
+  ]);
+
+  const perUserOverrides = new Map<string, number>();
+  if (overridesResult.isOk()) {
+    for (const [userId, entry] of overridesResult.value) {
+      perUserOverrides.set(userId, entry.alert.threshold);
+    }
   }
-  const thresholds = new Map<string, number>();
-  for (const [userId, entry] of result.value) {
-    thresholds.set(userId, entry.alert.threshold);
-  }
-  return thresholds;
+
+  const defaultAwuCredits = defaultResult.isOk()
+    ? (defaultResult.value?.alert.threshold ?? null)
+    : null;
+
+  return { perUserOverrides, defaultAwuCredits };
 }
 
 export async function getMembersUsage({
@@ -150,7 +180,7 @@ export async function getMembersUsage({
 
   const [
     membershipsResult,
-    perUserTotalCredits,
+    perUserTotalConsumedCredits,
     seatDataByUserId,
     perUserSpendLimits,
   ] = await Promise.all([
@@ -166,11 +196,12 @@ export async function getMembersUsage({
       metronomeCustomerId: metronomeCustomerId ?? null,
       metronomeContractId,
     }),
-    fetchPerUserSpendLimitsForMembersTable({
+    fetchEffectivePerUserSpendLimits({
       metronomeCustomerId: metronomeCustomerId ?? null,
       workspaceId: workspace.sId,
     }),
   ]);
+  const { perUserOverrides, defaultAwuCredits } = perUserSpendLimits;
 
   const { memberships, total, nextPageParams } = membershipsResult;
 
@@ -185,15 +216,9 @@ export async function getMembersUsage({
       return [];
     }
     const userId = m.user.sId;
-    const totalCredits = perUserTotalCredits.get(userId) ?? 0;
+    const totalConsumedCredits = perUserTotalConsumedCredits.get(userId) ?? 0;
     const seatData = seatDataByUserId.get(userId);
     const awuAllocation = seatData?.awuAllocation ?? 0;
-
-    let seatUsagePercent: number | null = null;
-    if (awuAllocation > 0) {
-      const seatConsumed = Math.min(totalCredits, awuAllocation);
-      seatUsagePercent = (seatConsumed / awuAllocation) * 100;
-    }
 
     const scheduled = scheduledByUserId.get(m.userId);
 
@@ -204,12 +229,15 @@ export async function getMembersUsage({
         email: m.user.email ?? null,
         image: m.user.imageUrl ?? null,
         seatType: m.seatType ?? null,
-        seatUsagePercent,
-        consumedAwuCredits: totalCredits,
+        memberUsageLimit: awuAllocation > 0 ? awuAllocation : null,
+        consumedAwuCredits: totalConsumedCredits,
         billingFrequency: seatData?.billingFrequency ?? null,
         scheduledSeatType: scheduled?.seatType ?? null,
         scheduledSeatChangeAt: scheduled?.startAt.toISOString() ?? null,
-        spendLimitAwuCredits: perUserSpendLimits.get(userId) ?? null,
+        spendLimitAwuCredits: resolveEffectiveSpendLimitAwuCredits({
+          overrideAwuCredits: perUserOverrides.get(userId) ?? null,
+          defaultAwuCredits,
+        }),
       },
     ];
   });

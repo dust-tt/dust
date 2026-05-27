@@ -7,23 +7,23 @@ import { startAgentForProjectTask } from "@app/lib/project_task/start_agent";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { APIErrorType, WithAPIErrorResponse } from "@app/types/error";
-import type { ProjectTaskType } from "@app/types/project_task";
+import type { PodTaskType } from "@app/types/project_task";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
-export interface PostStartProjectTaskResponseBody {
-  task: ProjectTaskType;
+export interface PostStartPodTaskResponseBody {
+  task: PodTaskType;
 }
 
-const PostStartProjectTaskBodySchema = z.object({
+const PostStartPodTaskBodySchema = z.object({
   customMessage: z.string().optional(),
   agentConfigurationId: z.string().optional(),
 });
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<PostStartProjectTaskResponseBody>>,
+  res: NextApiResponse<WithAPIErrorResponse<PostStartPodTaskResponseBody>>,
   auth: Authenticator,
   { space }: { space: SpaceResource }
 ): Promise<void> {
@@ -50,9 +50,7 @@ async function handler(
 
   switch (req.method) {
     case "POST": {
-      const parsedBody = PostStartProjectTaskBodySchema.safeParse(
-        req.body ?? {}
-      );
+      const parsedBody = PostStartPodTaskBodySchema.safeParse(req.body ?? {});
       if (!parsedBody.success) {
         return apiError(req, res, {
           status_code: 400,

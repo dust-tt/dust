@@ -1,0 +1,132 @@
+import { extractAndVerifyVizAccessTokenFromHeader } from "@app/lib/api/viz/access_tokens";
+import { FileResource } from "@app/lib/resources/file_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { isInteractiveContentType } from "@app/types/files";
+import type { PublicVizContentResponseBodyType } from "@dust-tt/client";
+import { unauthedApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+
+// Mounted at /api/v1/viz/content.
+const app = unauthedApp();
+
+/**
+ * @ignoreswagger
+ *
+ * Undocumented generic viz content endpoint that accepts access tokens for any content type.
+ * The access token determines what content to return and user permissions.
+ */
+app.get("/", async (ctx): HandlerResult<PublicVizContentResponseBodyType> => {
+  const tokenRes = extractAndVerifyVizAccessTokenFromHeader(
+    ctx.req.header("authorization")
+  );
+  if (tokenRes.isErr()) {
+    return apiError(ctx, {
+      status_code: 401,
+      api_error: {
+        type: "workspace_auth_error",
+        message: tokenRes.error,
+      },
+    });
+  }
+  const tokenPayload = tokenRes.value;
+  const { fileToken } = tokenPayload;
+
+  const result = await FileResource.fetchByShareTokenWithContent(fileToken);
+  if (!result) {
+    return apiError(ctx, {
+      status_code: 404,
+      api_error: {
+        type: "file_not_found",
+        message: "Content not found.",
+      },
+    });
+  }
+
+  const { file, shareScope } = result;
+
+  const workspace = await WorkspaceResource.fetchByModelId(file.workspaceId);
+  if (!workspace) {
+    return apiError(ctx, {
+      status_code: 404,
+      api_error: {
+        type: "file_not_found",
+        message: "File not found.",
+      },
+    });
+  }
+
+  // If current share scope differs from token scope, reject. It means share scope changed.
+  if (shareScope !== tokenPayload.shareScope) {
+    return apiError(ctx, {
+      status_code: 404,
+      api_error: {
+        type: "file_not_found",
+        message: "File not found.",
+      },
+    });
+  }
+
+  // Only allow conversation interactive files.
+  if (
+    !file.isInteractiveContent ||
+    !isInteractiveContentType(file.contentType)
+  ) {
+    return apiError(ctx, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: `Unsupported content type: ${file.contentType}`,
+      },
+    });
+  }
+
+  // Check if file is safe to display.
+  if (!file.isSafeToDisplay()) {
+    return apiError(ctx, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "File is not safe for public display.",
+      },
+    });
+  }
+
+  // If file is shared publicly, ensure workspace allows it.
+  if (
+    shareScope === "public" &&
+    !workspace.canShareInteractiveContentPublicly
+  ) {
+    return apiError(ctx, {
+      status_code: 404,
+      api_error: {
+        type: "file_not_found",
+        message: "File not found.",
+      },
+    });
+  }
+
+  // Frame must have a conversation context or a project context
+  const frameConversationId = file.useCaseMetadata?.conversationId;
+  const frameSpaceId = file.useCaseMetadata?.spaceId;
+  if (!frameConversationId && !frameSpaceId) {
+    return apiError(ctx, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Frame missing conversation context or project context.",
+      },
+    });
+  }
+
+  return ctx.json({
+    content: result.content,
+    contentType: file.contentType,
+    metadata: {
+      conversationId: result.file.useCaseMetadata?.conversationId,
+      spaceId: result.file.useCaseMetadata?.spaceId,
+    },
+  });
+});
+
+export default app;

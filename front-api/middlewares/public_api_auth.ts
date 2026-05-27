@@ -99,10 +99,6 @@ function applyClientIp(auth: Authenticator, headers: HeaderRecord): void {
  * sandbox token, OAuth bearer, or API key) and stashes the resolved
  * `Authenticator` on the Hono context under `auth`. Mirrors
  * `withPublicAPIAuthentication` in `front/lib/api/auth_wrappers.ts`.
- *
- * The `allowSystemKeyBypassBuilderCheck` option from the original wrapper is
- * not yet ported — it is only used by `run_dust_app`, and we'll add it as a
- * factory variant when we migrate that endpoint.
  */
 export const publicApiAuth = createMiddleware<PublicApiCtx>(
   async (ctx, next) => {

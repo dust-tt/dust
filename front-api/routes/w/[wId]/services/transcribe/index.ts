@@ -5,6 +5,7 @@ import logger from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WorkspaceAwareCtx } from "@front-api/middlewares/ctx";
+import { setSSEHeaders } from "@front-api/middlewares/streaming";
 import { apiError } from "@front-api/middlewares/utils";
 import type { HttpBindings } from "@hono/node-server";
 import formidable from "formidable";
@@ -65,11 +66,7 @@ app.post("/", async (ctx) => {
   const totalStartMs = performance.now();
   const wId = auth.getNonNullableWorkspace().sId;
 
-  ctx.header("Content-Type", "text/event-stream");
-  ctx.header("Cache-Control", "no-cache");
-  ctx.header("Connection", "keep-alive");
-  ctx.header("X-Accel-Buffering", "no");
-  ctx.header("Content-Encoding", "none");
+  setSSEHeaders(ctx);
 
   return stream(ctx, async (s) => {
     try {

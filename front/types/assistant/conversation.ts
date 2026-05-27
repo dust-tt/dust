@@ -136,7 +136,6 @@ export type UserMessageContext = {
   lastTriggerRunAt?: number | null;
   clientSideMCPServerIds?: string[];
   selectedMCPServerViewIds?: string[];
-  selectedSkillIds?: string[];
   apiKeyId?: number | null;
   authMethod?: string | null;
 };
@@ -645,6 +644,7 @@ export interface ConversationParticipantsType {
 export const CONVERSATION_ERROR_TYPES = [
   "conversation_not_found",
   "conversation_access_restricted",
+  "conversation_agent_running",
   "conversation_with_unavailable_agent",
   "user_already_participant",
   "message_not_found",

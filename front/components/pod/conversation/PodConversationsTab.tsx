@@ -3,7 +3,7 @@ import { getGroupConversationsByDate } from "@app/components/assistant/conversat
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { PodConversationListItem } from "@app/components/pod/conversation/PodConversationListItem";
-import { PodConversationsActions } from "@app/components/pod/conversation/PodConversationsActions";
+import { PodEmptyCallout } from "@app/components/pod/conversation/PodEmptyCallout";
 import { PodJoinCTA } from "@app/components/pod/conversation/PodJoinCTA";
 import { PodLoadingConversationListItem } from "@app/components/pod/conversation/PodLoadingConversationListItem";
 import { PodPinnedBanner } from "@app/components/pod/conversation/PodPinnedBanner";
@@ -165,7 +165,7 @@ export function PodConversationsTab({
         <div
           className={cn(
             "mx-auto flex w-full max-w-4xl flex-col gap-3 py-8",
-            isPodEmpty && "h-full justify-center py-8"
+            isPodEmpty && "h-full"
           )}
         >
           <div className="flex w-full flex-col gap-3">
@@ -214,13 +214,18 @@ export function PodConversationsTab({
 
           {/* Suggestions for empty rooms */}
           {isPodEmpty ? (
-            <PodConversationsActions
-              owner={owner}
-              podId={podInfo.sId}
-              isEditor={isEditor}
-              onOpenMembersPanel={onOpenMembersPanel}
-              onNavigateToTasks={onNavigateToTasks}
-            />
+            <div
+              className={cn(
+                "mx-auto flex w-full max-w-4xl flex-col gap-3 py-8 h-full justify-center"
+              )}
+            >
+              <PodEmptyCallout
+                owner={owner}
+                podId={podInfo.sId}
+                isEditor={isEditor}
+                onNavigateToTasks={onNavigateToTasks}
+              />
+            </div>
           ) : (
             /* Space conversations section */
             <div className="w-full">

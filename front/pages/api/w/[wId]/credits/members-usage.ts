@@ -44,7 +44,7 @@ async function handler(
       const body = await getMembersUsage({
         auth,
         paginationParams: paginationRes.data,
-        currentUrl: req.url ?? "/",
+        currentUrl: `https://${req.headers.host}${req.url ?? "/"}`,
       });
 
       return res.status(200).json(body);

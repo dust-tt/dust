@@ -1,6 +1,6 @@
 import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import type { ProjectTaskType } from "@app/types/project_task";
+import type { PodTaskType } from "@app/types/project_task";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 
@@ -9,7 +9,7 @@ import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 // JSON-serialize to ISO strings, so the response body overrides those fields
 // as `string`.
 type PokeProjectTaskWireType = Omit<
-  ProjectTaskType,
+  PodTaskType,
   "doneAt" | "agentSuggestionReviewedAt" | "createdAt" | "updatedAt"
 > & {
   doneAt: string | null;

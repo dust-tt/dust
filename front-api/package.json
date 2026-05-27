@@ -3,9 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "tsx ./server.ts",
-    "start": "NODE_ENV=production node dist/server.js",
-    "build": "tsx esbuild.server.ts",
+    "dev": "tsx esbuild.dev.ts",
+    "build": "tsx esbuild.production.ts",
     "test": "FRONT_DATABASE_URI=$TEST_FRONT_DATABASE_URI REDIS_URI=$TEST_REDIS_URI REDIS_CACHE_URI=$TEST_REDIS_URI vitest --run",
     "test:ci": "vitest --reporter=junit --watch=false --test-timeout=30000",
     "tsgo": "tsgo"

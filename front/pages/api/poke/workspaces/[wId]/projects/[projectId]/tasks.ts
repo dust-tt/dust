@@ -7,12 +7,12 @@ import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { ProjectTaskType } from "@app/types/project_task";
+import type { PodTaskType } from "@app/types/project_task";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export type PokeListProjectTasks = {
-  tasks: ProjectTaskType[];
+  tasks: PodTaskType[];
 };
 
 async function handler(

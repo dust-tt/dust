@@ -1,3 +1,4 @@
+// @migration-status: MIGRATED_TO_HONO
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import { handleSearch } from "@app/lib/api/search";
 import { initSSEResponse } from "@app/lib/api/sse";

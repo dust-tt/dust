@@ -4,6 +4,7 @@ import type {
   SeatPlanResponseBody,
   SeatTypeInfo,
 } from "@app/lib/api/credits/seat_plan";
+import { SEAT_PRODUCT_YEARLY_SUFFIX } from "@app/lib/metronome/constants";
 import { useUpdateMemberSeatType } from "@app/lib/swr/memberships";
 import type { SupportedCurrency } from "@app/types/currency";
 import { CURRENCY_SYMBOLS } from "@app/types/currency";
@@ -14,6 +15,11 @@ import {
 import type { WorkspaceType } from "@app/types/user";
 import {
   Avatar,
+  Button,
+  ButtonGroup,
+  Card,
+  Chip,
+  CoinsStacked03V2,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -23,9 +29,6 @@ import {
   SeatFreeIcon,
   SeatMaxIcon,
   SeatProIcon,
-  Tabs,
-  TabsList,
-  TabsTrigger,
 } from "@dust-tt/sparkle";
 import { useEffect, useRef, useState } from "react";
 
@@ -86,20 +89,32 @@ function formatPriceCents(
 }
 
 function formatAwuCredits(info: SeatTypeInfo): string {
-  const suffixByPeriod: Record<SeatTypeInfo["awuCreditsPeriod"], string> = {
-    weekly: "/week",
-    monthly: "/month",
-    quarterly: "/quarter",
-    annual: "/year",
-    lifetime: " lifetime",
+  const periodLabel: Record<SeatTypeInfo["awuCreditsPeriod"], string> = {
+    weekly: "per week",
+    monthly: "per month",
+    quarterly: "per quarter",
+    annual: "per year",
+    lifetime: "lifetime",
   };
-  return `${info.awuCredits.toLocaleString("en-US")} credits${
-    suffixByPeriod[info.awuCreditsPeriod]
+  return `${info.awuCredits.toLocaleString("en-US")} credits ${
+    periodLabel[info.awuCreditsPeriod]
   }`;
 }
 
 function formatFrequencyLabel(frequency: SeatBillingFrequency): string {
+  if (frequency === "annual") {
+    return "Yearly";
+  }
   return frequency.charAt(0).toUpperCase() + frequency.slice(1);
+}
+
+// The Metronome product names append SEAT_PRODUCT_YEARLY_SUFFIX to the
+// annual variant (e.g. "Pro Seat (Yearly)"). The billing cadence is conveyed
+// by the tab selector, so the suffix is redundant in the seat card label.
+function stripYearlySuffix(name: string): string {
+  return name.endsWith(SEAT_PRODUCT_YEARLY_SUFFIX)
+    ? name.slice(0, -SEAT_PRODUCT_YEARLY_SUFFIX.length)
+    : name;
 }
 
 interface SeatCardProps {
@@ -122,31 +137,29 @@ function SeatCard({
   const Icon = SEAT_TYPE_ICONS[seatType];
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={isDisabled}
-      className={[
-        "flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors",
-        isSelected
-          ? "border-blue-500 bg-blue-50 dark:bg-blue-950/20"
-          : "border-border dark:border-border-night hover:border-blue-300 dark:hover:border-blue-700",
-        isDisabled ? "cursor-not-allowed opacity-40" : "cursor-pointer",
-      ].join(" ")}
+    <Card
+      variant="primary"
+      size="sm"
+      selected={isSelected}
+      onClick={isDisabled ? undefined : onClick}
+      className="w-full flex-col items-stretch gap-2"
     >
-      {Icon && <Icon />}
-      <div className="flex flex-1 flex-col">
-        <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
-          {info.name}
-        </span>
-        {info.awuCredits > 0 && (
-          <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-            {formatAwuCredits(info)}
+      <div className="flex w-full items-center justify-between">
+        <div className="flex items-center gap-2">
+          {Icon && <Icon />}
+          <span className="text-base font-semibold text-foreground dark:text-foreground-night">
+            {stripYearlySuffix(info.name)}
           </span>
-        )}
+        </div>
+        {badge}
       </div>
-      {badge}
-    </button>
+      {info.awuCredits > 0 && (
+        <div className="flex items-center gap-2 text-muted-foreground dark:text-muted-foreground-night">
+          <CoinsStacked03V2 className="size-4" />
+          <span className="text-xs">{formatAwuCredits(info)}</span>
+        </div>
+      )}
+    </Card>
   );
 }
 
@@ -173,8 +186,13 @@ export function ChangeSeatModal({
   }
   const displayedMember = member ?? lastMemberRef.current;
 
+  // "free" seats are not user-selectable — a member can never be switched to
+  // a Free seat from this modal. Filter the API response so the option never
+  // appears in the picker even if it's returned by the seat plans endpoint.
   const seatTypes = sortSeatTypes(
-    Object.keys(seatPlans).filter(isMembershipSeatType)
+    Object.keys(seatPlans)
+      .filter(isMembershipSeatType)
+      .filter((s) => s !== "free")
   );
   const firstSeatType = seatTypes[0] ?? null;
   const displayedMemberId = displayedMember?.sId ?? null;
@@ -188,29 +206,6 @@ export function ChangeSeatModal({
     workspaceId: owner.sId,
   });
   const initializedMemberIdRef = useRef<string | null>(null);
-
-  // Reset transient state when the dialog closes and initialize the selected
-  // seat once per member open. Do not re-run on seat plan refetches.
-  useEffect(() => {
-    if (!isOpen || !displayedMemberId) {
-      initializedMemberIdRef.current = null;
-      setIsSaving(false);
-      return;
-    }
-
-    if (initializedMemberIdRef.current === displayedMemberId) {
-      return;
-    }
-
-    const nextSelectedSeat = displayedMemberSeatType ?? firstSeatType;
-    if (nextSelectedSeat === null) {
-      return;
-    }
-
-    setSelectedSeat(nextSelectedSeat);
-    initializedMemberIdRef.current = displayedMemberId;
-    setIsSaving(false);
-  }, [displayedMemberId, displayedMemberSeatType, firstSeatType, isOpen]);
 
   const seatTypesByFrequency: Record<
     SeatBillingFrequency,
@@ -233,7 +228,8 @@ export function ChangeSeatModal({
   );
 
   // Default the active tab to the frequency of the user's current seat — falls
-  // back to the first frequency that has any seats to show.
+  // back to the first frequency that has any seats to show. The effect below
+  // resets the selection when a different member opens the modal.
   const currentFrequency =
     currentSeatType && seatPlans[currentSeatType]
       ? seatPlans[currentSeatType].billingFrequency
@@ -241,6 +237,42 @@ export function ChangeSeatModal({
   const [activeFrequency, setActiveFrequency] = useState<SeatBillingFrequency>(
     currentFrequency ?? availableFrequencies[0] ?? "monthly"
   );
+
+  // Reset transient state when the dialog closes and initialize the selected
+  // seat + active tab once per member open. Do not re-run on seat plan
+  // refetches.
+  useEffect(() => {
+    if (!isOpen || !displayedMemberId) {
+      initializedMemberIdRef.current = null;
+      setIsSaving(false);
+      return;
+    }
+
+    if (initializedMemberIdRef.current === displayedMemberId) {
+      return;
+    }
+
+    const nextSelectedSeat = displayedMemberSeatType ?? firstSeatType;
+    if (nextSelectedSeat === null) {
+      return;
+    }
+
+    setSelectedSeat(nextSelectedSeat);
+    if (currentFrequency) {
+      setActiveFrequency(currentFrequency);
+    } else if (availableFrequencies[0]) {
+      setActiveFrequency(availableFrequencies[0]);
+    }
+    initializedMemberIdRef.current = displayedMemberId;
+    setIsSaving(false);
+  }, [
+    availableFrequencies,
+    currentFrequency,
+    displayedMemberId,
+    displayedMemberSeatType,
+    firstSeatType,
+    isOpen,
+  ]);
 
   function getBadge(
     seatType: MembershipSeatType,
@@ -254,7 +286,7 @@ export function ChangeSeatModal({
       );
     }
     return (
-      <span className="text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
+      <span className="text-xs text-foreground dark:text-foreground-night">
         {formatPriceCents(
           info.priceCents,
           info.currency,
@@ -263,6 +295,36 @@ export function ChangeSeatModal({
       </span>
     );
   }
+
+  // Compute the yearly discount as a percentage by comparing the yearly price
+  // to monthly × 12 for the cheapest tier present in both frequencies. Falls
+  // back to no chip when the data doesn't allow a meaningful comparison.
+  function computeYearlyDiscountPercent(): number | null {
+    const yearlyDiscounts: number[] = [];
+    for (const yearlyKey of Object.keys(seatPlans)) {
+      if (!yearlyKey.endsWith("_yearly")) {
+        continue;
+      }
+      const monthlyKey = yearlyKey.slice(0, -"_yearly".length);
+      const yearly = seatPlans[yearlyKey as MembershipSeatType];
+      const monthly = seatPlans[monthlyKey as MembershipSeatType];
+      if (!yearly || !monthly || monthly.priceCents <= 0) {
+        continue;
+      }
+      const expectedYearly = monthly.priceCents * 12;
+      if (yearly.priceCents >= expectedYearly) {
+        continue;
+      }
+      yearlyDiscounts.push(1 - yearly.priceCents / expectedYearly);
+    }
+    if (yearlyDiscounts.length === 0) {
+      return null;
+    }
+    // Use the max discount surfaced — matches "best savings" framing.
+    const max = Math.max(...yearlyDiscounts);
+    return Math.round(max * 100);
+  }
+  const yearlyDiscountPercent = computeYearlyDiscountPercent();
 
   // Member has a scheduled seat change and is re-selecting their current seat to cancel it.
   const isCancellingScheduledChange =
@@ -293,46 +355,71 @@ export function ChangeSeatModal({
     }
   }
 
-  // Max → Pro is deferred (downgrade waits for next billing period).
-  const isDeferredChange = currentSeatType === "max" && selectedSeat === "pro";
+  // Mirrors the backend `classifySeatTransition` rule
+  // (lib/metronome/seat_types.ts): a transition is deferred when the target
+  // seat has strictly lower AWU allocation than the current one — the user
+  // keeps the richer access through the period they already paid for.
+  // Identical seats are never deferred (they're a no-op).
+  const currentAwuCredits = currentSeatType
+    ? (seatPlans[currentSeatType]?.awuCredits ?? 0)
+    : 0;
+  const selectedAwuCredits = selectedSeat
+    ? (seatPlans[selectedSeat]?.awuCredits ?? 0)
+    : 0;
+  const isDeferredChange =
+    !!selectedSeat &&
+    selectedSeat !== currentSeatType &&
+    selectedAwuCredits < currentAwuCredits;
+
+  const displayedFirstName =
+    displayedMember?.name?.trim().split(/\s+/)[0] ?? null;
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent size="md">
         <DialogHeader>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col gap-2">
             <Avatar
               visual={displayedMember?.image ?? undefined}
               name={displayedMember?.name}
               size="md"
               isRounded
             />
-            <div>
+            <div className="flex flex-col gap-1">
               <DialogTitle>
-                Change seat type for {displayedMember?.name}
+                {displayedFirstName
+                  ? `Change seat for ${displayedFirstName}`
+                  : "Change seat"}
               </DialogTitle>
               <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                They will be able to consume this amount from the Workspace
-                Credits Pool after reaching their plan usage limit.
+                Choose a new plan to continue
               </p>
             </div>
           </div>
         </DialogHeader>
         <DialogContainer>
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-3">
             {availableFrequencies.length > 1 && (
-              <Tabs value={activeFrequency} className="mb-1">
-                <TabsList border={false}>
+              <div className="mb-1 flex items-center gap-2 self-start">
+                <ButtonGroup>
                   {availableFrequencies.map((f) => (
-                    <TabsTrigger
+                    <Button
                       key={f}
-                      value={f}
+                      size="sm"
+                      variant={activeFrequency === f ? "primary" : "outline"}
                       label={formatFrequencyLabel(f)}
                       onClick={() => setActiveFrequency(f)}
                     />
                   ))}
-                </TabsList>
-              </Tabs>
+                </ButtonGroup>
+                {yearlyDiscountPercent !== null && (
+                  <Chip
+                    size="xs"
+                    color="green"
+                    label={`-${yearlyDiscountPercent}%`}
+                  />
+                )}
+              </div>
             )}
 
             {seatTypesByFrequency[activeFrequency].map((seatType) => {

@@ -1,3 +1,4 @@
+// @migration-status: MIGRATED_TO_HONO
 /* eslint-disable dust/enforce-client-types-in-public-api */
 
 import {

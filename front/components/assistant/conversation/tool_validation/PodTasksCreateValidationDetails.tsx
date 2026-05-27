@@ -2,8 +2,8 @@ import { usePodLabel } from "@app/components/assistant/conversation/tool_validat
 import { inferProjectTaskSourceFromUrl } from "@app/lib/api/actions/servers/pod_tasks/source_utils";
 import type { PodTasksCreateTasksInput } from "@app/lib/api/actions/servers/pod_tasks/types";
 import { useMemberDetails } from "@app/lib/swr/assistants";
-import type { ProjectTaskSourceType } from "@app/types/project_task";
-import { PROJECT_TASK_NO_ASSIGNEE_LABEL } from "@app/types/project_task";
+import type { PodTaskSourceType } from "@app/types/project_task";
+import { POD_TASK_NO_ASSIGNEE_LABEL } from "@app/types/project_task";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
   BookOpenIcon,
@@ -23,7 +23,7 @@ import type { ComponentType } from "react";
 import { useMemo } from "react";
 
 const SOURCE_ICON_BY_TYPE: Record<
-  ProjectTaskSourceType,
+  PodTaskSourceType,
   ComponentType<{ className?: string }>
 > = {
   project_conversation: ChatBubbleLeftRightIcon,
@@ -55,7 +55,7 @@ function formatAssigneeLabel({
   isMembersLoading: boolean;
 }): string {
   if (userId === null || userId === undefined) {
-    return PROJECT_TASK_NO_ASSIGNEE_LABEL;
+    return POD_TASK_NO_ASSIGNEE_LABEL;
   }
   if (userId === currentUserSId) {
     return "You";

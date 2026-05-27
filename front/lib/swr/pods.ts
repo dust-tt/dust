@@ -1,13 +1,13 @@
 import {
-  buildProjectTasksListSwrKey,
-  isProjectTasksListSwrKey,
+  buildPodTasksListSwrKey,
+  isPodTasksListSwrKey,
   type TaskOwnerFilter,
 } from "@app/components/assistant/conversation/space/conversations/project_tasks/projectTasksListScope";
 import { usePodConversationsSummary } from "@app/hooks/conversations";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
-import { flattenProjectTasksWithStableAssigneeOrder } from "@app/lib/project_task/display_order";
+import { flattenPodTasksWithStableAssigneeOrder } from "@app/lib/project_task/display_order";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import {
   emptyArray,
@@ -16,28 +16,27 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { PostSeedInitialPodTasksResponseBody } from "@app/pages/api/w/[wId]/pods/[podId]/tasks/seed";
-import type { GetWorkspaceProjectTaskResponseBody } from "@app/pages/api/w/[wId]/project_tasks/[taskSId]/index";
+import type { GetWorkspacePodTaskResponseBody } from "@app/pages/api/w/[wId]/project_tasks/[taskSId]/index";
 import type {
   GCSMountEntry,
   GetSpaceFilesResponseBody,
 } from "@app/pages/api/w/[wId]/spaces/[spaceId]/files";
 import type {
   GetProjectContextResponseBody,
-  PostProjectContextContentNodeResponseBody,
+  PostProjectContextContentNodeResponseBody as PostPodContextContentNodeResponseBody,
 } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_context";
-import type { PatchProjectTaskResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_tasks/[taskId]/index";
-import type { PostStartProjectTaskResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_tasks/[taskId]/start";
-import type { BulkActionsResponse } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_tasks/bulk-actions";
+import type { PatchPodTaskResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_tasks/[taskId]/index";
+import type { PostStartPodTaskResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_tasks/[taskId]/start";
 import type {
-  GetProjectTasksResponseBody,
-  PostProjectTaskResponseBody,
+  GetPodTasksResponseBody,
+  PostPodTaskResponseBody,
 } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_tasks/index";
 import type { CheckNameResponseBody } from "@app/pages/api/w/[wId]/spaces/check-name";
 import type { ContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
 import type {
-  ProjectTaskAssigneeType,
-  ProjectTaskStatus,
-  ProjectTaskType,
+  PodTaskAssigneeType,
+  PodTaskStatus,
+  PodTaskType,
 } from "@app/types/project_task";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -58,7 +57,7 @@ export function usePodContextAttachments({
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
-  const projectContextFetcher: Fetcher<GetProjectContextResponseBody> = fetcher;
+  const podContextFetcher: Fetcher<GetProjectContextResponseBody> = fetcher;
 
   const key = useMemo(() => {
     if (disabled) {
@@ -73,7 +72,7 @@ export function usePodContextAttachments({
   }, [disabled, owner.sId, podId, query]);
 
   const { data, error, mutate, mutateRegardlessOfQueryParams } =
-    useSWRWithDefaults(key, projectContextFetcher);
+    useSWRWithDefaults(key, podContextFetcher);
 
   const refreshPodContextAttachments = useCallback(async () => {
     // Do not pass `undefined` as data — it clears the cache and causes UI flicker.
@@ -99,12 +98,12 @@ export function usePodFiles({
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
-  const projectFilesFetcher: Fetcher<GetSpaceFilesResponseBody> = fetcher;
+  const podFilesFetcher: Fetcher<GetSpaceFilesResponseBody> = fetcher;
 
   const { data, error, mutate, mutateRegardlessOfQueryParams } =
     useSWRWithDefaults(
       disabled || !podId ? null : `/api/w/${owner.sId}/spaces/${podId}/files`,
-      projectFilesFetcher,
+      podFilesFetcher,
       { keepPreviousData: true }
     );
 
@@ -122,8 +121,8 @@ export function usePodFiles({
   };
 }
 
-export type ProjectContextContentNodeFragment =
-  PostProjectContextContentNodeResponseBody["contentFragments"][number];
+export type PodContextContentNodeFragment =
+  PostPodContextContentNodeResponseBody["contentFragments"][number];
 
 export function useAddPodContextContentNodes({
   owner,
@@ -136,7 +135,7 @@ export function useAddPodContextContentNodes({
 
   return async (
     items: ContentFragmentInputWithContentNode[]
-  ): Promise<Result<PostProjectContextContentNodeResponseBody, Error>> => {
+  ): Promise<Result<PostPodContextContentNodeResponseBody, Error>> => {
     if (items.length === 0) {
       return new Ok({ contentFragments: [], errors: [] });
     }
@@ -160,7 +159,7 @@ export function useAddPodContextContentNodes({
         return new Err(new Error(errorData.message));
       }
 
-      const responseData: PostProjectContextContentNodeResponseBody =
+      const responseData: PostPodContextContentNodeResponseBody =
         await res.json();
       const addedCount = responseData.contentFragments.length;
       const errorCount = responseData.errors.length;
@@ -402,7 +401,7 @@ export function useCreatePodFolder({
 
 export function useDeletePodFile({
   owner,
-  podId: podId,
+  podId,
 }: {
   owner: LightWorkspaceType;
   podId: string;
@@ -489,25 +488,25 @@ export function useCheckPodName({
   };
 }
 
-export function useProjectTasks({
+export function usePodTasks({
   owner,
-  spaceId,
+  podId,
   disabled,
   taskOwnerFilter,
 }: {
   owner: LightWorkspaceType;
-  spaceId: string;
+  podId: string;
   disabled?: boolean;
   taskOwnerFilter: TaskOwnerFilter;
 }) {
   const { fetcher } = useFetcher();
-  const tasksFetcher: Fetcher<GetProjectTasksResponseBody> = fetcher;
+  const tasksFetcher: Fetcher<GetPodTasksResponseBody> = fetcher;
   const tasksUrl = useMemo(
     () =>
       disabled
         ? null
-        : buildProjectTasksListSwrKey(owner.sId, spaceId, taskOwnerFilter),
-    [disabled, owner.sId, spaceId, taskOwnerFilter]
+        : buildPodTasksListSwrKey(owner.sId, podId, taskOwnerFilter),
+    [disabled, owner.sId, podId, taskOwnerFilter]
   );
 
   const { data, error, mutate } = useSWRWithDefaults(
@@ -518,19 +517,19 @@ export function useProjectTasks({
   const stableTaskOrderByAssigneeKeyRef = useRef<Map<string, string[]>>(
     new Map()
   );
-  const stableOrderScopeKeyRef = useRef(`${owner.sId}:${spaceId}`);
-  if (stableOrderScopeKeyRef.current !== `${owner.sId}:${spaceId}`) {
-    stableOrderScopeKeyRef.current = `${owner.sId}:${spaceId}`;
+  const stableOrderScopeKeyRef = useRef(`${owner.sId}:${podId}`);
+  if (stableOrderScopeKeyRef.current !== `${owner.sId}:${podId}`) {
+    stableOrderScopeKeyRef.current = `${owner.sId}:${podId}`;
     stableTaskOrderByAssigneeKeyRef.current = new Map();
   }
 
   const tasks = useMemo(() => {
-    const raw = data?.tasks ?? emptyArray<ProjectTaskType>();
+    const raw = data?.tasks ?? emptyArray<PodTaskType>();
     const viewerUserId = data?.viewerUserId ?? null;
     if (raw.length === 0) {
       return raw;
     }
-    return flattenProjectTasksWithStableAssigneeOrder(
+    return flattenPodTasksWithStableAssigneeOrder(
       raw,
       viewerUserId,
       stableTaskOrderByAssigneeKeyRef.current
@@ -538,8 +537,8 @@ export function useProjectTasks({
   }, [data?.tasks, data?.viewerUserId]);
 
   const sortedUsers = useMemo(() => {
-    const usersById = new Map<string, ProjectTaskAssigneeType>();
-    for (const task of data?.tasks ?? emptyArray<ProjectTaskType>()) {
+    const usersById = new Map<string, PodTaskAssigneeType>();
+    for (const task of data?.tasks ?? emptyArray<PodTaskType>()) {
       if (task.user) {
         usersById.set(task.user.sId, task.user);
       }
@@ -570,12 +569,12 @@ export function useProjectTasks({
   };
 }
 
-export function useMarkProjectTasksRead({
+export function useMarkPodTasksRead({
   owner,
-  spaceId,
+  podId,
 }: {
   owner: LightWorkspaceType;
-  spaceId: string;
+  podId: string;
 }) {
   const { mutate } = useSWRConfig();
 
@@ -585,8 +584,8 @@ export function useMarkProjectTasksRead({
     // Keep local UI state in sync immediately to avoid replaying new-item
     // animations when navigating away/back before the network round-trip ends.
     await mutate(
-      (key) => isProjectTasksListSwrKey(key, owner.sId, spaceId),
-      (prev: GetProjectTasksResponseBody | undefined) => ({
+      (key) => isPodTasksListSwrKey(key, owner.sId, podId),
+      (prev: GetPodTasksResponseBody | undefined) => ({
         tasks: prev?.tasks ?? [],
         viewerUserId: prev?.viewerUserId ?? null,
         lastReadAt: immediateReadAt,
@@ -596,13 +595,13 @@ export function useMarkProjectTasksRead({
 
     try {
       await clientFetch(
-        `/api/w/${owner.sId}/spaces/${spaceId}/project_tasks/mark_read`,
+        `/api/w/${owner.sId}/spaces/${podId}/project_tasks/mark_read`,
         { method: "POST" }
       );
     } catch {
       // Silent — mark_read is best-effort.
     }
-  }, [mutate, owner.sId, spaceId]);
+  }, [mutate, owner.sId, podId]);
 }
 
 export function useSeedInitialPodTasks({
@@ -617,7 +616,7 @@ export function useSeedInitialPodTasks({
   const [isSeeding, setIsSeeding] = useState(false);
 
   const seedInitialPodTasks = useCallback(async (): Promise<
-    Result<ProjectTaskType[], Error>
+    Result<PodTaskType[], Error>
   > => {
     setIsSeeding(true);
     try {
@@ -627,7 +626,7 @@ export function useSeedInitialPodTasks({
       );
 
       if (res.status === 409) {
-        await mutate((key) => isProjectTasksListSwrKey(key, owner.sId, podId));
+        await mutate((key) => isPodTasksListSwrKey(key, owner.sId, podId));
         return new Ok([]);
       }
 
@@ -643,7 +642,7 @@ export function useSeedInitialPodTasks({
 
       const responseData: PostSeedInitialPodTasksResponseBody =
         await res.json();
-      await mutate((key) => isProjectTasksListSwrKey(key, owner.sId, podId));
+      await mutate((key) => isPodTasksListSwrKey(key, owner.sId, podId));
       return new Ok(responseData.tasks);
     } catch (e) {
       const errorMessage = normalizeError(e).message;
@@ -661,12 +660,12 @@ export function useSeedInitialPodTasks({
   return { seedInitialPodTasks, isSeeding };
 }
 
-export function useCreateProjectTask({
+export function useCreatePodTask({
   owner,
-  spaceId,
+  podId,
 }: {
   owner: LightWorkspaceType;
-  spaceId: string;
+  podId: string;
 }) {
   const sendNotification = useSendNotification();
 
@@ -676,10 +675,10 @@ export function useCreateProjectTask({
   }: {
     text: string;
     assigneeUserId: string | null;
-  }): Promise<Result<ProjectTaskType, Error>> => {
+  }): Promise<Result<PodTaskType, Error>> => {
     try {
       const res = await clientFetch(
-        `/api/w/${owner.sId}/spaces/${spaceId}/project_tasks`,
+        `/api/w/${owner.sId}/spaces/${podId}/project_tasks`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -697,7 +696,7 @@ export function useCreateProjectTask({
         return new Err(new Error(errorData.message));
       }
 
-      const responseData: PostProjectTaskResponseBody = await res.json();
+      const responseData: PostPodTaskResponseBody = await res.json();
       return new Ok(responseData.task);
     } catch (e) {
       const errorMessage = normalizeError(e).message;
@@ -711,12 +710,12 @@ export function useCreateProjectTask({
   };
 }
 
-export function useUpdateProjectTask({
+export function useUpdatePodTask({
   owner,
-  spaceId,
+  podId,
 }: {
   owner: LightWorkspaceType;
-  spaceId: string;
+  podId: string;
 }) {
   const sendNotification = useSendNotification();
 
@@ -724,13 +723,13 @@ export function useUpdateProjectTask({
     taskId: string,
     updates: {
       text?: string;
-      status?: ProjectTaskStatus;
+      status?: PodTaskStatus;
       assigneeUserId?: string | null;
     }
-  ): Promise<Result<ProjectTaskType, Error>> => {
+  ): Promise<Result<PodTaskType, Error>> => {
     try {
       const res = await clientFetch(
-        `/api/w/${owner.sId}/spaces/${spaceId}/project_tasks/${taskId}`,
+        `/api/w/${owner.sId}/spaces/${podId}/project_tasks/${taskId}`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -748,7 +747,7 @@ export function useUpdateProjectTask({
         return new Err(new Error(errorData.message));
       }
 
-      const responseData: PatchProjectTaskResponseBody = await res.json();
+      const responseData: PatchPodTaskResponseBody = await res.json();
       return new Ok(responseData.task);
     } catch (e) {
       const errorMessage = normalizeError(e).message;
@@ -762,69 +761,19 @@ export function useUpdateProjectTask({
   };
 }
 
-export function useBulkUpdateProjectTaskStatus({
+export function useDeletePodTask({
   owner,
-  spaceId,
+  podId,
 }: {
   owner: LightWorkspaceType;
-  spaceId: string;
-}) {
-  const sendNotification = useSendNotification();
-
-  return async (
-    taskIds: string[],
-    status: ProjectTaskStatus
-  ): Promise<Result<void, Error>> => {
-    try {
-      const res = await clientFetch(
-        `/api/w/${owner.sId}/spaces/${spaceId}/project_tasks/bulk-actions`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "set_status", taskIds, status }),
-        }
-      );
-
-      if (!res.ok) {
-        const errorData = await getErrorFromResponse(res);
-        sendNotification({
-          type: "error",
-          title: "Failed to update tasks",
-          description: errorData.message,
-        });
-        return new Err(new Error(errorData.message));
-      }
-
-      const data: BulkActionsResponse = await res.json();
-      if (!data.success) {
-        return new Err(new Error("Failed to update tasks"));
-      }
-      return new Ok(undefined);
-    } catch (e) {
-      const errorMessage = normalizeError(e).message;
-      sendNotification({
-        type: "error",
-        title: "Failed to update tasks",
-        description: errorMessage,
-      });
-      return new Err(new Error(errorMessage));
-    }
-  };
-}
-
-export function useDeleteProjectTask({
-  owner,
-  spaceId,
-}: {
-  owner: LightWorkspaceType;
-  spaceId: string;
+  podId: string;
 }) {
   const sendNotification = useSendNotification();
 
   return async (taskId: string): Promise<Result<void, Error>> => {
     try {
       const res = await clientFetch(
-        `/api/w/${owner.sId}/spaces/${spaceId}/project_tasks/${taskId}`,
+        `/api/w/${owner.sId}/spaces/${podId}/project_tasks/${taskId}`,
         { method: "DELETE" }
       );
 
@@ -851,22 +800,22 @@ export function useDeleteProjectTask({
   };
 }
 
-export function useStartProjectTaskConversation({
+export function useStartPodTaskConversation({
   owner,
-  spaceId,
+  podId,
 }: {
   owner: LightWorkspaceType;
-  spaceId: string;
+  podId: string;
 }) {
   const sendNotification = useSendNotification();
 
   return async (
     taskId: string,
     options?: { customMessage?: string; agentConfigurationId?: string }
-  ): Promise<Result<ProjectTaskType, Error>> => {
+  ): Promise<Result<PodTaskType, Error>> => {
     try {
       const res = await clientFetch(
-        `/api/w/${owner.sId}/spaces/${spaceId}/project_tasks/${taskId}/start`,
+        `/api/w/${owner.sId}/spaces/${podId}/project_tasks/${taskId}/start`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -887,7 +836,7 @@ export function useStartProjectTaskConversation({
         return new Err(new Error(errorData.message));
       }
 
-      const responseData: PostStartProjectTaskResponseBody = await res.json();
+      const responseData: PostStartPodTaskResponseBody = await res.json();
       return new Ok(responseData.task);
     } catch (e) {
       const errorMessage = normalizeError(e).message;
@@ -901,40 +850,39 @@ export function useStartProjectTaskConversation({
   };
 }
 
-export function useWorkspaceProjectTask({
+export function useWorkspacePodTask({
   workspaceId,
-  taskSId,
+  taskId,
   disabled,
 }: {
   workspaceId: string;
-  taskSId: string | null;
+  taskId: string | null;
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const url =
-    !disabled && taskSId
-      ? `/api/w/${workspaceId}/project_tasks/${encodeURIComponent(taskSId)}`
+    !disabled && taskId
+      ? `/api/w/${workspaceId}/project_tasks/${encodeURIComponent(taskId)}`
       : null;
-  const projectTaskFetcher: Fetcher<GetWorkspaceProjectTaskResponseBody> =
-    fetcher;
+  const podTaskFetcher: Fetcher<GetWorkspacePodTaskResponseBody> = fetcher;
 
   const { data, error, isLoading, mutate } = useSWRWithDefaults(
     url,
-    projectTaskFetcher
+    podTaskFetcher
   );
 
   return {
     task: data?.task ?? null,
-    space: data?.space ?? null,
-    isWorkspaceProjectTaskLoading: !error && isLoading && !!url,
-    isWorkspaceProjectTaskError: !!error,
-    mutateWorkspaceProjectTask: mutate,
+    pod: data?.space ?? null,
+    isWorkspacePodTaskLoading: !error && isLoading && !!url,
+    isWorkspacePodTaskError: !!error,
+    mutateWorkspacePodTask: mutate,
   };
 }
 
 export function useJoinPod({
   owner,
-  podId: podId,
+  podId,
   podName,
   userName,
 }: {

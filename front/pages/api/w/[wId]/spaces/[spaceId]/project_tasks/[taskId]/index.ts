@@ -7,10 +7,7 @@ import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import {
-  PROJECT_TASK_STATUSES,
-  type ProjectTaskType,
-} from "@app/types/project_task";
+import { POD_TASK_STATUSES, type PodTaskType } from "@app/types/project_task";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
@@ -22,7 +19,7 @@ const PatchProjectTaskBodySchema = z
       .min(1, "Text cannot be empty.")
       .max(256, "Text must be at most 256 characters.")
       .optional(),
-    status: z.enum(PROJECT_TASK_STATUSES).optional(),
+    status: z.enum(POD_TASK_STATUSES).optional(),
     assigneeUserId: z.union([z.string().min(1), z.null()]).optional(),
   })
   .refine(
@@ -36,18 +33,16 @@ const PatchProjectTaskBodySchema = z
     }
   );
 
-export interface PatchProjectTaskResponseBody {
-  task: ProjectTaskType;
+export interface PatchPodTaskResponseBody {
+  task: PodTaskType;
 }
 
-export type DeleteProjectTaskResponseBody = never;
+export type DeletePodTaskResponseBody = never;
 
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorResponse<
-      PatchProjectTaskResponseBody | DeleteProjectTaskResponseBody
-    >
+    WithAPIErrorResponse<PatchPodTaskResponseBody | DeletePodTaskResponseBody>
   >,
   auth: Authenticator,
   { space }: { space: SpaceResource }

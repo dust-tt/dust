@@ -345,6 +345,14 @@ async function handler(
                     message: "Internal server error",
                   },
                 });
+              case "conversation_agent_running":
+                return apiError(req, res, {
+                  status_code: 400,
+                  api_error: {
+                    type: "conversation_agent_running",
+                    message: r.error.message,
+                  },
+                });
               default:
                 assertNever(r.error.code);
             }

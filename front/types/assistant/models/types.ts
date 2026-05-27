@@ -1,6 +1,9 @@
-import type { RegionType } from "@app/lib/api/regions/config";
+import { SUPPORTED_REGIONS } from "@app/lib/api/regions/config";
 import { z } from "zod";
-import type { WhitelistableFeature } from "../../shared/feature_flags";
+import {
+  isWhitelistableFeature,
+  type WhitelistableFeature,
+} from "../../shared/feature_flags";
 import type { ExtractSpecificKeys } from "../../shared/typescipt_utils";
 import type { TokenizerConfig } from "../../tokenizer";
 import type { EMBEDDING_PROVIDER_IDS } from "./embedding";
@@ -25,6 +28,20 @@ const ReasoningEffortSupportSchema = z.object({
 export type ReasoningEffortSupport = z.infer<
   typeof ReasoningEffortSupportSchema
 >;
+
+const WhitelistableFeatureSchema = z.custom<WhitelistableFeature>(
+  isWhitelistableFeature,
+  { message: "Invalid feature flag" }
+);
+
+const AvailabilityConditionSchema = z.object({
+  enterprise: z.boolean().optional(),
+  featureFlag: WhitelistableFeatureSchema.optional(),
+});
+
+const CustomAvailabilityConditionSchema = z.object({
+  featureFlag: WhitelistableFeatureSchema.optional(),
+});
 
 // Schema for validating model configs (e.g., from GCS at build time).
 // This is the source of truth for the structure of ModelConfigurationType.
@@ -60,6 +77,10 @@ export const ModelConfigurationSchema = z.object({
   customBetas: z.array(z.string()).optional(),
   disablePrefill: z.boolean().optional(),
   supportsBatchProcessing: z.boolean().optional(),
+  // Specify if the model is available in specific regions.
+  regionalAvailability: z.record(z.enum(SUPPORTED_REGIONS), z.boolean()),
+  availableIfOneOf: AvailabilityConditionSchema.optional(),
+  customAvailableIf: CustomAvailabilityConditionSchema.optional(),
 });
 
 // Base type inferred from the schema.
@@ -79,8 +100,6 @@ export type ModelConfigurationType = Omit<
   providerId: ModelProviderIdType;
   modelId: ModelIdType;
   defaultReasoningEffort: ReasoningEffort;
-  // Specify if the model is available in specific regions.
-  regionalAvailability: Record<RegionType, boolean>;
   // If undefined, model is available.
   // If object is empty, model is not available.
   // If defined, model must satisfy one of the conditions to be available.

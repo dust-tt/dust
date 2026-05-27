@@ -7,10 +7,10 @@ import {
   type MemberDisplayInfo,
   useMemberDetails,
 } from "@app/lib/swr/assistants";
-import { useWorkspaceProjectTask } from "@app/lib/swr/pods";
+import { useWorkspacePodTask } from "@app/lib/swr/pods";
 import {
-  PROJECT_TASK_NO_ASSIGNEE_LABEL,
-  type ProjectTaskStatus,
+  POD_TASK_NO_ASSIGNEE_LABEL,
+  type PodTaskStatus,
 } from "@app/types/project_task";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
@@ -51,7 +51,7 @@ interface FormatAssigneeLabelParams {
   isMembersLoading: boolean;
 }
 
-function formatTaskStatusLabel(status: ProjectTaskStatus): string {
+function formatTaskStatusLabel(status: PodTaskStatus): string {
   switch (status) {
     case "todo":
       return "Open";
@@ -86,7 +86,7 @@ function formatAssigneeLabel({
   isMembersLoading,
 }: FormatAssigneeLabelParams): string {
   if (userId === null || userId === undefined) {
-    return PROJECT_TASK_NO_ASSIGNEE_LABEL;
+    return POD_TASK_NO_ASSIGNEE_LABEL;
   }
   if (userId === currentUserSId) {
     return "You";
@@ -170,11 +170,13 @@ function AssigneeChangeRow({
 }
 
 function TaskUpdateRow({ workspaceId, taskInput, user }: TaskUpdateRowProps) {
-  const { task: currentTask, isWorkspaceProjectTaskLoading } =
-    useWorkspaceProjectTask({
-      workspaceId,
-      taskSId: taskInput.taskId,
-    });
+  const {
+    task: currentTask,
+    isWorkspacePodTaskLoading: isWorkspaceProjectTaskLoading,
+  } = useWorkspacePodTask({
+    workspaceId,
+    taskId: taskInput.taskId,
+  });
 
   const memberSIds = useMemo(() => {
     const ids = new Set<string>();
@@ -197,7 +199,7 @@ function TaskUpdateRow({ workspaceId, taskInput, user }: TaskUpdateRowProps) {
     userIds: memberSIds,
   });
 
-  const effectiveStatus: ProjectTaskStatus = taskInput.doneRationale
+  const effectiveStatus: PodTaskStatus = taskInput.doneRationale
     ? "done"
     : (taskInput.status ?? currentTask?.status ?? "todo");
 
@@ -312,7 +314,7 @@ function TaskUpdateRow({ workspaceId, taskInput, user }: TaskUpdateRowProps) {
                 <ChangeRow
                   label="Assignee"
                   before="—"
-                  after={PROJECT_TASK_NO_ASSIGNEE_LABEL}
+                  after={POD_TASK_NO_ASSIGNEE_LABEL}
                 />
               )}
             {taskInput.status && (

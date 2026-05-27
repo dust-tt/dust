@@ -93,8 +93,6 @@ const app = publicApiApp();
  *         description: User not authorized to answer this question
  *       404:
  *         description: Conversation, message, or action not found
- *       405:
- *         description: Method not allowed
  *       500:
  *         description: Internal server error
  *     security:

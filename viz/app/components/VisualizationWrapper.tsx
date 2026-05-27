@@ -1,6 +1,5 @@
 "use client";
 
-import { Spinner } from "@viz/app/components/Components";
 import { EditableFrame } from "@viz/app/components/EditableFrame";
 import { ErrorBoundary } from "@viz/app/components/ErrorBoundary";
 import { VizContext } from "@viz/app/components/VizContext";
@@ -551,7 +550,11 @@ export function VisualizationWrapper({
   }
 
   if (!runnerParams) {
-    return <Spinner />;
+    // Return null while loading. The parent (VisualizationActionIframe) already
+    // shows a Lottie spinner overlay for this period. Returning null keeps
+    // contentHeight at 0 (no height message sent), so the parent spinner stays
+    // until the runner renders and reports its real height.
+    return null;
   }
 
   // In PDF mode: no height constraint, content flows naturally for full capture.

@@ -319,12 +319,14 @@ function _getDustLikeGlobalAgent(
     name,
     preferredModelConfiguration,
     preferredReasoningEffort,
+    requiredPreferredModelConfiguration,
     omittedThinking,
   }: {
     agentId: GLOBAL_AGENTS_SID;
     name: string;
     preferredModelConfiguration?: ModelConfigurationType | null;
     preferredReasoningEffort?: ReasoningEffort;
+    requiredPreferredModelConfiguration?: boolean;
     omittedThinking?: boolean;
   }
 ): (AgentConfigurationType & { omittedThinking?: boolean }) | null {
@@ -350,15 +352,25 @@ function _getDustLikeGlobalAgent(
       return NOOP_MODEL_CONFIG;
     }
 
+    const isPreferredModelConfigurationAvailable =
+      preferredModelConfiguration &&
+      !excludeProviders.has(preferredModelConfiguration.providerId) &&
+      isProviderWhitelisted(auth, preferredModelConfiguration.providerId);
+
+    if (requiredPreferredModelConfiguration) {
+      if (isPreferredModelConfigurationAvailable) {
+        isPreferredModel = true;
+        return preferredModelConfiguration;
+      }
+
+      return null;
+    }
+
     if (!auth.isUpgraded()) {
       return getSmallWhitelistedModel(auth, excludeProviders);
     }
 
-    if (
-      preferredModelConfiguration &&
-      !excludeProviders.has(preferredModelConfiguration.providerId) &&
-      isProviderWhitelisted(auth, preferredModelConfiguration.providerId)
-    ) {
+    if (isPreferredModelConfigurationAvailable) {
       isPreferredModel = true;
       return preferredModelConfiguration;
     }
@@ -995,5 +1007,147 @@ export function _getDustNextHighGlobalAgent(
     preferredModelConfiguration:
       customModel ?? CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
     preferredReasoningEffort: "high",
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Active custom-model dust-* global agents.
+// ---------------------------------------------------------------------------
+
+type CustomModelDustGlobalAgentConfig = {
+  name: string;
+  customModelIndex: number;
+  preferredReasoningEffort: ReasoningEffort;
+};
+
+export const CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS = new Map<
+  GLOBAL_AGENTS_SID,
+  CustomModelDustGlobalAgentConfig
+>([
+  [
+    GLOBAL_AGENTS_SID.DUST_NEXT,
+    {
+      name: "dust-next",
+      customModelIndex: 0,
+      preferredReasoningEffort: "light",
+    },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM,
+    {
+      name: "dust-next-medium",
+      customModelIndex: 0,
+      preferredReasoningEffort: "medium",
+    },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_NEXT_HIGH,
+    {
+      name: "dust-next-high",
+      customModelIndex: 0,
+      preferredReasoningEffort: "high",
+    },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_CHAWI,
+    {
+      name: "dust-chawi",
+      customModelIndex: 0,
+      preferredReasoningEffort: "light",
+    },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_CHAWI_MEDIUM,
+    {
+      name: "dust-chawi-medium",
+      customModelIndex: 0,
+      preferredReasoningEffort: "medium",
+    },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_CHAWI_HIGH,
+    {
+      name: "dust-chawi-high",
+      customModelIndex: 0,
+      preferredReasoningEffort: "high",
+    },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_SOUPINOU,
+    {
+      name: "dust-soupinou",
+      customModelIndex: 1,
+      preferredReasoningEffort: "light",
+    },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_SOUPINOU_MEDIUM,
+    {
+      name: "dust-soupinou-medium",
+      customModelIndex: 1,
+      preferredReasoningEffort: "medium",
+    },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_SOUPINOU_HIGH,
+    {
+      name: "dust-soupinou-high",
+      customModelIndex: 1,
+      preferredReasoningEffort: "high",
+    },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_SUNDAE,
+    {
+      name: "dust-sundae",
+      customModelIndex: 2,
+      preferredReasoningEffort: "light",
+    },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_SUNDAE_MEDIUM,
+    {
+      name: "dust-sundae-medium",
+      customModelIndex: 2,
+      preferredReasoningEffort: "medium",
+    },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_SUNDAE_HIGH,
+    {
+      name: "dust-sundae-high",
+      customModelIndex: 2,
+      preferredReasoningEffort: "high",
+    },
+  ],
+]);
+
+export function getCustomModelDustGlobalAgentIndex(
+  agentId: GLOBAL_AGENTS_SID
+): number | null {
+  return (
+    CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS.get(agentId)?.customModelIndex ??
+    null
+  );
+}
+
+export function _getCustomModelDustLikeGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs,
+  agentId: GLOBAL_AGENTS_SID
+): AgentConfigurationType | null {
+  const config = CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS.get(agentId);
+
+  if (!config) {
+    return null;
+  }
+
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId,
+    name: config.name,
+    preferredModelConfiguration:
+      CUSTOM_MODEL_CONFIGS[config.customModelIndex] ?? null,
+    preferredReasoningEffort: config.preferredReasoningEffort,
+    requiredPreferredModelConfiguration: true,
   });
 }

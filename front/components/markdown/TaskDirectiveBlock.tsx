@@ -1,27 +1,24 @@
 import { ConversationSidebarStatusDot } from "@app/components/assistant/conversation/ConversationSidebarStatusDot";
-import { ProjectTaskStartWorkingDropdown } from "@app/components/assistant/conversation/space/conversations/project_tasks/ProjectTaskStartWorkingDropdown";
+import { PodTaskStartWorkingDropdown } from "@app/components/pod/tasks/PodTaskStartWorkingDropdown";
 import { useAppRouter } from "@app/lib/platform";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
-  useStartProjectTaskConversation,
-  useWorkspaceProjectTask,
+  useStartPodTaskConversation,
+  useWorkspacePodTask,
 } from "@app/lib/swr/pods";
 import { timeAgoFrom } from "@app/lib/utils";
 import type { ConversationDotStatus } from "@app/lib/utils/conversation_dot_status";
 import { getConversationRoute, getPodRoute } from "@app/lib/utils/router";
-import type { GetWorkspaceProjectTaskResponseBody } from "@app/pages/api/w/[wId]/project_tasks/[taskSId]/index";
+import type { GetWorkspacePodTaskResponseBody } from "@app/pages/api/w/[wId]/project_tasks/[taskSId]/index";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { compareAgentsForSort } from "@app/types/assistant/assistant";
-import type {
-  ProjectTaskStatus,
-  ProjectTaskType,
-} from "@app/types/project_task";
+import type { PodTaskStatus, PodTaskType } from "@app/types/project_task";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   AttachmentChip,
   Avatar,
-  CheckIcon,
+  CheckCircleIcon,
   LinkWrapper,
   PopoverContent,
   PopoverRoot,
@@ -33,7 +30,7 @@ import {
 import { useMemo, useState } from "react";
 import { visit } from "unist-util-visit";
 
-function formatTaskStatusLabel(status: ProjectTaskStatus): string {
+function formatTaskStatusLabel(status: PodTaskStatus): string {
   switch (status) {
     case "todo":
       return "Open";
@@ -74,8 +71,8 @@ function conversationActivityCaption(
 /** Start control inside the task popover only (parent mounts when popover opens). */
 function TaskMarkdownPopoverStartChrome({
   owner,
-  taskSId,
-  spaceId,
+  taskId,
+  podId,
   task,
   activeAgents,
   agentsLoading,
@@ -83,16 +80,16 @@ function TaskMarkdownPopoverStartChrome({
   triggerSize = "xs",
 }: {
   owner: LightWorkspaceType;
-  taskSId: string;
-  spaceId: string;
-  task: ProjectTaskType;
+  taskId: string;
+  podId: string;
+  task: PodTaskType;
   activeAgents: LightAgentConfigurationType[];
   agentsLoading: boolean;
   onStarted?: () => void;
   triggerSize?: "xs" | "icon-xs";
 }) {
   const router = useAppRouter();
-  const doStart = useStartProjectTaskConversation({ owner, spaceId });
+  const doStart = useStartPodTaskConversation({ owner, podId: podId });
   const [isStarting, setIsStarting] = useState(false);
 
   const hasConversationLink =
@@ -106,9 +103,9 @@ function TaskMarkdownPopoverStartChrome({
   }
 
   return (
-    <ProjectTaskStartWorkingDropdown
+    <PodTaskStartWorkingDropdown
       owner={owner}
-      taskSId={taskSId}
+      taskId={taskId}
       activeAgents={activeAgents}
       agentsLoading={agentsLoading}
       disabled={isDoneWithoutConversation}
@@ -122,7 +119,7 @@ function TaskMarkdownPopoverStartChrome({
       onStart={async (opts) => {
         setIsStarting(true);
         try {
-          const result = await doStart(taskSId, {
+          const result = await doStart(taskId, {
             customMessage: opts.customMessage,
             agentConfigurationId: opts.agentConfigurationId,
           });
@@ -150,21 +147,21 @@ function TaskMarkdownPopoverStartChrome({
 
 function TaskDirectivePopoverBodyLoaded({
   owner,
-  taskSId,
+  taskId,
   data,
   activeAgents,
   agentsLoading,
   onTaskUpdated,
 }: {
   owner: LightWorkspaceType;
-  taskSId: string;
-  data: GetWorkspaceProjectTaskResponseBody;
+  taskId: string;
+  data: GetWorkspacePodTaskResponseBody;
   activeAgents: LightAgentConfigurationType[];
   agentsLoading: boolean;
   onTaskUpdated?: () => void;
 }) {
-  const { task, space } = data;
-  const projectHref = getPodRoute(owner.sId, space.sId);
+  const { task, space: pod } = data;
+  const projectHref = getPodRoute(owner.sId, pod.sId);
   const assignee = task.user;
   const dotStatus: ConversationDotStatus =
     task.conversationSidebarStatus ?? "idle";
@@ -245,8 +242,8 @@ function TaskDirectivePopoverBodyLoaded({
           {showStartInPopover ? (
             <TaskMarkdownPopoverStartChrome
               owner={owner}
-              taskSId={taskSId}
-              spaceId={space.sId}
+              taskId={taskId}
+              podId={pod.sId}
               task={task}
               activeAgents={activeAgents}
               agentsLoading={agentsLoading}
@@ -285,12 +282,12 @@ function TaskDirectivePopoverBodyLoaded({
           className="block w-full min-w-0 rounded-md outline-none ring-offset-background hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-highlight-300 focus-visible:ring-offset-1 dark:ring-offset-background-night dark:hover:bg-muted-night/25 dark:focus-visible:ring-highlight-300-night"
         >
           <div className="break-words text-sm font-semibold leading-snug text-highlight-700 underline-offset-2 hover:underline dark:text-highlight-400-night">
-            {space.name}
+            {pod.name}
           </div>
         </LinkWrapper>
-        {space.description ? (
+        {pod.description ? (
           <p className="mt-1 w-full min-w-0 break-words text-xs leading-tight text-muted-foreground dark:text-muted-foreground-night">
-            {space.description}
+            {pod.description}
           </p>
         ) : null}
       </div>
@@ -310,13 +307,13 @@ function TaskDirectivePopoverContent({
 }) {
   const {
     task,
-    space,
-    isWorkspaceProjectTaskLoading,
-    isWorkspaceProjectTaskError,
-    mutateWorkspaceProjectTask,
-  } = useWorkspaceProjectTask({
+    pod,
+    isWorkspacePodTaskLoading,
+    isWorkspacePodTaskError,
+    mutateWorkspacePodTask,
+  } = useWorkspacePodTask({
     workspaceId: owner.sId,
-    taskSId,
+    taskId: taskSId,
   });
 
   const { agentConfigurations, isLoading: agentsLoading } =
@@ -331,7 +328,7 @@ function TaskDirectivePopoverContent({
     return agents;
   }, [agentConfigurations]);
 
-  if (isWorkspaceProjectTaskLoading) {
+  if (isWorkspacePodTaskLoading) {
     return (
       <div className="flex min-h-[7rem] items-center justify-center p-3">
         <Spinner size="sm" />
@@ -339,7 +336,7 @@ function TaskDirectivePopoverContent({
     );
   }
 
-  if (isWorkspaceProjectTaskError || !task || !space) {
+  if (isWorkspacePodTaskError || !task || !pod) {
     return (
       <div className="p-3 text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
         Could not load this task.
@@ -350,11 +347,11 @@ function TaskDirectivePopoverContent({
   return (
     <TaskDirectivePopoverBodyLoaded
       owner={owner}
-      taskSId={taskSId}
-      data={{ task, space }}
+      taskId={taskSId}
+      data={{ task, space: pod }}
       activeAgents={activeAgents}
       agentsLoading={agentsLoading}
-      onTaskUpdated={() => void mutateWorkspaceProjectTask()}
+      onTaskUpdated={() => void mutateWorkspacePodTask()}
     />
   );
 }
@@ -385,7 +382,7 @@ function TaskDirectiveChipInner({
           >
             <AttachmentChip
               label={displayLabel}
-              icon={{ visual: CheckIcon }}
+              icon={{ visual: CheckCircleIcon }}
               color="green"
               className="min-w-0 max-w-full transition-opacity group-hover:opacity-90"
             />

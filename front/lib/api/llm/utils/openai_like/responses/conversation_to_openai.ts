@@ -202,7 +202,7 @@ export function toReasoning(
   const reasoningConfigMapping = isOpenAIResponsesWhitelistedModelId(modelId)
     ? {
         ...REASONING_CONFIG_MAPPING,
-        ...OPENAI_MODEL_CONFIGS[modelId].reasoningConfigMapping,
+        ...OPENAI_MODEL_CONFIGS[modelId]?.reasoningConfigMapping,
       }
     : REASONING_CONFIG_MAPPING;
 

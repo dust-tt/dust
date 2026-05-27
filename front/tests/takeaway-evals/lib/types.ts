@@ -1,5 +1,5 @@
 import type { ExtractionResult } from "@app/lib/project_task/analyze_document/types";
-import type { ProjectTaskSourceType } from "@app/types/project_task";
+import type { PodTaskSourceType } from "@app/types/project_task";
 import type { TaskVersionedActionItem } from "@app/types/takeaways";
 
 // ── Mock data types ─────────────────────────────────────────────────────────
@@ -13,7 +13,7 @@ export interface MockProjectMember {
 export interface MockDocument {
   id: string;
   title: string;
-  type: ProjectTaskSourceType;
+  type: PodTaskSourceType;
   text: string;
   uri: string;
 }

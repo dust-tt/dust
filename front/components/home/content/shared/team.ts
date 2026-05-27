@@ -572,7 +572,7 @@ export const PEOPLE: Record<string, TeamMember> = {
     title: "Software Engineer",
     image: "https://ca.slack-edge.com/T050RH73H9P-U0B61DY1HE1-7f81ecbf82db-512",
     linkedIn: "https://www.linkedin.com/in/nils-fedrigo/",
-    github: "https://github.com/Nils-Fedrigo"
+    github: "https://github.com/Nils-Fedrigo",
   },
 };
 

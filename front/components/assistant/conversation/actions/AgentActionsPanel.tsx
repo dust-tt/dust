@@ -578,6 +578,7 @@ export function AgentActionsPanel({
   if (actionId) {
     return (
       <AgentSingleActionPanel
+        key={actionId}
         conversation={conversation}
         owner={owner}
         messageId={messageId}
