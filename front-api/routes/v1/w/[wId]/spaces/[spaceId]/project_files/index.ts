@@ -83,8 +83,8 @@ app.get(
         : null;
 
     let files = await listGCSMountFiles(auth, {
-      useCase: "project",
-      projectId: space.sId,
+      useCase: "pod",
+      podId: space.sId,
     });
 
     if (updatedSinceFilter !== null) {
@@ -106,14 +106,14 @@ app.get(
         const gcsPath = getGCSPathFromScopedPath({
           prefix: gcsPrefix,
           scopedPath: entry.path,
-          useCase: "project",
+          useCase: "pod",
         });
         if (!gcsPath) {
           return { ...entry, signedDownloadUrl: null };
         }
         const signed = await getConversationFileMountSignedUrl(
           auth,
-          { useCase: "project", projectId: space.sId },
+          { useCase: "pod", podId: space.sId },
           gcsPath
         );
         return {
