@@ -17,12 +17,12 @@ export type BillingInvoice = {
   status: Stripe.Invoice.Status | null;
   description: string | null;
   currency: string;
-  total: number;
-  amountPaid: number;
-  createdAt: number;
-  dueDate: number | null;
-  periodStart: number;
-  periodEnd: number;
+  totalCents: number;
+  amountPaidCents: number;
+  createdAtMs: number;
+  dueDateMs: number | null;
+  periodStartMs: number;
+  periodEndMs: number;
   hostedInvoiceUrl: string | null;
   invoicePdf: string | null;
 };
@@ -38,12 +38,12 @@ function serializeInvoice(invoice: Stripe.Invoice): BillingInvoice {
     status: invoice.status ?? null,
     description: invoice.description ?? null,
     currency: invoice.currency,
-    total: invoice.total,
-    amountPaid: invoice.amount_paid,
-    createdAt: invoice.created * 1000,
-    dueDate: invoice.due_date ? invoice.due_date * 1000 : null,
-    periodStart: invoice.period_start * 1000,
-    periodEnd: invoice.period_end * 1000,
+    totalCents: invoice.total,
+    amountPaidCents: invoice.amount_paid,
+    createdAtMs: invoice.created * 1000,
+    dueDateMs: invoice.due_date ? invoice.due_date * 1000 : null,
+    periodStartMs: invoice.period_start * 1000,
+    periodEndMs: invoice.period_end * 1000,
     hostedInvoiceUrl: invoice.hosted_invoice_url ?? null,
     invoicePdf: invoice.invoice_pdf ?? null,
   };
