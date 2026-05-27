@@ -91,16 +91,6 @@ app.get(
       });
     }
 
-    if (lastEventId && typeof lastEventId !== "string") {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid lastEventId parameter.",
-        },
-      });
-    }
-
     ctx.header("Content-Type", "text/event-stream");
     ctx.header("Cache-Control", "no-cache");
     ctx.header("Connection", "keep-alive");

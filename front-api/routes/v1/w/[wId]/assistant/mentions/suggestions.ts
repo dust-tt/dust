@@ -6,8 +6,7 @@ import type { GetMentionSuggestionsResponseBodyType } from "@dust-tt/client";
 import { GetMentionSuggestionsRequestQuerySchema } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
-import { apiError } from "@front-api/middlewares/utils";
-import { fromError } from "zod-validation-error";
+import { validate } from "@front-api/middlewares/validator";
 
 // Mounted at /api/v1/w/:wId/assistant/mentions/suggestions.
 const app = publicApiApp();
@@ -75,37 +74,10 @@ const app = publicApiApp();
  */
 app.get(
   "/",
+  validate("query", GetMentionSuggestionsRequestQuerySchema),
   async (ctx): HandlerResult<GetMentionSuggestionsResponseBodyType> => {
     const auth = ctx.get("auth");
-
-    // Extract query params preserving array semantics (multiple `select` values)
-    // to match the Next.js req.query shape the schema expects.
-    const url = new URL(ctx.req.url);
-    const rawQuery: Record<string, string | string[]> = {};
-    for (const [key, value] of url.searchParams.entries()) {
-      const existing = rawQuery[key];
-      if (existing !== undefined) {
-        rawQuery[key] = Array.isArray(existing)
-          ? [...existing, value]
-          : [existing, value];
-      } else {
-        rawQuery[key] = value;
-      }
-    }
-
-    const parsedQuery =
-      GetMentionSuggestionsRequestQuerySchema.safeParse(rawQuery);
-    if (!parsedQuery.success) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: `Invalid query parameters: ${fromError(parsedQuery.error).toString()}`,
-        },
-      });
-    }
-
-    const { query, select: selectParam, current } = parsedQuery.data;
+    const { query, select: selectParam, current } = ctx.req.valid("query");
 
     const suggestions = await suggestionsOfMentions(auth, {
       query,
