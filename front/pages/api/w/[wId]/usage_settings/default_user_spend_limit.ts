@@ -6,12 +6,14 @@ import {
   type DefaultUserSpendLimit,
   type DefaultUserSpendLimitError,
   getDefaultUserSpendLimit,
-  MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
-  MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
   setDefaultUserSpendLimit,
 } from "@app/lib/api/workspace/default_user_spend_limit";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
+import {
+  MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
+  MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
+} from "@app/types/credits";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { NextApiRequest, NextApiResponse } from "next";

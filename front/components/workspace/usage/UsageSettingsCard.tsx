@@ -1,7 +1,13 @@
 import {
+  useDefaultUserSpendLimit,
+  useUpdateDefaultUserSpendLimit,
   useUpdateUsageSettings,
   useUsageSettings,
 } from "@app/lib/swr/usage_settings";
+import {
+  MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
+  MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
+} from "@app/types/credits";
 import {
   ActionCreditCoinsIcon,
   Icon,
@@ -20,14 +26,24 @@ export function UsageSettingsCard({ workspaceId }: UsageSettingsCardProps) {
   const { usageSettings } = useUsageSettings({ workspaceId });
   const { doUpdateUsageSettings } = useUpdateUsageSettings({ workspaceId });
 
-  const [defaultLimitInput, setDefaultLimitInput] = useState<string>(
-    String(usageSettings.defaultUsageLimitCredits)
-  );
+  const { defaultUserSpendLimit, isDefaultUserSpendLimitLoading } =
+    useDefaultUserSpendLimit({ workspaceId });
+  const { doUpdateDefaultUserSpendLimit } = useUpdateDefaultUserSpendLimit({
+    workspaceId,
+  });
+
+  const [defaultLimitInput, setDefaultLimitInput] = useState<string>("");
   const [isSavingLimit, setIsSavingLimit] = useState(false);
 
   useEffect(() => {
-    setDefaultLimitInput(String(usageSettings.defaultUsageLimitCredits));
-  }, [usageSettings.defaultUsageLimitCredits]);
+    if (defaultUserSpendLimit?.awuCredits !== undefined) {
+      setDefaultLimitInput(
+        defaultUserSpendLimit.awuCredits !== null
+          ? String(defaultUserSpendLimit.awuCredits)
+          : ""
+      );
+    }
+  }, [defaultUserSpendLimit]);
 
   const [isSavingAutoUpgrade, setIsSavingAutoUpgrade] = useState(false);
 
@@ -44,21 +60,29 @@ export function UsageSettingsCard({ workspaceId }: UsageSettingsCardProps) {
 
   const handleCommitDefaultLimit = async () => {
     const parsed = Number(defaultLimitInput);
+    const current = defaultUserSpendLimit?.awuCredits ?? null;
     if (
       !Number.isInteger(parsed) ||
-      parsed < 0 ||
-      parsed === usageSettings.defaultUsageLimitCredits
+      parsed < MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS ||
+      parsed > MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS ||
+      parsed === current
     ) {
-      setDefaultLimitInput(String(usageSettings.defaultUsageLimitCredits));
+      setDefaultLimitInput(current !== null ? String(current) : "");
       return;
     }
     setIsSavingLimit(true);
     try {
-      await doUpdateUsageSettings({ defaultUsageLimitCredits: parsed });
+      const result = await doUpdateDefaultUserSpendLimit(parsed);
+      if (!result) {
+        setDefaultLimitInput(current !== null ? String(current) : "");
+      }
     } finally {
       setIsSavingLimit(false);
     }
   };
+
+  const isDefaultLimitInputDisabled =
+    isSavingLimit || isDefaultUserSpendLimitLoading;
 
   return (
     <Page.Vertical gap="sm" align="stretch">
@@ -94,7 +118,7 @@ export function UsageSettingsCard({ workspaceId }: UsageSettingsCardProps) {
                   setDefaultLimitInput(e.target.value.replace(/[^\d]/g, ""))
                 }
                 onBlur={() => void handleCommitDefaultLimit()}
-                disabled={isSavingLimit}
+                disabled={isDefaultLimitInputDisabled}
                 className="pl-8 text-right"
               />
             </div>
