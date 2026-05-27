@@ -4,7 +4,7 @@ import {
   getGCSPathFromScopedPath,
   listGCSMountFiles,
 } from "@app/lib/api/files/gcs_mount/files";
-import { getProjectFilesBasePath } from "@app/lib/api/files/mount_path";
+import { getPodFilesBasePath } from "@app/lib/api/files/mount_path";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { publicApiApp } from "@front-api/middlewares/ctx";
@@ -92,9 +92,9 @@ app.get(
     }
 
     const owner = auth.getNonNullableWorkspace();
-    const gcsPrefix = getProjectFilesBasePath({
+    const gcsPrefix = getPodFilesBasePath({
       workspaceId: owner.sId,
-      projectId: space.sId,
+      podId: space.sId,
     });
 
     const filesWithSignedUrls = await concurrentExecutor(
