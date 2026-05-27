@@ -459,10 +459,6 @@ export function VisualizationWrapper({
         );
         const fileImportScope = Object.fromEntries(fileEntries);
 
-        // DEBUG
-        console.log(
-          `[VIZ iframe ${Date.now()}] setRunnerParams: code ready, setting runner`
-        );
         setRunnerParams({
           code: "() => {import Comp from '@dust/generated-code'; return (<Comp />);}",
           scope: {
@@ -656,9 +652,6 @@ export function makeSendCrossDocumentMessage({
 
       const listener = (event: MessageEvent) => {
         if (!isOriginAllowed(event.origin, allowedOrigins)) {
-          console.log(
-            `Ignored message from unauthorized origin: ${event.origin}`
-          );
           // Simply ignore messages from unauthorized origins.
           return;
         }
