@@ -32,9 +32,19 @@ export async function moveConversationToProject(
       | "unauthorized"
       | "conversation_not_found"
       | "space_not_found"
+      | "conversation_agent_running"
     >
   >
 > {
+  if (conversation.isRunningAgentLoop) {
+    return new Err(
+      new DustError(
+        "conversation_agent_running",
+        "Wait for the agent to finish before moving this conversation."
+      )
+    );
+  }
+
   if (isProjectConversation(conversation)) {
     if (conversation.spaceId === spaceId) {
       return new Err(
