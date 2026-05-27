@@ -1,23 +1,23 @@
 import { ConversationSidebarStatusDot } from "@app/components/assistant/conversation/ConversationSidebarStatusDot";
-import { ProjectTaskStartWorkingDropdown } from "@app/components/assistant/conversation/space/conversations/project_tasks/ProjectTaskStartWorkingDropdown";
-import { useProjectTasksPanel } from "@app/components/assistant/conversation/space/conversations/project_tasks/ProjectTasksPanelContext";
-import { TaskOverflowMenu } from "@app/components/assistant/conversation/space/conversations/project_tasks/TaskOverflowMenu";
-import {
-  TaskMetadataTooltip,
-  TaskSources,
-} from "@app/components/assistant/conversation/space/conversations/project_tasks/TaskSubComponents";
 import { useTaskInlineEdit } from "@app/components/assistant/conversation/space/conversations/project_tasks/useTaskInlineEdit";
 import { useTypingAnimation } from "@app/components/assistant/conversation/space/conversations/project_tasks/useTypingAnimation";
 import {
   NEW_MANUAL_TASK_MAX_CHARS,
   stripNewlines,
   TASK_DESKTOP_HOVER_REVEAL_CLASS,
-  TODO_TEXTAREA_FIELD_CLASS,
+  TASK_TEXTAREA_FIELD_CLASS,
 } from "@app/components/assistant/conversation/space/conversations/project_tasks/utils";
+import { PodTaskStartWorkingDropdown } from "@app/components/pod/tasks/PodTaskStartWorkingDropdown";
+import { usePodTasksPanel } from "@app/components/pod/tasks/PodTasksPanelContext";
+import { TaskOverflowMenu } from "@app/components/pod/tasks/TaskOverflowMenu";
+import {
+  TaskMetadataTooltip,
+  TaskSources,
+} from "@app/components/pod/tasks/TaskSubComponents";
 import { useAppRouter } from "@app/lib/platform";
 import type { ConversationDotStatus } from "@app/lib/utils/conversation_dot_status";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type { ProjectTaskType } from "@app/types/project_task";
+import type { PodTaskType } from "@app/types/project_task";
 import {
   AnimatedText,
   Button,
@@ -30,7 +30,7 @@ import {
 import { useState } from "react";
 
 interface EditableTaskItemProps {
-  task: ProjectTaskType;
+  task: PodTaskType;
 }
 
 export function EditableTaskItem({ task }: EditableTaskItemProps) {
@@ -48,7 +48,7 @@ export function EditableTaskItem({ task }: EditableTaskItemProps) {
     handleToggleDone,
     handleStartWorking,
     patchTaskItem,
-  } = useProjectTasksPanel();
+  } = usePodTasksPanel();
 
   const router = useAppRouter();
   const [startMenuOpen, setStartMenuOpen] = useState(false);
@@ -112,7 +112,7 @@ export function EditableTaskItem({ task }: EditableTaskItemProps) {
               defaultValue={stripNewlines(task.text)}
               disabled={isStarting}
               className={cn(
-                TODO_TEXTAREA_FIELD_CLASS,
+                TASK_TEXTAREA_FIELD_CLASS,
                 isDone && "text-faint line-through dark:text-faint-night",
                 isNewlyDone &&
                   "rounded bg-warning-100/40 dark:bg-warning-100-night/30"
@@ -224,9 +224,9 @@ export function EditableTaskItem({ task }: EditableTaskItemProps) {
                 !startMenuKeepsActionsVisible && TASK_DESKTOP_HOVER_REVEAL_CLASS
               )}
             >
-              <ProjectTaskStartWorkingDropdown
+              <PodTaskStartWorkingDropdown
                 owner={owner}
-                taskSId={task.sId}
+                taskId={task.sId}
                 activeAgents={activeAgents}
                 agentsLoading={isAgentsLoading}
                 disabled={isDoneWithoutConversation}

@@ -59,9 +59,9 @@ function startRedirectMenuLabels(context: ProjectTaskStartWorkingContext): {
   }
 }
 
-export function ProjectTaskStartWorkingDropdown({
+export function PodTaskStartWorkingDropdown({
   owner,
-  taskSId,
+  taskId,
   activeAgents,
   agentsLoading,
   disabled,
@@ -77,7 +77,7 @@ export function ProjectTaskStartWorkingDropdown({
   triggerSize = "xs",
 }: {
   owner: LightWorkspaceType;
-  taskSId: string;
+  taskId: string;
   activeAgents: LightAgentConfigurationType[];
   agentsLoading: boolean;
   disabled: boolean;
@@ -218,7 +218,7 @@ export function ProjectTaskStartWorkingDropdown({
       <DropdownMenuContent align="end" className="w-96">
         <div className="flex flex-col gap-3 p-3">
           <TextArea
-            id={`task-start-msg-${taskSId}`}
+            id={`task-start-msg-${taskId}`}
             aria-label="Additional instructions for the agent"
             placeholder="(optional) Add a custom message for the agent..."
             value={startCustomMessage}

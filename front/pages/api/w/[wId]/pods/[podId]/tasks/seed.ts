@@ -7,12 +7,12 @@ import { seedInitialPodTasks } from "@app/lib/project_task/seed_initial_pod_task
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { ProjectTaskType } from "@app/types/project_task";
+import type { PodTaskType } from "@app/types/project_task";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export type PostSeedInitialPodTasksResponseBody = {
-  tasks: ProjectTaskType[];
+  tasks: PodTaskType[];
 };
 
 async function handler(

@@ -1,10 +1,10 @@
+import { useTypingAnimation } from "@app/components/assistant/conversation/space/conversations/project_tasks/useTypingAnimation";
+import { stripNewlines } from "@app/components/assistant/conversation/space/conversations/project_tasks/utils";
 import {
   TaskMetadataTooltip,
   TaskSources,
-} from "@app/components/assistant/conversation/space/conversations/project_tasks/TaskSubComponents";
-import { useTypingAnimation } from "@app/components/assistant/conversation/space/conversations/project_tasks/useTypingAnimation";
-import { stripNewlines } from "@app/components/assistant/conversation/space/conversations/project_tasks/utils";
-import type { ProjectTaskType } from "@app/types/project_task";
+} from "@app/components/pod/tasks/TaskSubComponents";
+import type { PodTaskType } from "@app/types/project_task";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   AnimatedText,
@@ -16,9 +16,9 @@ import {
 import { memo, useState } from "react";
 
 export interface SuggestedTaskItemProps {
-  task: ProjectTaskType;
+  task: PodTaskType;
   viewerUserId: string | null;
-  onApproveAgentSuggestion: (task: ProjectTaskType) => void | Promise<void>;
+  onApproveAgentSuggestion: (task: PodTaskType) => void | Promise<void>;
   owner: LightWorkspaceType;
   agentNameById: Map<string, string>;
   isNew: boolean;

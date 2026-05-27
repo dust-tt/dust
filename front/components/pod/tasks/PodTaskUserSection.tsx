@@ -1,27 +1,27 @@
-import { EditableTaskItem } from "@app/components/assistant/conversation/space/conversations/project_tasks/EditableTaskItem";
-import { useProjectTasksPanel } from "@app/components/assistant/conversation/space/conversations/project_tasks/ProjectTasksPanelContext";
-import { SuggestedTaskItem } from "@app/components/assistant/conversation/space/conversations/project_tasks/SuggestedTaskItem";
+import { EditableTaskItem } from "@app/components/pod/tasks/EditableTaskItem";
+import { usePodTasksPanel } from "@app/components/pod/tasks/PodTasksPanelContext";
+import { SuggestedTaskItem } from "@app/components/pod/tasks/SuggestedTaskItem";
 import {
-  PROJECT_TASK_NO_ASSIGNEE_LABEL,
-  type ProjectTaskAssigneeType,
-  type ProjectTaskType,
+  POD_TASK_NO_ASSIGNEE_LABEL,
+  type PodTaskAssigneeType,
+  type PodTaskType,
 } from "@app/types/project_task";
 import { Avatar, Button, Card, Icon, SparklesIcon } from "@dust-tt/sparkle";
 import { useState } from "react";
 
-interface ProjectTaskUserSectionProps {
-  user: ProjectTaskAssigneeType | null;
-  suggestedTasks: ProjectTaskType[];
-  regularTasks: ProjectTaskType[];
+interface PodTaskUserSectionProps {
+  user: PodTaskAssigneeType | null;
+  suggestedTasks: PodTaskType[];
+  regularTasks: PodTaskType[];
   showHeader: boolean;
 }
 
-export function ProjectTaskUserSection({
+export function PodTaskUserSection({
   user,
   suggestedTasks,
   regularTasks,
   showHeader,
-}: ProjectTaskUserSectionProps) {
+}: PodTaskUserSectionProps) {
   const {
     viewerUserId,
     owner,
@@ -31,7 +31,7 @@ export function ProjectTaskUserSection({
     onApproveAgentSuggestion,
     onApproveAllSuggestedForAssignee,
     onRejectAllSuggestedForAssignee,
-  } = useProjectTasksPanel();
+  } = usePodTasksPanel();
 
   const [bulkAction, setBulkAction] = useState<"approve" | "reject" | null>(
     null
@@ -39,7 +39,7 @@ export function ProjectTaskUserSection({
 
   const isYou = viewerUserId !== null && user?.sId === viewerUserId;
   const displayName =
-    user === null ? PROJECT_TASK_NO_ASSIGNEE_LABEL : user.fullName;
+    user === null ? POD_TASK_NO_ASSIGNEE_LABEL : user.fullName;
   const showBulkActions =
     suggestedTasks.length > 0 && viewerUserId !== null && !isReadOnly;
 

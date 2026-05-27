@@ -1,22 +1,22 @@
-import { AddTaskComposer } from "@app/components/assistant/conversation/space/conversations/project_tasks/AddTaskComposer";
-import { useProjectTasksPanel } from "@app/components/assistant/conversation/space/conversations/project_tasks/ProjectTasksPanelContext";
+import { AddTaskComposer } from "@app/components/pod/tasks/AddTaskComposer";
+import { usePodTasksPanel } from "@app/components/pod/tasks/PodTasksPanelContext";
 import { Spinner } from "@dust-tt/sparkle";
 
-export function ProjectTaskCreateBar() {
+export function PodTaskCreateBar() {
   const {
     viewerUserId,
-    projectMembers,
+    podMembers,
     isReadOnly,
-    isSpaceInfoLoading,
+    isPodInfoLoading,
     defaultNewAssigneeId,
     handleAddTask,
-  } = useProjectTasksPanel();
+  } = usePodTasksPanel();
 
   if (isReadOnly) {
     return null;
   }
 
-  if (isSpaceInfoLoading) {
+  if (isPodInfoLoading) {
     return (
       <div className="flex h-7 items-center">
         <Spinner size="sm" />
@@ -24,7 +24,7 @@ export function ProjectTaskCreateBar() {
     );
   }
 
-  if (projectMembers.length === 0 || !defaultNewAssigneeId) {
+  if (podMembers.length === 0 || !defaultNewAssigneeId) {
     return (
       <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
         No Pod members available to assign.
@@ -34,7 +34,7 @@ export function ProjectTaskCreateBar() {
 
   return (
     <AddTaskComposer
-      projectMembers={projectMembers}
+      podMembers={podMembers}
       viewerUserId={viewerUserId}
       defaultAssigneeId={defaultNewAssigneeId}
       onAdd={handleAddTask}

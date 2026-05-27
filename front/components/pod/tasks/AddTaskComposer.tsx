@@ -3,7 +3,7 @@ import {
   NEW_MANUAL_TASK_MAX_CHARS,
 } from "@app/components/assistant/conversation/space/conversations/project_tasks/utils";
 import { removeDiacritics } from "@app/lib/utils";
-import { PROJECT_TASK_NO_ASSIGNEE_LABEL } from "@app/types/project_task";
+import { POD_TASK_NO_ASSIGNEE_LABEL } from "@app/types/project_task";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { SpaceUserType } from "@app/types/user";
 import {
@@ -90,7 +90,7 @@ function TaskRowAssigneeMenu({
   }, [q, members]);
 
   const noAssigneeLabelNorm = removeDiacritics(
-    PROJECT_TASK_NO_ASSIGNEE_LABEL
+    POD_TASK_NO_ASSIGNEE_LABEL
   ).toLowerCase();
   const showNoAssigneeRow =
     members.length !== 1 && (q === "" || noAssigneeLabelNorm.includes(q));
@@ -105,7 +105,7 @@ function TaskRowAssigneeMenu({
   const tooltip = selectedUser
     ? `Assign to ${selectedUser.fullName}${viewerUserId === selectedUser.sId ? " (you)" : ""}`
     : choice.kind === "unassigned"
-      ? PROJECT_TASK_NO_ASSIGNEE_LABEL
+      ? POD_TASK_NO_ASSIGNEE_LABEL
       : "Choose assignee";
 
   return (
@@ -153,7 +153,7 @@ function TaskRowAssigneeMenu({
               {showNoAssigneeRow && (
                 <DropdownMenuCheckboxItem
                   key="add-task-no-assignee"
-                  label={PROJECT_TASK_NO_ASSIGNEE_LABEL}
+                  label={POD_TASK_NO_ASSIGNEE_LABEL}
                   checked={choice.kind === "unassigned"}
                   onClick={() => onChoiceChange({ kind: "unassigned" })}
                 />
@@ -201,7 +201,7 @@ function TaskRowAssigneeMenu({
 }
 
 interface AddTaskComposerProps {
-  projectMembers: SpaceUserType[];
+  podMembers: SpaceUserType[];
   viewerUserId: string | null;
   defaultAssigneeId: string;
   /** When true, always assigns to `defaultAssigneeId` with no picker. */
@@ -210,7 +210,7 @@ interface AddTaskComposerProps {
 }
 
 export function AddTaskComposer({
-  projectMembers,
+  podMembers,
   viewerUserId,
   defaultAssigneeId,
   hideAssigneePicker = false,
@@ -224,13 +224,13 @@ export function AddTaskComposer({
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (hideAssigneePicker || projectMembers.length !== 1) {
+    if (hideAssigneePicker || podMembers.length !== 1) {
       return;
     }
     setAssigneeChoice((c) =>
       c.kind === "unassigned" ? { kind: "default" } : c
     );
-  }, [hideAssigneePicker, projectMembers.length]);
+  }, [hideAssigneePicker, podMembers.length]);
 
   const submitAssigneeSId = hideAssigneePicker
     ? defaultAssigneeId
@@ -254,7 +254,7 @@ export function AddTaskComposer({
     <div className="flex w-full min-w-0 items-center gap-2">
       {!hideAssigneePicker && (
         <TaskRowAssigneeMenu
-          members={projectMembers}
+          members={podMembers}
           viewerUserId={viewerUserId}
           defaultAssigneeId={defaultAssigneeId}
           choice={assigneeChoice}

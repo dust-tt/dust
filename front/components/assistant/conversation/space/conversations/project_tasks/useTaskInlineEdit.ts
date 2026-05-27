@@ -2,14 +2,14 @@ import {
   stripNewlines,
   useAutosizeTextArea,
 } from "@app/components/assistant/conversation/space/conversations/project_tasks/utils";
-import type { ProjectTaskType } from "@app/types/project_task";
+import type { PodTaskType } from "@app/types/project_task";
 import type { KeyboardEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 
 const BLUR_COMMIT_DELAY_MS = 150;
 
 interface UseTaskInlineEditArgs {
-  task: ProjectTaskType;
+  task: PodTaskType;
   canEdit: boolean;
   onCommitText: (text: string) => Promise<void>;
 }

@@ -43,7 +43,7 @@ import {
 } from "@app/lib/resources/takeaways_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type { ProjectTaskSourceInfo } from "@app/types/project_task";
+import type { PodTaskSourceInfo } from "@app/types/project_task";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import type { TaskVersionedActionItem } from "@app/types/takeaways";
@@ -71,7 +71,7 @@ export type PendingCandidate = {
   itemId: string;
   userId: ModelId | null;
   blob: TaskBlob;
-  source: ProjectTaskSourceInfo;
+  source: PodTaskSourceInfo;
 };
 
 // ── Stats ─────────────────────────────────────────────────────────────────────

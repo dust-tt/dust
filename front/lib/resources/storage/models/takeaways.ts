@@ -1,7 +1,7 @@
 import { frontSequelize } from "@app/lib/resources/storage";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type { ProjectTaskSourceType } from "@app/types/project_task";
+import type { PodTaskSourceType } from "@app/types/project_task";
 import type { TaskVersionedActionItem } from "@app/types/takeaways";
 import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
@@ -135,7 +135,7 @@ export class TakeawaySourcesModel extends WorkspaceAwareModel<TakeawaySourcesMod
 
   // FK to the stable TakeawaysModel row that this source produced.
   declare takeawaysId: ForeignKey<TakeawaysModel["id"]>;
-  declare sourceType: ProjectTaskSourceType;
+  declare sourceType: PodTaskSourceType;
   declare sourceId: string;
 
   declare sourceTitle: string | null;

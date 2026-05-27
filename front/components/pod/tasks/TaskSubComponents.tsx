@@ -3,10 +3,10 @@ import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useUser } from "@app/lib/swr/user";
 import { timeAgoFrom } from "@app/lib/utils";
 import {
-  PROJECT_TASK_NO_ASSIGNEE_LABEL,
-  type ProjectTaskActorType,
-  type ProjectTaskAssigneeType,
-  type ProjectTaskType,
+  POD_TASK_NO_ASSIGNEE_LABEL,
+  type PodTaskActorType,
+  type PodTaskAssigneeType,
+  type PodTaskType,
 } from "@app/types/project_task";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type {
@@ -33,7 +33,7 @@ import { useMemo } from "react";
 // ── Metadata tooltip ──────────────────────────────────────────────────────────
 
 function formatActorLabel(
-  type: ProjectTaskActorType | null,
+  type: PodTaskActorType | null,
   agentId: string | null,
   userId: string | null,
 
@@ -66,7 +66,7 @@ function formatFriendlyDate(value: Date | string): string {
 }
 
 interface TaskMetadataTooltipProps {
-  task: ProjectTaskType;
+  task: PodTaskType;
   agentNameById: Map<string, string>;
   children: React.ReactElement;
 }
@@ -149,9 +149,9 @@ export function useAgentNameById(
 
 // ── Shared sub-components ─────────────────────────────────────────────────────
 
-function getSourceDisplay(source: ProjectTaskType["sources"][number]) {
+function getSourceDisplay(source: PodTaskType["sources"][number]) {
   const sourceIconByType: Record<
-    ProjectTaskType["sources"][number]["sourceType"],
+    PodTaskType["sources"][number]["sourceType"],
     React.ComponentType
   > = {
     project_conversation: ChatBubbleLeftRightIcon,
@@ -180,7 +180,7 @@ export function TaskSources({
   owner,
   isDone,
 }: {
-  sources: ProjectTaskType["sources"];
+  sources: PodTaskType["sources"];
   owner: LightWorkspaceType;
   isDone: boolean;
 }) {
@@ -276,13 +276,13 @@ export function TaskAssigneeHeader({
   viewerUserId,
   className,
 }: {
-  user: ProjectTaskAssigneeType | null;
+  user: PodTaskAssigneeType | null;
   viewerUserId: string | null;
   className?: string;
 }) {
   const isYou = viewerUserId !== null && user?.sId === viewerUserId;
   const displayName =
-    user === null ? PROJECT_TASK_NO_ASSIGNEE_LABEL : user.fullName;
+    user === null ? POD_TASK_NO_ASSIGNEE_LABEL : user.fullName;
 
   return (
     <div className={cn("mb-1 mt-2 flex items-center gap-2", className)}>

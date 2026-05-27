@@ -10,8 +10,8 @@ import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrapp
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
-  ProjectTaskSourceInfo,
-  ProjectTaskSourceType,
+  PodTaskSourceInfo,
+  PodTaskSourceType,
 } from "@app/types/project_task";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Ok, type Result } from "@app/types/shared/result";
@@ -29,13 +29,13 @@ export type TakeawaySourceDocument = {
   title: string;
   text: string;
   id: string;
-  type: ProjectTaskSourceType;
+  type: PodTaskSourceType;
   uri: string;
 };
 
 export type TakeawaysWithSource = {
   takeaway: TakeawaysResource;
-  source: ProjectTaskSourceInfo;
+  source: PodTaskSourceInfo;
 };
 
 type TakeawaysVersionCreationAttributes = CreationAttributes<TakeawaysModel> & {
@@ -255,7 +255,7 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
     });
 
     // One source per takeaway (a takeaway is produced by one source).
-    const sourceByTakeawaysId = new Map<ModelId, ProjectTaskSourceInfo>(
+    const sourceByTakeawaysId = new Map<ModelId, PodTaskSourceInfo>(
       sources.map((s) => [
         s.takeawaysId,
         {
@@ -289,7 +289,7 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
     {
       sourceId,
       sourceType,
-    }: { sourceId: string; sourceType: ProjectTaskSourceType },
+    }: { sourceId: string; sourceType: PodTaskSourceType },
     transaction?: Transaction
   ): Promise<TakeawaysResource | null> {
     const source = await TakeawaySourcesModel.findOne({
@@ -333,7 +333,7 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
       spaceId: string;
       document: {
         id: string;
-        type: ProjectTaskSourceType;
+        type: PodTaskSourceType;
         title: string | null;
         uri: string | null;
       };

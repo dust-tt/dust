@@ -5,9 +5,9 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
   AgentSuggestionStatus,
-  ProjectTaskActorType,
-  ProjectTaskSourceType,
-  ProjectTaskStatus,
+  PodTaskActorType,
+  PodTaskSourceType,
+  PodTaskStatus,
 } from "@app/types/project_task";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
@@ -132,18 +132,18 @@ export class ProjectTaskModel extends WorkspaceAwareModel<ProjectTaskModel> {
   declare userId: ForeignKey<UserModel["id"]> | null;
 
   // Creator — user or agent (mutually exclusive FKs).
-  declare createdByType: ProjectTaskActorType;
+  declare createdByType: PodTaskActorType;
   declare createdByUserId: ForeignKey<UserModel["id"]> | null;
   declare createdByAgentConfigurationId: string | null;
 
   // Done-by — same polymorphic pattern as creator.
-  declare markedAsDoneByType: ProjectTaskActorType | null;
+  declare markedAsDoneByType: PodTaskActorType | null;
   declare markedAsDoneByUserId: ForeignKey<UserModel["id"]> | null;
   declare markedAsDoneByAgentConfigurationId: string | null;
 
   declare category: "to_do";
   declare text: string;
-  declare status: ProjectTaskStatus;
+  declare status: PodTaskStatus;
   declare doneAt: Date | null;
   declare actorRationale: string | null;
   declare agentInstructions: string | null;
@@ -401,7 +401,7 @@ export class ProjectTaskSourceModel extends WorkspaceAwareModel<ProjectTaskSourc
   // (workspaceId, itemId) — if the same item reappears later the row is
   // upserted, not duplicated.
   declare itemId: string;
-  declare sourceType: ProjectTaskSourceType;
+  declare sourceType: PodTaskSourceType;
   declare sourceId: string;
   declare sourceTitle: string | null;
   declare sourceUrl: string | null;

@@ -18,8 +18,8 @@ import { startAgentForProjectTask } from "@app/lib/project_task/start_agent";
 import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type { ProjectTaskStatus } from "@app/types/project_task";
-import { PROJECT_TASK_NO_ASSIGNEE_LABEL } from "@app/types/project_task";
+import type { PodTaskStatus } from "@app/types/project_task";
+import { POD_TASK_NO_ASSIGNEE_LABEL } from "@app/types/project_task";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -30,7 +30,7 @@ type PodTaskUpdateItem = {
   text?: string;
   userId?: string | null;
   doneRationale?: string;
-  status?: ProjectTaskStatus;
+  status?: PodTaskStatus;
 };
 
 async function buildTaskUpdatePayload(
@@ -74,7 +74,7 @@ function formatTaskListingLine(row: ProjectTaskResource): string {
   const json = row.toJSON();
   const assigneePart = json.user
     ? `${json.user.fullName} (${json.user.sId})`
-    : PROJECT_TASK_NO_ASSIGNEE_LABEL;
+    : POD_TASK_NO_ASSIGNEE_LABEL;
   const lines = [
     `- [${json.sId}] ${json.text}`,
     ` Assignee: ${assigneePart} | Status: ${json.status} | Created: ${json.createdAt.toISOString().slice(0, 10)}`,

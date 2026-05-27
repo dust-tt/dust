@@ -6,7 +6,7 @@ import {
 import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
-import type { ProjectTaskType } from "@app/types/project_task";
+import type { PodTaskType } from "@app/types/project_task";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
@@ -23,10 +23,7 @@ export async function seedInitialPodTasks(
   auth: Authenticator,
   space: SpaceResource
 ): Promise<
-  Result<
-    ProjectTaskType[],
-    { code: SeedInitialPodTasksErrorCode; message: string }
-  >
+  Result<PodTaskType[], { code: SeedInitialPodTasksErrorCode; message: string }>
 > {
   if (!space.isProject()) {
     return new Err({

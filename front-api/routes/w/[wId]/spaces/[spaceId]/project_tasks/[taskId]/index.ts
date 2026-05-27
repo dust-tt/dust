@@ -1,7 +1,7 @@
 import { Authenticator } from "@app/lib/auth";
 import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
-import type { ProjectTaskType } from "@app/types/project_task";
-import { PROJECT_TASK_STATUSES } from "@app/types/project_task";
+import type { PodTaskType } from "@app/types/project_task";
+import { POD_TASK_STATUSES } from "@app/types/project_task";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -18,7 +18,7 @@ import start from "./start";
 // `formatFriendlyDate(...)`.
 export interface PatchProjectTaskResponseBody {
   task: Omit<
-    ProjectTaskType,
+    PodTaskType,
     "doneAt" | "agentSuggestionReviewedAt" | "createdAt" | "updatedAt"
   > & {
     doneAt: string | null;
@@ -35,7 +35,7 @@ const PatchProjectTaskBodySchema = z
       .min(1, "Text cannot be empty.")
       .max(256, "Text must be at most 256 characters.")
       .optional(),
-    status: z.enum(PROJECT_TASK_STATUSES).optional(),
+    status: z.enum(POD_TASK_STATUSES).optional(),
     assigneeUserId: z.union([z.string().min(1), z.null()]).optional(),
   })
   .refine(
