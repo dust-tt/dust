@@ -3,6 +3,7 @@ import { sendEmailWithTemplate } from "@app/lib/api/email";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureIsUser } from "@front-api/middlewares/ensure_is_user";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { escape } from "html-escaper";
@@ -26,20 +27,11 @@ const app = workspaceApp();
 
 app.post(
   "/",
+  ensureIsUser(),
   validate("json", PostRequestFeatureAccessBodySchema),
   async (ctx): HandlerResult<PostRequestFeatureAccessResponseBody> => {
     const auth = ctx.get("auth");
     const user = auth.getNonNullableUser();
-
-    if (!auth.isUser()) {
-      return apiError(ctx, {
-        status_code: 401,
-        api_error: {
-          type: "data_source_auth_error",
-          message: "You are not authorized to submit connections requests.",
-        },
-      });
-    }
 
     const emailRequester = user.email;
     const { emailMessage, featureName } = ctx.req.valid("json");

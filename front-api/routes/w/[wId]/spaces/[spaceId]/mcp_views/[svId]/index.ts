@@ -1,6 +1,7 @@
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { SpaceKind } from "@app/types/space";
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureIsUser } from "@front-api/middlewares/ensure_is_user";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { withSpace } from "@front-api/middlewares/with_space";
@@ -14,22 +15,12 @@ const app = workspaceApp();
 
 app.delete(
   "/",
+  ensureIsUser(),
   withSpace({ requireCanReadOrAdministrate: true }),
   async (ctx): HandlerResult<DeleteMCPServerViewResponseBody> => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");
     const serverViewId = ctx.req.param("svId") ?? "";
-
-    if (!auth.isUser()) {
-      return apiError(ctx, {
-        status_code: 401,
-        api_error: {
-          type: "mcp_auth_error",
-          message:
-            "You are not authorized to make request to inspect an MCP server.",
-        },
-      });
-    }
 
     const mcpServerView = await MCPServerViewResource.fetchById(
       auth,
