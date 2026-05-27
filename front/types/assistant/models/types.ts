@@ -61,9 +61,7 @@ export const ModelConfigurationSchema = z.object({
   disablePrefill: z.boolean().optional(),
   supportsBatchProcessing: z.boolean().optional(),
   // Specify if the model is available in specific regions.
-  regionalAvailability: z
-    .record(z.enum(SUPPORTED_REGIONS), z.boolean())
-    .optional(),
+  regionalAvailability: z.record(z.enum(SUPPORTED_REGIONS), z.boolean()),
 });
 
 // Base type inferred from the schema.
