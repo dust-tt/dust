@@ -1,5 +1,5 @@
 # Base dependencies stage (shared by front-nextjs and workers)
-FROM node:24.14.0 AS base-deps
+FROM node:24.14.0-slim AS base-deps
 
 RUN apt-get update && \
   apt-get install -y libjemalloc2 libjemalloc-dev
@@ -164,10 +164,10 @@ RUN if [ -n "$DATADOG_API_KEY" ] && [ -n "$NEXT_PUBLIC_DATADOG_SERVICE" ]; then 
   fi
 
 # Frontend image (Next.js standalone) for front deployment
-FROM node:24.14.0 AS front
+FROM node:24.14.0-slim AS front
 
 RUN apt-get update && \
-  apt-get install -y redis-tools postgresql-client libjemalloc2 && \
+  apt-get install -y redis-tools postgresql-client libjemalloc2 curl && \
   rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -208,10 +208,10 @@ ENV DD_GIT_COMMIT_SHA=${COMMIT_HASH_LONG}
 CMD ["node", "--require", "dd-trace/init", "server.js"]
 
 # Workers image (Full Node.js environment) for front-workers deployment
-FROM node:24.14.0 AS workers
+FROM node:24.14.0-slim AS workers
 
 RUN apt-get update && \
-  apt-get install -y redis-tools postgresql-client libjemalloc2 && \
+  apt-get install -y redis-tools postgresql-client libjemalloc2 curl && \
   rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -323,10 +323,10 @@ WORKDIR /app/front-api
 RUN npm run build
 
 # Front-api runtime image — Hono server with Next.js fallback (strangler shim).
-FROM node:24.14.0 AS front-api
+FROM node:24.14.0-slim AS front-api
 
 RUN apt-get update && \
-  apt-get install -y redis-tools postgresql-client libjemalloc2 && \
+  apt-get install -y redis-tools postgresql-client libjemalloc2 curl && \
   rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
