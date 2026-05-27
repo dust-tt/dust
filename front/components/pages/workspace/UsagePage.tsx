@@ -9,7 +9,7 @@ import { UsageNotificationsCard } from "@app/components/workspace/usage/UsageNot
 import { UsageSettingsCard } from "@app/components/workspace/usage/UsageSettingsCard";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
-import { isUpgraded } from "@app/lib/plans/plan_codes";
+import { isEntreprisePlanPrefix, isUpgraded } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
 import {
   useAwuPoolSummary,
@@ -193,6 +193,7 @@ export function UsagePage() {
     workspaceId: owner.sId,
   });
 
+  const isEnterprise = isEntreprisePlanPrefix(subscription.plan.code);
   const hasSeatSubscription = contract?.hasSeatSubscription ?? false;
 
   const plan = subscription.plan;
@@ -384,7 +385,8 @@ export function UsagePage() {
             isLoading={isMembersUsageLoading}
             searchTerm={searchTerm}
             seatTypeFilter={seatTypeFilter}
-            showSeatColumns={hasSeatSubscription}
+            hasSeatSubscription={hasSeatSubscription}
+            isEnterprise={isEnterprise}
             onChangeSeat={setChangeSeatMember}
             onEditSpendLimit={setEditSpendLimitMember}
           />

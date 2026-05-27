@@ -18,6 +18,9 @@ export type MemberUsageType = {
   seatType: MembershipSeatType | null;
   // Percentage of seat allocation consumed (0–100), null when seat balances are unavailable.
   seatUsagePercent: number | null;
+  // Per-user AWU allocation granted by the seat (in credits). Null when the
+  // user has no seat or the seat carries no allocation.
+  memberUsageLimit: number | null;
   // Total user AWU consumption for the period, regardless of whether it
   // was covered by the seat allocation or overflowed into the workspace
   // pool.
@@ -205,6 +208,7 @@ export async function getMembersUsage({
         image: m.user.imageUrl ?? null,
         seatType: m.seatType ?? null,
         seatUsagePercent,
+        memberUsageLimit: awuAllocation > 0 ? awuAllocation : null,
         consumedAwuCredits: totalCredits,
         billingFrequency: seatData?.billingFrequency ?? null,
         scheduledSeatType: scheduled?.seatType ?? null,

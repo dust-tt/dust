@@ -11,6 +11,7 @@ import {
   SeatFreeIcon,
   SeatMaxIcon,
   SeatProIcon,
+  Tooltip,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import type React from "react";
@@ -22,6 +23,7 @@ type RowData = {
   image: string | null;
   seatType: MembershipSeatType | null;
   seatUsagePercent: number | null;
+  memberUsageLimit: number | null;
   consumedAwuCredits: number;
   spendLimitAwuCredits: number | null;
   billingFrequency: BillingFrequency | null;
@@ -31,51 +33,6 @@ type RowData = {
 };
 
 type Info = CellContext<RowData, string>;
-
-interface CircleProgressProps {
-  percentage: number;
-}
-
-function CircleProgress({ percentage }: CircleProgressProps) {
-  const size = 16;
-  const strokeWidth = 2;
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const clampedPct = Math.min(100, Math.max(0, percentage));
-  const offset = circumference - (clampedPct / 100) * circumference;
-  const strokeColor =
-    percentage >= 100
-      ? "#ef4444"
-      : percentage >= 80
-        ? "#f59e0b"
-        : "currentColor";
-
-  return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      <circle
-        cx={size / 2}
-        cy={size / 2}
-        r={radius}
-        fill="none"
-        stroke="currentColor"
-        opacity={0.2}
-        strokeWidth={strokeWidth}
-      />
-      <circle
-        cx={size / 2}
-        cy={size / 2}
-        r={radius}
-        fill="none"
-        stroke={strokeColor}
-        strokeWidth={strokeWidth}
-        strokeDasharray={circumference}
-        strokeDashoffset={offset}
-        strokeLinecap="butt"
-        transform={`rotate(-90 ${size / 2} ${size / 2})`}
-      />
-    </svg>
-  );
-}
 
 const SEAT_TYPE_ICONS: Partial<
   Record<MembershipSeatType, React.ComponentType>
@@ -106,12 +63,79 @@ function formatCredits(credits: number): string {
 
 interface AwuUsageBarProps {
   consumed: number;
+  memberUsageLimit: number | null;
   limit: number | null;
+  seatType: MembershipSeatType | null;
 }
 
-function AwuUsageBar({ consumed, limit }: AwuUsageBarProps) {
-  const percentage =
-    limit !== null && limit > 0 ? Math.min((consumed / limit) * 100, 100) : 0;
+const MUTED_BAR_CLASSES = {
+  track: "bg-muted-background dark:bg-muted-background-night",
+  fill: "bg-muted-foreground dark:bg-muted-foreground-night",
+};
+
+function getSeatBarClasses(seatType: MembershipSeatType | null) {
+  if (seatType?.startsWith("pro")) {
+    return {
+      track: "bg-blue-100 dark:bg-blue-100-night",
+      fill: "bg-highlight dark:bg-highlight-night",
+    };
+  }
+  if (seatType?.startsWith("max")) {
+    return {
+      track: "bg-golden-100 dark:bg-golden-100-night",
+      fill: "bg-brand-orange-golden",
+    };
+  }
+  return MUTED_BAR_CLASSES;
+}
+
+function AwuUsageBar({
+  consumed,
+  memberUsageLimit,
+  limit,
+  seatType,
+}: AwuUsageBarProps) {
+  const hasSeatAllocation = memberUsageLimit !== null && memberUsageLimit > 0;
+
+  if (!hasSeatAllocation) {
+    const percent =
+      limit !== null && limit > 0 ? Math.min((consumed / limit) * 100, 100) : 0;
+    return (
+      <div className="flex w-full flex-col gap-1">
+        <div className="flex justify-between text-xs tabular-nums text-foreground dark:text-foreground-night">
+          <span>{formatCredits(consumed)}</span>
+          <span>{limit === null ? "∞" : formatCredits(limit)}</span>
+        </div>
+        <div
+          className={`h-0.5 w-full overflow-hidden rounded-full ${MUTED_BAR_CLASSES.track}`}
+        >
+          <div
+            className={`h-full ${MUTED_BAR_CLASSES.fill} transition-all`}
+            style={{ width: `${percent}%` }}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  const seatColors = getSeatBarClasses(seatType);
+  const seatConsumed = Math.min(consumed, memberUsageLimit);
+  const seatFillPercent = (seatConsumed / memberUsageLimit) * 100;
+  const overflow = Math.max(0, consumed - memberUsageLimit);
+  const overflowRange =
+    limit !== null ? Math.max(0, limit - memberUsageLimit) : null;
+  const overflowFillPercent =
+    overflowRange !== null && overflowRange > 0
+      ? Math.min((overflow / overflowRange) * 100, 100)
+      : overflow > 0
+        ? 100
+        : 0;
+  const seatWidthPercent =
+    limit !== null && limit > memberUsageLimit
+      ? (memberUsageLimit / limit) * 100
+      : 50;
+  const overflowWidthPercent = 100 - seatWidthPercent;
+  const remaining = limit !== null ? Math.max(0, limit - consumed) : null;
 
   return (
     <div className="flex w-full flex-col gap-1">
@@ -119,10 +143,44 @@ function AwuUsageBar({ consumed, limit }: AwuUsageBarProps) {
         <span>{formatCredits(consumed)}</span>
         <span>{limit === null ? "∞" : formatCredits(limit)}</span>
       </div>
-      <div className="h-0.5 w-full overflow-hidden rounded-full bg-muted-foreground/10 dark:bg-muted-foreground-night/10">
-        <div
-          className="h-full transition-all"
-          style={{ width: `${percentage}%`, backgroundColor: "#596170" }}
+      <div className="flex w-full items-center gap-0.5">
+        <Tooltip
+          tooltipTriggerAsChild
+          label={`${formatCredits(seatConsumed)} credits consumed over ${formatCredits(memberUsageLimit)} seat limit`}
+          trigger={
+            <div
+              className="flex h-3 items-center"
+              style={{ width: `${seatWidthPercent}%` }}
+            >
+              <div
+                className={`h-0.5 w-full overflow-hidden rounded-full ${seatColors.track}`}
+              >
+                <div
+                  className={`h-full ${seatColors.fill} transition-all`}
+                  style={{ width: `${seatFillPercent}%` }}
+                />
+              </div>
+            </div>
+          }
+        />
+        <Tooltip
+          tooltipTriggerAsChild
+          label={`${remaining === null ? "∞" : formatCredits(remaining)} credits remaining`}
+          trigger={
+            <div
+              className="flex h-3 items-center"
+              style={{ width: `${overflowWidthPercent}%` }}
+            >
+              <div
+                className={`h-0.5 w-full overflow-hidden rounded-full ${MUTED_BAR_CLASSES.track}`}
+              >
+                <div
+                  className={`h-full ${MUTED_BAR_CLASSES.fill} transition-all`}
+                  style={{ width: `${overflowFillPercent}%` }}
+                />
+              </div>
+            </div>
+          }
         />
       </div>
     </div>
@@ -191,6 +249,7 @@ const billingFrequencyColumn: ColumnDef<RowData, string> = {
   header: "Period",
   accessorFn: (row) => row.billingFrequency ?? "",
   cell: (info: Info) => {
+    console.log(info.row);
     const freq = info.row.original.billingFrequency;
     let label: string;
     switch (freq) {
@@ -220,46 +279,6 @@ const billingFrequencyColumn: ColumnDef<RowData, string> = {
   },
 };
 
-const seatUsagePercentColumn: ColumnDef<RowData, string> = {
-  id: "seatUsagePercent" as const,
-  header: "Seat usage",
-  accessorFn: (row) => (row.seatUsagePercent ?? 0).toString(),
-  cell: (info: Info) => {
-    const pct = info.row.original.seatUsagePercent;
-    let textColor: string | undefined;
-    if (pct !== null) {
-      if (pct >= 100) {
-        textColor = "#ef4444";
-      } else if (pct >= 80) {
-        textColor = "#FE9C1A";
-      }
-    }
-    return (
-      <DataTable.CellContent>
-        {pct !== null ? (
-          <span
-            className="flex items-center gap-1.5 text-sm font-semibold tabular-nums"
-            style={textColor ? { color: textColor } : undefined}
-          >
-            {`${Math.round(pct)}%`}
-            <CircleProgress percentage={pct} />
-          </span>
-        ) : (
-          <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            —
-          </span>
-        )}
-      </DataTable.CellContent>
-    );
-  },
-  meta: {
-    className: "w-32",
-  },
-  enableSorting: true,
-  sortingFn: (a, b) =>
-    (a.original.seatUsagePercent ?? -1) - (b.original.seatUsagePercent ?? -1),
-};
-
 const consumedAwuCreditsColumn: ColumnDef<RowData, string> = {
   id: "consumedAwuCredits" as const,
   header: () => (
@@ -273,7 +292,9 @@ const consumedAwuCreditsColumn: ColumnDef<RowData, string> = {
     <div className="w-full pr-3">
       <AwuUsageBar
         consumed={info.row.original.consumedAwuCredits}
+        memberUsageLimit={info.row.original.memberUsageLimit}
         limit={info.row.original.spendLimitAwuCredits}
+        seatType={info.row.original.seatType}
       />
     </div>
   ),
@@ -297,14 +318,26 @@ const actionsColumn: ColumnDef<RowData, string> = {
   },
 };
 
-function buildColumns(showSeatColumns: boolean): ColumnDef<RowData, string>[] {
+function buildColumns({
+  hasSeatSubscription,
+  isEnterprise,
+}: {
+  hasSeatSubscription: boolean;
+  isEnterprise: boolean;
+}): ColumnDef<RowData, string>[] {
+  const showActions = hasSeatSubscription || isEnterprise;
+  const optionalColumns = [];
+  if (hasSeatSubscription) {
+    optionalColumns.push(seatTypeColumn);
+  }
+  if (!isEnterprise) {
+    optionalColumns.push(billingFrequencyColumn);
+  }
   return [
     nameColumn,
-    ...(showSeatColumns
-      ? [seatTypeColumn, billingFrequencyColumn, seatUsagePercentColumn]
-      : []),
+    ...optionalColumns,
     consumedAwuCreditsColumn,
-    ...(showSeatColumns ? [actionsColumn] : []),
+    ...(showActions ? [actionsColumn] : []),
   ];
 }
 
@@ -313,7 +346,8 @@ interface MembersUsageTableProps {
   isLoading: boolean;
   searchTerm: string;
   seatTypeFilter: MembershipSeatType | "none" | null;
-  showSeatColumns: boolean;
+  hasSeatSubscription: boolean;
+  isEnterprise: boolean;
   onChangeSeat: (member: MemberUsageType) => void;
   onEditSpendLimit: (member: MemberUsageType) => void;
 }
@@ -323,7 +357,8 @@ export function MembersUsageTable({
   isLoading,
   searchTerm,
   seatTypeFilter,
-  showSeatColumns,
+  hasSeatSubscription,
+  isEnterprise,
   onChangeSeat,
   onEditSpendLimit,
 }: MembersUsageTableProps) {
@@ -367,17 +402,22 @@ export function MembersUsageTable({
     image: m.image,
     seatType: m.seatType,
     seatUsagePercent: m.seatUsagePercent,
+    memberUsageLimit: m.memberUsageLimit,
     consumedAwuCredits: m.consumedAwuCredits,
     spendLimitAwuCredits: m.spendLimitAwuCredits,
     billingFrequency: m.billingFrequency,
     scheduledSeatType: m.scheduledSeatType,
     scheduledSeatChangeAt: m.scheduledSeatChangeAt,
     menuItems: [
-      {
-        kind: "item" as const,
-        label: "Change seat type",
-        onClick: () => onChangeSeat(m),
-      },
+      ...(hasSeatSubscription
+        ? [
+            {
+              kind: "item" as const,
+              label: "Change seat type",
+              onClick: () => onChangeSeat(m),
+            },
+          ]
+        : []),
       {
         kind: "item" as const,
         label: "Edit spend limit",
@@ -386,5 +426,10 @@ export function MembersUsageTable({
     ],
   }));
 
-  return <DataTable data={rows} columns={buildColumns(showSeatColumns)} />;
+  return (
+    <DataTable
+      data={rows}
+      columns={buildColumns({ hasSeatSubscription, isEnterprise })}
+    />
+  );
 }
