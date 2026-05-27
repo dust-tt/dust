@@ -118,8 +118,11 @@ export function renderAgentSteps(
         } satisfies AssistantContentMessageTypeModel);
       }
 
-      for (const { result, enabledSkillMessages } of step.actions) {
+      // Tool calls must be immediately followed by their results, skill messages come after.
+      for (const { result } of step.actions) {
         messages.push(result);
+      }
+      for (const { enabledSkillMessages } of step.actions) {
         messages.push(...enabledSkillMessages);
       }
     }
