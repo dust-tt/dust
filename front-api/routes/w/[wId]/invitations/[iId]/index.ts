@@ -7,14 +7,14 @@ import { MembershipInvitationResource } from "@app/lib/resources/membership_invi
 import type { PostMemberInvitationsResponseBody } from "@app/pages/api/w/[wId]/invitations/[iId]/index";
 import { PostMemberInvitationBodySchema } from "@app/pages/api/w/[wId]/invitations/[iId]/index";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureRole } from "@front-api/middlewares/ensure_role";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_is_admin";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 
 // Mounted under /api/w/:wId/invitations/:iId.
 const app = workspaceApp();
 
-app.use("*", ensureRole({ admin: true }));
+app.use("*", ensureIsAdmin());
 
 app.post(
   "/",
