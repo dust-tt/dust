@@ -1,3 +1,4 @@
+// @migration-status: MIGRATED_TO_HONO
 import { checkAppsDeployment } from "@app/lib/api/apps";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";

@@ -1,15 +1,14 @@
+// @migration-status: MIGRATED_TO_HONO
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
 import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
-import { extractUsageFromExecutions } from "@app/lib/api/run";
+import { consumeRunStream } from "@app/lib/api/run";
 import { initSSEResponse } from "@app/lib/api/sse";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
-import type { RunUsageType } from "@app/lib/resources/run_resource";
-import { RunResource } from "@app/lib/resources/run_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { ProviderModel } from "@app/lib/resources/storage/models/apps";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
@@ -22,10 +21,9 @@ import {
 import { CoreAPI } from "@app/types/core/core_api";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { CredentialsType } from "@app/types/provider";
-import type { BlockType, RunType, TraceType } from "@app/types/run";
+import type { RunType } from "@app/types/run";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { RunAppResponseType } from "@dust-tt/client";
-import { createParser } from "eventsource-parser";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export const config = {
@@ -39,8 +37,6 @@ export const config = {
 };
 
 type RunFlavor = "blocking" | "streaming" | "non-blocking";
-
-type Trace = [[BlockType, string], TraceType[][]];
 
 /**
  * @swagger
@@ -341,64 +337,29 @@ async function handler(
           assertNever(runFlavor);
       }
 
-      const usages: RunUsageType[] = [];
-      const traces: Trace[] = [];
+      let traces;
       let dustRunId: string | undefined;
 
       try {
-        // Intercept block_execution events to store token usages.
-        const parser = createParser((event) => {
-          if (event.type === "event") {
-            if (event.data) {
-              try {
-                const data = JSON.parse(event.data);
-                if (data.type === "block_execution") {
-                  if (runFlavor === "blocking") {
-                    // Keep track of block executions for blocking requests.
-                    traces.push([
-                      [data.content.block_type, data.content.block_name],
-                      data.content.execution,
-                    ]);
-                  }
-                  const block = config[data.content.block_name];
-
-                  const blockUsages = extractUsageFromExecutions(
-                    block,
-                    data.content.execution
-                  );
-                  usages.push(...blockUsages);
+        const result = await consumeRunStream({
+          auth,
+          appModelId: app.id,
+          workspaceModelId: owner.id,
+          useDustCredentials,
+          blocksConfig: config,
+          runStream: runRes.value,
+          collectTraces: runFlavor === "blocking",
+          onChunk:
+            runFlavor === "streaming"
+              ? (chunk) => {
+                  res.write(chunk);
+                  // @ts-expect-error we need to flush for streaming but TS thinks flush() does not exists.
+                  res.flush();
                 }
-              } catch (err) {
-                logger.error(
-                  { error: err },
-                  "Error parsing run events while extracting usage from executions"
-                );
-              }
-            }
-          }
+              : undefined,
         });
-
-        for await (const chunk of runRes.value.chunkStream) {
-          parser.feed(new TextDecoder().decode(chunk));
-          if (runFlavor === "streaming") {
-            res.write(chunk);
-            // @ts-expect-error we need to flush for streaming but TS thinks flush() does not exists.
-            res.flush();
-          }
-        }
-
-        // TODO(2025-04-23): We should record usage earlier, as soon as we get the runId. So we know
-        // that the run is available before we yield the "agent_message_success" event.
-        dustRunId = await runRes.value.dustRunId;
-        const run = await RunResource.makeNew({
-          dustRunId,
-          appId: app.id,
-          runType: "deploy",
-          workspaceId: owner.id,
-          useWorkspaceCredentials: !useDustCredentials,
-        });
-
-        await run.recordRunUsage(auth, usages);
+        traces = result.traces;
+        dustRunId = result.dustRunId;
       } catch (err) {
         logger.error(
           {
