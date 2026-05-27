@@ -6,13 +6,13 @@ import {
   type ConversationDotStatus,
   getConversationDotStatus,
 } from "@app/lib/utils/conversation_dot_status";
-import type { ProjectTaskType } from "@app/types/project_task";
+import type { PodTaskType } from "@app/types/project_task";
 import type { PodType } from "@app/types/space";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 
 export interface GetWorkspaceProjectTaskResponseBody {
-  task: ProjectTaskType;
+  task: PodTaskType;
   /** Pod space (same shape as entries in `GET /api/w/{wId}/spaces` for pods). */
   space: PodType;
 }
@@ -75,7 +75,7 @@ app.get("/", async (ctx) => {
   }
 
   const sources = sourcesByTaskId.get(taskRow.sId) ?? [];
-  const taskPayload: ProjectTaskType = {
+  const taskPayload: PodTaskType = {
     ...serializedBase,
     conversationId,
     conversationSidebarStatus,
