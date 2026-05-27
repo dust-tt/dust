@@ -246,13 +246,8 @@ app.post(
         }
       }
 
-      const inlineSelectedSkillIds = extractUniqueSkillIds(message.content);
-      // TODO(2026-05-04 aubin): Remove this fallback once all clients submit
-      // inline <skill ... /> tags instead of the legacy selectedSkillIds field.
-      const selectedSkillIds =
-        inlineSelectedSkillIds.length > 0
-          ? inlineSelectedSkillIds
-          : (message.context.selectedSkillIds ?? []);
+      const selectedSkillIds = extractUniqueSkillIds(message.content);
+
       if (selectedSkillIds.length > 0) {
         const skills = await SkillResource.fetchByIds(auth, selectedSkillIds);
 
