@@ -110,14 +110,17 @@ export function isToolGeneratedFilePath(
   );
 }
 
-// GCS mount image returned by the `files__cat` tool for vision-capable models.
-// Carries a GCS path so the rendering layer can generate a fresh signed URL at render time.
+// File-system image returned by the `files__cat` tool for vision-capable models.
+// Carries a canonical scoped path (e.g. `conversation-{cId}/photo.png`) so the
+// rendering layer can generate a fresh signed URL at render time via DustFileSystem.
+// Legacy records may carry a raw GCS path in `filePath`; the rendering layer
+// handles both by detecting whether the value starts with `w/`.
 
 const ModelVisionImageSchema = z.object({
   uri: z.string(),
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.MODEL_VISION_IMAGE),
   text: z.literal(""),
-  gcsPath: z.string(),
+  filePath: z.string(),
   imageContentType: z.string(),
 });
 

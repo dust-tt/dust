@@ -9,10 +9,8 @@ import {
   FILES_SERVER_NAME,
   GREP_MATCHES_MAX,
 } from "@app/lib/api/actions/servers/files/metadata";
-import {
-  isReadableAsText,
-  resolveFile,
-} from "@app/lib/api/actions/servers/files/tools/utils";
+import { isReadableAsText } from "@app/lib/api/actions/servers/files/tools/utils";
+import { DustFileSystem } from "@app/lib/api/file_system";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import * as readline from "readline";
@@ -28,11 +26,28 @@ export async function grepHandler(
     );
   }
 
-  const resolvedRes = await resolveFile(auth, conversation, path);
-  if (resolvedRes.isErr()) {
-    return resolvedRes;
+  const fsResult = await DustFileSystem.forConversation(auth, conversation);
+  if (fsResult.isErr()) {
+    return new Err(
+      new MCPError(fsResult.error.message, { tracked: false })
+    );
   }
-  const { file, mimeType } = resolvedRes.value;
+  const fs = fsResult.value;
+
+  const statResult = await fs.stat(path);
+  if (statResult.isErr()) {
+    const err = statResult.error;
+    if (err.code === "legacy_path") {
+      return new Err(new MCPError(err.message, { tracked: false }));
+    }
+    return new Err(new MCPError(err.message, { tracked: false }));
+  }
+  if (statResult.value === null) {
+    return new Err(
+      new MCPError(`File not found: \`${path}\`.`, { tracked: false })
+    );
+  }
+  const { contentType: mimeType } = statResult.value;
 
   if (!isReadableAsText(mimeType)) {
     return new Ok([
@@ -57,13 +72,25 @@ export async function grepHandler(
     );
   }
 
-  const stream = file.createReadStream();
+  const readResult = await fs.read(path);
+  if (readResult.isErr()) {
+    return new Err(new MCPError(readResult.error.message, { tracked: false }));
+  }
+  if (readResult.value === null) {
+    return new Err(
+      new MCPError(`File not found: \`${path}\`.`, { tracked: false })
+    );
+  }
 
   const matches: string[] = [];
   let lineNumber = 0;
   let capped = false;
 
-  const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
+  // readResult.value is a Readable stream readline will stop early once we hit GREP_MATCHES_MAX.
+  const rl = readline.createInterface({
+    input: readResult.value,
+    crlfDelay: Infinity,
+  });
 
   try {
     for await (const line of rl) {
@@ -75,7 +102,6 @@ export async function grepHandler(
         if (matches.length >= GREP_MATCHES_MAX) {
           capped = true;
           rl.close();
-          stream.destroy();
           break;
         }
       }

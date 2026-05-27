@@ -13,6 +13,7 @@ import {
   type EnabledSkill,
   renderEnabledSkillUserMessageFromInstructions,
 } from "@app/lib/api/assistant/skills_rendering";
+import { DustFileSystem } from "@app/lib/api/file_system";
 import { getConversationFileMountSignedUrl } from "@app/lib/api/files/gcs_mount/files";
 import type { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
@@ -156,11 +157,23 @@ async function renderActionForMultiActionsModel(
       if (isTextContent(item)) {
         contentArray.push({ type: "text", text: item.text });
       } else if (isModelVisionImage(item)) {
-        const urlRes = await getConversationFileMountSignedUrl(
-          auth,
-          { useCase: "conversation", conversationId },
-          item.resource.gcsPath
-        );
+        const { filePath } = item.resource;
+
+        // Legacy records carry a raw GCS path (starts with `w/`).
+        // New records carry a canonical scoped path (e.g. `conversation-{cId}/photo.png`).
+        const urlRes = filePath.startsWith("w/")
+          ? await getConversationFileMountSignedUrl(
+              auth,
+              { useCase: "conversation", conversationId },
+              filePath
+            )
+          : await (async () => {
+              const fsResult = await DustFileSystem.fromScopedPath(auth, filePath);
+              if (fsResult.isErr()) {
+                return fsResult;
+              }
+              return fsResult.value.getDownloadUrl(filePath);
+            })();
 
         if (urlRes.isOk()) {
           contentArray.push({

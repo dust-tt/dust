@@ -11,13 +11,21 @@
  *   DustFileSystem.fromScopedPath(auth, scopedPath)     infers context from the path prefix
  */
 
+import config from "@app/lib/api/config";
 import type { FileSystemBackend } from "@app/lib/api/file_system/backends/file_system_backend";
 import { GCSFileSystemBackend } from "@app/lib/api/file_system/backends/gcs_file_system_backend";
 import type {
   FileSystemEntry,
+  FileSystemFileEntry,
   FileSystemMount,
 } from "@app/lib/api/file_system/types";
-import { DustFileSystemError } from "@app/lib/api/file_system/types";
+import {
+  DustFileSystemError,
+  LEGACY_PREFIX_CONVERSATION,
+  LEGACY_PREFIX_PROJECT,
+  SCOPED_PREFIX_CONVERSATION,
+  SCOPED_PREFIX_POD,
+} from "@app/lib/api/file_system/types";
 import type { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
 import type { Authenticator } from "@app/lib/auth";
 import fileStorageConfig from "@app/lib/file_storage/config";
@@ -27,8 +35,11 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { isProjectConversation } from "@app/types/assistant/conversation";
+import { isSupportedImageContentType } from "@app/types/files";
 import { Err, Ok, type Result } from "@app/types/shared/result";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import * as path from "path";
+import type { Readable } from "stream";
 
 export type {
   FileSystemEntry,
@@ -49,13 +60,15 @@ function parseScopedPrefix(scopedPath: string): ParsedScopedPrefix | null {
     ? scopedPath.slice(0, scopedPath.indexOf("/"))
     : scopedPath;
 
-  if (prefix.startsWith("conversation-")) {
-    const id = prefix.slice("conversation-".length);
+  if (prefix.startsWith(SCOPED_PREFIX_CONVERSATION)) {
+    const id = prefix.slice(SCOPED_PREFIX_CONVERSATION.length);
+
     return id ? { kind: "conversation", id } : null;
   }
 
-  if (prefix.startsWith("pod-")) {
-    const id = prefix.slice("pod-".length);
+  if (prefix.startsWith(SCOPED_PREFIX_POD)) {
+    const id = prefix.slice(SCOPED_PREFIX_POD.length);
+
     return id ? { kind: "pod", id } : null;
   }
 
@@ -93,10 +106,10 @@ export class DustFileSystem {
     const convMount: FileSystemMount = {
       kind: "conversation",
       id: conversation.sId,
-      scopedPrefix: `conversation-${conversation.sId}`,
-      sandboxMountPoint: `/files/conversation-${conversation.sId}`,
-      legacyPrefix: "conversation",
-      legacySandboxMountPoint: "/files/conversation",
+      scopedPrefix: `${SCOPED_PREFIX_CONVERSATION}${conversation.sId}`,
+      sandboxMountPoint: `/files/${SCOPED_PREFIX_CONVERSATION}${conversation.sId}`,
+      legacyPrefix: LEGACY_PREFIX_CONVERSATION,
+      legacySandboxMountPoint: `/files/${LEGACY_PREFIX_CONVERSATION}`,
       // Conversation access is always read+write when the caller holds a valid auth for it.
       // The handler is responsible for verifying conversation access before calling this factory.
       permissions: { canRead: true, canWrite: true },
@@ -110,10 +123,10 @@ export class DustFileSystem {
         mounts.push({
           kind: "pod",
           id: space.sId,
-          scopedPrefix: `pod-${space.sId}`,
-          sandboxMountPoint: `/files/pod-${space.sId}`,
-          legacyPrefix: "project",
-          legacySandboxMountPoint: "/files/project",
+          scopedPrefix: `${SCOPED_PREFIX_POD}${space.sId}`,
+          sandboxMountPoint: `/files/${SCOPED_PREFIX_POD}${space.sId}`,
+          legacyPrefix: LEGACY_PREFIX_PROJECT,
+          legacySandboxMountPoint: `/files/${LEGACY_PREFIX_PROJECT}`,
           permissions: {
             canRead: space.canRead(auth),
             canWrite: space.canWrite(auth),
@@ -151,10 +164,10 @@ export class DustFileSystem {
     const mount: FileSystemMount = {
       kind: "pod",
       id: space.sId,
-      scopedPrefix: `pod-${space.sId}`,
-      sandboxMountPoint: `/files/pod-${space.sId}`,
-      legacyPrefix: "project",
-      legacySandboxMountPoint: "/files/project",
+      scopedPrefix: `${SCOPED_PREFIX_POD}${space.sId}`,
+      sandboxMountPoint: `/files/${SCOPED_PREFIX_POD}${space.sId}`,
+      legacyPrefix: LEGACY_PREFIX_PROJECT,
+      legacySandboxMountPoint: `/files/${LEGACY_PREFIX_PROJECT}`,
       permissions: {
         canRead: true,
         canWrite: space.canWrite(auth),
@@ -223,6 +236,9 @@ export class DustFileSystem {
 
         return DustFileSystem.forPod(auth, space);
       }
+
+      default:
+        assertNever(parsed);
     }
   }
 
@@ -230,7 +246,7 @@ export class DustFileSystem {
   // Internal helpers
   // --------------------------------------------------------------------------
 
-  /** Returns the mount the path belongs to, checking both canonical and legacy prefixes. */
+  /** Returns the mount the path belongs to by canonical prefix only. */
   private findMount(scopedPath: string): FileSystemMount | null {
     for (const mount of this.mounts) {
       if (
@@ -239,43 +255,76 @@ export class DustFileSystem {
       ) {
         return mount;
       }
-      if (
-        mount.legacyPrefix &&
-        (scopedPath === mount.legacyPrefix ||
-          scopedPath.startsWith(`${mount.legacyPrefix}/`))
-      ) {
-        return mount;
-      }
     }
     return null;
   }
 
   /**
-   * Rewrite a legacy path to its canonical form.
-   * `"conversation/report.pdf"` with the conversation mount -> `"conversation-{cId}/report.pdf"`.
+   * Returns true when `scopedPath` uses the old agent-visible format
+   * (`conversation/...` or `project/...`). Used to produce a helpful error
+   * instead of a generic invalid_path when the model passes a stale path.
    */
-  private canonicalizePath(scopedPath: string, mount: FileSystemMount): string {
-    if (mount.legacyPrefix && scopedPath.startsWith(`${mount.legacyPrefix}/`)) {
-      return `${mount.scopedPrefix}/${scopedPath.slice(mount.legacyPrefix.length + 1)}`;
+  private static isLegacyPath(scopedPath: string): boolean {
+    return (
+      scopedPath === LEGACY_PREFIX_CONVERSATION ||
+      scopedPath.startsWith(`${LEGACY_PREFIX_CONVERSATION}/`) ||
+      scopedPath === LEGACY_PREFIX_PROJECT ||
+      scopedPath.startsWith(`${LEGACY_PREFIX_PROJECT}/`)
+    );
+  }
+
+  /**
+   * Normalizes a caller-supplied scoped path using POSIX rules (resolves `.` and `..`).
+   *
+   * Returns `null` when the result would escape the scoped namespace : i.e. when the
+   * normalized path starts with `..` (path traversal) or `/` (absolute path injection).
+   * This is the primary defense against path-traversal attacks.
+   */
+  static normalizeScopedPath(scopedPath: string): string | null {
+    const normalized = path.posix.normalize(scopedPath);
+    if (
+      normalized === ".." ||
+      normalized.startsWith("../") ||
+      normalized.startsWith("/")
+    ) {
+      return null;
     }
-    if (scopedPath === mount.legacyPrefix) {
-      return mount.scopedPrefix;
-    }
-    return scopedPath;
+
+    return normalized;
   }
 
   private requireReadMount(
     scopedPath: string
   ): Result<{ mount: FileSystemMount; path: string }, DustFileSystemError> {
-    const mount = this.findMount(scopedPath);
-    if (!mount) {
+    const normalized = DustFileSystem.normalizeScopedPath(scopedPath);
+    if (!normalized) {
       return new Err(
         new DustFileSystemError(
           "invalid_path",
-          `Path does not belong to any known mount: ${scopedPath}`
+          `Path traversal detected: \`${scopedPath}\` is not allowed.`
         )
       );
     }
+
+    const mount = this.findMount(normalized);
+    if (!mount) {
+      if (DustFileSystem.isLegacyPath(normalized)) {
+        return new Err(
+          new DustFileSystemError(
+            "legacy_path",
+            `Path \`${normalized}\` uses an outdated format. Call \`files__list\` to get current paths.`
+          )
+        );
+      }
+
+      return new Err(
+        new DustFileSystemError(
+          "invalid_path",
+          `Path does not belong to any known mount: ${normalized}`
+        )
+      );
+    }
+
     if (!mount.permissions.canRead) {
       return new Err(
         new DustFileSystemError(
@@ -284,21 +333,42 @@ export class DustFileSystem {
         )
       );
     }
-    return new Ok({ mount, path: this.canonicalizePath(scopedPath, mount) });
+
+    return new Ok({ mount, path: normalized });
   }
 
   private requireWriteMount(
     scopedPath: string
   ): Result<{ mount: FileSystemMount; path: string }, DustFileSystemError> {
-    const mount = this.findMount(scopedPath);
-    if (!mount) {
+    const normalized = DustFileSystem.normalizeScopedPath(scopedPath);
+    if (!normalized) {
       return new Err(
         new DustFileSystemError(
           "invalid_path",
-          `Path does not belong to any known mount: ${scopedPath}`
+          `Path traversal detected: \`${scopedPath}\` is not allowed.`
         )
       );
     }
+
+    const mount = this.findMount(normalized);
+    if (!mount) {
+      if (DustFileSystem.isLegacyPath(normalized)) {
+        return new Err(
+          new DustFileSystemError(
+            "legacy_path",
+            `Path \`${normalized}\` uses an outdated format. Call \`files__list\` to get current paths.`
+          )
+        );
+      }
+
+      return new Err(
+        new DustFileSystemError(
+          "invalid_path",
+          `Path does not belong to any known mount: ${normalized}`
+        )
+      );
+    }
+
     if (!mount.permissions.canWrite) {
       return new Err(
         new DustFileSystemError(
@@ -307,7 +377,8 @@ export class DustFileSystem {
         )
       );
     }
-    return new Ok({ mount, path: this.canonicalizePath(scopedPath, mount) });
+
+    return new Ok({ mount, path: normalized });
   }
 
   // --------------------------------------------------------------------------
@@ -319,13 +390,53 @@ export class DustFileSystem {
   }
 
   /**
+   * Constructs the thumbnail API URL for an image file entry.
+   * Lives here because the URL points to our application API, not to GCS.
+   */
+  private buildThumbnailUrl(
+    entry: FileSystemFileEntry,
+    workspaceId: string
+  ): string | null {
+    if (!isSupportedImageContentType(entry.contentType)) {
+      return null;
+    }
+    const mount = this.findMount(entry.path);
+    if (!mount) {
+      return null;
+    }
+    switch (mount.kind) {
+      case "conversation":
+        return (
+          `${config.getApiBaseUrl()}/api/w/${workspaceId}` +
+          `/assistant/conversations/${mount.id}/files/thumbnail` +
+          `?filePath=${encodeURIComponent(entry.path)}`
+        );
+      case "pod":
+        // TODO(FILE SYSTEM): expose a pod-files thumbnail endpoint.
+        return null;
+    }
+  }
+
+  /**
    * List entries under `scopedPath`.
    * When `scopedPath` is omitted, lists across all readable mounts.
+   * Thumbnail URLs are populated here (not in the backend) since they point to our API.
    */
   async list(
     scopedPath?: string,
     opts?: { maxFiles?: number; includeProcessed?: boolean }
   ): Promise<FileSystemEntry[]> {
+    const workspaceId = this.auth.getNonNullableWorkspace().sId;
+    const withThumbnails = (entries: FileSystemEntry[]): FileSystemEntry[] =>
+      entries.map((entry) =>
+        entry.isDirectory
+          ? entry
+          : {
+              ...entry,
+              thumbnailUrl: this.buildThumbnailUrl(entry, workspaceId),
+            }
+      );
+
     if (scopedPath !== undefined) {
       const resolved = this.requireReadMount(scopedPath);
       if (resolved.isErr()) {
@@ -335,7 +446,7 @@ export class DustFileSystem {
         );
         return [];
       }
-      return this.backend.list(resolved.value.path, opts);
+      return withThumbnails(await this.backend.list(resolved.value.path, opts));
     }
 
     const results: FileSystemEntry[] = [];
@@ -344,18 +455,45 @@ export class DustFileSystem {
         continue;
       }
       const entries = await this.backend.list(`${mount.scopedPrefix}/`, opts);
-      results.push(...entries);
+      results.push(...withThumbnails(entries));
     }
     return results;
   }
 
-  /** Returns `null` when not found rather than throwing. */
-  async read(scopedPath: string): Promise<Buffer | null> {
+  /**
+   * Returns `Ok(null)` when the file does not exist, `Ok(Readable)` on success.
+   * The caller owns the stream and must consume or destroy it.
+   * Returns `Err` for path/permission errors (including `legacy_path`).
+   */
+  async read(
+    scopedPath: string
+  ): Promise<Result<Readable | null, DustFileSystemError>> {
     const resolved = this.requireReadMount(scopedPath);
     if (resolved.isErr()) {
-      return null;
+      return resolved;
     }
     return this.backend.read(resolved.value.path);
+  }
+
+  /**
+   * Returns metadata for the file at `scopedPath`, or `Ok(null)` when not found.
+   * Returns `Err` for path/permission errors (including `legacy_path`).
+   */
+  async stat(
+    scopedPath: string
+  ): Promise<
+    Result<
+      { contentType: string; sizeBytes: number } | null,
+      DustFileSystemError
+    >
+  > {
+    const resolved = this.requireReadMount(scopedPath);
+    if (resolved.isErr()) {
+      return resolved;
+    }
+
+    const stat = await this.backend.stat(resolved.value.path);
+    return new Ok(stat);
   }
 
   async write(
@@ -367,14 +505,8 @@ export class DustFileSystem {
     if (resolved.isErr()) {
       return resolved;
     }
-    try {
-      await this.backend.write(resolved.value.path, content, contentType);
-      return new Ok(undefined);
-    } catch (err) {
-      return new Err(
-        new DustFileSystemError("internal", normalizeError(err).message)
-      );
-    }
+
+    return this.backend.write(resolved.value.path, content, contentType);
   }
 
   async delete(
@@ -385,21 +517,17 @@ export class DustFileSystem {
     if (resolved.isErr()) {
       return resolved;
     }
-    try {
-      await this.backend.delete(resolved.value.path, opts);
-      return new Ok(undefined);
-    } catch (err) {
-      return new Err(
-        new DustFileSystemError("internal", normalizeError(err).message)
-      );
-    }
+    return this.backend.delete(resolved.value.path, opts);
   }
 
   /** `src` requires read access, `dest` requires write access. */
-  async copy(
-    src: string,
-    dest: string
-  ): Promise<Result<void, DustFileSystemError>> {
+  async copy({
+    src,
+    dest,
+  }: {
+    src: string;
+    dest: string;
+  }): Promise<Result<void, DustFileSystemError>> {
     const resolvedSrc = this.requireReadMount(src);
     if (resolvedSrc.isErr()) {
       return resolvedSrc;
@@ -408,14 +536,10 @@ export class DustFileSystem {
     if (resolvedDest.isErr()) {
       return resolvedDest;
     }
-    try {
-      await this.backend.copy(resolvedSrc.value.path, resolvedDest.value.path);
-      return new Ok(undefined);
-    } catch (err) {
-      return new Err(
-        new DustFileSystemError("internal", normalizeError(err).message)
-      );
-    }
+    return this.backend.copy({
+      src: resolvedSrc.value.path,
+      dest: resolvedDest.value.path,
+    });
   }
 
   /**
@@ -425,10 +549,13 @@ export class DustFileSystem {
    * after a successful copy, returns `Ok({ sourceDeletionFailed: true })` rather than
    * `Err` because the destination is already the authoritative copy.
    */
-  async move(
-    src: string,
-    dest: string
-  ): Promise<Result<{ sourceDeletionFailed: boolean }, DustFileSystemError>> {
+  async move({
+    src,
+    dest,
+  }: {
+    src: string;
+    dest: string;
+  }): Promise<Result<{ sourceDeletionFailed: boolean }, DustFileSystemError>> {
     const resolvedSrc = this.requireWriteMount(src);
     if (resolvedSrc.isErr()) {
       return resolvedSrc;
@@ -438,20 +565,19 @@ export class DustFileSystem {
       return resolvedDest;
     }
 
-    try {
-      await this.backend.copy(resolvedSrc.value.path, resolvedDest.value.path);
-    } catch (err) {
-      return new Err(
-        new DustFileSystemError("internal", normalizeError(err).message)
-      );
+    const copyResult = await this.backend.copy({
+      src: resolvedSrc.value.path,
+      dest: resolvedDest.value.path,
+    });
+    if (copyResult.isErr()) {
+      return copyResult;
     }
 
-    try {
-      await this.backend.delete(resolvedSrc.value.path);
-    } catch (err) {
+    const deleteResult = await this.backend.delete(resolvedSrc.value.path);
+    if (deleteResult.isErr()) {
       logger.error(
         {
-          err: normalizeError(err),
+          err: deleteResult.error,
           src: resolvedSrc.value.path,
           dest: resolvedDest.value.path,
         },
@@ -471,14 +597,7 @@ export class DustFileSystem {
     if (resolved.isErr()) {
       return resolved;
     }
-    try {
-      const url = await this.backend.getDownloadUrl(resolved.value.path, opts);
-      return new Ok(url);
-    } catch (err) {
-      return new Err(
-        new DustFileSystemError("internal", normalizeError(err).message)
-      );
-    }
+    return this.backend.getDownloadUrl(resolved.value.path, opts);
   }
 
   /** No-ops when the sandbox image does not support the required capability. */

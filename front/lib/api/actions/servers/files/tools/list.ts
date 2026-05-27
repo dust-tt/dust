@@ -3,8 +3,7 @@ import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { resolveMountByUseCase } from "@app/lib/api/actions/servers/files/tools/utils";
-import { listGCSMountFiles } from "@app/lib/api/files/gcs_mount/files";
+import { DustFileSystem } from "@app/lib/api/file_system";
 import { parseProcessedFilename } from "@app/lib/api/files/mount_path";
 import {
   isInteractiveContentType,
@@ -18,7 +17,6 @@ function getDirAndFileName(path: string): { dir: string; fileName: string } {
   if (lastSlash < 0) {
     return { dir: "", fileName: path };
   }
-
   return {
     dir: path.substring(0, lastSlash),
     fileName: path.substring(lastSlash + 1),
@@ -36,18 +34,45 @@ export async function listHandler(
     );
   }
 
+  const fsResult = await DustFileSystem.forConversation(
+    extra.auth,
+    conversation
+  );
+  if (fsResult.isErr()) {
+    return new Err(
+      new MCPError(fsResult.error.message, { tracked: false })
+    );
+  }
+  const fs = fsResult.value;
+
   const useCase = scope ?? "conversation";
-  const mountRes = await resolveMountByUseCase(extra.auth, conversation, {
-    useCase,
-    access: "read",
-  });
-  if (mountRes.isErr()) {
-    return mountRes;
+  let scopedPrefix: string | undefined;
+
+  if (useCase === "conversation") {
+    const mount = fs.getMounts().find((m) => m.kind === "conversation");
+    scopedPrefix = mount ? `${mount.scopedPrefix}/` : undefined;
+  } else {
+    const mount = fs.getMounts().find((m) => m.kind === "pod");
+    if (!mount) {
+      return new Err(
+        new MCPError(
+          "Project file paths are only available in project conversations.",
+          { tracked: false }
+        )
+      );
+    }
+    if (!mount.permissions.canRead) {
+      return new Err(
+        new MCPError(
+          "You do not have read permissions for this project.",
+          { tracked: false }
+        )
+      );
+    }
+    scopedPrefix = `${mount.scopedPrefix}/`;
   }
 
-  const entries = await listGCSMountFiles(extra.auth, mountRes.value.scope, {
-    includeProcessed: true,
-  });
+  const entries = await fs.list(scopedPrefix, { includeProcessed: true });
 
   const [dirs, files] = partition(entries, (e) => e.isDirectory);
 
@@ -55,8 +80,6 @@ export async function listHandler(
     return new Ok([{ type: "text", text: "No files available." }]);
   }
 
-  // Build the set of all ancestor dir paths that contain at least one file.
-  // O(m × depth). Deph is typically small.
   const nonEmptyDirPaths = new Set<string>();
   for (const file of files) {
     const parts = file.path.split("/");
@@ -65,32 +88,25 @@ export async function listHandler(
     }
   }
 
-  // Index sources by `<dir>/<basename-without-extension>` so we can look up the source for each
-  // `*.processed.<ext>` sibling.
   const sourcePathByKey = new Map<string, string>();
   for (const file of files) {
     const { dir, fileName } = getDirAndFileName(file.path);
     if (parseProcessedFilename(fileName).isProcessed) {
       continue;
     }
-
     const lastDot = fileName.lastIndexOf(".");
     const base = lastDot > 0 ? fileName.substring(0, lastDot) : fileName;
     sourcePathByKey.set(`${dir}/${base}`, file.path);
   }
 
-  // For each file, compute (sortKey, isProcessed) so that processed siblings sort right after
-  // their source. Falls back to the file's own path when no source is found (orphan processed file).
   const annotated = files.map((file) => {
     const { dir, fileName } = getDirAndFileName(file.path);
     const parsed = parseProcessedFilename(fileName);
     if (!parsed.isProcessed) {
       return { file, sortKey: file.path, tieBreak: 0, sourcePath: null };
     }
-
     const sourcePath =
       sourcePathByKey.get(`${dir}/${parsed.sourceBaseName}`) ?? null;
-
     return {
       file,
       sortKey: sourcePath ?? file.path,
@@ -112,14 +128,14 @@ export async function listHandler(
   }
 
   for (const { file, sourcePath } of annotated) {
+    if (file.isDirectory) {
+      continue;
+    }
     const mimeType = stripMimeParameters(file.contentType);
     const kb = Math.ceil(file.sizeBytes / 1024);
     const annotation = sourcePath
       ? ` (processed version of ${sourcePath})`
       : "";
-    // Frames are created and updated via the interactive_content MCP server, which
-    // identifies them by file ID rather than path. Exposing the ID here lets the agent
-    // reference the correct frame when calling those tools.
     const fileIdSuffix =
       isInteractiveContentType(mimeType) && file.fileId
         ? ` [id: ${file.fileId}]`

@@ -10,6 +10,14 @@
 
 export type FileSystemMountKind = "conversation" | "pod";
 
+/** Canonical scoped-path prefixes (include the trailing dash). */
+export const SCOPED_PREFIX_CONVERSATION = "conversation-" as const;
+export const SCOPED_PREFIX_POD = "pod-" as const;
+
+/** Legacy agent-visible path prefixes (no trailing dash/slash). */
+export const LEGACY_PREFIX_CONVERSATION = "conversation" as const;
+export const LEGACY_PREFIX_PROJECT = "project" as const;
+
 export type FileSystemMount = {
   kind: FileSystemMountKind;
 
@@ -70,6 +78,7 @@ export type DustFileSystemErrorCode =
   | "unauthorized"
   | "not_found"
   | "invalid_path"
+  | "legacy_path"
   | "too_many_mounts"
   | "already_exists"
   | "internal";

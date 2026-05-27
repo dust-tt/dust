@@ -1,8 +1,11 @@
 import type { SandboxMountAdapter } from "@app/lib/api/file_system/sandbox/sandbox_mount_adapter";
 import type {
+  DustFileSystemError,
   FileSystemEntry,
   FileSystemMount,
 } from "@app/lib/api/file_system/types";
+import type { Result } from "@app/types/shared/result";
+import type { Readable } from "stream";
 
 export type { FileSystemEntry } from "@app/lib/api/file_system/types";
 
@@ -12,7 +15,11 @@ export type { FileSystemEntry } from "@app/lib/api/file_system/types";
  * All paths are scoped paths (`{scopedPrefix}/{relPath}`, e.g. `conversation-{cId}/report.pdf`).
  * Storage-specific translation is a private detail of each concrete backend.
  * A backend instance is workspace-scoped and created once per `DustFileSystem` factory call.
+ *
+ * Every method that can fail returns `Result<T, DustFileSystemError>` so callers never need
+ * try/catch. The backend owns the catch and maps storage exceptions to the appropriate code.
  */
+// TODO: Harmonize return types?
 export interface FileSystemBackend {
   /**
    * List entries under `scopedPath` (should end with `/` to list a prefix).
@@ -24,23 +31,46 @@ export interface FileSystemBackend {
     opts?: { maxFiles?: number; includeProcessed?: boolean }
   ): Promise<FileSystemEntry[]>;
 
-  /** Returns `null` when the file does not exist rather than throwing. */
-  read(scopedPath: string): Promise<Buffer | null>;
+  /**
+   * Returns `Ok(null)` when the file does not exist, `Ok(Readable)` on success.
+   * The caller is responsible for consuming and destroying the stream.
+   * Returns `Err` on path or permission errors.
+   */
+  read(
+    scopedPath: string
+  ): Promise<Result<Readable | null, DustFileSystemError>>;
+
+  /**
+   * Returns metadata for the file at `scopedPath`, or `null` when the file does not exist.
+   * Does not throw; returns `null` on unexpected errors after logging.
+   */
+  stat(
+    scopedPath: string
+  ): Promise<{ contentType: string; sizeBytes: number } | null>;
 
   write(
     scopedPath: string,
     content: Buffer | string,
     contentType: string
-  ): Promise<void>;
+  ): Promise<Result<void, DustFileSystemError>>;
 
-  /** Throws when the path does not exist unless `ignoreNotFound: true`. */
+  /**
+   * Returns `Err("not_found")` when the path does not exist and `ignoreNotFound` is false.
+   * Returns `Err("internal")` on unexpected storage errors.
+   */
   delete(
     scopedPath: string,
     opts?: { ignoreNotFound?: boolean }
-  ): Promise<void>;
+  ): Promise<Result<void, DustFileSystemError>>;
 
   /** Server-side copy. Does not delete the source. */
-  copy(src: string, dest: string): Promise<void>;
+  copy({
+    src,
+    dest,
+  }: {
+    src: string;
+    dest: string;
+  }): Promise<Result<void, DustFileSystemError>>;
 
   /**
    * Returns a short-lived signed URL for unauthenticated download.
@@ -49,7 +79,7 @@ export interface FileSystemBackend {
   getDownloadUrl(
     scopedPath: string,
     opts?: { expiresInMs?: number; fileName?: string }
-  ): Promise<string>;
+  ): Promise<Result<string, DustFileSystemError>>;
 
   /**
    * Create a sandbox mount adapter for the given mounts.
