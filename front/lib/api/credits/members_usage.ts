@@ -1,5 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
-import { listMetronomePerUserCapsForWorkspace } from "@app/lib/metronome/per_user_alerts";
+import { listMetronomePerUserCapsForWorkspace } from "@app/lib/metronome/alerts/spend_limits";
 import { fetchPerUserAwuUsage } from "@app/lib/metronome/per_user_usage";
 import { buildSeatDataByUserId, type SeatData } from "@app/lib/metronome/seats";
 import type { BillingFrequency } from "@app/lib/metronome/types";

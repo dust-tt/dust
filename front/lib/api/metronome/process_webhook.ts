@@ -20,6 +20,10 @@ import {
   YEARLY_MULTIPLIER,
 } from "@app/lib/credits/free";
 import {
+  getMetronomeDefaultUserCapAlert,
+  getMetronomePerUserCap,
+} from "@app/lib/metronome/alerts/spend_limits";
+import {
   getMetronomeContractById,
   listMetronomeContracts,
   setMetronomeContractCreditCustomFields,
@@ -33,8 +37,6 @@ import {
   getProductExcessCreditsId,
   PLAN_CODE_CUSTOM_FIELD_KEY,
 } from "@app/lib/metronome/constants";
-import { getMetronomeDefaultUserCapAlert } from "@app/lib/metronome/default_user_cap_alert";
-import { getMetronomePerUserCap } from "@app/lib/metronome/per_user_alerts";
 import { invalidateContractCache } from "@app/lib/metronome/plan_type";
 import { isMetronomeFreeCredit } from "@app/lib/metronome/types";
 import type { MetronomeWebhookEvent } from "@app/lib/metronome/webhook_events";

@@ -1,6 +1,6 @@
 import * as creditStateDispatcher from "@app/lib/api/metronome/credit_state_dispatcher";
-import * as defaultUserCapAlert from "@app/lib/metronome/default_user_cap_alert";
-import * as perUserAlerts from "@app/lib/metronome/per_user_alerts";
+import * as defaultUserCapAlert from "@app/lib/metronome/alerts/spend_limits";
+import * as perUserAlerts from "@app/lib/metronome/alerts/spend_limits";
 import * as perUserUsage from "@app/lib/metronome/per_user_usage";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -13,24 +13,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import handler from "./spend_limit";
 
-vi.mock("@app/lib/metronome/per_user_alerts", async () => {
-  const actual = await vi.importActual<typeof perUserAlerts>(
-    "@app/lib/metronome/per_user_alerts"
+vi.mock("@app/lib/metronome/alerts/spend_limits", async () => {
+  const actual = await vi.importActual<typeof defaultUserCapAlert>(
+    "@app/lib/metronome/alerts/spend_limits"
   );
   return {
     ...actual,
     upsertMetronomePerUserCapAlert: vi.fn(),
     clearMetronomePerUserCapAlert: vi.fn(),
     getMetronomePerUserCap: vi.fn(),
-  };
-});
-
-vi.mock("@app/lib/metronome/default_user_cap_alert", async () => {
-  const actual = await vi.importActual<typeof defaultUserCapAlert>(
-    "@app/lib/metronome/default_user_cap_alert"
-  );
-  return {
-    ...actual,
     getMetronomeDefaultUserCapAlert: vi.fn(),
   };
 });
