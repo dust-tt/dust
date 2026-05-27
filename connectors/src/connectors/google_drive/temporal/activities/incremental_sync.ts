@@ -44,6 +44,11 @@ import type { RedisClientType } from "redis";
 const PAGE_SIZE = 500;
 const UPDATE_PARENTS_BATCH_SIZE = 1_000;
 const UPDATE_PARENTS_CONCURRENCY = 8;
+const GOOGLE_DRIVE_INCREMENTAL_SYNC_REDIS_TTL_MS = 1000 * 60 * 60 * 24;
+const SEEN_AND_IGNORED_REDIS_VALUE = "ignored";
+const SEEN_AND_IGNORED_RELEVANT_DELETION_REDIS_VALUE =
+  "relevant_deletion";
+const RELEVANT_DELETION_REDIS_VALUE = "1";
 
 type ParentsUpdate = {
   file: GoogleDriveFilesModel;
@@ -159,6 +164,12 @@ export async function incrementalSync(
       }
 
       if (change.removed && change.fileId) {
+        const hadMarkedRelevantDeletion = await wasRelevantDeletionMarked({
+          fileId: change.fileId,
+          connectorId,
+          startSyncTs,
+          redisCli,
+        });
         const localFile = await GoogleDriveFilesModel.findOne({
           where: {
             connectorId: connectorId,
@@ -166,7 +177,17 @@ export async function incrementalSync(
           },
         });
         if (localFile) {
+          if (!hadMarkedRelevantDeletion) {
+            await markRelevantDeletion({
+              fileId: change.fileId,
+              connectorId,
+              startSyncTs,
+              redisCli,
+            });
+          }
           await deleteFile(localFile);
+        }
+        if (localFile || hadMarkedRelevantDeletion) {
           hadRelevantChange = true;
         }
         continue;
@@ -185,14 +206,24 @@ export async function incrementalSync(
         continue;
       }
 
-      if (
-        await alreadySeenAndIgnored({
-          fileId: change.file.id,
-          connectorId,
-          startSyncTs,
-          redisCli,
-        })
-      ) {
+      const seenAndIgnoredState = await getSeenAndIgnoredState({
+        fileId: change.file.id,
+        connectorId,
+        startSyncTs,
+        redisCli,
+      });
+      if (seenAndIgnoredState.wasSeen) {
+        if (
+          seenAndIgnoredState.hadRelevantDeletion ||
+          (await wasRelevantDeletionMarked({
+            fileId: change.file.id,
+            connectorId,
+            startSyncTs,
+            redisCli,
+          }))
+        ) {
+          hadRelevantChange = true;
+        }
         continue;
       }
 
@@ -219,8 +250,24 @@ export async function incrementalSync(
             driveFileId: change.file.id,
           },
         });
+        const hadMarkedRelevantDeletion = await wasRelevantDeletionMarked({
+          fileId: change.file.id,
+          connectorId,
+          startSyncTs,
+          redisCli,
+        });
         if (localFile) {
+          if (!hadMarkedRelevantDeletion) {
+            await markRelevantDeletion({
+              fileId: change.file.id,
+              connectorId,
+              startSyncTs,
+              redisCli,
+            });
+          }
           await deleteOneFile(connectorId, file);
+        }
+        if (localFile || hadMarkedRelevantDeletion) {
           hadRelevantChange = true;
         }
         await markAsSeenAndIgnored({
@@ -228,6 +275,7 @@ export async function incrementalSync(
           connectorId,
           startSyncTs,
           redisCli,
+          hadRelevantDeletion: localFile !== null || hadMarkedRelevantDeletion,
         });
         continue;
       }
@@ -388,7 +436,7 @@ export async function incrementalSync(
         connectorId,
         driveId,
         syncToken: nextPageToken,
-        hadRelevantChange: false,
+        hadRelevantChange,
       });
       return undefined;
     } else if (
@@ -407,7 +455,7 @@ export async function incrementalSync(
         connectorId,
         driveId,
         syncToken: nextPageToken,
-        hadRelevantChange: false,
+        hadRelevantChange,
       });
       return undefined;
     } else {
@@ -646,7 +694,7 @@ async function updateParentsFieldForBatch(
   );
 }
 
-async function alreadySeenAndIgnored({
+async function getSeenAndIgnoredState({
   fileId,
   connectorId,
   startSyncTs,
@@ -656,10 +704,16 @@ async function alreadySeenAndIgnored({
   connectorId: ModelId;
   startSyncTs: number;
   redisCli: RedisClientType;
-}) {
-  const key = `google_drive_seen_and_ignored_${connectorId}_${startSyncTs}_${fileId}`;
+}): Promise<{
+  wasSeen: boolean;
+  hadRelevantDeletion: boolean;
+}> {
+  const key = getSeenAndIgnoredKey({ fileId, connectorId, startSyncTs });
   const val = await redisCli.get(key);
-  return val !== null;
+  return {
+    wasSeen: val !== null,
+    hadRelevantDeletion: val === SEEN_AND_IGNORED_RELEVANT_DELETION_REDIS_VALUE,
+  };
 }
 
 async function markAsSeenAndIgnored({
@@ -667,15 +721,81 @@ async function markAsSeenAndIgnored({
   connectorId,
   startSyncTs,
   redisCli,
+  hadRelevantDeletion,
+}: {
+  fileId: string;
+  connectorId: ModelId;
+  startSyncTs: number;
+  redisCli: RedisClientType;
+  hadRelevantDeletion: boolean;
+}) {
+  const key = getSeenAndIgnoredKey({ fileId, connectorId, startSyncTs });
+  await redisCli.set(
+    key,
+    hadRelevantDeletion
+      ? SEEN_AND_IGNORED_RELEVANT_DELETION_REDIS_VALUE
+      : SEEN_AND_IGNORED_REDIS_VALUE,
+    {
+      PX: GOOGLE_DRIVE_INCREMENTAL_SYNC_REDIS_TTL_MS,
+    }
+  );
+  return;
+}
+
+async function wasRelevantDeletionMarked({
+  fileId,
+  connectorId,
+  startSyncTs,
+  redisCli,
 }: {
   fileId: string;
   connectorId: ModelId;
   startSyncTs: number;
   redisCli: RedisClientType;
 }) {
-  const key = `google_drive_seen_and_ignored_${connectorId}_${startSyncTs}_${fileId}`;
-  await redisCli.set(key, "1", {
-    PX: 1000 * 60 * 60 * 24, // 1 day
+  const key = getRelevantDeletionKey({ fileId, connectorId, startSyncTs });
+  const val = await redisCli.get(key);
+  return val === RELEVANT_DELETION_REDIS_VALUE;
+}
+
+async function markRelevantDeletion({
+  fileId,
+  connectorId,
+  startSyncTs,
+  redisCli,
+}: {
+  fileId: string;
+  connectorId: ModelId;
+  startSyncTs: number;
+  redisCli: RedisClientType;
+}) {
+  const key = getRelevantDeletionKey({ fileId, connectorId, startSyncTs });
+  await redisCli.set(key, RELEVANT_DELETION_REDIS_VALUE, {
+    PX: GOOGLE_DRIVE_INCREMENTAL_SYNC_REDIS_TTL_MS,
   });
   return;
+}
+
+function getSeenAndIgnoredKey({
+  fileId,
+  connectorId,
+  startSyncTs,
+}: {
+  fileId: string;
+  connectorId: ModelId;
+  startSyncTs: number;
+}) {
+  return `google_drive_seen_and_ignored_${connectorId}_${startSyncTs}_${fileId}`;
+}
+
+function getRelevantDeletionKey({
+  fileId,
+  connectorId,
+  startSyncTs,
+}: {
+  fileId: string;
+  connectorId: ModelId;
+  startSyncTs: number;
+}) {
+  return `google_drive_relevant_deletion_${connectorId}_${startSyncTs}_${fileId}`;
 }

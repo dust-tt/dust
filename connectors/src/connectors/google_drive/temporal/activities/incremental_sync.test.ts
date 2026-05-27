@@ -160,6 +160,14 @@ function makeFolderChange(file: GoogleDriveObjectType) {
   };
 }
 
+function makeRemovedFileChange(fileId: string) {
+  return {
+    changeType: "file" as const,
+    fileId,
+    removed: true,
+  };
+}
+
 function makeGoogleDriveFolder({
   id,
   name,
@@ -227,6 +235,18 @@ async function makeConnector(suffix: string) {
       pdfEnabled: false,
     }
   );
+}
+
+function mockRedisStore() {
+  const redisStore = new Map<string, string>();
+
+  mocks.redisGet.mockImplementation(async (key: string) => {
+    return redisStore.get(key) ?? null;
+  });
+  mocks.redisSet.mockImplementation(async (key: string, value: string) => {
+    redisStore.set(key, value);
+    return "OK";
+  });
 }
 
 describe("google drive incremental sync", () => {
@@ -669,6 +689,154 @@ describe("google drive incremental sync", () => {
     ).toBeGreaterThanOrEqual(beforeSyncMs);
   });
 
+  it("carries removed-file relevance across an activity retry", async () => {
+    const suffix = randomUUID();
+    const connector = await makeConnector(suffix);
+    const deletedFileId = `deleted-file-${suffix}`;
+    const skippedFile = makeGoogleDriveFile({
+      id: `skipped-file-${suffix}`,
+      name: "Skipped File",
+      parent: `parent-${suffix}`,
+    });
+    const startSyncTs = Date.now();
+    const beforeSyncMs = Date.now();
+
+    mockRedisStore();
+    await GoogleDriveFilesModel.create({
+      connectorId: connector.id,
+      driveFileId: deletedFileId,
+      dustFileId: `gdrive-${deletedFileId}`,
+      mimeType: "application/pdf",
+      name: "Deleted File",
+      parentId: `parent-${suffix}`,
+    });
+
+    mocks.changeList.mockResolvedValue({
+      data: {
+        changes: [
+          makeRemovedFileChange(deletedFileId),
+          makeFolderChange(skippedFile),
+        ],
+        newStartPageToken: "sync-token",
+        nextPageToken: undefined,
+      },
+      status: 200,
+    });
+    mocks.deleteFile.mockImplementation(async (file: GoogleDriveFilesModel) => {
+      await file.destroy();
+    });
+    mocks.driveObjectToDustType.mockResolvedValue(skippedFile);
+    mocks.syncOneFile
+      .mockRejectedValueOnce(new Error("later change failed"))
+      .mockResolvedValueOnce(false);
+
+    await expect(
+      incrementalSync(connector.id, "drive-1", false, startSyncTs, "page-token")
+    ).rejects.toThrow("later change failed");
+
+    const result = await incrementalSync(
+      connector.id,
+      "drive-1",
+      false,
+      startSyncTs,
+      "page-token"
+    );
+
+    const syncToken = await GoogleDriveSyncTokenModel.findOne({
+      where: {
+        connectorId: connector.id,
+        driveId: "drive-1",
+      },
+    });
+
+    expect(result?.hadRelevantChange).toBe(true);
+    expect(syncToken?.lastRelevantChangeAt?.getTime()).toBeGreaterThanOrEqual(
+      beforeSyncMs
+    );
+  });
+
+  it("carries out-of-scope deletion relevance when the ignored marker is retried", async () => {
+    const suffix = randomUUID();
+    const connector = await makeConnector(suffix);
+    const outOfScopeFile = makeGoogleDriveFile({
+      id: `out-of-scope-file-${suffix}`,
+      name: "Out of Scope File",
+      parent: `parent-${suffix}`,
+    });
+    const invalidChange = {
+      changeType: "file" as const,
+      file: {
+        id: `invalid-file-${suffix}`,
+        mimeType: "application/vnd.google-apps.document",
+      },
+    };
+    const startSyncTs = Date.now();
+    const beforeSyncMs = Date.now();
+
+    mockRedisStore();
+    await GoogleDriveFilesModel.create({
+      connectorId: connector.id,
+      driveFileId: outOfScopeFile.id,
+      dustFileId: `gdrive-${outOfScopeFile.id}`,
+      mimeType: "application/pdf",
+      name: outOfScopeFile.name,
+      parentId: outOfScopeFile.parent,
+    });
+
+    mocks.changeList
+      .mockResolvedValueOnce({
+        data: {
+          changes: [makeFolderChange(outOfScopeFile), invalidChange],
+          newStartPageToken: "sync-token",
+          nextPageToken: undefined,
+        },
+        status: 200,
+      })
+      .mockResolvedValueOnce({
+        data: {
+          changes: [makeFolderChange(outOfScopeFile)],
+          newStartPageToken: "sync-token",
+          nextPageToken: undefined,
+        },
+        status: 200,
+      });
+    mocks.deleteOneFile.mockImplementation(
+      async (connectorId: number, file: GoogleDriveObjectType) => {
+        await GoogleDriveFilesModel.destroy({
+          where: { connectorId, driveFileId: file.id },
+        });
+      }
+    );
+    mocks.driveObjectToDustType.mockResolvedValue(outOfScopeFile);
+    mocks.objectIsInFolderSelection
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true);
+
+    await expect(
+      incrementalSync(connector.id, "drive-1", false, startSyncTs, "page-token")
+    ).rejects.toThrow("Invalid file");
+
+    const result = await incrementalSync(
+      connector.id,
+      "drive-1",
+      false,
+      startSyncTs,
+      "page-token"
+    );
+
+    const syncToken = await GoogleDriveSyncTokenModel.findOne({
+      where: {
+        connectorId: connector.id,
+        driveId: "drive-1",
+      },
+    });
+
+    expect(result?.hadRelevantChange).toBe(true);
+    expect(syncToken?.lastRelevantChangeAt?.getTime()).toBeGreaterThanOrEqual(
+      beforeSyncMs
+    );
+  });
+
   it("records only lastSyncAt when a completed sync has no relevant changes", async () => {
     const suffix = randomUUID();
     const connector = await makeConnector(suffix);
@@ -935,5 +1103,44 @@ describe("google drive incremental sync", () => {
     expect(
       syncToken?.lastRelevantChangeAt?.getTime()
     ).toBeGreaterThanOrEqual(beforeSyncMs);
+  });
+
+  it("keeps relevant changes carried from earlier pages on a permanent drive skip", async () => {
+    const suffix = randomUUID();
+    const connector = await makeConnector(suffix);
+    const previousLastRelevantChangeAt = new Date("2025-01-01T00:00:00.000Z");
+    const beforeSyncMs = Date.now();
+
+    await GoogleDriveSyncTokenModel.create({
+      connectorId: connector.id,
+      driveId: "drive-1",
+      syncToken: "previous-sync-token",
+      lastSyncAt: new Date("2025-01-02T00:00:00.000Z"),
+      lastRelevantChangeAt: previousLastRelevantChangeAt,
+    });
+
+    mocks.changeList.mockRejectedValue(new Error("shared drive not found"));
+    mocks.isSharedDriveNotFoundError.mockReturnValue(true);
+
+    const result = await incrementalSync(
+      connector.id,
+      "drive-1",
+      false,
+      Date.now(),
+      "page-token",
+      true
+    );
+
+    const syncToken = await GoogleDriveSyncTokenModel.findOne({
+      where: {
+        connectorId: connector.id,
+        driveId: "drive-1",
+      },
+    });
+
+    expect(result).toBeUndefined();
+    expect(syncToken?.lastRelevantChangeAt?.getTime()).toBeGreaterThanOrEqual(
+      beforeSyncMs
+    );
   });
 });
