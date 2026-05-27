@@ -63,7 +63,7 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
         .string()
         .describe("The sId of the target workspace to fetch metadata for."),
     },
-    stake: "high" as const,
+    stake: "low",
     displayLabels: {
       running: "Fetching workspace metadata",
       done: "Fetched workspace metadata",
@@ -75,7 +75,7 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
       "Get full plan and subscription details for a workspace: billing info, " +
       "verified domains, and creation date.",
     schema: { ...workspaceIdSchema },
-    stake: "high" as const,
+    stake: "low",
     displayLabels: {
       running: "Fetching plan and subscription",
       done: "Fetched plan and subscription",
@@ -85,7 +85,7 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
   [GET_WORKSPACE_FEATURE_FLAGS_TOOL_NAME]: {
     description: "List all feature flags currently enabled for a workspace.",
     schema: { ...workspaceIdSchema },
-    stake: "high" as const,
+    stake: "low",
     displayLabels: {
       running: "Fetching feature flags",
       done: "Fetched feature flags",
@@ -96,7 +96,7 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
     description:
       "List workspace members with roles, email, auth provider, and pending invitations.",
     schema: { ...workspaceIdSchema },
-    stake: "high" as const,
+    stake: "low",
     displayLabels: {
       running: "Fetching workspace members",
       done: "Fetched workspace members",
@@ -107,7 +107,7 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
     description:
       "List all spaces in a workspace with their kind, permissions, and group IDs.",
     schema: { ...workspaceIdSchema },
-    stake: "high" as const,
+    stake: "low",
     displayLabels: {
       running: "Fetching workspace spaces",
       done: "Fetched workspace spaces",
@@ -118,7 +118,7 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
     description:
       "Get credit balance, usage, and excess credits for a workspace over the last 30 days.",
     schema: { ...workspaceIdSchema },
-    stake: "high" as const,
+    stake: "low",
     displayLabels: {
       running: "Fetching workspace credits",
       done: "Fetched workspace credits",
@@ -131,7 +131,7 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
     description:
       "List all data sources/connectors for a workspace with status, type, and last sync time.",
     schema: { ...workspaceIdSchema },
-    stake: "high" as const,
+    stake: "low",
     displayLabels: {
       running: "Listing data sources",
       done: "Listed data sources",
@@ -148,7 +148,7 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
         .string()
         .describe("The sId of the data source to inspect."),
     },
-    stake: "high" as const,
+    stake: "low",
     displayLabels: {
       running: "Fetching connector details",
       done: "Fetched connector details",
@@ -163,7 +163,7 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
       data_source_id: z.string().describe("The sId of the Notion data source."),
       url: z.string().describe("The Notion page or database URL to check."),
     },
-    stake: "high" as const,
+    stake: "low",
     displayLabels: {
       running: "Checking Notion page",
       done: "Checked Notion page",
@@ -177,7 +177,7 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
       ...workspaceIdSchema,
       channel_id: z.string().describe("The Slack channel ID (e.g. C01ABCDEF)."),
     },
-    stake: "high" as const,
+    stake: "low",
     displayLabels: {
       running: "Checking Slack channel",
       done: "Checked Slack channel",
@@ -193,7 +193,7 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
       ...workspaceIdSchema,
       conversation_id: z.string().describe("The sId of the conversation."),
     },
-    stake: "high" as const,
+    stake: "low",
     displayLabels: {
       running: "Fetching conversation",
       done: "Fetched conversation",
@@ -210,7 +210,7 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
         .optional()
         .describe("The sId of a specific MCP server view. Omit to list all."),
     },
-    stake: "high" as const,
+    stake: "low",
     displayLabels: {
       running: "Fetching MCP server details",
       done: "Fetched MCP server details",
@@ -231,7 +231,7 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
             "or member email (e.g. 'alice@acme.com')."
         ),
     },
-    stake: "high" as const,
+    stake: "low",
     displayLabels: {
       running: "Searching workspaces",
       done: "Searched workspaces",
@@ -243,7 +243,7 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
   [LIST_WORKSPACE_GROUPS_TOOL_NAME]: {
     description: "List groups in a workspace with their kind and member count.",
     schema: { ...workspaceIdSchema },
-    stake: "high" as const,
+    stake: "low",
     displayLabels: {
       running: "Listing groups",
       done: "Listed groups",
@@ -258,7 +258,7 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
         .string()
         .describe("The numeric connector ID (as string)."),
     },
-    stake: "high" as const,
+    stake: "low",
     displayLabels: {
       running: "Looking up workspace",
       done: "Found workspace",
@@ -292,7 +292,7 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
           "Opaque cursor from the previous response to fetch the next page."
         ),
     },
-    stake: "high" as const,
+    stake: "low",
     displayLabels: { running: "Listing agents", done: "Listed agents" },
   },
 
@@ -303,7 +303,7 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
       ...workspaceIdSchema,
       agent_id: z.string().describe("The sId of the agent."),
     },
-    stake: "high" as const,
+    stake: "low",
     displayLabels: { running: "Fetching agent", done: "Fetched agent" },
   },
 
@@ -332,7 +332,7 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
           "Opaque cursor from the previous response to fetch the next page."
         ),
     },
-    stake: "high" as const,
+    stake: "low",
     displayLabels: { running: "Listing skills", done: "Listed skills" },
   },
 
@@ -343,7 +343,7 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
       ...workspaceIdSchema,
       skill_id: z.string().describe("The sId of the skill."),
     },
-    stake: "high" as const,
+    stake: "low",
     displayLabels: { running: "Fetching skill", done: "Fetched skill" },
   },
 });
