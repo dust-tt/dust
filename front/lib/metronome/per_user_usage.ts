@@ -1,6 +1,6 @@
 import {
-  ceilToHourISO,
-  floorToHourISO,
+  ceilToMidnightUTC,
+  floorToMidnightUTC,
   listMetronomeDraftInvoices,
   listMetronomeUsageWithGroups,
 } from "@app/lib/metronome/client";
@@ -37,8 +37,12 @@ export async function fetchPerUserAwuUsage({
     return new Ok(new Map());
   }
 
-  const startingOn = floorToHourISO(new Date(currentInvoice.start_timestamp));
-  const endingBefore = ceilToHourISO(new Date(currentInvoice.end_timestamp));
+  const startingOn = floorToMidnightUTC(
+    new Date(currentInvoice.start_timestamp)
+  ).toISOString();
+  const endingBefore = ceilToMidnightUTC(
+    new Date(currentInvoice.end_timestamp)
+  ).toISOString();
 
   const usageResult = await listMetronomeUsageWithGroups({
     customerId: metronomeCustomerId,
