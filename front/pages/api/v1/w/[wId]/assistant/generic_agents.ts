@@ -1,3 +1,4 @@
+// @migration-status: MIGRATED_TO_HONO
 import { createGenericAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import {
   assistantHandleIsValid,

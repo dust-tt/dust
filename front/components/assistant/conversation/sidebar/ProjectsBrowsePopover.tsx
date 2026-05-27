@@ -3,7 +3,7 @@ import { useSearchProjects } from "@app/hooks/useSearchProjects";
 import { useAppRouter } from "@app/lib/platform";
 import { getSpaceIcon } from "@app/lib/spaces";
 import { getPodRoute } from "@app/lib/utils/router";
-import type { ProjectType } from "@app/types/space";
+import type { PodType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -25,7 +25,7 @@ interface ProjectsBrowsePopoverProps {
 }
 
 interface ProjectBrowseItemProps {
-  space: ProjectType;
+  space: PodType;
   onClick: () => void;
 }
 

@@ -99,10 +99,6 @@ app.post("/", async (ctx): HandlerResult<ResponseBody> => {
     : null;
 
   if (!workspace) {
-    logger.info(
-      { eventId: event.id, eventType: event.type, customerId },
-      "[Metronome Webhook] No workspace mapped to customer, ack and skip"
-    );
     return ctx.json({ success: true });
   }
 

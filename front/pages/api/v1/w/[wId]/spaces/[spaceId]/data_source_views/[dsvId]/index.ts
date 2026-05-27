@@ -1,3 +1,4 @@
+// @migration-status: MIGRATED_TO_HONO
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import { handlePatchDataSourceView } from "@app/lib/api/data_source_view";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";

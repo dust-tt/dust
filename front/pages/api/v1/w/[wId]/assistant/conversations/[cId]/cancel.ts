@@ -1,3 +1,5 @@
+// @migration-status: MIGRATED_TO_HONO
+
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import { terminateMessageGeneration } from "@app/lib/api/cancel";

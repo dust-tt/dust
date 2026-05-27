@@ -2,13 +2,13 @@ import { getPaginationParams } from "@app/lib/api/pagination";
 import { enrichProjectsWithMetadata } from "@app/lib/api/projects/list";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
-import type { ProjectType } from "@app/types/space";
+import type { PodType } from "@app/types/space";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 
 export type SearchProjectsResponseBody = {
-  spaces: Array<ProjectType & { isMember: boolean }>;
+  spaces: Array<PodType & { isMember: boolean }>;
   hasMore: boolean;
   lastValue: string | null;
 };

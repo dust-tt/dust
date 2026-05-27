@@ -12,7 +12,8 @@ import { DataTypes } from "sequelize";
  *
  * Fields:
  * - defaultDiscountPercent: Discount applied to AWU credit purchases (0-100%)
- * - paygCapCredits: PAYG cap on AWU consumption, in AWU credits. Drives the
+ * - paygCapCredits: PAYG cap on AWU consumption, in AWU credits. NULL means
+ *   PAYG is disabled; any strictly-positive value enables it and drives the
  *   Metronome `spend_threshold_reached` alert on the workspace's customer.
  */
 export class CreditUsageConfigurationModel extends WorkspaceAwareModel<CreditUsageConfigurationModel> {

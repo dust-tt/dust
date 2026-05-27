@@ -6,7 +6,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { ProjectType } from "@app/types/space";
+import type { PodType } from "@app/types/space";
 import type { NextApiRequest, NextApiResponse } from "next";
 import z from "zod";
 
@@ -15,7 +15,7 @@ const SpacesLookupQuerySchema = z.object({
 });
 
 export type SpacesLookupResponseBody = {
-  spaces: ProjectType[];
+  spaces: PodType[];
 };
 
 async function handler(

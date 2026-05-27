@@ -53,7 +53,7 @@ import type {
 } from "@app/types/notification_preferences";
 import type { ProjectMetadataType } from "@app/types/project_metadata";
 import { isString } from "@app/types/shared/utils/general";
-import type { ProjectType, SpaceKind, SpaceType } from "@app/types/space";
+import type { PodType, SpaceKind, SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useMemo } from "react";
 import type { Fetcher, KeyedMutator } from "swr";
@@ -80,7 +80,7 @@ export function useSpaces({
   const spaces = useMemo(() => {
     return (
       data?.spaces?.filter((s) => kinds === "all" || kinds.includes(s.kind)) ??
-      emptyArray<SpaceType | ProjectType>()
+      emptyArray<SpaceType | PodType>()
     );
     // Serialize the kinds array to a string to avoid unnecessary re-renders
     // eslint-disable-next-line react-hooks/exhaustive-deps

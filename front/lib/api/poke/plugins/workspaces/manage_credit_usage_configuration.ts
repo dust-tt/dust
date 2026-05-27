@@ -1,10 +1,8 @@
+import { syncCreditBasedPayg } from "@app/lib/api/credits/credit_based_payg";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { MAX_AWU_DISCOUNT_PERCENT } from "@app/lib/credits/awu_purchase_constants";
-import {
-  clearMetronomePaygCapAlert,
-  upsertMetronomePaygCapAlert,
-} from "@app/lib/metronome/payg_alerts";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
+import { isCreditPricedPlan } from "@app/types/plan";
 import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
 import { z } from "zod";
@@ -83,6 +81,11 @@ export const manageCreditUsageConfigurationPlugin = createPlugin({
     },
   },
 
+  isApplicableTo: (auth) => {
+    const plan = auth.plan();
+    return plan !== null && isCreditPricedPlan(plan);
+  },
+
   populateAsyncArgs: async (auth) => {
     const config =
       await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
@@ -103,6 +106,15 @@ export const manageCreditUsageConfigurationPlugin = createPlugin({
   },
 
   execute: async (auth, _, args) => {
+    const plan = auth.plan();
+    if (!plan || !isCreditPricedPlan(plan)) {
+      return new Err(
+        new Error(
+          "This plugin is only applicable to credit-priced plan workspaces."
+        )
+      );
+    }
+
     const parseResult = CreditUsageConfigurationSchema.safeParse(args);
 
     if (!parseResult.success) {
@@ -117,8 +129,6 @@ export const manageCreditUsageConfigurationPlugin = createPlugin({
 
     const { defaultDiscountPercent, paygCapEnabled, paygCapCredits } =
       parseResult.data;
-
-    const workspace = auth.getNonNullableWorkspace();
 
     const resolvedPaygCapCredits = paygCapEnabled
       ? (() => {
@@ -154,25 +164,12 @@ export const manageCreditUsageConfigurationPlugin = createPlugin({
       }
     }
 
-    if (workspace.metronomeCustomerId) {
-      const alertResult =
-        resolvedPaygCapCredits !== null
-          ? await upsertMetronomePaygCapAlert({
-              metronomeCustomerId: workspace.metronomeCustomerId,
-              paygCapCredits: resolvedPaygCapCredits,
-              workspaceId: workspace.sId,
-            })
-          : await clearMetronomePaygCapAlert({
-              metronomeCustomerId: workspace.metronomeCustomerId,
-              workspaceId: workspace.sId,
-            });
-      if (alertResult.isErr()) {
-        return new Err(
-          new Error(
-            `Failed to sync Metronome PAYG cap alert: ${alertResult.error.message}`
-          )
-        );
-      }
+    const paygResult = await syncCreditBasedPayg({
+      auth,
+      paygCapCredits: resolvedPaygCapCredits,
+    });
+    if (paygResult.isErr()) {
+      return paygResult;
     }
 
     const discountStatus = `Discount: ${defaultDiscountPercent}%`;

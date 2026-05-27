@@ -245,6 +245,32 @@ export async function getActiveAdminEmails(
 }
 
 /**
+ * Returns true if any user with this email has an active membership in the
+ * workspace. The same email can be attached to multiple users, so we fan out
+ * to all of them and ask `MembershipResource.getActiveMemberships` in a
+ * single query.
+ */
+export async function hasActiveMemberByEmail({
+  email,
+  workspace,
+}: {
+  email: string;
+  workspace: LightWorkspaceType;
+}): Promise<boolean> {
+  const users = await UserResource.listByEmail(email);
+  if (!users.length) {
+    return false;
+  }
+
+  const { total } = await MembershipResource.getActiveMemberships({
+    users,
+    workspace,
+  });
+
+  return total > 0;
+}
+
+/**
  * For a given group, return the workspace members that belong to it. Members
  * are returned as `UserTypeWithWorkspaces` (matching `getMembers`) so callers
  * have the workspace context. Users in the group who are not workspace

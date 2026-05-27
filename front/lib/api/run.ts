@@ -2,6 +2,7 @@ import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/toke
 import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
+import { RunResource } from "@app/lib/resources/run_resource";
 import logger from "@app/logger/logger";
 import type { AppType, SpecificationType } from "@app/types/app";
 import type {
@@ -9,12 +10,16 @@ import type {
   ModelProviderIdType,
 } from "@app/types/assistant/models/types";
 import { CoreAPI } from "@app/types/core/core_api";
-import type { RunConfig, RunType, TraceType } from "@app/types/run";
+import type { BlockType, RunConfig, RunType, TraceType } from "@app/types/run";
+import type { ModelId } from "@app/types/shared/model_id";
+import { createParser } from "eventsource-parser";
 import fs from "fs";
 import path from "path";
 import peg from "pegjs";
 
 import { recomputeIndents, restoreTripleBackticks } from "../specification";
+
+export type RunTrace = [[BlockType, string], TraceType[][]];
 
 /**
  * Walks an app-run's `block_execution` traces and emits one `RunUsageType` per trace that carries
@@ -72,6 +77,98 @@ export function extractUsageFromExecutions(
   });
 
   return usages;
+}
+
+/**
+ * Drains a CoreAPI `createRunStream` result: parses `block_execution` SSE events to aggregate
+ * token usages, optionally records the trace list (for blocking responses), forwards each raw
+ * chunk to `onChunk` (used by SSE streaming responses to write to the client), and on completion
+ * creates the `RunResource` row and records the usage. Returns the dustRunId so the caller can
+ * fetch run status / shape the response.
+ *
+ * The shared usage/trace bookkeeping is identical across blocking/streaming/non-blocking
+ * flavors of the run endpoint; the only differences live in the surrounding HTTP layer.
+ */
+export async function consumeRunStream({
+  auth,
+  appModelId,
+  workspaceModelId,
+  useDustCredentials,
+  blocksConfig,
+  runStream,
+  collectTraces,
+  onChunk,
+}: {
+  auth: Authenticator;
+  appModelId: ModelId;
+  workspaceModelId: ModelId;
+  useDustCredentials: boolean;
+  blocksConfig: Record<string, any>;
+  runStream: {
+    chunkStream: AsyncIterable<Uint8Array>;
+    dustRunId: Promise<string>;
+  };
+  collectTraces: boolean;
+  onChunk?: (chunk: Uint8Array) => void | Promise<void>;
+}): Promise<{
+  usages: RunUsageType[];
+  traces: RunTrace[];
+  dustRunId: string;
+}> {
+  const usages: RunUsageType[] = [];
+  const traces: RunTrace[] = [];
+
+  // Intercept block_execution events to store token usages.
+  const parser = createParser((event) => {
+    if (event.type === "event") {
+      if (event.data) {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === "block_execution") {
+            if (collectTraces) {
+              traces.push([
+                [data.content.block_type, data.content.block_name],
+                data.content.execution,
+              ]);
+            }
+            const block = blocksConfig[data.content.block_name];
+
+            const blockUsages = extractUsageFromExecutions(
+              block,
+              data.content.execution
+            );
+            usages.push(...blockUsages);
+          }
+        } catch (err) {
+          logger.error(
+            { error: err },
+            "Error parsing run events while extracting usage from executions"
+          );
+        }
+      }
+    }
+  });
+
+  for await (const chunk of runStream.chunkStream) {
+    parser.feed(new TextDecoder().decode(chunk));
+    if (onChunk) {
+      await onChunk(chunk);
+    }
+  }
+
+  // TODO(2025-04-23): We should record usage earlier, as soon as we get the runId. So we know
+  // that the run is available before we yield the "agent_message_success" event.
+  const dustRunId = await runStream.dustRunId;
+  const run = await RunResource.makeNew({
+    dustRunId,
+    appId: appModelId,
+    runType: "deploy",
+    workspaceId: workspaceModelId,
+    useWorkspaceCredentials: !useDustCredentials,
+  });
+
+  await run.recordRunUsage(auth, usages);
+  return { usages, traces, dustRunId };
 }
 
 export async function getSpecification(

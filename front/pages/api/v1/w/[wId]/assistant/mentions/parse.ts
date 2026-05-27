@@ -1,3 +1,4 @@
+// @migration-status: MIGRATED_TO_HONO
 import { parseMentionsInMarkdown } from "@app/lib/api/assistant/parse_mentions";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";

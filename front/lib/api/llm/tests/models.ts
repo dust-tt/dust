@@ -30,6 +30,7 @@ import {
   GEMINI_2_5_FLASH_MODEL_ID,
   GEMINI_2_5_PRO_MODEL_ID,
   GEMINI_3_1_FLASH_LITE_MODEL_ID,
+  GEMINI_3_1_FLASH_LITE_PREVIEW_DEPRECATED_MODEL_ID,
   GEMINI_3_1_PRO_MODEL_ID,
   GEMINI_3_5_FLASH_MODEL_ID,
   GEMINI_3_FLASH_MODEL_ID,
@@ -120,6 +121,10 @@ export const MODELS: Record<
     providerId: "google_ai_studio",
   },
   [GEMINI_3_1_FLASH_LITE_MODEL_ID]: {
+    runTest: false,
+    providerId: "google_ai_studio",
+  },
+  [GEMINI_3_1_FLASH_LITE_PREVIEW_DEPRECATED_MODEL_ID]: {
     runTest: false,
     providerId: "google_ai_studio",
   },

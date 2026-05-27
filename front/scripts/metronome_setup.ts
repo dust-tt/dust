@@ -33,6 +33,8 @@ import {
 import { TOOL_CATEGORIES } from "@app/lib/metronome/events";
 import { invalidateProductSeatTypesCache } from "@app/lib/metronome/seat_types";
 import {
+  DEFAULT_AWU_EXCESS_RECURRING_AMOUNT,
+  DEFAULT_PROGRAMMATIC_USD_EXCESS_RECURRING_AMOUNT,
   EXCESS_CREDIT_NAME,
   FREE_ANNUAL_CREDIT_NAME,
   FREE_MONTHLY_CREDIT_NAME,
@@ -1287,7 +1289,7 @@ const LEGACY_SEAT_SUBSCRIPTION: PackageSubscription = {
   billing_frequency: "MONTHLY",
   collection_schedule: "ADVANCE",
   quantity_management_mode: "QUANTITY_ONLY",
-  initial_quantity: 1,
+  initial_quantity: 0,
   proration: {
     is_prorated: true,
     invoice_behavior: "BILL_ON_NEXT_COLLECTION_DATE",
@@ -1301,7 +1303,7 @@ const LEGACY_SEAT_ANNUAL_SUBSCRIPTION: PackageSubscription = {
   billing_frequency: "ANNUAL",
   collection_schedule: "ADVANCE",
   quantity_management_mode: "QUANTITY_ONLY",
-  initial_quantity: 1,
+  initial_quantity: 0,
   proration: {
     is_prorated: true,
     invoice_behavior: "BILL_ON_NEXT_COLLECTION_DATE",
@@ -1317,7 +1319,7 @@ const WORKSPACE_SEAT_MONTHLY_SUBSCRIPTION: PackageSubscription = {
   billing_frequency: "MONTHLY",
   collection_schedule: "ADVANCE",
   quantity_management_mode: "QUANTITY_ONLY",
-  initial_quantity: 1,
+  initial_quantity: 0,
   proration: {
     is_prorated: true,
     invoice_behavior: "BILL_ON_NEXT_COLLECTION_DATE",
@@ -1329,7 +1331,7 @@ const WORKSPACE_SEAT_ANNUAL_SUBSCRIPTION: PackageSubscription = {
   billing_frequency: "ANNUAL",
   collection_schedule: "ADVANCE",
   quantity_management_mode: "QUANTITY_ONLY",
-  initial_quantity: 1,
+  initial_quantity: 0,
   proration: {
     is_prorated: true,
     invoice_behavior: "BILL_ON_NEXT_COLLECTION_DATE",
@@ -1513,7 +1515,10 @@ function getPackages(): PackageDef[] {
       subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
       recurring_credits: [
         getFreeMonthlyRecurringCredits(),
-        getFreeExcessRecurringCredits(getCreditTypeProgrammaticUsdId(), 5_000),
+        getFreeExcessRecurringCredits(
+          getCreditTypeProgrammaticUsdId(),
+          DEFAULT_PROGRAMMATIC_USD_EXCESS_RECURRING_AMOUNT
+        ),
       ],
       ...BILLING_CYCLE_CONFIG,
     },
@@ -1524,7 +1529,10 @@ function getPackages(): PackageDef[] {
       subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
       recurring_credits: [
         getFreeMonthlyRecurringCredits(),
-        getFreeExcessRecurringCredits(getCreditTypeProgrammaticUsdId(), 5_000),
+        getFreeExcessRecurringCredits(
+          getCreditTypeProgrammaticUsdId(),
+          DEFAULT_PROGRAMMATIC_USD_EXCESS_RECURRING_AMOUNT
+        ),
       ],
       ...BILLING_CYCLE_CONFIG,
     },
@@ -1535,7 +1543,10 @@ function getPackages(): PackageDef[] {
       subscriptions: [LEGACY_SEAT_ANNUAL_SUBSCRIPTION],
       recurring_credits: [
         getFreeAnnualRecurringCredits(),
-        getFreeExcessRecurringCredits(getCreditTypeProgrammaticUsdId(), 5_000),
+        getFreeExcessRecurringCredits(
+          getCreditTypeProgrammaticUsdId(),
+          DEFAULT_PROGRAMMATIC_USD_EXCESS_RECURRING_AMOUNT
+        ),
       ],
       ...BILLING_CYCLE_CONFIG,
     },
@@ -1547,7 +1558,10 @@ function getPackages(): PackageDef[] {
       scheduled_charges_on_usage_invoices: "ALL",
       recurring_credits: [
         getFreeMonthlyRecurringCredits(),
-        getFreeExcessRecurringCredits(getCreditTypeProgrammaticUsdId(), 5_000),
+        getFreeExcessRecurringCredits(
+          getCreditTypeProgrammaticUsdId(),
+          DEFAULT_PROGRAMMATIC_USD_EXCESS_RECURRING_AMOUNT
+        ),
       ],
       ...BILLING_CYCLE_CONFIG,
     },
@@ -1559,7 +1573,10 @@ function getPackages(): PackageDef[] {
       subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
       recurring_credits: [
         getFreeMonthlyRecurringCredits(),
-        getFreeExcessRecurringCredits(getCreditTypeProgrammaticUsdId(), 5_000),
+        getFreeExcessRecurringCredits(
+          getCreditTypeProgrammaticUsdId(),
+          DEFAULT_PROGRAMMATIC_USD_EXCESS_RECURRING_AMOUNT
+        ),
       ],
       ...BILLING_CYCLE_CONFIG,
     },
@@ -1570,7 +1587,10 @@ function getPackages(): PackageDef[] {
       subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
       recurring_credits: [
         getFreeMonthlyRecurringCredits(),
-        getFreeExcessRecurringCredits(getCreditTypeProgrammaticUsdId(), 5_000),
+        getFreeExcessRecurringCredits(
+          getCreditTypeProgrammaticUsdId(),
+          DEFAULT_PROGRAMMATIC_USD_EXCESS_RECURRING_AMOUNT
+        ),
       ],
       ...BILLING_CYCLE_CONFIG,
     },
@@ -1581,7 +1601,10 @@ function getPackages(): PackageDef[] {
       subscriptions: [LEGACY_SEAT_ANNUAL_SUBSCRIPTION],
       recurring_credits: [
         getFreeAnnualRecurringCredits(),
-        getFreeExcessRecurringCredits(getCreditTypeProgrammaticUsdId(), 5_000),
+        getFreeExcessRecurringCredits(
+          getCreditTypeProgrammaticUsdId(),
+          DEFAULT_PROGRAMMATIC_USD_EXCESS_RECURRING_AMOUNT
+        ),
       ],
       ...BILLING_CYCLE_CONFIG,
     },
@@ -1592,7 +1615,10 @@ function getPackages(): PackageDef[] {
       scheduled_charges_on_usage_invoices: "ALL",
       recurring_credits: [
         getFreeMonthlyRecurringCredits(),
-        getFreeExcessRecurringCredits(getCreditTypeProgrammaticUsdId(), 5_000),
+        getFreeExcessRecurringCredits(
+          getCreditTypeProgrammaticUsdId(),
+          DEFAULT_PROGRAMMATIC_USD_EXCESS_RECURRING_AMOUNT
+        ),
       ],
       ...BILLING_CYCLE_CONFIG,
     },
@@ -1609,7 +1635,10 @@ function getPackages(): PackageDef[] {
       ],
       scheduled_charges_on_usage_invoices: "ALL",
       recurring_credits: [
-        getFreeExcessRecurringCredits(getCreditTypeAwuId(), 5_000),
+        getFreeExcessRecurringCredits(
+          getCreditTypeAwuId(),
+          DEFAULT_AWU_EXCESS_RECURRING_AMOUNT
+        ),
       ],
       ...BILLING_CYCLE_CONFIG,
     },
@@ -1623,7 +1652,10 @@ function getPackages(): PackageDef[] {
       ],
       scheduled_charges_on_usage_invoices: "ALL",
       recurring_credits: [
-        getFreeExcessRecurringCredits(getCreditTypeAwuId(), 5_000),
+        getFreeExcessRecurringCredits(
+          getCreditTypeAwuId(),
+          DEFAULT_AWU_EXCESS_RECURRING_AMOUNT
+        ),
       ],
       ...BILLING_CYCLE_CONFIG,
     },
@@ -1659,7 +1691,10 @@ function getPackages(): PackageDef[] {
           quantityPerSeat: MAX_SEAT_MONTHLY_AWU_CREDITS,
           name: MAX_SEAT_CREDIT_NAME,
         }),
-        getFreeExcessRecurringCredits(getCreditTypeAwuId(), 5_000),
+        getFreeExcessRecurringCredits(
+          getCreditTypeAwuId(),
+          DEFAULT_AWU_EXCESS_RECURRING_AMOUNT
+        ),
       ],
       overrides: buildSeatEntitlementFlipOverrides(),
       ...BILLING_CYCLE_CONFIG,
@@ -1696,7 +1731,10 @@ function getPackages(): PackageDef[] {
           quantityPerSeat: MAX_SEAT_MONTHLY_AWU_CREDITS,
           name: MAX_SEAT_CREDIT_NAME,
         }),
-        getFreeExcessRecurringCredits(getCreditTypeAwuId(), 5_000),
+        getFreeExcessRecurringCredits(
+          getCreditTypeAwuId(),
+          DEFAULT_AWU_EXCESS_RECURRING_AMOUNT
+        ),
       ],
       overrides: buildSeatEntitlementFlipOverrides(),
       ...BILLING_CYCLE_CONFIG,
@@ -1739,7 +1777,10 @@ function getPackages(): PackageDef[] {
           name: MAX_SEAT_CREDIT_NAME,
         }),
         getFreeSeatLifetimeAwuCredits(),
-        getFreeExcessRecurringCredits(getCreditTypeAwuId(), 5_000),
+        getFreeExcessRecurringCredits(
+          getCreditTypeAwuId(),
+          DEFAULT_AWU_EXCESS_RECURRING_AMOUNT
+        ),
       ],
       ...BILLING_CYCLE_CONFIG,
     },
@@ -1777,7 +1818,10 @@ function getPackages(): PackageDef[] {
           name: MAX_SEAT_CREDIT_NAME,
         }),
         getFreeSeatLifetimeAwuCredits(),
-        getFreeExcessRecurringCredits(getCreditTypeAwuId(), 5_000),
+        getFreeExcessRecurringCredits(
+          getCreditTypeAwuId(),
+          DEFAULT_AWU_EXCESS_RECURRING_AMOUNT
+        ),
       ],
       ...BILLING_CYCLE_CONFIG,
     },

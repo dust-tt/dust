@@ -1,7 +1,7 @@
+// @migration-status: MIGRATED_TO_HONO
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
+import { hasActiveMemberByEmail } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { ValidateMemberResponseType } from "@dust-tt/client";
@@ -35,33 +35,12 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      const users = await UserResource.listByEmail(email);
-      const workspace = auth.getNonNullableWorkspace();
-
-      if (!users.length) {
-        return res.status(200).json({
-          valid: false,
-        });
-      }
-
-      // Check memberships for all users with this email until we find an active one
-      for (const user of users) {
-        const workspaceMembership =
-          await MembershipResource.getActiveMembershipOfUserInWorkspace({
-            user,
-            workspace,
-          });
-
-        if (workspaceMembership) {
-          return res.status(200).json({
-            valid: true,
-          });
-        }
-      }
-
-      return res.status(200).json({
-        valid: false,
+      const valid = await hasActiveMemberByEmail({
+        email,
+        workspace: auth.getNonNullableWorkspace(),
       });
+
+      return res.status(200).json({ valid });
 
     default:
       return apiError(req, res, {
