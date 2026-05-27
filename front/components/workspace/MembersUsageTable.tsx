@@ -1,6 +1,9 @@
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import type { BillingFrequency } from "@app/lib/metronome/types";
-import type { MembershipSeatType } from "@app/types/memberships";
+import {
+  isMembershipSeatType,
+  type MembershipSeatType,
+} from "@app/types/memberships";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
   ActionCreditCoinsIcon,
@@ -41,6 +44,17 @@ const SEAT_TYPE_ICONS: Partial<
   free: SeatFreeIcon,
 };
 
+// Yearly seat types are billed yearly but render in the table identically to
+// their monthly counterpart — the billing cadence is shown in the dedicated
+// billing frequency column. Strip the suffix for icon lookup and display.
+function getDisplaySeatType(seatType: MembershipSeatType): MembershipSeatType {
+  if (seatType.endsWith("_yearly")) {
+    const stripped = seatType.slice(0, -"_yearly".length);
+    return isMembershipSeatType(stripped) ? stripped : seatType;
+  }
+  return seatType;
+}
+
 interface SeatTypeIconProps {
   seatType: MembershipSeatType | null;
 }
@@ -49,7 +63,7 @@ function SeatTypeIcon({ seatType }: SeatTypeIconProps) {
   if (!seatType) {
     return null;
   }
-  const Icon = SEAT_TYPE_ICONS[seatType];
+  const Icon = SEAT_TYPE_ICONS[getDisplaySeatType(seatType)];
   if (!Icon) {
     return null;
   }
@@ -233,11 +247,11 @@ const seatTypeColumn: ColumnDef<RowData, string> = {
         <span className="flex flex-col">
           <span className="flex items-center gap-1.5 text-sm font-semibold capitalize text-muted-foreground dark:text-muted-foreground-night">
             <SeatTypeIcon seatType={seatType} />
-            {seatType ?? "—"}
+            {seatType ? getDisplaySeatType(seatType) : "—"}
           </span>
           {scheduledSeatType && scheduledDate && (
             <span className="text-xs capitalize text-amber-600 dark:text-amber-400">
-              → {scheduledSeatType} on {scheduledDate}
+              → {getDisplaySeatType(scheduledSeatType)} on {scheduledDate}
             </span>
           )}
         </span>

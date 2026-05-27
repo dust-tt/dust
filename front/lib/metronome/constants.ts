@@ -99,6 +99,12 @@ export const CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY =
 export const CONTRACT_CREDIT_TYPE_EXCESS = "excess";
 export const CONTRACT_CREDIT_TYPE_POOL = "pool";
 
+// Suffix appended to the annual variant of each seat product name in
+// Metronome (e.g. "Pro Seat (Yearly)"). Used by the setup script when
+// declaring products and by the UI to strip the suffix from displayed seat
+// labels — the billing cadence is conveyed by the tab selector.
+export const SEAT_PRODUCT_YEARLY_SUFFIX = " (Yearly)";
+
 // AWU (Agentic Work Units) differs per environment.
 export const DEV_CREDIT_TYPE_AWU_ID = "eb003cc7-4935-467d-a41c-c1738c1c9dc2";
 export const PROD_CREDIT_TYPE_AWU_ID = "8dfc9846-a38e-44f8-a625-bd9372af681c";

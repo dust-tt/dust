@@ -27,6 +27,7 @@ import {
   PLAN_CODE_CUSTOM_FIELD_KEY,
   PROD_CREDIT_TYPE_AWU_ID,
   PROD_CREDIT_TYPE_PROG_USD_ID,
+  SEAT_PRODUCT_YEARLY_SUFFIX,
   SEAT_TYPE_CUSTOM_FIELD_KEY,
   STRIPE_PRODUCT_ID_CUSTOM_FIELD_KEY,
 } from "@app/lib/metronome/constants";
@@ -67,7 +68,6 @@ const getOverageAwuRate = (currency: SupportedCurrency) => {
 const WORKSPACE_SEAT_PRODUCT_NAME = "Workspace Seat";
 const PRO_SEAT_PRODUCT_NAME = "Pro Seat";
 const MAX_SEAT_PRODUCT_NAME = "Max Seat";
-const YEARLY_SUFFIX = " (Yearly)";
 const FREE_SEAT_PRODUCT_NAME = "Free Seat";
 const PRO_SEAT_CREDIT_NAME = "Pro Seat Credits";
 const MAX_SEAT_CREDIT_NAME = "Max Seat Credits";
@@ -414,7 +414,7 @@ const PRODUCTS: ProductDef[] = [
     custom_fields: { [SEAT_TYPE_CUSTOM_FIELD_KEY]: "workspace" },
   },
   {
-    name: WORKSPACE_SEAT_PRODUCT_NAME + YEARLY_SUFFIX,
+    name: WORKSPACE_SEAT_PRODUCT_NAME + SEAT_PRODUCT_YEARLY_SUFFIX,
     type: "SUBSCRIPTION",
     custom_fields: { [SEAT_TYPE_CUSTOM_FIELD_KEY]: "workspace_yearly" },
   },
@@ -427,7 +427,7 @@ const PRODUCTS: ProductDef[] = [
     custom_fields: { [SEAT_TYPE_CUSTOM_FIELD_KEY]: "pro" },
   },
   {
-    name: PRO_SEAT_PRODUCT_NAME + YEARLY_SUFFIX,
+    name: PRO_SEAT_PRODUCT_NAME + SEAT_PRODUCT_YEARLY_SUFFIX,
     type: "SUBSCRIPTION",
     custom_fields: { [SEAT_TYPE_CUSTOM_FIELD_KEY]: "pro_yearly" },
   },
@@ -437,7 +437,7 @@ const PRODUCTS: ProductDef[] = [
     custom_fields: { [SEAT_TYPE_CUSTOM_FIELD_KEY]: "max" },
   },
   {
-    name: MAX_SEAT_PRODUCT_NAME + YEARLY_SUFFIX,
+    name: MAX_SEAT_PRODUCT_NAME + SEAT_PRODUCT_YEARLY_SUFFIX,
     type: "SUBSCRIPTION",
     custom_fields: { [SEAT_TYPE_CUSTOM_FIELD_KEY]: "max_yearly" },
   },
@@ -893,7 +893,8 @@ function getRateCards(): RateCardDef[] {
           credit_type_id: CREDIT_TYPE_USD_ID,
         },
         {
-          product_name: WORKSPACE_SEAT_PRODUCT_NAME + YEARLY_SUFFIX,
+          product_name:
+            WORKSPACE_SEAT_PRODUCT_NAME + SEAT_PRODUCT_YEARLY_SUFFIX,
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: true,
           rate_type: "FLAT",
@@ -911,7 +912,7 @@ function getRateCards(): RateCardDef[] {
           credit_type_id: CREDIT_TYPE_USD_ID,
         },
         {
-          product_name: PRO_SEAT_PRODUCT_NAME + YEARLY_SUFFIX,
+          product_name: PRO_SEAT_PRODUCT_NAME + SEAT_PRODUCT_YEARLY_SUFFIX,
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: false,
           rate_type: "FLAT",
@@ -929,7 +930,7 @@ function getRateCards(): RateCardDef[] {
           credit_type_id: CREDIT_TYPE_USD_ID,
         },
         {
-          product_name: MAX_SEAT_PRODUCT_NAME + YEARLY_SUFFIX,
+          product_name: MAX_SEAT_PRODUCT_NAME + SEAT_PRODUCT_YEARLY_SUFFIX,
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: false,
           rate_type: "FLAT",
@@ -978,7 +979,8 @@ function getRateCards(): RateCardDef[] {
           credit_type_id: CREDIT_TYPE_EUR_ID,
         },
         {
-          product_name: WORKSPACE_SEAT_PRODUCT_NAME + YEARLY_SUFFIX,
+          product_name:
+            WORKSPACE_SEAT_PRODUCT_NAME + SEAT_PRODUCT_YEARLY_SUFFIX,
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: true,
           rate_type: "FLAT",
@@ -996,7 +998,7 @@ function getRateCards(): RateCardDef[] {
           credit_type_id: CREDIT_TYPE_EUR_ID,
         },
         {
-          product_name: PRO_SEAT_PRODUCT_NAME + YEARLY_SUFFIX,
+          product_name: PRO_SEAT_PRODUCT_NAME + SEAT_PRODUCT_YEARLY_SUFFIX,
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: false,
           rate_type: "FLAT",
@@ -1014,7 +1016,7 @@ function getRateCards(): RateCardDef[] {
           credit_type_id: CREDIT_TYPE_EUR_ID,
         },
         {
-          product_name: MAX_SEAT_PRODUCT_NAME + YEARLY_SUFFIX,
+          product_name: MAX_SEAT_PRODUCT_NAME + SEAT_PRODUCT_YEARLY_SUFFIX,
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: false,
           rate_type: "FLAT",
@@ -1063,7 +1065,7 @@ function getRateCards(): RateCardDef[] {
           credit_type_id: CREDIT_TYPE_USD_ID,
         },
         {
-          product_name: PRO_SEAT_PRODUCT_NAME + YEARLY_SUFFIX,
+          product_name: PRO_SEAT_PRODUCT_NAME + SEAT_PRODUCT_YEARLY_SUFFIX,
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: true,
           rate_type: "FLAT",
@@ -1081,7 +1083,7 @@ function getRateCards(): RateCardDef[] {
           credit_type_id: CREDIT_TYPE_USD_ID,
         },
         {
-          product_name: MAX_SEAT_PRODUCT_NAME + YEARLY_SUFFIX,
+          product_name: MAX_SEAT_PRODUCT_NAME + SEAT_PRODUCT_YEARLY_SUFFIX,
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: true,
           rate_type: "FLAT",
@@ -1128,7 +1130,7 @@ function getRateCards(): RateCardDef[] {
           credit_type_id: CREDIT_TYPE_EUR_ID,
         },
         {
-          product_name: PRO_SEAT_PRODUCT_NAME + YEARLY_SUFFIX,
+          product_name: PRO_SEAT_PRODUCT_NAME + SEAT_PRODUCT_YEARLY_SUFFIX,
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: true,
           rate_type: "FLAT",
@@ -1146,7 +1148,7 @@ function getRateCards(): RateCardDef[] {
           credit_type_id: CREDIT_TYPE_EUR_ID,
         },
         {
-          product_name: MAX_SEAT_PRODUCT_NAME + YEARLY_SUFFIX,
+          product_name: MAX_SEAT_PRODUCT_NAME + SEAT_PRODUCT_YEARLY_SUFFIX,
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: true,
           rate_type: "FLAT",
@@ -1204,13 +1206,19 @@ function buildSeatEntitlementFlipOverrides(): PackageOverrideDef[] {
   return [
     { product_name: WORKSPACE_SEAT_PRODUCT_NAME, entitled: false },
     {
-      product_name: WORKSPACE_SEAT_PRODUCT_NAME + YEARLY_SUFFIX,
+      product_name: WORKSPACE_SEAT_PRODUCT_NAME + SEAT_PRODUCT_YEARLY_SUFFIX,
       entitled: false,
     },
     { product_name: PRO_SEAT_PRODUCT_NAME, entitled: true },
-    { product_name: PRO_SEAT_PRODUCT_NAME + YEARLY_SUFFIX, entitled: true },
+    {
+      product_name: PRO_SEAT_PRODUCT_NAME + SEAT_PRODUCT_YEARLY_SUFFIX,
+      entitled: true,
+    },
     { product_name: MAX_SEAT_PRODUCT_NAME, entitled: true },
-    { product_name: MAX_SEAT_PRODUCT_NAME + YEARLY_SUFFIX, entitled: true },
+    {
+      product_name: MAX_SEAT_PRODUCT_NAME + SEAT_PRODUCT_YEARLY_SUFFIX,
+      entitled: true,
+    },
   ];
 }
 
@@ -1319,7 +1327,7 @@ const WORKSPACE_SEAT_MONTHLY_SUBSCRIPTION: PackageSubscription = {
 };
 const WORKSPACE_SEAT_ANNUAL_SUBSCRIPTION: PackageSubscription = {
   temporary_id: "workspace-seat-annual-sub",
-  product_name: WORKSPACE_SEAT_PRODUCT_NAME + YEARLY_SUFFIX,
+  product_name: WORKSPACE_SEAT_PRODUCT_NAME + SEAT_PRODUCT_YEARLY_SUFFIX,
   billing_frequency: "ANNUAL",
   collection_schedule: "ADVANCE",
   quantity_management_mode: "QUANTITY_ONLY",
@@ -1351,7 +1359,7 @@ const PRO_SEAT_SUBSCRIPTION: PackageSubscription = {
 const PRO_SEAT_ANNUAL_SUBSCRIPTION_TEMPORARY_ID = "pro-seat-annual-sub";
 const PRO_SEAT_ANNUAL_SUBSCRIPTION: PackageSubscription = {
   temporary_id: PRO_SEAT_ANNUAL_SUBSCRIPTION_TEMPORARY_ID,
-  product_name: PRO_SEAT_PRODUCT_NAME + YEARLY_SUFFIX,
+  product_name: PRO_SEAT_PRODUCT_NAME + SEAT_PRODUCT_YEARLY_SUFFIX,
   billing_frequency: "ANNUAL",
   collection_schedule: "ADVANCE",
   quantity_management_mode: "SEAT_BASED",
@@ -1379,7 +1387,7 @@ const MAX_SEAT_SUBSCRIPTION: PackageSubscription = {
 const MAX_SEAT_ANNUAL_SUBSCRIPTION_TEMPORARY_ID = "max-seat-annual-sub";
 const MAX_SEAT_ANNUAL_SUBSCRIPTION: PackageSubscription = {
   temporary_id: MAX_SEAT_ANNUAL_SUBSCRIPTION_TEMPORARY_ID,
-  product_name: MAX_SEAT_PRODUCT_NAME + YEARLY_SUFFIX,
+  product_name: MAX_SEAT_PRODUCT_NAME + SEAT_PRODUCT_YEARLY_SUFFIX,
   billing_frequency: "ANNUAL",
   collection_schedule: "ADVANCE",
   quantity_management_mode: "SEAT_BASED",
