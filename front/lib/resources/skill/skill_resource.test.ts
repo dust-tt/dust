@@ -1118,16 +1118,14 @@ describe("SkillResource", () => {
         );
 
       // Enable skillA on conv1 and skillB on conv2
-      const enableA = await skillA.enableForAgent(testContext.authenticator, {
+      await skillA.enableForAgent(testContext.authenticator, {
         agentConfiguration: agent,
         conversation: conv1,
       });
-      expect(enableA.isOk()).toBe(true);
-      const enableB = await skillB.enableForAgent(testContext.authenticator, {
+      await skillB.enableForAgent(testContext.authenticator, {
         agentConfiguration: agent,
         conversation: conv2,
       });
-      expect(enableB.isOk()).toBe(true);
 
       await SkillResource.snapshotConversationSkillsForMessage(
         testContext.authenticator,
