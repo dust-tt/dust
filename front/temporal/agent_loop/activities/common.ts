@@ -9,9 +9,14 @@ import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
 } from "@app/lib/llms/agent_message_content_parser";
-import { AgentMessageModel } from "@app/lib/models/agent/conversation";
+import {
+  AgentMessageModel,
+  ConversationModel,
+  MessageModel,
+} from "@app/lib/models/agent/conversation";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import {
   DEFAULT_EVENT_FLUSH_INTERVAL_MS,
@@ -425,6 +430,81 @@ export async function updateResourceAndPublishEvent(
 const DEFAULT_WORKFLOW_ERROR_MESSAGE =
   "An unexpected error occurred while generating the agent response. Please try again.";
 
+async function writeAgentMessageFinalStatusWhenInaccessible(
+  authType: AuthenticatorType,
+  agentLoopArgs: AgentLoopArgs,
+  status: Extract<
+    AgentMessageStatus,
+    "cancelled" | "interrupted" | "gracefully_stopped"
+  >
+): Promise<void> {
+  const workspace = await WorkspaceResource.fetchById(authType.workspaceId);
+  if (!workspace) {
+    logger.warn(
+      {
+        workspaceId: authType.workspaceId,
+        conversationId: agentLoopArgs.conversationId,
+        agentMessageId: agentLoopArgs.agentMessageId,
+      },
+      "Workspace not found for direct agent message status write"
+    );
+    return;
+  }
+
+  logger.info(
+    {
+      workspaceId: authType.workspaceId,
+      conversationId: agentLoopArgs.conversationId,
+      agentMessageId: agentLoopArgs.agentMessageId,
+      status,
+    },
+    "Conversation inaccessible, writing final status directly to DB."
+  );
+
+  const messageRow = await MessageModel.findOne({
+    where: {
+      sId: agentLoopArgs.agentMessageId,
+      version: agentLoopArgs.agentMessageVersion,
+      workspaceId: workspace.id,
+    },
+    attributes: ["agentMessageId"],
+  });
+
+  if (!messageRow?.agentMessageId) {
+    logger.warn(
+      {
+        workspaceId: authType.workspaceId,
+        conversationId: agentLoopArgs.conversationId,
+        agentMessageId: agentLoopArgs.agentMessageId,
+      },
+      "Agent message not found for direct status write"
+    );
+    return;
+  }
+
+  await AgentMessageModel.update(
+    { status, completedAt: new Date() },
+    {
+      where: {
+        id: messageRow.agentMessageId,
+        workspaceId: workspace.id,
+        status: "created",
+      },
+    }
+  );
+
+  await ConversationModel.update(
+    { isRunningAgentLoop: false },
+    {
+      where: {
+        sId: agentLoopArgs.conversationId,
+        workspaceId: workspace.id,
+      },
+      silent: true,
+    }
+  );
+}
+
 function toUserFriendlyMessage(error: {
   message: string;
   name: string;
@@ -546,12 +626,10 @@ export async function finalizeCancellation(
   const runAgentDataRes = await getAgentLoopData(authType, agentLoopArgs);
   if (runAgentDataRes.isErr()) {
     if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
-      logger.info(
-        {
-          conversationId: agentLoopArgs.conversationId,
-          agentMessageId: agentLoopArgs.agentMessageId,
-        },
-        "Message or conversation was deleted, exiting"
+      await writeAgentMessageFinalStatusWhenInaccessible(
+        authType,
+        agentLoopArgs,
+        "cancelled"
       );
       return;
     }
@@ -613,12 +691,10 @@ export async function finalizeInterruption(
   const runAgentDataRes = await getAgentLoopData(authType, agentLoopArgs);
   if (runAgentDataRes.isErr()) {
     if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
-      logger.info(
-        {
-          conversationId: agentLoopArgs.conversationId,
-          agentMessageId: agentLoopArgs.agentMessageId,
-        },
-        "Message or conversation was deleted, exiting"
+      await writeAgentMessageFinalStatusWhenInaccessible(
+        authType,
+        agentLoopArgs,
+        "interrupted"
       );
       return;
     }
@@ -678,12 +754,10 @@ export async function finalizeGracefulStop(
   const runAgentDataRes = await getAgentLoopData(authType, agentLoopArgs);
   if (runAgentDataRes.isErr()) {
     if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
-      logger.info(
-        {
-          conversationId: agentLoopArgs.conversationId,
-          agentMessageId: agentLoopArgs.agentMessageId,
-        },
-        "Message or conversation was deleted, exiting"
+      await writeAgentMessageFinalStatusWhenInaccessible(
+        authType,
+        agentLoopArgs,
+        "cancelled"
       );
       return;
     }
