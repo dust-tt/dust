@@ -1022,7 +1022,7 @@ describe("renameGCSMountDirectory", () => {
     auth = authenticator;
     workspaceId = auth.getNonNullableWorkspace().sId;
 
-    const prefix = `w/${workspaceId}/projects/proj123/files/`;
+    const prefix = `w/${workspaceId}/pods/pod123/files/`;
     getAllFilesByPrefixMock = vi.fn().mockResolvedValue({
       files: [
         { name: `${prefix}archive/` },
@@ -1044,27 +1044,40 @@ describe("renameGCSMountDirectory", () => {
       { relativeDirPath: "archive", newFolderName: "backup" }
     );
 
-    const prefix = `w/${workspaceId}/projects/pod123/files/`;
     const podsPrefix = `w/${workspaceId}/pods/pod123/files/`;
+    const projectsPrefix = `w/${workspaceId}/projects/pod123/files/`;
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
       expect(result.value.newRelativeDirPath).toBe("backup");
     }
+    // Canonical copies happen on the pods/ side.
     expect(copyFileMock).toHaveBeenCalledWith(
-      `${prefix}archive/`,
-      `${prefix}backup/`
+      `${podsPrefix}archive/`,
+      `${podsPrefix}backup/`
     );
     expect(copyFileMock).toHaveBeenCalledWith(
-      `${prefix}archive/report.pdf`,
-      `${prefix}backup/report.pdf`
-    );
-    expect(deleteByPrefixMock).toHaveBeenCalledWith(`${prefix}archive/`);
-    expect(deleteByPrefixMock).toHaveBeenCalledWith(`${podsPrefix}archive/`);
-    expect(copyFileMock).toHaveBeenCalledWith(
-      `${prefix}backup/report.pdf`,
+      `${podsPrefix}archive/report.pdf`,
       `${podsPrefix}backup/report.pdf`
     );
+    // Old prefix is deleted on both the pods/ and projects/ sides.
+    expect(deleteByPrefixMock).toHaveBeenCalledWith(`${podsPrefix}archive/`);
+    expect(deleteByPrefixMock).toHaveBeenCalledWith(
+      `${projectsPrefix}archive/`
+    );
+    // Mirror copies from the new canonical pods/ path to the projects/ side.
+    expect(copyFileMock).toHaveBeenCalledWith(
+      `${podsPrefix}backup/`,
+      `${projectsPrefix}backup/`
+    );
+    expect(copyFileMock).toHaveBeenCalledWith(
+      `${podsPrefix}backup/report.pdf`,
+      `${projectsPrefix}backup/report.pdf`
+    );
+    // Double write: each of the 2 objects is copied on the pods/ side and
+    // mirrored to the projects/ side (2 canonical + 2 mirror = 4).
+    expect(copyFileMock).toHaveBeenCalledTimes(4);
+    expect(deleteByPrefixMock).toHaveBeenCalledTimes(2);
   });
 
   it("returns Err when the destination folder already exists", async () => {
