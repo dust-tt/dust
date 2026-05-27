@@ -12,7 +12,6 @@ import {
 } from "@app/lib/metronome/client";
 import { PLAN_CODE_CUSTOM_FIELD_KEY } from "@app/lib/metronome/constants";
 import type { MetronomeWebhookEvent } from "@app/lib/metronome/webhook_events";
-import { PlanModel } from "@app/lib/models/plan";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
@@ -22,6 +21,7 @@ import {
   terminateScheduleWorkspaceScrubWorkflow,
 } from "@app/temporal/scrub_workspace/client";
 import { mockCustomerAlert } from "@app/tests/utils/mocks/metronome";
+import { PlanFactory } from "@app/tests/utils/PlanFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { Err, Ok } from "@app/types/shared/result";
 import type { ContractV2 } from "@metronome/sdk/resources";
@@ -75,39 +75,6 @@ const OLD_CONTRACT_ID = "contract_old_xxx";
 const NEW_CONTRACT_ID = "contract_new_yyy";
 const ENT_PLAN_CODE = "ENT_TEST_PLAN";
 const USER_ID = "user_test_xxx";
-
-async function ensureEnterprisePlan(): Promise<void> {
-  await PlanModel.upsert({
-    code: ENT_PLAN_CODE,
-    name: "Test Enterprise",
-    maxMessages: -1,
-    maxMessagesTimeframe: "lifetime",
-    isDeepDiveAllowed: true,
-    maxImagesPerWeek: 1000,
-    maxUsersInWorkspace: 1000,
-    maxFreeUsersInWorkspace: -1,
-    maxLifetimeFreeUsersInWorkspace: -1,
-    maxVaultsInWorkspace: 100,
-    isSlackbotAllowed: true,
-    isManagedSlackAllowed: true,
-    isManagedConfluenceAllowed: true,
-    isManagedNotionAllowed: true,
-    isManagedGoogleDriveAllowed: true,
-    isManagedGithubAllowed: true,
-    isManagedIntercomAllowed: true,
-    isManagedWebCrawlerAllowed: true,
-    isManagedSalesforceAllowed: true,
-    isSSOAllowed: true,
-    isSCIMAllowed: true,
-    isAuditLogsAllowed: true,
-    maxDataSourcesCount: -1,
-    maxDataSourcesDocumentsCount: -1,
-    maxDataSourcesDocumentsSizeMb: 100,
-    trialPeriodDays: 0,
-    canUseProduct: true,
-    isByok: false,
-  });
-}
 
 /** Build a contract event payload that matches the centralized webhook schema. */
 function contractEvent(
@@ -227,7 +194,7 @@ describe("processMetronomeWebhook — contract.start", () => {
     // Shadow-billed: Stripe is the source of truth, Metronome runs in
     // parallel. The webhook must not flip the subscription on contract.start
     // — Stripe drives that transition on its own webhook.
-    await ensureEnterprisePlan();
+    await PlanFactory.enterprise(ENT_PLAN_CODE);
     const workspace = await setupMetronomeWorkspace(OLD_CONTRACT_ID, {
       stripeSubscriptionId: "sub_shadow_xxx",
     });
@@ -284,7 +251,7 @@ describe("processMetronomeWebhook — contract.start", () => {
   });
 
   it("ends the current subscription and creates a new active one with the target plan code on a successful swap", async () => {
-    await ensureEnterprisePlan();
+    await PlanFactory.enterprise(ENT_PLAN_CODE);
     const workspace = await setupMetronomeWorkspace(OLD_CONTRACT_ID);
     const event = contractEvent("contract.start", NEW_CONTRACT_ID);
     vi.mocked(getMetronomeContractById).mockResolvedValue(
@@ -325,7 +292,7 @@ describe("processMetronomeWebhook — contract.start", () => {
   });
 
   it("is idempotent — re-firing after the swap does nothing", async () => {
-    await ensureEnterprisePlan();
+    await PlanFactory.enterprise(ENT_PLAN_CODE);
     const workspace = await setupMetronomeWorkspace(NEW_CONTRACT_ID);
     const event = contractEvent("contract.start", NEW_CONTRACT_ID);
     vi.mocked(getMetronomeContractById).mockResolvedValue(
@@ -353,26 +320,23 @@ describe("processMetronomeWebhook — contract.start", () => {
   });
 
   it("flips a pending (created_backend_only) subscription to active and ends the prior active", async () => {
-    await ensureEnterprisePlan();
+    const targetPlan = await PlanFactory.enterprise(ENT_PLAN_CODE);
     const workspace = await setupMetronomeWorkspace(OLD_CONTRACT_ID);
     // Stage the pending sub that switch_contract would have created.
     const workspaceModelId = (await WorkspaceResource.fetchById(workspace.sId))!
       .id;
-    const targetPlan = await PlanModel.findOne({
-      where: { code: ENT_PLAN_CODE },
-    });
     await SubscriptionResource.makeNew(
       {
         sId: generateRandomModelSId(),
         workspaceId: workspaceModelId,
-        planId: targetPlan!.id,
+        planId: targetPlan.id,
         status: "created_backend_only",
         startDate: new Date(),
         endDate: null,
         stripeSubscriptionId: null,
         metronomeContractId: NEW_CONTRACT_ID,
       },
-      renderPlanFromModel({ plan: targetPlan! })
+      renderPlanFromModel({ plan: targetPlan })
     );
 
     const event = contractEvent("contract.start", NEW_CONTRACT_ID);
@@ -534,21 +498,19 @@ describe("processMetronomeWebhook — swap webhook ordering", () => {
     workspace: WorkspaceResource,
     contractId: string
   ): Promise<void> {
-    const targetPlan = await PlanModel.findOne({
-      where: { code: ENT_PLAN_CODE },
-    });
+    const targetPlan = await PlanFactory.enterprise(ENT_PLAN_CODE);
     await SubscriptionResource.makeNew(
       {
         sId: generateRandomModelSId(),
         workspaceId: workspace.id,
-        planId: targetPlan!.id,
+        planId: targetPlan.id,
         status: "created_backend_only",
         startDate: new Date(),
         endDate: null,
         stripeSubscriptionId: null,
         metronomeContractId: contractId,
       },
-      renderPlanFromModel({ plan: targetPlan! })
+      renderPlanFromModel({ plan: targetPlan })
     );
   }
 
@@ -582,7 +544,6 @@ describe("processMetronomeWebhook — swap webhook ordering", () => {
   }
 
   it("converges the old sub to ended when contract.end precedes contract.start (pending path)", async () => {
-    await ensureEnterprisePlan();
     const workspace = await setupMetronomeWorkspace(OLD_CONTRACT_ID);
     await stagePendingSub(
       (await WorkspaceResource.fetchById(workspace.sId))!,
@@ -623,7 +584,7 @@ describe("processMetronomeWebhook — swap webhook ordering", () => {
   });
 
   it("converges the old sub to ended when contract.end precedes contract.start (legacy fallback, no pending row)", async () => {
-    await ensureEnterprisePlan();
+    await PlanFactory.enterprise(ENT_PLAN_CODE);
     const workspace = await setupMetronomeWorkspace(OLD_CONTRACT_ID);
     mockNewContractStart();
     mockSuccessorContractExists();
@@ -657,7 +618,6 @@ describe("processMetronomeWebhook — swap webhook ordering", () => {
     // The fix is scoped to Metronome-only subs. A sub with a Stripe
     // subscription must still wait for Stripe's customer.subscription.deleted
     // webhook, so it ends as ended_backend_only.
-    await ensureEnterprisePlan();
     const workspace = await setupMetronomeWorkspace(OLD_CONTRACT_ID, {
       stripeSubscriptionId: "sub_shadow_xxx",
     });
