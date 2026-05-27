@@ -183,9 +183,9 @@ function getEgressResolverUserSetupCommand(): string {
 
 function getPrivilegedExecutablePathHardeningCommand(): string {
   return [
-    "install -d -o root -g root -m 755 /opt/bin /usr/local/bin",
-    "chown root:root /opt/bin /usr/local/bin",
-    "chmod 755 /opt/bin /usr/local/bin",
+    "install -d -o root -g root -m 755 /opt/bin /usr/local /usr/local/sbin /usr/local/bin",
+    "chown root:root /opt/bin /usr/local /usr/local/sbin /usr/local/bin",
+    "chmod 755 /opt/bin /usr/local /usr/local/sbin /usr/local/bin",
   ].join(" && ");
 }
 
@@ -357,7 +357,8 @@ SHELLEOF`,
       `curl -fsSL https://github.com/dust-tt/dust/releases/download/dsbx-v${DSBX_CLI_VERSION}/checksums-sha256.txt -o /tmp/checksums-sha256.txt && ` +
       "grep dsbx-linux-x86_64 /tmp/checksums-sha256.txt | awk '{print $1 \"  /tmp/dsbx\"}' | sha256sum -c - && " +
       "chmod +x /tmp/dsbx && " +
-      "mv /tmp/dsbx /opt/bin/dsbx",
+      "mv /tmp/dsbx /opt/bin/dsbx && " +
+      "chown root:root /opt/bin/dsbx && chmod 755 /opt/bin/dsbx",
     { user: "root" }
   )
   .registerTool({
@@ -472,9 +473,12 @@ SHELLEOF`,
     "/usr/local/bin/dust-install-trust-bundle",
     { user: "root" }
   )
-  .runCmd("chmod 755 /usr/local/bin/dust-install-trust-bundle", {
-    user: "root",
-  })
+  .runCmd(
+    "chown root:root /usr/local/bin/dust-install-trust-bundle && chmod 755 /usr/local/bin/dust-install-trust-bundle",
+    {
+      user: "root",
+    }
+  )
   .copy(
     getLocalContent(EGRESS_LOCAL_DIR, "egress-nftables.sh"),
     "/etc/dust/egress-nftables.sh",

@@ -435,7 +435,12 @@ export function assertLocalAuthHelpersNotSetuid(output: string): void {
 }
 
 export function assertPrivilegedDirsSafe(output: string): void {
-  for (const dir of ["/opt/bin", "/usr/local/bin"]) {
+  for (const dir of [
+    "/opt/bin",
+    "/usr/local",
+    "/usr/local/sbin",
+    "/usr/local/bin",
+  ]) {
     const line = output
       .split("\n")
       .find((candidate) => candidate.startsWith(`${dir} `));
@@ -453,6 +458,31 @@ export function assertPrivilegedDirsSafe(output: string): void {
     if (owner !== "root:root" || Number.isNaN(mode) || (mode & 0o022) !== 0) {
       throw new Error(
         `privileged directory ${dir} is not root-owned and non-writable by group/other:\n${line}`
+      );
+    }
+  }
+}
+
+export function assertRootInvokedHelpersSafe(output: string): void {
+  for (const path of [
+    "/opt/bin/dsbx",
+    "/usr/local/bin/dust-install-trust-bundle",
+  ]) {
+    const line = output
+      .split("\n")
+      .find((candidate) => candidate.startsWith(`${path} `));
+    if (!line) {
+      throw new Error(`missing root-invoked helper audit for ${path}`);
+    }
+
+    const fields = line.split(/\s+/);
+    const owner = fields[1];
+    const modeText = fields[2];
+    const mode = Number.parseInt(modeText, 8);
+
+    if (owner !== "root:root" || Number.isNaN(mode) || (mode & 0o022) !== 0) {
+      throw new Error(
+        `root-invoked helper is not root-owned and non-writable by group/other:\n${line}`
       );
     }
   }
@@ -515,8 +545,14 @@ for path in ${LOCAL_AUTH_HELPER_PATHS.map((path) => shellQuote(path)).join(
   fi
 done
 echo "--- privileged-dirs ---"
-for dir in /opt/bin /usr/local/bin; do
+for dir in /opt/bin /usr/local /usr/local/sbin /usr/local/bin; do
   stat -c '%n %U:%G %a %A' "$dir"
+done
+echo "--- root-invoked-helpers ---"
+for path in /opt/bin/dsbx /usr/local/bin/dust-install-trust-bundle; do
+  if [ -e "$path" ]; then
+    stat -c '%n %U:%G %a %A' "$path"
+  fi
 done
 echo "--- root-path ---"
 printf 'ROOT_EXEC_PATH=%s\n' "$PATH"
@@ -532,6 +568,7 @@ printf 'ROOT_EXEC_PATH=%s\n' "$PATH"
   assertNoEmptyPasswordAccounts(output);
   assertLocalAuthHelpersNotSetuid(output);
   assertPrivilegedDirsSafe(output);
+  assertRootInvokedHelpersSafe(output);
   assertRootPathSafe(output);
 }
 

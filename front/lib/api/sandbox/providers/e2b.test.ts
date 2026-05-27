@@ -160,7 +160,10 @@ describe("E2BSandboxProvider", () => {
       "sudo must not be installed in sandbox images"
     );
     expect(hardeningCommand).toContain(
-      "install -d -o root -g root -m 755 /opt/bin /usr/local/bin"
+      "install -d -o root -g root -m 755 /opt/bin /usr/local /usr/local/sbin /usr/local/bin"
+    );
+    expect(hardeningCommand).toContain(
+      "for path in /opt/bin/dsbx /usr/local/bin/dust-install-trust-bundle"
     );
     expect(hardeningCommand).toContain("privileged primary group");
     expect(mockKill).not.toHaveBeenCalled();
