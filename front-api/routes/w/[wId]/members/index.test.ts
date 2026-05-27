@@ -54,7 +54,7 @@ describe("GET /api/w/:wId/members", () => {
     expect(await response.json()).toEqual({
       error: {
         type: "workspace_auth_error",
-        message: "Only workspace admins can access the members list.",
+        message: "Only users that are `admins` can perform this action.",
       },
     });
   });
@@ -68,7 +68,7 @@ describe("GET /api/w/:wId/members", () => {
     expect(await response.json()).toEqual({
       error: {
         type: "workspace_auth_error",
-        message: "Only workspace admins can access the members list.",
+        message: "Only users that are `admins` can perform this action.",
       },
     });
   });

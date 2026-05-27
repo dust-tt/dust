@@ -100,7 +100,7 @@ describe("GET /api/w/:wId/skills/reinforcement_daily_spend", () => {
       expect(await response.json()).toEqual({
         error: {
           type: "workspace_auth_error",
-          message: "Only admins can view self-improving skills daily spend.",
+          message: "Only users that are `admins` can perform this action.",
         },
       });
     }
