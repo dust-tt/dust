@@ -16,7 +16,7 @@ export const ensureIsUser = () =>
         api_error: {
           type: "workspace_auth_error",
           message:
-            "You must be an authenticated user of this workspace to access this endpoint.",
+            "You must be an authenticated user of this workspace to perform this action.",
         },
       });
     }

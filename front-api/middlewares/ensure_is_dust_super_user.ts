@@ -15,7 +15,7 @@ export const ensureIsDustSuperUser = () =>
         status_code: 403,
         api_error: {
           type: "workspace_auth_error",
-          message: "Only Dust super users can access this endpoint.",
+          message: "Only Dust super users can perform this action.",
         },
       });
     }
