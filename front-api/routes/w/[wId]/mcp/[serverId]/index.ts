@@ -14,7 +14,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { headersArrayToRecord } from "@app/types/shared/utils/http_headers";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsUser } from "@front-api/middlewares/ensure_is_user";
+import { ensureIsUser } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";

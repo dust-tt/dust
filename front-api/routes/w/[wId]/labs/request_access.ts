@@ -3,7 +3,7 @@ import { sendEmailWithTemplate } from "@app/lib/api/email";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsUser } from "@front-api/middlewares/ensure_is_user";
+import { ensureIsUser } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { escape } from "html-escaper";

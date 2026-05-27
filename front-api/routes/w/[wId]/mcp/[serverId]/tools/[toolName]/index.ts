@@ -2,7 +2,7 @@ import { MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsUser } from "@front-api/middlewares/ensure_is_user";
+import { ensureIsUser } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
