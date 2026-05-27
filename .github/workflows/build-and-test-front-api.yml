@@ -17,6 +17,11 @@ permissions:
 
 jobs:
   tests:
+    name: Test Shard ${{ matrix.shardIndex }} of ${{ matrix.shardTotal }}
+    strategy:
+      matrix:
+        shardIndex: [ 1, 2, 3 ]
+        shardTotal: [ 3 ]
     runs-on: ubuntu-latest
     services:
       redis:
@@ -41,7 +46,7 @@ jobs:
         with:
           postgresql docker image: mirror.gcr.io/postgres
           postgresql version: "14.13"
-          postgresql db: front_api_test
+          postgresql db: front_api_test_shard_${{ matrix.shardIndex }}
           postgresql user: test
           postgresql password: test
           postgresql port: 5433
@@ -50,20 +55,20 @@ jobs:
       - name: Run Tests
         working-directory: front-api
         env:
-          FRONT_DATABASE_URI: "postgres://test:test@localhost:5433/front_api_test"
+          FRONT_DATABASE_URI: "postgres://test:test@localhost:5433/front_api_test_shard_${{ matrix.shardIndex }}"
           REDIS_CACHE_URI: "redis://localhost:5434"
           REDIS_URI: "redis://localhost:5434"
           NODE_ENV: test
-        run: npx tsx ../front/admin/db.ts && npm run test:ci -- --outputFile=junit.xml
+        run: npx tsx ../front/admin/db.ts && npm run test:ci -- --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} --outputFile=junit-shard-${{ matrix.shardIndex }}.xml
       - name: Build Tests Report
         if: always()
         uses: mikepenz/action-junit-report@bccf2e31636835cf0874589931c4116687171386 # v6.4.0
         with:
-          report_paths: "front-api/junit.xml"
+          report_paths: "front-api/junit-shard-${{ matrix.shardIndex }}.xml"
           detailed_summary: true
           flaky_summary: true
           group_suite: true
-          check_name: Tests Report
+          check_name: Tests Report (Shard ${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
   tsgo:
     runs-on: ubuntu-latest
     steps:
