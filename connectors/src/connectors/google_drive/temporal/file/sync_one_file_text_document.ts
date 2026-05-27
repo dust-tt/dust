@@ -119,5 +119,5 @@ export async function syncOneFileTextDocument(
     );
   }
 
-  return !skipReason;
+  return false;
 }

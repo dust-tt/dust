@@ -270,7 +270,7 @@ export async function googleDriveIncrementalSync(
       }
 
       // Will restart exactly where it was.
-      if (workflowInfo().historyLength > 4000) {
+      if (currentToken && workflowInfo().historyLength > 4000) {
         await continueAsNew<typeof googleDriveIncrementalSync>(
           connectorId,
           startSyncTs,
@@ -721,7 +721,7 @@ export async function googleDriveIncrementalSyncPerDrive({
     }
 
     // Will restart exactly where it was.
-    if (workflowInfo().historyLength > 4000) {
+    if (currentToken && workflowInfo().historyLength > 4000) {
       await continueAsNew<typeof googleDriveIncrementalSyncPerDrive>({
         connectorId,
         driveId,
