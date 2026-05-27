@@ -492,8 +492,7 @@ export class DustFileSystem {
       return resolved;
     }
 
-    const stat = await this.backend.stat(resolved.value.path);
-    return new Ok(stat);
+    return this.backend.stat(resolved.value.path);
   }
 
   async write(

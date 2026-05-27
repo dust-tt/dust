@@ -19,7 +19,6 @@ export type { FileSystemEntry } from "@app/lib/api/file_system/types";
  * Every method that can fail returns `Result<T, DustFileSystemError>` so callers never need
  * try/catch. The backend owns the catch and maps storage exceptions to the appropriate code.
  */
-// TODO: Harmonize return types?
 export interface FileSystemBackend {
   /**
    * List entries under `scopedPath` (should end with `/` to list a prefix).
@@ -41,12 +40,17 @@ export interface FileSystemBackend {
   ): Promise<Result<Readable | null, DustFileSystemError>>;
 
   /**
-   * Returns metadata for the file at `scopedPath`, or `null` when the file does not exist.
-   * Does not throw; returns `null` on unexpected errors after logging.
+   * Returns `Ok(null)` when the file does not exist, `Ok(metadata)` on success.
+   * Returns `Err` on path or permission errors (including `invalid_path`).
    */
   stat(
     scopedPath: string
-  ): Promise<{ contentType: string; sizeBytes: number } | null>;
+  ): Promise<
+    Result<
+      { contentType: string; sizeBytes: number } | null,
+      DustFileSystemError
+    >
+  >;
 
   write(
     scopedPath: string,

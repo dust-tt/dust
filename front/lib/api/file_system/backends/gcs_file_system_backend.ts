@@ -73,10 +73,6 @@ const GCS_LIST_PAGE_SIZE = 200;
  * Path translation (internal, never exposed):
  *   `conversation-{cId}/{rel}` -> `w/{wId}/conversations/{cId}/files/{rel}`
  *   `pod-{pId}/{rel}`          -> `w/{wId}/pods/{pId}/files/{rel}`
- *
- * `fileId` is always null in listing entries until the DB migration converts
- * `FileResource.mountFilePath` from raw GCS paths to scoped paths.
- * See TODO(FILE SYSTEM MIGRATION) in `list`.
  */
 export class GCSFileSystemBackend implements FileSystemBackend {
   constructor(
@@ -198,8 +194,8 @@ export class GCSFileSystemBackend implements FileSystemBackend {
       return !name.includes(".processed.");
     });
 
-    // TODO(FILE SYSTEM MIGRATION): once FileResource.mountFilePath stores scoped paths,
-    // look up FileResource records here by scoped path to populate fileId.
+    // TODO(FILE SYSTEM MIGRATION): use FileResource.mountFilePath to look up FileResource records
+    // here by scoped path to populate fileId.
 
     const folderEntries: FileSystemEntry[] = folderPlaceholders.flatMap((f) => {
       const trimmed = f.name.replace(/\/$/, "");
@@ -286,25 +282,42 @@ export class GCSFileSystemBackend implements FileSystemBackend {
 
   async stat(
     scopedPath: string
-  ): Promise<{ contentType: string; sizeBytes: number } | null> {
+  ): Promise<
+    Result<
+      { contentType: string; sizeBytes: number } | null,
+      DustFileSystemError
+    >
+  > {
     const gcsPath = this.toGCSPath(scopedPath);
     if (!gcsPath) {
-      return null;
+      return new Err(
+        new DustFileSystemError(
+          "invalid_path",
+          `GCSFileSystemBackend.stat: unrecognised scoped path: ${scopedPath}`
+        )
+      );
     }
 
     const bucket = getPrivateUploadBucket();
     try {
+      const [exists] = await bucket.file(gcsPath).exists();
+      if (!exists) {
+        return new Ok(null);
+      }
+
       const [metadata] = await bucket.file(gcsPath).getMetadata();
       const rawCT = isString(metadata.contentType)
         ? metadata.contentType
         : "application/octet-stream";
 
-      return {
+      return new Ok({
         contentType: stripMimeParameters(rawCT),
         sizeBytes: Number(metadata.size ?? 0),
-      };
-    } catch {
-      return null;
+      });
+    } catch (err) {
+      return new Err(
+        new DustFileSystemError("internal", normalizeError(err).message)
+      );
     }
   }
 
