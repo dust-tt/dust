@@ -86,6 +86,14 @@ app.post("/", async (ctx): HandlerResult<ResponseBody> => {
 
   const event = parsedEvent.data;
 
+  if (event.type === "webhooks.test") {
+    logger.info(
+      { eventId: event.id },
+      "[Metronome Webhook] Test ping received — webhook endpoint is reachable and signature verification works!"
+    );
+    return ctx.json({ success: true });
+  }
+
   logger.info({ event, rawEvent }, "[Metronome Webhook] Event received");
 
   // Resolve the workspace before enqueueing — every event except
