@@ -4,6 +4,7 @@ import logger from "@app/logger/logger";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import type { ConnectorProvider, DataSourceType } from "@app/types/data_source";
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureIsBuilder } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 
@@ -23,19 +24,9 @@ const app = workspaceApp();
 
 app.get(
   "/",
+  ensureIsBuilder(),
   async (ctx): HandlerResult<GetSlackChannelsLinkedWithAgentResponseBody> => {
     const auth = ctx.get("auth");
-
-    if (!auth.isBuilder()) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "data_source_auth_error",
-          message:
-            "Only the users that are `builders` for the current workspace can modify linked Slack channels.",
-        },
-      });
-    }
 
     const [[dataSourceSlack], [dataSourceSlackBot]] = await Promise.all([
       DataSourceResource.listByConnectorProvider(auth, "slack"),

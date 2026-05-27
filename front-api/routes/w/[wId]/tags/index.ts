@@ -3,6 +3,7 @@ import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import type { TagType } from "@app/types/tag";
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -39,19 +40,10 @@ app.get("/", async (ctx): HandlerResult<GetTagsResponseBody> => {
 
 app.post(
   "/",
+  ensureIsAdmin(),
   validate("json", PostBodySchema),
   async (ctx): HandlerResult<CreateTagResponseBody> => {
     const auth = ctx.get("auth");
-
-    if (!auth.isAdmin()) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Only workspace administrators can create tags",
-        },
-      });
-    }
 
     const { name, agentIds } = ctx.req.valid("json");
 

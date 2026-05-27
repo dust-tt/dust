@@ -3,6 +3,7 @@ import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_ap
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { honoApp } from "@front-api/app";
+import { ENSURE_IS_ADMIN_ERROR_MESSAGE } from "@front-api/middlewares/ensure_role";
 import { describe, expect, it, vi } from "vitest";
 
 import { DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT } from "./index";
@@ -54,7 +55,7 @@ describe("GET /api/w/:wId/members", () => {
     expect(await response.json()).toEqual({
       error: {
         type: "workspace_auth_error",
-        message: "Only workspace admins can access the members list.",
+        message: ENSURE_IS_ADMIN_ERROR_MESSAGE,
       },
     });
   });
@@ -68,7 +69,7 @@ describe("GET /api/w/:wId/members", () => {
     expect(await response.json()).toEqual({
       error: {
         type: "workspace_auth_error",
-        message: "Only workspace admins can access the members list.",
+        message: ENSURE_IS_ADMIN_ERROR_MESSAGE,
       },
     });
   });

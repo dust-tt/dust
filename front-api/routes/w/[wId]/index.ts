@@ -11,6 +11,7 @@ import { EmbeddingProviderSchema } from "@app/types/assistant/models/embedding";
 import { ModelProviderIdSchema } from "@app/types/assistant/models/providers";
 import type { WorkspaceType } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { workspaceAuth } from "@front-api/middlewares/workspace_auth";
@@ -269,41 +270,23 @@ interface GetWorkspaceResponseBody {
   workspace: WorkspaceType;
 }
 
-app.get("/", async (ctx): HandlerResult<GetWorkspaceResponseBody> => {
-  const auth = ctx.get("auth");
-  const owner = auth.getNonNullableWorkspace();
+app.get(
+  "/",
+  ensureIsAdmin(),
+  async (ctx): HandlerResult<GetWorkspaceResponseBody> => {
+    const owner = ctx.get("auth").getNonNullableWorkspace();
 
-  if (!auth.isAdmin()) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "workspace_auth_error",
-        message:
-          "Only users that are `admins` for the current workspace can access this endpoint.",
-      },
-    });
+    return ctx.json({ workspace: owner });
   }
-
-  return ctx.json({ workspace: owner });
-});
+);
 
 app.post(
   "/",
+  ensureIsAdmin(),
   validate("json", PostWorkspaceRequestBodySchema),
   async (ctx): HandlerResult<GetWorkspaceResponseBody> => {
     const auth = ctx.get("auth");
     const owner = auth.getNonNullableWorkspace();
-
-    if (!auth.isAdmin()) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "workspace_auth_error",
-          message:
-            "Only users that are `admins` for the current workspace can access this endpoint.",
-        },
-      });
-    }
 
     const body = ctx.req.valid("json");
 

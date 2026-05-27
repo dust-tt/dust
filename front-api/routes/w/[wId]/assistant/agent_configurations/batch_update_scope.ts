@@ -1,5 +1,6 @@
 import { updateAgentConfigurationsScope } from "@app/lib/api/assistant/configuration/agent";
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureIsBuilder } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -14,19 +15,10 @@ const app = workspaceApp();
 
 app.post(
   "/",
+  ensureIsBuilder(),
   validate("json", BatchUpdateAgentScopeRequestBodySchema),
   async (ctx) => {
     const auth = ctx.get("auth");
-
-    if (!auth.isBuilder()) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "app_auth_error",
-          message: "You do not have the required permissions.",
-        },
-      });
-    }
 
     const { agentIds, scope } = ctx.req.valid("json");
 

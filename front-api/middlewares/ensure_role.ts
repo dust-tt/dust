@@ -2,37 +2,79 @@ import type { WorkspaceAwareCtx } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { createMiddleware } from "hono/factory";
 
-interface EnsureRoleOptions {
-  admin?: boolean;
-  builder?: boolean;
-}
-
 /**
- * Gate a sub-app or handler on the caller's workspace role. Must be applied
- * after `workspaceAuth` so `ctx.get("auth")` is set.
+ * Role-check middlewares for Hono route handlers.
+ *
+ * Must be applied after `workspaceAuth` so `ctx.get("auth")` is set.
  */
-export const ensureRole = (opts: EnsureRoleOptions) =>
+
+export const ENSURE_IS_ADMIN_ERROR_MESSAGE =
+  "Only admin users can perform this action.";
+
+export const ENSURE_IS_BUILDER_ERROR_MESSAGE =
+  "Only builder users can perform this action.";
+
+export const ensureIsAdmin = () =>
   createMiddleware<WorkspaceAwareCtx>(async (ctx, next) => {
     const auth = ctx.get("auth");
 
-    if (opts.admin && !auth.isAdmin()) {
+    if (!auth.isAdmin()) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "workspace_auth_error",
-          message:
-            "Only users that are `admins` for the current workspace can access this endpoint.",
+          message: ENSURE_IS_ADMIN_ERROR_MESSAGE,
         },
       });
     }
 
-    if (opts.builder && !auth.isBuilder()) {
+    await next();
+  });
+
+export const ensureIsBuilder = () =>
+  createMiddleware<WorkspaceAwareCtx>(async (ctx, next) => {
+    const auth = ctx.get("auth");
+
+    if (!auth.isBuilder()) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "workspace_auth_error",
-          message:
-            "Only users that are `builders` or `admins` for the current workspace can access this endpoint.",
+          message: ENSURE_IS_BUILDER_ERROR_MESSAGE,
+        },
+      });
+    }
+
+    await next();
+  });
+
+export const ensureIsUser = () =>
+  createMiddleware<WorkspaceAwareCtx>(async (ctx, next) => {
+    const auth = ctx.get("auth");
+
+    if (!auth.isUser()) {
+      return apiError(ctx, {
+        status_code: 401,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "You must be authenticated to perform this action.",
+        },
+      });
+    }
+
+    await next();
+  });
+
+export const ensureIsDustSuperUser = () =>
+  createMiddleware<WorkspaceAwareCtx>(async (ctx, next) => {
+    const auth = ctx.get("auth");
+
+    if (!auth.isDustSuperUser()) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "Only Dust super users can perform this action.",
         },
       });
     }

@@ -9,7 +9,7 @@ import type {
 import { PostSpaceMembersRequestBodySchema } from "@dust-tt/client";
 import type { PublicApiCtx } from "@front-api/middlewares/ctx";
 import { publicApiApp } from "@front-api/middlewares/ctx";
-import { ensureRole } from "@front-api/middlewares/ensure_role";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -87,7 +87,7 @@ const app = publicApiApp();
 
 app.get(
   "/",
-  ensureRole({ admin: true }),
+  ensureIsAdmin(),
   validate("param", ParamsSchema),
   withEditableSpace,
   async (ctx): HandlerResult<GetSpaceMembersResponseBody> => {
@@ -116,7 +116,7 @@ app.get(
 
 app.post(
   "/",
-  ensureRole({ admin: true }),
+  ensureIsAdmin(),
   validate("param", ParamsSchema),
   validate("json", PostSpaceMembersRequestBodySchema),
   withEditableSpace,

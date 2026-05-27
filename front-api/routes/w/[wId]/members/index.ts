@@ -2,8 +2,8 @@ import { getMembers } from "@app/lib/api/workspace";
 import type { MembershipsPaginationParams } from "@app/lib/resources/membership_resource";
 import type { UserTypeWithWorkspaces } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
-import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import type { Context } from "hono";
 import { z } from "zod";
@@ -59,19 +59,10 @@ const app = workspaceApp();
 
 app.get(
   "/",
+  ensureIsAdmin(),
   validate("query", MembersPaginationSchema),
   async (ctx): HandlerResult<GetMembersResponseBody> => {
     const auth = ctx.get("auth");
-
-    if (!auth.isAdmin()) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "workspace_auth_error",
-          message: "Only workspace admins can access the members list.",
-        },
-      });
-    }
 
     const { role, ...paginationParams } = ctx.req.valid("query");
 

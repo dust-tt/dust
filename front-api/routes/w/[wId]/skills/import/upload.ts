@@ -2,6 +2,7 @@ import { importSkillsFromFiles } from "@app/lib/api/skills/detection/files/impor
 import { MAX_ZIP_SIZE_BYTES } from "@app/lib/api/skills/detection/zip/detect_skills";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WorkspaceAwareCtx } from "@front-api/middlewares/ctx";
+import { ensureIsBuilder } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
 import type { HttpBindings } from "@hono/node-server";
 import formidable from "formidable";
@@ -14,16 +15,8 @@ import { Hono } from "hono";
 // `ctx.env.incoming`) to `formidable.parse(...)` — matching the Next handler.
 const app = new Hono<WorkspaceAwareCtx & { Bindings: HttpBindings }>();
 
-app.post("/", async (ctx) => {
+app.post("/", ensureIsBuilder(), async (ctx) => {
   const auth = ctx.get("auth");
-
-  if (!auth.isBuilder()) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: { type: "app_auth_error", message: "User is not a builder." },
-    });
-  }
-
   const incoming = ctx.env?.incoming;
   if (!incoming) {
     return apiError(ctx, {

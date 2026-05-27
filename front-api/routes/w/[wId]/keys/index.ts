@@ -9,6 +9,7 @@ import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import type { KeyType } from "@app/types/key";
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -36,46 +37,29 @@ const CreateKeyPostBodySchema = z.object({
 // Mounted at /api/w/:wId/keys.
 const app = workspaceApp();
 
-app.get("/", async (ctx): HandlerResult<GetKeysResponseBody> => {
-  const auth = ctx.get("auth");
-  const owner = auth.getNonNullableWorkspace();
+app.get(
+  "/",
+  ensureIsAdmin(),
+  async (ctx): HandlerResult<GetKeysResponseBody> => {
+    const auth = ctx.get("auth");
+    const owner = auth.getNonNullableWorkspace();
 
-  if (!auth.isAdmin()) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "app_auth_error",
-        message:
-          "Only the users that are `admins` for the current workspace can interact with keys",
-      },
+    const keys = await KeyResource.listNonSystemKeysByWorkspace(owner);
+
+    return ctx.json({
+      keys: keys.map((k) => k.toJSON()),
     });
   }
-
-  const keys = await KeyResource.listNonSystemKeysByWorkspace(owner);
-
-  return ctx.json({
-    keys: keys.map((k) => k.toJSON()),
-  });
-});
+);
 
 app.post(
   "/",
+  ensureIsAdmin(),
   validate("json", CreateKeyPostBodySchema),
   async (ctx): HandlerResult<PostKeysResponseBody> => {
     const auth = ctx.get("auth");
     const user = auth.getNonNullableUser();
     const owner = auth.getNonNullableWorkspace();
-
-    if (!auth.isAdmin()) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "app_auth_error",
-          message:
-            "Only the users that are `admins` for the current workspace can interact with keys",
-        },
-      });
-    }
 
     const { name, group_id, group_ids, monthly_cap_micro_usd, role } =
       ctx.req.valid("json");

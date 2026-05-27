@@ -13,7 +13,7 @@ import {
 } from "@app/types/oauth/lib";
 import { OAuthAPI } from "@app/types/oauth/oauth_api";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureRole } from "@front-api/middlewares/ensure_role";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -57,7 +57,7 @@ export type PostCredentialsResponseBody = {
 
 const app = workspaceApp();
 
-app.use("*", ensureRole({ admin: true }));
+app.use("*", ensureIsAdmin());
 
 app.post(
   "/",
