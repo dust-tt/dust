@@ -668,6 +668,11 @@ describe("globalAgentInjectsMemory", () => {
     expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.DUST_NEXT_HIGH)).toBe(
       true
     );
+    expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.DUST_CHAWI)).toBe(true);
+    expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.DUST_SOUPINOU)).toBe(
+      true
+    );
+    expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.DUST_SUNDAE)).toBe(true);
   });
 
   it("should return false for non-dust global agents", () => {
