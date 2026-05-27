@@ -22,7 +22,6 @@ type RowData = {
   email: string | null;
   image: string | null;
   seatType: MembershipSeatType | null;
-  seatUsagePercent: number | null;
   memberUsageLimit: number | null;
   consumedAwuCredits: number;
   spendLimitAwuCredits: number | null;
@@ -255,7 +254,6 @@ const billingFrequencyColumn: ColumnDef<RowData, string> = {
   header: "Period",
   accessorFn: (row) => row.billingFrequency ?? "",
   cell: (info: Info) => {
-    console.log(info.row);
     const freq = info.row.original.billingFrequency;
     let label: string;
     switch (freq) {
@@ -407,7 +405,6 @@ export function MembersUsageTable({
     email: m.email,
     image: m.image,
     seatType: m.seatType,
-    seatUsagePercent: m.seatUsagePercent,
     memberUsageLimit: m.memberUsageLimit,
     consumedAwuCredits: m.consumedAwuCredits,
     spendLimitAwuCredits: m.spendLimitAwuCredits,
