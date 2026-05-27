@@ -42,108 +42,92 @@ function truncatePropertyValue(value: string): string {
 // ---------------------------------------------------------------------------
 // Tool category mapping
 // ---------------------------------------------------------------------------
-
-export const TOOL_CATEGORIES = [
-  "retrieval",
-  "deep_research",
-  "reasoning",
-  "connectors",
-  "generation",
-  "agents",
-  "actions",
-  "platform",
-] as const;
+// Basic: 1 AWU
+// Advanced: 3 AWU
+export const TOOL_CATEGORIES = ["basic", "advanced"] as const;
 
 type ToolCategory = (typeof TOOL_CATEGORIES)[number];
 
 // Exhaustive map — TypeScript will error if a new internal MCP server is added
 // without being categorized here.
 const TOOL_CATEGORY_MAP: Record<InternalMCPServerNameType, ToolCategory> = {
-  // Retrieval — searching knowledge bases and data sources.
-  search: "retrieval",
-  query_tables_v2: "retrieval",
-  data_warehouses: "retrieval",
-  data_sources_file_system: "retrieval",
-  include_data: "retrieval",
-  conversation_files: "retrieval",
-  files: "retrieval",
+  // Basic (1 AWU) — web search, orchestration, platform utilities.
+  "web_search_&_browse": "basic",
+  run_agent: "basic",
+  agent_router: "basic",
+  agent_sidekick_agent_state: "basic",
+  agent_sidekick_context: "basic",
+  agent_management: "basic",
+  agent_memory: "basic",
+  run_dust_app: "basic",
+  common_utilities: "basic",
+  toolsets: "basic",
+  user_mentions: "basic",
+  missing_action_catcher: "basic",
+  primitive_types_debugger: "basic",
+  jit_testing: "basic",
+  skill_management: "basic",
+  schedules_management: "basic",
+  pod_manager: "basic",
+  pod_tasks: "basic",
+  poke: "basic",
+  ask_user_question: "basic",
+  wakeups: "basic",
+  plan_mode: "basic",
 
-  // Deep research — web search, browsing, HTTP.
-  "web_search_&_browse": "deep_research",
-  http_client: "deep_research",
-
-  // Connectors — third-party platform integrations.
-  confluence: "connectors",
-  databricks: "connectors",
-  fathom: "connectors",
-  freshservice: "connectors",
-  github: "connectors",
-  gmail: "connectors",
-  google_calendar: "connectors",
-  google_drive: "connectors",
-  google_sheets: "connectors",
-  hubspot: "connectors",
-  jira: "connectors",
-  luma: "connectors",
-  microsoft_drive: "connectors",
-  microsoft_excel: "connectors",
-  microsoft_teams: "connectors",
-  monday: "connectors",
-  notion: "connectors",
-  openai_usage: "connectors",
-  outlook_calendar: "connectors",
-  outlook: "connectors",
-  productboard: "connectors",
-  salesforce: "connectors",
-  salesloft: "connectors",
-  slab: "connectors",
-  slack: "connectors",
-  slack_bot: "connectors",
-  snowflake: "connectors",
-  statuspage: "connectors",
-  ukg_ready: "connectors",
-  val_town: "connectors",
-  vanta: "connectors",
-  front: "connectors",
-  gong: "connectors",
-  zendesk: "connectors",
-  ashby: "connectors",
-  clari_copilot: "connectors",
-
-  // Generation — file/image/sound creation.
-  file_generation: "generation",
-  image_generation: "generation",
-  sound_studio: "generation",
-  speech_generator: "generation",
-  slideshow: "generation",
-  interactive_content: "generation",
-
-  // Agents — running other agents, routing, sidekick.
-  run_agent: "agents",
-  agent_router: "agents",
-  agent_sidekick_agent_state: "agents",
-  agent_sidekick_context: "agents",
-  agent_management: "agents",
-  agent_memory: "agents",
-  run_dust_app: "agents",
-
-  // Platform — internal utilities, management.
-  extract_data: "platform",
-  common_utilities: "platform",
-  toolsets: "platform",
-  user_mentions: "platform",
-  missing_action_catcher: "platform",
-  primitive_types_debugger: "platform",
-  jit_testing: "platform",
-  skill_management: "platform",
-  schedules_management: "platform",
-  pod_manager: "platform",
-  pod_tasks: "platform",
-  poke: "platform",
-  sandbox: "platform",
-  ask_user_question: "platform",
-  wakeups: "platform",
-  plan_mode: "platform",
+  // Advanced (3 AWU) — retrieval, MCP read/write, data warehouse, generation, sandbox
+  search: "advanced",
+  query_tables_v2: "advanced",
+  data_warehouses: "advanced",
+  data_sources_file_system: "advanced",
+  include_data: "advanced",
+  conversation_files: "advanced",
+  files: "advanced",
+  extract_data: "advanced",
+  http_client: "advanced",
+  sandbox: "advanced",
+  file_generation: "advanced",
+  image_generation: "advanced",
+  sound_studio: "advanced",
+  speech_generator: "advanced",
+  slideshow: "advanced",
+  interactive_content: "advanced",
+  confluence: "advanced",
+  databricks: "advanced",
+  fathom: "advanced",
+  freshservice: "advanced",
+  github: "advanced",
+  gmail: "advanced",
+  google_calendar: "advanced",
+  google_drive: "advanced",
+  google_sheets: "advanced",
+  hubspot: "advanced",
+  jira: "advanced",
+  luma: "advanced",
+  microsoft_drive: "advanced",
+  microsoft_excel: "advanced",
+  microsoft_teams: "advanced",
+  monday: "advanced",
+  notion: "advanced",
+  openai_usage: "advanced",
+  outlook_calendar: "advanced",
+  outlook: "advanced",
+  productboard: "advanced",
+  salesforce: "advanced",
+  salesloft: "advanced",
+  slab: "advanced",
+  slack: "advanced",
+  slack_bot: "advanced",
+  snowflake: "advanced",
+  statuspage: "advanced",
+  ukg_ready: "advanced",
+  val_town: "advanced",
+  vanta: "advanced",
+  front: "advanced",
+  gong: "advanced",
+  zendesk: "advanced",
+  ashby: "advanced",
+  clari_copilot: "advanced",
 };
 
 export function getToolCategory(
@@ -153,8 +137,9 @@ export function getToolCategory(
     !internalMCPServerName ||
     !isInternalMCPServerName(internalMCPServerName)
   ) {
-    // External MCP servers (user-configured remote servers) or unknown names.
-    return "actions";
+    // External MCP servers (user-configured remote servers) fall into advanced
+    // as "Custom MCP call".
+    return "advanced";
   }
   return TOOL_CATEGORY_MAP[internalMCPServerName];
 }
