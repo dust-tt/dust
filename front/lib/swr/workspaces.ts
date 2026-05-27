@@ -760,7 +760,7 @@ export function useBillingInfo({
   };
 }
 
-export function useBillingInvoices({
+export function useRecentBillingInvoices({
   workspaceId,
   disabled,
 }: {
