@@ -23,7 +23,7 @@ const SKIP_LOGGER_PATHS = new Set([
 
 export const requestLogger = createMiddleware<RequestLoggerEnv>(
   async (c, next) => {
-    if (SKIP_LOGGER_PATHS.has(c.req.path)) {
+    if (SKIP_LOGGER_PATHS.has(c.req.path) || c.req.method === "OPTIONS") {
       return next();
     }
 
@@ -43,6 +43,7 @@ export const requestLogger = createMiddleware<RequestLoggerEnv>(
     const auth = c.get("auth");
     const session = c.get("session");
     const streaming = c.get("streaming") ?? false;
+    const user = auth?.user();
 
     const tags = [
       `method:${c.req.method}`,
@@ -65,8 +66,8 @@ export const requestLogger = createMiddleware<RequestLoggerEnv>(
         sessionId: session?.sessionId ?? "unknown",
         statusCode,
         streaming,
-        url: c.req.url,
-        userId: auth?.user()?.sId,
+        url: c.req.path,
+        ...(user ? { user: { sId: user.sId } } : {}),
         workspaceId: auth?.workspace()?.sId,
       },
       "Processed request"
