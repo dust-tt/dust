@@ -63,7 +63,11 @@ function buildUrlWithParams(
   if (!newParams) {
     return undefined;
   }
-  const url = new URL(currentUrl);
+  // `currentUrl` may be relative (Next.js `req.url`) or absolute (Hono
+  // `ctx.req.url`). Provide a base so the relative case resolves; it is
+  // ignored when `currentUrl` is already absolute. Only the path and query
+  // are returned below, so the base host is discarded either way.
+  const url = new URL(currentUrl, "http://placeholder");
   Object.entries(newParams).forEach(([key, value]) => {
     if (value === null || value === undefined) {
       url.searchParams.delete(key);
