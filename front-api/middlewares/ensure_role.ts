@@ -8,6 +8,12 @@ import { createMiddleware } from "hono/factory";
  * Must be applied after `workspaceAuth` so `ctx.get("auth")` is set.
  */
 
+export const ENSURE_IS_ADMIN_ERROR_MESSAGE =
+  "Only admin users can perform this action.";
+
+export const ENSURE_IS_BUILDER_ERROR_MESSAGE =
+  "Only builder users can perform this action.";
+
 export const ensureIsAdmin = () =>
   createMiddleware<WorkspaceAwareCtx>(async (ctx, next) => {
     const auth = ctx.get("auth");
@@ -17,7 +23,7 @@ export const ensureIsAdmin = () =>
         status_code: 403,
         api_error: {
           type: "workspace_auth_error",
-          message: "Only users that are `admins` can perform this action.",
+          message: ENSURE_IS_ADMIN_ERROR_MESSAGE,
         },
       });
     }
@@ -34,8 +40,7 @@ export const ensureIsBuilder = () =>
         status_code: 403,
         api_error: {
           type: "workspace_auth_error",
-          message:
-            "Only users that are `builders` can perform this action.",
+          message: ENSURE_IS_BUILDER_ERROR_MESSAGE,
         },
       });
     }

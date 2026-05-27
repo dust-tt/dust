@@ -5,6 +5,7 @@ import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_ap
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { honoApp } from "@front-api/app";
+import { ENSURE_IS_ADMIN_ERROR_MESSAGE } from "@front-api/middlewares/ensure_role";
 import { describe, expect, it } from "vitest";
 
 async function setup(role: MembershipRoleType = "admin") {
@@ -100,7 +101,7 @@ describe("GET /api/w/:wId/skills/reinforcement_daily_spend", () => {
       expect(await response.json()).toEqual({
         error: {
           type: "workspace_auth_error",
-          message: "Only users that are `admins` can perform this action.",
+          message: ENSURE_IS_ADMIN_ERROR_MESSAGE,
         },
       });
     }
