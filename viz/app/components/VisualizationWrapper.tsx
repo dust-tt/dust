@@ -652,6 +652,9 @@ export function makeSendCrossDocumentMessage({
 
       const listener = (event: MessageEvent) => {
         if (!isOriginAllowed(event.origin, allowedOrigins)) {
+          console.log(
+            `Ignored message from unauthorized origin: ${event.origin}`
+          );
           // Simply ignore messages from unauthorized origins.
           return;
         }
