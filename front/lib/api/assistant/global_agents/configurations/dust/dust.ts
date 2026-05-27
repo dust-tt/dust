@@ -909,6 +909,111 @@ export function _getDustOaiHighGlobalAgent(
   });
 }
 
+// ---------------------------------------------------------------------------
+// Retired dust-* global agents.
+//
+// These agents are listed in RETIRED_GLOBAL_AGENTS_SID (see global_agents.ts)
+// and no longer appear in the default agent list. They remain callable so
+// past conversations and explicit sId lookups keep resolving. Do not add new
+// agents here; this section is for agents on their way out.
+// ---------------------------------------------------------------------------
+
+export function _getDustAntMediumOmittedGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM_OMITTED,
+    name: "dust-ant-medium-omitted",
+    preferredModelConfiguration: CLAUDE_OPUS_4_7_DEFAULT_MODEL_CONFIG,
+    preferredReasoningEffort: "medium",
+    omittedThinking: true,
+  });
+}
+
+export function _getDustAntHighOmittedGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_ANT_HIGH_OMITTED,
+    name: "dust-ant-high-omitted",
+    preferredModelConfiguration: CLAUDE_OPUS_4_7_DEFAULT_MODEL_CONFIG,
+    preferredReasoningEffort: "high",
+    omittedThinking: true,
+  });
+}
+
+export function _getDustQuickGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_QUICK,
+    name: "dust-quick",
+    preferredModelConfiguration: GEMINI_3_FLASH_MODEL_CONFIG,
+    preferredReasoningEffort: "light",
+  });
+}
+
+export function _getDustQuickMediumGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_QUICK_MEDIUM,
+    name: "dust-quick-medium",
+    preferredModelConfiguration: GEMINI_3_FLASH_MODEL_CONFIG,
+    preferredReasoningEffort: "medium",
+  });
+}
+
+export function _getDustNextGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  const customModel = CUSTOM_MODEL_CONFIGS[0];
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_NEXT,
+    name: "dust-next",
+    preferredModelConfiguration:
+      customModel ?? CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
+    preferredReasoningEffort: "light",
+  });
+}
+
+export function _getDustNextMediumGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  const customModel = CUSTOM_MODEL_CONFIGS[0];
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM,
+    name: "dust-next-medium",
+    preferredModelConfiguration:
+      customModel ?? CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
+    preferredReasoningEffort: "medium",
+  });
+}
+
+export function _getDustNextHighGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  const customModel = CUSTOM_MODEL_CONFIGS[0];
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_NEXT_HIGH,
+    name: "dust-next-high",
+    preferredModelConfiguration:
+      customModel ?? CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
+    preferredReasoningEffort: "high",
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Active custom-model dust-* global agents.
+// ---------------------------------------------------------------------------
+
 type CustomModelDustGlobalAgentConfig = {
   name: string;
   customModelIndex: number;
@@ -1143,105 +1248,4 @@ export function _getDustSundaeHighGlobalAgent(
     args,
     GLOBAL_AGENTS_SID.DUST_SUNDAE_HIGH
   );
-}
-
-// ---------------------------------------------------------------------------
-// Retired dust-* global agents.
-//
-// These agents are listed in RETIRED_GLOBAL_AGENTS_SID (see global_agents.ts)
-// and no longer appear in the default agent list. They remain callable so
-// past conversations and explicit sId lookups keep resolving. Do not add new
-// agents here; this section is for agents on their way out.
-// ---------------------------------------------------------------------------
-
-export function _getDustAntMediumOmittedGlobalAgent(
-  auth: Authenticator,
-  args: DustLikeGlobalAgentArgs
-): AgentConfigurationType | null {
-  return _getDustLikeGlobalAgent(auth, args, {
-    agentId: GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM_OMITTED,
-    name: "dust-ant-medium-omitted",
-    preferredModelConfiguration: CLAUDE_OPUS_4_7_DEFAULT_MODEL_CONFIG,
-    preferredReasoningEffort: "medium",
-    omittedThinking: true,
-  });
-}
-
-export function _getDustAntHighOmittedGlobalAgent(
-  auth: Authenticator,
-  args: DustLikeGlobalAgentArgs
-): AgentConfigurationType | null {
-  return _getDustLikeGlobalAgent(auth, args, {
-    agentId: GLOBAL_AGENTS_SID.DUST_ANT_HIGH_OMITTED,
-    name: "dust-ant-high-omitted",
-    preferredModelConfiguration: CLAUDE_OPUS_4_7_DEFAULT_MODEL_CONFIG,
-    preferredReasoningEffort: "high",
-    omittedThinking: true,
-  });
-}
-
-export function _getDustQuickGlobalAgent(
-  auth: Authenticator,
-  args: DustLikeGlobalAgentArgs
-): AgentConfigurationType | null {
-  return _getDustLikeGlobalAgent(auth, args, {
-    agentId: GLOBAL_AGENTS_SID.DUST_QUICK,
-    name: "dust-quick",
-    preferredModelConfiguration: GEMINI_3_FLASH_MODEL_CONFIG,
-    preferredReasoningEffort: "light",
-  });
-}
-
-export function _getDustQuickMediumGlobalAgent(
-  auth: Authenticator,
-  args: DustLikeGlobalAgentArgs
-): AgentConfigurationType | null {
-  return _getDustLikeGlobalAgent(auth, args, {
-    agentId: GLOBAL_AGENTS_SID.DUST_QUICK_MEDIUM,
-    name: "dust-quick-medium",
-    preferredModelConfiguration: GEMINI_3_FLASH_MODEL_CONFIG,
-    preferredReasoningEffort: "medium",
-  });
-}
-
-export function _getDustNextGlobalAgent(
-  auth: Authenticator,
-  args: DustLikeGlobalAgentArgs
-): AgentConfigurationType | null {
-  const customModel = CUSTOM_MODEL_CONFIGS[0];
-  return _getDustLikeGlobalAgent(auth, args, {
-    agentId: GLOBAL_AGENTS_SID.DUST_NEXT,
-    name: "dust-next",
-    preferredModelConfiguration:
-      customModel ?? CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
-    preferredReasoningEffort: "light",
-  });
-}
-
-export function _getDustNextMediumGlobalAgent(
-  auth: Authenticator,
-  args: DustLikeGlobalAgentArgs
-): AgentConfigurationType | null {
-  const customModel = CUSTOM_MODEL_CONFIGS[0];
-  return _getDustLikeGlobalAgent(auth, args, {
-    agentId: GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM,
-    name: "dust-next-medium",
-    preferredModelConfiguration:
-      customModel ?? CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
-    preferredReasoningEffort: "medium",
-  });
-}
-
-export function _getDustNextHighGlobalAgent(
-  auth: Authenticator,
-  args: DustLikeGlobalAgentArgs
-): AgentConfigurationType | null {
-  const customModel = CUSTOM_MODEL_CONFIGS[0];
-  return _getDustLikeGlobalAgent(auth, args, {
-    agentId: GLOBAL_AGENTS_SID.DUST_NEXT_HIGH,
-    name: "dust-next-high",
-    preferredModelConfiguration:
-      customModel ?? CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
-    preferredReasoningEffort: "high",
-  });
 }

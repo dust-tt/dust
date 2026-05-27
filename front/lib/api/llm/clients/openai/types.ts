@@ -62,16 +62,15 @@ const THINKING_OVERWRITES: LLMParameterOverwrites = {
   temperature: null,
 };
 
+type OpenAIModelConfig = {
+  overwrites: LLMParameterOverwrites;
+  reasoningConfigMapping?: Partial<
+    Record<ReasoningEffort, OpenAIReasoningEffort>
+  >;
+};
+
 export const OPENAI_MODEL_CONFIGS: Partial<
-  Record<
-    OpenAIWhitelistedModelId,
-    {
-      overwrites: LLMParameterOverwrites;
-      reasoningConfigMapping?: Partial<
-        Record<ReasoningEffort, OpenAIReasoningEffort>
-      >;
-    }
-  >
+  Record<OpenAIWhitelistedModelId, OpenAIModelConfig>
 > = {
   [O1_MODEL_ID]: { overwrites: THINKING_OVERWRITES },
   [O3_MINI_MODEL_ID]: { overwrites: THINKING_OVERWRITES },

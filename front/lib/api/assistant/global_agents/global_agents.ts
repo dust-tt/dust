@@ -1336,7 +1336,7 @@ export async function getGlobalAgents(
   auth: Authenticator,
   agentIds?: string[],
   variant: AgentFetchVariant = "full",
-  options?: { globalAgentContext?: GlobalAgentContext },
+  options?: { globalAgentContext?: GlobalAgentContext }
 ): Promise<AgentConfigurationType[]> {
   if (agentIds !== undefined && agentIds.some((sId) => !isGlobalAgentId(sId))) {
     throw new Error("Invalid agentIds.");
@@ -1393,20 +1393,20 @@ export async function getGlobalAgents(
 
   if (!flags.includes("openai_o1_feature")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) => sId !== GLOBAL_AGENTS_SID.O1,
+      (sId) => sId !== GLOBAL_AGENTS_SID.O1
     );
     agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) => sId !== GLOBAL_AGENTS_SID.O3,
+      (sId) => sId !== GLOBAL_AGENTS_SID.O3
     );
   }
   if (!flags.includes("openai_o1_high_reasoning_feature")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) => sId !== GLOBAL_AGENTS_SID.O1_HIGH_REASONING,
+      (sId) => sId !== GLOBAL_AGENTS_SID.O1_HIGH_REASONING
     );
   }
   if (!flags.includes("deepseek_r1_global_agent_feature")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) => sId !== GLOBAL_AGENTS_SID.DEEPSEEK_R1,
+      (sId) => sId !== GLOBAL_AGENTS_SID.DEEPSEEK_R1
     );
   }
   const DUST_INTERNAL_AGENTS: readonly GLOBAL_AGENTS_SID[] = [
@@ -1502,7 +1502,7 @@ export async function getGlobalAgents(
       hasSandbox: flags.includes("sandbox_tools"),
       globalAgentContext: options?.globalAgentContext,
       excludeProviders,
-    }),
+    })
   );
 
   const globalAgents: AgentConfigurationType[] = [];
@@ -1540,7 +1540,7 @@ export async function upsertGlobalAgentSettings(
   }: {
     agentId: string;
     status: GlobalAgentStatus;
-  },
+  }
 ): Promise<boolean> {
   const owner = auth.getNonNullableWorkspace();
 
