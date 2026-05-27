@@ -411,9 +411,13 @@ export class DustFileSystem {
           `/assistant/conversations/${mount.id}/files/thumbnail` +
           `?filePath=${encodeURIComponent(entry.path)}`
         );
+
       case "pod":
         // TODO(FILE SYSTEM): expose a pod-files thumbnail endpoint.
         return null;
+
+      default:
+        assertNever(mount.kind);
     }
   }
 
