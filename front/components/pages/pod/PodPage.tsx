@@ -39,7 +39,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import {
   ChatBubbleLeftRightIcon,
-  CheckIcon,
+  CheckCircleIcon,
   Cog6ToothIcon,
   FolderIcon,
   Spinner,
@@ -305,7 +305,7 @@ export function PodPage() {
               value="tasks"
               label={compactPodTabs ? undefined : "Tasks"}
               tooltip={compactPodTabs ? "Tasks" : undefined}
-              icon={CheckIcon}
+              icon={CheckCircleIcon}
             />
             <TabsTrigger
               value="files"

@@ -167,6 +167,7 @@ export const INTERNAL_ALLOWED_ICONS = [
   "ActionBrainIcon",
   "ActionChatBubbleBottomCenterTextIcon",
   "ActionChatBubbleThoughtIcon",
+  "ActionCheckCircleIcon",
   "ActionCloudArrowLeftRightIcon",
   "ActionDocumentTextIcon",
   "ActionEmotionLaughIcon",

@@ -143,7 +143,7 @@ export const POD_TASKS_SERVER = {
     version: "1.0.0",
     description:
       "Manage Pod tasks: list, create, update, and complete action items.",
-    icon: "ActionListCheckIcon",
+    icon: "ActionCheckCircleIcon",
     authorization: null,
     documentationUrl: null,
     instructions: null,
