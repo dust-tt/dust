@@ -1620,6 +1620,117 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       },
     },
   },
+  {
+    id: 10021,
+    name: "Praiz",
+    description:
+      "Praiz tools to search and read your meetings, calls, and transcripts — keep your CRM and team in sync with your customer conversations.",
+    url: "https://mcp.praiz.io/mcp",
+    icon: "PraizLogo",
+    documentationUrl: "https://docs.dust.tt/docs/remote-mcp-server",
+    connectionInstructions:
+      "Praiz uses OAuth. You will be prompted to sign in with your Praiz account and approve the requested scopes directly from the Dust chat.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      search: "never_ask",
+      fetch: "never_ask",
+      list_videos: "never_ask",
+      search_videos: "never_ask",
+      get_video: "never_ask",
+      get_video_transcript: "never_ask",
+      get_transcript_around: "never_ask",
+      get_video_timeline: "never_ask",
+      list_comments: "never_ask",
+      list_participants: "never_ask",
+      search_participants: "never_ask",
+      list_templates: "never_ask",
+      get_template_fields: "never_ask",
+      get_template_values: "never_ask",
+      list_users: "never_ask",
+      list_teams: "never_ask",
+      list_tags: "never_ask",
+      list_playlists: "never_ask",
+      usage_stats: "never_ask",
+    },
+    toolDisplayLabels: {
+      search: {
+        running: "Searching on Praiz",
+        done: "Searched on Praiz",
+      },
+      fetch: {
+        running: "Fetching record from Praiz",
+        done: "Fetched record from Praiz",
+      },
+      list_videos: {
+        running: "Listing videos on Praiz",
+        done: "Listed videos on Praiz",
+      },
+      search_videos: {
+        running: "Searching videos on Praiz",
+        done: "Searched videos on Praiz",
+      },
+      get_video: {
+        running: "Fetching video from Praiz",
+        done: "Fetched video from Praiz",
+      },
+      get_video_transcript: {
+        running: "Fetching transcript from Praiz",
+        done: "Fetched transcript from Praiz",
+      },
+      get_transcript_around: {
+        running: "Fetching transcript segment from Praiz",
+        done: "Fetched transcript segment from Praiz",
+      },
+      get_video_timeline: {
+        running: "Fetching timeline from Praiz",
+        done: "Fetched timeline from Praiz",
+      },
+      list_comments: {
+        running: "Listing comments on Praiz",
+        done: "Listed comments on Praiz",
+      },
+      list_participants: {
+        running: "Listing participants on Praiz",
+        done: "Listed participants on Praiz",
+      },
+      search_participants: {
+        running: "Searching participants on Praiz",
+        done: "Searched participants on Praiz",
+      },
+      list_templates: {
+        running: "Listing templates on Praiz",
+        done: "Listed templates on Praiz",
+      },
+      get_template_fields: {
+        running: "Fetching template fields from Praiz",
+        done: "Fetched template fields from Praiz",
+      },
+      get_template_values: {
+        running: "Fetching template values from Praiz",
+        done: "Fetched template values from Praiz",
+      },
+      list_users: {
+        running: "Listing users on Praiz",
+        done: "Listed users on Praiz",
+      },
+      list_teams: {
+        running: "Listing teams on Praiz",
+        done: "Listed teams on Praiz",
+      },
+      list_tags: {
+        running: "Listing tags on Praiz",
+        done: "Listed tags on Praiz",
+      },
+      list_playlists: {
+        running: "Listing playlists on Praiz",
+        done: "Listed playlists on Praiz",
+      },
+      usage_stats: {
+        running: "Fetching usage stats from Praiz",
+        done: "Fetched usage stats from Praiz",
+      },
+    },
+  },
 ];
 
 export const isDefaultRemoteMcpServerURL = (url: string | undefined) => {

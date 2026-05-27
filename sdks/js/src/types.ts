@@ -3297,6 +3297,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "NotionLogo"
   | "OpenaiLogo"
   | "PowerBiLogo"
+  | "PraizLogo"
   | "ProductboardLogo"
   | "PuzzleIcon"
   | "SalesforceLogo"

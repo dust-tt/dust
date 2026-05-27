@@ -226,6 +226,7 @@ export const INTERNAL_ALLOWED_ICONS = [
   "NotionLogo",
   "OpenaiLogo",
   "PowerBiLogo",
+  "PraizLogo",
   "ProductboardLogo",
   "PuzzleIcon",
   "SalesforceLogo",
