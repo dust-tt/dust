@@ -68,7 +68,7 @@ describe("sandbox image registry", () => {
   test("pins the current dust-base image tag", () => {
     expect(getDustBaseImage().imageId).toEqual({
       imageName: "dust-base",
-      tag: "0.8.26",
+      tag: "0.8.27",
     });
   });
 
@@ -79,19 +79,74 @@ describe("sandbox image registry", () => {
     expect(runCommands).toEqual(
       expect.arrayContaining([
         expect.stringContaining(
+          "install -d -o agent -g agent -m 2775 /home/agent/.local /home/agent/.local/bin"
+        ),
+        expect.stringContaining(
           "useradd --create-home --uid 1003 --gid agent --shell /bin/bash agent-proxied"
         ),
-        expect.stringContaining("chgrp agent /home/agent /files/conversation"),
-        expect.stringContaining("chmod g+ws /home/agent /files/conversation"),
         expect.stringContaining(
-          "setfacl -R -d -m g::rwx /home/agent /files/conversation"
+          "chgrp agent /home/agent /home/agent/.local /home/agent/.local/bin /files/conversation"
         ),
         expect.stringContaining(
-          "setfacl -R -m g::rwx /home/agent /files/conversation"
+          "chmod g+ws /home/agent /home/agent/.local /home/agent/.local/bin /files/conversation"
+        ),
+        expect.stringContaining(
+          "setfacl -R -d -m g::rwx /home/agent /home/agent/.local /home/agent/.local/bin /files/conversation"
+        ),
+        expect.stringContaining(
+          "setfacl -R -m g::rwx /home/agent /home/agent/.local /home/agent/.local/bin /files/conversation"
         ),
         expect.stringContaining(
           "useradd --system --no-create-home --gid dust-egress-resolver --shell /usr/sbin/nologin dust-egress-resolver"
         ),
+      ])
+    );
+  });
+
+  test("hardens provider-created local accounts and sudo before agent code exists", () => {
+    const runCommands = getRunCommands(getDustBaseImageOperations());
+    const hardeningCommands = runCommands.filter((command) =>
+      command.includes("sudo must not be installed in sandbox images")
+    );
+    const firstHardeningIndex = runCommands.findIndex((command) =>
+      command.includes("sudo must not be installed in sandbox images")
+    );
+    const agentProxiedIndex = runCommands.findIndex((command) =>
+      command.includes("useradd --create-home --uid 1003")
+    );
+
+    expect(hardeningCommands.length).toBeGreaterThanOrEqual(2);
+    for (const command of hardeningCommands) {
+      expect(command).toContain("passwd -l root");
+      expect(command).toContain("awk -F: '$2 == \"\" {print $1}'");
+      expect(command).toContain('passwd -l "$account"');
+      expect(command).toContain(
+        "usermod --lock --expiredate 1 --shell /usr/sbin/nologin user"
+      );
+      expect(command).toContain("gpasswd -d user");
+      expect(command).toContain("for member in $members");
+      expect(command).toContain("NOPASSWD");
+      expect(command).toContain("apt-get purge -y sudo");
+      expect(command).toContain("sudo_path.disabled-by-dust");
+      expect(command).toContain("/usr/bin/su");
+      expect(command).toContain("/usr/bin/passwd");
+      expect(command).toContain("chmod u-s");
+      expect(command).toContain("empty-password local accounts must not exist");
+      expect(command).toContain(
+        "passwordless unrestricted sudoers entries must not exist"
+      );
+      expect(command).toContain("local auth helper must not be setuid");
+    }
+    expect(firstHardeningIndex).toBeGreaterThanOrEqual(0);
+    expect(agentProxiedIndex).toBeGreaterThan(firstHardeningIndex);
+  });
+
+  test("keeps privileged executable directories root-owned", () => {
+    const runCommands = getRunCommands(getDustBaseImageOperations());
+
+    expect(runCommands).toEqual(
+      expect.arrayContaining([
+        "install -d -o root -g root -m 755 /opt/bin /usr/local/bin && chown root:root /opt/bin /usr/local/bin && chmod 755 /opt/bin /usr/local/bin",
       ])
     );
   });
@@ -237,7 +292,7 @@ describe("sandbox image registry", () => {
     expect(runCommands).toEqual(
       expect.arrayContaining([
         expect.stringContaining(
-          "https://github.com/dust-tt/dust/releases/download/dsbx-v0.1.22/dsbx-linux-x86_64"
+          "https://github.com/dust-tt/dust/releases/download/dsbx-v0.1.23/dsbx-linux-x86_64"
         ),
       ])
     );

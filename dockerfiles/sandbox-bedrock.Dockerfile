@@ -50,12 +50,16 @@ RUN ARCH=$(dpkg --print-architecture) && \
   rm node.tar.xz SHASUMS256.txt
 
 
-# Set permissions for venv, npm global, and bin directories
-RUN chmod -R 777 /opt/venv && mkdir -p /opt/npm-global /opt/bin && chmod -R 777 /opt/npm-global /opt/bin
+# Set permissions for user-installable runtimes and root-owned bin directories.
+RUN chmod -R 777 /opt/venv \
+  && mkdir -p /opt/npm-global /opt/bin \
+  && chmod -R 777 /opt/npm-global \
+  && chown root:root /opt/bin /usr/local/bin \
+  && chmod 755 /opt/bin /usr/local/bin
 
 # Set up environment via profile.d
 RUN printf '%s\n' \
-  'export PATH="/opt/bin:/opt/venv/bin:/opt/npm-global/bin:$PATH"' \
+  'export PATH="$HOME/.local/bin:/opt/bin:/opt/venv/bin:/opt/npm-global/bin:$PATH"' \
   'export VIRTUAL_ENV="/opt/venv"' \
   'export NPM_CONFIG_PREFIX="/opt/npm-global"' \
   > /etc/profile.d/dust-env.sh

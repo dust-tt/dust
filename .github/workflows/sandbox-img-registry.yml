@@ -120,6 +120,20 @@ jobs:
               $REBUILD_FLAG
           done < <(jq -c '.[]' "$GITHUB_WORKSPACE/build-matrix.json")
 
+      - name: Run sandbox security regression checks
+        if: steps.check.outputs.has-missing == 'true'
+        working-directory: front
+        run: |
+          set -eo pipefail
+          while IFS= read -r row; do
+            image=$(echo "$row" | jq -r '.image')
+            tag=$(echo "$row" | jq -r '.tag')
+            echo "Checking ${image}:${tag} (${{ matrix.region }})"
+            npx tsx scripts/sandbox_security_check.ts \
+              --image "$image" \
+              --tag "$tag"
+          done < <(jq -c '.[]' "$GITHUB_WORKSPACE/build-matrix.json")
+
       - name: Cleanup service account JSON
         if: always() && steps.check.outputs.has-missing == 'true'
         run: rm -f /tmp/service-account.json
