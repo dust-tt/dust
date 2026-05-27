@@ -401,11 +401,6 @@ export const VisualizationActionIframe = forwardRef<
 
   return (
     <div className={cn("relative flex flex-col", isInDrawer && "h-full")}>
-      {showSpinner && (
-        <div className="absolute inset-0 flex items-center justify-center bg-white">
-          <Spinner size="xl" />
-        </div>
-      )}
       {code && (
         <CodeDrawer
           isOpened={isCodeDrawerOpen}
@@ -514,6 +509,11 @@ export const VisualizationActionIframe = forwardRef<
           )}
         </div>
       </div>
+      {showSpinner && (
+        <div className="absolute inset-0 flex items-center justify-center bg-white">
+          <Spinner size="xl" variant="color" />
+        </div>
+      )}
     </div>
   );
 });
