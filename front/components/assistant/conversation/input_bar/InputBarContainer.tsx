@@ -4,6 +4,7 @@ import { InputBarButtons } from "@app/components/assistant/conversation/input_ba
 import {
   INPUT_BAR_COMPACT_CONTENT_ENTER_ANIMATION_CLASSES,
   INPUT_BAR_COMPACT_PILL_INNER_CLASSES,
+  INPUT_BAR_COMPACT_PREVIEW_CLASSES,
 } from "@app/components/assistant/conversation/input_bar/inputBarCompactStyles";
 import {
   getDisplayNameFromPastedFileId,
@@ -52,10 +53,8 @@ import type { UserType, WorkspaceType } from "@app/types/user";
 import {
   ArrowUpIcon,
   AttachmentIcon,
-  Avatar,
   Button,
   CameraIcon,
-  ChevronUpDownIcon,
   Chip,
   cn,
   DropdownMenu,
@@ -65,7 +64,6 @@ import {
   DropdownMenuTrigger,
   GlobeAltIcon,
   PlusIcon,
-  RobotIcon,
   TextIcon,
   Toolbar,
   TooltipContent,
@@ -1050,6 +1048,9 @@ const InputBarContainer = ({
 
   const isRecording = voiceTranscriberService.status === "recording";
   const isVoiceActive = voiceTranscriberService.status !== "idle";
+  const compactPreviewText = editorService.getTrimmedText();
+  const compactDisplayPlaceholder =
+    (disableInput ? submitBlockMessage : placeholder) ?? "Get work done";
 
   useEffect(() => {
     onVoiceActiveChange?.(isVoiceActive);
@@ -1096,43 +1097,30 @@ const InputBarContainer = ({
           className={cn(
             INPUT_BAR_COMPACT_PILL_INNER_CLASSES,
             INPUT_BAR_COMPACT_CONTENT_ENTER_ANIMATION_CLASSES,
-            "relative w-auto gap-0 sm:pt-0",
-            isVoiceActive ? "px-0.5" : "px-1"
+            "relative min-w-0 w-full gap-1 px-1 sm:pt-0"
           )}
         >
           {!isVoiceActive && (
-            <div className="flex min-w-0 flex-1 items-center gap-1 px-1">
-              <div
-                aria-hidden
-                className="inline-flex min-w-0 max-w-24 items-center gap-1"
-              >
-                {selectedSingleAgent ? (
-                  <>
-                    <Avatar
-                      size="xxs"
-                      visual={selectedSingleAgent.pictureUrl}
-                    />
-                    <span className="truncate copy-xs text-muted-foreground dark:text-muted-foreground-night">
-                      {selectedSingleAgent.label}
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <RobotIcon className="h-3.5 w-3.5 shrink-0 text-faint dark:text-faint-night" />
-                    <span className="truncate copy-xs text-faint dark:text-faint-night">
-                      Agent
-                    </span>
-                  </>
-                )}
-              </div>
-              <ChevronUpDownIcon className="h-3.5 w-3.5 shrink-0 text-faint dark:text-faint-night" />
+            <div
+              aria-hidden
+              className={cn(
+                INPUT_BAR_COMPACT_PREVIEW_CLASSES,
+                compactPreviewText
+                  ? "text-foreground dark:text-foreground-night"
+                  : "text-faint dark:text-faint-night"
+              )}
+            >
+              {compactPreviewText || compactDisplayPlaceholder}
             </div>
           )}
           {!subscription.plan.isByok &&
             owner.metadata?.allowVoiceTranscription !== false &&
             actions.includes("voice") && (
               <div
-                className="flex shrink-0 flex-row items-center"
+                className={cn(
+                  "flex shrink-0 flex-row items-center",
+                  isVoiceActive && "ml-auto"
+                )}
                 data-compact-voice
               >
                 <VoicePicker

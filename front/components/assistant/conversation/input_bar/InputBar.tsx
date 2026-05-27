@@ -404,7 +404,7 @@ export const InputBar = React.memo(function InputBar({
     <div
       className={classNames(
         "flex w-full flex-col",
-        effectiveIsCompact && "items-center"
+        effectiveIsCompact && "min-w-0 flex-1"
       )}
     >
       <PlanCard
