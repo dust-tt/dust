@@ -19,11 +19,14 @@ import {
   taskDirective,
 } from "@app/components/markdown/TaskDirectiveBlock";
 import { getIcon } from "@app/components/resources/resources_icons";
+import { useConversationMessages } from "@app/hooks/conversations/useConversationMessages";
 import { useChildAgentStream } from "@app/hooks/useChildAgentStream";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
+import { AGENT_CONFIGURATION_URI_PATTERN } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { ToolGeneratedFileType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   isAgentPauseOutputResourceType,
+  isRunAgentProgressOutput,
   isRunAgentQueryProgressOutput,
   isRunAgentQueryResourceType,
   isRunAgentResultResourceType,
@@ -91,40 +94,123 @@ export function MCPRunAgentActionDetails({
   const generatedFiles =
     toolOutput?.filter(isToolGeneratedFile).map((o) => o.resource) ?? [];
 
-  const [query, setQuery] = useState<string | null>(null);
-  const [childAgentId, setChildAgentId] = useState<string | null>(null);
+  // Derive query and childAgentId from toolOutput or lastNotification, falling
+  // back to toolParams so the panel renders immediately without waiting for a
+  // notification (fixes blank panel when the side panel is opened mid-run).
+  const notificationQueryResource = useMemo(() => {
+    const output = lastNotification?._meta.data.output;
+    if (!output || !isStoreResourceProgressOutput(output)) {
+      return null;
+    }
+    return output.contents.find(isRunAgentQueryResourceType) ?? null;
+  }, [lastNotification]);
+
+  const resolvedQueryResource = useMemo(
+    () => queryResource ?? notificationQueryResource,
+    [queryResource, notificationQueryResource]
+  );
+
+  const query = useMemo<string | null>(() => {
+    if (resolvedQueryResource) {
+      return resolvedQueryResource.resource.text;
+    }
+    const raw = toolParams["query"];
+    return typeof raw === "string" ? raw : null;
+  }, [resolvedQueryResource, toolParams]);
+
+  const childAgentId = useMemo<string | null>(() => {
+    if (resolvedQueryResource?.resource.childAgentId) {
+      return resolvedQueryResource.resource.childAgentId;
+    }
+    const childAgentParam = toolParams["childAgent"];
+    if (
+      typeof childAgentParam === "object" &&
+      childAgentParam !== null &&
+      "uri" in childAgentParam
+    ) {
+      const { uri } = childAgentParam as { uri: unknown };
+      if (typeof uri === "string") {
+        const match = AGENT_CONFIGURATION_URI_PATTERN.exec(uri);
+        return match?.[2] ?? null;
+      }
+    }
+    return null;
+  }, [resolvedQueryResource, toolParams]);
+
+  // Stream connection IDs are only available via runtime notifications.
+  // Initialize from lastNotification so the condition is already non-null on the first render
+  // when the panel opens after RunAgentQueryProgressOutput has already fired, avoiding an
+  // unnecessary fallback fetch in the normal case.
   const [childStreamIds, setChildStreamIds] = useState<{
     conversationId: string;
     agentMessageId: string;
-  } | null>(null);
+  } | null>(() => {
+    const output = lastNotification?._meta.data.output;
+    if (
+      output &&
+      isRunAgentQueryProgressOutput(output) &&
+      output.agentMessageId
+    ) {
+      return {
+        conversationId: output.conversationId,
+        agentMessageId: output.agentMessageId,
+      };
+    }
+    return null;
+  });
 
-  // Extract query, childAgentId, conversationId, and agentMessageId from
-  // notifications and tool output.
   useEffect(() => {
-    if (queryResource) {
-      setQuery(queryResource.resource.text);
-      setChildAgentId(queryResource.resource.childAgentId);
+    if (childStreamIds !== null) {
+      return;
     }
-    if (lastNotification?._meta.data.output) {
-      const output = lastNotification._meta.data.output;
-      if (isStoreResourceProgressOutput(output)) {
-        const runAgentQueryResource = output.contents.find(
-          isRunAgentQueryResourceType
-        );
-        if (runAgentQueryResource) {
-          setQuery(runAgentQueryResource.resource.text);
-          setChildAgentId(runAgentQueryResource.resource.childAgentId);
-        }
-      }
-      // Extract stream connection IDs from run_agent progress notification.
-      if (isRunAgentQueryProgressOutput(output) && output.agentMessageId) {
-        setChildStreamIds({
-          conversationId: output.conversationId,
-          agentMessageId: output.agentMessageId,
-        });
-      }
+    const output = lastNotification?._meta.data.output;
+    if (!output) {
+      return;
     }
-  }, [queryResource, lastNotification]);
+    if (isRunAgentQueryProgressOutput(output) && output.agentMessageId) {
+      setChildStreamIds({
+        conversationId: output.conversationId,
+        agentMessageId: output.agentMessageId,
+      });
+    }
+  }, [lastNotification, childStreamIds]);
+
+  // conversationId is present in all run_agent notification types and in the result resource.
+  const conversationId = useMemo<string | null>(() => {
+    const output = lastNotification?._meta.data.output;
+    if (output && isRunAgentProgressOutput(output)) {
+      return output.conversationId;
+    }
+    return resultResource?.resource.conversationId ?? null;
+  }, [lastNotification, resultResource]);
+
+  // Fallback: if the panel was opened after the initial notification fired (late open, second tab),
+  // childStreamIds is still null. Fetch the child conversation's latest agent message to recover it.
+  const { messages: childConversationPages } = useConversationMessages({
+    conversationId:
+      childStreamIds === null &&
+      resultResource === null &&
+      displayContext !== "conversation"
+        ? conversationId
+        : null,
+    workspaceId: owner.sId,
+    limit: 5,
+  });
+
+  useEffect(() => {
+    if (childStreamIds !== null || conversationId === null) {
+      return;
+    }
+    // Reverse pages so the newest page (highest-ranked messages) comes first, ensuring we
+    // find the latest agent_message and not an older retry.
+    const agentMessage = [...childConversationPages]
+      .reverse()
+      .flatMap((page) => page.messages)
+      .find((m) => m.type === "agent_message");
+    if (agentMessage) {
+      setChildStreamIds({ conversationId, agentMessageId: agentMessage.sId });
+    }
+  }, [childConversationPages, conversationId, childStreamIds]);
 
   // Subscribe to the child agent's event stream.
   const {
