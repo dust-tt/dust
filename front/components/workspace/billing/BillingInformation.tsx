@@ -103,28 +103,30 @@ export function BillingInformation({ owner }: BillingInformationProps) {
         <h3 className="text-base font-semibold text-foreground dark:text-foreground-night">
           Billing contact
         </h3>
-        <Button
-          label="Change"
-          variant="ghost"
-          size="sm"
-          href={portalHref}
-          target="_blank"
-          className="absolute right-4 top-3"
-        />
 
         {addressRows.length > 0 ? (
-          <div className="flex flex-col gap-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
-            {addressRows.map(({ icon, value }) => (
-              <div key={value} className="flex items-center gap-2">
-                <Icon
-                  visual={icon}
-                  size="xs"
-                  className="shrink-0 text-foreground dark:text-foreground-night"
-                />
-                <span>{value}</span>
-              </div>
-            ))}
-          </div>
+          <>
+            <Button
+              label="Change"
+              variant="ghost"
+              size="sm"
+              href={portalHref}
+              target="_blank"
+              className="absolute right-4 top-3"
+            />
+            <div className="flex flex-col gap-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
+              {addressRows.map(({ icon, value }) => (
+                <div key={value} className="flex items-center gap-2">
+                  <Icon
+                    visual={icon}
+                    size="xs"
+                    className="shrink-0 text-foreground dark:text-foreground-night"
+                  />
+                  <span>{value}</span>
+                </div>
+              ))}
+            </div>
+          </>
         ) : (
           <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
             No billing address on file.
@@ -145,13 +147,15 @@ export function BillingInformation({ owner }: BillingInformationProps) {
             {formatPaymentMethod(paymentMethod)}
           </div>
         </div>
-        <Button
-          label="Change"
-          variant="ghost"
-          size="sm"
-          href={portalHref}
-          target="_blank"
-        />
+        {paymentMethod && (
+          <Button
+            label="Change"
+            variant="ghost"
+            size="sm"
+            href={portalHref}
+            target="_blank"
+          />
+        )}
       </div>
     </div>
   );
