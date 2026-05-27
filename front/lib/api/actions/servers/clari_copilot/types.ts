@@ -72,8 +72,8 @@ const ClariTranscriptTurnSchema = z
 const ClariTopicSchema = z
   .object({
     name: z.string().optional(),
-    start_timestamp: z.number().optional(),
-    end_timestamp: z.number().optional(),
+    start_timestamp: z.coerce.number().optional(),
+    end_timestamp: z.coerce.number().optional(),
     summary: z.string().optional(),
   })
   .passthrough();
@@ -82,8 +82,8 @@ const ClariActionItemSchema = z
   .object({
     action_item: z.string().optional(),
     speaker_name: z.string().optional(),
-    start_timestamp: z.number().optional(),
-    end_timestamp: z.number().optional(),
+    start_timestamp: z.coerce.number().optional(),
+    end_timestamp: z.coerce.number().optional(),
   })
   .passthrough();
 

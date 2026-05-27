@@ -1,8 +1,8 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type {
-  ClariCall,
   ClariCallDetails,
+  ClariCallsResponse,
 } from "@app/lib/api/actions/servers/clari_copilot/types";
 import {
   ClariCallDetailsResponseSchema,
@@ -131,11 +131,11 @@ export class ClariCopilotClient {
 
   async searchCalls(
     params: SearchCallsParams
-  ): Promise<Result<ClariCall[], Error>> {
+  ): Promise<Result<ClariCallsResponse, Error>> {
     const query = new URLSearchParams({
       filterStatus: CLARI_PROCESSED_STATUS,
       includePrivate: "false",
-      includePagination: "false",
+      includePagination: "true",
       limit: String(params.limit ?? CLARI_DEFAULT_LIMIT),
     });
 
@@ -170,7 +170,7 @@ export class ClariCopilotClient {
       );
     }
 
-    return new Ok(calls);
+    return new Ok({ calls, pagination: result.value.pagination });
   }
 
   async getCallDetails(
