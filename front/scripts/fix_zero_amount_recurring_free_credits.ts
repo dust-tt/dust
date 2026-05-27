@@ -14,7 +14,7 @@
  * mirrors the DB credit via grantFreeCreditFromMetronomeSegment.
  *
  * Run with:
- *   npx tsx scripts/list_zero_amount_recurring_free_credits.ts \
+ *   npx tsx scripts/fix_zero_amount_recurring_free_credits.ts \
  *     [--workspaceId <sId>] [--fromWorkspaceId <id>] [--execute]
  */
 
