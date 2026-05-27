@@ -2,7 +2,7 @@ import { getWhitelistedProviders } from "@app/lib/api/assistant/models";
 import type { RegionType } from "@app/lib/api/regions/config";
 import {
   filterCustomAvailableAndWhitelistedModels,
-  isModelCustomAvailable,
+  isModelAvailable,
 } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
 import {
@@ -31,7 +31,7 @@ function createMockModel(
   };
 }
 
-// createMockPlan is only used by isModelCustomAvailable tests (pure sync, no factory available).
+// createMockPlan is only used by isModelAvailable tests (pure sync, no factory available).
 function createMockPlan(code: string): PlanType {
   return {
     code,
@@ -83,7 +83,7 @@ function createMockPlan(code: string): PlanType {
   };
 }
 
-describe("isModelCustomAvailable", () => {
+describe("isModelAvailable", () => {
   const owner: WorkspaceType = LightWorkspaceFactory.build();
 
   it("should return true for a basic model without restrictions", () => {
@@ -91,7 +91,7 @@ describe("isModelCustomAvailable", () => {
     const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
 
     expect(
-      isModelCustomAvailable(model, {
+      isModelAvailable(model, {
         featureFlags: [],
         plan,
         owner,
@@ -108,7 +108,7 @@ describe("isModelCustomAvailable", () => {
     const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
 
     expect(
-      isModelCustomAvailable(model, {
+      isModelAvailable(model, {
         featureFlags: ["deepseek_feature"],
         plan,
         owner,
@@ -125,7 +125,7 @@ describe("isModelCustomAvailable", () => {
     const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
 
     expect(
-      isModelCustomAvailable(model, {
+      isModelAvailable(model, {
         featureFlags: [],
         plan,
         owner,
@@ -139,7 +139,7 @@ describe("isModelCustomAvailable", () => {
     const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
 
     expect(
-      isModelCustomAvailable(model, {
+      isModelAvailable(model, {
         featureFlags: [],
         plan,
         owner,
@@ -153,7 +153,7 @@ describe("isModelCustomAvailable", () => {
     const plan = createMockPlan(FREE_UPGRADED_PLAN_CODE);
 
     expect(
-      isModelCustomAvailable(model, {
+      isModelAvailable(model, {
         featureFlags: [],
         plan,
         owner,
@@ -170,7 +170,7 @@ describe("isModelCustomAvailable", () => {
     const plan = createMockPlan(FREE_NO_PLAN_CODE);
 
     expect(
-      isModelCustomAvailable(model, {
+      isModelAvailable(model, {
         featureFlags: [],
         plan,
         owner,
@@ -186,7 +186,7 @@ describe("isModelCustomAvailable", () => {
     });
 
     expect(
-      isModelCustomAvailable(model, {
+      isModelAvailable(model, {
         featureFlags: [],
         plan: null,
         owner,
@@ -203,7 +203,7 @@ describe("isModelCustomAvailable", () => {
     const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
 
     expect(
-      isModelCustomAvailable(model, {
+      isModelAvailable(model, {
         featureFlags: [],
         plan,
         owner,
@@ -220,7 +220,7 @@ describe("isModelCustomAvailable", () => {
     const plan = createMockPlan(DUST_COMPANY_PLAN_CODE);
 
     expect(
-      isModelCustomAvailable(model, {
+      isModelAvailable(model, {
         featureFlags: [],
         plan,
         owner,
@@ -237,7 +237,7 @@ describe("isModelCustomAvailable", () => {
     const plan = createMockPlan("ENT_CUSTOM_PLAN");
 
     expect(
-      isModelCustomAvailable(model, {
+      isModelAvailable(model, {
         featureFlags: [],
         plan,
         owner,
@@ -254,7 +254,7 @@ describe("isModelCustomAvailable", () => {
     const plan = createMockPlan(DUST_COMPANY_PLAN_CODE);
 
     expect(
-      isModelCustomAvailable(model, {
+      isModelAvailable(model, {
         featureFlags: [],
         plan,
         owner,
@@ -271,7 +271,7 @@ describe("isModelCustomAvailable", () => {
     const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
 
     expect(
-      isModelCustomAvailable(model, {
+      isModelAvailable(model, {
         featureFlags: ["deepseek_feature"],
         plan,
         owner,
@@ -288,7 +288,7 @@ describe("isModelCustomAvailable", () => {
     const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
 
     expect(
-      isModelCustomAvailable(model, {
+      isModelAvailable(model, {
         featureFlags: [],
         plan,
         owner,

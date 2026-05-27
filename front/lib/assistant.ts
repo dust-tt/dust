@@ -20,7 +20,7 @@ export function isEnterpriseOrDust(plan: PlanType | null): boolean {
   );
 }
 
-// Returns true if the model is available to the workspace for use.
+// Returns true if the model is available to the workspace for build.
 export function isModelAvailable(
   m: ModelConfigurationType,
   {
@@ -35,6 +35,10 @@ export function isModelAvailable(
     region: RegionType;
   }
 ) {
+  if (m.largeModel && !isUpgraded(plan)) {
+    return false;
+  }
+
   if (plan?.isByok && !isByokProviderId(m.providerId)) {
     return false;
   }
@@ -60,32 +64,6 @@ export function isModelAvailable(
   return false;
 }
 
-// Returns true if the model is available to the workspace for build.
-export function isModelCustomAvailable(
-  m: ModelConfigurationType,
-  {
-    featureFlags,
-    plan,
-    owner,
-    region,
-  }: {
-    featureFlags: WhitelistableFeature[];
-    plan: PlanType | null;
-    owner: WorkspaceType;
-    region: RegionType;
-  }
-) {
-  if (!isModelAvailable(m, { featureFlags, plan, owner, region })) {
-    return false;
-  }
-
-  if (m.largeModel && !isUpgraded(plan)) {
-    return false;
-  }
-
-  return true;
-}
-
 export function filterCustomAvailableAndWhitelistedModels(
   models: ModelConfigurationType[],
   {
@@ -104,7 +82,7 @@ export function filterCustomAvailableAndWhitelistedModels(
 ): ModelConfigurationType[] {
   return models.filter(
     (m) =>
-      isModelCustomAvailable(m, { featureFlags, plan, owner, region }) &&
+      isModelAvailable(m, { featureFlags, plan, owner, region }) &&
       whitelistedProviders.has(m.providerId)
   );
 }
