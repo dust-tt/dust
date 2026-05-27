@@ -15,8 +15,7 @@ export const ensureIsUser = () =>
         status_code: 401,
         api_error: {
           type: "workspace_auth_error",
-          message:
-            "You must be an authenticated user of this workspace to perform this action.",
+          message: "You must be authenticated to perform this action.",
         },
       });
     }
