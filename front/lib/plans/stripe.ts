@@ -890,6 +890,28 @@ export async function cancelSubscriptionImmediatelyNoInvoice({
 }
 
 /**
+ * Schedule a subscription to cancel at a future timestamp. Used by the
+ * switch_contract flow when migrating a Stripe-billed workspace to Metronome:
+ * the Stripe sub stops at the new Metronome contract's start time, so the two
+ * rails don't double-bill. Prorations at cancellation follow the subscription's
+ * existing proration settings (default: a credit for the unused portion).
+ */
+export async function scheduleSubscriptionCancellation({
+  stripeSubscriptionId,
+  cancelAt,
+}: {
+  stripeSubscriptionId: string;
+  cancelAt: Date;
+}) {
+  const stripe = getStripeClient();
+  await stripe.subscriptions.update(stripeSubscriptionId, {
+    cancel_at: Math.floor(cancelAt.getTime() / 1000),
+  });
+
+  return true;
+}
+
+/**
  * Creates a new Stripe Business subscription for upgrading Pro → Business.
  * The old subscription is cancelled separately after the DB flip.
  */

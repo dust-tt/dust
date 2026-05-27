@@ -9,7 +9,10 @@ import {
   CREDIT_PRICED_BUSINESS_PLAN_CODE,
   PRO_PLAN_SEAT_29_CODE,
 } from "@app/lib/plans/plan_codes";
-import { getStripeCustomer } from "@app/lib/plans/stripe";
+import {
+  getStripeCustomer,
+  scheduleSubscriptionCancellation,
+} from "@app/lib/plans/stripe";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
@@ -62,6 +65,7 @@ vi.mock("@app/lib/plans/stripe", async () => {
   return {
     ...actual,
     getStripeCustomer: vi.fn(),
+    scheduleSubscriptionCancellation: vi.fn(),
   };
 });
 
@@ -206,6 +210,7 @@ beforeEach(() => {
   vi.mocked(provisionMetronomeContract).mockResolvedValue(
     new Ok({ metronomeContractId: NEW_CONTRACT_ID })
   );
+  vi.mocked(scheduleSubscriptionCancellation).mockResolvedValue(true);
 });
 
 describe("POST /api/poke/workspaces/[wId]/switch_contract — Enterprise", () => {
@@ -514,13 +519,14 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — guards", () => {
     expect(res._getJSONData().error.message).toContain("does not match");
   });
 
-  it("rejects when the workspace is Stripe-billed", async () => {
+  it("schedules the Stripe subscription to cancel at the swap moment when the workspace is Stripe-billed", async () => {
+    const STRIPE_SUB_ID = "sub_stripe_xxx";
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "POST",
       isSuperUser: true,
     });
     await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID, {
-      stripeSubscriptionId: "sub_stripe_xxx",
+      stripeSubscriptionId: STRIPE_SUB_ID,
     });
 
     req.body = proBody();
@@ -528,8 +534,29 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — guards", () => {
 
     await handler(req, res);
 
-    expect(res._getStatusCode()).toBe(400);
-    expect(res._getJSONData().error.message).toContain("Metronome-billed");
+    expect(res._getStatusCode()).toBe(200);
+    expect(scheduleSubscriptionCancellation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        stripeSubscriptionId: STRIPE_SUB_ID,
+        cancelAt: expect.any(Date),
+      })
+    );
+  });
+
+  it("does not call scheduleSubscriptionCancellation when the workspace has no Stripe subscription", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      isSuperUser: true,
+    });
+    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
+
+    req.body = proBody();
+    req.query.wId = workspace.sId;
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(scheduleSubscriptionCancellation).not.toHaveBeenCalled();
   });
 });
 
