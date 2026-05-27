@@ -68,7 +68,7 @@ describe("sandbox image registry", () => {
   test("pins the current dust-base image tag", () => {
     expect(getDustBaseImage().imageId).toEqual({
       imageName: "dust-base",
-      tag: "0.8.25",
+      tag: "0.8.26",
     });
   });
 
@@ -94,6 +94,29 @@ describe("sandbox image registry", () => {
         ),
       ])
     );
+  });
+
+  test("disables and hardens sshd in the base image", () => {
+    const runCommands = getRunCommands(getDustBaseImageOperations());
+    const hardeningCommand = runCommands.find((command) =>
+      command.includes("00-dust-sandbox-hardening.conf")
+    );
+
+    expect(hardeningCommand).toBeDefined();
+    expect(hardeningCommand).toContain("Include /etc/ssh/sshd_config.d/*.conf");
+    expect(hardeningCommand).toContain("PermitRootLogin no");
+    expect(hardeningCommand).toContain("UsePAM no");
+    expect(hardeningCommand).toContain("AuthorizedKeysCommand none");
+    expect(hardeningCommand).toContain(
+      "AuthorizedKeysFile /etc/ssh/authorized_keys/%u"
+    );
+    expect(hardeningCommand).toContain("AllowUsers agent");
+    expect(hardeningCommand).toContain("DenyUsers root agent-proxied");
+    expect(hardeningCommand).toContain("pam_permit\\.so");
+    expect(hardeningCommand).toContain(
+      "systemctl disable --now ssh.service ssh.socket"
+    );
+    expect(hardeningCommand).toContain("systemctl mask ssh.service ssh.socket");
   });
 
   test("copies the egress boot assets and enables the systemd units", () => {
@@ -175,6 +198,9 @@ describe("sandbox image registry", () => {
       "nft add rule ip dust-egress filter_output meta skuid $PROXIED_UID ip daddr 127.0.0.1 udp dport $DNS_STUB_PORT accept"
     );
     expect(nftablesScript).toContain(
+      "nft add rule ip dust-egress filter_output meta skuid $PROXIED_UID ip daddr 127.0.0.0/8 tcp dport 22 drop"
+    );
+    expect(nftablesScript).toContain(
       "nft add rule ip dust-egress filter_output meta skuid $PROXIED_UID ip daddr 169.254.169.254 drop"
     );
     expect(nftablesScript).toContain(
@@ -196,7 +222,24 @@ describe("sandbox image registry", () => {
     expectContentInOrder(
       nftablesScript,
       "udp dport $DNS_STUB_PORT accept",
+      "tcp dport 22 drop"
+    );
+    expectContentInOrder(
+      nftablesScript,
+      "tcp dport 22 drop",
       "meta l4proto udp drop"
+    );
+  });
+
+  test("installs the current dsbx CLI release", () => {
+    const runCommands = getRunCommands(getDustBaseImageOperations());
+
+    expect(runCommands).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining(
+          "https://github.com/dust-tt/dust/releases/download/dsbx-v0.1.22/dsbx-linux-x86_64"
+        ),
+      ])
     );
   });
 

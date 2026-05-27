@@ -89,6 +89,7 @@ type HealthcheckOutput = {
   nft_dns_tcp_redirect_ok: boolean;
   nft_dns_udp_accept_ok: boolean;
   nft_tcp_forward_redirect_ok: boolean;
+  nft_loopback_ssh_drop_ok: boolean;
   nft_udp_drop_ok: boolean;
   nft_icmp_drop_ok: boolean;
   nft_ipv6_drop_ok: boolean;
@@ -104,6 +105,7 @@ function healthStdout(overrides: Partial<HealthcheckOutput> = {}): string {
     nft_dns_tcp_redirect_ok: true,
     nft_dns_udp_accept_ok: true,
     nft_tcp_forward_redirect_ok: true,
+    nft_loopback_ssh_drop_ok: true,
     nft_udp_drop_ok: true,
     nft_icmp_drop_ok: true,
     nft_ipv6_drop_ok: true,
@@ -586,10 +588,11 @@ describe("sandbox egress helpers", () => {
 
   it.each([
     "nft_tcp_forward_redirect_ok" as const,
+    "nft_loopback_ssh_drop_ok" as const,
     "nft_udp_drop_ok" as const,
     "nft_icmp_drop_ok" as const,
     "nft_ipv6_drop_ok" as const,
-  ])("fails closed when %s is false (broader no-UDP/no-IPv6 invariant)", async (missing) => {
+  ])("fails closed when %s is false (broader nftables invariant)", async (missing) => {
     const sandbox = {
       providerId: "provider-sandbox-id",
       sId: "sandbox-id",

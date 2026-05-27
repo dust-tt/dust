@@ -36,11 +36,12 @@ struct EgressHealthcheck {
     nft_dns_udp_redirect_ok: bool,
     nft_dns_tcp_redirect_ok: bool,
     nft_dns_udp_accept_ok: bool,
-    // Broader no-UDP / no-IPv6 / TCP-via-forwarder invariant. Validating only
-    // the DNS rules would let a partially damaged ruleset pass health while
-    // reopening non-53 UDP or IPv6 egress, so the runtime check mirrors the
-    // full enforcement set.
+    // Broader no-loopback-SSH / no-UDP / no-IPv6 / TCP-via-forwarder invariant.
+    // Validating only the DNS rules would let a partially damaged ruleset pass
+    // health while reopening non-53 UDP, IPv6, or local sshd access, so the
+    // runtime check mirrors the full enforcement set.
     nft_tcp_forward_redirect_ok: bool,
+    nft_loopback_ssh_drop_ok: bool,
     nft_udp_drop_ok: bool,
     nft_icmp_drop_ok: bool,
     nft_ipv6_drop_ok: bool,
@@ -87,6 +88,7 @@ fn run_healthcheck(args: &HealthcheckArgs) -> EgressHealthcheck {
         &ipv4_rules,
         &format!("tcp dport != 0 redirect to :{forwarder_port}"),
     );
+    let nft_loopback_ssh_drop_ok = uid_rule(&ipv4_rules, "ip daddr 127.0.0.0/8 tcp dport 22 drop");
     // `nft list` may print `meta l4proto` matches either by name (`udp`,
     // `icmp`) or by IANA protocol number (17, 1). Accept both so the check
     // works regardless of how nft prints the ruleset on a given kernel/nft
@@ -106,6 +108,7 @@ fn run_healthcheck(args: &HealthcheckArgs) -> EgressHealthcheck {
         && nft_dns_tcp_redirect_ok
         && nft_dns_udp_accept_ok
         && nft_tcp_forward_redirect_ok
+        && nft_loopback_ssh_drop_ok
         && nft_udp_drop_ok
         && nft_icmp_drop_ok
         && nft_ipv6_drop_ok
@@ -119,6 +122,7 @@ fn run_healthcheck(args: &HealthcheckArgs) -> EgressHealthcheck {
         nft_dns_tcp_redirect_ok,
         nft_dns_udp_accept_ok,
         nft_tcp_forward_redirect_ok,
+        nft_loopback_ssh_drop_ok,
         nft_udp_drop_ok,
         nft_icmp_drop_ok,
         nft_ipv6_drop_ok,
@@ -239,6 +243,10 @@ table ip dust-egress {
     meta skuid 1003 udp dport 53 redirect to :1053
     meta skuid 1003 tcp dport 53 redirect to :1053
   }
+  chain filter_output {
+    type filter hook output priority 0; policy accept;
+    meta skuid 1003 ip daddr 127.0.0.0/8 tcp dport 22 drop
+  }
 }
 "#;
 
@@ -251,6 +259,11 @@ table ip dust-egress {
             rules,
             1004,
             "udp dport 53 redirect to :1053"
+        ));
+        assert!(contains_uid_rule(
+            rules,
+            1003,
+            "ip daddr 127.0.0.0/8 tcp dport 22 drop"
         ));
     }
 
