@@ -515,9 +515,6 @@ export const O1_MODEL_CONFIG: ModelConfigurationType = {
   availableIfOneOf: {
     featureFlag: "openai_o1_feature",
   },
-  customAvailableIf: {
-    featureFlag: "openai_o1_custom_assistants_feature",
-  },
   supportsResponseFormat: false,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {
@@ -547,9 +544,6 @@ export const O1_MINI_MODEL_CONFIG: ModelConfigurationType = {
     high: false,
   },
   defaultReasoningEffort: "none",
-  customAvailableIf: {
-    featureFlag: "openai_o1_custom_assistants_feature",
-  },
   supportsResponseFormat: false,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {

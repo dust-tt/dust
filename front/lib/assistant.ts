@@ -79,13 +79,6 @@ export function isModelCustomAvailable(
     return false;
   }
 
-  if (m.customAvailableIf) {
-    return (
-      m.customAvailableIf.featureFlag &&
-      featureFlags.includes(m.customAvailableIf.featureFlag)
-    );
-  }
-
   if (m.largeModel && !isUpgraded(plan)) {
     return false;
   }

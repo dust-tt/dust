@@ -134,40 +134,6 @@ describe("isModelCustomAvailable", () => {
     ).toBe(false);
   });
 
-  it("should return true when customAssistantFeatureFlag is enabled", () => {
-    const model = createMockModel({
-      customAvailableIf: { featureFlag: "openai_o1_feature" },
-      largeModel: false,
-    });
-    const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
-
-    expect(
-      isModelCustomAvailable(model, {
-        featureFlags: ["openai_o1_feature"],
-        plan,
-        owner,
-        region: TEST_REGION,
-      })
-    ).toBe(true);
-  });
-
-  it("should return false when customAssistantFeatureFlag is not enabled", () => {
-    const model = createMockModel({
-      customAvailableIf: { featureFlag: "openai_o1_feature" },
-      largeModel: false,
-    });
-    const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
-
-    expect(
-      isModelCustomAvailable(model, {
-        featureFlags: [],
-        plan,
-        owner,
-        region: TEST_REGION,
-      })
-    ).toBe(false);
-  });
-
   it("should return true for large model with upgraded plan", () => {
     const model = createMockModel({ largeModel: true });
     const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
@@ -227,42 +193,6 @@ describe("isModelCustomAvailable", () => {
         region: TEST_REGION,
       })
     ).toBe(false);
-  });
-
-  it("should return false when both featureFlag and customAssistantFeatureFlag are required but only one is enabled", () => {
-    const model = createMockModel({
-      availableIfOneOf: { featureFlag: "deepseek_feature" },
-      customAvailableIf: { featureFlag: "openai_o1_feature" },
-      largeModel: false,
-    });
-    const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
-
-    expect(
-      isModelCustomAvailable(model, {
-        featureFlags: ["deepseek_feature"],
-        plan,
-        owner,
-        region: TEST_REGION,
-      })
-    ).toBe(false);
-  });
-
-  it("should return true when both featureFlag and customAssistantFeatureFlag are required and both are enabled", () => {
-    const model = createMockModel({
-      availableIfOneOf: { featureFlag: "deepseek_feature" },
-      customAvailableIf: { featureFlag: "openai_o1_feature" },
-      largeModel: false,
-    });
-    const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
-
-    expect(
-      isModelCustomAvailable(model, {
-        featureFlags: ["deepseek_feature", "openai_o1_feature"],
-        plan,
-        owner,
-        region: TEST_REGION,
-      })
-    ).toBe(true);
   });
 
   it("should return false when large model requires upgraded plan but featureFlag is missing", () => {

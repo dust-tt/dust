@@ -91,10 +91,6 @@ export type ModelConfigurationType = Omit<
     featureFlag?: WhitelistableFeature;
   };
   // Pre-requisite: must be available.
-  // If object is empty, model is not custom available.
-  customAvailableIf?: {
-    featureFlag?: WhitelistableFeature;
-  };
   tokenizer: TokenizerConfig;
 };
 
