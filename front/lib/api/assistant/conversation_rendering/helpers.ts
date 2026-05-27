@@ -87,10 +87,6 @@ function renderEnabledSkillMessagesForAction(
     );
   }
 
-  if (enabledSkillMessages.length > 0) {
-    return enabledSkillMessages;
-  }
-
   return enabledSkillMessages;
 }
 
