@@ -77,7 +77,7 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
   const { subscription } = useAuth();
 
   const showRegionalFlag =
-    hasFeature("use_vertex_for_anthropic_models") &&
+    hasFeature("use_vertex_for_supported_models") &&
     SHOULD_DISPLAY_FLAG[regionInfo.name] &&
     !subscription.plan.isByok;
 

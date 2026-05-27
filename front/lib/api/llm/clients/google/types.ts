@@ -36,6 +36,19 @@ export const GOOGLE_AI_STUDIO_WHITELISTED_MODEL_IDS = [
 export type GoogleAIStudioWhitelistedModelId =
   (typeof GOOGLE_AI_STUDIO_WHITELISTED_MODEL_IDS)[number];
 
+// TODO(eu-endpoint): temporary list — remove once availability is per-model, not per-provider.
+export const GOOGLE_VERTEX_WHITELISTED_MODEL_IDS = [
+  GEMINI_2_5_FLASH_MODEL_ID,
+  GEMINI_2_5_FLASH_LITE_MODEL_ID,
+  GEMINI_2_5_PRO_MODEL_ID,
+  // Only available on global endpoint
+  GEMINI_3_1_PRO_MODEL_ID,
+  GEMINI_3_5_FLASH_MODEL_ID,
+] as const;
+
+export type GoogleVertexWhitelistedModelId =
+  (typeof GOOGLE_VERTEX_WHITELISTED_MODEL_IDS)[number];
+
 const PRE_GEMINI_3_THINKING_CONFIG_MAPPING: Record<
   ReasoningEffort,
   ThinkingConfig
@@ -179,6 +192,14 @@ export function isGoogleAIStudioWhitelistedModelId(
   modelId: ModelIdType
 ): modelId is GoogleAIStudioWhitelistedModelId {
   return (GOOGLE_AI_STUDIO_WHITELISTED_MODEL_IDS as readonly string[]).includes(
+    modelId
+  );
+}
+
+export function isGoogleVertexWhitelistedModelId(
+  modelId: ModelIdType
+): modelId is GoogleVertexWhitelistedModelId {
+  return (GOOGLE_VERTEX_WHITELISTED_MODEL_IDS as readonly string[]).includes(
     modelId
   );
 }

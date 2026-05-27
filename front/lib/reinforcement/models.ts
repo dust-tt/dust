@@ -9,7 +9,7 @@ export async function getLargeWhitelistedModelWithBatchMode(
 ): Promise<ModelConfigurationType | null> {
   const useVertex = await hasFeatureFlag(
     auth,
-    "use_vertex_for_anthropic_models"
+    "use_vertex_for_supported_models"
   );
   const excludedProviders = useVertex
     ? new Set<"anthropic">(["anthropic"])

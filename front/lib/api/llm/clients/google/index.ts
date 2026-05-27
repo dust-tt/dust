@@ -1,3 +1,4 @@
+import config from "@app/lib/api/config";
 import type { GoogleAIStudioWhitelistedModelId } from "@app/lib/api/llm/clients/google/types";
 import {
   GOOGLE_AI_STUDIO_PROVIDER_ID,
@@ -43,25 +44,41 @@ interface GoogleGenerateContentRequestParams {
 
 export class GoogleLLM extends LLM<GoogleGenerateContentRequestParams> {
   private client: GoogleGenAI;
+  private useVertex: boolean;
   protected modelId: GoogleAIStudioWhitelistedModelId;
 
   constructor(
     auth: Authenticator,
-    llmParameters: LLMParameters & { modelId: GoogleAIStudioWhitelistedModelId }
+    llmParameters: LLMParameters & {
+      modelId: GoogleAIStudioWhitelistedModelId;
+      useVertex?: boolean;
+    }
   ) {
     const params = overwriteLLMParameters(llmParameters);
     super(auth, GOOGLE_AI_STUDIO_PROVIDER_ID, params);
     this.modelId = llmParameters.modelId;
 
-    const { GOOGLE_AI_STUDIO_API_KEY } = llmParameters.credentials;
-    assert(
-      GOOGLE_AI_STUDIO_API_KEY,
-      "GOOGLE_AI_STUDIO_API_KEY credential is required"
-    );
+    this.useVertex = llmParameters.useVertex ?? false;
+    if (this.useVertex) {
+      this.metadata = {
+        ...this.metadata,
+        inferenceProvider: "google_vertex_ai",
+      };
+      this.client = new GoogleGenAI({
+        vertexai: true,
+        project: config.getGoogleCloudProjectId(),
+      });
+    } else {
+      const { GOOGLE_AI_STUDIO_API_KEY } = llmParameters.credentials;
+      assert(
+        GOOGLE_AI_STUDIO_API_KEY,
+        "GOOGLE_AI_STUDIO_API_KEY credential is required"
+      );
 
-    this.client = new GoogleGenAI({
-      apiKey: GOOGLE_AI_STUDIO_API_KEY,
-    });
+      this.client = new GoogleGenAI({
+        apiKey: GOOGLE_AI_STUDIO_API_KEY,
+      });
+    }
   }
 
   private buildGenerateContentConfig(

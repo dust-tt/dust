@@ -113,7 +113,7 @@ export const VERTEX_MODEL_ID_MAP: Partial<
   [CLAUDE_4_5_HAIKU_20251001_MODEL_ID]: "claude-haiku-4-5@20251001",
 };
 
-export function isVertexWhitelistedModelId(
+export function isAnthropicVertexWhitelistedModelId(
   modelId: ModelIdType
 ): modelId is keyof typeof VERTEX_MODEL_ID_MAP {
   return modelId in VERTEX_MODEL_ID_MAP;

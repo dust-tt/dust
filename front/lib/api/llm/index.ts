@@ -1,12 +1,15 @@
 import { AnthropicLLM } from "@app/lib/api/llm/clients/anthropic";
 import {
+  isAnthropicVertexWhitelistedModelId,
   isAnthropicWhitelistedModelId,
-  isVertexWhitelistedModelId,
 } from "@app/lib/api/llm/clients/anthropic/types";
 import { FireworksLLM } from "@app/lib/api/llm/clients/fireworks";
 import { isFireworksWhitelistedModelId } from "@app/lib/api/llm/clients/fireworks/types";
 import { GoogleLLM } from "@app/lib/api/llm/clients/google";
-import { isGoogleAIStudioWhitelistedModelId } from "@app/lib/api/llm/clients/google/types";
+import {
+  isGoogleAIStudioWhitelistedModelId,
+  isGoogleVertexWhitelistedModelId,
+} from "@app/lib/api/llm/clients/google/types";
 import { MistralLLM } from "@app/lib/api/llm/clients/mistral";
 import { isMistralWhitelistedModelId } from "@app/lib/api/llm/clients/mistral/types";
 import { NoopLLM } from "@app/lib/api/llm/clients/noop";
@@ -56,20 +59,6 @@ export async function getLLM(
     });
   }
 
-  if (isGoogleAIStudioWhitelistedModelId(modelId)) {
-    return new GoogleLLM(auth, {
-      credentials,
-      getTraceInput,
-      getTraceOutput,
-      modelId,
-      temperature,
-      reasoningEffort,
-      responseFormat,
-      bypassFeatureFlag,
-      context,
-    });
-  }
-
   if (isOpenAIResponsesWhitelistedModelId(modelId)) {
     return new OpenAIResponsesLLM(auth, {
       credentials,
@@ -81,29 +70,6 @@ export async function getLLM(
       responseFormat,
       bypassFeatureFlag,
       context,
-    });
-  }
-
-  if (isAnthropicWhitelistedModelId(modelId)) {
-    const featureFlags = await getFeatureFlags(auth);
-
-    const useVertex =
-      featureFlags.includes("use_vertex_for_anthropic_models") &&
-      !auth.getNonNullablePlan().isByok &&
-      isVertexWhitelistedModelId(modelId);
-
-    return new AnthropicLLM(auth, {
-      useVertex,
-      credentials,
-      getTraceInput,
-      getTraceOutput,
-      modelId,
-      temperature,
-      reasoningEffort,
-      responseFormat,
-      bypassFeatureFlag,
-      context,
-      omittedThinking,
     });
   }
 
@@ -141,6 +107,49 @@ export async function getLLM(
       reasoningEffort,
       responseFormat,
       bypassFeatureFlag,
+    });
+  }
+
+  const featureFlags = await getFeatureFlags(auth);
+
+  const useVertexPrerequisite =
+    featureFlags.includes("use_vertex_for_supported_models") &&
+    !auth.getNonNullablePlan().isByok;
+
+  if (isGoogleAIStudioWhitelistedModelId(modelId)) {
+    const useVertex =
+      useVertexPrerequisite && isGoogleVertexWhitelistedModelId(modelId);
+
+    return new GoogleLLM(auth, {
+      useVertex,
+      credentials,
+      getTraceInput,
+      getTraceOutput,
+      modelId,
+      temperature,
+      reasoningEffort,
+      responseFormat,
+      bypassFeatureFlag,
+      context,
+    });
+  }
+
+  if (isAnthropicWhitelistedModelId(modelId)) {
+    const useVertex =
+      useVertexPrerequisite && isAnthropicVertexWhitelistedModelId(modelId);
+
+    return new AnthropicLLM(auth, {
+      useVertex,
+      credentials,
+      getTraceInput,
+      getTraceOutput,
+      modelId,
+      temperature,
+      reasoningEffort,
+      responseFormat,
+      bypassFeatureFlag,
+      context,
+      omittedThinking,
     });
   }
 
