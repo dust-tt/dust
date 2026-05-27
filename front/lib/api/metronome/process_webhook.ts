@@ -33,6 +33,8 @@ import {
   getProductExcessCreditsId,
   PLAN_CODE_CUSTOM_FIELD_KEY,
 } from "@app/lib/metronome/constants";
+import { getMetronomeDefaultUserCapAlert } from "@app/lib/metronome/default_user_cap_alert";
+import { getMetronomePerUserCap } from "@app/lib/metronome/per_user_alerts";
 import { invalidateContractCache } from "@app/lib/metronome/plan_type";
 import { isMetronomeFreeCredit } from "@app/lib/metronome/types";
 import type { MetronomeWebhookEvent } from "@app/lib/metronome/webhook_events";
@@ -47,6 +49,9 @@ import { launchScheduleWorkspaceScrubWorkflow } from "@app/temporal/scrub_worksp
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { CustomerAlert } from "@metronome/sdk/resources/v1/customers";
+
+type MetronomeAlertState = CustomerAlert["customer_status"];
 
 export class ProcessMetronomeWebhookError extends Error {
   constructor(
@@ -187,6 +192,156 @@ async function ensureWorkOSOrganizationForPaidPlan({
   }
 }
 
+/**
+ * Resolve the effective per-user spend-cap state by re-deriving from
+ * Metronome on every event, then dispatch to the local credit-state machine.
+ *
+ * Override-replaces-default: if a per-user override exists, its evaluation
+ * state wins regardless of the default. Otherwise the workspace-wide
+ * default's state is used. With neither configured, the user is uncapped
+ * (defensive — no alert should be firing in that case).
+ *
+ * The dispatch is idempotent: `setUserSpendLimit` and
+ * `setDefaultUserSpendLimit` (PR B) recompute and dispatch eagerly, so the
+ * webhook arriving later either re-confirms the state or skips (when
+ * Metronome is still in `evaluating`).
+ */
+async function handlePerUserSpendThresholdEvent({
+  workspace,
+  userId,
+  event,
+}: {
+  workspace: WorkspaceResource;
+  userId: string;
+  event: MetronomeWebhookEvent;
+}): Promise<Result<undefined, ProcessMetronomeWebhookError>> {
+  const metronomeCustomerId = workspace.metronomeCustomerId;
+  if (!metronomeCustomerId) {
+    logger.warn(
+      { eventId: event.id, eventType: event.type, workspaceId: workspace.sId },
+      "[Metronome Webhook] per-user spend threshold event for workspace without metronomeCustomerId, skipping"
+    );
+    return new Ok(undefined);
+  }
+
+  const overrideResult = await getMetronomePerUserCap({
+    metronomeCustomerId,
+    workspaceId: workspace.sId,
+    userId,
+  });
+  if (overrideResult.isErr()) {
+    return new Err(
+      new ProcessMetronomeWebhookError(
+        "processing_failed",
+        `Error reading per-user cap override: ${overrideResult.error.message}`
+      )
+    );
+  }
+
+  let effectiveState: MetronomeAlertState;
+  let source: "override" | "default" | "none";
+  if (overrideResult.value) {
+    effectiveState = overrideResult.value.customer_status;
+    source = "override";
+  } else {
+    const defaultResult = await getMetronomeDefaultUserCapAlert({
+      metronomeCustomerId,
+      workspaceId: workspace.sId,
+    });
+    if (defaultResult.isErr()) {
+      return new Err(
+        new ProcessMetronomeWebhookError(
+          "processing_failed",
+          `Error reading default user cap: ${defaultResult.error.message}`
+        )
+      );
+    }
+    if (defaultResult.value) {
+      effectiveState = defaultResult.value.customer_status;
+      source = "default";
+    } else {
+      effectiveState = "ok";
+      source = "none";
+    }
+  }
+
+  switch (effectiveState) {
+    case "in_alarm": {
+      const dispatchResult = await dispatchPerUserCapReached({
+        workspace,
+        userId,
+      });
+      if (dispatchResult.isErr()) {
+        logger.error(
+          {
+            eventId: event.id,
+            eventType: event.type,
+            workspaceId: workspace.sId,
+            userId,
+            source,
+            err: dispatchResult.error,
+          },
+          "[Metronome Webhook] per-user spend threshold: dispatchPerUserCapReached failed"
+        );
+        return new Err(
+          new ProcessMetronomeWebhookError(
+            "processing_failed",
+            `Error dispatching per-user cap reached: ${dispatchResult.error.message}`
+          )
+        );
+      }
+      break;
+    }
+    case "ok": {
+      const dispatchResult = await dispatchPerUserCapResolved({
+        workspace,
+        userId,
+      });
+      if (dispatchResult.isErr()) {
+        logger.error(
+          {
+            eventId: event.id,
+            eventType: event.type,
+            workspaceId: workspace.sId,
+            userId,
+            source,
+            err: dispatchResult.error,
+          },
+          "[Metronome Webhook] per-user spend threshold: dispatchPerUserCapResolved failed"
+        );
+        return new Err(
+          new ProcessMetronomeWebhookError(
+            "processing_failed",
+            `Error dispatching per-user cap resolved: ${dispatchResult.error.message}`
+          )
+        );
+      }
+      break;
+    }
+    case "evaluating":
+    case null:
+      // No-op: Metronome hasn't settled yet (or the alert is archived). The
+      // eager dispatch from `setUserSpendLimit` / `setDefaultUserSpendLimit`
+      // already set the right state; a follow-up event will reconcile.
+      break;
+    default:
+      assertNever(effectiveState);
+  }
+
+  logger.info(
+    {
+      eventId: event.id,
+      eventType: event.type,
+      workspaceId: workspace.sId,
+      userId,
+      effectiveState,
+      source,
+    },
+    "[Metronome Webhook] per-user spend threshold: handled"
+  );
+  return new Ok(undefined);
+}
+
 export async function processMetronomeWebhook({
   event,
   workspace,
@@ -218,36 +373,14 @@ export async function processMetronomeWebhook({
           );
           break;
         }
-        const dispatchResult = await dispatchPerUserCapReached({
+        const handleResult = await handlePerUserSpendThresholdEvent({
           workspace,
           userId,
+          event,
         });
-        if (dispatchResult.isErr()) {
-          logger.error(
-            {
-              eventId: event.id,
-              workspaceId: workspace.sId,
-              userId,
-              err: dispatchResult.error,
-            },
-            "[Metronome Webhook] spend_threshold_reached: per_user dispatch failed"
-          );
-          return new Err(
-            new ProcessMetronomeWebhookError(
-              "processing_failed",
-              `Error dispatching per-user cap reached: ${dispatchResult.error.message}`
-            )
-          );
+        if (handleResult.isErr()) {
+          return handleResult;
         }
-        logger.info(
-          {
-            eventId: event.id,
-            workspaceId: workspace.sId,
-            userId,
-            currentSpend: event.properties.current_spend,
-          },
-          "[Metronome Webhook] spend_threshold_reached: per_user dispatched"
-        );
       } else {
         await dispatchPaygCapReached({ workspace });
         logger.info(
@@ -263,12 +396,13 @@ export async function processMetronomeWebhook({
     }
     case "alerts.spend_threshold_resolved": {
       // Per-user: at billing-cycle renewal current_spend resets to 0, so
-      // Metronome fires this for every previously-capped user, we uncap them.
+      // Metronome fires this for every previously-capped user — we re-derive
+      // the effective state (override > default > uncapped) and dispatch.
       //
-      // Workspace-level: a `payg_cap_resolved` event means
-      // spend dropped back below the PAYG threshold. We do not transition
-      // on this signal: once the workspace is `depleted`, only a real
-      // pool replenishment (commit.segment.start) brings it back.
+      // Workspace-level: a `payg_cap_resolved` event means spend dropped
+      // back below the PAYG threshold. We do not transition on this signal:
+      // once the workspace is `depleted`, only a real pool replenishment
+      // (commit.segment.start) brings it back.
       const userIdGroup = event.properties.group_values?.find(
         (g) => g.key === "user_id"
       );
@@ -283,36 +417,14 @@ export async function processMetronomeWebhook({
           );
           break;
         }
-
-        const dispatchResult = await dispatchPerUserCapResolved({
+        const handleResult = await handlePerUserSpendThresholdEvent({
           workspace,
           userId,
+          event,
         });
-        if (dispatchResult.isErr()) {
-          logger.error(
-            {
-              eventId: event.id,
-              workspaceId: workspace.sId,
-              userId,
-              err: dispatchResult.error,
-            },
-            "[Metronome Webhook] spend_threshold_resolved: per-user dispatch failed"
-          );
-          return new Err(
-            new ProcessMetronomeWebhookError(
-              "processing_failed",
-              `Error dispatching per-user cap resolved: ${dispatchResult.error.message}`
-            )
-          );
+        if (handleResult.isErr()) {
+          return handleResult;
         }
-        logger.info(
-          {
-            eventId: event.id,
-            workspaceId: workspace.sId,
-            userId,
-          },
-          "[Metronome Webhook] spend_threshold_resolved: per-user dispatched"
-        );
       } else {
         logger.info(
           { eventId: event.id, workspaceId: workspace.sId },

@@ -1,9 +1,17 @@
+import {
+  dispatchPaygCapReached,
+  dispatchPerUserCapReached,
+  dispatchPerUserCapResolved,
+} from "@app/lib/api/metronome/credit_state_dispatcher";
 import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
 import {
   getMetronomeContractById,
   listMetronomeContracts,
 } from "@app/lib/metronome/client";
 import { PLAN_CODE_CUSTOM_FIELD_KEY } from "@app/lib/metronome/constants";
+import * as defaultUserCapAlert from "@app/lib/metronome/default_user_cap_alert";
+import * as perUserAlerts from "@app/lib/metronome/per_user_alerts";
+import type { MetronomeWebhookEvent } from "@app/lib/metronome/webhook_events";
 import { PlanModel } from "@app/lib/models/plan";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
@@ -13,6 +21,7 @@ import {
   launchScheduleWorkspaceScrubWorkflow,
   terminateScheduleWorkspaceScrubWorkflow,
 } from "@app/temporal/scrub_workspace/client";
+import { mockCustomerAlert } from "@app/tests/utils/mocks/metronome";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { Err, Ok } from "@app/types/shared/result";
 import type { ContractV2 } from "@metronome/sdk/resources";
@@ -38,10 +47,43 @@ vi.mock("@app/lib/api/subscription", () => ({
   restoreWorkspaceAfterSubscription: vi.fn(),
 }));
 
+vi.mock("@app/lib/api/metronome/credit_state_dispatcher", async () => {
+  const actual = await vi.importActual<
+    typeof import("@app/lib/api/metronome/credit_state_dispatcher")
+  >("@app/lib/api/metronome/credit_state_dispatcher");
+  return {
+    ...actual,
+    dispatchPerUserCapReached: vi.fn(),
+    dispatchPerUserCapResolved: vi.fn(),
+    dispatchPaygCapReached: vi.fn(),
+  };
+});
+
+vi.mock("@app/lib/metronome/per_user_alerts", async () => {
+  const actual = await vi.importActual<typeof perUserAlerts>(
+    "@app/lib/metronome/per_user_alerts"
+  );
+  return {
+    ...actual,
+    getMetronomePerUserCap: vi.fn(),
+  };
+});
+
+vi.mock("@app/lib/metronome/default_user_cap_alert", async () => {
+  const actual = await vi.importActual<typeof defaultUserCapAlert>(
+    "@app/lib/metronome/default_user_cap_alert"
+  );
+  return {
+    ...actual,
+    getMetronomeDefaultUserCapAlert: vi.fn(),
+  };
+});
+
 const METRONOME_CUSTOMER_ID = "cust_test_xxx";
 const OLD_CONTRACT_ID = "contract_old_xxx";
 const NEW_CONTRACT_ID = "contract_new_yyy";
 const ENT_PLAN_CODE = "ENT_TEST_PLAN";
+const USER_ID = "user_test_xxx";
 
 async function ensureEnterprisePlan(): Promise<void> {
   await PlanModel.upsert({
@@ -91,6 +133,21 @@ function contractEvent(
   };
 }
 
+function spendThresholdEvent(
+  type: "alerts.spend_threshold_reached" | "alerts.spend_threshold_resolved",
+  groupValues?: Array<{ key: string; value?: string }>
+): MetronomeWebhookEvent {
+  return {
+    id: `evt_${type}_xxx`,
+    type,
+    properties: {
+      customer_id: METRONOME_CUSTOMER_ID,
+      current_spend: 1234,
+      group_values: groupValues,
+    },
+  } as MetronomeWebhookEvent;
+}
+
 async function setupMetronomeWorkspace(
   contractId: string,
   { stripeSubscriptionId = null }: { stripeSubscriptionId?: string | null } = {}
@@ -121,6 +178,13 @@ async function setupMetronomeWorkspace(
   return workspace;
 }
 
+async function setupMetronomeWorkspaceResource(): Promise<WorkspaceResource> {
+  const lightWorkspace = await WorkspaceFactory.metronome({
+    metronomeCustomerId: METRONOME_CUSTOMER_ID,
+  });
+  return (await WorkspaceResource.fetchById(lightWorkspace.sId))!;
+}
+
 beforeEach(() => {
   vi.mocked(launchScheduleWorkspaceScrubWorkflow).mockResolvedValue(
     new Ok(undefined as never)
@@ -129,6 +193,15 @@ beforeEach(() => {
     new Ok({} as never)
   );
   vi.mocked(restoreWorkspaceAfterSubscription).mockResolvedValue(undefined);
+  vi.mocked(dispatchPerUserCapReached).mockResolvedValue(new Ok(undefined));
+  vi.mocked(dispatchPerUserCapResolved).mockResolvedValue(new Ok(undefined));
+  vi.mocked(dispatchPaygCapReached).mockResolvedValue(undefined);
+  vi.mocked(perUserAlerts.getMetronomePerUserCap).mockResolvedValue(
+    new Ok(null)
+  );
+  vi.mocked(
+    defaultUserCapAlert.getMetronomeDefaultUserCapAlert
+  ).mockResolvedValue(new Ok(null));
 });
 
 describe("processMetronomeWebhook — contract.start", () => {
@@ -454,5 +527,277 @@ describe("processMetronomeWebhook — contract.end", () => {
     );
     expect(sub!.status).toBe("active");
     expect(sub!.metronomeContractId).toBe(OLD_CONTRACT_ID);
+  });
+});
+
+describe("processMetronomeWebhook — per-user spend threshold (no default alert)", () => {
+  it("dispatches reached when override is IN_ALARM (on reached event)", async () => {
+    const workspace = await setupMetronomeWorkspaceResource();
+    vi.mocked(perUserAlerts.getMetronomePerUserCap).mockResolvedValue(
+      new Ok(
+        mockCustomerAlert({
+          id: "alert_override_xxx",
+          threshold: 1000,
+          customer_status: "in_alarm",
+        })
+      )
+    );
+
+    const result = await processMetronomeWebhook({
+      event: spendThresholdEvent("alerts.spend_threshold_reached", [
+        { key: "user_id", value: USER_ID },
+      ]),
+      workspace,
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(dispatchPerUserCapReached).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: USER_ID })
+    );
+    expect(dispatchPerUserCapResolved).not.toHaveBeenCalled();
+  });
+
+  it("dispatches resolved when override is OK (on resolved event)", async () => {
+    const workspace = await setupMetronomeWorkspaceResource();
+    vi.mocked(perUserAlerts.getMetronomePerUserCap).mockResolvedValue(
+      new Ok(
+        mockCustomerAlert({
+          id: "alert_override_xxx",
+          threshold: 1000,
+          customer_status: "ok",
+        })
+      )
+    );
+
+    const result = await processMetronomeWebhook({
+      event: spendThresholdEvent("alerts.spend_threshold_resolved", [
+        { key: "user_id", value: USER_ID },
+      ]),
+      workspace,
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(dispatchPerUserCapResolved).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: USER_ID })
+    );
+    expect(dispatchPerUserCapReached).not.toHaveBeenCalled();
+  });
+
+  it("no-ops when neither override nor default is configured (defensive)", async () => {
+    const workspace = await setupMetronomeWorkspaceResource();
+    // getMetronomePerUserCap and getMetronomeDefaultUserCapAlert default to Ok(null).
+
+    const result = await processMetronomeWebhook({
+      event: spendThresholdEvent("alerts.spend_threshold_reached", [
+        { key: "user_id", value: USER_ID },
+      ]),
+      workspace,
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(dispatchPerUserCapReached).not.toHaveBeenCalled();
+    // With no alert in place, effective state is "ok" → dispatch resolved.
+    expect(dispatchPerUserCapResolved).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: USER_ID })
+    );
+  });
+
+  it("skips per-user events with no user_id value", async () => {
+    const workspace = await setupMetronomeWorkspaceResource();
+
+    const result = await processMetronomeWebhook({
+      event: spendThresholdEvent("alerts.spend_threshold_reached", [
+        { key: "user_id" },
+      ]),
+      workspace,
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(dispatchPerUserCapReached).not.toHaveBeenCalled();
+    expect(dispatchPerUserCapResolved).not.toHaveBeenCalled();
+    // No fetch attempted — handler bails before reading override state.
+    expect(perUserAlerts.getMetronomePerUserCap).not.toHaveBeenCalled();
+  });
+});
+
+describe("processMetronomeWebhook — per-user spend threshold (default alert configured)", () => {
+  it("uses default alert state when no override exists (IN_ALARM → reached)", async () => {
+    const workspace = await setupMetronomeWorkspaceResource();
+    vi.mocked(
+      defaultUserCapAlert.getMetronomeDefaultUserCapAlert
+    ).mockResolvedValue(
+      new Ok(
+        mockCustomerAlert({
+          id: "alert_default_xxx",
+          threshold: 50_000,
+          customer_status: "in_alarm",
+        })
+      )
+    );
+
+    const result = await processMetronomeWebhook({
+      event: spendThresholdEvent("alerts.spend_threshold_reached", [
+        { key: "user_id", value: USER_ID },
+      ]),
+      workspace,
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(dispatchPerUserCapReached).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: USER_ID })
+    );
+    expect(dispatchPerUserCapResolved).not.toHaveBeenCalled();
+  });
+
+  it("override (OK) wins over default (IN_ALARM) — dispatches resolved", async () => {
+    const workspace = await setupMetronomeWorkspaceResource();
+    vi.mocked(perUserAlerts.getMetronomePerUserCap).mockResolvedValue(
+      new Ok(
+        mockCustomerAlert({
+          id: "alert_override_xxx",
+          threshold: 999_999,
+          customer_status: "ok",
+        })
+      )
+    );
+    vi.mocked(
+      defaultUserCapAlert.getMetronomeDefaultUserCapAlert
+    ).mockResolvedValue(
+      new Ok(
+        mockCustomerAlert({
+          id: "alert_default_xxx",
+          threshold: 1000,
+          customer_status: "in_alarm",
+        })
+      )
+    );
+
+    const result = await processMetronomeWebhook({
+      event: spendThresholdEvent("alerts.spend_threshold_reached", [
+        { key: "user_id", value: USER_ID },
+      ]),
+      workspace,
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(dispatchPerUserCapResolved).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: USER_ID })
+    );
+    expect(dispatchPerUserCapReached).not.toHaveBeenCalled();
+    // Override existed → default lookup was skipped.
+    expect(
+      defaultUserCapAlert.getMetronomeDefaultUserCapAlert
+    ).not.toHaveBeenCalled();
+  });
+
+  it("override (IN_ALARM) wins over default (OK) — dispatches reached", async () => {
+    const workspace = await setupMetronomeWorkspaceResource();
+    vi.mocked(perUserAlerts.getMetronomePerUserCap).mockResolvedValue(
+      new Ok(
+        mockCustomerAlert({
+          id: "alert_override_xxx",
+          threshold: 100,
+          customer_status: "in_alarm",
+        })
+      )
+    );
+    vi.mocked(
+      defaultUserCapAlert.getMetronomeDefaultUserCapAlert
+    ).mockResolvedValue(
+      new Ok(
+        mockCustomerAlert({
+          id: "alert_default_xxx",
+          threshold: 1_000_000,
+          customer_status: "ok",
+        })
+      )
+    );
+
+    const result = await processMetronomeWebhook({
+      event: spendThresholdEvent("alerts.spend_threshold_resolved", [
+        { key: "user_id", value: USER_ID },
+      ]),
+      workspace,
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(dispatchPerUserCapReached).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: USER_ID })
+    );
+    expect(dispatchPerUserCapResolved).not.toHaveBeenCalled();
+  });
+
+  it("no-ops when effective state is EVALUATING", async () => {
+    const workspace = await setupMetronomeWorkspaceResource();
+    vi.mocked(
+      defaultUserCapAlert.getMetronomeDefaultUserCapAlert
+    ).mockResolvedValue(
+      new Ok(
+        mockCustomerAlert({
+          id: "alert_default_xxx",
+          threshold: 50_000,
+          customer_status: "evaluating",
+        })
+      )
+    );
+
+    const result = await processMetronomeWebhook({
+      event: spendThresholdEvent("alerts.spend_threshold_reached", [
+        { key: "user_id", value: USER_ID },
+      ]),
+      workspace,
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(dispatchPerUserCapReached).not.toHaveBeenCalled();
+    expect(dispatchPerUserCapResolved).not.toHaveBeenCalled();
+  });
+
+  it("returns processing_failed when override lookup fails", async () => {
+    const workspace = await setupMetronomeWorkspaceResource();
+    vi.mocked(perUserAlerts.getMetronomePerUserCap).mockResolvedValue(
+      new Err(new Error("metronome down"))
+    );
+
+    const result = await processMetronomeWebhook({
+      event: spendThresholdEvent("alerts.spend_threshold_reached", [
+        { key: "user_id", value: USER_ID },
+      ]),
+      workspace,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe("processing_failed");
+    }
+    expect(dispatchPerUserCapReached).not.toHaveBeenCalled();
+  });
+});
+
+describe("processMetronomeWebhook — workspace-level spend threshold", () => {
+  it("dispatches PAYG cap reached when group_values has no user_id key", async () => {
+    const workspace = await setupMetronomeWorkspaceResource();
+
+    const result = await processMetronomeWebhook({
+      event: spendThresholdEvent("alerts.spend_threshold_reached"),
+      workspace,
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(dispatchPaygCapReached).toHaveBeenCalled();
+    expect(dispatchPerUserCapReached).not.toHaveBeenCalled();
+  });
+
+  it("logs and no-ops on workspace-level resolved", async () => {
+    const workspace = await setupMetronomeWorkspaceResource();
+
+    const result = await processMetronomeWebhook({
+      event: spendThresholdEvent("alerts.spend_threshold_resolved"),
+      workspace,
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(dispatchPaygCapReached).not.toHaveBeenCalled();
+    expect(dispatchPerUserCapResolved).not.toHaveBeenCalled();
   });
 });

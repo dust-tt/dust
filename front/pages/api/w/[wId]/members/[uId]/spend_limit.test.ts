@@ -1,8 +1,10 @@
 import * as creditStateDispatcher from "@app/lib/api/metronome/credit_state_dispatcher";
+import * as defaultUserCapAlert from "@app/lib/metronome/default_user_cap_alert";
 import * as perUserAlerts from "@app/lib/metronome/per_user_alerts";
 import * as perUserUsage from "@app/lib/metronome/per_user_usage";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { mockCustomerAlert } from "@app/tests/utils/mocks/metronome";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { Ok } from "@app/types/shared/result";
@@ -20,6 +22,16 @@ vi.mock("@app/lib/metronome/per_user_alerts", async () => {
     upsertMetronomePerUserCapAlert: vi.fn(),
     clearMetronomePerUserCapAlert: vi.fn(),
     getMetronomePerUserCap: vi.fn(),
+  };
+});
+
+vi.mock("@app/lib/metronome/default_user_cap_alert", async () => {
+  const actual = await vi.importActual<typeof defaultUserCapAlert>(
+    "@app/lib/metronome/default_user_cap_alert"
+  );
+  return {
+    ...actual,
+    getMetronomeDefaultUserCapAlert: vi.fn(),
   };
 });
 
@@ -66,6 +78,9 @@ beforeEach(() => {
   vi.mocked(perUserUsage.fetchPerUserAwuUsage).mockResolvedValue(
     new Ok(new Map())
   );
+  vi.mocked(
+    defaultUserCapAlert.getMetronomeDefaultUserCapAlert
+  ).mockResolvedValue(new Ok(null));
   vi.mocked(creditStateDispatcher.dispatchPerUserCapReached).mockResolvedValue(
     new Ok(undefined)
   );
@@ -243,7 +258,7 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
   });
 
   describe("PUT", () => {
-    it("clears alert + dispatches resolved for unlimited", async () => {
+    it("clears alert + dispatches resolved for unlimited with no default", async () => {
       const workspace = await makeMetronomeWorkspaceWithCustomer();
       const targetUser = await UserFactory.basic();
       await MembershipFactory.associate(workspace, targetUser, {
@@ -279,6 +294,102 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
       );
       expect(
         perUserAlerts.upsertMetronomePerUserCapAlert
+      ).not.toHaveBeenCalled();
+      // No default → no usage fetch needed; behavior matches pre-PR-A.
+      expect(perUserUsage.fetchPerUserAwuUsage).not.toHaveBeenCalled();
+    });
+
+    it("clears alert + dispatches reached for unlimited when default exists and usage is over it", async () => {
+      const workspace = await makeMetronomeWorkspaceWithCustomer();
+      const targetUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, targetUser, {
+        role: "user",
+      });
+
+      vi.mocked(
+        defaultUserCapAlert.getMetronomeDefaultUserCapAlert
+      ).mockResolvedValueOnce(
+        new Ok(
+          mockCustomerAlert({
+            id: "alert_default_xxx",
+            threshold: 1000,
+            customer_status: "ok",
+          })
+        )
+      );
+      vi.mocked(perUserUsage.fetchPerUserAwuUsage).mockResolvedValueOnce(
+        new Ok(new Map([[targetUser.sId, 2500]]))
+      );
+
+      const { req, res } = await createPrivateApiMockRequest({
+        method: "PUT",
+        role: "admin",
+        workspace,
+      });
+      req.query.uId = targetUser.sId;
+      req.body = { kind: "unlimited" };
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(200);
+      expect(res._getJSONData()).toEqual({
+        limit: { kind: "unlimited" },
+        transitionedTo: "reached",
+      });
+      expect(
+        creditStateDispatcher.dispatchPerUserCapReached
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({ userId: targetUser.sId })
+      );
+      expect(
+        creditStateDispatcher.dispatchPerUserCapResolved
+      ).not.toHaveBeenCalled();
+    });
+
+    it("clears alert + dispatches resolved for unlimited when default exists and usage is under it", async () => {
+      const workspace = await makeMetronomeWorkspaceWithCustomer();
+      const targetUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, targetUser, {
+        role: "user",
+      });
+
+      vi.mocked(
+        defaultUserCapAlert.getMetronomeDefaultUserCapAlert
+      ).mockResolvedValueOnce(
+        new Ok(
+          mockCustomerAlert({
+            id: "alert_default_xxx",
+            threshold: 5000,
+            customer_status: "ok",
+          })
+        )
+      );
+      vi.mocked(perUserUsage.fetchPerUserAwuUsage).mockResolvedValueOnce(
+        new Ok(new Map([[targetUser.sId, 100]]))
+      );
+
+      const { req, res } = await createPrivateApiMockRequest({
+        method: "PUT",
+        role: "admin",
+        workspace,
+      });
+      req.query.uId = targetUser.sId;
+      req.body = { kind: "unlimited" };
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(200);
+      expect(res._getJSONData()).toEqual({
+        limit: { kind: "unlimited" },
+        transitionedTo: "resolved",
+      });
+      expect(
+        creditStateDispatcher.dispatchPerUserCapResolved
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({ userId: targetUser.sId })
+      );
+      expect(
+        creditStateDispatcher.dispatchPerUserCapReached
       ).not.toHaveBeenCalled();
     });
 

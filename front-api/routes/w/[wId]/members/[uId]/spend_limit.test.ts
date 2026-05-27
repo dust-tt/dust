@@ -1,4 +1,5 @@
 import * as creditStateDispatcher from "@app/lib/api/metronome/credit_state_dispatcher";
+import * as defaultUserCapAlert from "@app/lib/metronome/default_user_cap_alert";
 import * as perUserAlerts from "@app/lib/metronome/per_user_alerts";
 import * as perUserUsage from "@app/lib/metronome/per_user_usage";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
@@ -19,6 +20,16 @@ vi.mock("@app/lib/metronome/per_user_alerts", async () => {
     upsertMetronomePerUserCapAlert: vi.fn(),
     clearMetronomePerUserCapAlert: vi.fn(),
     getMetronomePerUserCap: vi.fn(),
+  };
+});
+
+vi.mock("@app/lib/metronome/default_user_cap_alert", async () => {
+  const actual = await vi.importActual<typeof defaultUserCapAlert>(
+    "@app/lib/metronome/default_user_cap_alert"
+  );
+  return {
+    ...actual,
+    getMetronomeDefaultUserCapAlert: vi.fn(),
   };
 });
 
@@ -69,6 +80,9 @@ beforeEach(() => {
   vi.mocked(perUserUsage.fetchPerUserAwuUsage).mockResolvedValue(
     new Ok(new Map())
   );
+  vi.mocked(
+    defaultUserCapAlert.getMetronomeDefaultUserCapAlert
+  ).mockResolvedValue(new Ok(null));
   vi.mocked(creditStateDispatcher.dispatchPerUserCapReached).mockResolvedValue(
     new Ok(undefined)
   );
