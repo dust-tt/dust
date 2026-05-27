@@ -3,13 +3,7 @@ import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { resolveMountPoint } from "@app/lib/api/actions/servers/files/tools/utils";
-import {
-  deleteGCSMountFile,
-  getGCSPathFromScopedPath,
-} from "@app/lib/api/files/gcs_mount/files";
-import { parseScopedFilePath } from "@app/lib/api/files/mount_path";
-import { getPrivateUploadBucket } from "@app/lib/file_storage";
+import { DustFileSystem } from "@app/lib/api/file_system";
 import { Err, Ok } from "@app/types/shared/result";
 
 export async function deleteHandler(
@@ -23,48 +17,34 @@ export async function deleteHandler(
     );
   }
 
-  const mountRes = await resolveMountPoint(auth, conversation, {
-    access: "write",
-    scopedPath: path,
-  });
-  if (mountRes.isErr()) {
-    return mountRes;
+  const fsResult = await DustFileSystem.forConversation(auth, conversation);
+  if (fsResult.isErr()) {
+    return new Err(new MCPError(fsResult.error.message, { tracked: false }));
   }
 
-  const { scope, prefix } = mountRes.value;
+  const deleteResult = await fsResult.value.delete(path);
+  if (deleteResult.isErr()) {
+    const err = deleteResult.error;
+    switch (err.code) {
+      case "legacy_path":
+      case "unauthorized":
+        return new Err(new MCPError(err.message, { tracked: false }));
 
-  const gcsPath = getGCSPathFromScopedPath({
-    prefix,
-    scopedPath: path,
-    useCase: scope.useCase,
-  });
-  const parsed = parseScopedFilePath(path);
-  if (!gcsPath || !parsed) {
-    return new Err(
-      new MCPError(
-        `Invalid path: \`${path}\` does not match the resolved mount point.`,
-        { tracked: false }
-      )
-    );
-  }
+      case "invalid_path":
+        return new Err(
+          new MCPError(`Invalid path: \`${path}\`.`, { tracked: false })
+        );
 
-  const bucket = getPrivateUploadBucket();
-  const [exists] = await bucket.file(gcsPath).exists();
-  if (!exists) {
-    return new Err(
-      new MCPError(`File not found: \`${path}\`.`, { tracked: false })
-    );
-  }
+      case "not_found":
+        return new Err(
+          new MCPError(`File not found: \`${path}\`.`, { tracked: false })
+        );
 
-  const deleteRes = await deleteGCSMountFile(auth, scope, {
-    relativeFilePath: parsed.rel,
-  });
-  if (deleteRes.isErr()) {
-    return new Err(
-      new MCPError(
-        `Failed to delete file \`${path}\`: ${deleteRes.error.message}`
-      )
-    );
+      default:
+        return new Err(
+          new MCPError(`Failed to delete file \`${path}\`: ${err.message}`)
+        );
+    }
   }
 
   return new Ok([{ type: "text", text: `Deleted \`${path}\`.` }]);

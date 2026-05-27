@@ -8,19 +8,12 @@ import {
   FILES_MOVE_ACTION_NAME,
   FILES_SERVER_NAME,
 } from "@app/lib/api/actions/servers/files/metadata";
-import { resolveMountPoint } from "@app/lib/api/actions/servers/files/tools/utils";
-import {
-  copyMountFile,
-  getGCSPathFromScopedPath,
-} from "@app/lib/api/files/gcs_mount/files";
-import { parseScopedFilePath } from "@app/lib/api/files/mount_path";
-import { getPrivateUploadBucket } from "@app/lib/file_storage";
+import { DustFileSystem } from "@app/lib/api/file_system";
 import {
   isInteractiveContentType,
   stripMimeParameters,
 } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
-import { isString } from "@app/types/shared/utils/general";
 
 export async function copyHandler(
   { source, dest }: { source: string; dest: string },
@@ -33,42 +26,7 @@ export async function copyHandler(
     );
   }
 
-  const sourceMountRes = await resolveMountPoint(auth, conversation, {
-    access: "read",
-    scopedPath: source,
-  });
-  if (sourceMountRes.isErr()) {
-    return sourceMountRes;
-  }
-
-  const destMountRes = await resolveMountPoint(auth, conversation, {
-    access: "write",
-    scopedPath: dest,
-  });
-  if (destMountRes.isErr()) {
-    return destMountRes;
-  }
-
-  const sourceGcsPath = getGCSPathFromScopedPath({
-    prefix: sourceMountRes.value.prefix,
-    scopedPath: source,
-    useCase: sourceMountRes.value.scope.useCase,
-  });
-  const destGcsPath = getGCSPathFromScopedPath({
-    prefix: destMountRes.value.prefix,
-    scopedPath: dest,
-    useCase: destMountRes.value.scope.useCase,
-  });
-  if (!sourceGcsPath || !destGcsPath) {
-    return new Err(
-      new MCPError(
-        "Invalid path: `source` or `dest` does not match the resolved mount point.",
-        { tracked: false }
-      )
-    );
-  }
-
-  if (sourceGcsPath === destGcsPath) {
+  if (source === dest) {
     return new Err(
       new MCPError("`source` and `dest` resolve to the same path.", {
         tracked: false,
@@ -76,23 +34,41 @@ export async function copyHandler(
     );
   }
 
-  const bucket = getPrivateUploadBucket();
-  const sourceFile = bucket.file(sourceGcsPath);
+  const fsResult = await DustFileSystem.forConversation(auth, conversation);
+  if (fsResult.isErr()) {
+    return new Err(new MCPError(fsResult.error.message, { tracked: false }));
+  }
 
-  let mimeType: string;
-  try {
-    const [metadata] = await sourceFile.getMetadata();
-    mimeType = stripMimeParameters(
-      isString(metadata.contentType)
-        ? metadata.contentType
-        : "application/octet-stream"
-    );
-  } catch {
+  const fs = fsResult.value;
+
+  const statResult = await fs.stat(source);
+  if (statResult.isErr()) {
+    const err = statResult.error;
+    switch (err.code) {
+      case "legacy_path":
+        return new Err(new MCPError(err.message, { tracked: false }));
+
+      case "invalid_path":
+        return new Err(
+          new MCPError(`Invalid path: \`${source}\`.`, { tracked: false })
+        );
+
+      default:
+        return new Err(
+          new MCPError(`Failed to read source \`${source}\`: ${err.message}`, {
+            tracked: false,
+          })
+        );
+    }
+  }
+
+  if (statResult.value === null) {
     return new Err(
       new MCPError(`Source file not found: \`${source}\`.`, { tracked: false })
     );
   }
 
+  const mimeType = stripMimeParameters(statResult.value.contentType);
   if (isInteractiveContentType(mimeType)) {
     return new Err(
       new MCPError(
@@ -102,33 +78,26 @@ export async function copyHandler(
     );
   }
 
-  const sourceParsed = parseScopedFilePath(source);
-  const destParsed = parseScopedFilePath(dest);
-  if (!sourceParsed || !destParsed) {
-    return new Err(
-      new MCPError(
-        "Invalid path: `source` or `dest` does not match the resolved mount point.",
-        { tracked: false }
-      )
-    );
-  }
+  const copyResult = await fs.copy({ src: source, dest });
+  if (copyResult.isErr()) {
+    const err = copyResult.error;
+    switch (err.code) {
+      case "legacy_path":
+      case "unauthorized":
+        return new Err(new MCPError(err.message, { tracked: false }));
 
-  const copyRes = await copyMountFile(auth, {
-    source: {
-      scope: sourceMountRes.value.scope,
-      relativeFilePath: sourceParsed.rel,
-    },
-    dest: {
-      scope: destMountRes.value.scope,
-      relativeFilePath: destParsed.rel,
-    },
-  });
-  if (copyRes.isErr()) {
-    return new Err(
-      new MCPError(
-        `Failed to copy \`${source}\` to \`${dest}\`: ${copyRes.error.message}`
-      )
-    );
+      case "invalid_path":
+        return new Err(
+          new MCPError(`Invalid path: \`${dest}\`.`, { tracked: false })
+        );
+
+      default:
+        return new Err(
+          new MCPError(
+            `Failed to copy \`${source}\` to \`${dest}\`: ${err.message}`
+          )
+        );
+    }
   }
 
   return new Ok([

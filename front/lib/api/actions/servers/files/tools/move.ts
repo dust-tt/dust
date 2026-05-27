@@ -4,12 +4,11 @@ import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { resolveMountPoint } from "@app/lib/api/actions/servers/files/tools/utils";
 import {
-  getGCSPathFromScopedPath,
-  moveFile,
-} from "@app/lib/api/files/gcs_mount/files";
-import { getPrivateUploadBucket } from "@app/lib/file_storage";
+  DustFileSystem,
+  SCOPED_PREFIX_CONVERSATION,
+  SCOPED_PREFIX_POD,
+} from "@app/lib/api/file_system";
 import { FileResource } from "@app/lib/resources/file_resource";
 import type { FileUseCase, FileUseCaseMetadata } from "@app/types/files";
 import {
@@ -17,9 +16,70 @@ import {
   stripMimeParameters,
 } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
-import { assertNever } from "@app/types/shared/utils/assert_never";
-import { isString } from "@app/types/shared/utils/general";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+
+/**
+ * Translate a canonical scoped path to the raw GCS path that FileResource.mountFilePath stores.
+ *
+ * conversation-{cId}/{rel} -> w/{wId}/conversations/{cId}/files/{rel}
+ * pod-{pId}/{rel}          -> w/{wId}/pods/{pId}/files/{rel}
+ *
+ * Returns null for unrecognised prefixes or root-only paths with no rel component.
+ */
+function canonicalToGCSPath(
+  workspaceId: string,
+  scopedPath: string
+): string | null {
+  if (scopedPath.startsWith(SCOPED_PREFIX_CONVERSATION)) {
+    const rest = scopedPath.slice(SCOPED_PREFIX_CONVERSATION.length);
+    const slash = rest.indexOf("/");
+    if (slash < 0) {
+      return null;
+    }
+    return `w/${workspaceId}/conversations/${rest.slice(0, slash)}/files/${rest.slice(slash + 1)}`;
+  }
+
+  if (scopedPath.startsWith(SCOPED_PREFIX_POD)) {
+    const rest = scopedPath.slice(SCOPED_PREFIX_POD.length);
+    const slash = rest.indexOf("/");
+    if (slash < 0) {
+      return null;
+    }
+    return `w/${workspaceId}/pods/${rest.slice(0, slash)}/files/${rest.slice(slash + 1)}`;
+  }
+
+  return null;
+}
+
+/**
+ * Derive the FileUseCase and FileUseCaseMetadata from the canonical dest path.
+ */
+function destMountInfo(
+  scopedPath: string,
+  conversationId: string
+): { useCase: FileUseCase; useCaseMetadata: FileUseCaseMetadata } | null {
+  if (scopedPath.startsWith(SCOPED_PREFIX_CONVERSATION)) {
+    return {
+      useCase: "tool_output",
+      useCaseMetadata: { conversationId },
+    };
+  }
+
+  if (scopedPath.startsWith(SCOPED_PREFIX_POD)) {
+    const rest = scopedPath.slice(SCOPED_PREFIX_POD.length);
+    const slash = rest.indexOf("/");
+    if (slash < 0) {
+      return null;
+    }
+    const spaceId = rest.slice(0, slash);
+    return {
+      useCase: "project_context",
+      useCaseMetadata: { spaceId },
+    };
+  }
+
+  return null;
+}
 
 export async function moveHandler(
   { source, dest }: { source: string; dest: string },
@@ -32,36 +92,6 @@ export async function moveHandler(
     );
   }
 
-  const sourceMountRes = await resolveMountPoint(auth, conversation, {
-    access: "write",
-    scopedPath: source,
-  });
-  if (sourceMountRes.isErr()) {
-    return sourceMountRes;
-  }
-
-  const destMountRes = await resolveMountPoint(auth, conversation, {
-    access: "write",
-    scopedPath: dest,
-  });
-  if (destMountRes.isErr()) {
-    return destMountRes;
-  }
-
-  const sourceGcsPath = getGCSPathFromScopedPath({
-    prefix: sourceMountRes.value.prefix,
-    scopedPath: source,
-    useCase: sourceMountRes.value.scope.useCase,
-  });
-  if (!sourceGcsPath) {
-    return new Err(
-      new MCPError(
-        "Invalid path: `source` does not match the resolved mount point.",
-        { tracked: false }
-      )
-    );
-  }
-
   if (source === dest) {
     return new Err(
       new MCPError("`source` and `dest` resolve to the same path.", {
@@ -70,58 +100,90 @@ export async function moveHandler(
     );
   }
 
-  const bucket = getPrivateUploadBucket();
-  let mimeType: string;
-  try {
-    const [metadata] = await bucket.file(sourceGcsPath).getMetadata();
-    mimeType = stripMimeParameters(
-      isString(metadata.contentType)
-        ? metadata.contentType
-        : "application/octet-stream"
-    );
-  } catch {
+  const fsResult = await DustFileSystem.forConversation(auth, conversation);
+  if (fsResult.isErr()) {
+    return new Err(new MCPError(fsResult.error.message, { tracked: false }));
+  }
+  const fs = fsResult.value;
+
+  const statResult = await fs.stat(source);
+  if (statResult.isErr()) {
+    const err = statResult.error;
+    switch (err.code) {
+      case "legacy_path":
+        return new Err(new MCPError(err.message, { tracked: false }));
+
+      case "invalid_path":
+        return new Err(
+          new MCPError(`Invalid path: \`${source}\`.`, { tracked: false })
+        );
+
+      default:
+        return new Err(
+          new MCPError(`Failed to read source \`${source}\`: ${err.message}`, {
+            tracked: false,
+          })
+        );
+    }
+  }
+
+  if (statResult.value === null) {
     return new Err(
       new MCPError(`Source file not found: \`${source}\`.`, { tracked: false })
     );
   }
 
-  const [linkedFileResource] = await FileResource.fetchByMountFilePaths(auth, [
-    sourceGcsPath,
-  ]);
+  const mimeType = stripMimeParameters(statResult.value.contentType);
+  const workspaceId = auth.getNonNullableWorkspace().sId;
 
-  const destFileName = dest.split("/").pop() ?? dest;
-  const destScope = destMountRes.value.scope;
-  let destUseCase: FileUseCase;
-  let destUseCaseMetadata: FileUseCaseMetadata | undefined;
-  switch (destScope.useCase) {
-    case "project":
-      destUseCase = "project_context";
-      destUseCaseMetadata = { spaceId: destScope.projectId };
-      break;
-    case "conversation":
-      destUseCase = "tool_output";
-      destUseCaseMetadata = { conversationId: conversation.sId };
-      break;
-    default:
-      assertNever(destScope);
+  // Look up any linked FileResource before moving the bytes (best-effort: no error if none found).
+  // mountFilePath stores raw GCS paths; try both pods/ and projects/ variants for pod mounts.
+  const sourceGcsPath = canonicalToGCSPath(workspaceId, source);
+  const linkedFileResources = sourceGcsPath
+    ? await FileResource.fetchByMountFilePaths(auth, [
+        sourceGcsPath,
+        // Also try the legacy projects/ mirror path so we find records written before the pods/ switch.
+        sourceGcsPath.replace(/^(w\/[^/]+\/)pods\//, "$1projects/"),
+      ])
+    : [];
+  const linkedFileResource = linkedFileResources[0];
+
+  const moveResult = await fs.move({ src: source, dest });
+  if (moveResult.isErr()) {
+    const err = moveResult.error;
+    switch (err.code) {
+      case "legacy_path":
+      case "unauthorized":
+        return new Err(new MCPError(err.message, { tracked: false }));
+
+      case "invalid_path":
+        return new Err(
+          new MCPError(`Invalid path: \`${dest}\`.`, { tracked: false })
+        );
+
+      default:
+        return new Err(
+          new MCPError(
+            `Failed to move \`${source}\` to \`${dest}\`: ${err.message}`
+          )
+        );
+    }
   }
 
-  const destRelativeFilePath = dest.slice(`${destScope.useCase}/`.length);
-  const moveRes = await moveFile(auth, {
-    file: linkedFileResource,
-    sourceGcsPath,
-    destScope,
-    destRelativeFilePath,
-    destFileName,
-    destUseCase,
-    destUseCaseMetadata,
-  });
-  if (moveRes.isErr()) {
-    return new Err(
-      new MCPError(
-        `Failed to move \`${source}\` to \`${dest}\`: ${moveRes.error.message}`
-      )
-    );
+  // Update the linked FileResource's mount metadata to reflect the new location.
+  if (linkedFileResource) {
+    const destFileName = dest.split("/").pop() ?? dest;
+    const destGcsPath = canonicalToGCSPath(workspaceId, dest);
+    const destInfo = destMountInfo(dest, conversation.sId);
+
+    if (destGcsPath && destInfo) {
+      await linkedFileResource.updateMount({
+        destFileName,
+        destMountFilePath: destGcsPath,
+        destUseCase: destInfo.useCase,
+        destUseCaseMetadata: destInfo.useCaseMetadata,
+      });
+    }
   }
 
   const items: Array<
@@ -135,6 +197,7 @@ export async function moveHandler(
   ];
 
   if (isAllSupportedFileContentType(mimeType)) {
+    const destFileName = dest.split("/").pop() ?? dest;
     items.push({
       type: "resource",
       resource: {
