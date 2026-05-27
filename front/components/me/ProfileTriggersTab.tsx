@@ -1,9 +1,7 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useDeleteTrigger, useUserTriggers } from "@app/lib/swr/agent_triggers";
 import { classNames } from "@app/lib/utils";
-import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import { describeScheduleConfig } from "@app/lib/utils/schedule_description";
-import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { TriggerType } from "@app/types/assistant/triggers";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -20,13 +18,12 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  PencilSquareIcon,
   SearchInput,
   Spinner,
   TrashIcon,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 interface ProfileTriggersTabProps {
   owner: WorkspaceType;
@@ -38,13 +35,6 @@ export function ProfileTriggersTab({ owner }: ProfileTriggersTabProps) {
   });
 
   const [searchQuery, setSearchQuery] = useState("");
-
-  const getEditionURL = useCallback(
-    (agentConfigurationId: string) => {
-      return getAgentBuilderRoute(owner.sId, agentConfigurationId);
-    },
-    [owner.sId]
-  );
 
   const [triggerToDelete, setTriggerToDelete] = useState<TriggerType | null>(
     null
@@ -158,17 +148,11 @@ export function ProfileTriggersTab({ owner }: ProfileTriggersTabProps) {
         header: "Action",
         accessorKey: "actions",
         cell: ({ row }) => {
-          const buttonProps = isGlobalAgentId(row.original.agentConfigurationId)
-            ? {
-                onClick: () => setTriggerToDelete(row.original),
-                icon: TrashIcon,
-                label: "Delete",
-              }
-            : {
-                href: getEditionURL(row.original.agentConfigurationId),
-                icon: PencilSquareIcon,
-                label: "Manage",
-              };
+          const buttonProps = {
+            onClick: () => setTriggerToDelete(row.original),
+            icon: TrashIcon,
+            label: "Delete",
+          };
 
           return (
             <DataTable.CellContent>
@@ -181,7 +165,7 @@ export function ProfileTriggersTab({ owner }: ProfileTriggersTabProps) {
         },
       },
     ],
-    [getEditionURL]
+    []
   );
 
   return (
