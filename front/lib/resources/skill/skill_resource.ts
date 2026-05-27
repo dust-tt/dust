@@ -1935,19 +1935,19 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     const result = new Map<string, AgentConfigurationModel[]>();
     for (const as of agentSkills) {
-      const skillSId = as.customSkillId
+      const skillId = as.customSkillId
         ? sIdByCustomId.get(as.customSkillId)
         : (as.globalSkillId ?? undefined);
-      if (!skillSId) {
+      if (!skillId) {
         continue;
       }
       const agent = agentConfigById.get(as.agentConfigurationId);
       if (!agent) {
         continue;
       }
-      const list = result.get(skillSId) ?? [];
+      const list = result.get(skillId) ?? [];
       list.push(agent);
-      result.set(skillSId, list);
+      result.set(skillId, list);
     }
 
     return result;
@@ -1961,11 +1961,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     auth: Authenticator,
     skills: SkillResource[]
   ): Promise<Map<string, AgentsUsageType>> {
-    const agentsBySkillSId = await this.batchListActiveAgents(auth, skills);
+    const agentsBySkillId = await this.batchListActiveAgents(auth, skills);
 
     const result = new Map<string, AgentsUsageType>();
     for (const skill of skills) {
-      const agents = (agentsBySkillSId.get(skill.sId) ?? [])
+      const agents = (agentsBySkillId.get(skill.sId) ?? [])
         .map((agent) => ({
           sId: agent.sId,
           name: agent.name,
