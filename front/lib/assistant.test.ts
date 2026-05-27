@@ -1,9 +1,6 @@
 import { getWhitelistedProviders } from "@app/lib/api/assistant/models";
 import type { RegionType } from "@app/lib/api/regions/config";
-import {
-  filterCustomAvailableAndWhitelistedModels,
-  isModelAvailable,
-} from "@app/lib/assistant";
+import { filterEnabledModels, isModelAvailable } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
 import {
   DUST_COMPANY_PLAN_CODE,
@@ -298,13 +295,13 @@ describe("isModelAvailable", () => {
   });
 });
 
-describe("filterCustomAvailableAndWhitelistedModels", () => {
+describe("filterEnabledModels", () => {
   it("should include model when available and provider is whitelisted", async () => {
     const workspace = await WorkspaceFactory.basic();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
     const model = createMockModel({ providerId: "openai", largeModel: false });
 
-    const result = filterCustomAvailableAndWhitelistedModels([model], {
+    const result = filterEnabledModels([model], {
       featureFlags: [],
       plan: auth.plan(),
       owner: auth.getNonNullableWorkspace(),
@@ -324,7 +321,7 @@ describe("filterCustomAvailableAndWhitelistedModels", () => {
       largeModel: false,
     });
 
-    const result = filterCustomAvailableAndWhitelistedModels([model], {
+    const result = filterEnabledModels([model], {
       featureFlags: [],
       plan: auth.plan(),
       owner: auth.getNonNullableWorkspace(),
@@ -343,7 +340,7 @@ describe("filterCustomAvailableAndWhitelistedModels", () => {
       largeModel: false,
     });
 
-    const result = filterCustomAvailableAndWhitelistedModels([model], {
+    const result = filterEnabledModels([model], {
       featureFlags: [],
       plan: auth.plan(),
       owner: auth.getNonNullableWorkspace(),
@@ -362,7 +359,7 @@ describe("filterCustomAvailableAndWhitelistedModels", () => {
       largeModel: false,
     });
 
-    const result = filterCustomAvailableAndWhitelistedModels([model], {
+    const result = filterEnabledModels([model], {
       featureFlags: ["deepseek_feature"],
       plan: auth.plan(),
       owner: auth.getNonNullableWorkspace(),
@@ -386,16 +383,13 @@ describe("filterCustomAvailableAndWhitelistedModels", () => {
       largeModel: false,
     });
 
-    const result = filterCustomAvailableAndWhitelistedModels(
-      [openaiModel, xaiModel],
-      {
-        featureFlags: [],
-        plan: auth.plan(),
-        owner: auth.getNonNullableWorkspace(),
-        region: TEST_REGION,
-        whitelistedProviders: getWhitelistedProviders(auth),
-      }
-    );
+    const result = filterEnabledModels([openaiModel, xaiModel], {
+      featureFlags: [],
+      plan: auth.plan(),
+      owner: auth.getNonNullableWorkspace(),
+      region: TEST_REGION,
+      whitelistedProviders: getWhitelistedProviders(auth),
+    });
     expect(result).toEqual([openaiModel]);
   });
 
@@ -407,7 +401,7 @@ describe("filterCustomAvailableAndWhitelistedModels", () => {
       largeModel: false,
     });
 
-    const result = filterCustomAvailableAndWhitelistedModels([model], {
+    const result = filterEnabledModels([model], {
       featureFlags: [],
       plan: auth.plan(),
       owner: auth.getNonNullableWorkspace(),

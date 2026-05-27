@@ -64,7 +64,30 @@ export function isModelAvailable(
   return false;
 }
 
-export function filterCustomAvailableAndWhitelistedModels(
+// Returns true if the model is enabled for the workspace.
+export function isModelEnabled(
+  m: ModelConfigurationType,
+  {
+    featureFlags,
+    plan,
+    owner,
+    region,
+    whitelistedProviders,
+  }: {
+    featureFlags: WhitelistableFeature[];
+    plan: PlanType | null;
+    owner: WorkspaceType;
+    region: RegionType;
+    whitelistedProviders: Set<ModelProviderIdType>;
+  }
+) {
+  return (
+    isModelAvailable(m, { featureFlags, plan, owner, region }) &&
+    whitelistedProviders.has(m.providerId)
+  );
+}
+
+export function filterEnabledModels(
   models: ModelConfigurationType[],
   {
     featureFlags,
@@ -80,9 +103,13 @@ export function filterCustomAvailableAndWhitelistedModels(
     whitelistedProviders: Set<ModelProviderIdType>;
   }
 ): ModelConfigurationType[] {
-  return models.filter(
-    (m) =>
-      isModelAvailable(m, { featureFlags, plan, owner, region }) &&
-      whitelistedProviders.has(m.providerId)
+  return models.filter((m) =>
+    isModelEnabled(m, {
+      featureFlags,
+      plan,
+      owner,
+      region,
+      whitelistedProviders,
+    })
   );
 }
