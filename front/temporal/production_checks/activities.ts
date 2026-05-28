@@ -138,14 +138,13 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
       checkName: check.name,
       uuid,
     });
+
     try {
-      const currentHour = new Date().getHours();
       if (currentHour % check.everyHour !== 0) {
         logger.info("Check skipped", {
           currentHour,
           everyHour: check.everyHour,
         });
-        Context.current().heartbeat({ type: "skip", name: check.name, uuid });
 
         results.push({
           checkName: check.name,
@@ -155,8 +154,16 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
           errorMessage: null,
           actionLinks: [],
         });
+
+        completedCheckNames.push(check.name);
+        sendCheckHeartbeat({
+          context,
+          heartbeat: { type: "skip", name: check.name, uuid },
+          completedCheckNames,
+        });
       } else {
         logger.info("Check starting");
+
         let checkSucceeded = true;
         let lastSuccessPayload: CheckSuccessPayload | undefined;
         const errorMessages: string[] = [];
@@ -169,39 +176,43 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
         };
         const reportFailure = (
           payload: CheckFailurePayload,
-          message: string
+          message: string,
         ) => {
           logger.error(
             { payload, errorMessage: message },
-            "Production check failed"
+            "Production check failed",
           );
           checkSucceeded = false;
           allFailurePayloads.push({ ...payload, errorMessage: message });
           errorMessages.push(message);
           allActionLinks.push(...(payload.actionLinks ?? []));
         };
+
         const heartbeat = async () => {
-          return Context.current().heartbeat({
-            type: "processing",
-            name: check.name,
-            uuid,
+          return sendCheckHeartbeat({
+            context,
+            heartbeat: {
+              type: "processing",
+              name: check.name,
+              uuid,
+            },
+            completedCheckNames,
           });
         };
-        Context.current().heartbeat({ type: "start", name: check.name, uuid });
+
+        sendCheckHeartbeat({
+          context,
+          heartbeat: { type: "start", name: check.name, uuid },
+          completedCheckNames,
+        });
+
         await check.check(
           check.name,
           logger,
           reportSuccess,
           reportFailure,
-          heartbeat
+          heartbeat,
         );
-
-        Context.current().heartbeat({
-          type: checkSucceeded ? "success" : "failure",
-          name: check.name,
-          uuid,
-        });
-        Context.current().heartbeat({ type: "finish", name: check.name, uuid });
 
         results.push({
           checkName: check.name,
@@ -219,6 +230,17 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
           actionLinks: allActionLinks,
         });
 
+        completedCheckNames.push(check.name);
+        sendCheckHeartbeat({
+          context,
+          heartbeat: {
+            type: checkSucceeded ? "success" : "failure",
+            name: check.name,
+            uuid,
+          },
+          completedCheckNames,
+        });
+
         logger.info("Check done");
       }
     } catch (e) {
@@ -231,6 +253,13 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
         errorMessage: e instanceof Error ? e.message : "Unknown error",
         actionLinks: [],
       });
+
+      completedCheckNames.push(check.name);
+      sendCheckHeartbeat({
+        context,
+        heartbeat: { type: "failure", name: check.name, uuid },
+        completedCheckNames,
+      });
     }
   }
   mainLogger.info({ all_check_uuid: allCheckUuid }, "Done running all checks");
@@ -238,7 +267,7 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
 }
 
 export async function runSingleCheckActivity(
-  checkName: string
+  checkName: string,
 ): Promise<CheckActivityResult> {
   const check = REGISTERED_CHECKS.find((c) => c.name === checkName);
   if (!check) {
@@ -288,7 +317,7 @@ export async function runSingleCheckActivity(
     logger,
     reportSuccess,
     reportFailure,
-    heartbeat
+    heartbeat,
   );
 
   Context.current().heartbeat({
