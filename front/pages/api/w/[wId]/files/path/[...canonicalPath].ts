@@ -3,7 +3,7 @@
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import { mapFsError } from "@app/lib/api/files/file_system_http_errors";
+import type { DustFileSystemError } from "@app/lib/api/file_system/types";
 import {
   moveCanonicalFile,
   renameCanonicalFile,
@@ -70,7 +70,7 @@ async function handler(
 
   const fsResult = await DustFileSystem.fromScopedPath(auth, canonicalPath);
   if (fsResult.isErr()) {
-    return apiError(req, res, mapFsError(fsResult.error));
+    return apiError(req, res, mapDustFsError(fsResult.error));
   }
   const dustFs = fsResult.value;
 
@@ -78,7 +78,7 @@ async function handler(
     case "HEAD": {
       const statResult = await dustFs.stat(canonicalPath);
       if (statResult.isErr()) {
-        return apiError(req, res, mapFsError(statResult.error));
+        return apiError(req, res, mapDustFsError(statResult.error));
       }
       if (!statResult.value) {
         return apiError(req, res, {
@@ -146,7 +146,7 @@ async function handler(
       // Normal inline or attachment stream.
       const statResult = await dustFs.stat(canonicalPath);
       if (statResult.isErr()) {
-        return apiError(req, res, mapFsError(statResult.error));
+        return apiError(req, res, mapDustFsError(statResult.error));
       }
       if (!statResult.value) {
         return apiError(req, res, {
@@ -159,7 +159,7 @@ async function handler(
 
       const readResult = await dustFs.read(canonicalPath);
       if (readResult.isErr()) {
-        return apiError(req, res, mapFsError(readResult.error));
+        return apiError(req, res, mapDustFsError(readResult.error));
       }
       if (!readResult.value) {
         return apiError(req, res, {
@@ -212,7 +212,7 @@ async function handler(
             body.fileName
           );
           if (renameResult.isErr()) {
-            return apiError(req, res, mapFsError(renameResult.error));
+            return apiError(req, res, mapDustFsError(renameResult.error));
           }
 
           break;
@@ -231,7 +231,7 @@ async function handler(
             body.dest
           );
           if (moveResult.isErr()) {
-            return apiError(req, res, mapFsError(moveResult.error));
+            return apiError(req, res, mapDustFsError(moveResult.error));
           }
 
           break;
@@ -248,7 +248,7 @@ async function handler(
     case "DELETE": {
       const deleteResult = await dustFs.delete(canonicalPath);
       if (deleteResult.isErr()) {
-        return apiError(req, res, mapFsError(deleteResult.error));
+        return apiError(req, res, mapDustFsError(deleteResult.error));
       }
 
       res.status(204).end();
@@ -263,6 +263,45 @@ async function handler(
           message: "Only GET, HEAD, PATCH and DELETE methods are supported.",
         },
       });
+  }
+}
+
+function mapDustFsError(err: DustFileSystemError) {
+  switch (err.code) {
+    case "not_found":
+      return {
+        status_code: 404,
+        api_error: { type: "file_not_found", message: err.message },
+      } as const;
+
+    case "unauthorized":
+      return {
+        status_code: 403,
+        api_error: { type: "workspace_auth_error", message: err.message },
+      } as const;
+
+    case "invalid_path":
+    case "legacy_path":
+      return {
+        status_code: 400,
+        api_error: { type: "invalid_request_error", message: err.message },
+      } as const;
+
+    case "already_exists":
+      return {
+        status_code: 409,
+        api_error: { type: "invalid_request_error", message: err.message },
+      } as const;
+
+    case "too_many_mounts":
+    case "internal":
+      return {
+        status_code: 500,
+        api_error: { type: "internal_server_error", message: err.message },
+      } as const;
+
+    default:
+      assertNever(err.code);
   }
 }
 

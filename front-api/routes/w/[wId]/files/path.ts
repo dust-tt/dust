@@ -1,5 +1,5 @@
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import { mapFsError } from "@app/lib/api/files/file_system_http_errors";
+import type { DustFileSystemError } from "@app/lib/api/file_system/types";
 import {
   moveCanonicalFile,
   renameCanonicalFile,
@@ -70,7 +70,7 @@ async function resolveFs(
   const auth = ctx.get("auth");
   const fsResult = await DustFileSystem.fromScopedPath(auth, canonicalPath);
   if (fsResult.isErr()) {
-    return { fs: null, err: apiError(ctx, mapFsError(fsResult.error)) };
+    return { fs: null, err: apiError(ctx, mapDustFsError(fsResult.error)) };
   }
 
   return { fs: fsResult.value, err: null };
@@ -126,7 +126,7 @@ app.get("/:canonicalPath{.+}", async (ctx) => {
   // Normal inline or attachment stream.
   const statResult = await dustFs.stat(canonicalPath);
   if (statResult.isErr()) {
-    return apiError(ctx, mapFsError(statResult.error));
+    return apiError(ctx, mapDustFsError(statResult.error));
   }
   if (!statResult.value) {
     return apiError(ctx, {
@@ -139,7 +139,7 @@ app.get("/:canonicalPath{.+}", async (ctx) => {
 
   const readResult = await dustFs.read(canonicalPath);
   if (readResult.isErr()) {
-    return apiError(ctx, mapFsError(readResult.error));
+    return apiError(ctx, mapDustFsError(readResult.error));
   }
   if (!readResult.value) {
     return apiError(ctx, {
@@ -184,7 +184,7 @@ app.on("HEAD", "/:canonicalPath{.+}", async (ctx) => {
 
   const statResult = await dustFs.stat(canonicalPath);
   if (statResult.isErr()) {
-    return apiError(ctx, mapFsError(statResult.error));
+    return apiError(ctx, mapDustFsError(statResult.error));
   }
   if (!statResult.value) {
     return apiError(ctx, {
@@ -245,7 +245,7 @@ app.patch("/:canonicalPath{.+}", async (ctx) => {
         data.fileName
       );
       if (renameResult.isErr()) {
-        return apiError(ctx, mapFsError(renameResult.error));
+        return apiError(ctx, mapDustFsError(renameResult.error));
       }
       break;
     }
@@ -261,7 +261,7 @@ app.patch("/:canonicalPath{.+}", async (ctx) => {
         data.dest
       );
       if (moveResult.isErr()) {
-        return apiError(ctx, mapFsError(moveResult.error));
+        return apiError(ctx, mapDustFsError(moveResult.error));
       }
       break;
     }
@@ -282,10 +282,49 @@ app.delete("/:canonicalPath{.+}", async (ctx) => {
 
   const deleteResult = await dustFs.delete(canonicalPath);
   if (deleteResult.isErr()) {
-    return apiError(ctx, mapFsError(deleteResult.error));
+    return apiError(ctx, mapDustFsError(deleteResult.error));
   }
 
   return new Response(null, { status: 204 });
 });
+
+function mapDustFsError(err: DustFileSystemError) {
+  switch (err.code) {
+    case "not_found":
+      return {
+        status_code: 404,
+        api_error: { type: "file_not_found", message: err.message },
+      } as const;
+
+    case "unauthorized":
+      return {
+        status_code: 403,
+        api_error: { type: "workspace_auth_error", message: err.message },
+      } as const;
+
+    case "invalid_path":
+    case "legacy_path":
+      return {
+        status_code: 400,
+        api_error: { type: "invalid_request_error", message: err.message },
+      } as const;
+
+    case "already_exists":
+      return {
+        status_code: 409,
+        api_error: { type: "invalid_request_error", message: err.message },
+      } as const;
+
+    case "too_many_mounts":
+    case "internal":
+      return {
+        status_code: 500,
+        api_error: { type: "internal_server_error", message: err.message },
+      } as const;
+
+    default:
+      assertNever(err.code);
+  }
+}
 
 export default app;
