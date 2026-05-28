@@ -561,7 +561,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — guards", () => {
 });
 
 describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
-  it("persists paygCapCredits and syncs the Metronome alert when switching to enterprise with PAYG enabled", async () => {
+  it("persists usageCapCredits and syncs the Metronome alert when switching to enterprise with PAYG enabled", async () => {
     await ensureEnterprisePlan();
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "POST",
@@ -569,7 +569,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
     });
     await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
 
-    req.body = enterpriseBody({ paygEnabled: true, paygCapCredits: 50_000 });
+    req.body = enterpriseBody({ paygEnabled: true, usageCapCredits: 50_000 });
     req.query.wId = workspace.sId;
 
     await handler(req, res);
@@ -581,17 +581,17 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
     );
     const config =
       await CreditUsageConfigurationResource.fetchByWorkspaceId(adminAuth);
-    expect(config?.paygCapCredits).toBe(50_000);
+    expect(config?.usageCapCredits).toBe(50_000);
   });
 
-  it("persists paygCapCredits when switching to business with PAYG enabled", async () => {
+  it("persists usageCapCredits when switching to business with PAYG enabled", async () => {
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "POST",
       isSuperUser: true,
     });
     await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
 
-    req.body = businessBody({ paygEnabled: true, paygCapCredits: 25_000 });
+    req.body = businessBody({ paygEnabled: true, usageCapCredits: 25_000 });
     req.query.wId = workspace.sId;
 
     await handler(req, res);
@@ -603,7 +603,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
     );
     const config =
       await CreditUsageConfigurationResource.fetchByWorkspaceId(adminAuth);
-    expect(config?.paygCapCredits).toBe(25_000);
+    expect(config?.usageCapCredits).toBe(25_000);
   });
 
   it("rejects PAYG on a pro contract", async () => {
@@ -613,7 +613,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
     });
     await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
 
-    req.body = proBody({ paygEnabled: true, paygCapCredits: 10_000 });
+    req.body = proBody({ paygEnabled: true, usageCapCredits: 10_000 });
     req.query.wId = workspace.sId;
 
     await handler(req, res);
@@ -625,7 +625,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
     expect(provisionMetronomeContract).not.toHaveBeenCalled();
   });
 
-  it("rejects when paygEnabled is true but paygCapCredits is missing", async () => {
+  it("accepts paygEnabled without a usage cap (no alert)", async () => {
     await ensureEnterprisePlan();
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "POST",
@@ -638,11 +638,18 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
 
     await handler(req, res);
 
-    expect(res._getStatusCode()).toBe(400);
-    expect(res._getJSONData().error.message).toContain("PAYG cap");
+    expect(res._getStatusCode()).toBe(200);
+
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const config =
+      await CreditUsageConfigurationResource.fetchByWorkspaceId(adminAuth);
+    expect(config?.paygEnabled).toBe(true);
+    expect(config?.usageCapCredits).toBeNull();
   });
 
-  it("clears paygCapCredits when paygEnabled is false", async () => {
+  it("preserves usageCapCredits when paygEnabled is toggled off", async () => {
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "POST",
       isSuperUser: true,
@@ -654,11 +661,12 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
     );
     await CreditUsageConfigurationResource.makeNew(adminAuth, {
       defaultDiscountPercent: 0,
-      paygCapCredits: 100_000,
+      paygEnabled: true,
+      usageCapCredits: 100_000,
       disableCreditCapWarning: false,
     });
 
-    req.body = proBody();
+    req.body = proBody({ usageCapCredits: 100_000 });
     req.query.wId = workspace.sId;
 
     await handler(req, res);
@@ -667,6 +675,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
 
     const config =
       await CreditUsageConfigurationResource.fetchByWorkspaceId(adminAuth);
-    expect(config?.paygCapCredits).toBeNull();
+    expect(config?.paygEnabled).toBe(false);
+    expect(config?.usageCapCredits).toBe(100_000);
   });
 });
