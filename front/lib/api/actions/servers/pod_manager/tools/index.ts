@@ -1,5 +1,5 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import { makePodConfigurationURI } from "@app/lib/actions/mcp_internal_actions/project_configuration_uri";
+import { makePodConfigurationURI } from "@app/lib/actions/mcp_internal_actions/pod_configuration_uri";
 import type {
   ToolDefinition,
   ToolHandlers,

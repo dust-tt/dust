@@ -4,7 +4,7 @@ import {
   ConfigurableToolInputJSONSchemas,
   validateConfiguredJsonSchema,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import { makePodConfigurationURI } from "@app/lib/actions/mcp_internal_actions/project_configuration_uri";
+import { makePodConfigurationURI } from "@app/lib/actions/mcp_internal_actions/pod_configuration_uri";
 import { isServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type {
   DataSourceConfiguration,

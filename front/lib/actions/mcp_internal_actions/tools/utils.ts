@@ -10,7 +10,7 @@ import {
 import {
   type PodConfigInfo,
   parsePodConfigurationURI,
-} from "@app/lib/actions/mcp_internal_actions/project_configuration_uri";
+} from "@app/lib/actions/mcp_internal_actions/pod_configuration_uri";
 import type { TagsInputType } from "@app/lib/actions/mcp_internal_actions/types";
 import type {
   DataSourceConfiguration,

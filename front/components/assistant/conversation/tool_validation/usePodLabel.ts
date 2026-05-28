@@ -1,5 +1,5 @@
 import { useConversation } from "@app/hooks/conversations/useConversation";
-import { parsePodConfigurationURI } from "@app/lib/actions/mcp_internal_actions/project_configuration_uri";
+import { parsePodConfigurationURI } from "@app/lib/actions/mcp_internal_actions/pod_configuration_uri";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import type { LightWorkspaceType } from "@app/types/user";
 
