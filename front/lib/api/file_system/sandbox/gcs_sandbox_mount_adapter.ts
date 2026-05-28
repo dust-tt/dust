@@ -3,6 +3,10 @@ import {
   mintDownscopedGcsToken,
 } from "@app/lib/api/sandbox/gcs/token";
 import type { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
+import {
+  type RootCommand,
+  rootCommand,
+} from "@app/lib/api/sandbox/root_command";
 import type { Authenticator } from "@app/lib/auth";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import logger from "@app/logger/logger";
@@ -119,23 +123,22 @@ export class GCSSandboxMountAdapter implements SandboxMountAdapter {
     const mountResults = await concurrentExecutor(
       [...targets],
       async (target) => {
-        const mkdirResult = await sandbox.exec(
+        const mkdirResult = await sandbox.execRoot(
           auth,
-          `mkdir -p ${target.sandboxMountPoint}`,
-          { user: "root" }
+          rootCommand.exec("/usr/bin/mkdir", ["-p", target.sandboxMountPoint])
         );
         if (mkdirResult.isErr()) {
           return mkdirResult;
         }
 
-        const mountResult = await sandbox.exec(
+        const mountResult = await sandbox.execRoot(
           auth,
           buildMountCommand({
             bucket,
             prefix: target.gcsPrefix,
             mountPoint: target.sandboxMountPoint,
           }),
-          { timeoutMs: MOUNT_TIMEOUT_MS, user: "root" }
+          { timeoutMs: MOUNT_TIMEOUT_MS }
         );
 
         if (mountResult.isErr()) {
@@ -160,10 +163,13 @@ export class GCSSandboxMountAdapter implements SandboxMountAdapter {
 
         // 5. Backward-compat symlink so old paths keep working.
         if (target.legacySandboxMountPoint) {
-          const symlinkResult = await sandbox.exec(
+          const symlinkResult = await sandbox.execRoot(
             auth,
-            `ln -sfn ${target.sandboxMountPoint} ${target.legacySandboxMountPoint}`,
-            { user: "root" }
+            rootCommand.exec("/usr/bin/ln", [
+              "-sfn",
+              target.sandboxMountPoint,
+              target.legacySandboxMountPoint,
+            ])
           );
           if (symlinkResult.isErr()) {
             // Non-fatal: canonical path works, old code hitting the legacy path will just fail.
@@ -251,23 +257,31 @@ function buildMountCommand({
   bucket: string;
   prefix: string;
   mountPoint: string;
-}): string {
+}): RootCommand {
   const flags = [
-    "--token-url http://127.0.0.1:9876",
+    "--token-url",
+    "http://127.0.0.1:9876",
     // Disable token caching so gcsfuse fetches a fresh credential on every GCS API request.
     "--reuse-token-from-url=false",
-    `--only-dir ${prefix}`,
+    "--only-dir",
+    prefix,
     "--implicit-dirs",
-    "-o allow_other",
+    "-o",
+    "allow_other",
     "--file-mode=666",
     "--dir-mode=777",
     "--kernel-list-cache-ttl-secs=60",
     // Disable HNS: GetStorageLayout requires unrestricted objects.list which CAB cannot grant
     // per-prefix. With HNS disabled we scope list access via objectListPrefix conditions.
     "--enable-hns=false",
-  ].join(" ");
+  ];
 
-  return `timeout 30 gcsfuse ${flags} ${bucket} ${mountPoint} 2>&1`;
+  return rootCommand.stderrToStdout(
+    rootCommand.timeout(
+      rootCommand.exec("/usr/bin/gcsfuse", [...flags, bucket, mountPoint]),
+      MOUNT_TIMEOUT_MS / 1_000
+    )
+  );
 }
 
 function buildTokenJson({

@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 
 import { renderEgressSecretPlaceholder } from "@app/lib/api/sandbox/env_vars";
-import { shellEscape } from "@app/lib/api/sandbox/shell";
+import { rootCommand } from "@app/lib/api/sandbox/root_command";
 import type { Authenticator } from "@app/lib/auth";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
@@ -89,14 +89,23 @@ export async function writeEgressSecretsFile(
   // hardened. install -m 600 sets the file's perms; the directory's perms are
   // dsbx's call.
   const tmpPath = `${EGRESS_SECRETS_DIR}/.egress-secrets.json.${randomBytes(8).toString("hex")}.tmp`;
-  const command =
-    `/usr/bin/mkdir -p ${shellEscape(EGRESS_SECRETS_DIR)} && ` +
-    `/usr/bin/install -o root -g root -m 600 /dev/stdin ${shellEscape(tmpPath)} && ` +
-    `/usr/bin/mv ${shellEscape(tmpPath)} ${shellEscape(EGRESS_SECRETS_PATH)}`;
+  const command = rootCommand.and([
+    rootCommand.exec("/usr/bin/mkdir", ["-p", EGRESS_SECRETS_DIR]),
+    rootCommand.exec("/usr/bin/install", [
+      "-o",
+      "root",
+      "-g",
+      "root",
+      "-m",
+      "600",
+      "/dev/stdin",
+      tmpPath,
+    ]),
+    rootCommand.exec("/usr/bin/mv", [tmpPath, EGRESS_SECRETS_PATH]),
+  ]);
 
-  const result = await sandbox.exec(auth, command, {
+  const result = await sandbox.execRoot(auth, command, {
     stdin: JSON.stringify(entriesResult.value),
-    user: "root",
   });
   if (result.isErr()) {
     return result;
