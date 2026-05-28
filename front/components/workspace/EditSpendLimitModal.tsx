@@ -235,12 +235,12 @@ export function EditSpendLimitModal({
               <RadioGroupItem
                 value="default"
                 id="spend-limit-default"
-                label="Use default usage limit"
+                label="Use workspace default"
               />
               <RadioGroupItem
                 value="override"
                 id="spend-limit-override"
-                label="Set credit amount"
+                label="Use custom limit"
               />
 
               {kind === "override" && (
