@@ -18,6 +18,7 @@ import {
   isPodTasksCreateTasksInput,
   isPodTasksUpdateTasksInput,
 } from "@app/lib/api/actions/servers/pod_tasks/types";
+import { WAKEUPS_SERVER_NAME } from "@app/lib/api/actions/servers/wakeups/metadata";
 import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
@@ -117,6 +118,12 @@ const MCP_TOOL_OVERRIDES: Partial<
       },
       alwaysAllowLabel: (agentName) =>
         `Always allow ${asDisplayName(agentName)} to update Pod members`,
+    },
+  },
+  [WAKEUPS_SERVER_NAME]: {
+    schedule_wakeup: {
+      title: (agentName) =>
+        `Allow ${asDisplayName(agentName)} to schedule a wake-up?`,
     },
   },
 };
