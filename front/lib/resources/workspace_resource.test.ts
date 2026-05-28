@@ -87,7 +87,7 @@ import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { WorkspaceType } from "@app/types/user";
 
 function getCacheKeyForWorkspace(workspaceId: string): string {
-  return `cacheWithRedis-_fetchByIdUncached-workspace:sid:${workspaceId}`;
+  return `cacheWithRedis-_fetchByIdUncached-workspace:sid:v2:${workspaceId}`;
 }
 
 const INVALID_RETENTION_DAYS = CONVERSATIONS_RETENTION_MIN_DAYS - 1;

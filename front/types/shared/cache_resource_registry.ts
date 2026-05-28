@@ -42,7 +42,7 @@ export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
         placeholder: "e.g. abc123",
       },
     ],
-    buildResolverKey: (p) => `workspace:sid:${p.wId}`,
+    buildResolverKey: (p) => `workspace:sid:v2:${p.wId}`,
   },
   {
     id: "user_by_workos_id",

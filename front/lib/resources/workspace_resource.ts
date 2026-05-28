@@ -117,8 +117,12 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     this.blob = blob;
   }
 
+  // Bump the version suffix (e.g. `:v2` -> `:v3`) whenever the shape of the
+  // cached workspace data changes, so old entries are not read back into the
+  // new shape. Also mirror the change in `front/types/shared/cache_resource_registry.ts`  // (entry `workspace_by_sid`) — that registry is a parallel source of truth
+  // for the Poke cache-lookup tool.
   private static readonly workspaceCacheKeyResolver = (wId: string) =>
-    `workspace:sid:${wId}`;
+    `workspace:sid:v2:${wId}`;
 
   static isWorkspaceConversationKillSwitchValue(
     killSwitched: unknown
