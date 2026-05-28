@@ -265,6 +265,7 @@ async function handleCallback(ctx: Context) {
     : {};
 
   let callbackWorkspaceId: string | undefined;
+  let callbackUserEmail: string | undefined;
 
   try {
     const {
@@ -277,6 +278,7 @@ async function handleCallback(ctx: Context) {
       code,
       organizationId: stateObj.organizationId,
     });
+    callbackUserEmail = user.email;
 
     if (!sealedSession) {
       throw new Error("Sealed session not found");
@@ -485,9 +487,16 @@ async function handleCallback(ctx: Context) {
   } catch (error) {
     logger.error({ error }, "Error during WorkOS callback");
 
+    // Emit user.login_failed when workspace context is available. Login
+    // failures without workspace context are not audit-logged because audit
+    // logs are workspace-scoped — WorkOS captures those on their side.
+    // When the workspace is known but the user email isn't (e.g. failure
+    // before authenticateWithWorkOSCode could resolve), fall back to
+    // "unknown" for the user target so emit and schema targets always match.
     if (callbackWorkspaceId) {
       const loginFailedAuth =
         await Authenticator.internalAdminForWorkspace(callbackWorkspaceId);
+      const userIdentifier = callbackUserEmail ?? "unknown";
       void emitAuditLogEvent({
         auth: loginFailedAuth,
         action: "user.login_failed",
@@ -496,6 +505,13 @@ async function handleCallback(ctx: Context) {
             "workspace",
             loginFailedAuth.getNonNullableWorkspace()
           ),
+          // Follow the member.invited pattern: when we don't have a Dust
+          // UserResource (the user may never have signed up here), use the
+          // email as the user target's sId.
+          buildAuditLogTarget("user", {
+            sId: userIdentifier,
+            name: userIdentifier,
+          }),
         ],
         metadata: {
           reason: normalizeError(error).message,

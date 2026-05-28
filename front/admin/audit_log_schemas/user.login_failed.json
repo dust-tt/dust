@@ -2,6 +2,9 @@
   "action": "user.login_failed",
   "targets": [
     {
+      "type": "workspace"
+    },
+    {
       "type": "user"
     }
   ],

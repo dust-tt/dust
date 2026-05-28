@@ -2,6 +2,9 @@
   "action": "user.identity_merged",
   "targets": [
     {
+      "type": "workspace"
+    },
+    {
       "type": "user"
     }
   ],
