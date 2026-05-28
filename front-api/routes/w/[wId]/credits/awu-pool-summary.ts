@@ -50,17 +50,6 @@ app.get(
   async (ctx): HandlerResult<AwuPoolSummaryResponseBody> => {
     const auth = ctx.get("auth");
 
-  if (!auth.isAdmin()) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "workspace_auth_error",
-        message:
-          "Only users that are `admins` for the current workspace can view credits.",
-      },
-    });
-  }
-
   const result = await getAwuPoolSummary(auth);
   if (result.isErr()) {
     return summaryErrorToApi(ctx, result.error);

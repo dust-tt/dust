@@ -37,18 +37,6 @@ const app = workspaceApp();
 app.get("/", ensureIsAdmin(), async (ctx): HandlerResult<GetCreditsResponseBody> => {
   const auth = ctx.get("auth");
 
-  const workspace = auth.getNonNullableWorkspace();
-  const { metronomeCustomerId } = workspace;
-  if (!metronomeCustomerId) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Workspace is not configured for Metronome billing.",
-      },
-    });
-  }
-
   const result = await getMetronomeBalances(auth);
   if (result.isErr()) {
     return balancesErrorToApi(ctx, result.error);
