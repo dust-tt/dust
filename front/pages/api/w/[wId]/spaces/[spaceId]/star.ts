@@ -20,7 +20,7 @@ export type PostUserPodStarResponseBody = {
   isStarred: boolean;
 };
 
-const PostUserProjectStarBodySchema = z.object({
+const PostUserPodStarBodySchema = z.object({
   starred: z.boolean(),
 });
 
@@ -42,7 +42,7 @@ async function handler(
 
   switch (req.method) {
     case "POST": {
-      const bodyValidation = PostUserProjectStarBodySchema.safeParse(req.body);
+      const bodyValidation = PostUserPodStarBodySchema.safeParse(req.body);
       if (!bodyValidation.success) {
         return apiError(req, res, {
           status_code: 400,

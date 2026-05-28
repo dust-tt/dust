@@ -1,6 +1,5 @@
 import { validatePinnedFramePath } from "@app/lib/api/projects/pinned_frame";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
-import type { PatchPodMetadataResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_metadata";
 import {
   launchOrSignalProjectTodoWorkflow,
   startImmediateProjectTodoWorkflowOnce,
@@ -14,11 +13,11 @@ import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { withSpace } from "@front-api/middlewares/with_space";
 
-export type GetProjectMetadataResponseBody = {
+export type GetPodMetadataResponseBody = {
   projectMetadata: PodMetadataType | null;
 };
 
-export type PatchProjectMetadataResponseBody = {
+export type PatchPodMetadataResponseBody = {
   projectMetadata: PodMetadataType;
 };
 
@@ -29,7 +28,7 @@ const app = workspaceApp();
 app.get(
   "/",
   withSpace({ requireCanReadOrAdministrate: true }),
-  async (ctx): HandlerResult<GetProjectMetadataResponseBody> => {
+  async (ctx): HandlerResult<GetPodMetadataResponseBody> => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");
 

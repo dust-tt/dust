@@ -8,15 +8,15 @@ import { validate } from "@front-api/middlewares/validator";
 import { withSpace } from "@front-api/middlewares/with_space";
 import { z } from "zod";
 
-export type GetUserProjectNotificationPreferenceResponseBody = {
+export type GetUserPodNotificationPreferenceResponseBody = {
   userProjectNotificationPreference: UserPodNotificationPreference | null;
 };
 
-export type PatchUserProjectNotificationPreferenceResponseBody = {
+export type PatchUserPodNotificationPreferenceResponseBody = {
   userProjectNotificationPreference: UserPodNotificationPreference | null;
 };
 
-const PatchUserProjectNotificationPreferenceBodySchema = z.object({
+const PatchUserPodNotificationPreferenceBodySchema = z.object({
   preference: z.enum(NOTIFICATION_CONDITION_OPTIONS),
 });
 
@@ -26,9 +26,7 @@ const app = workspaceApp();
 app.get(
   "/",
   withSpace({ requireCanReadOrAdministrate: true }),
-  async (
-    ctx
-  ): HandlerResult<GetUserProjectNotificationPreferenceResponseBody> => {
+  async (ctx): HandlerResult<GetUserPodNotificationPreferenceResponseBody> => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");
 
@@ -65,10 +63,10 @@ app.get(
 app.patch(
   "/",
   withSpace({ requireCanReadOrAdministrate: true }),
-  validate("json", PatchUserProjectNotificationPreferenceBodySchema),
+  validate("json", PatchUserPodNotificationPreferenceBodySchema),
   async (
     ctx
-  ): HandlerResult<PatchUserProjectNotificationPreferenceResponseBody> => {
+  ): HandlerResult<PatchUserPodNotificationPreferenceResponseBody> => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");
 
