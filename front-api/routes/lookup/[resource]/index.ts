@@ -8,10 +8,10 @@ import { getBearerToken } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import type { PendingInvitationOption } from "@app/types/membership_invitation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { createHono } from "@front-api/lib/hono";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 export type WorkspaceLookupResponse = {
@@ -81,7 +81,7 @@ const BodySchema = z.union([
   ShareTokenLookupSchema,
 ]);
 
-const app = new Hono();
+const app = createHono();
 
 app.post(
   "/",

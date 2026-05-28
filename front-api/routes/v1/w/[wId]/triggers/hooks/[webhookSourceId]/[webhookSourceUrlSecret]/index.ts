@@ -11,10 +11,10 @@ import {
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import { isString } from "@app/types/shared/utils/general";
 import type { PostWebhookTriggerResponseType } from "@dust-tt/client";
+import { createHono } from "@front-api/lib/hono";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 const ParamsSchema = z.object({
@@ -67,7 +67,7 @@ const WEBHOOK_REQUEST_MAX_SIZE_BYTES = 2 * 1024 * 1024;
 // Mounted at /api/v1/w/:wId/triggers/hooks/:webhookSourceId/:webhookSourceUrlSecret.
 // This route is mounted outside `publicApiAuth` because it uses its own
 // authentication scheme based on the URL secret.
-const app = new Hono();
+const app = createHono();
 
 app.post(
   "/",

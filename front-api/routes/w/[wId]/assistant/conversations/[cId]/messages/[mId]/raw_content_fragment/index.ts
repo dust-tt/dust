@@ -4,11 +4,11 @@ import { fileAttachmentLocation } from "@app/lib/resources/content_fragment_reso
 import { isContentFragmentType } from "@app/types/content_fragment";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
+import { createHono } from "@front-api/lib/hono";
 import type { WorkspaceAwareCtx } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import type { HttpBindings } from "@hono/node-server";
 import { IncomingForm } from "formidable";
-import { Hono } from "hono";
 
 const privateUploadGcs = getPrivateUploadBucket();
 
@@ -29,7 +29,7 @@ function isValidContentFormat(
 // POST consumes multipart via formidable on the raw Node `IncomingMessage`
 // exposed by `@hono/node-server` (`ctx.env.incoming`) — matching the Next
 // handler.
-const app = new Hono<WorkspaceAwareCtx & { Bindings: HttpBindings }>();
+const app = createHono<WorkspaceAwareCtx & { Bindings: HttpBindings }>();
 
 app.get("/", async (ctx) => {
   const auth = ctx.get("auth");

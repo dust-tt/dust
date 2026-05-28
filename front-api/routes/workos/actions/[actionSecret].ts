@@ -8,6 +8,7 @@ import {
 import { isBlacklistedEmailDomain } from "@app/lib/utils/blacklisted_email_domains";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types/shared/utils/general";
+import { createHono } from "@front-api/lib/hono";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import type {
@@ -15,7 +16,6 @@ import type {
   ResponsePayload,
   UserRegistrationActionResponseData,
 } from "@workos-inc/node";
-import { Hono } from "hono";
 
 type ActionResponseBody = {
   object: string;
@@ -23,7 +23,7 @@ type ActionResponseBody = {
   signature: string;
 };
 
-const app = new Hono();
+const app = createHono();
 
 app.post("/", async (ctx): HandlerResult<ActionResponseBody> => {
   const actionSecret = ctx.req.param("actionSecret");

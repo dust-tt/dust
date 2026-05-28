@@ -8,8 +8,8 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import { launchMetronomeEventsWorkflow } from "@app/temporal/metronome_events_queue/client";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { createHono } from "@front-api/lib/hono";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
-import { Hono } from "hono";
 import { z } from "zod";
 
 type ResponseBody = {
@@ -18,7 +18,7 @@ type ResponseBody = {
 };
 
 // Mounted at /api/metronome/webhook.
-const app = new Hono();
+const app = createHono();
 
 app.get(
   "/",

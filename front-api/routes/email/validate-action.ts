@@ -7,11 +7,11 @@ import { verifyValidationToken } from "@app/lib/api/email/validation_token";
 import { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types/shared/utils/general";
+import { createHono } from "@front-api/lib/hono";
 import { apiError } from "@front-api/middlewares/utils";
-import { Hono } from "hono";
 
 // Mounted at /api/email/validate-action.
-const app = new Hono();
+const app = createHono();
 
 app.post("/", async (ctx) => {
   const body = await ctx.req.json().catch(() => ({}));

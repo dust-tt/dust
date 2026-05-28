@@ -2,8 +2,8 @@ import config from "@app/lib/api/config";
 import { profileCPU, profileHeap } from "@app/lib/api/debug/profiler";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types/shared/utils/general";
+import { createHono } from "@front-api/lib/hono";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
-import { Hono } from "hono";
 
 export interface GetProfilerResponse {
   cpu: string;
@@ -11,7 +11,7 @@ export interface GetProfilerResponse {
 }
 
 // Mounted at /api/debug/profiler.
-const app = new Hono();
+const app = createHono();
 
 app.get("/", async (ctx): HandlerResult<GetProfilerResponse> => {
   const secret = ctx.req.query("secret");

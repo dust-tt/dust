@@ -1,7 +1,7 @@
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
-import { Hono } from "hono";
+import { createHono } from "@front-api/lib/hono";
 
-export const killApp = new Hono();
+export const killApp = createHono();
 
 killApp.get("/", async (ctx) => {
   const killSwitches = await KillSwitchResource.listEnabledKillSwitches();
