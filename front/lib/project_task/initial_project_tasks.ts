@@ -23,7 +23,7 @@ export const INITIAL_PROJECT_TASKS: {
   {
     text: "👥 Search for and add Pod members",
     agentInstructions:
-      "Help the user identify the right collaborators for this Pod. Use people search or directory tools to find candidates by name, role, team, or expertise. Once you have good candidates, mention them by name in the conversation using @mention — this will show the user a dialog to add them to the Pod directly from the conversation. If the user needs an alternative, link them to the Pod settings page by appending `#settings` to the Pod URL.\n\n" +
+      "Help the user identify the right collaborators for this Pod. Use people search or directory tools to find candidates by name, role, team, or expertise. Present the shortlist to the user and, once they confirm, add the selected people to the Pod using the Pod `update_members` tool. Use `list_members` first if you need to check who is already on the Pod.\n\n" +
       NEXT_TASK_PROMPT,
   },
   {
