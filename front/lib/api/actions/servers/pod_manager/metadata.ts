@@ -130,7 +130,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
     description:
       "Get information about the Pod: URL, title, description, pinned frame, and linked content nodes " +
       "attached to the Pod context. Does NOT list Pod files. Pod files live under " +
-      `\`project/<rel>\` scoped paths and are discovered through the \`${FILES_SERVER_NAME}\` MCP server.`,
+      `\`pod/<rel>\` scoped paths and are discovered through the \`${FILES_SERVER_NAME}\` MCP server.`,
     schema: {
       dustPod: ConfigurableToolInputSchemas[
         INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
@@ -360,7 +360,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
 
 const POD_MANAGER_INSTRUCTIONS =
   "Pod files and metadata are shared across all conversations in this Pod. " +
-  `Pod files are managed through the \`${FILES_SERVER_NAME}\` MCP server using \`project/<rel>\` scoped paths ` +
+  `Pod files are managed through the \`${FILES_SERVER_NAME}\` MCP server using \`pod/<rel>\` scoped paths ` +
   "(create, cat, grep, list, delete), not through this server. " +
   "Use `add_content_node` to reference a Company Data node in the Pod context, and " +
   "`remove_content_node` to remove such a reference. " +
@@ -379,7 +379,7 @@ export const POD_MANAGER_SERVER = {
     description:
       "Manage Pod metadata, members, conversations, and Company Data references. " +
       `Raw Pod file operations (create, read, search, write, delete) live in the \`${FILES_SERVER_NAME}\` MCP ` +
-      "server under `project/<rel>` scoped paths.",
+      "server under `pod/<rel>` scoped paths.",
     icon: "ActionDocumentTextIcon",
     authorization: null,
     documentationUrl: null,

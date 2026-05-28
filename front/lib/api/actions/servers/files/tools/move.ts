@@ -94,9 +94,9 @@ export async function moveHandler(
   let destUseCase: FileUseCase;
   let destUseCaseMetadata: FileUseCaseMetadata | undefined;
   switch (destScope.useCase) {
-    case "project":
+    case "pod":
       destUseCase = "project_context";
-      destUseCaseMetadata = { spaceId: destScope.projectId };
+      destUseCaseMetadata = { spaceId: destScope.podId };
       break;
     case "conversation":
       destUseCase = "tool_output";

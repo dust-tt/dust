@@ -71,7 +71,7 @@ describe("/api/w/[wId]/spaces/[spaceId]/files/[...rel]", () => {
 
     it("returns 200 and streams a file for a valid scoped path", async () => {
       const { req, res } = await makeProjectRequest("GET", [
-        "project",
+        "pod",
         "report.pdf",
       ]);
       await handler(req, res);
@@ -79,7 +79,7 @@ describe("/api/w/[wId]/spaces/[spaceId]/files/[...rel]", () => {
       expect(res.getHeader("Content-Type")).toBe("text/plain");
     });
 
-    it("returns 400 when path lacks the project/ prefix", async () => {
+    it("returns 400 when path lacks the pod/ prefix", async () => {
       const { req, res } = await makeProjectRequest("GET", ["report.pdf"]);
       await handler(req, res);
       expect(res._getStatusCode()).toBe(400);
@@ -88,7 +88,7 @@ describe("/api/w/[wId]/spaces/[spaceId]/files/[...rel]", () => {
 
     it("returns 403 for path traversal attempts", async () => {
       const { req, res } = await makeProjectRequest("GET", [
-        "project",
+        "pod",
         "..",
         "..",
         "etc",
@@ -106,7 +106,7 @@ describe("/api/w/[wId]/spaces/[spaceId]/files/[...rel]", () => {
       } as unknown as ReturnType<typeof getPrivateUploadBucket>);
 
       const { req, res } = await makeProjectRequest("GET", [
-        "project",
+        "pod",
         "missing.txt",
       ]);
       await handler(req, res);
@@ -125,7 +125,7 @@ describe("/api/w/[wId]/spaces/[spaceId]/files/[...rel]", () => {
     it("returns 200 and calls renameProjectFile with the right args", async () => {
       const { req, res, project } = await makeProjectRequest(
         "PATCH",
-        ["project", "old.txt"],
+        ["pod", "old.txt"],
         { body: { fileName: "new.txt" } }
       );
       await handler(req, res);
@@ -143,7 +143,7 @@ describe("/api/w/[wId]/spaces/[spaceId]/files/[...rel]", () => {
     it("returns 400 when fileName is missing", async () => {
       const { req, res } = await makeProjectRequest(
         "PATCH",
-        ["project", "file.txt"],
+        ["pod", "file.txt"],
         { body: {} }
       );
       await handler(req, res);
@@ -153,14 +153,14 @@ describe("/api/w/[wId]/spaces/[spaceId]/files/[...rel]", () => {
     it("returns 400 when fileName contains a slash", async () => {
       const { req, res } = await makeProjectRequest(
         "PATCH",
-        ["project", "file.txt"],
+        ["pod", "file.txt"],
         { body: { fileName: "sub/name.txt" } }
       );
       await handler(req, res);
       expect(res._getStatusCode()).toBe(400);
     });
 
-    it("returns 400 when path lacks the project/ prefix", async () => {
+    it("returns 400 when path lacks the pod/ prefix", async () => {
       const { req, res } = await makeProjectRequest("PATCH", ["file.txt"], {
         body: { fileName: "new.txt" },
       });
@@ -171,7 +171,7 @@ describe("/api/w/[wId]/spaces/[spaceId]/files/[...rel]", () => {
     it("returns 403 for path traversal attempts", async () => {
       const { req, res } = await makeProjectRequest(
         "PATCH",
-        ["project", "..", "evil.txt"],
+        ["pod", "..", "evil.txt"],
         { body: { fileName: "new.txt" } }
       );
       await handler(req, res);
@@ -182,7 +182,7 @@ describe("/api/w/[wId]/spaces/[spaceId]/files/[...rel]", () => {
       vi.spyOn(SpaceResource.prototype, "canWrite").mockReturnValue(false);
       const { req, res } = await makeProjectRequest(
         "PATCH",
-        ["project", "file.txt"],
+        ["pod", "file.txt"],
         { body: { fileName: "new.txt" } }
       );
       await handler(req, res);
@@ -195,7 +195,7 @@ describe("/api/w/[wId]/spaces/[spaceId]/files/[...rel]", () => {
       );
       const { req, res } = await makeProjectRequest(
         "PATCH",
-        ["project", "file.txt"],
+        ["pod", "file.txt"],
         { body: { fileName: "new.txt" } }
       );
       await handler(req, res);
@@ -212,7 +212,7 @@ describe("/api/w/[wId]/spaces/[spaceId]/files/[...rel]", () => {
 
     it("returns 200 and calls deleteProjectFile with the right args", async () => {
       const { req, res, project } = await makeProjectRequest("DELETE", [
-        "project",
+        "pod",
         "file.txt",
       ]);
       await handler(req, res);
@@ -226,7 +226,7 @@ describe("/api/w/[wId]/spaces/[spaceId]/files/[...rel]", () => {
       );
     });
 
-    it("returns 400 when path lacks the project/ prefix", async () => {
+    it("returns 400 when path lacks the pod/ prefix", async () => {
       const { req, res } = await makeProjectRequest("DELETE", ["file.txt"]);
       await handler(req, res);
       expect(res._getStatusCode()).toBe(400);
@@ -234,7 +234,7 @@ describe("/api/w/[wId]/spaces/[spaceId]/files/[...rel]", () => {
 
     it("returns 403 for path traversal attempts", async () => {
       const { req, res } = await makeProjectRequest("DELETE", [
-        "project",
+        "pod",
         "..",
         "evil.txt",
       ]);
@@ -245,7 +245,7 @@ describe("/api/w/[wId]/spaces/[spaceId]/files/[...rel]", () => {
     it("returns 403 when the user lacks write permission", async () => {
       vi.spyOn(SpaceResource.prototype, "canWrite").mockReturnValue(false);
       const { req, res } = await makeProjectRequest("DELETE", [
-        "project",
+        "pod",
         "file.txt",
       ]);
       await handler(req, res);
@@ -257,7 +257,7 @@ describe("/api/w/[wId]/spaces/[spaceId]/files/[...rel]", () => {
         new Err(new Error("GCS error"))
       );
       const { req, res } = await makeProjectRequest("DELETE", [
-        "project",
+        "pod",
         "file.txt",
       ]);
       await handler(req, res);
@@ -303,10 +303,7 @@ describe("/api/w/[wId]/spaces/[spaceId]/files/[...rel]", () => {
   });
 
   it("returns 405 for unsupported methods", async () => {
-    const { req, res } = await makeProjectRequest("PUT", [
-      "project",
-      "file.txt",
-    ]);
+    const { req, res } = await makeProjectRequest("PUT", ["pod", "file.txt"]);
     await handler(req, res);
     expect(res._getStatusCode()).toBe(405);
   });

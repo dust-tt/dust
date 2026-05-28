@@ -125,7 +125,7 @@ import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sou
 import { getScopedPathFromGCSPath } from "@app/lib/api/files/gcs_mount/files";
 import {
   getConversationFilesBasePath,
-  getProjectFilesBasePath,
+  getPodFilesBasePath,
 } from "@app/lib/api/files/mount_path";
 import { processAndStoreFile } from "@app/lib/api/files/processing";
 import { isSandboxRawDelimitedConversationFile } from "@app/lib/api/files/sandbox_raw";
@@ -166,12 +166,12 @@ function resolveUploadMountScopedPath(
 
   if (file.useCase === "project_context" && file.useCaseMetadata?.spaceId) {
     return getScopedPathFromGCSPath({
-      prefix: getProjectFilesBasePath({
+      prefix: getPodFilesBasePath({
         workspaceId: owner.sId,
-        projectId: file.useCaseMetadata.spaceId,
+        podId: file.useCaseMetadata.spaceId,
       }),
       gcsPath: file.mountFilePath,
-      useCase: "project",
+      useCase: "pod",
     });
   }
 

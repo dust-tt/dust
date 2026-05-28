@@ -1,8 +1,9 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
+
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import {
-  getProjectFilesBasePath,
+  getPodFilesBasePath,
   isResolveMountFilePathError,
   resolveScopedMountFilePath,
 } from "@app/lib/api/files/mount_path";
@@ -37,7 +38,7 @@ async function handler(
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Files are only available for project spaces.",
+        message: "Files are only available for Pod spaces.",
       },
     });
   }
@@ -54,18 +55,18 @@ async function handler(
   }
 
   const owner = auth.getNonNullableWorkspace();
-  const mountBasePath = getProjectFilesBasePath({
+  const mountBasePath = getPodFilesBasePath({
     workspaceId: owner.sId,
-    projectId: space.sId,
+    podId: space.sId,
   });
   const relPath = rel.join("/");
 
   const resolveScopedPath = () =>
     resolveScopedMountFilePath({
       relPath,
-      expectedPrefix: "project",
+      expectedPrefix: "pod",
       mountBasePath,
-      outsideScopeMessage: "Access denied: path is outside project scope.",
+      outsideScopeMessage: "Access denied: path is outside Pod scope.",
     });
 
   switch (req.method) {

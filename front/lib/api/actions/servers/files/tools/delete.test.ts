@@ -51,11 +51,11 @@ async function setupProjectConversation(
 }
 
 describe("deleteHandler", () => {
-  it("dual-deletes from the pods/ mirror when deleting from a project mount", async () => {
+  it("dual-deletes from the projects/ mirror when deleting from a Pod mount", async () => {
     const { auth, conversation } = await setupProjectConversation();
     const workspaceId = auth.getNonNullableWorkspace().sId;
-    const projectId = conversation.spaceId;
-    assert(projectId, "Expected project conversation to have a spaceId");
+    const podId = conversation.spaceId;
+    assert(podId, "Expected Pod conversation to have a spaceId");
 
     const deleteMock = vi.fn().mockResolvedValue(undefined);
     const existsMock = vi.fn().mockResolvedValue([true]);
@@ -68,44 +68,22 @@ describe("deleteHandler", () => {
     );
 
     const result = await deleteHandler(
-      { path: "project/report.pdf" },
+      { path: "pod/report.pdf" },
       makeExtra(auth, conversation)
     );
 
     assert(result.isOk());
 
-    const projectPath = `w/${workspaceId}/projects/${projectId}/files/report.pdf`;
-    const podsPath = `w/${workspaceId}/pods/${projectId}/files/report.pdf`;
+    const podPath = `w/${workspaceId}/pods/${podId}/files/report.pdf`;
+    const projectsPath = `w/${workspaceId}/projects/${podId}/files/report.pdf`;
 
     expect(deleteMock).toHaveBeenCalledTimes(2);
-    expect(deleteMock).toHaveBeenNthCalledWith(1, projectPath, {
+    expect(deleteMock).toHaveBeenNthCalledWith(1, podPath, {
       ignoreNotFound: true,
     });
-    expect(deleteMock).toHaveBeenNthCalledWith(2, podsPath, {
+    expect(deleteMock).toHaveBeenNthCalledWith(2, projectsPath, {
       ignoreNotFound: true,
     });
-  });
-
-  it("does not delete from pods/ when deleting from a conversation mount", async () => {
-    const { auth, conversation } = await setupProjectConversation();
-
-    const deleteMock = vi.fn().mockResolvedValue(undefined);
-    const existsMock = vi.fn().mockResolvedValue([true]);
-    const mockBucket = {
-      file: vi.fn(() => ({ exists: existsMock })),
-      delete: deleteMock,
-    };
-    vi.mocked(getPrivateUploadBucket).mockReturnValue(
-      mockBucket as unknown as ReturnType<typeof getPrivateUploadBucket>
-    );
-
-    const result = await deleteHandler(
-      { path: "conversation/report.pdf" },
-      makeExtra(auth, conversation)
-    );
-
-    assert(result.isOk());
-    expect(deleteMock).toHaveBeenCalledTimes(1);
   });
 
   it("returns Err when the file does not exist", async () => {
@@ -121,7 +99,7 @@ describe("deleteHandler", () => {
     );
 
     const result = await deleteHandler(
-      { path: "project/missing.pdf" },
+      { path: "pod/missing.pdf" },
       makeExtra(auth, conversation)
     );
 

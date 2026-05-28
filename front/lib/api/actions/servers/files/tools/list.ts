@@ -26,7 +26,7 @@ function getDirAndFileName(path: string): { dir: string; fileName: string } {
 }
 
 export async function listHandler(
-  { scope }: { scope?: "conversation" | "project" },
+  { scope }: { scope?: "conversation" | "pod" },
   extra: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
   const conversation = extra.agentLoopContext?.runContext?.conversation;

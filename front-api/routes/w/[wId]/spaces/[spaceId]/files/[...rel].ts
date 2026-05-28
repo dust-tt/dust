@@ -1,5 +1,5 @@
 import {
-  getProjectFilesBasePath,
+  getPodFilesBasePath,
   isResolveMountFilePathError,
   resolveScopedMountFilePath,
 } from "@app/lib/api/files/mount_path";
@@ -49,7 +49,7 @@ async function buildContext(ctx: Context): Promise<
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
-          message: "Files are only available for project spaces.",
+          message: "Files are only available for Pod spaces.",
         },
       }),
     };
@@ -69,15 +69,15 @@ async function buildContext(ctx: Context): Promise<
   }
 
   const owner = auth.getNonNullableWorkspace();
-  const basePath = getProjectFilesBasePath({
+  const basePath = getPodFilesBasePath({
     workspaceId: owner.sId,
-    projectId: space.sId,
+    podId: space.sId,
   });
   const pathRes = resolveScopedMountFilePath({
     relPath: rel,
-    expectedPrefix: "project",
+    expectedPrefix: "pod",
     mountBasePath: basePath,
-    outsideScopeMessage: "Access denied: path is outside project scope.",
+    outsideScopeMessage: "Access denied: path is outside Pod scope.",
   });
   if (pathRes.isErr()) {
     const { code, message } = pathRes.error;

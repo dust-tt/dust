@@ -107,7 +107,7 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/project_files", () => {
     const mockFile = {
       isDirectory: false as const,
       fileName: "a.txt",
-      path: "project/a.txt",
+      path: "pod/a.txt",
       sizeBytes: 3,
       lastModifiedMs: 2000,
       contentType: "text/plain",
@@ -125,7 +125,7 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/project_files", () => {
       {
         isDirectory: false as const,
         fileName: "old.txt",
-        path: "project/old.txt",
+        path: "pod/old.txt",
         sizeBytes: 1,
         lastModifiedMs: 500,
         contentType: "text/plain",
@@ -143,8 +143,8 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/project_files", () => {
 
     expect(response.status).toBe(200);
     expect(listGCSMountFilesMock).toHaveBeenCalledWith(expect.anything(), {
-      useCase: "project",
-      projectId: space.sId,
+      useCase: "pod",
+      podId: space.sId,
     });
     expect(await response.json()).toEqual({
       files: [mockFileWithUrl],

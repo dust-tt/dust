@@ -51,11 +51,11 @@ async function setupProjectConversation(
 }
 
 describe("copyHandler", () => {
-  it("copies a file from conversation to project mount", async () => {
+  it("copies a file from conversation to Pod mount", async () => {
     const { auth, conversation } = await setupProjectConversation();
 
     const result = await copyHandler(
-      { source: "conversation/report.pdf", dest: "project/report.pdf" },
+      { source: "conversation/report.pdf", dest: "pod/report.pdf" },
       makeExtra(auth, conversation)
     );
 
@@ -66,16 +66,16 @@ describe("copyHandler", () => {
     expect(result.value).toEqual([
       {
         type: "text",
-        text: "Copied `conversation/report.pdf` to `project/report.pdf`.",
+        text: "Copied `conversation/report.pdf` to `pod/report.pdf`.",
       },
     ]);
   });
 
-  it("copies a file from project to conversation mount", async () => {
+  it("copies a file from Pod to conversation mount", async () => {
     const { auth, conversation } = await setupProjectConversation();
 
     const result = await copyHandler(
-      { source: "project/spec.md", dest: "conversation/spec.md" },
+      { source: "pod/spec.md", dest: "conversation/spec.md" },
       makeExtra(auth, conversation)
     );
 
@@ -97,7 +97,7 @@ describe("copyHandler", () => {
     );
 
     const result = await copyHandler(
-      { source: "conversation/missing.pdf", dest: "project/missing.pdf" },
+      { source: "conversation/missing.pdf", dest: "pod/missing.pdf" },
       makeExtra(auth, conversation)
     );
 
@@ -128,7 +128,7 @@ describe("copyHandler", () => {
     const result = await copyHandler(
       {
         source: "conversation/interactive.html",
-        dest: "project/interactive.html",
+        dest: "pod/interactive.html",
       },
       makeExtra(auth, conversation)
     );
@@ -159,14 +159,14 @@ describe("copyHandler", () => {
     const { auth, conversation } = await setupProjectConversation();
 
     const result = await copyHandler(
-      { source: "other/foo.md", dest: "project/foo.md" },
+      { source: "other/foo.md", dest: "pod/foo.md" },
       makeExtra(auth, conversation)
     );
 
     expect(result.isErr()).toBe(true);
   });
 
-  it("returns Err for a project path in a non-project conversation", async () => {
+  it("returns Err for a Pod path in a non-Pod conversation", async () => {
     const { authenticator: auth } = await createResourceTest({ role: "admin" });
 
     const conversation = await createConversation(auth, {
@@ -176,7 +176,7 @@ describe("copyHandler", () => {
     });
 
     const result = await copyHandler(
-      { source: "conversation/x.md", dest: "project/x.md" },
+      { source: "conversation/x.md", dest: "pod/x.md" },
       makeExtra(auth, conversation)
     );
 
@@ -184,14 +184,14 @@ describe("copyHandler", () => {
     if (!result.isErr()) {
       return;
     }
-    expect(result.error.message).toContain("project conversations");
+    expect(result.error.message).toContain("Pod conversations");
   });
 
-  it("dual-writes to the pods/ mirror when copying to a project mount", async () => {
+  it("dual-writes to the projects/ mirror when copying to a Pod mount", async () => {
     const { auth, conversation } = await setupProjectConversation();
     const workspaceId = auth.getNonNullableWorkspace().sId;
-    const projectId = conversation.spaceId;
-    assert(projectId, "Expected project conversation to have a spaceId");
+    const podId = conversation.spaceId;
+    assert(podId, "Expected Pod conversation to have a spaceId");
 
     const copyFileMock = vi.fn().mockResolvedValue(undefined);
     const getMetadataMock = vi
@@ -206,26 +206,26 @@ describe("copyHandler", () => {
     );
 
     const result = await copyHandler(
-      { source: "conversation/report.pdf", dest: "project/report.pdf" },
+      { source: "conversation/report.pdf", dest: "pod/report.pdf" },
       makeExtra(auth, conversation)
     );
 
     assert(result.isOk());
 
     const sourcePath = `w/${workspaceId}/conversations/${conversation.sId}/files/report.pdf`;
-    const destProjectPath = `w/${workspaceId}/projects/${projectId}/files/report.pdf`;
-    const destPodsPath = `w/${workspaceId}/pods/${projectId}/files/report.pdf`;
+    const destPodPath = `w/${workspaceId}/pods/${podId}/files/report.pdf`;
+    const destProjectsPath = `w/${workspaceId}/projects/${podId}/files/report.pdf`;
 
     expect(copyFileMock).toHaveBeenCalledTimes(2);
+    expect(copyFileMock).toHaveBeenNthCalledWith(1, sourcePath, destPodPath);
     expect(copyFileMock).toHaveBeenNthCalledWith(
-      1,
+      2,
       sourcePath,
-      destProjectPath
+      destProjectsPath
     );
-    expect(copyFileMock).toHaveBeenNthCalledWith(2, sourcePath, destPodsPath);
   });
 
-  it("does not write to pods/ when copying to a conversation mount", async () => {
+  it("does not write to projects/ when copying to a conversation mount", async () => {
     const { auth, conversation } = await setupProjectConversation();
 
     const copyFileMock = vi.fn().mockResolvedValue(undefined);
@@ -241,7 +241,7 @@ describe("copyHandler", () => {
     );
 
     const result = await copyHandler(
-      { source: "project/spec.md", dest: "conversation/spec.md" },
+      { source: "pod/spec.md", dest: "conversation/spec.md" },
       makeExtra(auth, conversation)
     );
 

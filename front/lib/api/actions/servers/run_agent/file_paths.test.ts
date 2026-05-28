@@ -68,18 +68,18 @@ describe("resolveFilePathsInParentScope", () => {
     expect(res.value[0].scopedPath).toBe("conversation/foo.md");
   });
 
-  it("resolves both conversation and project paths in a project conversation", async () => {
+  it("resolves both conversation and Pod paths in a Pod conversation", async () => {
     const { auth, conversation } = await setupProjectConversation();
 
     const res = await resolveFilePathsInParentScope(auth, conversation, [
       "conversation/a.txt",
-      "project/b.txt",
+      "pod/b.txt",
     ]);
 
     assert(res.isOk());
     expect(res.value).toHaveLength(2);
     expect(res.value[0].useCase).toBe("conversation");
-    expect(res.value[1].useCase).toBe("project");
+    expect(res.value[1].useCase).toBe("pod");
     expect(res.value[1].rel).toBe("b.txt");
   });
 
@@ -96,16 +96,16 @@ describe("resolveFilePathsInParentScope", () => {
     }
   });
 
-  it("returns Err for a project path in a non-project conversation", async () => {
+  it("returns Err for a Pod path in a non-Pod conversation", async () => {
     const { auth, conversation } = await setupPlainConversation();
 
     const res = await resolveFilePathsInParentScope(auth, conversation, [
-      "project/spec.md",
+      "pod/spec.md",
     ]);
 
     expect(res.isErr()).toBe(true);
     if (res.isErr()) {
-      expect(res.error.message).toContain("project conversations");
+      expect(res.error.message).toContain("Pod conversations");
     }
   });
 
@@ -160,8 +160,8 @@ describe("copyConversationFilesIntoSub", () => {
       subConversationId: "sub_sid",
       resolvedFilePaths: [
         {
-          scopedPath: "project/spec.md",
-          useCase: "project",
+          scopedPath: "pod/spec.md",
+          useCase: "pod",
           rel: "spec.md",
         },
       ],
@@ -183,8 +183,8 @@ describe("copyConversationFilesIntoSub", () => {
           rel: "a.md",
         },
         {
-          scopedPath: "project/skipped.md",
-          useCase: "project",
+          scopedPath: "pod/skipped.md",
+          useCase: "pod",
           rel: "skipped.md",
         },
       ],

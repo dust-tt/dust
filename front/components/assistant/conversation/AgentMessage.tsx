@@ -185,12 +185,23 @@ function buildMountFilePreviewHref({
     return `${apiBaseUrl}/api/w/${ownerId}/assistant/conversations/${conversationId}/files/${filePath}`;
   }
 
-  if (filePath.startsWith("project/")) {
+  if (filePath.startsWith("pod/")) {
     if (!spaceId) {
       return undefined;
     }
 
     return `${apiBaseUrl}/api/w/${ownerId}/spaces/${spaceId}/files/${filePath}`;
+  }
+
+  // Legacy "project/" scope maps to the same Pod files endpoint; rewrite the prefix.
+  if (filePath.startsWith("project/")) {
+    if (!spaceId) {
+      return undefined;
+    }
+
+    const podFilePath = `pod/${filePath.slice("project/".length)}`;
+
+    return `${apiBaseUrl}/api/w/${ownerId}/spaces/${spaceId}/files/${podFilePath}`;
   }
 
   return undefined;
