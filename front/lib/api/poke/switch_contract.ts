@@ -2,7 +2,6 @@ import {
   dispatchPaygDisabled,
   dispatchPaygEnabled,
 } from "@app/lib/api/metronome/credit_state_dispatcher";
-import { MAX_PAYG_CAP_DOLLARS } from "@app/lib/api/poke/plugins/workspaces/manage_programmatic_usage_configuration";
 import { isMetronomeBillingEnabled } from "@app/lib/api/subscription";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
@@ -31,7 +30,7 @@ import {
   getStripeCustomer,
   scheduleSubscriptionCancellation,
 } from "@app/lib/plans/stripe";
-import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
+import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -41,6 +40,13 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { z } from "zod";
+
+// PAYG cap for credit-priced contracts is denominated in AWU credits, written
+// to `credit_usage_configuration.paygCapCredits` verbatim. We deliberately do
+// NOT accept dollars/euros here and do NOT convert from any fiat unit —
+// `programmatic_usage_configuration.paygCapMicroUsd` (micro_usd) is a legacy
+// concern of the programmatic-usage flow and must stay out of this path.
+export const MAX_PAYG_CAP_CREDITS = 2_000_000;
 
 export const SwitchContractBodySchema = z
   .object({
@@ -54,18 +60,20 @@ export const SwitchContractBodySchema = z
     // for free-tier switches where Metronome contracts have no Stripe link.
     stripeCustomerId: z.string().min(1).optional(),
     paygEnabled: z.boolean().default(false),
-    paygCapDollars: z
+    // AWU credits — written directly to `credit_usage_configuration.paygCapCredits`.
+    paygCapCredits: z
       .number()
-      .min(1, "PAYG cap must be at least $1")
+      .int("PAYG cap must be an integer number of credits")
+      .min(1, "PAYG cap must be at least 1 credit")
       .max(
-        MAX_PAYG_CAP_DOLLARS,
-        `PAYG cap cannot exceed $${MAX_PAYG_CAP_DOLLARS.toLocaleString()}`
+        MAX_PAYG_CAP_CREDITS,
+        `PAYG cap cannot exceed ${MAX_PAYG_CAP_CREDITS.toLocaleString()} credits`
       )
       .optional(),
   })
-  .refine((data) => !data.paygEnabled || data.paygCapDollars !== undefined, {
+  .refine((data) => !data.paygEnabled || data.paygCapCredits !== undefined, {
     message: "PAYG cap is required when Pay-as-you-go is enabled.",
-    path: ["paygCapDollars"],
+    path: ["paygCapCredits"],
   });
 
 export type SwitchContractBody = z.infer<typeof SwitchContractBodySchema>;
@@ -169,8 +177,8 @@ export async function switchContract({
     );
   }
 
-  const programmaticConfig =
-    await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
+  const creditConfig =
+    await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
 
   // Validate the Stripe customer exists before we touch Metronome.
   // For free-tier switches the operator may omit the Stripe customer entirely
@@ -395,13 +403,16 @@ export async function switchContract({
     }
   }
 
-  const paygCapMicroUsd =
-    body.paygEnabled && body.paygCapDollars !== undefined
-      ? Math.round(body.paygCapDollars * 1_000_000)
+  // The operator supplies the PAYG cap in AWU credits directly — no fiat
+  // conversion. The value is written verbatim to
+  // `credit_usage_configuration.paygCapCredits` (see `MAX_PAYG_CAP_CREDITS`).
+  const paygCapCredits =
+    body.paygEnabled && body.paygCapCredits !== undefined
+      ? body.paygCapCredits
       : null;
-  if (programmaticConfig) {
-    const updateResult = await programmaticConfig.updateConfiguration(auth, {
-      paygCapMicroUsd,
+  if (creditConfig) {
+    const updateResult = await creditConfig.updateConfiguration(auth, {
+      paygCapCredits,
     });
     if (updateResult.isErr()) {
       return new Err(
@@ -411,16 +422,12 @@ export async function switchContract({
         )
       );
     }
-  } else if (paygCapMicroUsd !== null) {
-    const createResult = await ProgrammaticUsageConfigurationResource.makeNew(
-      auth,
-      {
-        freeCreditMicroUsd: null,
-        defaultDiscountPercent: 0,
-        paygCapMicroUsd,
-        dailyCapMicroUsd: null,
-      }
-    );
+  } else if (paygCapCredits !== null) {
+    const createResult = await CreditUsageConfigurationResource.makeNew(auth, {
+      defaultDiscountPercent: 0,
+      paygCapCredits,
+      disableCreditCapWarning: false,
+    });
     if (createResult.isErr()) {
       return new Err(
         new SwitchContractError(

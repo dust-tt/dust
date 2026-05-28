@@ -478,10 +478,6 @@ const PRODUCTS: ProductDef[] = [
     type: "FIXED",
   },
   {
-    name: "PAYG Overage",
-    type: "FIXED",
-  },
-  {
     name: "Seat Subscription Credits",
     type: "FIXED",
   },

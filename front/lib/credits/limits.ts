@@ -57,14 +57,21 @@ export async function getCreditPurchaseLimits(
   const { cycleStart, cycleEnd } = getCycleBounds(context);
 
   if (isEnterprise) {
-    // Enterprise limit: max($1000, half of pay-as-you-go cap).
-    const programmaticConfig =
-      await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
-    const paygCapMicroUsd = programmaticConfig?.paygCapMicroUsd ?? 0;
-    const enterpriseMaxMicroUsd = Math.max(
-      MIN_ENTERPRISE_CREDIT_MICRO_USD,
-      Math.floor(paygCapMicroUsd / 2)
-    );
+    // Enterprise limit:
+    //  - Stripe-billed (legacy programmatic): max($1000, half of PAYG cap)
+    //    derived from `programmatic_usage_configuration.paygCapMicroUsd`.
+    //  - Metronome (credit-priced): flat $1000 floor. The credit-config PAYG
+    //    cap is in AWU credits and isn't used to gate fiat credit purchases.
+    let enterpriseMaxMicroUsd = MIN_ENTERPRISE_CREDIT_MICRO_USD;
+    if (context.type === "stripe-subscription") {
+      const programmaticConfig =
+        await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
+      const paygCapMicroUsd = programmaticConfig?.paygCapMicroUsd ?? 0;
+      enterpriseMaxMicroUsd = Math.max(
+        MIN_ENTERPRISE_CREDIT_MICRO_USD,
+        Math.floor(paygCapMicroUsd / 2)
+      );
+    }
 
     const alreadyPurchased =
       await CreditResource.sumCommittedCreditsPurchasedInPeriod(

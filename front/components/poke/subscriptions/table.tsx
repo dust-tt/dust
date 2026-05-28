@@ -331,7 +331,6 @@ export function ActiveSubscriptionTable({
             <div className="flex flex-wrap items-center gap-2 pb-4">
               <SwitchContractDialog
                 owner={owner}
-                programmaticUsageConfig={programmaticUsageConfig}
                 stripeCustomerId={stripeCustomerId}
               />
               <FreePlanUpgradeDialog owner={owner} />

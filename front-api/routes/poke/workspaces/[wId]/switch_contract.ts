@@ -75,7 +75,7 @@ app.post(
 
     const { metronomeContractId } = result.value;
     const paygStatus = body.paygEnabled
-      ? ` PAYG enabled with $${body.paygCapDollars} cap.`
+      ? ` PAYG enabled with a ${body.paygCapCredits} credit cap.`
       : "";
     await pluginRun.recordResult({
       display: "text",

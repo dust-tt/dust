@@ -98,6 +98,25 @@ describe("WorkspaceCreditStateMachine — transitions", () => {
     expect(mockSetWorkspacePoolDepleted).not.toHaveBeenCalled();
   });
 
+  it("depleted + pool_exhausted (paygEnabled) → overage (clears depleted cache)", async () => {
+    const workspace = makeWorkspace("depleted");
+    const result = await transitionWorkspaceCreditState(
+      workspace,
+      { type: "pool_exhausted" },
+      baseCtxPayg
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("overage");
+    }
+    expect(workspace.updatePoolCreditState).toHaveBeenCalledWith(
+      "overage",
+      undefined
+    );
+    expect(mockClearWorkspacePoolDepleted).toHaveBeenCalledWith("ws_test");
+    expect(mockSetWorkspacePoolDepleted).not.toHaveBeenCalled();
+  });
+
   it("active + pool_exhausted (no PAYG) → depleted (marks pool depleted)", async () => {
     const workspace = makeWorkspace("active");
     const result = await transitionWorkspaceCreditState(
@@ -601,12 +620,6 @@ describe("WorkspaceCreditStateMachine — illegal transitions", () => {
       from: "overage",
       event: { type: "pool_exhausted" },
       ctx: baseCtxNoPayg,
-    },
-    {
-      label: "depleted + pool_exhausted with PAYG",
-      from: "depleted",
-      event: { type: "pool_exhausted" },
-      ctx: baseCtxPayg,
     },
   ];
 

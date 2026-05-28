@@ -1,22 +1,51 @@
 import type { Authenticator } from "@app/lib/auth";
+import { amountCents } from "@app/lib/metronome/amounts";
 import {
   ceilToMidnightUTC,
   listMetronomeBalances,
   listMetronomeDraftInvoices,
 } from "@app/lib/metronome/client";
-import { getCreditTypeAwuId } from "@app/lib/metronome/constants";
+import {
+  CREDIT_TYPE_EUR_ID,
+  CREDIT_TYPE_USD_ID,
+  getCreditTypeAwuId,
+} from "@app/lib/metronome/constants";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import {
   getProductSeatTypes,
   getSeatTypesByProductIdFromContract,
 } from "@app/lib/metronome/seat_types";
+import type { SupportedCurrency } from "@app/types/currency";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { isNumber } from "@app/types/shared/utils/general";
+
+function creditTypeIdToCurrency(
+  creditTypeId: string
+): SupportedCurrency | null {
+  if (creditTypeId === CREDIT_TYPE_USD_ID) {
+    return "usd";
+  }
+  if (creditTypeId === CREDIT_TYPE_EUR_ID) {
+    return "eur";
+  }
+  return null;
+}
 
 export type AwuPoolSummaryResponseBody = {
   totalRemainingCredits: number;
   totalActiveCredits: number;
   resetDate: string;
+  /**
+   * PAYG overage consumed so far this billing period — credits charged on
+   * top of the workspace pool. `null` when the workspace is not on PAYG or
+   * no overage has been incurred this period.
+   */
+  overageCredits: number | null;
+  /** Fiat cost of `overageCredits`, in cents. `null` when `overageCredits` is null. */
+  overageAmountCents: number | null;
+  /** Invoice currency — needed to format `overageAmountCents`. */
+  overageCurrency: SupportedCurrency | null;
 };
 
 export class AwuPoolSummaryError extends Error {
@@ -78,12 +107,38 @@ export async function getAwuPoolSummary(
       totalRemainingCredits: 0,
       totalActiveCredits: 0,
       resetDate: "",
+      overageCredits: null,
+      overageAmountCents: null,
+      overageCurrency: null,
     });
   }
 
   const resetDate = ceilToMidnightUTC(
     new Date(currentInvoice.end_timestamp)
   ).toISOString();
+
+  // PAYG overage on credit-priced contracts shows up as a `cpu_conversion`
+  // line item (Metronome converts AWU spend that exceeds the prepaid AWU
+  // pool into fiat using the rate-card's `fiat_per_custom_credit`). There is
+  // no dedicated overage product — the line's `type` is the signal.
+  //   - `quantity` is the number of overage AWU credits consumed
+  //   - `total` is the fiat amount in the invoice's native unit (USD in
+  //     cents, other currencies in whole units — normalized via amountCents)
+  const overageCurrency = creditTypeIdToCurrency(currentInvoice.credit_type.id);
+  let overageCredits: number | null = null;
+  let overageAmountCents: number | null = null;
+  if (overageCurrency) {
+    for (const item of currentInvoice.line_items) {
+      if (item.type !== "cpu_conversion") {
+        continue;
+      }
+      if (isNumber(item.quantity)) {
+        overageCredits = (overageCredits ?? 0) + item.quantity;
+      }
+      overageAmountCents =
+        (overageAmountCents ?? 0) + amountCents(item.total, overageCurrency);
+    }
+  }
 
   // Filter to active, non-seat AWU pool credits and commits. The set of
   // seat product IDs is derived from the contract's tagged subscriptions
@@ -129,5 +184,8 @@ export async function getAwuPoolSummary(
     totalRemainingCredits,
     totalActiveCredits,
     resetDate,
+    overageCredits,
+    overageAmountCents,
+    overageCurrency: overageCredits !== null ? overageCurrency : null,
   });
 }
