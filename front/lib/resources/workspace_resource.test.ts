@@ -99,10 +99,11 @@ vi.mock("@app/lib/resources/kill_switch_resource", () => ({
 
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { WORKSPACE_CACHE_KEY_VERSION } from "@app/types/shared/cache_resource_registry";
 import type { WorkspaceType } from "@app/types/user";
 
 function getCacheKeyForWorkspace(workspaceId: string): string {
-  return `cacheWithRedis-_fetchByIdUncached-workspace:sid:${workspaceId}`;
+  return `cacheWithRedis-_fetchByIdUncached-workspace:v${WORKSPACE_CACHE_KEY_VERSION}:${workspaceId}`;
 }
 
 const INVALID_RETENTION_DAYS = CONVERSATIONS_RETENTION_MIN_DAYS - 1;
