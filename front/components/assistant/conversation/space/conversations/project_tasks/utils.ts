@@ -1,5 +1,5 @@
 import { removeDiacritics } from "@app/lib/utils";
-import type { ProjectTaskType } from "@app/types/project_task";
+import type { PodTaskType } from "@app/types/project_task";
 import { cn } from "@dust-tt/sparkle";
 import type React from "react";
 import { useLayoutEffect } from "react";
@@ -15,46 +15,46 @@ export function stripNewlines(value: string): string {
 
 /** Onboarding tasks are seeded with `agentInstructions` so a user can kick off
  * a guided first conversation; manual user-created tasks don't have them. */
-export function isOnboardingTask(task: ProjectTaskType): boolean {
+export function isOnboardingTask(task: PodTaskType): boolean {
   return !!task.agentInstructions;
 }
 
 /** Normalizes user input for accent-insensitive, case-insensitive matching. */
-export function normalizeProjectTaskSearchNeedle(raw: string): string {
+export function normalizePodTaskSearchNeedle(raw: string): string {
   return removeDiacritics(raw.trim()).toLowerCase();
 }
 
-function projectTodoHaystackNormalized(s: string | null | undefined): string {
-  return normalizeProjectTaskSearchNeedle(s ?? "");
+function podTodoHaystackNormalized(s: string | null | undefined): string {
+  return normalizePodTaskSearchNeedle(s ?? "");
 }
 
-/** `needle` must already be `{normalizeProjectTaskSearchNeedle}` output. Empty matches all. */
-export function projectTaskMatchesLocalSearch(
-  task: ProjectTaskType,
+/** `needle` must already be `{normalizePodTaskSearchNeedle}` output. Empty matches all. */
+export function podTaskMatchesLocalSearch(
+  task: PodTaskType,
   needle: string
 ): boolean {
   if (needle === "") {
     return true;
   }
-  if (projectTodoHaystackNormalized(task.text).includes(needle)) {
+  if (podTodoHaystackNormalized(task.text).includes(needle)) {
     return true;
   }
   if (
     task.user?.fullName &&
-    projectTodoHaystackNormalized(task.user.fullName).includes(needle)
+    podTodoHaystackNormalized(task.user.fullName).includes(needle)
   ) {
     return true;
   }
   if (
     task.actorRationale?.trim() &&
-    projectTodoHaystackNormalized(task.actorRationale).includes(needle)
+    podTodoHaystackNormalized(task.actorRationale).includes(needle)
   ) {
     return true;
   }
   for (const src of task.sources) {
     if (
       src.sourceTitle?.trim() &&
-      projectTodoHaystackNormalized(src.sourceTitle).includes(needle)
+      podTodoHaystackNormalized(src.sourceTitle).includes(needle)
     ) {
       return true;
     }
@@ -83,7 +83,7 @@ export function useAutosizeTextArea(
 export const TASK_DESKTOP_HOVER_REVEAL_CLASS =
   "md:opacity-0 md:group-hover/task:opacity-100 md:focus-within:opacity-100";
 
-export const TODO_TEXTAREA_FIELD_CLASS = cn(
+export const TASK_TEXTAREA_FIELD_CLASS = cn(
   "m-0 block min-h-[1.5rem] w-full min-w-0 resize-none overflow-hidden border-0 bg-transparent px-0 py-0 align-top text-base leading-6 text-foreground break-words",
   "shadow-none [box-shadow:none]",
   "outline-none ring-0 ring-offset-0",

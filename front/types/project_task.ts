@@ -1,15 +1,15 @@
 import type { ConversationDotStatus } from "@app/lib/utils/conversation_dot_status";
 import type { ModelId } from "@app/types/shared/model_id";
 
-export const PROJECT_TASK_STATUSES = ["todo", "in_progress", "done"] as const;
+export const POD_TASK_STATUSES = ["todo", "in_progress", "done"] as const;
 
-export type ProjectTaskStatus = (typeof PROJECT_TASK_STATUSES)[number];
+export type PodTaskStatus = (typeof POD_TASK_STATUSES)[number];
 
-export const PROJECT_TASK_ACTOR_TYPES = ["user", "agent"] as const;
+export const POD_TASK_ACTOR_TYPES = ["user", "agent"] as const;
 
-export type ProjectTaskActorType = (typeof PROJECT_TASK_ACTOR_TYPES)[number];
+export type PodTaskActorType = (typeof POD_TASK_ACTOR_TYPES)[number];
 
-export const PROJECT_TASK_SOURCE_TYPES = [
+export const POD_TASK_SOURCE_TYPES = [
   "project_conversation",
   "project_knowledge",
   "slack",
@@ -20,7 +20,7 @@ export const PROJECT_TASK_SOURCE_TYPES = [
   "microsoft",
 ] as const;
 
-export type ProjectTaskSourceType = (typeof PROJECT_TASK_SOURCE_TYPES)[number];
+export type PodTaskSourceType = (typeof POD_TASK_SOURCE_TYPES)[number];
 
 export const AGENT_SUGGESTION_STATUSES = [
   "pending",
@@ -29,73 +29,67 @@ export const AGENT_SUGGESTION_STATUSES = [
 ] as const;
 export type AgentSuggestionStatus = (typeof AGENT_SUGGESTION_STATUSES)[number];
 
-export const PROJECT_TASK_PERIOD_SCOPES = [
+export const POD_TASK_PERIOD_SCOPES = [
   "active",
   "last_24h",
   "last_7d",
   "last_30d",
 ] as const;
-export type ProjectTaskPeriodScope =
-  (typeof PROJECT_TASK_PERIOD_SCOPES)[number];
+export type PodTaskPeriodScope = (typeof POD_TASK_PERIOD_SCOPES)[number];
 
-export function isProjectTaskPeriodScope(
-  v: string
-): v is ProjectTaskPeriodScope {
-  return PROJECT_TASK_PERIOD_SCOPES.includes(v as ProjectTaskPeriodScope);
+export function isPodTaskPeriodScope(v: string): v is PodTaskPeriodScope {
+  return POD_TASK_PERIOD_SCOPES.includes(v as PodTaskPeriodScope);
 }
 
-export const PROJECT_TASK_PEOPLE_SCOPES = ["just_mine", "all_project"] as const;
-export type ProjectTaskPeopleScope =
-  (typeof PROJECT_TASK_PEOPLE_SCOPES)[number];
+export const POD_TASK_PEOPLE_SCOPES = ["just_mine", "all_project"] as const;
+export type PodTaskPeopleScope = (typeof POD_TASK_PEOPLE_SCOPES)[number];
 
-export function isProjectTaskPeopleScope(
-  v: string
-): v is ProjectTaskPeopleScope {
-  return PROJECT_TASK_PEOPLE_SCOPES.includes(v as ProjectTaskPeopleScope);
+export function isPodTaskPeopleScope(v: string): v is PodTaskPeopleScope {
+  return POD_TASK_PEOPLE_SCOPES.includes(v as PodTaskPeopleScope);
 }
 
-export type ProjectTaskSourceInfo = {
-  sourceType: ProjectTaskSourceType;
+export type PodTaskSourceInfo = {
+  sourceType: PodTaskSourceType;
   sourceId: string;
   sourceTitle: string | null;
   sourceUrl: string | null;
 };
 
-export type ProjectTaskAssigneeType = {
+export type PodTaskAssigneeType = {
   sId: string;
   fullName: string;
   image: string | null;
 };
 
 /** Stable row / stable-order key when grouping tasks with no assignee. */
-export const PROJECT_TASK_UNASSIGNED_GROUP_KEY = "__unassigned__";
+export const POD_TASK_UNASSIGNED_GROUP_KEY = "__unassigned__";
 
 /** Header and menu copy for tasks with no assignee. */
-export const PROJECT_TASK_NO_ASSIGNEE_LABEL = "No assignee";
+export const POD_TASK_NO_ASSIGNEE_LABEL = "No assignee";
 
-export type ProjectTaskType = {
+export type PodTaskType = {
   id: ModelId;
   sId: string;
-  user: ProjectTaskAssigneeType | null;
+  user: PodTaskAssigneeType | null;
   conversationId: string | null;
   /** Same semantics as the left sidebar conversation row (see `getConversationDotStatus`). */
   conversationSidebarStatus: ConversationDotStatus | null;
   conversationIsRunningAgentLoop: boolean | null;
   text: string;
-  status: ProjectTaskStatus;
+  status: PodTaskStatus;
   doneAt: Date | null;
   /** Optional persisted instructions merged into the kickoff prompt when the todo is started. */
   agentInstructions: string | null;
   actorRationale: string | null;
-  createdByType: ProjectTaskActorType;
+  createdByType: PodTaskActorType;
   createdByAgentConfigurationId: string | null;
   createdByUserId: string | null;
   agentSuggestionStatus: AgentSuggestionStatus | null;
   agentSuggestionReviewedAt: Date | null;
-  markedAsDoneByType: ProjectTaskActorType | null;
+  markedAsDoneByType: PodTaskActorType | null;
   markedAsDoneByAgentConfigurationId: string | null;
   markedAsDoneByUserId: string | null;
-  sources: ProjectTaskSourceInfo[];
+  sources: PodTaskSourceInfo[];
   createdAt: Date;
   updatedAt: Date;
 };

@@ -8,6 +8,7 @@ import { hasContractSeatSubscription } from "@app/lib/metronome/seats";
 import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -41,91 +42,73 @@ export const PatchMetronomeContractRequestBody = z.object({
 // Mounted at /api/w/:wId/metronome/contract.
 const app = workspaceApp();
 
-app.get("/", async (ctx): HandlerResult<GetMetronomeContractResponseBody> => {
-  const auth = ctx.get("auth");
-
-  if (!auth.isAdmin()) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "workspace_auth_error",
-        message:
-          "Only users that are `admins` for the current workspace can access this endpoint.",
-      },
-    });
-  }
-
-  const subscription = auth.subscription();
-  const owner = auth.workspace();
-  if (!subscription || !owner) {
-    return ctx.json({ contract: null });
-  }
-
-  const { metronomeContractId } = subscription;
-  const { metronomeCustomerId } = owner;
-  if (!metronomeContractId || !metronomeCustomerId) {
-    return ctx.json({ contract: null });
-  }
-
-  const contractResult = await getMetronomeContractById({
-    metronomeCustomerId,
-    metronomeContractId,
-  });
-  if (contractResult.isErr()) {
-    return apiError(ctx, {
-      status_code: 502,
-      api_error: {
-        type: "internal_server_error",
-        message: `Failed to fetch Metronome contract: ${contractResult.error.message}`,
-      },
-    });
-  }
-
-  const contract = contractResult.value;
-
-  const planFamily: "pro" | "enterprise" = isEntreprisePlanPrefix(
-    subscription.plan.code
-  )
-    ? "enterprise"
-    : "pro";
-
-  const mauTiersField = contract.custom_fields?.MAU_TIERS;
-  const parsed = parseMauTiers(mauTiersField);
-  const mauTiers = parsed
-    ? parsed.map((t) => ({ start: t.start, end: t.end ?? null }))
-    : null;
-
-  const contractEndingAtMs = contract.ending_before
-    ? new Date(contract.ending_before).getTime()
-    : null;
-
-  return ctx.json({
-    contract: {
-      planFamily,
-      mauTiers,
-      contractEndingAtMs,
-      hasSeatSubscription: await hasContractSeatSubscription(contract),
-    },
-  });
-});
-
-app.patch(
+app.get(
   "/",
-  validate("json", PatchMetronomeContractRequestBody),
-  async (ctx): HandlerResult<PatchMetronomeContractResponseBody> => {
+  ensureIsAdmin(),
+  async (ctx): HandlerResult<GetMetronomeContractResponseBody> => {
     const auth = ctx.get("auth");
 
-    if (!auth.isAdmin()) {
+    const subscription = auth.subscription();
+    const owner = auth.workspace();
+    if (!subscription || !owner) {
+      return ctx.json({ contract: null });
+    }
+
+    const { metronomeContractId } = subscription;
+    const { metronomeCustomerId } = owner;
+    if (!metronomeContractId || !metronomeCustomerId) {
+      return ctx.json({ contract: null });
+    }
+
+    const contractResult = await getMetronomeContractById({
+      metronomeCustomerId,
+      metronomeContractId,
+    });
+    if (contractResult.isErr()) {
       return apiError(ctx, {
-        status_code: 403,
+        status_code: 502,
         api_error: {
-          type: "workspace_auth_error",
-          message:
-            "Only users that are `admins` for the current workspace can access this endpoint.",
+          type: "internal_server_error",
+          message: `Failed to fetch Metronome contract: ${contractResult.error.message}`,
         },
       });
     }
 
+    const contract = contractResult.value;
+
+    const planFamily: "pro" | "enterprise" = isEntreprisePlanPrefix(
+      subscription.plan.code
+    )
+      ? "enterprise"
+      : "pro";
+
+    const mauTiersField = contract.custom_fields?.MAU_TIERS;
+    const parsed = parseMauTiers(mauTiersField);
+    const mauTiers = parsed
+      ? parsed.map((t) => ({ start: t.start, end: t.end ?? null }))
+      : null;
+
+    const contractEndingAtMs = contract.ending_before
+      ? new Date(contract.ending_before).getTime()
+      : null;
+
+    return ctx.json({
+      contract: {
+        planFamily,
+        mauTiers,
+        contractEndingAtMs,
+        hasSeatSubscription: await hasContractSeatSubscription(contract),
+      },
+    });
+  }
+);
+
+app.patch(
+  "/",
+  ensureIsAdmin(),
+  validate("json", PatchMetronomeContractRequestBody),
+  async (ctx): HandlerResult<PatchMetronomeContractResponseBody> => {
+    const auth = ctx.get("auth");
     const { action } = ctx.req.valid("json");
 
     switch (action) {

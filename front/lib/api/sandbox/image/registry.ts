@@ -1,3 +1,4 @@
+import { getLocalAccountPrivilegeHardeningCommand } from "@app/lib/api/sandbox/hardening";
 import { PROFILE_DIR } from "@app/lib/api/sandbox/image/profile";
 import { buildDustToolsBinary } from "@app/lib/api/sandbox/image/profile/build";
 import { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
@@ -14,9 +15,9 @@ import { Err, Ok } from "@app/types/shared/result";
 import fs from "fs";
 import path from "path";
 
-const DUST_BEDROCK_IMAGE_VERSION = "1.7.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.25";
-const DSBX_CLI_VERSION = "0.1.21";
+const DUST_BEDROCK_IMAGE_VERSION = "1.10.0";
+const DUST_BASE_IMAGE_VERSION = "0.8.29";
+const DSBX_CLI_VERSION = "0.1.23";
 // Identity, not coverage list: agent-proxied is a specific Linux user. The
 // nftables ruleset covers SANDBOX_UNTRUSTED_UIDS as a set; reordering that
 // list must not silently change this user's UID.
@@ -164,11 +165,12 @@ function getAgentProxiedSetupCommand(): string {
   // group-writable, regardless of the creating process's umask — avoids
   // a perms handoff footgun during the PR1→PR2 rollout window.
   return [
+    "install -d -o agent -g agent -m 2775 /home/agent/.local /home/agent/.local/bin",
     `useradd --create-home --uid ${AGENT_PROXIED_UID} --gid agent --shell /bin/bash agent-proxied`,
-    "chgrp agent /home/agent /files/conversation /files/project",
-    "chmod g+ws /home/agent /files/conversation /files/project",
-    "setfacl -R -d -m g::rwx /home/agent /files/conversation /files/project",
-    "setfacl -R -m g::rwx /home/agent /files/conversation /files/project",
+    "chgrp agent /home/agent /home/agent/.local /home/agent/.local/bin /files/conversation /files/project",
+    "chmod g+ws /home/agent /home/agent/.local /home/agent/.local/bin /files/conversation /files/project",
+    "setfacl -R -d -m g::rwx /home/agent /home/agent/.local /home/agent/.local/bin /files/conversation /files/project",
+    "setfacl -R -m g::rwx /home/agent /home/agent/.local /home/agent/.local/bin /files/conversation /files/project",
   ].join(" && ");
 }
 
@@ -176,6 +178,66 @@ function getEgressResolverUserSetupCommand(): string {
   return [
     "groupadd --system dust-egress-resolver",
     "useradd --system --no-create-home --gid dust-egress-resolver --shell /usr/sbin/nologin dust-egress-resolver",
+  ].join(" && ");
+}
+
+function getPrivilegedExecutablePathHardeningCommand(): string {
+  return [
+    "install -d -o root -g root -m 755 /opt/bin /usr/local /usr/local/sbin /usr/local/bin",
+    "chown root:root /opt/bin /usr/local /usr/local/sbin /usr/local/bin",
+    "chmod 755 /opt/bin /usr/local /usr/local/sbin /usr/local/bin",
+  ].join(" && ");
+}
+
+function getSshHardeningCommand(): string {
+  // Layered on purpose, not redundant. `AllowUsers agent` is the load-bearing
+  // lock (whitelist). The other lines defend the case where a future bedrock
+  // bump reorders the Include directive, re-enables PAM, or restores a
+  // permissive AuthorizedKeysCommand from the base image. Don't "clean up"
+  // any of these without checking what happens if exactly one of them flips.
+  const sshdConfig = [
+    "# Managed by Dust. Untrusted sandbox code must not reach root through sshd.",
+    "PermitRootLogin no",
+    "PasswordAuthentication no",
+    "KbdInteractiveAuthentication no",
+    "ChallengeResponseAuthentication no",
+    "PermitEmptyPasswords no",
+    "UsePAM no",
+    "AuthorizedKeysCommand none",
+    "AuthorizedKeysFile /etc/ssh/authorized_keys/%u",
+    "AllowUsers agent",
+    "DenyUsers root agent-proxied",
+  ];
+
+  const ensureSshdConfigInclude =
+    "if ! grep -Eq '^[[:space:]]*Include[[:space:]]+/etc/ssh/sshd_config.d/\\*.conf([[:space:]]|$)' /etc/ssh/sshd_config; then " +
+    "sed -i '1i Include /etc/ssh/sshd_config.d/*.conf' /etc/ssh/sshd_config; fi";
+  const writeSshdConfig = [
+    "printf '%s\\n'",
+    ...sshdConfig.map(formatShellValue),
+    "> /etc/ssh/sshd_config.d/00-dust-sandbox-hardening.conf",
+  ].join(" ");
+  // In the bedrock image `sshd.service` is a symlink alias to `ssh.service`
+  // and `sshd.socket` does not exist. Masking only the canonical units covers
+  // both and keeps the build log free of the spurious "already a symlink" /
+  // "does not exist" warnings that would otherwise mask real failures.
+  const disableSshdServices =
+    "if command -v systemctl >/dev/null 2>&1; then " +
+    "systemctl disable --now ssh.service ssh.socket >/dev/null 2>&1 || true; fi";
+  const maskSshdServices =
+    "if command -v systemctl >/dev/null 2>&1; then " +
+    "systemctl mask ssh.service ssh.socket >/dev/null 2>&1 || true; fi";
+
+  return [
+    "mkdir -p /etc/ssh/sshd_config.d /etc/ssh/authorized_keys",
+    "chmod 755 /etc/ssh /etc/ssh/sshd_config.d /etc/ssh/authorized_keys",
+    "touch /etc/ssh/sshd_config",
+    ensureSshdConfigInclude,
+    writeSshdConfig,
+    "chmod 644 /etc/ssh/sshd_config /etc/ssh/sshd_config.d/00-dust-sandbox-hardening.conf",
+    "if [ -f /etc/pam.d/sshd ]; then sed -i -E '/^[[:space:]]*auth[[:space:]].*pam_permit\\.so/s/^/# Disabled by Dust sandbox SSH hardening: /' /etc/pam.d/sshd; fi",
+    disableSshdServices,
+    maskSshdServices,
   ].join(" && ");
 }
 
@@ -194,7 +256,9 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
       user: "root",
     }
   )
+  .runCmd(getLocalAccountPrivilegeHardeningCommand(), { user: "root" })
   .runCmd(getAgentProxiedSetupCommand(), { user: "root" })
+  .runCmd(getSshHardeningCommand(), { user: "root" })
   // Create simple netcat-based token server script.
   .runCmd("mkdir -p /home/agent/.bin", { user: "root" })
   // TODO(2026-03-06 SANDBOX): .copy is broken, use file once fixed.
@@ -293,7 +357,8 @@ SHELLEOF`,
       `curl -fsSL https://github.com/dust-tt/dust/releases/download/dsbx-v${DSBX_CLI_VERSION}/checksums-sha256.txt -o /tmp/checksums-sha256.txt && ` +
       "grep dsbx-linux-x86_64 /tmp/checksums-sha256.txt | awk '{print $1 \"  /tmp/dsbx\"}' | sha256sum -c - && " +
       "chmod +x /tmp/dsbx && " +
-      "mv /tmp/dsbx /opt/bin/dsbx",
+      "mv /tmp/dsbx /opt/bin/dsbx && " +
+      "chown root:root /opt/bin/dsbx && chmod 755 /opt/bin/dsbx",
     { user: "root" }
   )
   .registerTool({
@@ -408,9 +473,12 @@ SHELLEOF`,
     "/usr/local/bin/dust-install-trust-bundle",
     { user: "root" }
   )
-  .runCmd("chmod 755 /usr/local/bin/dust-install-trust-bundle", {
-    user: "root",
-  })
+  .runCmd(
+    "chown root:root /usr/local/bin/dust-install-trust-bundle && chmod 755 /usr/local/bin/dust-install-trust-bundle",
+    {
+      user: "root",
+    }
+  )
   .copy(
     getLocalContent(EGRESS_LOCAL_DIR, "egress-nftables.sh"),
     "/etc/dust/egress-nftables.sh",
@@ -431,6 +499,10 @@ SHELLEOF`,
     "systemctl daemon-reload && systemctl enable dust-egress-resolver.service dust-egress-nftables.service",
     { user: "root" }
   )
+  // Run after all apt/npm installs as a final guard against a dependency
+  // reintroducing sudo or privileged account state.
+  .runCmd(getLocalAccountPrivilegeHardeningCommand(), { user: "root" })
+  .runCmd(getPrivilegedExecutablePathHardeningCommand(), { user: "root" })
   // Profile functions (no install needed, provided by profile scripts)
   // --- read_file: anthropic/openai use offset/limit, gemini uses start/end ---
   .registerTool({

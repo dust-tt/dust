@@ -1620,6 +1620,248 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       },
     },
   },
+  {
+    id: 10021,
+    name: "Praiz",
+    description:
+      "Praiz tools to search and read your meetings, calls, and transcripts — keep your CRM and team in sync with your customer conversations.",
+    url: "https://mcp.praiz.io/mcp",
+    icon: "PraizLogo",
+    documentationUrl: "https://docs.dust.tt/docs/remote-mcp-server",
+    connectionInstructions:
+      "Praiz uses OAuth. You will be prompted to sign in with your Praiz account and approve the requested scopes directly from the Dust chat.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      search: "never_ask",
+      fetch: "never_ask",
+      list_videos: "never_ask",
+      search_videos: "never_ask",
+      get_video: "never_ask",
+      get_video_transcript: "never_ask",
+      get_transcript_around: "never_ask",
+      get_video_timeline: "never_ask",
+      list_comments: "never_ask",
+      list_participants: "never_ask",
+      search_participants: "never_ask",
+      list_templates: "never_ask",
+      get_template_fields: "never_ask",
+      get_template_values: "never_ask",
+      list_users: "never_ask",
+      list_teams: "never_ask",
+      list_tags: "never_ask",
+      list_playlists: "never_ask",
+      usage_stats: "never_ask",
+    },
+    toolDisplayLabels: {
+      search: {
+        running: "Searching on Praiz",
+        done: "Searched on Praiz",
+      },
+      fetch: {
+        running: "Fetching record from Praiz",
+        done: "Fetched record from Praiz",
+      },
+      list_videos: {
+        running: "Listing videos on Praiz",
+        done: "Listed videos on Praiz",
+      },
+      search_videos: {
+        running: "Searching videos on Praiz",
+        done: "Searched videos on Praiz",
+      },
+      get_video: {
+        running: "Fetching video from Praiz",
+        done: "Fetched video from Praiz",
+      },
+      get_video_transcript: {
+        running: "Fetching transcript from Praiz",
+        done: "Fetched transcript from Praiz",
+      },
+      get_transcript_around: {
+        running: "Fetching transcript segment from Praiz",
+        done: "Fetched transcript segment from Praiz",
+      },
+      get_video_timeline: {
+        running: "Fetching timeline from Praiz",
+        done: "Fetched timeline from Praiz",
+      },
+      list_comments: {
+        running: "Listing comments on Praiz",
+        done: "Listed comments on Praiz",
+      },
+      list_participants: {
+        running: "Listing participants on Praiz",
+        done: "Listed participants on Praiz",
+      },
+      search_participants: {
+        running: "Searching participants on Praiz",
+        done: "Searched participants on Praiz",
+      },
+      list_templates: {
+        running: "Listing templates on Praiz",
+        done: "Listed templates on Praiz",
+      },
+      get_template_fields: {
+        running: "Fetching template fields from Praiz",
+        done: "Fetched template fields from Praiz",
+      },
+      get_template_values: {
+        running: "Fetching template values from Praiz",
+        done: "Fetched template values from Praiz",
+      },
+      list_users: {
+        running: "Listing users on Praiz",
+        done: "Listed users on Praiz",
+      },
+      list_teams: {
+        running: "Listing teams on Praiz",
+        done: "Listed teams on Praiz",
+      },
+      list_tags: {
+        running: "Listing tags on Praiz",
+        done: "Listed tags on Praiz",
+      },
+      list_playlists: {
+        running: "Listing playlists on Praiz",
+        done: "Listed playlists on Praiz",
+      },
+      usage_stats: {
+        running: "Fetching usage stats from Praiz",
+        done: "Fetched usage stats from Praiz",
+      },
+    },
+  },
+  {
+    id: 10022,
+    name: "Costory",
+    description:
+      "Costory tools to explore cloud cost data, compare periods, set alerts, and share reports across AWS, GCP, Azure, Datadog, Anthropic, OpenAI, and more.",
+    url: "https://app-api.costory.io/mcp",
+    icon: "CostoryLogo",
+    documentationUrl: "https://docs.costory.io/features/mcp",
+    connectionInstructions:
+      "Costory uses OAuth. You will be prompted to sign in with your Costory account in a browser window to authorize access.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      search: "never_ask",
+      search_documentation: "never_ask",
+      get_documentation_page: "never_ask",
+      get_context: "never_ask",
+      suggest_actions: "never_ask",
+      suggest_groupby: "never_ask",
+      suggest_usage_metrics: "never_ask",
+      query: "never_ask",
+      get: "never_ask",
+      get_dashboard_widget_data: "never_ask",
+      get_dashboard_widget_image: "never_ask",
+      list_metrics: "never_ask",
+      list_events: "never_ask",
+      list_alerts: "never_ask",
+      list_available_destinations: "never_ask",
+      list_organizations: "never_ask",
+      list_teams: "never_ask",
+      list_tags: "never_ask",
+      create_dashboard: "low",
+      update_dashboard: "high",
+      create_alert: "low",
+      create_event: "low",
+      create_report: "low",
+    },
+    toolDisplayLabels: {
+      search: {
+        running: "Searching on Costory",
+        done: "Searched on Costory",
+      },
+      search_documentation: {
+        running: "Searching Costory docs",
+        done: "Searched Costory docs",
+      },
+      get_documentation_page: {
+        running: "Fetching docs page from Costory",
+        done: "Fetched docs page from Costory",
+      },
+      get_context: {
+        running: "Loading workspace context from Costory",
+        done: "Loaded workspace context from Costory",
+      },
+      suggest_actions: {
+        running: "Suggesting actions on Costory",
+        done: "Suggested actions on Costory",
+      },
+      suggest_groupby: {
+        running: "Suggesting group-by on Costory",
+        done: "Suggested group-by on Costory",
+      },
+      suggest_usage_metrics: {
+        running: "Suggesting usage metrics on Costory",
+        done: "Suggested usage metrics on Costory",
+      },
+      query: {
+        running: "Querying costs on Costory",
+        done: "Queried costs on Costory",
+      },
+      get: {
+        running: "Fetching record from Costory",
+        done: "Fetched record from Costory",
+      },
+      get_dashboard_widget_data: {
+        running: "Fetching widget data from Costory",
+        done: "Fetched widget data from Costory",
+      },
+      get_dashboard_widget_image: {
+        running: "Rendering widget image on Costory",
+        done: "Rendered widget image on Costory",
+      },
+      list_metrics: {
+        running: "Listing metrics on Costory",
+        done: "Listed metrics on Costory",
+      },
+      list_events: {
+        running: "Listing events on Costory",
+        done: "Listed events on Costory",
+      },
+      list_alerts: {
+        running: "Listing alerts on Costory",
+        done: "Listed alerts on Costory",
+      },
+      list_available_destinations: {
+        running: "Listing destinations on Costory",
+        done: "Listed destinations on Costory",
+      },
+      list_organizations: {
+        running: "Listing organizations on Costory",
+        done: "Listed organizations on Costory",
+      },
+      list_teams: {
+        running: "Listing teams on Costory",
+        done: "Listed teams on Costory",
+      },
+      list_tags: {
+        running: "Listing tags on Costory",
+        done: "Listed tags on Costory",
+      },
+      create_dashboard: {
+        running: "Creating dashboard on Costory",
+        done: "Created dashboard on Costory",
+      },
+      update_dashboard: {
+        running: "Updating dashboard on Costory",
+        done: "Updated dashboard on Costory",
+      },
+      create_alert: {
+        running: "Creating alert on Costory",
+        done: "Created alert on Costory",
+      },
+      create_event: {
+        running: "Logging event on Costory",
+        done: "Logged event on Costory",
+      },
+      create_report: {
+        running: "Scheduling report on Costory",
+        done: "Scheduled report on Costory",
+      },
+    },
+  },
 ];
 
 export const isDefaultRemoteMcpServerURL = (url: string | undefined) => {

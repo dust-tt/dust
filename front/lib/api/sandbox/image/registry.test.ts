@@ -1,3 +1,4 @@
+import { SANDBOX_ROOT_SAFE_PATH } from "@app/lib/api/sandbox/hardening";
 import { getSandboxImageFromRegistry } from "@app/lib/api/sandbox/image/registry";
 import {
   type Operation,
@@ -68,7 +69,7 @@ describe("sandbox image registry", () => {
   test("pins the current dust-base image tag", () => {
     expect(getDustBaseImage().imageId).toEqual({
       imageName: "dust-base",
-      tag: "0.8.25",
+      tag: "0.8.29",
     });
   });
 
@@ -79,21 +80,111 @@ describe("sandbox image registry", () => {
     expect(runCommands).toEqual(
       expect.arrayContaining([
         expect.stringContaining(
+          "install -d -o agent -g agent -m 2775 /home/agent/.local /home/agent/.local/bin"
+        ),
+        expect.stringContaining(
           "useradd --create-home --uid 1003 --gid agent --shell /bin/bash agent-proxied"
         ),
-        expect.stringContaining("chgrp agent /home/agent /files/conversation"),
-        expect.stringContaining("chmod g+ws /home/agent /files/conversation"),
         expect.stringContaining(
-          "setfacl -R -d -m g::rwx /home/agent /files/conversation"
+          "chgrp agent /home/agent /home/agent/.local /home/agent/.local/bin /files/conversation"
         ),
         expect.stringContaining(
-          "setfacl -R -m g::rwx /home/agent /files/conversation"
+          "chmod g+ws /home/agent /home/agent/.local /home/agent/.local/bin /files/conversation"
+        ),
+        expect.stringContaining(
+          "setfacl -R -d -m g::rwx /home/agent /home/agent/.local /home/agent/.local/bin /files/conversation"
+        ),
+        expect.stringContaining(
+          "setfacl -R -m g::rwx /home/agent /home/agent/.local /home/agent/.local/bin /files/conversation"
         ),
         expect.stringContaining(
           "useradd --system --no-create-home --gid dust-egress-resolver --shell /usr/sbin/nologin dust-egress-resolver"
         ),
       ])
     );
+  });
+
+  test("hardens provider-created local accounts and sudo before agent code exists", () => {
+    const runCommands = getRunCommands(getDustBaseImageOperations());
+    const hardeningCommands = runCommands.filter((command) =>
+      command.includes("sudo must not be installed in sandbox images")
+    );
+    const firstHardeningIndex = runCommands.findIndex((command) =>
+      command.includes("sudo must not be installed in sandbox images")
+    );
+    const agentProxiedIndex = runCommands.findIndex((command) =>
+      command.includes("useradd --create-home --uid 1003")
+    );
+
+    expect(hardeningCommands.length).toBeGreaterThanOrEqual(2);
+    for (const command of hardeningCommands) {
+      expect(command).toContain("passwd -l root");
+      expect(command).toContain("zz-dust-root-safe-path.sh");
+      expect(command).toContain(SANDBOX_ROOT_SAFE_PATH);
+      expect(command).toContain("awk -F: '$2 == \"\" {print $1}'");
+      expect(command).toContain('passwd -l "$account"');
+      expect(command).toContain(
+        "usermod --lock --expiredate 1 --shell /usr/sbin/nologin user"
+      );
+      expect(command).toContain("gpasswd -d user");
+      expect(command).toContain("for member in $members");
+      expect(command).toContain("NOPASSWD");
+      expect(command).toContain("apt-get purge -y sudo");
+      expect(command).toContain("sudo_path.disabled-by-dust");
+      expect(command).toContain("/usr/bin/su");
+      expect(command).toContain("/usr/bin/passwd");
+      expect(command).toContain("chmod u-s");
+      expect(command).toContain(
+        "install -d -o root -g root -m 755 /opt/bin /usr/local /usr/local/sbin /usr/local/bin"
+      );
+      expect(command).toContain(
+        "for path in /opt/bin/dsbx /usr/local/bin/dust-install-trust-bundle"
+      );
+      expect(command).toContain("empty-password local accounts must not exist");
+      expect(command).toContain("privileged primary group");
+      expect(command).toContain(
+        "passwordless unrestricted sudoers entries must not exist"
+      );
+      expect(command).toContain("local auth helper must not be setuid");
+      expect(command).toContain(
+        "privileged executable directory must be root-owned"
+      );
+    }
+    expect(firstHardeningIndex).toBeGreaterThanOrEqual(0);
+    expect(agentProxiedIndex).toBeGreaterThan(firstHardeningIndex);
+  });
+
+  test("keeps privileged executable directories root-owned", () => {
+    const runCommands = getRunCommands(getDustBaseImageOperations());
+
+    expect(runCommands).toEqual(
+      expect.arrayContaining([
+        "install -d -o root -g root -m 755 /opt/bin /usr/local /usr/local/sbin /usr/local/bin && chown root:root /opt/bin /usr/local /usr/local/sbin /usr/local/bin && chmod 755 /opt/bin /usr/local /usr/local/sbin /usr/local/bin",
+      ])
+    );
+  });
+
+  test("disables and hardens sshd in the base image", () => {
+    const runCommands = getRunCommands(getDustBaseImageOperations());
+    const hardeningCommand = runCommands.find((command) =>
+      command.includes("00-dust-sandbox-hardening.conf")
+    );
+
+    expect(hardeningCommand).toBeDefined();
+    expect(hardeningCommand).toContain("Include /etc/ssh/sshd_config.d/*.conf");
+    expect(hardeningCommand).toContain("PermitRootLogin no");
+    expect(hardeningCommand).toContain("UsePAM no");
+    expect(hardeningCommand).toContain("AuthorizedKeysCommand none");
+    expect(hardeningCommand).toContain(
+      "AuthorizedKeysFile /etc/ssh/authorized_keys/%u"
+    );
+    expect(hardeningCommand).toContain("AllowUsers agent");
+    expect(hardeningCommand).toContain("DenyUsers root agent-proxied");
+    expect(hardeningCommand).toContain("pam_permit\\.so");
+    expect(hardeningCommand).toContain(
+      "systemctl disable --now ssh.service ssh.socket"
+    );
+    expect(hardeningCommand).toContain("systemctl mask ssh.service ssh.socket");
   });
 
   test("copies the egress boot assets and enables the systemd units", () => {
@@ -175,6 +266,9 @@ describe("sandbox image registry", () => {
       "nft add rule ip dust-egress filter_output meta skuid $PROXIED_UID ip daddr 127.0.0.1 udp dport $DNS_STUB_PORT accept"
     );
     expect(nftablesScript).toContain(
+      "nft add rule ip dust-egress filter_output meta skuid $PROXIED_UID ip daddr 127.0.0.0/8 tcp dport 22 drop"
+    );
+    expect(nftablesScript).toContain(
       "nft add rule ip dust-egress filter_output meta skuid $PROXIED_UID ip daddr 169.254.169.254 drop"
     );
     expect(nftablesScript).toContain(
@@ -196,7 +290,27 @@ describe("sandbox image registry", () => {
     expectContentInOrder(
       nftablesScript,
       "udp dport $DNS_STUB_PORT accept",
+      "tcp dport 22 drop"
+    );
+    expectContentInOrder(
+      nftablesScript,
+      "tcp dport 22 drop",
       "meta l4proto udp drop"
+    );
+  });
+
+  test("installs the current dsbx CLI release", () => {
+    const runCommands = getRunCommands(getDustBaseImageOperations());
+
+    expect(runCommands).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining(
+          "https://github.com/dust-tt/dust/releases/download/dsbx-v0.1.23/dsbx-linux-x86_64"
+        ),
+        expect.stringContaining(
+          "chown root:root /opt/bin/dsbx && chmod 755 /opt/bin/dsbx"
+        ),
+      ])
     );
   });
 
@@ -239,7 +353,7 @@ describe("sandbox image registry", () => {
           "cat /etc/dust/dust-trust.environment >> /etc/environment"
         ),
         "chmod 644 /etc/profile.d/dust-trust.sh",
-        "chmod 755 /usr/local/bin/dust-install-trust-bundle",
+        "chown root:root /usr/local/bin/dust-install-trust-bundle && chmod 755 /usr/local/bin/dust-install-trust-bundle",
       ])
     );
 

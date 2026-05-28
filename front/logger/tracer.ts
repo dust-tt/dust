@@ -14,6 +14,7 @@ interface TracerLike {
     fn: (span?: SpanLike | null) => T
   ): T;
   setUser(user: Record<string, string | undefined>): void;
+  use(plugin: string, config: Record<string, unknown>): void;
 }
 
 interface SpanLike {
@@ -48,6 +49,7 @@ const noopTracer: TracerLike = {
     return fn(null as unknown as SpanLike);
   },
   setUser() {},
+  use() {},
 };
 
 let tracer: TracerLike;

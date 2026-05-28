@@ -43,6 +43,7 @@ vi.mock("@app/lib/api/config", () => ({
 }));
 
 vi.mock("@app/lib/api/regions/config", () => ({
+  SUPPORTED_REGIONS: ["europe-west1", "us-central1"],
   config: {
     getCurrentRegion: mockGetCurrentRegion,
   },
@@ -88,6 +89,7 @@ type HealthcheckOutput = {
   nft_dns_tcp_redirect_ok: boolean;
   nft_dns_udp_accept_ok: boolean;
   nft_tcp_forward_redirect_ok: boolean;
+  nft_loopback_ssh_drop_ok: boolean;
   nft_udp_drop_ok: boolean;
   nft_icmp_drop_ok: boolean;
   nft_ipv6_drop_ok: boolean;
@@ -103,6 +105,7 @@ function healthStdout(overrides: Partial<HealthcheckOutput> = {}): string {
     nft_dns_tcp_redirect_ok: true,
     nft_dns_udp_accept_ok: true,
     nft_tcp_forward_redirect_ok: true,
+    nft_loopback_ssh_drop_ok: true,
     nft_udp_drop_ok: true,
     nft_icmp_drop_ok: true,
     nft_ipv6_drop_ok: true,
@@ -221,6 +224,8 @@ describe("sandbox egress helpers", () => {
     // exports on the agent process. Pinning the strip list to the canonical
     // SANDBOX_TRUST_ENV_VARS keys here catches drift between the two sites.
     const spawnCall = sandbox.exec.mock.calls[1][1] as string;
+    expect(spawnCall).toContain("/usr/bin/nohup /usr/bin/env");
+    expect(spawnCall).not.toContain("nohup env");
     for (const key of Object.keys(SANDBOX_TRUST_ENV_VARS)) {
       expect(spawnCall).toContain(`-u ${key}`);
     }
@@ -256,6 +261,7 @@ describe("sandbox egress helpers", () => {
       "if [ -x '/usr/local/bin/dust-install-trust-bundle' ]"
     );
     expect(installCall).toContain("update-ca-certificates");
+    expect(installCall).toContain("/bin/cat");
     expect(installCall).toContain("/etc/ssl/certs/ca-certificates.crt");
     expect(mockLoggerInfo).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -585,10 +591,11 @@ describe("sandbox egress helpers", () => {
 
   it.each([
     "nft_tcp_forward_redirect_ok" as const,
+    "nft_loopback_ssh_drop_ok" as const,
     "nft_udp_drop_ok" as const,
     "nft_icmp_drop_ok" as const,
     "nft_ipv6_drop_ok" as const,
-  ])("fails closed when %s is false (broader no-UDP/no-IPv6 invariant)", async (missing) => {
+  ])("fails closed when %s is false (broader nftables invariant)", async (missing) => {
     const sandbox = {
       providerId: "provider-sandbox-id",
       sId: "sandbox-id",
@@ -826,10 +833,10 @@ describe("sandbox egress helpers", () => {
       expect(sandbox.exec).toHaveBeenCalledTimes(1);
       const command = sandbox.exec.mock.calls[0][1] as string;
       expect(command).toContain(
-        "systemctl disable --now dust-egress-resolver.service dust-egress-nftables.service"
+        "/usr/bin/systemctl disable --now dust-egress-resolver.service dust-egress-nftables.service"
       );
-      expect(command).toContain("nft delete table ip dust-egress");
-      expect(command).toContain("nft delete table ip6 dust-egress");
+      expect(command).toContain("/usr/sbin/nft delete table ip dust-egress");
+      expect(command).toContain("/usr/sbin/nft delete table ip6 dust-egress");
       expect(sandbox.exec).toHaveBeenCalledWith(auth, expect.any(String), {
         user: "root",
       });

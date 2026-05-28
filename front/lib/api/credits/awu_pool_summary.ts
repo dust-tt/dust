@@ -1,29 +1,22 @@
 import type { Authenticator } from "@app/lib/auth";
 import {
   ceilToMidnightUTC,
-  floorToMidnightUTC,
   listMetronomeBalances,
   listMetronomeDraftInvoices,
-  listMetronomeUsageWithGroups,
 } from "@app/lib/metronome/client";
-import {
-  getCreditTypeAwuId,
-  getMetricLlmProviderCostAwuId,
-} from "@app/lib/metronome/constants";
+import { getCreditTypeAwuId } from "@app/lib/metronome/constants";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import {
   getProductSeatTypes,
   getSeatTypesByProductIdFromContract,
 } from "@app/lib/metronome/seat_types";
-import { buildSeatDataByUserId } from "@app/lib/metronome/seats";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export type AwuPoolSummaryResponseBody = {
   totalRemainingCredits: number;
-  consumedByUsersCredits: number;
-  consumedByProgrammaticCredits: number;
+  totalActiveCredits: number;
   resetDate: string;
 };
 
@@ -101,8 +94,7 @@ export async function handleAwuPoolSummaryRequest(
       if (!currentInvoice?.start_timestamp || !currentInvoice.end_timestamp) {
         return res.status(200).json({
           totalRemainingCredits: 0,
-          consumedByUsersCredits: 0,
-          consumedByProgrammaticCredits: 0,
+          totalActiveCredits: 0,
           resetDate: "",
         });
       }
@@ -114,117 +106,46 @@ export async function handleAwuPoolSummaryRequest(
       // Filter to active, non-seat AWU pool credits and commits. The set of
       // seat product IDs is derived from the contract's tagged subscriptions
       // (via the `DUST_SEAT_TYPE` custom field) rather than a hardcoded list.
+      // The contract filter prevents sandbox prepaid commits on other contracts
+      // from inflating the balance.
       const awuCreditTypeId = getCreditTypeAwuId();
       const activeContract = await getActiveContract(workspace.sId);
-      if (!activeContract) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Workspace is not configured for Metronome billing.",
-          },
-        });
-      }
       const productSeatTypes = await getProductSeatTypes();
-      const seatProductIds = new Set(
-        getSeatTypesByProductIdFromContract(
-          activeContract,
-          productSeatTypes
-        ).keys()
-      );
+      const seatProductIds = activeContract
+        ? new Set(
+            getSeatTypesByProductIdFromContract(
+              activeContract,
+              productSeatTypes
+            ).keys()
+          )
+        : new Set<string>();
       const awuBalances = balancesResult.value.filter(
         (entry) =>
           entry.access_schedule?.credit_type?.id === awuCreditTypeId &&
-          !seatProductIds.has(entry.product.id)
+          !seatProductIds.has(entry.product.id) &&
+          (entry.contract?.id === metronomeContractId || !entry.contract)
       );
 
-      // Sum the remaining balance of each active pool credit.
-      // entry.balance accounts for prior-period consumption (e.g. a carried-over prepaid
-      // top-off that was partially consumed in a previous billing cycle). Upcoming and
-      // expired schedule segments contribute 0 to the balance, so this is safe for
-      // multi-period recurring credits too.
       let totalRemainingCredits = 0;
+      let totalActiveCredits = 0;
       for (const entry of awuBalances) {
-        const isActive = (entry.access_schedule?.schedule_items ?? []).some(
-          (item) => {
-            const itemStartMs = new Date(item.starting_at).getTime();
-            const itemEndMs = new Date(item.ending_before).getTime();
-            return itemStartMs <= now && now < itemEndMs;
-          }
-        );
+        const scheduleItems = entry.access_schedule?.schedule_items ?? [];
+        const isActive = scheduleItems.some((item) => {
+          const itemStartMs = new Date(item.starting_at).getTime();
+          const itemEndMs = new Date(item.ending_before).getTime();
+          return itemStartMs <= now && now < itemEndMs;
+        });
         if (isActive) {
           totalRemainingCredits += entry.balance ?? 0;
-        }
-      }
-
-      const startingOn = floorToMidnightUTC(
-        new Date(currentInvoice.start_timestamp)
-      ).toISOString();
-      const endingBefore = ceilToMidnightUTC(
-        new Date(currentInvoice.end_timestamp)
-      ).toISOString();
-
-      // Query usage per user and seat allocations in parallel.
-      // Per-user breakdown is needed to compute pool overflow correctly:
-      // seat credits cover each user up to their allocation; only the excess
-      // draws from the workspace pool.
-      const [usageResult, seatDataByUserId] = await Promise.all([
-        listMetronomeUsageWithGroups({
-          customerId: metronomeCustomerId,
-          billableMetricId: getMetricLlmProviderCostAwuId(),
-          startingOn,
-          endingBefore,
-          windowSize: "NONE",
-          groupKey: ["user_id", "usage_type"],
-        }),
-        buildSeatDataByUserId({
-          metronomeCustomerId,
-          contractId: metronomeContractId,
-        }),
-      ]);
-
-      if (usageResult.isErr()) {
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: `Failed to retrieve Metronome usage: ${usageResult.error.message}`,
-          },
-        });
-      }
-
-      // Aggregate per-user consumption from the usage metric.
-      const perUserCredits = new Map<string, number>();
-      let consumedByProgrammaticCredits = 0;
-
-      for (const row of usageResult.value) {
-        const credits = row.value ?? 0;
-        const usageType = row.group?.["usage_type"];
-        if (usageType === "programmatic") {
-          consumedByProgrammaticCredits += credits;
-        } else {
-          const userId = row.group?.["user_id"];
-          if (userId) {
-            perUserCredits.set(
-              userId,
-              (perUserCredits.get(userId) ?? 0) + credits
-            );
+          for (const item of scheduleItems) {
+            totalActiveCredits += item.amount;
           }
         }
-      }
-
-      // Pool user consumption = sum of each user's overflow beyond their seat allocation.
-      // Users without a seat: all their usage is pool consumption.
-      let consumedByUsersCredits = 0;
-      for (const [userId, userCredits] of perUserCredits) {
-        const seatAllocation = seatDataByUserId.get(userId)?.awuAllocation ?? 0;
-        consumedByUsersCredits += Math.max(0, userCredits - seatAllocation);
       }
 
       return res.status(200).json({
         totalRemainingCredits,
-        consumedByUsersCredits,
-        consumedByProgrammaticCredits,
+        totalActiveCredits,
         resetDate,
       });
     }

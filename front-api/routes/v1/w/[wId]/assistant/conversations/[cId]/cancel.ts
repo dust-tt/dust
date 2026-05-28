@@ -69,8 +69,6 @@ app.use("*", streamingTag);
  *                   description: Indicates if the cancellation was successful
  *       400:
  *         description: Invalid request (invalid query parameters or request body)
- *       405:
- *         description: Method not supported
  */
 app.post(
   "/",

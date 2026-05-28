@@ -74,8 +74,6 @@ import documentId from "./[documentId]";
  *                   type: integer
  *       404:
  *         description: The data source was not found
- *       405:
- *         description: Method not supported
  */
 const app = publicApiApp();
 

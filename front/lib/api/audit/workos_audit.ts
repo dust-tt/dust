@@ -72,6 +72,7 @@ type AuditAction =
   | "sandbox_env_var.updated"
   // Workspace settings.
   | "workspace.audit_logs_updated"
+  | "workspace.default_user_spend_limit_updated"
   // SCIM / Directory Sync.
   | "scim.user_provisioned"
   | "scim.user_updated"
@@ -119,6 +120,8 @@ type AuditAction =
   // Audit Logs.
   | "audit_log.viewed"
   | "audit_log.export_configured"
+  // Billing & Subscriptions.
+  | "subscription.changed"
   // Coupons.
   | "coupon.redeemed"
   | "coupon.revoked";

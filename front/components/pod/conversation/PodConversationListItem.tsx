@@ -11,7 +11,7 @@ import {
   type LightConversationType,
 } from "@app/types/assistant/conversation";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import { stripMarkdown } from "@app/types/shared/utils/string_utils";
+import { stripMarkdown } from "@app/types/shared/utils/markdown";
 import type { WorkspaceType } from "@app/types/user";
 import type { Avatar } from "@dust-tt/sparkle";
 import { ConversationListItem, ReplySection } from "@dust-tt/sparkle";

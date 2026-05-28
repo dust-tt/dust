@@ -127,8 +127,6 @@ import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
  *         description: Bad Request. Invalid request body.
  *       401:
  *         description: Unauthorized. Invalid or missing authentication token.
- *       405:
- *         description: Method not supported. Only POST is expected.
  *       500:
  *         description: Internal Server Error.
  */

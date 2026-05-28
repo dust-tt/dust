@@ -1,4 +1,6 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
+import "./lib/tracer-config";
+
 import { createServer } from "node:http";
 import path from "node:path";
 import { parse } from "node:url";

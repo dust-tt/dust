@@ -10,7 +10,7 @@ import {
   ExternalLinkIcon,
   IconButton,
   InformationCircleIcon,
-  Tooltip,
+  Popover,
 } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useCallback } from "react";
@@ -57,8 +57,8 @@ export function PokePermissionTree({
         onDocumentViewClick={onDocumentViewClick}
         useResourcesHook={useResourcesHook}
         additionalActionsForContentNode={(contentNode) => (
-          <Tooltip
-            label={
+          <Popover
+            content={
               <div className="flex flex-col gap-2 p-2">
                 <div className="text-xs">
                   <div className="font-semibold">Title:</div>

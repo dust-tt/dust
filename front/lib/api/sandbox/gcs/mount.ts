@@ -4,6 +4,7 @@ import {
 } from "@app/lib/api/files/mount_path";
 import { mintDownscopedGcsToken } from "@app/lib/api/sandbox/gcs/token";
 import type { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
+import { shellEscape } from "@app/lib/api/sandbox/shell";
 import type { Authenticator } from "@app/lib/auth";
 import fileStorageConfig from "@app/lib/file_storage/config";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
@@ -264,7 +265,7 @@ export async function refreshGcsToken(
   return new Ok(undefined);
 }
 
-function buildMountCommand({
+export function buildMountCommand({
   bucket,
   prefix,
   mountPoint,
@@ -278,7 +279,7 @@ function buildMountCommand({
     // Disable token caching so gcsfuse fetches fresh token from server on every GCS API request.
     // This ensures gcsfuse never uses stale credentials, eliminating 401 errors after token expiry.
     `--reuse-token-from-url=false`,
-    `--only-dir ${prefix}`,
+    `--only-dir ${shellEscape(prefix)}`,
     `--implicit-dirs`,
     `-o allow_other`,
     `--file-mode=666`,
@@ -290,7 +291,7 @@ function buildMountCommand({
     `--enable-hns=false`,
   ].join(" ");
 
-  return `timeout 30 gcsfuse ${flags} ${bucket} ${mountPoint} 2>&1`;
+  return `/usr/bin/timeout 30 /usr/bin/gcsfuse ${flags} ${shellEscape(bucket)} ${shellEscape(mountPoint)} 2>&1`;
 }
 
 function escapeSingleQuotes(s: string): string {

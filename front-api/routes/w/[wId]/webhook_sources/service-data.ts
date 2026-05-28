@@ -9,7 +9,7 @@ import type {
 } from "@app/types/triggers/webhooks";
 import { isWebhookProvider } from "@app/types/triggers/webhooks";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureRole } from "@front-api/middlewares/ensure_role";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -30,7 +30,7 @@ const app = workspaceApp();
 
 app.get(
   "/",
-  ensureRole({ admin: true }),
+  ensureIsAdmin(),
   validate("query", GetServiceDataQuerySchema),
   async (ctx): HandlerResult<GetServiceDataResponseType> => {
     const auth = ctx.get("auth");

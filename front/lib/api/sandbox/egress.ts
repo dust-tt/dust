@@ -153,6 +153,7 @@ const EgressHealthcheckOutputSchema = z.object({
   nft_dns_tcp_redirect_ok: z.boolean(),
   nft_dns_udp_accept_ok: z.boolean(),
   nft_tcp_forward_redirect_ok: z.boolean(),
+  nft_loopback_ssh_drop_ok: z.boolean(),
   nft_udp_drop_ok: z.boolean(),
   nft_icmp_drop_ok: z.boolean(),
   nft_ipv6_drop_ok: z.boolean(),
@@ -192,14 +193,16 @@ function parseEgressHealthcheckOutput(
 
   const data = validation.data;
   // nftablesOk mirrors the full enforcement boundary, not just the DNS rules:
-  // DNS interception alone isn't load-bearing without the generic UDP/ICMP/
-  // IPv6 drops and the broad TCP redirect to the forwarder. Treating a
-  // partially damaged table as healthy would silently reopen non-53 UDP.
+  // DNS interception alone isn't load-bearing without the loopback SSH block,
+  // generic UDP/ICMP/IPv6 drops, and broad TCP redirect to the forwarder.
+  // Treating a partially damaged table as healthy would silently reopen part
+  // of the agent escape or egress surface.
   const nftablesOk =
     data.nft_dns_udp_redirect_ok &&
     data.nft_dns_tcp_redirect_ok &&
     data.nft_dns_udp_accept_ok &&
     data.nft_tcp_forward_redirect_ok &&
+    data.nft_loopback_ssh_drop_ok &&
     data.nft_udp_drop_ok &&
     data.nft_icmp_drop_ok &&
     data.nft_ipv6_drop_ok;
@@ -397,9 +400,9 @@ export async function teardownInSandboxEgressRedirect(
   }
 
   const command =
-    "systemctl disable --now dust-egress-resolver.service dust-egress-nftables.service >/dev/null 2>&1 || true; " +
-    "nft delete table ip dust-egress >/dev/null 2>&1 || true; " +
-    "nft delete table ip6 dust-egress >/dev/null 2>&1 || true";
+    "/usr/bin/systemctl disable --now dust-egress-resolver.service dust-egress-nftables.service >/dev/null 2>&1 || true; " +
+    "/usr/sbin/nft delete table ip dust-egress >/dev/null 2>&1 || true; " +
+    "/usr/sbin/nft delete table ip6 dust-egress >/dev/null 2>&1 || true";
 
   return runSuccessfulSandboxCommand(auth, sandbox, command, "root");
 }
@@ -438,7 +441,7 @@ export async function setupEgressForwarder(
   const prepareTokenResult = await runSuccessfulSandboxCommand(
     auth,
     sandbox,
-    `chmod 600 ${shellEscape(EGRESS_TOKEN_PATH)}`,
+    `/usr/bin/chmod 600 ${shellEscape(EGRESS_TOKEN_PATH)}`,
     "root"
   );
   if (prepareTokenResult.isErr()) {
@@ -475,7 +478,7 @@ export async function setupEgressForwarder(
     .map((k) => `-u ${k}`)
     .join(" ");
   const startForwarderCommand =
-    `nohup env ${trustEnvStripFlags} ` +
+    `/usr/bin/nohup /usr/bin/env ${trustEnvStripFlags} ` +
     "/opt/bin/dsbx forward " +
     `--token-file ${shellEscape(EGRESS_TOKEN_PATH)} ` +
     `--proxy-addr ${shellEscape(`${proxyAddr}:${config.getEgressProxyPort()}`)} ` +
@@ -530,7 +533,7 @@ async function killEgressForwarder(
   return runSuccessfulSandboxCommand(
     auth,
     sandbox,
-    "pkill -KILL -f '^/opt/bin/dsbx forward( |$)' >/dev/null 2>&1 || true",
+    "/usr/bin/pkill -KILL -f '^/opt/bin/dsbx forward( |$)' >/dev/null 2>&1 || true",
     "root"
   );
 }
@@ -556,12 +559,12 @@ async function installMitmTrustBundle(
   // TODO(2026-08-01 SANDBOX): remove the fallback once all pre-0.8.8
   // sandboxes have aged out.
   const inlineFallback =
-    `mkdir -p ${shellEscape("/etc/dust")} ${shellEscape("/usr/local/share/ca-certificates")} && ` +
-    `((cp ${shellEscape(MITM_CA_PATH)} ${shellEscape(MITM_SYSTEM_CA_DEST)} && update-ca-certificates >/dev/null 2>&1) || true) && ` +
-    `_bundle_tmp=$(mktemp ${shellEscape("/etc/dust/.ca-bundle.pem.XXXXXX")}) && ` +
-    `{ cat ${shellEscape(MITM_SYSTEM_CA_BUNDLE)}; printf '\\n'; cat ${shellEscape(MITM_CA_PATH)}; } > "$_bundle_tmp" && ` +
-    `chmod 644 "$_bundle_tmp" && ` +
-    `mv "$_bundle_tmp" ${shellEscape(MITM_CA_BUNDLE_PATH)}`;
+    `/usr/bin/mkdir -p ${shellEscape("/etc/dust")} ${shellEscape("/usr/local/share/ca-certificates")} && ` +
+    `((/usr/bin/cp ${shellEscape(MITM_CA_PATH)} ${shellEscape(MITM_SYSTEM_CA_DEST)} && /usr/sbin/update-ca-certificates >/dev/null 2>&1) || true) && ` +
+    `_bundle_tmp=$(/usr/bin/mktemp ${shellEscape("/etc/dust/.ca-bundle.pem.XXXXXX")}) && ` +
+    `{ /bin/cat ${shellEscape(MITM_SYSTEM_CA_BUNDLE)}; printf '\\n'; /bin/cat ${shellEscape(MITM_CA_PATH)}; } > "$_bundle_tmp" && ` +
+    `/usr/bin/chmod 644 "$_bundle_tmp" && ` +
+    `/usr/bin/mv "$_bundle_tmp" ${shellEscape(MITM_CA_BUNDLE_PATH)}`;
 
   const command =
     `[ -s ${shellEscape(MITM_CA_PATH)} ] || ` +
@@ -584,18 +587,18 @@ export async function readNewDenyLogEntries(
   sandbox: SandboxResource
 ): Promise<Result<string[], Error>> {
   const command =
-    `_state=$(cat ${shellEscape(EGRESS_DENY_LOG_OFFSET_PATH)} 2>/dev/null || true); ` +
+    `_state=$(/bin/cat ${shellEscape(EGRESS_DENY_LOG_OFFSET_PATH)} 2>/dev/null || true); ` +
     `set -- $_state; ` +
     `_off=\${1:-0}; _size_off=\${2:-0}; ` +
     `case "$_off" in ''|*[!0-9]*) _off=0;; esac; ` +
     `case "$_size_off" in ''|*[!0-9]*) _size_off=0;; esac; ` +
     `if [ -f ${shellEscape(EGRESS_DENY_LOG_PATH)} ]; then ` +
-    `_total=$(wc -l < ${shellEscape(EGRESS_DENY_LOG_PATH)} | tr -d ' '); ` +
-    `_size=$(wc -c < ${shellEscape(EGRESS_DENY_LOG_PATH)} | tr -d ' '); ` +
+    `_total=$(/usr/bin/wc -l < ${shellEscape(EGRESS_DENY_LOG_PATH)} | /usr/bin/tr -d ' '); ` +
+    `_size=$(/usr/bin/wc -c < ${shellEscape(EGRESS_DENY_LOG_PATH)} | /usr/bin/tr -d ' '); ` +
     `else _total=0; _size=0; fi; ` +
     `if [ "$_total" -lt "$_off" ] || [ "$_size" -lt "$_size_off" ]; then _off=0; fi; ` +
     `if [ "$_total" -gt "$_off" ]; then ` +
-    `tail -n +$((_off + 1)) ${shellEscape(EGRESS_DENY_LOG_PATH)} | head -n ${MAX_DENY_LOG_LINES_PER_EXEC}; ` +
+    `/usr/bin/tail -n +$((_off + 1)) ${shellEscape(EGRESS_DENY_LOG_PATH)} | /usr/bin/head -n ${MAX_DENY_LOG_LINES_PER_EXEC}; ` +
     `fi; ` +
     `echo "$_total $_size" > ${shellEscape(EGRESS_DENY_LOG_OFFSET_PATH)}`;
 

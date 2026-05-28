@@ -78,7 +78,7 @@ procs:
       export NODE_ENV=development
       # Guard: throw if anything tries to load `next` at runtime.
       export NODE_OPTIONS="--require=./forbid-next.cjs"
-      exec ../node_modules/.bin/tsx ./server.ts
+      npm run dev
     autostart: false
 
   front-strangler:

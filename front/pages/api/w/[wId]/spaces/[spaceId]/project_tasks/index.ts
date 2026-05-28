@@ -14,9 +14,9 @@ import {
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import {
-  isProjectTaskPeriodScope,
-  type ProjectTaskPeriodScope,
-  type ProjectTaskType,
+  isPodTaskPeriodScope,
+  type PodTaskPeriodScope,
+  type PodTaskType,
 } from "@app/types/project_task";
 import type { ModelId } from "@app/types/shared/model_id";
 import { isString } from "@app/types/shared/utils/general";
@@ -30,12 +30,10 @@ function parseSingleQueryValue(
   return isString(v) && v.trim().length > 0 ? v.trim() : undefined;
 }
 
-function parseProjectTaskTimeScope(
-  req: NextApiRequest
-): ProjectTaskPeriodScope {
+function parseProjectTaskTimeScope(req: NextApiRequest): PodTaskPeriodScope {
   const raw =
     parseSingleQueryValue(req.query.period)?.toLowerCase() ?? "active";
-  if (isProjectTaskPeriodScope(raw)) {
+  if (isPodTaskPeriodScope(raw)) {
     return raw;
   }
   return "active";
@@ -56,32 +54,30 @@ function parseProjectTasksPeopleMode(
   return "all";
 }
 
-export interface GetProjectTasksResponseBody {
-  tasks: ProjectTaskType[];
+export interface GetPodTasksResponseBody {
+  tasks: PodTaskType[];
   lastReadAt: string | null;
   viewerUserId: string | null;
 }
 
-const PostProjectTaskBodySchema = z.object({
+const PostPodTaskBodySchema = z.object({
   text: z
     .string()
     .trim()
     .min(1, "Text is required.")
     .max(256, "Text must be at most 256 characters."),
-  /** Omit to assign to the current user; pass `null` for unassigned (or the sole assignable member if the project has exactly one). */
+  /** Omit to assign to the current user; pass `null` for unassigned (or the sole assignable member if the pod has exactly one). */
   assigneeUserId: z.union([z.string().min(1), z.null()]).optional(),
 });
 
-export interface PostProjectTaskResponseBody {
-  task: ProjectTaskType;
+export interface PostPodTaskResponseBody {
+  task: PodTaskType;
 }
 
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorResponse<
-      GetProjectTasksResponseBody | PostProjectTaskResponseBody
-    >
+    WithAPIErrorResponse<GetPodTasksResponseBody | PostPodTaskResponseBody>
   >,
   auth: Authenticator,
   { space }: { space: SpaceResource }
@@ -135,7 +131,7 @@ async function handler(
         await ConversationResource.fetchListItemsBySIds(auth, conversationSIds);
 
       // TODO: enrich todos with creator/done-by user info when supporting multiple users.
-      const todosWithSources: ProjectTaskType[] = serializedBase.map(
+      const todosWithSources: PodTaskType[] = serializedBase.map(
         (serializedTodo, i) => {
           const t = todos[i]!;
           const sources = sourcesByTodoId.get(t.sId) ?? [];
@@ -173,7 +169,7 @@ async function handler(
     }
 
     case "POST": {
-      const parseResult = PostProjectTaskBodySchema.safeParse(req.body);
+      const parseResult = PostPodTaskBodySchema.safeParse(req.body);
       if (!parseResult.success) {
         return apiError(req, res, {
           status_code: 400,

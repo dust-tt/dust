@@ -1,11 +1,11 @@
-import { useProjectTasksPanel } from "@app/components/assistant/conversation/space/conversations/project_tasks/ProjectTasksPanelContext";
 import {
-  normalizeProjectTaskSearchNeedle,
+  normalizePodTaskSearchNeedle,
   TASK_DESKTOP_HOVER_REVEAL_CLASS,
 } from "@app/components/assistant/conversation/space/conversations/project_tasks/utils";
+import { usePodTasksPanel } from "@app/components/pod/tasks/PodTasksPanelContext";
 import {
-  PROJECT_TASK_NO_ASSIGNEE_LABEL,
-  type ProjectTaskType,
+  POD_TASK_NO_ASSIGNEE_LABEL,
+  type PodTaskType,
 } from "@app/types/project_task";
 import {
   Avatar,
@@ -27,44 +27,44 @@ import {
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
-const NO_ASSIGNEE_LABEL_NEEDLE = normalizeProjectTaskSearchNeedle(
-  PROJECT_TASK_NO_ASSIGNEE_LABEL
+const NO_ASSIGNEE_LABEL_NEEDLE = normalizePodTaskSearchNeedle(
+  POD_TASK_NO_ASSIGNEE_LABEL
 );
 
 interface TaskOverflowMenuProps {
-  task: ProjectTaskType;
+  task: PodTaskType;
 }
 
 export function TaskOverflowMenu({ task }: TaskOverflowMenuProps) {
   const {
     viewerUserId,
-    projectMembers,
+    podMembers,
     membersWithActiveTaskIds,
     patchTaskItem,
     requestDelete,
-    isSoleProjectMember,
-  } = useProjectTasksPanel();
+    isSolePodMember: isSoleProjectMember,
+  } = usePodTasksPanel();
 
   const [reassignSearch, setReassignSearch] = useState("");
 
   const allowAssigneeReassign = !isSoleProjectMember;
-  const reassignSearchNeedle = normalizeProjectTaskSearchNeedle(reassignSearch);
+  const reassignSearchNeedle = normalizePodTaskSearchNeedle(reassignSearch);
 
   const filteredReassignMembers = useMemo(() => {
     const filtered = reassignSearchNeedle
-      ? projectMembers.filter((m) =>
-          normalizeProjectTaskSearchNeedle(m.fullName).includes(
+      ? podMembers.filter((m) =>
+          normalizePodTaskSearchNeedle(m.fullName).includes(
             reassignSearchNeedle
           )
         )
-      : [...projectMembers];
+      : [...podMembers];
     // Members with active (non-done) tasks come first.
     return filtered.sort((a, b) => {
       const aActive = membersWithActiveTaskIds.has(a.sId) ? 0 : 1;
       const bActive = membersWithActiveTaskIds.has(b.sId) ? 0 : 1;
       return aActive - bActive;
     });
-  }, [reassignSearchNeedle, projectMembers, membersWithActiveTaskIds]);
+  }, [reassignSearchNeedle, podMembers, membersWithActiveTaskIds]);
 
   const showNoAssigneeReassignOption =
     task.user !== null &&
@@ -103,7 +103,7 @@ export function TaskOverflowMenu({ task }: TaskOverflowMenuProps) {
             <DropdownMenuSubTrigger
               label="Reassign"
               icon={UserIcon}
-              disabled={projectMembers.length === 0 && task.user === null}
+              disabled={podMembers.length === 0 && task.user === null}
             />
             <DropdownMenuPortal>
               <DropdownMenuSubContent alignOffset={-4} className="w-80">
@@ -123,7 +123,7 @@ export function TaskOverflowMenu({ task }: TaskOverflowMenuProps) {
                         <>
                           <DropdownMenuItem
                             key={`reassign-task-${task.sId}-none`}
-                            label={PROJECT_TASK_NO_ASSIGNEE_LABEL}
+                            label={POD_TASK_NO_ASSIGNEE_LABEL}
                             onClick={() => {
                               void patchTaskItem(task.sId, {
                                 assigneeUserId: null,

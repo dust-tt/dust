@@ -1,14 +1,14 @@
-import { useProjectTasksPanel } from "@app/components/assistant/conversation/space/conversations/project_tasks/ProjectTasksPanelContext";
 import {
   peopleScopeLabel,
   periodScopeLabel,
 } from "@app/components/assistant/conversation/space/conversations/project_tasks/projectTasksListScope";
+import { usePodTasksPanel } from "@app/components/pod/tasks/PodTasksPanelContext";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import {
-  isProjectTaskPeopleScope,
-  isProjectTaskPeriodScope,
-  PROJECT_TASK_PEOPLE_SCOPES,
-  PROJECT_TASK_PERIOD_SCOPES,
+  isPodTaskPeopleScope,
+  isPodTaskPeriodScope,
+  POD_TASK_PEOPLE_SCOPES,
+  POD_TASK_PERIOD_SCOPES,
 } from "@app/types/project_task";
 import {
   Button,
@@ -22,8 +22,8 @@ import {
   EyeIcon,
 } from "@dust-tt/sparkle";
 
-export function ProjectTaskScopeFilter() {
-  const { taskOwnerFilter, onTaskOwnerFilterChange } = useProjectTasksPanel();
+export function PodTaskScopeFilter() {
+  const { taskOwnerFilter, onTaskOwnerFilterChange } = usePodTasksPanel();
   const isMobile = useIsMobile();
   const periodLabel = periodScopeLabel(taskOwnerFilter.periodScope);
 
@@ -33,7 +33,7 @@ export function ProjectTaskScopeFilter() {
         size="xs"
         defaultValue={taskOwnerFilter.peopleScope}
         onValueChange={(value) => {
-          if (isProjectTaskPeopleScope(value)) {
+          if (isPodTaskPeopleScope(value)) {
             onTaskOwnerFilterChange({
               ...taskOwnerFilter,
               peopleScope: value,
@@ -41,7 +41,7 @@ export function ProjectTaskScopeFilter() {
           }
         }}
       >
-        {PROJECT_TASK_PEOPLE_SCOPES.map((scope) => (
+        {POD_TASK_PEOPLE_SCOPES.map((scope) => (
           <ButtonsSwitch
             key={scope}
             value={scope}
@@ -69,7 +69,7 @@ export function ProjectTaskScopeFilter() {
           <DropdownMenuRadioGroup
             value={taskOwnerFilter.periodScope}
             onValueChange={(value) => {
-              if (isProjectTaskPeriodScope(value)) {
+              if (isPodTaskPeriodScope(value)) {
                 onTaskOwnerFilterChange({
                   ...taskOwnerFilter,
                   periodScope: value,
@@ -77,7 +77,7 @@ export function ProjectTaskScopeFilter() {
               }
             }}
           >
-            {PROJECT_TASK_PERIOD_SCOPES.map((scope) => (
+            {POD_TASK_PERIOD_SCOPES.map((scope) => (
               <DropdownMenuRadioItem
                 key={scope}
                 value={scope}

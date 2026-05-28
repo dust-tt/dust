@@ -7,7 +7,7 @@ import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { PROJECT_TASK_STATUSES } from "@app/types/project_task";
+import { POD_TASK_STATUSES } from "@app/types/project_task";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
@@ -21,7 +21,7 @@ const BulkActionsBodySchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("set_status"),
     taskIds: z.array(z.string().min(1)).min(1).max(200),
-    status: z.enum(PROJECT_TASK_STATUSES),
+    status: z.enum(POD_TASK_STATUSES),
   }),
   z.object({
     action: z.literal("approve_agent_suggestion"),

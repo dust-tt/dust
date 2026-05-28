@@ -128,8 +128,6 @@ async function areTemporalWorkflowsRunning(
     logger,
   });
 
-  logger.info("Workflow descriptions retrieved");
-
   if (!descriptions) {
     return {
       isRunning: false,
@@ -154,8 +152,6 @@ async function areTemporalWorkflowsRunning(
       getLatestWorkflowEventDate({ client, description, logger })
     )
   );
-
-  logger.info("Workflow latest events retrieved");
 
   const now = new Date().getTime();
 

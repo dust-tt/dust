@@ -27,6 +27,7 @@ vi.mock("@app/lib/api/llm/clients/openai/imageGeneration", () => ({
 }));
 
 vi.mock("@app/lib/api/regions/config", () => ({
+  SUPPORTED_REGIONS: ["europe-west1", "us-central1"],
   config: {
     getCurrentRegion: mockGetCurrentRegion,
   },

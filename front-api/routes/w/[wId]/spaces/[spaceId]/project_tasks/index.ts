@@ -7,9 +7,9 @@ import {
   getConversationDotStatus,
 } from "@app/lib/utils/conversation_dot_status";
 import {
-  isProjectTaskPeriodScope,
-  type ProjectTaskPeriodScope,
-  type ProjectTaskType,
+  isPodTaskPeriodScope,
+  type PodTaskPeriodScope,
+  type PodTaskType,
 } from "@app/types/project_task";
 import type { ModelId } from "@app/types/shared/model_id";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -37,9 +37,9 @@ function parseSingleQueryValue(value: string | undefined): string | undefined {
 
 function parseProjectTaskTimeScope(
   period: string | undefined
-): ProjectTaskPeriodScope {
+): PodTaskPeriodScope {
   const raw = parseSingleQueryValue(period)?.toLowerCase() ?? "active";
-  if (isProjectTaskPeriodScope(raw)) {
+  if (isPodTaskPeriodScope(raw)) {
     return raw;
   }
   return "active";
@@ -118,7 +118,7 @@ app.get("/", withSpace({ requireCanRead: true }), async (ctx) => {
     await ConversationResource.fetchListItemsBySIds(auth, conversationSIds);
 
   // TODO: enrich todos with creator/done-by user info when supporting multiple users.
-  const todosWithSources: ProjectTaskType[] = serializedBase.map(
+  const todosWithSources: PodTaskType[] = serializedBase.map(
     (serializedTodo, i) => {
       const t = todos[i]!;
       const sources = sourcesByTodoId.get(t.sId) ?? [];

@@ -66,8 +66,6 @@ const ParamsSchema = z.object({
  *               $ref: '#/components/schemas/Datasource'
  *       404:
  *         description: The row was not found
- *       405:
- *         description: Method not supported
  *   delete:
  *     summary: Delete a row
  *     description: Delete a row in the table identified by {tId} in the data source identified by {dsId} in the workspace identified by {wId}.
@@ -111,8 +109,6 @@ const ParamsSchema = z.object({
  *         description: The row was deleted
  *       404:
  *         description: The row was not found
- *       405:
- *         description: Method not supported
  */
 const app = publicApiApp();
 

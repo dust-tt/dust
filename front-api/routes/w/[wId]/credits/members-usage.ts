@@ -30,7 +30,6 @@ app.get(
     const body = await getMembersUsage({
       auth,
       paginationParams: ctx.req.valid("query"),
-      currentUrl: ctx.req.url,
     });
     return ctx.json(body);
   }

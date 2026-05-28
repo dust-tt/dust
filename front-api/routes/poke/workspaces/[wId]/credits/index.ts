@@ -64,6 +64,7 @@ app.get("/", async (ctx): HandlerResult<PokeListCreditsResponseBody> => {
             // contracts are excluded by Metronome itself.
             coveringDate: null,
             effectiveBefore: now,
+            onlyPoolCredits: false,
           })
         : null,
     ]);

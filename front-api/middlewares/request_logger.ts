@@ -3,6 +3,7 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getClientIp } from "@app/lib/utils/request";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
+import tracer from "@app/logger/tracer";
 import { createMiddleware } from "hono/factory";
 
 type RequestLoggerEnv = {
@@ -28,7 +29,22 @@ export const requestLogger = createMiddleware<RequestLoggerEnv>(
     }
 
     const startMs = performance.now();
-    await next();
+    try {
+      await next();
+    } finally {
+      const routePath = c.req.routePath;
+      if (routePath) {
+        // dd-trace's Hono auto-instrumentation can land on a wildcard
+        // middleware path (e.g. `/api/w/:wId/*` from
+        // `app.use("*", workspaceAuth())`) instead of the matched handler
+        // route. Override with Hono's own routePath, which always points at
+        // the handler that ran.
+        const span = tracer.scope().active();
+        if (span) {
+          span.setTag("resource.name", `${c.req.method} ${routePath}`);
+        }
+      }
+    }
     const durationMs = Math.round(performance.now() - startMs);
 
     const statusCode = c.res.status;

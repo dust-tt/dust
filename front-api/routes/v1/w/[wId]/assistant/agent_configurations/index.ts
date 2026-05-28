@@ -77,8 +77,6 @@ const viewRequiresUser = (view?: string): boolean =>
  *         description: Unauthorized. Invalid or missing authentication token, or attempting to access restricted views without authentication.
  *       404:
  *         description: Workspace not found.
- *       405:
- *         description: Method not supported. Only GET is expected.
  *       500:
  *         description: Internal Server Error.
  */

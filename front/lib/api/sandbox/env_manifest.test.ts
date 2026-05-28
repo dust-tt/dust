@@ -182,7 +182,9 @@ describe("sandbox environment manifest", () => {
     };
     // Pin the exact install flags so a future drift to a tighter mode (or a
     // different owner) does not silently pass.
-    expect(command).toMatch(/install -o root -g root -m 644 \/dev\/stdin/);
+    expect(command).toMatch(
+      /\/usr\/bin\/install -o root -g root -m 644 \/dev\/stdin/
+    );
     expect(command).toContain(SANDBOX_ENV_MANIFEST_PATH);
     expect(command).not.toContain("api-secret");
     expect(opts.user).toBe("root");

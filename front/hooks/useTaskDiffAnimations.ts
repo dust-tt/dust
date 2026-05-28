@@ -1,4 +1,4 @@
-import type { ProjectTaskType } from "@app/types/project_task";
+import type { PodTaskType } from "@app/types/project_task";
 import { useEffect, useRef, useState } from "react";
 
 const DONE_FLASH_DURATION_MS = 1000;
@@ -87,7 +87,7 @@ interface TaskDiffAnimationState {
 
 interface UseTaskDiffAnimationsArgs {
   ledgerScopeKey: string;
-  tasks: ProjectTaskType[];
+  tasks: PodTaskType[];
   frozenLastReadAt: string | null | undefined;
   isTasksLoading: boolean;
   markRead: () => Promise<void>;

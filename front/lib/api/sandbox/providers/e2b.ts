@@ -1,4 +1,8 @@
 import {
+  getLocalAccountPrivilegeHardeningCommand,
+  SANDBOX_ROOT_SAFE_PATH,
+} from "@app/lib/api/sandbox/hardening";
+import {
   formatSandboxImageId,
   type NetworkPolicy,
 } from "@app/lib/api/sandbox/image/types";
@@ -14,6 +18,7 @@ import {
   SandboxNotFoundError,
   traceSandboxOperation,
 } from "@app/lib/api/sandbox/provider";
+import { shellEscape } from "@app/lib/api/sandbox/shell";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -33,8 +38,34 @@ const SANDBOX_LIFETIME_MS = 24 * ONE_HOUR_MS;
 
 /** Timeout for individual API calls to E2B (create, connect, etc.). */
 const REQUEST_TIMEOUT_MS = 30_000;
+const LOCAL_ACCOUNT_HARDENING_TIMEOUT_MS = 120_000;
 
 const ALL_TRAFFIC = "0.0.0.0/0";
+
+function getRootSafeSandboxCommand(command: string): string {
+  return [
+    `PATH=${shellEscape(SANDBOX_ROOT_SAFE_PATH)}`,
+    "HOME=/root",
+    "BASH_ENV=/dev/null",
+    "ENV=/dev/null",
+    "/bin/bash --noprofile --norc -c",
+    shellEscape(command),
+  ].join(" ");
+}
+
+function getLocalAccountHardeningError(result: ExecResult): Error {
+  const output = [result.stderr, result.stdout]
+    .filter((text) => text.length > 0)
+    .join("\n");
+  return new Error(
+    [
+      `E2B sandbox local account hardening failed with exit code ${result.exitCode}`,
+      output,
+    ]
+      .filter((message) => message.length > 0)
+      .join(":\n")
+  );
+}
 
 interface E2BNetworkOpts {
   allowOut?: string[];
@@ -128,6 +159,24 @@ export class E2BSandboxProvider implements SandboxProvider {
     };
   }
 
+  private async killSandboxAfterLocalAccountHardeningFailure(
+    sandboxId: string,
+    templateId: string
+  ): Promise<void> {
+    try {
+      await Sandbox.kill(sandboxId, this.connectionOpts());
+    } catch (killErr) {
+      logger.error(
+        {
+          err: normalizeError(killErr),
+          sandboxId,
+          templateId,
+        },
+        "Failed to kill E2B sandbox after local account hardening failure"
+      );
+    }
+  }
+
   async create(
     config: SandboxCreateConfig,
     tracingOpts: { workspaceId: string }
@@ -164,6 +213,47 @@ export class E2BSandboxProvider implements SandboxProvider {
           });
         } catch (err) {
           return new Err(normalizeError(err));
+        }
+
+        let hardeningResult: ExecResult;
+        try {
+          const result = await sandbox.commands.run(
+            getRootSafeSandboxCommand(
+              getLocalAccountPrivilegeHardeningCommand()
+            ),
+            {
+              timeoutMs: LOCAL_ACCOUNT_HARDENING_TIMEOUT_MS,
+              user: "root",
+            }
+          );
+          hardeningResult = {
+            exitCode: result.exitCode,
+            stdout: result.stdout,
+            stderr: result.stderr,
+          };
+        } catch (err) {
+          const createError =
+            err instanceof CommandExitError
+              ? getLocalAccountHardeningError({
+                  exitCode: err.exitCode,
+                  stdout: err.stdout,
+                  stderr: err.stderr,
+                })
+              : normalizeError(err);
+
+          await this.killSandboxAfterLocalAccountHardeningFailure(
+            sandbox.sandboxId,
+            templateId
+          );
+          return new Err(createError);
+        }
+
+        if (hardeningResult.exitCode !== 0) {
+          await this.killSandboxAfterLocalAccountHardeningFailure(
+            sandbox.sandboxId,
+            templateId
+          );
+          return new Err(getLocalAccountHardeningError(hardeningResult));
         }
 
         logger.info(
@@ -311,10 +401,14 @@ export class E2BSandboxProvider implements SandboxProvider {
             user: execOpts?.user,
           };
           const stdin = execOpts?.stdin;
+          const commandToRun =
+            execOpts?.user === "root"
+              ? getRootSafeSandboxCommand(command)
+              : command;
           const result =
             stdin === undefined
-              ? await sandbox.commands.run(command, commandOpts)
-              : await runWithStdin(sandbox, command, commandOpts, stdin);
+              ? await sandbox.commands.run(commandToRun, commandOpts)
+              : await runWithStdin(sandbox, commandToRun, commandOpts, stdin);
 
           return new Ok({
             exitCode: result.exitCode,

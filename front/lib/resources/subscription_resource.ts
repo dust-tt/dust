@@ -156,6 +156,27 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     return !!this.metronomeContractId && !this.stripeSubscriptionId;
   }
 
+  /**
+   * Terminal status to use when ending this subscription as part of a contract
+   * swap (`activatePending` / `swapMetronomeContract`).
+   *
+   * A subscription backed by a Stripe subscription converges via Stripe's
+   * `customer.subscription.deleted` webhook, so it is ended as
+   * `ended_backend_only` and only becomes `ended` once Stripe confirms.
+   *
+   * A Metronome-only (no Stripe) or free subscription has no such follow-up: in
+   * a swap the converging `contract.end` for the old contract fires
+   * concurrently with the `contract.start` that triggers the swap, and may be
+   * processed *before* we set the status. When that happens `contract.end`
+   * takes the "active + successor → skip" branch and is ack'd, so no later
+   * webhook is left to converge the sub — stranding it in `ended_backend_only`
+   * (see lib/api/metronome/process_webhook.ts). Finalize these directly to
+   * `ended`.
+   */
+  private get swapEndedStatus(): "ended" | "ended_backend_only" {
+    return this.stripeSubscriptionId ? "ended_backend_only" : "ended";
+  }
+
   static async makeNew(
     blob: CreationAttributes<SubscriptionModel>,
     plan: PlanType,
@@ -1345,9 +1366,10 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
    * different Metronome contract and plan code. Used by the contract.start
    * webhook when an admin-scheduled upgrade activates — preserves the
    * plan-change history rather than mutating the existing subscription in
-   * place. A billed current sub is ended as `ended_backend_only` so the
-   * contract.end webhook does not scrub the workspace; a non-billed (free)
-   * current sub is ended as `ended` since no external webhook will close it.
+   * place. The current sub is ended via `swapEndedStatus`: Stripe-backed subs
+   * as `ended_backend_only` (Stripe converges them), Metronome-only and free
+   * subs directly as `ended` (no follow-up webhook to rely on). The old
+   * `contract.end` then no-ops on the already-`ended` sub instead of scrubbing.
    */
   async swapMetronomeContract({
     metronomeContractId,
@@ -1357,7 +1379,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     planCode: string;
   }): Promise<void> {
     const newPlan = await SubscriptionResource.findPlanOrThrow(planCode);
-    const endedStatus = this.isBilled ? "ended_backend_only" : "ended";
+    const endedStatus = this.swapEndedStatus;
 
     await withTransaction(async (t) => {
       await this.markAsEnded(endedStatus, t);
@@ -1402,10 +1424,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
           t
         );
       if (currentActive && !currentActive.isLegacyFreeNoPlan()) {
-        const endedStatus = currentActive.isBilled
-          ? "ended_backend_only"
-          : "ended";
-        await currentActive.markAsEnded(endedStatus, t);
+        await currentActive.markAsEnded(currentActive.swapEndedStatus, t);
       }
       await this.update({ status: "active" }, t);
       const workspaceId = this.workspaceId;

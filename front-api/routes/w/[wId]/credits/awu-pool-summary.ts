@@ -1,28 +1,21 @@
 import {
   ceilToMidnightUTC,
-  floorToMidnightUTC,
   listMetronomeBalances,
   listMetronomeDraftInvoices,
-  listMetronomeUsageWithGroups,
 } from "@app/lib/metronome/client";
-import {
-  getCreditTypeAwuId,
-  getMetricLlmProviderCostAwuId,
-} from "@app/lib/metronome/constants";
+import { getCreditTypeAwuId } from "@app/lib/metronome/constants";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import {
   getProductSeatTypes,
   getSeatTypesByProductIdFromContract,
 } from "@app/lib/metronome/seat_types";
-import { buildSeatDataByUserId } from "@app/lib/metronome/seats";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 
 export type AwuPoolSummaryResponseBody = {
   totalRemainingCredits: number;
-  consumedByUsersCredits: number;
-  consumedByProgrammaticCredits: number;
+  totalActiveCredits: number;
   resetDate: string;
 };
 
@@ -98,8 +91,7 @@ app.get("/", async (ctx): HandlerResult<AwuPoolSummaryResponseBody> => {
   if (!currentInvoice?.start_timestamp || !currentInvoice.end_timestamp) {
     return ctx.json({
       totalRemainingCredits: 0,
-      consumedByUsersCredits: 0,
-      consumedByProgrammaticCredits: 0,
+      totalActiveCredits: 0,
       resetDate: "",
     });
   }
@@ -125,81 +117,30 @@ app.get("/", async (ctx): HandlerResult<AwuPoolSummaryResponseBody> => {
   const awuBalances = balancesResult.value.filter(
     (entry) =>
       entry.access_schedule?.credit_type?.id === awuCreditTypeId &&
-      !seatProductIds.has(entry.product.id)
+      !seatProductIds.has(entry.product.id) &&
+      (entry.contract?.id === metronomeContractId || !entry.contract)
   );
 
   let totalRemainingCredits = 0;
+  let totalActiveCredits = 0;
   for (const entry of awuBalances) {
-    const isActive = (entry.access_schedule?.schedule_items ?? []).some(
-      (item) => {
-        const itemStartMs = new Date(item.starting_at).getTime();
-        const itemEndMs = new Date(item.ending_before).getTime();
-        return itemStartMs <= now && now < itemEndMs;
-      }
-    );
+    const scheduleItems = entry.access_schedule?.schedule_items ?? [];
+    const isActive = scheduleItems.some((item) => {
+      const itemStartMs = new Date(item.starting_at).getTime();
+      const itemEndMs = new Date(item.ending_before).getTime();
+      return itemStartMs <= now && now < itemEndMs;
+    });
     if (isActive) {
       totalRemainingCredits += entry.balance ?? 0;
-    }
-  }
-
-  const startingOn = floorToMidnightUTC(
-    new Date(currentInvoice.start_timestamp)
-  ).toISOString();
-  const endingBefore = ceilToMidnightUTC(
-    new Date(currentInvoice.end_timestamp)
-  ).toISOString();
-
-  const [usageResult, seatDataByUserId] = await Promise.all([
-    listMetronomeUsageWithGroups({
-      customerId: metronomeCustomerId,
-      billableMetricId: getMetricLlmProviderCostAwuId(),
-      startingOn,
-      endingBefore,
-      windowSize: "NONE",
-      groupKey: ["user_id", "usage_type"],
-    }),
-    buildSeatDataByUserId({
-      metronomeCustomerId,
-      contractId: metronomeContractId,
-    }),
-  ]);
-
-  if (usageResult.isErr()) {
-    return apiError(ctx, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: `Failed to retrieve Metronome usage: ${usageResult.error.message}`,
-      },
-    });
-  }
-
-  const perUserCredits = new Map<string, number>();
-  let consumedByProgrammaticCredits = 0;
-
-  for (const row of usageResult.value) {
-    const credits = row.value ?? 0;
-    const usageType = row.group?.["usage_type"];
-    if (usageType === "programmatic") {
-      consumedByProgrammaticCredits += credits;
-    } else {
-      const userId = row.group?.["user_id"];
-      if (userId) {
-        perUserCredits.set(userId, (perUserCredits.get(userId) ?? 0) + credits);
+      for (const item of scheduleItems) {
+        totalActiveCredits += item.amount;
       }
     }
-  }
-
-  let consumedByUsersCredits = 0;
-  for (const [userId, userCredits] of perUserCredits) {
-    const seatAllocation = seatDataByUserId.get(userId)?.awuAllocation ?? 0;
-    consumedByUsersCredits += Math.max(0, userCredits - seatAllocation);
   }
 
   return ctx.json({
     totalRemainingCredits,
-    consumedByUsersCredits,
-    consumedByProgrammaticCredits,
+    totalActiveCredits,
     resetDate,
   });
 });
