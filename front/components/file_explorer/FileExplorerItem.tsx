@@ -214,7 +214,10 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
   );
 }
 
-function getFileSubtitle(entry: FileSystemFileEntry, viewMode: ViewMode): string {
+function getFileSubtitle(
+  entry: FileSystemFileEntry,
+  viewMode: ViewMode
+): string {
   const typeLabel = getSingularFileCategoryLabelForContentType(
     entry.contentType
   );

@@ -72,7 +72,9 @@ async function handler(
 
   // Scope the listing to the conversation mount only. For pod conversations the
   // DustFileSystem also has a pod mount and we do not want to expose pod files here.
-  const files = await fsResult.value.list(`${SCOPED_PREFIX_CONVERSATION}${cId}`);
+  const files = await fsResult.value.list(
+    `${SCOPED_PREFIX_CONVERSATION}${cId}`
+  );
 
   return res.status(200).json({ files });
 }

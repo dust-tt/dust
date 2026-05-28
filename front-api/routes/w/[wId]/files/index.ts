@@ -11,6 +11,7 @@ import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 import file from "./[fileId]";
+import canonicalPath from "./path/[...canonicalPath]";
 
 const FileUploadUrlRequestSchema = z.discriminatedUnion("useCase", [
   z.object({
@@ -161,6 +162,7 @@ app.post("/", validate("json", FileUploadUrlRequestSchema), async (ctx) => {
   return ctx.json({ file: newFile.toJSONWithUploadUrl(auth) });
 });
 
+app.route("/path", canonicalPath);
 app.route("/:fileId", file);
 
 export default app;
