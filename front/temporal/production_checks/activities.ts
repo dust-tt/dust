@@ -11,11 +11,13 @@ import { checkPausedConnectors } from "@app/lib/production_checks/checks/check_p
 import { checkWebcrawlerSchedulerActiveWorkflow } from "@app/lib/production_checks/checks/check_webcrawler_scheduler_active_workflow";
 import { managedDataSourceGCGdriveCheck } from "@app/lib/production_checks/checks/managed_data_source_gdrive_gc";
 import mainLogger from "@app/logger/logger";
+import { CheckHeartbeatDetailsSchema } from "@app/types/production_checks";
 import type {
   ActionLink,
   Check,
   CheckActivityResult,
   CheckFailurePayload,
+  CheckHeartbeat,
   CheckSuccessPayload,
 } from "@app/types/production_checks";
 import { Context } from "@temporalio/activity";
@@ -83,10 +85,51 @@ export async function runAllChecksActivity(): Promise<CheckActivityResult[]> {
   return runAllChecks(REGISTERED_CHECKS);
 }
 
+function getCompletedCheckNamesFromHeartbeatDetails(
+  heartbeatDetails: unknown,
+): string[] {
+  const parsedHeartbeatDetails =
+    CheckHeartbeatDetailsSchema.safeParse(heartbeatDetails);
+
+  return parsedHeartbeatDetails.success
+    ? parsedHeartbeatDetails.data.completedCheckNames
+    : [];
+}
+
+function sendCheckHeartbeat({
+  context,
+  heartbeat,
+  completedCheckNames,
+}: {
+  context: Context;
+  heartbeat: CheckHeartbeat;
+  completedCheckNames: string[];
+}) {
+  context.heartbeat({
+    ...heartbeat,
+    completedCheckNames: [...new Set(completedCheckNames)],
+  });
+}
+
 async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
   const allCheckUuid = uuidv4();
+  const context = Context.current();
+  const completedCheckNames = getCompletedCheckNamesFromHeartbeatDetails(
+    context.info.heartbeatDetails,
+  );
+  const currentHour = new Date().getHours();
   const results: CheckActivityResult[] = [];
-  mainLogger.info({ all_check_uuid: allCheckUuid }, "Running all checks");
+  const previouslyCompletedCheckNames = new Set(completedCheckNames);
+
+  mainLogger.info(
+    {
+      all_check_uuid: allCheckUuid,
+      resumingFrom:
+        completedCheckNames.length > 0 ? completedCheckNames.length : undefined,
+      currentHour,
+    },
+    "Running all checks",
+  );
 
   for (const check of checks) {
     const uuid = uuidv4();
