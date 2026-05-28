@@ -196,18 +196,6 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
           allActionLinks.push(...(payload.actionLinks ?? []));
         };
 
-        const heartbeat = async () => {
-          return sendCheckHeartbeat({
-            context,
-            heartbeat: {
-              type: "processing",
-              name: check.name,
-              uuid,
-            },
-            completedCheckNames,
-          });
-        };
-
         sendCheckHeartbeat({
           context,
           heartbeat: { type: "start", name: check.name, uuid },
@@ -219,7 +207,15 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
           logger,
           reportSuccess,
           reportFailure,
-          heartbeat,
+          async () => sendCheckHeartbeat({
+              context,
+              heartbeat: {
+                type: "processing",
+                name: check.name,
+                uuid,
+              },
+              completedCheckNames,
+            })
         );
 
         results.push({
