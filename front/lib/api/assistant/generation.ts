@@ -199,7 +199,7 @@ function constructToolsSection({
   return toolsSection;
 }
 
-function constructSkillsSectionForUserMessageRendering({
+function constructSkillsSection({
   systemSkills,
 }: {
   systemSkills: SkillResource[];
@@ -447,7 +447,7 @@ export function constructPromptMultiActions(
     agentConfiguration,
     serverToolsAndInstructions,
   });
-  const skillsSection = constructSkillsSectionForUserMessageRendering({
+  const skillsSection = constructSkillsSection({
     systemSkills,
   });
   const attachmentsSection = isNewFileExplorer
