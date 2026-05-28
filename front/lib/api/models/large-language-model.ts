@@ -1,5 +1,9 @@
 import { DustModel } from "@app/lib/api/models/dust-model";
 import type { inputConfigSchema } from "@app/lib/api/models/types/config";
+import {
+  ORDERED_REASONING_EFFORTS,
+  type ReasoningEffort,
+} from "@app/lib/api/models/types/config";
 import type { Credentials } from "@app/lib/api/models/types/credentials";
 
 import type {
@@ -92,5 +96,10 @@ export abstract class LargeLanguageModel<
   }
   get id() {
     return getIdFromModel(this.model);
+  }
+  get supportedReasoningEfforts(): ReasoningEffort[] {
+    return ORDERED_REASONING_EFFORTS.filter(
+      (effort) => this.configSchema.safeParse({ reasoning: { effort } }).success
+    );
   }
 }
