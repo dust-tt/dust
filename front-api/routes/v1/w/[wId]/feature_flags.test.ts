@@ -12,16 +12,16 @@ function getFeatureFlags(workspace: { sId: string }, key: { secret: string }) {
 }
 
 describe("GET /api/v1/w/:wId/feature_flags", () => {
-  it("returns 404 if not a system key", async () => {
+  it("returns 403 if not a system key", async () => {
     const { workspace, key } = await createPublicApiMockRequest();
 
     const response = await getFeatureFlags(workspace, key);
 
-    expect(response.status).toBe(404);
+    expect(response.status).toBe(403);
     expect(await response.json()).toEqual({
       error: {
-        type: "workspace_not_found",
-        message: "The workspace was not found.",
+        type: "invalid_oauth_token_error",
+        message: "Only system keys can perform this action.",
       },
     });
   });
