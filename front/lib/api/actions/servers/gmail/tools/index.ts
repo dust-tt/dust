@@ -30,12 +30,13 @@ import { GMAIL_TOOLS_METADATA } from "@app/lib/api/actions/servers/gmail/metadat
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
+import { unescape } from "html-escaper";
 
 // Validates email addresses to prevent header injection attacks.
 function validateEmailAddresses(
   to: string[],
-  cc?: string[],
-  bcc?: string[],
+  cc?: string[] | null,
+  bcc?: string[] | null,
   from?: string
 ): Err<MCPError> | null {
   const allAddresses = [...to, ...(cc ?? []), ...(bcc ?? [])];
@@ -54,8 +55,8 @@ function validateEmailAddresses(
 // Used by both create_draft and send_mail to avoid code duplication.
 function buildAndEncodeEmail(params: {
   to: string[];
-  cc?: string[];
-  bcc?: string[];
+  cc?: string[] | null;
+  bcc?: string[] | null;
   from?: string;
   subject: string;
   contentType: string;
@@ -99,8 +100,8 @@ async function buildReplyContext(params: {
   replyToMessageId: string;
   accessToken: string;
   to?: string[];
-  cc?: string[];
-  bcc?: string[];
+  cc?: string[] | null;
+  bcc?: string[] | null;
   body: string;
   contentType: "text/plain" | "text/html";
   subject?: string;
@@ -109,9 +110,9 @@ async function buildReplyContext(params: {
   | Ok<{
       threadId: string;
       replyTo: string[];
-      replyCc: string[] | undefined;
-      replyBcc: string[] | undefined;
-      originalSubject: string | undefined;
+      replyCc: string[] | null;
+      replyBcc: string[] | null;
+      originalSubject: string | null;
       fullBody: string;
       threadingHeaders: string[];
     }>
@@ -166,11 +167,15 @@ async function buildReplyContext(params: {
   const originalBody = decodeMessageBody(originalMessage.payload);
   const originalCc = getHeaderValue(headers, "Cc");
   const originalBcc = getHeaderValue(headers, "Bcc");
-  const originalSubject = getHeaderValue(headers, "Subject");
+  const originalSubject = getHeaderValue(headers, "Subject") ?? null;
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const replyTo = params.to?.length ? params.to : originalFrom?.split(", ");
-  const replyCc = params.cc?.length ? params.cc : originalCc?.split(", ");
-  const replyBcc = params.bcc?.length ? params.bcc : originalBcc?.split(", ");
+  const replyCc = params.cc?.length
+    ? params.cc
+    : (originalCc?.split(", ") ?? null);
+  const replyBcc = params.bcc?.length
+    ? params.bcc
+    : (originalBcc?.split(", ") ?? null);
 
   const fullBody = buildReplyBody(
     params.body,
@@ -465,12 +470,28 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
       return new Err(new MCPError(`Failed to get thread: ${errorText}`));
     }
     const result = await response.json();
+    const cleanedMessages = (result.messages ?? []).map(
+      (message: GmailMessage) => {
+        const headers = message.payload?.headers ?? [];
+        const from = getHeaderValue(headers, "From");
+        const to = getHeaderValue(headers, "To");
+        const date = getHeaderValue(headers, "Date");
+        const subject = getHeaderValue(headers, "Subject");
+        const body = unescape(
+          decodeMessageBody(message.payload)
+            .replace(/<[^>]*>/g, " ")
+            .replace(/\s+/g, " ")
+            .trim()
+        );
+        return { id: message.id, from, to, date, subject, body };
+      }
+    );
 
     return new Ok([
       { type: "text" as const, text: "Thread fetched successfully" },
       {
         type: "text" as const,
-        text: JSON.stringify({ thread: result ?? {} }, null, 2),
+        text: JSON.stringify({ messages: cleanedMessages }, null, 2),
       },
     ]);
   },
