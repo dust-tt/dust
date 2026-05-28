@@ -1138,7 +1138,12 @@ export function AgentSidebarMenu({
               conversationsList
             )}
 
-            {!hideInAppBanner && <StackedInAppBanners owner={owner} />}
+            {!hideInAppBanner && (
+              <StackedInAppBanners
+                owner={owner}
+                onCreatePod={() => setIsCreateProjectModalOpen(true)}
+              />
+            )}
           </div>
         </div>
       </div>

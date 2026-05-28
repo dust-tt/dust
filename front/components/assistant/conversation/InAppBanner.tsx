@@ -1,7 +1,12 @@
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
-import { Button, XMarkIcon } from "@dust-tt/sparkle";
+import { Button, PlusIcon, XMarkIcon } from "@dust-tt/sparkle";
 import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
+
+const POD_IMAGE_PATH = "/static/Pod_Banner.png";
+const POD_BANNER_LOCAL_STORAGE_KEY = "pod-banner-dismissed";
+const POD_DOCS_URL = "https://docs.dust.tt/docs/pods-overview";
 
 const STEERING_IMAGE_PATH = "/static/Steering_Banner.png";
 const STEERING_BANNER_LOCAL_STORAGE_KEY = "steering-banner-dismissed";
@@ -83,15 +88,108 @@ function SteeringBanner({
   );
 }
 
+interface PodBannerProps {
+  showPodBanner: boolean;
+  onShowPodBanner: (open: boolean) => void;
+  onCreatePod: () => void;
+}
+
+function PodBanner({
+  showPodBanner,
+  onShowPodBanner,
+  onCreatePod,
+}: PodBannerProps) {
+  const onDismiss = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    localStorage.setItem(POD_BANNER_LOCAL_STORAGE_KEY, "true");
+    onShowPodBanner(false);
+  };
+
+  const onLearnMore = () => {
+    window.open(POD_DOCS_URL, "_blank", "noopener,noreferrer");
+  };
+
+  if (!showPodBanner) {
+    return null;
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 100, translateY: "0%" }}
+      transition={{ duration: 0.1, ease: "easeIn" }}
+      exit={{ opacity: 0, translateY: "120%" }}
+      className="relative z-10 mx-2 mb-2 hidden max-w-[300px] flex-col rounded-2xl border border-border-dark bg-white shadow-md dark:border-border-night dark:bg-background-night sm:flex"
+    >
+      <div className="relative overflow-hidden rounded-t-2xl">
+        <img
+          src={POD_IMAGE_PATH}
+          alt="Pods"
+          width={300}
+          height={98}
+          className="h-[98px] w-[300px] border-b border-border-dark object-cover dark:border-border-night"
+        />
+        <Button
+          variant="outline"
+          icon={XMarkIcon}
+          size="icon-xs"
+          className="absolute right-1 top-1"
+          onClick={onDismiss}
+        />
+      </div>
+      <div className="relative px-4 py-3">
+        <div className="mb-1 text-sm font-medium text-foreground dark:text-foreground-night">
+          Collaboration just got an upgrade: Introducing Pods!
+        </div>
+        <h4 className="mb-3 text-xs leading-tight text-primary dark:text-primary-night">
+          Pods bring humans and agents together in one shared workspace, so
+          nothing gets lost between them.
+        </h4>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="highlight"
+            size="xs"
+            icon={PlusIcon}
+            label="Create a Pod"
+            onClick={withTracking(
+              TRACKING_AREAS.PODS,
+              "create_pod_banner",
+              onCreatePod
+            )}
+          />
+          <Button
+            variant="outline"
+            size="xs"
+            label="Learn more"
+            onClick={withTracking(
+              TRACKING_AREAS.PODS,
+              "learn_more_pod_banner",
+              onLearnMore
+            )}
+          />
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 interface StackedInAppBannersProps {
   owner: { sId: string };
+  onCreatePod: () => void;
 }
 
 export function StackedInAppBanners({
   owner: _owner,
+  onCreatePod,
 }: StackedInAppBannersProps) {
+  const { hasFeature } = useFeatureFlags();
+  const isPodsEnabled = hasFeature("projects");
+
   const [showSteeringBanner, setShowSteeringBanner] = useState(
     () => localStorage.getItem(STEERING_BANNER_LOCAL_STORAGE_KEY) !== "true"
+  );
+  const [showPodBanner, setShowPodBanner] = useState(
+    () => localStorage.getItem(POD_BANNER_LOCAL_STORAGE_KEY) !== "true"
   );
 
   return (
@@ -101,6 +199,14 @@ export function StackedInAppBanners({
         showSteeringBanner={showSteeringBanner}
         onShowSteeringBanner={setShowSteeringBanner}
       />
+      {isPodsEnabled && (
+        <PodBanner
+          key="pod-banner"
+          showPodBanner={showPodBanner}
+          onShowPodBanner={setShowPodBanner}
+          onCreatePod={onCreatePod}
+        />
+      )}
     </AnimatePresence>
   );
 }
