@@ -163,6 +163,9 @@ describe("E2BSandboxProvider", () => {
       "install -d -o root -g root -m 755 /opt/bin /usr/local /usr/local/sbin /usr/local/bin /usr/local/lib"
     );
     expect(hardeningCommand).toContain("/usr/local/lib/systemd/system");
+    expect(hardeningCommand).toContain("/etc/systemd/system.control");
+    expect(hardeningCommand).toContain("/run/systemd/generator.early");
+    expect(hardeningCommand).toContain("/run/systemd/system.attached");
     expect(hardeningCommand).toContain("/run/systemd/system");
     expect(hardeningCommand).toContain(
       "for path in /opt/bin/dsbx /usr/local/bin/dust-install-trust-bundle"

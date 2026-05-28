@@ -439,10 +439,16 @@ export function assertLocalAuthHelpersNotSetuid(output: string): void {
 }
 
 export function assertRootConsumedDirsSafe(output: string): void {
+  const lineByPath = new Map<string, string>();
+  for (const line of output.split("\n")) {
+    const [path] = line.split(/\s+/, 1);
+    if (path) {
+      lineByPath.set(path, line);
+    }
+  }
+
   for (const dir of SANDBOX_ROOT_CONSUMED_DIRS) {
-    const line = output
-      .split("\n")
-      .find((candidate) => candidate.startsWith(`${dir} `));
+    const line = lineByPath.get(dir);
     if (!line) {
       throw new Error(
         `missing root-consumed directory audit for ${dir}:\n${output}`

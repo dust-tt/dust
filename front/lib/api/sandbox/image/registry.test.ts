@@ -141,6 +141,9 @@ describe("sandbox image registry", () => {
         "install -d -o root -g root -m 755 /opt/bin /usr/local /usr/local/sbin /usr/local/bin /usr/local/lib"
       );
       expect(command).toContain("/usr/local/lib/systemd/system");
+      expect(command).toContain("/etc/systemd/system.control");
+      expect(command).toContain("/run/systemd/generator.early");
+      expect(command).toContain("/run/systemd/system.attached");
       expect(command).toContain("/run/systemd/system");
       expect(command).toContain(
         "for path in /opt/bin/dsbx /usr/local/bin/dust-install-trust-bundle"
@@ -169,6 +172,9 @@ describe("sandbox image registry", () => {
       ])
     );
     expect(runCommands.join("\n")).toContain("/usr/local/lib/systemd/system");
+    expect(runCommands.join("\n")).toContain("/etc/systemd/system.control");
+    expect(runCommands.join("\n")).toContain("/run/systemd/generator.early");
+    expect(runCommands.join("\n")).toContain("/run/systemd/system.attached");
     expect(runCommands.join("\n")).toContain("/run/systemd/system");
   });
 
