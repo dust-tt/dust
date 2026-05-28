@@ -6,14 +6,14 @@ import { validate } from "@front-api/middlewares/validator";
 import { withSpace } from "@front-api/middlewares/with_space";
 import { z } from "zod";
 
-export type PostUserProjectStarResponseBody = {
+export type PostUserPodStarResponseBody = {
   sId: string;
   spaceId: string;
   userId: string;
   isStarred: boolean;
 };
 
-const PostUserProjectStarBodySchema = z.object({
+const PostUserPodStarBodySchema = z.object({
   starred: z.boolean(),
 });
 
@@ -23,8 +23,8 @@ const app = workspaceApp();
 app.post(
   "/",
   withSpace({ requireCanReadOrAdministrate: true }),
-  validate("json", PostUserProjectStarBodySchema),
-  async (ctx): HandlerResult<PostUserProjectStarResponseBody> => {
+  validate("json", PostUserPodStarBodySchema),
+  async (ctx): HandlerResult<PostUserPodStarResponseBody> => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");
     const { starred } = ctx.req.valid("json");

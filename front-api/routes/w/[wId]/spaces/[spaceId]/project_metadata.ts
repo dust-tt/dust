@@ -5,20 +5,20 @@ import {
   startImmediateProjectTodoWorkflowOnce,
   stopProjectTodoWorkflow,
 } from "@app/temporal/project_task/client";
-import { PatchProjectMetadataBodySchema } from "@app/types/api/internal/spaces";
-import type { ProjectMetadataType } from "@app/types/project_metadata";
+import { PatchPodMetadataBodySchema } from "@app/types/api/internal/spaces";
+import type { PodMetadataType } from "@app/types/project_metadata";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { withSpace } from "@front-api/middlewares/with_space";
 
-export type GetProjectMetadataResponseBody = {
-  projectMetadata: ProjectMetadataType | null;
+export type GetPodMetadataResponseBody = {
+  projectMetadata: PodMetadataType | null;
 };
 
-export type PatchProjectMetadataResponseBody = {
-  projectMetadata: ProjectMetadataType;
+export type PatchPodMetadataResponseBody = {
+  projectMetadata: PodMetadataType;
 };
 
 // Mounted under /api/w/:wId/spaces/:spaceId/project_metadata. All routes
@@ -28,7 +28,7 @@ const app = workspaceApp();
 app.get(
   "/",
   withSpace({ requireCanReadOrAdministrate: true }),
-  async (ctx): HandlerResult<GetProjectMetadataResponseBody> => {
+  async (ctx): HandlerResult<GetPodMetadataResponseBody> => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");
 
@@ -52,8 +52,8 @@ app.get(
 app.patch(
   "/",
   withSpace({ requireCanReadOrAdministrate: true }),
-  validate("json", PatchProjectMetadataBodySchema),
-  async (ctx): HandlerResult<PatchProjectMetadataResponseBody> => {
+  validate("json", PatchPodMetadataBodySchema),
+  async (ctx): HandlerResult<PatchPodMetadataResponseBody> => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");
 

@@ -5,7 +5,7 @@ import {
   describeTemporalWorkflow,
   getTemporalClientForFrontNamespace,
 } from "@app/lib/temporal";
-import type { ProjectMetadataType } from "@app/types/project_metadata";
+import type { PodMetadataType } from "@app/types/project_metadata";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 
@@ -18,7 +18,7 @@ export type PokeProjectWorkflowInfo = {
 };
 
 export type PokeGetProjectWorkflow = {
-  metadata: ProjectMetadataType | null;
+  metadata: PodMetadataType | null;
   temporalNamespace: string;
   workflowId: string;
   latestWorkflow: PokeProjectWorkflowInfo | null;

@@ -7,7 +7,7 @@ import { DeleteConversationsDialog } from "@app/components/assistant/conversatio
 import { StackedInAppBanners } from "@app/components/assistant/conversation/InAppBanner";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { ProjectsBrowsePopover } from "@app/components/assistant/conversation/sidebar/ProjectsBrowsePopover";
-import { renderProjectsList } from "@app/components/assistant/conversation/sidebar/ProjectsList";
+import { renderPodsList } from "@app/components/assistant/conversation/sidebar/ProjectsList";
 import { SidebarSearch } from "@app/components/assistant/conversation/sidebar/SidebarSearch";
 import {
   filterTriggeredConversations,
@@ -713,11 +713,11 @@ export function AgentSidebarMenu({
           open={!isStarredProjectsSectionCollapsed}
           onOpenChange={(open) => setStarredProjectsSectionCollapsed(!open)}
         >
-          {renderProjectsList({
+          {renderPodsList({
             owner,
             summary: starredSummary,
             titleFilter: sidebarTitleFilter,
-            moveConversationToProject,
+            moveConversationToPod: moveConversationToProject,
           })}
         </NavigationListCollapsibleSection>
       </NavigationList>
@@ -789,11 +789,11 @@ export function AgentSidebarMenu({
               <Spinner size="xs" />
             </div>
           ) : nonStarredSummary.length > 0 ? (
-            renderProjectsList({
+            renderPodsList({
               owner,
               summary: nonStarredSummary,
               titleFilter: sidebarTitleFilter,
-              moveConversationToProject,
+              moveConversationToPod: moveConversationToProject,
             })
           ) : (
             <NavigationListItem

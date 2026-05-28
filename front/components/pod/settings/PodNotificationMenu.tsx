@@ -1,7 +1,7 @@
 import {
-  useProjectNotificationPreference,
-  useUpdateProjectNotificationPreference,
-} from "@app/lib/swr/spaces";
+  usePodNotificationPreference,
+  useUpdatePodNotificationPreference,
+} from "@app/lib/swr/pods";
 import { useUserMetadata } from "@app/lib/swr/user";
 import {
   CONVERSATION_NOTIFICATION_METADATA_KEYS,
@@ -27,17 +27,17 @@ const NOTIFICATION_CONDITION_LABELS: Record<NotificationCondition, string> = {
   never: "Don't notify me",
 };
 
-interface ProjectNotificationMenuProps {
-  activeSpaceId: string | null;
+interface PodNotificationMenuProps {
+  activePodId: string | null;
   owner: WorkspaceType;
   shouldWaitBeforeFetching: boolean;
 }
 
-export function ProjectNotificationMenu({
-  activeSpaceId,
+export function PodNotificationMenu({
+  activePodId,
   owner,
   shouldWaitBeforeFetching,
-}: ProjectNotificationMenuProps) {
+}: PodNotificationMenuProps) {
   const {
     metadata: defaultNotificationCondition,
     isMetadataLoading: isDefaultNotificationConditionLoading,
@@ -45,28 +45,25 @@ export function ProjectNotificationMenu({
     disabled: shouldWaitBeforeFetching,
   });
 
-  const {
-    projectNotificationPreference,
-    isProjectNotificationPreferenceLoading,
-  } = useProjectNotificationPreference({
-    workspaceId: owner.sId,
-    spaceId: activeSpaceId,
-    disabled: shouldWaitBeforeFetching,
-  });
+  const { podNotificationPreference, isPodNotificationPreferenceLoading } =
+    usePodNotificationPreference({
+      workspaceId: owner.sId,
+      podId: activePodId,
+      disabled: shouldWaitBeforeFetching,
+    });
 
   const isLoading =
-    isDefaultNotificationConditionLoading ||
-    isProjectNotificationPreferenceLoading;
+    isDefaultNotificationConditionLoading || isPodNotificationPreferenceLoading;
 
-  const updateNotificationPreference = useUpdateProjectNotificationPreference({
+  const updateNotificationPreference = useUpdatePodNotificationPreference({
     workspaceId: owner.sId,
-    spaceId: activeSpaceId,
+    podId: activePodId,
   });
 
   const [selectedNotificationPreference, setSelectedNotificationPreference] =
     useState<NotificationCondition>(() => {
-      if (projectNotificationPreference?.preference) {
-        return projectNotificationPreference.preference;
+      if (podNotificationPreference?.preference) {
+        return podNotificationPreference.preference;
       }
       if (
         defaultNotificationCondition?.value &&
@@ -78,10 +75,8 @@ export function ProjectNotificationMenu({
     });
 
   useEffect(() => {
-    if (projectNotificationPreference?.preference) {
-      setSelectedNotificationPreference(
-        projectNotificationPreference.preference
-      );
+    if (podNotificationPreference?.preference) {
+      setSelectedNotificationPreference(podNotificationPreference.preference);
       return;
     }
     if (
@@ -91,7 +86,7 @@ export function ProjectNotificationMenu({
       setSelectedNotificationPreference(defaultNotificationCondition.value);
       return;
     }
-  }, [projectNotificationPreference, defaultNotificationCondition?.value]);
+  }, [podNotificationPreference, defaultNotificationCondition?.value]);
 
   const handleNotificationPreferenceChange = (
     preference: NotificationCondition
@@ -106,7 +101,7 @@ export function ProjectNotificationMenu({
     "all_messages",
   ];
 
-  if (!activeSpaceId) {
+  if (!activePodId) {
     return null;
   }
 

@@ -1,8 +1,8 @@
-import { ProjectSettingsOptionLabel } from "@app/components/assistant/conversation/space/about/ProjectSettingsOptionLabel";
 import { FirstSyncTaskLookbackForm } from "@app/components/assistant/conversation/space/FirstSyncTaskLookbackForm";
 import { ConfirmContext } from "@app/components/Confirm";
+import { PodSettingsOptionLabel } from "@app/components/pod/settings/PodSettingsOptionLabel";
 import type { InitialTasksSyncLookbackValue } from "@app/lib/project_task/analyze_document/types";
-import { useUpdateProjectMetadata } from "@app/lib/swr/spaces";
+import { useUpdatePodMetadata } from "@app/lib/swr/pods";
 import { timeAgoFrom } from "@app/lib/utils";
 import type { RichSpaceType } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -16,10 +16,10 @@ import {
 } from "@dust-tt/sparkle";
 import { useCallback, useContext, useRef, useState } from "react";
 
-const SUGGEST_TO_DOS_TOOLTIP =
+const SUGGEST_TASKS_TOOLTIP =
   "When this is on, Dust periodically reviews this Pod's conversations and connected sources and adds suggested tasks. Turn it off if you only want tasks you create yourself.";
 
-const SUGGEST_TO_DOS_TOOLTIP_NON_EDITOR = `${SUGGEST_TO_DOS_TOOLTIP} Only Pod editors can change this.`;
+const SUGGEST_TASKS_TOOLTIP_NON_EDITOR = `${SUGGEST_TASKS_TOOLTIP} Only Pod editors can change this.`;
 
 const LAST_SCAN_NEVER_TOOLTIP =
   "Dust has not run an automatic scan for task suggestions for this Pod yet.";
@@ -32,19 +32,19 @@ function lastScanTooltip(lastTodoAnalysisAt: number | null): string {
   return `Last automatic scan for new task suggestions: ${relative} ago.`;
 }
 
-export type SuggestedTodosGenerationTileProps = {
+interface SuggestedTasksGenerationTileProps {
   owner: LightWorkspaceType;
-  space: RichSpaceType;
-};
+  pod: RichSpaceType;
+}
 
 export function SuggestedTasksGenerationTile({
   owner,
-  space,
-}: SuggestedTodosGenerationTileProps) {
+  pod,
+}: SuggestedTasksGenerationTileProps) {
   const confirm = useContext(ConfirmContext);
-  const updateProjectMetadata = useUpdateProjectMetadata({
+  const updatePodMetadata = useUpdatePodMetadata({
     owner,
-    spaceId: space.sId,
+    podId: pod.sId,
   });
   const [isUpdatingTodoGeneration, setIsUpdatingTodoGeneration] =
     useState(false);
@@ -57,25 +57,24 @@ export function SuggestedTasksGenerationTile({
     []
   );
 
-  const isProjectArchived = !!space.archivedAt;
-  const structurallyDisabled =
-    !space.isMember || isProjectArchived || !space.isEditor;
+  const isPodArchived = !!pod.archivedAt;
+  const structurallyDisabled = !pod.isMember || isPodArchived || !pod.isEditor;
   const sliderDisabled = structurallyDisabled || isUpdatingTodoGeneration;
 
-  const toggleTooltip = isProjectArchived
+  const toggleTooltip = isPodArchived
     ? "This Pod is archived; suggestion settings cannot be changed."
-    : !space.isEditor && space.isMember
-      ? SUGGEST_TO_DOS_TOOLTIP_NON_EDITOR
-      : SUGGEST_TO_DOS_TOOLTIP;
+    : !pod.isEditor && pod.isMember
+      ? SUGGEST_TASKS_TOOLTIP_NON_EDITOR
+      : SUGGEST_TASKS_TOOLTIP;
 
   const handleTodoGenerationToggle = useCallback(async () => {
     if (structurallyDisabled) {
       return;
     }
-    if (space.todoGenerationEnabled) {
+    if (pod.todoGenerationEnabled) {
       setIsUpdatingTodoGeneration(true);
       try {
-        await updateProjectMetadata({
+        await updatePodMetadata({
           todoGenerationEnabled: false,
         });
       } finally {
@@ -84,7 +83,7 @@ export function SuggestedTasksGenerationTile({
       return;
     }
 
-    if (space.lastTodoAnalysisAt === null) {
+    if (pod.lastTodoAnalysisAt === null) {
       firstSyncLookbackRef.current = "last_24h";
       const confirmed = await confirm({
         title: "Turn on suggested tasks?",
@@ -102,7 +101,7 @@ export function SuggestedTasksGenerationTile({
       }
       setIsUpdatingTodoGeneration(true);
       try {
-        await updateProjectMetadata({
+        await updatePodMetadata({
           todoGenerationEnabled: true,
           initialTodoAnalysisLookback: firstSyncLookbackRef.current,
         });
@@ -114,7 +113,7 @@ export function SuggestedTasksGenerationTile({
 
     setIsUpdatingTodoGeneration(true);
     try {
-      await updateProjectMetadata({
+      await updatePodMetadata({
         todoGenerationEnabled: true,
       });
     } finally {
@@ -124,9 +123,9 @@ export function SuggestedTasksGenerationTile({
     confirm,
     onFirstSyncLookbackChange,
     structurallyDisabled,
-    space.lastTodoAnalysisAt,
-    space.todoGenerationEnabled,
-    updateProjectMetadata,
+    pod.lastTodoAnalysisAt,
+    pod.todoGenerationEnabled,
+    updatePodMetadata,
   ]);
 
   const onToggleClick = structurallyDisabled
@@ -135,7 +134,7 @@ export function SuggestedTasksGenerationTile({
 
   return (
     <div className="flex items-center justify-between gap-4">
-      <ProjectSettingsOptionLabel
+      <PodSettingsOptionLabel
         icon={SparklesIcon}
         title="Suggest tasks"
         description="Automatic task suggestions from Pod activity"
@@ -145,7 +144,7 @@ export function SuggestedTasksGenerationTile({
       />
       <div className="flex shrink-0 items-center gap-2">
         <Tooltip
-          label={lastScanTooltip(space.lastTodoAnalysisAt)}
+          label={lastScanTooltip(pod.lastTodoAnalysisAt)}
           trigger={
             <button
               type="button"
@@ -162,7 +161,7 @@ export function SuggestedTasksGenerationTile({
             <div>
               <SliderToggle
                 size="xs"
-                selected={space.todoGenerationEnabled}
+                selected={pod.todoGenerationEnabled}
                 disabled={sliderDisabled}
                 onClick={onToggleClick}
               />

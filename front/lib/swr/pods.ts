@@ -25,14 +25,29 @@ import type {
   GetProjectContextResponseBody,
   PostProjectContextContentNodeResponseBody as PostPodContextContentNodeResponseBody,
 } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_context";
+import type {
+  GetPodMetadataResponseBody,
+  PatchPodMetadataResponseBody,
+} from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_metadata";
+import type {
+  GetUserPodNotificationPreferenceResponseBody,
+  PatchUserPodNotificationPreferenceResponseBody,
+} from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_notification_preferences";
 import type { PatchPodTaskResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_tasks/[taskId]/index";
 import type { PostStartPodTaskResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_tasks/[taskId]/start";
 import type {
   GetPodTasksResponseBody,
   PostPodTaskResponseBody,
 } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_tasks/index";
+import type { PostUserPodStarResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/star";
 import type { CheckNameResponseBody } from "@app/pages/api/w/[wId]/spaces/check-name";
 import type { ContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
+import type { PatchPodMetadataBodyType } from "@app/types/api/internal/spaces";
+import type {
+  NotificationCondition,
+  UserPodNotificationPreference,
+} from "@app/types/notification_preferences";
+import type { PodMetadataType } from "@app/types/project_metadata";
 import type {
   PodTaskAssigneeType,
   PodTaskStatus,
@@ -978,4 +993,246 @@ export function useLeavePod({
   };
 
   return doLeave;
+}
+
+export function usePodMetadata({
+  workspaceId,
+  podId,
+  disabled = false,
+}: {
+  workspaceId: string;
+  podId: string | null;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const podMetadataFetcher: Fetcher<GetPodMetadataResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/spaces/${podId}/project_metadata`,
+    podMetadataFetcher,
+    { disabled: disabled || podId === null }
+  );
+
+  return {
+    podMetadata: data?.projectMetadata ?? null,
+    isPodMetadataLoading: !error && !data && !disabled,
+    isPodMetadataError: error,
+    mutatePodMetadata: mutate,
+  };
+}
+
+export function useUpdatePodMetadata({
+  owner,
+  podId,
+}: {
+  owner: LightWorkspaceType;
+  podId: string;
+}) {
+  const sendNotification = useSendNotification();
+  const { mutatePodMetadata } = usePodMetadata({
+    workspaceId: owner.sId,
+    podId,
+    disabled: true,
+  });
+  const { mutate: mutatePodConversationsSummary } = usePodConversationsSummary({
+    workspaceId: owner.sId,
+    options: { disabled: true },
+  });
+
+  const { mutateSpaceInfoRegardlessOfQueryParams } = useSpaceInfo({
+    workspaceId: owner.sId,
+    spaceId: podId,
+    disabled: true,
+  });
+
+  return async (
+    updates: PatchPodMetadataBodyType
+  ): Promise<PodMetadataType | null> => {
+    const url = `/api/w/${owner.sId}/spaces/${podId}/project_metadata`;
+
+    const res = await clientFetch(url, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updates),
+    });
+
+    if (!res.ok) {
+      const errorData = await getErrorFromResponse(res);
+      sendNotification({
+        type: "error",
+        title: "Error updating Pod metadata",
+        description: `Error: ${errorData.message}`,
+      });
+      return null;
+    }
+
+    void mutatePodMetadata();
+    void mutatePodConversationsSummary();
+    void mutateSpaceInfoRegardlessOfQueryParams();
+
+    const title =
+      updates.pinnedFramePath !== undefined
+        ? updates.pinnedFramePath
+          ? "Frame pinned as Pod banner"
+          : "Banner unpinned"
+        : updates.archive !== undefined
+          ? updates.archive
+            ? "Pod archived"
+            : "Pod unarchived"
+          : updates.todoGenerationEnabled !== undefined
+            ? updates.todoGenerationEnabled
+              ? "Automatic task suggestions turned on"
+              : "Automatic task suggestions turned off"
+            : "Pod updated";
+
+    sendNotification({
+      type: "success",
+      title,
+    });
+
+    const response: PatchPodMetadataResponseBody = await res.json();
+    return response.projectMetadata;
+  };
+}
+
+export function usePodNotificationPreference({
+  workspaceId,
+  podId,
+  disabled = false,
+}: {
+  workspaceId: string;
+  podId: string | null;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const podMetadataFetcher: Fetcher<GetUserPodNotificationPreferenceResponseBody> =
+    fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/spaces/${podId}/project_notification_preferences`,
+    podMetadataFetcher,
+    { disabled: disabled || podId === null }
+  );
+
+  return {
+    podNotificationPreference: data?.userProjectNotificationPreference ?? null,
+    isPodNotificationPreferenceLoading: !error && !data && !disabled,
+    mutatePodNotificationPreference: mutate,
+  };
+}
+
+export function useUpdatePodNotificationPreference({
+  workspaceId,
+  podId,
+}: {
+  workspaceId: string;
+  podId: string | null;
+}) {
+  const sendNotification = useSendNotification();
+  const { mutatePodNotificationPreference } = usePodNotificationPreference({
+    workspaceId,
+    podId,
+    disabled: true,
+  });
+
+  return async (
+    preference: NotificationCondition
+  ): Promise<UserPodNotificationPreference | null> => {
+    if (!podId) {
+      return null;
+    }
+    const url = `/api/w/${workspaceId}/spaces/${podId}/project_notification_preferences`;
+
+    const res = await clientFetch(url, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        preference,
+      }),
+    });
+
+    if (!res.ok) {
+      const errorData = await getErrorFromResponse(res);
+      sendNotification({
+        type: "error",
+        title: "Error updating Pod notification preference",
+        description: `Error: ${errorData.message}`,
+      });
+      return null;
+    }
+
+    void mutatePodNotificationPreference();
+
+    sendNotification({
+      type: "success",
+      title: "Pod notification preference updated",
+    });
+
+    const response: PatchUserPodNotificationPreferenceResponseBody =
+      await res.json();
+    return response.userProjectNotificationPreference;
+  };
+}
+
+export function useStarPod({
+  workspaceId,
+  podId,
+}: {
+  workspaceId: string;
+  podId: string | null;
+}) {
+  const sendNotification = useSendNotification();
+  const { mutate: mutatePodConversationsSummary } = usePodConversationsSummary({
+    workspaceId,
+    options: { disabled: true },
+  });
+
+  return useCallback(
+    async (isStarred: boolean): Promise<PostUserPodStarResponseBody | null> => {
+      if (!podId) {
+        return null;
+      }
+
+      const res = await clientFetch(
+        `/api/w/${workspaceId}/spaces/${podId}/star`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ starred: isStarred }),
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+        sendNotification({
+          type: "error",
+          title: isStarred ? "Error starring Pod" : "Error unstarring Pod",
+          description: `Error: ${errorData.message}`,
+        });
+        return null;
+      }
+
+      const response: PostUserPodStarResponseBody = await res.json();
+
+      void mutatePodConversationsSummary((data) => {
+        if (!data) {
+          return data;
+        }
+        return {
+          ...data,
+          summary: data.summary.map((entry) =>
+            entry.space.sId === podId
+              ? {
+                  ...entry,
+                  space: { ...entry.space, isStarred: response.isStarred },
+                }
+              : entry
+          ),
+        };
+      }, false);
+
+      return response;
+    },
+    [workspaceId, podId, mutatePodConversationsSummary, sendNotification]
+  );
 }

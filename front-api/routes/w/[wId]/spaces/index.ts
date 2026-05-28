@@ -6,7 +6,7 @@ import {
 import { enrichProjectsWithMetadata } from "@app/lib/api/projects/list";
 import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { areOpenProjectsAllowed } from "@app/lib/workspace_policies";
+import { areOpenPodsAllowed } from "@app/lib/workspace_policies";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { PodType, SpaceType } from "@app/types/space";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -96,7 +96,7 @@ app.post(
     if (
       requestBody.spaceKind === "project" &&
       !requestBody.isRestricted &&
-      !areOpenProjectsAllowed(owner)
+      !areOpenPodsAllowed(owner)
     ) {
       return apiError(ctx, {
         status_code: 403,

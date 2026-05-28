@@ -1,4 +1,4 @@
-import { LeaveProjectDialog } from "@app/components/assistant/conversation/LeaveProjectDialog";
+import { LeavePodDialog } from "@app/components/pod/LeavePodDialog";
 import { useLeavePodDialog } from "@app/hooks/useLeaveProjectDialog";
 import { useAppRouter } from "@app/lib/platform";
 import { getConversationRoute, getPodRoute } from "@app/lib/utils/router";
@@ -19,7 +19,7 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { useCallback } from "react";
-import { ProjectNotificationMenu } from "../assistant/conversation/ProjectNotificationMenu";
+import { PodNotificationMenu } from "./settings/PodNotificationMenu";
 
 interface PodHeaderActionsProps {
   isMember: boolean;
@@ -109,8 +109,8 @@ export function PodHeaderActions({
                   onClick={openLeaveDialog}
                 />
               )}
-              <ProjectNotificationMenu
-                activeSpaceId={podId}
+              <PodNotificationMenu
+                activePodId={podId}
                 owner={owner}
                 shouldWaitBeforeFetching={false}
               />
@@ -118,7 +118,7 @@ export function PodHeaderActions({
           </DropdownMenu>
         )}
       </div>
-      <LeaveProjectDialog {...leaveDialogProps} />
+      <LeavePodDialog {...leaveDialogProps} />
     </>
   );
 }

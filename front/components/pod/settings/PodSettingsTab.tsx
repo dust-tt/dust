@@ -1,22 +1,21 @@
-import { DeleteSpaceDialog } from "@app/components/assistant/conversation/space/about/DeleteSpaceDialog";
-import { MembersTable } from "@app/components/assistant/conversation/space/about/MembersTable";
-import { ProjectSettingsOptionLabel } from "@app/components/assistant/conversation/space/about/ProjectSettingsOptionLabel";
-import { SuggestedTasksGenerationTile } from "@app/components/assistant/conversation/space/conversations/project_tasks/SuggestedTasksGenerationTile";
 import { ConfirmContext } from "@app/components/Confirm";
+import { DeletePodDialog } from "@app/components/pod/settings/DeletePodDialog";
+import { PodMembersTable } from "@app/components/pod/settings/PodMembersTable";
+import { PodSettingsOptionLabel } from "@app/components/pod/settings/PodSettingsOptionLabel";
+import { SuggestedTasksGenerationTile } from "@app/components/pod/settings/SuggestedTasksGenerationTile";
 import { usePodConversationsSummary } from "@app/hooks/conversations";
-import { useArchiveProject } from "@app/hooks/useArchiveProject";
-import { useCheckPodName } from "@app/lib/swr/pods";
+import { useArchivePod } from "@app/hooks/useArchivePod";
 import {
-  useProjectMetadata,
-  useSpaceInfo,
-  useUpdateProjectMetadata,
-  useUpdateSpace,
-} from "@app/lib/swr/spaces";
+  useCheckPodName,
+  usePodMetadata,
+  useUpdatePodMetadata,
+} from "@app/lib/swr/pods";
+import { useSpaceInfo, useUpdateSpace } from "@app/lib/swr/spaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import { areOpenProjectsAllowed } from "@app/lib/workspace_policies";
+import { areOpenPodsAllowed } from "@app/lib/workspace_policies";
 import type { RichSpaceType } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
-import type { PatchProjectMetadataBodyType } from "@app/types/api/internal/spaces";
-import { PatchProjectMetadataBodySchema } from "@app/types/api/internal/spaces";
+import type { PatchPodMetadataBodyType } from "@app/types/api/internal/spaces";
+import { PatchPodMetadataBodySchema } from "@app/types/api/internal/spaces";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   ArchiveIcon,
@@ -36,45 +35,41 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 
-interface SpaceAboutTabProps {
+interface PodSettingsTabProps {
   owner: LightWorkspaceType;
-  space: RichSpaceType;
+  pod: RichSpaceType;
   onOpenMembersPanel?: () => void;
 }
 
-const OPEN_PROJECTS_DISABLED_TOOLTIP =
+const OPEN_POD_DISABLED_TOOLTIP =
   "Open Pods are disabled by your workspace admin.";
 
-export function SpaceAboutTab({
+export function PodSettingsTab({
   owner,
-  space,
+  pod: pod,
   onOpenMembersPanel,
-}: SpaceAboutTabProps) {
-  const {
-    members: projectMembers,
-    isEditor: isProjectEditor,
-    isRestricted,
-  } = space;
+}: PodSettingsTabProps) {
+  const { members: podMembers, isEditor: isPodEditor, isRestricted } = pod;
   const isOpen = !isRestricted;
-  const areWorkspaceOpenProjectsAllowed = areOpenProjectsAllowed(owner);
-  const isPrivateProjectAndOpenProjectsDisallowed =
-    !areWorkspaceOpenProjectsAllowed && !isOpen;
+  const areWorkspaceOpenPodsAllowed = areOpenPodsAllowed(owner);
+  const isPrivatePodAndOpenPodsDisallowed =
+    !areWorkspaceOpenPodsAllowed && !isOpen;
   const isVisibilityToggleDisabled =
-    !isProjectEditor || isPrivateProjectAndOpenProjectsDisallowed;
+    !isPodEditor || isPrivatePodAndOpenPodsDisallowed;
   const [searchSelectedMembers, setSearchSelectedMembers] = useState("");
 
   const confirm = useContext(ConfirmContext);
 
-  const { projectMetadata, isProjectMetadataLoading } = useProjectMetadata({
+  const { podMetadata, isPodMetadataLoading } = usePodMetadata({
     workspaceId: owner.sId,
-    spaceId: space.sId,
+    podId: pod.sId,
   });
-  const doUpdateMetadata = useUpdateProjectMetadata({
+  const doUpdateMetadata = useUpdatePodMetadata({
     owner,
-    spaceId: space.sId,
+    podId: pod.sId,
   });
 
-  const [projectName, setProjectName] = useState(space.name);
+  const [podName, setPodName] = useState(pod.name);
   const [isEditingName, setIsEditingName] = useState(false);
   const {
     isNameAvailable,
@@ -82,45 +77,47 @@ export function SpaceAboutTab({
     setValue: setNameToCheck,
   } = useCheckPodName({
     owner,
-    whitelistedName: space.name,
+    whitelistedName: pod.name,
   });
   const nameNotAvailable =
-    projectName.trim().length > 0 && !isCheckingName && !isNameAvailable;
-  const [projectDescription, setProjectDescription] = useState(
-    projectMetadata?.description ?? ""
+    podName.trim().length > 0 && !isCheckingName && !isNameAvailable;
+  const [podDescription, setPodDescription] = useState(
+    podMetadata?.description ?? ""
   );
   const [isEditingDescription, setIsEditingDescription] = useState(false);
 
-  const form = useForm<PatchProjectMetadataBodyType>({
-    resolver: zodResolver(PatchProjectMetadataBodySchema),
+  const form = useForm<PatchPodMetadataBodyType>({
+    resolver: zodResolver(PatchPodMetadataBodySchema),
     defaultValues: {},
   });
 
   // Sync form with loaded metadata
   useEffect(() => {
-    if (projectMetadata) {
+    if (podMetadata) {
       form.reset({});
-      setProjectDescription(projectMetadata.description ?? "");
+      setPodDescription(podMetadata.description ?? "");
     }
-  }, [projectMetadata, form]);
+  }, [podMetadata, form]);
 
   const doUpdate = useUpdateSpace({ owner });
-  const { mutateSpaceInfoRegardlessOfQueryParams } = useSpaceInfo({
-    workspaceId: owner.sId,
-    spaceId: space.sId,
-  });
+  const { mutateSpaceInfoRegardlessOfQueryParams: mutatePodInfo } =
+    useSpaceInfo({
+      workspaceId: owner.sId,
+      spaceId: pod.sId,
+    });
   const { mutate: mutateSpaceSummary } = usePodConversationsSummary({
     workspaceId: owner.sId,
+    options: { disabled: true },
   });
 
   const onSaveName = async () => {
-    const newProjectName = projectName.trim();
-    if (!newProjectName || newProjectName === space.name.trim()) {
+    const newPodName = podName.trim();
+    if (!newPodName || newPodName === pod.name.trim()) {
       return;
     }
     const confirmed = await confirm({
       title: "Update Pod name?",
-      message: `The Pod name will be changed to "${newProjectName}".`,
+      message: `The Pod name will be changed to "${newPodName}".`,
       validateVariant: "warning",
     });
 
@@ -129,13 +126,13 @@ export function SpaceAboutTab({
     }
 
     const updated = await doUpdate(
-      space,
+      pod,
       {
         isRestricted,
-        memberIds: projectMembers.filter((m) => !m.isEditor).map((m) => m.sId),
-        editorIds: projectMembers.filter((m) => m.isEditor).map((m) => m.sId),
+        memberIds: podMembers.filter((m) => !m.isEditor).map((m) => m.sId),
+        editorIds: podMembers.filter((m) => m.isEditor).map((m) => m.sId),
         managementMode: "manual",
-        name: newProjectName,
+        name: newPodName,
       },
       {
         title: "Successfully updated Pod name",
@@ -144,30 +141,29 @@ export function SpaceAboutTab({
     );
 
     if (updated) {
-      await mutateSpaceInfoRegardlessOfQueryParams();
-      // Optimistically update the space name in the sidebar without refetching
+      await mutatePodInfo();
       void mutateSpaceSummary();
       setIsEditingName(false);
     }
   };
 
   const onSaveDescription = async () => {
-    await doUpdateMetadata({ description: projectDescription });
+    await doUpdateMetadata({ description: podDescription });
     setIsEditingDescription(false);
   };
 
-  const { archiveProject, unarchiveProject } = useArchiveProject({
+  const { archivePod, unarchivePod } = useArchivePod({
     owner,
-    spaceId: space.sId,
+    podId: pod.sId,
   });
 
   const handleArchiveToggle = useCallback(async () => {
-    if (projectMetadata?.archivedAt) {
-      await unarchiveProject();
+    if (podMetadata?.archivedAt) {
+      await unarchivePod();
     } else {
-      await archiveProject();
+      await archivePod();
     }
-  }, [archiveProject, unarchiveProject, projectMetadata?.archivedAt]);
+  }, [archivePod, unarchivePod, podMetadata?.archivedAt]);
 
   const handleVisibilityToggle = useCallback(async () => {
     const newIsOpen = !isOpen;
@@ -187,13 +183,13 @@ export function SpaceAboutTab({
     }
 
     const updated = await doUpdate(
-      space,
+      pod,
       {
         isRestricted: !newIsOpen,
-        memberIds: projectMembers.filter((m) => !m.isEditor).map((m) => m.sId),
-        editorIds: projectMembers.filter((m) => m.isEditor).map((m) => m.sId),
+        memberIds: podMembers.filter((m) => !m.isEditor).map((m) => m.sId),
+        editorIds: podMembers.filter((m) => m.isEditor).map((m) => m.sId),
         managementMode: "manual",
-        name: space.name,
+        name: pod.name,
       },
       {
         title: "Successfully updated Pod visibility",
@@ -202,21 +198,14 @@ export function SpaceAboutTab({
     );
 
     if (updated) {
-      await mutateSpaceInfoRegardlessOfQueryParams();
+      await mutatePodInfo();
     }
-  }, [
-    confirm,
-    doUpdate,
-    isOpen,
-    projectMembers,
-    space,
-    mutateSpaceInfoRegardlessOfQueryParams,
-  ]);
+  }, [confirm, doUpdate, isOpen, podMembers, pod, mutatePodInfo]);
 
   return (
     <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-y-auto px-6">
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-8 py-8">
-        {space.archivedAt && (
+        {pod.archivedAt && (
           <ContentMessage variant="info" size="lg">
             This Pod has been archived.
           </ContentMessage>
@@ -225,12 +214,12 @@ export function SpaceAboutTab({
           <div className="heading-lg">Name</div>
           <div className="flex w-full min-w-0 gap-2">
             <Input
-              value={projectName}
-              disabled={!isProjectEditor}
+              value={podName}
+              disabled={!isPodEditor}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                setProjectName(e.target.value);
+                setPodName(e.target.value);
                 setNameToCheck(e.target.value);
-                setIsEditingName(e.target.value.trim() !== space.name.trim());
+                setIsEditingName(e.target.value.trim() !== pod.name.trim());
               }}
               placeholder="Enter Pod name"
               containerClassName="flex-1"
@@ -247,7 +236,7 @@ export function SpaceAboutTab({
                   label="Cancel"
                   variant="outline"
                   onClick={() => {
-                    setProjectName(space.name);
+                    setPodName(pod.name);
                     setNameToCheck("");
                     setIsEditingName(false);
                   }}
@@ -265,19 +254,19 @@ export function SpaceAboutTab({
           <div className="heading-lg">Description</div>
           <div className="flex w-full min-w-0 flex-col gap-2">
             <TextArea
-              value={projectDescription}
+              value={podDescription}
               onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
-                setProjectDescription(e.target.value);
+                setPodDescription(e.target.value);
                 setIsEditingDescription(
-                  e.target.value !== projectMetadata?.description
+                  e.target.value !== podMetadata?.description
                 );
               }}
               placeholder={
-                isProjectMetadataLoading
+                isPodMetadataLoading
                   ? "Loading..."
                   : "Describe what this Pod is about..."
               }
-              disabled={isProjectMetadataLoading || !isProjectEditor}
+              disabled={isPodMetadataLoading || !isPodEditor}
               minRows={3}
               resize="vertical"
               className="flex-1"
@@ -293,7 +282,7 @@ export function SpaceAboutTab({
                   label="Cancel"
                   variant="outline"
                   onClick={() => {
-                    setProjectDescription(projectMetadata?.description ?? "");
+                    setPodDescription(podMetadata?.description ?? "");
                     setIsEditingDescription(false);
                   }}
                 />
@@ -305,7 +294,7 @@ export function SpaceAboutTab({
         <div className="flex w-full flex-col gap-2">
           <div className="flex flex-col border-y border-border">
             <div className="flex items-center justify-between gap-4 py-4">
-              <ProjectSettingsOptionLabel
+              <PodSettingsOptionLabel
                 icon={GlobeAltIcon}
                 title="Open to everyone"
                 description="Anyone in the workspace can find and join the Pod."
@@ -313,7 +302,7 @@ export function SpaceAboutTab({
               <div className="flex shrink-0 items-center gap-2">
                 {isVisibilityToggleDisabled ? (
                   <Tooltip
-                    label={OPEN_PROJECTS_DISABLED_TOOLTIP}
+                    label={OPEN_POD_DISABLED_TOOLTIP}
                     trigger={
                       <div>
                         <SliderToggle
@@ -337,7 +326,7 @@ export function SpaceAboutTab({
             </div>
 
             <div className="border-t border-border py-4">
-              <SuggestedTasksGenerationTile owner={owner} space={space} />
+              <SuggestedTasksGenerationTile owner={owner} pod={pod} />
             </div>
           </div>
         </div>
@@ -345,7 +334,7 @@ export function SpaceAboutTab({
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-2">
             <h3 className="heading-lg flex-1">Members</h3>
-            {isProjectEditor && onOpenMembersPanel && (
+            {isPodEditor && onOpenMembersPanel && (
               <Button
                 label="Manage"
                 variant="outline"
@@ -354,7 +343,7 @@ export function SpaceAboutTab({
               />
             )}
           </div>
-          {projectMembers.length > 0 && (
+          {podMembers.length > 0 && (
             <>
               <SearchInput
                 name="search"
@@ -363,32 +352,30 @@ export function SpaceAboutTab({
                 onChange={setSearchSelectedMembers}
               />
               <ScrollArea className="h-full" orientation="horizontal">
-                <MembersTable
+                <PodMembersTable
                   owner={owner}
-                  space={space}
-                  selectedMembers={projectMembers}
+                  pod={pod}
+                  selectedMembers={podMembers}
                   searchSelectedMembers={searchSelectedMembers}
-                  isEditor={isProjectEditor}
-                  mutateSpaceInfo={() =>
-                    mutateSpaceInfoRegardlessOfQueryParams()
-                  }
+                  isEditor={isPodEditor}
+                  mutatePodInfo={() => mutatePodInfo()}
                 />
               </ScrollArea>
             </>
           )}
         </div>
 
-        {isProjectEditor && (
+        {isPodEditor && (
           <div className="flex w-full flex-col gap-3 border-t border-border pt-8 dark:border-border-night">
             <h3 className="heading-lg">Danger Zone</h3>
             <h4 className="heading-base">Archive</h4>
-            {projectMetadata?.archivedAt ? (
+            {podMetadata?.archivedAt ? (
               <div className="flex flex-col gap-3">
                 <p className="text-sm text-foreground dark:text-foreground-night">
                   Archived on{" "}
                   <span className="font-medium">
                     {formatTimestampToFriendlyDate(
-                      projectMetadata.archivedAt,
+                      podMetadata.archivedAt,
                       "short"
                     )}
                   </span>
@@ -423,7 +410,7 @@ export function SpaceAboutTab({
               websites, and data sources. Agents using this Pod's tools will be
               impacted. This cannot be undone.
             </p>
-            <DeleteSpaceDialog owner={owner} space={space} />
+            <DeletePodDialog owner={owner} pod={pod} />
           </div>
         )}
       </div>

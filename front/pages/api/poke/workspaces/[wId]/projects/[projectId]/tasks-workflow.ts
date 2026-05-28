@@ -12,7 +12,7 @@ import {
 } from "@app/lib/temporal";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { ProjectMetadataType } from "@app/types/project_metadata";
+import type { PodMetadataType } from "@app/types/project_metadata";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -25,7 +25,7 @@ export type PokeProjectWorkflowInfo = {
 };
 
 export type PokeGetProjectWorkflow = {
-  metadata: ProjectMetadataType | null;
+  metadata: PodMetadataType | null;
   temporalNamespace: string;
   workflowId: string;
   latestWorkflow: PokeProjectWorkflowInfo | null;

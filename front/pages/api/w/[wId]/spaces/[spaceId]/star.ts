@@ -13,20 +13,20 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
-export type PostUserProjectStarResponseBody = {
+export type PostUserPodStarResponseBody = {
   sId: string;
   spaceId: string;
   userId: string;
   isStarred: boolean;
 };
 
-const PostUserProjectStarBodySchema = z.object({
+const PostUserPodStarBodySchema = z.object({
   starred: z.boolean(),
 });
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<PostUserProjectStarResponseBody>>,
+  res: NextApiResponse<WithAPIErrorResponse<PostUserPodStarResponseBody>>,
   auth: Authenticator,
   { space }: { space: SpaceResource }
 ): Promise<void> {
@@ -42,7 +42,7 @@ async function handler(
 
   switch (req.method) {
     case "POST": {
-      const bodyValidation = PostUserProjectStarBodySchema.safeParse(req.body);
+      const bodyValidation = PostUserPodStarBodySchema.safeParse(req.body);
       if (!bodyValidation.success) {
         return apiError(req, res, {
           status_code: 400,

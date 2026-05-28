@@ -1,7 +1,7 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useUpdateSpace } from "@app/lib/swr/spaces";
-import type { SpaceType } from "@app/types/space";
+import type { PodType } from "@app/types/space";
 import type { LightWorkspaceType, SpaceUserType } from "@app/types/user";
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
@@ -15,13 +15,13 @@ import {
 import type { ColumnDef } from "@tanstack/react-table";
 import { useCallback, useContext, useMemo } from "react";
 
-interface MembersTableProps {
+interface PodMembersTableProps {
   owner: LightWorkspaceType;
-  space: SpaceType;
+  pod: PodType;
   selectedMembers: SpaceUserType[];
   searchSelectedMembers: string;
   isEditor?: boolean;
-  mutateSpaceInfo: () => Promise<void>;
+  mutatePodInfo: () => Promise<void>;
 }
 
 type MemberRowData = {
@@ -47,14 +47,14 @@ function getMemberTableRows(allUsers: SpaceUserType[]): MemberRowData[] {
   }));
 }
 
-export function MembersTable({
+export function PodMembersTable({
   owner,
-  space,
+  pod,
   selectedMembers,
   searchSelectedMembers,
   isEditor,
-  mutateSpaceInfo,
-}: MembersTableProps) {
+  mutatePodInfo,
+}: PodMembersTableProps) {
   const sendNotifications = useSendNotification();
 
   const doUpdate = useUpdateSpace({ owner });
@@ -73,15 +73,15 @@ export function MembersTable({
       }
 
       const updateMember = await doUpdate(
-        space,
+        pod,
         {
-          isRestricted: space.isRestricted,
+          isRestricted: pod.isRestricted,
           memberIds: updatedMembers
             .filter((member) => !member.isEditor)
             .map((member) => member.sId),
           editorIds: updatedMembers.filter((m) => m.isEditor).map((m) => m.sId),
           managementMode: "manual",
-          name: space.name,
+          name: pod.name,
         },
         {
           title: "Successfully removed member",
@@ -89,10 +89,10 @@ export function MembersTable({
         }
       );
       if (updateMember) {
-        await mutateSpaceInfo();
+        await mutatePodInfo();
       }
     },
-    [doUpdate, space, selectedMembers, sendNotifications, mutateSpaceInfo]
+    [doUpdate, pod, selectedMembers, sendNotifications, mutatePodInfo]
   );
 
   const toggleEditor = useCallback(
@@ -122,9 +122,9 @@ export function MembersTable({
       }
 
       const updateMember = await doUpdate(
-        space,
+        pod,
         {
-          isRestricted: space.isRestricted,
+          isRestricted: pod.isRestricted,
           memberIds: updatedMembers
             .filter((member) => !member.isEditor)
             .map((member) => member.sId),
@@ -132,7 +132,7 @@ export function MembersTable({
             .filter((member) => member.isEditor)
             .map((member) => member.sId),
           managementMode: "manual",
-          name: space.name,
+          name: pod.name,
         },
         {
           title: newIsEditorValue
@@ -144,10 +144,10 @@ export function MembersTable({
         }
       );
       if (updateMember) {
-        await mutateSpaceInfo();
+        await mutatePodInfo();
       }
     },
-    [doUpdate, space, selectedMembers, sendNotifications, mutateSpaceInfo]
+    [doUpdate, pod, selectedMembers, sendNotifications, mutatePodInfo]
   );
 
   const rows = useMemo(

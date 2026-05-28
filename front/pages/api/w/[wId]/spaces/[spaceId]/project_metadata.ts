@@ -12,24 +12,24 @@ import {
   startImmediateProjectTodoWorkflowOnce,
   stopProjectTodoWorkflow,
 } from "@app/temporal/project_task/client";
-import { PatchProjectMetadataBodySchema } from "@app/types/api/internal/spaces";
+import { PatchPodMetadataBodySchema } from "@app/types/api/internal/spaces";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { ProjectMetadataType } from "@app/types/project_metadata";
+import type { PodMetadataType } from "@app/types/project_metadata";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-export type GetProjectMetadataResponseBody = {
-  projectMetadata: ProjectMetadataType | null;
+export type GetPodMetadataResponseBody = {
+  projectMetadata: PodMetadataType | null;
 };
 
-export type PatchProjectMetadataResponseBody = {
-  projectMetadata: ProjectMetadataType;
+export type PatchPodMetadataResponseBody = {
+  projectMetadata: PodMetadataType;
 };
 
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorResponse<
-      GetProjectMetadataResponseBody | PatchProjectMetadataResponseBody
+      GetPodMetadataResponseBody | PatchPodMetadataResponseBody
     >
   >,
   auth: Authenticator,
@@ -65,7 +65,7 @@ async function handler(
         });
       }
 
-      const bodyValidation = PatchProjectMetadataBodySchema.safeParse(req.body);
+      const bodyValidation = PatchPodMetadataBodySchema.safeParse(req.body);
       if (!bodyValidation.success) {
         const errorMessage = bodyValidation.error.errors
           .map((e) => `${e.path.join(".")}: ${e.message}`)

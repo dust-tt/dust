@@ -1,7 +1,4 @@
-import {
-  ProjectMenu,
-  useProjectMenu,
-} from "@app/components/assistant/conversation/ProjectMenu";
+import { PodMenu, usePodMenu } from "@app/components/pod/PodMenu";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { useConversation } from "@app/hooks/conversations";
 import { usePodConversations } from "@app/hooks/conversations/usePodConversations";
@@ -12,38 +9,40 @@ import { removeDiacritics, subFilter } from "@app/lib/utils";
 import { getPodRoute } from "@app/lib/utils/router";
 import type { GetBySpacesSummaryResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/spaces";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import type { SpaceType } from "@app/types/space";
+import type { PodType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import { NavigationListItem, NavigationListItemAction } from "@dust-tt/sparkle";
 import { memo, useCallback, useContext, useRef, useState } from "react";
 
-const ProjectListItem = memo(
+interface PodListItemProps {
+  pod: PodType;
+  isStarred: boolean;
+  unreadCount: number;
+  hasUnread: boolean;
+  owner: WorkspaceType;
+  moveConversationToPod: (
+    conversation: ConversationWithoutContentType,
+    pod: PodType
+  ) => Promise<boolean>;
+}
+
+const PodListItem = memo(
   ({
-    space,
+    pod,
     isStarred,
     unreadCount,
     hasUnread,
     owner,
-    moveConversationToProject,
-  }: {
-    space: SpaceType;
-    isStarred: boolean;
-    unreadCount: number;
-    hasUnread: boolean;
-    owner: WorkspaceType;
-    moveConversationToProject: (
-      conversation: ConversationWithoutContentType,
-      space: SpaceType
-    ) => Promise<boolean>;
-  }) => {
+    moveConversationToPod,
+  }: PodListItemProps) => {
     const router = useAppRouter();
     const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
     const dropZoneRef = useRef<HTMLDivElement>(null);
 
-    const spacePath = getPodRoute(owner.sId, space.sId);
+    const podPath = getPodRoute(owner.sId, pod.sId);
 
     const { isMenuOpen, menuTriggerPosition, handleMenuOpenChange } =
-      useProjectMenu();
+      usePodMenu();
 
     const activeConversationId = useActiveConversationId();
     const { conversation } = useConversation({
@@ -54,7 +53,7 @@ const ProjectListItem = memo(
     const { mutateConversations: mutateAllConversations } = usePodConversations(
       {
         workspaceId: owner.sId,
-        podId: space.sId,
+        podId: pod.sId,
         filter: "all",
         options: { disabled: true },
       }
@@ -62,21 +61,20 @@ const ProjectListItem = memo(
     const { mutateConversations: mutateWithMeConversations } =
       usePodConversations({
         workspaceId: owner.sId,
-        podId: space.sId,
+        podId: pod.sId,
         filter: "with_me",
         options: { disabled: true },
       });
     const { mutateConversations: mutateGroupConversations } =
       usePodConversations({
         workspaceId: owner.sId,
-        podId: space.sId,
+        podId: pod.sId,
         filter: "group",
         options: { disabled: true },
       });
 
     const isSpaceSelected =
-      router.asPath.startsWith(spacePath) ||
-      conversation?.spaceId === space.sId;
+      router.asPath.startsWith(podPath) || conversation?.spaceId === pod.sId;
 
     const [isDragOver, setIsDragOver] = useState(false);
     const dragCounterRef = useRef(0);
@@ -114,10 +112,7 @@ const ProjectListItem = memo(
             const conversationObj = JSON.parse(
               conversationData
             ) as ConversationWithoutContentType;
-            const success = await moveConversationToProject(
-              conversationObj,
-              space
-            );
+            const success = await moveConversationToPod(conversationObj, pod);
             if (success) {
               void mutateAllConversations();
               void mutateWithMeConversations();
@@ -129,8 +124,8 @@ const ProjectListItem = memo(
         }
       },
       [
-        moveConversationToProject,
-        space,
+        moveConversationToPod,
+        pod,
         mutateAllConversations,
         mutateWithMeConversations,
         mutateGroupConversations,
@@ -144,10 +139,10 @@ const ProjectListItem = memo(
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         className={isDragOver ? "ring-2 ring-inset rounded-xl" : ""}
-        icon={getSpaceIcon(space)}
+        icon={getSpaceIcon(pod)}
         selected={isSpaceSelected && !isDragOver}
-        label={space.name}
-        href={spacePath}
+        label={pod.name}
+        href={podPath}
         shallow
         hasActivity={hasUnread}
         count={unreadCount > 0 ? unreadCount : undefined}
@@ -160,13 +155,13 @@ const ProjectListItem = memo(
           }
         }}
         moreMenu={
-          <ProjectMenu
-            activeSpaceId={space.sId}
-            space={space}
+          <PodMenu
+            activePodId={pod.sId}
+            pod={pod}
             owner={owner}
             isStarred={isStarred}
             trigger={<NavigationListItemAction />}
-            isProjectDisplayed={activeConversationId === space.sId}
+            isPodDisplayed={activeConversationId === pod.sId}
             isOpen={isMenuOpen}
             onOpenChange={handleMenuOpenChange}
             triggerPosition={menuTriggerPosition}
@@ -177,20 +172,18 @@ const ProjectListItem = memo(
   }
 );
 
-ProjectListItem.displayName = "ProjectListItem";
-
-export function renderProjectsList({
+export function renderPodsList({
   owner,
   summary,
   titleFilter,
-  moveConversationToProject,
+  moveConversationToPod: moveConversationToPod,
 }: {
   owner: WorkspaceType;
   summary: GetBySpacesSummaryResponseBody["summary"];
   titleFilter: string;
-  moveConversationToProject: (
+  moveConversationToPod: (
     conversation: ConversationWithoutContentType,
-    space: SpaceType
+    pod: PodType
   ) => Promise<boolean>;
 }) {
   if (!summary || summary.length === 0) {
@@ -211,9 +204,9 @@ export function renderProjectsList({
 
   return filteredSummary.map(
     ({ space, unreadConversations, nonParticipantUnreadConversations }) => (
-      <ProjectListItem
+      <PodListItem
         key={space.sId}
-        space={space}
+        pod={space}
         isStarred={space.isStarred}
         unreadCount={unreadConversations.length}
         hasUnread={
@@ -221,7 +214,7 @@ export function renderProjectsList({
           nonParticipantUnreadConversations.length > 0
         }
         owner={owner}
-        moveConversationToProject={moveConversationToProject}
+        moveConversationToPod={moveConversationToPod}
       />
     )
   );

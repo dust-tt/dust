@@ -51,7 +51,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getConversationRoute, getPodRoute } from "@app/lib/utils/router";
-import { areOpenProjectsAllowed } from "@app/lib/workspace_policies";
+import { areOpenPodsAllowed } from "@app/lib/workspace_policies";
 import {
   isUserMessageType,
   type UserMessageOrigin,
@@ -632,7 +632,7 @@ export function createProjectManagerTools(
       return withErrorHandling(async () => {
         const owner = auth.getNonNullableWorkspace();
 
-        if (params.visibility === "open" && !areOpenProjectsAllowed(owner)) {
+        if (params.visibility === "open" && !areOpenPodsAllowed(owner)) {
           return new Err(
             new MCPError(
               "Open Pods are disabled by your workspace admin. Create a private Pod instead.",

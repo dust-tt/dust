@@ -1,23 +1,21 @@
 import { ConfirmContext } from "@app/components/Confirm";
-import { useUpdateProjectMetadata } from "@app/lib/swr/spaces";
+import { useUpdatePodMetadata } from "@app/lib/swr/pods";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useContext } from "react";
 
-interface UseArchiveProjectProps {
-  owner: LightWorkspaceType;
-  spaceId: string;
-  onSuccess?: () => void;
-}
-
-export function useArchiveProject({
+export function useArchivePod({
   owner,
-  spaceId,
+  podId,
   onSuccess,
-}: UseArchiveProjectProps) {
+}: {
+  owner: LightWorkspaceType;
+  podId: string;
+  onSuccess?: () => void;
+}) {
   const confirm = useContext(ConfirmContext);
-  const doUpdateMetadata = useUpdateProjectMetadata({ owner, spaceId });
+  const doUpdateMetadata = useUpdatePodMetadata({ owner, podId });
 
-  const archiveProject = useCallback(async () => {
+  const archivePod = useCallback(async () => {
     const confirmed = await confirm({
       title: "Archive Pod?",
       message:
@@ -33,9 +31,9 @@ export function useArchiveProject({
     onSuccess?.();
   }, [confirm, doUpdateMetadata, onSuccess]);
 
-  const unarchiveProject = useCallback(async () => {
+  const unarchivePod = useCallback(async () => {
     await doUpdateMetadata({ archive: false });
   }, [doUpdateMetadata]);
 
-  return { archiveProject, unarchiveProject };
+  return { archivePod, unarchivePod };
 }
