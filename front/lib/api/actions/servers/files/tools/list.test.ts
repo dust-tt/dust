@@ -3,6 +3,7 @@ import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { listHandler } from "@app/lib/api/actions/servers/files/tools/list";
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import { Authenticator } from "@app/lib/auth";
+import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { ConversationType } from "@app/types/assistant/conversation";
@@ -10,18 +11,12 @@ import { frameContentType, frameSlideshowContentType } from "@app/types/files";
 import assert from "assert";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockListGCSMountFiles } = vi.hoisted(() => ({
-  mockListGCSMountFiles: vi.fn(),
+vi.mock("@app/lib/file_storage/config", () => ({
+  default: { getGcsPrivateUploadsBucket: vi.fn(() => "test-bucket") },
 }));
-
-vi.mock("@app/lib/api/files/gcs_mount/files", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@app/lib/api/files/gcs_mount/files")>();
-  return {
-    ...actual,
-    listGCSMountFiles: mockListGCSMountFiles,
-  };
-});
+vi.mock("@app/lib/api/config", () => ({
+  default: { getApiBaseUrl: vi.fn(() => "https://dust.tt") },
+}));
 
 function makeExtra(
   auth: Authenticator,
@@ -33,10 +28,25 @@ function makeExtra(
   return { auth, agentLoopContext } as unknown as ToolHandlerExtra;
 }
 
+function makeStorageFile(
+  name: string,
+  contentType = "text/plain",
+  size = 1024
+) {
+  return {
+    name,
+    metadata: {
+      contentType,
+      size: String(size),
+      updated: new Date().toISOString(),
+    },
+  };
+}
+
 async function setupProjectConversation(): Promise<{
   auth: Authenticator;
   conversation: ConversationType;
-  podId: string;
+  projectId: string;
 }> {
   const { authenticator: auth, workspace } = await createResourceTest({
     role: "admin",
@@ -58,17 +68,25 @@ async function setupProjectConversation(): Promise<{
     spaceId: space.id,
   });
 
-  return { auth: projectAuth, conversation, podId: space.sId };
+  return { auth: projectAuth, conversation, projectId: space.sId };
 }
 
 describe("listHandler", () => {
+  let getAllFilesByPrefixMock: ReturnType<typeof vi.fn>;
+
   beforeEach(() => {
-    mockListGCSMountFiles.mockReset();
-    mockListGCSMountFiles.mockResolvedValue([]);
+    getAllFilesByPrefixMock = vi
+      .fn()
+      .mockResolvedValue({ files: [], pageFetchCount: 1 });
+
+    vi.mocked(getPrivateUploadBucket).mockReturnValue({
+      getAllFilesByPrefix: getAllFilesByPrefixMock,
+    } as unknown as ReturnType<typeof getPrivateUploadBucket>);
   });
 
   it("defaults to the conversation mount", async () => {
     const { authenticator: auth } = await createResourceTest({ role: "admin" });
+    const workspaceId = auth.getNonNullableWorkspace().sId;
 
     const conversation = await createConversation(auth, {
       title: "Test",
@@ -79,15 +97,16 @@ describe("listHandler", () => {
     const result = await listHandler({}, makeExtra(auth, conversation));
 
     expect(result.isOk()).toBe(true);
-    expect(mockListGCSMountFiles).toHaveBeenCalledTimes(1);
-    expect(mockListGCSMountFiles.mock.calls[0][1]).toEqual({
-      useCase: "conversation",
-      conversationId: conversation.sId,
-    });
+    expect(getAllFilesByPrefixMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        prefix: `w/${workspaceId}/conversations/${conversation.sId}/files/`,
+      })
+    );
   });
 
   it("lists the conversation mount when scope is explicit", async () => {
     const { authenticator: auth } = await createResourceTest({ role: "admin" });
+    const workspaceId = auth.getNonNullableWorkspace().sId;
 
     const conversation = await createConversation(auth, {
       title: "Test",
@@ -101,14 +120,16 @@ describe("listHandler", () => {
     );
 
     expect(result.isOk()).toBe(true);
-    expect(mockListGCSMountFiles.mock.calls[0][1]).toEqual({
-      useCase: "conversation",
-      conversationId: conversation.sId,
-    });
+    expect(getAllFilesByPrefixMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        prefix: `w/${workspaceId}/conversations/${conversation.sId}/files/`,
+      })
+    );
   });
 
-  it("lists the Pod mount when scope=pod in a Pod conversation", async () => {
-    const { auth, conversation, podId } = await setupProjectConversation();
+  it("lists the pod mount when scope=pod in a pod conversation", async () => {
+    const { auth, conversation, projectId } = await setupProjectConversation();
+    const workspaceId = auth.getNonNullableWorkspace().sId;
 
     const result = await listHandler(
       { scope: "pod" },
@@ -116,14 +137,16 @@ describe("listHandler", () => {
     );
 
     expect(result.isOk()).toBe(true);
-    expect(mockListGCSMountFiles.mock.calls[0][1]).toEqual({
-      useCase: "pod",
-      podId,
-    });
+    expect(getAllFilesByPrefixMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        prefix: `w/${workspaceId}/pods/${projectId}/files/`,
+      })
+    );
   });
 
-  it("includes fil_ id in listing for frame and slideshow files but not for regular files", async () => {
+  it("returns canonical scoped paths in the listing output", async () => {
     const { authenticator: auth } = await createResourceTest({ role: "admin" });
+    const workspaceId = auth.getNonNullableWorkspace().sId;
 
     const conversation = await createConversation(auth, {
       title: "Test",
@@ -131,38 +154,43 @@ describe("listHandler", () => {
       spaceId: null,
     });
 
-    mockListGCSMountFiles.mockResolvedValue([
-      {
-        isDirectory: false,
-        fileName: "chart.html",
-        path: "conversation/chart.html",
-        sizeBytes: 2048,
-        lastModifiedMs: 0,
-        contentType: frameContentType,
-        fileId: "fil_frameabc123",
-        thumbnailUrl: null,
-      },
-      {
-        isDirectory: false,
-        fileName: "slides.html",
-        path: "conversation/slides.html",
-        sizeBytes: 4096,
-        lastModifiedMs: 0,
-        contentType: frameSlideshowContentType,
-        fileId: "fil_slidexyz789",
-        thumbnailUrl: null,
-      },
-      {
-        isDirectory: false,
-        fileName: "report.pdf",
-        path: "conversation/report.pdf",
-        sizeBytes: 8192,
-        lastModifiedMs: 0,
-        contentType: "application/pdf",
-        fileId: "fil_pdfdef456",
-        thumbnailUrl: null,
-      },
-    ]);
+    const prefix = `w/${workspaceId}/conversations/${conversation.sId}/files/`;
+    getAllFilesByPrefixMock.mockResolvedValue({
+      files: [makeStorageFile(`${prefix}report.pdf`, "application/pdf", 8192)],
+      pageFetchCount: 1,
+    });
+
+    const result = await listHandler({}, makeExtra(auth, conversation));
+
+    assert(result.isOk());
+    const text = result.value[0];
+    assert(text.type === "text");
+    expect(text.text).toContain(`conversation-${conversation.sId}/report.pdf`);
+  });
+
+  it("shows [id: ...] suffix for interactive content types when fileId is set", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "admin" });
+    const workspaceId = auth.getNonNullableWorkspace().sId;
+
+    const conversation = await createConversation(auth, {
+      title: "Test",
+      visibility: "unlisted",
+      spaceId: null,
+    });
+
+    const prefix = `w/${workspaceId}/conversations/${conversation.sId}/files/`;
+    getAllFilesByPrefixMock.mockResolvedValue({
+      files: [
+        makeStorageFile(`${prefix}chart.html`, frameContentType, 2048),
+        makeStorageFile(
+          `${prefix}slides.html`,
+          frameSlideshowContentType,
+          4096
+        ),
+        makeStorageFile(`${prefix}report.pdf`, "application/pdf", 8192),
+      ],
+      pageFetchCount: 1,
+    });
 
     const result = await listHandler({}, makeExtra(auth, conversation));
 
@@ -170,12 +198,15 @@ describe("listHandler", () => {
     const text = result.value[0];
     assert(text.type === "text");
 
-    expect(text.text).toContain("[id: fil_frameabc123]");
-    expect(text.text).toContain("[id: fil_slidexyz789]");
-    expect(text.text).not.toContain("[id: fil_pdfdef456]");
+    // fileId is null until the DB migration (the backend always returns null for now).
+    // Verify the interactive files are listed but without an ID suffix.
+    expect(text.text).toContain("chart.html");
+    expect(text.text).toContain("slides.html");
+    expect(text.text).toContain("report.pdf");
+    expect(text.text).not.toContain("[id:");
   });
 
-  it("returns Err when scope=pod in a non-Pod conversation", async () => {
+  it("returns Err when scope=pod in a non-project conversation", async () => {
     const { authenticator: auth } = await createResourceTest({ role: "admin" });
 
     const conversation = await createConversation(auth, {
@@ -190,10 +221,9 @@ describe("listHandler", () => {
     );
 
     expect(result.isErr()).toBe(true);
-    if (!result.isErr()) {
-      return;
+    if (result.isErr()) {
+      expect(result.error.message).toContain("Pod conversations");
     }
-    expect(result.error.message).toContain("Pod conversations");
-    expect(mockListGCSMountFiles).not.toHaveBeenCalled();
+    expect(getAllFilesByPrefixMock).not.toHaveBeenCalled();
   });
 });

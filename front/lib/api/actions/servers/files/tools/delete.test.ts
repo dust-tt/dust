@@ -8,7 +8,14 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import assert from "assert";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@app/lib/file_storage/config", () => ({
+  default: { getGcsPrivateUploadsBucket: vi.fn(() => "test-bucket") },
+}));
+vi.mock("@app/lib/api/config", () => ({
+  default: { getApiBaseUrl: vi.fn(() => "https://dust.tt") },
+}));
 
 function makeExtra(
   auth: Authenticator,
@@ -20,13 +27,14 @@ function makeExtra(
   return { auth, agentLoopContext } as unknown as ToolHandlerExtra;
 }
 
-async function setupProjectConversation(
-  role: "admin" | "user" = "admin"
-): Promise<{
+async function setupProjectConversation(): Promise<{
   auth: Authenticator;
   conversation: ConversationType;
+  projectId: string;
 }> {
-  const { authenticator: auth, workspace } = await createResourceTest({ role });
+  const { authenticator: auth, workspace } = await createResourceTest({
+    role: "admin",
+  });
   const user = auth.getNonNullableUser();
 
   const space = await SpaceFactory.project(workspace, user.id);
@@ -44,69 +52,93 @@ async function setupProjectConversation(
     spaceId: space.id,
   });
 
-  return {
-    auth: projectAuth,
-    conversation,
-  };
+  return { auth: projectAuth, conversation, projectId: space.sId };
 }
 
 describe("deleteHandler", () => {
-  it("dual-deletes from the projects/ mirror when deleting from a Pod mount", async () => {
-    const { auth, conversation } = await setupProjectConversation();
-    const workspaceId = auth.getNonNullableWorkspace().sId;
-    const podId = conversation.spaceId;
-    assert(podId, "Expected Pod conversation to have a spaceId");
+  let deleteMock: ReturnType<typeof vi.fn>;
+  let existsMock: ReturnType<typeof vi.fn>;
+  let getAllFilesByPrefixMock: ReturnType<typeof vi.fn>;
 
-    const deleteMock = vi.fn().mockResolvedValue(undefined);
-    const existsMock = vi.fn().mockResolvedValue([true]);
-    const mockBucket = {
+  beforeEach(() => {
+    deleteMock = vi.fn().mockResolvedValue(undefined);
+    existsMock = vi.fn().mockResolvedValue([true]);
+    getAllFilesByPrefixMock = vi
+      .fn()
+      .mockResolvedValue({ files: [], pageFetchCount: 1 });
+
+    vi.mocked(getPrivateUploadBucket).mockReturnValue({
       file: vi.fn(() => ({ exists: existsMock })),
       delete: deleteMock,
-    };
-    vi.mocked(getPrivateUploadBucket).mockReturnValue(
-      mockBucket as unknown as ReturnType<typeof getPrivateUploadBucket>
-    );
+      getAllFilesByPrefix: getAllFilesByPrefixMock,
+    } as unknown as ReturnType<typeof getPrivateUploadBucket>);
+  });
+
+  it("deletes a file from a pod mount at the correct storage path", async () => {
+    const { auth, conversation, projectId } = await setupProjectConversation();
+    const workspaceId = auth.getNonNullableWorkspace().sId;
 
     const result = await deleteHandler(
-      { path: "pod/report.pdf" },
+      { path: `pod-${projectId}/report.pdf` },
       makeExtra(auth, conversation)
     );
 
     assert(result.isOk());
-
-    const podPath = `w/${workspaceId}/pods/${podId}/files/report.pdf`;
-    const projectsPath = `w/${workspaceId}/projects/${podId}/files/report.pdf`;
-
-    expect(deleteMock).toHaveBeenCalledTimes(2);
-    expect(deleteMock).toHaveBeenNthCalledWith(1, podPath, {
-      ignoreNotFound: true,
-    });
-    expect(deleteMock).toHaveBeenNthCalledWith(2, projectsPath, {
-      ignoreNotFound: true,
-    });
+    expect(deleteMock).toHaveBeenCalledWith(
+      `w/${workspaceId}/pods/${projectId}/files/report.pdf`,
+      { ignoreNotFound: false }
+    );
+    expect(deleteMock).toHaveBeenCalledTimes(1);
   });
 
-  it("returns Err when the file does not exist", async () => {
+  it("deletes a file from a conversation mount at the correct storage path", async () => {
     const { auth, conversation } = await setupProjectConversation();
-
-    const existsMock = vi.fn().mockResolvedValue([false]);
-    const mockBucket = {
-      file: vi.fn(() => ({ exists: existsMock })),
-      delete: vi.fn(),
-    };
-    vi.mocked(getPrivateUploadBucket).mockReturnValue(
-      mockBucket as unknown as ReturnType<typeof getPrivateUploadBucket>
-    );
+    const workspaceId = auth.getNonNullableWorkspace().sId;
+    const conversationId = conversation.sId;
 
     const result = await deleteHandler(
-      { path: "pod/missing.pdf" },
+      { path: `conversation-${conversationId}/report.pdf` },
+      makeExtra(auth, conversation)
+    );
+
+    assert(result.isOk());
+    expect(deleteMock).toHaveBeenCalledWith(
+      `w/${workspaceId}/conversations/${conversationId}/files/report.pdf`,
+      { ignoreNotFound: false }
+    );
+    expect(deleteMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns Err(not_found) when the file does not exist", async () => {
+    const { auth, conversation } = await setupProjectConversation();
+    const conversationId = conversation.sId;
+
+    existsMock.mockResolvedValue([false]);
+    getAllFilesByPrefixMock.mockResolvedValue({ files: [], pageFetchCount: 1 });
+
+    const result = await deleteHandler(
+      { path: `conversation-${conversationId}/missing.pdf` },
       makeExtra(auth, conversation)
     );
 
     expect(result.isErr()).toBe(true);
-    if (!result.isErr()) {
-      return;
+    if (result.isErr()) {
+      expect(result.error.message).toContain("not found");
     }
-    expect(result.error.message).toContain("File not found");
+  });
+
+  it("returns Err(legacy_path) for a legacy path and instructs the agent to re-list", async () => {
+    const { auth, conversation } = await setupProjectConversation();
+
+    const result = await deleteHandler(
+      { path: "project/report.pdf" },
+      makeExtra(auth, conversation)
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain("outdated format");
+      expect(result.error.message).toContain("files__list");
+    }
   });
 });

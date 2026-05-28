@@ -4,7 +4,7 @@ import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { FILES_SERVER_NAME } from "@app/lib/api/actions/servers/files/metadata";
 import {
   TOOLS,
-  TOOLS_WITH_PROJECT,
+  TOOLS_WITH_POD,
 } from "@app/lib/api/actions/servers/files/tools";
 import type { Authenticator } from "@app/lib/auth";
 import { isPodConversation } from "@app/types/assistant/conversation";
@@ -19,11 +19,11 @@ function createServer(
   const conversation =
     agentLoopContext?.runContext?.conversation ??
     agentLoopContext?.listToolsContext?.conversation;
-  const isConversationInProject = conversation
+  const isConversationInPod = conversation
     ? isPodConversation(conversation)
     : false;
 
-  for (const tool of isConversationInProject ? TOOLS_WITH_PROJECT : TOOLS) {
+  for (const tool of isConversationInPod ? TOOLS_WITH_POD : TOOLS) {
     registerTool(auth, agentLoopContext, server, tool, {
       monitoringName: FILES_SERVER_NAME,
     });

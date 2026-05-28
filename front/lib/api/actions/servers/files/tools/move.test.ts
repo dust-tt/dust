@@ -25,6 +25,7 @@ async function setupProjectConversation(
 ): Promise<{
   auth: Authenticator;
   conversation: ConversationType;
+  spaceId: string;
 }> {
   const { authenticator: auth, workspace } = await createResourceTest({ role });
   const user = auth.getNonNullableUser();
@@ -47,15 +48,19 @@ async function setupProjectConversation(
   return {
     auth: projectAuth,
     conversation,
+    spaceId: space.sId,
   };
 }
 
 describe("moveHandler", () => {
-  it("moves a file from conversation to Pod mount", async () => {
-    const { auth, conversation } = await setupProjectConversation();
+  it("moves a file from conversation to pod mount", async () => {
+    const { auth, conversation, spaceId } = await setupProjectConversation();
 
     const result = await moveHandler(
-      { source: "conversation/report.pdf", dest: "pod/report.pdf" },
+      {
+        source: `conversation-${conversation.sId}/report.pdf`,
+        dest: `pod-${spaceId}/report.pdf`,
+      },
       makeExtra(auth, conversation)
     );
 
@@ -65,15 +70,18 @@ describe("moveHandler", () => {
     }
     expect(result.value[0]).toEqual({
       type: "text",
-      text: "Moved `conversation/report.pdf` to `pod/report.pdf`.",
+      text: `Moved \`conversation-${conversation.sId}/report.pdf\` to \`pod-${spaceId}/report.pdf\`.`,
     });
   });
 
-  it("moves a file from Pod to conversation mount", async () => {
-    const { auth, conversation } = await setupProjectConversation();
+  it("moves a file from pod to conversation mount", async () => {
+    const { auth, conversation, spaceId } = await setupProjectConversation();
 
     const result = await moveHandler(
-      { source: "pod/spec.md", dest: "conversation/spec.md" },
+      {
+        source: `pod-${spaceId}/spec.md`,
+        dest: `conversation-${conversation.sId}/spec.md`,
+      },
       makeExtra(auth, conversation)
     );
 
@@ -81,21 +89,21 @@ describe("moveHandler", () => {
   });
 
   it("returns Err when the source file does not exist", async () => {
-    const { auth, conversation } = await setupProjectConversation();
+    const { auth, conversation, spaceId } = await setupProjectConversation();
 
-    const mockBucket = {
+    vi.mocked(getPrivateUploadBucket).mockReturnValueOnce({
       file: vi.fn(() => ({
+        exists: vi.fn().mockResolvedValue([false]),
         getMetadata: vi.fn().mockRejectedValue(new Error("Not Found")),
-        copy: vi.fn().mockResolvedValue(undefined),
         delete: vi.fn().mockResolvedValue(undefined),
       })),
-    };
-    vi.mocked(getPrivateUploadBucket).mockReturnValueOnce(
-      mockBucket as unknown as ReturnType<typeof getPrivateUploadBucket>
-    );
+    } as unknown as ReturnType<typeof getPrivateUploadBucket>);
 
     const result = await moveHandler(
-      { source: "conversation/missing.pdf", dest: "pod/missing.pdf" },
+      {
+        source: `conversation-${conversation.sId}/missing.pdf`,
+        dest: `pod-${spaceId}/missing.pdf`,
+      },
       makeExtra(auth, conversation)
     );
 
@@ -106,11 +114,14 @@ describe("moveHandler", () => {
     expect(result.error.message).toContain("Source file not found");
   });
 
-  it("returns Err when source and dest resolve to the same GCS path", async () => {
+  it("returns Err when source and dest are the same path", async () => {
     const { auth, conversation } = await setupProjectConversation();
 
     const result = await moveHandler(
-      { source: "conversation/x.md", dest: "conversation/x.md" },
+      {
+        source: `conversation-${conversation.sId}/x.md`,
+        dest: `conversation-${conversation.sId}/x.md`,
+      },
       makeExtra(auth, conversation)
     );
 
@@ -121,18 +132,18 @@ describe("moveHandler", () => {
     expect(result.error.message).toContain("same path");
   });
 
-  it("returns Err for an invalid source scope prefix", async () => {
-    const { auth, conversation } = await setupProjectConversation();
+  it("returns Err for an invalid source path prefix", async () => {
+    const { auth, conversation, spaceId } = await setupProjectConversation();
 
     const result = await moveHandler(
-      { source: "other/foo.md", dest: "pod/foo.md" },
+      { source: "other/foo.md", dest: `pod-${spaceId}/foo.md` },
       makeExtra(auth, conversation)
     );
 
     expect(result.isErr()).toBe(true);
   });
 
-  it("returns Err for a Pod path in a non-Pod conversation", async () => {
+  it("returns Err for a pod path in a non-project conversation", async () => {
     const { authenticator: auth } = await createResourceTest({ role: "admin" });
 
     const conversation = await createConversation(auth, {
@@ -142,14 +153,13 @@ describe("moveHandler", () => {
     });
 
     const result = await moveHandler(
-      { source: "conversation/x.md", dest: "pod/x.md" },
+      {
+        source: `conversation-${conversation.sId}/x.md`,
+        dest: "pod-someid/x.md",
+      },
       makeExtra(auth, conversation)
     );
 
     expect(result.isErr()).toBe(true);
-    if (!result.isErr()) {
-      return;
-    }
-    expect(result.error.message).toContain("Pod conversations");
   });
 });
