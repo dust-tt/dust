@@ -18,7 +18,6 @@ import {
   SandboxNotFoundError,
   traceSandboxOperation,
 } from "@app/lib/api/sandbox/provider";
-import { assertRootCommandUsesAbsoluteExecutables } from "@app/lib/api/sandbox/root_command";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
@@ -44,8 +43,6 @@ const LOCAL_ACCOUNT_HARDENING_TIMEOUT_MS = 120_000;
 const ALL_TRAFFIC = "0.0.0.0/0";
 
 function getRootSafeSandboxCommand(command: string): string {
-  assertRootCommandUsesAbsoluteExecutables(command);
-
   return [
     `PATH=${shellEscape(SANDBOX_ROOT_SAFE_PATH)}`,
     "HOME=/root",
@@ -383,15 +380,6 @@ export class E2BSandboxProvider implements SandboxProvider {
     return traceSandboxOperation(
       "exec",
       async () => {
-        let commandToRun = command;
-        if (execOpts?.user === "root") {
-          try {
-            commandToRun = getRootSafeSandboxCommand(command);
-          } catch (err) {
-            return new Err(normalizeError(err));
-          }
-        }
-
         let sandbox: Sandbox;
         try {
           sandbox = await Sandbox.connect(providerId, {
@@ -413,6 +401,10 @@ export class E2BSandboxProvider implements SandboxProvider {
             user: execOpts?.user,
           };
           const stdin = execOpts?.stdin;
+          const commandToRun =
+            execOpts?.user === "root"
+              ? getRootSafeSandboxCommand(command)
+              : command;
           const result =
             stdin === undefined
               ? await sandbox.commands.run(commandToRun, commandOpts)
