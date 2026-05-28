@@ -21,6 +21,7 @@ import {
   isHiddenMessageOrigin,
   isLightAgentMessageType,
   isLightAgentMessageWithActionsType,
+  isTerminalAgentMessageStatus,
   isUserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
 
@@ -213,6 +214,39 @@ export const makeInitialMessageStreamState = (
       pendingToolCalls: [],
     },
   };
+};
+
+// Returns true when the message still matches the output of makeInitialMessageStreamState —
+// i.e. no SSE event has moved it beyond the initial "thinking" state yet.
+// The rest-spread exhaustiveness check below ensures that adding a new field to
+// AgentMessageWithStreaming["streaming"] without handling it here is a compile error.
+export const isAtInitialStreamState = (
+  msg: AgentMessageWithStreaming
+): boolean => {
+  const {
+    agentState,
+    isRetrying,
+    pendingToolCalls,
+    inlineActivitySteps,
+    actionProgress,
+    lastUpdated: _lastUpdated, // always "now" at creation; not comparable
+    ...rest
+  } = msg.streaming;
+
+  // Fails to compile if a new streaming field is added without an explicit
+  // decision about whether to check it here.
+  void (rest satisfies Record<PropertyKey, never>);
+
+  return (
+    !isTerminalAgentMessageStatus(msg.status) &&
+    msg.content === null &&
+    msg.chainOfThought === null &&
+    agentState === "thinking" &&
+    !isRetrying &&
+    pendingToolCalls.length === 0 &&
+    inlineActivitySteps.length === 0 &&
+    actionProgress.size === 0
+  );
 };
 
 export const isSidekickBootstrapMessage = (
