@@ -444,7 +444,15 @@ export async function createAuditLogEvent({
     return new Ok(undefined);
   } catch (error) {
     const e = normalizeError(error);
-    logger.error(e, "Failed to create audit log event");
+    logger.error(
+      {
+        ...e,
+        workspaceId: workspace.sId,
+        action: event.action,
+        targetTypes: event.targets.map((t) => t.type),
+      },
+      "Failed to create audit log event"
+    );
     return new Err(new Error(`Failed to create audit log event: ${e.message}`));
   }
 }
