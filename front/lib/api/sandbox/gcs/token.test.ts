@@ -148,7 +148,7 @@ describe("buildAccessBoundaryRules", () => {
   it("scales linearly with the number of prefixes", () => {
     const rules = buildAccessBoundaryRules("bucket-x", [
       "w/ws1/conversations/c1/files",
-      "w/ws1/projects/spc1/files",
+      "w/ws1/pods/spc1/files",
     ]);
     expect(rules).toHaveLength(5);
   });
@@ -162,10 +162,7 @@ describe("buildAccessBoundaryRules", () => {
   });
 
   it("references every prefix in list and resource.name conditions", () => {
-    const prefixes = [
-      "w/ws1/conversations/c1/files",
-      "w/ws1/projects/spc1/files",
-    ];
+    const prefixes = ["w/ws1/conversations/c1/files", "w/ws1/pods/spc1/files"];
     const rules = buildAccessBoundaryRules("bucket-x", prefixes);
 
     const listRules = rules.filter((r) =>
