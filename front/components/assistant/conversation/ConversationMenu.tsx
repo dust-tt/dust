@@ -252,12 +252,12 @@ export function ConversationMenu({
     spaceId: conversationSpaceId,
     disabled: shouldWaitBeforeFetching || !conversationSpaceId,
   });
-  const isProjectEditor = conversationSpaceInfo?.isEditor ?? false;
-  const canMoveOutOfProject =
-    conversation && isPodConversation(conversation) && isProjectEditor;
+  const isPodEditor = conversationSpaceInfo?.isEditor ?? false;
+  const canMoveOutOfPod =
+    conversation && isPodConversation(conversation) && isPodEditor;
 
-  const moveConversationToProject = useMoveConversationToPod(owner);
-  const moveConversationOutOfProject = useMoveConversationOutOfPod(
+  const moveConversationToPod = useMoveConversationToPod(owner);
+  const moveConversationOutOfPod = useMoveConversationOutOfPod(
     owner,
     activeConversationId
   );
@@ -331,18 +331,18 @@ export function ConversationMenu({
   const canDelete = conversationParticipationOptions.includes("delete");
   const isPrivateConversationUrlsByDefaultEnabled =
     owner.metadata?.privateConversationUrlsByDefault === true;
-  const isProjectConversationWithOwnUrl =
+  const isPodConversationWithOwnUrl =
     conversation !== undefined && isPodConversation(conversation);
   const conversationUrlAccessMode = getConversationUrlAccessMode(
     conversation?.metadata
   );
   const canMakeUrlAccessible =
     isPrivateConversationUrlsByDefaultEnabled &&
-    !isProjectConversationWithOwnUrl &&
+    !isPodConversationWithOwnUrl &&
     conversationUrlAccessMode !== "workspace_members";
   const canRestrictUrlAccess =
     isPrivateConversationUrlsByDefaultEnabled &&
-    !isProjectConversationWithOwnUrl &&
+    !isPodConversationWithOwnUrl &&
     conversationUrlAccessMode === "workspace_members";
 
   return (
@@ -416,36 +416,36 @@ export function ConversationMenu({
             <DropdownMenuSub>
               <DropdownMenuSubTrigger
                 icon={ArrowRightIcon}
-                label={canMoveOutOfProject ? "Move to..." : "Move to Pod"}
-                disabled={canMoveOutOfProject ? false : !filteredPods.length}
+                label={canMoveOutOfPod ? "Move to..." : "Move to Pod"}
+                disabled={canMoveOutOfPod ? false : !filteredPods.length}
               />
               <DropdownMenuPortal>
                 <DropdownMenuSubContent
                   collisionPadding={16}
                   className="max-w-60"
                 >
-                  {canMoveOutOfProject && (
+                  {canMoveOutOfPod && (
                     <>
                       <DropdownMenuItem
                         icon={ChatBubbleBottomCenterTextIcon}
                         label="Personal conversations"
                         onClick={async () =>
-                          moveConversationOutOfProject(conversation)
+                          moveConversationOutOfPod(conversation)
                         }
                       />
                       <DropdownMenuSeparator />
                       <DropdownMenuLabel label="Pods" />
                     </>
                   )}
-                  {filteredPods.map((project) => (
+                  {filteredPods.map((pod) => (
                     <DropdownMenuItem
-                      key={project.sId}
-                      icon={getSpaceIcon(project)}
-                      label={project.name}
+                      key={pod.sId}
+                      icon={getSpaceIcon(pod)}
+                      label={pod.name}
                       truncateText
                       onClick={async () =>
                         conversation
-                          ? moveConversationToProject(conversation, project)
+                          ? moveConversationToPod(conversation, pod)
                           : Promise.resolve(false)
                       }
                     />

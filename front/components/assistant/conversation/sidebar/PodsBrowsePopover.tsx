@@ -33,10 +33,7 @@ function PodBrowseItemSkeleton({ count = 5 }: { count?: number }) {
   return (
     <>
       {Array.from({ length: count }).map((_, i) => (
-        <div
-          key={`project-skeleton-${i}`}
-          className="flex items-start gap-2 p-2"
-        >
+        <div key={`pod-skeleton-${i}`} className="flex items-start gap-2 p-2">
           <LoadingBlock className="mt-0.5 h-4 w-4 rounded" />
           <div className="flex min-w-0 flex-1 flex-col gap-1">
             <LoadingBlock className="h-4 w-[70%]" />
@@ -47,7 +44,7 @@ function PodBrowseItemSkeleton({ count = 5 }: { count?: number }) {
   );
 }
 
-function ProjectBrowseItem({ pod, onClick }: PodBrowseItemProps) {
+function PodBrowseItem({ pod, onClick }: PodBrowseItemProps) {
   return (
     <div
       className="flex cursor-pointer items-start gap-2 rounded-lg p-2 hover:bg-muted-background dark:hover:bg-muted-background-night"
@@ -82,24 +79,20 @@ export function PodsBrowsePopover({ owner }: PodsBrowsePopoverProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const {
-    pods: projects,
-    isSearching,
-    hasMore,
-    loadMore,
-    isLoadingMore,
-  } = useSearchPods({
-    workspaceId: owner.sId,
-    query: searchQuery,
-    enabled: isOpen,
-    limit: 50,
-  });
+  const { pods, isSearching, hasMore, loadMore, isLoadingMore } = useSearchPods(
+    {
+      workspaceId: owner.sId,
+      query: searchQuery,
+      enabled: isOpen,
+      limit: 50,
+    }
+  );
 
-  const filteredProjects = useMemo(() => {
-    return projects.filter(
+  const filteredPods = useMemo(() => {
+    return pods.filter(
       ({ isMember, archivedAt }) => (!isMember && !archivedAt) || archivedAt
     );
-  }, [projects]);
+  }, [pods]);
 
   return (
     <div>
@@ -114,29 +107,29 @@ export function PodsBrowsePopover({ owner }: PodsBrowsePopoverProps) {
         >
           <div className="shrink-0 p-3 pb-2">
             <SearchInput
-              name="browse-projects-search"
+              name="browse-pods-search"
               placeholder="Search Pods..."
               value={searchQuery}
               onChange={setSearchQuery}
             />
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
-            {isSearching && filteredProjects.length === 0 ? (
+            {isSearching && filteredPods.length === 0 ? (
               <PodBrowseItemSkeleton count={5} />
-            ) : filteredProjects.length === 0 ? (
+            ) : filteredPods.length === 0 ? (
               <div className="px-2 py-4 text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
                 No Pods found
               </div>
             ) : (
               <>
-                {filteredProjects.map((project) => (
-                  <ProjectBrowseItem
-                    key={project.sId}
-                    pod={project}
+                {filteredPods.map((pod) => (
+                  <PodBrowseItem
+                    key={pod.sId}
+                    pod={pod}
                     onClick={async () => {
                       setIsOpen(false);
                       setSearchQuery("");
-                      await router.push(getPodRoute(owner.sId, project.sId));
+                      await router.push(getPodRoute(owner.sId, pod.sId));
                     }}
                   />
                 ))}
