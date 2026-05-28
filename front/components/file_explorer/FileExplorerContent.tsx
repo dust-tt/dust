@@ -56,7 +56,7 @@ export function FileExplorerContent({
     if (node.isDirectory) {
       const folderEntry: FolderEntry = {
         kind: "folder",
-        path: `project/${node.path}`,
+        path: `pod/${node.path}`,
         name: node.name,
       };
       return (
