@@ -17,7 +17,12 @@ import {
   DEFAULT_EVENT_FLUSH_INTERVAL_MS,
   globalCoalescer,
 } from "@app/temporal/agent_loop/lib/event_coalescer";
+import {
+  DEFAULT_LLM_PROVIDER_TIMEOUT_ERROR_MESSAGE,
+  LLM_PROVIDER_TIMEOUT_ERROR_NAME,
+} from "@app/temporal/agent_loop/lib/workflow_failures";
 import type {
+  GenericErrorContent,
   LightAgentConfigurationType,
   ToolErrorEvent,
 } from "@app/types/assistant/agent";
@@ -424,27 +429,57 @@ export async function updateResourceAndPublishEvent(
 
 const DEFAULT_WORKFLOW_ERROR_MESSAGE =
   "An unexpected error occurred while generating the agent response. Please try again.";
+const LLM_PROVIDER_TIMEOUT_ERROR_TITLE = "AI provider timeout";
 
-function toUserFriendlyMessage(error: {
+export type WorkflowErrorInfo = {
   message: string;
   name: string;
-}): string {
+  timeoutType?: string;
+};
+
+export function getWorkflowErrorContent(
+  error: WorkflowErrorInfo
+): GenericErrorContent {
+  if (error.name === LLM_PROVIDER_TIMEOUT_ERROR_NAME) {
+    return {
+      code: "multi_actions_error",
+      message: error.message || DEFAULT_LLM_PROVIDER_TIMEOUT_ERROR_MESSAGE,
+      metadata: {
+        category: "retryable_model_error",
+        errorTitle: LLM_PROVIDER_TIMEOUT_ERROR_TITLE,
+        errorName: error.name,
+        ...(error.timeoutType ? { timeoutType: error.timeoutType } : {}),
+      },
+    };
+  }
+
+  let message = error.message;
   if (!error.message) {
-    return DEFAULT_WORKFLOW_ERROR_MESSAGE;
+    message = DEFAULT_WORKFLOW_ERROR_MESSAGE;
   }
   if (
     error.message === "Activity task timed out" &&
     error.name === "ActivityFailure"
   ) {
-    return "The agent took too long to respond. Please try again.";
+    message = "The agent took too long to respond. Please try again.";
   }
-  return error.message;
+
+  return {
+    code: "workflow_error",
+    message,
+    metadata: {
+      category: "critical_failure",
+      errorTitle: "Agent response generation failed",
+      // Ensure errorName is a string (not an Error object or undefined)
+      errorName: error.name || "UnknownError",
+    },
+  };
 }
 
 export async function notifyWorkflowError(
   authType: AuthenticatorType,
   { conversationId, agentMessageId, agentMessageVersion }: AgentLoopArgs,
-  error: { message: string; name: string }
+  error: WorkflowErrorInfo
 ): Promise<void> {
   const auth = await AuthenticatorClass.fromJSON(authType);
 
@@ -479,16 +514,7 @@ export async function notifyWorkflowError(
     created: Date.now(),
     configurationId: messageRow.agentMessage.agentConfigurationId || "",
     messageId: agentMessageId,
-    error: {
-      code: "workflow_error",
-      message: toUserFriendlyMessage(error),
-      metadata: {
-        category: "critical_failure",
-        errorTitle: "Agent response generation failed",
-        // Ensure errorName is a string (not an Error object or undefined)
-        errorName: error.name || "UnknownError",
-      },
-    },
+    error: getWorkflowErrorContent(error),
     // Workflow errors occur outside of LLM execution, so use existing runIds from DB
     runIds: messageRow.agentMessage.runIds ?? [],
   };

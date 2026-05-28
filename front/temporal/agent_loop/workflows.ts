@@ -15,7 +15,7 @@ import {
   RUN_MODEL_MAX_RETRIES,
   TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS,
 } from "@app/temporal/agent_loop/config";
-import { isTerminalRunModelAndCreateActionsTimeout } from "@app/temporal/agent_loop/lib/workflow_failures";
+import { getTerminalRunModelAndCreateActionsProviderTimeout } from "@app/temporal/agent_loop/lib/workflow_failures";
 import { makeAgentLoopConversationTitleWorkflowId } from "@app/temporal/agent_loop/lib/workflow_ids";
 import {
   cancelAgentLoopSignal,
@@ -332,11 +332,8 @@ export async function agentLoopWorkflow({
     });
   } catch (err) {
     const workflowError = err instanceof Error ? err : new Error(String(err));
-    // This activity already turns terminal model/provider failures into a user-facing agent error
-    // when our code regains control. We swallow only the final Temporal StartToClose timeout so the
-    // workflow does not surface that infrastructure timeout as a separate workflow failure.
-    const shouldSwallowWorkflowFailure =
-      isTerminalRunModelAndCreateActionsTimeout(err);
+    const llmProviderTimeout =
+      getTerminalRunModelAndCreateActionsProviderTimeout(err);
 
     // Notify error in a non-cancellable scope to ensure it runs even if the workflow is canceled.
     // Pass this execution's runIds and startStep to finalize so tracking
@@ -365,12 +362,13 @@ export async function agentLoopWorkflow({
         // Error objects don't survive JSON serialization across the workflow→activity boundary
         // (Error.message is not enumerable), so we extract the relevant fields into a plain object
         // before passing to the activity.
-        message: workflowError.message,
-        name: workflowError.name,
+        message: llmProviderTimeout?.message ?? workflowError.message,
+        name: llmProviderTimeout?.name ?? workflowError.name,
+        timeoutType: llmProviderTimeout?.timeoutType,
       })
     );
 
-    if (shouldSwallowWorkflowFailure) {
+    if (llmProviderTimeout) {
       return;
     }
 
