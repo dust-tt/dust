@@ -1,5 +1,6 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
+import { invalidateMembersUsage } from "@app/lib/swr/memberships";
 import {
   getErrorFromResponse,
   useFetcher,
@@ -212,10 +213,6 @@ function defaultUserSpendLimitUrl(workspaceId: string): string {
   return `/api/w/${workspaceId}/usage_settings/default_user_spend_limit`;
 }
 
-function membersUsageUrl(workspaceId: string): string {
-  return `/api/w/${workspaceId}/credits/members-usage`;
-}
-
 export function useDefaultUserSpendLimit({
   workspaceId,
   disabled,
@@ -284,11 +281,7 @@ export function useUpdateDefaultUserSpendLimit({
         });
 
         await mutate(defaultUserSpendLimitUrl(workspaceId));
-        await mutate(
-          (key) =>
-            typeof key === "string" &&
-            key.startsWith(membersUsageUrl(workspaceId))
-        );
+        await invalidateMembersUsage(workspaceId);
         return body;
       } catch (e) {
         sendNotification({
