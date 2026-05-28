@@ -200,8 +200,7 @@ export function EditSpendLimitModal({
                 Edit spend limit for {displayedMember?.name}
               </DialogTitle>
               <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                They will be able to consume this amount from the Workspace
-                Credits Pool after reaching their plan usage limit.
+                Maximum credits this member can consume during a billing cycle.
               </p>
             </div>
           </div>
