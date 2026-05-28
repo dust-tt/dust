@@ -168,7 +168,7 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
         completedCheckNames.push(check.name);
         sendCheckHeartbeat(
           { type: "skip", name: check.name, uuid },
-          {completedCheckNames}
+          { completedCheckNames }
         );
 
         continue;
@@ -199,7 +199,7 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
 
       sendCheckHeartbeat(
         { type: "start", name: check.name, uuid },
-        {completedCheckNames}
+        { completedCheckNames }
       );
 
       await check.check(
@@ -209,8 +209,8 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
         reportFailure,
         async () =>
           sendCheckHeartbeat(
-            { type: "processing",name: check.name, uuid },
-            {completedCheckNames}
+            { type: "processing", name: check.name, uuid },
+            { completedCheckNames }
           )
       );
 
@@ -239,7 +239,7 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
           name: check.name,
           uuid,
         },
-        {completedCheckNames}
+        { completedCheckNames }
       );
     } catch (error) {
       logger.error({ error }, "Production check failed");
@@ -256,7 +256,7 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
 
       sendCheckHeartbeat(
         { type: "failure", name: check.name, uuid },
-        {completedCheckNames}
+        { completedCheckNames }
       );
     }
   }
