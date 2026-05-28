@@ -116,11 +116,20 @@ app.post(
       });
     }
 
-    await addFileToProject(auth, {
+    const result = await addFileToProject(auth, {
       file,
       space,
       sourceConversationId: file.useCaseMetadata?.conversationId,
     });
+    if (result.isErr()) {
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: result.error.message,
+        },
+      });
+    }
 
     return ctx.json({ file: file.toJSONWithMetadata(auth) });
   }
