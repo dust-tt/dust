@@ -29,6 +29,8 @@ export function buildCacheKey(
   return `cacheWithRedis-${resource.fnName}-${resource.buildResolverKey(params)}`;
 }
 
+export const WORKSPACE_CACHE_KEY_VERSION = 1;
+
 export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
   {
     id: "workspace_by_sid",
@@ -42,7 +44,8 @@ export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
         placeholder: "e.g. abc123",
       },
     ],
-    buildResolverKey: (p) => `workspace:sid:${p.wId}`,
+    buildResolverKey: (p) =>
+      `workspace:sid:${p.wId}:v${WORKSPACE_CACHE_KEY_VERSION}`,
   },
   {
     id: "user_by_workos_id",

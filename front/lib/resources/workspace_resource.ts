@@ -27,6 +27,7 @@ import { terminateAllAgentLoopWorkflowsForConversation } from "@app/temporal/age
 import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
 import type { EmbeddingProviderIdType } from "@app/types/assistant/models/types";
 import type { WorkspacePoolCreditState } from "@app/types/credits";
+import { WORKSPACE_CACHE_KEY_VERSION } from "@app/types/shared/cache_resource_registry";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -118,7 +119,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
   }
 
   private static readonly workspaceCacheKeyResolver = (wId: string) =>
-    `workspace:sid:${wId}`;
+    `workspace:sid:${wId}:v${WORKSPACE_CACHE_KEY_VERSION}`;
 
   static isWorkspaceConversationKillSwitchValue(
     killSwitched: unknown
