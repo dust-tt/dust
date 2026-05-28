@@ -3,8 +3,7 @@ import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { resolveMountByUseCase } from "@app/lib/api/actions/servers/files/tools/utils";
-import { listGCSMountFiles } from "@app/lib/api/files/gcs_mount/files";
+import { DustFileSystem } from "@app/lib/api/file_system";
 import { parseProcessedFilename } from "@app/lib/api/files/mount_path";
 import {
   isInteractiveContentType,
@@ -36,18 +35,45 @@ export async function listHandler(
     );
   }
 
+  const fsResult = await DustFileSystem.forConversation(
+    extra.auth,
+    conversation
+  );
+  if (fsResult.isErr()) {
+    return new Err(new MCPError(fsResult.error.message, { tracked: false }));
+  }
+  const fs = fsResult.value;
+
   const useCase = scope ?? "conversation";
-  const mountRes = await resolveMountByUseCase(extra.auth, conversation, {
-    useCase,
-    access: "read",
-  });
-  if (mountRes.isErr()) {
-    return mountRes;
+  let scopedPrefix: string | undefined;
+
+  if (useCase === "conversation") {
+    const mount = fs.getMounts().find((m) => m.kind === "conversation");
+
+    scopedPrefix = mount ? `${mount.scopedPrefix}/` : undefined;
+  } else {
+    const mount = fs.getMounts().find((m) => m.kind === "pod");
+    if (!mount) {
+      return new Err(
+        new MCPError(
+          "Project file paths are only available in project conversations.",
+          { tracked: false }
+        )
+      );
+    }
+
+    if (!mount.permissions.canRead) {
+      return new Err(
+        new MCPError("You do not have read permissions for this project.", {
+          tracked: false,
+        })
+      );
+    }
+
+    scopedPrefix = `${mount.scopedPrefix}/`;
   }
 
-  const entries = await listGCSMountFiles(extra.auth, mountRes.value.scope, {
-    includeProcessed: true,
-  });
+  const entries = await fs.list(scopedPrefix, { includeProcessed: true });
 
   const [dirs, files] = partition(entries, (e) => e.isDirectory);
 
@@ -73,7 +99,6 @@ export async function listHandler(
     if (parseProcessedFilename(fileName).isProcessed) {
       continue;
     }
-
     const lastDot = fileName.lastIndexOf(".");
     const base = lastDot > 0 ? fileName.substring(0, lastDot) : fileName;
     sourcePathByKey.set(`${dir}/${base}`, file.path);
@@ -112,6 +137,10 @@ export async function listHandler(
   }
 
   for (const { file, sourcePath } of annotated) {
+    if (file.isDirectory) {
+      continue;
+    }
+
     const mimeType = stripMimeParameters(file.contentType);
     const kb = Math.ceil(file.sizeBytes / 1024);
     const annotation = sourcePath

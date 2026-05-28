@@ -9,7 +9,7 @@ import {
   FILES_MOVE_ACTION_NAME,
   FILES_RESOLVE_ACTION_NAME,
   FILES_TOOLS_METADATA,
-  FILES_TOOLS_METADATA_WITH_PROJECT,
+  FILES_TOOLS_METADATA_WITH_POD,
 } from "@app/lib/api/actions/servers/files/metadata";
 import { catHandler } from "@app/lib/api/actions/servers/files/tools/cat";
 import { copyHandler } from "@app/lib/api/actions/servers/files/tools/copy";
@@ -33,7 +33,7 @@ const HANDLERS = {
 
 export const TOOLS = buildTools(FILES_TOOLS_METADATA, HANDLERS);
 
-export const TOOLS_WITH_PROJECT = buildTools(
-  FILES_TOOLS_METADATA_WITH_PROJECT,
+export const TOOLS_WITH_POD = buildTools(
+  FILES_TOOLS_METADATA_WITH_POD,
   HANDLERS
 );

@@ -57,9 +57,10 @@ async function buildPodMountPoint(
 ): Promise<Result<MountPoint, MCPError>> {
   if (!isPodConversation(conversation)) {
     return new Err(
-      new MCPError("Pod file paths are only available in Pod conversations.", {
-        tracked: false,
-      })
+      new MCPError(
+        "Pod file paths are only available in project conversations.",
+        { tracked: false }
+      )
     );
   }
 
@@ -78,8 +79,8 @@ async function buildPodMountPoint(
     return new Err(
       new MCPError(
         access === "write"
-          ? "You do not have write permissions for this Pod."
-          : "You do not have read permissions for this Pod.",
+          ? "You do not have write permissions for this pod."
+          : "You do not have read permissions for this pod.",
         { tracked: false }
       )
     );
@@ -97,8 +98,11 @@ async function buildPodMountPoint(
 
 /**
  * Resolve the mount point a scoped path belongs to. Dispatches by the path's `conversation/` or
- * `pod/` prefix, looks up the parent Pod space when needed, and verifies the requested
+ * `pod/` prefix, looks up the parent pod space when needed, and verifies the requested
  * access level.
+ *
+ * @deprecated Callers should migrate to DustFileSystem. This helper remains for transitional
+ * consumers (file_utils.ts, run_agent/file_paths.ts) while those are migrated.
  */
 export async function resolveMountPoint(
   auth: Authenticator,
@@ -124,6 +128,8 @@ export async function resolveMountPoint(
 /**
  * Resolve the mount point for a given scope use case, without going through a path. Used by tools
  * that operate on a whole mount (e.g. `list`).
+ *
+ * @deprecated Callers should migrate to DustFileSystem.
  */
 export async function resolveMountByUseCase(
   auth: Authenticator,
@@ -143,21 +149,21 @@ export async function resolveMountByUseCase(
 }
 
 /**
- * List the files mounted under a Pod's GCS prefix. Verifies `space.canRead(auth)` before
- * touching the bucket. Use this from callers that already hold a `SpaceResource` so the
- * file-listing path stays funneled through the same helper as `files__list`.
+ * List the files mounted under a pod's GCS prefix.
+ *
+ * @deprecated Callers should migrate to DustFileSystem.forPod(auth, space).list().
  */
 export async function listProjectFiles(
   auth: Authenticator,
   space: SpaceResource
 ): Promise<Result<GCSMountEntry[], MCPError>> {
   if (!space.isProject) {
-    return new Err(new MCPError("Space is not a Pod.", { tracked: false }));
+    return new Err(new MCPError("Space is not a pod.", { tracked: false }));
   }
 
   if (!space.canRead(auth)) {
     return new Err(
-      new MCPError("You do not have read permissions for this Pod.", {
+      new MCPError("You do not have read permissions for this pod.", {
         tracked: false,
       })
     );
@@ -173,7 +179,9 @@ export async function listProjectFiles(
 
 /**
  * Resolve a GCS file from a scoped path. Looks up the file metadata via `resolveMountPoint`.
- * Used by `cat` and `grep`.
+ *
+ * @deprecated Callers should migrate to DustFileSystem.forConversation(auth, conversation)
+ * followed by fs.stat() and fs.read().
  */
 export async function resolveFile(
   auth: Authenticator,

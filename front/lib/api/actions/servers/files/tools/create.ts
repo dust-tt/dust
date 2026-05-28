@@ -5,12 +5,7 @@ import type {
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { CREATE_CONTENT_MAX_BYTES } from "@app/lib/api/actions/servers/files/metadata";
-import { resolveMountPoint } from "@app/lib/api/actions/servers/files/tools/utils";
-import {
-  createGCSMountFile,
-  getGCSPathFromScopedPath,
-} from "@app/lib/api/files/gcs_mount/files";
-import { getPrivateUploadBucket } from "@app/lib/file_storage";
+import { DustFileSystem } from "@app/lib/api/file_system";
 import { isAllSupportedFileContentType } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
@@ -30,29 +25,6 @@ export async function createHandler(
     );
   }
 
-  const mountRes = await resolveMountPoint(auth, conversation, {
-    access: "write",
-    scopedPath: path,
-  });
-  if (mountRes.isErr()) {
-    return mountRes;
-  }
-  const { scope, prefix } = mountRes.value;
-
-  const gcsPath = getGCSPathFromScopedPath({
-    prefix,
-    scopedPath: path,
-    useCase: scope.useCase,
-  });
-  if (!gcsPath) {
-    return new Err(
-      new MCPError(
-        `Invalid path: \`${path}\` does not match the resolved mount point.`,
-        { tracked: false }
-      )
-    );
-  }
-
   const contentBuffer = Buffer.from(content, "utf8");
   if (contentBuffer.byteLength > CREATE_CONTENT_MAX_BYTES) {
     return new Err(
@@ -63,25 +35,39 @@ export async function createHandler(
     );
   }
 
-  const bucket = getPrivateUploadBucket();
-  const [exists] = await bucket.file(gcsPath).exists();
-  const relativeFilePath = gcsPath.slice(prefix.length);
-
-  const entryRes = await createGCSMountFile(auth, scope, {
-    relativeFilePath,
-    content: contentBuffer,
-    contentType: content_type,
-  });
-  if (entryRes.isErr()) {
-    return new Err(
-      new MCPError(
-        `Failed to write file \`${path}\`: ${entryRes.error.message}`
-      )
-    );
+  const fsResult = await DustFileSystem.forConversation(auth, conversation);
+  if (fsResult.isErr()) {
+    return new Err(new MCPError(fsResult.error.message, { tracked: false }));
   }
 
-  const entry = entryRes.value;
-  const sizeKb = Math.ceil(entry.sizeBytes / 1024);
+  const fs = fsResult.value;
+
+  // Check existence before writing so we can report "Created" vs "Updated".
+  const statResult = await fs.stat(path);
+  const exists = statResult.isOk() && statResult.value !== null;
+
+  const writeResult = await fs.write(path, contentBuffer, content_type);
+  if (writeResult.isErr()) {
+    const err = writeResult.error;
+    switch (err.code) {
+      case "legacy_path":
+      case "unauthorized":
+        return new Err(new MCPError(err.message, { tracked: false }));
+
+      case "invalid_path":
+        return new Err(
+          new MCPError(`Invalid path: \`${path}\`.`, { tracked: false })
+        );
+
+      default:
+        return new Err(
+          new MCPError(`Failed to write file \`${path}\`: ${err.message}`)
+        );
+    }
+  }
+
+  const fileName = path.split("/").pop() ?? path;
+  const sizeKb = Math.ceil(contentBuffer.byteLength / 1024);
   const verb = exists ? "Updated" : "Created";
 
   const items: Array<
@@ -90,20 +76,20 @@ export async function createHandler(
   > = [
     {
       type: "text",
-      text: `${verb} \`${entry.path}\` (${entry.contentType}, ${sizeKb} KB)`,
+      text: `${verb} \`${path}\` (${content_type}, ${sizeKb} KB)`,
     },
   ];
 
-  if (isAllSupportedFileContentType(entry.contentType)) {
+  if (isAllSupportedFileContentType(content_type)) {
     items.push({
       type: "resource",
       resource: {
-        text: `${verb} \`${entry.path}\``,
-        uri: entry.path,
+        text: `${verb} \`${path}\``,
+        uri: path,
         mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE_PATH,
-        path: entry.path,
-        title: entry.fileName,
-        contentType: entry.contentType,
+        path,
+        title: fileName,
+        contentType: content_type,
       },
     });
   }

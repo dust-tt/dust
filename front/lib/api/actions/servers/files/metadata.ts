@@ -21,11 +21,11 @@ export const GREP_MATCHES_MAX = 50;
 export const CREATE_CONTENT_MAX_BYTES = 50 * 1024; // 50 KB (~12K tokens).
 
 // Shared `list` description that opens with the generic file-system listing capability and is
-// followed by a context-specific suffix injected by the conversation-only or project-aware
+// followed by a context-specific suffix injected by the conversation-only or pod-aware
 // metadata.
 const LIST_DESCRIPTION_PREFIX =
   "List files in the file system. " +
-  "Returns one entry per file with its scoped path (e.g. `conversation/chart.png`), " +
+  "Returns one entry per file with its scoped path (e.g. `conversation-<id>/chart.png`), " +
   "content type, and size in KB. " +
   "Scoped paths can be used to reference or display a file in a response, " +
   "or passed to other tools that accept a file path. " +
@@ -35,8 +35,8 @@ const LIST_DESCRIPTION_PREFIX =
   `Read the sibling with \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_CAT_ACTION_NAME)}\` to access the content of binary sources.`;
 
 // `list` tool variants. The conversation-only build takes no parameter and always lists
-// conversation files. The project-aware build accepts `scope: "conversation" | "pod"` and is
-// only registered when the conversation belongs to a Pod.
+// conversation files. The pod-aware build accepts `scope: "conversation" | "pod"` and is
+// only registered when the conversation belongs to a pod.
 const LIST_CONVERSATION_ONLY_TOOL = {
   description: `${LIST_DESCRIPTION_PREFIX} Lists the conversation's files.`,
   schema: {},
@@ -47,7 +47,7 @@ const LIST_CONVERSATION_ONLY_TOOL = {
   },
 };
 
-const LIST_PROJECT_AWARE_TOOL = {
+const LIST_POD_AWARE_TOOL = {
   description:
     `${LIST_DESCRIPTION_PREFIX} ` +
     "Defaults to the conversation's files. Pass `scope: \"pod\"` to list the Pod's " +
@@ -68,7 +68,7 @@ const LIST_PROJECT_AWARE_TOOL = {
 };
 
 // `copy` tool variants. The conversation-only build keeps the description scoped to within-
-// conversation use cases. The project-aware build is registered only in project conversations
+// conversation use cases. The pod-aware build is registered only in pod conversations
 // and adds an example of the cross-scope promotion the agent can perform there.
 const COPY_DESCRIPTION_BASE =
   "Copy a file between scoped paths, keeping the source intact. " +
@@ -89,12 +89,12 @@ const COPY_CONVERSATION_ONLY_TOOL = {
     source: z
       .string()
       .describe(
-        "Scoped path of the file to copy from (e.g. `conversation/report.pdf`)."
+        "Scoped path of the file to copy from (e.g. `conversation-<id>/report.pdf`)."
       ),
     dest: z
       .string()
       .describe(
-        "Scoped path of the destination (e.g. `conversation/archive/report.pdf`)."
+        "Scoped path of the destination (e.g. `conversation-<id>/archive/report.pdf`)."
       ),
   },
   stake: "never_ask" as const,
@@ -104,22 +104,22 @@ const COPY_CONVERSATION_ONLY_TOOL = {
   },
 };
 
-const COPY_PROJECT_AWARE_TOOL = {
+const COPY_POD_AWARE_TOOL = {
   description:
     `${COPY_DESCRIPTION_BASE} ` +
     "Since this conversation belongs to a Pod, you can also copy between scopes, " +
-    "e.g. `conversation/report.pdf` -> `pod/report.pdf` to promote a file into the Pod, " +
-    "or `pod/spec.md` -> `conversation/spec.md` to pull it into the conversation.",
+    "e.g. `conversation-<id>/report.pdf` -> `pod-<id>/report.pdf` to promote a file into the Pod, " +
+    "or `pod-<id>/spec.md` -> `conversation-<id>/spec.md` to pull it into the conversation.",
   schema: {
     source: z
       .string()
       .describe(
-        "Scoped path of the file to copy from (e.g. `conversation/report.pdf` or `pod/spec.md`)."
+        "Scoped path of the file to copy from (e.g. `conversation-<id>/report.pdf` or `pod-<id>/spec.md`)."
       ),
     dest: z
       .string()
       .describe(
-        "Scoped path of the destination (e.g. `pod/report.pdf` or `conversation/archive/report.pdf`)."
+        "Scoped path of the destination (e.g. `pod-<id>/report.pdf` or `conversation-<id>/archive/report.pdf`)."
       ),
   },
   stake: "never_ask" as const,
@@ -133,11 +133,13 @@ const MOVE_SCHEMA = {
   source: z
     .string()
     .describe(
-      "Scoped path of the file to move (e.g. `conversation/report.pdf`)."
+      "Scoped path of the file to move (e.g. `conversation-<id>/report.pdf`)."
     ),
   dest: z
     .string()
-    .describe("Scoped path of the destination (e.g. `pod/report.pdf`)."),
+    .describe(
+      "Scoped path of the destination (e.g. `conversation-<id>/archive/report.pdf`)."
+    ),
 };
 
 const MOVE_CONVERSATION_ONLY_TOOL = {
@@ -150,21 +152,21 @@ const MOVE_CONVERSATION_ONLY_TOOL = {
   },
 };
 
-const MOVE_PROJECT_AWARE_TOOL = {
+const MOVE_POD_AWARE_TOOL = {
   description:
     `${MOVE_DESCRIPTION_BASE} ` +
     "Since this conversation belongs to a Pod, you can also move between scopes, " +
-    "e.g. `conversation/frame.html` -> `pod/frame.html` to promote a frame into the Pod.",
+    "e.g. `conversation-<id>/frame.html` -> `pod-<id>/frame.html` to promote a frame into the Pod.",
   schema: {
     source: z
       .string()
       .describe(
-        "Scoped path of the file to move (e.g. `conversation/frame.html` or `pod/data.csv`)."
+        "Scoped path of the file to move (e.g. `conversation-<id>/frame.html` or `pod-<id>/data.csv`)."
       ),
     dest: z
       .string()
       .describe(
-        "Scoped path of the destination (e.g. `pod/frame.html` or `conversation/archive/data.csv`)."
+        "Scoped path of the destination (e.g. `pod-<id>/frame.html` or `conversation-<id>/archive/data.csv`)."
       ),
   },
   stake: "never_ask" as const,
@@ -180,7 +182,7 @@ const FILES_TOOLS_COMMON_METADATA = {
   [FILES_RESOLVE_ACTION_NAME]: {
     description:
       "Resolve a file ID (e.g. `fil_abc123`) to its scoped file system path " +
-      "(e.g. `conversation/report.pdf` or `pod/data.csv`). " +
+      "(e.g. `conversation-<id>/report.pdf` or `pod-<id>/data.csv`). " +
       "Use this when you have a raw file identifier but need the path accepted by other tools " +
       "such as `" +
       getPrefixedToolName(FILES_SERVER_NAME, FILES_CAT_ACTION_NAME) +
@@ -213,7 +215,7 @@ const FILES_TOOLS_COMMON_METADATA = {
       path: z
         .string()
         .describe(
-          `Scoped file path as returned by \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_LIST_ACTION_NAME)}\` (e.g. \`conversation/data.csv\`)`
+          `Scoped file path as returned by \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_LIST_ACTION_NAME)}\` (e.g. \`conversation-<id>/data.csv\`)`
         ),
       offset: z
         .number()
@@ -247,7 +249,7 @@ const FILES_TOOLS_COMMON_METADATA = {
       path: z
         .string()
         .describe(
-          `Scoped file path as returned by \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_LIST_ACTION_NAME)}\` (e.g. \`conversation/data.csv\`)`
+          `Scoped file path as returned by \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_LIST_ACTION_NAME)}\` (e.g. \`conversation-<id>/data.csv\`)`
         ),
       pattern: z
         .string()
@@ -272,7 +274,7 @@ const FILES_TOOLS_COMMON_METADATA = {
       path: z
         .string()
         .describe(
-          "Scoped file path for the new file (e.g. `conversation/output.json`, `conversation/reports/summary.txt`)"
+          "Scoped file path for the new file (e.g. `conversation-<id>/output.json`, `conversation-<id>/reports/summary.txt`)"
         ),
       content: z.string().describe("UTF-8 text content to write"),
       content_type: z
@@ -295,7 +297,7 @@ const FILES_TOOLS_COMMON_METADATA = {
       path: z
         .string()
         .describe(
-          `Scoped file path as returned by \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_LIST_ACTION_NAME)}\` (e.g. \`conversation/output.json\`)`
+          `Scoped file path as returned by \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_LIST_ACTION_NAME)}\` (e.g. \`conversation-<id>/output.json\`)`
         ),
     },
     stake: "medium" as const,
@@ -313,11 +315,11 @@ export const FILES_TOOLS_METADATA = createToolsRecord({
   [FILES_MOVE_ACTION_NAME]: MOVE_CONVERSATION_ONLY_TOOL,
 });
 
-export const FILES_TOOLS_METADATA_WITH_PROJECT = createToolsRecord({
-  [FILES_LIST_ACTION_NAME]: LIST_PROJECT_AWARE_TOOL,
+export const FILES_TOOLS_METADATA_WITH_POD = createToolsRecord({
+  [FILES_LIST_ACTION_NAME]: LIST_POD_AWARE_TOOL,
   ...FILES_TOOLS_COMMON_METADATA,
-  [FILES_COPY_ACTION_NAME]: COPY_PROJECT_AWARE_TOOL,
-  [FILES_MOVE_ACTION_NAME]: MOVE_PROJECT_AWARE_TOOL,
+  [FILES_COPY_ACTION_NAME]: COPY_POD_AWARE_TOOL,
+  [FILES_MOVE_ACTION_NAME]: MOVE_POD_AWARE_TOOL,
 });
 
 export const FILES_SERVER = {
@@ -330,7 +332,7 @@ export const FILES_SERVER = {
       "files uploaded by the user, files generated during execution (e.g. charts, " +
       "exports, processed data produced by code run in the sandbox), and files produced " +
       "as results of tool use. " +
-      "Files are identified by scoped paths such as `conversation/chart.png` that can " +
+      "Files are identified by scoped paths such as `conversation-<id>/chart.png` that can " +
       "be used to reference, display, or link files in agent responses. " +
       "Files whose name follows the `*.processed.<ext>` pattern are auto-generated " +
       "model-friendly representations of their source (resized image, audio transcript, " +
