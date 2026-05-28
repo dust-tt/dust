@@ -2,6 +2,7 @@
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
 import config from "@app/lib/api/config";
+import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import {
   disambiguateFileName,
   getConversationFilePath,
@@ -213,6 +214,9 @@ export class FileResource extends BaseResource<FileModel> {
         workspace: LightWorkspaceType;
         // sId of the project space the frame's conversation belongs to, if any.
         conversationSpaceId: string | null;
+        // DustFileSystem scoped to this frame's authorized paths (conversation + pod if any).
+        // Always read-only; share-token is its own authorization model.
+        fs: DustFileSystem;
       },
       DustError
     >
@@ -251,6 +255,10 @@ export class FileResource extends BaseResource<FileModel> {
       return new Err(new DustError("file_not_found", "File not found"));
     }
 
+    // auth is needed both to verify the conversation still exists and to build the
+    // DustFileSystem for subsequent file-serving operations.
+    const auth = await Authenticator.internalBuilderForWorkspace(workspace.sId);
+
     // Check if associated conversation still exist (not soft-deleted).
     let conversationSpaceId: string | null = null;
     if (
@@ -258,10 +266,6 @@ export class FileResource extends BaseResource<FileModel> {
       fileRes.useCaseMetadata?.conversationId
     ) {
       const conversationId = fileRes.useCaseMetadata.conversationId;
-
-      const auth = await Authenticator.internalBuilderForWorkspace(
-        workspace.sId
-      );
 
       // Share token access bypasses normal space restrictions. We only need to verify the
       // conversation exists, but internalBuilderForWorkspace only has global group
@@ -287,12 +291,27 @@ export class FileResource extends BaseResource<FileModel> {
       }
     }
 
+    // Build a DustFileSystem covering all paths this frame is authorised to serve.
+    // conversationId: from file metadata (covers both conversationId and sourceConversationId).
+    // spaceId: from file metadata (project-scoped frames) or derived from the conversation's space.
+    const frameConversationId =
+      fileRes.useCaseMetadata?.conversationId ??
+      fileRes.useCaseMetadata?.sourceConversationId ??
+      null;
+    const frameSpaceId =
+      fileRes.useCaseMetadata?.spaceId ?? conversationSpaceId;
+    const fs = DustFileSystem.forShareToken(auth, {
+      conversationId: frameConversationId,
+      spaceId: frameSpaceId,
+    });
+
     return new Ok({
       file: fileRes,
       workspace: renderLightWorkspaceType({ workspace }),
       shareScope: shareableFile.shareScope,
       shareableFileId: shareableFile.id,
       conversationSpaceId,
+      fs,
     });
   }
 

@@ -6,6 +6,10 @@
 //                     conversation belongs to a Pod. Persistent across conversations within
 //                     the same Pod.
 
+import {
+  SCOPED_PREFIX_CONVERSATION,
+  SCOPED_PREFIX_POD,
+} from "@app/lib/api/file_system/types";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import type { AllSupportedFileContentType } from "@app/types/files";
 import { extensionsForContentType } from "@app/types/files";
@@ -190,6 +194,38 @@ export type ScopedFilePath = {
   prefix: ScopedFilePathPrefix;
   rel: string;
 };
+
+/**
+ * Typed parse result for the first URL segment of a viz scoped path.
+ *
+ * - "canonical-conversation" / "canonical-pod": ID is embedded in the prefix
+ *   (e.g. "conversation-abc123" or "pod-xyz456"). The id field is guaranteed non-empty.
+ * - "legacy": bare keyword ("conversation" or "pod"); the resource ID must be
+ *   resolved from the frame's metadata (useCaseMetadata).
+ */
+export type ParsedVizScope =
+  | { kind: "canonical-conversation"; id: string }
+  | { kind: "canonical-pod"; id: string }
+  | { kind: "legacy"; prefix: ScopedFilePathPrefix };
+
+/**
+ * Parse the first URL segment of a viz scoped path into a typed result.
+ * Returns null for unrecognised prefixes (caller should return a 400).
+ */
+export function parseRawVizScope(rawScope: string): ParsedVizScope | null {
+  if (rawScope.startsWith(SCOPED_PREFIX_CONVERSATION)) {
+    const id = rawScope.slice(SCOPED_PREFIX_CONVERSATION.length);
+    return id ? { kind: "canonical-conversation", id } : null;
+  }
+
+  if (rawScope.startsWith(SCOPED_PREFIX_POD)) {
+    const id = rawScope.slice(SCOPED_PREFIX_POD.length);
+    return id ? { kind: "canonical-pod", id } : null;
+  }
+
+  const r = scopedFilePathPrefixSchema.safeParse(rawScope);
+  return r.success ? { kind: "legacy", prefix: r.data } : null;
+}
 
 /**
  * Parse a scoped file path like "conversation/chart.png" or "pod/report.pdf".

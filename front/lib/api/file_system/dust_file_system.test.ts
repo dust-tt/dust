@@ -751,3 +751,108 @@ describe("DustFileSystem.move", () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// forShareToken
+// ---------------------------------------------------------------------------
+
+describe("DustFileSystem.forShareToken", () => {
+  it("creates a single conversation mount with canRead:true when only a conversationId is given", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+
+    const conversationId = "conv_abc123";
+    const fs = DustFileSystem.forShareToken(auth, {
+      conversationId,
+      spaceId: null,
+    });
+    const mounts = fs.getMounts();
+
+    expect(mounts).toHaveLength(1);
+    expect(mounts[0]).toMatchObject({
+      kind: "conversation",
+      id: conversationId,
+      scopedPrefix: `conversation-${conversationId}`,
+      permissions: { canRead: true, canWrite: false },
+    });
+  });
+
+  it("creates a single pod mount with canRead:true when only a spaceId is given", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+
+    const spaceId = "vlt_pod456";
+    const fs = DustFileSystem.forShareToken(auth, {
+      conversationId: null,
+      spaceId,
+    });
+    const mounts = fs.getMounts();
+
+    expect(mounts).toHaveLength(1);
+    expect(mounts[0]).toMatchObject({
+      kind: "pod",
+      id: spaceId,
+      scopedPrefix: `pod-${spaceId}`,
+      permissions: { canRead: true, canWrite: false },
+    });
+  });
+
+  it("creates both conversation and pod mounts when both IDs are provided", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+
+    const conversationId = "conv_abc123";
+    const spaceId = "vlt_pod456";
+    const fs = DustFileSystem.forShareToken(auth, { conversationId, spaceId });
+    const mounts = fs.getMounts();
+
+    expect(mounts).toHaveLength(2);
+    expect(mounts[0]).toMatchObject({
+      kind: "conversation",
+      id: conversationId,
+      permissions: { canRead: true, canWrite: false },
+    });
+    expect(mounts[1]).toMatchObject({
+      kind: "pod",
+      id: spaceId,
+      permissions: { canRead: true, canWrite: false },
+    });
+  });
+
+  it("creates no mounts when both IDs are null", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+
+    const fs = DustFileSystem.forShareToken(auth, {
+      conversationId: null,
+      spaceId: null,
+    });
+    const mounts = fs.getMounts();
+
+    expect(mounts).toHaveLength(0);
+  });
+
+  it("sets the legacy conversation prefix for the conversation mount", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+
+    const conversationId = "conv_abc123";
+    const fs = DustFileSystem.forShareToken(auth, {
+      conversationId,
+      spaceId: null,
+    });
+    const mounts = fs.getMounts();
+
+    expect(mounts[0].legacyPrefix).toBe("conversation");
+    expect(mounts[0].legacySandboxMountPoint).toBe("/files/conversation");
+  });
+
+  it("sets the legacy project prefix for the pod mount", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+
+    const spaceId = "vlt_pod456";
+    const fs = DustFileSystem.forShareToken(auth, {
+      conversationId: null,
+      spaceId,
+    });
+    const mounts = fs.getMounts();
+
+    expect(mounts[0].legacyPrefix).toBe("project");
+    expect(mounts[0].legacySandboxMountPoint).toBe("/files/project");
+  });
+});
