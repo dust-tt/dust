@@ -41,6 +41,8 @@ describe("POST /api/w/:wId/mcp/:serverId/sync", () => {
     expect(response.status).toBe(403);
     const body = await response.json();
     expect(body.error.type).toBe("workspace_auth_error");
-    expect(body.error.message).toContain("Only admin users can perform this action.");
+    expect(body.error.message).toContain(
+      "Only admin users can perform this action."
+    );
   });
 });
