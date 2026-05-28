@@ -12,17 +12,25 @@ if [ ! -s "$CA_PATH" ]; then
   exit 1
 fi
 
+mkdir -p /etc/dust /etc/ssl/certs/java
+
+normalized_ca_tmp="$(mktemp /etc/dust/.egress-ca.pem.XXXXXX)"
+bundle_tmp=""
+keytool_output=""
+cleanup() {
+  rm -f "$normalized_ca_tmp" "$bundle_tmp" "$keytool_output"
+}
+trap cleanup EXIT
+
 if ! command -v openssl >/dev/null 2>&1; then
   echo "openssl is required to validate $CA_PATH" >&2
   exit 1
 fi
 
-if ! openssl x509 -in "$CA_PATH" -noout >/dev/null 2>&1; then
+if ! openssl x509 -in "$CA_PATH" -out "$normalized_ca_tmp" -outform PEM >/dev/null 2>&1; then
   echo "dsbx CA file $CA_PATH is not a valid X.509 PEM certificate" >&2
   exit 1
 fi
-
-mkdir -p /etc/dust /etc/ssl/certs/java
 
 if [ -L "$SYSTEM_CA_DIR" ] || { [ -e "$SYSTEM_CA_DIR" ] && [ ! -d "$SYSTEM_CA_DIR" ]; }; then
   rm -f "$SYSTEM_CA_DIR"
@@ -39,7 +47,7 @@ find "$SYSTEM_CA_DIR" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
 rm -f "$SYSTEM_CA_DEST"
 
 if command -v update-ca-certificates >/dev/null 2>&1; then
-  install -o root -g root -m 644 "$CA_PATH" "$SYSTEM_CA_DEST"
+  install -o root -g root -m 644 "$normalized_ca_tmp" "$SYSTEM_CA_DEST"
   if ! update-ca-certificates >/dev/null 2>&1; then
     echo "update-ca-certificates failed; continuing with explicit bundle" >&2
   fi
@@ -48,10 +56,6 @@ else
 fi
 
 bundle_tmp="$(mktemp /etc/dust/.ca-bundle.pem.XXXXXX)"
-cleanup() {
-  rm -f "$bundle_tmp" "${keytool_output:-}"
-}
-trap cleanup EXIT
 
 # Concatenate with an explicit newline so the join point can never glue the
 # last cert footer to the next BEGIN line if ca-certificates.crt drops its
@@ -59,7 +63,7 @@ trap cleanup EXIT
 # already in $SYSTEM_CA_BUNDLE; the explicit second copy is harmless (OpenSSL
 # dedupes by subject) and keeps the merged bundle correct even when update-ca-
 # certificates is missing or fails.
-{ cat "$SYSTEM_CA_BUNDLE"; printf '\n'; cat "$CA_PATH"; } > "$bundle_tmp"
+{ cat "$SYSTEM_CA_BUNDLE"; printf '\n'; cat "$normalized_ca_tmp"; } > "$bundle_tmp"
 chmod 644 "$bundle_tmp"
 mv "$bundle_tmp" "$MERGED_BUNDLE"
 
@@ -114,7 +118,7 @@ if command -v keytool >/dev/null 2>&1; then
       keytool_output="$(mktemp)"
       if keytool -importcert -noprompt -trustcacerts \
         -alias dust-egress \
-        -file "$CA_PATH" \
+        -file "$normalized_ca_tmp" \
         -keystore "$java_cacerts" \
         -storepass changeit >"$keytool_output" 2>&1; then
         :
