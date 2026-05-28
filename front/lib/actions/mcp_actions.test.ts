@@ -1,5 +1,6 @@
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type {
+  ClientSideMCPToolConfigurationType,
   LightServerSideMCPToolConfigurationType,
   ServerSideMCPServerConfigurationType,
   ToolNotificationEvent,
@@ -7,6 +8,7 @@ import type {
 import {
   getToolExtraFields,
   listToolsForServerSideMCPServer,
+  postProcessMCPToolResult,
   tryCallMCPTool,
 } from "@app/lib/actions/mcp_actions";
 import {
@@ -37,6 +39,7 @@ import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type { AgentMessageType } from "@app/types/assistant/conversation";
 import { Ok } from "@app/types/shared/result";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { assert, describe, expect, it, vi } from "vitest";
 
 // Mock Temporal activity context and heartbeat
@@ -733,5 +736,64 @@ describe("tryCallMCPTool", () => {
       withToolResultProcessingSpy,
       "withToolResultProcessing was not called — tool result path may not use wrappers"
     ).toHaveBeenCalled();
+  });
+});
+
+describe("postProcessMCPToolResult - structuredContent", () => {
+  const clientConfig: ClientSideMCPToolConfigurationType = {
+    id: -1,
+    sId: "test-sid",
+    type: "mcp_configuration",
+    name: "test_tool",
+    description: null,
+    clientSideMcpServerId: "client-server-id",
+    inputSchema: { type: "object", properties: {} },
+    permission: "never_ask",
+    toolServerId: "client-server-id",
+    originalName: "test_tool",
+    mcpServerName: "test_server",
+  };
+
+  type ToolCallResult = Awaited<ReturnType<Client["callTool"]>>;
+
+  it("appends structuredContent as a text item when content is empty", () => {
+    const result = postProcessMCPToolResult(
+      {
+        content: [],
+        structuredContent: { tables: [{ id: "tbl1", name: "Bugs" }] },
+      } as ToolCallResult,
+      clientConfig
+    );
+
+    expect(result.content).toHaveLength(1);
+    expect(result.content[0]).toEqual({
+      type: "text",
+      text: JSON.stringify({ tables: [{ id: "tbl1", name: "Bugs" }] }),
+    });
+  });
+
+  it("does not append structuredContent when content is non-empty", () => {
+    const result = postProcessMCPToolResult(
+      {
+        content: [{ type: "text", text: "existing result" }],
+        structuredContent: { tables: [] },
+      } as ToolCallResult,
+      clientConfig
+    );
+
+    expect(result.content).toHaveLength(1);
+    expect(result.content[0]).toEqual({
+      type: "text",
+      text: "existing result",
+    });
+  });
+
+  it("leaves content empty when structuredContent is absent", () => {
+    const result = postProcessMCPToolResult(
+      { content: [] } as ToolCallResult,
+      clientConfig
+    );
+
+    expect(result.content).toHaveLength(0);
   });
 });

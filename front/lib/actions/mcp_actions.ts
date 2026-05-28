@@ -739,13 +739,22 @@ async function connectServerSideMCP(
  * metadata. Shared between the Temporal agent-loop path and the sandbox REST
  * endpoint.
  */
-function postProcessMCPToolResult(
+export function postProcessMCPToolResult(
   toolCallResult: Awaited<ReturnType<Client["callTool"]>>,
   toolConfiguration: MCPToolConfigurationType
 ): CallToolResult {
   // Type inference is not working here because of them using passthrough in the zod schema.
-  const content: CallToolResult["content"] = (toolCallResult.content ??
+  let content: CallToolResult["content"] = (toolCallResult.content ??
     []) as CallToolResult["content"];
+
+  if (content.length === 0 && toolCallResult.structuredContent) {
+    content = [
+      {
+        type: "text",
+        text: JSON.stringify(toolCallResult.structuredContent),
+      },
+    ];
+  }
 
   let serverType;
   if (isClientSideMCPToolConfiguration(toolConfiguration)) {
