@@ -47,7 +47,7 @@ export async function submitSkillBuilderForm({
         icon: formData.icon,
         extendedSkillId: formData.extendedSkillId,
         isDefault: formData.isDefault,
-        ...(skillId ? { reinforcement: formData.reinforcement } : {}),
+        reinforcement: formData.reinforcement,
         tools: formData.tools.map((tool) => ({
           mcpServerViewId: tool.configuration.mcpServerViewId,
         })),
