@@ -407,7 +407,7 @@ app.post(
         source: body.source ?? "web_app",
         sourceMetadata: body.sourceMetadata ?? null,
         isDefault: body.isDefault ?? false,
-        reinforcement: body.reinforcement ?? "off",
+        reinforcement: body.reinforcement ?? "on",
       },
       {
         mcpServerViews,

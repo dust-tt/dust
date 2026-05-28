@@ -580,7 +580,7 @@ describe("POST /api/w/[wId]/skills", () => {
       userFacingDescription: "A simple skill without tools",
       instructions: "Simple instructions",
       status: "active",
-      reinforcement: "off",
+      reinforcement: "on",
       tools: [],
     });
 
@@ -588,7 +588,7 @@ describe("POST /api/w/[wId]/skills", () => {
       auth,
       responseData.skill.sId
     );
-    expect(createdSkill?.reinforcement).toBe("off");
+    expect(createdSkill?.reinforcement).toBe("on");
   });
 
   it("creates a skill with self-improvement disabled", async () => {
