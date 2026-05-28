@@ -24,8 +24,8 @@ export const AGENT_CONFIGURATION_URI_PATTERN =
   // because global agents have dashes in their sId.
   /^agent:\/\/dust\/w\/(\w+)\/agents\/([\w-]+)$/;
 
-// URI pattern for configuring the project to use within an action.
-export const PROJECT_CONFIGURATION_URI_PATTERN =
+// URI pattern for configuring the pod to use within an action.
+export const POD_CONFIGURATION_URI_PATTERN =
   /^pod:\/\/dust\/w\/(\w+)\/pods\/(\w+)$/;
 
 // The full, recursive schema for a JSON schema is not yet supported by MCP call
@@ -155,7 +155,7 @@ export const ConfigurableToolInputSchemas = {
     mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.SECRET),
   }),
   [INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD]: z.object({
-    uri: z.string().regex(PROJECT_CONFIGURATION_URI_PATTERN),
+    uri: z.string().regex(POD_CONFIGURATION_URI_PATTERN),
     mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD),
   }),
   // All mime types do not necessarily have a fixed schema,
@@ -198,11 +198,11 @@ export type TablesConfigurationToolType = z.infer<
   (typeof ConfigurableToolInputSchemas)[typeof INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE]
 >;
 
-export type DustProjectConfigurationType = z.infer<
+export type DustPodConfigurationType = z.infer<
   (typeof ConfigurableToolInputSchemas)[typeof INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD]
 >;
 
-export const DustProjectConfigurationSchema =
+export const DustPodConfigurationSchema =
   ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD];
 
 /**

@@ -399,7 +399,7 @@ describe("augmentInputsWithConfiguration after hideInternalConfiguration", () =>
       mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME,
     });
     expect(augmented.dustPod).toEqual({
-      uri: `project://dust/w/${mockWorkspace.sId}/projects/project-sid-xyz`,
+      uri: `pod://dust/w/${mockWorkspace.sId}/pods/project-sid-xyz`,
       mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD,
     });
   });

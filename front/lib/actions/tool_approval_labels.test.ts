@@ -21,14 +21,14 @@ describe("getApprovalArgsLabel", () => {
         agentName: "assistant",
         inputs: {
           dustPod: {
-            uri: "project://dust/w/ws123/projects/prj456",
+            uri: "pod://dust/w/ws123/pods/prj456",
             mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD,
           },
         },
         argumentsRequiringApproval: ["dustPod"],
       })
     ).resolves.toBe(
-      'Always allow @assistant to Create Conversation in "project://dust/w/ws123/projects/prj456".'
+      'Always allow @assistant to Create Conversation in "pod://dust/w/ws123/pods/prj456".'
     );
 
     expect(fetchByIdSpy).toHaveBeenCalledWith(auth, "prj456");
@@ -51,7 +51,7 @@ describe("getApprovalArgsLabel", () => {
         agentName: "assistant",
         inputs: {
           dustPod: {
-            uri: "project://dust/w/ws123/projects/prj456",
+            uri: "pod://dust/w/ws123/pods/prj456",
             mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD,
           },
         },

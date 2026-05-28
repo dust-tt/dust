@@ -1,4 +1,4 @@
-import { PROJECT_CONFIGURATION_URI_PATTERN } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { POD_CONFIGURATION_URI_PATTERN } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 
 export function makePodConfigurationURI(
@@ -16,7 +16,7 @@ export type PodConfigInfo = {
 export function parsePodConfigurationURI(
   uri: string
 ): Result<PodConfigInfo, Error> {
-  const match = uri.match(PROJECT_CONFIGURATION_URI_PATTERN);
+  const match = uri.match(POD_CONFIGURATION_URI_PATTERN);
   if (!match) {
     return new Err(new Error(`Invalid URI for a pod configuration: ${uri}`));
   }

@@ -1,10 +1,10 @@
-import { DustProjectConfigurationSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { DustPodConfigurationSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { z } from "zod";
 
 export const PodManagerUpdateMembersInputSchema = z.object({
   addMemberIds: z.array(z.string()).optional(),
   removeMemberIds: z.array(z.string()).optional(),
-  dustPod: DustProjectConfigurationSchema.optional(),
+  dustPod: DustPodConfigurationSchema.optional(),
 });
 
 export type PodManagerUpdateMembersInput = z.infer<

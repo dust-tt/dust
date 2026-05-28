@@ -2,7 +2,7 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import { getDataSourceURI } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type {
   DataSourcesToolConfigurationType,
-  DustProjectConfigurationType,
+  DustPodConfigurationType,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { parsePodConfigurationURI } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -101,7 +101,7 @@ export async function getProjectSpace(
   auth: Authenticator,
   from:
     | { agentLoopContext?: AgentLoopContextType }
-    | { dustPod?: DustProjectConfigurationType }
+    | { dustPod?: DustPodConfigurationType }
 ): Promise<Result<ProjectSpaceContext, MCPError>> {
   if ("dustPod" in from && from.dustPod) {
     const { dustPod } = from;
@@ -214,7 +214,7 @@ export async function getWritableProjectContext(
   auth: Authenticator,
   from:
     | { agentLoopContext?: AgentLoopContextType }
-    | { dustPod?: DustProjectConfigurationType }
+    | { dustPod?: DustPodConfigurationType }
 ): Promise<Result<ProjectSpaceContext, MCPError>> {
   const contextRes = await getProjectSpace(auth, from);
   if (contextRes.isErr()) {

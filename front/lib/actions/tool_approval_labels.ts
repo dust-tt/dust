@@ -1,5 +1,5 @@
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import { DustProjectConfigurationSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { DustPodConfigurationSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { parsePodConfigurationURI } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -28,7 +28,7 @@ export async function getApprovalArgsLabel({
     }
 
     // Check if the input is a Dust project configuration
-    const parsed = DustProjectConfigurationSchema.safeParse(inputValue);
+    const parsed = DustPodConfigurationSchema.safeParse(inputValue);
     if (parsed.success) {
       const parsedProject = parsePodConfigurationURI(parsed.data.uri);
       if (parsedProject.isOk()) {
