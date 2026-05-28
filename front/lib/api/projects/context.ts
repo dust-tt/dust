@@ -707,18 +707,14 @@ export async function renameProjectFile(
     return new Ok(undefined);
   }
 
-  // Look up the linked FileResource by either the new `pods/` form or the old
-  // `projects/` form, since old DB rows are not yet backfilled.
   const podsPrefix = getPodFilesBasePath({
     workspaceId: owner.sId,
     podId: space.sId,
   });
   const podsGcsPath = `${podsPrefix}${normalized}`;
-  const legacyGcsPath = podsGcsPath.replace("/pods/", "/projects/");
 
   const fileResources = await FileResource.fetchByMountFilePaths(auth, [
     podsGcsPath,
-    legacyGcsPath,
   ]);
 
   const renameResult = await renameGCSMountFile(
@@ -804,12 +800,8 @@ export async function deleteProjectFile(
     }
   }
 
-  const podsGcsPath = `${mountBasePath}${normalized}`;
-  const legacyGcsPath = podsGcsPath.replace("/pods/", "/projects/");
-
   const fileResources = await FileResource.fetchByMountFilePaths(auth, [
-    podsGcsPath,
-    legacyGcsPath,
+    gcsPath,
   ]);
   if (fileResources.length > 0) {
     return removeFileFromProject(auth, {

@@ -1,3 +1,7 @@
+// Cleanup script for the broken backfill that disambiguated already-mounted project_context files.
+// Disabled after projects to pods path migration — the cleanup is complete and the helpers it depended on have
+// been removed.
+/*
 import {
   disambiguateFileName,
   getProjectFilesBasePath,
@@ -292,3 +296,4 @@ makeScript(
     );
   }
 );
+*/

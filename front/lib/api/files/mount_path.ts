@@ -55,16 +55,6 @@ export function getConversationFilePath({
   return `${getConversationFilesBasePath({ workspaceId, conversationId })}${fileName}`;
 }
 
-export function getProjectFilesBasePath({
-  workspaceId,
-  projectId,
-}: {
-  workspaceId: string;
-  projectId: string;
-}): string {
-  return `${getBaseMountPathForWorkspace({ workspaceId })}projects/${projectId}/files/`;
-}
-
 export function getPodFilesBasePath({
   workspaceId,
   podId,
@@ -73,34 +63,6 @@ export function getPodFilesBasePath({
   podId: string;
 }): string {
   return `${getBaseMountPathForWorkspace({ workspaceId })}pods/${podId}/files/`;
-}
-
-/**
- * Convert a project mount file path (`w/{wId}/projects/{pId}/files/...`) to its pods/ counterpart
- * (`w/{wId}/pods/{pId}/files/...`). Returns `null` if the input is not a project mount path.
- */
-export function toPodMountFilePath(
-  projectMountFilePath: string
-): string | null {
-  const match = projectMountFilePath.match(/^(w\/[^/]+\/)projects\/(.+)$/);
-  if (!match) {
-    return null;
-  }
-  return `${match[1]}pods/${match[2]}`;
-}
-
-/**
- * Convert a pod mount file path (`w/{wId}/pods/{pId}/files/...`) to its projects/ counterpart
- * (`w/{wId}/projects/{pId}/files/...`). Returns `null` if the input is not a pod mount path.
- */
-export function toProjectMountFilePath(
-  podMountFilePath: string
-): string | null {
-  const match = podMountFilePath.match(/^(w\/[^/]+\/)pods\/(.+)$/);
-  if (!match) {
-    return null;
-  }
-  return `${match[1]}projects/${match[2]}`;
 }
 
 /**
