@@ -24,6 +24,7 @@ export abstract class OpenAiResponses extends LargeLanguageModel<
 > {
   abstract model: OpenAiModel;
   client: OpenAI;
+  byok = true;
 
   constructor(credentials: Credentials) {
     super(credentials);

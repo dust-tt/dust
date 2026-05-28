@@ -56,6 +56,7 @@ export abstract class GoogleAiStudio extends LargeLanguageModel<
   abstract model: GoogleAiStudioModel;
   client: GoogleGenAI;
   configSchema: z.ZodType<z.infer<typeof configSchema>> = configSchema;
+  byok = true;
 
   constructor(credentials: Credentials) {
     super(credentials);
