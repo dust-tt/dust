@@ -481,6 +481,14 @@ the logic back into the handlers and accept the duplication.
 - Enforced by `npm -w front run lint:audit-log-schemas` (runs in CI and as a lefthook
   pre-commit hook scoped to `front/admin/audit_log_schemas/**/*.json`)
 
+### [AUDIT10] Schema JSON files, emit calls, and WorkOS registrations must stay in sync
+
+When changing targets in an `emitAuditLogEvent` / `emitAuditLogEventDirect` call, update the
+corresponding schema at `front/admin/audit_log_schemas/<action>.json` to match. When changing a
+schema file, re-register with WorkOS after merge and before deploy:
+`npx tsx front/admin/register_audit_log_schemas.ts --execute --changed`. The CI test enforces
+that the `AuditAction` union and schema files stay consistent.
+
 ## MCP
 
 ### [MCP1] Single file internal servers

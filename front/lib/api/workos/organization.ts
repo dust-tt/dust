@@ -405,6 +405,12 @@ export type CreateAuditLogEventParams = {
   metadata?: Record<string, string | number | boolean>;
 };
 
+// Conservative pre-flight ceiling for the serialized event payload. WorkOS
+// rejects oversized audit-log requests with "request entity too large", which
+// produced ~26k errors/month in production. Skipping above this threshold
+// turns silent rejections into observable warnings.
+const PAYLOAD_SIZE_LIMIT_BYTES = 60_000;
+
 export async function createAuditLogEvent({
   workspace,
   event,
@@ -415,6 +421,25 @@ export async function createAuditLogEvent({
   if (!workspace.workOSOrganizationId) {
     return new Err(
       new Error("WorkOS organization not found for this workspace.")
+    );
+  }
+
+  const payloadSizeBytes = JSON.stringify(event).length;
+  if (payloadSizeBytes > PAYLOAD_SIZE_LIMIT_BYTES) {
+    logger.warn(
+      {
+        workspaceId: workspace.sId,
+        action: event.action,
+        targetTypes: event.targets.map((t) => t.type),
+        payloadSizeBytes,
+        limit: PAYLOAD_SIZE_LIMIT_BYTES,
+      },
+      "Skipping oversized audit log event"
+    );
+    return new Err(
+      new Error(
+        `Audit log payload exceeds size limit (${payloadSizeBytes} > ${PAYLOAD_SIZE_LIMIT_BYTES} bytes).`
+      )
     );
   }
 
@@ -444,7 +469,16 @@ export async function createAuditLogEvent({
     return new Ok(undefined);
   } catch (error) {
     const e = normalizeError(error);
-    logger.error(e, "Failed to create audit log event");
+    logger.error(
+      {
+        ...e,
+        workspaceId: workspace.sId,
+        action: event.action,
+        targetTypes: event.targets.map((t) => t.type),
+        payloadSizeBytes,
+      },
+      "Failed to create audit log event"
+    );
     return new Err(new Error(`Failed to create audit log event: ${e.message}`));
   }
 }

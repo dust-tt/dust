@@ -92,7 +92,13 @@ app.post(
     void emitAuditLogEvent({
       auth,
       action: "credentials.created",
-      targets: [buildAuditLogTarget("workspace", owner)],
+      targets: [
+        buildAuditLogTarget("workspace", owner),
+        buildAuditLogTarget("credential", {
+          sId: response.value.credential.credential_id,
+          name: String(body.provider),
+        }),
+      ],
       context: getAuditLogContext(auth),
       metadata: {
         provider: String(body.provider),

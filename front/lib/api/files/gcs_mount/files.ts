@@ -844,13 +844,14 @@ async function emitGCSMountFileMovedAuditLog(
   }
 ): Promise<void> {
   const workspace = auth.getNonNullableWorkspace();
-  const targets = [buildAuditLogTarget("workspace", workspace)];
-  const metadata: Record<string, string> = {
-    relative_file_path: relativeFilePath,
-    parent_relative_path: parentRelativePath,
-    space_id: "",
-    conversation_id: "",
-  };
+
+  // file.moved emits a single shape: [workspace, space, conversation]. When a
+  // given move only has one of space/conversation, the other gets an "unknown"
+  // placeholder so the emit always matches the schema's declared targets (no
+  // subset emits). Same pattern as user.login_failed.
+  const UNKNOWN_TARGET = { sId: "unknown", name: "unknown" };
+  let spaceData: { sId: string; name: string } = UNKNOWN_TARGET;
+  let conversationData: { sId: string; name: string } = UNKNOWN_TARGET;
 
   switch (scope.useCase) {
     case "pod": {
@@ -858,8 +859,7 @@ async function emitGCSMountFileMovedAuditLog(
       if (!space) {
         return;
       }
-      targets.push(buildAuditLogTarget("space", space));
-      metadata.space_id = space.sId;
+      spaceData = { sId: space.sId, name: space.name };
       break;
     }
     case "conversation": {
@@ -870,13 +870,10 @@ async function emitGCSMountFileMovedAuditLog(
       if (!conversation) {
         return;
       }
-      targets.push(
-        buildAuditLogTarget("conversation", {
-          sId: conversation.sId,
-          name: conversation.title ?? "",
-        })
-      );
-      metadata.conversation_id = conversation.sId;
+      conversationData = {
+        sId: conversation.sId,
+        name: conversation.title ?? "",
+      };
       break;
     }
     default:
@@ -886,9 +883,18 @@ async function emitGCSMountFileMovedAuditLog(
   void emitAuditLogEvent({
     auth,
     action: "file.moved",
-    targets,
+    targets: [
+      buildAuditLogTarget("workspace", workspace),
+      buildAuditLogTarget("space", spaceData),
+      buildAuditLogTarget("conversation", conversationData),
+    ],
     context: getAuditLogContext(auth),
-    metadata,
+    metadata: {
+      relative_file_path: relativeFilePath,
+      parent_relative_path: parentRelativePath,
+      space_id: spaceData.sId,
+      conversation_id: conversationData.sId,
+    },
   });
 }
 
