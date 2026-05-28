@@ -1,3 +1,16 @@
+import { spawnSync } from "node:child_process";
+import {
+  chmodSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   SANDBOX_ROOT_SAFE_PATH,
   SANDBOX_STATIC_ROOT_CONSUMED_DIRS,
@@ -68,11 +81,20 @@ function expectContentInOrder(
   expect(firstIndex).toBeLessThan(secondIndex);
 }
 
+function getCommandPath(command: string): string {
+  const result = spawnSync("sh", ["-c", `command -v ${command}`], {
+    encoding: "utf8",
+  });
+
+  expect(result.status).toBe(0);
+  return result.stdout.trim();
+}
+
 describe("sandbox image registry", () => {
   test("pins the current dust-base image tag", () => {
     expect(getDustBaseImage().imageId).toEqual({
       imageName: "dust-base",
-      tag: "0.8.31",
+      tag: "0.8.32",
     });
   });
 
@@ -161,6 +183,9 @@ describe("sandbox image registry", () => {
     const runCommands = getRunCommands(getDustBaseImageOperations());
     const staticRootConsumedDirs = SANDBOX_STATIC_ROOT_CONSUMED_DIRS.join(" ");
 
+    expect(SANDBOX_STATIC_ROOT_CONSUMED_DIRS).toContain(
+      "/usr/local/share/ca-certificates"
+    );
     expect(runCommands).toEqual(
       expect.arrayContaining([
         expect.stringContaining(
@@ -388,13 +413,186 @@ describe("sandbox image registry", () => {
     );
 
     expect(tmpfilesConfig).toBe("d /run/dust 0755 root root -\n");
-    expect(installer).toContain("update-ca-certificates");
-    expect(installer).toContain('cat "$SYSTEM_CA_BUNDLE"');
-    expect(installer).toContain('cat "$CA_PATH"');
+    expect(installer).toContain(
+      '/usr/bin/openssl x509 -in "$CA_PATH" -out "$normalized_ca_tmp" -outform PEM'
+    );
+    expect(installer).toContain(
+      '/usr/bin/install -d -o root -g root -m 755 "$SYSTEM_CA_DIR"'
+    );
+    expect(installer).toContain(
+      '/usr/bin/find "$SYSTEM_CA_DIR" -mindepth 1 -maxdepth 1 -exec /bin/rm -rf'
+    );
+    expect(installer).toContain('/bin/rm -f "$SYSTEM_CA_DEST"');
+    expect(installer).toContain(
+      '/usr/bin/install -o root -g root -m 644 "$normalized_ca_tmp" "$SYSTEM_CA_DEST"'
+    );
+    expect(installer).toContain("/usr/sbin/update-ca-certificates");
+    expect(installer).toContain('/bin/cat "$SYSTEM_CA_BUNDLE"');
+    expect(installer).toContain('/bin/cat "$normalized_ca_tmp"');
     expect(installer).toContain("/etc/ssl/certs/java/cacerts");
-    expect(installer).toContain("if command -v keytool >/dev/null 2>&1");
-    expect(installer).toContain("keytool -importcert -noprompt -trustcacerts");
+    expect(installer).toContain("if [ -x /usr/bin/keytool ]; then");
+    expect(installer).toContain(
+      "/usr/bin/keytool -importcert -noprompt -trustcacerts"
+    );
     expect(installer).toContain("already exists");
+  });
+
+  test("trust helper drops staged symlinks and normalizes the installed CA", () => {
+    const copyOperations = getCopyOperations(getDustBaseImageOperations());
+    const installer = getCopiedContent(
+      copyOperations,
+      "/usr/local/bin/dust-install-trust-bundle"
+    );
+    const sandboxRoot = mkdtempSync(join(tmpdir(), "dust-trust-helper-"));
+    const runDustDir = join(sandboxRoot, "run", "dust");
+    const etcDustDir = join(sandboxRoot, "etc", "dust");
+    const javaCertsDir = join(sandboxRoot, "etc", "ssl", "certs", "java");
+    const stubBinDir = join(sandboxRoot, "bin");
+    const systemCaDir = join(
+      sandboxRoot,
+      "usr",
+      "local",
+      "share",
+      "ca-certificates"
+    );
+    const systemCaBundle = join(
+      sandboxRoot,
+      "etc",
+      "ssl",
+      "certs",
+      "ca-certificates.crt"
+    );
+    const mergedBundle = join(etcDustDir, "ca-bundle.pem");
+    const caPath = join(runDustDir, "egress-ca.pem");
+    const keyPath = join(runDustDir, "egress-ca.key");
+    const leakedSecretPath = join(runDustDir, "egress-secrets.json");
+    const commandPaths = {
+      cat: getCommandPath("cat"),
+      chmod: getCommandPath("chmod"),
+      chown: getCommandPath("chown"),
+      find: getCommandPath("find"),
+      install: getCommandPath("install"),
+      mkdir: getCommandPath("mkdir"),
+      mktemp: getCommandPath("mktemp"),
+      mv: getCommandPath("mv"),
+      openssl: getCommandPath("openssl"),
+      rm: getCommandPath("rm"),
+    };
+
+    try {
+      mkdirSync(runDustDir, { recursive: true });
+      mkdirSync(stubBinDir, { recursive: true });
+      mkdirSync(systemCaDir, { recursive: true });
+      mkdirSync(join(sandboxRoot, "etc", "ssl", "certs"), {
+        recursive: true,
+      });
+      chmodSync(systemCaDir, 0o777);
+      writeFileSync(systemCaBundle, "system-root\n");
+      const updateCaCertificatesStub = join(
+        stubBinDir,
+        "update-ca-certificates"
+      );
+      writeFileSync(updateCaCertificatesStub, "#!/bin/sh\nexit 0\n");
+      chmodSync(updateCaCertificatesStub, 0o755);
+      writeFileSync(leakedSecretPath, "DSEC_SECRET=should-not-leak\n");
+      symlinkSync(leakedSecretPath, join(systemCaDir, "secrets.crt"));
+      writeFileSync(
+        join(systemCaDir, "garbage.crt"),
+        "not a cert\nDSEC_GARBAGE=should-not-leak\n"
+      );
+
+      const opensslResult = spawnSync(
+        commandPaths.openssl,
+        [
+          "req",
+          "-x509",
+          "-newkey",
+          "rsa:2048",
+          "-nodes",
+          "-keyout",
+          keyPath,
+          "-out",
+          caPath,
+          "-subj",
+          "/CN=dust-test",
+          "-days",
+          "1",
+        ],
+        { encoding: "utf8" }
+      );
+      expect(opensslResult.status).toBe(0);
+      writeFileSync(caPath, "\nDSEC_APPENDED=should-not-leak\n", {
+        flag: "a",
+      });
+
+      const rewrittenInstaller = installer
+        .replace('CA_PATH="/run/dust/egress-ca.pem"', `CA_PATH="${caPath}"`)
+        .replace(
+          'SYSTEM_CA_DIR="/usr/local/share/ca-certificates"',
+          `SYSTEM_CA_DIR="${systemCaDir}"`
+        )
+        .replace(
+          'SYSTEM_CA_BUNDLE="/etc/ssl/certs/ca-certificates.crt"',
+          `SYSTEM_CA_BUNDLE="${systemCaBundle}"`
+        )
+        .replaceAll("/etc/dust", etcDustDir)
+        .replaceAll("/etc/ssl/certs/java", javaCertsDir)
+        .replaceAll(
+          "/usr/sbin/update-ca-certificates",
+          updateCaCertificatesStub
+        )
+        .replaceAll(
+          "/usr/bin/install -d -o root -g root -m 755",
+          "/usr/bin/install -d -m 755"
+        )
+        .replaceAll(
+          "/usr/bin/install -o root -g root -m 644",
+          "/usr/bin/install -m 644"
+        )
+        .replace('/usr/bin/chown root:root "$SYSTEM_CA_DIR"', ":")
+        .replace("if [ -x /usr/bin/keytool ]; then", "if false; then")
+        .replaceAll("/bin/cat", commandPaths.cat)
+        .replaceAll("/usr/bin/chmod", commandPaths.chmod)
+        .replaceAll("/usr/bin/chown", commandPaths.chown)
+        .replaceAll("/usr/bin/find", commandPaths.find)
+        .replaceAll("/usr/bin/install", commandPaths.install)
+        .replaceAll("/usr/bin/mkdir", commandPaths.mkdir)
+        .replaceAll("/usr/bin/mktemp", commandPaths.mktemp)
+        .replaceAll("/usr/bin/mv", commandPaths.mv)
+        .replaceAll("/usr/bin/openssl", commandPaths.openssl)
+        .replaceAll("/bin/rm", commandPaths.rm);
+      const scriptPath = join(sandboxRoot, "install-trust-bundle.sh");
+      writeFileSync(scriptPath, rewrittenInstaller);
+
+      const runResult = spawnSync("bash", [scriptPath], {
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          PATH: `${stubBinDir}:${process.env.PATH ?? ""}`,
+        },
+      });
+
+      if (runResult.status !== 0) {
+        throw new Error(
+          `trust helper failed:\nstdout:\n${runResult.stdout}\nstderr:\n${runResult.stderr}`
+        );
+      }
+      const mergedBundleContent = readFileSync(mergedBundle, "utf8");
+      const installedCaContent = readFileSync(
+        join(systemCaDir, "dust-egress.crt"),
+        "utf8"
+      );
+
+      expect(readdirSync(systemCaDir)).toEqual(["dust-egress.crt"]);
+      expect(mergedBundleContent).toContain("system-root");
+      expect(mergedBundleContent).toContain("BEGIN CERTIFICATE");
+      expect(mergedBundleContent).not.toContain("DSEC_SECRET");
+      expect(mergedBundleContent).not.toContain("DSEC_GARBAGE");
+      expect(mergedBundleContent).not.toContain("DSEC_APPENDED");
+      expect(installedCaContent).not.toContain("DSEC_APPENDED");
+    } finally {
+      rmSync(sandboxRoot, { recursive: true, force: true });
+    }
   });
 });
 

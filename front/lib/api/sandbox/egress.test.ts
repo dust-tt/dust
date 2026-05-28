@@ -255,6 +255,25 @@ describe("sandbox egress helpers", () => {
     expect(installCall).toContain(
       "if [ -x '/usr/local/bin/dust-install-trust-bundle' ]"
     );
+    expect(installCall).toContain(
+      "/usr/bin/install -d -o root -g root -m 755 '/usr/local/share/ca-certificates'"
+    );
+    expect(installCall).toContain(
+      "[ ! -L '/usr/local/share/ca-certificates' ]"
+    );
+    expect(installCall).toContain(
+      "/usr/bin/find '/usr/local/share/ca-certificates' -mindepth 1 -maxdepth 1 -exec /bin/rm -rf"
+    );
+    expect(installCall).toContain(
+      "/bin/rm -f '/usr/local/share/ca-certificates/dust-egress.crt'"
+    );
+    expect(installCall).toContain(
+      "/usr/bin/openssl x509 -in '/run/dust/egress-ca.pem' -out \"$_ca_tmp\" -outform PEM"
+    );
+    expect(installCall).toContain(
+      "/usr/bin/install -o root -g root -m 644 \"$_ca_tmp\" '/usr/local/share/ca-certificates/dust-egress.crt'"
+    );
+    expect(installCall).toContain('/bin/cat "$_ca_tmp"');
     expect(installCall).toContain("update-ca-certificates");
     expect(installCall).toContain("/bin/cat");
     expect(installCall).toContain("/etc/ssl/certs/ca-certificates.crt");

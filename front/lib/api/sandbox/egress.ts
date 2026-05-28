@@ -44,6 +44,7 @@ const MITM_TRUST_BUNDLE_INSTALLER_PATH =
   "/usr/local/bin/dust-install-trust-bundle";
 // Constants used by the pre-0.8.8 fallback path. Remove with the fallback
 // once all dust-base:0.8.7 sandboxes have aged out.
+const MITM_SYSTEM_CA_DIR = "/usr/local/share/ca-certificates";
 const MITM_SYSTEM_CA_DEST = "/usr/local/share/ca-certificates/dust-egress.crt";
 const MITM_SYSTEM_CA_BUNDLE = "/etc/ssl/certs/ca-certificates.crt";
 // Sentinel written atomically alongside the merged bundle so the health probe
@@ -585,12 +586,22 @@ async function installMitmTrustBundle(
   // TODO(2026-08-01 SANDBOX): remove the fallback once all pre-0.8.8
   // sandboxes have aged out.
   const inlineFallback =
-    `/usr/bin/mkdir -p ${shellEscape("/etc/dust")} ${shellEscape("/usr/local/share/ca-certificates")} && ` +
-    `((/usr/bin/cp ${shellEscape(MITM_CA_PATH)} ${shellEscape(MITM_SYSTEM_CA_DEST)} && /usr/sbin/update-ca-certificates >/dev/null 2>&1) || true) && ` +
+    `/usr/bin/mkdir -p ${shellEscape("/etc/dust")} && ` +
+    `_ca_tmp=$(/usr/bin/mktemp ${shellEscape("/etc/dust/.egress-ca.pem.XXXXXX")}) && ` +
+    `([ ! -L ${shellEscape(MITM_SYSTEM_CA_DIR)} ] && { [ ! -e ${shellEscape(MITM_SYSTEM_CA_DIR)} ] || [ -d ${shellEscape(MITM_SYSTEM_CA_DIR)} ]; } || /bin/rm -f ${shellEscape(MITM_SYSTEM_CA_DIR)}) && ` +
+    `/usr/bin/install -d -o root -g root -m 755 ${shellEscape(MITM_SYSTEM_CA_DIR)} && ` +
+    `/usr/bin/chown root:root ${shellEscape(MITM_SYSTEM_CA_DIR)} && ` +
+    `/usr/bin/chmod 755 ${shellEscape(MITM_SYSTEM_CA_DIR)} && ` +
+    `/usr/bin/find ${shellEscape(MITM_SYSTEM_CA_DIR)} -mindepth 1 -maxdepth 1 -exec /bin/rm -rf -- {} + && ` +
+    `/bin/rm -f ${shellEscape(MITM_SYSTEM_CA_DEST)} && ` +
+    `/usr/bin/openssl x509 -in ${shellEscape(MITM_CA_PATH)} -out "$_ca_tmp" -outform PEM >/dev/null 2>&1 && ` +
+    `/usr/bin/install -o root -g root -m 644 "$_ca_tmp" ${shellEscape(MITM_SYSTEM_CA_DEST)} && ` +
+    `(/usr/sbin/update-ca-certificates >/dev/null 2>&1 || true) && ` +
     `_bundle_tmp=$(/usr/bin/mktemp ${shellEscape("/etc/dust/.ca-bundle.pem.XXXXXX")}) && ` +
-    `{ /bin/cat ${shellEscape(MITM_SYSTEM_CA_BUNDLE)}; printf '\\n'; /bin/cat ${shellEscape(MITM_CA_PATH)}; } > "$_bundle_tmp" && ` +
+    `{ /bin/cat ${shellEscape(MITM_SYSTEM_CA_BUNDLE)}; printf '\\n'; /bin/cat "$_ca_tmp"; } > "$_bundle_tmp" && ` +
     `/usr/bin/chmod 644 "$_bundle_tmp" && ` +
-    `/usr/bin/mv "$_bundle_tmp" ${shellEscape(MITM_CA_BUNDLE_PATH)}`;
+    `/usr/bin/mv "$_bundle_tmp" ${shellEscape(MITM_CA_BUNDLE_PATH)} && ` +
+    `/bin/rm -f "$_ca_tmp"`;
 
   const command = rootCommand.unsafeShell(
     `[ -s ${shellEscape(MITM_CA_PATH)} ] || ` +
