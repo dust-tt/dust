@@ -123,10 +123,15 @@ export async function dispatchPaygCapReached({
 
 export async function dispatchCreditsAdded({
   workspace,
+  newBalanceAwu,
 }: {
   workspace: WorkspaceResource;
+  newBalanceAwu: number;
 }): Promise<void> {
-  await transitionWorkspacePool(workspace, { type: "credits_added" });
+  await transitionWorkspacePool(workspace, {
+    type: "credits_added",
+    balanceAwu: newBalanceAwu,
+  });
 }
 
 export async function dispatchPaygDisabled({
@@ -143,6 +148,19 @@ export async function dispatchPaygEnabled({
   workspace: WorkspaceResource;
 }): Promise<void> {
   await transitionWorkspacePool(workspace, { type: "payg_enabled" });
+}
+
+export async function dispatchLowBalance({
+  workspace,
+  balanceAwu,
+}: {
+  workspace: WorkspaceResource;
+  balanceAwu: number;
+}): Promise<void> {
+  await transitionWorkspacePool(workspace, {
+    type: "low_balance",
+    balanceAwu,
+  });
 }
 
 async function transitionWorkspacePool(
@@ -199,7 +217,7 @@ export async function syncPoolCreditStateFromBalance({
   }, 0);
 
   if (awuBalance > 0) {
-    await dispatchCreditsAdded({ workspace });
+    await dispatchCreditsAdded({ workspace, newBalanceAwu: awuBalance });
   } else {
     await dispatchPoolExhausted({ workspace });
   }
