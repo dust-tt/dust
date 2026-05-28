@@ -4,7 +4,7 @@ import { ProvidersConfigurationList } from "@app/components/pages/workspace/mode
 import { ProvidersToggleList } from "@app/components/pages/workspace/model_providers/ProvidersToggleList";
 import { RegionalModelsOnlyToggle } from "@app/components/pages/workspace/model_providers/RegionalModelsOnlyToggle";
 import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
-import { isModelCustomAvailable } from "@app/lib/assistant";
+import { isModelAvailable } from "@app/lib/assistant";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import type {
@@ -41,10 +41,10 @@ export function ModelProvidersPageContent({
   const filteredModels = uniqBy(USED_MODEL_CONFIGS, (m) => m.modelId).filter(
     (model) =>
       !model.isLegacy &&
-      isModelCustomAvailable(model, {
+      isModelAvailable(model, {
         featureFlags,
         plan,
-        owner: workspace,
+        regionalModelsOnly: workspace.regionalModelsOnly,
         region: regionInfo.name,
       })
   );

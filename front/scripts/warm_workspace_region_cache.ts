@@ -1,6 +1,6 @@
 import { getRedisCacheClient } from "@app/lib/api/redis";
-import { isRegionType, SUPPORTED_REGIONS } from "@app/lib/api/regions/config";
 import { makeScript } from "@app/scripts/helpers";
+import { isRegionType, SUPPORTED_REGIONS } from "@app/types/region";
 import * as fs from "fs";
 
 const WORKSPACE_REGION_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours.

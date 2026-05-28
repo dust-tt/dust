@@ -1,8 +1,8 @@
-import { isRegionType, SUPPORTED_REGIONS } from "@app/lib/api/regions/config";
 import { makeScript } from "@app/scripts/helpers";
 import { RELOCATION_QUEUES_PER_REGION } from "@app/temporal/relocation/config";
 import { getTemporalRelocationClient } from "@app/temporal/relocation/temporal";
 import { workspaceRelocateAppsWorkflow } from "@app/temporal/relocation/workflows";
+import { isRegionType, SUPPORTED_REGIONS } from "@app/types/region";
 import { WorkflowNotFoundError } from "@temporalio/common";
 
 makeScript(

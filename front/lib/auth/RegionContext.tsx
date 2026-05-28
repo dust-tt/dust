@@ -1,6 +1,6 @@
 import { setBaseUrlResolver } from "@app/lib/api/config";
-import type { RegionInfo, RegionType } from "@app/lib/api/regions/config";
-import { isRegionType } from "@app/lib/api/regions/config";
+import type { RegionInfo, RegionType } from "@app/types/region";
+import { isRegionType } from "@app/types/region";
 import {
   createContext,
   useCallback,

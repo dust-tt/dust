@@ -1,4 +1,4 @@
-import { SUPPORTED_REGIONS } from "@app/lib/api/regions/config";
+import { SUPPORTED_REGIONS } from "@app/types/region";
 import { z } from "zod";
 import {
   isWhitelistableFeature,
@@ -110,10 +110,6 @@ export type ModelConfigurationType = Omit<
     featureFlag?: WhitelistableFeature;
   };
   // Pre-requisite: must be available.
-  // If object is empty, model is not custom available.
-  customAvailableIf?: {
-    featureFlag?: WhitelistableFeature;
-  };
   tokenizer: TokenizerConfig;
 };
 

@@ -1,5 +1,5 @@
 // biome-ignore-all lint/plugin/noRawSql: relocation SQL file requires raw SQL
-import type { RegionType } from "@app/lib/api/regions/config";
+
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -25,6 +25,7 @@ import { getTopologicalOrder } from "@app/temporal/relocation/lib/sql/schema/dep
 import { getUserReferencingColumns } from "@app/temporal/relocation/lib/sql/schema/introspection";
 import type { UserIdMapping } from "@app/temporal/relocation/lib/sql/user_mappings";
 import { mapUserIdsInRows } from "@app/temporal/relocation/lib/sql/user_mappings";
+import type { RegionType } from "@app/types/region";
 import type { ModelId } from "@app/types/shared/model_id";
 import assert from "assert";
 import { Op, QueryTypes } from "sequelize";

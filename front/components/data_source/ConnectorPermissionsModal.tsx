@@ -12,7 +12,6 @@ import { AdvancedNotionManagement } from "@app/components/spaces/AdvancedNotionM
 import { ConnectorDataUpdatedModal } from "@app/components/spaces/ConnectorDataUpdatedModal";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useSendNotification } from "@app/hooks/useNotification";
-import type { RegionInfo } from "@app/lib/api/regions/config";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
@@ -49,6 +48,7 @@ import type {
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { APIError } from "@app/types/error";
 import { isOAuthProvider } from "@app/types/oauth/lib";
+import type { RegionInfo } from "@app/types/region";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";

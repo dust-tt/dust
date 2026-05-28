@@ -1,5 +1,4 @@
 import config from "@app/lib/api/config";
-import type { RegionType } from "@app/lib/api/regions/config";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import { AppModel } from "@app/lib/resources/storage/models/apps";
 import type { SpaceModel } from "@app/lib/resources/storage/models/spaces";
@@ -8,6 +7,7 @@ import type { CoreAppAPIRelocationBlob } from "@app/temporal/relocation/activiti
 import { writeToRelocationStorage } from "@app/temporal/relocation/lib/file_storage/relocation";
 import type { CoreAPIDataset } from "@app/types/core/core_api";
 import { CoreAPI } from "@app/types/core/core_api";
+import type { RegionType } from "@app/types/region";
 import type { ModelId } from "@app/types/shared/model_id";
 import assert from "assert";
 import type { WhereOptions } from "sequelize";

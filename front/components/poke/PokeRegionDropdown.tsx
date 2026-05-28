@@ -1,7 +1,7 @@
-import type { RegionType } from "@app/lib/api/regions/config";
-import { SUPPORTED_REGIONS } from "@app/lib/api/regions/config";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { getRegionDisplay } from "@app/lib/poke/regions";
+import type { RegionType } from "@app/types/region";
+import { SUPPORTED_REGIONS } from "@app/types/region";
 import {
   Button,
   DropdownMenu,
