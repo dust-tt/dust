@@ -229,7 +229,6 @@ export async function runModel(
     enabledSkills,
     systemSkills,
     equippedSkills,
-    renderSkillsAsUserMessages,
     hasConditionalJITTools,
     mcpActions,
     mcpToolsListingError,
@@ -252,10 +251,6 @@ export async function runModel(
 
     const { enabledSkills, systemSkills, equippedSkills } =
       await SkillResource.listForAgentLoop(auth, runAgentData);
-    const renderSkillsAsUserMessages = await hasFeatureFlag(
-      auth,
-      "skills_as_user_messages"
-    );
 
     const skillServers = await getSkillServers(auth, {
       agentConfiguration,
@@ -283,7 +278,6 @@ export async function runModel(
       enabledSkills,
       equippedSkills,
       systemSkills,
-      renderSkillsAsUserMessages,
       mcpActions,
       mcpToolsListingError,
     };
@@ -396,7 +390,6 @@ export async function runModel(
     systemSkills,
     enabledSkills,
     equippedSkills,
-    renderSkillsAsUserMessages,
     memoriesContext,
     toolsetsContext,
     userContext,
@@ -405,9 +398,9 @@ export async function runModel(
     isNewFileExplorer,
     hasSandboxTools,
   });
-  const leadingMessages = renderSkillsAsUserMessages
-    ? removeNulls([renderEquippedSkillsUserMessage(equippedSkills)])
-    : [];
+  const leadingMessages = removeNulls([
+    renderEquippedSkillsUserMessage(equippedSkills),
+  ]);
 
   const specifications: AgentActionSpecification[] = [];
   for (const a of availableActions) {
@@ -439,7 +432,6 @@ export async function runModel(
           agentConfiguration,
           leadingMessages,
           enabledSkills,
-          renderSkillsAsUserMessages,
         })
       )
   );

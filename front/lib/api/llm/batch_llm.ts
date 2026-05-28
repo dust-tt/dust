@@ -13,7 +13,7 @@ import type {
   LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
-import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMessageModel,
   MessageModel,
@@ -299,10 +299,6 @@ export async function sendBatchCallToLlm(
   const batchMap = new Map<string, LLMStreamParameters>();
 
   const modelConfig = llm.getModelConfig();
-  const renderSkillsAsUserMessages = await hasFeatureFlag(
-    auth,
-    "skills_as_user_messages"
-  );
 
   for (const input of conversations) {
     // Store new messages in DB.
@@ -342,7 +338,6 @@ export async function sendBatchCallToLlm(
       leadingMessages,
       enabledSkills: enabledSkills ?? [],
       prompt: promptText,
-      renderSkillsAsUserMessages,
       tools,
       allowedTokenCount:
         modelConfig.contextSize - modelConfig.generationTokensCount,

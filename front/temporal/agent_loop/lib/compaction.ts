@@ -11,7 +11,7 @@ import {
   createGCSMountFile,
   type GCSMountFileEntry,
 } from "@app/lib/api/files/gcs_mount/files";
-import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import type { CompactionSourceConversation } from "@app/types/assistant/compaction";
@@ -323,11 +323,6 @@ export async function runCompaction(
     conversationToSummarize = sourceConversationRes.value;
   }
 
-  const renderSkillsAsUserMessages = await hasFeatureFlag(
-    auth,
-    "skills_as_user_messages"
-  );
-
   const summaryRes = await generateCompactionSummary(auth, {
     sourceConversation: conversationToSummarize,
     sourceMessageRank: sourceConversation?.messageRank,
@@ -414,7 +409,7 @@ export async function runCompaction(
   const result = await updateCompactionMessageWithContentAndFinalStatus(auth, {
     conversation: targetConversation,
     compactionMessage,
-    clearEnabledSkillsOnSuccess: renderSkillsAsUserMessages,
+    clearEnabledSkillsOnSuccess: true,
     status,
     content,
   });

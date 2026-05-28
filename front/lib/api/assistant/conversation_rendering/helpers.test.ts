@@ -317,7 +317,6 @@ The following skills are available for use with the skill_management__enable_ski
       workspaceId: "workspace_123",
       conversationId: "conv_1",
       onMissingAction: "skip",
-      renderSkillsAsUserMessages: true,
     });
 
     expect(steps).toHaveLength(1);

@@ -15,7 +15,7 @@ import { renderEquippedSkillsUserMessage } from "@app/lib/api/assistant/skills_r
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
-import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { constructProjectContext } from "@app/lib/resources/skill/code_defined/projects";
@@ -172,11 +172,6 @@ async function handler(
         attachments,
       });
 
-      const renderSkillsAsUserMessages = await hasFeatureFlag(
-        auth,
-        "skills_as_user_messages"
-      );
-
       const { enabledSkills, systemSkills, equippedSkills } =
         await SkillResource.listForAgentLoop(auth, {
           agentConfiguration,
@@ -279,14 +274,13 @@ async function handler(
         enabledSkills,
         systemSkills,
         equippedSkills,
-        renderSkillsAsUserMessages,
         projectContext,
         isNewFileExplorer,
       });
       const prompt = systemPromptToText(promptSections);
-      const leadingMessages = renderSkillsAsUserMessages
-        ? removeNulls([renderEquippedSkillsUserMessage(equippedSkills)])
-        : [];
+      const leadingMessages = removeNulls([
+        renderEquippedSkillsUserMessage(equippedSkills),
+      ]);
 
       // Build tool specifications to estimate tokens for tool definitions (names + schemas only).
       const specifications = availableActions.map((t) =>
@@ -322,7 +316,6 @@ async function handler(
         agentConfiguration,
         leadingMessages,
         enabledSkills,
-        renderSkillsAsUserMessages,
       });
 
       if (convoRes.isErr()) {

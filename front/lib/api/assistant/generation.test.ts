@@ -436,46 +436,6 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     expect(text).toContain("User prefers TypeScript");
   });
 
-  it("should include system skills in the enabled skills section when passed separately", async () => {
-    await SkillFactory.linkGlobalSkillToAgent(authenticator1, {
-      globalSkillId: "discover_skills",
-      agentConfigurationId: agentConfig1.id,
-    });
-
-    const { systemSkills } = await SkillResource.listForAgentLoop(
-      authenticator1,
-      {
-        agentConfiguration: agentConfig1,
-        conversation: conversation1,
-      }
-    );
-    const discoverSkills = systemSkills.find(
-      (skill) => skill.sId === "discover_skills"
-    );
-    if (!discoverSkills) {
-      throw new Error("Expected discover_skills system skill to exist.");
-    }
-
-    const params = {
-      userMessage: userMessage1,
-      agentConfiguration: agentConfig1,
-      model: modelConfig,
-      hasAvailableActions: true,
-      agentsList: null,
-      systemSkills: [discoverSkills],
-      enabledSkills: [],
-      equippedSkills: [],
-    };
-
-    const sections = constructPromptMultiActions(authenticator1, params);
-    const text = systemPromptToText(sections);
-
-    expect(text).toContain("### ENABLED SKILLS");
-    expect(text).toContain(
-      "Some of the available skills come from the workspace"
-    );
-  });
-
   it("should produce a valid prompt when memoriesContext is omitted", () => {
     const params = {
       userMessage: userMessage1,
@@ -514,7 +474,6 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       systemSkills: [],
       enabledSkills: [],
       equippedSkills,
-      renderSkillsAsUserMessages: true,
     };
 
     const sections = constructPromptMultiActions(authenticator1, params);
@@ -529,62 +488,6 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       "Create a git commit with a descriptive message."
     );
     expect(text).not.toContain("## AVAILABLE SKILLS");
-  });
-
-  it("should keep equipped skills in the system prompt on the legacy path", async () => {
-    const equippedSkills = [
-      await SkillFactory.create(authenticator1, {
-        name: "commit",
-        agentFacingDescription:
-          "Create a git commit with a descriptive message.",
-      }),
-    ];
-
-    const params = {
-      userMessage: userMessage1,
-      agentConfiguration: agentConfig1,
-      model: modelConfig,
-      hasAvailableActions: true,
-      agentsList: null,
-      systemSkills: [],
-      enabledSkills: [],
-      equippedSkills,
-    };
-
-    const sections = constructPromptMultiActions(authenticator1, params);
-    const text = systemPromptToText(sections);
-
-    expect(text).toContain("## AVAILABLE SKILLS");
-    expect(text).toContain(
-      "- **commit**: Create a git commit with a descriptive message."
-    );
-  });
-
-  it("should not show enabled skills in available skills on the legacy path", async () => {
-    const commitSkill = await SkillFactory.create(authenticator1, {
-      name: "commit",
-      agentFacingDescription: "Create a git commit with a descriptive message.",
-    });
-
-    const params = {
-      userMessage: userMessage1,
-      agentConfiguration: agentConfig1,
-      model: modelConfig,
-      hasAvailableActions: true,
-      agentsList: null,
-      systemSkills: [],
-      enabledSkills: [SkillFactory.withExtendedSkill(commitSkill)],
-      equippedSkills: [commitSkill],
-    };
-
-    const sections = constructPromptMultiActions(authenticator1, params);
-    const text = systemPromptToText(sections);
-
-    expect(text).toContain("### ENABLED SKILLS");
-    expect(text).not.toContain("### AVAILABLE SKILLS");
-    expect(text).not.toContain(
-      "- **commit**: Create a git commit with a descriptive message."
-    );
   });
 
   it("should keep system skill instructions in the system prompt", async () => {
@@ -606,7 +509,6 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       systemSkills: [discoverSkills],
       enabledSkills: [],
       equippedSkills: [],
-      renderSkillsAsUserMessages: true,
     };
 
     const sections = constructPromptMultiActions(authenticator1, params);
