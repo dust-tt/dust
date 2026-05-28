@@ -222,7 +222,7 @@ describe("listHandler", () => {
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      expect(result.error.message).toContain("project conversations");
+      expect(result.error.message).toContain("Pod conversations");
     }
     expect(getAllFilesByPrefixMock).not.toHaveBeenCalled();
   });

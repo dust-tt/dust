@@ -56,7 +56,7 @@ export async function listHandler(
     if (!mount) {
       return new Err(
         new MCPError(
-          "Pod file paths are only available in pod conversations.",
+          "Pod file paths are only available in Pod conversations.",
           { tracked: false }
         )
       );
@@ -137,10 +137,6 @@ export async function listHandler(
   }
 
   for (const { file, sourcePath } of annotated) {
-    if (file.isDirectory) {
-      continue;
-    }
-
     const mimeType = stripMimeParameters(file.contentType);
     const kb = Math.ceil(file.sizeBytes / 1024);
     const annotation = sourcePath
