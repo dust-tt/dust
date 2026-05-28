@@ -90,6 +90,7 @@ type EmitSite = {
   file: string;
   action: string;
   targetTypes: string[];
+  unextractable?: boolean;
 };
 
 function listTsFiles(dir: string): string[] {
@@ -143,9 +144,15 @@ function collectEmitSites(): EmitSite[] {
   const sites: EmitSite[] = [];
   const callRegex = /emitAuditLogEvent(?:Direct)?\s*\(\s*\{/g;
   const actionRegex = /\baction:\s*"([^"]+)"/;
-  const targetsBlockRegex = /\btargets:\s*\[([\s\S]*?)\]/;
+  const targetsArrayRegex = /\btargets:\s*\[([\s\S]*?)\]/g;
+  // `buildAuditLogTarget("xxx", ...)` is only ever used to construct audit
+  // targets in this codebase, so scanning the entire emit body for it is safe
+  // and lets us capture dynamic patterns like `targets: arr.map(r => buildAuditLogTarget("user", r))`.
   const buildTargetRegex = /buildAuditLogTarget\(\s*"([^"]+)"/g;
-  const literalTargetRegex = /\btype:\s*"([^"]+)"/g;
+  // Literal target objects shaped like `{ type: "xxx", id: ... }` (note the
+  // required `id:` after the type, which excludes actor/metadata objects that
+  // happen to use a `type:` key).
+  const literalTargetRegex = /\{\s*type:\s*"([^"]+)"\s*,\s*id:/g;
 
   for (const file of listTsFiles(FRONT_DIR)) {
     let source: string;
@@ -170,32 +177,33 @@ function collectEmitSites(): EmitSite[] {
       }
       const action = actionMatch[1];
 
-      const targetsMatch = targetsBlockRegex.exec(body);
-      if (!targetsMatch) {
-        continue;
-      }
-      const targetsBlock = targetsMatch[1];
-
       const targetTypes: string[] = [];
+
+      // 1. Scan the entire body for buildAuditLogTarget(...) calls.
       let bt: RegExpExecArray | null;
-      while ((bt = buildTargetRegex.exec(targetsBlock)) !== null) {
+      while ((bt = buildTargetRegex.exec(body)) !== null) {
         targetTypes.push(bt[1]);
       }
       buildTargetRegex.lastIndex = 0;
-      let lt: RegExpExecArray | null;
-      while ((lt = literalTargetRegex.exec(targetsBlock)) !== null) {
-        targetTypes.push(lt[1]);
-      }
-      literalTargetRegex.lastIndex = 0;
 
-      if (targetTypes.length === 0) {
-        continue;
+      // 2. Scan only inside `targets: [...]` arrays for literal target objects.
+      //    Restricting to the array literal avoids false positives from the
+      //    sibling `actor: { type: "user", id: ... }` field.
+      let ta: RegExpExecArray | null;
+      while ((ta = targetsArrayRegex.exec(body)) !== null) {
+        let lt: RegExpExecArray | null;
+        while ((lt = literalTargetRegex.exec(ta[1])) !== null) {
+          targetTypes.push(lt[1]);
+        }
+        literalTargetRegex.lastIndex = 0;
       }
+      targetsArrayRegex.lastIndex = 0;
 
       sites.push({
         file: path.relative(FRONT_DIR, file),
         action,
         targetTypes,
+        unextractable: targetTypes.length === 0,
       });
     }
   }
@@ -209,11 +217,29 @@ describe("audit log emit call sites", () => {
     expect(sites.length).toBeGreaterThan(0);
   });
 
+  it("every detected emit site has extractable target types", () => {
+    // If the regex cannot extract any target types from an emit call, the
+    // schema/code drift check silently passes for that action. Fail loudly so
+    // the regex (or the call site) gets adjusted instead of allowing silent
+    // drift to creep in via unusual emit shapes.
+    const unextractable = sites
+      .filter((s) => s.unextractable)
+      .map((s) => `${s.file}: action "${s.action}"`);
+    expect(
+      unextractable,
+      `Emit sites where the target-extraction regex found no targets ` +
+        `(possible new emit pattern):\n${unextractable.join("\n")}`
+    ).toEqual([]);
+  });
+
   it("every emit call's targets match the schema for that action", () => {
     const mismatches: string[] = [];
     const schemaCache = new Map<string, SchemaFile>();
 
     for (const site of sites) {
+      if (site.unextractable) {
+        continue;
+      }
       let schema = schemaCache.get(site.action);
       if (!schema) {
         try {
