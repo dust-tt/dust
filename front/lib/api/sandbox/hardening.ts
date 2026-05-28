@@ -11,6 +11,7 @@ export const SANDBOX_STATIC_ROOT_CONSUMED_DIRS = [
   "/usr/local/lib/systemd/system-generators",
   "/usr/local/lib/tmpfiles.d",
   "/usr/local/share",
+  "/usr/local/share/ca-certificates",
   "/usr/local/share/dbus-1",
   "/usr/local/share/dbus-1/system-services",
   "/etc/dbus-1",

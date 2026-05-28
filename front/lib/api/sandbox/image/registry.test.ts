@@ -161,6 +161,9 @@ describe("sandbox image registry", () => {
     const runCommands = getRunCommands(getDustBaseImageOperations());
     const staticRootConsumedDirs = SANDBOX_STATIC_ROOT_CONSUMED_DIRS.join(" ");
 
+    expect(SANDBOX_STATIC_ROOT_CONSUMED_DIRS).toContain(
+      "/usr/local/share/ca-certificates"
+    );
     expect(runCommands).toEqual(
       expect.arrayContaining([
         expect.stringContaining(
@@ -388,6 +391,17 @@ describe("sandbox image registry", () => {
     );
 
     expect(tmpfilesConfig).toBe("d /run/dust 0755 root root -\n");
+    expect(installer).toContain('openssl x509 -in "$CA_PATH" -noout');
+    expect(installer).toContain(
+      'install -d -o root -g root -m 755 "$SYSTEM_CA_DIR"'
+    );
+    expect(installer).toContain(
+      'find "$SYSTEM_CA_DIR" -mindepth 1 -maxdepth 1 -exec rm -rf'
+    );
+    expect(installer).toContain('rm -f "$SYSTEM_CA_DEST"');
+    expect(installer).toContain(
+      'install -o root -g root -m 644 "$CA_PATH" "$SYSTEM_CA_DEST"'
+    );
     expect(installer).toContain("update-ca-certificates");
     expect(installer).toContain('cat "$SYSTEM_CA_BUNDLE"');
     expect(installer).toContain('cat "$CA_PATH"');

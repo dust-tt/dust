@@ -2,7 +2,8 @@
 set -euo pipefail
 
 CA_PATH="/run/dust/egress-ca.pem"
-SYSTEM_CA_DEST="/usr/local/share/ca-certificates/dust-egress.crt"
+SYSTEM_CA_DIR="/usr/local/share/ca-certificates"
+SYSTEM_CA_DEST="${SYSTEM_CA_DIR}/dust-egress.crt"
 SYSTEM_CA_BUNDLE="/etc/ssl/certs/ca-certificates.crt"
 MERGED_BUNDLE="/etc/dust/ca-bundle.pem"
 
@@ -11,10 +12,34 @@ if [ ! -s "$CA_PATH" ]; then
   exit 1
 fi
 
-mkdir -p /etc/dust /usr/local/share/ca-certificates /etc/ssl/certs/java
+if ! command -v openssl >/dev/null 2>&1; then
+  echo "openssl is required to validate $CA_PATH" >&2
+  exit 1
+fi
+
+if ! openssl x509 -in "$CA_PATH" -noout >/dev/null 2>&1; then
+  echo "dsbx CA file $CA_PATH is not a valid X.509 PEM certificate" >&2
+  exit 1
+fi
+
+mkdir -p /etc/dust /etc/ssl/certs/java
+
+if [ -L "$SYSTEM_CA_DIR" ] || { [ -e "$SYSTEM_CA_DIR" ] && [ ! -d "$SYSTEM_CA_DIR" ]; }; then
+  rm -f "$SYSTEM_CA_DIR"
+fi
+
+install -d -o root -g root -m 755 "$SYSTEM_CA_DIR"
+chown root:root "$SYSTEM_CA_DIR"
+chmod 755 "$SYSTEM_CA_DIR"
+
+# update-ca-certificates follows symlinks under this directory. Treat it as
+# Dust-owned staging and keep only the CA we install below before root asks it
+# to rebuild the world-readable system bundle.
+find "$SYSTEM_CA_DIR" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
+rm -f "$SYSTEM_CA_DEST"
 
 if command -v update-ca-certificates >/dev/null 2>&1; then
-  cp "$CA_PATH" "$SYSTEM_CA_DEST"
+  install -o root -g root -m 644 "$CA_PATH" "$SYSTEM_CA_DEST"
   if ! update-ca-certificates >/dev/null 2>&1; then
     echo "update-ca-certificates failed; continuing with explicit bundle" >&2
   fi
