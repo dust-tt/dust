@@ -14,15 +14,16 @@ import {
 } from "@app/types/connectors/workflows";
 import type { ConnectorProvider } from "@app/types/data_source";
 import type { ActionLink, CheckFunction } from "@app/types/production_checks";
-import type {
-  Client,
-  ScheduleHandle,
-  WorkflowHandle,
-} from "@temporalio/client";
+import type { ModelId } from "@app/types/shared/model_id";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { Client, ScheduleHandle } from "@temporalio/client";
+import chunk from "lodash/chunk";
 import { QueryTypes } from "sequelize";
 
+const WORKFLOW_LIST_BATCH_SIZE = 100;
+
 interface ConnectorBlob {
-  id: number;
+  id: ModelId;
   dataSourceId: string;
   workspaceId: string;
   pausedAt: Date | null;
@@ -31,6 +32,13 @@ interface ConnectorBlob {
 interface ProviderCheck {
   type: "workflow" | "schedule";
   makeIdsFn: (connector: ConnectorBlob) => string[];
+}
+
+interface MissingActiveWorkflow {
+  connectorId: ModelId;
+  workspaceId: string;
+  dataSourceId: string;
+  missingEntities: string[];
 }
 
 const providersToCheck: Partial<Record<ConnectorProvider, ProviderCheck>> = {
@@ -91,51 +99,60 @@ async function listAllConnectorsForProvider(provider: ConnectorProvider) {
   return connectors;
 }
 
-async function getMissingTemporalEntitiesActive(
+function makeWorkflowIdsListQuery(workflowIds: string[]): string {
+  return `WorkflowId IN (${workflowIds
+    .map((workflowId) => `"${workflowId}"`)
+    .join(",")}) AND ExecutionStatus = "Running"`;
+}
+
+async function listRunningWorkflowIds(
+  client: Client,
+  workflowIds: string[],
+  logger: Parameters<CheckFunction>[1],
+  heartbeat: Parameters<CheckFunction>[4]
+) {
+  const runningWorkflowIds = new Set<string>();
+
+  // Chunking to avoid having a huge IN (id1, id2, ..., idx).
+  const workflowIdBatches = chunk(workflowIds, WORKFLOW_LIST_BATCH_SIZE);
+  for (const workflowIdBatch of workflowIdBatches) {
+    heartbeat();
+
+    try {
+      for await (const workflow of client.workflow.list({
+        query: makeWorkflowIdsListQuery(workflowIdBatch),
+      })) {
+        runningWorkflowIds.add(workflow.workflowId);
+      }
+    } catch (error) {
+      logger.error({ error }, "Failed to list running Temporal workflows.");
+    }
+  }
+
+  return runningWorkflowIds;
+}
+
+async function getMissingTemporalSchedulesActive(
   client: Client,
   connector: ConnectorBlob,
   info: ProviderCheck
 ) {
-  const ids = info.makeIdsFn(connector);
+  const missingEntities: string[] = [];
 
-  const missingEntities = [];
-  switch (info.type) {
-    case "workflow": {
-      for (const workflowId of ids) {
-        try {
-          const workflowHandle: WorkflowHandle =
-            client.workflow.getHandle(workflowId);
+  for (const scheduleId of info.makeIdsFn(connector)) {
+    try {
+      const scheduleHandle: ScheduleHandle =
+        client.schedule.getHandle(scheduleId);
 
-          const descriptions = await Promise.all([workflowHandle.describe()]);
+      const description = await scheduleHandle.describe();
 
-          if (descriptions.some(({ status: { name } }) => name !== "RUNNING")) {
-            missingEntities.push(workflowId);
-          }
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-        } catch (err) {
-          missingEntities.push(workflowId);
-        }
+      if (description.state.paused) {
+        missingEntities.push(scheduleId);
       }
-      break;
-    }
-    case "schedule": {
-      for (const scheduleId of ids) {
-        try {
-          const scheduleHandle: ScheduleHandle =
-            client.schedule.getHandle(scheduleId);
-
-          const description = await scheduleHandle.describe();
-
-          if (description.state.paused) {
-            missingEntities.push(scheduleId);
-          }
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-        } catch (err) {
-          missingEntities.push(scheduleId);
-        }
-      }
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
+    } catch (err) {
+      missingEntities.push(scheduleId);
     }
   }
 
@@ -158,26 +175,66 @@ export const checkActiveWorkflows: CheckFunction = async (
 
     const client = await getTemporalClientForConnectorsNamespace();
 
-    const missingActiveWorkflows: any[] = [];
-    for (const connector of connectors) {
-      if (connector.pausedAt) {
-        continue;
+    let missingActiveWorkflows: MissingActiveWorkflow[] = [];
+
+    const activeConnectors = connectors.filter(
+      (connector) => !connector.pausedAt
+    );
+
+    switch (info.type) {
+      case "workflow": {
+        const workflowIdsByConnector = activeConnectors.map((connector) => ({
+          connector,
+          workflowIds: info.makeIdsFn(connector),
+        }));
+        const workflowIds = workflowIdsByConnector.flatMap(
+          ({ workflowIds }) => workflowIds
+        );
+        const runningWorkflowIds = await listRunningWorkflowIds(
+          client,
+          workflowIds,
+          logger,
+          heartbeat
+        );
+
+        missingActiveWorkflows = removeNulls(
+          workflowIdsByConnector.map(({ connector, workflowIds }) => {
+            const missingEntities = workflowIds.filter(
+              (workflowId) => !runningWorkflowIds.has(workflowId)
+            );
+
+            return missingEntities.length > 0
+              ? {
+                  connectorId: connector.id,
+                  workspaceId: connector.workspaceId,
+                  dataSourceId: connector.dataSourceId,
+                  missingEntities,
+                }
+              : null;
+          })
+        );
+        break;
       }
-      heartbeat();
+      case "schedule": {
+        for (const connector of activeConnectors) {
+          heartbeat();
 
-      const missingEntities = await getMissingTemporalEntitiesActive(
-        client,
-        connector,
-        info
-      );
+          const missingEntities = await getMissingTemporalSchedulesActive(
+            client,
+            connector,
+            info
+          );
 
-      if (missingEntities.length > 0) {
-        missingActiveWorkflows.push({
-          connectorId: connector.id,
-          workspaceId: connector.workspaceId,
-          dataSourceId: connector.dataSourceId,
-          missingEntities,
-        });
+          if (missingEntities.length > 0) {
+            missingActiveWorkflows.push({
+              connectorId: connector.id,
+              workspaceId: connector.workspaceId,
+              dataSourceId: connector.dataSourceId,
+              missingEntities,
+            });
+          }
+        }
+        break;
       }
     }
 
