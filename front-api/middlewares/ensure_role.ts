@@ -93,7 +93,7 @@ export const ensureIsSystemKey = () =>
       return apiError(ctx, {
         status_code: 403,
         api_error: {
-          type: "workspace_auth_error",
+          type: "invalid_oauth_token_error",
           message: "Only system keys can perform this action.",
         },
       });
