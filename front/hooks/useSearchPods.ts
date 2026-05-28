@@ -7,21 +7,21 @@ import type { SearchProjectsResponseBody } from "@app/pages/api/w/[wId]/spaces/s
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 
-type ProjectSearchResult = SearchProjectsResponseBody["spaces"][number];
+type PodsSearchResult = SearchProjectsResponseBody["spaces"][number];
 
-interface UseSearchProjectsParams {
+interface UseSearchPodsParams {
   workspaceId: string;
   enabled?: boolean;
   query?: string;
   limit?: number;
 }
 
-export function useSearchProjects({
+export function useSearchPods({
   workspaceId,
   enabled = true,
   query = "",
   limit = 20,
-}: UseSearchProjectsParams) {
+}: UseSearchPodsParams) {
   const { fetcher } = useFetcher();
   const [debouncedQuery, setDebouncedQuery] = useState(query);
 
@@ -69,9 +69,9 @@ export function useSearchProjects({
       }
     );
 
-  const projects = useMemo(() => {
+  const pods = useMemo(() => {
     if (!data) {
-      return emptyArray<ProjectSearchResult>();
+      return emptyArray<PodsSearchResult>();
     }
     return data.flatMap((page) => page.spaces);
   }, [data]);
@@ -85,7 +85,7 @@ export function useSearchProjects({
   }, [hasMore, isValidating, setSize, size]);
 
   return {
-    projects,
+    pods,
     isSearching: (!error && !data) || isDebouncing || isValidating,
     isLoadingMore: isValidating && size > 1,
     hasMore,

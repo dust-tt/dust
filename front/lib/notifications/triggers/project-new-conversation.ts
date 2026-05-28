@@ -9,7 +9,7 @@ import type { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import { isProjectConversation } from "@app/types/assistant/conversation";
+import { isPodConversation } from "@app/types/assistant/conversation";
 import {
   CONVERSATION_NOTIFICATION_METADATA_KEYS,
   CONVERSATION_UNREAD_TRIGGER_ID,
@@ -87,7 +87,7 @@ const triggerProjectNewConversationNotifications = async (
   }
 ): Promise<Result<void, DustError<"internal_error" | "space_not_found">>> => {
   // Only notify for project conversations.
-  if (!isProjectConversation(conversation)) {
+  if (!isPodConversation(conversation)) {
     return new Ok(undefined);
   }
 

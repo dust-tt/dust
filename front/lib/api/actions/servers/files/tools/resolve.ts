@@ -10,7 +10,7 @@ import {
 } from "@app/lib/api/files/mount_path";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { isProjectConversation } from "@app/types/assistant/conversation";
+import { isPodConversation } from "@app/types/assistant/conversation";
 import { isConversationFileUseCase } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -75,7 +75,7 @@ export async function resolveHandler(
   }
 
   if (useCase === "project_context") {
-    if (!isProjectConversation(conversation)) {
+    if (!isPodConversation(conversation)) {
       return new Err(
         new MCPError(
           `File \`${file_id}\` is a Pod file but this is not a Pod conversation.`,

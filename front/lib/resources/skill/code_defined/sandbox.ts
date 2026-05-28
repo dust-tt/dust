@@ -12,7 +12,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import type { SystemSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import logger from "@app/logger/logger";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
-import { isProjectConversation } from "@app/types/assistant/conversation";
+import { isPodConversation } from "@app/types/assistant/conversation";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import { Ok } from "@app/types/shared/result";
 
@@ -350,7 +350,7 @@ export const sandboxSkill = {
     const flags = await getFeatureFlags(auth);
     const hasDsbxTools = flags.includes("sandbox_dsbx_tools");
     const isProject = agentLoopData?.conversation
-      ? isProjectConversation(agentLoopData.conversation)
+      ? isPodConversation(agentLoopData.conversation)
       : false;
 
     return buildSandboxInstructions(auth, providerId, {

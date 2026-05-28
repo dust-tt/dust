@@ -2,12 +2,12 @@ import {
   ConversationMenu,
   useConversationMenu,
 } from "@app/components/assistant/conversation/ConversationMenu";
-import { CreateProjectModal } from "@app/components/assistant/conversation/CreateProjectModal";
+import { CreatePodModal } from "@app/components/assistant/conversation/CreatePodModal";
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
 import { StackedInAppBanners } from "@app/components/assistant/conversation/InAppBanner";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import { ProjectsBrowsePopover } from "@app/components/assistant/conversation/sidebar/ProjectsBrowsePopover";
-import { renderPodsList } from "@app/components/assistant/conversation/sidebar/ProjectsList";
+import { renderPodsList } from "@app/components/assistant/conversation/sidebar/PodList";
+import { PodsBrowsePopover } from "@app/components/assistant/conversation/sidebar/PodsBrowsePopover";
 import { SidebarSearch } from "@app/components/assistant/conversation/sidebar/SidebarSearch";
 import {
   filterTriggeredConversations,
@@ -20,19 +20,19 @@ import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import {
   useConversations,
   usePodConversationsSummary,
+  useSearchPodConversations,
   useSearchPrivateConversations,
-  useSearchProjectConversations,
 } from "@app/hooks/conversations";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useActivePodId } from "@app/hooks/useActivePodId";
 import { useDeleteConversation } from "@app/hooks/useDeleteConversation";
 import { useHideTriggeredConversations } from "@app/hooks/useHideTriggeredConversations";
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
-import { useMoveConversationToProject } from "@app/hooks/useMoveConversationToProject";
+import { useMoveConversationToPod } from "@app/hooks/useMoveConversationToPod";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { useProjectsSectionCollapsed } from "@app/hooks/useProjectsSectionCollapsed";
-import { useSearchProjects } from "@app/hooks/useSearchProjects";
-import { useStarredProjectsSectionCollapsed } from "@app/hooks/useStarredProjectsSectionCollapsed";
+import { usePodsSectionCollapsed } from "@app/hooks/usePodsSectionCollapsed";
+import { useSearchPods } from "@app/hooks/useSearchPods";
+import { useStarredPodsSectionCollapsed } from "@app/hooks/useStarredPodsSectionCollapsed";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { CONVERSATIONS_UPDATED_EVENT } from "@app/lib/notifications/events";
@@ -127,33 +127,33 @@ type GroupLabel =
   | "Last 12 Months"
   | "Older";
 
-interface SearchProjectItemProps {
-  space: PodType;
+interface SearchPodItemProps {
+  pod: PodType;
   owner: WorkspaceType;
   isMember: boolean;
-  activeSpaceId: string | null;
+  activePodId: string | null;
 }
 
-function SearchProjectItem({
-  space,
+function SearchPodItem({
+  pod,
   owner,
   isMember,
-  activeSpaceId,
-}: SearchProjectItemProps) {
+  activePodId: activePodId,
+}: SearchPodItemProps) {
   const router = useAppRouter();
   const { setSidebarOpen } = useContext(SidebarContext);
 
-  const isArchived = !!space.archivedAt;
+  const isArchived = !!pod.archivedAt;
 
   return (
     <NavigationListItem
-      selected={activeSpaceId === space.sId}
-      icon={getSpaceIcon(space)}
-      label={space.name}
+      selected={activePodId === pod.sId}
+      icon={getSpaceIcon(pod)}
+      label={pod.name}
       className={cn(!isMember && "italic")}
       onClick={async () => {
         setSidebarOpen(false);
-        await router.push(getPodRoute(owner.sId, space.sId));
+        await router.push(getPodRoute(owner.sId, pod.sId));
       }}
       suffix={
         isArchived ? (
@@ -166,12 +166,12 @@ function SearchProjectItem({
 
 interface SearchResultsProps {
   owner: WorkspaceType;
-  allProjects: Array<PodType & { isMember: boolean }>;
-  isSearchingProjects: boolean;
-  hasMoreProjects: boolean;
-  loadMoreProjects: () => void;
-  isLoadingMoreProjects: boolean;
-  projectConversationResults: Array<
+  allPods: Array<PodType>;
+  isSearchingPods: boolean;
+  hasMorePods: boolean;
+  loadMorePods: () => void;
+  isLoadingMorePods: boolean;
+  podConversationResults: Array<
     ConversationWithoutContentType & { spaceName: string }
   >;
   privateConversations: ConversationWithoutContentType[];
@@ -179,8 +179,8 @@ interface SearchResultsProps {
   hasMorePrivateConversations: boolean;
   loadMorePrivateConversations: () => void;
   isLoadingMorePrivateConversations: boolean;
-  isSearchingProjectConversations: boolean;
-  onCreateProject: () => void;
+  isSearchingPodConversations: boolean;
+  onCreatePod: () => void;
   activeConversationId: string | null;
   activeSpaceId: string | null;
   hideTriggeredConversations: boolean;
@@ -192,19 +192,19 @@ interface SearchResultsProps {
 
 function SearchResults({
   owner,
-  allProjects,
-  isSearchingProjects,
-  hasMoreProjects,
-  loadMoreProjects,
-  isLoadingMoreProjects,
-  projectConversationResults,
+  allPods,
+  isSearchingPods,
+  hasMorePods,
+  loadMorePods,
+  isLoadingMorePods,
+  podConversationResults,
   privateConversations,
   isSearchingPrivateConversations,
   hasMorePrivateConversations,
   loadMorePrivateConversations,
   isLoadingMorePrivateConversations,
-  isSearchingProjectConversations,
-  onCreateProject,
+  isSearchingPodConversations: isSearchingPodConversations,
+  onCreatePod,
   activeConversationId,
   activeSpaceId,
   hideTriggeredConversations,
@@ -213,7 +213,7 @@ function SearchResults({
   selectedConversations,
   toggleConversationSelection,
 }: SearchResultsProps) {
-  const [projectsSectionOpen, setProjectsSectionOpen] = useState(true);
+  const [podsSectionOpen, setPodsSectionOpen] = useState(true);
 
   const allConversations = useMemo(() => {
     const seen = new Set<string>();
@@ -230,7 +230,7 @@ function SearchResults({
     }
 
     // Semantic results second (when available)
-    for (const conv of projectConversationResults) {
+    for (const conv of podConversationResults) {
       if (!seen.has(conv.sId)) {
         seen.add(conv.sId);
         merged.push(conv);
@@ -245,29 +245,29 @@ function SearchResults({
     return merged;
   }, [
     privateConversations,
-    projectConversationResults,
+    podConversationResults,
     hideTriggeredConversations,
   ]);
 
   const hasTriggeredConversations = useMemo(
     () =>
       privateConversations.some((c) => c.triggerId !== null) ||
-      projectConversationResults.some((c) => c.triggerId !== null),
-    [privateConversations, projectConversationResults]
+      podConversationResults.some((c) => c.triggerId !== null),
+    [privateConversations, podConversationResults]
   );
 
-  const handleShowMoreProjects = useCallback(() => {
-    loadMoreProjects();
-  }, [loadMoreProjects]);
+  const handleShowMorePods = useCallback(() => {
+    loadMorePods();
+  }, [loadMorePods]);
 
   const handleShowMorePrivateConversations = useCallback(() => {
     loadMorePrivateConversations();
   }, [loadMorePrivateConversations]);
 
-  const showProjectsLoading = isSearchingProjects && !isLoadingMoreProjects;
+  const showPodsLoading = isSearchingPods && !isLoadingMorePods;
   const showConversationsLoading =
     (isSearchingPrivateConversations && !isLoadingMorePrivateConversations) ||
-    isSearchingProjectConversations;
+    isSearchingPodConversations;
 
   return (
     <div className="h-full overflow-y-auto">
@@ -275,8 +275,8 @@ function SearchResults({
         <NavigationListCollapsibleSection
           label="Pods"
           type="collapse"
-          open={projectsSectionOpen}
-          onOpenChange={setProjectsSectionOpen}
+          open={podsSectionOpen}
+          onOpenChange={setPodsSectionOpen}
           action={
             <>
               <Button
@@ -287,40 +287,40 @@ function SearchResults({
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  onCreateProject();
+                  onCreatePod();
                 }}
               />
-              <ProjectsBrowsePopover owner={owner} />
+              <PodsBrowsePopover owner={owner} />
             </>
           }
         >
-          {showProjectsLoading ? (
+          {showPodsLoading ? (
             <div className="flex items-center justify-center py-4">
               <Spinner size="sm" />
             </div>
-          ) : allProjects.length === 0 ? (
+          ) : allPods.length === 0 ? (
             <div className="px-3 py-2 text-sm text-muted-foreground">
               No results found
             </div>
           ) : (
             <>
-              {allProjects.map((project) => (
-                <SearchProjectItem
-                  key={project.sId}
-                  space={project}
+              {allPods.map((pod) => (
+                <SearchPodItem
+                  key={pod.sId}
+                  pod={pod}
                   owner={owner}
-                  isMember={project.isMember}
-                  activeSpaceId={activeSpaceId}
+                  isMember={pod.isMember}
+                  activePodId={activeSpaceId}
                 />
               ))}
-              {hasMoreProjects && (
+              {hasMorePods && (
                 <div className="flex justify-center py-2">
                   <Button
                     variant="ghost"
                     size="xs"
-                    label={isLoadingMoreProjects ? "Loading..." : "Show more"}
-                    onClick={handleShowMoreProjects}
-                    disabled={isLoadingMoreProjects}
+                    label={isLoadingMorePods ? "Loading..." : "Show more"}
+                    onClick={handleShowMorePods}
+                    disabled={isLoadingMorePods}
                   />
                 </div>
               )}
@@ -415,9 +415,9 @@ export function AgentSidebarMenu({
 }: AgentSidebarMenuProps) {
   const router = useAppRouter();
   const activeConversationId = useActiveConversationId();
-  const activeSpaceId = useActivePodId();
+  const activePodId = useActivePodId();
   const { hasFeature } = useFeatureFlags();
-  const moveConversationToProject = useMoveConversationToProject(owner);
+  const moveConversationToPod = useMoveConversationToPod(owner);
 
   const { providersHealth } = useAuth();
   const noHealthyProviders = !hasHealthyProviders(providersHealth);
@@ -453,22 +453,22 @@ export function AgentSidebarMenu({
     isLoadingMore,
   } = useConversations({ workspaceId: owner.sId });
 
-  const hasSpaceConversations = hasFeature("projects");
+  const hasPodConversations = hasFeature("projects");
 
   const {
     summary,
     isLoading: isSummaryLoading,
-    mutate: mutateSpaceSummary,
+    mutate: mutatePodConversationSummary,
   } = usePodConversationsSummary({
     workspaceId: owner.sId,
-    options: { disabled: !hasSpaceConversations },
+    options: { disabled: !hasPodConversations },
   });
 
   useEffect(() => {
     const handleConversationsUpdated = () => {
       void mutateConversations();
-      if (hasSpaceConversations) {
-        void mutateSpaceSummary();
+      if (hasPodConversations) {
+        void mutatePodConversationSummary();
       }
     };
     window.addEventListener(
@@ -481,7 +481,7 @@ export function AgentSidebarMenu({
         handleConversationsUpdated
       );
     };
-  }, [hasSpaceConversations, mutateConversations, mutateSpaceSummary]);
+  }, [hasPodConversations, mutateConversations, mutatePodConversationSummary]);
 
   const [isMultiSelect, setIsMultiSelect] = useState(false);
   const [selectedConversations, setSelectedConversations] = useState<
@@ -492,13 +492,11 @@ export function AgentSidebarMenu({
   const { hideTriggeredConversations, setHideTriggeredConversations } =
     useHideTriggeredConversations();
 
-  const { isProjectsSectionCollapsed, setProjectsSectionCollapsed } =
-    useProjectsSectionCollapsed();
+  const { isPodsSectionCollapsed, setPodsSectionCollapsed } =
+    usePodsSectionCollapsed();
 
-  const {
-    isStarredProjectsSectionCollapsed,
-    setStarredProjectsSectionCollapsed,
-  } = useStarredProjectsSectionCollapsed();
+  const { isStarredPodsSectionCollapsed, setStarredPodsSectionCollapsed } =
+    useStarredPodsSectionCollapsed();
 
   const isRestrictedFromAgentCreation =
     hasFeature("disallow_agent_creation_to_users") && !isBuilder(owner);
@@ -508,29 +506,28 @@ export function AgentSidebarMenu({
   >(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [titleFilter, setTitleFilter] = useState<string>("");
-  const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] =
-    useState(false);
+  const [isCreatePodModalOpen, setIsCreatePodModalOpen] = useState(false);
   const [isImportSkillDialogOpen, setIsImportSkillDialogOpen] = useState(false);
 
   const {
-    projects: allProjects,
-    isSearching: isSearchingProjects,
-    hasMore: hasMoreProjects,
-    loadMore: loadMoreProjects,
-    isLoadingMore: isLoadingMoreProjects,
-  } = useSearchProjects({
+    pods,
+    isSearching: isSearchingPods,
+    hasMore: hasMorePods,
+    loadMore: loadMorePods,
+    isLoadingMore: isLoadingMorePods,
+  } = useSearchPods({
     workspaceId: owner.sId,
     query: titleFilter,
-    enabled: hasSpaceConversations && titleFilter.trim().length > 0,
+    enabled: hasPodConversations && titleFilter.trim().length > 0,
   });
 
   const {
-    conversations: projectConversationSearchResults,
-    isSearching: isSearchingProjectConversations,
-  } = useSearchProjectConversations({
+    conversations: podConversationSearchResults,
+    isSearching: isSearchingPodConversations,
+  } = useSearchPodConversations({
     workspaceId: owner.sId,
     query: titleFilter,
-    enabled: hasSpaceConversations && titleFilter.trim().length > 0,
+    enabled: hasPodConversations && titleFilter.trim().length > 0,
   });
 
   const {
@@ -542,7 +539,7 @@ export function AgentSidebarMenu({
   } = useSearchPrivateConversations({
     workspaceId: owner.sId,
     query: titleFilter,
-    enabled: hasSpaceConversations && titleFilter.trim().length > 0,
+    enabled: hasPodConversations && titleFilter.trim().length > 0,
   });
 
   const { isUploading: isUploadingYAML, triggerYAMLUpload } = useYAMLUpload({
@@ -671,12 +668,12 @@ export function AgentSidebarMenu({
     );
   }, [conversations, hideTriggeredConversations]);
 
-  const isSearchActive = hasSpaceConversations && titleFilter.trim().length > 0;
+  const isSearchActive = hasPodConversations && titleFilter.trim().length > 0;
 
-  const sidebarTitleFilter = hasSpaceConversations ? "" : titleFilter;
+  const sidebarTitleFilter = hasPodConversations ? "" : titleFilter;
 
   const starredSection = useMemo(() => {
-    if (!hasSpaceConversations) {
+    if (!hasPodConversations) {
       return null;
     }
     const starredSummary = summary.filter(({ space }) => space.isStarred);
@@ -687,7 +684,7 @@ export function AgentSidebarMenu({
     }
 
     const showCount =
-      isStarredProjectsSectionCollapsed && starredCountInSummary > 0;
+      isStarredPodsSectionCollapsed && starredCountInSummary > 0;
 
     const VISIBLE_STARRED = 5;
     const hiddenStarredSummary = starredSummary.slice(VISIBLE_STARRED);
@@ -710,41 +707,39 @@ export function AgentSidebarMenu({
           visibleItems={VISIBLE_STARRED}
           overflowCount={hiddenOverflowCount}
           overflowHasActivity={hiddenOverflowHasActivity}
-          open={!isStarredProjectsSectionCollapsed}
-          onOpenChange={(open) => setStarredProjectsSectionCollapsed(!open)}
+          open={!isStarredPodsSectionCollapsed}
+          onOpenChange={(open) => setStarredPodsSectionCollapsed(!open)}
         >
           {renderPodsList({
             owner,
             summary: starredSummary,
             titleFilter: sidebarTitleFilter,
-            moveConversationToPod: moveConversationToProject,
+            moveConversationToPod: moveConversationToPod,
           })}
         </NavigationListCollapsibleSection>
       </NavigationList>
     );
   }, [
-    hasSpaceConversations,
+    hasPodConversations,
     summary,
     owner,
     sidebarTitleFilter,
-    moveConversationToProject,
-    isStarredProjectsSectionCollapsed,
-    setStarredProjectsSectionCollapsed,
+    moveConversationToPod,
+    isStarredPodsSectionCollapsed,
+    setStarredPodsSectionCollapsed,
   ]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
-  const projectsSection = useMemo(() => {
-    if (!hasSpaceConversations) {
+  const podsSection = useMemo(() => {
+    if (!hasPodConversations) {
       return null;
     }
-    const nonStarredSummary = summary.filter(
-      (project) => !project.space.isStarred
-    );
-    const projectCountInSummary = nonStarredSummary.length;
-    const showCount = isProjectsSectionCollapsed && projectCountInSummary > 0;
+    const nonStarredSummary = summary.filter((pod) => !pod.space.isStarred);
+    const podCountInSummary = nonStarredSummary.length;
+    const showCount = isPodsSectionCollapsed && podCountInSummary > 0;
 
-    const VISIBLE_PROJECTS = 4;
-    const hiddenSummary = nonStarredSummary.slice(VISIBLE_PROJECTS);
+    const VISIBLE_PODS = 4;
+    const hiddenSummary = nonStarredSummary.slice(VISIBLE_PODS);
     const hiddenOverflowCount = hiddenSummary.reduce(
       (sum, s) => sum + s.unreadConversations.length,
       0
@@ -758,13 +753,13 @@ export function AgentSidebarMenu({
     return (
       <NavigationList className="px-2">
         <NavigationListCollapsibleSection
-          label={showCount ? `Pods (${projectCountInSummary})` : "Pods"}
+          label={showCount ? `Pods (${podCountInSummary})` : "Pods"}
           type="collapse"
-          visibleItems={VISIBLE_PROJECTS}
+          visibleItems={VISIBLE_PODS}
           overflowCount={hiddenOverflowCount}
           overflowHasActivity={hiddenOverflowHasActivity}
-          open={!isProjectsSectionCollapsed}
-          onOpenChange={(open) => setProjectsSectionCollapsed(!open)}
+          open={!isPodsSectionCollapsed}
+          onOpenChange={(open) => setPodsSectionCollapsed(!open)}
           action={
             <>
               {nonStarredSummary.length > 0 && (
@@ -776,11 +771,11 @@ export function AgentSidebarMenu({
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    setIsCreateProjectModalOpen(true);
+                    setIsCreatePodModalOpen(true);
                   }}
                 />
               )}
-              <ProjectsBrowsePopover owner={owner} />
+              <PodsBrowsePopover owner={owner} />
             </>
           }
         >
@@ -793,25 +788,25 @@ export function AgentSidebarMenu({
               owner,
               summary: nonStarredSummary,
               titleFilter: sidebarTitleFilter,
-              moveConversationToPod: moveConversationToProject,
+              moveConversationToPod: moveConversationToPod,
             })
           ) : (
             <NavigationListItem
               label="Create a Pod"
               icon={PlusIcon}
-              onClick={() => setIsCreateProjectModalOpen(true)}
+              onClick={() => setIsCreatePodModalOpen(true)}
             />
           )}
         </NavigationListCollapsibleSection>
       </NavigationList>
     );
   }, [
-    hasSpaceConversations,
+    hasPodConversations,
     owner,
     summary,
-    setIsCreateProjectModalOpen,
-    isProjectsSectionCollapsed,
-    setProjectsSectionCollapsed,
+    setIsCreatePodModalOpen,
+    isPodsSectionCollapsed,
+    setPodsSectionCollapsed,
     isSummaryLoading,
     sidebarTitleFilter,
   ]);
@@ -828,7 +823,7 @@ export function AgentSidebarMenu({
         activeConversationId={activeConversationId}
         owner={owner}
         starredSection={starredSection}
-        projectsSection={projectsSection}
+        podsSection={podsSection}
         hasTriggeredConversations={hasTriggeredConversations}
         hideTriggeredConversations={hideTriggeredConversations}
         setHideTriggeredConversations={setHideTriggeredConversations}
@@ -849,7 +844,7 @@ export function AgentSidebarMenu({
     activeConversationId,
     owner,
     starredSection,
-    projectsSection,
+    podsSection,
     hasTriggeredConversations,
     hideTriggeredConversations,
     setHideTriggeredConversations,
@@ -872,9 +867,9 @@ export function AgentSidebarMenu({
         type={showDeleteDialog || "all"}
         selectedCount={selectedConversations.length}
       />
-      <CreateProjectModal
-        isOpen={isCreateProjectModalOpen}
-        onClose={() => setIsCreateProjectModalOpen(false)}
+      <CreatePodModal
+        isOpen={isCreatePodModalOpen}
+        onClose={() => setIsCreatePodModalOpen(false)}
         onCreated={() => setSidebarOpen(false)}
         owner={owner}
       />
@@ -905,7 +900,7 @@ export function AgentSidebarMenu({
               </div>
             ) : (
               <div className="z-50 flex justify-end gap-2 p-2">
-                {hasSpaceConversations ? (
+                {hasPodConversations ? (
                   <div className="flex-1">
                     <SidebarSearch
                       titleFilter={titleFilter}
@@ -1107,12 +1102,12 @@ export function AgentSidebarMenu({
             {isSearchActive ? (
               <SearchResults
                 owner={owner}
-                allProjects={allProjects}
-                isSearchingProjects={isSearchingProjects}
-                hasMoreProjects={hasMoreProjects}
-                loadMoreProjects={loadMoreProjects}
-                isLoadingMoreProjects={isLoadingMoreProjects}
-                projectConversationResults={projectConversationSearchResults}
+                allPods={pods}
+                isSearchingPods={isSearchingPods}
+                hasMorePods={hasMorePods}
+                loadMorePods={loadMorePods}
+                isLoadingMorePods={isLoadingMorePods}
+                podConversationResults={podConversationSearchResults}
                 privateConversations={privateConversationSearchResults}
                 isSearchingPrivateConversations={
                   isSearchingPrivateConversations
@@ -1122,12 +1117,10 @@ export function AgentSidebarMenu({
                 isLoadingMorePrivateConversations={
                   isLoadingMorePrivateConversations
                 }
-                isSearchingProjectConversations={
-                  isSearchingProjectConversations
-                }
-                onCreateProject={() => setIsCreateProjectModalOpen(true)}
+                isSearchingPodConversations={isSearchingPodConversations}
+                onCreatePod={() => setIsCreatePodModalOpen(true)}
                 activeConversationId={activeConversationId}
-                activeSpaceId={activeSpaceId}
+                activeSpaceId={activePodId}
                 hideTriggeredConversations={hideTriggeredConversations}
                 setHideTriggeredConversations={setHideTriggeredConversations}
                 isMultiSelect={isMultiSelect}
@@ -1334,7 +1327,7 @@ const ConversationListItem = memo(
 
     const handleDragStart = useCallback(
       (e: React.DragEvent) => {
-        // Only allow dragging if not in multi-select mode and conversation is not already in a project
+        // Only allow dragging if not in multi-select mode and conversation is not already in a pod
         if (isMultiSelect || conversation.spaceId) {
           e.preventDefault();
           return;
@@ -1433,7 +1426,7 @@ interface NavigationListWithInboxProps {
   activeConversationId: string | null;
   owner: WorkspaceType;
   starredSection?: React.ReactNode;
-  projectsSection?: React.ReactNode;
+  podsSection?: React.ReactNode;
   hasTriggeredConversations: boolean;
   hideTriggeredConversations: boolean;
   setHideTriggeredConversations: (hide: boolean) => void;
@@ -1454,7 +1447,7 @@ function NavigationListWithInbox({
   activeConversationId,
   owner,
   starredSection,
-  projectsSection,
+  podsSection,
   hasTriggeredConversations,
   hideTriggeredConversations,
   setHideTriggeredConversations,
@@ -1572,7 +1565,7 @@ function NavigationListWithInbox({
         )}
       </AnimatePresence>
       {starredSection}
-      {projectsSection}
+      {podsSection}
       <NavigationList className="px-2">
         <NavigationListCollapsibleSection
           label="Conversations"

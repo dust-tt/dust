@@ -19,7 +19,7 @@ export function usePinPodBanner({
   isEditor: boolean;
 }) {
   const confirm = useContext(ConfirmContext);
-  const updateProjectMetadata = useUpdatePodMetadata({
+  const updatePodMetadata = useUpdatePodMetadata({
     owner,
     podId: podId,
   });
@@ -42,9 +42,9 @@ export function usePinPodBanner({
         return;
       }
 
-      await updateProjectMetadata({ pinnedFramePath: path });
+      await updatePodMetadata({ pinnedFramePath: path });
     },
-    [confirm, isEditor, updateProjectMetadata]
+    [confirm, isEditor, updatePodMetadata]
   );
 
   const unpinFrame = useCallback(
@@ -67,9 +67,9 @@ export function usePinPodBanner({
         return;
       }
 
-      await updateProjectMetadata({ pinnedFramePath: null });
+      await updatePodMetadata({ pinnedFramePath: null });
     },
-    [confirm, isEditor, updateProjectMetadata]
+    [confirm, isEditor, updatePodMetadata]
   );
 
   const togglePin = useCallback(

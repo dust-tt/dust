@@ -14,7 +14,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import { isProjectConversation } from "@app/types/assistant/conversation";
+import { isPodConversation } from "@app/types/assistant/conversation";
 import { stripMimeParameters } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -55,7 +55,7 @@ async function buildPodMountPoint(
   conversation: ConversationWithoutContentType,
   { access }: { access: Access }
 ): Promise<Result<MountPoint, MCPError>> {
-  if (!isProjectConversation(conversation)) {
+  if (!isPodConversation(conversation)) {
     return new Err(
       new MCPError("Pod file paths are only available in Pod conversations.", {
         tracked: false,
