@@ -1862,6 +1862,72 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       },
     },
   },
+  {
+    id: 10023,
+    name: "Apify",
+    description:
+      "Apify tools to discover and run Actors (web scrapers and automations), read their outputs, and browse Apify storage.",
+    url: "https://mcp.apify.com/",
+    icon: "ApifyLogo",
+    documentationUrl: "https://docs.apify.com/platform/integrations/mcp",
+    connectionInstructions:
+      "Apify uses OAuth. You will be prompted to sign in with your Apify account in a browser window to authorize access.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      "search-actors": "never_ask",
+      "fetch-actor-details": "never_ask",
+      "get-actor-run": "never_ask",
+      "get-dataset-items": "never_ask",
+      "get-key-value-store-record": "never_ask",
+      "search-apify-docs": "never_ask",
+      "fetch-apify-docs": "never_ask",
+      "call-actor": "low",
+      "abort-actor-run": "low",
+      "apify--rag-web-browser": "low",
+    },
+    toolDisplayLabels: {
+      "search-actors": {
+        running: "Searching Actors on Apify",
+        done: "Searched Actors on Apify",
+      },
+      "fetch-actor-details": {
+        running: "Fetching Actor details from Apify",
+        done: "Fetched Actor details from Apify",
+      },
+      "get-actor-run": {
+        running: "Fetching Actor run from Apify",
+        done: "Fetched Actor run from Apify",
+      },
+      "get-dataset-items": {
+        running: "Fetching dataset items from Apify",
+        done: "Fetched dataset items from Apify",
+      },
+      "get-key-value-store-record": {
+        running: "Fetching key-value record from Apify",
+        done: "Fetched key-value record from Apify",
+      },
+      "search-apify-docs": {
+        running: "Searching Apify docs",
+        done: "Searched Apify docs",
+      },
+      "fetch-apify-docs": {
+        running: "Fetching Apify docs page",
+        done: "Fetched Apify docs page",
+      },
+      "call-actor": {
+        running: "Running Actor on Apify",
+        done: "Ran Actor on Apify",
+      },
+      "abort-actor-run": {
+        running: "Aborting Actor run on Apify",
+        done: "Aborted Actor run on Apify",
+      },
+      "apify--rag-web-browser": {
+        running: "Browsing the web with Apify",
+        done: "Browsed the web with Apify",
+      },
+    },
+  },
 ];
 
 export const isDefaultRemoteMcpServerURL = (url: string | undefined) => {

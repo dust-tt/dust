@@ -1,6 +1,7 @@
 export { default as Ai21Logo } from "./Ai21";
 export { default as AmplitudeLogo } from "./Amplitude";
 export { default as AnthropicLogo } from "./Anthropic";
+export { default as ApifyLogo } from "./Apify";
 export { default as AsanaLogo } from "./Asana";
 export { default as AshbyLogo } from "./Ashby";
 export { default as AttioLogo } from "./Attio";
