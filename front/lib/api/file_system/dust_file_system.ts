@@ -452,16 +452,12 @@ export class DustFileSystem {
       return null;
     }
 
-    const encodedPath = entry.path
-      .split("/")
-      .map(encodeURIComponent)
-      .join("/");
+    const encodedPath = entry.path.split("/").map(encodeURIComponent).join("/");
 
     return (
       `${config.getApiBaseUrl()}/api/w/${workspaceId}` +
       `/files/path/${encodedPath}?thumbnail=1`
     );
-  }
   }
 
   /**
