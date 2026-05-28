@@ -70,7 +70,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
     description:
       "Edit Pod information: title, description, and/or pinned frame. " +
       "Provide at least one field to update. Descriptions must be plain text only (no markdown, HTML, or formatting). " +
-      "The pinned frame must be an existing Pod file path under `project/` (use null to unpin).",
+      "The pinned frame must be an existing Pod file path under `pod/` (use null to unpin).",
     schema: {
       title: z.string().optional().describe("New Pod title"),
       description: z
@@ -84,7 +84,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
         .nullable()
         .optional()
         .describe(
-          "Path to a Pod file to pin as the Pod banner frame (e.g. project/banner.html). Pass null to unpin."
+          "Path to a Pod file to pin as the Pod banner frame (e.g. pod/banner.html). Pass null to unpin."
         ),
       dustPod: ConfigurableToolInputSchemas[
         INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
