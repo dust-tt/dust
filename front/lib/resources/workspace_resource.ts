@@ -119,7 +119,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
   }
 
   private static readonly workspaceCacheKeyResolver = (wId: string) =>
-    `workspace:sid:${wId}:v${WORKSPACE_CACHE_KEY_VERSION}`;
+    `workspace:v${WORKSPACE_CACHE_KEY_VERSION}:${wId}`;
 
   static isWorkspaceConversationKillSwitchValue(
     killSwitched: unknown

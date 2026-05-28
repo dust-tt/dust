@@ -45,7 +45,7 @@ export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
       },
     ],
     buildResolverKey: (p) =>
-      `workspace:sid:${p.wId}:v${WORKSPACE_CACHE_KEY_VERSION}`,
+      `workspace:v${WORKSPACE_CACHE_KEY_VERSION}:${p.wId}`,
   },
   {
     id: "user_by_workos_id",
