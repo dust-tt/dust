@@ -1,9 +1,9 @@
-import { Hono } from "hono";
+import { createHono } from "@front-api/lib/hono";
 
 import profiler from "./profiler";
 
 // Mounted at /api/debug.
-const app = new Hono();
+const app = createHono();
 
 app.route("/profiler", profiler);
 

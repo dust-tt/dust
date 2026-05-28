@@ -14,11 +14,11 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { isConversationFileUseCase } from "@app/types/files";
+import { createHono } from "@front-api/lib/hono";
 import type { WorkspaceAwareCtx } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import type { HttpBindings } from "@hono/node-server";
 import type { Context } from "hono";
-import { Hono } from "hono";
 
 import editText from "./edit-text";
 import exportApp from "./export";
@@ -63,7 +63,7 @@ function getSecureFileAction(
 }
 
 // Mounted at /api/w/:wId/files/:fileId.
-const app = new Hono<WorkspaceAwareCtx & { Bindings: HttpBindings }>();
+const app = createHono<WorkspaceAwareCtx & { Bindings: HttpBindings }>();
 
 app.get("/", async (ctx) => {
   const auth = ctx.get("auth");

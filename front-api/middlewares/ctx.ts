@@ -4,7 +4,7 @@ import type { DataSourceResource } from "@app/lib/resources/data_source_resource
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import { Hono } from "hono";
+import { createHono } from "@front-api/lib/hono";
 
 export type SessionCtx = {
   Variables: {
@@ -54,9 +54,9 @@ export type SkillCtx = WorkspaceAwareCtx & {
   };
 };
 
-export const unauthedApp = () => new Hono();
-export const sessionApp = () => new Hono<SessionCtx>();
-export const workspaceApp = () => new Hono<WorkspaceAwareCtx>();
-export const pokeApp = () => new Hono<PokeCtx>();
-export const publicApiApp = () => new Hono<PublicApiCtx>();
-export const skillApp = () => new Hono<SkillCtx>();
+export const unauthedApp = () => createHono();
+export const sessionApp = () => createHono<SessionCtx>();
+export const workspaceApp = () => createHono<WorkspaceAwareCtx>();
+export const pokeApp = () => createHono<PokeCtx>();
+export const publicApiApp = () => createHono<PublicApiCtx>();
+export const skillApp = () => createHono<SkillCtx>();

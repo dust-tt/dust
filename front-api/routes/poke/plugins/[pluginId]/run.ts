@@ -9,12 +9,12 @@ import {
   supportedResourceTypes,
 } from "@app/types/poke/plugins";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { createHono } from "@front-api/lib/hono";
 import type { PokeCtx } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import type { HttpBindings } from "@hono/node-server";
 import { IncomingForm } from "formidable";
-import { Hono } from "hono";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
@@ -33,7 +33,7 @@ export interface PokeRunPluginResponseBody {
 // We extend the poke context with `HttpBindings` so we can hand the raw Node
 // `IncomingMessage` (exposed by `@hono/node-server` on `ctx.env.incoming`) to
 // `formidable.parse(...)` — matching the Next handler.
-const app = new Hono<PokeCtx & { Bindings: HttpBindings }>();
+const app = createHono<PokeCtx & { Bindings: HttpBindings }>();
 
 app.post(
   "/",

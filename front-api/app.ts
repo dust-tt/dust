@@ -1,4 +1,4 @@
-import { Hono } from "hono";
+import { createHono } from "@front-api/lib/hono";
 
 import { cors } from "./middlewares/cors";
 import { requestLogger } from "./middlewares/request_logger";
@@ -36,7 +36,7 @@ import workspaceJoinApp from "./routes/w/[wId]/join";
 import workosApp from "./routes/workos";
 import { workspaceLookupApp } from "./routes/workspace-lookup";
 
-const apiApp = new Hono();
+const apiApp = createHono();
 apiApp.route("/healthz", healthzApp);
 apiApp.route("/app-status", appStatusApp);
 apiApp.route("/auth/login", loginApp);
@@ -78,7 +78,7 @@ apiApp.route("/v1/w/:wId", publicWorkspaceApp);
 // above.
 apiApp.route("/:preStopSecret", preStopApp);
 
-export const honoApp = new Hono();
+export const honoApp = createHono();
 honoApp.use("*", requestLogger);
 honoApp.use("*", cors);
 honoApp.route("/api", apiApp);

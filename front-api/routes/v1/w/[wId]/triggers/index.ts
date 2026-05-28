@@ -1,4 +1,4 @@
-import { Hono } from "hono";
+import { createHono } from "@front-api/lib/hono";
 
 import hooks from "./hooks";
 
@@ -6,7 +6,7 @@ import hooks from "./hooks";
 // `publicWorkspaceApp` in `routes/v1/index.ts` so it does not inherit
 // `publicApiAuth` — the webhook endpoint uses its own URL secret-based
 // authentication.
-const app = new Hono();
+const app = createHono();
 
 app.route("/hooks", hooks);
 

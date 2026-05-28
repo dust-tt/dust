@@ -1,8 +1,8 @@
-import { Hono } from "hono";
+import { createHono } from "@front-api/lib/hono";
 
 import actionSecret from "./[actionSecret]";
 
-const app = new Hono();
+const app = createHono();
 app.route("/:actionSecret", actionSecret);
 
 export default app;
