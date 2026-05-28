@@ -44,7 +44,7 @@ import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import {
   CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
-  CLAUDE_OPUS_4_7_DEFAULT_MODEL_CONFIG,
+  CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
 import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
@@ -568,7 +568,7 @@ export function _getDustAntGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_ANT,
     name: "dust-ant",
-    preferredModelConfiguration: CLAUDE_OPUS_4_7_DEFAULT_MODEL_CONFIG,
+    preferredModelConfiguration: CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
     preferredReasoningEffort: "light",
   });
 }
@@ -580,7 +580,7 @@ export function _getDustAntMediumGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM,
     name: "dust-ant-medium",
-    preferredModelConfiguration: CLAUDE_OPUS_4_7_DEFAULT_MODEL_CONFIG,
+    preferredModelConfiguration: CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
     preferredReasoningEffort: "medium",
   });
 }
@@ -592,7 +592,7 @@ export function _getDustAntHighGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_ANT_HIGH,
     name: "dust-ant-high",
-    preferredModelConfiguration: CLAUDE_OPUS_4_7_DEFAULT_MODEL_CONFIG,
+    preferredModelConfiguration: CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
     preferredReasoningEffort: "high",
   });
 }
@@ -865,7 +865,7 @@ export function _getDustAntMediumOmittedGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM_OMITTED,
     name: "dust-ant-medium-omitted",
-    preferredModelConfiguration: CLAUDE_OPUS_4_7_DEFAULT_MODEL_CONFIG,
+    preferredModelConfiguration: CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
     preferredReasoningEffort: "medium",
     omittedThinking: true,
   });
@@ -878,7 +878,7 @@ export function _getDustAntHighOmittedGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_ANT_HIGH_OMITTED,
     name: "dust-ant-high-omitted",
-    preferredModelConfiguration: CLAUDE_OPUS_4_7_DEFAULT_MODEL_CONFIG,
+    preferredModelConfiguration: CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
     preferredReasoningEffort: "high",
     omittedThinking: true,
   });
