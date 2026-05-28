@@ -561,7 +561,7 @@ export const INTERNAL_MCP_SERVERS = {
     availability: "manual" as const,
     allowMultipleInstances: true,
     isRestricted: undefined,
-    isPreview: true,
+    isPreview: false,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -1145,17 +1145,17 @@ export const INTERNAL_MCP_SERVERS = {
   [K in InternalMCPServerNameType]: InternalMCPServerEntryBase<K>;
 };
 
+type IsRestrictedCallback = (params: {
+  plan: PlanType;
+  featureFlags: WhitelistableFeature[];
+  isDeepDiveDisabled: boolean;
+}) => boolean;
+
 type InternalMCPServerEntryCommon = {
   id: number;
   availability: MCPServerAvailability;
   allowMultipleInstances: boolean;
-  isRestricted:
-    | ((params: {
-        plan: PlanType;
-        featureFlags: WhitelistableFeature[];
-        isDeepDiveDisabled: boolean;
-      }) => boolean)
-    | undefined;
+  isRestricted: IsRestrictedCallback | undefined;
   isPreview: boolean;
   // Defines which arguments require per-agent approval for "medium" stake tools.
   // When a tool has "medium" stake, the user must approve the specific combination
@@ -1167,7 +1167,15 @@ type InternalMCPServerEntryCommon = {
   sensitivityLabelProvider?: string;
   // When false, the server is hidden from direct execution contexts (e.g. sandbox CLI).
   // Defaults to true.
-};
+} & (
+  | {
+      // A restricted server is not necessarily in preview (can be restricted based on the plan for instance).
+      isPreview: boolean;
+      isRestricted: IsRestrictedCallback;
+    }
+  // Non restricted server cannot be in preview
+  | { isPreview: false; isRestricted: undefined }
+);
 
 type InternalMCPServerEntryWithMetadata<K extends InternalMCPServerNameType> =
   InternalMCPServerEntryCommon & {
