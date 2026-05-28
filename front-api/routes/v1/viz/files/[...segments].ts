@@ -9,6 +9,7 @@ import { extractAndVerifyVizAccessTokenFromHeader } from "@app/lib/api/viz/acces
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 import { unauthedApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
@@ -196,6 +197,9 @@ app.get("/:scope/:rel{.+}", async (ctx) => {
       }
       break;
     }
+
+    default:
+      assertNever(scope);
   }
 
   const statResult = await fs.stat(canonicalScopedPath);

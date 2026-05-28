@@ -12,6 +12,7 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 import path from "path";
@@ -218,6 +219,9 @@ async function handler(
       }
       break;
     }
+
+    default:
+      assertNever(scope);
   }
 
   const statResult = await fs.stat(canonicalScopedPath);
