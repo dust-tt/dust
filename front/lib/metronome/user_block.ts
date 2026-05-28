@@ -20,6 +20,8 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import type { WorkspacePoolCreditState } from "@app/types/credits";
+import { isWorkspacePoolCreditState } from "@app/types/credits";
 
 const REDIS_ORIGIN = "metronome_limit" as const;
 const BLOCKED_FLAG = "1";
@@ -33,11 +35,15 @@ function buildWorkspacePoolDepletedKey(workspaceId: string): string {
   return `metronome:pool_depleted:${workspaceId}`;
 }
 
+function buildWorkspaceCreditPoolStatusKey(workspaceId: string): string {
+  return `metronome:pool_credit_status:${workspaceId}`;
+}
+
 function isBlockFlag(value: string | null): value is "0" | "1" {
   return value === BLOCKED_FLAG || value === NOT_BLOCKED_FLAG;
 }
 
-async function setFlag(key: string, value: "0" | "1"): Promise<void> {
+async function setFlag(key: string, value: string): Promise<void> {
   await runOnRedis({ origin: REDIS_ORIGIN }, async (client) => {
     await client.set(key, value);
   });
@@ -174,6 +180,48 @@ export async function isUserBlocked(
   });
 
   return state.userCapBlocked || state.workspacePoolDepleted;
+}
+
+// Workspace credit pool status (fine-grained state for UI/notifications).
+
+export async function setWorkspaceCreditPoolStatus(
+  workspaceId: string,
+  status: WorkspacePoolCreditState
+): Promise<void> {
+  await setFlag(buildWorkspaceCreditPoolStatusKey(workspaceId), status);
+}
+
+export async function getWorkspaceCreditPoolStatus(
+  workspaceId: string
+): Promise<WorkspacePoolCreditState> {
+  const cached = await runOnRedis({ origin: REDIS_ORIGIN }, async (client) =>
+    client.get(buildWorkspaceCreditPoolStatusKey(workspaceId))
+  );
+
+  if (cached && isWorkspacePoolCreditState(cached)) {
+    return cached;
+  }
+
+  logger.info(
+    {
+      workspaceId,
+      workspaceCreditPoolStatusCacheHit: false,
+    },
+    "[MetronomeUserBlock] Cache miss during credit pool status check, falling back to DB"
+  );
+
+  const workspace = await WorkspaceResource.fetchById(workspaceId);
+  if (!workspace) {
+    logger.warn(
+      { workspaceId },
+      "[MetronomeUserBlock] Workspace not found during credit pool status cache read-through fallback"
+    );
+    return "active";
+  }
+
+  const status = workspace.poolCreditState;
+  await setFlag(buildWorkspaceCreditPoolStatusKey(workspaceId), status);
+  return status;
 }
 
 // Workspace-pool-only read for API calls (no per-user cap).
