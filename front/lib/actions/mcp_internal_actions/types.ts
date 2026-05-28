@@ -354,12 +354,10 @@ export const GenerateImageInputSchema = z.object({
       "The aspect ratio of the generated image. Must be one of 1:1, 3:2, 2:3, 3:4, 4:3, 4:5, 5:4, 9:16, 16:9, or 21:9."
     ),
   quality: z
-    .enum(["low", "medium", "high"])
+    .enum(["low", "medium"])
     .optional()
     .default("low")
-    .describe(
-      "Output resolution: low (1K/1024px), medium (2K/2048px), or high (4K/4096px)."
-    ),
+    .describe("Output resolution: low (1K/1024px) or medium (2K/2048px)."),
 });
 
 export type GenerateImageInputType = z.infer<typeof GenerateImageInputSchema>;

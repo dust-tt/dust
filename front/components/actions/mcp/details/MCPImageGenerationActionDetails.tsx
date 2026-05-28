@@ -14,7 +14,6 @@ import React from "react";
 const QUALITY_LABELS: Record<string, string> = {
   low: "1K",
   medium: "2K",
-  high: "4K",
 };
 
 interface ReferenceImageChipProps {
