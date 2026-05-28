@@ -406,7 +406,7 @@ describe("/api/v1/viz/files/[...segments] security tests", () => {
 
     const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
       method: "GET",
-      query: { segments: ["project", "chart.png"] },
+      query: { segments: ["pod", "chart.png"] },
       headers: { authorization: `Bearer ${accessToken}` },
     });
 
@@ -432,7 +432,7 @@ describe("/api/v1/viz/files/[...segments] security tests", () => {
 
     const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
       method: "GET",
-      query: { segments: ["project", "chart.png"] },
+      query: { segments: ["pod", "chart.png"] },
       headers: { authorization: `Bearer ${accessToken}` },
     });
 
@@ -456,7 +456,7 @@ describe("/api/v1/viz/files/[...segments] security tests", () => {
 
     const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
       method: "GET",
-      query: { segments: ["project", "chart.png"] },
+      query: { segments: ["pod", "chart.png"] },
       headers: { authorization: `Bearer ${accessToken}` },
     });
 

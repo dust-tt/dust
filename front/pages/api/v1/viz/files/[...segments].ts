@@ -60,7 +60,7 @@ async function handler(
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: `Invalid scope prefix "${rawScope}": expected "conversation", "project", "conversation-{id}", or "pod-{id}".`,
+        message: `Invalid scope prefix "${rawScope}": expected "conversation", "pod", "conversation-{id}", or "pod-{id}".`,
       },
     });
   }
@@ -202,8 +202,8 @@ async function handler(
         // endpoint can serve them.
         canonicalScopedPath = `${SCOPED_PREFIX_CONVERSATION}${conversationId}/${normalizedRel}`;
       } else {
-        // "project": project-scoped frames have spaceId directly. Conversation-scoped frames
-        // that live in a project space get conversationSpaceId resolved by fetchByShareToken.
+        // "pod": pod-scoped frames have spaceId directly. Conversation-scoped frames
+        // that live in a pod get conversationSpaceId resolved by fetchByShareToken.
         const projectId =
           frameFile.useCaseMetadata?.spaceId ?? conversationSpaceId;
         if (!isString(projectId)) {
