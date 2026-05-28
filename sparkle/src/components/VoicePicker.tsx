@@ -3,6 +3,7 @@ import type {
   RegularButtonSize,
 } from "@sparkle/components/Button";
 import { Button } from "@sparkle/components/Button";
+import { useTranscribingProgress } from "@sparkle/hooks/useTranscribingProgress";
 import { MicIcon, SquareIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 import * as React from "react";
@@ -69,9 +70,14 @@ export function VoicePicker({
 
   const isRecording = status === "recording";
   const isTranscribing = status === "transcribing";
-  const isLoading =
-    status === "transcribing" || status === "authorizing_microphone";
+  const isLoading = status === "authorizing_microphone";
   const shouldShowStop = isRecording && interactionMode === "click";
+
+  const transcribingProgress = useTranscribingProgress({
+    isRecording,
+    isTranscribing,
+    elapsedRecordingSeconds: elapsedSeconds,
+  });
 
   function clearPressTimeout(): void {
     if (pressTimeoutRef.current !== null) {
@@ -215,7 +221,11 @@ export function VoicePicker({
 
   const icon = shouldShowStop ? SquareIcon : MicIcon;
   const variant = shouldShowStop ? "highlight" : "ghost-secondary";
-  const label = shouldShowStop && showStopLabel ? "Stop" : undefined;
+  const label = isTranscribing
+    ? `${transcribingProgress}%`
+    : shouldShowStop && showStopLabel
+      ? "Stop"
+      : undefined;
   const tooltip = computeTooltip(interactionMode, isRecording, isTranscribing);
 
   return (
@@ -240,7 +250,7 @@ export function VoicePicker({
         variant={variant}
         tooltip={tooltip}
         label={label}
-        disabled={disabled}
+        disabled={disabled || isTranscribing}
         onPointerDown={handlePointerDown}
         onPointerUp={handlePointerUp}
         onPointerLeave={handlePointerLeave}
