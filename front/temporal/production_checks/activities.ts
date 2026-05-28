@@ -87,7 +87,7 @@ export async function runAllChecksActivity(): Promise<CheckActivityResult[]> {
 }
 
 function getResultsFromHeartbeatDetails(
-  heartbeatDetails: unknown,
+  heartbeatDetails: unknown
 ): CheckActivityResult[] {
   const parsedHeartbeatDetails =
     CheckHeartbeatDetailsSchema.safeParse(heartbeatDetails);
@@ -103,7 +103,7 @@ function sendCheckHeartbeat(
     results,
   }: {
     results: CheckActivityResult[];
-  },
+  }
 ) {
   heartbeat({
     ...heartbeatData,
@@ -114,11 +114,11 @@ function sendCheckHeartbeat(
 async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
   const allCheckUuid = uuidv4();
   const results = getResultsFromHeartbeatDetails(
-    activityInfo().heartbeatDetails,
+    activityInfo().heartbeatDetails
   );
   const currentHour = new Date().getHours();
   const previouslyCompletedCheckNames = new Set(
-    results.map((result) => result.checkName),
+    results.map((result) => result.checkName)
   );
 
   mainLogger.info(
@@ -127,7 +127,7 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
       resumingFrom: results.length > 0 ? results.length : undefined,
       currentHour,
     },
-    "Running all checks",
+    "Running all checks"
   );
 
   for (const check of checks) {
@@ -137,7 +137,7 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
           all_check_uuid: allCheckUuid,
           checkName: check.name,
         },
-        "Check already completed in previous attempt, skipping",
+        "Check already completed in previous attempt, skipping"
       );
       continue;
     }
@@ -167,7 +167,7 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
 
         sendCheckHeartbeat(
           { type: "skip", name: check.name, uuid },
-          { results },
+          { results }
         );
 
         continue;
@@ -188,7 +188,7 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
       const reportFailure = (payload: CheckFailurePayload, message: string) => {
         logger.error(
           { payload, errorMessage: message },
-          "Production check failed",
+          "Production check failed"
         );
         checkSucceeded = false;
         allFailurePayloads.push({ ...payload, errorMessage: message });
@@ -198,7 +198,7 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
 
       sendCheckHeartbeat(
         { type: "start", name: check.name, uuid },
-        { results },
+        { results }
       );
 
       await check.check(
@@ -209,8 +209,8 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
         async () =>
           sendCheckHeartbeat(
             { type: "processing", name: check.name, uuid },
-            { results },
-          ),
+            { results }
+          )
       );
 
       logger.info("Check done");
@@ -238,7 +238,7 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
           name: check.name,
           uuid,
         },
-        { results },
+        { results }
       );
     } catch (error) {
       logger.error({ error }, "Production check failed");
@@ -254,7 +254,7 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
 
       sendCheckHeartbeat(
         { type: "failure", name: check.name, uuid },
-        { results },
+        { results }
       );
     }
   }
@@ -264,7 +264,7 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
 }
 
 export async function runSingleCheckActivity(
-  checkName: string,
+  checkName: string
 ): Promise<CheckActivityResult> {
   const check = REGISTERED_CHECKS.find((c) => c.name === checkName);
   if (!check) {
@@ -311,7 +311,7 @@ export async function runSingleCheckActivity(
         type: "processing",
         name: check.name,
         uuid,
-      }),
+      })
   );
 
   heartbeat({

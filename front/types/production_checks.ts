@@ -23,7 +23,7 @@ export type CheckFunction = (
   logger: pino.Logger,
   reportSuccess: (payload?: CheckSuccessPayload) => void,
   reportFailure: (payload: CheckFailurePayload, message: string) => void,
-  heartbeat: () => void,
+  heartbeat: () => void
 ) => Promise<void>;
 
 export type Check = {
