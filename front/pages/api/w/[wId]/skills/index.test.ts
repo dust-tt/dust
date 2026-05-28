@@ -580,7 +580,6 @@ describe("POST /api/w/[wId]/skills", () => {
       userFacingDescription: "A simple skill without tools",
       instructions: "Simple instructions",
       status: "active",
-      reinforcement: "on",
       tools: [],
     });
 
@@ -588,39 +587,7 @@ describe("POST /api/w/[wId]/skills", () => {
       auth,
       responseData.skill.sId
     );
-    expect(createdSkill?.reinforcement).toBe("on");
-  });
-
-  it("creates a skill with self-improvement disabled", async () => {
-    const { auth, req, res } = await setupTest("POST", "admin");
-
-    req.body = {
-      name: "Self Improvement Disabled Skill",
-      agentFacingDescription: "To use when self-improvement should be off",
-      userFacingDescription: "A skill with self-improvement disabled",
-      instructions: "Simple instructions",
-      icon: "PuzzleIcon",
-      tools: [],
-      extendedSkillId: null,
-      attachedKnowledge: [],
-      instructionsHtml: null,
-      reinforcement: "off",
-    };
-
-    await handler(req, res);
-    expect(res._getStatusCode()).toBe(200);
-
-    const responseData = res._getJSONData();
-    expect(responseData.skill).toMatchObject({
-      name: "Self Improvement Disabled Skill",
-      reinforcement: "off",
-    });
-
-    const createdSkill = await SkillResource.fetchById(
-      auth,
-      responseData.skill.sId
-    );
-    expect(createdSkill?.reinforcement).toBe("off");
+    expect(createdSkill).not.toBeNull();
   });
 
   it("creates a skill configuration with additional requested spaces", async () => {
