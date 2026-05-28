@@ -443,7 +443,8 @@ hardening plus tests for their ownership and mode.
 Reviewer: If you detect a sandbox command running as `root` that uses a bare executable name,
 require the author to switch to an absolute path. If you detect a root-invoked helper in a path
 that sandbox users can write to, require ownership/mode hardening or a safer location before
-approving.
+approving. New sandbox root command helpers should be covered by
+`assertRootCommandUsesAbsoluteExecutables` or an equivalent regression test.
 
 Example:
 

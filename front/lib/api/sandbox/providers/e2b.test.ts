@@ -149,7 +149,7 @@ describe("E2BSandboxProvider", () => {
     expect(hardeningCommand).toContain("zz-dust-root-safe-path.sh");
     expect(mockCreateCommandRun).toHaveBeenCalledWith(
       expect.stringContaining(
-        "usermod --lock --expiredate 1 --shell /usr/sbin/nologin user"
+        "/usr/sbin/usermod --lock --expiredate 1 --shell /usr/sbin/nologin user"
       ),
       {
         timeoutMs: 120_000,
@@ -184,7 +184,7 @@ describe("E2BSandboxProvider", () => {
 
     const result = await provider.exec(
       "provider-id",
-      "nohup /bin/true",
+      "/usr/bin/nohup /bin/true",
       { user: "root" },
       { workspaceId: "workspace-id" }
     );
@@ -199,9 +199,33 @@ describe("E2BSandboxProvider", () => {
     expect(command).toContain("BASH_ENV=/dev/null");
     expect(command).toContain("ENV=/dev/null");
     expect(command).toContain("/bin/bash --noprofile --norc -c");
-    expect(command).toContain("nohup /bin/true");
+    expect(command).toContain("/usr/bin/nohup /bin/true");
     expect(command).not.toContain("/opt/venv/bin");
     expect(command).not.toContain("/home/agent/.local/bin");
+  });
+
+  it("rejects root commands that resolve executables through PATH", async () => {
+    const provider = new E2BSandboxProvider({
+      apiKey: "api-key",
+      domain: undefined,
+    });
+
+    const result = await provider.exec(
+      "provider-id",
+      "cat /tmp/deny.log | /usr/bin/wc -l",
+      { user: "root" },
+      { workspaceId: "workspace-id" }
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain(
+        "Sandbox root commands must use absolute executable paths"
+      );
+      expect(result.error.message).toContain("cat");
+    }
+    expect(mockConnect).not.toHaveBeenCalled();
+    expect(mockRun).not.toHaveBeenCalled();
   });
 
   it("does not wrap non-root commands", async () => {
@@ -302,7 +326,8 @@ describe("E2BSandboxProvider", () => {
       domain: undefined,
     });
     const stdin = "super-secret-json";
-    const command = "install -m 600 /dev/stdin /run/dust/egress-secrets.json";
+    const command =
+      "/usr/bin/install -m 600 /dev/stdin /run/dust/egress-secrets.json";
 
     const result = await provider.exec(
       "provider-id",
@@ -359,7 +384,7 @@ describe("E2BSandboxProvider", () => {
 
     const result = await provider.exec(
       "provider-id",
-      "install -m 600 /dev/stdin /run/dust/egress-secrets.json",
+      "/usr/bin/install -m 600 /dev/stdin /run/dust/egress-secrets.json",
       { stdin: "secret-json", timeoutMs: 5_000, user: "root" },
       { workspaceId: "workspace-id" }
     );

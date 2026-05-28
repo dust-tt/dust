@@ -95,58 +95,58 @@ export function getLocalAccountPrivilegeHardeningCommand(): string {
     `/usr/bin/chmod 644 ${shellEscape(ROOT_SAFE_PATH_PROFILE)}`,
   ].join(" && ");
   const lockRootPassword = [
-    "if getent passwd root >/dev/null 2>&1; then",
-    "passwd -l root >/dev/null 2>&1 || usermod --lock root >/dev/null 2>&1 || true;",
+    "if /usr/bin/getent passwd root >/dev/null 2>&1; then",
+    "/usr/bin/passwd -l root >/dev/null 2>&1 || /usr/sbin/usermod --lock root >/dev/null 2>&1 || true;",
     "fi",
   ].join(" ");
   const lockEmptyPasswordAccounts = [
-    "if getent shadow >/dev/null 2>&1; then",
-    `getent shadow | awk -F: '$2 == "" {print $1}' | while IFS= read -r account; do`,
+    "if /usr/bin/getent shadow >/dev/null 2>&1; then",
+    `/usr/bin/getent shadow | /usr/bin/awk -F: '$2 == "" {print $1}' | while IFS= read -r account; do`,
     '[ -z "$account" ] && continue;',
-    'passwd -l "$account" >/dev/null 2>&1 || usermod --lock "$account" >/dev/null 2>&1 || true;',
+    '/usr/bin/passwd -l "$account" >/dev/null 2>&1 || /usr/sbin/usermod --lock "$account" >/dev/null 2>&1 || true;',
     "done;",
     "fi",
   ].join(" ");
   const lockProviderUser = [
-    "if getent passwd user >/dev/null 2>&1; then",
-    "usermod --lock --expiredate 1 --shell /usr/sbin/nologin user",
+    "if /usr/bin/getent passwd user >/dev/null 2>&1; then",
+    "/usr/sbin/usermod --lock --expiredate 1 --shell /usr/sbin/nologin user",
     "&& for group in sudo admin wheel; do",
-    'if getent group "$group" >/dev/null 2>&1; then',
-    'gpasswd -d user "$group" >/dev/null 2>&1 || true;',
+    'if /usr/bin/getent group "$group" >/dev/null 2>&1; then',
+    '/usr/bin/gpasswd -d user "$group" >/dev/null 2>&1 || true;',
     "fi;",
     "done;",
     "fi",
   ].join(" ");
   const removePrivilegedGroupMembers = [
     "for group in sudo admin wheel; do",
-    "members=$(getent group \"$group\" | awk -F: '{print $4}') || continue;",
+    "members=$(/usr/bin/getent group \"$group\" | /usr/bin/awk -F: '{print $4}') || continue;",
     'old_ifs="$IFS";',
     "IFS=,;",
     "for member in $members; do",
-    '[ -z "$member" ] || [ "$member" = root ] || gpasswd -d "$member" "$group" >/dev/null 2>&1 || true;',
+    '[ -z "$member" ] || [ "$member" = root ] || /usr/bin/gpasswd -d "$member" "$group" >/dev/null 2>&1 || true;',
     "done;",
     'IFS="$old_ifs";',
     "done",
   ].join(" ");
   const removePasswordlessSudoersRules = [
     "if [ -f /etc/sudoers ]; then",
-    "sed -i -E '/^[[:space:]]*#/!{/NOPASSWD[[:space:]]*:[[:space:]]*ALL/d;}' /etc/sudoers;",
+    "/usr/bin/sed -i -E '/^[[:space:]]*#/!{/NOPASSWD[[:space:]]*:[[:space:]]*ALL/d;}' /etc/sudoers;",
     "fi",
     "&& if [ -d /etc/sudoers.d ]; then",
-    "find /etc/sudoers.d -maxdepth 1 -type f",
-    "-exec sed -i -E '/^[[:space:]]*#/!{/NOPASSWD[[:space:]]*:[[:space:]]*ALL/d;}' {} +;",
+    "/usr/bin/find /etc/sudoers.d -maxdepth 1 -type f",
+    "-exec /usr/bin/sed -i -E '/^[[:space:]]*#/!{/NOPASSWD[[:space:]]*:[[:space:]]*ALL/d;}' {} +;",
     "fi",
   ].join(" ");
   const removeSudoBinary = [
     "if command -v sudo >/dev/null 2>&1; then",
-    "DEBIAN_FRONTEND=noninteractive apt-get purge -y sudo >/dev/null 2>&1",
-    '|| { sudo_path=$(command -v sudo); chmod u-s "$sudo_path"; mv "$sudo_path" "$sudo_path.disabled-by-dust"; };',
+    "DEBIAN_FRONTEND=noninteractive /usr/bin/apt-get purge -y sudo >/dev/null 2>&1",
+    '|| { sudo_path=$(command -v sudo); /usr/bin/chmod u-s "$sudo_path"; /usr/bin/mv "$sudo_path" "$sudo_path.disabled-by-dust"; };',
     "hash -r 2>/dev/null || true;",
     "fi",
   ].join(" ");
   const hardenLocalAuthHelpers = [
     "for path in /bin/su /usr/bin/su /bin/sg /usr/bin/sg /usr/bin/newgrp /usr/bin/passwd /usr/bin/chsh /usr/bin/chfn /usr/bin/gpasswd; do",
-    'if [ -e "$path" ]; then chmod u-s "$path"; fi;',
+    'if [ -e "$path" ]; then /usr/bin/chmod u-s "$path"; fi;',
     "done",
   ].join(" ");
   const hardenRootInvokedHelpers = [
@@ -155,14 +155,14 @@ export function getLocalAccountPrivilegeHardeningCommand(): string {
     "done",
   ].join(" ");
   const assertNoEmptyPasswordAccounts = [
-    `if getent shadow | awk -F: '$2 == "" {print $1}' | grep -q .; then`,
+    `if /usr/bin/getent shadow | /usr/bin/awk -F: '$2 == "" {print $1}' | /usr/bin/grep -q .; then`,
     "echo 'empty-password local accounts must not exist' >&2;",
     "exit 1;",
     "fi",
   ].join(" ");
   const assertNoPrivilegedGroupMembers = [
     "for group in sudo admin wheel; do",
-    "members=$(getent group \"$group\" | awk -F: '{print $4}') || continue;",
+    "members=$(/usr/bin/getent group \"$group\" | /usr/bin/awk -F: '{print $4}') || continue;",
     'old_ifs="$IFS";',
     "IFS=,;",
     "for member in $members; do",
@@ -173,14 +173,14 @@ export function getLocalAccountPrivilegeHardeningCommand(): string {
   ].join(" ");
   const assertNoPrivilegedPrimaryGroups = [
     "for group in sudo admin wheel; do",
-    "gid=$(getent group \"$group\" | awk -F: '{print $3}') || continue;",
+    "gid=$(/usr/bin/getent group \"$group\" | /usr/bin/awk -F: '{print $3}') || continue;",
     '[ -z "$gid" ] && continue;',
-    "primary_members=$(getent passwd | awk -F: -v gid=\"$gid\" '$3 != 0 && $4 == gid {print $1}');",
+    "primary_members=$(/usr/bin/getent passwd | /usr/bin/awk -F: -v gid=\"$gid\" '$3 != 0 && $4 == gid {print $1}');",
     'if [ -n "$primary_members" ]; then echo "privileged primary group $group must not include $primary_members" >&2; exit 1; fi;',
     "done",
   ].join(" ");
   const assertNoPasswordlessSudoers = [
-    "if grep -RIsnE '^[[:space:]]*[^#].*NOPASSWD[[:space:]]*:[[:space:]]*ALL' /etc/sudoers /etc/sudoers.d 2>/dev/null | grep -q .; then",
+    "if /usr/bin/grep -RIsnE '^[[:space:]]*[^#].*NOPASSWD[[:space:]]*:[[:space:]]*ALL' /etc/sudoers /etc/sudoers.d 2>/dev/null | /usr/bin/grep -q .; then",
     "echo 'passwordless unrestricted sudoers entries must not exist' >&2;",
     "exit 1;",
     "fi",

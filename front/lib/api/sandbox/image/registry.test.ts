@@ -55,6 +55,29 @@ function getCopiedContent(
   return typeof content === "string" ? content : content.toString("utf-8");
 }
 
+function isUnderDirectory(path: string, dir: string): boolean {
+  return path === dir || path.startsWith(`${dir}/`);
+}
+
+function isRootConsumedDestination(path: string): boolean {
+  return SANDBOX_STATIC_ROOT_CONSUMED_DIRS.some((dir) =>
+    isUnderDirectory(path, dir)
+  );
+}
+
+function findLastOperationIndex(
+  operations: readonly Operation[],
+  predicate: (operation: Operation) => boolean
+): number {
+  for (let i = operations.length - 1; i >= 0; i--) {
+    if (predicate(operations[i])) {
+      return i;
+    }
+  }
+
+  return -1;
+}
+
 function expectContentInOrder(
   content: string,
   firstNeedle: string,
@@ -121,22 +144,22 @@ describe("sandbox image registry", () => {
 
     expect(hardeningCommands.length).toBeGreaterThanOrEqual(2);
     for (const command of hardeningCommands) {
-      expect(command).toContain("passwd -l root");
+      expect(command).toContain("/usr/bin/passwd -l root");
       expect(command).toContain("zz-dust-root-safe-path.sh");
       expect(command).toContain(SANDBOX_ROOT_SAFE_PATH);
       expect(command).toContain("awk -F: '$2 == \"\" {print $1}'");
       expect(command).toContain('passwd -l "$account"');
       expect(command).toContain(
-        "usermod --lock --expiredate 1 --shell /usr/sbin/nologin user"
+        "/usr/sbin/usermod --lock --expiredate 1 --shell /usr/sbin/nologin user"
       );
-      expect(command).toContain("gpasswd -d user");
+      expect(command).toContain("/usr/bin/gpasswd -d user");
       expect(command).toContain("for member in $members");
       expect(command).toContain("NOPASSWD");
-      expect(command).toContain("apt-get purge -y sudo");
+      expect(command).toContain("/usr/bin/apt-get purge -y sudo");
       expect(command).toContain("sudo_path.disabled-by-dust");
       expect(command).toContain("/usr/bin/su");
       expect(command).toContain("/usr/bin/passwd");
-      expect(command).toContain("chmod u-s");
+      expect(command).toContain("/usr/bin/chmod u-s");
       expect(command).toContain(
         "install -d -o root -g root -m 755 /opt/bin /usr/local /usr/local/sbin /usr/local/bin /usr/local/lib"
       );
@@ -171,6 +194,39 @@ describe("sandbox image registry", () => {
     expect(runCommands.join("\n")).toContain(
       "/usr/bin/systemd-analyze unit-paths"
     );
+  });
+
+  test("keeps root-consumed image writes behind final hardening", () => {
+    const operations = getDustBaseImageOperations();
+    const rootConsumedCopyIndexes = operations.flatMap((operation, index) =>
+      operation.type === "copy" && isRootConsumedDestination(operation.dest)
+        ? [index]
+        : []
+    );
+    const lastRootConsumedCopyIndex = Math.max(...rootConsumedCopyIndexes);
+    const finalRootConsumedHardeningIndex = findLastOperationIndex(
+      operations,
+      (operation) =>
+        operation.type === "run" &&
+        operation.command.includes("/usr/bin/systemd-analyze unit-paths")
+    );
+    const lastRunIndex = findLastOperationIndex(
+      operations,
+      (operation) => operation.type === "run"
+    );
+
+    expect(rootConsumedCopyIndexes.length).toBeGreaterThan(0);
+    for (const index of rootConsumedCopyIndexes) {
+      const operation = operations[index];
+      expect(operation.type).toBe("copy");
+      if (operation.type === "copy") {
+        expect(operation.user).toBe("root");
+      }
+    }
+    expect(finalRootConsumedHardeningIndex).toBeGreaterThan(
+      lastRootConsumedCopyIndex
+    );
+    expect(finalRootConsumedHardeningIndex).toBe(lastRunIndex);
   });
 
   test("disables and hardens sshd in the base image", () => {
