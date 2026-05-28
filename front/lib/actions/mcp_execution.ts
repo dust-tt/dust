@@ -98,12 +98,17 @@ export async function processToolNotification(
     conversation: ConversationType;
     agentMessage: AgentMessageType;
   }
-): Promise<ToolNotificationEvent> {
+): Promise<{
+  event: ToolNotificationEvent;
+  storedItems: AgentMCPActionOutputItemModel[];
+}> {
   const output = notification.params._meta.data.output;
+
+  let storedItems: AgentMCPActionOutputItemModel[] = [];
 
   // Handle store_resource notifications by creating output items immediately (fire-and-forget GCS).
   if (isStoreResourceProgressOutput(output)) {
-    await action.createOutputItems(
+    storedItems = await action.createOutputItems(
       auth,
       output.contents.map((content) => ({
         content: sanitizeStringsDeep(content),
@@ -125,17 +130,20 @@ export async function processToolNotification(
 
   // Regular notifications, we yield them as is with the type "tool_notification".
   return {
-    type: "tool_notification",
-    created: Date.now(),
-    configurationId: agentConfiguration.sId,
-    conversationId: conversation.sId,
-    messageId: agentMessage.sId,
-    action: {
-      ...action.toJSON(),
-      output: null,
-      generatedFiles: [],
+    event: {
+      type: "tool_notification",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      conversationId: conversation.sId,
+      messageId: agentMessage.sId,
+      action: {
+        ...action.toJSON(),
+        output: null,
+        generatedFiles: [],
+      },
+      notification: notification.params,
     },
-    notification: notification.params,
+    storedItems,
   };
 }
 
