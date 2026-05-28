@@ -6,7 +6,7 @@ import type {
   ConversationWithoutContentType,
   RichMentionWithStatus,
 } from "@app/types/assistant/conversation";
-import { isProjectConversation } from "@app/types/assistant/conversation";
+import { isPodConversation } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
   Button,
@@ -74,8 +74,8 @@ export function MentionInvalid({
     case "user_restricted_by_conversation_access": {
       // Show warning message without approve/reject buttons
       // Different message for project conversations (non-editor can't add members)
-      const isProjectConv = isProjectConversation(conversation);
-      const message = isProjectConv
+      const isPodConv = isPodConversation(conversation);
+      const message = isPodConv
         ? "is not a member of this Pod and only Pod editors can add new members."
         : "doesn't have access to this conversation's spaces and won't be able to view it nor be invited.";
 

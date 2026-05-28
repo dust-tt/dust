@@ -12,8 +12,8 @@ import {
   usePodConversationsSummary,
 } from "@app/hooks/conversations";
 import { useDeleteConversation } from "@app/hooks/useDeleteConversation";
-import { useMoveConversationOutOfProject } from "@app/hooks/useMoveConversationOutOfProject";
-import { useMoveConversationToProject } from "@app/hooks/useMoveConversationToProject";
+import { useMoveConversationOutOfPod } from "@app/hooks/useMoveConversationOutOfPod";
+import { useMoveConversationToPod } from "@app/hooks/useMoveConversationToPod";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useURLSheet } from "@app/hooks/useURLSheet";
 import config from "@app/lib/api/config";
@@ -33,7 +33,7 @@ import {
   type ConversationListItemType,
   getConversationDisplayTitle,
   getConversationUrlAccessMode,
-  isProjectConversation,
+  isPodConversation,
 } from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
@@ -239,12 +239,12 @@ export function ConversationMenu({
     options: { disabled: shouldWaitBeforeFetching || !hasFeature("projects") },
   });
 
-  const filteredProjects = summary
+  const filteredPods = summary
     .map(({ space }) => space)
     .filter((space) => space.sId !== conversation?.spaceId);
 
   const conversationSpaceId =
-    conversation && isProjectConversation(conversation)
+    conversation && isPodConversation(conversation)
       ? conversation.spaceId
       : null;
   const { spaceInfo: conversationSpaceInfo } = useSpaceInfo({
@@ -254,10 +254,10 @@ export function ConversationMenu({
   });
   const isProjectEditor = conversationSpaceInfo?.isEditor ?? false;
   const canMoveOutOfProject =
-    conversation && isProjectConversation(conversation) && isProjectEditor;
+    conversation && isPodConversation(conversation) && isProjectEditor;
 
-  const moveConversationToProject = useMoveConversationToProject(owner);
-  const moveConversationOutOfProject = useMoveConversationOutOfProject(
+  const moveConversationToProject = useMoveConversationToPod(owner);
+  const moveConversationOutOfProject = useMoveConversationOutOfPod(
     owner,
     activeConversationId
   );
@@ -297,7 +297,7 @@ export function ConversationMenu({
       const res = await doDelete(conversation, forceDelete);
       if (isConversationDisplayed && res) {
         const redirectRoute =
-          conversation && isProjectConversation(conversation)
+          conversation && isPodConversation(conversation)
             ? getPodRoute(owner.sId, conversation.spaceId)
             : getConversationRoute(owner.sId);
         void router.push(redirectRoute);
@@ -332,7 +332,7 @@ export function ConversationMenu({
   const isPrivateConversationUrlsByDefaultEnabled =
     owner.metadata?.privateConversationUrlsByDefault === true;
   const isProjectConversationWithOwnUrl =
-    conversation !== undefined && isProjectConversation(conversation);
+    conversation !== undefined && isPodConversation(conversation);
   const conversationUrlAccessMode = getConversationUrlAccessMode(
     conversation?.metadata
   );
@@ -417,9 +417,7 @@ export function ConversationMenu({
               <DropdownMenuSubTrigger
                 icon={ArrowRightIcon}
                 label={canMoveOutOfProject ? "Move to..." : "Move to Pod"}
-                disabled={
-                  canMoveOutOfProject ? false : !filteredProjects.length
-                }
+                disabled={canMoveOutOfProject ? false : !filteredPods.length}
               />
               <DropdownMenuPortal>
                 <DropdownMenuSubContent
@@ -439,7 +437,7 @@ export function ConversationMenu({
                       <DropdownMenuLabel label="Pods" />
                     </>
                   )}
-                  {filteredProjects.map((project) => (
+                  {filteredPods.map((project) => (
                     <DropdownMenuItem
                       key={project.sId}
                       icon={getSpaceIcon(project)}

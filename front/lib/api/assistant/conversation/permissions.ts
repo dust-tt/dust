@@ -9,7 +9,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import { isProjectConversation } from "@app/types/assistant/conversation";
+import { isPodConversation } from "@app/types/assistant/conversation";
 import uniq from "lodash/uniq";
 import type { Transaction } from "sequelize";
 
@@ -95,7 +95,7 @@ export async function canAgentBeUsedInProjectConversation(
     transaction?: Transaction;
   }
 ): Promise<boolean> {
-  if (!isProjectConversation(conversation)) {
+  if (!isPodConversation(conversation)) {
     throw new Error("Unexpected: conversation is not a project conversation");
   }
 
@@ -182,7 +182,7 @@ export async function updateConversationRequirements(
   // Therefor we strip all the space requirements from the conversation.
   // It means that we rely on agents and content fragments permissions checking to have happened before.
   // It also means that if we "move" a conversation to a project, we need to update the conversation requirements and we make it visibel
-  if (isProjectConversation(conversation)) {
+  if (isPodConversation(conversation)) {
     const spaceModelId = getResourceIdFromSId(conversation.spaceId);
     if (spaceModelId === null) {
       throw new Error("Unexpected: invalid space sId in conversation.");

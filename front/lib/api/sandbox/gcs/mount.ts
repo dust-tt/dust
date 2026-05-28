@@ -11,7 +11,7 @@ import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import logger from "@app/logger/logger";
 import { concurrentExecutor } from "@app/temporal/workflow_utils";
 import type { ConversationType } from "@app/types/assistant/conversation";
-import { isProjectConversation } from "@app/types/assistant/conversation";
+import { isPodConversation } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -50,7 +50,7 @@ function buildMountTargets(
     },
   ];
 
-  if (isProjectConversation(conversation)) {
+  if (isPodConversation(conversation)) {
     targets.push({
       label: "pod",
       prefix: getPodFilesBasePath({

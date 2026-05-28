@@ -609,7 +609,7 @@ export function isLightConversationType(
   return "content" in conversation && !Array.isArray(conversation.content[0]);
 }
 
-export const isProjectConversation = <T extends ConversationListItemType>(
+export const isPodConversation = <T extends ConversationListItemType>(
   conversation: T
 ): conversation is T & { spaceId: string } => !!conversation.spaceId;
 

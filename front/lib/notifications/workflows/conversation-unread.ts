@@ -33,7 +33,7 @@ import {
   getConversationDisplayTitle,
   isCompactionMessageType,
   isLightAgentMessageType,
-  isProjectConversation,
+  isPodConversation,
   isUserMessageType,
   isVisibleMessage,
 } from "@app/types/assistant/conversation";
@@ -320,7 +320,7 @@ const getConversationDetails = async ({
   let projectName: string | undefined;
   const isNewProjectConversation = !!payload.isNewProjectConversation;
 
-  if (isNewProjectConversation && isProjectConversation(conversation)) {
+  if (isNewProjectConversation && isPodConversation(conversation)) {
     const project = await SpaceResource.fetchById(auth, conversation.spaceId);
     if (project) {
       projectName = project.name;
@@ -439,7 +439,7 @@ export const shouldSkipNewProjectConversation = async ({
 
   const conversation = conversationResource.toJSON();
 
-  if (!isProjectConversation(conversation)) {
+  if (!isPodConversation(conversation)) {
     return true;
   }
 

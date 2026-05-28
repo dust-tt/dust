@@ -1,5 +1,5 @@
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
-import { useSearchProjects } from "@app/hooks/useSearchProjects";
+import { useSearchPods } from "@app/hooks/useSearchPods";
 import { useAppRouter } from "@app/lib/platform";
 import { getSpaceIcon } from "@app/lib/spaces";
 import { getPodRoute } from "@app/lib/utils/router";
@@ -20,16 +20,16 @@ import {
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
-interface ProjectsBrowsePopoverProps {
+interface PodsBrowsePopoverProps {
   owner: WorkspaceType;
 }
 
-interface ProjectBrowseItemProps {
-  space: PodType;
+interface PodBrowseItemProps {
+  pod: PodType;
   onClick: () => void;
 }
 
-function ProjectBrowseItemSkeleton({ count = 5 }: { count?: number }) {
+function PodBrowseItemSkeleton({ count = 5 }: { count?: number }) {
   return (
     <>
       {Array.from({ length: count }).map((_, i) => (
@@ -47,31 +47,27 @@ function ProjectBrowseItemSkeleton({ count = 5 }: { count?: number }) {
   );
 }
 
-function ProjectBrowseItem({ space, onClick }: ProjectBrowseItemProps) {
+function ProjectBrowseItem({ pod, onClick }: PodBrowseItemProps) {
   return (
     <div
       className="flex cursor-pointer items-start gap-2 rounded-lg p-2 hover:bg-muted-background dark:hover:bg-muted-background-night"
       onClick={onClick}
     >
-      <Icon
-        visual={getSpaceIcon(space)}
-        size="sm"
-        className="mt-0.5 shrink-0"
-      />
+      <Icon visual={getSpaceIcon(pod)} size="sm" className="mt-0.5 shrink-0" />
       <div className="min-w-0 flex-1">
         <div className="flex flex-row items-center justify-between gap-1.5">
-          <div className="truncate font-medium">{space.name}</div>
-          {space.archivedAt && (
+          <div className="truncate font-medium">{pod.name}</div>
+          {pod.archivedAt && (
             <Chip size="mini" color="primary" label="Archived" />
           )}
         </div>
-        {space.description && (
+        {pod.description && (
           <Tooltip
-            label={space.description}
+            label={pod.description}
             tooltipTriggerAsChild
             trigger={
               <div className="truncate text-xs text-muted-foreground dark:text-muted-foreground-night">
-                {space.description}
+                {pod.description}
               </div>
             }
           />
@@ -81,18 +77,23 @@ function ProjectBrowseItem({ space, onClick }: ProjectBrowseItemProps) {
   );
 }
 
-export function ProjectsBrowsePopover({ owner }: ProjectsBrowsePopoverProps) {
+export function PodsBrowsePopover({ owner }: PodsBrowsePopoverProps) {
   const router = useAppRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const { projects, isSearching, hasMore, loadMore, isLoadingMore } =
-    useSearchProjects({
-      workspaceId: owner.sId,
-      query: searchQuery,
-      enabled: isOpen,
-      limit: 50,
-    });
+  const {
+    pods: projects,
+    isSearching,
+    hasMore,
+    loadMore,
+    isLoadingMore,
+  } = useSearchPods({
+    workspaceId: owner.sId,
+    query: searchQuery,
+    enabled: isOpen,
+    limit: 50,
+  });
 
   const filteredProjects = useMemo(() => {
     return projects.filter(
@@ -121,7 +122,7 @@ export function ProjectsBrowsePopover({ owner }: ProjectsBrowsePopoverProps) {
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
             {isSearching && filteredProjects.length === 0 ? (
-              <ProjectBrowseItemSkeleton count={5} />
+              <PodBrowseItemSkeleton count={5} />
             ) : filteredProjects.length === 0 ? (
               <div className="px-2 py-4 text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
                 No Pods found
@@ -131,7 +132,7 @@ export function ProjectsBrowsePopover({ owner }: ProjectsBrowsePopoverProps) {
                 {filteredProjects.map((project) => (
                   <ProjectBrowseItem
                     key={project.sId}
-                    space={project}
+                    pod={project}
                     onClick={async () => {
                       setIsOpen(false);
                       setSearchQuery("");
