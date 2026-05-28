@@ -11,7 +11,6 @@ import { checkPausedConnectors } from "@app/lib/production_checks/checks/check_p
 import { checkWebcrawlerSchedulerActiveWorkflow } from "@app/lib/production_checks/checks/check_webcrawler_scheduler_active_workflow";
 import { managedDataSourceGCGdriveCheck } from "@app/lib/production_checks/checks/managed_data_source_gdrive_gc";
 import mainLogger from "@app/logger/logger";
-import { CheckHeartbeatDetailsSchema } from "@app/types/production_checks";
 import type {
   ActionLink,
   Check,
@@ -20,9 +19,10 @@ import type {
   CheckHeartbeat,
   CheckSuccessPayload,
 } from "@app/types/production_checks";
+import { CheckHeartbeatDetailsSchema } from "@app/types/production_checks";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { Context } from "@temporalio/activity";
 import { v4 as uuidv4 } from "uuid";
-import {normalizeError} from "@app/types/shared/utils/error_utils";
 
 export const REGISTERED_CHECKS: Check[] = [
   {
@@ -87,7 +87,7 @@ export async function runAllChecksActivity(): Promise<CheckActivityResult[]> {
 }
 
 function getCompletedCheckNamesFromHeartbeatDetails(
-  heartbeatDetails: unknown,
+  heartbeatDetails: unknown
 ): string[] {
   const parsedHeartbeatDetails =
     CheckHeartbeatDetailsSchema.safeParse(heartbeatDetails);
@@ -116,7 +116,7 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
   const allCheckUuid = uuidv4();
   const context = Context.current();
   const completedCheckNames = getCompletedCheckNamesFromHeartbeatDetails(
-    context.info.heartbeatDetails,
+    context.info.heartbeatDetails
   );
   const currentHour = new Date().getHours();
   const results: CheckActivityResult[] = [];
@@ -129,7 +129,7 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
         completedCheckNames.length > 0 ? completedCheckNames.length : undefined,
       currentHour,
     },
-    "Running all checks",
+    "Running all checks"
   );
 
   for (const check of checks) {
@@ -137,9 +137,9 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
       mainLogger.info(
         {
           all_check_uuid: allCheckUuid,
-          checkName: check.name
+          checkName: check.name,
         },
-        "Check already completed in previous attempt, skipping",
+        "Check already completed in previous attempt, skipping"
       );
       continue;
     }
@@ -189,13 +189,10 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
         logger.info({ payload }, "Check succeeded");
         lastSuccessPayload = payload;
       };
-      const reportFailure = (
-        payload: CheckFailurePayload,
-        message: string,
-      ) => {
+      const reportFailure = (payload: CheckFailurePayload, message: string) => {
         logger.error(
           { payload, errorMessage: message },
-          "Production check failed",
+          "Production check failed"
         );
         checkSucceeded = false;
         allFailurePayloads.push({ ...payload, errorMessage: message });
@@ -214,7 +211,8 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
         logger,
         reportSuccess,
         reportFailure,
-        async () => sendCheckHeartbeat({
+        async () =>
+          sendCheckHeartbeat({
             context,
             heartbeat: {
               type: "processing",
@@ -253,7 +251,6 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
         },
         completedCheckNames,
       });
-
     } catch (error) {
       logger.error({ error }, "Production check failed");
 
@@ -279,7 +276,7 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
 }
 
 export async function runSingleCheckActivity(
-  checkName: string,
+  checkName: string
 ): Promise<CheckActivityResult> {
   const check = REGISTERED_CHECKS.find((c) => c.name === checkName);
   if (!check) {
@@ -329,7 +326,7 @@ export async function runSingleCheckActivity(
     logger,
     reportSuccess,
     reportFailure,
-    heartbeat,
+    heartbeat
   );
 
   Context.current().heartbeat({
