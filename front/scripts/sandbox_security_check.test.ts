@@ -1,13 +1,17 @@
-import { SANDBOX_ROOT_SAFE_PATH } from "@app/lib/api/sandbox/hardening";
+import {
+  SANDBOX_ROOT_SAFE_PATH,
+  SANDBOX_STATIC_ROOT_CONSUMED_DIRS,
+} from "@app/lib/api/sandbox/hardening";
 import {
   assertLocalAuthHelpersNotSetuid,
   assertNoEmptyPasswordAccounts,
   assertNoPasswordlessSudoers,
   assertNoPrivilegedGroupMembers,
-  assertPrivilegedDirsSafe,
   assertRootInvokedHelpersSafe,
   assertRootPathSafe,
+  assertStaticRootConsumedDirsSafe,
   assertSudoAbsent,
+  assertSystemdUnitPathsSafe,
   buildBashCommand,
   containsUnrestrictedSudo,
 } from "@app/scripts/sandbox_security_check";
@@ -90,22 +94,53 @@ describe("sandbox security check assertions", () => {
     ).toThrow("local auth helpers are still setuid");
   });
 
-  test("detects unsafe privileged directory ownership or modes", () => {
+  test("detects unsafe root-consumed directory ownership or modes", () => {
+    const safeOutput = SANDBOX_STATIC_ROOT_CONSUMED_DIRS.map(
+      (dir) => `${dir} root:root 755 drwxr-xr-x`
+    ).join("\n");
+
+    expect(() => assertStaticRootConsumedDirsSafe(safeOutput)).not.toThrow();
     expect(() =>
-      assertPrivilegedDirsSafe(
-        "/opt/bin root:root 755 drwxr-xr-x\n/usr/local root:root 755 drwxr-xr-x\n/usr/local/sbin root:root 755 drwxr-xr-x\n/usr/local/bin root:root 755 drwxr-xr-x"
+      assertStaticRootConsumedDirsSafe(
+        safeOutput.replace(
+          "/usr/local/lib root:root 755",
+          "/usr/local/lib agent:agent 755"
+        )
+      )
+    ).toThrow("root-consumed directory /usr/local/lib is not root-owned");
+    expect(() =>
+      assertStaticRootConsumedDirsSafe(
+        safeOutput.replace(
+          "/usr/local/lib/systemd/system-generators root:root 755",
+          "/usr/local/lib/systemd/system-generators root:root 777"
+        )
+      )
+    ).toThrow(
+      "root-consumed directory /usr/local/lib/systemd/system-generators is not root-owned"
+    );
+  });
+
+  test("detects unsafe systemd unit lookup path ownership or modes", () => {
+    expect(() =>
+      assertSystemdUnitPathsSafe(
+        "SYSTEMD_UNIT_PATH=/etc/systemd/system root:root 755 drwxr-xr-x\nSYSTEMD_UNIT_PATH=/usr/local/lib/systemd/system root:root 755 drwxr-xr-x"
       )
     ).not.toThrow();
     expect(() =>
-      assertPrivilegedDirsSafe(
-        "/opt/bin agent:agent 755 drwxr-xr-x\n/usr/local root:root 755 drwxr-xr-x\n/usr/local/sbin root:root 755 drwxr-xr-x\n/usr/local/bin root:root 755 drwxr-xr-x"
+      assertSystemdUnitPathsSafe(
+        "SYSTEMD_UNIT_PATH=/usr/local/lib/systemd/system agent:agent 755 drwxr-xr-x"
       )
-    ).toThrow("privileged directory /opt/bin is not root-owned");
+    ).toThrow("systemd unit path /usr/local/lib/systemd/system");
     expect(() =>
-      assertPrivilegedDirsSafe(
-        "/opt/bin root:root 777 drwxrwxrwx\n/usr/local root:root 755 drwxr-xr-x\n/usr/local/sbin root:root 755 drwxr-xr-x\n/usr/local/bin root:root 755 drwxr-xr-x"
+      assertSystemdUnitPathsSafe(
+        "SYSTEMD_UNIT_PATH=/usr/local/lib/systemd/system root:root 777 drwxrwxrwx"
       )
-    ).toThrow("privileged directory /opt/bin is not root-owned");
+    ).toThrow("systemd unit path /usr/local/lib/systemd/system");
+    expect(() =>
+      assertSystemdUnitPathsSafe(
+        "SYSTEMD_UNIT_PATH_ERROR=missing /usr/bin/systemd-analyze"
+      )
+    ).toThrow("systemd unit path audit failed");
   });
 
   test("detects unsafe root-invoked helper ownership or modes", () => {

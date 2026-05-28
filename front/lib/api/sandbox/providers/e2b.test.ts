@@ -130,7 +130,7 @@ describe("E2BSandboxProvider", () => {
 
     const result = await provider.create(
       {
-        imageId: { imageName: "dust-base", tag: "0.8.29" },
+        imageId: { imageName: "dust-base", tag: "0.8.30" },
         network: { mode: "deny_all" },
         resources: { vcpu: 2, memoryMb: 2048 },
       },
@@ -160,8 +160,10 @@ describe("E2BSandboxProvider", () => {
       "sudo must not be installed in sandbox images"
     );
     expect(hardeningCommand).toContain(
-      "install -d -o root -g root -m 755 /opt/bin /usr/local /usr/local/sbin /usr/local/bin"
+      "install -d -o root -g root -m 755 /opt/bin /usr/local /usr/local/sbin /usr/local/bin /usr/local/lib"
     );
+    expect(hardeningCommand).toContain("/usr/bin/systemd-analyze unit-paths");
+    expect(hardeningCommand).toContain("systemd unit path must be absolute");
     expect(hardeningCommand).toContain(
       "for path in /opt/bin/dsbx /usr/local/bin/dust-install-trust-bundle"
     );
@@ -240,7 +242,7 @@ describe("E2BSandboxProvider", () => {
 
     const result = await provider.create(
       {
-        imageId: { imageName: "dust-base", tag: "0.8.29" },
+        imageId: { imageName: "dust-base", tag: "0.8.30" },
         network: { mode: "deny_all" },
         resources: { vcpu: 2, memoryMb: 2048 },
       },
@@ -273,7 +275,7 @@ describe("E2BSandboxProvider", () => {
 
     const result = await provider.create(
       {
-        imageId: { imageName: "dust-base", tag: "0.8.29" },
+        imageId: { imageName: "dust-base", tag: "0.8.30" },
         network: { mode: "deny_all" },
         resources: { vcpu: 2, memoryMb: 2048 },
       },

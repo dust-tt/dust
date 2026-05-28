@@ -1,4 +1,7 @@
-import { getLocalAccountPrivilegeHardeningCommand } from "@app/lib/api/sandbox/hardening";
+import {
+  getLocalAccountPrivilegeHardeningCommand,
+  getRootConsumedPathHardeningCommand,
+} from "@app/lib/api/sandbox/hardening";
 import { PROFILE_DIR } from "@app/lib/api/sandbox/image/profile";
 import { buildDustToolsBinary } from "@app/lib/api/sandbox/image/profile/build";
 import { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
@@ -16,7 +19,7 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.10.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.29";
+const DUST_BASE_IMAGE_VERSION = "0.8.30";
 const DSBX_CLI_VERSION = "0.1.23";
 // Identity, not coverage list: agent-proxied is a specific Linux user. The
 // nftables ruleset covers SANDBOX_UNTRUSTED_UIDS as a set; reordering that
@@ -178,14 +181,6 @@ function getEgressResolverUserSetupCommand(): string {
   return [
     "groupadd --system dust-egress-resolver",
     "useradd --system --no-create-home --gid dust-egress-resolver --shell /usr/sbin/nologin dust-egress-resolver",
-  ].join(" && ");
-}
-
-function getPrivilegedExecutablePathHardeningCommand(): string {
-  return [
-    "install -d -o root -g root -m 755 /opt/bin /usr/local /usr/local/sbin /usr/local/bin",
-    "chown root:root /opt/bin /usr/local /usr/local/sbin /usr/local/bin",
-    "chmod 755 /opt/bin /usr/local /usr/local/sbin /usr/local/bin",
   ].join(" && ");
 }
 
@@ -502,7 +497,7 @@ SHELLEOF`,
   // Run after all apt/npm installs as a final guard against a dependency
   // reintroducing sudo or privileged account state.
   .runCmd(getLocalAccountPrivilegeHardeningCommand(), { user: "root" })
-  .runCmd(getPrivilegedExecutablePathHardeningCommand(), { user: "root" })
+  .runCmd(getRootConsumedPathHardeningCommand(), { user: "root" })
   // Profile functions (no install needed, provided by profile scripts)
   // --- read_file: anthropic/openai use offset/limit, gemini uses start/end ---
   .registerTool({
