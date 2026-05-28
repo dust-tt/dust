@@ -1,5 +1,8 @@
 import { CancelMetronomeSubscriptionDialog } from "@app/components/pages/workspace/subscription/MetronomeSubscriptionPanel";
-import { useCancelMetronomeContract } from "@app/hooks/useMetronomeContractLifecycleAction";
+import {
+  useCancelMetronomeContract,
+  useReactivateMetronomeContract,
+} from "@app/hooks/useMetronomeContractLifecycleAction";
 import { getPriceAsString } from "@app/lib/client/subscription";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { isBusinessPlanPrefix } from "@app/lib/plans/plan_codes";
@@ -41,6 +44,10 @@ export function BillingOverview({ owner, subscription }: BillingOverviewProps) {
     useCancelMetronomeContract({
       workspaceId: owner.sId,
     });
+  const { reactivateMetronomeContract, isReactivatingMetronomeContract } =
+    useReactivateMetronomeContract({
+      workspaceId: owner.sId,
+    });
   const { submit: cancelSubscription, isSubmitting: isCancelling } =
     useSubmitFunction(async () => {
       try {
@@ -52,14 +59,26 @@ export function BillingOverview({ owner, subscription }: BillingOverviewProps) {
         setShowCancelDialog(false);
       }
     });
+  const { submit: reactivateSubscription, isSubmitting: isReactivating } =
+    useSubmitFunction(async () => {
+      const success = await reactivateMetronomeContract();
+      if (success) {
+        router.reload();
+      }
+    });
 
-  const canCancelSubscription =
+  const isCancellablePlan =
     isSubscriptionMetronomeBilled(subscription) &&
-    isBusinessPlanPrefix(subscription.plan.code) &&
-    subscription.endDate === null &&
-    subscription.requestCancelAt === null;
+    isBusinessPlanPrefix(subscription.plan.code);
+  const isCancellationScheduled =
+    subscription.endDate !== null || subscription.requestCancelAt !== null;
+  const canCancelSubscription = isCancellablePlan && !isCancellationScheduled;
+  const canReactivateSubscription =
+    isCancellablePlan && isCancellationScheduled;
   const isCancellingSubscription =
     isCancelling || isCancellingMetronomeContract;
+  const isReactivatingSubscription =
+    isReactivating || isReactivatingMetronomeContract;
   const periodEndLabel = invoice
     ? formatTimestampToFriendlyDate(invoice.currentPeriodEndMs, "short")
     : null;
@@ -92,7 +111,21 @@ export function BillingOverview({ owner, subscription }: BillingOverviewProps) {
               Current
             </div>
           </div>
-          {canCancelSubscription && (
+          {canReactivateSubscription ? (
+            <Button
+              label="Resume subscription"
+              size="sm"
+              variant="highlight"
+              disabled={isReactivatingSubscription}
+              onClick={withTracking(
+                TRACKING_AREAS.AUTH,
+                "subscription_reactivate",
+                () => {
+                  void reactivateSubscription();
+                }
+              )}
+            />
+          ) : canCancelSubscription ? (
             <Button
               label="Cancel subscription"
               size="sm"
@@ -106,7 +139,7 @@ export function BillingOverview({ owner, subscription }: BillingOverviewProps) {
                 }
               )}
             />
-          )}
+          ) : null}
         </div>
 
         {invoice ? (
