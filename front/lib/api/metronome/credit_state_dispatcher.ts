@@ -150,20 +150,17 @@ export async function dispatchPaygEnabled({
   await transitionWorkspacePool(workspace, { type: "payg_enabled" });
 }
 
-export async function dispatchLowBalance100({
+export async function dispatchLowBalance({
   workspace,
+  balanceAwu,
 }: {
   workspace: WorkspaceResource;
+  balanceAwu: number;
 }): Promise<void> {
-  await transitionWorkspacePool(workspace, { type: "low_balance_100" });
-}
-
-export async function dispatchLowBalance10({
-  workspace,
-}: {
-  workspace: WorkspaceResource;
-}): Promise<void> {
-  await transitionWorkspacePool(workspace, { type: "low_balance_10" });
+  await transitionWorkspacePool(workspace, {
+    type: "low_balance",
+    balanceAwu,
+  });
 }
 
 async function transitionWorkspacePool(

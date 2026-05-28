@@ -1,7 +1,6 @@
 import {
   dispatchCreditsAdded,
-  dispatchLowBalance10,
-  dispatchLowBalance100,
+  dispatchLowBalance,
   dispatchPaygCapReached,
   dispatchPerUserCapReached,
   dispatchPerUserCapResolved,
@@ -454,25 +453,15 @@ export async function processMetronomeWebhook({
           },
           "[Metronome Webhook] low_remaining_contract_credit_and_commit_balance_reached: pool exhausted dispatched"
         );
-      } else if (remaining <= 10) {
-        await dispatchLowBalance10({ workspace });
+      } else {
+        await dispatchLowBalance({ workspace, balanceAwu: remaining });
         logger.info(
           {
             eventId: event.id,
             workspaceId: workspace.sId,
             remaining,
           },
-          "[Metronome Webhook] low_remaining_contract_credit_and_commit_balance_reached: low balance 10 dispatched"
-        );
-      } else if (remaining <= 100) {
-        await dispatchLowBalance100({ workspace });
-        logger.info(
-          {
-            eventId: event.id,
-            workspaceId: workspace.sId,
-            remaining,
-          },
-          "[Metronome Webhook] low_remaining_contract_credit_and_commit_balance_reached: low balance 100 dispatched"
+          "[Metronome Webhook] low_remaining_contract_credit_and_commit_balance_reached: low balance dispatched"
         );
       }
       break;
