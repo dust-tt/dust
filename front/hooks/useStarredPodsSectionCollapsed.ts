@@ -1,9 +1,9 @@
 import { useCallback, useState } from "react";
 
-const LOCAL_STORAGE_KEY = "projectsSectionCollapsed";
+const LOCAL_STORAGE_KEY = "starredPodsSectionCollapsed";
 
-export const useProjectsSectionCollapsed = () => {
-  const [isProjectsSectionCollapsed, setCollapsedState] = useState<boolean>(
+export const useStarredPodsSectionCollapsed = () => {
+  const [isStarredPodsSectionCollapsed, setCollapsedState] = useState<boolean>(
     () => {
       if (typeof window === "undefined") {
         return false;
@@ -16,7 +16,7 @@ export const useProjectsSectionCollapsed = () => {
     }
   );
 
-  const setProjectsSectionCollapsed = useCallback((collapsed: boolean) => {
+  const setStarredPodsSectionCollapsed = useCallback((collapsed: boolean) => {
     setCollapsedState(collapsed);
     try {
       localStorage.setItem(LOCAL_STORAGE_KEY, collapsed ? "true" : "false");
@@ -26,7 +26,7 @@ export const useProjectsSectionCollapsed = () => {
   }, []);
 
   return {
-    isProjectsSectionCollapsed,
-    setProjectsSectionCollapsed,
+    isStarredPodsSectionCollapsed,
+    setStarredPodsSectionCollapsed,
   };
 };

@@ -1,4 +1,7 @@
-import { getLocalAccountPrivilegeHardeningCommand } from "@app/lib/api/sandbox/hardening";
+import {
+  getLocalAccountPrivilegeHardeningCommand,
+  getRootConsumedPathHardeningCommand,
+} from "@app/lib/api/sandbox/hardening";
 import { PROFILE_DIR } from "@app/lib/api/sandbox/image/profile";
 import { buildDustToolsBinary } from "@app/lib/api/sandbox/image/profile/build";
 import { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
@@ -16,7 +19,7 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.10.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.29";
+const DUST_BASE_IMAGE_VERSION = "0.8.31";
 const DSBX_CLI_VERSION = "0.1.23";
 // Identity, not coverage list: agent-proxied is a specific Linux user. The
 // nftables ruleset covers SANDBOX_UNTRUSTED_UIDS as a set; reordering that
@@ -167,10 +170,10 @@ function getAgentProxiedSetupCommand(): string {
   return [
     "install -d -o agent -g agent -m 2775 /home/agent/.local /home/agent/.local/bin",
     `useradd --create-home --uid ${AGENT_PROXIED_UID} --gid agent --shell /bin/bash agent-proxied`,
-    "chgrp agent /home/agent /home/agent/.local /home/agent/.local/bin /files/conversation /files/project",
-    "chmod g+ws /home/agent /home/agent/.local /home/agent/.local/bin /files/conversation /files/project",
-    "setfacl -R -d -m g::rwx /home/agent /home/agent/.local /home/agent/.local/bin /files/conversation /files/project",
-    "setfacl -R -m g::rwx /home/agent /home/agent/.local /home/agent/.local/bin /files/conversation /files/project",
+    "chgrp agent /home/agent /home/agent/.local /home/agent/.local/bin /files/conversation /files/pod",
+    "chmod g+ws /home/agent /home/agent/.local /home/agent/.local/bin /files/conversation /files/pod",
+    "setfacl -R -d -m g::rwx /home/agent /home/agent/.local /home/agent/.local/bin /files/conversation /files/pod",
+    "setfacl -R -m g::rwx /home/agent /home/agent/.local /home/agent/.local/bin /files/conversation /files/pod",
   ].join(" && ");
 }
 
@@ -178,14 +181,6 @@ function getEgressResolverUserSetupCommand(): string {
   return [
     "groupadd --system dust-egress-resolver",
     "useradd --system --no-create-home --gid dust-egress-resolver --shell /usr/sbin/nologin dust-egress-resolver",
-  ].join(" && ");
-}
-
-function getPrivilegedExecutablePathHardeningCommand(): string {
-  return [
-    "install -d -o root -g root -m 755 /opt/bin /usr/local /usr/local/sbin /usr/local/bin",
-    "chown root:root /opt/bin /usr/local /usr/local/sbin /usr/local/bin",
-    "chmod 755 /opt/bin /usr/local /usr/local/sbin /usr/local/bin",
   ].join(" && ");
 }
 
@@ -246,12 +241,12 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
 )
   // Create agent user first so e2b creates /home/agent with correct ownership.
   .setUser("agent")
-  // Conversation + project files bootstrap.
-  // Pre-create mount directories for faster GCS mounts. `/files/project` is only mounted when the
-  // conversation belongs to a project; the directory always exists in the image so the path is
+  // Conversation + Pod files bootstrap.
+  // Pre-create mount directories for faster GCS mounts. `/files/pod` is only mounted when the
+  // conversation belongs to a Pod; the directory always exists in the image so the path is
   // predictable for the agent prompt.
   .runCmd(
-    "mkdir -p /files/conversation /files/project && chmod 777 /files/conversation /files/project",
+    "mkdir -p /files/conversation /files/pod && chmod 777 /files/conversation /files/pod",
     {
       user: "root",
     }
@@ -274,9 +269,9 @@ SHELLEOF`,
   .runCmd("chmod 755 /home/agent/.bin/token-server.sh", { user: "root" })
   .runCmd(getEgressResolverUserSetupCommand(), { user: "root" })
   // Add sentinel file to indicate when the conversation mount is pending. We intentionally do
-  // NOT add an equivalent marker under /files/project: the project mount is conditional (only
-  // happens for project conversations), so a baked marker would be misleading in non-project
-  // conversations where no mount ever lands.
+  // NOT add an equivalent marker under /files/pod: the Pod mount is conditional (only happens
+  // for Pod conversations), so a baked marker would be misleading in non-Pod conversations where
+  // no mount ever lands.
   .runCmd("touch /files/conversation/.mount-pending", { user: "root" })
   // Hidden tools: installed but not in manifest (back profile functions)
   .runCmd("apt-get update && apt-get install -y ripgrep fd-find sd", {
@@ -502,7 +497,7 @@ SHELLEOF`,
   // Run after all apt/npm installs as a final guard against a dependency
   // reintroducing sudo or privileged account state.
   .runCmd(getLocalAccountPrivilegeHardeningCommand(), { user: "root" })
-  .runCmd(getPrivilegedExecutablePathHardeningCommand(), { user: "root" })
+  .runCmd(getRootConsumedPathHardeningCommand(), { user: "root" })
   // Profile functions (no install needed, provided by profile scripts)
   // --- read_file: anthropic/openai use offset/limit, gemini uses start/end ---
   .registerTool({

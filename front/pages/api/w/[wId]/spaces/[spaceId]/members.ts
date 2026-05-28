@@ -11,7 +11,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { notifyProjectMembersAdded } from "@app/lib/notifications/workflows/project-added-as-member";
 import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import { areOpenProjectsAllowed } from "@app/lib/workspace_policies";
+import { areOpenPodsAllowed } from "@app/lib/workspace_policies";
 import { auditLog } from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -101,7 +101,7 @@ export async function handler(
       if (
         space.isProjectAndRestricted() &&
         !body.isRestricted &&
-        !areOpenProjectsAllowed(owner)
+        !areOpenPodsAllowed(owner)
       ) {
         return apiError(req, res, {
           status_code: 403,

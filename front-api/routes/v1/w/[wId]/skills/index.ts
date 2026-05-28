@@ -6,13 +6,13 @@ import { MAX_ZIP_SIZE_BYTES } from "@app/lib/api/skills/detection/zip/detect_ski
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { createHono } from "@front-api/lib/hono";
 import type { PublicApiCtx } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import type { HttpBindings } from "@hono/node-server";
 import formidable from "formidable";
-import { Hono } from "hono";
 import { z } from "zod";
 
 export type GetPublicSkillsResponseBody = {
@@ -34,7 +34,7 @@ const GetSkillsQuerySchema = z.object({
 // We extend the public API context with `HttpBindings` so we can reach the
 // underlying Node `IncomingMessage` via `ctx.env.incoming` and hand it to
 // `formidable.parse(...)` for multipart parsing in the POST handler.
-const app = new Hono<PublicApiCtx & { Bindings: HttpBindings }>();
+const app = createHono<PublicApiCtx & { Bindings: HttpBindings }>();
 
 /**
  * @swagger

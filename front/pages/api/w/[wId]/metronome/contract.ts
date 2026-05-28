@@ -1,35 +1,20 @@
 // @migration-status: MIGRATED_TO_HONO
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import type { Authenticator } from "@app/lib/auth";
-import { getMetronomeContractById } from "@app/lib/metronome/client";
+import type { MetronomeContractSummary } from "@app/lib/api/credits/metronome_contract";
 import {
-  cancelWorkspaceContractAtPeriodEnd,
-  reactivateWorkspaceContract,
-} from "@app/lib/metronome/contract_lifecycle";
-import { parseMauTiers } from "@app/lib/metronome/mau_sync";
-import { hasContractSeatSubscription } from "@app/lib/metronome/seats";
-import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
+  applyContractLifecycleAction,
+  getMetronomeContractSummary,
+} from "@app/lib/api/credits/metronome_contract";
+import type { Authenticator } from "@app/lib/auth";
+import type { ContractLifecycleError } from "@app/lib/metronome/contract_lifecycle";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
-export type MetronomeContractSummary = {
-  planFamily: "pro" | "enterprise";
-  /**
-   * MAU tier boundaries parsed from the MAU_TIERS contract custom field.
-   * `null` for simple MAU (no tiering) or non-enterprise.
-   * Each tier has `start` (inclusive, 1-indexed) and `end` (exclusive, null = unlimited).
-   */
-  mauTiers: Array<{ start: number; end: number | null }> | null;
-  /** ms epoch — set when the contract is scheduled to end (cancellation or fixed term). */
-  contractEndingAtMs: number | null;
-  /** True if the contract has at least one seat-billed subscription */
-  hasSeatSubscription: boolean;
-};
+export type { MetronomeContractSummary };
 
 export type GetMetronomeContractResponseBody = {
   contract: MetronomeContractSummary | null;
@@ -42,6 +27,23 @@ type PatchMetronomeContractResponseBody = {
 export const PatchMetronomeContractRequestBody = z.object({
   action: z.enum(["cancel", "reactivate"]),
 });
+
+function lifecycleErrorToApi(
+  req: NextApiRequest,
+  res: NextApiResponse,
+  err: ContractLifecycleError
+) {
+  return apiError(req, res, {
+    status_code: err.kind === "invalid_state" ? 400 : 502,
+    api_error: {
+      type:
+        err.kind === "invalid_state"
+          ? "subscription_state_invalid"
+          : "internal_server_error",
+      message: err.message,
+    },
+  });
+}
 
 async function handler(
   req: NextApiRequest,
@@ -64,10 +66,43 @@ async function handler(
   }
 
   switch (req.method) {
-    case "GET":
-      return handleGet(req, res, auth);
-    case "PATCH":
-      return handlePatch(req, res, auth);
+    case "GET": {
+      const result = await getMetronomeContractSummary(auth);
+      if (result.isErr()) {
+        return apiError(req, res, {
+          status_code: 502,
+          api_error: {
+            type: "internal_server_error",
+            message: `Failed to fetch Metronome contract: ${result.error.message}`,
+          },
+        });
+      }
+      return res.status(200).json({ contract: result.value });
+    }
+    case "PATCH": {
+      const bodyValidation = PatchMetronomeContractRequestBody.safeParse(
+        req.body
+      );
+      if (!bodyValidation.success) {
+        const pathError = fromError(bodyValidation.error).toString();
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid request body: ${pathError}`,
+          },
+        });
+      }
+
+      const result = await applyContractLifecycleAction(
+        auth,
+        bodyValidation.data.action
+      );
+      if (result.isErr()) {
+        return lifecycleErrorToApi(req, res, result.error);
+      }
+      return res.status(200).json({ success: true });
+    }
     default:
       return apiError(req, res, {
         status_code: 405,
@@ -78,126 +113,6 @@ async function handler(
         },
       });
   }
-}
-
-async function handleGet(
-  req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetMetronomeContractResponseBody>>,
-  auth: Authenticator
-): Promise<void> {
-  const subscription = auth.subscription();
-  const owner = auth.workspace();
-  if (!subscription || !owner) {
-    return res.status(200).json({ contract: null });
-  }
-
-  const { metronomeContractId } = subscription;
-  const { metronomeCustomerId } = owner;
-  if (!metronomeContractId || !metronomeCustomerId) {
-    return res.status(200).json({ contract: null });
-  }
-
-  const contractResult = await getMetronomeContractById({
-    metronomeCustomerId,
-    metronomeContractId,
-  });
-  if (contractResult.isErr()) {
-    return apiError(req, res, {
-      status_code: 502,
-      api_error: {
-        type: "internal_server_error",
-        message: `Failed to fetch Metronome contract: ${contractResult.error.message}`,
-      },
-    });
-  }
-
-  const contract = contractResult.value;
-
-  const planFamily: "pro" | "enterprise" = isEntreprisePlanPrefix(
-    subscription.plan.code
-  )
-    ? "enterprise"
-    : "pro";
-
-  const mauTiersField = contract.custom_fields?.MAU_TIERS;
-  const parsed = parseMauTiers(mauTiersField);
-  const mauTiers = parsed
-    ? parsed.map((t) => ({ start: t.start, end: t.end ?? null }))
-    : null;
-
-  const contractEndingAtMs = contract.ending_before
-    ? new Date(contract.ending_before).getTime()
-    : null;
-
-  return res.status(200).json({
-    contract: {
-      planFamily,
-      mauTiers,
-      contractEndingAtMs,
-      hasSeatSubscription: await hasContractSeatSubscription(contract),
-    },
-  });
-}
-
-async function handlePatch(
-  req: NextApiRequest,
-  res: NextApiResponse<
-    WithAPIErrorResponse<PatchMetronomeContractResponseBody>
-  >,
-  auth: Authenticator
-): Promise<void> {
-  const bodyValidation = PatchMetronomeContractRequestBody.safeParse(req.body);
-  if (!bodyValidation.success) {
-    const pathError = fromError(bodyValidation.error).toString();
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: `Invalid request body: ${pathError}`,
-      },
-    });
-  }
-
-  const { action } = bodyValidation.data;
-
-  switch (action) {
-    case "cancel": {
-      const result = await cancelWorkspaceContractAtPeriodEnd(auth);
-      if (result.isErr()) {
-        return apiError(req, res, {
-          status_code: result.error.kind === "invalid_state" ? 400 : 502,
-          api_error: {
-            type:
-              result.error.kind === "invalid_state"
-                ? "subscription_state_invalid"
-                : "internal_server_error",
-            message: result.error.message,
-          },
-        });
-      }
-      break;
-    }
-    case "reactivate": {
-      const result = await reactivateWorkspaceContract(auth);
-      if (result.isErr()) {
-        return apiError(req, res, {
-          status_code: result.error.kind === "invalid_state" ? 400 : 502,
-          api_error: {
-            type:
-              result.error.kind === "invalid_state"
-                ? "subscription_state_invalid"
-                : "internal_server_error",
-            message: result.error.message,
-          },
-        });
-      }
-      break;
-    }
-    default:
-      assertNever(action);
-  }
-
-  return res.status(200).json({ success: true });
 }
 
 export default withSessionAuthenticationForWorkspace(handler);

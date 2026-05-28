@@ -3,7 +3,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { Hono } from "hono";
+import { createHono } from "@front-api/lib/hono";
 
 const DEPENDENCY_CHECK_TIMEOUT_MS = 2000;
 
@@ -49,7 +49,7 @@ async function checkDependency(
  * accepting traffic. It's called during pod startup only.
  *
  */
-const app = new Hono();
+const app = createHono();
 
 app.get("/", async (ctx) => {
   const startMs = performance.now();

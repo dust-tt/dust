@@ -1,11 +1,11 @@
 import { TemplateResource } from "@app/lib/resources/template_resource";
+import { createHono } from "@front-api/lib/hono";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
-import { Hono } from "hono";
 
 export type FetchAgentTemplateResponse = ReturnType<TemplateResource["toJSON"]>;
 
 // Mounted at /api/templates/:tId.
-const app = new Hono();
+const app = createHono();
 
 app.get("/", async (ctx): HandlerResult<FetchAgentTemplateResponse> => {
   const templateId = ctx.req.param("tId");

@@ -15,12 +15,12 @@ import {
   isConversationFileUseCase,
   isPubliclySupportedUseCase,
 } from "@app/types/files";
+import { createHono } from "@front-api/lib/hono";
 import type { PublicApiCtx } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import type { HttpBindings } from "@hono/node-server";
 import type { Context } from "hono";
-import { Hono } from "hono";
 import { z } from "zod";
 
 const ParamsSchema = z.object({
@@ -67,7 +67,7 @@ function getSecureFileAction(
 // We extend the public API context with `HttpBindings` so we can reach the
 // underlying Node `IncomingMessage` via `ctx.env.incoming` and hand it to
 // `processAndStoreFile` for multipart parsing.
-const app = new Hono<PublicApiCtx & { Bindings: HttpBindings }>();
+const app = createHono<PublicApiCtx & { Bindings: HttpBindings }>();
 
 /**
  * @ignoreswagger

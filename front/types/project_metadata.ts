@@ -1,4 +1,4 @@
-export interface ProjectMetadataType {
+export interface PodMetadataType {
   sId: string;
   createdAt: number;
   updatedAt: number;

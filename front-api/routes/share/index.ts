@@ -1,8 +1,8 @@
-import { Hono } from "hono";
+import { createHono } from "@front-api/lib/hono";
 
 import frame from "./frame";
 
-const app = new Hono();
+const app = createHono();
 app.route("/frame", frame);
 
 export default app;

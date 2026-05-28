@@ -34,7 +34,7 @@ import type {
 import {
   isAgentMessageType,
   isCompactionMessageType,
-  isProjectConversation,
+  isPodConversation,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
 import type { MentionType } from "@app/types/assistant/mentions";
@@ -68,7 +68,7 @@ export async function getMentionStatus(
   // For project conversations we do not have to check if the mentioned user
   // can access the conversation. If the project is open, they can access it.
   // If it is closed, the only requested space will be the project itself by design.
-  if (isProjectConversation(conversation)) {
+  if (isPodConversation(conversation)) {
     const isProjectMember = await isUserMemberOfSpace(auth, {
       userId: mentionedUser.sId,
       spaceId: conversation.spaceId,
@@ -242,7 +242,7 @@ export async function validateUserMention(
   const isApproval = approvalState === "approved";
 
   // For project conversations, add user to project space first when approving.
-  if (isProjectConversation(conversation) && isApproval) {
+  if (isPodConversation(conversation) && isApproval) {
     const space = await SpaceResource.fetchById(auth, conversation.spaceId);
     if (!space) {
       return new Err({

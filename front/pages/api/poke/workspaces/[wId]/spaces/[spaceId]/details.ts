@@ -10,13 +10,13 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { PokeSpaceType } from "@app/types/poke";
-import type { ProjectMetadataType } from "@app/types/project_metadata";
+import type { PodMetadataType } from "@app/types/project_metadata";
 import type { UserTypeWithWorkspaces } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export type PokeGetSpaceDetails = {
   members: Record<string, UserTypeWithWorkspaces[]>;
-  metadata: ProjectMetadataType | null;
+  metadata: PodMetadataType | null;
   space: PokeSpaceType;
 };
 

@@ -353,6 +353,9 @@ export const GenerateImageInputSchema = z.object({
     .describe(
       "The aspect ratio of the generated image. Must be one of 1:1, 3:2, 2:3, 3:4, 4:3, 4:5, 5:4, 9:16, 16:9, or 21:9."
     ),
+  // Display/parse path for stored actions. Kept permissive (still accepts the
+  // legacy "high"/4K tier) so historical conversations render correctly. The
+  // agent-facing write path is capped at "medium" in image_generation/metadata.ts.
   quality: z
     .enum(["low", "medium", "high"])
     .optional()

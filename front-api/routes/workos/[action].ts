@@ -33,10 +33,10 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import { validateRelativePath } from "@app/types/shared/utils/url_utils";
+import { createHono } from "@front-api/lib/hono";
 import { apiError } from "@front-api/middlewares/utils";
 import { OauthException } from "@workos-inc/node";
 import type { Context } from "hono";
-import { Hono } from "hono";
 import { getCookie } from "hono/cookie";
 import { sealData } from "iron-session";
 
@@ -62,7 +62,7 @@ function redirectTo(ctx: Context, sanitizedReturnTo: string) {
   return redirect(ctx, `${config.getAppUrl()}${sanitizedReturnTo}`);
 }
 
-const app = new Hono();
+const app = createHono();
 
 app.all("/", async (ctx) => {
   const action = ctx.req.param("action");

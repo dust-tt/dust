@@ -22,13 +22,7 @@ export async function compactionActivity(
     sourceConversation?: CompactionSourceConversation;
   }
 ): Promise<void> {
-  const authResult = await Authenticator.fromJSON(authType);
-  if (authResult.isErr()) {
-    throw new Error(
-      `Failed to deserialize authenticator: ${authResult.error.code}`
-    );
-  }
-  const auth = authResult.value;
+  const auth = await Authenticator.fromJSON(authType);
   const compactionRes = await runCompaction(auth, {
     conversationId,
     compactionMessageId,
@@ -54,13 +48,7 @@ export async function compactionCleanupActivity(
     compactionMessageVersion: number;
   }
 ): Promise<void> {
-  const authResult = await Authenticator.fromJSON(authType);
-  if (authResult.isErr()) {
-    throw new Error(
-      `Failed to deserialize authenticator: ${authResult.error.code}`
-    );
-  }
-  const auth = authResult.value;
+  const auth = await Authenticator.fromJSON(authType);
   await failCompactionMessage(auth, {
     conversationId,
     compactionMessageId,

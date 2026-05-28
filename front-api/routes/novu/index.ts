@@ -4,8 +4,8 @@ import { conversationUnreadWorkflow } from "@app/lib/notifications/workflows/con
 import { projectAddedAsMemberWorkflow } from "@app/lib/notifications/workflows/project-added-as-member";
 import { providerCredentialsHealthUpdatedWorkflow } from "@app/lib/notifications/workflows/provider-credential-updated";
 import { skillSuggestionsReadyWorkflow } from "@app/lib/notifications/workflows/skill-suggestions-ready";
+import { createHono } from "@front-api/lib/hono";
 import { serve } from "@novu/framework/next";
-import { Hono } from "hono";
 
 // This endpoint exposes our code-based notification workflows to the Novu
 // platform. The Novu platform calls this endpoint to execute workflow steps.
@@ -31,7 +31,7 @@ const novu = serve({
   ],
 }) as unknown as Record<"GET" | "POST" | "OPTIONS", FetchHandler>;
 
-const app = new Hono();
+const app = createHono();
 
 app.get("/", (ctx) => novu.GET(ctx.req.raw, ctx));
 app.post("/", (ctx) => novu.POST(ctx.req.raw, ctx));

@@ -7,6 +7,11 @@ import {
 } from "@app/lib/api/sandbox/egress_secrets";
 import { writeSandboxEnvManifestFile } from "@app/lib/api/sandbox/env_manifest";
 import { SANDBOX_AGENT_PROXIED_UID } from "@app/lib/api/sandbox/image/types";
+import {
+  type RootCommand,
+  renderRootCommand,
+  rootCommand,
+} from "@app/lib/api/sandbox/root_command";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
 import { SANDBOX_TRUST_ENV_VARS } from "@app/lib/api/sandbox/trust_env";
 import type { Authenticator } from "@app/lib/auth";
@@ -75,13 +80,12 @@ async function resolveProxyAddr(): Promise<string> {
   return address;
 }
 
-async function runSuccessfulSandboxCommand(
+async function runSuccessfulRootCommand(
   auth: Authenticator,
   sandbox: SandboxResource,
-  command: string,
-  user?: string
+  command: RootCommand
 ): Promise<Result<void, Error>> {
-  const result = await sandbox.exec(auth, command, user ? { user } : undefined);
+  const result = await sandbox.execRoot(auth, command);
   if (result.isErr()) {
     return result;
   }
@@ -89,7 +93,7 @@ async function runSuccessfulSandboxCommand(
   if (result.value.exitCode !== 0) {
     return new Err(
       new Error(
-        `Sandbox command failed with exit code ${result.value.exitCode}: ${result.value.stderr || result.value.stdout || command}`
+        `Sandbox root command failed with exit code ${result.value.exitCode}: ${result.value.stderr || result.value.stdout || renderRootCommand(command)}`
       )
     );
   }
@@ -240,15 +244,22 @@ export async function checkEgressForwarderHealth(
 
   // Root is required: `nft list table` needs CAP_NET_ADMIN, and the probe also
   // reads /proc/net/{tcp,udp} which is fine non-root but pointless to split.
-  const result = await sandbox.exec(
+  const result = await sandbox.execRoot(
     auth,
-    `/opt/bin/dsbx healthcheck ` +
-      `--forwarder-listen ${shellEscape(EGRESS_FORWARDER_LISTEN_ADDR)} ` +
-      `--resolver-listen ${shellEscape(EGRESS_RESOLVER_LISTEN_ADDR)} ` +
-      `--proxied-uid ${EGRESS_PROXIED_UID} ` +
-      `--ca-bundle ${shellEscape(MITM_CA_BUNDLE_PATH)} ` +
-      `--ca-bundle-marker ${shellEscape(MITM_CA_BUNDLE_MARKER_PATH)}`,
-    { user: "root", timeoutMs: 1_000 }
+    rootCommand.exec("/opt/bin/dsbx", [
+      "healthcheck",
+      "--forwarder-listen",
+      EGRESS_FORWARDER_LISTEN_ADDR,
+      "--resolver-listen",
+      EGRESS_RESOLVER_LISTEN_ADDR,
+      "--proxied-uid",
+      EGRESS_PROXIED_UID,
+      "--ca-bundle",
+      MITM_CA_BUNDLE_PATH,
+      "--ca-bundle-marker",
+      MITM_CA_BUNDLE_MARKER_PATH,
+    ]),
+    { timeoutMs: 1_000 }
   );
 
   if (result.isErr()) {
@@ -399,12 +410,14 @@ export async function teardownInSandboxEgressRedirect(
     );
   }
 
-  const command =
+  const command = rootCommand.unsafeShell(
     "/usr/bin/systemctl disable --now dust-egress-resolver.service dust-egress-nftables.service >/dev/null 2>&1 || true; " +
-    "/usr/sbin/nft delete table ip dust-egress >/dev/null 2>&1 || true; " +
-    "/usr/sbin/nft delete table ip6 dust-egress >/dev/null 2>&1 || true";
+      "/usr/sbin/nft delete table ip dust-egress >/dev/null 2>&1 || true; " +
+      "/usr/sbin/nft delete table ip6 dust-egress >/dev/null 2>&1 || true",
+    "dev-only teardown needs best-effort shell fallbacks"
+  );
 
-  return runSuccessfulSandboxCommand(auth, sandbox, command, "root");
+  return runSuccessfulRootCommand(auth, sandbox, command);
 }
 
 export async function setupEgressForwarder(
@@ -438,11 +451,10 @@ export async function setupEgressForwarder(
     return tokenWriteResult;
   }
 
-  const prepareTokenResult = await runSuccessfulSandboxCommand(
+  const prepareTokenResult = await runSuccessfulRootCommand(
     auth,
     sandbox,
-    `/usr/bin/chmod 600 ${shellEscape(EGRESS_TOKEN_PATH)}`,
-    "root"
+    rootCommand.exec("/usr/bin/chmod", ["600", EGRESS_TOKEN_PATH])
   );
   if (prepareTokenResult.isErr()) {
     return prepareTokenResult;
@@ -474,25 +486,37 @@ export async function setupEgressForwarder(
   // (which contains its own CA, opening a forge-and-tunnel loop). The strip
   // list is derived from SANDBOX_TRUST_ENV_VARS so adding a new trust env
   // var can't drift the two sites out of sync.
-  const trustEnvStripFlags = Object.keys(SANDBOX_TRUST_ENV_VARS)
-    .map((k) => `-u ${k}`)
-    .join(" ");
-  const startForwarderCommand =
-    `/usr/bin/nohup /usr/bin/env ${trustEnvStripFlags} ` +
-    "/opt/bin/dsbx forward " +
-    `--token-file ${shellEscape(EGRESS_TOKEN_PATH)} ` +
-    `--proxy-addr ${shellEscape(`${proxyAddr}:${config.getEgressProxyPort()}`)} ` +
-    `--proxy-tls-name ${shellEscape(getProxyTlsName())} ` +
-    `--listen ${shellEscape(EGRESS_FORWARDER_LISTEN_ADDR)} ` +
-    `--deny-log ${shellEscape(EGRESS_DENY_LOG_PATH)} ` +
-    `--secrets-file ${shellEscape(EGRESS_SECRETS_PATH)} ` +
-    `>${shellEscape(EGRESS_FORWARDER_LOG_PATH)} 2>&1 &`;
+  const startForwarderCommand = rootCommand.background(
+    rootCommand.redirectStdout(
+      rootCommand.nohup(
+        rootCommand.env(
+          rootCommand.exec("/opt/bin/dsbx", [
+            "forward",
+            "--token-file",
+            EGRESS_TOKEN_PATH,
+            "--proxy-addr",
+            `${proxyAddr}:${config.getEgressProxyPort()}`,
+            "--proxy-tls-name",
+            getProxyTlsName(),
+            "--listen",
+            EGRESS_FORWARDER_LISTEN_ADDR,
+            "--deny-log",
+            EGRESS_DENY_LOG_PATH,
+            "--secrets-file",
+            EGRESS_SECRETS_PATH,
+          ]),
+          { unset: Object.keys(SANDBOX_TRUST_ENV_VARS) }
+        )
+      ),
+      EGRESS_FORWARDER_LOG_PATH,
+      { stderrToStdout: true }
+    )
+  );
 
-  const startResult = await runSuccessfulSandboxCommand(
+  const startResult = await runSuccessfulRootCommand(
     auth,
     sandbox,
-    startForwarderCommand,
-    "root"
+    startForwarderCommand
   );
   if (startResult.isErr()) {
     return startResult;
@@ -530,11 +554,13 @@ async function killEgressForwarder(
   //
   // The regex is anchored to `/opt/bin/dsbx forward` to avoid killing the
   // co-resident `dsbx resolve` subcommand that runs the DNS stub.
-  return runSuccessfulSandboxCommand(
+  return runSuccessfulRootCommand(
     auth,
     sandbox,
-    "/usr/bin/pkill -KILL -f '^/opt/bin/dsbx forward( |$)' >/dev/null 2>&1 || true",
-    "root"
+    rootCommand.unsafeShell(
+      "/usr/bin/pkill -KILL -f '^/opt/bin/dsbx forward( |$)' >/dev/null 2>&1 || true",
+      "best-effort process cleanup intentionally ignores missing dsbx"
+    )
   );
 }
 
@@ -566,17 +592,19 @@ async function installMitmTrustBundle(
     `/usr/bin/chmod 644 "$_bundle_tmp" && ` +
     `/usr/bin/mv "$_bundle_tmp" ${shellEscape(MITM_CA_BUNDLE_PATH)}`;
 
-  const command =
+  const command = rootCommand.unsafeShell(
     `[ -s ${shellEscape(MITM_CA_PATH)} ] || ` +
-    `{ echo "dsbx CA file ${MITM_CA_PATH} missing or empty" >&2; exit 1; }; ` +
-    `if [ -x ${shellEscape(MITM_TRUST_BUNDLE_INSTALLER_PATH)} ]; then ` +
-    `${shellEscape(MITM_TRUST_BUNDLE_INSTALLER_PATH)}; ` +
-    `else ` +
-    `${inlineFallback}; ` +
-    `fi && ` +
-    `: > ${shellEscape(MITM_CA_BUNDLE_MARKER_PATH)}`;
+      `{ echo "dsbx CA file ${MITM_CA_PATH} missing or empty" >&2; exit 1; }; ` +
+      `if [ -x ${shellEscape(MITM_TRUST_BUNDLE_INSTALLER_PATH)} ]; then ` +
+      `${shellEscape(MITM_TRUST_BUNDLE_INSTALLER_PATH)}; ` +
+      `else ` +
+      `${inlineFallback}; ` +
+      `fi && ` +
+      `: > ${shellEscape(MITM_CA_BUNDLE_MARKER_PATH)}`,
+    "MITM trust bundle repair needs a pre-0.8.8 compound fallback"
+  );
 
-  return runSuccessfulSandboxCommand(auth, sandbox, command, "root");
+  return runSuccessfulRootCommand(auth, sandbox, command);
 }
 
 // Best-effort, sandbox-global deny log surfacing. The offset tracks lines
@@ -586,24 +614,25 @@ export async function readNewDenyLogEntries(
   auth: Authenticator,
   sandbox: SandboxResource
 ): Promise<Result<string[], Error>> {
-  const command =
+  const command = rootCommand.unsafeShell(
     `_state=$(/bin/cat ${shellEscape(EGRESS_DENY_LOG_OFFSET_PATH)} 2>/dev/null || true); ` +
-    `set -- $_state; ` +
-    `_off=\${1:-0}; _size_off=\${2:-0}; ` +
-    `case "$_off" in ''|*[!0-9]*) _off=0;; esac; ` +
-    `case "$_size_off" in ''|*[!0-9]*) _size_off=0;; esac; ` +
-    `if [ -f ${shellEscape(EGRESS_DENY_LOG_PATH)} ]; then ` +
-    `_total=$(/usr/bin/wc -l < ${shellEscape(EGRESS_DENY_LOG_PATH)} | /usr/bin/tr -d ' '); ` +
-    `_size=$(/usr/bin/wc -c < ${shellEscape(EGRESS_DENY_LOG_PATH)} | /usr/bin/tr -d ' '); ` +
-    `else _total=0; _size=0; fi; ` +
-    `if [ "$_total" -lt "$_off" ] || [ "$_size" -lt "$_size_off" ]; then _off=0; fi; ` +
-    `if [ "$_total" -gt "$_off" ]; then ` +
-    `/usr/bin/tail -n +$((_off + 1)) ${shellEscape(EGRESS_DENY_LOG_PATH)} | /usr/bin/head -n ${MAX_DENY_LOG_LINES_PER_EXEC}; ` +
-    `fi; ` +
-    `echo "$_total $_size" > ${shellEscape(EGRESS_DENY_LOG_OFFSET_PATH)}`;
+      `set -- $_state; ` +
+      `_off=\${1:-0}; _size_off=\${2:-0}; ` +
+      `case "$_off" in ''|*[!0-9]*) _off=0;; esac; ` +
+      `case "$_size_off" in ''|*[!0-9]*) _size_off=0;; esac; ` +
+      `if [ -f ${shellEscape(EGRESS_DENY_LOG_PATH)} ]; then ` +
+      `_total=$(/usr/bin/wc -l < ${shellEscape(EGRESS_DENY_LOG_PATH)} | /usr/bin/tr -d ' '); ` +
+      `_size=$(/usr/bin/wc -c < ${shellEscape(EGRESS_DENY_LOG_PATH)} | /usr/bin/tr -d ' '); ` +
+      `else _total=0; _size=0; fi; ` +
+      `if [ "$_total" -lt "$_off" ] || [ "$_size" -lt "$_size_off" ]; then _off=0; fi; ` +
+      `if [ "$_total" -gt "$_off" ]; then ` +
+      `/usr/bin/tail -n +$((_off + 1)) ${shellEscape(EGRESS_DENY_LOG_PATH)} | /usr/bin/head -n ${MAX_DENY_LOG_LINES_PER_EXEC}; ` +
+      `fi; ` +
+      `echo "$_total $_size" > ${shellEscape(EGRESS_DENY_LOG_OFFSET_PATH)}`,
+    "deny log reader needs offset arithmetic and rotation handling"
+  );
 
-  const result = await sandbox.exec(auth, command, {
-    user: "root",
+  const result = await sandbox.execRoot(auth, command, {
     timeoutMs: 2_000,
   });
 

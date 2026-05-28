@@ -16,7 +16,7 @@ import { fetchProjectDataSourceView } from "@app/lib/api/projects/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { isProjectConversation } from "@app/types/assistant/conversation";
+import { isPodConversation } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -168,7 +168,7 @@ export async function getProjectSpace(
 
     const conversation = conversationRes.value;
 
-    if (!isProjectConversation(conversation)) {
+    if (!isPodConversation(conversation)) {
       return new Err(
         new MCPError(
           "This conversation is not in a Pod. Pod context management is only available in Pod conversations.",

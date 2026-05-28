@@ -1,4 +1,7 @@
-import { toContent } from "@app/lib/api/llm/clients/google/utils/conversation_to_google";
+import {
+  toContent,
+  toContents,
+} from "@app/lib/api/llm/clients/google/utils/conversation_to_google";
 import type { ModelMessageTypeMultiActionsWithoutContentFragment } from "@app/types/assistant/generation";
 import { GEMINI_2_5_PRO_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
 import { trustedFetchImageBase64 } from "@app/types/shared/utils/image_utils";
@@ -17,6 +20,113 @@ describe("toContent", () => {
 
       expect(messages).toEqual(expectedGoogleMessages);
     });
+  });
+});
+
+describe("toContents", () => {
+  it("should merge parallel tool results into a single user turn.", async () => {
+    const messages: ModelMessageTypeMultiActionsWithoutContentFragment[] = [
+      {
+        role: "assistant",
+        function_calls: [
+          { id: "call_1", name: "tool_a", arguments: "{}" },
+          { id: "call_2", name: "tool_b", arguments: "{}" },
+        ],
+        content: "",
+        contents: [
+          {
+            type: "function_call",
+            value: { id: "call_1", name: "tool_a", arguments: "{}" },
+          },
+          {
+            type: "function_call",
+            value: { id: "call_2", name: "tool_b", arguments: "{}" },
+          },
+        ],
+      },
+      {
+        role: "function",
+        name: "tool_a",
+        function_call_id: "call_1",
+        content: "result a",
+      },
+      {
+        role: "function",
+        name: "tool_b",
+        function_call_id: "call_2",
+        content: "result b",
+      },
+    ];
+
+    const result = await toContents(messages, GEMINI_2_5_PRO_MODEL_ID);
+
+    // The model turn has 2 functionCall parts, so the following user turn must
+    // hold both functionResponse parts (Gemini enforces equal counts).
+    expect(result).toEqual([
+      {
+        role: "model",
+        parts: [
+          { functionCall: { id: "call_1", name: "tool_a", args: {} } },
+          { functionCall: { id: "call_2", name: "tool_b", args: {} } },
+        ],
+      },
+      {
+        role: "user",
+        parts: [
+          {
+            functionResponse: {
+              response: { output: "result a" },
+              name: "tool_a",
+              id: "call_1",
+            },
+          },
+          {
+            functionResponse: {
+              response: { output: "result b" },
+              name: "tool_b",
+              id: "call_2",
+            },
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("should not merge a regular user message into function responses.", async () => {
+    const messages: ModelMessageTypeMultiActionsWithoutContentFragment[] = [
+      {
+        role: "function",
+        name: "tool_a",
+        function_call_id: "call_1",
+        content: "result a",
+      },
+      {
+        role: "user",
+        name: "Someone",
+        content: [{ type: "text", text: "follow-up" }],
+      },
+    ];
+
+    const result = await toContents(messages, GEMINI_2_5_PRO_MODEL_ID);
+
+    expect(result).toEqual([
+      {
+        role: "user",
+        parts: [
+          {
+            functionResponse: {
+              response: { output: "result a" },
+              name: "tool_a",
+              id: "call_1",
+            },
+          },
+        ],
+      },
+      {
+        role: "user",
+        parts: [{ text: "follow-up" }],
+      },
+    ]);
   });
 });
 

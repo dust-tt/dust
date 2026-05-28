@@ -1,13 +1,25 @@
 import config from "@app/lib/api/config";
-import { SANDBOX_ROOT_SAFE_PATH } from "@app/lib/api/sandbox/hardening";
+import {
+  SANDBOX_ROOT_INVOKED_HELPERS,
+  SANDBOX_ROOT_SAFE_PATH,
+  SANDBOX_STATIC_ROOT_CONSUMED_DIRS,
+} from "@app/lib/api/sandbox/hardening";
 import {
   formatSandboxImageId,
   getRegisteredImages,
   getSandboxImageFromRegistry,
   type SandboxImage,
 } from "@app/lib/api/sandbox/image";
-import type { ExecResult } from "@app/lib/api/sandbox/provider";
+import type {
+  ExecResult,
+  RootExecOptions,
+  SandboxExecUser,
+} from "@app/lib/api/sandbox/provider";
 import { E2BSandboxProvider } from "@app/lib/api/sandbox/providers/e2b";
+import {
+  type RootCommand,
+  rootCommand,
+} from "@app/lib/api/sandbox/root_command";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
@@ -55,7 +67,7 @@ async function runCommand(
   provider: E2BSandboxProvider,
   providerId: string,
   command: string,
-  options: { user: string; timeoutMs?: number }
+  options: { user: SandboxExecUser; timeoutMs?: number }
 ): Promise<ExecResult> {
   const result = await provider.exec(
     providerId,
@@ -72,16 +84,51 @@ async function runCommand(
   return result.value;
 }
 
+async function runRootCommand(
+  provider: E2BSandboxProvider,
+  providerId: string,
+  command: RootCommand,
+  options: RootExecOptions = {}
+): Promise<ExecResult> {
+  const result = await provider.execRoot(
+    providerId,
+    command,
+    options,
+    TRACE_OPTS
+  );
+  if (result.isErr()) {
+    throw result.error;
+  }
+  return result.value;
+}
+
 async function runBashScript(
   provider: E2BSandboxProvider,
   providerId: string,
   script: string,
-  options: { user: string; timeoutMs?: number }
+  options: { user: SandboxExecUser; timeoutMs?: number }
 ): Promise<ExecResult> {
   return runCommand(provider, providerId, buildBashCommand(script), {
     timeoutMs: options.timeoutMs,
     user: options.user,
   });
+}
+
+async function runRootBashScript(
+  provider: E2BSandboxProvider,
+  providerId: string,
+  script: string,
+  options: RootExecOptions = {}
+): Promise<ExecResult> {
+  return runRootCommand(
+    provider,
+    providerId,
+    rootCommand.unsafeShell(
+      buildBashCommand(script),
+      "sandbox security check root bash probe"
+    ),
+    options
+  );
 }
 
 function assertNoRootIdentity(label: string, result: ExecResult): void {
@@ -222,7 +269,7 @@ async function checkBasicSandboxFunctionality(
 set -euo pipefail
 echo "shell-ok"
 /opt/bin/dsbx version >/dev/null
-for dir in /files/conversation /files/project; do
+for dir in /files/conversation /files/pod; do
   test -d "$dir"
   proof="$dir/dust-security-smoke-$$"
   printf 'file-ok' > "$proof"
@@ -240,7 +287,7 @@ async function checkTargetUserState(
   provider: E2BSandboxProvider,
   providerId: string
 ): Promise<void> {
-  const audit = await runBashScript(
+  const audit = await runRootBashScript(
     provider,
     providerId,
     `
@@ -260,8 +307,7 @@ if getent passwd user >/dev/null; then
 else
   echo "USER_EXISTS=0"
 fi
-`,
-    { user: "root" }
+`
   );
   const output = combinedOutput(audit);
 
@@ -434,19 +480,20 @@ export function assertLocalAuthHelpersNotSetuid(output: string): void {
   }
 }
 
-export function assertPrivilegedDirsSafe(output: string): void {
-  for (const dir of [
-    "/opt/bin",
-    "/usr/local",
-    "/usr/local/sbin",
-    "/usr/local/bin",
-  ]) {
-    const line = output
-      .split("\n")
-      .find((candidate) => candidate.startsWith(`${dir} `));
+export function assertStaticRootConsumedDirsSafe(output: string): void {
+  const lineByPath = new Map<string, string>();
+  for (const line of output.split("\n")) {
+    const [path] = line.split(/\s+/, 1);
+    if (path) {
+      lineByPath.set(path, line);
+    }
+  }
+
+  for (const dir of SANDBOX_STATIC_ROOT_CONSUMED_DIRS) {
+    const line = lineByPath.get(dir);
     if (!line) {
       throw new Error(
-        `missing privileged directory audit for ${dir}:\n${output}`
+        `missing root-consumed directory audit for ${dir}:\n${output}`
       );
     }
 
@@ -457,17 +504,46 @@ export function assertPrivilegedDirsSafe(output: string): void {
 
     if (owner !== "root:root" || Number.isNaN(mode) || (mode & 0o022) !== 0) {
       throw new Error(
-        `privileged directory ${dir} is not root-owned and non-writable by group/other:\n${line}`
+        `root-consumed directory ${dir} is not root-owned and non-writable by group/other:\n${line}`
+      );
+    }
+  }
+}
+
+export function assertSystemdUnitPathsSafe(output: string): void {
+  const errorLines = output
+    .split("\n")
+    .filter((line) => line.startsWith("SYSTEMD_UNIT_PATH_ERROR="));
+  if (errorLines.length > 0) {
+    throw new Error(
+      `systemd unit path audit failed:\n${errorLines.join("\n")}`
+    );
+  }
+
+  const auditLines = output
+    .split("\n")
+    .filter((line) => line.startsWith("SYSTEMD_UNIT_PATH="));
+  if (auditLines.length === 0) {
+    throw new Error(`missing systemd unit path audit lines:\n${output}`);
+  }
+
+  for (const line of auditLines) {
+    const fields = line.replace("SYSTEMD_UNIT_PATH=", "").split(/\s+/);
+    const path = fields[0];
+    const owner = fields[1];
+    const modeText = fields[2];
+    const mode = Number.parseInt(modeText, 8);
+
+    if (owner !== "root:root" || Number.isNaN(mode) || (mode & 0o022) !== 0) {
+      throw new Error(
+        `systemd unit path ${path} is not root-owned and non-writable by group/other:\n${line}`
       );
     }
   }
 }
 
 export function assertRootInvokedHelpersSafe(output: string): void {
-  for (const path of [
-    "/opt/bin/dsbx",
-    "/usr/local/bin/dust-install-trust-bundle",
-  ]) {
+  for (const path of SANDBOX_ROOT_INVOKED_HELPERS) {
     const line = output
       .split("\n")
       .find((candidate) => candidate.startsWith(`${path} `));
@@ -513,7 +589,7 @@ async function checkSystemAccountAudit(
   provider: E2BSandboxProvider,
   providerId: string
 ): Promise<void> {
-  const audit = await runBashScript(
+  const audit = await runRootBashScript(
     provider,
     providerId,
     `
@@ -544,12 +620,33 @@ for path in ${LOCAL_AUTH_HELPER_PATHS.map((path) => shellQuote(path)).join(
     stat -c 'LOCAL_AUTH_HELPER=%n %a %A %U:%G' "$path"
   fi
 done
-echo "--- privileged-dirs ---"
-for dir in /opt/bin /usr/local /usr/local/sbin /usr/local/bin; do
+echo "--- root-consumed-dirs ---"
+for dir in ${SANDBOX_STATIC_ROOT_CONSUMED_DIRS.map((dir) =>
+      shellQuote(dir)
+    ).join(" ")}; do
   stat -c '%n %U:%G %a %A' "$dir"
 done
+echo "--- systemd-unit-paths ---"
+if [ ! -x /usr/bin/systemd-analyze ]; then
+  echo "SYSTEMD_UNIT_PATH_ERROR=missing /usr/bin/systemd-analyze"
+else
+  /usr/bin/systemd-analyze unit-paths | while IFS= read -r dir; do
+    [ -n "$dir" ] || continue
+    case "$dir" in
+      /*) ;;
+      *) echo "SYSTEMD_UNIT_PATH_ERROR=non-absolute $dir"; continue ;;
+    esac
+    if [ ! -d "$dir" ]; then
+      echo "SYSTEMD_UNIT_PATH_ERROR=missing $dir"
+      continue
+    fi
+    /usr/bin/stat -c 'SYSTEMD_UNIT_PATH=%n %U:%G %a %A' "$dir"
+  done
+fi
 echo "--- root-invoked-helpers ---"
-for path in /opt/bin/dsbx /usr/local/bin/dust-install-trust-bundle; do
+for path in ${SANDBOX_ROOT_INVOKED_HELPERS.map((path) => shellQuote(path)).join(
+      " "
+    )}; do
   if [ -e "$path" ]; then
     stat -c '%n %U:%G %a %A' "$path"
   fi
@@ -557,8 +654,7 @@ done
 echo "--- root-path ---"
 printf 'ROOT_EXEC_PATH=%s\n' "$PATH"
 /bin/bash --noprofile --norc -c 'source /etc/profile; printf "ROOT_LOGIN_PATH=%s\n" "$PATH"'
-`,
-    { user: "root" }
+`
   );
   const output = combinedOutput(audit);
 
@@ -567,7 +663,8 @@ printf 'ROOT_EXEC_PATH=%s\n' "$PATH"
   assertNoPasswordlessSudoers(output);
   assertNoEmptyPasswordAccounts(output);
   assertLocalAuthHelpersNotSetuid(output);
-  assertPrivilegedDirsSafe(output);
+  assertStaticRootConsumedDirsSafe(output);
+  assertSystemdUnitPathsSafe(output);
   assertRootInvokedHelpersSafe(output);
   assertRootPathSafe(output);
 }
@@ -582,7 +679,7 @@ async function checkRootExecPathHijack(
   const plantedPath = "/opt/venv/bin/nohup";
 
   try {
-    const seed = await runBashScript(
+    const seed = await runRootBashScript(
       provider,
       providerId,
       `
@@ -592,8 +689,7 @@ printf %s ${shellQuote(marker)} > ${shellQuote(secretPath)}
 /usr/bin/chown root:root ${shellQuote(secretPath)}
 /usr/bin/chmod 600 ${shellQuote(secretPath)}
 /usr/bin/rm -rf ${shellQuote(leakDir)}
-`,
-      { user: "root" }
+`
     );
     assertCommandSucceeded("root exec path hijack seed", seed);
 
@@ -616,7 +712,7 @@ DUST_HIJACK_EOF
     );
     assertCommandSucceeded("root exec path hijack plant", plant);
 
-    const trigger = await runBashScript(
+    const trigger = await runRootBashScript(
       provider,
       providerId,
       `
@@ -630,8 +726,7 @@ if [ -f ${shellQuote(`${leakDir}/leaked`)} ]; then
   exit 1
 fi
 command -v nohup
-`,
-      { user: "root" }
+`
     );
     assertCommandSucceeded("root exec path hijack trigger", trigger);
     if (combinedOutput(trigger).trim() !== "/usr/bin/nohup") {
@@ -658,19 +753,88 @@ fi
     assertCommandSucceeded("root exec path hijack readback", readback);
   } finally {
     try {
-      await runBashScript(
+      await runRootBashScript(
         provider,
         providerId,
         `
 /usr/bin/rm -f ${shellQuote(plantedPath)} ${shellQuote(secretPath)}
 /usr/bin/rm -rf ${shellQuote(leakDir)}
-`,
-        { user: "root" }
+`
       );
     } catch (error) {
       logger.warn(
         { err: normalizeError(error), providerId },
         "Failed to clean up root exec path hijack regression probe"
+      );
+    }
+  }
+}
+
+async function checkSystemdUnitSearchPathShadow(
+  provider: E2BSandboxProvider,
+  providerId: string
+): Promise<void> {
+  const marker = `systemd-unit-shadow-proof-${Date.now()}`;
+  const unitPath =
+    "/usr/local/lib/systemd/system/dbus-org.freedesktop.hostname1.service";
+  const proofDir = `/tmp/${marker}`;
+
+  try {
+    const plant = await runBashScript(
+      provider,
+      providerId,
+      `
+set -euo pipefail
+/usr/bin/mkdir -p ${shellQuote(proofDir)}
+/usr/bin/cat > ${shellQuote(unitPath)} <<'DUST_SYSTEMD_UNIT_EOF'
+[Unit]
+Description=Dust systemd lookup hardening proof
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c '/usr/bin/mkdir -p ${proofDir}; /usr/bin/id > ${proofDir}/id; /usr/bin/touch ${proofDir}/triggered; /usr/bin/chmod -R a+rX ${proofDir}'
+DUST_SYSTEMD_UNIT_EOF
+`,
+      { user: AGENT_PROXIED_USER }
+    );
+
+    const trigger = await runBashScript(
+      provider,
+      providerId,
+      `
+set -euo pipefail
+/usr/bin/hostnamectl status >/dev/null 2>&1 || true
+if [ -f ${shellQuote(`${proofDir}/triggered`)} ]; then
+  echo "CRITICAL: systemd executed agent-controlled unit from ${unitPath}"
+  /bin/cat ${shellQuote(`${proofDir}/id`)} || true
+  exit 1
+fi
+`,
+      { user: AGENT_PROXIED_USER }
+    );
+    assertCommandSucceeded("systemd unit search path shadow trigger", trigger);
+
+    if (plant.exitCode === 0) {
+      throw new Error(
+        `agent-proxied can create a systemd unit shadow at ${unitPath}`
+      );
+    }
+  } finally {
+    try {
+      await runRootBashScript(
+        provider,
+        providerId,
+        `
+/bin/rm -f ${shellQuote(unitPath)}
+/bin/rm -rf ${shellQuote(proofDir)}
+/usr/bin/systemctl daemon-reload >/dev/null 2>&1 || true
+/usr/bin/systemctl reset-failed dbus-org.freedesktop.hostname1.service systemd-hostnamed.service >/dev/null 2>&1 || true
+`
+      );
+    } catch (error) {
+      logger.warn(
+        { err: normalizeError(error), providerId },
+        "Failed to clean up systemd unit search path regression probe"
       );
     }
   }
@@ -715,7 +879,7 @@ async function checkSshAndDnsHardening(
   provider: E2BSandboxProvider,
   providerId: string
 ): Promise<void> {
-  const audit = await runBashScript(
+  const audit = await runRootBashScript(
     provider,
     providerId,
     `
@@ -744,8 +908,7 @@ echo "--- nft-ip ---"
 /usr/sbin/nft -n list table ip dust-egress
 echo "--- nft-ip6 ---"
 /usr/sbin/nft -n list table ip6 dust-egress
-`,
-    { user: "root" }
+`
   );
 
   assertCommandSucceeded("SSH and DNS hardening audit", audit);
@@ -783,6 +946,7 @@ async function checkImage(image: SandboxImage): Promise<void> {
     await checkSystemAccountAudit(provider, providerId);
     await checkSshAndDnsHardening(provider, providerId);
     await checkRootExecPathHijack(provider, providerId);
+    await checkSystemdUnitSearchPathShadow(provider, providerId);
 
     logger.info(
       { imageId, providerId },

@@ -65,13 +65,7 @@ export async function storeAgentAnalyticsActivity(
     agentLoopArgs: AgentLoopArgs;
   }
 ): Promise<void> {
-  const authResult = await Authenticator.fromJSON(authType);
-  if (authResult.isErr()) {
-    throw new Error(
-      `Failed to deserialize authenticator: ${authResult.error.code}`
-    );
-  }
-  const auth = authResult.value;
+  const auth = await Authenticator.fromJSON(authType);
   const workspace = auth.getNonNullableWorkspace();
 
   const { agentMessageId, userMessageId } = agentLoopArgs;
@@ -761,13 +755,7 @@ export async function storeAgentMessageFeedbackActivity(
     message: AgentMessageRef;
   }
 ): Promise<void> {
-  const authResult = await Authenticator.fromJSON(authType);
-  if (authResult.isErr()) {
-    throw new Error(
-      `Failed to deserialize authenticator: ${authResult.error.code}`
-    );
-  }
-  const auth = authResult.value;
+  const auth = await Authenticator.fromJSON(authType);
 
   const workspace = auth.getNonNullableWorkspace();
 

@@ -1,5 +1,6 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import {
+  useConversation,
   useConversations,
   usePodConversationsSummary,
 } from "@app/hooks/conversations";
@@ -10,11 +11,13 @@ import {
   type ConversationListItemType,
   getConversationDisplayTitle,
 } from "@app/types/assistant/conversation";
-import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useContext } from "react";
 
-export function useMoveConversationToProject(owner: LightWorkspaceType) {
+export function useMoveConversationOutOfPod(
+  owner: LightWorkspaceType,
+  conversationId: string | null
+) {
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
 
@@ -23,26 +26,29 @@ export function useMoveConversationToProject(owner: LightWorkspaceType) {
     options: { disabled: true },
   });
 
-  const { mutate: mutateSpaceSummary } = usePodConversationsSummary({
+  const { mutate: mutatePodConversationsSummary } = usePodConversationsSummary({
+    workspaceId: owner.sId,
+    options: { disabled: true },
+  });
+
+  const { mutateConversation } = useConversation({
+    conversationId,
     workspaceId: owner.sId,
     options: { disabled: true },
   });
 
   return useCallback(
-    async (
-      conversation: ConversationListItemType,
-      space: SpaceType
-    ): Promise<boolean> => {
+    async (conversation: ConversationListItemType): Promise<boolean> => {
       const confirmed = await confirm({
-        title: "Move conversation to Pod",
+        title: "Remove from Pod?",
         message: (
           <div>
-            The content of the conversation{" "}
             <strong>{getConversationDisplayTitle(conversation)}</strong> will be
-            available to all members of the Pod <strong>{space.name}</strong>.
+            removed from the Pod. Participants who no longer have access to the
+            required spaces will be removed from the conversation.
           </div>
         ),
-        validateLabel: "Move",
+        validateLabel: "Remove",
         validateVariant: "primary",
       });
 
@@ -56,7 +62,7 @@ export function useMoveConversationToProject(owner: LightWorkspaceType) {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ spaceId: space.sId }),
+          body: JSON.stringify({ removeFromProject: true }),
         }
       );
 
@@ -64,21 +70,19 @@ export function useMoveConversationToProject(owner: LightWorkspaceType) {
         const errorData = await getErrorFromResponse(res);
 
         sendNotification({
-          title: "Error moving conversation.",
+          title: "Error removing conversation from Pod.",
           description: errorData.message,
           type: "error",
         });
         return false;
       }
 
-      // Revalidate conversations list to reflect the move
-      void mutateConversations((prev) =>
-        prev?.filter((c) => c.sId !== conversation.sId)
-      );
-      void mutateSpaceSummary();
+      void mutateConversations();
+      void mutatePodConversationsSummary();
+      void mutateConversation();
       void sendNotification({
-        title: "Conversation moved.",
-        description: "The conversation has been moved to the Pod.",
+        title: "Conversation removed.",
+        description: "The conversation has been removed from the Pod.",
         type: "success",
       });
 
@@ -87,7 +91,8 @@ export function useMoveConversationToProject(owner: LightWorkspaceType) {
     [
       owner.sId,
       mutateConversations,
-      mutateSpaceSummary,
+      mutatePodConversationsSummary,
+      mutateConversation,
       sendNotification,
       confirm,
     ]

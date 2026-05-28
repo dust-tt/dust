@@ -3,7 +3,7 @@ import { useAppRouter } from "@app/lib/platform";
 import { useCheckPodName } from "@app/lib/swr/pods";
 import { useCreateSpace } from "@app/lib/swr/spaces";
 import { getPodRoute } from "@app/lib/utils/router";
-import { areOpenProjectsAllowed } from "@app/lib/workspace_policies";
+import { areOpenPodsAllowed } from "@app/lib/workspace_policies";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -23,24 +23,24 @@ import {
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useState } from "react";
 
-interface CreateProjectModalProps {
+interface CreatePodModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCreated: () => void;
   owner: LightWorkspaceType;
 }
 
-const OPEN_PROJECTS_DISABLED_TOOLTIP =
+const OPEN_PODS_DISABLED_TOOLTIP =
   "Open Pods are disabled by your workspace admin.";
 
-export function CreateProjectModal({
+export function CreatePodModal({
   isOpen,
   onClose,
   onCreated,
   owner,
-}: CreateProjectModalProps) {
-  const areWorkspaceOpenProjectsAllowed = areOpenProjectsAllowed(owner);
-  const [projectName, setProjectName] = useState<string>("");
+}: CreatePodModalProps) {
+  const areWorkspaceOpenPodsAllowed = areOpenPodsAllowed(owner);
+  const [podName, setPodName] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
   const [isPodOpen, setIsPodOpen] = useState(false);
 
@@ -62,7 +62,7 @@ export function CreateProjectModal({
 
   useEffect(() => {
     if (isOpen) {
-      setProjectName("");
+      setPodName("");
       setIsSaving(false);
       setIsPodOpen(false);
       setNameToCheck("");
@@ -70,15 +70,15 @@ export function CreateProjectModal({
   }, [isOpen, setNameToCheck]);
 
   useEffect(() => {
-    if (!areWorkspaceOpenProjectsAllowed && isOpen) {
+    if (!areWorkspaceOpenPodsAllowed && isOpen) {
       setIsPodOpen(false);
     }
-  }, [areWorkspaceOpenProjectsAllowed, isOpen]);
+  }, [areWorkspaceOpenPodsAllowed, isOpen]);
 
   const handleClose = useCallback(() => {
     onClose();
     setTimeout(() => {
-      setProjectName("");
+      setPodName("");
       setIsSaving(false);
       setIsPodOpen(false);
       setNameToCheck("");
@@ -86,7 +86,7 @@ export function CreateProjectModal({
   }, [onClose, setNameToCheck]);
 
   const onSave = useCallback(async () => {
-    const trimmedName = projectName.trim();
+    const trimmedName = podName.trim();
     if (!trimmedName || !isNameAvailable) {
       return;
     }
@@ -115,7 +115,7 @@ export function CreateProjectModal({
       void router.push(getPodRoute(owner.sId, createdSpace.sId));
     }
   }, [
-    projectName,
+    podName,
     isNameAvailable,
     isPodOpen,
     doCreate,
@@ -128,15 +128,14 @@ export function CreateProjectModal({
 
   const handleKeyPress = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === "Enter" && projectName.trim() && isNameAvailable) {
+      if (e.key === "Enter" && podName.trim() && isNameAvailable) {
         void onSave();
       }
     },
-    [onSave, projectName, isNameAvailable]
+    [onSave, podName, isNameAvailable]
   );
 
-  const nameNotAvailable =
-    projectName.trim() && !isChecking && !isNameAvailable;
+  const nameNotAvailable = podName.trim() && !isChecking && !isNameAvailable;
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -150,11 +149,11 @@ export function CreateProjectModal({
               <Input
                 label="Pod name"
                 placeholder="Enter Pod name"
-                value={projectName}
-                name="projectName"
+                value={podName}
+                name="podName"
                 onChange={(e) => {
                   const newValue = e.target.value;
-                  setProjectName(newValue);
+                  setPodName(newValue);
                   setNameToCheck(newValue);
                 }}
                 onKeyDown={handleKeyPress}
@@ -170,7 +169,7 @@ export function CreateProjectModal({
               <Label>Access</Label>
               <AccessSwitch
                 isOpen={isPodOpen}
-                disabled={!areWorkspaceOpenProjectsAllowed}
+                disabled={!areWorkspaceOpenPodsAllowed}
                 onChange={setIsPodOpen}
               />
               <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
@@ -187,7 +186,7 @@ export function CreateProjectModal({
             label={isSaving ? "Creating..." : "Create"}
             onClick={onSave}
             disabled={
-              !projectName.trim() || isSaving || isChecking || !isNameAvailable
+              !podName.trim() || isSaving || isChecking || !isNameAvailable
             }
           />
         </DialogFooter>
@@ -216,9 +215,7 @@ function AccessSwitch({ isOpen, disabled, onChange }: AccessSwitchProps) {
   );
 
   if (disabled) {
-    return (
-      <Tooltip label={OPEN_PROJECTS_DISABLED_TOOLTIP} trigger={switchList} />
-    );
+    return <Tooltip label={OPEN_PODS_DISABLED_TOOLTIP} trigger={switchList} />;
   }
 
   return switchList;

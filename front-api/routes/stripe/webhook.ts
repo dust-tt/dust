@@ -2,8 +2,8 @@ import apiConfig from "@app/lib/api/config";
 import { processStripeWebhookEvent } from "@app/lib/api/stripe/webhook_handler";
 import { getStripeClient } from "@app/lib/plans/stripe";
 import logger from "@app/logger/logger";
+import { createHono } from "@front-api/lib/hono";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
-import { Hono } from "hono";
 import type Stripe from "stripe";
 
 export type GetResponseBody = {
@@ -12,7 +12,7 @@ export type GetResponseBody = {
 };
 
 // Mounted at /api/stripe/webhook.
-const app = new Hono();
+const app = createHono();
 
 app.get(
   "/",

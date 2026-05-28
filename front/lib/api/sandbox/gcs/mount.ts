@@ -1,34 +1,37 @@
 import {
   getConversationFilesBasePath,
-  getProjectFilesBasePath,
+  getPodFilesBasePath,
 } from "@app/lib/api/files/mount_path";
 import { mintDownscopedGcsToken } from "@app/lib/api/sandbox/gcs/token";
 import type { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
-import { shellEscape } from "@app/lib/api/sandbox/shell";
+import {
+  type RootCommand,
+  rootCommand,
+} from "@app/lib/api/sandbox/root_command";
 import type { Authenticator } from "@app/lib/auth";
 import fileStorageConfig from "@app/lib/file_storage/config";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import logger from "@app/logger/logger";
 import { concurrentExecutor } from "@app/temporal/workflow_utils";
 import type { ConversationType } from "@app/types/assistant/conversation";
-import { isProjectConversation } from "@app/types/assistant/conversation";
+import { isPodConversation } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
 const MOUNT_TIMEOUT_MS = 30_000;
 
 const MOUNT_POINT_CONVERSATION = "/files/conversation";
-const MOUNT_POINT_PROJECT = "/files/project";
+const MOUNT_POINT_POD = "/files/pod";
 
 interface MountTarget {
-  label: "conversation" | "project";
+  label: "conversation" | "pod";
   mountPoint: string;
   prefix: string;
 }
 
 /**
  * Compute the set of GCS prefixes / sandbox mount points for the given conversation.
- * Always includes the conversation mount. Add the project mount when the conversation belongs to a
+ * Always includes the conversation mount. Add the Pod mount when the conversation belongs to a
  * project space.
  */
 function buildMountTargets(
@@ -50,14 +53,14 @@ function buildMountTargets(
     },
   ];
 
-  if (isProjectConversation(conversation)) {
+  if (isPodConversation(conversation)) {
     targets.push({
-      label: "project",
-      prefix: getProjectFilesBasePath({
+      label: "pod",
+      prefix: getPodFilesBasePath({
         workspaceId,
-        projectId: conversation.spaceId,
+        podId: conversation.spaceId,
       }).replace(/\/$/, ""),
-      mountPoint: MOUNT_POINT_PROJECT,
+      mountPoint: MOUNT_POINT_POD,
     });
   }
 
@@ -68,7 +71,7 @@ function buildMountTargets(
  * Mount GCS files into a running sandbox via gcsfuse.
  *
  * Always mounts the conversation prefix at /files/conversation. When the conversation belongs to
- * a project, also mounts the project prefix at /files/project. Both gcsfuse processes share the
+ * a Pod, also mounts the Pod prefix at /files/pod. Both gcsfuse processes share the
  * same token server on :9876, fed by a single multi-prefix downscoped token.
  *
  * The mount sequence:
@@ -166,9 +169,8 @@ export async function mountConversationFiles(
     targets,
     async (target) => {
       const mountCmd = buildMountCommand({ bucket, ...target });
-      const mountResult = await sandbox.exec(auth, mountCmd, {
+      const mountResult = await sandbox.execRoot(auth, mountCmd, {
         timeoutMs: MOUNT_TIMEOUT_MS,
-        user: "root",
       });
 
       if (mountResult.isErr()) {
@@ -273,25 +275,36 @@ export function buildMountCommand({
   bucket: string;
   prefix: string;
   mountPoint: string;
-}): string {
-  const flags = [
-    `--token-url http://127.0.0.1:9876`,
-    // Disable token caching so gcsfuse fetches fresh token from server on every GCS API request.
-    // This ensures gcsfuse never uses stale credentials, eliminating 401 errors after token expiry.
-    `--reuse-token-from-url=false`,
-    `--only-dir ${shellEscape(prefix)}`,
-    `--implicit-dirs`,
-    `-o allow_other`,
-    `--file-mode=666`,
-    `--dir-mode=777`,
-    `--kernel-list-cache-ttl-secs=60`,
-    // Disable HNS (Hierarchical Namespace) support. gcsfuse calls GetStorageLayout at mount time
-    // when HNS is enabled, which requires unrestricted `objects.list` on the bucket. Disabling it
-    // lets us condition `objects.list` via the objectListPrefix CAB attribute.
-    `--enable-hns=false`,
-  ].join(" ");
-
-  return `/usr/bin/timeout 30 /usr/bin/gcsfuse ${flags} ${shellEscape(bucket)} ${shellEscape(mountPoint)} 2>&1`;
+}): RootCommand {
+  // Disable token caching so gcsfuse fetches fresh token from server on every
+  // GCS API request. This ensures gcsfuse never uses stale credentials,
+  // eliminating 401 errors after token expiry.
+  //
+  // Disable HNS (Hierarchical Namespace) support. gcsfuse calls
+  // GetStorageLayout at mount time when HNS is enabled, which requires
+  // unrestricted `objects.list` on the bucket. Disabling it lets us condition
+  // `objects.list` via the objectListPrefix CAB attribute.
+  return rootCommand.stderrToStdout(
+    rootCommand.timeout(
+      rootCommand.exec("/usr/bin/gcsfuse", [
+        "--token-url",
+        "http://127.0.0.1:9876",
+        "--reuse-token-from-url=false",
+        "--only-dir",
+        prefix,
+        "--implicit-dirs",
+        "-o",
+        "allow_other",
+        "--file-mode=666",
+        "--dir-mode=777",
+        "--kernel-list-cache-ttl-secs=60",
+        "--enable-hns=false",
+        bucket,
+        mountPoint,
+      ]),
+      MOUNT_TIMEOUT_MS / 1_000
+    )
+  );
 }
 
 function escapeSingleQuotes(s: string): string {

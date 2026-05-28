@@ -1,8 +1,8 @@
 import { runPreStop } from "@app/lib/api/prestop";
 import logger from "@app/logger/logger";
-import { Hono } from "hono";
+import { createHono } from "@front-api/lib/hono";
 
-const app = new Hono();
+const app = createHono();
 
 app.post("/", async (ctx) => {
   const preStopSecret = ctx.req.param("preStopSecret");

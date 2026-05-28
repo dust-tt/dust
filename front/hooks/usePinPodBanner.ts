@@ -1,5 +1,5 @@
 import { ConfirmContext } from "@app/components/Confirm";
-import { useUpdateProjectMetadata } from "@app/lib/swr/spaces";
+import { useUpdatePodMetadata } from "@app/lib/swr/pods";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useContext } from "react";
 
@@ -19,9 +19,9 @@ export function usePinPodBanner({
   isEditor: boolean;
 }) {
   const confirm = useContext(ConfirmContext);
-  const updateProjectMetadata = useUpdateProjectMetadata({
+  const updatePodMetadata = useUpdatePodMetadata({
     owner,
-    spaceId: podId,
+    podId: podId,
   });
 
   const pinFrame = useCallback(
@@ -42,9 +42,9 @@ export function usePinPodBanner({
         return;
       }
 
-      await updateProjectMetadata({ pinnedFramePath: path });
+      await updatePodMetadata({ pinnedFramePath: path });
     },
-    [confirm, isEditor, updateProjectMetadata]
+    [confirm, isEditor, updatePodMetadata]
   );
 
   const unpinFrame = useCallback(
@@ -67,9 +67,9 @@ export function usePinPodBanner({
         return;
       }
 
-      await updateProjectMetadata({ pinnedFramePath: null });
+      await updatePodMetadata({ pinnedFramePath: null });
     },
-    [confirm, isEditor, updateProjectMetadata]
+    [confirm, isEditor, updatePodMetadata]
   );
 
   const togglePin = useCallback(

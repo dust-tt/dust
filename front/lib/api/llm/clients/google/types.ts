@@ -105,13 +105,13 @@ export const GOOGLE_AI_STUDIO_MODEL_CONFIGS: Record<
   [GEMINI_2_5_FLASH_MODEL_ID]: {
     thinkingConfig: {
       ...PRE_GEMINI_3_THINKING_CONFIG_MAPPING,
-      none: { thinkingBudget: 0, includeThoughts: true },
+      none: { thinkingBudget: 0, includeThoughts: false },
     },
   },
   [GEMINI_2_5_FLASH_LITE_MODEL_ID]: {
     thinkingConfig: {
       ...PRE_GEMINI_3_THINKING_CONFIG_MAPPING,
-      none: { thinkingBudget: 0, includeThoughts: true },
+      none: { thinkingBudget: 0, includeThoughts: false },
     },
   },
   [GEMINI_2_5_PRO_MODEL_ID]: {

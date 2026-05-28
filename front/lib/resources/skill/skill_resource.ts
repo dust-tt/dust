@@ -58,7 +58,7 @@ import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import {
   type ConversationType,
   type ConversationWithoutContentType,
-  isProjectConversation,
+  isPodConversation,
 } from "@app/types/assistant/conversation";
 import type {
   SkillReinforcementMode,
@@ -1317,7 +1317,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     // Project skill is always enabled for project conversations, enable it if it's not enabled already.
     const projectSkill =
       conversation &&
-      isProjectConversation(conversation) &&
+      isPodConversation(conversation) &&
       !systemSkills.some((s) => s.globalSId === "projects") &&
       !conversationEnabledSkills.some((s) => s.globalSId === "projects")
         ? await SkillResource.fetchBySkillReferences(

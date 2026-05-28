@@ -143,7 +143,9 @@ pub fn init_subscribers_and_loglevel(log_directives: &str) -> Result<TracingGuar
             .with_tonic()
             .build()
             .expect("failed to install logging");
+        let log_rsrc = init_tracing_opentelemetry::resource::DetectResource::default().build();
         let provider: SdkLoggerProvider = opentelemetry_sdk::logs::SdkLoggerProvider::builder()
+            .with_resource(log_rsrc)
             .with_batch_exporter(exporter)
             .build();
         let otel_layer = EnrichedOtelLayer::new(&provider);

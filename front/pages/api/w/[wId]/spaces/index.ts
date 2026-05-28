@@ -114,7 +114,7 @@ import { enrichProjectsWithMetadata } from "@app/lib/api/projects/list";
 import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { areOpenProjectsAllowed } from "@app/lib/workspace_policies";
+import { areOpenPodsAllowed } from "@app/lib/workspace_policies";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -234,7 +234,7 @@ async function handler(
       if (
         requestBody.spaceKind === "project" &&
         !requestBody.isRestricted &&
-        !areOpenProjectsAllowed(owner)
+        !areOpenPodsAllowed(owner)
       ) {
         return apiError(req, res, {
           status_code: 403,

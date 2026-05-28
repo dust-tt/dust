@@ -53,7 +53,7 @@ export function useLeavePodDialog({
     isRestricted,
     onClose: closeDialog,
     onLeave: handleLeave,
-    spaceName: podName,
+    podName,
   };
 
   return {

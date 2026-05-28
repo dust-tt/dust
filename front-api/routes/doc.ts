@@ -1,8 +1,8 @@
 import logger from "@app/logger/logger";
-import { Hono } from "hono";
+import { createHono } from "@front-api/lib/hono";
 import { createSwaggerSpec } from "next-swagger-doc";
 
-const app = new Hono();
+const app = createHono();
 
 // `next-swagger-doc` resolves `apiFolder` against `process.cwd()`. The
 // Hono server runs from `front-api/`, so we point at the sibling `front`
