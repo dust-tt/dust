@@ -49,6 +49,55 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
       done: "Search OneDrive/SharePoint items",
     },
   },
+  list_drive_items: {
+    description:
+      "List items (folders and/or files) in a OneDrive/SharePoint drive, SharePoint site, or under a specific parent folder. Use parentFolderId to drill into a specific folder; otherwise lists items at the root of the drive/site. Filter the result with itemType. Supports pagination via skipToken.",
+    schema: {
+      driveId: z
+        .string()
+        .optional()
+        .describe(
+          "The ID of the drive to list items from. Takes priority over siteId if provided."
+        ),
+      siteId: z
+        .string()
+        .optional()
+        .describe(
+          "The ID of the SharePoint site to list items from. Used if driveId is not provided."
+        ),
+      parentFolderId: z
+        .string()
+        .optional()
+        .describe(
+          "ID of the parent folder to list items from. If omitted, lists items at the root of the drive/site."
+        ),
+      itemType: z
+        .enum(["all", "folder", "file"])
+        .optional()
+        .default("all")
+        .describe(
+          "Filter to apply to the listed items. 'all' returns both folders and files (default), 'folder' returns folders only, 'file' returns files only."
+        ),
+      top: z
+        .number()
+        .optional()
+        .default(50)
+        .describe(
+          "Maximum number of items to fetch per page (default 50, capped at 200). When itemType is not 'all', items are filtered client-side, so fewer than `top` items may be returned per page."
+        ),
+      skipToken: z
+        .string()
+        .optional()
+        .describe(
+          "Pagination token returned as `nextSkipToken` from a previous call. Pass it back to retrieve the next page."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing OneDrive/SharePoint items",
+      done: "List OneDrive/SharePoint items",
+    },
+  },
   update_word_document: {
     description:
       "Update an existing Word document on OneDrive/SharePoint by providing a new document.xml content. Uses driveId if provided, otherwise falls back to siteId.",

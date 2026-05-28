@@ -8,7 +8,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import { isProjectConversation } from "@app/types/assistant/conversation";
+import { isPodConversation } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { Transaction } from "sequelize";
@@ -45,7 +45,7 @@ export async function moveConversationToProject(
     );
   }
 
-  if (isProjectConversation(conversation)) {
+  if (isPodConversation(conversation)) {
     if (conversation.spaceId === spaceId) {
       return new Err(
         new DustError(
@@ -157,7 +157,7 @@ export async function moveConversationOutOfProject(
     >
   >
 > {
-  if (!isProjectConversation(conversation)) {
+  if (!isPodConversation(conversation)) {
     return new Err(
       new DustError("internal_error", "Conversation is not in a project")
     );

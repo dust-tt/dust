@@ -1,8 +1,8 @@
-import { Hono } from "hono";
+import { createHono } from "@front-api/lib/hono";
 
 import prestop from "./prestop";
 
-const app = new Hono();
+const app = createHono();
 app.route("/prestop", prestop);
 
 export default app;

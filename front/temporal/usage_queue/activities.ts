@@ -111,13 +111,7 @@ export async function trackProgrammaticUsageActivity(
   authType: AuthenticatorType,
   { agentLoopArgs }: { agentLoopArgs: AgentLoopArgs }
 ): Promise<{ tracked: boolean; origin: UserMessageOrigin }> {
-  const authResult = await Authenticator.fromJSON(authType);
-  if (authResult.isErr()) {
-    throw new Error(
-      `Failed to deserialize authenticator: ${authResult.error.code}`
-    );
-  }
-  const auth = authResult.value;
+  const auth = await Authenticator.fromJSON(authType);
   const workspace = auth.getNonNullableWorkspace();
 
   const { agentMessageId, userMessageId } = agentLoopArgs;
@@ -208,15 +202,7 @@ export async function emitMetronomeUsageEventsActivity(
   authType: AuthenticatorType,
   { agentLoopArgs }: { agentLoopArgs: AgentLoopArgs }
 ): Promise<void> {
-  const authResult = await Authenticator.fromJSON(authType);
-  if (authResult.isErr()) {
-    logger.warn(
-      { error: authResult.error.code },
-      "[Metronome] Failed to deserialize authenticator for usage events"
-    );
-    return;
-  }
-  const auth = authResult.value;
+  const auth = await Authenticator.fromJSON(authType);
   const workspace = auth.getNonNullableWorkspace();
   const isByok = auth.getNonNullablePlan().isByok;
   const { agentMessageId, conversationId, userMessageId } = agentLoopArgs;

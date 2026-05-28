@@ -10,14 +10,21 @@ import type {
   ExecOptions,
   ExecResult,
   FileEntry,
+  RootExecOptions,
   SandboxCreateConfig,
   SandboxHandle,
   SandboxProvider,
 } from "@app/lib/api/sandbox/provider";
 import {
+  isSandboxExecUser,
   SandboxNotFoundError,
   traceSandboxOperation,
 } from "@app/lib/api/sandbox/provider";
+import {
+  type RootCommand,
+  renderRootCommand,
+  rootCommand,
+} from "@app/lib/api/sandbox/root_command";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
@@ -42,14 +49,14 @@ const LOCAL_ACCOUNT_HARDENING_TIMEOUT_MS = 120_000;
 
 const ALL_TRAFFIC = "0.0.0.0/0";
 
-function getRootSafeSandboxCommand(command: string): string {
+function getRootSafeSandboxCommand(command: RootCommand): string {
   return [
     `PATH=${shellEscape(SANDBOX_ROOT_SAFE_PATH)}`,
     "HOME=/root",
     "BASH_ENV=/dev/null",
     "ENV=/dev/null",
     "/bin/bash --noprofile --norc -c",
-    shellEscape(command),
+    shellEscape(renderRootCommand(command)),
   ].join(" ");
 }
 
@@ -95,6 +102,14 @@ interface E2BConfig {
   domain: string | undefined;
 }
 
+interface E2BCommandOpts {
+  cwd?: string;
+  envs?: Record<string, string>;
+  stdin?: string | Uint8Array;
+  timeoutMs?: number;
+  user?: string;
+}
+
 // Send command stdin via the E2B Commands API rather than baking it into argv.
 // The command is started in the background with stdin open; if anything goes
 // wrong on the SDK round-trip, we kill the handle so we don't leak a running
@@ -102,12 +117,7 @@ interface E2BConfig {
 async function runWithStdin(
   sandbox: Sandbox,
   command: string,
-  commandOpts: {
-    cwd?: string;
-    envs?: Record<string, string>;
-    timeoutMs?: number;
-    user?: string;
-  },
+  commandOpts: E2BCommandOpts,
   stdin: string | Uint8Array
 ) {
   const handle = await sandbox.commands.run(command, {
@@ -177,6 +187,66 @@ export class E2BSandboxProvider implements SandboxProvider {
     }
   }
 
+  private async runCommand(
+    providerId: string,
+    command: string,
+    commandOpts: E2BCommandOpts,
+    tracingOpts: { workspaceId: string }
+  ): Promise<Result<ExecResult, Error>> {
+    return traceSandboxOperation(
+      "exec",
+      async () => {
+        let sandbox: Sandbox;
+        try {
+          sandbox = await Sandbox.connect(providerId, {
+            ...this.connectionOpts(),
+            timeoutMs: SANDBOX_LIFETIME_MS,
+          });
+        } catch (err) {
+          if (err instanceof NotFoundError) {
+            return new Err(new SandboxNotFoundError(providerId));
+          }
+          return new Err(normalizeError(err));
+        }
+
+        try {
+          const stdin = commandOpts.stdin;
+          const e2bCommandOpts = {
+            cwd: commandOpts.cwd,
+            envs: commandOpts.envs,
+            timeoutMs: commandOpts.timeoutMs,
+            user: commandOpts.user,
+          };
+          const result =
+            stdin === undefined
+              ? await sandbox.commands.run(command, e2bCommandOpts)
+              : await runWithStdin(sandbox, command, e2bCommandOpts, stdin);
+
+          return new Ok({
+            exitCode: result.exitCode,
+            stdout: result.stdout,
+            stderr: result.stderr,
+          });
+        } catch (err) {
+          // The E2B SDK throws CommandExitError on non-zero exit codes.
+          // Normalize into a regular ExecResult so callers never see E2B types.
+          if (err instanceof CommandExitError) {
+            return new Ok({
+              exitCode: err.exitCode,
+              stdout: err.stdout,
+              stderr: err.stderr,
+            });
+          }
+          return new Err(normalizeError(err));
+        }
+      },
+      {
+        provider_id: providerId,
+        workspace_id: tracingOpts.workspaceId,
+      }
+    );
+  }
+
   async create(
     config: SandboxCreateConfig,
     tracingOpts: { workspaceId: string }
@@ -219,7 +289,10 @@ export class E2BSandboxProvider implements SandboxProvider {
         try {
           const result = await sandbox.commands.run(
             getRootSafeSandboxCommand(
-              getLocalAccountPrivilegeHardeningCommand()
+              rootCommand.unsafeShell(
+                getLocalAccountPrivilegeHardeningCommand(),
+                "create-time sandbox local account hardening"
+              )
             ),
             {
               timeoutMs: LOCAL_ACCOUNT_HARDENING_TIMEOUT_MS,
@@ -377,61 +450,51 @@ export class E2BSandboxProvider implements SandboxProvider {
     execOpts: ExecOptions | undefined,
     tracingOpts: { workspaceId: string }
   ): Promise<Result<ExecResult, Error>> {
-    return traceSandboxOperation(
-      "exec",
-      async () => {
-        let sandbox: Sandbox;
-        try {
-          sandbox = await Sandbox.connect(providerId, {
-            ...this.connectionOpts(),
-            timeoutMs: SANDBOX_LIFETIME_MS,
-          });
-        } catch (err) {
-          if (err instanceof NotFoundError) {
-            return new Err(new SandboxNotFoundError(providerId));
-          }
-          return new Err(normalizeError(err));
-        }
+    const user: unknown = execOpts?.user;
+    if (
+      user !== undefined &&
+      (typeof user !== "string" || !isSandboxExecUser(user))
+    ) {
+      return new Err(
+        new Error(
+          user === "root"
+            ? "Use execRoot() for sandbox root commands."
+            : `Invalid sandbox exec user: ${String(user)}`
+        )
+      );
+    }
 
-        try {
-          const commandOpts = {
-            cwd: execOpts?.workingDirectory,
-            envs: execOpts?.envVars,
-            timeoutMs: execOpts?.timeoutMs,
-            user: execOpts?.user,
-          };
-          const stdin = execOpts?.stdin;
-          const commandToRun =
-            execOpts?.user === "root"
-              ? getRootSafeSandboxCommand(command)
-              : command;
-          const result =
-            stdin === undefined
-              ? await sandbox.commands.run(commandToRun, commandOpts)
-              : await runWithStdin(sandbox, commandToRun, commandOpts, stdin);
-
-          return new Ok({
-            exitCode: result.exitCode,
-            stdout: result.stdout,
-            stderr: result.stderr,
-          });
-        } catch (err) {
-          // The E2B SDK throws CommandExitError on non-zero exit codes.
-          // Normalize into a regular ExecResult so callers never see E2B types.
-          if (err instanceof CommandExitError) {
-            return new Ok({
-              exitCode: err.exitCode,
-              stdout: err.stdout,
-              stderr: err.stderr,
-            });
-          }
-          return new Err(normalizeError(err));
-        }
-      },
+    return this.runCommand(
+      providerId,
+      command,
       {
-        provider_id: providerId,
-        workspace_id: tracingOpts.workspaceId,
-      }
+        cwd: execOpts?.workingDirectory,
+        envs: execOpts?.envVars,
+        timeoutMs: execOpts?.timeoutMs,
+        stdin: execOpts?.stdin,
+        user: execOpts?.user,
+      },
+      tracingOpts
+    );
+  }
+
+  async execRoot(
+    providerId: string,
+    command: RootCommand,
+    execOpts: RootExecOptions | undefined,
+    tracingOpts: { workspaceId: string }
+  ): Promise<Result<ExecResult, Error>> {
+    return this.runCommand(
+      providerId,
+      getRootSafeSandboxCommand(command),
+      {
+        cwd: execOpts?.workingDirectory,
+        envs: execOpts?.envVars,
+        timeoutMs: execOpts?.timeoutMs,
+        stdin: execOpts?.stdin,
+        user: "root",
+      },
+      tracingOpts
     );
   }
 

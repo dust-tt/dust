@@ -10,8 +10,16 @@ import {
   getSandboxImageFromRegistry,
   type SandboxImage,
 } from "@app/lib/api/sandbox/image";
-import type { ExecResult } from "@app/lib/api/sandbox/provider";
+import type {
+  ExecResult,
+  RootExecOptions,
+  SandboxExecUser,
+} from "@app/lib/api/sandbox/provider";
 import { E2BSandboxProvider } from "@app/lib/api/sandbox/providers/e2b";
+import {
+  type RootCommand,
+  rootCommand,
+} from "@app/lib/api/sandbox/root_command";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
@@ -59,7 +67,7 @@ async function runCommand(
   provider: E2BSandboxProvider,
   providerId: string,
   command: string,
-  options: { user: string; timeoutMs?: number }
+  options: { user: SandboxExecUser; timeoutMs?: number }
 ): Promise<ExecResult> {
   const result = await provider.exec(
     providerId,
@@ -76,16 +84,51 @@ async function runCommand(
   return result.value;
 }
 
+async function runRootCommand(
+  provider: E2BSandboxProvider,
+  providerId: string,
+  command: RootCommand,
+  options: RootExecOptions = {}
+): Promise<ExecResult> {
+  const result = await provider.execRoot(
+    providerId,
+    command,
+    options,
+    TRACE_OPTS
+  );
+  if (result.isErr()) {
+    throw result.error;
+  }
+  return result.value;
+}
+
 async function runBashScript(
   provider: E2BSandboxProvider,
   providerId: string,
   script: string,
-  options: { user: string; timeoutMs?: number }
+  options: { user: SandboxExecUser; timeoutMs?: number }
 ): Promise<ExecResult> {
   return runCommand(provider, providerId, buildBashCommand(script), {
     timeoutMs: options.timeoutMs,
     user: options.user,
   });
+}
+
+async function runRootBashScript(
+  provider: E2BSandboxProvider,
+  providerId: string,
+  script: string,
+  options: RootExecOptions = {}
+): Promise<ExecResult> {
+  return runRootCommand(
+    provider,
+    providerId,
+    rootCommand.unsafeShell(
+      buildBashCommand(script),
+      "sandbox security check root bash probe"
+    ),
+    options
+  );
 }
 
 function assertNoRootIdentity(label: string, result: ExecResult): void {
@@ -226,7 +269,7 @@ async function checkBasicSandboxFunctionality(
 set -euo pipefail
 echo "shell-ok"
 /opt/bin/dsbx version >/dev/null
-for dir in /files/conversation /files/project; do
+for dir in /files/conversation /files/pod; do
   test -d "$dir"
   proof="$dir/dust-security-smoke-$$"
   printf 'file-ok' > "$proof"
@@ -244,7 +287,7 @@ async function checkTargetUserState(
   provider: E2BSandboxProvider,
   providerId: string
 ): Promise<void> {
-  const audit = await runBashScript(
+  const audit = await runRootBashScript(
     provider,
     providerId,
     `
@@ -264,8 +307,7 @@ if getent passwd user >/dev/null; then
 else
   echo "USER_EXISTS=0"
 fi
-`,
-    { user: "root" }
+`
   );
   const output = combinedOutput(audit);
 
@@ -547,7 +589,7 @@ async function checkSystemAccountAudit(
   provider: E2BSandboxProvider,
   providerId: string
 ): Promise<void> {
-  const audit = await runBashScript(
+  const audit = await runRootBashScript(
     provider,
     providerId,
     `
@@ -612,8 +654,7 @@ done
 echo "--- root-path ---"
 printf 'ROOT_EXEC_PATH=%s\n' "$PATH"
 /bin/bash --noprofile --norc -c 'source /etc/profile; printf "ROOT_LOGIN_PATH=%s\n" "$PATH"'
-`,
-    { user: "root" }
+`
   );
   const output = combinedOutput(audit);
 
@@ -638,7 +679,7 @@ async function checkRootExecPathHijack(
   const plantedPath = "/opt/venv/bin/nohup";
 
   try {
-    const seed = await runBashScript(
+    const seed = await runRootBashScript(
       provider,
       providerId,
       `
@@ -648,8 +689,7 @@ printf %s ${shellQuote(marker)} > ${shellQuote(secretPath)}
 /usr/bin/chown root:root ${shellQuote(secretPath)}
 /usr/bin/chmod 600 ${shellQuote(secretPath)}
 /usr/bin/rm -rf ${shellQuote(leakDir)}
-`,
-      { user: "root" }
+`
     );
     assertCommandSucceeded("root exec path hijack seed", seed);
 
@@ -672,7 +712,7 @@ DUST_HIJACK_EOF
     );
     assertCommandSucceeded("root exec path hijack plant", plant);
 
-    const trigger = await runBashScript(
+    const trigger = await runRootBashScript(
       provider,
       providerId,
       `
@@ -686,8 +726,7 @@ if [ -f ${shellQuote(`${leakDir}/leaked`)} ]; then
   exit 1
 fi
 command -v nohup
-`,
-      { user: "root" }
+`
     );
     assertCommandSucceeded("root exec path hijack trigger", trigger);
     if (combinedOutput(trigger).trim() !== "/usr/bin/nohup") {
@@ -714,14 +753,13 @@ fi
     assertCommandSucceeded("root exec path hijack readback", readback);
   } finally {
     try {
-      await runBashScript(
+      await runRootBashScript(
         provider,
         providerId,
         `
 /usr/bin/rm -f ${shellQuote(plantedPath)} ${shellQuote(secretPath)}
 /usr/bin/rm -rf ${shellQuote(leakDir)}
-`,
-        { user: "root" }
+`
       );
     } catch (error) {
       logger.warn(
@@ -783,7 +821,7 @@ fi
     }
   } finally {
     try {
-      await runBashScript(
+      await runRootBashScript(
         provider,
         providerId,
         `
@@ -791,8 +829,7 @@ fi
 /bin/rm -rf ${shellQuote(proofDir)}
 /usr/bin/systemctl daemon-reload >/dev/null 2>&1 || true
 /usr/bin/systemctl reset-failed dbus-org.freedesktop.hostname1.service systemd-hostnamed.service >/dev/null 2>&1 || true
-`,
-        { user: "root" }
+`
       );
     } catch (error) {
       logger.warn(
@@ -842,7 +879,7 @@ async function checkSshAndDnsHardening(
   provider: E2BSandboxProvider,
   providerId: string
 ): Promise<void> {
-  const audit = await runBashScript(
+  const audit = await runRootBashScript(
     provider,
     providerId,
     `
@@ -871,8 +908,7 @@ echo "--- nft-ip ---"
 /usr/sbin/nft -n list table ip dust-egress
 echo "--- nft-ip6 ---"
 /usr/sbin/nft -n list table ip6 dust-egress
-`,
-    { user: "root" }
+`
   );
 
   assertCommandSucceeded("SSH and DNS hardening audit", audit);

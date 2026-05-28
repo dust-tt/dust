@@ -5,7 +5,7 @@ import { USED_MODEL_CONFIGS } from "@app/components/providers/model_configs";
 import { getWhitelistedProviders } from "@app/lib/api/assistant/models";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { config as regionConfig } from "@app/lib/api/regions/config";
-import { filterCustomAvailableAndWhitelistedModels } from "@app/lib/assistant";
+import { filterEnabledModels } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
@@ -14,13 +14,13 @@ import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-export type GetAvailableModelsResponseType = {
+export type GetEnabledModelsResponseType = {
   models: ModelConfigurationType[];
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetAvailableModelsResponseType>>,
+  res: NextApiResponse<WithAPIErrorResponse<GetEnabledModelsResponseType>>,
   auth: Authenticator
 ): Promise<void> {
   switch (req.method) {
@@ -33,10 +33,10 @@ async function handler(
 
       // Include both standard models and custom models (from GCS at build time)
       const allUsedModels = [...USED_MODEL_CONFIGS, ...CUSTOM_MODEL_CONFIGS];
-      const models = filterCustomAvailableAndWhitelistedModels(allUsedModels, {
+      const models = filterEnabledModels(allUsedModels, {
         featureFlags,
         plan,
-        owner,
+        regionalModelsOnly: owner.regionalModelsOnly,
         region,
         whitelistedProviders,
       });

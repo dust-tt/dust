@@ -4,6 +4,7 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -35,20 +36,11 @@ const app = workspaceApp();
 
 app.post(
   "/",
+  ensureIsAdmin(),
   validate("json", PostNotionUrlStatusBodySchema),
   async (ctx): HandlerResult<PostNotionUrlStatusResponseBody> => {
     const auth = ctx.get("auth");
     const owner = auth.getNonNullableWorkspace();
-
-    if (!auth.isAdmin()) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "workspace_auth_error",
-          message: "Only admins can check Notion URL status",
-        },
-      });
-    }
 
     const dsId = ctx.req.param("dsId") ?? "";
 

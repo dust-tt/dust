@@ -1,7 +1,7 @@
 import { COMMIT_HASH } from "@app/lib/commit-hash";
 import { isInShutdown } from "@app/lib/shutdown_signal";
 import { getStatsDClient } from "@app/lib/utils/statsd";
-import { Hono } from "hono";
+import { createHono } from "@front-api/lib/hono";
 
 /**
  * Readiness probe endpoint.
@@ -15,7 +15,7 @@ import { Hono } from "hono";
  *
  * The startup probe (/api/healthz/startup) handles dependency checking at pod startup.
  */
-const app = new Hono();
+const app = createHono();
 
 app.get("/", (ctx) => {
   const startMs = performance.now();

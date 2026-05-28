@@ -12,6 +12,7 @@ import type {
   SandboxImageId,
   SandboxResources,
 } from "@app/lib/api/sandbox/image/types";
+import type { RootCommand } from "@app/lib/api/sandbox/root_command";
 import tracer from "@app/logger/tracer";
 import type { Result } from "@app/types/shared/result";
 
@@ -52,6 +53,14 @@ export interface ExecResult {
   stderr: string;
 }
 
+export const SANDBOX_EXEC_USERS = ["agent", "agent-proxied"] as const;
+
+export type SandboxExecUser = (typeof SANDBOX_EXEC_USERS)[number];
+
+export function isSandboxExecUser(user: string): user is SandboxExecUser {
+  return SANDBOX_EXEC_USERS.some((execUser) => execUser === user);
+}
+
 export interface ExecOptions {
   /** Working directory for command execution. */
   workingDirectory?: string;
@@ -61,9 +70,11 @@ export interface ExecOptions {
   envVars?: Record<string, string>;
   /** Data to send to the command over stdin. Never encoded into argv. */
   stdin?: string | Uint8Array;
-  /** User to run the command as (e.g., "root" for privileged tasks). */
-  user?: string;
+  /** Optional non-root user to run the command as. Use execRoot for root. */
+  user?: SandboxExecUser;
 }
+
+export type RootExecOptions = Omit<ExecOptions, "user">;
 
 // ---------------------------------------------------------------------------
 // Filesystem
@@ -123,6 +134,13 @@ export interface SandboxProvider {
     providerId: string,
     command: string,
     execOpts: ExecOptions | undefined,
+    tracingOpts: { workspaceId: string }
+  ): Promise<Result<ExecResult, Error>>;
+
+  execRoot(
+    providerId: string,
+    command: RootCommand,
+    execOpts: RootExecOptions | undefined,
     tracingOpts: { workspaceId: string }
   ): Promise<Result<ExecResult, Error>>;
 

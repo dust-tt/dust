@@ -3,28 +3,22 @@ import { MAX_ZIP_SIZE_BYTES } from "@app/lib/api/skills/detection/zip/detect_ski
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { DetectedSkillSummary } from "@app/lib/skill_detection";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { createHono } from "@front-api/lib/hono";
 import type { WorkspaceAwareCtx } from "@front-api/middlewares/ctx";
+import { ensureIsBuilder } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
 import type { HttpBindings } from "@hono/node-server";
 import formidable from "formidable";
-import { Hono } from "hono";
 
 // Mounted at /api/w/:wId/skills/detect/upload.
 //
 // We extend the workspace context with `HttpBindings` so we can hand the
 // underlying Node `IncomingMessage` (exposed by `@hono/node-server` on
 // `ctx.env.incoming`) to `formidable.parse(...)` — matching the Next handler.
-const app = new Hono<WorkspaceAwareCtx & { Bindings: HttpBindings }>();
+const app = createHono<WorkspaceAwareCtx & { Bindings: HttpBindings }>();
 
-app.post("/", async (ctx) => {
+app.post("/", ensureIsBuilder(), async (ctx) => {
   const auth = ctx.get("auth");
-
-  if (!auth.isBuilder()) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: { type: "app_auth_error", message: "User is not a builder." },
-    });
-  }
 
   const incoming = ctx.env?.incoming;
   if (!incoming) {

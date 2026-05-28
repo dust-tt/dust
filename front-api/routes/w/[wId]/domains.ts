@@ -11,6 +11,7 @@ import { removeWorkOSOrganizationDomain } from "@app/lib/api/workos/organization
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
 import logger from "@app/logger/logger";
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import type { Organization } from "@workos-inc/node";
@@ -28,70 +29,53 @@ export interface GetWorkspaceDomainsResponseBody {
 // Mounted at /api/w/:wId/domains.
 const app = workspaceApp();
 
-app.get("/", async (ctx): HandlerResult<GetWorkspaceDomainsResponseBody> => {
-  const auth = ctx.get("auth");
-
-  if (!auth.isAdmin()) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "workspace_auth_error",
-        message:
-          "Only users that are `admins` for the current workspace can list domains.",
-      },
-    });
-  }
-
-  // If the workspace doesn't have a WorkOS organization (which can happen for workspaces
-  // created via admin tools), we create one before fetching domains. This ensures the
-  // endpoint works for all workspaces, regardless of how they were created.
-  const organizationRes = await getOrCreateWorkOSOrganization(
-    auth.getNonNullableWorkspace()
-  );
-
-  if (organizationRes.isErr()) {
-    return apiError(ctx, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: "Failed to get WorkOS organization",
-      },
-    });
-  }
-
-  // If there is no organization, return an empty array.
-  if (!organizationRes.value) {
-    return ctx.json({ domains: [] });
-  }
-
-  const { link } = await generateWorkOSAdminPortalUrl({
-    organization: organizationRes.value.id,
-    workOSIntent: WorkOSPortalIntent.DomainVerification,
-    returnUrl: `${ctx.req.header("origin")}/w/${auth.getNonNullableWorkspace().sId}/members`,
-  });
-
-  return ctx.json({
-    addDomainLink: link,
-    domains: organizationRes.value.domains,
-  });
-});
-
-app.delete(
+app.get(
   "/",
-  validate("json", DeleteWorkspaceDomainRequestBodySchema),
-  async (ctx) => {
+  ensureIsAdmin(),
+  async (ctx): HandlerResult<GetWorkspaceDomainsResponseBody> => {
     const auth = ctx.get("auth");
 
-    if (!auth.isAdmin()) {
+    // If the workspace doesn't have a WorkOS organization (which can happen for workspaces
+    // created via admin tools), we create one before fetching domains. This ensures the
+    // endpoint works for all workspaces, regardless of how they were created.
+    const organizationRes = await getOrCreateWorkOSOrganization(
+      auth.getNonNullableWorkspace()
+    );
+
+    if (organizationRes.isErr()) {
       return apiError(ctx, {
-        status_code: 403,
+        status_code: 500,
         api_error: {
-          type: "workspace_auth_error",
-          message:
-            "Only users that are `admins` for the current workspace can list domains.",
+          type: "internal_server_error",
+          message: "Failed to get WorkOS organization",
         },
       });
     }
+
+    // If there is no organization, return an empty array.
+    if (!organizationRes.value) {
+      return ctx.json({ domains: [] });
+    }
+
+    const { link } = await generateWorkOSAdminPortalUrl({
+      organization: organizationRes.value.id,
+      workOSIntent: WorkOSPortalIntent.DomainVerification,
+      returnUrl: `${ctx.req.header("origin")}/w/${auth.getNonNullableWorkspace().sId}/members`,
+    });
+
+    return ctx.json({
+      addDomainLink: link,
+      domains: organizationRes.value.domains,
+    });
+  }
+);
+
+app.delete(
+  "/",
+  ensureIsAdmin(),
+  validate("json", DeleteWorkspaceDomainRequestBodySchema),
+  async (ctx) => {
+    const auth = ctx.get("auth");
 
     const body = ctx.req.valid("json");
 

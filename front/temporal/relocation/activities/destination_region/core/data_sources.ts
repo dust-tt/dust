@@ -1,6 +1,5 @@
 import config from "@app/lib/api/config";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
-import type { RegionType } from "@app/lib/api/regions/config";
 import { Authenticator } from "@app/lib/auth";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import logger from "@app/logger/logger";
@@ -10,6 +9,7 @@ import type {
 } from "@app/temporal/relocation/activities/types";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { CoreAPIDataSource } from "@app/types/core/data_source";
+import type { RegionType } from "@app/types/region";
 
 export async function createDataSourceProject({
   destRegion,

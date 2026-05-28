@@ -1,10 +1,13 @@
 import type pino from "pino";
+import { z } from "zod";
 
 // Action links for check results
-export interface ActionLink {
-  label: string;
-  url: string;
-}
+const ActionLinkSchema = z.object({
+  label: z.string(),
+  url: z.string(),
+});
+
+export type ActionLink = z.infer<typeof ActionLinkSchema>;
 
 // Payload types for check functions
 export interface CheckFailurePayload {
@@ -29,20 +32,33 @@ export type Check = {
   everyHour: number;
 };
 
-// Heartbeat types for Temporal activity
-export type CheckHeartbeatType =
-  | "start"
-  | "processing"
-  | "skip"
-  | "finish"
-  | "success"
-  | "failure";
+const CheckActivityResultStatusSchema = z.enum([
+  "success",
+  "failure",
+  "skipped",
+]);
 
-export interface CheckHeartbeat {
-  type: CheckHeartbeatType;
-  name: string;
-  uuid: string;
-}
+export const CheckActivityResultSchema = z.object({
+  checkName: z.string(),
+  status: CheckActivityResultStatusSchema,
+  timestamp: z.string(),
+  payload: z
+    .union([z.record(z.unknown()), z.array(z.record(z.unknown()))])
+    .nullable(),
+  errorMessage: z.string().nullable(),
+  actionLinks: z.array(ActionLinkSchema),
+});
+
+export const CheckHeartbeatDetailsSchema = z.object({
+  type: z.enum(["start", "processing", "skip", "success", "failure"]),
+  name: z.string(),
+  uuid: z.string(),
+  results: z.array(CheckActivityResultSchema),
+});
+
+export type CheckHeartbeatDetails = z.infer<typeof CheckHeartbeatDetailsSchema>;
+
+export type CheckHeartbeat = Omit<CheckHeartbeatDetails, "results">;
 
 // Result types for API responses
 export type CheckResultStatus = "success" | "failure" | "skipped" | "running";
@@ -60,20 +76,7 @@ export interface CheckResult {
   actionLinks: ActionLink[];
 }
 
-export type CheckActivityResultStatus = "success" | "failure" | "skipped";
-
-export interface CheckActivityResult {
-  checkName: string;
-  status: CheckActivityResultStatus;
-  timestamp: string;
-  payload:
-    | CheckSuccessPayload
-    | CheckFailurePayload
-    | CheckFailurePayload[]
-    | null;
-  errorMessage: string | null;
-  actionLinks: ActionLink[];
-}
+export type CheckActivityResult = z.infer<typeof CheckActivityResultSchema>;
 
 export type CheckSummaryStatus = "ok" | "alert" | "no-data";
 

@@ -1,7 +1,7 @@
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
-import { apiError } from "@front-api/middlewares/utils";
 
 export type GetWorkspaceSeatsCountResponseBody = {
   seatsCount: number;
@@ -10,26 +10,19 @@ export type GetWorkspaceSeatsCountResponseBody = {
 // Mounted at /api/w/:wId/seats/count.
 const app = workspaceApp();
 
-app.get("/", async (ctx): HandlerResult<GetWorkspaceSeatsCountResponseBody> => {
-  const auth = ctx.get("auth");
+app.get(
+  "/",
+  ensureIsAdmin(),
+  async (ctx): HandlerResult<GetWorkspaceSeatsCountResponseBody> => {
+    const auth = ctx.get("auth");
 
-  if (!auth.isAdmin()) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "workspace_auth_error",
-        message:
-          "Only users that are `admins` for the current workspace can access this endpoint.",
-      },
-    });
+    const owner = auth.getNonNullableWorkspace();
+
+    const seatsCount = await MembershipResource.countActiveSeatsInWorkspace(
+      owner.sId
+    );
+    return ctx.json({ seatsCount });
   }
-
-  const owner = auth.getNonNullableWorkspace();
-
-  const seatsCount = await MembershipResource.countActiveSeatsInWorkspace(
-    owner.sId
-  );
-  return ctx.json({ seatsCount });
-});
+);
 
 export default app;

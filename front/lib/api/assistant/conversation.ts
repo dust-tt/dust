@@ -132,7 +132,7 @@ import {
   ConversationError,
   isAgentMessageType,
   isCompactionMessageType,
-  isProjectConversation,
+  isPodConversation,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
 import type { MentionType } from "@app/types/assistant/mentions";
@@ -222,7 +222,7 @@ export async function createConversation(
 
   const conversationAsJson = conversation.toJSON();
 
-  if (isProjectConversation(conversationAsJson)) {
+  if (isPodConversation(conversationAsJson)) {
     notifyNewProjectConversation(auth, {
       conversation: conversationAsJson,
     });
@@ -550,7 +550,7 @@ export async function postUserMessage(
   }
 
   const featureFlags = await getFeatureFlags(auth);
-  const isPartOfProject = isProjectConversation(conversation);
+  const isPartOfProject = isPodConversation(conversation);
 
   if (isPartOfProject) {
     // Check if the user is a member of the space.
@@ -757,7 +757,7 @@ export async function postUserMessage(
       !isModelAvailable(supportedModelConfig, {
         featureFlags,
         plan,
-        owner,
+        regionalModelsOnly: owner.regionalModelsOnly,
         region: regionConfig.getCurrentRegion(),
       })
     ) {
@@ -1722,7 +1722,7 @@ export async function retryAgentMessage(
     });
   }
 
-  if (isProjectConversation(conversation)) {
+  if (isPodConversation(conversation)) {
     const canAgentBeUsed = await canAgentBeUsedInProjectConversation(auth, {
       configuration: retryAgentConfiguration,
       conversation,
@@ -1909,7 +1909,7 @@ export async function postNewContentFragment(
 
   // Project conversations only allow content fragments from the project space or the global space.
   if (
-    isProjectConversation(conversation) &&
+    isPodConversation(conversation) &&
     isContentFragmentInputWithContentNode(cf)
   ) {
     const dsView = await DataSourceViewResource.fetchById(
@@ -1933,7 +1933,7 @@ export async function postNewContentFragment(
 
   // If the user attaches a project-context file to a project conversation, reuse the existing
   // project content fragment and only create the message row at send time.
-  if (isProjectConversation(conversation) && "fileId" in cf) {
+  if (isPodConversation(conversation) && "fileId" in cf) {
     const project = await SpaceResource.fetchById(auth, conversation.spaceId);
     if (project?.isProject()) {
       const r = await fetchLatestProjectContextFileContentFragment(

@@ -1,12 +1,9 @@
-import type { RegionType } from "@app/lib/api/regions/config";
-import {
-  config,
-  isRegionType,
-  SUPPORTED_REGIONS,
-} from "@app/lib/api/regions/config";
+import { config } from "@app/lib/api/regions/config";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { readFrontTableChunk } from "@app/temporal/relocation/activities/source_region/front";
+import type { RegionType } from "@app/types/region";
+import { isRegionType, SUPPORTED_REGIONS } from "@app/types/region";
 
 function assertCorrectRegion(region: RegionType) {
   if (config.getCurrentRegion() !== region) {

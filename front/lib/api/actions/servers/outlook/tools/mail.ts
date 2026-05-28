@@ -54,6 +54,26 @@ const getMailboxBasePath = (sharedMailboxAddress?: string): string => {
   return "/me";
 };
 
+// Parses the `Retry-After` header from a 429/503 response. Microsoft Graph
+// typically returns a number of seconds, but per RFC 9110 the value may also
+// be an HTTP-date.
+const parseRetryAfterSeconds = (
+  retryAfter: string | null | undefined
+): number | undefined => {
+  if (!retryAfter) {
+    return undefined;
+  }
+  const seconds = Number(retryAfter);
+  if (Number.isFinite(seconds) && seconds >= 0) {
+    return Math.ceil(seconds);
+  }
+  const dateMs = Date.parse(retryAfter);
+  if (!Number.isNaN(dateMs)) {
+    return Math.max(0, Math.ceil((dateMs - Date.now()) / 1000));
+  }
+  return undefined;
+};
+
 const getErrorText = async (response: Response): Promise<string> => {
   try {
     const errorData = await response.json();
@@ -150,6 +170,125 @@ interface OutlookFolder {
   unreadItemCount?: number;
   totalItemCount?: number;
 }
+
+const foldersEndpoint = (
+  basePath: string,
+  parentFolderId: string | null
+): string =>
+  parentFolderId
+    ? `${basePath}/mailFolders/${parentFolderId}/childFolders`
+    : `${basePath}/mailFolders`;
+
+const findFolderIdByName = async (
+  folderName: string,
+  parentFolderId: string | null,
+  basePath: string,
+  accessToken: string
+): Promise<{ folderId: string | null } | { error: MCPError }> => {
+  const response = await fetchFromOutlook(
+    `${foldersEndpoint(basePath, parentFolderId)}?$top=250`,
+    accessToken,
+    { method: "GET" }
+  );
+  if (!response.ok) {
+    const errorText = await getErrorText(response);
+    return {
+      error: new MCPError(
+        `Failed to fetch folders: ${response.status} ${response.statusText} - ${errorText}`
+      ),
+    };
+  }
+  const result = await response.json();
+  const folders = (result.value ?? []) as OutlookFolder[];
+  const folder = folders.find(
+    (f) => f.displayName.toLowerCase() === folderName.toLowerCase()
+  );
+  return { folderId: folder?.id ?? null };
+};
+
+const createFolder = async (
+  displayName: string,
+  parentFolderId: string | null,
+  basePath: string,
+  accessToken: string
+): Promise<{ folderId: string } | { error: MCPError }> => {
+  const response = await fetchFromOutlook(
+    foldersEndpoint(basePath, parentFolderId),
+    accessToken,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ displayName }),
+    }
+  );
+  if (!response.ok) {
+    const errorText = await getErrorText(response);
+    return {
+      error: new MCPError(
+        `Failed to create folder: ${response.status} ${response.statusText} - ${errorText}`
+      ),
+    };
+  }
+  const result = (await response.json()) as OutlookFolder;
+  return { folderId: result.id };
+};
+
+const resolveFolderPath = async (
+  folderPath: string[],
+  basePath: string,
+  accessToken: string
+): Promise<
+  { folderId: string; createdSegments: string[] } | { error: MCPError }
+> => {
+  let parentFolderId: string | null = null;
+  const createdSegments: string[] = [];
+
+  for (const segment of folderPath) {
+    const lookup = await findFolderIdByName(
+      segment,
+      parentFolderId,
+      basePath,
+      accessToken
+    );
+    if ("error" in lookup) {
+      return { error: lookup.error };
+    }
+
+    if (lookup.folderId) {
+      parentFolderId = lookup.folderId;
+      continue;
+    }
+
+    const created = await createFolder(
+      segment,
+      parentFolderId,
+      basePath,
+      accessToken
+    );
+    if (!("error" in created)) {
+      parentFolderId = created.folderId;
+      createdSegments.push(segment);
+      continue;
+    }
+
+    // Create failed. This commonly happens when a concurrent move_message call
+    // created the same folder between our lookup and our create (Graph returns
+    // ErrorFolderExists / 409). Re-lookup; if the folder now exists, use it.
+    // Otherwise the create error was a real failure — propagate it.
+    const retry = await findFolderIdByName(
+      segment,
+      parentFolderId,
+      basePath,
+      accessToken
+    );
+    if ("error" in retry || !retry.folderId) {
+      return { error: created.error };
+    }
+    parentFolderId = retry.folderId;
+  }
+
+  return { folderId: parentFolderId as string, createdSegments };
+};
 
 const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
   get_messages: async (
@@ -870,6 +1009,116 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
     }
 
     return new Ok([{ type: "text" as const, text: "Email sent successfully" }]);
+  },
+
+  move_messages: async (
+    { messageIds, destinationFolderPath, sharedMailboxAddress },
+    { authInfo }
+  ) => {
+    const accessToken = authInfo?.token;
+    if (!accessToken) {
+      return new Err(new MCPError("Authentication required"));
+    }
+
+    const basePath = getMailboxBasePath(sharedMailboxAddress);
+
+    const resolved = await resolveFolderPath(
+      destinationFolderPath,
+      basePath,
+      accessToken
+    );
+    if ("error" in resolved) {
+      return new Err(resolved.error);
+    }
+
+    const moveResults = await concurrentExecutor(
+      messageIds,
+      async (
+        messageId
+      ): Promise<
+        | { messageId: string; ok: true; newMessageId: string }
+        | {
+            messageId: string;
+            ok: false;
+            error: string;
+            retryAfterSeconds?: number;
+          }
+      > => {
+        const encodedMessageId = encodeURIComponent(messageId);
+        const response = await fetchFromOutlook(
+          `${basePath}/messages/${encodedMessageId}/move`,
+          accessToken,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ destinationId: resolved.folderId }),
+          }
+        );
+
+        if (!response.ok) {
+          const errorText = await getErrorText(response);
+          const error =
+            response.status === 404
+              ? "Message not found"
+              : `${response.status} ${response.statusText} - ${errorText}`;
+          const retryAfterSeconds =
+            response.status === 429 || response.status === 503
+              ? parseRetryAfterSeconds(response.headers.get("Retry-After"))
+              : undefined;
+          return retryAfterSeconds !== undefined
+            ? { messageId, ok: false, error, retryAfterSeconds }
+            : { messageId, ok: false, error };
+        }
+
+        const result = await response.json();
+        return { messageId, ok: true, newMessageId: result.id };
+      },
+      { concurrency: 3 }
+    );
+
+    const succeeded = moveResults.filter((r) => r.ok);
+    const failed = moveResults.filter((r) => !r.ok);
+    const throttled = failed.filter((r) => r.retryAfterSeconds !== undefined);
+    const maxRetryAfterSeconds = throttled.reduce(
+      (max, r) => Math.max(max, r.retryAfterSeconds ?? 0),
+      0
+    );
+    const pathLabel = destinationFolderPath.join(" / ");
+
+    const summaryParts: string[] = [];
+    summaryParts.push(
+      `Moved ${succeeded.length}/${messageIds.length} message(s) to "${pathLabel}".`
+    );
+    if (resolved.createdSegments.length > 0) {
+      summaryParts.push(
+        `New folder segments created: ${resolved.createdSegments.join(", ")}.`
+      );
+    }
+    if (failed.length > 0) {
+      summaryParts.push(`${failed.length} failed.`);
+    }
+    if (throttled.length > 0) {
+      summaryParts.push(
+        `${throttled.length} throttled by Microsoft Graph — retry after ${maxRetryAfterSeconds} second(s).`
+      );
+    }
+
+    return new Ok([
+      { type: "text" as const, text: summaryParts.join(" ") },
+      {
+        type: "text" as const,
+        text: JSON.stringify(
+          {
+            destinationFolderPath,
+            createdSegments: resolved.createdSegments,
+            succeeded,
+            failed,
+          },
+          null,
+          2
+        ),
+      },
+    ]);
   },
 
   get_contacts: async (

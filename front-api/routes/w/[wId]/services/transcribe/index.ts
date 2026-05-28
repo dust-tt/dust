@@ -4,12 +4,12 @@ import { transcribeStream } from "@app/lib/utils/transcribe_service";
 import logger from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { createHono } from "@front-api/lib/hono";
 import type { WorkspaceAwareCtx } from "@front-api/middlewares/ctx";
 import { setSSEHeaders } from "@front-api/middlewares/streaming";
 import { apiError } from "@front-api/middlewares/utils";
 import type { HttpBindings } from "@hono/node-server";
 import formidable from "formidable";
-import { Hono } from "hono";
 import { stream } from "hono/streaming";
 
 export type PostTranscribeResponseBody = { text: string };
@@ -20,7 +20,7 @@ export type PostTranscribeResponseBody = { text: string };
 // underlying Node `IncomingMessage` via `ctx.env.incoming` and hand it to
 // `formidable.parse(...)` — matching the Next handler exactly, which also
 // streamed the multipart body through formidable from the raw request.
-const app = new Hono<WorkspaceAwareCtx & { Bindings: HttpBindings }>();
+const app = createHono<WorkspaceAwareCtx & { Bindings: HttpBindings }>();
 
 app.post("/", async (ctx) => {
   const auth = ctx.get("auth");

@@ -34,7 +34,7 @@ import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import { isProjectConversation } from "@app/types/assistant/conversation";
+import { isPodConversation } from "@app/types/assistant/conversation";
 import { isSupportedImageContentType } from "@app/types/files";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -117,7 +117,7 @@ export class DustFileSystem {
 
     const mounts: FileSystemMount[] = [convMount];
 
-    if (isProjectConversation(conversation)) {
+    if (isPodConversation(conversation)) {
       const space = await SpaceResource.fetchById(auth, conversation.spaceId);
       if (space) {
         mounts.push({

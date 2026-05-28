@@ -2,9 +2,9 @@ import {
   getDustStatusMemoized,
   getProviderStatusMemoized,
 } from "@app/lib/api/status";
-import { Hono } from "hono";
+import { createHono } from "@front-api/lib/hono";
 
-export const appStatusApp = new Hono();
+export const appStatusApp = createHono();
 
 appStatusApp.get("/", async (ctx) => {
   const [providersStatus, dustStatus] = await Promise.all([

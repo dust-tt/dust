@@ -1,5 +1,4 @@
 import config from "@app/lib/api/config";
-import type { RegionType } from "@app/lib/api/regions/config";
 import { config as multiRegionsConfig } from "@app/lib/api/regions/config";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { invalidateWorkOSOrganizationsCacheForUserId } from "@app/lib/api/workos/organization_membership";
@@ -8,6 +7,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
+import type { RegionType } from "@app/types/region";
 import { isDevelopment } from "@app/types/shared/env";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";

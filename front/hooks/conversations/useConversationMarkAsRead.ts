@@ -6,7 +6,7 @@ import type {
   ConversationListItemType,
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
-import { isProjectConversation } from "@app/types/assistant/conversation";
+import { isPodConversation } from "@app/types/assistant/conversation";
 import { useCallback, useEffect } from "react";
 import { useConversations } from "./useConversations";
 
@@ -111,9 +111,8 @@ export function useConversationMarkAsRead({
       timeout = setTimeout(
         () =>
           markAsRead(conversation.sId, {
-            mutateList: !isProjectConversation(conversation),
-            mutateSpaceConversationsSummary:
-              isProjectConversation(conversation),
+            mutateList: !isPodConversation(conversation),
+            mutateSpaceConversationsSummary: isPodConversation(conversation),
           }),
         DELAY_BEFORE_MARKING_AS_READ
       );

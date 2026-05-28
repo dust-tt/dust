@@ -9,6 +9,7 @@ import type {
 } from "@dust-tt/client";
 import { UpsertTableFromCsvRequestSchema } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
+import { ensureIsSystemKey } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -26,6 +27,7 @@ const app = publicApiApp();
 
 app.post(
   "/",
+  ensureIsSystemKey(),
   validate("param", ParamsSchema),
   validate("json", UpsertTableFromCsvRequestSchema),
   async (
@@ -34,17 +36,6 @@ app.post(
     PostTableCSVAsyncResponseType | PostTableCSVResponseType
   > => {
     const auth = ctx.get("auth");
-
-    if (!auth.isSystemKey()) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: {
-          type: "workspace_not_found",
-          message: "The workspace was not found.",
-        },
-      });
-    }
-
     const { dsId } = ctx.req.valid("param");
 
     const dataSource = await DataSourceResource.fetchByNameOrId(

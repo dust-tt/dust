@@ -1,4 +1,5 @@
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureIsBuilder } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -19,21 +20,9 @@ const app = workspaceApp();
 
 app.post(
   "/",
+  ensureIsBuilder(),
   validate("json", PostCheckBodySchema),
   async (ctx): HandlerResult<GetProvidersCheckResponseBody> => {
-    const auth = ctx.get("auth");
-
-    if (!auth.isBuilder()) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "provider_auth_error",
-          message:
-            "Only the users that are `builders` for the current workspace can check providers.",
-        },
-      });
-    }
-
     const pId = ctx.req.param("pId") ?? "";
     const { config } = ctx.req.valid("json");
 

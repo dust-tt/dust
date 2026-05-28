@@ -1,14 +1,11 @@
-import {
-  config,
-  isRegionType,
-  SUPPORTED_REGIONS,
-} from "@app/lib/api/regions/config";
+import { config } from "@app/lib/api/regions/config";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { makeScript } from "@app/scripts/helpers";
 import { RELOCATION_QUEUES_PER_REGION } from "@app/temporal/relocation/config";
 import { getTemporalRelocationClient } from "@app/temporal/relocation/temporal";
 import { workspaceRelocateDataSourceCoreWorkflow } from "@app/temporal/relocation/workflows";
+import { isRegionType, SUPPORTED_REGIONS } from "@app/types/region";
 import assert from "assert";
 
 makeScript(

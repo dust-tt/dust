@@ -1,9 +1,9 @@
-import { Hono } from "hono";
+import { createHono } from "@front-api/lib/hono";
 
 import pv from "./pv";
 
 // Mounted at /api/t.
-const app = new Hono();
+const app = createHono();
 
 app.route("/pv", pv);
 

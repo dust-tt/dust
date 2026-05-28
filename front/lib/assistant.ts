@@ -1,4 +1,3 @@
-import type { RegionType } from "@app/lib/api/regions/config";
 import {
   isDustCompanyPlan,
   isEntreprisePlanPrefix,
@@ -10,8 +9,8 @@ import type {
   ModelProviderIdType,
 } from "@app/types/assistant/models/types";
 import type { PlanType } from "@app/types/plan";
+import type { RegionType } from "@app/types/region";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
-import type { WorkspaceType } from "@app/types/user";
 
 export function isEnterpriseOrDust(plan: PlanType | null): boolean {
   return (
@@ -20,26 +19,30 @@ export function isEnterpriseOrDust(plan: PlanType | null): boolean {
   );
 }
 
-// Returns true if the model is available to the workspace for use.
+// Returns true if the model is available to the workspace for build.
 export function isModelAvailable(
   m: ModelConfigurationType,
   {
     featureFlags,
     plan,
-    owner,
+    regionalModelsOnly,
     region,
   }: {
     featureFlags: WhitelistableFeature[];
     plan: PlanType | null;
-    owner: WorkspaceType;
+    regionalModelsOnly: boolean;
     region: RegionType;
   }
 ) {
+  if (m.largeModel && !isUpgraded(plan)) {
+    return false;
+  }
+
   if (plan?.isByok && !isByokProviderId(m.providerId)) {
     return false;
   }
 
-  if (owner.regionalModelsOnly && m.regionalAvailability[region] !== true) {
+  if (regionalModelsOnly && m.regionalAvailability[region] !== true) {
     return false;
   }
 
@@ -60,58 +63,52 @@ export function isModelAvailable(
   return false;
 }
 
-// Returns true if the model is available to the workspace for build.
-export function isModelCustomAvailable(
+// Returns true if the model is enabled for the workspace.
+export function isModelEnabled(
   m: ModelConfigurationType,
   {
     featureFlags,
     plan,
-    owner,
-    region,
-  }: {
-    featureFlags: WhitelistableFeature[];
-    plan: PlanType | null;
-    owner: WorkspaceType;
-    region: RegionType;
-  }
-) {
-  if (!isModelAvailable(m, { featureFlags, plan, owner, region })) {
-    return false;
-  }
-
-  if (m.customAvailableIf) {
-    return (
-      m.customAvailableIf.featureFlag &&
-      featureFlags.includes(m.customAvailableIf.featureFlag)
-    );
-  }
-
-  if (m.largeModel && !isUpgraded(plan)) {
-    return false;
-  }
-
-  return true;
-}
-
-export function filterCustomAvailableAndWhitelistedModels(
-  models: ModelConfigurationType[],
-  {
-    featureFlags,
-    plan,
-    owner,
+    regionalModelsOnly,
     region,
     whitelistedProviders,
   }: {
     featureFlags: WhitelistableFeature[];
     plan: PlanType | null;
-    owner: WorkspaceType;
+    regionalModelsOnly: boolean;
+    region: RegionType;
+    whitelistedProviders: Set<ModelProviderIdType>;
+  }
+) {
+  return (
+    isModelAvailable(m, { featureFlags, plan, regionalModelsOnly, region }) &&
+    whitelistedProviders.has(m.providerId)
+  );
+}
+
+export function filterEnabledModels(
+  models: ModelConfigurationType[],
+  {
+    featureFlags,
+    plan,
+    regionalModelsOnly,
+    region,
+    whitelistedProviders,
+  }: {
+    featureFlags: WhitelistableFeature[];
+    plan: PlanType | null;
+    regionalModelsOnly: boolean;
     region: RegionType;
     whitelistedProviders: Set<ModelProviderIdType>;
   }
 ): ModelConfigurationType[] {
-  return models.filter(
-    (m) =>
-      isModelCustomAvailable(m, { featureFlags, plan, owner, region }) &&
-      whitelistedProviders.has(m.providerId)
+  return models.filter((m) =>
+    isModelEnabled(m, {
+      featureFlags,
+      plan,
+      regionalModelsOnly,
+      region,
+      whitelistedProviders,
+    })
   );
 }

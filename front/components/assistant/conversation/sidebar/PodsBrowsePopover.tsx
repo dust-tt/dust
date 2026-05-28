@@ -1,5 +1,5 @@
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
-import { useSearchProjects } from "@app/hooks/useSearchProjects";
+import { useSearchPods } from "@app/hooks/useSearchPods";
 import { useAppRouter } from "@app/lib/platform";
 import { getSpaceIcon } from "@app/lib/spaces";
 import { getPodRoute } from "@app/lib/utils/router";
@@ -20,23 +20,20 @@ import {
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
-interface ProjectsBrowsePopoverProps {
+interface PodsBrowsePopoverProps {
   owner: WorkspaceType;
 }
 
-interface ProjectBrowseItemProps {
-  space: PodType;
+interface PodBrowseItemProps {
+  pod: PodType;
   onClick: () => void;
 }
 
-function ProjectBrowseItemSkeleton({ count = 5 }: { count?: number }) {
+function PodBrowseItemSkeleton({ count = 5 }: { count?: number }) {
   return (
     <>
       {Array.from({ length: count }).map((_, i) => (
-        <div
-          key={`project-skeleton-${i}`}
-          className="flex items-start gap-2 p-2"
-        >
+        <div key={`pod-skeleton-${i}`} className="flex items-start gap-2 p-2">
           <LoadingBlock className="mt-0.5 h-4 w-4 rounded" />
           <div className="flex min-w-0 flex-1 flex-col gap-1">
             <LoadingBlock className="h-4 w-[70%]" />
@@ -47,31 +44,27 @@ function ProjectBrowseItemSkeleton({ count = 5 }: { count?: number }) {
   );
 }
 
-function ProjectBrowseItem({ space, onClick }: ProjectBrowseItemProps) {
+function PodBrowseItem({ pod, onClick }: PodBrowseItemProps) {
   return (
     <div
       className="flex cursor-pointer items-start gap-2 rounded-lg p-2 hover:bg-muted-background dark:hover:bg-muted-background-night"
       onClick={onClick}
     >
-      <Icon
-        visual={getSpaceIcon(space)}
-        size="sm"
-        className="mt-0.5 shrink-0"
-      />
+      <Icon visual={getSpaceIcon(pod)} size="sm" className="mt-0.5 shrink-0" />
       <div className="min-w-0 flex-1">
         <div className="flex flex-row items-center justify-between gap-1.5">
-          <div className="truncate font-medium">{space.name}</div>
-          {space.archivedAt && (
+          <div className="truncate font-medium">{pod.name}</div>
+          {pod.archivedAt && (
             <Chip size="mini" color="primary" label="Archived" />
           )}
         </div>
-        {space.description && (
+        {pod.description && (
           <Tooltip
-            label={space.description}
+            label={pod.description}
             tooltipTriggerAsChild
             trigger={
               <div className="truncate text-xs text-muted-foreground dark:text-muted-foreground-night">
-                {space.description}
+                {pod.description}
               </div>
             }
           />
@@ -81,24 +74,25 @@ function ProjectBrowseItem({ space, onClick }: ProjectBrowseItemProps) {
   );
 }
 
-export function ProjectsBrowsePopover({ owner }: ProjectsBrowsePopoverProps) {
+export function PodsBrowsePopover({ owner }: PodsBrowsePopoverProps) {
   const router = useAppRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const { projects, isSearching, hasMore, loadMore, isLoadingMore } =
-    useSearchProjects({
+  const { pods, isSearching, hasMore, loadMore, isLoadingMore } = useSearchPods(
+    {
       workspaceId: owner.sId,
       query: searchQuery,
       enabled: isOpen,
       limit: 50,
-    });
+    }
+  );
 
-  const filteredProjects = useMemo(() => {
-    return projects.filter(
+  const filteredPods = useMemo(() => {
+    return pods.filter(
       ({ isMember, archivedAt }) => (!isMember && !archivedAt) || archivedAt
     );
-  }, [projects]);
+  }, [pods]);
 
   return (
     <div>
@@ -113,29 +107,29 @@ export function ProjectsBrowsePopover({ owner }: ProjectsBrowsePopoverProps) {
         >
           <div className="shrink-0 p-3 pb-2">
             <SearchInput
-              name="browse-projects-search"
+              name="browse-pods-search"
               placeholder="Search Pods..."
               value={searchQuery}
               onChange={setSearchQuery}
             />
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
-            {isSearching && filteredProjects.length === 0 ? (
-              <ProjectBrowseItemSkeleton count={5} />
-            ) : filteredProjects.length === 0 ? (
+            {isSearching && filteredPods.length === 0 ? (
+              <PodBrowseItemSkeleton count={5} />
+            ) : filteredPods.length === 0 ? (
               <div className="px-2 py-4 text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
                 No Pods found
               </div>
             ) : (
               <>
-                {filteredProjects.map((project) => (
-                  <ProjectBrowseItem
-                    key={project.sId}
-                    space={project}
+                {filteredPods.map((pod) => (
+                  <PodBrowseItem
+                    key={pod.sId}
+                    pod={pod}
                     onClick={async () => {
                       setIsOpen(false);
                       setSearchQuery("");
-                      await router.push(getPodRoute(owner.sId, project.sId));
+                      await router.push(getPodRoute(owner.sId, pod.sId));
                     }}
                   />
                 ))}

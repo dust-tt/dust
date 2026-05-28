@@ -1,8 +1,8 @@
-import { Hono } from "hono";
+import { createHono } from "@front-api/lib/hono";
 
 import finalize from "./finalize";
 
-const app = new Hono();
+const app = createHono();
 app.route("/finalize", finalize);
 
 export default app;

@@ -5,11 +5,7 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import config from "@app/lib/api/config";
 import { performLogin } from "@app/lib/api/login";
-import type { RegionType } from "@app/lib/api/regions/config";
-import {
-  config as multiRegionsConfig,
-  SUPPORTED_REGIONS,
-} from "@app/lib/api/regions/config";
+import { config as multiRegionsConfig } from "@app/lib/api/regions/config";
 import { checkUserRegionAffinity } from "@app/lib/api/regions/lookup";
 import { authenticateWithWorkOSCode } from "@app/lib/api/workos/authenticate";
 import { getWorkOS } from "@app/lib/api/workos/client";
@@ -28,15 +24,17 @@ import { getStatsDClient } from "@app/lib/utils/statsd";
 import { extractUTMParams } from "@app/lib/utils/utm";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import type { RegionType } from "@app/types/region";
+import { SUPPORTED_REGIONS } from "@app/types/region";
 import { isDevelopment } from "@app/types/shared/env";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import { validateRelativePath } from "@app/types/shared/utils/url_utils";
+import { createHono } from "@front-api/lib/hono";
 import { apiError } from "@front-api/middlewares/utils";
 import { OauthException } from "@workos-inc/node";
 import type { Context } from "hono";
-import { Hono } from "hono";
 import { getCookie } from "hono/cookie";
 import { sealData } from "iron-session";
 
@@ -62,7 +60,7 @@ function redirectTo(ctx: Context, sanitizedReturnTo: string) {
   return redirect(ctx, `${config.getAppUrl()}${sanitizedReturnTo}`);
 }
 
-const app = new Hono();
+const app = createHono();
 
 app.all("/", async (ctx) => {
   const action = ctx.req.param("action");

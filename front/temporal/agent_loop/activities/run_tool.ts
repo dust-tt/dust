@@ -83,13 +83,7 @@ export async function runToolActivity(
     runIds?: string[];
   }
 ): Promise<ToolExecutionResult> {
-  const authResult = await Authenticator.fromJSON(authType);
-  if (authResult.isErr()) {
-    throw new Error(
-      `Failed to deserialize authenticator: ${authResult.error.code}`
-    );
-  }
-  const auth = authResult.value;
+  const auth = await Authenticator.fromJSON(authType);
   const deferredEvents: ToolExecutionResult["deferredEvents"] = [];
 
   const [runAgentDataRes, action] = await startActiveObservation(

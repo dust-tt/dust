@@ -12,7 +12,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import type { SystemSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import logger from "@app/logger/logger";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
-import { isProjectConversation } from "@app/types/assistant/conversation";
+import { isPodConversation } from "@app/types/assistant/conversation";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import { Ok } from "@app/types/shared/result";
 
@@ -99,7 +99,7 @@ function buildProjectFilesSection(): string {
   return `#### Sandbox Project File System
 
 This conversation belongs to a Pod, so the Pod's file system is also
-mounted read-write inside the sandbox at \`/files/project\`. These files are
+mounted read-write inside the sandbox at \`/files/pod\`. These files are
 shared across every conversation in the same Pod and **persist beyond
 this conversation** — anything you write or delete here is visible to other
 conversations in the same Pod.
@@ -107,12 +107,12 @@ conversations in the same Pod.
 Use this surface for files that belong to the Pod as a whole (specs,
 knowledge bases, shared scripts, recurring data sets), and use
 \`/files/conversation\` for ephemeral or per-conversation artifacts. When
-both are relevant, prefer reading from \`/files/project\` and writing
+both are relevant, prefer reading from \`/files/pod\` and writing
 deliverables to \`/files/conversation\` unless the user has asked you to
 update the Pod's files specifically.
 
 The same files are also exposed by the \`files\` MCP server under scoped
-paths like \`project/<rel>\`. Sandbox writes and MCP writes are two views on
+paths like \`pod/<rel>\`. Sandbox writes and MCP writes are two views on
 the same underlying storage.`;
 }
 
@@ -350,7 +350,7 @@ export const sandboxSkill = {
     const flags = await getFeatureFlags(auth);
     const hasDsbxTools = flags.includes("sandbox_dsbx_tools");
     const isProject = agentLoopData?.conversation
-      ? isProjectConversation(agentLoopData.conversation)
+      ? isPodConversation(agentLoopData.conversation)
       : false;
 
     return buildSandboxInstructions(auth, providerId, {

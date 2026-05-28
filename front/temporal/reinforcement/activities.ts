@@ -13,6 +13,7 @@ import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import { getRemainingDailyCapMicroUsd } from "@app/lib/api/programmatic_usage/daily_cap";
 import { checkProgrammaticUsageLimits } from "@app/lib/api/programmatic_usage/tracking";
 import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
+import { isApiBlocked } from "@app/lib/metronome/user_block";
 import {
   AgentMessageModel,
   MessageModel,
@@ -581,16 +582,17 @@ export async function getReinforcementSettingsActivity({
     );
   const globalCapMicroUsd = getReinforcementMonthlyCapMicroUsd(workspace);
 
-  // Credit-priced plans no longer rely on legacy programmatic credits; gate the
-  // legacy check so we don't falsely report the limit as reached.
   const plan = auth.subscription()?.plan;
   const programmaticUsageLimitReached =
-    plan && isCreditPricedPlan(plan)
-      ? false
-      : (await checkProgrammaticUsageLimits(auth)).isErr();
+    !!plan && isCreditPricedPlan(plan) && !!workspace.metronomeCustomerId
+      ? // If the workspace pool is depleted, no downstream message can be posted.
+        await isApiBlocked(workspace.sId)
+      : // Legacy check
+        (await checkProgrammaticUsageLimits(auth)).isErr();
 
   // Compute remaining programmatic budget: total remaining credits capped by
   // the daily usage allowance.
+  // TODO(fabien): use credit pool remaining credit here too.
   const remainingCreditsMicroUsd =
     await CreditResource.getRemainingMicroUsd(auth);
   const remainingDailyCapMicroUsd = await getRemainingDailyCapMicroUsd(auth);

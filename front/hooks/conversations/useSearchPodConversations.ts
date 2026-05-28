@@ -2,22 +2,22 @@ import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { SemanticSearchConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/semantic_search";
 import { useEffect, useMemo, useState } from "react";
 
-type ProjectConversationSearchResult =
+type PodConversationSearchResult =
   SemanticSearchConversationsResponseBody["conversations"][number];
 
-interface UseSearchProjectConversationsParams {
+interface UseSearchPodConversationsParams {
   workspaceId: string;
   enabled?: boolean;
   query?: string;
   limit?: number;
 }
 
-export function useSearchProjectConversations({
+export function useSearchPodConversations({
   workspaceId,
   enabled = true,
   query = "",
   limit = 50,
-}: UseSearchProjectConversationsParams) {
+}: UseSearchPodConversationsParams) {
   const { fetcher } = useFetcher();
   const [debouncedQuery, setDebouncedQuery] = useState(query);
 
@@ -48,8 +48,7 @@ export function useSearchProjectConversations({
 
   return {
     conversations: useMemo(
-      () =>
-        data?.conversations ?? emptyArray<ProjectConversationSearchResult>(),
+      () => data?.conversations ?? emptyArray<PodConversationSearchResult>(),
       [data?.conversations]
     ),
     isSearching:

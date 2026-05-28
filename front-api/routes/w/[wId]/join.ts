@@ -7,8 +7,8 @@ import { getSignInUrl } from "@app/lib/signup";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { isString } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
+import { createHono } from "@front-api/lib/hono";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
-import { Hono } from "hono";
 
 type OnboardingType =
   | "email_invite"
@@ -27,7 +27,7 @@ interface GetJoinErrorBody {
 }
 
 // Mounted at /api/w/:wId/join (no workspace auth — public endpoint).
-const app = new Hono();
+const app = createHono();
 
 app.get(
   "/",

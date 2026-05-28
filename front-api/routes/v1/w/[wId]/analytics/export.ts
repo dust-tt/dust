@@ -84,13 +84,17 @@ import {
 } from "@app/lib/api/analytics/export_tables";
 import { GetAnalyticsExportRequestSchema } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
+import { ensureIsBuilder } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
 
 // Mounted at /api/v1/w/:wId/analytics/export. publicApiAuth is applied by the
 // parent v1 workspace sub-app, so ctx.get("auth") is always available here.
 const app = publicApiApp();
 
-app.get("/", async (ctx) => {
+// TODO(api-key-scopes): tighten to admin-only once existing builder-scoped
+// integrations have been migrated to admin keys. Builder is temporarily
+// accepted to avoid breaking current callers.
+app.get("/", ensureIsBuilder(), async (ctx) => {
   const auth = ctx.get("auth");
 
   if (!auth.isKey()) {
@@ -99,19 +103,6 @@ app.get("/", async (ctx) => {
       api_error: {
         type: "workspace_auth_error",
         message: "Workspace analytics export requires API key authentication.",
-      },
-    });
-  }
-  // TODO(api-key-scopes): tighten to admin-only once existing builder-scoped
-  // integrations have been migrated to admin keys. Builder is temporarily
-  // accepted to avoid breaking current callers.
-  if (!auth.isBuilder()) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "insufficient_key_scope",
-        message:
-          "Workspace analytics export requires an API key with admin scope.",
       },
     });
   }

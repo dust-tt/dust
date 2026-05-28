@@ -10,7 +10,6 @@ import {
   extractIdFromMetadata,
   parseResponseFormatSchema,
 } from "@app/lib/api/llm/utils";
-import type { RegionType } from "@app/lib/api/regions/config";
 import { config } from "@app/lib/api/regions/config";
 import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
 import type {
@@ -23,6 +22,7 @@ import type {
   ModelProviderIdType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
+import type { RegionType } from "@app/types/region";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import compact from "lodash/compact";
 import type {

@@ -1,8 +1,8 @@
 import { updateWorkspaceRegionMetadata } from "@app/admin/relocate_users";
-import type { RegionType } from "@app/lib/api/regions/config";
-import { isRegionType, SUPPORTED_REGIONS } from "@app/lib/api/regions/config";
 import { Authenticator } from "@app/lib/auth";
 import { makeScript } from "@app/scripts/helpers";
+import type { RegionType } from "@app/types/region";
+import { isRegionType, SUPPORTED_REGIONS } from "@app/types/region";
 
 makeScript(
   {

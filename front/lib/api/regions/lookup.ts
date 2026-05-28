@@ -1,5 +1,4 @@
 import { getMembershipInvitationToken } from "@app/lib/api/invitation";
-import type { RegionType } from "@app/lib/api/regions/config";
 import { config } from "@app/lib/api/regions/config";
 import { isWorkspaceRelocationDone } from "@app/lib/api/workspace";
 import { findWorkspaceWithVerifiedDomain } from "@app/lib/iam/workspaces";
@@ -20,6 +19,7 @@ import type {
 import type { RegionRedirectError } from "@app/types/error";
 import { isAPIErrorResponse } from "@app/types/error";
 import type { PendingInvitationOption } from "@app/types/membership_invitation";
+import type { RegionType } from "@app/types/region";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";

@@ -3,14 +3,12 @@ import {
   emitAuditLogEvent,
 } from "@app/lib/api/audit/workos_audit";
 import { createPlugin } from "@app/lib/api/poke/types";
-import type { RegionType } from "@app/lib/api/regions/config";
-import {
-  config as multiRegionsConfig,
-  SUPPORTED_REGIONS,
-} from "@app/lib/api/regions/config";
+import { config as multiRegionsConfig } from "@app/lib/api/regions/config";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { mapToEnumValues } from "@app/types/poke/plugins";
+import type { RegionType } from "@app/types/region";
+import { SUPPORTED_REGIONS } from "@app/types/region";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 

@@ -262,9 +262,12 @@ const runAgent = async (
 
   const instructions =
     agentLoopContext.runContext.agentConfiguration.instructions;
+
+  // Store the query resource early so the UI can show it immediately while the child
+  // conversation is being created. A second store fires below once conversationId and
+  // agentMessageId are known, so the panel can connect to the child stream on replay.
   if (_meta?.progressToken && sendNotification) {
-    // Store the query resource immediately so it's available in the UI while the action is running.
-    const storeResourceNotification: MCPProgressNotificationType = {
+    await sendNotification({
       method: "notifications/progress",
       params: {
         progress: 0,
@@ -290,8 +293,7 @@ const runAgent = async (
           },
         },
       },
-    };
-    await sendNotification(storeResourceNotification);
+    });
   }
 
   const convRes = await getOrCreateConversation(
@@ -346,6 +348,38 @@ const runAgent = async (
     return finalizeAndReturn(
       new Err(makeChildAgentUnavailableError(childAgentBlob.name))
     );
+  }
+
+  if (_meta?.progressToken && sendNotification) {
+    await sendNotification({
+      method: "notifications/progress",
+      params: {
+        progress: 0,
+        total: 1,
+        progressToken: _meta.progressToken,
+        _meta: {
+          data: {
+            label: `Storing query resource`,
+            output: {
+              type: "store_resource",
+              contents: [
+                {
+                  type: "resource",
+                  resource: {
+                    mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_QUERY,
+                    text: query,
+                    childAgentId: parsedChildAgentId,
+                    uri: "",
+                    conversationId: conversation.sId,
+                    agentMessageId: agentMessage.sId,
+                  },
+                },
+              ],
+            },
+          },
+        },
+      },
+    });
   }
 
   const requestChildCancellation = () => {

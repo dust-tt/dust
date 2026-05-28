@@ -1,4 +1,5 @@
 import config from "@app/lib/api/config";
+import { rootCommand } from "@app/lib/api/sandbox/root_command";
 import type { Authenticator } from "@app/lib/auth";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import logger from "@app/logger/logger";
@@ -30,11 +31,13 @@ export async function startTelemetry(
 
   // /!\ DD_API_KEY must never appear literally in the command string;
   // journalctl logs argv. Always interpolate from the envVars below.
-  const result = await sandbox.exec(
+  const result = await sandbox.execRoot(
     auth,
-    `/usr/bin/systemctl set-environment DD_HOST="$DD_HOST" DD_API_KEY="$DD_API_KEY" E2B_SANDBOX_ID="$E2B_SANDBOX_ID" CONVERSATION_ID="$CONVERSATION_ID" WORKSPACE_ID="$WORKSPACE_ID" && /usr/bin/systemctl start fluent-bit`,
+    rootCommand.unsafeShell(
+      `/usr/bin/systemctl set-environment DD_HOST="$DD_HOST" DD_API_KEY="$DD_API_KEY" E2B_SANDBOX_ID="$E2B_SANDBOX_ID" CONVERSATION_ID="$CONVERSATION_ID" WORKSPACE_ID="$WORKSPACE_ID" && /usr/bin/systemctl start fluent-bit`,
+      "systemctl environment command expands sandbox env vars without embedding secrets in the TypeScript command string"
+    ),
     {
-      user: "root",
       envVars: {
         DD_HOST: "http-intake.logs.datadoghq.eu",
         DD_API_KEY: config.getDatadogApiKey() ?? "",

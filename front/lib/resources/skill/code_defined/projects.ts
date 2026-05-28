@@ -7,7 +7,7 @@ import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_define
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import {
   type ConversationWithoutContentType,
-  isProjectConversation,
+  isPodConversation,
 } from "@app/types/assistant/conversation";
 
 export const projectsSkill = {
@@ -79,7 +79,7 @@ export async function constructProjectContext(
   let instructions = "";
 
   // Add important note for project conversations to strongly emphasize the importance of using project tools first.
-  if (conversation && isProjectConversation(conversation)) {
+  if (conversation && isPodConversation(conversation)) {
     const space = await SpaceResource.fetchById(auth, conversation.spaceId);
     instructions += `
 IMPORTANT: This conversation (id: ${conversation.sId}) is part of the Pod "${space?.name}" (id: ${space?.sId}).

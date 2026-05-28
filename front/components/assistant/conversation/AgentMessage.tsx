@@ -1382,7 +1382,7 @@ function AgentMessageContent({
             </div>
           )}
         {generatedFiles.length > 0 && (
-          <div className="mt-2 grid grid-cols-5 gap-1">
+          <div className="mt-2 grid grid-cols-2 gap-2 @xs:grid-cols-3 @sm:grid-cols-4 @md:grid-cols-5">
             {getCitations({
               activeReferences: generatedFiles.map((file) => {
                 const href = file.fileId

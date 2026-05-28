@@ -6,10 +6,10 @@ import {
 } from "@app/lib/api/workos/webhook_helpers";
 import logger from "@app/logger/logger";
 import { launchWorkOSEventsWorkflow } from "@app/temporal/workos_events_queue/client";
+import { createHono } from "@front-api/lib/hono";
 import { apiError } from "@front-api/middlewares/utils";
-import { Hono } from "hono";
 
-const app = new Hono();
+const app = createHono();
 
 app.post("/", async (ctx) => {
   const webhookSecret = ctx.req.param("webhookSecret");

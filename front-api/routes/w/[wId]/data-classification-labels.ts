@@ -14,6 +14,7 @@ import logger from "@app/logger/logger";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -85,19 +86,10 @@ const app = workspaceApp();
 
 app.get(
   "/",
+  ensureIsAdmin(),
   validate("query", SourceQuerySchema),
   async (ctx): HandlerResult<GetDataClassificationLabelsResponseBody> => {
     const auth = ctx.get("auth");
-
-    if (!auth.isAdmin()) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "workspace_auth_error",
-          message: "You are not authorized to perform this action.",
-        },
-      });
-    }
 
     const featureFlags = await getFeatureFlags(auth);
     if (!featureFlags.includes("sensitivity_labels")) {
@@ -203,19 +195,10 @@ app.get(
 
 app.post(
   "/",
+  ensureIsAdmin(),
   validate("json", PostBodySchema),
   async (ctx): HandlerResult<PostDataClassificationLabelsResponseBody> => {
     const auth = ctx.get("auth");
-
-    if (!auth.isAdmin()) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "workspace_auth_error",
-          message: "You are not authorized to perform this action.",
-        },
-      });
-    }
 
     const featureFlags = await getFeatureFlags(auth);
     if (!featureFlags.includes("sensitivity_labels")) {

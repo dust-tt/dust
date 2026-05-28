@@ -2,6 +2,10 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import {
+  type RootCommand,
+  renderRootCommand,
+} from "@app/lib/api/sandbox/root_command";
 import { Err, Ok } from "@app/types/shared/result";
 import jwt from "jsonwebtoken";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -114,6 +118,13 @@ function healthStdout(overrides: Partial<HealthcheckOutput> = {}): string {
   });
 }
 
+function getRootCommandCall(
+  mock: { mock: { calls: unknown[][] } },
+  callIndex: number
+): string {
+  return renderRootCommand(mock.mock.calls[callIndex][1] as RootCommand);
+}
+
 describe("sandbox egress helpers", () => {
   const auth = {
     getNonNullableWorkspace: () => ({ sId: "workspace-id" }),
@@ -159,7 +170,7 @@ describe("sandbox egress helpers", () => {
       providerId: "provider-sandbox-id",
       sId: "sandbox-id",
       writeFile: vi.fn().mockResolvedValue(new Ok(undefined)),
-      exec: vi
+      execRoot: vi
         .fn()
         .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
         .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
@@ -194,61 +205,45 @@ describe("sandbox egress helpers", () => {
       "/etc/dust/egress-token",
       expect.anything()
     );
-    expect(sandbox.exec).toHaveBeenNthCalledWith(
+    expect(sandbox.execRoot).toHaveBeenNthCalledWith(
       1,
       auth,
-      expect.stringContaining("chmod 600 '/etc/dust/egress-token'"),
-      { user: "root" }
+      expect.any(Object)
+    );
+    expect(getRootCommandCall(sandbox.execRoot, 0)).toContain(
+      "chmod 600 /etc/dust/egress-token"
     );
     expect(mockWriteEgressSecretsFile).toHaveBeenCalledWith(auth, sandbox);
     expect(mockWriteSandboxEnvManifestFile).toHaveBeenCalledWith(auth, sandbox);
-    expect(sandbox.exec).toHaveBeenNthCalledWith(
-      2,
-      auth,
-      expect.stringContaining("--proxy-addr '203.0.113.10:4443'"),
-      { user: "root" }
-    );
-    expect(sandbox.exec).toHaveBeenNthCalledWith(
-      2,
-      auth,
-      expect.stringContaining("--proxy-tls-name 'eu.sandbox-egress.dust.tt'"),
-      { user: "root" }
-    );
-    expect(sandbox.exec).toHaveBeenNthCalledWith(
-      2,
-      auth,
-      expect.stringContaining("--secrets-file '/run/dust/egress-secrets.json'"),
-      { user: "root" }
-    );
+    const spawnCall = getRootCommandCall(sandbox.execRoot, 1);
+    expect(spawnCall).toContain("--proxy-addr 203.0.113.10:4443");
+    expect(spawnCall).toContain("--proxy-tls-name eu.sandbox-egress.dust.tt");
+    expect(spawnCall).toContain("--secrets-file /run/dust/egress-secrets.json");
     // The dsbx spawn must strip every trust env var that buildSandboxEnvVars
     // exports on the agent process. Pinning the strip list to the canonical
     // SANDBOX_TRUST_ENV_VARS keys here catches drift between the two sites.
-    const spawnCall = sandbox.exec.mock.calls[1][1] as string;
     expect(spawnCall).toContain("/usr/bin/nohup /usr/bin/env");
     expect(spawnCall).not.toContain("nohup env");
     for (const key of Object.keys(SANDBOX_TRUST_ENV_VARS)) {
       expect(spawnCall).toContain(`-u ${key}`);
     }
-    expect(sandbox.exec).toHaveBeenNthCalledWith(
-      5,
-      auth,
-      expect.stringContaining("/run/dust/egress-ca.pem"),
-      { user: "root" }
+    expect(getRootCommandCall(sandbox.execRoot, 4)).toContain(
+      "/run/dust/egress-ca.pem"
     );
-    const healthCall = sandbox.exec.mock.calls[2][1] as string;
+    const healthCall = getRootCommandCall(sandbox.execRoot, 2);
     expect(healthCall).toContain("/opt/bin/dsbx healthcheck");
-    expect(healthCall).toContain("--forwarder-listen '127.0.0.1:9990'");
-    expect(healthCall).toContain("--resolver-listen '127.0.0.1:1053'");
+    expect(healthCall).toContain("--forwarder-listen 127.0.0.1:9990");
+    expect(healthCall).toContain("--resolver-listen 127.0.0.1:1053");
     expect(healthCall).toContain("--proxied-uid 1003");
     // The healthcheck inspects nftables, which requires CAP_NET_ADMIN, so it
     // must run as root. Pin the exec options to prevent silent regression.
-    expect(sandbox.exec).toHaveBeenNthCalledWith(
+    expect(sandbox.execRoot).toHaveBeenNthCalledWith(
       3,
       auth,
-      expect.stringContaining("/opt/bin/dsbx healthcheck"),
-      { user: "root", timeoutMs: 1_000 }
+      expect.any(Object),
+      { timeoutMs: 1_000 }
     );
-    const installCall = sandbox.exec.mock.calls[4][1] as string;
+    const installCall = getRootCommandCall(sandbox.execRoot, 4);
     expect(installCall).toContain("/usr/local/bin/dust-install-trust-bundle");
     expect(installCall).toContain("/etc/dust/.ca-bundle.merged");
     expect(
@@ -281,7 +276,7 @@ describe("sandbox egress helpers", () => {
       providerId: "provider-sandbox-id",
       sId: "sandbox-id",
       writeFile: vi.fn().mockResolvedValue(new Ok(undefined)),
-      exec: vi
+      execRoot: vi
         .fn()
         // First call: health probe with empty stdout.
         .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
@@ -311,7 +306,7 @@ describe("sandbox egress helpers", () => {
 
   it("returns new deny log entries and advances the offset", async () => {
     const sandbox = {
-      exec: vi.fn().mockResolvedValue(
+      execRoot: vi.fn().mockResolvedValue(
         new Ok({
           exitCode: 0,
           stdout: "google.com:443 denied\nevil.com:80 denied\n",
@@ -329,16 +324,17 @@ describe("sandbox egress helpers", () => {
         "evil.com:80 denied",
       ]);
     }
-    expect(sandbox.exec).toHaveBeenCalledWith(
-      auth,
-      expect.stringContaining("dust-egress-denied.log"),
-      { user: "root", timeoutMs: 2_000 }
+    expect(sandbox.execRoot).toHaveBeenCalledWith(auth, expect.any(Object), {
+      timeoutMs: 2_000,
+    });
+    expect(getRootCommandCall(sandbox.execRoot, 0)).toContain(
+      "dust-egress-denied.log"
     );
   });
 
   it("resets the deny log offset when the log shrinks", async () => {
     const sandbox = {
-      exec: vi
+      execRoot: vi
         .fn()
         .mockResolvedValue(new Ok({ exitCode: 0, stdout: "", stderr: "" })),
     };
@@ -346,7 +342,7 @@ describe("sandbox egress helpers", () => {
     const result = await readNewDenyLogEntries(auth, sandbox as never);
 
     expect(result.isOk()).toBe(true);
-    const command = sandbox.exec.mock.calls[0][1];
+    const command = getRootCommandCall(sandbox.execRoot, 0);
     expect(command).toContain("set -- $_state;");
     expect(command).toContain(
       `if [ "$_total" -lt "$_off" ] || [ "$_size" -lt "$_size_off" ]; then _off=0; fi;`
@@ -358,7 +354,7 @@ describe("sandbox egress helpers", () => {
 
   it("returns empty array when there are no new deny log entries", async () => {
     const sandbox = {
-      exec: vi
+      execRoot: vi
         .fn()
         .mockResolvedValue(new Ok({ exitCode: 0, stdout: "", stderr: "" })),
     };
@@ -376,7 +372,7 @@ describe("sandbox egress helpers", () => {
       providerId: "provider-sandbox-id",
       sId: "sandbox-id",
       writeFile: vi.fn().mockResolvedValue(new Ok(undefined)),
-      exec: vi
+      execRoot: vi
         .fn()
         .mockResolvedValue(new Err(new Error("sandbox command failed"))),
     };
@@ -398,7 +394,7 @@ describe("sandbox egress helpers", () => {
       providerId: "provider-sandbox-id",
       sId: "sandbox-id",
       writeFile: vi.fn().mockResolvedValue(new Ok(undefined)),
-      exec: vi
+      execRoot: vi
         .fn()
         .mockResolvedValue(new Ok({ exitCode: 0, stdout: "", stderr: "" })),
     };
@@ -409,7 +405,7 @@ describe("sandbox egress helpers", () => {
     if (result.isErr()) {
       expect(result.error.message).toContain("secrets write failed");
     }
-    expect(sandbox.exec).toHaveBeenCalledTimes(1);
+    expect(sandbox.execRoot).toHaveBeenCalledTimes(1);
   });
 
   it("surfaces failures from writing the environment manifest file", async () => {
@@ -421,7 +417,7 @@ describe("sandbox egress helpers", () => {
       providerId: "provider-sandbox-id",
       sId: "sandbox-id",
       writeFile: vi.fn().mockResolvedValue(new Ok(undefined)),
-      exec: vi
+      execRoot: vi
         .fn()
         .mockResolvedValue(new Ok({ exitCode: 0, stdout: "", stderr: "" })),
     };
@@ -432,7 +428,7 @@ describe("sandbox egress helpers", () => {
     if (result.isErr()) {
       expect(result.error.message).toContain("manifest write failed");
     }
-    expect(sandbox.exec).toHaveBeenCalledTimes(1);
+    expect(sandbox.execRoot).toHaveBeenCalledTimes(1);
   });
 
   it("surfaces failures from the MITM trust bundle install", async () => {
@@ -440,7 +436,7 @@ describe("sandbox egress helpers", () => {
       providerId: "provider-sandbox-id",
       sId: "sandbox-id",
       writeFile: vi.fn().mockResolvedValue(new Ok(undefined)),
-      exec: vi
+      execRoot: vi
         .fn()
         .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
         .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
@@ -469,7 +465,7 @@ describe("sandbox egress helpers", () => {
       providerId: "provider-sandbox-id",
       sId: "sandbox-id",
       writeFile: vi.fn().mockResolvedValue(new Ok(undefined)),
-      exec: vi
+      execRoot: vi
         .fn()
         .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
         .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
@@ -489,17 +485,9 @@ describe("sandbox egress helpers", () => {
     expect(result).toEqual(new Ok(undefined));
     expect(mockWriteEgressSecretsFile).toHaveBeenCalledWith(auth, sandbox);
     expect(mockWriteSandboxEnvManifestFile).toHaveBeenCalledWith(auth, sandbox);
-    expect(sandbox.exec).toHaveBeenNthCalledWith(
-      2,
-      auth,
-      expect.stringContaining("dsbx forward"),
-      { user: "root" }
-    );
-    expect(sandbox.exec).toHaveBeenNthCalledWith(
-      3,
-      auth,
-      expect.stringContaining("/opt/bin/dsbx forward"),
-      { user: "root" }
+    expect(getRootCommandCall(sandbox.execRoot, 1)).toContain("dsbx forward");
+    expect(getRootCommandCall(sandbox.execRoot, 2)).toContain(
+      "/opt/bin/dsbx forward"
     );
   });
 
@@ -507,7 +495,7 @@ describe("sandbox egress helpers", () => {
     const sandbox = {
       providerId: "provider-sandbox-id",
       sId: "sandbox-id",
-      exec: vi
+      execRoot: vi
         .fn()
         .mockResolvedValueOnce(
           new Ok({
@@ -522,8 +510,8 @@ describe("sandbox egress helpers", () => {
     const result = await ensure(sandbox, { wokeFromSleep: false });
 
     expect(result).toEqual(new Ok(undefined));
-    expect(sandbox.exec).toHaveBeenCalledTimes(2);
-    const installCall = sandbox.exec.mock.calls[1][1] as string;
+    expect(sandbox.execRoot).toHaveBeenCalledTimes(2);
+    const installCall = getRootCommandCall(sandbox.execRoot, 1);
     expect(installCall).toContain("/usr/local/bin/dust-install-trust-bundle");
     expect(installCall).toContain("/etc/dust/.ca-bundle.merged");
     expect(installCall).not.toContain("pkill");
@@ -538,7 +526,7 @@ describe("sandbox egress helpers", () => {
     const sandbox = {
       providerId: "provider-sandbox-id",
       sId: "sandbox-id",
-      exec: vi.fn().mockResolvedValueOnce(
+      execRoot: vi.fn().mockResolvedValueOnce(
         new Ok({
           exitCode: 0,
           stdout: healthStdout({ nft_dns_udp_redirect_ok: false }),
@@ -563,7 +551,7 @@ describe("sandbox egress helpers", () => {
     const sandbox = {
       providerId: "provider-sandbox-id",
       sId: "sandbox-id",
-      exec: vi.fn().mockResolvedValueOnce(
+      execRoot: vi.fn().mockResolvedValueOnce(
         new Ok({
           exitCode: 0,
           stdout: healthStdout({ resolver_udp_ok: false }),
@@ -578,7 +566,7 @@ describe("sandbox egress helpers", () => {
     if (result.isErr()) {
       expect(result.error.message).toContain("DNS enforcement");
     }
-    expect(sandbox.exec).toHaveBeenCalledTimes(1);
+    expect(sandbox.execRoot).toHaveBeenCalledTimes(1);
     expect(mockLoggerWarn).toHaveBeenCalledWith(
       expect.objectContaining({
         event: "egress.enforcement_health_fail",
@@ -599,7 +587,7 @@ describe("sandbox egress helpers", () => {
     const sandbox = {
       providerId: "provider-sandbox-id",
       sId: "sandbox-id",
-      exec: vi.fn().mockResolvedValueOnce(
+      execRoot: vi.fn().mockResolvedValueOnce(
         new Ok({
           exitCode: 0,
           stdout: healthStdout({ [missing]: false }),
@@ -625,7 +613,7 @@ describe("sandbox egress helpers", () => {
       providerId: "provider-sandbox-id",
       sId: "sandbox-id",
       writeFile: vi.fn().mockResolvedValue(new Ok(undefined)),
-      exec: vi
+      execRoot: vi
         .fn()
         .mockResolvedValueOnce(
           new Ok({
@@ -653,12 +641,7 @@ describe("sandbox egress helpers", () => {
     const result = await ensure(sandbox, { wokeFromSleep: false });
 
     expect(result).toEqual(new Ok(undefined));
-    expect(sandbox.exec).toHaveBeenNthCalledWith(
-      3,
-      auth,
-      expect.stringContaining("dsbx forward"),
-      { user: "root" }
-    );
+    expect(getRootCommandCall(sandbox.execRoot, 2)).toContain("dsbx forward");
     expect(mockLoggerWarn).toHaveBeenCalledWith(
       expect.objectContaining({ event: "egress.health_fail" }),
       expect.any(String)
@@ -669,7 +652,7 @@ describe("sandbox egress helpers", () => {
     const sandbox = {
       providerId: "provider-sandbox-id",
       sId: "sandbox-id",
-      exec: vi
+      execRoot: vi
         .fn()
         .mockResolvedValueOnce(
           new Ok({ exitCode: 0, stdout: healthStdout(), stderr: "" })
@@ -679,7 +662,7 @@ describe("sandbox egress helpers", () => {
     const result = await ensure(sandbox, { wokeFromSleep: false });
 
     expect(result).toEqual(new Ok(undefined));
-    expect(sandbox.exec).toHaveBeenCalledTimes(1);
+    expect(sandbox.execRoot).toHaveBeenCalledTimes(1);
     expect(mockLoggerInfo).toHaveBeenCalledWith(
       expect.objectContaining({ event: "egress.health_ok" }),
       expect.any(String)
@@ -712,8 +695,8 @@ describe("sandbox egress helpers", () => {
     // drop blank lines, persist the new offset state.
     async function runReader(): Promise<string[]> {
       const sandbox = {
-        exec: vi.fn(async (_auth: unknown, command: string) => {
-          const rewritten = command
+        execRoot: vi.fn(async (_auth: unknown, command: RootCommand) => {
+          const rewritten = renderRootCommand(command)
             .replace(/'\/tmp\/dust-egress-denied\.log'/g, `'${logPath}'`)
             .replace(/'\/tmp\/\.dust-egress-deny-offset'/g, `'${offsetPath}'`);
           const result = spawnSync("sh", ["-c", rewritten], {
@@ -819,7 +802,7 @@ describe("sandbox egress helpers", () => {
       const sandbox = {
         providerId: "provider-sandbox-id",
         sId: "sandbox-id",
-        exec: vi
+        execRoot: vi
           .fn()
           .mockResolvedValue(new Ok({ exitCode: 0, stdout: "", stderr: "" })),
       };
@@ -830,23 +813,21 @@ describe("sandbox egress helpers", () => {
       );
 
       expect(result).toEqual(new Ok(undefined));
-      expect(sandbox.exec).toHaveBeenCalledTimes(1);
-      const command = sandbox.exec.mock.calls[0][1] as string;
+      expect(sandbox.execRoot).toHaveBeenCalledTimes(1);
+      const command = getRootCommandCall(sandbox.execRoot, 0);
       expect(command).toContain(
         "/usr/bin/systemctl disable --now dust-egress-resolver.service dust-egress-nftables.service"
       );
       expect(command).toContain("/usr/sbin/nft delete table ip dust-egress");
       expect(command).toContain("/usr/sbin/nft delete table ip6 dust-egress");
-      expect(sandbox.exec).toHaveBeenCalledWith(auth, expect.any(String), {
-        user: "root",
-      });
+      expect(sandbox.execRoot).toHaveBeenCalledWith(auth, expect.any(Object));
     });
 
     it("propagates exec failures as Err", async () => {
       const sandbox = {
         providerId: "provider-sandbox-id",
         sId: "sandbox-id",
-        exec: vi
+        execRoot: vi
           .fn()
           .mockResolvedValue(new Err(new Error("sandbox command failed"))),
       };
@@ -868,7 +849,7 @@ describe("sandbox egress helpers", () => {
       const sandbox = {
         providerId: "provider-sandbox-id",
         sId: "sandbox-id",
-        exec: vi.fn(),
+        execRoot: vi.fn(),
       };
 
       const result = await teardownInSandboxEgressRedirect(
@@ -880,7 +861,7 @@ describe("sandbox egress helpers", () => {
       if (result.isErr()) {
         expect(result.error.message).toContain("dev-only");
       }
-      expect(sandbox.exec).not.toHaveBeenCalled();
+      expect(sandbox.execRoot).not.toHaveBeenCalled();
     });
   });
 });

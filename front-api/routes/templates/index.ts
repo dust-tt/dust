@@ -1,6 +1,6 @@
 import { TemplateResource } from "@app/lib/resources/template_resource";
+import { createHono } from "@front-api/lib/hono";
 import type { HandlerResult } from "@front-api/middlewares/utils";
-import { Hono } from "hono";
 
 import template from "./[tId]";
 
@@ -13,7 +13,7 @@ export interface FetchAssistantTemplatesResponse {
 }
 
 // Mounted at /api/templates.
-const app = new Hono();
+const app = createHono();
 
 app.get("/", async (ctx): HandlerResult<FetchAssistantTemplatesResponse> => {
   const templates = await TemplateResource.listAll({
