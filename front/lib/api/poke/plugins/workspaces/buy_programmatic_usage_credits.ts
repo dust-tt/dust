@@ -65,7 +65,7 @@ const BuyCreditPurchaseArgsSchema = z
 export const buyProgrammaticUsageCreditsPlugin = createPlugin({
   manifest: {
     id: "buy-programmatic-usage-credits",
-    name: "Buy Committed Credits",
+    name: "Buy Programmatic Committed Credits",
     description:
       "Purchase committed credits for paying customers. Committed credits are consumed after free credits and before pay-as-you-go (PAYG) credits. An invoice will be sent to the customer.",
     resourceTypes: ["workspaces"],
