@@ -105,7 +105,9 @@ function makeWorkflowIdsListQuery(workflowIds: string[]): string | null {
     return null;
   }
 
-  const workflowIdLiterals = workflowIds.map(JSON.stringify(value)).join(",");
+  const workflowIdLiterals = workflowIds
+    .map((value) => JSON.stringify(value))
+    .join(",");
 
   return `WorkflowId IN (${workflowIdLiterals}) AND ExecutionStatus = "Running"`;
 }
