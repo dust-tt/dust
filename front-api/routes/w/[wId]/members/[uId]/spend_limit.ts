@@ -11,6 +11,7 @@ import {
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -67,19 +68,10 @@ function spendLimitErrorToApiError(
 // Mounted at /api/w/:wId/members/:uId/spend_limit.
 const app = workspaceApp();
 
+app.use("*", ensureIsAdmin());
+
 app.get("/", async (ctx): HandlerResult<GetUserSpendLimitResponseBody> => {
   const auth = ctx.get("auth");
-
-  if (!auth.isAdmin()) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "workspace_auth_error",
-        message:
-          "Only users that are `admins` for the current workspace can manage member spend limits.",
-      },
-    });
-  }
 
   if (!auth.getNonNullableSubscriptionResource().isMetronomeOnlyBilled) {
     return apiError(ctx, {
@@ -115,17 +107,6 @@ app.put(
   validate("json", UpdateUserSpendLimitBodySchema),
   async (ctx): HandlerResult<PutUserSpendLimitResponseBody> => {
     const auth = ctx.get("auth");
-
-    if (!auth.isAdmin()) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "workspace_auth_error",
-          message:
-            "Only users that are `admins` for the current workspace can manage member spend limits.",
-        },
-      });
-    }
 
     if (!auth.getNonNullableSubscriptionResource().isMetronomeOnlyBilled) {
       return apiError(ctx, {

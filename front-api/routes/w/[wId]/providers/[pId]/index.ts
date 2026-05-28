@@ -1,6 +1,7 @@
 import { ProviderModel } from "@app/lib/resources/storage/models/apps";
 import type { ProviderType } from "@app/types/provider";
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -22,23 +23,14 @@ const PostProviderBodySchema = z.object({
 // Mounted at /api/w/:wId/providers/:pId.
 const app = workspaceApp();
 
+app.use("*", ensureIsAdmin());
+
 app.post(
   "/",
   validate("json", PostProviderBodySchema),
   async (ctx): HandlerResult<PostProviderResponseBody> => {
     const auth = ctx.get("auth");
     const owner = auth.getNonNullableWorkspace();
-
-    if (!auth.isAdmin()) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "provider_auth_error",
-          message:
-            "Only the users that are `builders` for the current workspace can configure providers.",
-        },
-      });
-    }
 
     const pId = ctx.req.param("pId") ?? "";
 
@@ -85,17 +77,6 @@ app.post(
 app.delete("/", async (ctx): HandlerResult<DeleteProviderResponseBody> => {
   const auth = ctx.get("auth");
   const owner = auth.getNonNullableWorkspace();
-
-  if (!auth.isAdmin()) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "provider_auth_error",
-        message:
-          "Only the users that are `builders` for the current workspace can configure providers.",
-      },
-    });
-  }
 
   const pId = ctx.req.param("pId") ?? "";
 

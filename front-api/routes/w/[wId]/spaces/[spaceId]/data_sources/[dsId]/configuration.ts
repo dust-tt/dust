@@ -7,6 +7,7 @@ import {
   UpdateConnectorConfigurationTypeSchema,
 } from "@app/types/connectors/connectors_api";
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureIsBuilder } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -64,6 +65,7 @@ app.get(
 
 app.patch(
   "/",
+  ensureIsBuilder(),
   withSpace({ requireCanRead: true }),
   withDataSource({ requireCanRead: true }),
   validate("json", UpdateConnectorConfigurationTypeSchema),
@@ -88,17 +90,6 @@ app.patch(
           type: "data_source_auth_error",
           message:
             "Only the users that have `write` permission for the current space can update a data source configuration.",
-        },
-      });
-    }
-
-    if (!auth.isBuilder()) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "data_source_auth_error",
-          message:
-            "Only the users that are `builders` for the current workspace can update a data source configuration.",
         },
       });
     }

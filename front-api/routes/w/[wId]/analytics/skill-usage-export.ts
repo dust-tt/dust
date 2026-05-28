@@ -5,6 +5,7 @@ import {
 } from "@app/lib/api/assistant/observability/skill_usage";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { stringify } from "csv-stringify/sync";
@@ -24,18 +25,8 @@ interface SkillUsageExportRow {
 // Mounted at /api/w/:wId/analytics/skill-usage-export.
 const app = workspaceApp();
 
-app.get("/", validate("query", QuerySchema), async (ctx) => {
+app.get("/", ensureIsAdmin(), validate("query", QuerySchema), async (ctx) => {
   const auth = ctx.get("auth");
-
-  if (!auth.isAdmin()) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "workspace_auth_error",
-        message: "Only workspace admins can access workspace analytics.",
-      },
-    });
-  }
 
   const { days } = ctx.req.valid("query");
   const owner = auth.getNonNullableWorkspace();

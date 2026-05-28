@@ -2,6 +2,7 @@ import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_v
 import type { SpaceKind } from "@app/types/space";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -43,22 +44,13 @@ app.get(
 
 app.post(
   "/",
+  ensureIsAdmin(),
   withSpace({ requireCanReadOrAdministrate: true }),
   validate("json", PostWebhookSourceViewBodySchema),
   async (ctx): HandlerResult<PostWebhookSourceViewResponseBody> => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");
     const { webhookSourceId } = ctx.req.valid("json");
-
-    if (!auth.isAdmin()) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "webhook_source_view_auth_error",
-          message: "User is not authorized to add webhook sources to a space.",
-        },
-      });
-    }
 
     const allowedSpaceKinds: SpaceKind[] = ["regular", "global"];
     if (!allowedSpaceKinds.includes(space.kind)) {

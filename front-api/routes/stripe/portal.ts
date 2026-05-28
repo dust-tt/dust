@@ -40,6 +40,7 @@ app.post(
       });
     }
 
+    // biome-ignore lint/plugin/noDirectRoleCheck: custom auth flow — auth created inline, not via workspaceAuth middleware
     if (!auth.isAdmin()) {
       return apiError(ctx, {
         status_code: 403,

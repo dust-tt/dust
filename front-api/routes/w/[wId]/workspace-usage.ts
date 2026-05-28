@@ -7,6 +7,7 @@ import {
 import { getWorkspaceUsageRetentionErrorMessage } from "@app/lib/workspace_usage_retention";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { endOfMonth } from "date-fns/endOfMonth";
@@ -53,80 +54,75 @@ const GetUsageQueryParamsSchema = z.discriminatedUnion("mode", [
 // Mounted at /api/w/:wId/workspace-usage.
 const app = workspaceApp();
 
-app.get("/", validate("query", GetUsageQueryParamsSchema), async (ctx) => {
-  const auth = ctx.get("auth");
+app.get(
+  "/",
+  ensureIsAdmin(),
+  validate("query", GetUsageQueryParamsSchema),
+  async (ctx) => {
+    const auth = ctx.get("auth");
 
-  if (!auth.isAdmin()) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "workspace_auth_error",
-        message:
-          "Only users that are `admins` for the current workspace can retrieve its monthly usage.",
-      },
+    const owner = auth.getNonNullableWorkspace();
+    const query = ctx.req.valid("query");
+    const { endDate, startDate } = resolveDates(query);
+
+    const conversationsRetentionDays =
+      await getConversationsDataRetention(auth);
+    const retentionErrorMessage = getWorkspaceUsageRetentionErrorMessage({
+      startDate,
+      retentionDays: conversationsRetentionDays,
     });
-  }
-
-  const owner = auth.getNonNullableWorkspace();
-  const query = ctx.req.valid("query");
-  const { endDate, startDate } = resolveDates(query);
-
-  const conversationsRetentionDays = await getConversationsDataRetention(auth);
-  const retentionErrorMessage = getWorkspaceUsageRetentionErrorMessage({
-    startDate,
-    retentionDays: conversationsRetentionDays,
-  });
-  if (retentionErrorMessage) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: retentionErrorMessage,
-      },
-    });
-  }
-
-  const includeInactive = query.includeInactive === "true";
-
-  const csvData = await fetchUsageData({
-    table: query.table,
-    start: startDate,
-    end: endDate,
-    workspace: owner,
-    includeInactive,
-  });
-  if (query.table === "all") {
-    const zip = new JSZip();
-    const csvSuffix = startDate
-      .toLocaleString("default", { month: "short" })
-      .toLowerCase();
-    for (const [fileName, data] of Object.entries(csvData)) {
-      if (data) {
-        zip.file(
-          `${fileName}_${startDate.getFullYear()}_${csvSuffix}.csv`,
-          data
-        );
-      }
+    if (retentionErrorMessage) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: retentionErrorMessage,
+        },
+      });
     }
 
-    const zipContent = await zip.generateAsync({ type: "nodebuffer" });
-    return new Response(new Uint8Array(zipContent), {
+    const includeInactive = query.includeInactive === "true";
+
+    const csvData = await fetchUsageData({
+      table: query.table,
+      start: startDate,
+      end: endDate,
+      workspace: owner,
+      includeInactive,
+    });
+    if (query.table === "all") {
+      const zip = new JSZip();
+      const csvSuffix = startDate
+        .toLocaleString("default", { month: "short" })
+        .toLowerCase();
+      for (const [fileName, data] of Object.entries(csvData)) {
+        if (data) {
+          zip.file(
+            `${fileName}_${startDate.getFullYear()}_${csvSuffix}.csv`,
+            data
+          );
+        }
+      }
+
+      const zipContent = await zip.generateAsync({ type: "nodebuffer" });
+      return new Response(new Uint8Array(zipContent), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/zip",
+          "Content-Disposition": `attachment; filename="usage.zip"`,
+        },
+      });
+    }
+
+    return new Response(csvData[query.table] ?? "", {
       status: 200,
       headers: {
-        "Content-Type": "application/zip",
-        "Content-Disposition": `attachment; filename="usage.zip"`,
+        "Content-Type": "text/csv",
+        "Content-Disposition": `attachment; filename="${query.table}.csv"`,
       },
     });
   }
-
-  return new Response(csvData[query.table] ?? "", {
-    status: 200,
-    headers: {
-      "Content-Type": "text/csv",
-      "Content-Disposition": `attachment; filename="${query.table}.csv"`,
-    },
-  });
-});
+);
 
 export default app;
 

@@ -86,6 +86,7 @@ app.get(
         break;
       case "write":
         // `write` is used for selection of default slack channel in the workspace agent builder.
+        // biome-ignore lint/plugin/noDirectRoleCheck: conditional role check based on filterPermission query param
         if (!auth.isBuilder()) {
           return apiError(ctx, {
             status_code: 403,
@@ -98,6 +99,7 @@ app.get(
         }
         break;
       case undefined:
+        // biome-ignore lint/plugin/noDirectRoleCheck: conditional role check based on filterPermission query param
         if (!auth.isAdmin()) {
           return apiError(ctx, {
             status_code: 403,

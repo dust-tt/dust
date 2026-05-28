@@ -2,7 +2,7 @@ import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_v
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SpaceKind } from "@app/types/space";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsUser } from "@front-api/middlewares/ensure_role";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { withSpace } from "@front-api/middlewares/with_space";
@@ -17,23 +17,12 @@ const app = workspaceApp();
 
 app.delete(
   "/",
-  ensureIsUser(),
+  ensureIsAdmin(),
   withSpace({ requireCanReadOrAdministrate: true }),
   async (ctx): HandlerResult<DeleteWebhookSourceViewResponseBody> => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");
     const webhookSourceViewId = ctx.req.param("webhookSourceViewId") ?? "";
-
-    if (!auth.isAdmin()) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "webhook_source_view_auth_error",
-          message:
-            "User is not authorized to remove webhook source views from a space.",
-        },
-      });
-    }
 
     const view = await WebhookSourcesViewResource.fetchById(
       auth,

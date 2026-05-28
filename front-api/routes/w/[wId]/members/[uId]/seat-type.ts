@@ -6,6 +6,7 @@ import {
 } from "@app/types/memberships";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -24,21 +25,10 @@ const app = workspaceApp();
 
 app.patch(
   "/",
+  ensureIsAdmin(),
   validate("json", UpdateMemberSeatTypeBodySchema),
   async (ctx) => {
     const auth = ctx.get("auth");
-    const isAdmin = auth.isAdmin();
-
-    if (!isAdmin) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "workspace_auth_error",
-          message:
-            "Only users that are `admins` for the current workspace can modify memberships.",
-        },
-      });
-    }
 
     const isMetronomeBilled =
       auth.getNonNullableSubscriptionResource().isMetronomeOnlyBilled;

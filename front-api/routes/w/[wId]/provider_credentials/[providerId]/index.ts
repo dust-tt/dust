@@ -7,6 +7,7 @@ import { ProviderCredentialResource } from "@app/lib/resources/provider_credenti
 import { BYOK_MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
 import type { ProviderCredentialType } from "@app/types/provider_credential";
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -26,23 +27,14 @@ export type ProviderCredentialResponseBody = {
 // Mounted at /api/w/:wId/provider_credentials/:providerId.
 const app = workspaceApp();
 
+app.use("*", ensureIsAdmin());
+
 app.post(
   "/",
   validate("param", ProviderCredentialParamsSchema),
   validate("json", ProviderCredentialBodySchema),
   async (ctx): HandlerResult<ProviderCredentialResponseBody> => {
     const auth = ctx.get("auth");
-
-    if (!auth.isAdmin()) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "app_auth_error",
-          message:
-            "Only the users that are `admins` for the current workspace can manage provider credentials.",
-        },
-      });
-    }
 
     const plan = auth.getNonNullablePlan();
     if (!plan.isByok) {
@@ -105,17 +97,6 @@ app.patch(
   validate("json", ProviderCredentialBodySchema),
   async (ctx): HandlerResult<ProviderCredentialResponseBody> => {
     const auth = ctx.get("auth");
-
-    if (!auth.isAdmin()) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "app_auth_error",
-          message:
-            "Only the users that are `admins` for the current workspace can manage provider credentials.",
-        },
-      });
-    }
 
     const plan = auth.getNonNullablePlan();
     if (!plan.isByok) {
@@ -186,17 +167,6 @@ app.delete(
   validate("param", ProviderCredentialParamsSchema),
   async (ctx) => {
     const auth = ctx.get("auth");
-
-    if (!auth.isAdmin()) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "app_auth_error",
-          message:
-            "Only the users that are `admins` for the current workspace can manage provider credentials.",
-        },
-      });
-    }
 
     const plan = auth.getNonNullablePlan();
     if (!plan.isByok) {

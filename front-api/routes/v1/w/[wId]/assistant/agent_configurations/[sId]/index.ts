@@ -11,6 +11,7 @@ import type {
 } from "@dust-tt/client";
 import { PatchAgentConfigurationRequestSchema } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
+import { ensureIsBuilder } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -293,6 +294,7 @@ app.get(
 
 app.patch(
   "/",
+  ensureIsBuilder(),
   validate("param", AgentConfigurationParamSchema),
   validate("json", PatchAgentConfigurationRequestSchema),
   async (ctx): HandlerResult<GetOrPatchAgentConfigurationResponseType> => {
@@ -311,17 +313,6 @@ app.patch(
         api_error: {
           type: "agent_configuration_not_found",
           message: "The agent configuration you requested was not found.",
-        },
-      });
-    }
-
-    if (!auth.isBuilder()) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "insufficient_key_scope",
-          message:
-            "Updating an agent configuration requires an API key with write scope.",
         },
       });
     }
@@ -375,21 +366,11 @@ app.patch(
 
 app.delete(
   "/",
+  ensureIsBuilder(),
   validate("param", AgentConfigurationParamSchema),
   async (ctx): HandlerResult<DeleteAgentConfigurationResponseType> => {
     const auth = ctx.get("auth");
     const { sId } = ctx.req.valid("param");
-
-    if (!auth.isBuilder()) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "insufficient_key_scope",
-          message:
-            "Archiving an agent configuration requires an API key with write scope.",
-        },
-      });
-    }
 
     const agentConfiguration = await getAgentConfiguration(auth, {
       agentId: sId,
