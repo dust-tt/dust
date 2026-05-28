@@ -8,6 +8,7 @@ import {
   CONVERSATIONS_RETENTION_MIN_DAYS,
   isValidConversationsRetentionDays,
 } from "@app/lib/conversations_retention";
+import { FeatureFlagModel } from "@app/lib/models/feature_flag";
 import type { ResourceLogJSON } from "@app/lib/resources/base_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
@@ -28,6 +29,7 @@ import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
 import type { EmbeddingProviderIdType } from "@app/types/assistant/models/types";
 import type { WorkspacePoolCreditState } from "@app/types/credits";
 import { WORKSPACE_CACHE_KEY_VERSION } from "@app/types/shared/cache_resource_registry";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -451,6 +453,31 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       },
     });
     return workspaces.map((w) => w.id);
+  }
+
+  static async listWithFeatureFlag(
+    name: WhitelistableFeature
+  ): Promise<WorkspaceResource[]> {
+    const flagRows = await FeatureFlagModel.findAll({
+      attributes: ["workspaceId"],
+      where: {
+        name,
+      },
+      // WORKSPACE_ISOLATION_BYPASS: cross-workspace listing of workspaces with a given feature flag enabled.
+      // @ts-expect-error -- Cross-workspace query by design.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+    });
+    const workspaceModelIds = Array.from(
+      new Set(flagRows.map((f) => f.workspaceId))
+    );
+    if (workspaceModelIds.length === 0) {
+      return [];
+    }
+    const workspaces = await this.model.findAll({
+      where: { id: { [Op.in]: workspaceModelIds } },
+    });
+    return workspaces.map((w) => new this(this.model, w.get()));
   }
 
   async updateSegmentation(segmentation: WorkspaceSegmentationType) {

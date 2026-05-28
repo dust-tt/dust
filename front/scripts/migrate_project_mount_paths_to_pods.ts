@@ -7,7 +7,7 @@
 // carries the /projects/ prefix, rewrite it to /pods/.
 
 import { toPodMountFilePath } from "@app/lib/api/files/mount_path";
-import { FeatureFlagModel } from "@app/lib/models/feature_flag";
+import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -25,10 +25,6 @@ makeScript(
       type: "string",
       describe: "Workspace sId to migrate. Omit to run on all workspaces.",
     },
-    fromWorkspaceModelId: {
-      type: "number",
-      describe: "Skip workspaces with model id below this value, for resuming.",
-    },
     batchSize: {
       type: "number",
       default: BATCH_SIZE_DEFAULT,
@@ -40,12 +36,9 @@ makeScript(
       describe: "Concurrent DB updates per batch.",
     },
   },
-  async (
-    { execute, wId, fromWorkspaceModelId, batchSize, concurrency },
-    logger
-  ) => {
+  async ({ execute, wId, batchSize, concurrency }, logger) => {
     logger.info(
-      { execute, wId, fromWorkspaceModelId, batchSize, concurrency },
+      { execute, wId, batchSize, concurrency },
       "[migrate_project_mount_paths_to_pods] Starting"
     );
 
@@ -57,10 +50,10 @@ makeScript(
       if (!workspace) {
         throw new Error(`Workspace not found: ${wId}`);
       }
-      const hasProjectsFlag = await FeatureFlagModel.findOne({
-        attributes: ["workspaceId"],
-        where: { name: "projects", workspaceId: workspace.id },
-      });
+      const hasProjectsFlag = await FeatureFlagResource.isEnabledForWorkspace(
+        workspace,
+        "projects"
+      );
       if (!hasProjectsFlag) {
         logger.info(
           { workspaceId: workspace.sId },
@@ -70,28 +63,8 @@ makeScript(
       }
       workspaces = [{ id: workspace.id, sId: workspace.sId }];
     } else {
-      const flagRows = await FeatureFlagModel.findAll({
-        attributes: ["workspaceId"],
-        where: {
-          name: "projects",
-          ...(fromWorkspaceModelId
-            ? { workspaceId: { [Op.gte]: fromWorkspaceModelId } }
-            : {}),
-        },
-        // WORKSPACE_ISOLATION_BYPASS: cross-workspace migration script that lists workspace IDs with the `projects` flag.
-        // @ts-expect-error -- Script operates across all workspaces.
-        // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
-        dangerouslyBypassWorkspaceIsolationSecurity: true,
-      });
-      const enabledWorkspaceModelIds = Array.from(
-        new Set(flagRows.map((f) => f.workspaceId))
-      );
-      const resources = await WorkspaceResource.fetchByModelIds(
-        enabledWorkspaceModelIds
-      );
-      workspaces = resources
-        .map((w) => ({ id: w.id, sId: w.sId }))
-        .sort((a, b) => a.id - b.id);
+      const resources = await WorkspaceResource.listWithFeatureFlag("projects");
+      workspaces = resources.map((w) => ({ id: w.id, sId: w.sId }));
     }
 
     logger.info(
