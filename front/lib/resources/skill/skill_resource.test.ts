@@ -1155,4 +1155,176 @@ describe("SkillResource", () => {
       expect(results[0].agentConfigurationId).toEqual(agent.sId);
     });
   });
+
+  describe("batchFetchUsage", () => {
+    it("returns empty usage for skills with no agents", async () => {
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Unused Skill",
+      });
+
+      const usageMap = await SkillResource.batchFetchUsage(
+        testContext.authenticator,
+        [skill]
+      );
+
+      expect(usageMap.get(skill.sId)).toEqual({ count: 0, agents: [] });
+    });
+
+    it("returns correct usage for skills linked to agents", async () => {
+      const skillA = await SkillFactory.create(testContext.authenticator, {
+        name: "Skill A",
+      });
+      const skillB = await SkillFactory.create(testContext.authenticator, {
+        name: "Skill B",
+      });
+
+      const agent1 = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "Agent 1" }
+      );
+      const agent2 = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "Agent 2" }
+      );
+
+      // Link both skills to agent1, only skillA to agent2.
+      await SkillFactory.linkToAgent(testContext.authenticator, {
+        skillId: skillA.id,
+        agentConfigurationId: agent1.id,
+      });
+      await SkillFactory.linkToAgent(testContext.authenticator, {
+        skillId: skillB.id,
+        agentConfigurationId: agent1.id,
+      });
+      await SkillFactory.linkToAgent(testContext.authenticator, {
+        skillId: skillA.id,
+        agentConfigurationId: agent2.id,
+      });
+
+      const usageMap = await SkillResource.batchFetchUsage(
+        testContext.authenticator,
+        [skillA, skillB]
+      );
+
+      const usageA = usageMap.get(skillA.sId)!;
+      expect(usageA.count).toBe(2);
+      expect(usageA.agents.map((a) => a.name).sort()).toEqual([
+        "Agent 1",
+        "Agent 2",
+      ]);
+
+      const usageB = usageMap.get(skillB.sId)!;
+      expect(usageB.count).toBe(1);
+      expect(usageB.agents[0].name).toBe("Agent 1");
+    });
+
+    it("returns empty map for empty input", async () => {
+      const usageMap = await SkillResource.batchFetchUsage(
+        testContext.authenticator,
+        []
+      );
+      expect(usageMap.size).toBe(0);
+    });
+  });
+
+  describe("batchListEditors", () => {
+    it("returns editors for skills with editor groups", async () => {
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Skill With Editor",
+      });
+
+      const editorsMap = await SkillResource.batchListEditors(
+        testContext.authenticator,
+        [skill]
+      );
+
+      const editors = editorsMap.get(skill.sId);
+      expect(editors).not.toBeNull();
+      // The creating user is added as editor by default.
+      expect(editors!.length).toBeGreaterThanOrEqual(1);
+      expect(editors!.some((e) => e.id === testContext.user.id)).toBe(true);
+    });
+
+    it("returns editors for multiple skills in batch", async () => {
+      const skillA = await SkillFactory.create(testContext.authenticator, {
+        name: "Skill A Editors",
+      });
+      const skillB = await SkillFactory.create(testContext.authenticator, {
+        name: "Skill B Editors",
+      });
+
+      const editorsMap = await SkillResource.batchListEditors(
+        testContext.authenticator,
+        [skillA, skillB]
+      );
+
+      expect(editorsMap.get(skillA.sId)).not.toBeNull();
+      expect(editorsMap.get(skillB.sId)).not.toBeNull();
+    });
+
+    it("returns empty map for empty input", async () => {
+      const editorsMap = await SkillResource.batchListEditors(
+        testContext.authenticator,
+        []
+      );
+      expect(editorsMap.size).toBe(0);
+    });
+  });
+
+  describe("batchFetchEditedByUsers", () => {
+    it("returns edited-by users for skills", async () => {
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Edited Skill",
+      });
+
+      const editedByMap = await SkillResource.batchFetchEditedByUsers(
+        testContext.authenticator,
+        [skill]
+      );
+
+      const editedByUser = editedByMap.get(skill.sId);
+      expect(editedByUser).not.toBeNull();
+      expect(editedByUser!.id).toBe(testContext.user.id);
+    });
+
+    it("returns null for skills with no editedBy", async () => {
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Suggested Skill",
+        status: "suggested",
+      });
+
+      const editedByMap = await SkillResource.batchFetchEditedByUsers(
+        testContext.authenticator,
+        [skill]
+      );
+
+      expect(editedByMap.get(skill.sId)).toBeNull();
+    });
+
+    it("returns correct users for multiple skills", async () => {
+      const skillA = await SkillFactory.create(testContext.authenticator, {
+        name: "Skill A EditedBy",
+      });
+      const skillB = await SkillFactory.create(testContext.authenticator, {
+        name: "Skill B EditedBy",
+      });
+
+      const editedByMap = await SkillResource.batchFetchEditedByUsers(
+        testContext.authenticator,
+        [skillA, skillB]
+      );
+
+      // Both skills edited by the same user (testContext.user).
+      expect(editedByMap.get(skillA.sId)?.id).toBe(testContext.user.id);
+      expect(editedByMap.get(skillB.sId)?.id).toBe(testContext.user.id);
+    });
+
+    it("returns empty map for empty input", async () => {
+      const editedByMap = await SkillResource.batchFetchEditedByUsers(
+        testContext.authenticator,
+        []
+      );
+      expect(editedByMap.size).toBe(0);
+    });
+  });
 });
