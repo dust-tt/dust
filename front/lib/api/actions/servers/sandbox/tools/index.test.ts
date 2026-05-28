@@ -14,9 +14,6 @@ const {
   mockGetSandboxImage,
   mockRecordToolDuration,
   mockRevokeExecToken,
-  mockWrapCommand,
-  mockWrapCommandWithCapture,
-  mockBuildWaitAndCollectCommand,
   mockEnsureSandboxReady,
   mockLoadEnv,
   mockLoggerError,
@@ -32,9 +29,6 @@ const {
   mockGetSandboxImage: vi.fn(),
   mockRecordToolDuration: vi.fn(),
   mockRevokeExecToken: vi.fn(),
-  mockWrapCommand: vi.fn(),
-  mockWrapCommandWithCapture: vi.fn(),
-  mockBuildWaitAndCollectCommand: vi.fn(),
   mockEnsureSandboxReady: vi.fn(),
   mockLoadEnv: vi.fn(),
   mockLoggerError: vi.fn(),
@@ -89,18 +83,6 @@ vi.mock("@app/lib/api/sandbox/image", async (importOriginal) => {
   return {
     ...actual,
     getSandboxImage: mockGetSandboxImage,
-  };
-});
-
-vi.mock("@app/lib/api/sandbox/image/profile", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@app/lib/api/sandbox/image/profile")>();
-
-  return {
-    ...actual,
-    wrapCommand: mockWrapCommand,
-    wrapCommandWithCapture: mockWrapCommandWithCapture,
-    buildWaitAndCollectCommand: mockBuildWaitAndCollectCommand,
   };
 });
 
@@ -226,15 +208,6 @@ describe("runSandboxBashTool", () => {
     mockLoadEnv.mockResolvedValue(new Ok({}));
     mockReadNewDenyLogEntries.mockResolvedValue(new Ok([]));
     mockRevokeExecToken.mockResolvedValue(undefined);
-    mockWrapCommand.mockImplementation(
-      (command: string) => `wrapped:${command}`
-    );
-    mockWrapCommandWithCapture.mockImplementation(
-      (command: string) => `wrapped:${command}`
-    );
-    mockBuildWaitAndCollectCommand.mockImplementation(
-      (execId: string) => `wait-and-collect:${execId}`
-    );
     // Default: no parent action found on refetch ⇒ not paused, normal path.
     mockFetchActionById.mockResolvedValue(null);
   });
@@ -292,7 +265,7 @@ describe("runSandboxBashTool", () => {
     expect(result.isOk()).toBe(true);
     expect(sandbox.exec).toHaveBeenCalledWith(
       expect.anything(),
-      "wrapped:echo hello",
+      expect.stringContaining("echo hello"),
       expect.objectContaining({
         user: "agent-proxied",
       })
@@ -578,37 +551,6 @@ describe("runSandboxBashTool", () => {
       }
       expect(result.value[0]).toMatchObject({ type: "text" });
     });
-
-    it("does NOT take the pause path for non-blocked_child_action_input_required statuses", async () => {
-      // Only `blocked_child_action_input_required` is the server's pause
-      // signal; other blocked flavors apply to top-level (non-sandbox-child)
-      // actions and must not coerce the bash handler into resume mode.
-      const sandbox = {
-        providerId: "provider-id",
-        sId: "sandbox-id",
-        exec: vi
-          .fn()
-          .mockResolvedValue(new Ok({ exitCode: 0, stdout: "ok", stderr: "" })),
-      };
-      mockEnsureSandboxReady.mockResolvedValue(
-        new Ok({ sandbox, freshlyCreated: false })
-      );
-      mockFetchActionById.mockResolvedValue({
-        status: "blocked_validation_required",
-        updateStepContext: vi.fn(),
-      });
-
-      const result = await runSandboxBashTool(
-        { command: "echo ok", description: "Run command" },
-        makeExtra()
-      );
-
-      expect(result.isOk()).toBe(true);
-      if (result.isErr()) {
-        throw result.error;
-      }
-      expect(result.value[0]).toMatchObject({ type: "text" });
-    });
   });
 
   describe("resume mode", () => {
@@ -662,10 +604,13 @@ describe("runSandboxBashTool", () => {
       );
 
       expect(result.isOk()).toBe(true);
-      expect(mockBuildWaitAndCollectCommand).toHaveBeenCalledWith(
-        "0123456789abcdef"
-      );
-      expect(mockWrapCommandWithCapture).not.toHaveBeenCalled();
+      // wait-and-collect uses dust_wac_<execId> as a pid file marker;
+      // wrapCommandWithCapture would emit `exec > >(tee` instead.
+      const [, command] = (sandbox.exec as ReturnType<typeof vi.fn>).mock
+        .calls[0];
+      expect(command).toContain("dust_wac_0123456789abcdef");
+      expect(command).not.toContain("exec > >(tee");
+      expect(command).not.toContain("echo new");
     });
 
     it("returns MCPError when sandbox was freshly created during resume (original exec lost)", async () => {

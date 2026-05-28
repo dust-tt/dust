@@ -6,6 +6,7 @@ import type {
   ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { isToolExecutionStatusBlocked } from "@app/lib/actions/statuses";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { isSandboxResumeState } from "@app/lib/actions/types";
 import { SANDBOX_TOOLS_METADATA } from "@app/lib/api/actions/servers/sandbox/metadata";
@@ -245,20 +246,17 @@ export async function runSandboxBashTool(
     MCPError
   >
 > {
-  const conversation = agentLoopContext?.runContext?.conversation;
-  const agentConfiguration = agentLoopContext?.runContext?.agentConfiguration;
-  const agentMessage = agentLoopContext?.runContext?.agentMessage;
-  const sandboxAction = agentLoopContext?.runContext?.currentAction;
-  const stepContext = agentLoopContext?.runContext?.stepContext;
-  if (
-    !conversation ||
-    !agentConfiguration ||
-    !agentMessage ||
-    !sandboxAction ||
-    !stepContext
-  ) {
+  const runContext = agentLoopContext?.runContext;
+  if (!runContext) {
     return new Err(new MCPError("No conversation context available."));
   }
+  const {
+    conversation,
+    agentConfiguration,
+    agentMessage,
+    currentAction: sandboxAction,
+    stepContext,
+  } = runContext;
 
   // Resume mode is entered when the parent bash action's step context carries
   // an execId from a prior pause cycle. The original `sandbox.exec()` is
@@ -347,15 +345,17 @@ export async function runSandboxBashTool(
     sandboxAction.sId
   );
   const wasPaused =
-    freshParent?.status === "blocked_child_action_input_required";
+    freshParent !== null && isToolExecutionStatusBlocked(freshParent.status);
 
-  const durationMs = performance.now() - startMs;
-  recordToolDuration(
-    "bash",
-    durationMs,
-    metricsCtx,
-    wasPaused ? "paused" : execResult.isOk() ? "success" : "error"
-  );
+  if (!wasPaused) {
+    const durationMs = performance.now() - startMs;
+    recordToolDuration(
+      "bash",
+      durationMs,
+      metricsCtx,
+      execResult.isOk() ? "success" : "error"
+    );
+  }
 
   if (wasPaused) {
     logger.info(
