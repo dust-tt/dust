@@ -4,7 +4,7 @@
 import { getDataSourceViewUsage } from "@app/lib/api/agent_data_sources";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import { isFolder, isWebsite } from "@app/lib/data_sources";
+import { isBrandbook, isFolder, isWebsite } from "@app/lib/data_sources";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
@@ -52,6 +52,11 @@ import type { UserResource } from "./user_resource";
 const getDataSourceCategory = (
   dataSourceResource: DataSourceResource
 ): DataSourceViewCategory => {
+  // Check for brandbook before folder: a brandbook is a folder with a special name prefix.
+  if (isBrandbook(dataSourceResource)) {
+    return "brandbook";
+  }
+
   if (isFolder(dataSourceResource)) {
     return "folder";
   }

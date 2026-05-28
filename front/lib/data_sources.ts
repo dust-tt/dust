@@ -73,6 +73,15 @@ export function isWebsite(
   return ds.connectorProvider === "webcrawler";
 }
 
+// Brandbook data sources are folders whose name starts with this prefix.
+// This identifies brand guideline knowledge bases without requiring a schema migration.
+// A follow-up PR should introduce a `category` column on the `data_sources` table.
+export const BRANDBOOK_NAME_PREFIX = "[brandbook]" as const;
+
+export function isBrandbook(ds: DataSource): boolean {
+  return isFolder(ds) && ds.name.startsWith(BRANDBOOK_NAME_PREFIX);
+}
+
 export function isManagedConnectorProvider(
   connectorProvider: ConnectorProvider
 ) {

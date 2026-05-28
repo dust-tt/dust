@@ -76,6 +76,11 @@ export async function getDataSourceViewsUsageByCategory({
     case "folder":
       connectorProvider = null;
       break;
+    case "brandbook":
+      // Brandbooks are stored as folders (no managed connector), so they
+      // share the same provider filter as folder data sources.
+      connectorProvider = null;
+      break;
     case "website":
       connectorProvider = "webcrawler";
       break;

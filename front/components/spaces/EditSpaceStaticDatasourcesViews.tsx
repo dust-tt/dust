@@ -1,3 +1,4 @@
+import { BrandbookCreationModal } from "@app/components/data_source/BrandbookCreationModal";
 import SpaceFolderModal from "@app/components/spaces/SpaceFolderModal";
 import SpaceWebsiteModal from "@app/components/spaces/websites/SpaceWebsiteModal";
 import { useKillSwitches } from "@app/lib/swr/kill";
@@ -8,7 +9,7 @@ import { Button, PlusIcon, Tooltip } from "@dust-tt/sparkle";
 
 interface EditSpaceStaticDatasourcesViewsProps {
   canWriteInSpace: boolean;
-  category: "folder" | "website";
+  category: "folder" | "website" | "brandbook";
   dataSourceView: DataSourceViewType | null;
   isOpen: boolean;
   onClose: () => void;
@@ -16,6 +17,12 @@ interface EditSpaceStaticDatasourcesViewsProps {
   owner: WorkspaceType;
   space: SpaceType;
 }
+
+const CATEGORY_BUTTON_LABELS: Record<"folder" | "website" | "brandbook", string> = {
+  folder: "Add folder",
+  website: "Add website",
+  brandbook: "New Brandbook",
+};
 
 export function EditSpaceStaticDatasourcesViews({
   canWriteInSpace,
@@ -33,7 +40,7 @@ export function EditSpaceStaticDatasourcesViews({
 
   const addToSpaceButton = (
     <Button
-      label={`Add ${category}`}
+      label={CATEGORY_BUTTON_LABELS[category]}
       onClick={onOpen}
       icon={PlusIcon}
       disabled={!canWriteInSpace || isSavingDisabled}
@@ -58,6 +65,14 @@ export function EditSpaceStaticDatasourcesViews({
           space={space}
           dataSourceView={dataSourceView}
           canWriteInSpace={canWriteInSpace}
+        />
+      ) : category === "brandbook" ? (
+        <BrandbookCreationModal
+          isOpen={isOpen}
+          onClose={onClose}
+          owner={owner}
+          space={space}
+          onCreated={onClose}
         />
       ) : null}
       {canWriteInSpace ? (
