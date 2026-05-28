@@ -4,8 +4,8 @@ import {
 } from "@app/lib/api/file_system/dust_file_system";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { Err, Ok } from "@app/types/shared/result";
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PassThrough } from "stream";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import handler from "./[...canonicalPath]";
 
@@ -14,16 +14,22 @@ import handler from "./[...canonicalPath]";
 // ---------------------------------------------------------------------------
 
 /** Returns a minimal DustFileSystem-compatible mock. */
-function makeMockFs({ found = true }: { found?: boolean } = {}): DustFileSystem {
+function makeMockFs({
+  found = true,
+}: {
+  found?: boolean;
+} = {}): DustFileSystem {
   return {
-    stat: vi.fn().mockResolvedValue(
-      found
-        ? new Ok({ contentType: "text/plain", sizeBytes: 100 })
-        : new Ok(null)
-    ),
-    read: vi.fn().mockResolvedValue(
-      found ? new Ok(new PassThrough()) : new Ok(null)
-    ),
+    stat: vi
+      .fn()
+      .mockResolvedValue(
+        found
+          ? new Ok({ contentType: "text/plain", sizeBytes: 100 })
+          : new Ok(null)
+      ),
+    read: vi
+      .fn()
+      .mockResolvedValue(found ? new Ok(new PassThrough()) : new Ok(null)),
   } as unknown as DustFileSystem;
 }
 
@@ -85,9 +91,7 @@ describe("GET /api/w/[wId]/files/path/[...canonicalPath]", () => {
     });
 
     vi.spyOn(DustFileSystem, "fromScopedPath").mockResolvedValue(
-      new Err(
-        new DustFileSystemError("not_found", "Conversation not found")
-      )
+      new Err(new DustFileSystemError("not_found", "Conversation not found"))
     );
 
     req.query = {
@@ -185,14 +189,16 @@ describe("GET /api/w/[wId]/files/path/[...canonicalPath]", () => {
 
     // DustFileSystem.stat catches the traversal and returns invalid_path.
     const mockFs = {
-      stat: vi.fn().mockResolvedValue(
-        new Err(
-          new DustFileSystemError(
-            "invalid_path",
-            "Path traversal detected: `conversation-abc123/../../etc/passwd` is not allowed."
+      stat: vi
+        .fn()
+        .mockResolvedValue(
+          new Err(
+            new DustFileSystemError(
+              "invalid_path",
+              "Path traversal detected: `conversation-abc123/../../etc/passwd` is not allowed."
+            )
           )
-        )
-      ),
+        ),
       read: vi.fn(),
     } as unknown as DustFileSystem;
 
@@ -202,14 +208,7 @@ describe("GET /api/w/[wId]/files/path/[...canonicalPath]", () => {
 
     req.query = {
       wId: workspace.sId,
-      canonicalPath: [
-        "conversation-abc123",
-        "..",
-        "..",
-        "..",
-        "etc",
-        "passwd",
-      ],
+      canonicalPath: ["conversation-abc123", "..", "..", "..", "etc", "passwd"],
     };
 
     await handler(req, res);

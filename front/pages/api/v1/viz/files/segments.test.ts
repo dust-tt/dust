@@ -1,4 +1,4 @@
-import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
+import type { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { generateVizAccessToken } from "@app/lib/api/viz/access_tokens";
 import { DustError } from "@app/lib/error";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -33,16 +33,22 @@ vi.mock("@app/lib/plans/usage/seats", () => ({
 // ---------------------------------------------------------------------------
 
 /** Returns a minimal DustFileSystem-compatible mock. */
-function makeMockFs({ found = true }: { found?: boolean } = {}): DustFileSystem {
+function makeMockFs({
+  found = true,
+}: {
+  found?: boolean;
+} = {}): DustFileSystem {
   return {
-    stat: vi.fn().mockResolvedValue(
-      found
-        ? new Ok({ contentType: "image/png", sizeBytes: 100 })
-        : new Ok(null)
-    ),
-    read: vi.fn().mockResolvedValue(
-      found ? new Ok(new PassThrough()) : new Ok(null)
-    ),
+    stat: vi
+      .fn()
+      .mockResolvedValue(
+        found
+          ? new Ok({ contentType: "image/png", sizeBytes: 100 })
+          : new Ok(null)
+      ),
+    read: vi
+      .fn()
+      .mockResolvedValue(found ? new Ok(new PassThrough()) : new Ok(null)),
   } as unknown as DustFileSystem;
 }
 
@@ -196,7 +202,7 @@ describe("/api/v1/viz/files/[...segments] security tests", () => {
   // -------------------------------------------------------------------------
 
   it("should return 404 when the share token is not found", async () => {
-    const { frameFile, accessToken } = await makeFrameAndToken({});
+    const { accessToken } = await makeFrameAndToken({});
 
     vi.spyOn(FileResource, "fetchByShareToken").mockResolvedValue(
       new Err(new DustError("file_not_found", "Share not found"))
@@ -256,7 +262,7 @@ describe("/api/v1/viz/files/[...segments] security tests", () => {
       useCaseMetadata: { conversationId: conversation.sId },
     });
 
-    const { frameFile, accessToken } = await makeFrameAndToken({
+    const { accessToken } = await makeFrameAndToken({
       conversationId: conversation.sId,
     });
 
@@ -550,8 +556,7 @@ describe("/api/v1/viz/files/[...segments] security tests", () => {
     expect(res._getJSONData()).toEqual({
       error: {
         type: "workspace_auth_error",
-        message:
-          "Access denied: conversation ID does not match frame context.",
+        message: "Access denied: conversation ID does not match frame context.",
       },
     });
   });

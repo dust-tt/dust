@@ -761,7 +761,10 @@ describe("DustFileSystem.forShareToken", () => {
     const { authenticator: auth } = await createResourceTest({});
 
     const conversationId = "conv_abc123";
-    const fs = DustFileSystem.forShareToken(auth, { conversationId, spaceId: null });
+    const fs = DustFileSystem.forShareToken(auth, {
+      conversationId,
+      spaceId: null,
+    });
     const mounts = fs.getMounts();
 
     expect(mounts).toHaveLength(1);
@@ -777,7 +780,10 @@ describe("DustFileSystem.forShareToken", () => {
     const { authenticator: auth } = await createResourceTest({});
 
     const spaceId = "vlt_pod456";
-    const fs = DustFileSystem.forShareToken(auth, { conversationId: null, spaceId });
+    const fs = DustFileSystem.forShareToken(auth, {
+      conversationId: null,
+      spaceId,
+    });
     const mounts = fs.getMounts();
 
     expect(mounts).toHaveLength(1);
@@ -813,7 +819,10 @@ describe("DustFileSystem.forShareToken", () => {
   it("creates no mounts when both IDs are null", async () => {
     const { authenticator: auth } = await createResourceTest({});
 
-    const fs = DustFileSystem.forShareToken(auth, { conversationId: null, spaceId: null });
+    const fs = DustFileSystem.forShareToken(auth, {
+      conversationId: null,
+      spaceId: null,
+    });
     const mounts = fs.getMounts();
 
     expect(mounts).toHaveLength(0);
@@ -823,7 +832,10 @@ describe("DustFileSystem.forShareToken", () => {
     const { authenticator: auth } = await createResourceTest({});
 
     const conversationId = "conv_abc123";
-    const fs = DustFileSystem.forShareToken(auth, { conversationId, spaceId: null });
+    const fs = DustFileSystem.forShareToken(auth, {
+      conversationId,
+      spaceId: null,
+    });
     const mounts = fs.getMounts();
 
     expect(mounts[0].legacyPrefix).toBe("conversation");
@@ -834,7 +846,10 @@ describe("DustFileSystem.forShareToken", () => {
     const { authenticator: auth } = await createResourceTest({});
 
     const spaceId = "vlt_pod456";
-    const fs = DustFileSystem.forShareToken(auth, { conversationId: null, spaceId });
+    const fs = DustFileSystem.forShareToken(auth, {
+      conversationId: null,
+      spaceId,
+    });
     const mounts = fs.getMounts();
 
     expect(mounts[0].legacyPrefix).toBe("project");
