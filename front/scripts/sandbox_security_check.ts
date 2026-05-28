@@ -226,7 +226,7 @@ async function checkBasicSandboxFunctionality(
 set -euo pipefail
 echo "shell-ok"
 /opt/bin/dsbx version >/dev/null
-for dir in /files/conversation /files/project; do
+for dir in /files/conversation /files/pod; do
   test -d "$dir"
   proof="$dir/dust-security-smoke-$$"
   printf 'file-ok' > "$proof"
