@@ -132,3 +132,19 @@ pre-commit:
       glob: "*.{js,jsx,ts,tsx,css,scss}"
       run: npm run format:lefthook -- {staged_files}
       stage_fixed: true
+
+    # Optional: lossless image optimization (skip with LEFTHOOK_EXCLUDE=optimize-images)
+    optimize-images:
+      glob: "*.{jpg,jpeg,png,gif,svg,webp}"
+      run: |
+        if command -v imageoptim >/dev/null 2>&1; then
+          imageoptim {staged_files}
+        else
+          echo "Warning: imageoptim-cli is not installed. Skipping image optimization."
+          echo "Install the CLI:  brew install imageoptim-cli"
+          echo "Also install the required apps:"
+          echo "  - ImageOptim:  https://imageoptim.com/mac"
+          echo "  - ImageAlpha:  https://pngmini.com"
+          exit 0
+        fi
+      stage_fixed: true
