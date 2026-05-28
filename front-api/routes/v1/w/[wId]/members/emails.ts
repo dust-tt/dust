@@ -1,8 +1,8 @@
 import { getMembers } from "@app/lib/api/workspace";
 import type { ListMemberEmailsResponseType } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
+import { ensureIsSystemKey } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
-import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
@@ -20,20 +20,10 @@ const app = publicApiApp();
 
 app.get(
   "/",
+  ensureIsSystemKey(),
   validate("query", QuerySchema),
   async (ctx): HandlerResult<ListMemberEmailsResponseType> => {
     const auth = ctx.get("auth");
-
-    if (!auth.isSystemKey()) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: {
-          type: "workspace_not_found",
-          message: "The workspace was not found.",
-        },
-      });
-    }
-
     const { activeOnly } = ctx.req.valid("query");
 
     const { members: allMembers } = await getMembers(auth, {

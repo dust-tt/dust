@@ -4,6 +4,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { GetSpaceMetadataResponseType } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
+import { ensureIsSystemKey } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -25,21 +26,10 @@ const app = publicApiApp();
 
 app.get(
   "/",
+  ensureIsSystemKey(),
   validate("param", ParamsSchema),
   async (ctx): HandlerResult<GetSpaceMetadataResponseType> => {
     const auth = ctx.get("auth");
-
-    // Only allow system keys (connectors) to access this endpoint
-    if (!auth.isSystemKey()) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "invalid_oauth_token_error",
-          message: "Only system keys are allowed to use this endpoint.",
-        },
-      });
-    }
-
     const { spaceId } = ctx.req.valid("param");
 
     // Fetch and verify space exists

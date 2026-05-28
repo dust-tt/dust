@@ -34,7 +34,7 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/project_metadata", () => {
     expect(await response.json()).toEqual({
       error: {
         type: "invalid_oauth_token_error",
-        message: "Only system keys are allowed to use this endpoint.",
+        message: "Only system keys can perform this action.",
       },
     });
   });

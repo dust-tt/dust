@@ -4,6 +4,7 @@ import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { GetDocumentBlobResponseType } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
+import { ensureIsSystemKey } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -22,20 +23,10 @@ const app = publicApiApp();
 
 app.get(
   "/",
+  ensureIsSystemKey(),
   validate("param", ParamsSchema),
   async (ctx): HandlerResult<GetDocumentBlobResponseType> => {
     const auth = ctx.get("auth");
-
-    if (!auth.isSystemKey()) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "invalid_oauth_token_error",
-          message: "Only system keys are allowed to use this endpoint.",
-        },
-      });
-    }
-
     const { dsId, documentId } = ctx.req.valid("param");
 
     const dataSource = await DataSourceResource.fetchById(auth, dsId);
