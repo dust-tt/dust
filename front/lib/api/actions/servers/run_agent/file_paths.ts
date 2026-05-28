@@ -10,7 +10,7 @@ import { Err, Ok } from "@app/types/shared/result";
 
 export type ResolvedScopedFilePath = {
   scopedPath: string;
-  useCase: "conversation" | "project";
+  useCase: "conversation" | "pod";
   rel: string;
 };
 
@@ -26,7 +26,7 @@ export async function resolveFilePathsInParentScope(
     if (!parsed) {
       return new Err(
         new MCPError(
-          `Invalid path: \`${scopedPath}\` must start with \`conversation/\` or \`project/\`.`,
+          `Invalid path: \`${scopedPath}\` must start with \`conversation/\` or \`pod/\`.`,
           { tracked: false }
         )
       );

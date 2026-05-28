@@ -86,11 +86,11 @@ export const RUN_AGENT_TOOL_SCHEMA = {
   filePaths: z
     .array(z.string())
     .describe(
-      "Scoped file paths (e.g. `conversation/foo.md`, `project/spec.md`) to forward to the " +
+      "Scoped file paths (e.g. `conversation/foo.md`, `pod/spec.md`) to forward to the " +
         "sub-agent. Use when you have a scoped path from a file-listing tool or that you " +
         "produced yourself in this conversation. `conversation/...` paths are copied into " +
-        "the sub-conversation; `project/...` paths are passed through (the project file " +
-        "system is shared across the project's conversations). " +
+        "the sub-conversation; `pod/...` paths are passed through (the Pod file " +
+        "system is shared across the Pod's conversations). " +
         "For binary sources (PDFs, images, audio), also include their `*.processed.<ext>` " +
         "sibling so the sub-agent can read the model-friendly representation."
     )

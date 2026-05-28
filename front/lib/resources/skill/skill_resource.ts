@@ -3,7 +3,10 @@ import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import { updateAgentRequirements } from "@app/lib/api/assistant/configuration/agent_requirements";
 import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
-import { hasSharedMembership } from "@app/lib/api/user";
+import {
+  filterUsersWithSharedMembership,
+  hasSharedMembership,
+} from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
 import { hasAll } from "@app/lib/matcher/operators/array";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
@@ -26,6 +29,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { FileResource } from "@app/lib/resources/file_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import {
   createResourcePermissionsFromSpacesWithMap,
   createSpaceIdToGroupsMap,
@@ -1871,6 +1875,207 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
 
     return shouldReturnEditedByUser ? editedByUser : null;
+  }
+
+  /**
+   * Batch version of listActiveAgents, returns active agents grouped by skill sId.
+   */
+  private static async batchListActiveAgents(
+    auth: Authenticator,
+    skills: SkillResource[]
+  ): Promise<Map<string, AgentConfigurationModel[]>> {
+    if (skills.length === 0) {
+      return new Map();
+    }
+
+    const workspace = auth.getNonNullableWorkspace();
+
+    // Separate custom skills from global skills.
+    const customSkillIds = removeNulls(
+      skills.map((s) => (s.globalSId ? null : s.id))
+    );
+    const globalSkillIds = removeNulls(skills.map((s) => s.globalSId));
+
+    // Single query: all agent-skill associations for the given skills.
+    const agentSkills = await AgentSkillModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        [Op.or]: removeNulls([
+          customSkillIds.length > 0
+            ? { customSkillId: { [Op.in]: customSkillIds } }
+            : null,
+          globalSkillIds.length > 0
+            ? { globalSkillId: { [Op.in]: globalSkillIds } }
+            : null,
+        ]),
+      },
+    });
+
+    if (agentSkills.length === 0) {
+      return new Map();
+    }
+
+    // Single query: all referenced agent configurations.
+    const uniqueAgentConfigIds = [
+      ...new Set(agentSkills.map((as) => as.agentConfigurationId)),
+    ];
+    const agentConfigs = await AgentConfigurationModel.findAll({
+      where: {
+        id: { [Op.in]: uniqueAgentConfigIds },
+        workspaceId: workspace.id,
+        status: "active",
+      },
+    });
+
+    const agentConfigById = new Map(agentConfigs.map((a) => [a.id, a]));
+
+    // Map AgentSkillModel references back to skill sId.
+    const sIdByCustomId = new Map(
+      skills.filter((s) => !s.globalSId).map((s) => [s.id, s.sId])
+    );
+
+    const result = new Map<string, AgentConfigurationModel[]>();
+    for (const as of agentSkills) {
+      const skillId = as.customSkillId
+        ? sIdByCustomId.get(as.customSkillId)
+        : (as.globalSkillId ?? undefined);
+      if (!skillId) {
+        continue;
+      }
+      const agent = agentConfigById.get(as.agentConfigurationId);
+      if (!agent) {
+        continue;
+      }
+      const list = result.get(skillId) ?? [];
+      list.push(agent);
+      result.set(skillId, list);
+    }
+
+    return result;
+  }
+
+  /**
+   * Batch fetch usage (agents using each skill) for multiple skills.
+   * Keyed by skill sId to avoid collisions (global skills share id: -1).
+   */
+  static async batchFetchUsage(
+    auth: Authenticator,
+    skills: SkillResource[]
+  ): Promise<Map<string, AgentsUsageType>> {
+    const agentsBySkillId = await this.batchListActiveAgents(auth, skills);
+
+    const result = new Map<string, AgentsUsageType>();
+    for (const skill of skills) {
+      const agents = (agentsBySkillId.get(skill.sId) ?? [])
+        .map((agent) => ({
+          sId: agent.sId,
+          name: agent.name,
+          pictureUrl: agent.pictureUrl,
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+      result.set(skill.sId, { count: agents.length, agents });
+    }
+
+    return result;
+  }
+
+  /**
+   * Batch list editors for multiple skills. Keyed by skill sId.
+   */
+  static async batchListEditors(
+    auth: Authenticator,
+    skills: SkillResource[]
+  ): Promise<Map<string, UserResource[] | null>> {
+    const result = new Map<string, UserResource[] | null>(
+      skills.map((s) => [s.sId, null])
+    );
+
+    const skillsWithEditorGroups = skills.filter((s) => s.editorGroup !== null);
+
+    if (skillsWithEditorGroups.length === 0) {
+      return result;
+    }
+
+    const editorGroups = removeNulls(
+      skillsWithEditorGroups.map((s) => s.editorGroup)
+    );
+
+    const membershipsByGroupId =
+      await GroupResource.getActiveMembershipsForGroups(auth, editorGroups);
+
+    const allUserIds = [...new Set(Object.values(membershipsByGroupId).flat())];
+
+    if (allUserIds.length === 0) {
+      return result;
+    }
+
+    const allUsers = await UserResource.fetchByModelIds(allUserIds);
+
+    // Filter to only keep users with an active workspace membership,
+    // matching the behavior of getActiveMembers.
+    const workspace = auth.getNonNullableWorkspace();
+    const { memberships: workspaceMemberships } =
+      await MembershipResource.getActiveMemberships({
+        users: allUsers,
+        workspace,
+      });
+    const activeWorkspaceUserIds = new Set(
+      workspaceMemberships.map((m) => m.userId)
+    );
+
+    const userById = new Map(
+      allUsers
+        .filter((u) => activeWorkspaceUserIds.has(u.id))
+        .map((u) => [u.id, u])
+    );
+
+    for (const skill of skillsWithEditorGroups) {
+      const groupId = skill.editorGroup!.id;
+      const userIds = membershipsByGroupId[groupId] ?? [];
+      const users = removeNulls(userIds.map((id) => userById.get(id) ?? null));
+      result.set(skill.sId, users);
+    }
+
+    return result;
+  }
+
+  /**
+   * Batch fetch edited-by users for multiple skills.
+   */
+  static async batchFetchEditedByUsers(
+    auth: Authenticator,
+    skills: SkillResource[]
+  ): Promise<Map<string, UserResource | null>> {
+    const result = new Map<string, UserResource | null>(
+      skills.map((s) => [s.sId, null])
+    );
+
+    const uniqueEditedByIds = [
+      ...new Set(removeNulls(skills.map((s) => s.editedBy))),
+    ];
+
+    if (uniqueEditedByIds.length === 0) {
+      return result;
+    }
+
+    // Single query: fetch all edited-by users.
+    const editedByUsers = await UserResource.fetchByModelIds(uniqueEditedByIds);
+
+    // Batch privacy filter: keep only users visible to the auth user.
+    const visibleUsers = await filterUsersWithSharedMembership(
+      auth,
+      editedByUsers
+    );
+    const visibleUserIds = new Set(visibleUsers.map((u) => u.id));
+    const userById = new Map(visibleUsers.map((u) => [u.id, u]));
+
+    for (const skill of skills) {
+      if (skill.editedBy !== null && visibleUserIds.has(skill.editedBy)) {
+        result.set(skill.sId, userById.get(skill.editedBy) ?? null);
+      }
+    }
+
+    return result;
   }
 
   async archive(auth: Authenticator): Promise<{ affectedCount: number }> {

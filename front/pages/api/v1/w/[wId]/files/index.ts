@@ -1,3 +1,4 @@
+// @migration-status: MIGRATED_TO_HONO
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import { isUploadSupportedForContentType } from "@app/lib/api/files/processing";
 import { buildEffectiveUseCaseMetadata } from "@app/lib/api/files/upload_metadata";

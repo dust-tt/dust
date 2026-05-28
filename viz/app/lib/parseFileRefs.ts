@@ -6,7 +6,12 @@ export type FileRef =
   | { type: "path"; scopedPath: string };
 
 function isScopedPath(value: string): boolean {
-  return value.startsWith("conversation/") || value.startsWith("project/");
+  return (
+    value.startsWith("conversation/") ||
+    value.startsWith("pod/") ||
+    // Legacy prefix, still used by older frame code.
+    value.startsWith("project/")
+  );
 }
 
 export function extractFileRefs(code: string): FileRef[] {

@@ -318,11 +318,24 @@ export const VisualizationActionIframe = forwardRef<
           return null;
         }
         url = `/api/w/${workspaceId}/assistant/conversations/${conversationId}/files/${fileId}`;
-      } else if (fileId.startsWith("project/")) {
+      } else if (fileId.startsWith("pod/")) {
         if (!spaceId) {
           return null;
         }
         url = `/api/w/${workspaceId}/spaces/${spaceId}/files/${fileId}`;
+      } else if (fileId.startsWith("project/")) {
+        // Legacy "project/" scope. The Pod files endpoint only accepts the
+        // "pod/" prefix and resolves everything under the pods/ base path, so
+        // we rewrite the prefix. Log remaining usage so we can drop this branch
+        // once no clients emit "project/" paths anymore.
+        if (!spaceId) {
+          return null;
+        }
+        datadogLogger.info("Legacy project/ file scope used in visualization", {
+          fileId,
+        });
+        const podFileId = `pod/${fileId.slice("project/".length)}`;
+        url = `/api/w/${workspaceId}/spaces/${spaceId}/files/${podFileId}`;
       } else {
         url = `/api/w/${workspaceId}/files/${fileId}?action=view`;
       }

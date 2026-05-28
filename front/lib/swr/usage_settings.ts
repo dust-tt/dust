@@ -6,14 +6,27 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { GetCreditUsageConfigurationResponseBody } from "@app/pages/api/w/[wId]/credits/usage-configuration";
+import type {
+  GetDefaultUserSpendLimitResponseBody,
+  PutDefaultUserSpendLimitResponseBody,
+} from "@app/pages/api/w/[wId]/usage_settings/default_user_spend_limit";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { useCallback, useSyncExternalStore } from "react";
 import type { Fetcher } from "swr";
+import { mutate } from "swr";
+import { z } from "zod";
+
+const GetDefaultUserSpendLimitResponseSchema = z.object({
+  awuCredits: z.number().int().nullable(),
+});
+
+const PutDefaultUserSpendLimitResponseSchema = z.object({
+  awuCredits: z.number().int(),
+});
 
 export interface UsageSettings {
   allowUpgradeRequest: boolean;
   autoUpgradeFreeToPro: boolean;
-  defaultUsageLimitCredits: number;
 }
 
 export interface UsageNotifications {
@@ -25,7 +38,6 @@ export interface UsageNotifications {
 const DEFAULT_USAGE_SETTINGS: UsageSettings = {
   allowUpgradeRequest: false,
   autoUpgradeFreeToPro: false,
-  defaultUsageLimitCredits: 1000,
 };
 
 const DEFAULT_USAGE_NOTIFICATIONS: UsageNotifications = {
@@ -194,4 +206,101 @@ export function useUpdateUsageNotifications({
   );
 
   return { doUpdateUsageNotifications };
+}
+
+function defaultUserSpendLimitUrl(workspaceId: string): string {
+  return `/api/w/${workspaceId}/usage_settings/default_user_spend_limit`;
+}
+
+function membersUsageUrl(workspaceId: string): string {
+  return `/api/w/${workspaceId}/credits/members-usage`;
+}
+
+export function useDefaultUserSpendLimit({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const defaultFetcher: Fetcher<GetDefaultUserSpendLimitResponseBody> = async (
+    url: string
+  ) => {
+    const result = await fetcher(url);
+    return GetDefaultUserSpendLimitResponseSchema.parse(result);
+  };
+  const { data, error, mutate } = useSWRWithDefaults(
+    defaultUserSpendLimitUrl(workspaceId),
+    defaultFetcher,
+    { disabled }
+  );
+
+  return {
+    defaultUserSpendLimit: data,
+    isDefaultUserSpendLimitLoading: !error && !data && !disabled,
+    isDefaultUserSpendLimitError: !!error,
+    mutateDefaultUserSpendLimit: mutate,
+  };
+}
+
+export function useUpdateDefaultUserSpendLimit({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const sendNotification = useSendNotification();
+
+  const doUpdateDefaultUserSpendLimit = useCallback(
+    async (
+      awuCredits: number
+    ): Promise<PutDefaultUserSpendLimitResponseBody | null> => {
+      try {
+        const res = await clientFetch(defaultUserSpendLimitUrl(workspaceId), {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ awuCredits }),
+        });
+
+        if (!res.ok) {
+          const errorData = await getErrorFromResponse(res);
+          sendNotification({
+            type: "error",
+            title: "Failed to update default spend limit",
+            description: errorData.message,
+          });
+          return null;
+        }
+
+        const body = PutDefaultUserSpendLimitResponseSchema.parse(
+          await res.json()
+        );
+        sendNotification({
+          type: "success",
+          title: "Default spend limit updated",
+          description: `The default per-user spend limit has been set to ${body.awuCredits.toLocaleString(
+            "en-US"
+          )} credits.`,
+        });
+
+        await mutate(defaultUserSpendLimitUrl(workspaceId));
+        await mutate(
+          (key) =>
+            typeof key === "string" &&
+            key.startsWith(membersUsageUrl(workspaceId))
+        );
+        return body;
+      } catch (e) {
+        sendNotification({
+          type: "error",
+          title: "Failed to update default spend limit",
+          description: normalizeError(e).message,
+        });
+        return null;
+      }
+    },
+    [workspaceId, sendNotification]
+  );
+
+  return { doUpdateDefaultUserSpendLimit };
 }

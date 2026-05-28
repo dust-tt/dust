@@ -43,7 +43,7 @@ async function handler(
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Files are only available for project spaces.",
+        message: "Files are only available for Pod spaces.",
       },
     });
   }
@@ -51,8 +51,8 @@ async function handler(
   switch (req.method) {
     case "GET": {
       const files = await listGCSMountFiles(auth, {
-        useCase: "project",
-        projectId: space.sId,
+        useCase: "pod",
+        podId: space.sId,
       });
 
       return res.status(200).json({ files });

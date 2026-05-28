@@ -57,8 +57,8 @@ describe("resolveMountPoint", () => {
     });
   });
 
-  describe("project paths", () => {
-    it("returns the project mount for a project conversation", async () => {
+  describe("Pod paths", () => {
+    it("returns the Pod mount for a Pod conversation", async () => {
       const { authenticator: auth, workspace } = await createResourceTest({
         role: "admin",
       });
@@ -84,7 +84,7 @@ describe("resolveMountPoint", () => {
 
       const result = await resolveMountPoint(projectAuth, conversation, {
         access: "read",
-        scopedPath: "project/spec.md",
+        scopedPath: "pod/spec.md",
       });
 
       expect(result.isOk()).toBe(true);
@@ -92,15 +92,15 @@ describe("resolveMountPoint", () => {
         return;
       }
       expect(result.value.scope).toEqual({
-        useCase: "project",
-        projectId: space.sId,
+        useCase: "pod",
+        podId: space.sId,
       });
       expect(result.value.prefix).toBe(
-        `w/${workspace.sId}/projects/${space.sId}/files/`
+        `w/${workspace.sId}/pods/${space.sId}/files/`
       );
     });
 
-    it("returns Err for a project path in a non-project conversation", async () => {
+    it("returns Err for a Pod path in a non-Pod conversation", async () => {
       const { authenticator: auth } = await createResourceTest({
         role: "admin",
       });
@@ -113,14 +113,14 @@ describe("resolveMountPoint", () => {
 
       const result = await resolveMountPoint(auth, conversation, {
         access: "read",
-        scopedPath: "project/spec.md",
+        scopedPath: "pod/spec.md",
       });
 
       expect(result.isErr()).toBe(true);
       if (!result.isErr()) {
         return;
       }
-      expect(result.error.message).toContain("project conversations");
+      expect(result.error.message).toContain("Pod conversations");
     });
   });
 

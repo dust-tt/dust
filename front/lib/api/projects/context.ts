@@ -16,7 +16,7 @@ import {
 import { moveMountFileWithinScope } from "@app/lib/api/files/mount_file_ops";
 import type { ResolveMountFilePathError } from "@app/lib/api/files/mount_path";
 import {
-  getProjectFilesBasePath,
+  getPodFilesBasePath,
   joinMountRelativePath,
   normalizeMountParentRelativePath,
   validateMountFolderName,
@@ -342,14 +342,14 @@ export async function addFileToProject(
     return new Err({
       name: "dust_error",
       code: "invalid_request_error",
-      message: "Space is not a project.",
+      message: "Space is not a Pod.",
     });
   }
 
   const owner = auth.getNonNullableWorkspace();
-  const projectFilesPrefix = getProjectFilesBasePath({
+  const projectFilesPrefix = getPodFilesBasePath({
     workspaceId: owner.sId,
-    projectId: space.sId,
+    podId: space.sId,
   });
 
   // Files already mounted under the project prefix only need content-fragment sync.
@@ -361,7 +361,7 @@ export async function addFileToProject(
       return new Err({
         name: "dust_error",
         code: "invalid_request_error",
-        message: "File has no mount path and cannot be moved to the project.",
+        message: "File has no mount path and cannot be moved to the Pod.",
       });
     }
 
@@ -369,7 +369,7 @@ export async function addFileToProject(
     const moveRes = await moveFile(auth, {
       file,
       sourceGcsPath: file.mountFilePath,
-      destScope: { useCase: "project", projectId: space.sId },
+      destScope: { useCase: "pod", podId: space.sId },
       destRelativeFilePath: destFileName,
       destFileName,
       destUseCase: "project_context",
@@ -595,7 +595,7 @@ export async function createProjectFolder(
 
   return createGCSMountDirectory(
     auth,
-    { useCase: "project", projectId: space.sId },
+    { useCase: "pod", podId: space.sId },
     { relativeDirPath }
   );
 }
@@ -626,7 +626,7 @@ export async function moveProjectFile(
 
   return moveMountFileWithinScope(
     auth,
-    { useCase: "project", projectId: space.sId },
+    { useCase: "pod", podId: space.sId },
     { sourcePath, destRelativeFilePath }
   );
 }
@@ -651,9 +651,9 @@ export async function renameProjectFile(
 ): Promise<Result<void, Error>> {
   const owner = auth.getNonNullableWorkspace();
   const normalized = relativeFilePath.replace(/^\/+|\/+$/g, "");
-  const mountBasePath = getProjectFilesBasePath({
+  const mountBasePath = getPodFilesBasePath({
     workspaceId: owner.sId,
-    projectId: space.sId,
+    podId: space.sId,
   });
   const dirPrefix = `${mountBasePath}${normalized}/`;
 
@@ -681,7 +681,7 @@ export async function renameProjectFile(
 
     const renameResult = await renameGCSMountDirectory(
       auth,
-      { useCase: "project", projectId: space.sId },
+      { useCase: "pod", podId: space.sId },
       {
         relativeDirPath: normalized,
         newFolderName: folderNameRes.value,
@@ -707,15 +707,23 @@ export async function renameProjectFile(
     return new Ok(undefined);
   }
 
-  const oldGcsPath = `${mountBasePath}${normalized}`;
+  // Look up the linked FileResource by either the new `pods/` form or the old
+  // `projects/` form, since old DB rows are not yet backfilled.
+  const podsPrefix = getPodFilesBasePath({
+    workspaceId: owner.sId,
+    podId: space.sId,
+  });
+  const podsGcsPath = `${podsPrefix}${normalized}`;
+  const legacyGcsPath = podsGcsPath.replace("/pods/", "/projects/");
 
   const fileResources = await FileResource.fetchByMountFilePaths(auth, [
-    oldGcsPath,
+    podsGcsPath,
+    legacyGcsPath,
   ]);
 
   const renameResult = await renameGCSMountFile(
     auth,
-    { useCase: "project", projectId: space.sId },
+    { useCase: "pod", podId: space.sId },
     { relativeFilePath: normalized, newFileName }
   );
   if (renameResult.isErr()) {
@@ -751,9 +759,9 @@ export async function deleteProjectFile(
 ): Promise<Result<void, Error>> {
   const owner = auth.getNonNullableWorkspace();
   const normalized = relativeFilePath.replace(/^\/+|\/+$/g, "");
-  const mountBasePath = getProjectFilesBasePath({
+  const mountBasePath = getPodFilesBasePath({
     workspaceId: owner.sId,
-    projectId: space.sId,
+    podId: space.sId,
   });
   const gcsPath = `${mountBasePath}${normalized}`;
   const dirPrefix = `${mountBasePath}${normalized}/`;
@@ -790,14 +798,18 @@ export async function deleteProjectFile(
 
       return deleteGCSMountFile(
         auth,
-        { useCase: "project", projectId: space.sId },
+        { useCase: "pod", podId: space.sId },
         { relativeFilePath: normalized }
       );
     }
   }
 
+  const podsGcsPath = `${mountBasePath}${normalized}`;
+  const legacyGcsPath = podsGcsPath.replace("/pods/", "/projects/");
+
   const fileResources = await FileResource.fetchByMountFilePaths(auth, [
-    gcsPath,
+    podsGcsPath,
+    legacyGcsPath,
   ]);
   if (fileResources.length > 0) {
     return removeFileFromProject(auth, {
@@ -808,7 +820,7 @@ export async function deleteProjectFile(
 
   return deleteGCSMountFile(
     auth,
-    { useCase: "project", projectId: space.sId },
+    { useCase: "pod", podId: space.sId },
     { relativeFilePath: normalized }
   );
 }

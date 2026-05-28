@@ -51,11 +51,11 @@ async function setupProjectConversation(
 }
 
 describe("moveHandler", () => {
-  it("moves a file from conversation to project mount", async () => {
+  it("moves a file from conversation to Pod mount", async () => {
     const { auth, conversation } = await setupProjectConversation();
 
     const result = await moveHandler(
-      { source: "conversation/report.pdf", dest: "project/report.pdf" },
+      { source: "conversation/report.pdf", dest: "pod/report.pdf" },
       makeExtra(auth, conversation)
     );
 
@@ -65,15 +65,15 @@ describe("moveHandler", () => {
     }
     expect(result.value[0]).toEqual({
       type: "text",
-      text: "Moved `conversation/report.pdf` to `project/report.pdf`.",
+      text: "Moved `conversation/report.pdf` to `pod/report.pdf`.",
     });
   });
 
-  it("moves a file from project to conversation mount", async () => {
+  it("moves a file from Pod to conversation mount", async () => {
     const { auth, conversation } = await setupProjectConversation();
 
     const result = await moveHandler(
-      { source: "project/spec.md", dest: "conversation/spec.md" },
+      { source: "pod/spec.md", dest: "conversation/spec.md" },
       makeExtra(auth, conversation)
     );
 
@@ -95,7 +95,7 @@ describe("moveHandler", () => {
     );
 
     const result = await moveHandler(
-      { source: "conversation/missing.pdf", dest: "project/missing.pdf" },
+      { source: "conversation/missing.pdf", dest: "pod/missing.pdf" },
       makeExtra(auth, conversation)
     );
 
@@ -125,14 +125,14 @@ describe("moveHandler", () => {
     const { auth, conversation } = await setupProjectConversation();
 
     const result = await moveHandler(
-      { source: "other/foo.md", dest: "project/foo.md" },
+      { source: "other/foo.md", dest: "pod/foo.md" },
       makeExtra(auth, conversation)
     );
 
     expect(result.isErr()).toBe(true);
   });
 
-  it("returns Err for a project path in a non-project conversation", async () => {
+  it("returns Err for a Pod path in a non-Pod conversation", async () => {
     const { authenticator: auth } = await createResourceTest({ role: "admin" });
 
     const conversation = await createConversation(auth, {
@@ -142,7 +142,7 @@ describe("moveHandler", () => {
     });
 
     const result = await moveHandler(
-      { source: "conversation/x.md", dest: "project/x.md" },
+      { source: "conversation/x.md", dest: "pod/x.md" },
       makeExtra(auth, conversation)
     );
 
@@ -150,6 +150,6 @@ describe("moveHandler", () => {
     if (!result.isErr()) {
       return;
     }
-    expect(result.error.message).toContain("project conversations");
+    expect(result.error.message).toContain("Pod conversations");
   });
 });

@@ -46,6 +46,13 @@ describe("extractFileRefs", () => {
     ]);
   });
 
+  it("extracts scoped paths from string literals (pod/)", () => {
+    const code = `const path = "pod/abc/file.csv";`;
+    expect(extractFileRefs(code)).toEqual([
+      { type: "path", scopedPath: "pod/abc/file.csv" },
+    ]);
+  });
+
   it("deduplicates refs across visitors", () => {
     const code = `
       function Comp() {

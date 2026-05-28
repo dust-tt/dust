@@ -1,18 +1,18 @@
 import { PROJECT_CONTEXT_FOLDER_ID } from "@connectors/connectors/dust_project/lib/constants";
 import { createHash } from "crypto";
 
-const PROJECT_SCOPE_PREFIX = "project/";
+const POD_SCOPE_PREFIX = "pod/";
 
 /**
- * Strip the `project/` scope prefix from a scoped mount path.
- * Returns null when the path is not a project-scoped mount path.
+ * Strip the `pod/` scope prefix from a scoped mount path.
+ * Returns null when the path is not a pod-scoped mount path.
  */
 export function parseProjectScopedPath(scopedPath: string): string | null {
-  if (!scopedPath.startsWith(PROJECT_SCOPE_PREFIX)) {
+  if (!scopedPath.startsWith(POD_SCOPE_PREFIX)) {
     return null;
   }
 
-  const relativePath = scopedPath.slice(PROJECT_SCOPE_PREFIX.length);
+  const relativePath = scopedPath.slice(POD_SCOPE_PREFIX.length);
   return relativePath.length > 0 ? relativePath : null;
 }
 

@@ -332,14 +332,14 @@ describe("/api/v1/viz/files/[...segments] security tests", () => {
     expect(res._getStatusCode()).toBe(405);
   });
 
-  it("should serve a GCS file for a project-scoped frame (spaceId in metadata)", async () => {
+  it("should serve a GCS file for a pod-scoped frame (spaceId in metadata)", async () => {
     const { frameFile, accessToken } = await makeFrameAndToken({
       spaceId: "vlt_someSpaceId",
     });
 
     const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
       method: "GET",
-      query: { segments: ["project", "chart.png"] },
+      query: { segments: ["pod", "chart.png"] },
       headers: { authorization: `Bearer ${accessToken}` },
     });
 
@@ -368,7 +368,7 @@ describe("/api/v1/viz/files/[...segments] security tests", () => {
 
     const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
       method: "GET",
-      query: { segments: ["project", "chart.png"] },
+      query: { segments: ["pod", "chart.png"] },
       headers: { authorization: `Bearer ${accessToken}` },
     });
 
@@ -385,7 +385,7 @@ describe("/api/v1/viz/files/[...segments] security tests", () => {
     expect(res._getStatusCode()).toBe(200);
   });
 
-  it("should reject project-scoped path when frame has no project context", async () => {
+  it("should reject pod-scoped path when frame has no project context", async () => {
     const conversation = await ConversationFactory.create(auth, {
       agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
       messagesCreatedAt: [new Date()],
@@ -397,7 +397,7 @@ describe("/api/v1/viz/files/[...segments] security tests", () => {
 
     const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
       method: "GET",
-      query: { segments: ["project", "chart.png"] },
+      query: { segments: ["pod", "chart.png"] },
       headers: { authorization: `Bearer ${accessToken}` },
     });
 
@@ -414,7 +414,7 @@ describe("/api/v1/viz/files/[...segments] security tests", () => {
     expect(res._getJSONData()).toEqual({
       error: {
         type: "invalid_request_error",
-        message: "Frame has no project context for this path.",
+        message: "Frame has no pod context for this path.",
       },
     });
   });

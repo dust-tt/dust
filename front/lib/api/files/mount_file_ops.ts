@@ -4,7 +4,7 @@ import {
 } from "@app/lib/api/files/gcs_mount/files";
 import {
   getConversationFilesBasePath,
-  getProjectFilesBasePath,
+  getPodFilesBasePath,
   normalizeAndValidateMountRelativeFilePath,
   type ResolveMountFilePathError,
   resolveMoveSourcePath,
@@ -23,10 +23,10 @@ function resolveMountPrefix(auth: Authenticator, scope: GCSMountPoint): string {
         workspaceId: owner.sId,
         conversationId: scope.conversationId,
       });
-    case "project":
-      return getProjectFilesBasePath({
+    case "pod":
+      return getPodFilesBasePath({
         workspaceId: owner.sId,
-        projectId: scope.projectId,
+        podId: scope.podId,
       });
     default:
       return assertNever(scope);
@@ -34,15 +34,15 @@ function resolveMountPrefix(auth: Authenticator, scope: GCSMountPoint): string {
 }
 
 function defaultDestUseCase(scope: GCSMountPoint): FileUseCase {
-  return scope.useCase === "project" ? "project_context" : "conversation";
+  return scope.useCase === "pod" ? "project_context" : "conversation";
 }
 
 function defaultDestUseCaseMetadata(scope: GCSMountPoint): FileUseCaseMetadata {
   switch (scope.useCase) {
     case "conversation":
       return { conversationId: scope.conversationId };
-    case "project":
-      return { spaceId: scope.projectId };
+    case "pod":
+      return { spaceId: scope.podId };
     default:
       return assertNever(scope);
   }

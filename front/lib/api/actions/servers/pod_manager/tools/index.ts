@@ -419,8 +419,8 @@ export function createProjectManagerTools(
         );
 
         // Linked content nodes (Company Data references) have no other discovery surface, so we
-        // surface them here. Project files do (they live under `project/<rel>` scoped paths and
-        // are discovered through the `files` MCP server), so we only report a count plus a hint.
+        // surface them here. Pod files do (they live under `pod/<rel>` scoped paths and are
+        // discovered through the `files` MCP server), so we only report a count plus a hint.
         const attachments = await listProjectContextAttachments(auth, space);
         const contentNodes = attachments
           .filter(isContentNodeAttachmentType)
@@ -454,7 +454,7 @@ export function createProjectManagerTools(
               contentNodes,
               files: {
                 count: projectFileCount,
-                hint: `Use \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_LIST_ACTION_NAME)}\` with \`scope: "project"\` to enumerate.`,
+                hint: `Use \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_LIST_ACTION_NAME)}\` with \`scope: "pod"\` to enumerate.`,
               },
             },
             message: "Successfully retrieved Pod information",

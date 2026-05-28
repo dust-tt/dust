@@ -760,7 +760,7 @@ describe("FileResource", () => {
         where: { id: file.id, workspaceId: workspace.id },
       });
       expect(row?.mountFilePath).toBe(
-        `w/${workspace.sId}/projects/spc-1/files/spec.md`
+        `w/${workspace.sId}/pods/spc-1/files/spec.md`
       );
     });
 
@@ -814,7 +814,7 @@ describe("FileResource", () => {
         where: { id: file2.id, workspaceId: workspace.id },
       });
       expect(row2?.mountFilePath).toBe(
-        `w/${workspace.sId}/projects/spc-1/files/notes_${file2.sId}.md`
+        `w/${workspace.sId}/pods/spc-1/files/notes_${file2.sId}.md`
       );
     });
   });

@@ -40,14 +40,14 @@ app.get(
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
-          message: "Files are only available for project spaces.",
+          message: "Files are only available for Pod spaces.",
         },
       });
     }
 
     const files = await listGCSMountFiles(auth, {
-      useCase: "project",
-      projectId: space.sId,
+      useCase: "pod",
+      podId: space.sId,
     });
 
     return ctx.json({ files });
@@ -67,7 +67,7 @@ app.post(
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
-          message: "Files are only available for project spaces.",
+          message: "Files are only available for Pod spaces.",
         },
       });
     }
@@ -77,7 +77,7 @@ app.post(
         status_code: 403,
         api_error: {
           type: "workspace_auth_error",
-          message: "You do not have write access to this project.",
+          message: "You do not have write access to this Pod.",
         },
       });
     }

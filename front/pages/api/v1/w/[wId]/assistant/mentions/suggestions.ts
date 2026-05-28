@@ -1,3 +1,4 @@
+// @migration-status: MIGRATED_TO_HONO
 import {
   parseMentionSelectParam,
   suggestionsOfMentions,
