@@ -9,10 +9,14 @@
 //   - `"0"`: not blocked / not depleted
 //
 // `isUserBlocked` is the unified read: a user is blocked iff either cached flag
-// is `"1"`. The DB columns (`memberships.creditState`,
-// `workspaces.poolCreditState`) remain the source of truth. Cache writes are
-// gated on DB transaction commit via `invalidateCacheAfterCommit`, and cache
-// misses fall back to DB and repopulate both flags.
+// is `"1"`, and it returns the reason ("credits_exhausted" for a depleted
+// workspace pool, or "user_cap_reached" for a per-user cap) so callers can
+// surface a tailored message. When both flags are set, `credits_exhausted`
+// wins since the pool shadows the per-user state. The DB columns
+// (`memberships.creditState`, `workspaces.poolCreditState`) remain the source
+// of truth. Cache writes are gated on DB transaction commit via
+// `invalidateCacheAfterCommit`, and cache misses fall back to DB and
+// repopulate both flags.
 //
 import { runOnRedis } from "@app/lib/api/redis";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -22,6 +26,8 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type { WorkspacePoolCreditState } from "@app/types/credits";
 import { isWorkspacePoolCreditState } from "@app/types/credits";
+
+export type UserBlockedReason = "credits_exhausted" | "user_cap_reached";
 
 const REDIS_ORIGIN = "metronome_limit" as const;
 const BLOCKED_FLAG = "1";
@@ -144,10 +150,26 @@ export async function clearWorkspacePoolDepleted(
 
 // Unified read
 
+function deriveBlockedReason({
+  userCapBlocked,
+  workspacePoolDepleted,
+}: {
+  userCapBlocked: boolean;
+  workspacePoolDepleted: boolean;
+}): UserBlockedReason | null {
+  if (workspacePoolDepleted) {
+    return "credits_exhausted";
+  }
+  if (userCapBlocked) {
+    return "user_cap_reached";
+  }
+  return null;
+}
+
 export async function isUserBlocked(
   workspaceId: string,
   userId: string
-): Promise<boolean> {
+): Promise<UserBlockedReason | null> {
   const [userCap, poolDepleted] = await runOnRedis(
     { origin: REDIS_ORIGIN },
     async (client) =>
@@ -158,7 +180,10 @@ export async function isUserBlocked(
   );
 
   if (isBlockFlag(userCap) && isBlockFlag(poolDepleted)) {
-    return userCap === BLOCKED_FLAG || poolDepleted === BLOCKED_FLAG;
+    return deriveBlockedReason({
+      userCapBlocked: userCap === BLOCKED_FLAG,
+      workspacePoolDepleted: poolDepleted === BLOCKED_FLAG,
+    });
   }
 
   logger.info(
@@ -179,7 +204,7 @@ export async function isUserBlocked(
     workspacePoolDepleted: state.workspacePoolDepleted,
   });
 
-  return state.userCapBlocked || state.workspacePoolDepleted;
+  return deriveBlockedReason(state);
 }
 
 // Workspace credit pool status (fine-grained state for UI/notifications).

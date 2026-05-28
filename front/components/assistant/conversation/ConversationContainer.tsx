@@ -112,7 +112,9 @@ export function ConversationContainerVirtuoso({
         if (conversationRes.error.type === "plan_limit_reached_error") {
           setLimitReachedCode("message_limit");
         } else if (conversationRes.error.type === "credits_exhausted_error") {
-          setLimitReachedCode("credits_exhausted");
+          setLimitReachedCode("pool_credits_exhausted");
+        } else if (conversationRes.error.type === "user_cap_reached_error") {
+          setLimitReachedCode("user_credits_exhausted");
         } else {
           sendNotification({
             title: conversationRes.error.title,

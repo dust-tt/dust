@@ -75,16 +75,34 @@ describe("isUserBlocked", () => {
     redisValues.clear();
   });
 
-  it("returns from Redis when both cached flags are present", async () => {
+  it("returns 'user_cap_reached' from Redis when only the user-cap flag is set", async () => {
     redisValues.set("metronome:user_cap:ws_test:u_test", "1");
     redisValues.set("metronome:pool_depleted:ws_test", "0");
 
     const blocked = await isUserBlocked("ws_test", "u_test");
 
-    expect(blocked).toBe(true);
+    expect(blocked).toBe("user_cap_reached");
     expect(mockFetchWorkspaceById).not.toHaveBeenCalled();
     expect(mockFetchUserById).not.toHaveBeenCalled();
     expect(mockGetActiveMembershipOfUserInWorkspace).not.toHaveBeenCalled();
+  });
+
+  it("returns 'credits_exhausted' when the pool is depleted, even if user is also capped", async () => {
+    redisValues.set("metronome:user_cap:ws_test:u_test", "1");
+    redisValues.set("metronome:pool_depleted:ws_test", "1");
+
+    const blocked = await isUserBlocked("ws_test", "u_test");
+
+    expect(blocked).toBe("credits_exhausted");
+  });
+
+  it("returns null when neither flag is set", async () => {
+    redisValues.set("metronome:user_cap:ws_test:u_test", "0");
+    redisValues.set("metronome:pool_depleted:ws_test", "0");
+
+    const blocked = await isUserBlocked("ws_test", "u_test");
+
+    expect(blocked).toBeNull();
   });
 
   it("falls back to DB on cold cache and repopulates both flags", async () => {
@@ -100,7 +118,7 @@ describe("isUserBlocked", () => {
 
     const blocked = await isUserBlocked("ws_test", "u_test");
 
-    expect(blocked).toBe(true);
+    expect(blocked).toBe("user_cap_reached");
     expect(redisValues.get("metronome:user_cap:ws_test:u_test")).toBe("1");
     expect(redisValues.get("metronome:pool_depleted:ws_test")).toBe("0");
   });
@@ -120,7 +138,7 @@ describe("isUserBlocked", () => {
 
     const blocked = await isUserBlocked("ws_test", "u_test");
 
-    expect(blocked).toBe(true);
+    expect(blocked).toBe("credits_exhausted");
     expect(redisValues.get("metronome:user_cap:ws_test:u_test")).toBe("0");
     expect(redisValues.get("metronome:pool_depleted:ws_test")).toBe("1");
   });
