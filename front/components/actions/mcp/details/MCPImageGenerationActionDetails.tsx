@@ -11,9 +11,12 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { ActionImageIcon, Chip, cn, Separator } from "@dust-tt/sparkle";
 import React from "react";
 
+// "high" is retained for historical actions generated before the 4K tier was
+// removed from the agent-facing tool; the write path is now capped at "medium".
 const QUALITY_LABELS: Record<string, string> = {
   low: "1K",
   medium: "2K",
+  high: "4K",
 };
 
 interface ReferenceImageChipProps {
