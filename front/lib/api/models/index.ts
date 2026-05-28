@@ -1,4 +1,5 @@
 import { AnthropicClaudeSonnetFourDotSix } from "@app/lib/api/models/clients/anthropic/models/anthropic-claude-sonnet-4-6";
+import { GeminiThreeDotOnePro } from "@app/lib/api/models/clients/google-ai-studio/models/gemini-3.1-pro";
 import { OpenAiGptFiveDotTwo } from "@app/lib/api/models/clients/openai-responses/models/openai-gpt-5-2";
 import { OpenAiGptFiveDotFour } from "@app/lib/api/models/clients/openai-responses/models/openai-gpt-5-4";
 import type { LargeLanguageModel } from "@app/lib/api/models/large-language-model";
@@ -19,6 +20,7 @@ export const MODEL_REGISTRY = {
   "anthropic/claude-sonnet-4-6": AnthropicClaudeSonnetFourDotSix,
   "openai/gpt-5.2": OpenAiGptFiveDotTwo,
   "openai/gpt-5.4": OpenAiGptFiveDotFour,
+  "google-ai-studio/gemini-3.1-pro-preview": GeminiThreeDotOnePro,
 } as const satisfies Record<LargeLanguageModelId, ModelClassConstructor>;
 
 export function getModel(

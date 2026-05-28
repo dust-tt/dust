@@ -14,10 +14,16 @@ export const GPT_5_2_MODEL_ID = "gpt-5.2" as const;
 
 export const CLAUDE_SONNET_4_6_MODEL_ID = "claude-sonnet-4-6" as const;
 
+export const GEMINI_3_1_PRO_MODEL_ID = "gemini-3.1-pro-preview" as const;
+
 export const MODELS = [
   { modelId: GPT_5_4_MODEL_ID, providerId: OPENAI_PROVIDER_ID },
   { modelId: GPT_5_2_MODEL_ID, providerId: OPENAI_PROVIDER_ID },
   { modelId: CLAUDE_SONNET_4_6_MODEL_ID, providerId: ANTHROPIC_PROVIDER_ID },
+  {
+    modelId: GEMINI_3_1_PRO_MODEL_ID,
+    providerId: GOOGLE_AI_STUDIO_PROVIDER_ID,
+  },
 ] as const;
 
 export type Model = (typeof MODELS)[number];
