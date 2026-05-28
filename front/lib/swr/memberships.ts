@@ -213,6 +213,19 @@ export function useMembersLookup({
   };
 }
 
+function membersUsageUrl(workspaceId: string): string {
+  return `/api/w/${workspaceId}/credits/members-usage`;
+}
+
+export async function invalidateMembersUsage(
+  workspaceId: string
+): Promise<void> {
+  await mutate(
+    (key) =>
+      typeof key === "string" && key.startsWith(membersUsageUrl(workspaceId))
+  );
+}
+
 export function useMembersUsage({
   workspaceId,
   searchTerm = "",
@@ -244,7 +257,7 @@ export function useMembersUsage({
   }
 
   const { data, error } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/credits/members-usage?${searchParams.toString()}`,
+    `${membersUsageUrl(workspaceId)}?${searchParams.toString()}`,
     membersUsageFetcher,
     {
       revalidateOnFocus: false,
@@ -311,7 +324,7 @@ export function useUpdateMemberSeatType({
             : `${memberName}'s seat has been updated to ${seatType}.`,
       });
 
-      await mutate(`/api/w/${workspaceId}/credits/members-usage`);
+      await invalidateMembersUsage(workspaceId);
       return true;
     },
     [workspaceId, sendNotification]
@@ -402,7 +415,7 @@ export function useUpdateUserSpendLimit({
       });
 
       await mutate(spendLimitUrl(workspaceId, memberId));
-      await mutate(`/api/w/${workspaceId}/credits/members-usage`);
+      await invalidateMembersUsage(workspaceId);
       return body;
     },
     [workspaceId, sendNotification]
