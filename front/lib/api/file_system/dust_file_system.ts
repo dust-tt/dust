@@ -451,26 +451,17 @@ export class DustFileSystem {
     if (!isSupportedImageContentType(entry.contentType)) {
       return null;
     }
-    const mount = this.findMount(entry.path);
-    if (!mount) {
-      return null;
-    }
 
-    switch (mount.kind) {
-      case "conversation":
-        return (
-          `${config.getApiBaseUrl()}/api/w/${workspaceId}` +
-          `/assistant/conversations/${mount.id}/files/thumbnail` +
-          `?filePath=${encodeURIComponent(entry.path)}`
-        );
+    const encodedPath = entry.path
+      .split("/")
+      .map(encodeURIComponent)
+      .join("/");
 
-      case "pod":
-        // TODO(FILE SYSTEM): expose a pod-files thumbnail endpoint.
-        return null;
-
-      default:
-        assertNever(mount.kind);
-    }
+    return (
+      `${config.getApiBaseUrl()}/api/w/${workspaceId}` +
+      `/files/path/${encodedPath}?thumbnail=1`
+    );
+  }
   }
 
   /**

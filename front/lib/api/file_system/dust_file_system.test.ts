@@ -290,8 +290,7 @@ describe("DustFileSystem.list thumbnail URLs", () => {
     assert(file !== undefined && !file.isDirectory);
     expect(file.thumbnailUrl).toBe(
       `https://dust.tt/api/w/${workspaceId}` +
-        `/assistant/conversations/${conversation.sId}/files/thumbnail` +
-        `?filePath=${encodeURIComponent(`conversation-${conversation.sId}/photo.png`)}`
+        `/files/path/conversation-${conversation.sId}/photo.png?thumbnail=1`
     );
   });
 
