@@ -132,6 +132,14 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
   );
 
   for (const check of checks) {
+    if (previouslyCompletedCheckNames.has(check.name)) {
+      mainLogger.info(
+        { all_check_uuid: allCheckUuid, checkName: check.name },
+        "Check already completed in previous attempt, skipping",
+      );
+      continue;
+    }
+
     const uuid = uuidv4();
     const logger = mainLogger.child({
       all_check_uuid: allCheckUuid,
