@@ -177,6 +177,27 @@ export async function sendProactiveTrialCancelledEmail(
   });
 }
 
+export async function sendUserAwuCapReachedEmail({
+  email,
+  workspace,
+  capAwuCredits,
+}: {
+  email: string;
+  workspace: WorkspaceType;
+  capAwuCredits: number;
+}): Promise<Result<void, Error>> {
+  return sendEmailWithTemplate({
+    to: email,
+    from: config.getSupportEmailAddress(),
+    subject: `[Dust] You've reached your usage limit in ${escape(workspace.name)}`,
+    body: `
+      <p>You have reached your <strong>${capAwuCredits} AWU</strong> usage limit in the Dust workspace <strong>${escape(workspace.name)}</strong>.</p>
+      <p>You won't be able to run agents until your limit is increased. Please contact your workspace admin.</p>`,
+    buttonLabel: "Go to workspace",
+    buttonUrl: `https://dust.tt/w/${workspace.sId}`,
+  });
+}
+
 export async function sendCreditUsageAlertEmail({
   email,
   workspace,

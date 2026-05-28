@@ -1,3 +1,4 @@
+import { sendUserAwuCapReachedEmail } from "@app/lib/api/email";
 import {
   dispatchCreditsAdded,
   dispatchPaygCapReached,
@@ -42,9 +43,11 @@ import { invalidateContractCache } from "@app/lib/metronome/plan_type";
 import { isMetronomeFreeCredit } from "@app/lib/metronome/types";
 import type { MetronomeWebhookEvent } from "@app/lib/metronome/webhook_events";
 import { PlanModel } from "@app/lib/models/plan";
+import { notifyUserAwuCapReached } from "@app/lib/notifications/workflows/user-awu-cap-reached";
 import { isFreePlan } from "@app/lib/plans/plan_codes";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -243,8 +246,10 @@ async function handlePerUserSpendThresholdEvent({
 
   let effectiveState: MetronomeAlertState;
   let source: "override" | "default" | "none";
+  let capThreshold: number | null | undefined;
   if (overrideResult.value) {
     effectiveState = overrideResult.value.customer_status;
+    capThreshold = overrideResult.value.alert.threshold;
     source = "override";
   } else {
     const defaultResult = await getMetronomeDefaultUserCapAlert({
@@ -261,6 +266,7 @@ async function handlePerUserSpendThresholdEvent({
     }
     if (defaultResult.value) {
       effectiveState = defaultResult.value.customer_status;
+      capThreshold = defaultResult.value.alert.threshold;
       source = "default";
     } else {
       effectiveState = "ok";
@@ -292,6 +298,27 @@ async function handlePerUserSpendThresholdEvent({
             `Error dispatching per-user cap reached: ${dispatchResult.error.message}`
           )
         );
+      }
+      // Notify the user (email + in-app) that they've hit their AWU cap.
+      // Runs after the dispatch so the block is already in place.
+      const capAwuCredits = capThreshold ?? 0;
+      const user = await UserResource.fetchById(userId);
+      if (user) {
+        const lightWorkspace = renderLightWorkspaceType({ workspace });
+        void sendUserAwuCapReachedEmail({
+          email: user.email,
+          workspace: lightWorkspace,
+          capAwuCredits,
+        });
+        notifyUserAwuCapReached({
+          userSId: user.sId,
+          userEmail: user.email,
+          userFirstName: user.firstName,
+          userLastName: user.lastName,
+          workspaceId: workspace.sId,
+          workspaceName: lightWorkspace.name,
+          capAwuCredits,
+        });
       }
       break;
     }
@@ -470,6 +497,12 @@ export async function processMetronomeWebhook({
       );
       break;
     }
+    case "alerts.low_remaining_seat_balance_reached": {
+      break;
+    }
+    case "alerts.low_remaining_seat_balance_resolved": {
+      break;
+    }
     case "alerts.invoice_total_reached":
     case "alerts.invoice_total_resolved":
     case "alerts.low_remaining_commit_balance_reached":
@@ -478,8 +511,6 @@ export async function processMetronomeWebhook({
     case "alerts.low_remaining_contract_credit_balance_resolved":
     case "alerts.low_remaining_credit_balance_reached":
     case "alerts.low_remaining_credit_balance_resolved":
-    case "alerts.low_remaining_seat_balance_reached":
-    case "alerts.low_remaining_seat_balance_resolved":
     case "alerts.usage_threshold_reached":
     case "alerts.usage_threshold_resolved":
     case "commit.archive":
