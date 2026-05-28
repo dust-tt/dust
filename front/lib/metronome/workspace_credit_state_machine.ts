@@ -154,6 +154,11 @@ const TRANSITIONS: WorkspaceCreditTransition[] = [
       "active_low_balance",
       "active_critical_balance",
       "overage",
+      // A `pool_exhausted` event re-fired while already in `depleted` (e.g.
+      // `syncPoolCreditStateFromBalance` running after PAYG was just enabled)
+      // must promote the workspace to `overage` — without this entry the
+      // workspace would stay stuck in `depleted` until the next `payg_enabled`.
+      "depleted",
     ],
     event: "pool_exhausted",
     guard: (ctx) => ctx.paygEnabled,
@@ -257,6 +262,9 @@ const TRANSITIONS: WorkspaceCreditTransition[] = [
   },
 
   // depleted -> ...
+  // Note: `depleted + pool_exhausted` is handled by the top-level array
+  // transitions: `paygEnabled → overage` and `!paygEnabled → depleted` both
+  // include `"depleted"` in their `from` lists.
   {
     from: "depleted",
     event: "payg_cap_reached",

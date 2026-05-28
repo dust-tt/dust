@@ -13,7 +13,7 @@ import {
   getStripeCustomer,
   scheduleSubscriptionCancellation,
 } from "@app/lib/plans/stripe";
-import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
+import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -526,7 +526,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — guards", () => {
 });
 
 describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
-  it("persists paygCapMicroUsd and syncs the Metronome alert when switching to enterprise with PAYG enabled", async () => {
+  it("persists paygCapCredits and syncs the Metronome alert when switching to enterprise with PAYG enabled", async () => {
     await ensureEnterprisePlan();
     const { workspace } = await createPrivateApiMockRequest({
       isSuperUser: true,
@@ -535,7 +535,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
 
     const response = await postSwitchContract(
       workspace.sId,
-      enterpriseBody({ paygEnabled: true, paygCapDollars: 500 })
+      enterpriseBody({ paygEnabled: true, paygCapCredits: 50_000 })
     );
 
     expect(response.status).toBe(200);
@@ -544,13 +544,11 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
       workspace.sId
     );
     const config =
-      await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(
-        adminAuth
-      );
-    expect(config?.paygCapMicroUsd).toBe(500 * 1_000_000);
+      await CreditUsageConfigurationResource.fetchByWorkspaceId(adminAuth);
+    expect(config?.paygCapCredits).toBe(50_000);
   });
 
-  it("persists paygCapMicroUsd when switching to business with PAYG enabled", async () => {
+  it("persists paygCapCredits when switching to business with PAYG enabled", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       isSuperUser: true,
     });
@@ -558,7 +556,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
 
     const response = await postSwitchContract(
       workspace.sId,
-      businessBody({ paygEnabled: true, paygCapDollars: 250 })
+      businessBody({ paygEnabled: true, paygCapCredits: 25_000 })
     );
 
     expect(response.status).toBe(200);
@@ -567,10 +565,8 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
       workspace.sId
     );
     const config =
-      await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(
-        adminAuth
-      );
-    expect(config?.paygCapMicroUsd).toBe(250 * 1_000_000);
+      await CreditUsageConfigurationResource.fetchByWorkspaceId(adminAuth);
+    expect(config?.paygCapCredits).toBe(25_000);
   });
 
   it("rejects PAYG on a pro contract", async () => {
@@ -581,7 +577,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
 
     const response = await postSwitchContract(
       workspace.sId,
-      proBody({ paygEnabled: true, paygCapDollars: 100 })
+      proBody({ paygEnabled: true, paygCapCredits: 10_000 })
     );
 
     expect(response.status).toBe(400);
@@ -590,7 +586,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
     expect(provisionMetronomeContract).not.toHaveBeenCalled();
   });
 
-  it("rejects when paygEnabled is true but paygCapDollars is missing", async () => {
+  it("rejects when paygEnabled is true but paygCapCredits is missing", async () => {
     await ensureEnterprisePlan();
     const { workspace } = await createPrivateApiMockRequest({
       isSuperUser: true,
@@ -607,7 +603,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
     expect(data.error.message).toContain("PAYG cap");
   });
 
-  it("clears paygCapMicroUsd when paygEnabled is false", async () => {
+  it("clears paygCapCredits when paygEnabled is false", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       isSuperUser: true,
     });
@@ -616,11 +612,10 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
     const adminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
-    await ProgrammaticUsageConfigurationResource.makeNew(adminAuth, {
-      freeCreditMicroUsd: null,
+    await CreditUsageConfigurationResource.makeNew(adminAuth, {
       defaultDiscountPercent: 0,
-      paygCapMicroUsd: 1_000 * 1_000_000,
-      dailyCapMicroUsd: null,
+      paygCapCredits: 100_000,
+      disableCreditCapWarning: false,
     });
 
     const response = await postSwitchContract(workspace.sId, proBody());
@@ -628,9 +623,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
     expect(response.status).toBe(200);
 
     const config =
-      await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(
-        adminAuth
-      );
-    expect(config?.paygCapMicroUsd).toBeNull();
+      await CreditUsageConfigurationResource.fetchByWorkspaceId(adminAuth);
+    expect(config?.paygCapCredits).toBeNull();
   });
 });
