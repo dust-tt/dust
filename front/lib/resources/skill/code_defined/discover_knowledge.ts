@@ -39,7 +39,7 @@ export const discoverKnowledgeSkill = {
     "Search documents, browse folder hierarchies, read file contents, and query data warehouse tables with SQL.",
   instructions: DISCOVER_KNOWLEDGE_INSTRUCTIONS,
   mcpServers: [
-    { name: "data_sources_file_system" },
+    { name: "data_sources_file_system", serverNameOverride: "company_data" },
     { name: "data_warehouses" },
   ],
   version: 1,
