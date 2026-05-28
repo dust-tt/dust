@@ -60,6 +60,13 @@ export type ClariCallsResponse = z.infer<typeof ClariCallsResponseSchema>;
 
 // call-details response
 
+// Clari sometimes returns "NaN" for timestamp fields on certain calls.
+// Coerce to number and treat NaN as absent rather than failing validation.
+const nanSafeTimestamp = z.preprocess((v) => {
+  const n = Number(v);
+  return isNaN(n) ? undefined : n;
+}, z.number().optional());
+
 const ClariTranscriptTurnSchema = z
   .object({
     text: z.string(),
@@ -72,8 +79,8 @@ const ClariTranscriptTurnSchema = z
 const ClariTopicSchema = z
   .object({
     name: z.string().optional(),
-    start_timestamp: z.coerce.number().optional(),
-    end_timestamp: z.coerce.number().optional(),
+    start_timestamp: nanSafeTimestamp,
+    end_timestamp: nanSafeTimestamp,
     summary: z.string().optional(),
   })
   .passthrough();
@@ -82,8 +89,8 @@ const ClariActionItemSchema = z
   .object({
     action_item: z.string().optional(),
     speaker_name: z.string().optional(),
-    start_timestamp: z.coerce.number().optional(),
-    end_timestamp: z.coerce.number().optional(),
+    start_timestamp: nanSafeTimestamp,
+    end_timestamp: nanSafeTimestamp,
   })
   .passthrough();
 
