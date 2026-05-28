@@ -74,7 +74,7 @@ export async function githubExtractToGcsActivity({
     repoName,
     repoLogin,
     repoId,
-    activityName: "githubExtractToGcsActivity",
+    activityType: "githubExtractToGcsActivity",
   });
 
   // Local cleanup function to handle missing/inaccessible repositories.
@@ -291,7 +291,7 @@ export async function githubCreateGcsIndexActivity({
     repoLogin,
     repoName,
     gcsBasePath,
-    activityName: "githubCreateGcsIndexActivity",
+    activityType: "githubCreateGcsIndexActivity",
   });
   const gcsManager = new GCSRepositoryManager();
 
@@ -345,7 +345,7 @@ export async function githubProcessIndexFileActivity({
     repoName,
     gcsBasePath,
     indexPath,
-    activityName: "githubProcessIndexFileActivity",
+    activityType: "githubProcessIndexFileActivity",
   });
 
   const gcsManager = new GCSRepositoryManager();
@@ -453,7 +453,7 @@ export async function githubCleanupCodeSyncActivity({
 
   const logger = getActivityLogger(connector, {
     repoId,
-    activityName: "githubCleanupCodeSyncActivity",
+    activityType: "githubCleanupCodeSyncActivity",
   });
 
   const codeSyncStartedAt = new Date(codeSyncStartedAtMs);
@@ -518,7 +518,7 @@ export async function githubEnsureCodeSyncEnabledActivity({
     repoId,
     repoLogin,
     repoName,
-    activityName: "githubEnsureCodeSyncEnabledActivity",
+    activityType: "githubEnsureCodeSyncEnabledActivity",
   });
 
   const connectorState = await GithubConnectorStateModel.findOne({
