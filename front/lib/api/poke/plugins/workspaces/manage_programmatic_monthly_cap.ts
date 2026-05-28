@@ -5,38 +5,20 @@ import {
   getMetronomeProgrammaticCap,
   upsertMetronomeProgrammaticCapAlerts,
 } from "@app/lib/metronome/alerts/programmatic_cap";
-import {
-  METRONOME_PROGRAMMATIC_USAGE_CREDIT_TO_MICRO_USD,
-  MICRO_USD_PER_DOLLAR,
-} from "@app/lib/metronome/types";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { Err, Ok } from "@app/types/shared/result";
 import { z } from "zod";
 
-function creditsToDollars(credits: number): number {
-  return (
-    (credits * METRONOME_PROGRAMMATIC_USAGE_CREDIT_TO_MICRO_USD) /
-    MICRO_USD_PER_DOLLAR
-  );
-}
-
-function dollarsToCredits(dollars: number): number {
-  return (
-    (dollars * MICRO_USD_PER_DOLLAR) /
-    METRONOME_PROGRAMMATIC_USAGE_CREDIT_TO_MICRO_USD
-  );
-}
-
 const ProgrammaticMonthlyCapSchema = z
   .object({
     enabled: z.boolean(),
-    monthlyCapDollars: z.number().min(1).max(100_000).optional(),
+    monthlyCapAwu: z.number().min(1).max(10_000_000).optional(),
   })
   .refine(
     (data) =>
       !data.enabled ||
-      (data.monthlyCapDollars !== undefined && data.monthlyCapDollars >= 1),
-    { message: "monthlyCapDollars must be >= $1 when enabled" }
+      (data.monthlyCapAwu !== undefined && data.monthlyCapAwu >= 1),
+    { message: "monthlyCapAwu must be >= 1 when enabled" }
   );
 
 export const manageProgrammaticMonthlyCapPlugin = createPlugin({
@@ -54,10 +36,10 @@ export const manageProgrammaticMonthlyCapPlugin = createPlugin({
         async: true,
         asyncDescription: true,
       },
-      monthlyCapDollars: {
+      monthlyCapAwu: {
         type: "number",
-        label: "Monthly cap ($)",
-        description: "Monthly spending cap in dollars (1-100,000).",
+        label: "Monthly cap (AWU credits)",
+        description: "Monthly spending cap in AWU credits.",
         async: true,
       },
     },
@@ -68,7 +50,7 @@ export const manageProgrammaticMonthlyCapPlugin = createPlugin({
       return new Ok({
         enabled: false,
         enabledDescription: "No workspace found.",
-        monthlyCapDollars: 0,
+        monthlyCapAwu: 0,
       });
     }
 
@@ -77,7 +59,7 @@ export const manageProgrammaticMonthlyCapPlugin = createPlugin({
       return new Ok({
         enabled: false,
         enabledDescription: "Workspace is not provisioned in Metronome.",
-        monthlyCapDollars: 0,
+        monthlyCapAwu: 0,
       });
     }
 
@@ -96,15 +78,14 @@ export const manageProgrammaticMonthlyCapPlugin = createPlugin({
       return new Ok({
         enabled: false,
         enabledDescription: `No cap set. State: ${currentState}.`,
-        monthlyCapDollars: 0,
+        monthlyCapAwu: 0,
       });
     }
 
-    const capDollars = creditsToDollars(capCredits);
     return new Ok({
       enabled: true,
-      enabledDescription: `Current cap: $${capDollars} (${capCredits} credits). State: ${currentState}.`,
-      monthlyCapDollars: capDollars,
+      enabledDescription: `Current cap: ${capCredits} AWU. State: ${currentState}.`,
+      monthlyCapAwu: capCredits,
     });
   },
 
@@ -131,15 +112,13 @@ export const manageProgrammaticMonthlyCapPlugin = createPlugin({
     if (!parsed.success) {
       return new Err(new Error(parsed.error.message));
     }
-    const { enabled, monthlyCapDollars } = parsed.data;
+    const { enabled, monthlyCapAwu } = parsed.data;
 
-    if (enabled && monthlyCapDollars) {
-      const monthlyCapCredits = dollarsToCredits(monthlyCapDollars);
-
+    if (enabled && monthlyCapAwu) {
       const result = await upsertMetronomeProgrammaticCapAlerts({
         metronomeCustomerId,
         workspaceId: workspace.sId,
-        monthlyCapCredits,
+        monthlyCapCredits: monthlyCapAwu,
       });
       if (result.isErr()) {
         return new Err(result.error);
@@ -150,7 +129,7 @@ export const manageProgrammaticMonthlyCapPlugin = createPlugin({
 
       return new Ok({
         display: "text",
-        value: `Programmatic monthly cap set to $${monthlyCapDollars} for workspace "${workspace.name}".`,
+        value: `Programmatic monthly cap set to ${monthlyCapAwu} AWU for workspace "${workspace.name}".`,
       });
     }
 
