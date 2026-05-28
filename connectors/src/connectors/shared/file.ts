@@ -88,7 +88,6 @@ export async function handleCsvFile({
   connectorId,
   parents,
   tags,
-  failOnInvalidRows = false,
 }: {
   data: ArrayBuffer;
   tableId: string;
@@ -100,7 +99,6 @@ export async function handleCsvFile({
   connectorId: ModelId;
   parents: string[];
   tags: string[];
-  failOnInvalidRows?: boolean;
 }): Promise<Result<null, Error>> {
   if (data.byteLength > 4 * maxDocumentLen) {
     localLogger.info({}, "File too big to be chunked. Skipping");
@@ -112,7 +110,7 @@ export async function handleCsvFile({
 
   try {
     const stringifiedContent = await parseAndStringifyCsv(decodeBuffer(data));
-    const tablesError = await ignoreTablesError(`${provider} CSV File`, () =>
+    await ignoreTablesError(`${provider} CSV File`, () =>
       upsertDataSourceTableFromCsv({
         dataSourceConfig,
         tableId,
@@ -132,9 +130,6 @@ export async function handleCsvFile({
         tags,
       })
     );
-    if (tablesError && failOnInvalidRows) {
-      return new Err(tablesError);
-    }
   } catch (err) {
     localLogger.warn({ error: err }, "Error while parsing or upserting table");
     return new Err(normalizeError(err));

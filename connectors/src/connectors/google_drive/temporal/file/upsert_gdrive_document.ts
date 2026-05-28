@@ -16,15 +16,6 @@ import type {
 } from "@connectors/types";
 import type { OAuth2Client } from "googleapis-common";
 
-type UpsertGdriveDocumentResult =
-  | {
-      didUpsert: true;
-      upsertTimestampMs: number | undefined;
-    }
-  | {
-      didUpsert: false;
-    };
-
 export async function upsertGdriveDocument(
   dataSourceConfig: DataSourceConfig,
   file: GoogleDriveObjectType,
@@ -36,7 +27,7 @@ export async function upsertGdriveDocument(
   connectorId: ModelId,
   startSyncTs: number,
   isBatchSync: boolean
-): Promise<UpsertGdriveDocumentResult> {
+): Promise<number | undefined> {
   const content = await renderDocumentTitleAndContent({
     dataSourceConfig,
     title: file.name,
@@ -97,12 +88,12 @@ export async function upsertGdriveDocument(
       mimeType: file.mimeType,
       async: true,
     });
-    return { didUpsert: true, upsertTimestampMs: file.updatedAtMs };
+    return file.updatedAtMs;
   } else {
     localLogger.info(
       { documentLen },
       "Document is empty or too big to be upserted. Skipping"
     );
-    return { didUpsert: false };
+    return undefined;
   }
 }

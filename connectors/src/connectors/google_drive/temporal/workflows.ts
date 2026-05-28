@@ -199,8 +199,7 @@ export async function googleDriveIncrementalSync(
   connectorId: ModelId,
   startSyncTs: number | undefined = undefined,
   drivesToSync: DrivesToSyncType | undefined = undefined,
-  nextPageToken: string | undefined = undefined,
-  hadRelevantChangeInCurrentDrive = false
+  nextPageToken: string | undefined = undefined
 ) {
   if (!startSyncTs) {
     await syncStarted(connectorId);
@@ -222,7 +221,6 @@ export async function googleDriveIncrementalSync(
   }
 
   let currentToken = nextPageToken;
-  let currentDriveHadRelevantChange = hadRelevantChangeInCurrentDrive;
 
   while (drivesToSync.length > 0) {
     const googleDrive = drivesToSync[0];
@@ -236,13 +234,11 @@ export async function googleDriveIncrementalSync(
         googleDrive.id,
         googleDrive.isShared,
         startSyncTs,
-        currentToken,
-        currentDriveHadRelevantChange
+        currentToken
       );
 
       if (syncRes) {
         const foldersToBrowse = syncRes.newFolders;
-        currentDriveHadRelevantChange = syncRes.hadRelevantChange;
 
         if (foldersToBrowse.length > 0) {
           await executeChild(googleDriveFullSync, {
@@ -270,13 +266,12 @@ export async function googleDriveIncrementalSync(
       }
 
       // Will restart exactly where it was.
-      if (currentToken && workflowInfo().historyLength > 4000) {
+      if (workflowInfo().historyLength > 4000) {
         await continueAsNew<typeof googleDriveIncrementalSync>(
           connectorId,
           startSyncTs,
           drivesToSync,
-          currentToken,
-          currentDriveHadRelevantChange
+          currentToken
         );
       }
     } while (currentToken);
@@ -285,18 +280,7 @@ export async function googleDriveIncrementalSync(
     // Clear the nextPageToken to start from the beginning of the next drive.
     // Remove the drive from the list of drives to sync.
     currentToken = undefined;
-    currentDriveHadRelevantChange = false;
     drivesToSync.shift();
-
-    if (drivesToSync.length > 0 && workflowInfo().historyLength > 4000) {
-      await continueAsNew<typeof googleDriveIncrementalSync>(
-        connectorId,
-        startSyncTs,
-        drivesToSync,
-        currentToken,
-        currentDriveHadRelevantChange
-      );
-    }
   }
 
   const shouldGc = await shouldGarbageCollect(connectorId);
@@ -659,17 +643,14 @@ export async function googleDriveIncrementalSyncPerDrive({
   isShared,
   startSyncTs,
   nextPageToken,
-  hadRelevantChangeInPreviousPages = false,
 }: {
   connectorId: ModelId;
   driveId: string;
   isShared: boolean;
   startSyncTs: number;
   nextPageToken: string | undefined;
-  hadRelevantChangeInPreviousPages?: boolean;
 }) {
   let currentToken = nextPageToken;
-  let hadRelevantChange = hadRelevantChangeInPreviousPages;
 
   // Process all changes for this drive with pagination
   do {
@@ -678,13 +659,11 @@ export async function googleDriveIncrementalSyncPerDrive({
       driveId,
       isShared,
       startSyncTs,
-      currentToken,
-      hadRelevantChange
+      currentToken
     );
 
     if (syncRes) {
       const newFolders = syncRes.newFolders;
-      hadRelevantChange = syncRes.hadRelevantChange;
 
       // Launch folder sync for each new folder
       if (newFolders.length > 0) {
@@ -731,14 +710,13 @@ export async function googleDriveIncrementalSyncPerDrive({
     }
 
     // Will restart exactly where it was.
-    if (currentToken && workflowInfo().historyLength > 4000) {
+    if (workflowInfo().historyLength > 4000) {
       await continueAsNew<typeof googleDriveIncrementalSyncPerDrive>({
         connectorId,
         driveId,
         isShared,
         startSyncTs,
         nextPageToken: currentToken,
-        hadRelevantChangeInPreviousPages: hadRelevantChange,
       });
     }
   } while (currentToken);

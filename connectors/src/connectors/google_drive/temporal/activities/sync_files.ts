@@ -186,7 +186,7 @@ export async function syncFiles(
         dataSourceConfig,
         file,
         startSyncTs,
-        { isBatchSync: true }
+        true // isBatchSync
       );
     },
     { concurrency }

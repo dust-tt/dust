@@ -23,11 +23,6 @@ import { Ok } from "@dust-tt/client";
 import type { OAuth2Client } from "googleapis-common";
 import { GaxiosError } from "googleapis-common";
 
-type HandleFileExportResult = {
-  documentContent: CoreAPIDataSourceDocumentSection | null;
-  didProcessContent: boolean;
-};
-
 export async function handleFileExport(
   oauth2client: OAuth2Client,
   documentId: string,
@@ -38,30 +33,6 @@ export async function handleFileExport(
   connectorId: ModelId,
   startSyncTs: number
 ): Promise<CoreAPIDataSourceDocumentSection | null> {
-  const result = await handleFileExportWithResult(
-    oauth2client,
-    documentId,
-    file,
-    maxDocumentLen,
-    localLogger,
-    dataSourceConfig,
-    connectorId,
-    startSyncTs
-  );
-
-  return result.documentContent;
-}
-
-export async function handleFileExportWithResult(
-  oauth2client: OAuth2Client,
-  documentId: string,
-  file: GoogleDriveObjectType,
-  maxDocumentLen: number,
-  localLogger: Logger,
-  dataSourceConfig: DataSourceConfig,
-  connectorId: ModelId,
-  startSyncTs: number
-): Promise<HandleFileExportResult> {
   const drive = await getDriveClient(oauth2client);
   let res;
   try {
@@ -83,7 +54,7 @@ export async function handleFileExportWithResult(
           },
           "Can't export Gdrive file. 404 error returned. Skipping."
         );
-        return { documentContent: null, didProcessContent: false };
+        return null;
       }
       if (e.response?.status === 403) {
         const skippableReasons = ["cannotDownloadAbusiveFile"];
@@ -102,7 +73,7 @@ export async function handleFileExportWithResult(
               { error: parsedBody.error },
               `Can't export Gdrive file. Skippable reason: ${firstSkippableReason} Skipping.`
             );
-            return { documentContent: null, didProcessContent: false };
+            return null;
           }
         } catch (e) {
           localLogger.error({ error: e }, "Error while parsing error response");
@@ -113,7 +84,7 @@ export async function handleFileExportWithResult(
     const maybeErrorWithCode = e as { code: string };
     if (maybeErrorWithCode.code === "ERR_OUT_OF_RANGE") {
       localLogger.info({}, "File too big to be downloaded. Skipping");
-      return { documentContent: null, didProcessContent: false };
+      return null;
     }
     throw e;
   }
@@ -126,7 +97,7 @@ export async function handleFileExportWithResult(
 
   if (!(res.data instanceof ArrayBuffer)) {
     localLogger.error({}, "res.data is not an ArrayBuffer");
-    return { documentContent: null, didProcessContent: false };
+    return null;
   }
   let result;
   if (file.mimeType === "text/plain") {
@@ -152,7 +123,6 @@ export async function handleFileExportWithResult(
       connectorId,
       parents,
       tags: file.labels,
-      failOnInvalidRows: true,
     });
   } else if (file.mimeType === "text/markdown") {
     const textContent = handleTextFile(res.data, maxDocumentLen);
@@ -179,8 +149,8 @@ export async function handleFileExportWithResult(
   }
   if (result.isErr()) {
     localLogger.error({ error: result.error }, "Could not handle file.");
-    return { documentContent: null, didProcessContent: false };
+    return null;
   }
 
-  return { documentContent: result.value, didProcessContent: true };
+  return result.value;
 }

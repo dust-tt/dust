@@ -21,18 +21,13 @@ import type {
 import tracer from "dd-trace";
 import type { OAuth2Client } from "googleapis-common";
 
-type SyncOneFileOptions = {
-  isBatchSync?: boolean;
-  skipRecentlySeen?: boolean;
-};
-
 export async function syncOneFile(
   connectorId: ModelId,
   oauth2client: OAuth2Client,
   dataSourceConfig: DataSourceConfig,
   file: GoogleDriveObjectType,
   startSyncTs: number,
-  options: SyncOneFileOptions = {}
+  isBatchSync = false
 ): Promise<boolean> {
   return tracer.trace(
     "gdrive",
@@ -66,6 +61,12 @@ export async function syncOneFile(
         fileSize: file.size,
       });
 
+      // Early return if lastSeenTs is greater than workflow start.
+      // This allows avoiding resyncing already-synced documents in case of activity failure
+      if (fileInDb?.lastSeenTs && fileInDb.lastSeenTs > new Date(startSyncTs)) {
+        return true;
+      }
+
       if (fileInDb?.skipReason) {
         localLogger.info(
           {},
@@ -73,17 +74,6 @@ export async function syncOneFile(
         );
         return false;
       }
-
-      // Early return if lastSeenTs is greater than workflow start.
-      // This allows avoiding resyncing already-synced documents in case of activity failure
-      if (
-        (options.skipRecentlySeen ?? true) &&
-        fileInDb?.lastSeenTs &&
-        fileInDb.lastSeenTs > new Date(startSyncTs)
-      ) {
-        return true;
-      }
-
       if (!file.capabilities.canDownload) {
         localLogger.info(
           {},
@@ -123,7 +113,7 @@ export async function syncOneFile(
           config,
           dataSourceConfig,
           startSyncTs,
-          options.isBatchSync ?? false,
+          isBatchSync,
           maxDocumentLen
         );
       }
