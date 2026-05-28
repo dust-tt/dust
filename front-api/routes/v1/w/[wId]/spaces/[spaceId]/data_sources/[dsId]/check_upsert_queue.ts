@@ -66,10 +66,9 @@ const ParamsSchema = z.object({
  */
 const app = publicApiApp();
 
-app.use("*", ensureIsSystemKey());
-
 app.get(
   "/",
+  ensureIsSystemKey(),
   validate("param", ParamsSchema),
   async (ctx): HandlerResult<CheckUpsertQueueResponseType> => {
     const auth = ctx.get("auth");
