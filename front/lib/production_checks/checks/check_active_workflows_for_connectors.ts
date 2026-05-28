@@ -113,8 +113,8 @@ function makeWorkflowIdsListQuery(workflowIds: string[]): string | null {
 async function listRunningWorkflowIds(
   client: Client,
   workflowIds: string[],
-  logger: Parameters<CheckFunction>[1],
-  heartbeat: Parameters<CheckFunction>[4]
+  logger: Logger,
+  heartbeat: () => void
 ) {
   const runningWorkflowIds = new Set<string>();
 
