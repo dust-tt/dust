@@ -38,11 +38,6 @@ export class ActivityInboundLogInterceptor
     this.logger = logger.child({
       activityType: ctx.info.activityType,
       workflowType: ctx.info.workflowType,
-
-      // to remove, it's confusing
-      activityName: ctx.info.activityType,
-      workflowName: ctx.info.workflowType,
-
       workflowId: ctx.info.workflowExecution.workflowId,
       workflowRunId: ctx.info.workflowExecution.runId,
       activityId: ctx.info.activityId,
@@ -62,10 +57,6 @@ export class ActivityInboundLogInterceptor
     const tags = [
       `activity_type:${this.context.info.activityType}`,
       `workflow_type:${this.context.info.workflowType}`,
-
-      // to remove, it's confusing
-      `activity_name:${this.context.info.activityType}`,
-      `workflow_name:${this.context.info.workflowType}`,
       `attempt:${this.context.info.attempt}`,
     ];
     const queryTrackerStore = { concurrent: 0, peak: 0 };
