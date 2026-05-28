@@ -48,42 +48,27 @@ export type WorkspaceCreditEvent =
   /** Pool balance dropped to ≤10 credits remaining. */
   | { type: "low_balance_10" };
 
-// Thresholds for low-balance state routing (in credits).
-const LOW_BALANCE_THRESHOLD = 100;
-const CRITICAL_BALANCE_THRESHOLD = 10;
+// Thresholds for low-balance state routing (in AWU credits).
+const LOW_BALANCE_THRESHOLD_AWU = 100;
+const CRITICAL_BALANCE_THRESHOLD_AWU = 10;
+
+type WorkspaceCreditGuard = (
+  ctx: WorkspaceCreditContext,
+  event: WorkspaceCreditEvent
+) => boolean;
 
 type WorkspaceCreditTransition = {
   from: WorkspacePoolCreditState | WorkspacePoolCreditState[];
   event: WorkspaceCreditEvent["type"];
-  guard?: (ctx: WorkspaceCreditContext) => boolean;
-  to:
-    | WorkspacePoolCreditState
-    | ((event: WorkspaceCreditEvent) => WorkspacePoolCreditState);
+  guard?: WorkspaceCreditGuard;
+  to: WorkspacePoolCreditState;
 };
 
-function resolveTargetState(
-  to: WorkspaceCreditTransition["to"],
-  event: WorkspaceCreditEvent
-): WorkspacePoolCreditState {
-  return typeof to === "function" ? to(event) : to;
-}
-
-function activeStateForBalance(
-  event: WorkspaceCreditEvent
-): WorkspacePoolCreditState {
-  // Only valid for credits_added events, enforced by transition table
-  if (event.type !== "credits_added") {
-    throw new Error(
-      `[WorkspaceCreditStateMachine] activeStateForBalance called with unexpected event: ${event.type}`
-    );
-  }
-  if (event.balanceAwu <= CRITICAL_BALANCE_THRESHOLD) {
-    return "active_critical_balance";
-  }
-  if (event.balanceAwu <= LOW_BALANCE_THRESHOLD) {
-    return "active_low_balance";
-  }
-  return "active";
+function balanceAtMost(
+  threshold: number
+): WorkspaceCreditGuard {
+  return (_ctx, event) =>
+    event.type === "credits_added" && event.balanceAwu <= threshold;
 }
 
 function syncWorkspacePoolCacheForState(
@@ -130,7 +115,8 @@ const TRANSITIONS: WorkspaceCreditTransition[] = [
   // Common transitions
 
   // A new commit segment starting (admin top-up or billing-cycle renewal of
-  // the recurring pool commit) always set the state back to active (with potential low balance)
+  // the recurring pool commit) always set the state back to active (with potential low balance).
+  // Order matters: first match wins, so critical < low < default.
   {
     from: [
       "active",
@@ -140,7 +126,31 @@ const TRANSITIONS: WorkspaceCreditTransition[] = [
       "overage",
     ],
     event: "credits_added",
-    to: activeStateForBalance,
+    guard: balanceAtMost(CRITICAL_BALANCE_THRESHOLD_AWU),
+    to: "active_critical_balance",
+  },
+  {
+    from: [
+      "active",
+      "active_low_balance",
+      "active_critical_balance",
+      "depleted",
+      "overage",
+    ],
+    event: "credits_added",
+    guard: balanceAtMost(LOW_BALANCE_THRESHOLD_AWU),
+    to: "active_low_balance",
+  },
+  {
+    from: [
+      "active",
+      "active_low_balance",
+      "active_critical_balance",
+      "depleted",
+      "overage",
+    ],
+    event: "credits_added",
+    to: "active",
   },
   {
     from: [
@@ -299,7 +309,9 @@ function findTransition(
     const fromMatch = Array.isArray(t.from)
       ? t.from.includes(current)
       : t.from === current;
-    return fromMatch && t.event === event.type && (!t.guard || t.guard(ctx));
+    return (
+      fromMatch && t.event === event.type && (!t.guard || t.guard(ctx, event))
+    );
   });
 }
 
@@ -328,22 +340,20 @@ export async function transitionWorkspaceCreditState(
     );
   }
 
-  const targetState = resolveTargetState(match.to, event);
-
-  if (currentState !== targetState) {
-    await workspace.updatePoolCreditState(targetState, transaction);
+  if (currentState !== match.to) {
+    await workspace.updatePoolCreditState(match.to, transaction);
   }
-  syncWorkspacePoolCacheForState(targetState, ctx, transaction);
+  syncWorkspacePoolCacheForState(match.to, ctx, transaction);
   logger.info(
     {
       workspaceId: ctx.workspaceId,
       fromState: currentState,
-      toState: targetState,
+      toState: match.to,
       eventType: event.type,
-      wasStateChanged: currentState !== targetState,
+      wasStateChanged: currentState !== match.to,
     },
     "[WorkspaceCreditStateMachine] Transition applied"
   );
 
-  return new Ok(targetState);
+  return new Ok(match.to);
 }
