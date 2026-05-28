@@ -47,6 +47,9 @@ RUN npx tsx scripts/fetch-custom-models.ts
 RUN find . -name "*.test.ts" -delete
 RUN find . -name "*.test.tsx" -delete
 
+# Compile migration script so all runtime images have dist/migrate.js without needing TypeScript sources
+RUN npx esbuild scripts/migrate.ts --bundle --platform=node --target=node22 --alias:@app=. --packages=external --outfile=dist/migrate.js --sourcemap
+
 # Copy front-api source (server.ts, app.ts, routes/, middleware/)
 WORKDIR /app/front-api
 COPY /front-api .
@@ -184,6 +187,9 @@ COPY --from=front-nextjs-build /app/front/public ./public
 COPY --from=base-deps /app/front/admin ./admin
 # Copy scripts directory
 COPY --from=base-deps /app/front/scripts ./scripts
+# Copy compiled migration script (built in base-deps, works without TypeScript sources)
+COPY --from=base-deps /app/front/dist/migrate.js ./dist/migrate.js
+COPY --from=base-deps /app/front/dist/migrate.js.map ./dist/migrate.js.map
 
 # Re-declare build args needed at runtime
 ARG NEXT_PUBLIC_DUST_API_URL

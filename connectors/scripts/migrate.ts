@@ -3,10 +3,10 @@ import { connectorsSequelize } from "@connectors/resources/storage";
 import { dbConfig } from "@connectors/resources/storage/config";
 import { assertNever } from "@dust-tt/client";
 import { execFileSync } from "child_process";
-import { makeScript } from "scripts/helpers";
 import { QueryTypes } from "sequelize";
 import type { MigrationParams } from "umzug";
 import { Umzug } from "umzug";
+import { makeScript } from "./helpers";
 
 const PHASES = ["pre-deploy", "post-deploy"] as const;
 type Phase = (typeof PHASES)[number];
