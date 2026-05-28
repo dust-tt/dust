@@ -22,6 +22,7 @@ import type {
 } from "@app/types/production_checks";
 import { Context } from "@temporalio/activity";
 import { v4 as uuidv4 } from "uuid";
+import {normalizeError} from "@app/types/shared/utils/error_utils";
 
 export const REGISTERED_CHECKS: Check[] = [
   {
@@ -134,7 +135,10 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
   for (const check of checks) {
     if (previouslyCompletedCheckNames.has(check.name)) {
       mainLogger.info(
-        { all_check_uuid: allCheckUuid, checkName: check.name },
+        {
+          all_check_uuid: allCheckUuid,
+          checkName: check.name
+        },
         "Check already completed in previous attempt, skipping",
       );
       continue;
@@ -169,96 +173,100 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
           heartbeat: { type: "skip", name: check.name, uuid },
           completedCheckNames,
         });
-      } else {
-        logger.info("Check starting");
 
-        let checkSucceeded = true;
-        let lastSuccessPayload: CheckSuccessPayload | undefined;
-        const errorMessages: string[] = [];
-        const allActionLinks: ActionLink[] = [];
-        const allFailurePayloads: CheckFailurePayload[] = [];
-
-        const reportSuccess = (payload?: CheckSuccessPayload) => {
-          logger.info({ payload }, "Check succeeded");
-          lastSuccessPayload = payload;
-        };
-        const reportFailure = (
-          payload: CheckFailurePayload,
-          message: string,
-        ) => {
-          logger.error(
-            { payload, errorMessage: message },
-            "Production check failed",
-          );
-          checkSucceeded = false;
-          allFailurePayloads.push({ ...payload, errorMessage: message });
-          errorMessages.push(message);
-          allActionLinks.push(...(payload.actionLinks ?? []));
-        };
-
-        sendCheckHeartbeat({
-          context,
-          heartbeat: { type: "start", name: check.name, uuid },
-          completedCheckNames,
-        });
-
-        await check.check(
-          check.name,
-          logger,
-          reportSuccess,
-          reportFailure,
-          async () => sendCheckHeartbeat({
-              context,
-              heartbeat: {
-                type: "processing",
-                name: check.name,
-                uuid,
-              },
-              completedCheckNames,
-            })
-        );
-
-        results.push({
-          checkName: check.name,
-          status: checkSucceeded ? "success" : "failure",
-          timestamp: new Date().toISOString(),
-          payload: checkSucceeded
-            ? (lastSuccessPayload ?? null)
-            : allFailurePayloads.length > 0
-              ? allFailurePayloads
-              : null,
-          errorMessage:
-            errorMessages.length > 0
-              ? [...new Set(errorMessages)].join("; ")
-              : null,
-          actionLinks: allActionLinks,
-        });
-
-        completedCheckNames.push(check.name);
-        sendCheckHeartbeat({
-          context,
-          heartbeat: {
-            type: checkSucceeded ? "success" : "failure",
-            name: check.name,
-            uuid,
-          },
-          completedCheckNames,
-        });
-
-        logger.info("Check done");
+        continue;
       }
-    } catch (e) {
-      logger.error({ error: e }, "Production check failed");
+
+      logger.info("Check starting");
+
+      let checkSucceeded = true;
+      let lastSuccessPayload: CheckSuccessPayload | undefined;
+      const errorMessages: string[] = [];
+      const allActionLinks: ActionLink[] = [];
+      const allFailurePayloads: CheckFailurePayload[] = [];
+
+      const reportSuccess = (payload?: CheckSuccessPayload) => {
+        logger.info({ payload }, "Check succeeded");
+        lastSuccessPayload = payload;
+      };
+      const reportFailure = (
+        payload: CheckFailurePayload,
+        message: string,
+      ) => {
+        logger.error(
+          { payload, errorMessage: message },
+          "Production check failed",
+        );
+        checkSucceeded = false;
+        allFailurePayloads.push({ ...payload, errorMessage: message });
+        errorMessages.push(message);
+        allActionLinks.push(...(payload.actionLinks ?? []));
+      };
+
+      sendCheckHeartbeat({
+        context,
+        heartbeat: { type: "start", name: check.name, uuid },
+        completedCheckNames,
+      });
+
+      await check.check(
+        check.name,
+        logger,
+        reportSuccess,
+        reportFailure,
+        async () => sendCheckHeartbeat({
+            context,
+            heartbeat: {
+              type: "processing",
+              name: check.name,
+              uuid,
+            },
+            completedCheckNames,
+          })
+      );
+
+      logger.info("Check done");
+
+      results.push({
+        checkName: check.name,
+        status: checkSucceeded ? "success" : "failure",
+        timestamp: new Date().toISOString(),
+        payload: checkSucceeded
+          ? (lastSuccessPayload ?? null)
+          : allFailurePayloads.length > 0
+            ? allFailurePayloads
+            : null,
+        errorMessage:
+          errorMessages.length > 0
+            ? [...new Set(errorMessages)].join("; ")
+            : null,
+        actionLinks: allActionLinks,
+      });
+      completedCheckNames.push(check.name);
+
+      sendCheckHeartbeat({
+        context,
+        heartbeat: {
+          type: checkSucceeded ? "success" : "failure",
+          name: check.name,
+          uuid,
+        },
+        completedCheckNames,
+      });
+
+    } catch (error) {
+      logger.error({ error }, "Production check failed");
+
       results.push({
         checkName: check.name,
         status: "failure",
         timestamp: new Date().toISOString(),
         payload: null,
-        errorMessage: e instanceof Error ? e.message : "Unknown error",
+        errorMessage: normalizeError(error).message,
         actionLinks: [],
       });
-
       completedCheckNames.push(check.name);
+
       sendCheckHeartbeat({
         context,
         heartbeat: { type: "failure", name: check.name, uuid },
