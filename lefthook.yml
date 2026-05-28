@@ -132,3 +132,53 @@ pre-commit:
       glob: "*.{js,jsx,ts,tsx,css,scss}"
       run: npm run format:lefthook -- {staged_files}
       stage_fixed: true
+
+    # Optional: lossless image optimization (skip with e.g. LEFTHOOK_EXCLUDE=optimize-png,optimize-jpeg,optimize-svg,optimize-gif)
+    # Install: brew install oxipng jpegoptim gifsicle svgo
+    optimize-png:
+      glob: "*.{png,apng}"
+      run: |
+        if command -v oxipng >/dev/null 2>&1; then
+          oxipng -o 4 --strip safe {staged_files}
+        else
+          echo "Warning: oxipng is not installed. Skipping PNG optimization."
+          echo "Install with: brew install oxipng"
+          exit 0
+        fi
+      stage_fixed: true
+
+    optimize-jpeg:
+      glob: "*.{jpg,jpeg}"
+      run: |
+        if command -v jpegoptim >/dev/null 2>&1; then
+          jpegoptim --strip-all --all-progressive {staged_files}
+        else
+          echo "Warning: jpegoptim is not installed. Skipping JPEG optimization."
+          echo "Install with: brew install jpegoptim"
+          exit 0
+        fi
+      stage_fixed: true
+
+    optimize-svg:
+      glob: "*.svg"
+      run: |
+        if command -v svgo >/dev/null 2>&1; then
+          svgo --multipass {staged_files}
+        else
+          echo "Warning: svgo is not installed. Skipping SVG optimization."
+          echo "Install with: brew install svgo"
+          exit 0
+        fi
+      stage_fixed: true
+
+    optimize-gif:
+      glob: "*.gif"
+      run: |
+        if command -v gifsicle >/dev/null 2>&1; then
+          gifsicle -b -O3 {staged_files}
+        else
+          echo "Warning: gifsicle is not installed. Skipping GIF optimization."
+          echo "Install with: brew install gifsicle"
+          exit 0
+        fi
+      stage_fixed: true
