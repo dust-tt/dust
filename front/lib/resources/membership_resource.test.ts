@@ -38,6 +38,20 @@ vi.mock("@app/lib/utils/cache", () => ({
         };
       }
     ),
+  bestEffortInvalidateCacheWithRedis: vi
+    .fn()
+    .mockImplementation(
+      <T, Args extends unknown[]>(
+        fn: CacheableFunction<JsonSerializable<T>, Args>,
+        resolver: (...args: Args) => string
+      ) => {
+        return async (...args: Args): Promise<void> => {
+          const key = `cacheWithRedis-${fn.name}-${resolver(...args)}`;
+          inMemoryCache.delete(key);
+          deletedKeys.push(key);
+        };
+      }
+    ),
   batchInvalidateCacheWithRedis: vi
     .fn()
     .mockImplementation(
