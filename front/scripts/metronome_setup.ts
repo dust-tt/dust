@@ -3156,7 +3156,7 @@ const POOL_CONTRACT_CREDIT_FILTER: NonNullable<
 };
 
 // Default alerts applied to all customers (no `customer_id` set on create):
-// fire when AWU credit / contract-credit / commit balance reaches thresholds.
+// fire when AWU credit / contract-credit / commit balance reaches 0.
 const ALERTS: AlertDef[] = [
   {
     name: "Default: Empty contract credit + commit balance (AWU)",
@@ -3164,24 +3164,6 @@ const ALERTS: AlertDef[] = [
     threshold: 0,
     uniqueness_key:
       "default-low-contract-credit-and-commit-balance-zero-awu-pooled",
-    credit_type: "AWU",
-    custom_field_filters: [POOL_CONTRACT_CREDIT_FILTER],
-  },
-  {
-    name: "Default: Low balance 100 credits (AWU)",
-    alert_type: "low_remaining_contract_credit_and_commit_balance_reached",
-    threshold: 100,
-    uniqueness_key:
-      "default-low-contract-credit-and-commit-balance-100-awu-pooled",
-    credit_type: "AWU",
-    custom_field_filters: [POOL_CONTRACT_CREDIT_FILTER],
-  },
-  {
-    name: "Default: Critical balance 10 credits (AWU)",
-    alert_type: "low_remaining_contract_credit_and_commit_balance_reached",
-    threshold: 10,
-    uniqueness_key:
-      "default-low-contract-credit-and-commit-balance-10-awu-pooled",
     credit_type: "AWU",
     custom_field_filters: [POOL_CONTRACT_CREDIT_FILTER],
   },

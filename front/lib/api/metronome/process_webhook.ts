@@ -1,6 +1,5 @@
 import {
   dispatchCreditsAdded,
-  dispatchLowBalance,
   dispatchPaygCapReached,
   dispatchPerUserCapReached,
   dispatchPerUserCapResolved,
@@ -438,10 +437,13 @@ export async function processMetronomeWebhook({
       break;
     }
     case "alerts.low_remaining_contract_credit_and_commit_balance_reached": {
-      // Pool-exhaustion / low-balance signal: total remaining (contract credits
-      // + commit balance) crossed a threshold. Multiple alerts are configured at
-      // different thresholds (100, 10, 0 credits). Route to the appropriate
-      // dispatcher based on the remaining balance reported by Metronome.
+      // Pool-exhaustion signal: total remaining (contract credits + commit balance)
+      // hit zero. The commit-only and contract-credit-only alerts fire too early
+      // when only one side is exhausted, so we listen to this combined alert
+      // exclusively.
+      //
+      // Gate on `remaining_balance` defensively in case a non-zero warning threshold
+      // is added under the same alert type later (e.g. early warning notification).
       const remaining = event.properties.remaining_balance;
       if (remaining == null || remaining <= 0) {
         await dispatchPoolExhausted({ workspace });
@@ -453,24 +455,11 @@ export async function processMetronomeWebhook({
           },
           "[Metronome Webhook] low_remaining_contract_credit_and_commit_balance_reached: pool exhausted dispatched"
         );
-      } else {
-        await dispatchLowBalance({ workspace, balanceAwu: remaining });
-        logger.info(
-          {
-            eventId: event.id,
-            workspaceId: workspace.sId,
-            remaining,
-          },
-          "[Metronome Webhook] low_remaining_contract_credit_and_commit_balance_reached: low balance dispatched"
-        );
       }
       break;
     }
     case "alerts.low_remaining_contract_credit_and_commit_balance_resolved": {
-      await dispatchCreditsAdded({
-        workspace,
-        newBalanceAwu: event.properties.remaining_balance ?? 0,
-      });
+      await dispatchCreditsAdded({ workspace });
       logger.info(
         {
           eventId: event.id,
