@@ -7,11 +7,11 @@
 // carries the /projects/ prefix, rewrite it to /pods/.
 
 import { toPodMountFilePath } from "@app/lib/api/files/mount_path";
-import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
+import { FeatureFlagModel } from "@app/lib/models/feature_flag";
 import { FileModel } from "@app/lib/resources/storage/models/files";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
-import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { ModelId } from "@app/types/shared/model_id";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { Op } from "sequelize";
@@ -49,21 +49,57 @@ makeScript(
       "[migrate_project_mount_paths_to_pods] Starting"
     );
 
-    await runOnAllWorkspaces(
-      async (workspace) => {
-        const auth = await Authenticator.internalBuilderForWorkspace(
-          workspace.sId
+    // Pre-filter to workspaces that have the `projects` feature flag enabled.
+    // Most workspaces do not, so this avoids paying per-workspace overhead for them.
+    let workspaces: { id: ModelId; sId: string }[];
+    if (wId) {
+      const workspace = await WorkspaceResource.fetchById(wId);
+      if (!workspace) {
+        throw new Error(`Workspace not found: ${wId}`);
+      }
+      const hasProjectsFlag = await FeatureFlagModel.findOne({
+        attributes: ["workspaceId"],
+        where: { name: "projects", workspaceId: workspace.id },
+      });
+      if (!hasProjectsFlag) {
+        logger.info(
+          { workspaceId: workspace.sId },
+          "[migrate_project_mount_paths_to_pods] Workspace does not have `projects` FF enabled, nothing to do"
         );
+        return;
+      }
+      workspaces = [{ id: workspace.id, sId: workspace.sId }];
+    } else {
+      const flagRows = await FeatureFlagModel.findAll({
+        attributes: ["workspaceId"],
+        where: {
+          name: "projects",
+          ...(fromWorkspaceModelId
+            ? { workspaceId: { [Op.gte]: fromWorkspaceModelId } }
+            : {}),
+        },
+        // WORKSPACE_ISOLATION_BYPASS: cross-workspace migration script that lists workspace IDs with the `projects` flag.
+        // @ts-expect-error -- Script operates across all workspaces.
+        // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+        dangerouslyBypassWorkspaceIsolationSecurity: true,
+      });
+      const enabledWorkspaceModelIds = Array.from(
+        new Set(flagRows.map((f) => f.workspaceId))
+      );
+      const resources = await WorkspaceResource.fetchByModelIds(
+        enabledWorkspaceModelIds
+      );
+      workspaces = resources.map((w) => ({ id: w.id, sId: w.sId }));
+    }
 
-        const hasProjectEnabled = await hasFeatureFlag(auth, "projects");
-        if (!hasProjectEnabled) {
-          logger.info(
-            { workspaceId: workspace.sId },
-            "[migrate_project_mount_paths_to_pods] Workspace does not have `projects` FF enabled, skipping"
-          );
-          return;
-        }
+    logger.info(
+      { workspaceCount: workspaces.length },
+      "[migrate_project_mount_paths_to_pods] Workspaces with `projects` FF enabled"
+    );
 
+    await concurrentExecutor(
+      workspaces,
+      async (workspace) => {
         logger.info(
           { workspaceId: workspace.sId, execute },
           "[migrate_project_mount_paths_to_pods] Starting workspace"
@@ -180,7 +216,7 @@ makeScript(
           "[migrate_project_mount_paths_to_pods] Workspace files done"
         );
       },
-      { wId, fromWorkspaceId: fromWorkspaceModelId }
+      { concurrency }
     );
 
     logger.info(
