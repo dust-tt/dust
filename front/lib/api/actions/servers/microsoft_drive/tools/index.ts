@@ -23,6 +23,25 @@ import { MICROSOFT_DRIVE_TOOLS_METADATA } from "@app/lib/api/actions/servers/mic
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type AdmZip from "adm-zip";
+import { z } from "zod";
+
+const driveChildItemSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  webUrl: z.string().optional(),
+  size: z.number().optional(),
+  folder: z.object({ childCount: z.number().optional() }).optional(),
+  file: z.object({ mimeType: z.string().optional() }).optional(),
+  parentReference: z
+    .object({
+      driveId: z.string().optional(),
+      id: z.string().optional(),
+      path: z.string().optional(),
+    })
+    .optional(),
+  createdDateTime: z.string().optional(),
+  lastModifiedDateTime: z.string().optional(),
+});
 
 const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
   search_in_files: async (
@@ -96,6 +115,107 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
       return new Err(
         new MCPError(
           normalizeError(err).message || "Failed to search drive items"
+        )
+      );
+    }
+  },
+
+  list_drive_items: async (
+    { driveId, siteId, parentFolderId, itemType = "all", top, skipToken },
+    { authInfo }
+  ) => {
+    const client = await getGraphClient(authInfo);
+    if (!client) {
+      return new Err(
+        new MCPError("Failed to authenticate with Microsoft Graph")
+      );
+    }
+
+    try {
+      const baseEndpoint = await getDriveItemEndpoint(
+        parentFolderId,
+        driveId,
+        siteId
+      );
+      const endpoint = parentFolderId
+        ? `${baseEndpoint}/children`
+        : `${baseEndpoint}/root/children`;
+
+      const pageSize = Math.min(Math.max(top ?? 50, 1), 200);
+
+      let request = client
+        .api(endpoint)
+        .select(
+          "id,name,webUrl,folder,file,size,parentReference,createdDateTime,lastModifiedDateTime"
+        )
+        .top(pageSize);
+      if (skipToken) {
+        request = request.query({ $skiptoken: skipToken });
+      }
+
+      const response = await request.get();
+
+      const parsedItems = z
+        .array(driveChildItemSchema)
+        .safeParse(response.value ?? []);
+      if (!parsedItems.success) {
+        return new Err(
+          new MCPError(
+            `Unexpected response shape from Microsoft Graph: ${parsedItems.error.message}`
+          )
+        );
+      }
+
+      const items = parsedItems.data
+        .filter(
+          (item) =>
+            itemType === "all" ||
+            (itemType === "folder" && item.folder) ||
+            (itemType === "file" && item.file)
+        )
+        .map((item) => ({
+          id: item.id,
+          name: item.name,
+          type: item.folder ? "folder" : "file",
+          webUrl: item.webUrl,
+          size: item.size,
+          childCount: item.folder?.childCount,
+          mimeType: item.file?.mimeType,
+          parentReference: item.parentReference,
+          createdDateTime: item.createdDateTime,
+          lastModifiedDateTime: item.lastModifiedDateTime,
+        }));
+
+      const nextLink: string | undefined = response["@odata.nextLink"];
+      let nextSkipToken: string | undefined;
+      if (nextLink) {
+        try {
+          nextSkipToken =
+            new URL(nextLink).searchParams.get("$skiptoken") ?? undefined;
+        } catch {
+          // Unparseable nextLink — leave undefined; caller can re-list.
+        }
+      }
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            {
+              items,
+              count: items.length,
+              nextSkipToken,
+              hasMore: !!nextSkipToken,
+            },
+            null,
+            2
+          ),
+        },
+      ]);
+    } catch (err) {
+      return new Err(
+        new MCPError(
+          normalizeError(err).message || "Failed to list drive items"
         )
       );
     }
