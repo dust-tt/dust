@@ -93,11 +93,11 @@ export const anthropicClaudeSonnetFourDotSixSetup: Setup = {
     "simple/no-tools/t-1/r-high": { shouldRun: false, debug: true },
     "simple/no-tools/t-1/r-maximal": { shouldRun: false },
     "calc/calc/t-default/r-medium": { shouldRun: false },
-    "calc/calc/t-default/r-none/force-tool-default": {
+    "calc/calc/t-default/r-default/force-tool-default": {
       shouldRun: false,
       debug: true,
     },
-    "calc/calc/t-default/r-none/force-tool": { shouldRun: false },
+    "calc/calc/t-default/r-default/force-tool": { shouldRun: false },
     "reasoning/no-tools/t-default/r-none": { shouldRun: false },
     "reasoning/no-tools/t-default/r-low": { shouldRun: true },
 

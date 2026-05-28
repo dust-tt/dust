@@ -65,12 +65,12 @@ export const geminiThreeDotOneProSetup: Setup = {
       shouldRun: true,
       debug: false,
     },
-    "calc/calc/t-default/r-none/force-tool-default": {
+    "calc/calc/t-default/r-default/force-tool-default": {
       checkers: [INPUT_CONFIGURATION_ERROR],
       shouldRun: true,
       debug: false,
     },
-    "calc/calc/t-default/r-none/force-tool": {
+    "calc/calc/t-default/r-default/force-tool": {
       checkers: [INPUT_CONFIGURATION_ERROR],
       shouldRun: true,
       debug: false,

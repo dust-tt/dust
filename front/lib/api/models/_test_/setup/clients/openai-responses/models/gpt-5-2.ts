@@ -96,10 +96,10 @@ export const openaiGptFiveDotTwoSetup: Setup = {
 
     "calc/calc/t-default/r-medium": { shouldRun: false },
 
-    "calc/calc/t-default/r-none/force-tool-default": {
+    "calc/calc/t-default/r-default/force-tool-default": {
       shouldRun: false,
     },
-    "calc/calc/t-default/r-none/force-tool": {
+    "calc/calc/t-default/r-default/force-tool": {
       shouldRun: false,
     },
 

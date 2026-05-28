@@ -247,8 +247,8 @@ export const TEST_KEYS = [
   "calc/calc/t-0.1/r-default",
   "calc/calc/t-0.1/r-medium",
 
-  "calc/calc/t-default/r-none/force-tool-default",
-  "calc/calc/t-default/r-none/force-tool",
+  "calc/calc/t-default/r-default/force-tool-default",
+  "calc/calc/t-default/r-default/force-tool",
 
   "reasoning/no-tools/t-default/r-none",
   "reasoning/no-tools/t-default/r-low",
@@ -428,7 +428,7 @@ export const TEST_CASES: Record<TestKey, TestCase> = {
     conversation: CALCULATOR_CONVERSATION,
     defaultCheckers: [TOOL_CALL_CALCULATOR],
   },
-  "calc/calc/t-default/r-none/force-tool-default": {
+  "calc/calc/t-default/r-default/force-tool-default": {
     config: {
       tools: [
         CALCULATOR_TOOL_SPEC,
@@ -438,12 +438,11 @@ export const TEST_CASES: Record<TestKey, TestCase> = {
           description: UNRELIABLE_CALCULATOR_TOOL_DESCRIPTION,
         },
       ],
-      reasoning: R_NONE,
     },
     conversation: CALCULATOR_CONVERSATION,
     defaultCheckers: [TOOL_CALL_CALCULATOR],
   },
-  "calc/calc/t-default/r-none/force-tool": {
+  "calc/calc/t-default/r-default/force-tool": {
     config: {
       tools: [
         CALCULATOR_TOOL_SPEC,
@@ -453,7 +452,6 @@ export const TEST_CASES: Record<TestKey, TestCase> = {
           description: UNRELIABLE_CALCULATOR_TOOL_DESCRIPTION,
         },
       ],
-      reasoning: R_NONE,
       forceTool: UNRELIABLE_CALCULATOR_TOOL_NAME,
     },
     conversation: CALCULATOR_CONVERSATION,
