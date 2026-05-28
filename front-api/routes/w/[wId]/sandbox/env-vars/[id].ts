@@ -1,6 +1,5 @@
 import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
 import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
-import type { SuccessResponseBody } from "@front-api/routes/types";
 import {
   WORKSPACE_SANDBOX_ENV_VAR_KINDS,
   type WorkspaceSandboxEnvVarType,
@@ -8,6 +7,7 @@ import {
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import type { SuccessResponseBody } from "@front-api/routes/types";
 import { z } from "zod";
 
 export type PatchWorkspaceSandboxEnvVarResponseBody = {
@@ -124,47 +124,44 @@ app.patch(
   }
 );
 
-app.delete(
-  "/",
-  async (ctx): HandlerResult<SuccessResponseBody> => {
-    const auth = ctx.get("auth");
-    const id = ctx.req.param("id");
-    if (!id) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid sandbox environment variable id.",
-        },
-      });
-    }
-
-    const envVar = await WorkspaceSandboxEnvVarResource.fetchById(auth, id);
-    if (!envVar) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Sandbox environment variable not found.",
-        },
-      });
-    }
-
-    const deleteResult = await envVar.delete(auth, {
-      context: getAuditLogContext(auth),
+app.delete("/", async (ctx): HandlerResult<SuccessResponseBody> => {
+  const auth = ctx.get("auth");
+  const id = ctx.req.param("id");
+  if (!id) {
+    return apiError(ctx, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid sandbox environment variable id.",
+      },
     });
-    if (deleteResult.isErr()) {
-      return apiError(ctx, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: deleteResult.error.message,
-        },
-      });
-    }
-
-    return ctx.json({ success: true });
   }
-);
+
+  const envVar = await WorkspaceSandboxEnvVarResource.fetchById(auth, id);
+  if (!envVar) {
+    return apiError(ctx, {
+      status_code: 404,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Sandbox environment variable not found.",
+      },
+    });
+  }
+
+  const deleteResult = await envVar.delete(auth, {
+    context: getAuditLogContext(auth),
+  });
+  if (deleteResult.isErr()) {
+    return apiError(ctx, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: deleteResult.error.message,
+      },
+    });
+  }
+
+  return ctx.json({ success: true });
+});
 
 export default app;

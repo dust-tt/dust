@@ -2,11 +2,11 @@ import config from "@app/lib/api/config";
 import { sendEmailWithTemplate } from "@app/lib/api/email";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
-import type { SuccessResponseBody } from "@front-api/routes/types";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsUser } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import type { SuccessResponseBody } from "@front-api/routes/types";
 import { escape } from "html-escaper";
 import { z } from "zod";
 

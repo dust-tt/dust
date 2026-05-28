@@ -1,11 +1,11 @@
 import type { KillSwitchType } from "@app/lib/poke/types";
 import { isKillSwitchType } from "@app/lib/poke/types";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
-import type { SuccessResponseBody } from "@front-api/routes/types";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import type { SuccessResponseBody } from "@front-api/routes/types";
 import { z } from "zod";
 
 export type GetKillSwitchesResponseBody = {

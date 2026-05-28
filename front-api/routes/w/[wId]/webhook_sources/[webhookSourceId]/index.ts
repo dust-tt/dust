@@ -1,10 +1,10 @@
 import { deleteWebhookSource } from "@app/lib/api/webhook_source";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
-import type { SuccessResponseBody } from "@front-api/routes/types";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import type { SuccessResponseBody } from "@front-api/routes/types";
 import { z } from "zod";
 
 import triggerEstimation from "./trigger-estimation";

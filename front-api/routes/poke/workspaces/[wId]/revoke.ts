@@ -1,10 +1,10 @@
 import { revokeAndTrackMembership } from "@app/lib/api/membership";
 import { getUserForWorkspace } from "@app/lib/api/user";
-import type { SuccessResponseBody } from "@front-api/routes/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import type { SuccessResponseBody } from "@front-api/routes/types";
 import { z } from "zod";
 
 const RevokeBodySchema = z.object({

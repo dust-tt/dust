@@ -1,13 +1,13 @@
 import { gracefullyStopAgentLoop } from "@app/lib/api/assistant/pubsub";
 import { terminateMessageGeneration } from "@app/lib/api/cancel";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import type { SuccessResponseBody } from "@front-api/routes/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { streamingTag } from "@front-api/middlewares/streaming";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import type { SuccessResponseBody } from "@front-api/routes/types";
 import { z } from "zod";
 
 const PostMessageEventBodySchema = z.object({
