@@ -3,6 +3,7 @@ import { checkRunningUpsertWorkflows } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import type { CheckUpsertQueueResponseType } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
+import { ensureIsSystemKey } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -65,23 +66,14 @@ const ParamsSchema = z.object({
  */
 const app = publicApiApp();
 
+app.use("*", ensureIsSystemKey());
+
 app.get(
   "/",
   validate("param", ParamsSchema),
   async (ctx): HandlerResult<CheckUpsertQueueResponseType> => {
     const auth = ctx.get("auth");
     const { dsId } = ctx.req.valid("param");
-
-    // Only allow system keys (connectors) to access this endpoint
-    if (!auth.isSystemKey()) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "data_source_auth_error",
-          message: "Only system keys can check the upsert queue.",
-        },
-      });
-    }
 
     const dataSource = await DataSourceResource.fetchByNameOrId(auth, dsId, {
       origin: "v1_data_sources_check_upsert_queue",

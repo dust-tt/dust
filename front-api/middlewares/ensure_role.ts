@@ -1,4 +1,4 @@
-import type { WorkspaceAwareCtx } from "@front-api/middlewares/ctx";
+import type { PublicApiCtx, WorkspaceAwareCtx } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { createMiddleware } from "hono/factory";
 
@@ -75,6 +75,23 @@ export const ensureIsDustSuperUser = () =>
         api_error: {
           type: "workspace_auth_error",
           message: "Only Dust super users can perform this action.",
+        },
+      });
+    }
+
+    await next();
+  });
+
+export const ensureIsSystemKey = () =>
+  createMiddleware<PublicApiCtx>(async (ctx, next) => {
+    const auth = ctx.get("auth");
+
+    if (!auth.isSystemKey()) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "Only system keys can perform this action.",
         },
       });
     }

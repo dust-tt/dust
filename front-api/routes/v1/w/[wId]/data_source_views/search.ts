@@ -2,6 +2,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import type { SearchDataSourceViewsResponseType } from "@dust-tt/client";
 import { SearchDataSourceViewsRequestSchema } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
+import { ensureIsSystemKey } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -12,22 +13,13 @@ import { validate } from "@front-api/middlewares/validator";
  */
 const app = publicApiApp();
 
+app.use("*", ensureIsSystemKey());
+
 app.get(
   "/",
   validate("query", SearchDataSourceViewsRequestSchema),
   async (ctx): HandlerResult<SearchDataSourceViewsResponseType> => {
     const auth = ctx.get("auth");
-
-    if (!auth.isSystemKey()) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: {
-          type: "workspace_not_found",
-          message: "This endpoint is only available to system api keys.",
-        },
-      });
-    }
-
     const { vaultId, dataSourceId, kind, vaultKind } = ctx.req.valid("query");
 
     const data_source_views = await DataSourceViewResource.search(auth, {

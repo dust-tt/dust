@@ -5,6 +5,7 @@ import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { GetFoldersResponseType } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
+import { ensureIsSystemKey } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -17,6 +18,8 @@ import fId from "./[fId]";
  * System API key only endpoint. Undocumented.
  */
 const app = publicApiApp();
+
+app.use("*", ensureIsSystemKey());
 
 app.route("/:fId", fId);
 
@@ -35,17 +38,6 @@ app.get(
   validate("query", QuerySchema),
   async (ctx): HandlerResult<GetFoldersResponseType> => {
     const auth = ctx.get("auth");
-
-    if (!auth.isSystemKey()) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "invalid_oauth_token_error",
-          message: "Only system keys are allowed to use this endpoint.",
-        },
-      });
-    }
-
     const { dsId } = ctx.req.valid("param");
 
     const dataSource = await DataSourceResource.fetchById(auth, dsId);

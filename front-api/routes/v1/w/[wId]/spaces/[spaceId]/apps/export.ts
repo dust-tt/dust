@@ -1,6 +1,7 @@
 import { exportApps } from "@app/lib/utils/apps";
 import type { GetAppsResponseType } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
+import { ensureIsSystemKey } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { withSpace } from "@front-api/middlewares/with_space";
@@ -12,22 +13,14 @@ import { withSpace } from "@front-api/middlewares/with_space";
 // Mounted at /api/v1/w/:wId/spaces/:spaceId/apps/export.
 const app = publicApiApp();
 
+app.use("*", ensureIsSystemKey());
+
 app.get(
   "/",
   withSpace({ requireCanRead: true }),
   async (ctx): HandlerResult<GetAppsResponseType> => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");
-
-    if (!auth.isSystemKey()) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "invalid_oauth_token_error",
-          message: "Only system keys are allowed to use this endpoint.",
-        },
-      });
-    }
 
     const apps = await exportApps(auth, space);
     if (apps.isErr()) {
