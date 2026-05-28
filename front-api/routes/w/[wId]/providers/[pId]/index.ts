@@ -23,10 +23,9 @@ const PostProviderBodySchema = z.object({
 // Mounted at /api/w/:wId/providers/:pId.
 const app = workspaceApp();
 
-app.use("*", ensureIsAdmin());
-
 app.post(
   "/",
+  ensureIsAdmin(),
   validate("json", PostProviderBodySchema),
   async (ctx): HandlerResult<PostProviderResponseBody> => {
     const auth = ctx.get("auth");
@@ -74,41 +73,45 @@ app.post(
   }
 );
 
-app.delete("/", async (ctx): HandlerResult<DeleteProviderResponseBody> => {
-  const auth = ctx.get("auth");
-  const owner = auth.getNonNullableWorkspace();
+app.delete(
+  "/",
+  ensureIsAdmin(),
+  async (ctx): HandlerResult<DeleteProviderResponseBody> => {
+    const auth = ctx.get("auth");
+    const owner = auth.getNonNullableWorkspace();
 
-  const pId = ctx.req.param("pId") ?? "";
+    const pId = ctx.req.param("pId") ?? "";
 
-  const provider = await ProviderModel.findOne({
-    where: {
-      workspaceId: owner.id,
-      providerId: pId,
-    },
-  });
+    const provider = await ProviderModel.findOne({
+      where: {
+        workspaceId: owner.id,
+        providerId: pId,
+      },
+    });
 
-  if (!provider) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "provider_not_found",
-        message: "The provider you're trying to delete was not found.",
+    if (!provider) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "provider_not_found",
+          message: "The provider you're trying to delete was not found.",
+        },
+      });
+    }
+
+    await ProviderModel.destroy({
+      where: {
+        workspaceId: owner.id,
+        providerId: pId,
+      },
+    });
+
+    return ctx.json({
+      provider: {
+        providerId: pId,
       },
     });
   }
-
-  await ProviderModel.destroy({
-    where: {
-      workspaceId: owner.id,
-      providerId: pId,
-    },
-  });
-
-  return ctx.json({
-    provider: {
-      providerId: pId,
-    },
-  });
-});
+);
 
 export default app;

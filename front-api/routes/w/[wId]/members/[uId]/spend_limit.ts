@@ -68,42 +68,45 @@ function spendLimitErrorToApiError(
 // Mounted at /api/w/:wId/members/:uId/spend_limit.
 const app = workspaceApp();
 
-app.use("*", ensureIsAdmin());
+app.get(
+  "/",
+  ensureIsAdmin(),
+  async (ctx): HandlerResult<GetUserSpendLimitResponseBody> => {
+    const auth = ctx.get("auth");
 
-app.get("/", async (ctx): HandlerResult<GetUserSpendLimitResponseBody> => {
-  const auth = ctx.get("auth");
+    if (!auth.getNonNullableSubscriptionResource().isMetronomeOnlyBilled) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "plan_limit_error",
+          message:
+            "Per-user spend limits are only available on Metronome-billed workspaces.",
+        },
+      });
+    }
 
-  if (!auth.getNonNullableSubscriptionResource().isMetronomeOnlyBilled) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "plan_limit_error",
-        message:
-          "Per-user spend limits are only available on Metronome-billed workspaces.",
-      },
-    });
+    const uId = ctx.req.param("uId") ?? "";
+    if (!uId) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Invalid query parameters, `uId` (string) is required.",
+        },
+      });
+    }
+
+    const result = await getUserSpendLimit(auth, { userId: uId });
+    if (result.isErr()) {
+      return apiError(ctx, spendLimitErrorToApiError(result.error));
+    }
+    return ctx.json(result.value);
   }
-
-  const uId = ctx.req.param("uId") ?? "";
-  if (!uId) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid query parameters, `uId` (string) is required.",
-      },
-    });
-  }
-
-  const result = await getUserSpendLimit(auth, { userId: uId });
-  if (result.isErr()) {
-    return apiError(ctx, spendLimitErrorToApiError(result.error));
-  }
-  return ctx.json(result.value);
-});
+);
 
 app.put(
   "/",
+  ensureIsAdmin(),
   validate("json", UpdateUserSpendLimitBodySchema),
   async (ctx): HandlerResult<PutUserSpendLimitResponseBody> => {
     const auth = ctx.get("auth");

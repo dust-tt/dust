@@ -27,10 +27,9 @@ export type ProviderCredentialResponseBody = {
 // Mounted at /api/w/:wId/provider_credentials/:providerId.
 const app = workspaceApp();
 
-app.use("*", ensureIsAdmin());
-
 app.post(
   "/",
+  ensureIsAdmin(),
   validate("param", ProviderCredentialParamsSchema),
   validate("json", ProviderCredentialBodySchema),
   async (ctx): HandlerResult<ProviderCredentialResponseBody> => {
@@ -93,6 +92,7 @@ app.post(
 
 app.patch(
   "/",
+  ensureIsAdmin(),
   validate("param", ProviderCredentialParamsSchema),
   validate("json", ProviderCredentialBodySchema),
   async (ctx): HandlerResult<ProviderCredentialResponseBody> => {
@@ -164,6 +164,7 @@ app.patch(
 
 app.delete(
   "/",
+  ensureIsAdmin(),
   validate("param", ProviderCredentialParamsSchema),
   async (ctx) => {
     const auth = ctx.get("auth");
