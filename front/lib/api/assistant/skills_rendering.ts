@@ -18,14 +18,6 @@ function renderSystemSkillMessage(text: string): UserMessageTypeModel {
   };
 }
 
-export function renderEnabledSkillUserMessages(
-  enabledSkills: EnabledSkill[]
-): UserMessageTypeModel[] {
-  return [...enabledSkills]
-    .sort((a, b) => a.name.localeCompare(b.name))
-    .map((skill) => renderEnabledSkillUserMessageFromInstructions({ skill }));
-}
-
 export function getEnabledSkillInstructions(skill: EnabledSkill): string {
   const { name, instructions, extendedSkill } = skill;
 
