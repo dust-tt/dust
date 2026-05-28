@@ -27,10 +27,10 @@ import { useEffect, useRef, useState } from "react";
 const MIN_AWU_CREDITS = 1;
 const MAX_AWU_CREDITS = 1_000_000;
 
-type SpendLimitKind = "unlimited" | "limited";
+type SpendLimitKind = "default" | "override";
 
 function isSpendLimitKind(value: string): value is SpendLimitKind {
-  return value === "unlimited" || value === "limited";
+  return value === "default" || value === "override";
 }
 
 interface EditSpendLimitModalProps {
@@ -68,7 +68,7 @@ export function EditSpendLimitModal({
     workspaceId: owner.sId,
   });
 
-  const [kind, setKind] = useState<SpendLimitKind>("limited");
+  const [kind, setKind] = useState<SpendLimitKind>("override");
   const [creditsInput, setCreditsInput] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
   const [validationMessage, setValidationMessage] = useState<string | null>(
@@ -86,11 +86,11 @@ export function EditSpendLimitModal({
     }
     switch (spendLimit.kind) {
       case "limited":
-        setKind("limited");
+        setKind("override");
         setCreditsInput(String(spendLimit.awuCredits));
         break;
       case "unlimited":
-        setKind("unlimited");
+        setKind("default");
         setCreditsInput("");
         break;
       default:
@@ -113,9 +113,9 @@ export function EditSpendLimitModal({
 
   function validate(): { ok: true; awuCredits: number } | { ok: false } {
     switch (kind) {
-      case "unlimited":
+      case "default":
         return { ok: true, awuCredits: 0 };
-      case "limited": {
+      case "override": {
         const parsed = Number(creditsInput);
         if (!Number.isInteger(parsed) || parsed < MIN_AWU_CREDITS) {
           setValidationMessage(
@@ -153,10 +153,10 @@ export function EditSpendLimitModal({
         | { kind: "unlimited" }
         | { kind: "limited"; awuCredits: number };
       switch (kind) {
-        case "unlimited":
+        case "default":
           limit = { kind: "unlimited" };
           break;
-        case "limited":
+        case "override":
           limit = { kind: "limited", awuCredits: result.awuCredits };
           break;
         default:
@@ -179,7 +179,7 @@ export function EditSpendLimitModal({
   const validateDisabled =
     isSaving ||
     isSpendLimitLoading ||
-    (kind === "limited" && creditsInput.length === 0);
+    (kind === "override" && creditsInput.length === 0);
   const primaryDisabled = isSpendLimitError
     ? isSaving || isSpendLimitLoading
     : validateDisabled;
@@ -233,17 +233,17 @@ export function EditSpendLimitModal({
               className="flex flex-col gap-3"
             >
               <RadioGroupItem
-                value="unlimited"
-                id="spend-limit-unlimited"
-                label="Unlimited spend"
+                value="default"
+                id="spend-limit-default"
+                label="Use workspace default"
               />
               <RadioGroupItem
-                value="limited"
-                id="spend-limit-limited"
-                label="Set credit amount"
+                value="override"
+                id="spend-limit-override"
+                label="Use custom limit"
               />
 
-              {kind === "limited" && (
+              {kind === "override" && (
                 <div className="flex flex-col gap-1.5 pl-6">
                   <div className="relative">
                     <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground dark:text-muted-foreground-night">
