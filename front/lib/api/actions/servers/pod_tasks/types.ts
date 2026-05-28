@@ -4,7 +4,7 @@ import { z } from "zod";
 
 const PodTasksDustPodInputSchema =
   ConfigurableToolInputSchemas[
-    INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+    INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
   ].optional();
 
 export const PodTasksCreateTaskSourceInputSchema = z.object({
