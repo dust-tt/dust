@@ -625,6 +625,7 @@ describe("google drive incremental sync folder metadata", () => {
       Date.now(),
       "page-token"
     );
+
     const syncToken = await GoogleDriveSyncTokenModel.findOne({
       where: {
         connectorId: connector.id,
