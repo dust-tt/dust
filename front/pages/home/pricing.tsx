@@ -11,6 +11,7 @@ import {
 } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
 import { appendUTMParams } from "@app/lib/utils/utm";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
   Button,
   CheckIcon,
@@ -42,8 +43,8 @@ type CtaStyle = "primary" | "outline" | "dark";
 interface SeatTier {
   id: "free" | "pro" | "max";
   name: string;
-  priceYear: number;
-  priceMonth: number;
+  priceYearDollars: number;
+  priceMonthDollars: number;
   credits: string;
 }
 
@@ -90,27 +91,31 @@ const SEAT_TIERS: SeatTier[] = [
   {
     id: "free",
     name: "Free seat",
-    priceYear: 0,
-    priceMonth: 0,
+    priceYearDollars: 0,
+    priceMonthDollars: 0,
     credits: "300 credits · Lifetime",
   },
   {
     id: "pro",
     name: "Pro seat",
-    priceYear: 24,
-    priceMonth: 30,
+    priceYearDollars: 24,
+    priceMonthDollars: 30,
     credits: "8,000 credits /seat/mo",
   },
   {
     id: "max",
     name: "Max seat",
-    priceYear: 120,
-    priceMonth: 150,
+    priceYearDollars: 120,
+    priceMonthDollars: 150,
     credits: "40,000 credits /seat/mo",
   },
 ];
 
-function FreeSeatIcon({ className }: { className?: string }) {
+interface FreeSeatIconProps {
+  className?: string;
+}
+
+function FreeSeatIcon({ className }: FreeSeatIconProps) {
   return (
     <svg
       className={className}
@@ -130,7 +135,11 @@ function FreeSeatIcon({ className }: { className?: string }) {
   );
 }
 
-function ProSeatIcon({ className }: { className?: string }) {
+interface ProSeatIconProps {
+  className?: string;
+}
+
+function ProSeatIcon({ className }: ProSeatIconProps) {
   return (
     <svg
       className={className}
@@ -150,7 +159,11 @@ function ProSeatIcon({ className }: { className?: string }) {
   );
 }
 
-function MaxSeatIcon({ className }: { className?: string }) {
+interface MaxSeatIconProps {
+  className?: string;
+}
+
+function MaxSeatIcon({ className }: MaxSeatIconProps) {
   return (
     <svg
       className={className}
@@ -527,12 +540,21 @@ function PlanCard({
     }
   };
 
-  const buttonVariant: "highlight" | "primary" | "outline" =
-    plan.ctaStyle === "primary"
-      ? "highlight"
-      : plan.ctaStyle === "dark"
-        ? "primary"
-        : "outline";
+  let buttonVariant: "highlight" | "primary" | "outline";
+  switch (plan.ctaStyle) {
+    case "primary":
+      buttonVariant = "highlight";
+      break;
+    case "dark":
+      buttonVariant = "primary";
+      break;
+    case "outline":
+      buttonVariant = "outline";
+      break;
+    default:
+      assertNeverAndIgnore(plan.ctaStyle);
+      buttonVariant = "outline";
+  }
 
   return (
     <div
@@ -559,8 +581,10 @@ function PlanCard({
           <div className="mb-5">
             <div className="flex flex-col gap-4">
               {plan.seatTiers.map((tier) => {
-                const tierPrice =
-                  billing === "yearly" ? tier.priceYear : tier.priceMonth;
+                const tierPriceDollars =
+                  billing === "yearly"
+                    ? tier.priceYearDollars
+                    : tier.priceMonthDollars;
                 const shortName = tier.name.replace(" seat", "");
                 const shortCredits = tier.credits;
                 const badge = SEAT_TIER_BADGE[tier.id];
@@ -583,7 +607,7 @@ function PlanCard({
                         </span>
                         <AnimatePresence mode="wait" initial={false}>
                           <motion.span
-                            key={tierPrice}
+                            key={tierPriceDollars}
                             initial={{ y: -4, opacity: 0 }}
                             animate={{ y: 0, opacity: 1 }}
                             exit={{ y: 4, opacity: 0 }}
@@ -593,7 +617,7 @@ function PlanCard({
                             }}
                             className="heading-sm tabular-nums text-foreground"
                           >
-                            ${tierPrice}
+                            ${tierPriceDollars}
                           </motion.span>
                         </AnimatePresence>
                       </div>
