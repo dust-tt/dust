@@ -58,6 +58,9 @@ export const isFriendsAndFamilyPlan = (planCode: string) =>
 export const isCreditPricedBusinessPlan = (planCode: string) =>
   planCode === CREDIT_PRICED_BUSINESS_PLAN_CODE;
 
+export const isBusinessPlanPrefix = (planCode: string) =>
+  planCode.startsWith("CP_BUSINESS_");
+
 // Everything else is free
 export const isFreePlan = (planCode: string) =>
   !isEntreprisePlanPrefix(planCode) &&

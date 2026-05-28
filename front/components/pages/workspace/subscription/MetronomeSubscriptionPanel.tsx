@@ -62,7 +62,7 @@ interface CancelMetronomeSubscriptionDialogProps {
   periodEndLabel: string | null;
 }
 
-function CancelMetronomeSubscriptionDialog({
+export function CancelMetronomeSubscriptionDialog({
   show,
   onClose,
   onValidate,
