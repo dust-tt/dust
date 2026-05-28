@@ -26,10 +26,6 @@ import {
   isProviderWhitelisted,
 } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
-import {
-  isIncludedInDefaultCompanyData,
-  isRemoteDatabase,
-} from "@app/lib/data_sources";
 import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
 import {
   isDustCompanyPlan,
