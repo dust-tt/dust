@@ -11,7 +11,7 @@ import {
   getChildrenAtFolderPath,
   getFileExplorerBucket,
 } from "@app/components/file_explorer/utils";
-import type { GCSMountEntry } from "@app/lib/api/files/gcs_mount/files";
+import type { FileSystemEntry } from "@app/lib/api/file_system/types";
 import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
 
 export interface FileExplorerPipeline {
@@ -31,12 +31,12 @@ interface GetFileExplorerPipelineParams {
   activeFilter: FileExplorerFilter;
   contentNodes: ContentNodeEntry[];
   currentFolderPath: string;
-  files: GCSMountEntry[];
+  files: FileSystemEntry[];
   searchQuery: string;
   sortMode: FileExplorerSortMode;
 }
 
-function toRelativePath(entry: GCSMountEntry): string {
+function toRelativePath(entry: FileSystemEntry): string {
   const slashIdx = entry.path.indexOf("/");
   return slashIdx >= 0 ? entry.path.slice(slashIdx + 1) : entry.path;
 }

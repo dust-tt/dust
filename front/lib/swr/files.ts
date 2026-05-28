@@ -63,15 +63,14 @@ export async function downloadPodFile(
 
 export async function downloadSandboxFile(
   owner: LightWorkspaceType,
-  conversationId: string,
-  filePath: string
+  canonicalPath: string
 ): Promise<Response> {
-  const url = `${config.getApiBaseUrl()}/api/w/${owner.sId}/assistant/conversations/${conversationId}/files/download`;
-  const res = await clientFetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ filePath }),
-  });
+  const encodedPath = canonicalPath
+    .split("/")
+    .map(encodeURIComponent)
+    .join("/");
+  const url = `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/path/${encodedPath}?download=1`;
+  const res = await clientFetch(url);
   if (!res.ok) {
     const errorData = await getErrorFromResponse(res);
     throw new Error(errorData.message);

@@ -30,6 +30,7 @@ import type { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
 import type { Authenticator } from "@app/lib/auth";
 import fileStorageConfig from "@app/lib/file_storage/config";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
@@ -461,9 +462,72 @@ export class DustFileSystem {
   }
 
   /**
+   * Enrich file entries with their FileResource sId (fileId).
+   * A single batch DB query covers all entries; pod files probe the legacy projects/ path too.
+   */
+  private async enrichWithFileIds(
+    entries: FileSystemEntry[]
+  ): Promise<FileSystemEntry[]> {
+    const fileEntries = entries.filter(
+      (e): e is FileSystemFileEntry => !e.isDirectory
+    );
+    if (fileEntries.length === 0) {
+      return entries;
+    }
+
+    // Collect all GCS paths to probe, including legacy projects/ variants for pod files.
+    const mountPaths: string[] = [];
+    for (const entry of fileEntries) {
+      const gcsPath = this.toMountFilePath(entry.path);
+
+      if (gcsPath) {
+        mountPaths.push(gcsPath);
+        const legacyPath = gcsPath.replace(/\/pods\//, "/projects/");
+        if (legacyPath !== gcsPath) {
+          mountPaths.push(legacyPath);
+        }
+      }
+    }
+
+    if (mountPaths.length === 0) {
+      return entries;
+    }
+
+    const fileResources = await FileResource.fetchByMountFilePaths(
+      this.auth,
+      mountPaths
+    );
+
+    // Map every known mountFilePath to its FileResource sId.
+    const byMountPath = new Map<string, string>();
+    for (const fr of fileResources) {
+      if (fr.mountFilePath) {
+        byMountPath.set(fr.mountFilePath, fr.sId);
+      }
+    }
+
+    return entries.map((entry) => {
+      if (entry.isDirectory) {
+        return entry;
+      }
+
+      const gcsPath = this.toMountFilePath(entry.path);
+      if (!gcsPath) {
+        return entry;
+      }
+
+      const legacyPath = gcsPath.replace(/\/pods\//, "/projects/");
+      const fileId =
+        byMountPath.get(gcsPath) ?? byMountPath.get(legacyPath) ?? null;
+
+      return { ...entry, fileId };
+    });
+  }
+
+  /**
    * List entries under `scopedPath`.
    * When `scopedPath` is omitted, lists across all readable mounts.
-   * Thumbnail URLs are populated here (not in the backend) since they point to our API.
+   * Thumbnail URLs and fileIds are populated here (not in the backend).
    */
   async list(
     scopedPath?: string,
@@ -480,6 +544,8 @@ export class DustFileSystem {
             }
       );
 
+    let rawEntries: FileSystemEntry[];
+
     if (scopedPath !== undefined) {
       const resolved = this.requireReadMount(scopedPath);
       if (resolved.isErr()) {
@@ -489,18 +555,19 @@ export class DustFileSystem {
         );
         return [];
       }
-      return withThumbnails(await this.backend.list(resolved.value.path, opts));
+      rawEntries = await this.backend.list(resolved.value.path, opts);
+    } else {
+      rawEntries = [];
+      for (const mount of this.mounts) {
+        if (!mount.permissions.canRead) {
+          continue;
+        }
+        const entries = await this.backend.list(`${mount.scopedPrefix}/`, opts);
+        rawEntries.push(...entries);
+      }
     }
 
-    const results: FileSystemEntry[] = [];
-    for (const mount of this.mounts) {
-      if (!mount.permissions.canRead) {
-        continue;
-      }
-      const entries = await this.backend.list(`${mount.scopedPrefix}/`, opts);
-      results.push(...withThumbnails(entries));
-    }
-    return results;
+    return this.enrichWithFileIds(withThumbnails(rawEntries));
   }
 
   /**

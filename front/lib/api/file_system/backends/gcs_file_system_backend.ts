@@ -194,9 +194,6 @@ export class GCSFileSystemBackend implements FileSystemBackend {
       return !name.includes(".processed.");
     });
 
-    // TODO(FILE SYSTEM MIGRATION): use FileResource.mountFilePath to look up FileResource records
-    // here by scoped path to populate fileId.
-
     const folderEntries: FileSystemEntry[] = folderPlaceholders.flatMap((f) => {
       const trimmed = f.name.replace(/\/$/, "");
       const name = trimmed.split("/").pop() ?? "";

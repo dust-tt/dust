@@ -1,8 +1,8 @@
-import type { GCSMountFileEntry } from "@app/lib/api/files/gcs_mount/files";
+import type { FileSystemFileEntry } from "@app/lib/api/file_system/types";
 import type { ConnectorProvider } from "@app/types/data_source";
 import type React from "react";
 
-export type FileEntry = GCSMountFileEntry & { kind: "file" };
+export type FileEntry = FileSystemFileEntry & { kind: "file" };
 export type FileEntryWithId = FileEntry & { fileId: string };
 
 export type ContentNodeEntry = {

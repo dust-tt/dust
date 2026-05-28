@@ -27,7 +27,7 @@ import {
   isFileExplorerMovableFile,
 } from "@app/components/file_explorer/utils";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
-import type { GCSMountEntry } from "@app/lib/api/files/gcs_mount/files";
+import type { FileSystemEntry } from "@app/lib/api/file_system/types";
 import { isInteractiveContentType } from "@app/types/files";
 import { Err, type Result } from "@app/types/shared/result";
 import {
@@ -47,7 +47,7 @@ interface FileExplorerProps {
   defaultViewMode?: ViewMode;
   emptyState?: React.ReactNode;
   hideTitleBorder?: boolean;
-  files: GCSMountEntry[];
+  files: FileSystemEntry[];
   getFileUrl: (path: string) => string;
   toolbarExtraActions?: React.ReactNode;
   isLoading: boolean;

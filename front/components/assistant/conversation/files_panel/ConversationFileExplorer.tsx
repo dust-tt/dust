@@ -42,8 +42,8 @@ export function ConversationFileExplorer({
   );
 
   const getFileResponse = useCallback(
-    (path: string) => downloadSandboxFile(owner, conversation.sId, path),
-    [conversation.sId, owner]
+    (path: string) => downloadSandboxFile(owner, path),
+    [owner]
   );
 
   const onFileDownload = useFileDownload({ getFileResponse });
