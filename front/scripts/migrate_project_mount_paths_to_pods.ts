@@ -89,7 +89,9 @@ makeScript(
       const resources = await WorkspaceResource.fetchByModelIds(
         enabledWorkspaceModelIds
       );
-      workspaces = resources.map((w) => ({ id: w.id, sId: w.sId }));
+      workspaces = resources
+        .map((w) => ({ id: w.id, sId: w.sId }))
+        .sort((a, b) => a.id - b.id);
     }
 
     logger.info(
