@@ -386,7 +386,7 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
 
   get_file_content: async (
     { fileId, offset = 0, limit = MAX_CONTENT_SIZE },
-    { authInfo }
+    { authInfo, agentLoopContext }
   ) => {
     const drive = await getDriveClient(authInfo);
     if (!drive) {
@@ -555,11 +555,14 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
 
       return new Ok(responseBlocks);
     } catch (err) {
-      return handleDriveAccessError(err, authInfo);
+      return handleFileAccessError(err, fileId, { authInfo, agentLoopContext });
     }
   },
 
-  get_spreadsheet: async ({ spreadsheetId }, { authInfo }) => {
+  get_spreadsheet: async (
+    { spreadsheetId },
+    { authInfo, agentLoopContext }
+  ) => {
     const sheets = await getSheetsClient(authInfo);
     if (!sheets) {
       return new Err(new MCPError("Failed to authenticate with Google Sheets"));
@@ -574,7 +577,10 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
         { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
       ]);
     } catch (err) {
-      return handleDriveAccessError(err, authInfo);
+      return handleFileAccessError(err, spreadsheetId, {
+        authInfo,
+        agentLoopContext,
+      });
     }
   },
 
@@ -585,7 +591,7 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
       majorDimension = "ROWS",
       valueRenderOption = "FORMATTED_VALUE",
     },
-    { authInfo }
+    { authInfo, agentLoopContext }
   ) => {
     const sheets = await getSheetsClient(authInfo);
     if (!sheets) {
@@ -604,9 +610,13 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
         { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
       ]);
     } catch (err) {
-      return handleDriveAccessError(err, authInfo);
+      return handleFileAccessError(err, spreadsheetId, {
+        authInfo,
+        agentLoopContext,
+      });
     }
   },
+
   list_comments: async (
     { fileId, pageSize = 100, pageToken, includeDeleted = false },
     { authInfo }
@@ -636,9 +646,10 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
       return handleDriveAccessError(err, authInfo);
     }
   },
+
   get_document_structure: async (
     { documentId, offset = 0, limit = 100 },
-    { authInfo }
+    { authInfo, agentLoopContext }
   ) => {
     const docs = await getDocsClient(authInfo);
     if (!docs) {
@@ -650,12 +661,16 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
       const markdown = formatDocumentStructure(res.data, offset, limit);
       return new Ok([{ type: "text" as const, text: markdown }]);
     } catch (err) {
-      return handleDriveAccessError(err, authInfo);
+      return handleFileAccessError(err, documentId, {
+        authInfo,
+        agentLoopContext,
+      });
     }
   },
+
   get_presentation_structure: async (
     { presentationId, offset = 0, limit = 10 },
-    { authInfo }
+    { authInfo, agentLoopContext }
   ) => {
     const slides = await getSlidesClient(authInfo);
     if (!slides) {
@@ -667,10 +682,17 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
       const markdown = formatPresentationStructure(res.data, offset, limit);
       return new Ok([{ type: "text" as const, text: markdown }]);
     } catch (err) {
-      return handleDriveAccessError(err, authInfo);
+      return handleFileAccessError(err, presentationId, {
+        authInfo,
+        agentLoopContext,
+      });
     }
   },
-  list_file_permissions: async ({ fileId, capabilities }, { authInfo }) => {
+
+  list_file_permissions: async (
+    { fileId, capabilities },
+    { authInfo, agentLoopContext }
+  ) => {
     const shareError = await ensureCapability(
       "canShare",
       capabilities?.canShare,
@@ -709,7 +731,7 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
-      return handleDriveAccessError(err, authInfo);
+      return handleFileAccessError(err, fileId, { authInfo, agentLoopContext });
     }
   },
 };
@@ -819,7 +841,10 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
     }
   },
 
-  copy_file: async ({ fileId, name, parentId, capabilities }, { authInfo }) => {
+  copy_file: async (
+    { fileId, name, parentId, capabilities },
+    { authInfo, agentLoopContext }
+  ) => {
     const accessError = await ensureCapability(
       "canCopy",
       capabilities?.canCopy,
@@ -851,7 +876,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         fields: "id,name,mimeType,webViewLink",
       });
     } catch (err) {
-      return handleDriveAccessError(err, authInfo);
+      return handleFileAccessError(err, fileId, { authInfo, agentLoopContext });
     }
 
     // Construct appropriate URL based on file type
