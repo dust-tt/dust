@@ -121,7 +121,7 @@ export class GCSSandboxMountAdapter implements SandboxMountAdapter {
       async (target) => {
         const mkdirResult = await sandbox.exec(
           auth,
-          `mkdir -p ${target.sandboxMountPoint}`,
+          `/bin/mkdir -p ${target.sandboxMountPoint}`,
           { user: "root" }
         );
         if (mkdirResult.isErr()) {
@@ -162,7 +162,7 @@ export class GCSSandboxMountAdapter implements SandboxMountAdapter {
         if (target.legacySandboxMountPoint) {
           const symlinkResult = await sandbox.exec(
             auth,
-            `ln -sfn ${target.sandboxMountPoint} ${target.legacySandboxMountPoint}`,
+            `/bin/ln -sfn ${target.sandboxMountPoint} ${target.legacySandboxMountPoint}`,
             { user: "root" }
           );
           if (symlinkResult.isErr()) {
@@ -267,7 +267,7 @@ function buildMountCommand({
     "--enable-hns=false",
   ].join(" ");
 
-  return `timeout 30 gcsfuse ${flags} ${bucket} ${mountPoint} 2>&1`;
+  return `/usr/bin/timeout 30 /usr/bin/gcsfuse ${flags} ${bucket} ${mountPoint} 2>&1`;
 }
 
 function buildTokenJson({
