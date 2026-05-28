@@ -65,6 +65,7 @@ import { extractFromString, serializeMention } from "@app/lib/mentions/format";
 import {
   getWorkspaceCreditPoolStatus,
   isApiBlocked,
+  isProgrammaticApiBlocked,
   isUserBlocked,
 } from "@app/lib/metronome/user_block";
 import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
@@ -2450,6 +2451,21 @@ async function checkMessagesLimit(
           }),
         },
       });
+    }
+
+    // Programmatic monthly cap: block programmatic calls when the cap is reached.
+    if (isProgrammaticUsage(auth, { userMessageOrigin: context.origin })) {
+      const programmaticBlocked = await isProgrammaticApiBlocked(owner.sId);
+      if (programmaticBlocked) {
+        return new Err({
+          status_code: 429,
+          api_error: {
+            type: "rate_limit_error",
+            message:
+              "Your workspace has reached its programmatic monthly spending cap. Please contact support to increase it.",
+          },
+        });
+      }
     }
   } else if (isProgrammaticUsage(auth, { userMessageOrigin: context.origin })) {
     const limitsResult = await checkProgrammaticUsageLimits(auth);

@@ -3,6 +3,7 @@ import { isPAYGEnabled } from "@app/lib/credits/credit_payg";
 import { listMetronomeBalances } from "@app/lib/metronome/client";
 import { getCreditTypeAwuId } from "@app/lib/metronome/constants";
 import { invalidateWorkspacePoolCredits } from "@app/lib/metronome/credit_balance";
+import { transitionProgrammaticCreditState } from "@app/lib/metronome/programmatic_credit_state_machine";
 import { clearUserCapBlocked } from "@app/lib/metronome/user_block";
 import { transitionUserCreditState } from "@app/lib/metronome/user_credit_state_machine";
 import type { WorkspaceCreditEvent } from "@app/lib/metronome/workspace_credit_state_machine";
@@ -167,6 +168,43 @@ async function transitionWorkspacePool(
   await transitionWorkspaceCreditState(workspace, event, {
     workspaceId: workspace.sId,
     paygEnabled,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Programmatic credit state dispatchers
+// ---------------------------------------------------------------------------
+
+export async function dispatchProgrammaticLowBalance({
+  workspace,
+  remainingCredits,
+}: {
+  workspace: WorkspaceResource;
+  remainingCredits: number;
+}): Promise<void> {
+  await transitionProgrammaticCreditState(workspace, {
+    type: "programmatic_low_balance",
+    remainingCredits,
+  });
+}
+
+export async function dispatchProgrammaticCapReached({
+  workspace,
+}: {
+  workspace: WorkspaceResource;
+}): Promise<void> {
+  await transitionProgrammaticCreditState(workspace, {
+    type: "programmatic_cap_reached",
+  });
+}
+
+export async function dispatchProgrammaticCapReset({
+  workspace,
+}: {
+  workspace: WorkspaceResource;
+}): Promise<void> {
+  await transitionProgrammaticCreditState(workspace, {
+    type: "programmatic_cap_reset",
   });
 }
 

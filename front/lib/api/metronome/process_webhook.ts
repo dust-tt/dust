@@ -5,6 +5,9 @@ import {
   dispatchPerUserCapReached,
   dispatchPerUserCapResolved,
   dispatchPoolExhausted,
+  dispatchProgrammaticCapReached,
+  dispatchProgrammaticCapReset,
+  dispatchProgrammaticLowBalance,
   syncPoolCreditStateFromBalance,
 } from "@app/lib/api/metronome/credit_state_dispatcher";
 import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
@@ -20,6 +23,11 @@ import {
   grantFreeCreditFromMetronomeSegment,
   YEARLY_MULTIPLIER,
 } from "@app/lib/credits/free";
+import {
+  PROGRAMMATIC_CAP_ALERT_NAME,
+  PROGRAMMATIC_CRITICAL_BALANCE_ALERT_NAME,
+  PROGRAMMATIC_LOW_BALANCE_ALERT_NAME,
+} from "@app/lib/metronome/alerts/programmatic_cap";
 import {
   getMetronomeDefaultUserCapAlert,
   getMetronomePerUserCap,
@@ -38,6 +46,7 @@ import {
   CONTRACT_CREDIT_TYPE_EXCESS,
   CONTRACT_CREDIT_TYPE_POOL,
   getCreditTypeAwuId,
+  getCreditTypeProgrammaticUsdId,
   getProductExcessCreditsId,
   PLAN_CODE_CUSTOM_FIELD_KEY,
 } from "@app/lib/metronome/constants";
@@ -607,6 +616,36 @@ export async function processMetronomeWebhook({
         if (handleResult.isErr()) {
           return handleResult;
         }
+      } else if (
+        event.properties.credit_type_id === getCreditTypeProgrammaticUsdId()
+      ) {
+        // Programmatic monthly cap alerts. Three alerts exist per workspace
+        // with distinct names; route to the matching dispatcher.
+        const alertName = event.properties.alert_name ?? "";
+        if (alertName.startsWith(PROGRAMMATIC_CAP_ALERT_NAME)) {
+          await dispatchProgrammaticCapReached({ workspace });
+        } else if (
+          alertName.startsWith(PROGRAMMATIC_CRITICAL_BALANCE_ALERT_NAME)
+        ) {
+          await dispatchProgrammaticLowBalance({
+            workspace,
+            remainingCredits: 10,
+          });
+        } else if (alertName.startsWith(PROGRAMMATIC_LOW_BALANCE_ALERT_NAME)) {
+          await dispatchProgrammaticLowBalance({
+            workspace,
+            remainingCredits: 100,
+          });
+        }
+        logger.info(
+          {
+            eventId: event.id,
+            workspaceId: workspace.sId,
+            alertName,
+            currentSpend: event.properties.current_spend,
+          },
+          "[Metronome Webhook] spend_threshold_reached: programmatic alert dispatched"
+        );
       } else {
         await dispatchPaygCapReached({ workspace });
         logger.info(
@@ -651,6 +690,14 @@ export async function processMetronomeWebhook({
         if (handleResult.isErr()) {
           return handleResult;
         }
+      } else if (
+        event.properties.credit_type_id === getCreditTypeProgrammaticUsdId()
+      ) {
+        await dispatchProgrammaticCapReset({ workspace });
+        logger.info(
+          { eventId: event.id, workspaceId: workspace.sId },
+          "[Metronome Webhook] spend_threshold_resolved: programmatic cap reset dispatched"
+        );
       } else {
         logger.info(
           { eventId: event.id, workspaceId: workspace.sId },

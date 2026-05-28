@@ -25,7 +25,10 @@ import {
   normalizeConversationVisibility,
 } from "@app/lib/api/v1/backward_compatibility";
 import type { Authenticator } from "@app/lib/auth";
-import { isApiBlocked } from "@app/lib/metronome/user_block";
+import {
+  isApiBlocked,
+  isProgrammaticApiBlocked,
+} from "@app/lib/metronome/user_block";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -196,6 +199,19 @@ async function handler(
                   type: "rate_limit_error",
                   message:
                     "Your workspace has run out of credits. Please purchase more credits to continue.",
+                },
+              });
+            }
+            if (
+              workspace.metronomeCustomerId &&
+              (await isProgrammaticApiBlocked(workspace.sId))
+            ) {
+              return apiError(req, res, {
+                status_code: 429,
+                api_error: {
+                  type: "rate_limit_error",
+                  message:
+                    "Your workspace has reached its programmatic monthly spending cap.",
                 },
               });
             }

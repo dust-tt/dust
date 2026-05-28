@@ -5,7 +5,10 @@ import type { DustError } from "@app/lib/error";
 import { getWebhookRequestsBucket } from "@app/lib/file_storage";
 import { isGCSPreconditionFailedError } from "@app/lib/file_storage/types";
 import { matchPayload, parseMatcherExpression } from "@app/lib/matcher";
-import { isApiBlocked } from "@app/lib/metronome/user_block";
+import {
+  isApiBlocked,
+  isProgrammaticApiBlocked,
+} from "@app/lib/metronome/user_block";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import type { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
@@ -273,6 +276,20 @@ async function checkWorkspaceRateLimit({
   ) {
     errorMessage =
       "Your workspace has run out of credits. Please purchase more credits to continue.";
+  }
+
+  // Programmatic monthly cap gate: if the programmatic cap is reached, reject
+  // early for programmatic triggers.
+  if (
+    !errorMessage &&
+    plan &&
+    isCreditPricedPlan(plan) &&
+    owner.metronomeCustomerId &&
+    trigger.executionMode === "programmatic" &&
+    (await isProgrammaticApiBlocked(owner.sId))
+  ) {
+    errorMessage =
+      "Your workspace has reached its programmatic monthly spending cap.";
   }
 
   /**

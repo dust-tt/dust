@@ -31,6 +31,35 @@ export function isWorkspacePoolCreditState(
   );
 }
 
+// Workspace-level programmatic credit state. Persisted on
+// `workspaces.programmaticCreditState`, driven by the programmatic credit
+// state machine in `front/lib/metronome/programmatic_credit_state_machine.ts`.
+//
+//   active:                  monthly cap has ample headroom
+//   active_low_balance:      ≤100 credits remaining before cap
+//   active_critical_balance: ≤10 credits remaining before cap
+//   depleted:                monthly cap reached; programmatic API calls blocked
+export const WORKSPACE_PROGRAMMATIC_CREDIT_STATES = [
+  "active",
+  "active_low_balance",
+  "active_critical_balance",
+  "depleted",
+] as const;
+
+export type WorkspaceProgrammaticCreditState =
+  (typeof WORKSPACE_PROGRAMMATIC_CREDIT_STATES)[number];
+
+export function isWorkspaceProgrammaticCreditState(
+  value: unknown
+): value is WorkspaceProgrammaticCreditState {
+  return (
+    typeof value === "string" &&
+    WORKSPACE_PROGRAMMATIC_CREDIT_STATES.includes(
+      value as WorkspaceProgrammaticCreditState
+    )
+  );
+}
+
 export const CREDIT_TYPES = ["free", "payg", "committed", "excess"] as const;
 
 export type CreditType = (typeof CREDIT_TYPES)[number];
