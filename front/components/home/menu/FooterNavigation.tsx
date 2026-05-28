@@ -34,10 +34,28 @@ export function FooterNavigation() {
               )}
               {item?.items?.length &&
                 item.items
-                  .filter((item) => item.title.trim() !== "")
+                  .filter(
+                    (item) => item.title.trim() !== "" || item.inlineItems
+                  )
                   .map((item, itemIndex) => (
                     <React.Fragment key={item.href ?? `item-${itemIndex}`}>
-                      {item.href ? (
+                      {item.inlineItems ? (
+                        <div className="flex items-center gap-2">
+                          {item.inlineItems.map((inlineItem, inlineIndex) => (
+                            <React.Fragment key={inlineItem.href}>
+                              {inlineIndex > 0 && (
+                                <span className="text-muted-foreground">/</span>
+                              )}
+                              <FooterLink
+                                href={inlineItem.href}
+                                isExternal={inlineItem.isExternal}
+                              >
+                                {inlineItem.title}
+                              </FooterLink>
+                            </React.Fragment>
+                          ))}
+                        </div>
+                      ) : item.href ? (
                         <FooterLink
                           href={item.href}
                           isExternal={item.isExternal}
