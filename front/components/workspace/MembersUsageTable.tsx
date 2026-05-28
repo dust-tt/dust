@@ -5,6 +5,7 @@ import {
   type MembershipSeatType,
 } from "@app/types/memberships";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
 import {
   ActionCreditCoinsIcon,
   DataTable,
@@ -16,8 +17,13 @@ import {
   SeatProIcon,
   Tooltip,
 } from "@dust-tt/sparkle";
-import type { CellContext, ColumnDef } from "@tanstack/react-table";
+import type {
+  CellContext,
+  ColumnDef,
+  PaginationState,
+} from "@tanstack/react-table";
 import type React from "react";
+import { useMemo } from "react";
 
 type RowData = {
   sId: string;
@@ -212,7 +218,7 @@ const nameColumn: ColumnDef<RowData, string> = {
   accessorFn: (row) => row.name,
   cell: (info: Info) => (
     <DataTable.CellContent
-      avatarUrl={info.row.original.image ?? undefined}
+      avatarUrl={info.row.original.image ?? ANONYMOUS_USER_IMAGE_URL}
       roundedAvatar
     >
       <div>
@@ -361,22 +367,90 @@ function buildColumns({
 interface MembersUsageTableProps {
   members: MemberUsageType[];
   isLoading: boolean;
-  searchTerm: string;
   seatTypeFilter: MembershipSeatType | "none" | null;
   isSeatBased: boolean;
   onChangeSeat: (member: MemberUsageType) => void;
   onEditSpendLimit: (member: MemberUsageType) => void;
+  pagination: PaginationState;
+  setPagination: (pagination: PaginationState) => void;
+  totalRowCount: number;
 }
 
 export function MembersUsageTable({
   members,
   isLoading,
-  searchTerm,
   seatTypeFilter,
   isSeatBased,
   onChangeSeat,
   onEditSpendLimit,
+  pagination,
+  setPagination,
+  totalRowCount,
 }: MembersUsageTableProps) {
+  // Name/email search is handled server-side; only filter by seat type here.
+  const filtered = useMemo(
+    () =>
+      members.filter((m) => {
+        if (seatTypeFilter === "none" && m.seatType !== null) {
+          return false;
+        }
+        if (
+          seatTypeFilter !== null &&
+          seatTypeFilter !== "none" &&
+          m.seatType &&
+          !m.seatType.startsWith(seatTypeFilter)
+        ) {
+          return false;
+        }
+        return true;
+      }),
+    [members, seatTypeFilter]
+  );
+
+  const rows: RowData[] = useMemo(
+    () =>
+      filtered.map((m) => ({
+        sId: m.sId,
+        name: m.name,
+        email: m.email,
+        image: m.image,
+        seatType: m.seatType,
+        memberUsageLimit: m.memberUsageLimit,
+        consumedAwuCredits: m.consumedAwuCredits,
+        spendLimitAwuCredits: m.spendLimitAwuCredits,
+        billingFrequency: m.billingFrequency,
+        scheduledSeatType: m.scheduledSeatType,
+        scheduledSeatChangeAt: m.scheduledSeatChangeAt,
+        menuItems: [
+          ...(isSeatBased
+            ? [
+                {
+                  kind: "item" as const,
+                  label: "Change seat type",
+                  onClick: () => onChangeSeat(m),
+                },
+              ]
+            : []),
+          {
+            kind: "item" as const,
+            label: "Edit spend limit",
+            onClick: () => onEditSpendLimit(m),
+          },
+        ],
+      })),
+    [filtered, isSeatBased, onChangeSeat, onEditSpendLimit]
+  );
+
+  const displayPeriodColumn = useMemo(
+    () => rows.some((row) => !!row.billingFrequency),
+    [rows]
+  );
+
+  const columns = useMemo(
+    () => buildColumns({ isSeatBased, displayPeriodColumn }),
+    [isSeatBased, displayPeriodColumn]
+  );
+
   if (isLoading) {
     return (
       <div className="flex w-full flex-col space-y-2">
@@ -387,65 +461,13 @@ export function MembersUsageTable({
     );
   }
 
-  const lowerSearch = searchTerm.toLowerCase();
-  const filtered = members.filter((m) => {
-    if (
-      searchTerm &&
-      !m.name.toLowerCase().includes(lowerSearch) &&
-      !(m.email ?? "").toLowerCase().includes(lowerSearch)
-    ) {
-      return false;
-    }
-    if (seatTypeFilter === "none" && m.seatType !== null) {
-      return false;
-    }
-    if (
-      seatTypeFilter !== null &&
-      seatTypeFilter !== "none" &&
-      m.seatType &&
-      !m.seatType.startsWith(seatTypeFilter)
-    ) {
-      return false;
-    }
-    return true;
-  });
-
-  const rows: RowData[] = filtered.map((m) => ({
-    sId: m.sId,
-    name: m.name,
-    email: m.email,
-    image: m.image,
-    seatType: m.seatType,
-    memberUsageLimit: m.memberUsageLimit,
-    consumedAwuCredits: m.consumedAwuCredits,
-    spendLimitAwuCredits: m.spendLimitAwuCredits,
-    billingFrequency: m.billingFrequency,
-    scheduledSeatType: m.scheduledSeatType,
-    scheduledSeatChangeAt: m.scheduledSeatChangeAt,
-    menuItems: [
-      ...(isSeatBased
-        ? [
-            {
-              kind: "item" as const,
-              label: "Change seat type",
-              onClick: () => onChangeSeat(m),
-            },
-          ]
-        : []),
-      {
-        kind: "item" as const,
-        label: "Edit spend limit",
-        onClick: () => onEditSpendLimit(m),
-      },
-    ],
-  }));
-
-  const displayPeriodColumn = rows.some((row) => !!row.billingFrequency);
-
   return (
     <DataTable
       data={rows}
-      columns={buildColumns({ isSeatBased, displayPeriodColumn })}
+      columns={columns}
+      pagination={pagination}
+      setPagination={setPagination}
+      totalRowCount={totalRowCount}
     />
   );
 }

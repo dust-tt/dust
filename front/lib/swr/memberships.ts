@@ -215,30 +215,53 @@ export function useMembersLookup({
 
 export function useMembersUsage({
   workspaceId,
+  searchTerm = "",
+  pageIndex,
+  pageSize,
   disabled,
 }: {
   workspaceId: string;
+  searchTerm?: string;
+  pageIndex: number;
+  pageSize: number;
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
-  const defaultUrl = `/api/w/${workspaceId}/credits/members-usage`;
-  const [url, setUrl] = useState(defaultUrl);
-
   const membersUsageFetcher: Fetcher<GetMembersUsageResponseBody> = fetcher;
-  const { data, error } = useSWRWithDefaults(url, membersUsageFetcher, {
-    disabled,
+  const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(searchTerm);
+
+  useEffect(() => {
+    const debouncedSearch = () => {
+      setDebouncedSearchTerm(searchTerm);
+    };
+
+    debounce(debounceHandle, debouncedSearch, 300);
+  }, [searchTerm]);
+
+  const searchParams = new URLSearchParams({
+    offset: (pageIndex * pageSize).toString(),
+    limit: pageSize.toString(),
   });
+  if (debouncedSearchTerm.trim().length > 0) {
+    searchParams.set("search", debouncedSearchTerm.trim());
+  }
+
+  const { data, error } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/credits/members-usage?${searchParams.toString()}`,
+    membersUsageFetcher,
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      disabled,
+    }
+  );
 
   return {
     membersUsage: data?.members ?? emptyArray(),
     isMembersUsageLoading: !error && !data && !disabled,
     isMembersUsageError: !!error,
     totalMembersUsage: data?.total ?? 0,
-    hasNextPage: !!data?.nextPageUrl,
-    loadNextPage: useCallback(
-      () => data?.nextPageUrl && setUrl(data.nextPageUrl),
-      [data?.nextPageUrl]
-    ),
   };
 }
 

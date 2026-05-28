@@ -6,10 +6,8 @@ import {
 import { fetchPerUserAwuUsage } from "@app/lib/metronome/per_user_usage";
 import { buildSeatDataByUserId, type SeatData } from "@app/lib/metronome/seats";
 import type { BillingFrequency } from "@app/lib/metronome/types";
-import {
-  MembershipResource,
-  type MembershipsPaginationParams,
-} from "@app/lib/resources/membership_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { resolveEffectiveSpendLimitAwuCredits } from "@app/lib/spend_limits/effective";
 import type { MembershipSeatType } from "@app/types/memberships";
 import { z } from "zod";
@@ -39,7 +37,6 @@ export type MemberUsageType = {
 export type GetMembersUsageResponseBody = {
   members: MemberUsageType[];
   total: number;
-  nextPageUrl?: string;
 };
 
 export const DEFAULT_MEMBERS_USAGE_PAGE_LIMIT = 50;
@@ -52,32 +49,13 @@ export const MembersUsagePaginationSchema = z.object({
     .min(0)
     .max(MAX_MEMBERS_USAGE_PAGE_LIMIT)
     .catch(DEFAULT_MEMBERS_USAGE_PAGE_LIMIT),
-  orderColumn: z.literal("createdAt").catch("createdAt"),
-  orderDirection: z.enum(["asc", "desc"]).catch("desc"),
-  lastValue: z.coerce.number().optional().catch(undefined),
+  offset: z.coerce.number().int().min(0).catch(0),
+  search: z.string().optional().catch(undefined),
 });
 
 export type MembersUsagePaginationInput = z.infer<
   typeof MembersUsagePaginationSchema
 >;
-
-function buildUrlWithParams(
-  currentUrl: string,
-  newParams: MembershipsPaginationParams | undefined
-) {
-  if (!newParams) {
-    return undefined;
-  }
-  const url = new URL(currentUrl);
-  Object.entries(newParams).forEach(([key, value]) => {
-    if (value === null || value === undefined) {
-      url.searchParams.delete(key);
-    } else {
-      url.searchParams.set(key, value.toString());
-    }
-  });
-  return url.pathname + url.search;
-}
 
 async function fetchPerUserUsageCreditsForMembersTable({
   metronomeCustomerId,
@@ -167,27 +145,40 @@ async function fetchEffectivePerUserSpendLimits({
 export async function getMembersUsage({
   auth,
   paginationParams,
-  currentUrl,
 }: {
   auth: Authenticator;
   paginationParams: MembersUsagePaginationInput;
-  currentUrl: string;
 }): Promise<GetMembersUsageResponseBody> {
   const workspace = auth.getNonNullableWorkspace();
   const subscription = auth.subscription();
   const { metronomeCustomerId } = workspace;
   const metronomeContractId = subscription?.metronomeContractId ?? null;
 
+  const usersResult = await UserResource.searchUsers(auth, {
+    searchTerm: paginationParams.search ?? "",
+    offset: paginationParams.offset,
+    limit: paginationParams.limit,
+  });
+
+  if (usersResult.isErr()) {
+    return { members: [], total: 0 };
+  }
+
+  const { users, total } = usersResult.value;
+
+  if (users.length === 0) {
+    return { members: [], total };
+  }
+
+  // Fetch membership details and Metronome data in parallel for the
+  // current page of users.
   const [
     membershipsResult,
     perUserTotalConsumedCredits,
     seatDataByUserId,
     perUserSpendLimits,
   ] = await Promise.all([
-    MembershipResource.getActiveMemberships({
-      workspace,
-      paginationParams,
-    }),
+    MembershipResource.getActiveMemberships({ workspace, users }),
     fetchPerUserUsageCreditsForMembersTable({
       metronomeCustomerId: metronomeCustomerId ?? null,
       metronomeContractId,
@@ -203,7 +194,7 @@ export async function getMembersUsage({
   ]);
   const { perUserOverrides, defaultAwuCredits } = perUserSpendLimits;
 
-  const { memberships, total, nextPageParams } = membershipsResult;
+  const { memberships } = membershipsResult;
 
   const scheduledByUserId =
     await MembershipResource.getScheduledMembershipsByUserIdInWorkspace({
@@ -211,24 +202,25 @@ export async function getMembersUsage({
       userIds: memberships.map((m) => m.userId),
     });
 
-  const membersUsage: MemberUsageType[] = memberships.flatMap((m) => {
-    if (!m.user) {
+  const membershipByUserId = new Map(memberships.map((m) => [m.userId, m]));
+  const membersUsage: MemberUsageType[] = users.flatMap((u) => {
+    const membership = membershipByUserId.get(u.id);
+    if (!membership) {
       return [];
     }
-    const userId = m.user.sId;
+    const userId = u.sId;
     const totalConsumedCredits = perUserTotalConsumedCredits.get(userId) ?? 0;
     const seatData = seatDataByUserId.get(userId);
     const awuAllocation = seatData?.awuAllocation ?? 0;
-
-    const scheduled = scheduledByUserId.get(m.userId);
+    const scheduled = scheduledByUserId.get(membership.userId);
 
     return [
       {
         sId: userId,
-        name: m.user.name,
-        email: m.user.email ?? null,
-        image: m.user.imageUrl ?? null,
-        seatType: m.seatType ?? null,
+        name: u.name,
+        email: u.email ?? null,
+        image: u.imageUrl ?? null,
+        seatType: membership.seatType ?? null,
         memberUsageLimit: awuAllocation > 0 ? awuAllocation : null,
         consumedAwuCredits: totalConsumedCredits,
         billingFrequency: seatData?.billingFrequency ?? null,
@@ -245,6 +237,5 @@ export async function getMembersUsage({
   return {
     members: membersUsage,
     total,
-    nextPageUrl: buildUrlWithParams(currentUrl, nextPageParams),
   };
 }

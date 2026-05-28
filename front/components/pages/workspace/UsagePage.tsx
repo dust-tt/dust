@@ -41,6 +41,7 @@ import {
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
+import type { PaginationState } from "@tanstack/react-table";
 import { useCallback, useEffect, useState } from "react";
 
 function formatCredits(credits: number): string {
@@ -77,29 +78,21 @@ function getResetDateLabel(resetDate: string): string {
   return `Resets on the ${resetDay}${suffix} of each month. Next reset: ${resetMonth} ${resetDay}${suffix}.`;
 }
 
+const DEFAULT_PAGE_SIZE = 25;
+
 interface CreditPoolUsageBarProps {
   totalCredits: number;
-  consumedByUsersCredits: number;
-  consumedByProgrammaticCredits: number;
+  consumedCredits: number;
 }
 
 function CreditPoolUsageBar({
   totalCredits,
-  consumedByUsersCredits,
-  consumedByProgrammaticCredits,
+  consumedCredits,
 }: CreditPoolUsageBarProps) {
-  const usersPercentage =
+  const consumedPercentage =
     totalCredits > 0
-      ? Math.min((consumedByUsersCredits / totalCredits) * 100, 100)
+      ? Math.min((consumedCredits / totalCredits) * 100, 100)
       : 0;
-  const programmaticPercentage =
-    totalCredits > 0
-      ? Math.min(
-          (consumedByProgrammaticCredits / totalCredits) * 100,
-          100 - usersPercentage
-        )
-      : 0;
-  const totalConsumedPercentage = usersPercentage + programmaticPercentage;
 
   return (
     <Page.Vertical gap="xs" align="stretch">
@@ -107,40 +100,20 @@ function CreditPoolUsageBar({
         className="flex h-2 w-full overflow-hidden rounded-full bg-muted-foreground/10 dark:bg-muted-foreground-night/10"
         role="progressbar"
         aria-label="Workspace Credits Pool usage"
-        aria-valuenow={Math.round(totalConsumedPercentage)}
+        aria-valuenow={Math.round(consumedPercentage)}
         aria-valuemin={0}
         aria-valuemax={100}
       >
         <Tooltip
           tooltipTriggerAsChild
-          label={`Users: ${formatCredits(consumedByUsersCredits)} credits`}
+          label={`${formatCredits(consumedCredits)} credits consumed`}
           trigger={
             <div
-              className="h-full shrink-0 bg-yellow-400 transition-all"
-              style={{ width: `${usersPercentage}%` }}
+              className="h-full shrink-0 bg-highlight transition-all dark:bg-highlight-night"
+              style={{ width: `${consumedPercentage}%` }}
             />
           }
         />
-        <Tooltip
-          tooltipTriggerAsChild
-          label={`Programmatic usage: ${formatCredits(consumedByProgrammaticCredits)} credits`}
-          trigger={
-            <div
-              className="h-full shrink-0 bg-purple-500 transition-all"
-              style={{ width: `${programmaticPercentage}%` }}
-            />
-          }
-        />
-      </div>
-      <div className="flex gap-4 text-xs text-muted-foreground dark:text-muted-foreground-night">
-        <span className="flex items-center gap-1.5">
-          <span className="h-2 w-2 bg-yellow-400" />
-          Users
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="h-2 w-2 bg-purple-500" />
-          Programmatic usage
-        </span>
       </div>
     </Page.Vertical>
   );
@@ -155,6 +128,15 @@ export function UsagePage() {
   const [seatTypeFilter, setSeatTypeFilter] = useState<
     MembershipSeatType | "none" | null
   >(null);
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: DEFAULT_PAGE_SIZE,
+  });
+
+  // Reset to first page whenever the search term changes.
+  useEffect(() => {
+    setPagination({ pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE });
+  }, [searchTerm]);
   const [showBuyCreditDialog, setShowBuyCreditDialog] = useState(false);
   const [changeSeatMember, setChangeSeatMember] =
     useState<MemberUsageType | null>(null);
@@ -170,8 +152,7 @@ export function UsagePage() {
 
   const {
     totalRemainingCredits,
-    consumedByUsersCredits,
-    consumedByProgrammaticCredits,
+    totalActiveCredits,
     resetDate,
     isAwuPoolSummaryLoading,
     isAwuPoolSummaryError,
@@ -185,9 +166,13 @@ export function UsagePage() {
       disabled: !showBuyCreditDialog,
     });
 
-  const { membersUsage, isMembersUsageLoading } = useMembersUsage({
-    workspaceId: owner.sId,
-  });
+  const { membersUsage, isMembersUsageLoading, totalMembersUsage } =
+    useMembersUsage({
+      workspaceId: owner.sId,
+      searchTerm,
+      pageIndex: pagination.pageIndex,
+      pageSize: pagination.pageSize,
+    });
 
   const { hasAvailableSeats } = useWorkspaceSeatAvailability({
     workspaceId: owner.sId,
@@ -223,11 +208,11 @@ export function UsagePage() {
     [plan, subscription.paymentFailingSince, hasAvailableSeats]
   );
 
-  const totalConsumedCredits =
-    consumedByUsersCredits + consumedByProgrammaticCredits;
-  const initialTotalCredits = Math.round(
-    totalRemainingCredits + totalConsumedCredits
+  const totalConsumedCredits = Math.max(
+    0,
+    totalActiveCredits - totalRemainingCredits
   );
+  const initialTotalCredits = totalActiveCredits;
 
   const resetDateLabel = getResetDateLabel(resetDate);
 
@@ -307,8 +292,7 @@ export function UsagePage() {
           {!isAwuPoolSummaryLoading && !isAwuPoolSummaryError && (
             <CreditPoolUsageBar
               totalCredits={initialTotalCredits}
-              consumedByUsersCredits={consumedByUsersCredits}
-              consumedByProgrammaticCredits={consumedByProgrammaticCredits}
+              consumedCredits={totalConsumedCredits}
             />
           )}
 
@@ -329,7 +313,7 @@ export function UsagePage() {
           </span>
           <div className="flex flex-row gap-2">
             <SearchInput
-              placeholder="Search members (email)"
+              placeholder="Search members"
               value={searchTerm}
               name="search"
               onChange={setSearchTerm}
@@ -390,11 +374,13 @@ export function UsagePage() {
           <MembersUsageTable
             members={membersUsage}
             isLoading={isMembersUsageLoading}
-            searchTerm={searchTerm}
             seatTypeFilter={seatTypeFilter}
             isSeatBased={isSeatBased}
             onChangeSeat={setChangeSeatMember}
             onEditSpendLimit={setEditSpendLimitMember}
+            pagination={pagination}
+            setPagination={setPagination}
+            totalRowCount={totalMembersUsage}
           />
         </Page.Vertical>
 
