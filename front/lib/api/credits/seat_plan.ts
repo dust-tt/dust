@@ -12,12 +12,11 @@ import {
   type SeatAwuCreditsPeriod,
 } from "@app/lib/metronome/seat_types";
 import logger from "@app/logger/logger";
-import { apiError } from "@app/logger/withlogging";
 import type { SupportedCurrency } from "@app/types/currency";
-import type { WithAPIErrorResponse } from "@app/types/error";
 import type { MembershipSeatType } from "@app/types/memberships";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import type { NextApiRequest, NextApiResponse } from "next";
 
 export type SeatBillingFrequency =
   | "weekly"
@@ -61,32 +60,26 @@ export function getSeatBillingFrequency(
   }
 }
 
-export async function handleSeatPlanRequest(
-  req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<SeatPlanResponseBody>>,
-  auth: Authenticator
-): Promise<void> {
-  if (req.method !== "GET") {
-    return apiError(req, res, {
-      status_code: 405,
-      api_error: {
-        type: "method_not_supported_error",
-        message: "Only GET is supported.",
-      },
-    });
+export class SeatPlanError extends Error {
+  constructor(
+    readonly type:
+      | "not_configured"
+      | "currency_resolution_failed"
+      | "rate_schedule_fetch_failed",
+    readonly cause?: Error
+  ) {
+    super(type);
   }
+}
 
+export async function getSeatPlan(
+  auth: Authenticator
+): Promise<Result<SeatPlanResponseBody, SeatPlanError>> {
   const workspace = auth.getNonNullableWorkspace();
   const contract = await getActiveContract(workspace.sId);
 
   if (!contract || !contract.rate_card_id) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "internal_server_error",
-        message: "Workspace is not configured for Metronome billing.",
-      },
-    });
+    return new Err(new SeatPlanError("not_configured"));
   }
 
   const creditTypeResult = await getCreditTypeFromContract(contract);
@@ -99,19 +92,15 @@ export async function handleSeatPlanRequest(
       },
       "[Metronome] Failed to resolve contract currency for seat plan"
     );
-    return apiError(req, res, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: "Failed to resolve currency for seat plan.",
-      },
-    });
+    return new Err(
+      new SeatPlanError("currency_resolution_failed", creditTypeResult.error)
+    );
   }
   const { currency } = creditTypeResult.value;
 
   // MAU contracts don't bill per-seat — return an empty seat plan up-front.
   if (isMauContract(contract)) {
-    return res.status(200).json({});
+    return new Ok({});
   }
 
   // Build `productId → seatType` from contract subscriptions so we can resolve
@@ -122,7 +111,7 @@ export async function handleSeatPlanRequest(
     productSeatTypes
   );
   if (seatTypesByProductId.size === 0) {
-    return res.status(200).json({});
+    return new Ok({});
   }
 
   // Resolve each seat's billing frequency from the matching subscription on
@@ -178,21 +167,16 @@ export async function handleSeatPlanRequest(
       }
     }
   } catch (err) {
+    const normalized = normalizeError(err);
     logger.warn(
       {
         workspaceId: workspace.sId,
         rateCardId: contract.rate_card_id,
-        err: normalizeError(err),
+        err: normalized,
       },
       "[Metronome] Failed to fetch rate schedule for seat products"
     );
-    return apiError(req, res, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: "Failed to fetch rate schedule for seat products.",
-      },
-    });
+    return new Err(new SeatPlanError("rate_schedule_fetch_failed", normalized));
   }
 
   const response: SeatPlanResponseBody = {};
@@ -216,5 +200,5 @@ export async function handleSeatPlanRequest(
       billingFrequency: billingFrequencyBySeatType.get(seatType) ?? "monthly",
     };
   }
-  return res.status(200).json(response);
+  return new Ok(response);
 }
