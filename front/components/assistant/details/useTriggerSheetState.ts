@@ -213,6 +213,7 @@ export function useTriggerSheetState({
             webhookSourceViewId: triggerData.webhookSourceViewId ?? "",
             executionPerDayLimitOverride:
               triggerData.executionPerDayLimitOverride ?? 0,
+            status: triggerData.status,
           };
 
           if (triggerData.sId) {
