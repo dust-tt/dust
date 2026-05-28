@@ -1,6 +1,7 @@
 import config from "@app/lib/api/config";
 import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/utils";
 import { getTemporalClientForConnectorsNamespace } from "@app/lib/temporal";
+import type { Logger } from "@app/logger/logger";
 import {
   getZendeskGarbageCollectionWorkflowId,
   getZendeskSyncWorkflowId,
@@ -99,17 +100,23 @@ async function listAllConnectorsForProvider(provider: ConnectorProvider) {
   return connectors;
 }
 
-function makeWorkflowIdsListQuery(workflowIds: string[]): string {
-  return `WorkflowId IN (${workflowIds
-    .map((workflowId) => `"${workflowId}"`)
-    .join(",")}) AND ExecutionStatus = "Running"`;
+function makeWorkflowIdsListQuery(workflowIds: string[]): string | null {
+  if (workflowIds.length === 0) {
+    return null;
+  }
+
+  const workflowIdLiterals = workflowIds
+    .map((value) => JSON.stringify(value))
+    .join(",");
+
+  return `WorkflowId IN (${workflowIdLiterals}) AND ExecutionStatus = "Running"`;
 }
 
 async function listRunningWorkflowIds(
   client: Client,
   workflowIds: string[],
-  logger: Parameters<CheckFunction>[1],
-  heartbeat: Parameters<CheckFunction>[4]
+  logger: Logger,
+  heartbeat: () => void
 ) {
   const runningWorkflowIds = new Set<string>();
 
@@ -119,8 +126,13 @@ async function listRunningWorkflowIds(
     heartbeat();
 
     try {
+      const query = makeWorkflowIdsListQuery(workflowIdBatch);
+      if (query === null) {
+        continue;
+      }
+
       for await (const workflow of client.workflow.list({
-        query: makeWorkflowIdsListQuery(workflowIdBatch),
+        query,
       })) {
         runningWorkflowIds.add(workflow.workflowId);
       }
