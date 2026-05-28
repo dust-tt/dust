@@ -2,21 +2,18 @@ import {
   getAgentConfiguration,
   restoreAgentConfiguration,
 } from "@app/lib/api/assistant/configuration/agent";
+import type { SuccessResponseBody } from "@front-api/routes/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
-
-export type RestoreAgentConfigurationResponseBody = {
-  success: true;
-};
 
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/restore.
 const app = workspaceApp();
 
 app.post(
   "/",
-  async (ctx): HandlerResult<RestoreAgentConfigurationResponseBody> => {
+  async (ctx): HandlerResult<SuccessResponseBody> => {
     const auth = ctx.get("auth");
     const aId = ctx.req.param("aId") ?? "";
 

@@ -2,6 +2,7 @@ import config from "@app/lib/api/config";
 import { sendEmailWithTemplate } from "@app/lib/api/email";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
+import type { SuccessResponseBody } from "@front-api/routes/types";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsUser } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -18,8 +19,6 @@ export type PostRequestFeatureAccessBody = z.infer<
   typeof PostRequestFeatureAccessBodySchema
 >;
 
-type PostRequestFeatureAccessResponseBody = { success: true };
-
 const MAX_ACCESS_REQUESTS_PER_DAY = 30;
 
 // Mounted at /api/w/:wId/labs/request_access.
@@ -29,7 +28,7 @@ app.post(
   "/",
   ensureIsUser(),
   validate("json", PostRequestFeatureAccessBodySchema),
-  async (ctx): HandlerResult<PostRequestFeatureAccessResponseBody> => {
+  async (ctx): HandlerResult<SuccessResponseBody> => {
     const auth = ctx.get("auth");
     const user = auth.getNonNullableUser();
 

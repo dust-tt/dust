@@ -5,6 +5,7 @@ import {
 } from "@app/lib/api/data_sources/managed_permissions";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
+import type { SuccessResponseBody } from "@front-api/routes/types";
 import type {
   ConnectorPermission,
   ContentNode,
@@ -22,10 +23,6 @@ export type GetDataSourcePermissionsResponseBody<
   T extends ConnectorPermission = ConnectorPermission,
 > = {
   resources: (T extends "read" ? ContentNodeWithParent : ContentNode)[];
-};
-
-export type SetDataSourcePermissionsResponseBody = {
-  success: true;
 };
 
 const SetConnectorPermissionsRequestBodySchema = z.object({
@@ -159,7 +156,7 @@ app.get(
 app.post(
   "/",
   validate("json", SetConnectorPermissionsRequestBodySchema),
-  async (ctx): HandlerResult<SetDataSourcePermissionsResponseBody> => {
+  async (ctx): HandlerResult<SuccessResponseBody> => {
     const auth = ctx.get("auth");
     const dsId = ctx.req.param("dsId") ?? "";
 

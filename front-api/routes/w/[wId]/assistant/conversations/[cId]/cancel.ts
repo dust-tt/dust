@@ -1,6 +1,7 @@
 import { gracefullyStopAgentLoop } from "@app/lib/api/assistant/pubsub";
 import { terminateMessageGeneration } from "@app/lib/api/cancel";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import type { SuccessResponseBody } from "@front-api/routes/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -8,10 +9,6 @@ import { streamingTag } from "@front-api/middlewares/streaming";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export type PostMessageEventResponseBody = {
-  success: true;
-};
 
 const PostMessageEventBodySchema = z.object({
   action: z.enum(["cancel", "gracefully_stop", "interrupt"]),
@@ -26,7 +23,7 @@ app.use("*", streamingTag);
 app.post(
   "/",
   validate("json", PostMessageEventBodySchema),
-  async (ctx): HandlerResult<PostMessageEventResponseBody> => {
+  async (ctx): HandlerResult<SuccessResponseBody> => {
     const auth = ctx.get("auth");
     const conversationId = ctx.req.param("cId") ?? "";
 

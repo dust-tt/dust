@@ -2,6 +2,7 @@ import {
   archiveAgentConfiguration,
   getAgentConfiguration,
 } from "@app/lib/api/assistant/configuration/agent";
+import type { SuccessResponseBody } from "@front-api/routes/types";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 
@@ -10,16 +11,12 @@ import exportRoute from "./export";
 import observability from "./observability";
 import restore from "./restore";
 
-export type PokeDeleteAgentConfigurationResponseBody = {
-  success: true;
-};
-
 // Mounted at /api/poke/workspaces/:wId/agent_configurations/:aId.
 const app = pokeApp();
 
 app.delete(
   "/",
-  async (ctx): HandlerResult<PokeDeleteAgentConfigurationResponseBody> => {
+  async (ctx): HandlerResult<SuccessResponseBody> => {
     const auth = ctx.get("auth");
     const aId = ctx.req.param("aId") ?? "";
 

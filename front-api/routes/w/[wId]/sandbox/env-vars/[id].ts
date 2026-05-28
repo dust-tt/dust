@@ -1,5 +1,6 @@
 import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
 import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
+import type { SuccessResponseBody } from "@front-api/routes/types";
 import {
   WORKSPACE_SANDBOX_ENV_VAR_KINDS,
   type WorkspaceSandboxEnvVarType,
@@ -8,10 +9,6 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export type DeleteWorkspaceSandboxEnvVarResponseBody = {
-  success: true;
-};
 
 export type PatchWorkspaceSandboxEnvVarResponseBody = {
   envVar: WorkspaceSandboxEnvVarType;
@@ -129,7 +126,7 @@ app.patch(
 
 app.delete(
   "/",
-  async (ctx): HandlerResult<DeleteWorkspaceSandboxEnvVarResponseBody> => {
+  async (ctx): HandlerResult<SuccessResponseBody> => {
     const auth = ctx.get("auth");
     const id = ctx.req.param("id");
     if (!id) {

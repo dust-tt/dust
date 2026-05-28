@@ -2,20 +2,17 @@ import {
   getAgentConfiguration,
   restoreAgentConfiguration,
 } from "@app/lib/api/assistant/configuration/agent";
+import type { SuccessResponseBody } from "@front-api/routes/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
-
-export type PokeRestoreAgentConfigurationResponseBody = {
-  success: true;
-};
 
 // Mounted at /api/poke/workspaces/:wId/agent_configurations/:aId/restore.
 const app = pokeApp();
 
 app.post(
   "/",
-  async (ctx): HandlerResult<PokeRestoreAgentConfigurationResponseBody> => {
+  async (ctx): HandlerResult<SuccessResponseBody> => {
     const auth = ctx.get("auth");
     const aId = ctx.req.param("aId") ?? "";
 

@@ -1,5 +1,6 @@
 import { deleteWebhookSource } from "@app/lib/api/webhook_source";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
+import type { SuccessResponseBody } from "@front-api/routes/types";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -8,14 +9,6 @@ import { z } from "zod";
 
 import triggerEstimation from "./trigger-estimation";
 import views from "./views";
-
-export type DeleteWebhookSourceResponseBody = {
-  success: true;
-};
-
-export type PatchWebhookSourceResponseBody = {
-  success: true;
-};
 
 // Field values are validated as `unknown` so unexpected types are silently
 // dropped by the handler instead of rejected with 400 — preserving the
@@ -32,7 +25,7 @@ app.patch(
   "/",
   ensureIsAdmin(),
   validate("json", PatchWebhookSourceBodySchema),
-  async (ctx): HandlerResult<PatchWebhookSourceResponseBody> => {
+  async (ctx): HandlerResult<SuccessResponseBody> => {
     const auth = ctx.get("auth");
     const webhookSourceId = ctx.req.param("webhookSourceId") ?? "";
 
@@ -78,7 +71,7 @@ app.patch(
 app.delete(
   "/",
   ensureIsAdmin(),
-  async (ctx): HandlerResult<DeleteWebhookSourceResponseBody> => {
+  async (ctx): HandlerResult<SuccessResponseBody> => {
     const auth = ctx.get("auth");
     const webhookSourceId = ctx.req.param("webhookSourceId") ?? "";
 

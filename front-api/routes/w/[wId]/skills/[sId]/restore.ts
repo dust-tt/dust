@@ -1,19 +1,16 @@
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import type { SuccessResponseBody } from "@front-api/routes/types";
 import { isString } from "@app/types/shared/utils/general";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
-
-export type RestoreSkillConfigurationResponseBody = {
-  success: true;
-};
 
 // Mounted at /api/w/:wId/skills/:sId/restore.
 const app = workspaceApp();
 
 app.post(
   "/",
-  async (ctx): HandlerResult<RestoreSkillConfigurationResponseBody> => {
+  async (ctx): HandlerResult<SuccessResponseBody> => {
     const auth = ctx.get("auth");
     const sId = ctx.req.param("sId");
 
