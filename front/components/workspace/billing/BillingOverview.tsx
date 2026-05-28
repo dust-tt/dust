@@ -72,15 +72,24 @@ export function BillingOverview({ owner, subscription }: BillingOverviewProps) {
     isBusinessPlanPrefix(subscription.plan.code);
   const isCancellationScheduled =
     subscription.endDate !== null || subscription.requestCancelAt !== null;
+  const subscriptionEndsAtMs =
+    subscription.endDate ??
+    (isCancellationScheduled ? (invoice?.currentPeriodEndMs ?? null) : null);
   const canCancelSubscription = isCancellablePlan && !isCancellationScheduled;
   const canReactivateSubscription =
-    isCancellablePlan && isCancellationScheduled;
+    isCancellablePlan &&
+    isCancellationScheduled &&
+    subscriptionEndsAtMs !== null &&
+    subscriptionEndsAtMs > Date.now();
   const isCancellingSubscription =
     isCancelling || isCancellingMetronomeContract;
   const isReactivatingSubscription =
     isReactivating || isReactivatingMetronomeContract;
   const periodEndLabel = invoice
     ? formatTimestampToFriendlyDate(invoice.currentPeriodEndMs, "short")
+    : null;
+  const subscriptionEndLabel = subscriptionEndsAtMs
+    ? formatTimestampToFriendlyDate(subscriptionEndsAtMs, "short")
     : null;
 
   if (isMetronomeInvoiceLoading) {
@@ -107,8 +116,14 @@ export function BillingOverview({ owner, subscription }: BillingOverviewProps) {
             <div className="truncate text-base font-semibold text-foreground dark:text-foreground-night">
               {subscription.plan.name}
             </div>
-            <div className="rounded-md bg-gray-100 px-2 py-1 text-xs text-gray-900 dark:bg-gray-100-night dark:text-gray-900-night">
-              Current
+            <div
+              className={
+                isCancellationScheduled
+                  ? "rounded-md bg-warning-100 px-2 py-1 text-xs text-warning-900 dark:bg-warning-100-night dark:text-warning-900-night"
+                  : "rounded-md bg-gray-100 px-2 py-1 text-xs text-gray-900 dark:bg-gray-100-night dark:text-gray-900-night"
+              }
+            >
+              {isCancellationScheduled ? "Cancelled" : "Current"}
             </div>
           </div>
           {canReactivateSubscription ? (
@@ -144,22 +159,30 @@ export function BillingOverview({ owner, subscription }: BillingOverviewProps) {
 
         {invoice ? (
           <div className="flex flex-col gap-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
+            {subscriptionEndLabel && (
+              <div className="flex items-center gap-2 font-semibold text-foreground dark:text-foreground-night">
+                <Icon visual={ActionCalendarIcon} size="xs" />
+                <span>Subscription end: {subscriptionEndLabel}</span>
+              </div>
+            )}
             <div className="flex items-center gap-2">
               <Icon visual={HistoryIcon} size="xs" />
               <span>
                 Frequency: {formatBillingPeriod(invoice.billingPeriod)}
               </span>
             </div>
-            <div className="flex items-center gap-2">
-              <Icon visual={ActionCalendarIcon} size="xs" />
-              <span>
-                Next billing date:{" "}
-                {formatTimestampToFriendlyDate(
-                  invoice.currentPeriodEndMs,
-                  "short"
-                )}
-              </span>
-            </div>
+            {!isCancellationScheduled && (
+              <div className="flex items-center gap-2">
+                <Icon visual={ActionCalendarIcon} size="xs" />
+                <span>
+                  Next billing date:{" "}
+                  {formatTimestampToFriendlyDate(
+                    invoice.currentPeriodEndMs,
+                    "short"
+                  )}
+                </span>
+              </div>
+            )}
             <div className="flex items-center gap-2">
               <Icon visual={ArrowUpOnSquareIcon} size="xs" />
               <span>
