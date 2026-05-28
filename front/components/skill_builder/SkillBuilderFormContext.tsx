@@ -1,6 +1,10 @@
 import { actionSchema } from "@app/components/shared/tools_picker/types";
 import { SKILL_REINFORCEMENT_MODES } from "@app/types/assistant/skill_configuration";
 import { editorUserSchema } from "@app/types/editors";
+import {
+  isSupportedFileContentType,
+  type SupportedFileContentType,
+} from "@app/types/files";
 import { createContext } from "react";
 import type { UseFormReturn } from "react-hook-form";
 import { z } from "zod";
@@ -15,10 +19,28 @@ export const attachedKnowledgeSchema = z.object({
 });
 export type AttachedKnowledgeFormData = z.infer<typeof attachedKnowledgeSchema>;
 
-const fileAttachmentSchema = z.object({
+const persistedFileAttachmentSchema = z.object({
   fileId: z.string(),
   fileName: z.string(),
 });
+
+const pendingFileAttachmentSchema = z.object({
+  fileId: z.null(),
+  fileName: z.string(),
+  file: z.custom<File>(
+    (value) => typeof File !== "undefined" && value instanceof File,
+    "File is required"
+  ),
+  contentType: z.custom<SupportedFileContentType>(
+    (value) => typeof value === "string" && isSupportedFileContentType(value),
+    "Unsupported file type"
+  ),
+});
+
+const fileAttachmentSchema = z.union([
+  persistedFileAttachmentSchema,
+  pendingFileAttachmentSchema,
+]);
 
 export const skillBuilderFormSchema = z.object({
   name: z
@@ -47,6 +69,25 @@ export const skillBuilderFormSchema = z.object({
 });
 
 export type SkillBuilderFormData = z.infer<typeof skillBuilderFormSchema>;
+
+export type SkillBuilderFileAttachment =
+  SkillBuilderFormData["fileAttachments"][number];
+
+export type PendingSkillBuilderFileAttachment = Extract<
+  SkillBuilderFileAttachment,
+  { fileId: null }
+>;
+
+export type PersistedSkillBuilderFileAttachment = Extract<
+  SkillBuilderFileAttachment,
+  { fileId: string }
+>;
+
+export function isPendingSkillBuilderFileAttachment(
+  attachment: SkillBuilderFileAttachment
+): attachment is PendingSkillBuilderFileAttachment {
+  return attachment.fileId === null;
+}
 
 export const SkillBuilderFormContext =
   createContext<UseFormReturn<SkillBuilderFormData> | null>(null);
