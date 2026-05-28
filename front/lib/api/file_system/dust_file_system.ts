@@ -451,26 +451,13 @@ export class DustFileSystem {
     if (!isSupportedImageContentType(entry.contentType)) {
       return null;
     }
-    const mount = this.findMount(entry.path);
-    if (!mount) {
-      return null;
-    }
 
-    switch (mount.kind) {
-      case "conversation":
-        return (
-          `${config.getApiBaseUrl()}/api/w/${workspaceId}` +
-          `/assistant/conversations/${mount.id}/files/thumbnail` +
-          `?filePath=${encodeURIComponent(entry.path)}`
-        );
+    const encodedPath = entry.path.split("/").map(encodeURIComponent).join("/");
 
-      case "pod":
-        // TODO(FILE SYSTEM): expose a pod-files thumbnail endpoint.
-        return null;
-
-      default:
-        assertNever(mount.kind);
-    }
+    return (
+      `${config.getApiBaseUrl()}/api/w/${workspaceId}` +
+      `/files/path/${encodedPath}?thumbnail=1`
+    );
   }
 
   /**
@@ -598,6 +585,52 @@ export class DustFileSystem {
   }
 
   /**
+   * Rename `scopedPath` to `newFileName` within the same directory.
+   *
+   * `newFileName` must be a plain filename with no path separators.
+   * Returns `Ok({ dest, sourceDeletionFailed })` where `dest` is the canonical
+   * scoped path of the renamed file. Callers that need to sync side-effects
+   * (e.g. FileResource) can use `dest` to determine the new location.
+   *
+   * No-ops when `newFileName` is identical to the current filename, returning
+   * `Ok({ dest: scopedPath, sourceDeletionFailed: false })`.
+   */
+  async rename(
+    scopedPath: string,
+    newFileName: string
+  ): Promise<
+    Result<{ dest: string; sourceDeletionFailed: boolean }, DustFileSystemError>
+  > {
+    if (
+      !newFileName ||
+      newFileName.includes("/") ||
+      newFileName.includes("\\")
+    ) {
+      return new Err(
+        new DustFileSystemError(
+          "invalid_path",
+          "newFileName must be a non-empty string without path separators."
+        )
+      );
+    }
+
+    const lastSlash = scopedPath.lastIndexOf("/");
+    const parentDir = lastSlash >= 0 ? scopedPath.slice(0, lastSlash) : "";
+    const dest = parentDir ? `${parentDir}/${newFileName}` : newFileName;
+
+    if (dest === scopedPath) {
+      return new Ok({ dest, sourceDeletionFailed: false });
+    }
+
+    const moveResult = await this.move({ src: scopedPath, dest });
+    if (moveResult.isErr()) {
+      return moveResult;
+    }
+
+    return new Ok({ dest, ...moveResult.value });
+  }
+
+  /**
    * Move `src` to `dest` (copy then delete source).
    *
    * GCS has no atomic rename so this is copy-then-delete. When the source deletion fails
@@ -653,6 +686,41 @@ export class DustFileSystem {
       return resolved;
     }
     return this.backend.getDownloadUrl(resolved.value.path, opts);
+  }
+
+  /**
+   * Translates a canonical scoped path to the raw GCS path stored in
+   * `FileResource.mountFilePath`.
+   *
+   * conversation-{cId}/file.txt → w/{wId}/conversations/{cId}/files/file.txt
+   * pod-{pId}/dir/data.csv      → w/{wId}/pods/{pId}/files/dir/data.csv
+   *
+   * Returns `null` for unrecognised prefixes or paths that have no file component
+   * (bare mount roots like `conversation-{cId}`).
+   */
+  // TODO(FILE SYSTEM MIGRATION): Remove this once FileResource is fully decoupled from the scoped path format.
+  toMountFilePath(scopedPath: string): string | null {
+    const workspaceId = this.auth.getNonNullableWorkspace().sId;
+
+    if (scopedPath.startsWith(SCOPED_PREFIX_CONVERSATION)) {
+      const rest = scopedPath.slice(SCOPED_PREFIX_CONVERSATION.length);
+      const slash = rest.indexOf("/");
+      if (slash < 0 || slash === rest.length - 1) {
+        return null;
+      }
+      return `w/${workspaceId}/conversations/${rest.slice(0, slash)}/files/${rest.slice(slash + 1)}`;
+    }
+
+    if (scopedPath.startsWith(SCOPED_PREFIX_POD)) {
+      const rest = scopedPath.slice(SCOPED_PREFIX_POD.length);
+      const slash = rest.indexOf("/");
+      if (slash < 0 || slash === rest.length - 1) {
+        return null;
+      }
+      return `w/${workspaceId}/pods/${rest.slice(0, slash)}/files/${rest.slice(slash + 1)}`;
+    }
+
+    return null;
   }
 
   /** No-ops when the sandbox image does not support the required capability. */

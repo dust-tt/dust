@@ -290,8 +290,7 @@ describe("DustFileSystem.list thumbnail URLs", () => {
     assert(file !== undefined && !file.isDirectory);
     expect(file.thumbnailUrl).toBe(
       `https://dust.tt/api/w/${workspaceId}` +
-        `/assistant/conversations/${conversation.sId}/files/thumbnail` +
-        `?filePath=${encodeURIComponent(`conversation-${conversation.sId}/photo.png`)}`
+        `/files/path/conversation-${conversation.sId}/photo.png?thumbnail=1`
     );
   });
 
@@ -749,6 +748,146 @@ describe("DustFileSystem.move", () => {
     if (result.isErr()) {
       expect(result.error.code).toBe("invalid_path");
     }
+  });
+});
+
+describe("DustFileSystem.rename", () => {
+  let auth: Authenticator;
+  let conversationId: string;
+  let copyFileMock: ReturnType<typeof vi.fn>;
+  let deleteMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(async () => {
+    copyFileMock = vi.fn().mockResolvedValue(undefined);
+    deleteMock = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(getPrivateUploadBucket).mockReturnValue({
+      copyFile: copyFileMock,
+      file: vi.fn(() => ({ exists: vi.fn().mockResolvedValue([true]) })),
+      delete: deleteMock,
+    } as unknown as ReturnType<typeof getPrivateUploadBucket>);
+
+    const { authenticator, conversationsSpace } = await createResourceTest({});
+    auth = authenticator;
+
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Test Agent",
+      description: "Test Agent",
+    });
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+      spaceId: conversationsSpace.id,
+    });
+    conversationId = conversation.sId;
+  });
+
+  async function makeFs() {
+    const convRes = await ConversationResource.fetchById(auth, conversationId);
+    assert(convRes !== null);
+    const fs = await DustFileSystem.forConversation(auth, convRes.toJSON());
+    assert(fs.isOk());
+    return fs.value;
+  }
+
+  it("returns Ok with the new dest path on a successful rename", async () => {
+    const fs = await makeFs();
+    const result = await fs.rename(
+      `conversation-${conversationId}/report.pdf`,
+      "summary.pdf"
+    );
+
+    assert(result.isOk());
+    expect(result.value.dest).toBe(
+      `conversation-${conversationId}/summary.pdf`
+    );
+    expect(result.value.sourceDeletionFailed).toBe(false);
+    expect(copyFileMock).toHaveBeenCalledOnce();
+    expect(deleteMock).toHaveBeenCalledOnce();
+  });
+
+  it("is a no-op when the new filename matches the current one", async () => {
+    const fs = await makeFs();
+    const result = await fs.rename(
+      `conversation-${conversationId}/report.pdf`,
+      "report.pdf"
+    );
+
+    assert(result.isOk());
+    expect(result.value.dest).toBe(`conversation-${conversationId}/report.pdf`);
+    expect(result.value.sourceDeletionFailed).toBe(false);
+    // No GCS operations for a no-op.
+    expect(copyFileMock).not.toHaveBeenCalled();
+    expect(deleteMock).not.toHaveBeenCalled();
+  });
+
+  it("returns Err(invalid_path) for an empty filename", async () => {
+    const fs = await makeFs();
+    const result = await fs.rename(
+      `conversation-${conversationId}/report.pdf`,
+      ""
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("invalid_path");
+    }
+  });
+
+  it("returns Err(invalid_path) for a filename containing a forward slash", async () => {
+    const fs = await makeFs();
+    const result = await fs.rename(
+      `conversation-${conversationId}/report.pdf`,
+      "sub/dir.pdf"
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("invalid_path");
+    }
+  });
+
+  it("returns Err(invalid_path) for a filename containing a backslash", async () => {
+    const fs = await makeFs();
+    const result = await fs.rename(
+      `conversation-${conversationId}/report.pdf`,
+      "sub\\dir.pdf"
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("invalid_path");
+    }
+  });
+
+  it("returns sourceDeletionFailed true when delete fails after a successful copy", async () => {
+    deleteMock.mockRejectedValue(new Error("storage delete failed"));
+    const fs = await makeFs();
+    const result = await fs.rename(
+      `conversation-${conversationId}/report.pdf`,
+      "renamed.pdf"
+    );
+
+    assert(result.isOk());
+    expect(result.value.sourceDeletionFailed).toBe(true);
+    expect(result.value.dest).toBe(
+      `conversation-${conversationId}/renamed.pdf`
+    );
+  });
+
+  it("returns Err(internal) when the underlying copy fails", async () => {
+    copyFileMock.mockRejectedValue(new Error("storage copy failed"));
+    const fs = await makeFs();
+    const result = await fs.rename(
+      `conversation-${conversationId}/report.pdf`,
+      "renamed.pdf"
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("internal");
+    }
+    // Delete must not be called when the copy failed.
+    expect(deleteMock).not.toHaveBeenCalled();
   });
 });
 

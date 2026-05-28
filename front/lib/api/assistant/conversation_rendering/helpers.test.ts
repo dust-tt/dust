@@ -413,7 +413,7 @@ describe("vision image rendering in getSteps", () => {
               uri: "dust://files/conversation/photo.png",
               mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.MODEL_VISION_IMAGE,
               text: "" as const,
-              gcsPath,
+              filePath: gcsPath,
               imageContentType: "image/png",
             };
             return [{ type: "resource" as const, resource }];
