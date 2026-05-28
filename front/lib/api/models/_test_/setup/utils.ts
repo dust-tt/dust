@@ -52,31 +52,38 @@ export function WithStreamDebug<I, O, T extends AbstractConstructor<I, O>>(
       );
 
       const rawEvents: O[] = [];
-      const rawStream = this.streamRaw(payload);
+      const convertedEvents: LargeLanguageModelResponseEvent[] = [];
 
-      async function* tapRaw(stream: AsyncGenerator<O>): AsyncGenerator<O> {
-        for await (const event of stream) {
-          rawEvents.push(event);
+      try {
+        const rawStream = this.streamRaw(payload);
+
+        async function* tapRaw(stream: AsyncGenerator<O>): AsyncGenerator<O> {
+          for await (const event of stream) {
+            rawEvents.push(event);
+            yield event;
+          }
+        }
+
+        for await (const event of this.rawOutputToEvents(tapRaw(rawStream))) {
+          convertedEvents.push(event);
           yield event;
         }
+      } catch (e) {
+        const errorEvent = this.streamErrorToEvent(e);
+        convertedEvents.push(errorEvent);
+        yield errorEvent;
+      } finally {
+        await fs.promises.writeFile(
+          path.join(process.cwd(), `${dateString}_3_raw_output.json`),
+          JSON.stringify(rawEvents, null, 2),
+          "utf8"
+        );
+        await fs.promises.writeFile(
+          path.join(process.cwd(), `${dateString}_4_converted_output.json`),
+          JSON.stringify(convertedEvents, null, 2),
+          "utf8"
+        );
       }
-
-      const convertedEvents: LargeLanguageModelResponseEvent[] = [];
-      for await (const event of this.rawOutputToEvents(tapRaw(rawStream))) {
-        convertedEvents.push(event);
-        yield event;
-      }
-
-      await fs.promises.writeFile(
-        path.join(process.cwd(), `${dateString}_3_raw_output.json`),
-        JSON.stringify(rawEvents, null, 2),
-        "utf8"
-      );
-      await fs.promises.writeFile(
-        path.join(process.cwd(), `${dateString}_4_converted_output.json`),
-        JSON.stringify(convertedEvents, null, 2),
-        "utf8"
-      );
     }
   }
 
