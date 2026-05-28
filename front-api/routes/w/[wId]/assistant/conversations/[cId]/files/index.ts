@@ -3,6 +3,7 @@ import {
   type FileSystemEntry,
   SCOPED_PREFIX_CONVERSATION,
 } from "@app/lib/api/file_system/types";
+import { enrichListWithFileResourceIds } from "@app/lib/api/files/file_system_ops";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -49,8 +50,11 @@ app.get("/", async (ctx): HandlerResult<GetConversationFilesResponseBody> => {
 
   // Scope the listing to the conversation mount only. For pod conversations the
   // DustFileSystem also has a pod mount and we do not want to expose pod files here.
-  const files = await fsResult.value.list(
-    `${SCOPED_PREFIX_CONVERSATION}${cId}`
+  const dustFs = fsResult.value;
+  const files = await enrichListWithFileResourceIds(
+    auth,
+    dustFs,
+    await dustFs.list(`${SCOPED_PREFIX_CONVERSATION}${cId}`)
   );
 
   return ctx.json({ files });

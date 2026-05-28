@@ -6,6 +6,7 @@ import {
   type FileSystemEntry,
   SCOPED_PREFIX_CONVERSATION,
 } from "@app/lib/api/file_system/types";
+import { enrichListWithFileResourceIds } from "@app/lib/api/files/file_system_ops";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
@@ -72,8 +73,11 @@ async function handler(
 
   // Scope the listing to the conversation mount only. For pod conversations the
   // DustFileSystem also has a pod mount and we do not want to expose pod files here.
-  const files = await fsResult.value.list(
-    `${SCOPED_PREFIX_CONVERSATION}${cId}`
+  const dustFs = fsResult.value;
+  const files = await enrichListWithFileResourceIds(
+    auth,
+    dustFs,
+    await dustFs.list(`${SCOPED_PREFIX_CONVERSATION}${cId}`)
   );
 
   return res.status(200).json({ files });

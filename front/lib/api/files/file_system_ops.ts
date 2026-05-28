@@ -5,7 +5,10 @@
  */
 
 import type { DustFileSystem } from "@app/lib/api/file_system";
-import type { DustFileSystemError } from "@app/lib/api/file_system/types";
+import type {
+  DustFileSystemError,
+  FileSystemEntry,
+} from "@app/lib/api/file_system/types";
 import {
   SCOPED_PREFIX_CONVERSATION,
   SCOPED_PREFIX_POD,
@@ -120,6 +123,72 @@ export async function streamThumbnail(
   }
 
   return new Ok({ stream: readResult.value, contentType });
+}
+
+// ---------------------------------------------------------------------------
+// List with FileResource enrichment
+// ---------------------------------------------------------------------------
+
+/**
+ * Enrich a list of file entries with their linked FileResource sId (fileId).
+ * A single batch DB query covers all entries; pod files probe the legacy projects/ path too.
+ *
+ * Intended for endpoints that expose file listings to the client (conversation files,
+ * pod files) where the fileId is needed to open previews or interactive content.
+ */
+export async function enrichListWithFileResourceIds(
+  auth: Authenticator,
+  dustFs: DustFileSystem,
+  entries: FileSystemEntry[]
+): Promise<FileSystemEntry[]> {
+  const fileEntries = entries.filter((e) => !e.isDirectory);
+  if (fileEntries.length === 0) {
+    return entries;
+  }
+
+  // Collect all GCS paths to probe, including legacy projects/ variants for pod files.
+  const mountPaths: string[] = [];
+  for (const entry of fileEntries) {
+    const gcsPath = dustFs.toMountFilePath(entry.path);
+    if (gcsPath) {
+      mountPaths.push(gcsPath);
+      const legacyPath = gcsPath.replace(/\/pods\//, "/projects/");
+      if (legacyPath !== gcsPath) {
+        mountPaths.push(legacyPath);
+      }
+    }
+  }
+
+  if (mountPaths.length === 0) {
+    return entries;
+  }
+
+  const fileResources = await FileResource.fetchByMountFilePaths(
+    auth,
+    mountPaths
+  );
+
+  // Map every known mountFilePath to its FileResource sId.
+  const byMountPath = new Map<string, string>();
+  for (const fr of fileResources) {
+    if (fr.mountFilePath) {
+      byMountPath.set(fr.mountFilePath, fr.sId);
+    }
+  }
+
+  return entries.map((entry) => {
+    if (entry.isDirectory) {
+      return entry;
+    }
+    const gcsPath = dustFs.toMountFilePath(entry.path);
+    if (!gcsPath) {
+      return entry;
+    }
+    const legacyPath = gcsPath.replace(/\/pods\//, "/projects/");
+    const fileId =
+      byMountPath.get(gcsPath) ?? byMountPath.get(legacyPath) ?? null;
+    return { ...entry, fileId };
+  });
 }
 
 // ---------------------------------------------------------------------------

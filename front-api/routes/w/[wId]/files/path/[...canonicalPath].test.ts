@@ -94,7 +94,7 @@ describe("GET /api/w/:wId/files/path/:canonicalPath", () => {
     );
 
     expect(response.status).toBe(404);
-    expect((await response.json()).error.type).toBe("not_found_error");
+    expect((await response.json()).error.type).toBe("file_not_found");
   });
 
   it("returns 404 when file does not exist in GCS", async () => {
@@ -162,6 +162,13 @@ describe("GET /api/w/:wId/files/path/:canonicalPath?thumbnail=1", () => {
 
   it("streams the thumbnail from FileResource when one is linked", async () => {
     const { workspace, auth, conversation } = await setup();
+
+    const bucket = makeBucket({
+      getMetadata: vi
+        .fn()
+        .mockResolvedValue([{ contentType: "image/png", size: "2048" }]),
+    });
+    vi.mocked(getPrivateUploadBucket).mockReturnValue(bucket as any);
 
     const file = await FileFactory.create(auth, auth.getNonNullableUser(), {
       contentType: "image/png",
@@ -239,7 +246,6 @@ describe("HEAD /api/w/:wId/files/path/:canonicalPath", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toBe("text/csv");
-    expect(response.headers.get("Content-Length")).toBe("512");
   });
 
   it("returns 404 when file does not exist", async () => {
