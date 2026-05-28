@@ -21,7 +21,7 @@ import type {
 } from "@app/types/production_checks";
 import { CheckHeartbeatDetailsSchema } from "@app/types/production_checks";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { Context } from "@temporalio/activity";
+import {activityInfo, heartbeat} from "@temporalio/activity";
 import { v4 as uuidv4 } from "uuid";
 
 export const REGISTERED_CHECKS: Check[] = [
@@ -97,26 +97,21 @@ function getCompletedCheckNamesFromHeartbeatDetails(
     : [];
 }
 
-function sendCheckHeartbeat({
-  context,
-  heartbeat,
+function sendCheckHeartbeat(heartbeatData: CheckHeartbeat,{
   completedCheckNames,
 }: {
-  context: Context;
-  heartbeat: CheckHeartbeat;
   completedCheckNames: string[];
 }) {
-  context.heartbeat({
-    ...heartbeat,
+  heartbeat({
+    ...heartbeatData,
     completedCheckNames: [...new Set(completedCheckNames)],
   });
 }
 
 async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
   const allCheckUuid = uuidv4();
-  const context = Context.current();
   const completedCheckNames = getCompletedCheckNamesFromHeartbeatDetails(
-    context.info.heartbeatDetails
+    activityInfo().heartbeatDetails
   );
   const currentHour = new Date().getHours();
   const results: CheckActivityResult[] = [];
@@ -168,9 +163,7 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
         });
 
         completedCheckNames.push(check.name);
-        sendCheckHeartbeat({
-          context,
-          heartbeat: { type: "skip", name: check.name, uuid },
+        sendCheckHeartbeat({ type: "skip", name: check.name, uuid },{
           completedCheckNames,
         });
 
@@ -200,9 +193,7 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
         allActionLinks.push(...(payload.actionLinks ?? []));
       };
 
-      sendCheckHeartbeat({
-        context,
-        heartbeat: { type: "start", name: check.name, uuid },
+      sendCheckHeartbeat({ type: "start", name: check.name, uuid },{
         completedCheckNames,
       });
 
@@ -212,13 +203,12 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
         reportSuccess,
         reportFailure,
         async () =>
-          sendCheckHeartbeat({
-            context,
-            heartbeat: {
+          sendCheckHeartbeat(
+            {
               type: "processing",
               name: check.name,
               uuid,
-            },
+            },{
             completedCheckNames,
           })
       );
@@ -242,13 +232,12 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
       });
       completedCheckNames.push(check.name);
 
-      sendCheckHeartbeat({
-        context,
-        heartbeat: {
+      sendCheckHeartbeat(
+        {
           type: checkSucceeded ? "success" : "failure",
           name: check.name,
           uuid,
-        },
+        },{
         completedCheckNames,
       });
     } catch (error) {
@@ -264,9 +253,8 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
       });
       completedCheckNames.push(check.name);
 
-      sendCheckHeartbeat({
-        context,
-        heartbeat: { type: "failure", name: check.name, uuid },
+      sendCheckHeartbeat(
+        { type: "failure", name: check.name, uuid },{
         completedCheckNames,
       });
     }
@@ -311,30 +299,26 @@ export async function runSingleCheckActivity(
     allActionLinks.push(...(payload.actionLinks ?? []));
   };
 
-  const heartbeat = async () => {
-    return Context.current().heartbeat({
-      type: "processing",
-      name: check.name,
-      uuid,
-    });
-  };
-
-  Context.current().heartbeat({ type: "start", name: check.name, uuid });
+  heartbeat({ type: "start", name: check.name, uuid });
 
   await check.check(
     check.name,
     logger,
     reportSuccess,
     reportFailure,
-    heartbeat
+    async () => heartbeat({
+        type: "processing",
+        name: check.name,
+        uuid,
+      })
   );
 
-  Context.current().heartbeat({
+  heartbeat({
     type: checkSucceeded ? "success" : "failure",
     name: check.name,
     uuid,
   });
-  Context.current().heartbeat({ type: "finish", name: check.name, uuid });
+  heartbeat({ type: "finish", name: check.name, uuid });
 
   logger.info("Manual check done");
 
