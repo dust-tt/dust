@@ -4,7 +4,7 @@ import {
   ConfigurableToolInputJSONSchemas,
   validateConfiguredJsonSchema,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import { makeProjectConfigurationURI } from "@app/lib/actions/mcp_internal_actions/project_configuration_uri";
+import { makePodConfigurationURI } from "@app/lib/actions/mcp_internal_actions/project_configuration_uri";
 import { isServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type {
   DataSourceConfiguration,
@@ -270,16 +270,13 @@ function generateConfiguredInput({
       return { secretName, mimeType };
     }
 
-    case INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT: {
+    case INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD: {
       if (!actionConfiguration.dustProject) {
         return undefined;
       }
       const project = actionConfiguration.dustProject;
       return {
-        uri: makeProjectConfigurationURI(
-          project.workspaceId,
-          project.projectId
-        ),
+        uri: makePodConfigurationURI(project.workspaceId, project.projectId),
         mimeType,
       };
     }
@@ -761,7 +758,7 @@ export function getMCPServerRequirements(
     Object.keys(
       findPathsToConfiguration({
         mcpServerView,
-        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD,
       })
     ).length > 0;
 

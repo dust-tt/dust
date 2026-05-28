@@ -4,7 +4,7 @@ import type {
   DataSourcesToolConfigurationType,
   DustProjectConfigurationType,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import { parseProjectConfigurationURI } from "@app/lib/actions/mcp_internal_actions/tools/utils";
+import { parsePodConfigurationURI } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { DataSourceFilter } from "@app/lib/api/assistant/configuration/types";
 import { isContentNodeAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
@@ -108,7 +108,7 @@ export async function getProjectSpace(
     const authWorkspaceId = auth.getNonNullableWorkspace().sId;
 
     // Parse the project URI to extract workspaceId and projectId.
-    const parseResult = parseProjectConfigurationURI(dustPod.uri);
+    const parseResult = parsePodConfigurationURI(dustPod.uri);
     if (parseResult.isErr()) {
       return new Err(
         new MCPError(`Invalid Pod URI: ${parseResult.error.message}`, {
@@ -117,7 +117,7 @@ export async function getProjectSpace(
       );
     }
 
-    const { workspaceId, projectId } = parseResult.value;
+    const { workspaceId, podId } = parseResult.value;
 
     // Validate that the workspace ID matches the authenticated workspace.
     if (workspaceId !== authWorkspaceId) {
@@ -129,11 +129,11 @@ export async function getProjectSpace(
       );
     }
 
-    // Fetch the space by projectId.
-    const space = await SpaceResource.fetchById(auth, projectId);
+    // Fetch the space by podId.
+    const space = await SpaceResource.fetchById(auth, podId);
     if (!space) {
       return new Err(
-        new MCPError(`Pod not found: ${projectId}`, { tracked: false })
+        new MCPError(`Pod not found: ${podId}`, { tracked: false })
       );
     }
 

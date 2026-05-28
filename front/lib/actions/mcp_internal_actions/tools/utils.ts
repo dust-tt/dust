@@ -8,8 +8,8 @@ import {
   TABLE_CONFIGURATION_URI_PATTERN,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import {
-  type ProjectConfigInfo,
-  parseProjectConfigurationURI,
+  type PodConfigInfo,
+  parsePodConfigurationURI,
 } from "@app/lib/actions/mcp_internal_actions/project_configuration_uri";
 import type { TagsInputType } from "@app/lib/actions/mcp_internal_actions/types";
 import type {
@@ -567,5 +567,5 @@ export async function getCoreSearchArgs(
   return new Ok(toCoreSearchArgs(configRes.value));
 }
 
-export type { ProjectConfigInfo };
-export { parseProjectConfigurationURI };
+export type { PodConfigInfo };
+export { parsePodConfigurationURI };

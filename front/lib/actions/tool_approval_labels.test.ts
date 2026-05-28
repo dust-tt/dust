@@ -22,7 +22,7 @@ describe("getApprovalArgsLabel", () => {
         inputs: {
           dustPod: {
             uri: "project://dust/w/ws123/projects/prj456",
-            mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT,
+            mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD,
           },
         },
         argumentsRequiringApproval: ["dustPod"],
@@ -52,7 +52,7 @@ describe("getApprovalArgsLabel", () => {
         inputs: {
           dustPod: {
             uri: "project://dust/w/ws123/projects/prj456",
-            mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT,
+            mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD,
           },
         },
         argumentsRequiringApproval: ["dustPod"],

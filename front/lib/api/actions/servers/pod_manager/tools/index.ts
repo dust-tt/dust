@@ -1,5 +1,5 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import { makeProjectConfigurationURI } from "@app/lib/actions/mcp_internal_actions/project_configuration_uri";
+import { makePodConfigurationURI } from "@app/lib/actions/mcp_internal_actions/project_configuration_uri";
 import type {
   ToolDefinition,
   ToolHandlers,
@@ -600,30 +600,30 @@ export function createProjectManagerTools(
         const workspaceSId = owner.sId;
         const { nonArchivedSpaces } =
           await listNonArchivedMemberSpacesWithMetadata(auth);
-        const memberProjects = nonArchivedSpaces
+        const memberPods = nonArchivedSpaces
           .filter((space) => space.isProject())
           .sort((a, b) =>
             a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
           );
 
-        const projects = memberProjects.map((space) => ({
-          spaceId: space.sId,
-          name: space.name,
+        const pods = memberPods.map((pod) => ({
+          id: pod.sId,
+          name: pod.name,
           dustPod: {
-            uri: makeProjectConfigurationURI(workspaceSId, space.sId),
-            mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT,
+            uri: makePodConfigurationURI(workspaceSId, pod.sId),
+            mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD,
           },
         }));
 
         return new Ok(
           makeSuccessResponse({
             success: true,
-            count: projects.length,
-            pods: projects,
+            count: pods.length,
+            pods,
             message:
-              projects.length === 0
+              pods.length === 0
                 ? "No non-archived Pods found where you are a space member."
-                : `Found ${projects.length} Pod(s). Use each entry's dustPod as the dustPod argument for other pod_manager tools.`,
+                : `Found ${pods.length} Pod(s). Use each entry's dustPod as the dustPod argument for other pod_manager tools.`,
           })
         );
       }, "Failed to list Pods");
@@ -744,8 +744,8 @@ export function createProjectManagerTools(
               title: projectSpace.name,
               visibility: projectSpace.isOpen() ? "open" : "private",
               dustPod: {
-                uri: makeProjectConfigurationURI(owner.sId, projectSpace.sId),
-                mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT,
+                uri: makePodConfigurationURI(owner.sId, projectSpace.sId),
+                mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD,
               },
               url: projectUrl,
             },

@@ -1,6 +1,6 @@
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { DustProjectConfigurationSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import { parseProjectConfigurationURI } from "@app/lib/actions/mcp_internal_actions/tools/utils";
+import { parsePodConfigurationURI } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -30,9 +30,9 @@ export async function getApprovalArgsLabel({
     // Check if the input is a Dust project configuration
     const parsed = DustProjectConfigurationSchema.safeParse(inputValue);
     if (parsed.success) {
-      const parsedProject = parseProjectConfigurationURI(parsed.data.uri);
+      const parsedProject = parsePodConfigurationURI(parsed.data.uri);
       if (parsedProject.isOk()) {
-        const { workspaceId, projectId } = parsedProject.value;
+        const { workspaceId, podId: projectId } = parsedProject.value;
         if (workspaceId !== auth.getNonNullableWorkspace().sId) {
           return `Always allow @${agentName} to ${asDisplayName(toolName)} in Pod ${parsed.data.uri}`;
         }

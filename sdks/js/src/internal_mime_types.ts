@@ -255,7 +255,7 @@ const TOOL_MIME_TYPES = {
       "TIME_FRAME",
       "JSON_SCHEMA",
       "SECRET",
-      "DUST_PROJECT",
+      "DUST_POD",
     ],
   }),
   TOOL_OUTPUT: generateToolMimeTypes({

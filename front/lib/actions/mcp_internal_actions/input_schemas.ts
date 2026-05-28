@@ -26,7 +26,7 @@ export const AGENT_CONFIGURATION_URI_PATTERN =
 
 // URI pattern for configuring the project to use within an action.
 export const PROJECT_CONFIGURATION_URI_PATTERN =
-  /^project:\/\/dust\/w\/(\w+)\/projects\/(\w+)$/;
+  /^pod:\/\/dust\/w\/(\w+)\/pods\/(\w+)$/;
 
 // The full, recursive schema for a JSON schema is not yet supported by MCP call
 // tool, and anyway its full validation is not needed. Therefore, we describe 2
@@ -154,9 +154,9 @@ export const ConfigurableToolInputSchemas = {
     secretName: z.string(),
     mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.SECRET),
   }),
-  [INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT]: z.object({
+  [INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD]: z.object({
     uri: z.string().regex(PROJECT_CONFIGURATION_URI_PATTERN),
-    mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT),
+    mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD),
   }),
   // All mime types do not necessarily have a fixed schema,
   // for instance the ENUM mime type is flexible and the exact content of the enum is dynamic.
@@ -199,11 +199,11 @@ export type TablesConfigurationToolType = z.infer<
 >;
 
 export type DustProjectConfigurationType = z.infer<
-  (typeof ConfigurableToolInputSchemas)[typeof INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT]
+  (typeof ConfigurableToolInputSchemas)[typeof INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD]
 >;
 
 export const DustProjectConfigurationSchema =
-  ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT];
+  ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD];
 
 /**
  * Mapping between the mime types we used to identify a configurable resource

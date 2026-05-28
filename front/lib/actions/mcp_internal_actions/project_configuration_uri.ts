@@ -1,30 +1,30 @@
 import { PROJECT_CONFIGURATION_URI_PATTERN } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 
-export function makeProjectConfigurationURI(
+export function makePodConfigurationURI(
   workspaceId: string,
-  projectId: string
+  podId: string
 ): string {
-  return `project://dust/w/${workspaceId}/projects/${projectId}`;
+  return `pod://dust/w/${workspaceId}/pods/${podId}`;
 }
 
-export type ProjectConfigInfo = {
+export type PodConfigInfo = {
   workspaceId: string;
-  projectId: string;
+  podId: string;
 };
 
-export function parseProjectConfigurationURI(
+export function parsePodConfigurationURI(
   uri: string
-): Result<ProjectConfigInfo, Error> {
+): Result<PodConfigInfo, Error> {
   const match = uri.match(PROJECT_CONFIGURATION_URI_PATTERN);
   if (!match) {
     return new Err(new Error(`Invalid URI for a pod configuration: ${uri}`));
   }
 
-  const [, workspaceId, projectId] = match;
+  const [, workspaceId, podId] = match;
 
   return new Ok({
     workspaceId,
-    projectId,
+    podId,
   });
 }

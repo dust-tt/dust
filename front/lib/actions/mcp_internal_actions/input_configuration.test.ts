@@ -100,9 +100,7 @@ describe("hideInternalConfiguration", () => {
 
   it("keeps optional internal properties so the model can see inferable configuration fields", () => {
     const dustPod =
-      ConfigurableToolInputJSONSchemas[
-        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
-      ];
+      ConfigurableToolInputJSONSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD];
     const inputSchema = {
       type: "object",
       properties: {
@@ -341,9 +339,7 @@ describe("augmentInputsWithConfiguration after hideInternalConfiguration", () =>
         INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME
       ];
     const dustPodSchema =
-      ConfigurableToolInputJSONSchemas[
-        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
-      ];
+      ConfigurableToolInputJSONSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD];
     const dataSourcesSchema =
       ConfigurableToolInputJSONSchemas[
         INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
@@ -404,7 +400,7 @@ describe("augmentInputsWithConfiguration after hideInternalConfiguration", () =>
     });
     expect(augmented.dustPod).toEqual({
       uri: `project://dust/w/${mockWorkspace.sId}/projects/project-sid-xyz`,
-      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT,
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD,
     });
   });
 
