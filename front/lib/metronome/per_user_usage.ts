@@ -1,13 +1,18 @@
-import {
-  ceilToMidnightUTC,
-  floorToMidnightUTC,
-  listMetronomeDraftInvoices,
-  listMetronomeUsageWithGroups,
-} from "@app/lib/metronome/client";
-import { getMetricLlmProviderCostAwuId } from "@app/lib/metronome/constants";
+import { listMetronomeDraftInvoices } from "@app/lib/metronome/client";
+import { getProductAiUsageId } from "@app/lib/metronome/constants";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
+/**
+ * Fetch per-user AWU consumption for the current billing period by reading
+ * the draft invoice's line items directly.
+ *
+ * The "AI Usage" product is configured with presentation_group_key: ["user_id"],
+ * so each line item has presentation_group_values.user_id set to the user's sId
+ * when the usage is user-attributed. Summing `quantity` per user_id gives total
+ * AWU consumed per user, regardless of which credit type (pool, seat, etc.)
+ * funded the usage.
+ */
 export async function fetchPerUserAwuUsage({
   metronomeCustomerId,
   metronomeContractId,
@@ -33,39 +38,23 @@ export async function fetchPerUserAwuUsage({
     return startMs <= now && now < endMs;
   });
 
-  if (!currentInvoice?.start_timestamp || !currentInvoice.end_timestamp) {
+  if (!currentInvoice?.line_items) {
     return new Ok(new Map());
   }
 
-  const startingOn = floorToMidnightUTC(
-    new Date(currentInvoice.start_timestamp)
-  ).toISOString();
-  const endingBefore = ceilToMidnightUTC(
-    new Date(currentInvoice.end_timestamp)
-  ).toISOString();
-
-  const usageResult = await listMetronomeUsageWithGroups({
-    customerId: metronomeCustomerId,
-    billableMetricId: getMetricLlmProviderCostAwuId(),
-    startingOn,
-    endingBefore,
-    windowSize: "NONE",
-    groupKey: ["user_id", "usage_type"],
-  });
-
-  if (usageResult.isErr()) {
-    return new Err(usageResult.error);
-  }
-
+  const aiUsageProductId = getProductAiUsageId();
   const perUser = new Map<string, number>();
-  for (const entry of usageResult.value) {
-    const userId = entry.group?.["user_id"];
-    const usageType = entry.group?.["usage_type"];
-    if (!userId || usageType !== "user" || entry.value === null) {
+
+  for (const lineItem of currentInvoice.line_items) {
+    if (lineItem.type !== "usage" || lineItem.product_id !== aiUsageProductId) {
       continue;
     }
-    const existing = perUser.get(userId) ?? 0;
-    perUser.set(userId, existing + entry.value);
+    const userId = lineItem.presentation_group_values?.["user_id"];
+    if (!userId) {
+      continue;
+    }
+    perUser.set(userId, (perUser.get(userId) ?? 0) + (lineItem.quantity ?? 0));
   }
+
   return new Ok(perUser);
 }
