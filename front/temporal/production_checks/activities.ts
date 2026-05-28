@@ -86,48 +86,48 @@ export async function runAllChecksActivity(): Promise<CheckActivityResult[]> {
   return runAllChecks(REGISTERED_CHECKS);
 }
 
-function getCompletedCheckNamesFromHeartbeatDetails(
-  heartbeatDetails: unknown
-): string[] {
+function getResultsFromHeartbeatDetails(
+  heartbeatDetails: unknown,
+): CheckActivityResult[] {
   const parsedHeartbeatDetails =
     CheckHeartbeatDetailsSchema.safeParse(heartbeatDetails);
 
   return parsedHeartbeatDetails.success
-    ? parsedHeartbeatDetails.data.completedCheckNames
+    ? parsedHeartbeatDetails.data.results
     : [];
 }
 
 function sendCheckHeartbeat(
   heartbeatData: CheckHeartbeat,
   {
-    completedCheckNames,
+    results,
   }: {
-    completedCheckNames: string[];
-  }
+    results: CheckActivityResult[];
+  },
 ) {
   heartbeat({
     ...heartbeatData,
-    completedCheckNames: [...new Set(completedCheckNames)],
+    results: [...results],
   });
 }
 
 async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
   const allCheckUuid = uuidv4();
-  const completedCheckNames = getCompletedCheckNamesFromHeartbeatDetails(
-    activityInfo().heartbeatDetails
+  const results = getResultsFromHeartbeatDetails(
+    activityInfo().heartbeatDetails,
   );
   const currentHour = new Date().getHours();
-  const results: CheckActivityResult[] = [];
-  const previouslyCompletedCheckNames = new Set(completedCheckNames);
+  const previouslyCompletedCheckNames = new Set(
+    results.map((result) => result.checkName),
+  );
 
   mainLogger.info(
     {
       all_check_uuid: allCheckUuid,
-      resumingFrom:
-        completedCheckNames.length > 0 ? completedCheckNames.length : undefined,
+      resumingFrom: results.length > 0 ? results.length : undefined,
       currentHour,
     },
-    "Running all checks"
+    "Running all checks",
   );
 
   for (const check of checks) {
@@ -137,7 +137,7 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
           all_check_uuid: allCheckUuid,
           checkName: check.name,
         },
-        "Check already completed in previous attempt, skipping"
+        "Check already completed in previous attempt, skipping",
       );
       continue;
     }
@@ -165,10 +165,9 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
           actionLinks: [],
         });
 
-        completedCheckNames.push(check.name);
         sendCheckHeartbeat(
           { type: "skip", name: check.name, uuid },
-          { completedCheckNames }
+          { results },
         );
 
         continue;
@@ -189,7 +188,7 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
       const reportFailure = (payload: CheckFailurePayload, message: string) => {
         logger.error(
           { payload, errorMessage: message },
-          "Production check failed"
+          "Production check failed",
         );
         checkSucceeded = false;
         allFailurePayloads.push({ ...payload, errorMessage: message });
@@ -199,7 +198,7 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
 
       sendCheckHeartbeat(
         { type: "start", name: check.name, uuid },
-        { completedCheckNames }
+        { results },
       );
 
       await check.check(
@@ -210,13 +209,13 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
         async () =>
           sendCheckHeartbeat(
             { type: "processing", name: check.name, uuid },
-            { completedCheckNames }
-          )
+            { results },
+          ),
       );
 
       logger.info("Check done");
 
-      results.push({
+      const result: CheckActivityResult = {
         checkName: check.name,
         status: checkSucceeded ? "success" : "failure",
         timestamp: new Date().toISOString(),
@@ -230,8 +229,8 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
             ? [...new Set(errorMessages)].join("; ")
             : null,
         actionLinks: allActionLinks,
-      });
-      completedCheckNames.push(check.name);
+      };
+      results.push(result);
 
       sendCheckHeartbeat(
         {
@@ -239,7 +238,7 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
           name: check.name,
           uuid,
         },
-        { completedCheckNames }
+        { results },
       );
     } catch (error) {
       logger.error({ error }, "Production check failed");
@@ -252,20 +251,20 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
         errorMessage: normalizeError(error).message,
         actionLinks: [],
       });
-      completedCheckNames.push(check.name);
 
       sendCheckHeartbeat(
         { type: "failure", name: check.name, uuid },
-        { completedCheckNames }
+        { results },
       );
     }
   }
   mainLogger.info({ all_check_uuid: allCheckUuid }, "Done running all checks");
+
   return results;
 }
 
 export async function runSingleCheckActivity(
-  checkName: string
+  checkName: string,
 ): Promise<CheckActivityResult> {
   const check = REGISTERED_CHECKS.find((c) => c.name === checkName);
   if (!check) {
@@ -312,7 +311,7 @@ export async function runSingleCheckActivity(
         type: "processing",
         name: check.name,
         uuid,
-      })
+      }),
   );
 
   heartbeat({
