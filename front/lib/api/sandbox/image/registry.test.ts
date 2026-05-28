@@ -81,6 +81,15 @@ function expectContentInOrder(
   expect(firstIndex).toBeLessThan(secondIndex);
 }
 
+function getCommandPath(command: string): string {
+  const result = spawnSync("sh", ["-c", `command -v ${command}`], {
+    encoding: "utf8",
+  });
+
+  expect(result.status).toBe(0);
+  return result.stdout.trim();
+}
+
 describe("sandbox image registry", () => {
   test("pins the current dust-base image tag", () => {
     expect(getDustBaseImage().imageId).toEqual({
@@ -405,24 +414,26 @@ describe("sandbox image registry", () => {
 
     expect(tmpfilesConfig).toBe("d /run/dust 0755 root root -\n");
     expect(installer).toContain(
-      'openssl x509 -in "$CA_PATH" -out "$normalized_ca_tmp" -outform PEM'
+      '/usr/bin/openssl x509 -in "$CA_PATH" -out "$normalized_ca_tmp" -outform PEM'
     );
     expect(installer).toContain(
-      'install -d -o root -g root -m 755 "$SYSTEM_CA_DIR"'
+      '/usr/bin/install -d -o root -g root -m 755 "$SYSTEM_CA_DIR"'
     );
     expect(installer).toContain(
-      'find "$SYSTEM_CA_DIR" -mindepth 1 -maxdepth 1 -exec rm -rf'
+      '/usr/bin/find "$SYSTEM_CA_DIR" -mindepth 1 -maxdepth 1 -exec /bin/rm -rf'
     );
-    expect(installer).toContain('rm -f "$SYSTEM_CA_DEST"');
+    expect(installer).toContain('/bin/rm -f "$SYSTEM_CA_DEST"');
     expect(installer).toContain(
-      'install -o root -g root -m 644 "$normalized_ca_tmp" "$SYSTEM_CA_DEST"'
+      '/usr/bin/install -o root -g root -m 644 "$normalized_ca_tmp" "$SYSTEM_CA_DEST"'
     );
-    expect(installer).toContain("update-ca-certificates");
-    expect(installer).toContain('cat "$SYSTEM_CA_BUNDLE"');
-    expect(installer).toContain('cat "$normalized_ca_tmp"');
+    expect(installer).toContain("/usr/sbin/update-ca-certificates");
+    expect(installer).toContain('/bin/cat "$SYSTEM_CA_BUNDLE"');
+    expect(installer).toContain('/bin/cat "$normalized_ca_tmp"');
     expect(installer).toContain("/etc/ssl/certs/java/cacerts");
-    expect(installer).toContain("if command -v keytool >/dev/null 2>&1");
-    expect(installer).toContain("keytool -importcert -noprompt -trustcacerts");
+    expect(installer).toContain("if [ -x /usr/bin/keytool ]; then");
+    expect(installer).toContain(
+      "/usr/bin/keytool -importcert -noprompt -trustcacerts"
+    );
     expect(installer).toContain("already exists");
   });
 
@@ -455,6 +466,18 @@ describe("sandbox image registry", () => {
     const caPath = join(runDustDir, "egress-ca.pem");
     const keyPath = join(runDustDir, "egress-ca.key");
     const leakedSecretPath = join(runDustDir, "egress-secrets.json");
+    const commandPaths = {
+      cat: getCommandPath("cat"),
+      chmod: getCommandPath("chmod"),
+      chown: getCommandPath("chown"),
+      find: getCommandPath("find"),
+      install: getCommandPath("install"),
+      mkdir: getCommandPath("mkdir"),
+      mktemp: getCommandPath("mktemp"),
+      mv: getCommandPath("mv"),
+      openssl: getCommandPath("openssl"),
+      rm: getCommandPath("rm"),
+    };
 
     try {
       mkdirSync(runDustDir, { recursive: true });
@@ -479,7 +502,7 @@ describe("sandbox image registry", () => {
       );
 
       const opensslResult = spawnSync(
-        "openssl",
+        commandPaths.openssl,
         [
           "req",
           "-x509",
@@ -514,13 +537,30 @@ describe("sandbox image registry", () => {
         )
         .replaceAll("/etc/dust", etcDustDir)
         .replaceAll("/etc/ssl/certs/java", javaCertsDir)
-        .replaceAll("install -d -o root -g root -m 755", "install -d -m 755")
-        .replaceAll("install -o root -g root -m 644", "install -m 644")
-        .replace('chown root:root "$SYSTEM_CA_DIR"', ":")
-        .replace(
-          "if command -v keytool >/dev/null 2>&1; then",
-          "if false; then"
-        );
+        .replaceAll(
+          "/usr/sbin/update-ca-certificates",
+          updateCaCertificatesStub
+        )
+        .replaceAll(
+          "/usr/bin/install -d -o root -g root -m 755",
+          "/usr/bin/install -d -m 755"
+        )
+        .replaceAll(
+          "/usr/bin/install -o root -g root -m 644",
+          "/usr/bin/install -m 644"
+        )
+        .replace('/usr/bin/chown root:root "$SYSTEM_CA_DIR"', ":")
+        .replace("if [ -x /usr/bin/keytool ]; then", "if false; then")
+        .replaceAll("/bin/cat", commandPaths.cat)
+        .replaceAll("/usr/bin/chmod", commandPaths.chmod)
+        .replaceAll("/usr/bin/chown", commandPaths.chown)
+        .replaceAll("/usr/bin/find", commandPaths.find)
+        .replaceAll("/usr/bin/install", commandPaths.install)
+        .replaceAll("/usr/bin/mkdir", commandPaths.mkdir)
+        .replaceAll("/usr/bin/mktemp", commandPaths.mktemp)
+        .replaceAll("/usr/bin/mv", commandPaths.mv)
+        .replaceAll("/usr/bin/openssl", commandPaths.openssl)
+        .replaceAll("/bin/rm", commandPaths.rm);
       const scriptPath = join(sandboxRoot, "install-trust-bundle.sh");
       writeFileSync(scriptPath, rewrittenInstaller);
 
