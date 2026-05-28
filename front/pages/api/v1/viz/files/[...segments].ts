@@ -2,12 +2,11 @@
 /* eslint-disable dust/enforce-client-types-in-public-api */
 
 import {
-  getConversationFilesBasePath,
-  getPodFilesBasePath,
-  scopedFilePathPrefixSchema,
-} from "@app/lib/api/files/mount_path";
+  SCOPED_PREFIX_CONVERSATION,
+  SCOPED_PREFIX_POD,
+} from "@app/lib/api/file_system/types";
+import { parseRawVizScope } from "@app/lib/api/files/mount_path";
 import { extractAndVerifyVizAccessTokenFromHeader } from "@app/lib/api/viz/access_tokens";
-import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
@@ -20,7 +19,7 @@ import path from "path";
 /**
  * @ignoreswagger
  *
- * Serves GCS-only files referenced from a frame by scoped resource path
+ * Serves files referenced from a frame by scoped resource path
  * (e.g., GET /api/v1/viz/files/conversation/chart.png).
  * Access is granted via the same JWT used by /api/v1/viz/files/[fileId].
  *
@@ -54,13 +53,13 @@ async function handler(
 
   const [rawScope, ...relParts] = segments;
 
-  const scopeResult = scopedFilePathPrefixSchema.safeParse(rawScope);
-  if (!scopeResult.success) {
+  const scope = parseRawVizScope(rawScope);
+  if (!scope) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: scopeResult.error.message,
+        message: `Invalid scope prefix "${rawScope}": expected "conversation", "project", "conversation-{id}", or "pod-{id}".`,
       },
     });
   }
@@ -79,18 +78,16 @@ async function handler(
   }
   const tokenPayload = tokenRes.value;
 
-  // Get file info using the fileToken from the access token.
-  const result = await FileResource.fetchByShareTokenWithContent(
-    tokenPayload.fileToken
-  );
-  if (!result) {
+  // Get file info and build the DustFileSystem scoped to this frame's authorized paths.
+  const result = await FileResource.fetchByShareToken(tokenPayload.fileToken);
+  if (result.isErr()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: { type: "file_not_found", message: "File not found." },
     });
   }
 
-  const { file: frameFile, shareScope, conversationSpaceId } = result;
+  const { file: frameFile, shareScope, conversationSpaceId, fs } = result.value;
 
   // If current share scope differs from token scope, reject. It means share scope changed.
   if (shareScope !== tokenPayload.shareScope) {
@@ -132,7 +129,6 @@ async function handler(
     });
   }
 
-  const workspaceId = workspace.sId;
   const normalizedRel = path.posix.normalize(relParts.join("/"));
 
   if (normalizedRel.startsWith("..") || normalizedRel.startsWith("/")) {
@@ -145,61 +141,110 @@ async function handler(
     });
   }
 
-  let basePath: string;
-  if (scopeResult.data === "conversation") {
-    const conversationId =
-      frameFile.useCaseMetadata?.conversationId ??
-      frameFile.useCaseMetadata?.sourceConversationId;
-    if (!isString(conversationId)) {
-      return apiError(req, res, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Frame has no conversation context for this path.",
-        },
-      });
+  // Derive the canonical scoped path and verify the requested resource is
+  // within the frame's authorised scope.
+  let canonicalScopedPath: string;
+  switch (scope.kind) {
+    case "canonical-conversation": {
+      // scope.id is guaranteed non-empty by parseRawVizScope.
+      const frameConversationId =
+        frameFile.useCaseMetadata?.conversationId ??
+        frameFile.useCaseMetadata?.sourceConversationId;
+      if (scope.id !== frameConversationId) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message:
+              "Access denied: conversation ID does not match frame context.",
+          },
+        });
+      }
+      canonicalScopedPath = `${SCOPED_PREFIX_CONVERSATION}${scope.id}/${normalizedRel}`;
+      break;
     }
-    // TODO(FILE SYSTEM): Files created by sub-agents live under their own sub-conversation
-    // directory and won't be found here. The MCP server needs to define how to expose them
-    // (e.g. flattening into the parent conversation directory at listing time) before this
-    // endpoint can serve them.
-    basePath = getConversationFilesBasePath({ workspaceId, conversationId });
-  } else {
-    // Pod-scoped frames have spaceId directly. Conversation-scoped frames that live in
-    // a pod space get conversationSpaceId resolved by fetchByShareToken.
-    const podId = frameFile.useCaseMetadata?.spaceId ?? conversationSpaceId;
-    if (!isString(podId)) {
-      return apiError(req, res, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Frame has no pod context for this path.",
-        },
-      });
+
+    case "canonical-pod": {
+      // scope.id is guaranteed non-empty by parseRawVizScope.
+      const framePodId =
+        frameFile.useCaseMetadata?.spaceId ?? conversationSpaceId;
+      if (scope.id !== framePodId) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message: "Access denied: pod ID does not match frame context.",
+          },
+        });
+      }
+      canonicalScopedPath = `${SCOPED_PREFIX_POD}${scope.id}/${normalizedRel}`;
+      break;
     }
-    basePath = getPodFilesBasePath({ workspaceId, podId });
+
+    case "legacy": {
+      if (scope.prefix === "conversation") {
+        const conversationId =
+          frameFile.useCaseMetadata?.conversationId ??
+          frameFile.useCaseMetadata?.sourceConversationId;
+        if (!isString(conversationId)) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Frame has no conversation context for this path.",
+            },
+          });
+        }
+        // TODO(FILE SYSTEM): Files created by sub-agents live under their own sub-conversation
+        // directory and won't be found here. The MCP server needs to define how to expose them
+        // (e.g. flattening into the parent conversation directory at listing time) before this
+        // endpoint can serve them.
+        canonicalScopedPath = `${SCOPED_PREFIX_CONVERSATION}${conversationId}/${normalizedRel}`;
+      } else {
+        // "project": project-scoped frames have spaceId directly. Conversation-scoped frames
+        // that live in a project space get conversationSpaceId resolved by fetchByShareToken.
+        const projectId =
+          frameFile.useCaseMetadata?.spaceId ?? conversationSpaceId;
+        if (!isString(projectId)) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Frame has no project context for this path.",
+            },
+          });
+        }
+        canonicalScopedPath = `${SCOPED_PREFIX_POD}${projectId}/${normalizedRel}`;
+      }
+      break;
+    }
   }
 
-  const gcsPath = `${basePath}${normalizedRel}`;
+  const statResult = await fs.stat(canonicalScopedPath);
+  if (statResult.isErr() || !statResult.value) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: { type: "file_not_found", message: "File not found." },
+    });
+  }
+  const { contentType } = statResult.value;
 
-  const bucket = getPrivateUploadBucket();
-  const contentTypeResult = await bucket.getFileContentType(gcsPath);
-  if (contentTypeResult.isErr()) {
+  const readResult = await fs.read(canonicalScopedPath);
+  if (readResult.isErr() || !readResult.value) {
     return apiError(req, res, {
       status_code: 404,
       api_error: { type: "file_not_found", message: "File not found." },
     });
   }
 
-  const contentType = contentTypeResult.value ?? "application/octet-stream";
   res.setHeader("Content-Type", contentType);
-  const readStream = bucket.file(gcsPath).createReadStream();
-  readStream.on("error", (err) => {
-    logger.error({ err, gcsPath }, "Error streaming scoped file (GCS)");
-    readStream.destroy();
+  const stream = readResult.value;
+  stream.on("error", (err) => {
+    logger.error({ err, canonicalScopedPath }, "Error streaming viz file");
+    stream.destroy();
     res.end();
   });
-  readStream.pipe(res);
+  stream.pipe(res);
 }
 
 export default handler;
