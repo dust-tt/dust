@@ -177,7 +177,7 @@ export const checkActiveWorkflows: CheckFunction = async (
 
     const client = await getTemporalClientForConnectorsNamespace();
 
-    const missingActiveWorkflows: MissingActiveWorkflow[] = [];
+    let missingActiveWorkflows: MissingActiveWorkflow[] = [];
 
     const activeConnectors = connectors.filter(
       (connector) => !connector.pausedAt
@@ -198,22 +198,22 @@ export const checkActiveWorkflows: CheckFunction = async (
         heartbeat
       );
 
-      for (const { connector, workflowIds } of workflowIdsByConnector) {
-        heartbeat();
+      missingActiveWorkflows = workflowIdsByConnector.flatMap(
+        ({ connector, workflowIds }): MissingActiveWorkflow[] => {
+          const missingEntities = workflowIds.filter(
+            (workflowId) => !runningWorkflowIds.has(workflowId)
+          );
 
-        const missingEntities = workflowIds.filter(
-          (workflowId) => !runningWorkflowIds.has(workflowId)
-        );
-
-        if (missingEntities.length > 0) {
-          missingActiveWorkflows.push({
-            connectorId: connector.id,
-            workspaceId: connector.workspaceId,
-            dataSourceId: connector.dataSourceId,
-            missingEntities,
-          });
+          return missingEntities.length > 0
+            ? {
+                connectorId: connector.id,
+                workspaceId: connector.workspaceId,
+                dataSourceId: connector.dataSourceId,
+                missingEntities,
+              }
+            : null;
         }
-      }
+      );
     } else {
       for (const connector of activeConnectors) {
         heartbeat();
