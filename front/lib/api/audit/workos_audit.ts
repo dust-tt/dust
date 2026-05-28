@@ -137,9 +137,18 @@ export type EmitAuditLogEventParams = {
   metadata?: Record<string, string | number | boolean>;
 };
 
+// Max characters allowed per metadata value before truncation. Bounds the
+// total payload size so audit logs survive emit sites that pass unbounded
+// strings (e.g. `tool.executed` joining accessed data source IDs).
+const METADATA_VALUE_MAX_CHARS = 1000;
+const METADATA_TRUNCATION_SUFFIX = "...[truncated]";
+
 /**
  * Serializes all metadata values to strings so the emitted event matches the
  * schema definitions, which declare every metadata value as `"string"`.
+ * Values longer than METADATA_VALUE_MAX_CHARS are truncated with a suffix
+ * so a single oversized field cannot push the whole event past the WorkOS
+ * audit log size limit.
  */
 function serializeMetadata(
   metadata: Record<string, string | number | boolean> | undefined
@@ -149,7 +158,16 @@ function serializeMetadata(
   }
   const result: Record<string, string> = {};
   for (const [key, value] of Object.entries(metadata)) {
-    result[key] = typeof value === "string" ? value : String(value);
+    const stringValue = typeof value === "string" ? value : String(value);
+    if (stringValue.length > METADATA_VALUE_MAX_CHARS) {
+      result[key] =
+        stringValue.slice(
+          0,
+          METADATA_VALUE_MAX_CHARS - METADATA_TRUNCATION_SUFFIX.length
+        ) + METADATA_TRUNCATION_SUFFIX;
+    } else {
+      result[key] = stringValue;
+    }
   }
   return result;
 }
