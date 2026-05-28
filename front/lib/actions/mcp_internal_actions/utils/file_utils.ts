@@ -29,10 +29,10 @@ import { PassThrough } from "stream";
  * These are distinct from legacy paths (`conversation/file.txt`, `pod/file.txt`)
  * and from raw file IDs (`fil_xxx`).
  */
-function isCanonicalScopedPath(fileId: string): boolean {
+function isCanonicalScopedPath(scopedPath: string): boolean {
   return (
-    fileId.startsWith(SCOPED_PREFIX_CONVERSATION) ||
-    fileId.startsWith(SCOPED_PREFIX_POD)
+    scopedPath.startsWith(SCOPED_PREFIX_CONVERSATION) ||
+    scopedPath.startsWith(SCOPED_PREFIX_POD)
   );
 }
 
