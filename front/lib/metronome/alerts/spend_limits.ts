@@ -17,6 +17,14 @@ import type { CustomerAlert } from "@metronome/sdk/resources/v1/customers";
 
 const USER_ID_GROUP_KEY = "user_id";
 
+// The warning alert fires at this fraction of the cap, giving users advance
+// notice before they are hard-blocked at 100%.
+export const USER_AWU_WARNING_PERCENTAGE = 0.8;
+
+function warningAwuCredits(capAwuCredits: number): number {
+  return Math.floor(capAwuCredits * USER_AWU_WARNING_PERCENTAGE);
+}
+
 function defaultUserCapAlertUniquenessKey(workspaceId: string): string {
   return `default-user-cap-${workspaceId}`;
 }
@@ -30,6 +38,21 @@ function perUserAlertUniquenessKey(
   userId: string
 ): string {
   return `${perUserAlertUniquenessKeyPrefix(workspaceId)}${userId}`;
+}
+
+function defaultUserWarningAlertUniquenessKey(workspaceId: string): string {
+  return `default-user-warning-${workspaceId}`;
+}
+
+function perUserWarningAlertUniquenessKeyPrefix(workspaceId: string): string {
+  return `per-user-warning-${workspaceId}-`;
+}
+
+function perUserWarningAlertUniquenessKey(
+  workspaceId: string,
+  userId: string
+): string {
+  return `${perUserWarningAlertUniquenessKeyPrefix(workspaceId)}${userId}`;
 }
 
 /**
@@ -299,5 +322,166 @@ export async function clearMetronomePerUserCapAlert({
     metronomeCustomerId,
     workspaceId,
   });
+  return new Ok(undefined);
+}
+
+// ============================================================================
+// 80% warning alerts — same shape as cap alerts, but at USER_AWU_WARNING_PERCENTAGE
+// of the cap. They fire before the hard block to give users advance notice.
+// ============================================================================
+
+/**
+ * Look up the workspace-wide default per-user 80% warning alert.
+ */
+export async function getMetronomeDefaultUserWarningAlert({
+  metronomeCustomerId,
+  workspaceId,
+}: {
+  metronomeCustomerId: string;
+  workspaceId: string;
+}): Promise<Result<CustomerAlert | null, Error>> {
+  return findMetronomeAlert({
+    metronomeCustomerId,
+    uniquenessKey: defaultUserWarningAlertUniquenessKey(workspaceId),
+  });
+}
+
+/**
+ * Idempotently ensure a workspace-wide default per-user 80% warning alert
+ * exists. The threshold is floor(capAwuCredits * 0.8). Skipped if the result
+ * would be zero.
+ */
+export async function upsertMetronomeDefaultUserWarningAlert({
+  metronomeCustomerId,
+  workspaceId,
+  capAwuCredits,
+}: {
+  metronomeCustomerId: string;
+  workspaceId: string;
+  capAwuCredits: number;
+}): Promise<Result<{ alertId: string } | null, Error>> {
+  const threshold = warningAwuCredits(capAwuCredits);
+  if (threshold <= 0) {
+    return new Ok(null);
+  }
+  const upsertResult = await upsertMetronomeAlert({
+    alert_type: "spend_threshold_reached",
+    name: `Default per-user warning ${workspaceId} (${threshold} AWU / ${Math.round(USER_AWU_WARNING_PERCENTAGE * 100)}% of ${capAwuCredits})`,
+    threshold,
+    credit_type_id: getCreditTypeAwuId(),
+    customer_id: metronomeCustomerId,
+    group_values: [{ key: USER_ID_GROUP_KEY }],
+    uniqueness_key: defaultUserWarningAlertUniquenessKey(workspaceId),
+  });
+  if (upsertResult.isErr()) {
+    return new Err(upsertResult.error);
+  }
+  logger.info(
+    {
+      workspaceId,
+      metronomeCustomerId,
+      alertId: upsertResult.value.alertId,
+      threshold,
+      capAwuCredits,
+    },
+    "[Metronome DefaultUserWarning] Synced default per-user warning alert"
+  );
+  return new Ok({ alertId: upsertResult.value.alertId });
+}
+
+/**
+ * Look up the per-user 80% warning alert for a specific user.
+ */
+export async function getMetronomePerUserWarningAlert({
+  metronomeCustomerId,
+  workspaceId,
+  userId,
+}: {
+  metronomeCustomerId: string;
+  workspaceId: string;
+  userId: string;
+}): Promise<Result<CustomerAlert | null, Error>> {
+  return findMetronomeAlert({
+    metronomeCustomerId,
+    uniquenessKey: perUserWarningAlertUniquenessKey(workspaceId, userId),
+  });
+}
+
+/**
+ * Idempotently ensure a per-user 80% warning alert exists for this
+ * workspace/user pair. The threshold is floor(capAwuCredits * 0.8).
+ */
+export async function upsertMetronomePerUserWarningAlert({
+  metronomeCustomerId,
+  workspaceId,
+  userId,
+  capAwuCredits,
+}: {
+  metronomeCustomerId: string;
+  workspaceId: string;
+  userId: string;
+  capAwuCredits: number;
+}): Promise<Result<{ alertId: string } | null, Error>> {
+  const threshold = warningAwuCredits(capAwuCredits);
+  if (threshold <= 0) {
+    return new Ok(null);
+  }
+  const upsertResult = await upsertMetronomeAlert({
+    alert_type: "spend_threshold_reached",
+    name: `Per-user warning ${workspaceId}-${userId} (${threshold} AWU / ${Math.round(USER_AWU_WARNING_PERCENTAGE * 100)}% of ${capAwuCredits})`,
+    threshold,
+    credit_type_id: getCreditTypeAwuId(),
+    customer_id: metronomeCustomerId,
+    group_values: [{ key: USER_ID_GROUP_KEY, value: userId }],
+    uniqueness_key: perUserWarningAlertUniquenessKey(workspaceId, userId),
+  });
+  if (upsertResult.isErr()) {
+    return new Err(upsertResult.error);
+  }
+  logger.info(
+    {
+      workspaceId,
+      userId,
+      metronomeCustomerId,
+      alertId: upsertResult.value.alertId,
+      threshold,
+      capAwuCredits,
+    },
+    "[Metronome PerUserWarning] Synced per-user warning alert"
+  );
+  return new Ok({ alertId: upsertResult.value.alertId });
+}
+
+/**
+ * Archive the per-user warning alert for this workspace/user pair, if any.
+ * Idempotent — no-op when no matching alert exists.
+ */
+export async function clearMetronomePerUserWarningAlert({
+  metronomeCustomerId,
+  workspaceId,
+  userId,
+}: {
+  metronomeCustomerId: string;
+  workspaceId: string;
+  userId: string;
+}): Promise<Result<void, Error>> {
+  const result = await clearMetronomeAlert({
+    metronomeCustomerId,
+    uniquenessKey: perUserWarningAlertUniquenessKey(workspaceId, userId),
+  });
+  if (result.isErr()) {
+    return new Err(result.error);
+  }
+  if (result.value) {
+    logger.info(
+      {
+        workspaceId,
+        userId,
+        metronomeCustomerId,
+        alertId: result.value.alertId,
+      },
+      "[Metronome PerUserWarning] Cleared per-user warning alert"
+    );
+  }
   return new Ok(undefined);
 }
