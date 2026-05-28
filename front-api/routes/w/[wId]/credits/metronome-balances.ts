@@ -34,14 +34,18 @@ function balancesErrorToApi(ctx: Context, err: MetronomeBalancesError) {
 // Mounted at /api/w/:wId/credits/metronome-balances.
 const app = workspaceApp();
 
-app.get("/", ensureIsAdmin(), async (ctx): HandlerResult<GetCreditsResponseBody> => {
-  const auth = ctx.get("auth");
+app.get(
+  "/",
+  ensureIsAdmin(),
+  async (ctx): HandlerResult<GetCreditsResponseBody> => {
+    const auth = ctx.get("auth");
 
-  const result = await getMetronomeBalances(auth);
-  if (result.isErr()) {
-    return balancesErrorToApi(ctx, result.error);
+    const result = await getMetronomeBalances(auth);
+    if (result.isErr()) {
+      return balancesErrorToApi(ctx, result.error);
+    }
+    return ctx.json(result.value);
   }
-  return ctx.json(result.value);
-});
+);
 
 export default app;

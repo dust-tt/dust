@@ -50,11 +50,12 @@ app.get(
   async (ctx): HandlerResult<AwuPoolSummaryResponseBody> => {
     const auth = ctx.get("auth");
 
-  const result = await getAwuPoolSummary(auth);
-  if (result.isErr()) {
-    return summaryErrorToApi(ctx, result.error);
+    const result = await getAwuPoolSummary(auth);
+    if (result.isErr()) {
+      return summaryErrorToApi(ctx, result.error);
+    }
+    return ctx.json(result.value);
   }
-  return ctx.json(result.value);
-});
+);
 
 export default app;
