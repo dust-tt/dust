@@ -1,4 +1,5 @@
 import type pino from "pino";
+import { z } from "zod";
 
 // Action links for check results
 export interface ActionLink {
@@ -20,7 +21,7 @@ export type CheckFunction = (
   logger: pino.Logger,
   reportSuccess: (payload?: CheckSuccessPayload) => void,
   reportFailure: (payload: CheckFailurePayload, message: string) => void,
-  heartbeat: () => void
+  heartbeat: () => void,
 ) => Promise<void>;
 
 export type Check = {
@@ -29,20 +30,16 @@ export type Check = {
   everyHour: number;
 };
 
-// Heartbeat types for Temporal activity
-export type CheckHeartbeatType =
-  | "start"
-  | "processing"
-  | "skip"
-  | "finish"
-  | "success"
-  | "failure";
+export const CheckHeartbeatDetailsSchema = z.object({
+  type: z.enum(["start", "processing", "skip", "success", "failure"]),
+  name: z.string(),
+  uuid: z.string(),
+  completedCheckNames: z.array(z.string()),
+});
 
-export interface CheckHeartbeat {
-  type: CheckHeartbeatType;
-  name: string;
-  uuid: string;
-}
+export type CheckHeartbeatDetails = z.infer<typeof CheckHeartbeatDetailsSchema>;
+
+export type CheckHeartbeat = Omit<CheckHeartbeatDetails, "completedCheckNames">;
 
 // Result types for API responses
 export type CheckResultStatus = "success" | "failure" | "skipped" | "running";
