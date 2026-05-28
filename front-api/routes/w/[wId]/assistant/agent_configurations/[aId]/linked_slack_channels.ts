@@ -5,6 +5,7 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureIsBuilder } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -25,22 +26,12 @@ const app = workspaceApp();
 
 app.patch(
   "/",
+  ensureIsBuilder(),
   validate("json", PatchLinkedSlackChannelsRequestBodySchema),
   async (ctx): HandlerResult<PatchLinkedSlackChannelsResponseBody> => {
     const auth = ctx.get("auth");
     const aId = ctx.req.param("aId") ?? "";
     const body = ctx.req.valid("json");
-
-    if (!auth.isBuilder()) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "app_auth_error",
-          message:
-            "Only the users that are `builders` for the current workspace can access an agent.",
-        },
-      });
-    }
 
     if (body.auto_respond_without_mention) {
       const featureFlags = await getFeatureFlags(auth);

@@ -1,0 +1,37 @@
+engine biome(1.0)
+language js
+
+// Disallows direct auth.isAdmin(), auth.isBuilder(), auth.isUser(), and
+// auth.isDustSuperUser() calls inside `if` conditions in front-api route
+// handlers.
+//
+// Role checks in route handlers should use the ensureIsAdmin(),
+// ensureIsBuilder(), ensureIsUser(), or ensureIsDustSuperUser() middleware
+// from @front-api/middlewares/ensure_role instead.
+//
+// NOT flagged (allowed patterns):
+//   - Assignments: const isAdmin = auth.isAdmin()
+//   - Ternaries: auth.isAdmin() ? x : y
+//   - Return values: return { isAdmin: auth.isAdmin() }
+//   - Combined with resource-level checks using || or &&:
+//       auth.isAdmin() || dataSource.canAdministrate(auth)
+//       !agent.canEdit && !auth.isAdmin()
+pattern direct_role_check() {
+    or {
+        `auth.isAdmin()`,
+        `auth.isBuilder()`,
+        `auth.isUser()`,
+        `auth.isDustSuperUser()`
+    }
+}
+
+direct_role_check() as $match where {
+    $match <: within `if ($_ ) { $_ }`,
+    not $match <: within `$_ || $_`,
+    not $match <: within `$_ && $_`,
+    register_diagnostic(
+        span = $match,
+        message = "Direct auth role checks are not allowed in route handlers. Use ensureIsAdmin(), ensureIsBuilder(), ensureIsUser(), or ensureIsDustSuperUser() middleware from @front-api/middlewares/ensure_role instead.",
+        severity = "error"
+    )
+}

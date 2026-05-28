@@ -7,6 +7,7 @@ import { CoreAPI } from "@app/types/core/core_api";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { GetTableResponseType } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
+import { ensureIsBuilder } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -205,100 +206,96 @@ app.get(
   }
 );
 
-app.delete("/", validate("param", ParamsSchema), async (ctx) => {
-  const auth = ctx.get("auth");
-  const owner = auth.getNonNullableWorkspace();
+app.delete(
+  "/",
+  ensureIsBuilder(),
+  validate("param", ParamsSchema),
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const owner = auth.getNonNullableWorkspace();
 
-  const { dsId, tId } = ctx.req.valid("param");
+    const { dsId, tId } = ctx.req.valid("param");
 
-  const dataSource = await DataSourceResource.fetchByNameOrId(
-    auth,
-    dsId,
-    // TODO(DATASOURCE_SID): Clean-up
-    { origin: "v1_data_sources_tables" }
-  );
+    const dataSource = await DataSourceResource.fetchByNameOrId(
+      auth,
+      dsId,
+      // TODO(DATASOURCE_SID): Clean-up
+      { origin: "v1_data_sources_tables" }
+    );
 
-  const spaceId = await resolveLegacyDataSourceSpaceId(
-    auth,
-    ctx.req.param("spaceId"),
-    dataSource
-  );
+    const spaceId = await resolveLegacyDataSourceSpaceId(
+      auth,
+      ctx.req.param("spaceId"),
+      dataSource
+    );
 
-  if (
-    !dataSource ||
-    dataSource.space.sId !== spaceId ||
-    !dataSource.canRead(auth)
-  ) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
-      },
-    });
-  }
-
-  if (dataSource.space.kind === "conversations") {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "space_not_found",
-        message: "The space you're trying to access was not found",
-      },
-    });
-  }
-
-  if (!auth.isBuilder()) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
-      },
-    });
-  }
-  // To write we must have canWrite or be a systemAPIKey
-  if (!(dataSource.canWrite(auth) || auth.isSystemKey())) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "data_source_auth_error",
-        message: "You are not allowed to update data in this data source.",
-      },
-    });
-  }
-
-  const delRes = await deleteTable({
-    owner,
-    dataSource,
-    tableId: tId,
-  });
-
-  if (delRes.isErr()) {
-    switch (delRes.error.type) {
-      case "not_found_error":
-        return apiError(ctx, {
-          status_code: 404,
-          api_error: {
-            type: delRes.error.notFoundError.type,
-            message: delRes.error.notFoundError.message,
-          },
-        });
-      case "invalid_request_error":
-      case "internal_server_error":
-        return apiError(ctx, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "Failed to delete table.",
-          },
-        });
-      default:
-        assertNever(delRes.error);
+    if (
+      !dataSource ||
+      dataSource.space.sId !== spaceId ||
+      !dataSource.canRead(auth)
+    ) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "data_source_not_found",
+          message: "The data source you requested was not found.",
+        },
+      });
     }
-  }
 
-  return ctx.body(null, 200);
-});
+    if (dataSource.space.kind === "conversations") {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "space_not_found",
+          message: "The space you're trying to access was not found",
+        },
+      });
+    }
+
+    // To write we must have canWrite or be a systemAPIKey
+    if (!(dataSource.canWrite(auth) || auth.isSystemKey())) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "data_source_auth_error",
+          message: "You are not allowed to update data in this data source.",
+        },
+      });
+    }
+
+    const delRes = await deleteTable({
+      owner,
+      dataSource,
+      tableId: tId,
+    });
+
+    if (delRes.isErr()) {
+      switch (delRes.error.type) {
+        case "not_found_error":
+          return apiError(ctx, {
+            status_code: 404,
+            api_error: {
+              type: delRes.error.notFoundError.type,
+              message: delRes.error.notFoundError.message,
+            },
+          });
+        case "invalid_request_error":
+        case "internal_server_error":
+          return apiError(ctx, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: "Failed to delete table.",
+            },
+          });
+        default:
+          assertNever(delRes.error);
+      }
+    }
+
+    return ctx.body(null, 200);
+  }
+);
 
 export default app;

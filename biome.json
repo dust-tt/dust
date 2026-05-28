@@ -153,6 +153,10 @@
       "plugins": ["./.grit/patterns/noMcpServerInstructions.grit"]
     },
     {
+      "includes": ["front-api/routes/**/*.ts"],
+      "plugins": ["./.grit/patterns/noDirectRoleCheck.grit"]
+    },
+    {
       "includes": [
         "connectors/src/lib/models/**/*.ts",
         "connectors/src/resources/storage/models/**/*.ts",
