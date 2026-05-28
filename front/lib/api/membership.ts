@@ -4,6 +4,7 @@ import {
   emitAuditLogEventDirect,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
+import type { AuditLogActor } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import {
@@ -170,12 +171,18 @@ export async function createAndTrackMembership({
   role,
   origin,
   useFreeSeat = true,
+  auditActor,
 }: {
   user: UserResource;
   workspace: WorkspaceResource | WorkspaceModel | LightWorkspaceType;
   role: ActiveRoleType;
   origin: MembershipOriginType;
   useFreeSeat?: boolean;
+  // Override for the audit-log actor. Defaults to the user themselves, which
+  // is correct for self-signup. SCIM/system-driven provisioning should pass
+  // `{ type: "system", id: directoryId, name: "Directory Sync" }` so the
+  // audit row doesn't read like the user provisioned themselves.
+  auditActor?: AuditLogActor;
 }) {
   const w =
     workspace instanceof WorkspaceModel ||
@@ -205,7 +212,7 @@ export async function createAndTrackMembership({
   void emitAuditLogEventDirect({
     workspace: w,
     action: "membership.created",
-    actor: {
+    actor: auditActor ?? {
       type: "user",
       id: user.sId,
       name: user.fullName() ?? "unknown",
@@ -249,9 +256,16 @@ export async function revokeAndTrackMembership(
   {
     transaction,
     allowLastAdminRevocation = false,
+    auditActor,
   }: {
     transaction?: Transaction;
     allowLastAdminRevocation?: boolean;
+    // Override for the audit-log actor. When omitted, the actor is derived
+    // from `auth` (typically a generic system actor when called from SCIM,
+    // since auth is internalAdminForWorkspace). SCIM callers should pass
+    // `{ type: "system", id: directoryId, name: "Directory Sync" }` so the
+    // audit row identifies which directory triggered the revocation.
+    auditActor?: AuditLogActor;
   } = {}
 ) {
   const workspace = auth.getNonNullableWorkspace();
@@ -288,21 +302,40 @@ export async function revokeAndTrackMembership(
       endAt: revokeResult.value.endAt,
     });
 
-    void emitAuditLogEvent({
-      auth,
-      action: "membership.revoked",
-      targets: [
-        buildAuditLogTarget("workspace", workspace),
-        buildAuditLogTarget("user", {
-          sId: user.sId,
-          name: user.fullName() ?? "unknown",
-        }),
-      ],
-      context: getAuditLogContext(auth),
-      metadata: {
-        previous_role: revokeResult.value.role,
-      },
-    });
+    if (auditActor) {
+      void emitAuditLogEventDirect({
+        workspace,
+        action: "membership.revoked",
+        actor: auditActor,
+        targets: [
+          buildAuditLogTarget("workspace", workspace),
+          buildAuditLogTarget("user", {
+            sId: user.sId,
+            name: user.fullName() ?? "unknown",
+          }),
+        ],
+        context: getAuditLogContext(auth),
+        metadata: {
+          previous_role: revokeResult.value.role,
+        },
+      });
+    } else {
+      void emitAuditLogEvent({
+        auth,
+        action: "membership.revoked",
+        targets: [
+          buildAuditLogTarget("workspace", workspace),
+          buildAuditLogTarget("user", {
+            sId: user.sId,
+            name: user.fullName() ?? "unknown",
+          }),
+        ],
+        context: getAuditLogContext(auth),
+        metadata: {
+          previous_role: revokeResult.value.role,
+        },
+      });
+    }
 
     // Remove seat in Metronome if workspace is Metronome-billed.
     const removeSeatResult = await syncSeatCountForWorkspace(workspace);

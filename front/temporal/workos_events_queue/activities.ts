@@ -1180,6 +1180,11 @@ async function handleCreateOrUpdateWorkOSUser(
     workspace,
     role: "user",
     origin: "provisioned",
+    auditActor: {
+      type: "system",
+      id: String(eventData.directoryId ?? "directory_sync"),
+      name: "Directory Sync",
+    },
   });
 
   void emitAuditLogEventDirect({
@@ -1258,6 +1263,11 @@ async function handleDeleteWorkOSUser(
 
   const membershipRevokeResult = await revokeAndTrackMembership(auth, user, {
     allowLastAdminRevocation: true,
+    auditActor: {
+      type: "system",
+      id: String(eventData.directoryId ?? "directory_sync"),
+      name: "Directory Sync",
+    },
   });
 
   if (membershipRevokeResult.isErr()) {
