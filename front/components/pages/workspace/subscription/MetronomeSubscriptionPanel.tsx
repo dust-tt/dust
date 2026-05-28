@@ -1,4 +1,8 @@
 import { SubscriptionPlanCards } from "@app/components/plans/SubscriptionPlanCards";
+import {
+  useCancelMetronomeContract,
+  useReactivateMetronomeContract,
+} from "@app/hooks/useMetronomeContractLifecycleAction";
 import { useSendNotification } from "@app/hooks/useNotification";
 import config from "@app/lib/api/config";
 import { getPriceAsString } from "@app/lib/client/subscription";
@@ -17,7 +21,6 @@ import {
   useWorkspaceSeatsCount,
 } from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
-import type { PatchMetronomeContractRequestBody } from "@app/pages/api/w/[wId]/metronome/contract";
 import type { PatchSubscriptionRequestBody } from "@app/pages/api/w/[wId]/subscriptions";
 import type { BillingPeriod, SubscriptionType } from "@app/types/plan";
 import { isSubscriptionMetronomeBilled } from "@app/types/plan";
@@ -196,6 +199,14 @@ export function MetronomeSubscriptionPanel({
     workspaceId: owner.sId,
     disabled: !isMetronomeBilled,
   });
+  const { cancelMetronomeContract, isCancellingMetronomeContract } =
+    useCancelMetronomeContract({
+      workspaceId: owner.sId,
+    });
+  const { reactivateMetronomeContract, isReactivatingMetronomeContract } =
+    useReactivateMetronomeContract({
+      workspaceId: owner.sId,
+    });
 
   const { submit: handleSubscribePlan, isSubmitting: isSubscribingPlan } =
     useSubmitFunction(async () => {
@@ -207,30 +218,10 @@ export function MetronomeSubscriptionPanel({
   const { submit: cancelSubscription, isSubmitting: isCancelling } =
     useSubmitFunction(async () => {
       try {
-        const res = await clientFetch(
-          `/api/w/${owner.sId}/metronome/contract`,
-          {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              action: "cancel",
-            } satisfies z.infer<typeof PatchMetronomeContractRequestBody>),
-          }
-        );
-        if (!res.ok) {
-          sendNotification({
-            type: "error",
-            title: "Cancellation failed",
-            description: "Failed to cancel your subscription.",
-          });
-          return;
+        const success = await cancelMetronomeContract();
+        if (success) {
+          router.reload();
         }
-        sendNotification({
-          type: "success",
-          title: "Subscription cancelled",
-          description: "Your subscription will end at the end of the period.",
-        });
-        router.reload();
       } finally {
         setShowCancelDialog(false);
       }
@@ -238,28 +229,16 @@ export function MetronomeSubscriptionPanel({
 
   const { submit: reactivateSubscription, isSubmitting: isReactivating } =
     useSubmitFunction(async () => {
-      const res = await clientFetch(`/api/w/${owner.sId}/metronome/contract`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "reactivate",
-        } satisfies z.infer<typeof PatchMetronomeContractRequestBody>),
-      });
-      if (!res.ok) {
-        sendNotification({
-          type: "error",
-          title: "Reactivation failed",
-          description: "Failed to reactivate your subscription.",
-        });
-        return;
+      const success = await reactivateMetronomeContract();
+      if (success) {
+        router.reload();
       }
-      sendNotification({
-        type: "success",
-        title: "Subscription reactivated",
-        description: "Your subscription will continue normally.",
-      });
-      router.reload();
     });
+
+  const isCancellingSubscription =
+    isCancelling || isCancellingMetronomeContract;
+  const isReactivatingSubscription =
+    isReactivating || isReactivatingMetronomeContract;
 
   const {
     submit: handleUpgradeToBusiness,
@@ -352,7 +331,7 @@ export function MetronomeSubscriptionPanel({
         show={showCancelDialog}
         onClose={() => setShowCancelDialog(false)}
         onValidate={cancelSubscription}
-        isSaving={isCancelling}
+        isSaving={isCancellingSubscription}
         periodEndLabel={periodEndLabel}
       />
       <UpgradeToBusinessDialog
@@ -372,7 +351,7 @@ export function MetronomeSubscriptionPanel({
                   size="sm"
                   label="Resume subscription"
                   variant="highlight"
-                  disabled={isReactivating}
+                  disabled={isReactivatingSubscription}
                   onClick={withTracking(
                     TRACKING_AREAS.AUTH,
                     "subscription_reactivate",
@@ -386,7 +365,7 @@ export function MetronomeSubscriptionPanel({
                   size="sm"
                   label="Cancel subscription"
                   variant="warning"
-                  disabled={isCancelling}
+                  disabled={isCancellingSubscription}
                   onClick={withTracking(
                     TRACKING_AREAS.AUTH,
                     "subscription_cancel",
