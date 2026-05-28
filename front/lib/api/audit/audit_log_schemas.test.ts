@@ -72,6 +72,33 @@ describe("audit log schemas", () => {
     }
     expect(mismatched).toEqual([]);
   });
+
+  it("all schema metadata keys are snake_case per [AUDIT9]", () => {
+    // snake_case = lowercase letters, digits, and underscores only, must start
+    // with a letter. Rejects camelCase, PascalCase, kebab-case, and
+    // SCREAMING_SNAKE_CASE.
+    const snakeCaseRegex = /^[a-z][a-z0-9_]*$/;
+    const violations: string[] = [];
+
+    for (const file of fs.readdirSync(SCHEMAS_DIR)) {
+      if (!file.endsWith(".json")) {
+        continue;
+      }
+      const schema = readSchemaFile(path.join(SCHEMAS_DIR, file));
+      if (!schema.metadata) {
+        continue;
+      }
+      for (const key of Object.keys(schema.metadata)) {
+        if (!snakeCaseRegex.test(key)) {
+          violations.push(`${file}: "${key}"`);
+        }
+      }
+    }
+    expect(
+      violations,
+      `Non-snake_case metadata keys (per [AUDIT9]):\n${violations.join("\n")}`
+    ).toEqual([]);
+  });
 });
 
 /**
