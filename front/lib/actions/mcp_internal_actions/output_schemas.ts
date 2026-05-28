@@ -129,15 +129,10 @@ const ModelVisionImageSchema = z
     imageContentType: z.string(),
   })
   .and(
-    z
-      .union([
-        z.object({ filePath: z.string() }),
-        z.object({ gcsPath: z.string() }).transform(({ gcsPath, ...rest }) => ({
-          ...rest,
-          filePath: gcsPath,
-        })),
-      ])
-      .transform((v) => v)
+    z.union([
+      z.object({ filePath: z.string() }),
+      z.object({ gcsPath: z.string() }),
+    ])
   );
 
 export type ModelVisionImageType = z.infer<typeof ModelVisionImageSchema>;

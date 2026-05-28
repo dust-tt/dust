@@ -163,17 +163,20 @@ async function renderActionForMultiActionsModel(
       if (isTextContent(item)) {
         contentArray.push({ type: "text", text: item.text });
       } else if (isModelVisionImage(item)) {
-        const { filePath } = item.resource;
+        const imagePath =
+          "filePath" in item.resource
+            ? item.resource.filePath
+            : item.resource.gcsPath;
 
         // Legacy records carry a raw GCS path (starts with `w/`).
         // New records carry a canonical scoped path (e.g. `conversation-{cId}/photo.png`).
-        const urlRes = filePath.startsWith("w/")
+        const urlRes = imagePath.startsWith("w/")
           ? await getConversationFileMountSignedUrl(
               auth,
               { useCase: "conversation", conversationId },
-              filePath
+              imagePath
             )
-          : await getDustFileSystemDownloadUrl(auth, filePath);
+          : await getDustFileSystemDownloadUrl(auth, imagePath);
 
         if (urlRes.isOk()) {
           contentArray.push({
