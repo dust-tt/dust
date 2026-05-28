@@ -123,7 +123,7 @@ export async function handleAwuPoolSummaryRequest(
         (entry) =>
           entry.access_schedule?.credit_type?.id === awuCreditTypeId &&
           !seatProductIds.has(entry.product.id) &&
-          entry.contract?.id === metronomeContractId
+          (entry.contract?.id === metronomeContractId || !entry.contract)
       );
 
       let totalRemainingCredits = 0;
