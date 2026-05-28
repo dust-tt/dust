@@ -8,8 +8,10 @@ import {
 import logger from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { readableToReadableStream } from "@app/types/shared/utils/streams";
+import type { WorkspaceAwareCtx } from "@front-api/middlewares/ctx";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
+import type { Context } from "hono";
 import path from "path";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
@@ -47,7 +49,7 @@ const PatchBodySchema = z.discriminatedUnion("action", [
 
 /** Resolve and validate the canonical path from the URL, returning an error response if invalid. */
 async function resolveFs(
-  ctx: Parameters<Parameters<typeof app.get>[1]>[0],
+  ctx: Context<WorkspaceAwareCtx>,
   canonicalPath: string
 ) {
   if (!canonicalPath || !canonicalPath.includes("/")) {
