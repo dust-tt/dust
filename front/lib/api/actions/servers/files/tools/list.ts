@@ -42,21 +42,21 @@ export async function listHandler(
   if (fsResult.isErr()) {
     return new Err(new MCPError(fsResult.error.message, { tracked: false }));
   }
-  const fs = fsResult.value;
+  const dustFs = fsResult.value;
 
   const useCase = scope ?? "conversation";
   let scopedPrefix: string | undefined;
 
   if (useCase === "conversation") {
-    const mount = fs.getMounts().find((m) => m.kind === "conversation");
+    const mount = dustFs.getMounts().find((m) => m.kind === "conversation");
 
     scopedPrefix = mount ? `${mount.scopedPrefix}/` : undefined;
   } else {
-    const mount = fs.getMounts().find((m) => m.kind === "pod");
+    const mount = dustFs.getMounts().find((m) => m.kind === "pod");
     if (!mount) {
       return new Err(
         new MCPError(
-          "Project file paths are only available in project conversations.",
+          "Pod file paths are only available in pod conversations.",
           { tracked: false }
         )
       );
@@ -64,7 +64,7 @@ export async function listHandler(
 
     if (!mount.permissions.canRead) {
       return new Err(
-        new MCPError("You do not have read permissions for this project.", {
+        new MCPError("You do not have read permissions for this pod.", {
           tracked: false,
         })
       );
@@ -73,7 +73,7 @@ export async function listHandler(
     scopedPrefix = `${mount.scopedPrefix}/`;
   }
 
-  const entries = await fs.list(scopedPrefix, { includeProcessed: true });
+  const entries = await dustFs.list(scopedPrefix, { includeProcessed: true });
 
   const [dirs, files] = partition(entries, (e) => e.isDirectory);
 

@@ -132,9 +132,10 @@ const ModelVisionImageSchema = z
     z
       .union([
         z.object({ filePath: z.string() }),
-        z
-          .object({ gcsPath: z.string() })
-          .transform(({ gcsPath, ...rest }) => ({ ...rest, filePath: gcsPath })),
+        z.object({ gcsPath: z.string() }).transform(({ gcsPath, ...rest }) => ({
+          ...rest,
+          filePath: gcsPath,
+        })),
       ])
       .transform((v) => v)
   );

@@ -127,7 +127,7 @@ describe("listHandler", () => {
     );
   });
 
-  it("lists the project mount when scope=pod in a project conversation", async () => {
+  it("lists the pod mount when scope=pod in a pod conversation", async () => {
     const { auth, conversation, projectId } = await setupProjectConversation();
     const workspaceId = auth.getNonNullableWorkspace().sId;
 

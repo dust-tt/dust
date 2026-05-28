@@ -40,13 +40,13 @@ export async function createHandler(
     return new Err(new MCPError(fsResult.error.message, { tracked: false }));
   }
 
-  const fs = fsResult.value;
+  const dustFs = fsResult.value;
 
   // Check existence before writing so we can report "Created" vs "Updated".
-  const statResult = await fs.stat(path);
+  const statResult = await dustFs.stat(path);
   const exists = statResult.isOk() && statResult.value !== null;
 
-  const writeResult = await fs.write(path, contentBuffer, content_type);
+  const writeResult = await dustFs.write(path, contentBuffer, content_type);
   if (writeResult.isErr()) {
     const err = writeResult.error;
     switch (err.code) {

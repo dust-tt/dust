@@ -152,9 +152,9 @@ export async function catHandler(
     return new Err(new MCPError(fsResult.error.message, { tracked: false }));
   }
 
-  const fs = fsResult.value;
+  const dustFs = fsResult.value;
 
-  const statResult = await fs.stat(path);
+  const statResult = await dustFs.stat(path);
   if (statResult.isErr()) {
     return new Err(new MCPError(statResult.error.message, { tracked: false }));
   }
@@ -180,7 +180,7 @@ export async function catHandler(
     ]);
   }
 
-  const readResult = await fs.read(path);
+  const readResult = await dustFs.read(path);
   if (readResult.isErr()) {
     return new Err(new MCPError(readResult.error.message, { tracked: false }));
   }

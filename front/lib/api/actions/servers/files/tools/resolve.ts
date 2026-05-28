@@ -94,9 +94,9 @@ export async function resolveHandler(
   if (fsResult.isErr()) {
     return new Err(new MCPError(fsResult.error.message, { tracked: false }));
   }
-  const fs = fsResult.value;
+  const dustFs = fsResult.value;
 
-  const statResult = await fs.stat(canonicalPath);
+  const statResult = await dustFs.stat(canonicalPath);
   if (statResult.isErr()) {
     return new Err(new MCPError(statResult.error.message, { tracked: false }));
   }

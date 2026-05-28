@@ -39,9 +39,9 @@ export async function copyHandler(
     return new Err(new MCPError(fsResult.error.message, { tracked: false }));
   }
 
-  const fs = fsResult.value;
+  const dustFs = fsResult.value;
 
-  const statResult = await fs.stat(source);
+  const statResult = await dustFs.stat(source);
   if (statResult.isErr()) {
     const err = statResult.error;
     switch (err.code) {
@@ -78,7 +78,7 @@ export async function copyHandler(
     );
   }
 
-  const copyResult = await fs.copy({ src: source, dest });
+  const copyResult = await dustFs.copy({ src: source, dest });
   if (copyResult.isErr()) {
     const err = copyResult.error;
     switch (err.code) {

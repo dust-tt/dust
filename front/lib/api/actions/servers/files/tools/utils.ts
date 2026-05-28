@@ -57,10 +57,9 @@ async function buildPodMountPoint(
 ): Promise<Result<MountPoint, MCPError>> {
   if (!isPodConversation(conversation)) {
     return new Err(
-      new MCPError(
-        "Pod file paths are only available in project conversations.",
-        { tracked: false }
-      )
+      new MCPError("Pod file paths are only available in pod conversations.", {
+        tracked: false,
+      })
     );
   }
 
