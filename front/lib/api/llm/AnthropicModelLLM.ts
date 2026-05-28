@@ -159,6 +159,14 @@ function toBaseMessages(
           }
         }
       );
+    case "compaction":
+      return [
+        {
+          role: "user",
+          type: "text",
+          content: { value: message.content },
+        },
+      ];
     default:
       assertNever(message);
   }
