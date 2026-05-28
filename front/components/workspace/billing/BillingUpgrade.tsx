@@ -20,8 +20,8 @@ export function BillingUpgrade({ owner, subscription }: BillingUpgradeProps) {
     return null;
   }
 
-  const isFreePlan = code !== CREDIT_PRICED_FREE_PLAN_CODE;
-  const isBusinessPlan = code !== CREDIT_PRICED_BUSINESS_PLAN_CODE;
+  const isFreePlan = code === CREDIT_PRICED_FREE_PLAN_CODE;
+  const isBusinessPlan = code === CREDIT_PRICED_BUSINESS_PLAN_CODE;
 
   // For now we show the component only for the business plan (to offer to contact sales) as the
   // upgrade path (seats-focused vs subscription-focused) is still being discussed.
