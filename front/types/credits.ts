@@ -4,17 +4,13 @@ import type { EditedByUser } from "@app/types/user";
 // on `workspaces.poolCreditState`, driven by the workspace credit state
 // machine in `front/lib/metronome/workspace_credit_state_machine.ts`;
 //
-//   active:                pool has remaining commit balance
-//   active_low_balance:  pool has ≤100 credits remaining (low balance warning)
-//   active_critical_balance:   pool has ≤10 credits remaining (critical low balance)
-//   overage:               pool exhausted, workspace is in PAYG mode
-//   depleted:              pool exhausted and PAYG unavailable (or PAYG cap reached);
-//                          all users in the workspace blocked until next billing period
-//                          or admin pool top-up.
+//   active:    pool has remaining commit balance
+//   overage:   pool exhausted, workspace is in PAYG mode
+//   depleted:  pool exhausted and PAYG unavailable (or PAYG cap reached);
+//              all users in the workspace blocked until next billing period
+//              or admin pool top-up.
 export const WORKSPACE_POOL_CREDIT_STATES = [
   "active",
-  "active_low_balance",
-  "active_critical_balance",
   "overage",
   "depleted",
 ] as const;

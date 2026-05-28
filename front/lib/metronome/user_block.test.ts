@@ -1,7 +1,4 @@
-import {
-  getWorkspaceCreditPoolStatus,
-  isUserBlocked,
-} from "@app/lib/metronome/user_block";
+import { isUserBlocked } from "@app/lib/metronome/user_block";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -123,62 +120,5 @@ describe("isUserBlocked", () => {
     expect(blocked).toBe(true);
     expect(redisValues.get("metronome:user_cap:ws_test:u_test")).toBe("0");
     expect(redisValues.get("metronome:pool_depleted:ws_test")).toBe("1");
-  });
-});
-
-describe("getWorkspaceCreditPoolStatus", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    redisValues.clear();
-  });
-
-  it("returns cached status from Redis when present", async () => {
-    redisValues.set(
-      "metronome:pool_credit_status:ws_test",
-      "active_low_balance"
-    );
-
-    const status = await getWorkspaceCreditPoolStatus("ws_test");
-
-    expect(status).toBe("active_low_balance");
-    expect(mockFetchWorkspaceById).not.toHaveBeenCalled();
-  });
-
-  it("falls back to DB on cache miss and populates Redis", async () => {
-    mockFetchWorkspaceById.mockResolvedValue({
-      sId: "ws_test",
-      id: 42,
-      poolCreditState: "depleted",
-    });
-
-    const status = await getWorkspaceCreditPoolStatus("ws_test");
-
-    expect(status).toBe("depleted");
-    expect(redisValues.get("metronome:pool_credit_status:ws_test")).toBe(
-      "depleted"
-    );
-  });
-
-  it("returns 'active' when workspace not found in DB fallback", async () => {
-    mockFetchWorkspaceById.mockResolvedValue(null);
-
-    const status = await getWorkspaceCreditPoolStatus("ws_test");
-
-    expect(status).toBe("active");
-  });
-
-  it("falls back to DB when Redis has invalid value", async () => {
-    redisValues.set("metronome:pool_credit_status:ws_test", "invalid_state");
-
-    mockFetchWorkspaceById.mockResolvedValue({
-      sId: "ws_test",
-      id: 42,
-      poolCreditState: "depleted",
-    });
-
-    const status = await getWorkspaceCreditPoolStatus("ws_test");
-
-    expect(status).toBe("depleted");
-    expect(mockFetchWorkspaceById).toHaveBeenCalled();
   });
 });
