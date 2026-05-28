@@ -375,7 +375,22 @@ app.post(
       case "non-blocking": {
         // Get the runId so we can return the status, then kick off the background
         // stream consumption (which records run usage) without awaiting.
-        const dustRunId = await runRes.value.dustRunId;
+        let dustRunId: string;
+        try {
+          dustRunId = await runRes.value.dustRunId;
+        } catch (err) {
+          logger.error(
+            { error: err, workspaceId: owner.sId },
+            "Run failed to produce a run ID"
+          );
+          return apiError(ctx, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: "The run failed to initialize (no run ID received).",
+            },
+          });
+        }
 
         const statusRunRes = await coreAPI.getRunStatus({
           projectId: appResource.dustAPIProjectId,
