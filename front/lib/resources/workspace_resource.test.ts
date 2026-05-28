@@ -40,6 +40,21 @@ vi.mock("@app/lib/utils/cache", () => ({
         };
       }
     ),
+  bestEffortInvalidateCacheWithRedis: vi
+    .fn()
+    .mockImplementation(
+      <T, Args extends unknown[]>(
+        fn: CacheableFunction<JsonSerializable<T>, Args>,
+        resolver: (...args: Args) => string
+      ) => {
+        return (...args: Args): Promise<void> => {
+          const key = `cacheWithRedis-${fn.name}-${resolver(...args)}`;
+          inMemoryCache.delete(key);
+          deletedKeys.push(key);
+          return Promise.resolve();
+        };
+      }
+    ),
   batchInvalidateCacheWithRedis: vi
     .fn()
     .mockImplementation(
@@ -84,10 +99,11 @@ vi.mock("@app/lib/resources/kill_switch_resource", () => ({
 
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { WORKSPACE_CACHE_KEY_VERSION } from "@app/types/shared/cache_resource_registry";
 import type { WorkspaceType } from "@app/types/user";
 
 function getCacheKeyForWorkspace(workspaceId: string): string {
-  return `cacheWithRedis-_fetchByIdUncached-workspace:sid:${workspaceId}`;
+  return `cacheWithRedis-_fetchByIdUncached-workspace:v${WORKSPACE_CACHE_KEY_VERSION}:${workspaceId}`;
 }
 
 const INVALID_RETENTION_DAYS = CONVERSATIONS_RETENTION_MIN_DAYS - 1;

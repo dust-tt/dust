@@ -10,6 +10,7 @@ import type {
 } from "@dust-tt/client";
 import { UpsertDataSourceFolderRequestSchema } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
+import { ensureIsSystemKey } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -28,20 +29,10 @@ const app = publicApiApp();
 
 app.get(
   "/",
+  ensureIsSystemKey(),
   validate("param", ParamsSchema),
   async (ctx): HandlerResult<GetFolderResponseType> => {
     const auth = ctx.get("auth");
-
-    if (!auth.isSystemKey()) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "invalid_oauth_token_error",
-          message: "Only system keys are allowed to use this endpoint.",
-        },
-      });
-    }
-
     const { dsId, fId } = ctx.req.valid("param");
 
     const dataSource = await DataSourceResource.fetchById(auth, dsId);
@@ -92,21 +83,11 @@ app.get(
 
 app.post(
   "/",
+  ensureIsSystemKey(),
   validate("param", ParamsSchema),
   validate("json", UpsertDataSourceFolderRequestSchema),
   async (ctx): HandlerResult<UpsertFolderResponseType> => {
     const auth = ctx.get("auth");
-
-    if (!auth.isSystemKey()) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "invalid_oauth_token_error",
-          message: "Only system keys are allowed to use this endpoint.",
-        },
-      });
-    }
-
     const { dsId, fId } = ctx.req.valid("param");
 
     const dataSource = await DataSourceResource.fetchById(auth, dsId);
@@ -235,20 +216,10 @@ app.post(
 
 app.delete(
   "/",
+  ensureIsSystemKey(),
   validate("param", ParamsSchema),
   async (ctx): HandlerResult<DeleteFolderResponseType> => {
     const auth = ctx.get("auth");
-
-    if (!auth.isSystemKey()) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "invalid_oauth_token_error",
-          message: "Only system keys are allowed to use this endpoint.",
-        },
-      });
-    }
-
     const { dsId, fId } = ctx.req.valid("param");
 
     const dataSource = await DataSourceResource.fetchById(auth, dsId);

@@ -1,4 +1,4 @@
-import type { RegionInfo } from "@app/lib/api/regions/config";
+import type { RegionInfo } from "@app/types/region";
 import type { Result } from "@app/types/shared/result";
 import { DUST_EU_URL, DUST_US_URL } from "@extension/shared/lib/config";
 import type { StorageService } from "@extension/shared/services/storage";

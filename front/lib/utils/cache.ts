@@ -1,6 +1,7 @@
 import { getRedisCacheClient } from "@app/lib/api/redis";
 import { distributedLock, distributedUnlock } from "@app/lib/lock";
 import logger from "@app/logger/logger";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { Transaction } from "sequelize";
 
 const SPIN_WAIT_INTERVAL_MS = 100;
@@ -218,6 +219,24 @@ export function batchInvalidateCacheWithRedis<T, Args extends unknown[]>(
 
     const keys = argsList.map((args) => getCacheKey(fn, resolver, args));
     await redisCli.del(keys);
+  };
+}
+
+export function bestEffortInvalidateCacheWithRedis<T, Args extends unknown[]>(
+  fn: CacheableFunction<JsonSerializable<T>, Args>,
+  resolver: KeyResolver<Args>,
+  label: string
+): (...args: Args) => Promise<void> {
+  const invalidate = invalidateCacheWithRedis(fn, resolver);
+  return async function (...args: Args): Promise<void> {
+    try {
+      await invalidate(...args);
+    } catch (err) {
+      logger.warn(
+        { err: normalizeError(err), cacheKey: resolver(...args) },
+        `Failed to invalidate cache: ${label}`
+      );
+    }
   };
 }
 

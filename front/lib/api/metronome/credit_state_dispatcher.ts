@@ -1,5 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
-import { isPAYGEnabled } from "@app/lib/credits/payg";
+import { isPAYGEnabled } from "@app/lib/credits/credit_payg";
 import { listMetronomeBalances } from "@app/lib/metronome/client";
 import { getCreditTypeAwuId } from "@app/lib/metronome/constants";
 import { invalidateWorkspacePoolCredits } from "@app/lib/metronome/credit_balance";
@@ -14,11 +14,6 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
-
-async function isPaygEnabled(workspace: WorkspaceResource): Promise<boolean> {
-  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-  return isPAYGEnabled(auth);
-}
 
 export async function dispatchPerUserCapReached({
   workspace,
@@ -167,7 +162,8 @@ async function transitionWorkspacePool(
   workspace: WorkspaceResource,
   event: WorkspaceCreditEvent
 ): Promise<void> {
-  const paygEnabled = await isPaygEnabled(workspace);
+  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+  const paygEnabled = await isPAYGEnabled(auth);
   await transitionWorkspaceCreditState(workspace, event, {
     workspaceId: workspace.sId,
     paygEnabled,

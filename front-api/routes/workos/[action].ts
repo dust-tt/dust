@@ -5,11 +5,7 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import config from "@app/lib/api/config";
 import { performLogin } from "@app/lib/api/login";
-import type { RegionType } from "@app/lib/api/regions/config";
-import {
-  config as multiRegionsConfig,
-  SUPPORTED_REGIONS,
-} from "@app/lib/api/regions/config";
+import { config as multiRegionsConfig } from "@app/lib/api/regions/config";
 import { checkUserRegionAffinity } from "@app/lib/api/regions/lookup";
 import { authenticateWithWorkOSCode } from "@app/lib/api/workos/authenticate";
 import { getWorkOS } from "@app/lib/api/workos/client";
@@ -28,6 +24,8 @@ import { getStatsDClient } from "@app/lib/utils/statsd";
 import { extractUTMParams } from "@app/lib/utils/utm";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import type { RegionType } from "@app/types/region";
+import { SUPPORTED_REGIONS } from "@app/types/region";
 import { isDevelopment } from "@app/types/shared/env";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";

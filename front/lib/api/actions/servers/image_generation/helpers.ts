@@ -55,7 +55,6 @@ const MICRO_USD_PER_USD = 1_000_000;
 export const QUALITY_TO_IMAGE_SIZE: Record<string, string> = {
   low: "1K",
   medium: "2K",
-  high: "4K",
 };
 
 export type Base64ImageData = {

@@ -1,7 +1,7 @@
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { SpaceKind } from "@app/types/space";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsUser } from "@front-api/middlewares/ensure_role";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { withSpace } from "@front-api/middlewares/with_space";
@@ -15,7 +15,7 @@ const app = workspaceApp();
 
 app.delete(
   "/",
-  ensureIsUser(),
+  ensureIsAdmin(),
   withSpace({ requireCanReadOrAdministrate: true }),
   async (ctx): HandlerResult<DeleteMCPServerViewResponseBody> => {
     const auth = ctx.get("auth");
@@ -44,16 +44,6 @@ app.delete(
           type: "invalid_request_error",
           message:
             "Can only delete MCP Server Views from regular or global spaces.",
-        },
-      });
-    }
-
-    if (!auth.isAdmin()) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "mcp_auth_error",
-          message: "User is not authorized to remove tools from a space.",
         },
       });
     }

@@ -1,9 +1,9 @@
 import config from "@app/lib/api/config";
-import type { RegionType } from "@app/lib/api/regions/config";
 import { config as regionConfig } from "@app/lib/api/regions/config";
 import type { StatusPageIncidentType } from "@app/lib/api/status/status_page";
 import { getUnresolvedIncidents } from "@app/lib/api/status/status_page";
 import { cacheWithRedis } from "@app/lib/utils/cache";
+import type { RegionType } from "@app/types/region";
 import { isDevelopment } from "@app/types/shared/env";
 
 interface AppStatusComponent {

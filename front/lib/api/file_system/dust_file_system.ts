@@ -242,6 +242,57 @@ export class DustFileSystem {
     }
   }
 
+  /**
+   * Build a DustFileSystem for share-token access.
+   *
+   * The share-token is its own authorization model. The caller has already
+   * verified the JWT and matched resource IDs against the frame's metadata.
+   * Both mounts are granted read-only access unconditionally.
+   */
+  static forShareToken(
+    auth: Authenticator,
+    {
+      conversationId,
+      spaceId,
+    }: { conversationId: string | null; spaceId: string | null }
+  ): DustFileSystem {
+    const owner = auth.getNonNullableWorkspace();
+    const mounts: FileSystemMount[] = [];
+
+    if (conversationId) {
+      mounts.push({
+        kind: "conversation",
+        id: conversationId,
+        scopedPrefix: `${SCOPED_PREFIX_CONVERSATION}${conversationId}`,
+        sandboxMountPoint: `/files/${SCOPED_PREFIX_CONVERSATION}${conversationId}`,
+        legacyPrefix: LEGACY_PREFIX_CONVERSATION,
+        legacySandboxMountPoint: `/files/${LEGACY_PREFIX_CONVERSATION}`,
+        // Share token is its own authorization. The handler verified the ID match.
+        permissions: { canRead: true, canWrite: false },
+      });
+    }
+
+    if (spaceId) {
+      mounts.push({
+        kind: "pod",
+        id: spaceId,
+        scopedPrefix: `${SCOPED_PREFIX_POD}${spaceId}`,
+        sandboxMountPoint: `/files/${SCOPED_PREFIX_POD}${spaceId}`,
+        legacyPrefix: LEGACY_PREFIX_PROJECT,
+        legacySandboxMountPoint: `/files/${LEGACY_PREFIX_PROJECT}`,
+        // Share token is its own authorization. The handler verified the ID match.
+        permissions: { canRead: true, canWrite: false },
+      });
+    }
+
+    const backend = new GCSFileSystemBackend(
+      owner.sId,
+      fileStorageConfig.getGcsPrivateUploadsBucket()
+    );
+
+    return new DustFileSystem(auth, mounts, backend);
+  }
+
   // --------------------------------------------------------------------------
   // Internal helpers
   // --------------------------------------------------------------------------
@@ -404,6 +455,7 @@ export class DustFileSystem {
     if (!mount) {
       return null;
     }
+
     switch (mount.kind) {
       case "conversation":
         return (

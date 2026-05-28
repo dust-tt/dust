@@ -8,6 +8,7 @@ import { getPodFilesBasePath } from "@app/lib/api/files/mount_path";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { publicApiApp } from "@front-api/middlewares/ctx";
+import { ensureIsSystemKey } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -35,21 +36,11 @@ const app = publicApiApp();
 
 app.get(
   "/",
+  ensureIsSystemKey(),
   validate("param", ParamsSchema),
   validate("query", QuerySchema),
   async (ctx): HandlerResult<GetSpaceGCSMountFilesResponseType> => {
     const auth = ctx.get("auth");
-
-    if (!auth.isSystemKey()) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "invalid_oauth_token_error",
-          message: "Only system keys are allowed to use this endpoint.",
-        },
-      });
-    }
-
     const { spaceId } = ctx.req.valid("param");
 
     const space = await SpaceResource.fetchById(auth, spaceId);

@@ -4,8 +4,8 @@ import type {
   VerifyCodeResponse,
 } from "@app/types/workspace_verification";
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
-import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
@@ -21,22 +21,12 @@ const app = workspaceApp();
 
 app.post(
   "/",
+  ensureIsAdmin(),
   validate("json", PostValidateVerificationRequestBody),
   async (
     ctx
   ): HandlerResult<VerifyCodeResponse | VerificationErrorResponse> => {
     const auth = ctx.get("auth");
-
-    if (!auth.isAdmin()) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "workspace_auth_error",
-          message:
-            "Only users that are `admins` for the current workspace can validate verification.",
-        },
-      });
-    }
 
     const { phoneNumber, code } = ctx.req.valid("json");
 

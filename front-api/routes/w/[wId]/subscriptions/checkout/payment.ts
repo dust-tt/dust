@@ -45,6 +45,7 @@ app.post(
       async () => {
         const auth = ctx.get("auth");
 
+        // biome-ignore lint/plugin/noDirectRoleCheck: inside wakeLock callback, middleware not applicable
         if (!auth.isAdmin()) {
           return apiError(ctx, {
             status_code: 403,

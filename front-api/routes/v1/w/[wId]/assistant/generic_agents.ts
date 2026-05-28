@@ -6,6 +6,7 @@ import {
 import { getLargeWhitelistedModel } from "@app/lib/api/assistant/models";
 import type { CreateGenericAgentConfigurationResponseType } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
+import { ensureIsSystemKey } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { withFeatureFlag } from "@front-api/middlewares/with_feature_flag";
@@ -31,6 +32,7 @@ const app = publicApiApp();
 
 app.post(
   "/",
+  ensureIsSystemKey(),
   withFeatureFlag("agent_management_tool", {
     message:
       "The agent_management_tool feature flag is required to use this endpoint",
@@ -38,17 +40,6 @@ app.post(
   validate("json", CreateGenericAgentRequestSchema),
   async (ctx): HandlerResult<CreateGenericAgentConfigurationResponseType> => {
     const auth = ctx.get("auth");
-
-    if (!auth.isSystemKey()) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "workspace_auth_error",
-          message: "This endpoint requires a system API key",
-        },
-      });
-    }
-
     const owner = auth.workspace();
     if (!owner) {
       return apiError(ctx, {

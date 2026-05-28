@@ -1,6 +1,6 @@
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { RegionType } from "@app/lib/api/regions/config";
+import type { RegionType } from "@app/types/region";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 import type {

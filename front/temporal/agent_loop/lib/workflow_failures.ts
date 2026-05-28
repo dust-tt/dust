@@ -5,7 +5,7 @@ import {
   TimeoutType,
 } from "@temporalio/common";
 
-const RUN_MODEL_AND_CREATE_ACTIONS_ACTIVITY_NAME =
+const RUN_MODEL_AND_CREATE_ACTIONS_ACTIVITY_TYPE =
   "runModelAndCreateActionsActivity";
 
 export function isTerminalRunModelAndCreateActionsTimeout(
@@ -15,7 +15,7 @@ export function isTerminalRunModelAndCreateActionsTimeout(
     return false;
   }
 
-  if (error.activityType !== RUN_MODEL_AND_CREATE_ACTIONS_ACTIVITY_NAME) {
+  if (error.activityType !== RUN_MODEL_AND_CREATE_ACTIONS_ACTIVITY_TYPE) {
     return false;
   }
 

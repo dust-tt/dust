@@ -17,6 +17,7 @@ app.get("/", async (ctx): HandlerResult<GetSubscriptionStatusResponseBody> => {
   const owner = auth.getNonNullableWorkspace();
 
   // Only admins can be redirected to trial-ended page.
+  // biome-ignore lint/plugin/noDirectRoleCheck: conditional response — non-admins get a valid response, not a 403
   if (!auth.isAdmin()) {
     return ctx.json({
       shouldRedirect: false,

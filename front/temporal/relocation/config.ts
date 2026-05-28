@@ -1,4 +1,4 @@
-import type { RegionType } from "@app/lib/api/regions/config";
+import type { RegionType } from "@app/types/region";
 
 const QUEUE_VERSION = 1;
 

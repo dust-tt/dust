@@ -1,5 +1,6 @@
 import { listMetronomeDraftInvoices } from "@app/lib/metronome/client";
 import { getProductAiUsageId } from "@app/lib/metronome/constants";
+import { cacheWithRedis } from "@app/lib/utils/cache";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -48,3 +49,23 @@ export async function fetchPerUserAwuUsage({
 
   return new Ok(perUser);
 }
+
+const MEMBERS_USAGE_PER_USER_CACHE_TTL_MS = 60 * 1000;
+
+async function fetchPerUserAwuUsageRecord(args: {
+  metronomeCustomerId: string;
+  metronomeContractId: string;
+}): Promise<Record<string, number>> {
+  const result = await fetchPerUserAwuUsage(args);
+  if (result.isErr()) {
+    throw result.error;
+  }
+  return Object.fromEntries(result.value);
+}
+
+export const getCachedPerUserAwuUsage = cacheWithRedis(
+  fetchPerUserAwuUsageRecord,
+  ({ metronomeCustomerId, metronomeContractId }) =>
+    `${metronomeCustomerId}-${metronomeContractId}`,
+  { ttlMs: MEMBERS_USAGE_PER_USER_CACHE_TTL_MS }
+);

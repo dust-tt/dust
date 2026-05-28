@@ -11,6 +11,7 @@ import {
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -101,43 +102,26 @@ function purchaseErrorToApi(
 // Mounted at /api/w/:wId/credits/purchase.
 const app = workspaceApp();
 
-app.get("/", async (ctx): HandlerResult<GetCreditPurchaseInfoResponseBody> => {
-  const auth = ctx.get("auth");
+app.get(
+  "/",
+  ensureIsAdmin(),
+  async (ctx): HandlerResult<GetCreditPurchaseInfoResponseBody> => {
+    const auth = ctx.get("auth");
 
-  if (!auth.isAdmin()) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "workspace_auth_error",
-        message:
-          "Only users that are `admins` for the current workspace can access credit purchases.",
-      },
-    });
+    const infoRes = await getCreditPurchaseInfo(auth);
+    if (infoRes.isErr()) {
+      return apiError(ctx, infoErrorToApi(infoRes.error));
+    }
+    return ctx.json(infoRes.value);
   }
-
-  const infoRes = await getCreditPurchaseInfo(auth);
-  if (infoRes.isErr()) {
-    return apiError(ctx, infoErrorToApi(infoRes.error));
-  }
-  return ctx.json(infoRes.value);
-});
+);
 
 app.post(
   "/",
+  ensureIsAdmin(),
   validate("json", PostCreditPurchaseRequestBody),
   async (ctx): HandlerResult<PostCreditPurchaseResponseBody> => {
     const auth = ctx.get("auth");
-
-    if (!auth.isAdmin()) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "workspace_auth_error",
-          message:
-            "Only users that are `admins` for the current workspace can access credit purchases.",
-        },
-      });
-    }
 
     const body = ctx.req.valid("json");
 

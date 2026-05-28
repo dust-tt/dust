@@ -1,3 +1,5 @@
+import { config as regionConfig } from "@app/lib/api/regions/config";
+import { isModelEnabled } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { isByokTransitioningPlan } from "@app/lib/plans/plan_codes";
 import {
@@ -78,17 +80,38 @@ export function isProviderWhitelisted(
   return whitelistedProviders.has(providerId);
 }
 
+type ModelEnablementContext = Parameters<typeof isModelEnabled>[1];
+
+function getModelEnablementContextWithoutFeatureFlag(
+  auth: Authenticator,
+  excludeProviders: ReadonlySet<ModelProviderIdType> = new Set()
+): ModelEnablementContext {
+  const owner = auth.getNonNullableWorkspace();
+
+  return {
+    featureFlags: [],
+    plan: auth.plan(),
+    regionalModelsOnly: owner.regionalModelsOnly,
+    region: regionConfig.getCurrentRegion(),
+    whitelistedProviders:
+      getWhitelistedProviders(auth).difference(excludeProviders),
+  };
+}
+
+const ORDERED_FAST_MODEL_CONFIGS: ModelConfigurationType[] = [
+  MISTRAL_SMALL_MODEL_CONFIG,
+  GEMINI_2_5_FLASH_MODEL_CONFIG,
+];
+
 export function getFastestWhitelistedModel(
   auth: Authenticator
 ): ModelConfigurationType | null {
-  const whitelistedProviders = getWhitelistedProviders(auth);
-  if (whitelistedProviders.has("mistral")) {
-    return MISTRAL_SMALL_MODEL_CONFIG;
-  }
-  if (whitelistedProviders.has("google_ai_studio")) {
-    return GEMINI_2_5_FLASH_MODEL_CONFIG;
-  }
-  return _getSmallWhitelistedModel(whitelistedProviders);
+  const context = getModelEnablementContextWithoutFeatureFlag(auth);
+
+  return (
+    ORDERED_FAST_MODEL_CONFIGS.find((m) => isModelEnabled(m, context)) ??
+    _getSmallWhitelistedModel(context)
+  );
 }
 
 export function getSmallWhitelistedModel(
@@ -96,7 +119,7 @@ export function getSmallWhitelistedModel(
   excludeProviders: ReadonlySet<ModelProviderIdType> = new Set()
 ): ModelConfigurationType | null {
   return _getSmallWhitelistedModel(
-    getWhitelistedProviders(auth).difference(excludeProviders)
+    getModelEnablementContextWithoutFeatureFlag(auth, excludeProviders)
   );
 }
 
@@ -106,33 +129,28 @@ export function getLargeWhitelistedModel(
   { forBatch = false }: { forBatch?: boolean } = {}
 ): ModelConfigurationType | null {
   return _getLargeWhitelistedModel(
-    getWhitelistedProviders(auth).difference(excludeProviders),
+    getModelEnablementContextWithoutFeatureFlag(auth, excludeProviders),
     { forBatch }
   );
 }
 
+const ORDERED_SMALL_MODEL_CONFIGS: ModelConfigurationType[] = [
+  GPT_5_MINI_MODEL_CONFIG,
+  CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
+  GEMINI_3_FLASH_MODEL_CONFIG,
+  MISTRAL_SMALL_MODEL_CONFIG,
+  GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG,
+];
+
 function _getSmallWhitelistedModel(
-  whitelistedProviders: Set<ModelProviderIdType>
+  context: ModelEnablementContext
 ): ModelConfigurationType | null {
-  if (whitelistedProviders.has("openai")) {
-    return GPT_5_MINI_MODEL_CONFIG;
-  }
-  if (whitelistedProviders.has("anthropic")) {
-    return CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG;
-  }
-  if (whitelistedProviders.has("google_ai_studio")) {
-    return GEMINI_3_FLASH_MODEL_CONFIG;
-  }
-  if (whitelistedProviders.has("mistral")) {
-    return MISTRAL_SMALL_MODEL_CONFIG;
-  }
-  if (whitelistedProviders.has("xai")) {
-    return GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG;
-  }
-  return null;
+  return (
+    ORDERED_SMALL_MODEL_CONFIGS.find((m) => isModelEnabled(m, context)) ?? null
+  );
 }
 
-const LARGE_MODEL_CONFIGS: ModelConfigurationType[] = [
+const ORDERED_LARGE_MODEL_CONFIGS: ModelConfigurationType[] = [
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
   GPT_5_5_MODEL_CONFIG,
   GEMINI_3_PRO_MODEL_CONFIG,
@@ -141,14 +159,13 @@ const LARGE_MODEL_CONFIGS: ModelConfigurationType[] = [
 ];
 
 function _getLargeWhitelistedModel(
-  whitelistedProviders: Set<ModelProviderIdType>,
+  context: ModelEnablementContext,
   { forBatch: hasBatch }: { forBatch?: boolean } = {}
 ): ModelConfigurationType | null {
-  const compatibleModels = LARGE_MODEL_CONFIGS.filter(
-    (m) =>
-      whitelistedProviders.has(m.providerId) &&
-      (!hasBatch || m.supportsBatchProcessing)
+  return (
+    ORDERED_LARGE_MODEL_CONFIGS.find(
+      (m) =>
+        isModelEnabled(m, context) && (!hasBatch || m.supportsBatchProcessing)
+    ) ?? null
   );
-
-  return compatibleModels[0] ?? null;
 }

@@ -336,6 +336,14 @@ export const VisualizationActionIframe = forwardRef<
         });
         const podFileId = `pod/${fileId.slice("project/".length)}`;
         url = `/api/w/${workspaceId}/spaces/${spaceId}/files/${podFileId}`;
+      } else if (
+        fileId.startsWith("conversation-") ||
+        fileId.startsWith("pod-")
+      ) {
+        // Canonical scoped paths (e.g. conversation-{cId}/file.txt, pod-{pId}/data.csv).
+        // The new /files/path endpoint resolves auth from the path prefix itself.
+        const encodedPath = fileId.split("/").map(encodeURIComponent).join("/");
+        url = `/api/w/${workspaceId}/files/path/${encodedPath}`;
       } else {
         url = `/api/w/${workspaceId}/files/${fileId}?action=view`;
       }

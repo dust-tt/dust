@@ -1,5 +1,5 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
-import type { RegionType } from "@app/lib/api/regions/config";
+import type { RegionType } from "@app/types/region";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import Image from "next/image";
 

@@ -14,12 +14,12 @@ const {
   mockGetSandboxImage,
   mockRecordToolDuration,
   mockRevokeExecToken,
-  mockWrapCommand,
   mockEnsureSandboxReady,
   mockLoadEnv,
   mockLoggerError,
   mockLoggerInfo,
   mockLoggerWarn,
+  mockFetchActionById,
 } = vi.hoisted(() => ({
   mockAddSandboxPolicyDomain: vi.fn(),
   mockReadNewDenyLogEntries: vi.fn(),
@@ -29,12 +29,12 @@ const {
   mockGetSandboxImage: vi.fn(),
   mockRecordToolDuration: vi.fn(),
   mockRevokeExecToken: vi.fn(),
-  mockWrapCommand: vi.fn(),
   mockEnsureSandboxReady: vi.fn(),
   mockLoadEnv: vi.fn(),
   mockLoggerError: vi.fn(),
   mockLoggerInfo: vi.fn(),
   mockLoggerWarn: vi.fn(),
+  mockFetchActionById: vi.fn(),
 }));
 
 vi.mock("@app/lib/api/config", () => ({
@@ -86,15 +86,11 @@ vi.mock("@app/lib/api/sandbox/image", async (importOriginal) => {
   };
 });
 
-vi.mock("@app/lib/api/sandbox/image/profile", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@app/lib/api/sandbox/image/profile")>();
-
-  return {
-    ...actual,
-    wrapCommand: mockWrapCommand,
-  };
-});
+vi.mock("@app/lib/resources/agent_mcp_action_resource", () => ({
+  AgentMCPActionResource: {
+    fetchById: mockFetchActionById,
+  },
+}));
 
 vi.mock("@app/lib/api/sandbox/instrumentation", () => ({
   recordToolDuration: mockRecordToolDuration,
@@ -212,9 +208,8 @@ describe("runSandboxBashTool", () => {
     mockLoadEnv.mockResolvedValue(new Ok({}));
     mockReadNewDenyLogEntries.mockResolvedValue(new Ok([]));
     mockRevokeExecToken.mockResolvedValue(undefined);
-    mockWrapCommand.mockImplementation(
-      (command: string) => `wrapped:${command}`
-    );
+    // Default: no parent action found on refetch ⇒ not paused, normal path.
+    mockFetchActionById.mockResolvedValue(null);
   });
 
   function makeExtra() {
@@ -231,9 +226,16 @@ describe("runSandboxBashTool", () => {
             model: { providerId: "openai" },
             sId: "agent-id",
           },
-          agentMessage: { sId: "message-id" },
+          agentMessage: { sId: "message-id", agentMessageId: 1 },
           conversation: { sId: "conversation-id" },
           currentAction: { sId: "sandbox-action-id" },
+          stepContext: {
+            citationsCount: 0,
+            citationsOffset: 0,
+            resumeState: null,
+            retrievalTopK: 0,
+            websearchResultCount: 0,
+          },
         },
       },
       signal: new AbortController().signal,
@@ -263,7 +265,7 @@ describe("runSandboxBashTool", () => {
     expect(result.isOk()).toBe(true);
     expect(sandbox.exec).toHaveBeenCalledWith(
       expect.anything(),
-      "wrapped:echo hello",
+      expect.stringContaining("echo hello"),
       expect.objectContaining({
         user: "agent-proxied",
       })
@@ -298,8 +300,12 @@ describe("runSandboxBashTool", () => {
     if (result.isErr()) {
       throw result.error;
     }
-    expect(result.value[0].text).toContain("«redacted: $DST_API_TOKEN»");
-    expect(result.value[0].text).not.toContain(secretValue);
+    const first = result.value[0];
+    if (first.type !== "text") {
+      throw new Error(`expected text item, got ${first.type}`);
+    }
+    expect(first.text).toContain("«redacted: $DST_API_TOKEN»");
+    expect(first.text).not.toContain(secretValue);
     expect(mockLoggerWarn).toHaveBeenCalledWith(
       {
         workspaceId: "workspace-id",
@@ -336,10 +342,14 @@ describe("runSandboxBashTool", () => {
     if (result.isErr()) {
       throw result.error;
     }
-    expect(result.value[0].text).toContain(
+    const first = result.value[0];
+    if (first.type !== "text") {
+      throw new Error(`expected text item, got ${first.type}`);
+    }
+    expect(first.text).toContain(
       "<network_proxy_logs>\ndenied example.com «redacted: $DST_API_TOKEN»\n</network_proxy_logs>"
     );
-    expect(result.value[0].text).not.toContain(secretValue);
+    expect(first.text).not.toContain(secretValue);
   });
 
   it("does not redact short or low-entropy values", async () => {
@@ -377,10 +387,12 @@ describe("runSandboxBashTool", () => {
     if (result.isErr()) {
       throw result.error;
     }
-    expect(result.value[0].text).toContain(
-      "12345678 true 1234567890123456 abc123def456"
-    );
-    expect(result.value[0].text).not.toContain("«redacted:");
+    const first = result.value[0];
+    if (first.type !== "text") {
+      throw new Error(`expected text item, got ${first.type}`);
+    }
+    expect(first.text).toContain("12345678 true 1234567890123456 abc123def456");
+    expect(first.text).not.toContain("«redacted:");
     expect(mockLoggerWarn).not.toHaveBeenCalledWith(
       expect.anything(),
       "sandbox bash output contained env var values; redacted"
@@ -439,6 +451,189 @@ describe("runSandboxBashTool", () => {
       expect(result.error.message).toContain("setup failed");
     }
     expect(sandbox.exec).not.toHaveBeenCalled();
+  });
+
+  describe("pause path", () => {
+    function execingSandbox() {
+      return {
+        providerId: "provider-id",
+        sId: "sandbox-id",
+        exec: vi
+          .fn()
+          .mockResolvedValue(
+            new Err(new Error("sandbox paused mid-exec (SDK rejection)"))
+          ),
+      };
+    }
+
+    it("returns tool_blocked_awaiting_input carrying the execId when parent is in blocked state after exec", async () => {
+      // resumeState is persisted by the generic tool_blocked_awaiting_input
+      // exit_events handler off the resource's `state` field — not inline
+      // by the bash tool. Here we only assert the bash returns the resource
+      // shape that downstream relies on.
+      const sandbox = execingSandbox();
+      mockEnsureSandboxReady.mockResolvedValue(
+        new Ok({ sandbox, freshlyCreated: false })
+      );
+
+      mockFetchActionById.mockResolvedValue({
+        status: "blocked_child_action_input_required",
+      });
+
+      const result = await runSandboxBashTool(
+        { command: "echo paused", description: "Run command" },
+        makeExtra()
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isErr()) {
+        throw result.error;
+      }
+      expect(result.value[0]).toMatchObject({
+        type: "resource",
+        resource: {
+          type: "tool_blocked_awaiting_input",
+          state: { execId: "exec-1" },
+        },
+      });
+    });
+
+    it("returns normal exec result when parent is still running after exec (no pause)", async () => {
+      const sandbox = {
+        providerId: "provider-id",
+        sId: "sandbox-id",
+        exec: vi
+          .fn()
+          .mockResolvedValue(new Ok({ exitCode: 0, stdout: "ok", stderr: "" })),
+      };
+      mockEnsureSandboxReady.mockResolvedValue(
+        new Ok({ sandbox, freshlyCreated: false })
+      );
+
+      mockFetchActionById.mockResolvedValue({
+        status: "running",
+        updateStepContext: vi.fn(),
+      });
+
+      const result = await runSandboxBashTool(
+        { command: "echo ok", description: "Run command" },
+        makeExtra()
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isErr()) {
+        throw result.error;
+      }
+      expect(result.value[0]).toMatchObject({ type: "text" });
+    });
+
+    it("returns normal exec result when refetched parent is null", async () => {
+      const sandbox = {
+        providerId: "provider-id",
+        sId: "sandbox-id",
+        exec: vi
+          .fn()
+          .mockResolvedValue(new Ok({ exitCode: 0, stdout: "ok", stderr: "" })),
+      };
+      mockEnsureSandboxReady.mockResolvedValue(
+        new Ok({ sandbox, freshlyCreated: false })
+      );
+      mockFetchActionById.mockResolvedValue(null);
+
+      const result = await runSandboxBashTool(
+        { command: "echo ok", description: "Run command" },
+        makeExtra()
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isErr()) {
+        throw result.error;
+      }
+      expect(result.value[0]).toMatchObject({ type: "text" });
+    });
+  });
+
+  describe("resume mode", () => {
+    function resumeStepContext(execId: string) {
+      return {
+        agentLoopContext: {
+          runContext: {
+            agentConfiguration: {
+              model: { providerId: "openai" },
+              sId: "agent-id",
+            },
+            agentMessage: { sId: "message-id", agentMessageId: 1 },
+            conversation: { sId: "conversation-id" },
+            currentAction: { sId: "sandbox-action-id" },
+            stepContext: {
+              citationsCount: 0,
+              citationsOffset: 0,
+              resumeState: { execId },
+              retrievalTopK: 0,
+              websearchResultCount: 0,
+            },
+          },
+        },
+        auth: {
+          getNonNullableWorkspace: () => ({
+            name: "Workspace",
+            sId: "workspace-id",
+          }),
+        },
+        signal: new AbortController().signal,
+      } as never;
+    }
+
+    it("runs wait-and-collect when resumeState carries a valid execId", async () => {
+      const sandbox = {
+        providerId: "provider-id",
+        sId: "sandbox-id",
+        exec: vi
+          .fn()
+          .mockResolvedValue(
+            new Ok({ exitCode: 0, stdout: "resumed", stderr: "" })
+          ),
+      };
+      mockEnsureSandboxReady.mockResolvedValue(
+        new Ok({ sandbox, freshlyCreated: false })
+      );
+
+      const result = await runSandboxBashTool(
+        { command: "echo new", description: "Run command" },
+        resumeStepContext("0123456789abcdef")
+      );
+
+      expect(result.isOk()).toBe(true);
+      // wait-and-collect uses dust_wac_<execId> as a pid file marker;
+      // wrapCommandWithCapture would emit `exec > >(tee` instead.
+      const [, command] = (sandbox.exec as ReturnType<typeof vi.fn>).mock
+        .calls[0];
+      expect(command).toContain("dust_wac_0123456789abcdef");
+      expect(command).not.toContain("exec > >(tee");
+      expect(command).not.toContain("echo new");
+    });
+
+    it("returns MCPError when sandbox was freshly created during resume (original exec lost)", async () => {
+      const sandbox = {
+        providerId: "provider-id",
+        sId: "sandbox-id",
+        exec: vi.fn(),
+      };
+      mockEnsureSandboxReady.mockResolvedValue(
+        new Ok({ sandbox, freshlyCreated: true })
+      );
+
+      const result = await runSandboxBashTool(
+        { command: "echo new", description: "Run command" },
+        resumeStepContext("0123456789abcdef")
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("Sandbox was lost");
+      }
+      expect(sandbox.exec).not.toHaveBeenCalled();
+    });
   });
 });
 

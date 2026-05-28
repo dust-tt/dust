@@ -4,6 +4,7 @@ import { searchAnalytics } from "@app/lib/api/elasticsearch";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { estypes } from "@elastic/elasticsearch";
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -25,18 +26,8 @@ type OverviewAggs = {
 // Mounted at /api/w/:wId/analytics/overview.
 const app = workspaceApp();
 
-app.get("/", validate("query", QuerySchema), async (ctx) => {
+app.get("/", ensureIsAdmin(), validate("query", QuerySchema), async (ctx) => {
   const auth = ctx.get("auth");
-
-  if (!auth.isAdmin()) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "workspace_auth_error",
-        message: "Only workspace admins can access workspace analytics.",
-      },
-    });
-  }
 
   const { days } = ctx.req.valid("query");
   const owner = auth.getNonNullableWorkspace();

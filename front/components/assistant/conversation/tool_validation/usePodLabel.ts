@@ -1,5 +1,5 @@
 import { useConversation } from "@app/hooks/conversations/useConversation";
-import { parseProjectConfigurationURI } from "@app/lib/actions/mcp_internal_actions/project_configuration_uri";
+import { parsePodConfigurationURI } from "@app/lib/actions/mcp_internal_actions/pod_configuration_uri";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import type { LightWorkspaceType } from "@app/types/user";
 
@@ -22,9 +22,9 @@ export function usePodLabel({
 
   const podSpaceId = useMemo(() => {
     if (dustPodUri) {
-      const parsed = parseProjectConfigurationURI(dustPodUri);
+      const parsed = parsePodConfigurationURI(dustPodUri);
       if (parsed.isOk()) {
-        return parsed.value.projectId;
+        return parsed.value.podId;
       }
       return null;
     }

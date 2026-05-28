@@ -28,7 +28,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
       nodeId: z.string().describe("Internal node ID to attach"),
       url: z.string().nullable().optional().describe("Optional source URL"),
       dustPod: ConfigurableToolInputSchemas[
-        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
       ]
         .optional()
         .describe(
@@ -53,7 +53,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
           "Internal data source view ID for the content node reference (from get_information attachments)"
         ),
       dustPod: ConfigurableToolInputSchemas[
-        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
       ]
         .optional()
         .describe(
@@ -87,7 +87,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
           "Path to a Pod file to pin as the Pod banner frame (e.g. pod/banner.html). Pass null to unpin."
         ),
       dustPod: ConfigurableToolInputSchemas[
-        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
       ]
         .optional()
         .describe(
@@ -113,7 +113,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
         .optional()
         .describe("User sIds to remove from the Pod"),
       dustPod: ConfigurableToolInputSchemas[
-        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
       ]
         .optional()
         .describe(
@@ -133,7 +133,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
       `\`pod/<rel>\` scoped paths and are discovered through the \`${FILES_SERVER_NAME}\` MCP server.`,
     schema: {
       dustPod: ConfigurableToolInputSchemas[
-        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
       ]
         .optional()
         .describe(
@@ -166,7 +166,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
           "Opaque cursor from nextPageCursor of a prior list_members call. Only for pagination."
         ),
       dustPod: ConfigurableToolInputSchemas[
-        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
       ]
         .optional()
         .describe(
@@ -232,7 +232,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
       nodeIds: SearchWithNodesInputSchema.shape.nodeIds,
       dustPod:
         ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
         ].optional(),
     },
     stake: "never_ask",
@@ -259,7 +259,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
         ),
       dustPod:
         ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
         ].optional(),
     },
     stake: "medium",
@@ -314,7 +314,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
         ),
       dustPod:
         ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
         ].optional(),
     },
     stake: "never_ask",
@@ -347,7 +347,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
         ),
       dustPod:
         ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
         ].optional(),
     },
     stake: "medium",

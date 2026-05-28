@@ -10,9 +10,11 @@ import type {
   ExecOptions,
   ExecResult,
   FileEntry,
+  RootExecOptions,
   SandboxProvider,
 } from "@app/lib/api/sandbox/provider";
 import { SandboxNotFoundError } from "@app/lib/api/sandbox/provider";
+import type { RootCommand } from "@app/lib/api/sandbox/root_command";
 import { SANDBOX_TRUST_ENV_VARS } from "@app/lib/api/sandbox/trust_env";
 import type { Authenticator } from "@app/lib/auth";
 import { executeWithLock } from "@app/lib/lock";
@@ -929,6 +931,41 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       logger.error(
         { sandbox: this.toLogJSON() },
         "Sandbox not found at provider during exec — marking as deleted"
+      );
+      await this.updateStatus("deleted");
+    }
+
+    return result;
+  }
+
+  /**
+   * Execute a privileged command in this sandbox.
+   *
+   * Root commands must be built as RootCommand so callers cannot accidentally
+   * pass raw shell strings through the generic exec path.
+   */
+  async execRoot(
+    auth: Authenticator,
+    command: RootCommand,
+    opts?: RootExecOptions
+  ): Promise<Result<ExecResult, Error>> {
+    const provider = getSandboxProvider();
+    if (!provider) {
+      return new Err(new Error("Sandbox provider not configured."));
+    }
+
+    const tracingOpts = { workspaceId: auth.getNonNullableWorkspace().sId };
+    const result = await provider.execRoot(
+      this.providerId,
+      command,
+      opts,
+      tracingOpts
+    );
+
+    if (result.isErr() && result.error instanceof SandboxNotFoundError) {
+      logger.error(
+        { sandbox: this.toLogJSON() },
+        "Sandbox not found at provider during root exec — marking as deleted"
       );
       await this.updateStatus("deleted");
     }

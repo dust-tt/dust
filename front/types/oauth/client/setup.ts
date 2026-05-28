@@ -1,5 +1,5 @@
 import config from "@app/lib/api/config";
-import type { RegionInfo } from "@app/lib/api/regions/config";
+import type { RegionInfo } from "@app/types/region";
 import type {
   OAuthConnectionType,
   OAuthCredentials,

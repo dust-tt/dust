@@ -20,7 +20,6 @@ import {
 } from "@app/lib/swr/poke";
 import assert from "@app/lib/utils/assert";
 import { isCreditPricedPlan } from "@app/types/plan";
-import type { ProgrammaticUsageConfigurationType } from "@app/types/programmatic_usage";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -41,8 +40,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
-const MICRO_USD_PER_DOLLAR = 1_000_000;
-const MAX_PAYG_CAP_DOLLARS = 20_000;
+// PAYG cap is denominated in AWU credits and stored verbatim on
+// `credit_usage_configuration.paygCapCredits` — no fiat conversion.
+// Keep this in sync with `MAX_PAYG_CAP_CREDITS` in
+// `front/lib/api/poke/switch_contract.ts`.
+const MAX_PAYG_CAP_CREDITS = 2_000_000;
 
 const SwitchContractFormSchema = z
   .object({
@@ -52,18 +54,19 @@ const SwitchContractFormSchema = z
     startImmediately: z.boolean().default(false),
     stripeCustomerId: z.string(),
     paygEnabled: z.boolean().default(false),
-    paygCapDollars: z
+    paygCapCredits: z
       .number()
-      .min(1, "PAYG cap must be at least $1")
+      .int("PAYG cap must be an integer number of credits")
+      .min(1, "PAYG cap must be at least 1 credit")
       .max(
-        MAX_PAYG_CAP_DOLLARS,
-        `PAYG cap cannot exceed $${MAX_PAYG_CAP_DOLLARS.toLocaleString()}`
+        MAX_PAYG_CAP_CREDITS,
+        `PAYG cap cannot exceed ${MAX_PAYG_CAP_CREDITS.toLocaleString()} credits`
       )
       .optional(),
   })
-  .refine((data) => !data.paygEnabled || data.paygCapDollars !== undefined, {
+  .refine((data) => !data.paygEnabled || data.paygCapCredits !== undefined, {
     message: "PAYG cap is required when Pay-as-you-go is enabled.",
-    path: ["paygCapDollars"],
+    path: ["paygCapCredits"],
   });
 type SwitchContractFormValues = z.infer<typeof SwitchContractFormSchema>;
 
@@ -81,13 +84,11 @@ const isLegacyPackageName = (name: string) => /\blegacy\b/i.test(name);
 
 interface SwitchContractDialogProps {
   owner: WorkspaceType;
-  programmaticUsageConfig: ProgrammaticUsageConfigurationType | null;
   stripeCustomerId: string | null;
 }
 
 export default function SwitchContractDialog({
   owner,
-  programmaticUsageConfig,
   stripeCustomerId,
 }: SwitchContractDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -126,8 +127,11 @@ export default function SwitchContractDialog({
     );
   }, []);
 
-  const initialPaygCapMicroUsd =
-    programmaticUsageConfig?.paygCapMicroUsd ?? null;
+  // No prefilled PAYG cap: the legacy `programmatic_usage_configuration.paygCapMicroUsd`
+  // is for the programmatic-usage / Stripe flow and must not be read here.
+  // The credit-priced PAYG cap lives on `credit_usage_configuration.paygCapCredits`
+  // and is managed via the "Manage Credit Usage Configuration" plugin — operators
+  // enter the desired cap (in AWU credits) fresh when switching contracts.
   const form = useForm<SwitchContractFormValues>({
     resolver: zodResolver(SwitchContractFormSchema),
     defaultValues: {
@@ -136,11 +140,8 @@ export default function SwitchContractDialog({
       startingAt: "",
       startImmediately: false,
       stripeCustomerId: stripeCustomerId ?? "",
-      paygEnabled: initialPaygCapMicroUsd !== null,
-      paygCapDollars:
-        initialPaygCapMicroUsd !== null
-          ? initialPaygCapMicroUsd / MICRO_USD_PER_DOLLAR
-          : undefined,
+      paygEnabled: false,
+      paygCapCredits: undefined,
     },
   });
 
@@ -239,7 +240,7 @@ export default function SwitchContractDialog({
     }
     if (selectedTier && !isPaygEligibleTier(selectedTier)) {
       form.setValue("paygEnabled", false);
-      form.setValue("paygCapDollars", undefined);
+      form.setValue("paygCapCredits", undefined);
     }
   }, [selectedTier, selectedName, form, minStartingAtLocal]);
 
@@ -276,8 +277,8 @@ export default function SwitchContractDialog({
       if (trimmedStripe) {
         cleaned.stripeCustomerId = trimmedStripe;
       }
-      if (values.paygEnabled && values.paygCapDollars !== undefined) {
-        cleaned.paygCapDollars = values.paygCapDollars;
+      if (values.paygEnabled && values.paygCapCredits !== undefined) {
+        cleaned.paygCapCredits = values.paygCapCredits;
       }
       if (
         selectedTier === "enterprise" &&
@@ -453,10 +454,10 @@ export default function SwitchContractDialog({
                       <div className="ml-6">
                         <InputField
                           control={form.control}
-                          name="paygCapDollars"
-                          title="PAYG Spending Cap (USD)"
+                          name="paygCapCredits"
+                          title="PAYG Spending Cap (AWU credits)"
                           type="number"
-                          placeholder="e.g., 1000"
+                          placeholder="e.g., 100000"
                         />
                       </div>
                     )}

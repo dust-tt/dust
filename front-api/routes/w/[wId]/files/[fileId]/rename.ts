@@ -73,6 +73,7 @@ app.patch(
           },
         });
       }
+      // biome-ignore lint/plugin/noDirectRoleCheck: conditional — only checked when file is not project_context
     } else if (!auth.isBuilder()) {
       return apiError(ctx, {
         status_code: 403,

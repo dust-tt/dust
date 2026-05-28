@@ -14,6 +14,10 @@ import {
 import type { BillingFrequency } from "@app/lib/metronome/types";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import {
+  bestEffortInvalidateCacheWithRedis,
+  cacheWithRedis,
+} from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import type { MembershipSeatType } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
@@ -214,212 +218,226 @@ export async function syncSeatCount({
   startingAt?: string;
   contract?: CachedContract;
 }): Promise<Result<undefined, Error>> {
-  let resolvedContract: CachedContract;
-  if (contract) {
-    resolvedContract = contract;
-  } else {
-    const fetched = await fetchCachedContract({
-      metronomeCustomerId,
-      metronomeContractId: contractId,
-    });
-    if (fetched.isErr()) {
-      return new Err(fetched.error);
-    }
-    resolvedContract = fetched.value;
-  }
+  let didMutateSeatData = false;
 
-  const productSeatTypes = await getProductSeatTypes();
-  const seatSubscriptions = (resolvedContract.subscriptions ?? []).flatMap(
-    (sub) => {
-      if (!sub.id) {
-        return [];
-      }
-      const seatType = getSeatTypeForSubscription(sub, productSeatTypes);
-      if (!seatType) {
-        return [];
-      }
-      return [{ sub, seatType }];
-    }
-  );
-
-  if (seatSubscriptions.length === 0) {
-    logger.warn(
-      { workspaceId: workspace.sId, contractId },
-      "[Metronome] No seat subscription found on contract — cannot sync seats"
-    );
-    return new Err(new Error("No seat subscription found on contract"));
-  }
-
-  // Read current + future DB state. Future memberships are scheduled seat
-  // transitions: each row has `startAt > now` and represents the seat
-  // type the user will be on from `startAt` forward. The companion "current"
-  // row (with `endAt = startAt`) still appears in `getActiveMemberships`.
-  const [{ memberships: activeMemberships }, futureMemberships] =
-    await Promise.all([
-      MembershipResource.getActiveMemberships({ workspace }),
-      MembershipResource.getScheduledFutureMemberships({ workspace }),
-    ]);
-
-  // userSId → current seat type (the seat they are on right now).
-  const currentSeatByUserSId = new Map<string, MembershipSeatType>();
-  for (const m of activeMemberships) {
-    const userSId = m.user?.sId;
-    if (userSId) {
-      currentSeatByUserSId.set(userSId, m.seatType);
-    }
-  }
-
-  type ScheduledChange = {
-    userSId: string;
-    newSeatType: MembershipSeatType;
-    at: Date;
-  };
-  const scheduledChanges: ScheduledChange[] = [];
-  for (const m of futureMemberships) {
-    const userSId = m.user?.sId;
-    if (userSId) {
-      scheduledChanges.push({
-        userSId,
-        newSeatType: m.seatType,
-        at: m.startAt,
-      });
-    }
-  }
-
-  // Surface memberships whose seat type has no matching subscription on the
-  // contract — those users will not be billed.
-  const coveredSeatTypes = new Set(
-    seatSubscriptions.map(({ seatType }) => seatType)
-  );
-  const uncoveredUsersBySeatType = new Map<MembershipSeatType, string[]>();
-  for (const [userSId, seatType] of currentSeatByUserSId) {
-    if (!coveredSeatTypes.has(seatType)) {
-      const bucket = uncoveredUsersBySeatType.get(seatType) ?? [];
-      bucket.push(userSId);
-      uncoveredUsersBySeatType.set(seatType, bucket);
-    }
-  }
-  for (const [seatType, userSIds] of uncoveredUsersBySeatType) {
-    logger.warn(
-      {
-        workspaceId: workspace.sId,
-        contractId,
-        seatType,
-        memberCount: userSIds.length,
-        userIds: userSIds,
-      },
-      "[Metronome] Memberships with seat type not covered by any contract subscription — they will not be billed"
-    );
-  }
-
-  // Compute the set of timestamps we need to reconcile: "now" plus each
-  // unique scheduled `at` (in ascending order, so we never overwrite a
-  // later segment with an earlier one).
-  const scheduledTimestampsMs = Array.from(
-    new Set(scheduledChanges.map((c) => c.at.getTime()))
-  ).sort((a, b) => a - b);
-
-  // Compute the desired seat type per user at a given timestamp, by walking
-  // scheduled changes from earliest up to (and including) `tMs`.
-  const seatTypeAt = (
-    userSId: string,
-    tMs: number
-  ): MembershipSeatType | undefined => {
-    let seatType = currentSeatByUserSId.get(userSId);
-    for (const c of scheduledChanges) {
-      if (c.userSId === userSId && c.at.getTime() <= tMs) {
-        seatType = c.newSeatType;
-      }
-    }
-    return seatType;
-  };
-
-  // Returns desired sIds for `subSeatType` at `tMs`. Includes users whose
-  // currently-active row maps to `subSeatType` AND who have not (yet)
-  // scheduled themselves off it by `tMs`, plus users who scheduled
-  // themselves onto it.
-  const allUserSIds = new Set<string>([
-    ...currentSeatByUserSId.keys(),
-    ...scheduledChanges.map((c) => c.userSId),
-  ]);
-  const desiredSIdsAt = (
-    subSeatType: MembershipSeatType,
-    tMs: number
-  ): string[] => {
-    const sIds: string[] = [];
-    for (const userSId of allUserSIds) {
-      if (seatTypeAt(userSId, tMs) === subSeatType) {
-        sIds.push(userSId);
-      }
-    }
-    return sIds;
-  };
-
-  for (const { sub, seatType } of seatSubscriptions) {
-    const subscriptionId = sub.id!;
-    const quantityMode = sub.quantity_management_mode ?? "QUANTITY_ONLY";
-
-    if (quantityMode === "SEAT_BASED") {
-      // Now segment.
-      const nowResult = await reconcileSeatBasedSegment({
+  try {
+    let resolvedContract: CachedContract;
+    if (contract) {
+      resolvedContract = contract;
+    } else {
+      const fetched = await fetchCachedContract({
         metronomeCustomerId,
-        contractId,
-        subscriptionId,
-        seatType,
-        desiredSIds: desiredSIdsAt(seatType, Date.now()),
-        startingAt,
-        workspaceId: workspace.sId,
+        metronomeContractId: contractId,
       });
-      if (nowResult.isErr()) {
-        return new Err(nowResult.error);
+      if (fetched.isErr()) {
+        return new Err(fetched.error);
       }
+      resolvedContract = fetched.value;
+    }
 
-      // Future segments, one per unique scheduled timestamp.
-      for (const tMs of scheduledTimestampsMs) {
-        const at = new Date(tMs);
-        const futureResult = await reconcileSeatBasedSegment({
+    const productSeatTypes = await getProductSeatTypes();
+    const seatSubscriptions = (resolvedContract.subscriptions ?? []).flatMap(
+      (sub) => {
+        if (!sub.id) {
+          return [];
+        }
+        const seatType = getSeatTypeForSubscription(sub, productSeatTypes);
+        if (!seatType) {
+          return [];
+        }
+        return [{ sub, seatType }];
+      }
+    );
+
+    if (seatSubscriptions.length === 0) {
+      logger.warn(
+        { workspaceId: workspace.sId, contractId },
+        "[Metronome] No seat subscription found on contract — cannot sync seats"
+      );
+      return new Err(new Error("No seat subscription found on contract"));
+    }
+
+    // Read current + future DB state. Future memberships are scheduled seat
+    // transitions: each row has `startAt > now` and represents the seat
+    // type the user will be on from `startAt` forward. The companion "current"
+    // row (with `endAt = startAt`) still appears in `getActiveMemberships`.
+    const [{ memberships: activeMemberships }, futureMemberships] =
+      await Promise.all([
+        MembershipResource.getActiveMemberships({ workspace }),
+        MembershipResource.getScheduledFutureMemberships({ workspace }),
+      ]);
+
+    // userSId → current seat type (the seat they are on right now).
+    const currentSeatByUserSId = new Map<string, MembershipSeatType>();
+    for (const m of activeMemberships) {
+      const userSId = m.user?.sId;
+      if (userSId) {
+        currentSeatByUserSId.set(userSId, m.seatType);
+      }
+    }
+
+    type ScheduledChange = {
+      userSId: string;
+      newSeatType: MembershipSeatType;
+      at: Date;
+    };
+    const scheduledChanges: ScheduledChange[] = [];
+    for (const m of futureMemberships) {
+      const userSId = m.user?.sId;
+      if (userSId) {
+        scheduledChanges.push({
+          userSId,
+          newSeatType: m.seatType,
+          at: m.startAt,
+        });
+      }
+    }
+
+    // Surface memberships whose seat type has no matching subscription on the
+    // contract — those users will not be billed.
+    const coveredSeatTypes = new Set(
+      seatSubscriptions.map(({ seatType }) => seatType)
+    );
+    const uncoveredUsersBySeatType = new Map<MembershipSeatType, string[]>();
+    for (const [userSId, seatType] of currentSeatByUserSId) {
+      if (!coveredSeatTypes.has(seatType)) {
+        const bucket = uncoveredUsersBySeatType.get(seatType) ?? [];
+        bucket.push(userSId);
+        uncoveredUsersBySeatType.set(seatType, bucket);
+      }
+    }
+    for (const [seatType, userSIds] of uncoveredUsersBySeatType) {
+      logger.warn(
+        {
+          workspaceId: workspace.sId,
+          contractId,
+          seatType,
+          memberCount: userSIds.length,
+          userIds: userSIds,
+        },
+        "[Metronome] Memberships with seat type not covered by any contract subscription — they will not be billed"
+      );
+    }
+
+    // Compute the set of timestamps we need to reconcile: "now" plus each
+    // unique scheduled `at` (in ascending order, so we never overwrite a
+    // later segment with an earlier one).
+    const scheduledTimestampsMs = Array.from(
+      new Set(scheduledChanges.map((c) => c.at.getTime()))
+    ).sort((a, b) => a - b);
+
+    // Compute the desired seat type per user at a given timestamp, by walking
+    // scheduled changes from earliest up to (and including) `tMs`.
+    const seatTypeAt = (
+      userSId: string,
+      tMs: number
+    ): MembershipSeatType | undefined => {
+      let seatType = currentSeatByUserSId.get(userSId);
+      for (const c of scheduledChanges) {
+        if (c.userSId === userSId && c.at.getTime() <= tMs) {
+          seatType = c.newSeatType;
+        }
+      }
+      return seatType;
+    };
+
+    // Returns desired sIds for `subSeatType` at `tMs`. Includes users whose
+    // currently-active row maps to `subSeatType` AND who have not (yet)
+    // scheduled themselves off it by `tMs`, plus users who scheduled
+    // themselves onto it.
+    const allUserSIds = new Set<string>([
+      ...currentSeatByUserSId.keys(),
+      ...scheduledChanges.map((c) => c.userSId),
+    ]);
+    const desiredSIdsAt = (
+      subSeatType: MembershipSeatType,
+      tMs: number
+    ): string[] => {
+      const sIds: string[] = [];
+      for (const userSId of allUserSIds) {
+        if (seatTypeAt(userSId, tMs) === subSeatType) {
+          sIds.push(userSId);
+        }
+      }
+      return sIds;
+    };
+
+    for (const { sub, seatType } of seatSubscriptions) {
+      const subscriptionId = sub.id!;
+      const quantityMode = sub.quantity_management_mode ?? "QUANTITY_ONLY";
+
+      if (quantityMode === "SEAT_BASED") {
+        // Now segment.
+        const nowResult = await reconcileSeatBasedSegment({
           metronomeCustomerId,
           contractId,
           subscriptionId,
           seatType,
-          desiredSIds: desiredSIdsAt(seatType, tMs),
-          startingAt: at.toISOString(),
-          coveringDate: at,
+          desiredSIds: desiredSIdsAt(seatType, Date.now()),
+          startingAt,
           workspaceId: workspace.sId,
         });
-        if (futureResult.isErr()) {
-          return new Err(futureResult.error);
+        if (nowResult.isErr()) {
+          return new Err(nowResult.error);
         }
-      }
-    } else {
-      // QUANTITY_ONLY: only sync the "now" total. Scheduled changes within
-      // a quantity-only seat tier are not modeled — they're rare in practice
-      // (free / unlimited tiers) and Metronome doesn't bill them per-seat.
-      const nowQuantity = desiredSIdsAt(seatType, Date.now()).length;
-      logger.info(
-        {
-          workspaceId: workspace.sId,
+        didMutateSeatData = didMutateSeatData || nowResult.value;
+
+        // Future segments, one per unique scheduled timestamp.
+        for (const tMs of scheduledTimestampsMs) {
+          const at = new Date(tMs);
+          const futureResult = await reconcileSeatBasedSegment({
+            metronomeCustomerId,
+            contractId,
+            subscriptionId,
+            seatType,
+            desiredSIds: desiredSIdsAt(seatType, tMs),
+            startingAt: at.toISOString(),
+            coveringDate: at,
+            workspaceId: workspace.sId,
+          });
+          if (futureResult.isErr()) {
+            return new Err(futureResult.error);
+          }
+          didMutateSeatData = didMutateSeatData || futureResult.value;
+        }
+      } else {
+        // QUANTITY_ONLY: only sync the "now" total. Scheduled changes within
+        // a quantity-only seat tier are not modeled — they're rare in practice
+        // (free / unlimited tiers) and Metronome doesn't bill them per-seat.
+        const nowQuantity = desiredSIdsAt(seatType, Date.now()).length;
+        logger.info(
+          {
+            workspaceId: workspace.sId,
+            contractId,
+            subscriptionId,
+            seatType,
+            quantity: nowQuantity,
+          },
+          "[Metronome] Updating seat quantity"
+        );
+        const updateResult = await updateSubscriptionQuantity({
+          metronomeCustomerId,
           contractId,
           subscriptionId,
-          seatType,
           quantity: nowQuantity,
-        },
-        "[Metronome] Updating seat quantity"
-      );
-      const updateResult = await updateSubscriptionQuantity({
-        metronomeCustomerId,
-        contractId,
-        subscriptionId,
-        quantity: nowQuantity,
-        startingAt,
-      });
-      if (updateResult.isErr()) {
-        return new Err(updateResult.error);
+          startingAt,
+        });
+        if (updateResult.isErr()) {
+          return new Err(updateResult.error);
+        }
+        didMutateSeatData = true;
       }
     }
-  }
 
-  return new Ok(undefined);
+    return new Ok(undefined);
+  } finally {
+    if (didMutateSeatData) {
+      await invalidateCachedSeatDataByUserId({
+        metronomeCustomerId,
+        contractId,
+      });
+    }
+  }
 }
 
 /**
@@ -445,7 +463,7 @@ async function reconcileSeatBasedSegment({
   startingAt?: string;
   coveringDate?: Date;
   workspaceId: string;
-}): Promise<Result<void, Error>> {
+}): Promise<Result<boolean, Error>> {
   const currentResult = await getMetronomeSubscriptionAssignedSeatIds({
     metronomeCustomerId,
     contractId,
@@ -462,7 +480,7 @@ async function reconcileSeatBasedSegment({
   const removeSeatIds = currentResult.value.filter((id) => !desired.has(id));
 
   if (addSeatIds.length === 0 && removeSeatIds.length === 0) {
-    return new Ok(undefined);
+    return new Ok(false);
   }
 
   logger.info(
@@ -489,7 +507,7 @@ async function reconcileSeatBasedSegment({
   if (updateResult.isErr()) {
     return new Err(updateResult.error);
   }
-  return new Ok(undefined);
+  return new Ok(true);
 }
 
 export type SeatData = {
@@ -507,9 +525,11 @@ export type SeatData = {
 export async function buildSeatDataByUserId({
   metronomeCustomerId,
   contractId,
+  throwOnError = false,
 }: {
   metronomeCustomerId: string;
   contractId: string;
+  throwOnError?: boolean;
 }): Promise<Map<string, SeatData>> {
   const contractResult = await getMetronomeContractById({
     metronomeCustomerId,
@@ -520,6 +540,9 @@ export async function buildSeatDataByUserId({
       { error: contractResult.error, metronomeCustomerId, contractId },
       "[Metronome] Failed to fetch contract"
     );
+    if (throwOnError) {
+      throw contractResult.error;
+    }
     return new Map();
   }
 
@@ -562,6 +585,9 @@ export async function buildSeatDataByUserId({
           },
           "[Metronome] Failed to fetch seat IDs"
         );
+        if (throwOnError) {
+          throw seatIdsResult.error;
+        }
         return null;
       }
 
@@ -589,3 +615,37 @@ export async function buildSeatDataByUserId({
 
   return seatDataByUserId;
 }
+
+const SEAT_DATA_CACHE_TTL_MS = 60 * 1000;
+
+const seatDataCacheResolver = ({
+  metronomeCustomerId,
+  contractId,
+}: {
+  metronomeCustomerId: string;
+  contractId: string;
+}) => `${metronomeCustomerId}-${contractId}`;
+
+async function fetchSeatDataRecord(args: {
+  metronomeCustomerId: string;
+  contractId: string;
+}): Promise<Record<string, SeatData>> {
+  return Object.fromEntries(
+    await buildSeatDataByUserId({
+      ...args,
+      throwOnError: true,
+    })
+  );
+}
+
+export const getCachedSeatDataByUserId = cacheWithRedis(
+  fetchSeatDataRecord,
+  seatDataCacheResolver,
+  { ttlMs: SEAT_DATA_CACHE_TTL_MS }
+);
+
+const invalidateCachedSeatDataByUserId = bestEffortInvalidateCacheWithRedis(
+  fetchSeatDataRecord,
+  seatDataCacheResolver,
+  "members-usage seat data"
+);

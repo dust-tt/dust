@@ -495,6 +495,8 @@ export const RunAgentQueryResourceSchema = z.object({
   text: z.string(),
   childAgentId: z.string(),
   uri: z.literal(""),
+  conversationId: z.string().optional(),
+  agentMessageId: z.string().optional(),
 });
 
 export type RunAgentQueryResourceType = z.infer<

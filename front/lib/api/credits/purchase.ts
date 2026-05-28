@@ -16,6 +16,7 @@ import {
   getStripeSubscription,
   isEnterpriseSubscription,
 } from "@app/lib/plans/stripe";
+import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import logger from "@app/logger/logger";
 import type { SupportedCurrency } from "@app/types/currency";
@@ -136,9 +137,15 @@ export async function getCreditPurchaseInfo(
     }
   }
 
-  const programmaticConfig =
-    await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
-  const discountPercent = programmaticConfig?.defaultDiscountPercent ?? 0;
+  // Discount lives on `credit_usage_configuration` for credit-priced
+  // (Metronome) workspaces and on `programmatic_usage_configuration` for
+  // the legacy Stripe-billed programmatic-usage flow. The two stores are
+  // never read from the other's code path.
+  const discountPercent = isMetronomeOnly
+    ? ((await CreditUsageConfigurationResource.fetchByWorkspaceId(auth))
+        ?.defaultDiscountPercent ?? 0)
+    : ((await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth))
+        ?.defaultDiscountPercent ?? 0);
 
   const creditPricing = await getStripePricingData(getCreditPurchasePriceId());
 
@@ -259,12 +266,17 @@ export async function createCreditPurchase(
     );
   }
 
-  const programmaticConfig =
-    await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
+  // Same split as in `getCreditPurchaseInfo`: Metronome workspaces read
+  // `credit_usage_configuration`; legacy Stripe-billed programmatic-usage
+  // workspaces read `programmatic_usage_configuration`.
+  const configuredDiscount = isMetronomeOnly
+    ? (await CreditUsageConfigurationResource.fetchByWorkspaceId(auth))
+        ?.defaultDiscountPercent
+    : (await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth))
+        ?.defaultDiscountPercent;
   let discountPercent =
-    programmaticConfig?.defaultDiscountPercent &&
-    programmaticConfig.defaultDiscountPercent > 0
-      ? programmaticConfig.defaultDiscountPercent
+    configuredDiscount && configuredDiscount > 0
+      ? configuredDiscount
       : undefined;
 
   // Defense in depth: enforced at config level, but double-check here.

@@ -62,7 +62,11 @@ import { isModelAvailable } from "@app/lib/assistant";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { extractFromString, serializeMention } from "@app/lib/mentions/format";
-import { isApiBlocked, isUserBlocked } from "@app/lib/metronome/user_block";
+import {
+  getWorkspaceCreditPoolStatus,
+  isApiBlocked,
+  isUserBlocked,
+} from "@app/lib/metronome/user_block";
 import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import {
   AgentMCPActionModel,
@@ -160,6 +164,15 @@ import { col } from "sequelize";
 
 // Rate limit for programmatic usage: 1 message per this amount of dollars per minute.
 const PROGRAMMATIC_RATE_LIMIT_DOLLARS_PER_MESSAGE = 3;
+
+// Concurrency limits for pool-credit workspaces based on pool credit state.
+// Prevents close-to-0 attacks where many requests are sent simultaneously
+// before Metronome debits settle.
+const POOL_CREDIT_CONCURRENCY_LIMITS: Record<string, number> = {
+  active: 1000,
+  active_low_balance: 5,
+  active_critical_balance: 1,
+};
 
 /** Citations and generated files aggregated from source MCP output items (e.g. branch merge). */
 export type CitationsAndFilesFromOutputItemsType = {
@@ -757,7 +770,7 @@ export async function postUserMessage(
       !isModelAvailable(supportedModelConfig, {
         featureFlags,
         plan,
-        owner,
+        regionalModelsOnly: owner.regionalModelsOnly,
         region: regionConfig.getCurrentRegion(),
       })
     ) {
@@ -2390,9 +2403,8 @@ async function checkMessagesLimit(
   // Credit-state + programmatic rate-limit gate. Two systems coexist:
   // - Credit-priced (Metronome) plans: workspace pool + per-user cap, cached in Redis.
   //   For API calls (no user), only the workspace pool applies via `isApiBlocked`.
-  //   TODO(metronome): port `checkProgrammaticUsageRateLimit` to a pool-balance
-  //   variant so concurrent programmatic requests can't overshoot the pool while
-  //   debits settle.
+  //   Pool-balance concurrency limiting (`checkPoolCreditConcurrencyLimit`) prevents
+  //   close-to-0 attacks where many requests overshoot the pool before debits settle.
   // - Legacy plans: programmatic credits checked via `checkProgrammaticUsageLimits`,
   //   plus a credit-balance-scaled pre-emptive rate limit (`checkProgrammaticUsageRateLimit`).
   const owner = auth.getNonNullableWorkspace();
@@ -2409,6 +2421,23 @@ async function checkMessagesLimit(
           type: "credits_exhausted",
           message:
             "Your workspace has run out of credits. Please purchase more credits to continue.",
+        },
+      });
+    }
+
+    // Pre-emptive concurrency limit based on pool credit state. Prevents
+    // close-to-0 attacks where many requests are sent simultaneously before
+    // Metronome debits settle.
+    const poolLimit = await checkPoolCreditConcurrencyLimit(auth);
+    if (poolLimit.isLimitReached && poolLimit.limitType) {
+      return new Err({
+        status_code: 429,
+        api_error: {
+          type: poolLimit.limitType,
+          message: getMessageLimitErrorMessage({
+            limitType: poolLimit.limitType,
+            message: poolLimit.message,
+          }),
         },
       });
     }
@@ -2464,6 +2493,54 @@ async function checkMessagesLimit(
     });
   }
   return new Ok(undefined);
+}
+
+// For pool-credit (Metronome) plans, apply concurrency limiting based on
+// the workspace pool credit state. When credits are running low the limit
+// tightens so in-flight requests can't overshoot the pool before Metronome
+// debits settle.
+async function checkPoolCreditConcurrencyLimit(
+  auth: Authenticator
+): Promise<MessageLimit> {
+  const owner = auth.getNonNullableWorkspace();
+  const status = await getWorkspaceCreditPoolStatus(owner.sId);
+
+  const maxConcurrent = POOL_CREDIT_CONCURRENCY_LIMITS[status];
+  if (maxConcurrent === undefined) {
+    // depleted / overage — handled by isUserBlocked / isApiBlocked upstream.
+    return { isLimitReached: false, limitType: null };
+  }
+
+  const remaining = await rateLimiter({
+    key: `pool_credit_concurrency:${owner.sId}`,
+    maxPerTimeframe: maxConcurrent,
+    timeframeSeconds: 60,
+    logger,
+  });
+
+  if (remaining <= 0) {
+    logger.info(
+      {
+        workspaceId: owner.sId,
+        poolCreditStatus: status,
+        maxConcurrent,
+      },
+      "Pool credit concurrency limit triggered."
+    );
+
+    getStatsDClient().increment(
+      "assistant.rate_limiter.pool_credit.concurrency_limit_triggered",
+      1,
+      { workspace_id: owner.sId }
+    );
+
+    return {
+      isLimitReached: true,
+      limitType: "rate_limit_error",
+    };
+  }
+
+  return { isLimitReached: false, limitType: null };
 }
 
 // For programmatic usage, apply credit-based rate limiting.

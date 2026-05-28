@@ -9,6 +9,7 @@ import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { honoApp } from "@front-api/app";
+import { ENSURE_IS_ADMIN_ERROR_MESSAGE } from "@front-api/middlewares/ensure_role";
 import { describe, expect, it } from "vitest";
 
 describe("GET /api/w/:wId/spaces/:spaceId/mcp_views/not_activated", () => {
@@ -116,10 +117,8 @@ describe("DELETE /api/w/:wId/spaces/:spaceId/mcp_views/:svId", () => {
 
     expect(response.status).toBe(403);
     const body = await response.json();
-    expect(body.error.type).toBe("mcp_auth_error");
-    expect(body.error.message).toBe(
-      "User is not authorized to remove tools from a space."
-    );
+    expect(body.error.type).toBe("workspace_auth_error");
+    expect(body.error.message).toBe(ENSURE_IS_ADMIN_ERROR_MESSAGE);
   });
 
   it("returns 404 when server view doesn't exist", async () => {

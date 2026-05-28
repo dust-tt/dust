@@ -1,9 +1,5 @@
 import { getWhitelistedProviders } from "@app/lib/api/assistant/models";
-import type { RegionType } from "@app/lib/api/regions/config";
-import {
-  filterCustomAvailableAndWhitelistedModels,
-  isModelCustomAvailable,
-} from "@app/lib/assistant";
+import { filterEnabledModels, isModelAvailable } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
 import {
   DUST_COMPANY_PLAN_CODE,
@@ -16,6 +12,7 @@ import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { PlanType } from "@app/types/plan";
+import type { RegionType } from "@app/types/region";
 import type { WorkspaceType } from "@app/types/user";
 import { describe, expect, it } from "vitest";
 
@@ -31,7 +28,7 @@ function createMockModel(
   };
 }
 
-// createMockPlan is only used by isModelCustomAvailable tests (pure sync, no factory available).
+// createMockPlan is only used by isModelAvailable tests (pure sync, no factory available).
 function createMockPlan(code: string): PlanType {
   return {
     code,
@@ -83,7 +80,7 @@ function createMockPlan(code: string): PlanType {
   };
 }
 
-describe("isModelCustomAvailable", () => {
+describe("isModelAvailable", () => {
   const owner: WorkspaceType = LightWorkspaceFactory.build();
 
   it("should return true for a basic model without restrictions", () => {
@@ -91,10 +88,10 @@ describe("isModelCustomAvailable", () => {
     const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
 
     expect(
-      isModelCustomAvailable(model, {
+      isModelAvailable(model, {
         featureFlags: [],
         plan,
-        owner,
+        regionalModelsOnly: owner.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(true);
@@ -108,10 +105,10 @@ describe("isModelCustomAvailable", () => {
     const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
 
     expect(
-      isModelCustomAvailable(model, {
+      isModelAvailable(model, {
         featureFlags: ["deepseek_feature"],
         plan,
-        owner,
+        regionalModelsOnly: owner.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(true);
@@ -125,44 +122,10 @@ describe("isModelCustomAvailable", () => {
     const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
 
     expect(
-      isModelCustomAvailable(model, {
+      isModelAvailable(model, {
         featureFlags: [],
         plan,
-        owner,
-        region: TEST_REGION,
-      })
-    ).toBe(false);
-  });
-
-  it("should return true when customAssistantFeatureFlag is enabled", () => {
-    const model = createMockModel({
-      customAvailableIf: { featureFlag: "openai_o1_feature" },
-      largeModel: false,
-    });
-    const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
-
-    expect(
-      isModelCustomAvailable(model, {
-        featureFlags: ["openai_o1_feature"],
-        plan,
-        owner,
-        region: TEST_REGION,
-      })
-    ).toBe(true);
-  });
-
-  it("should return false when customAssistantFeatureFlag is not enabled", () => {
-    const model = createMockModel({
-      customAvailableIf: { featureFlag: "openai_o1_feature" },
-      largeModel: false,
-    });
-    const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
-
-    expect(
-      isModelCustomAvailable(model, {
-        featureFlags: [],
-        plan,
-        owner,
+        regionalModelsOnly: owner.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(false);
@@ -173,10 +136,10 @@ describe("isModelCustomAvailable", () => {
     const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
 
     expect(
-      isModelCustomAvailable(model, {
+      isModelAvailable(model, {
         featureFlags: [],
         plan,
-        owner,
+        regionalModelsOnly: owner.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(true);
@@ -187,10 +150,10 @@ describe("isModelCustomAvailable", () => {
     const plan = createMockPlan(FREE_UPGRADED_PLAN_CODE);
 
     expect(
-      isModelCustomAvailable(model, {
+      isModelAvailable(model, {
         featureFlags: [],
         plan,
-        owner,
+        regionalModelsOnly: owner.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(true);
@@ -204,10 +167,10 @@ describe("isModelCustomAvailable", () => {
     const plan = createMockPlan(FREE_NO_PLAN_CODE);
 
     expect(
-      isModelCustomAvailable(model, {
+      isModelAvailable(model, {
         featureFlags: [],
         plan,
-        owner,
+        regionalModelsOnly: owner.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(false);
@@ -220,49 +183,13 @@ describe("isModelCustomAvailable", () => {
     });
 
     expect(
-      isModelCustomAvailable(model, {
+      isModelAvailable(model, {
         featureFlags: [],
         plan: null,
-        owner,
+        regionalModelsOnly: owner.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(false);
-  });
-
-  it("should return false when both featureFlag and customAssistantFeatureFlag are required but only one is enabled", () => {
-    const model = createMockModel({
-      availableIfOneOf: { featureFlag: "deepseek_feature" },
-      customAvailableIf: { featureFlag: "openai_o1_feature" },
-      largeModel: false,
-    });
-    const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
-
-    expect(
-      isModelCustomAvailable(model, {
-        featureFlags: ["deepseek_feature"],
-        plan,
-        owner,
-        region: TEST_REGION,
-      })
-    ).toBe(false);
-  });
-
-  it("should return true when both featureFlag and customAssistantFeatureFlag are required and both are enabled", () => {
-    const model = createMockModel({
-      availableIfOneOf: { featureFlag: "deepseek_feature" },
-      customAvailableIf: { featureFlag: "openai_o1_feature" },
-      largeModel: false,
-    });
-    const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
-
-    expect(
-      isModelCustomAvailable(model, {
-        featureFlags: ["deepseek_feature", "openai_o1_feature"],
-        plan,
-        owner,
-        region: TEST_REGION,
-      })
-    ).toBe(true);
   });
 
   it("should return false when large model requires upgraded plan but featureFlag is missing", () => {
@@ -273,10 +200,10 @@ describe("isModelCustomAvailable", () => {
     const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
 
     expect(
-      isModelCustomAvailable(model, {
+      isModelAvailable(model, {
         featureFlags: [],
         plan,
-        owner,
+        regionalModelsOnly: owner.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(false);
@@ -290,10 +217,10 @@ describe("isModelCustomAvailable", () => {
     const plan = createMockPlan(DUST_COMPANY_PLAN_CODE);
 
     expect(
-      isModelCustomAvailable(model, {
+      isModelAvailable(model, {
         featureFlags: [],
         plan,
-        owner,
+        regionalModelsOnly: owner.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(true);
@@ -307,10 +234,10 @@ describe("isModelCustomAvailable", () => {
     const plan = createMockPlan("ENT_CUSTOM_PLAN");
 
     expect(
-      isModelCustomAvailable(model, {
+      isModelAvailable(model, {
         featureFlags: [],
         plan,
-        owner,
+        regionalModelsOnly: owner.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(true);
@@ -324,10 +251,10 @@ describe("isModelCustomAvailable", () => {
     const plan = createMockPlan(DUST_COMPANY_PLAN_CODE);
 
     expect(
-      isModelCustomAvailable(model, {
+      isModelAvailable(model, {
         featureFlags: [],
         plan,
-        owner,
+        regionalModelsOnly: owner.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(true);
@@ -341,10 +268,10 @@ describe("isModelCustomAvailable", () => {
     const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
 
     expect(
-      isModelCustomAvailable(model, {
+      isModelAvailable(model, {
         featureFlags: ["deepseek_feature"],
         plan,
-        owner,
+        regionalModelsOnly: owner.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(true);
@@ -358,26 +285,26 @@ describe("isModelCustomAvailable", () => {
     const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
 
     expect(
-      isModelCustomAvailable(model, {
+      isModelAvailable(model, {
         featureFlags: [],
         plan,
-        owner,
+        regionalModelsOnly: owner.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(false);
   });
 });
 
-describe("filterCustomAvailableAndWhitelistedModels", () => {
+describe("filterEnabledModels", () => {
   it("should include model when available and provider is whitelisted", async () => {
     const workspace = await WorkspaceFactory.basic();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
     const model = createMockModel({ providerId: "openai", largeModel: false });
 
-    const result = filterCustomAvailableAndWhitelistedModels([model], {
+    const result = filterEnabledModels([model], {
       featureFlags: [],
       plan: auth.plan(),
-      owner: auth.getNonNullableWorkspace(),
+      regionalModelsOnly: auth.getNonNullableWorkspace().regionalModelsOnly,
       region: TEST_REGION,
       whitelistedProviders: getWhitelistedProviders(auth),
     });
@@ -394,10 +321,10 @@ describe("filterCustomAvailableAndWhitelistedModels", () => {
       largeModel: false,
     });
 
-    const result = filterCustomAvailableAndWhitelistedModels([model], {
+    const result = filterEnabledModels([model], {
       featureFlags: [],
       plan: auth.plan(),
-      owner: auth.getNonNullableWorkspace(),
+      regionalModelsOnly: auth.getNonNullableWorkspace().regionalModelsOnly,
       region: TEST_REGION,
       whitelistedProviders: getWhitelistedProviders(auth),
     });
@@ -413,10 +340,10 @@ describe("filterCustomAvailableAndWhitelistedModels", () => {
       largeModel: false,
     });
 
-    const result = filterCustomAvailableAndWhitelistedModels([model], {
+    const result = filterEnabledModels([model], {
       featureFlags: [],
       plan: auth.plan(),
-      owner: auth.getNonNullableWorkspace(),
+      regionalModelsOnly: auth.getNonNullableWorkspace().regionalModelsOnly,
       region: TEST_REGION,
       whitelistedProviders: getWhitelistedProviders(auth),
     });
@@ -432,10 +359,10 @@ describe("filterCustomAvailableAndWhitelistedModels", () => {
       largeModel: false,
     });
 
-    const result = filterCustomAvailableAndWhitelistedModels([model], {
+    const result = filterEnabledModels([model], {
       featureFlags: ["deepseek_feature"],
       plan: auth.plan(),
-      owner: auth.getNonNullableWorkspace(),
+      regionalModelsOnly: auth.getNonNullableWorkspace().regionalModelsOnly,
       region: TEST_REGION,
       whitelistedProviders: getWhitelistedProviders(auth),
     });
@@ -456,16 +383,13 @@ describe("filterCustomAvailableAndWhitelistedModels", () => {
       largeModel: false,
     });
 
-    const result = filterCustomAvailableAndWhitelistedModels(
-      [openaiModel, xaiModel],
-      {
-        featureFlags: [],
-        plan: auth.plan(),
-        owner: auth.getNonNullableWorkspace(),
-        region: TEST_REGION,
-        whitelistedProviders: getWhitelistedProviders(auth),
-      }
-    );
+    const result = filterEnabledModels([openaiModel, xaiModel], {
+      featureFlags: [],
+      plan: auth.plan(),
+      regionalModelsOnly: auth.getNonNullableWorkspace().regionalModelsOnly,
+      region: TEST_REGION,
+      whitelistedProviders: getWhitelistedProviders(auth),
+    });
     expect(result).toEqual([openaiModel]);
   });
 
@@ -477,10 +401,10 @@ describe("filterCustomAvailableAndWhitelistedModels", () => {
       largeModel: false,
     });
 
-    const result = filterCustomAvailableAndWhitelistedModels([model], {
+    const result = filterEnabledModels([model], {
       featureFlags: [],
       plan: auth.plan(),
-      owner: auth.getNonNullableWorkspace(),
+      regionalModelsOnly: auth.getNonNullableWorkspace().regionalModelsOnly,
       region: TEST_REGION,
       whitelistedProviders: getWhitelistedProviders(auth),
     });

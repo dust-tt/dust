@@ -93,6 +93,6 @@ if [ ! -s "${FILENAME}" ]; then
   exit 0
 fi
 
-echo "Migration written to: ${FILENAME}"
 echo ""
-cat "${FILENAME}"
+echo "✅ Migration generated:"
+echo "   ${FILENAME}"

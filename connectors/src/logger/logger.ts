@@ -92,8 +92,8 @@ export function getLoggerArgs(
   try {
     const ctx = Context.current();
     Object.assign(effectiveArgs, {
-      activityName: ctx.info.activityType,
-      workflowName: ctx.info.workflowType,
+      activityType: ctx.info.activityType,
+      workflowType: ctx.info.workflowType,
       workflowId: ctx.info.workflowExecution.workflowId,
       workflowRunId: ctx.info.workflowExecution.runId,
       activityId: ctx.info.activityId,

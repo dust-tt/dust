@@ -134,10 +134,22 @@ export async function ingestMetronomeEvents(
   }
 
   const client = getMetronomeClient();
-  for (let i = 0; i < validEvents.length; i += METRONOME_INGEST_BATCH_SIZE) {
-    const batch = validEvents.slice(i, i + METRONOME_INGEST_BATCH_SIZE);
-    await client.v1.usage.ingest({ usage: batch });
+  try {
+    for (let i = 0; i < validEvents.length; i += METRONOME_INGEST_BATCH_SIZE) {
+      const batch = validEvents.slice(i, i + METRONOME_INGEST_BATCH_SIZE);
+      await client.v1.usage.ingest({ usage: batch });
+    }
+  } catch (err) {
+    logger.error(
+      { error: normalizeError(err), eventCount: validEvents.length },
+      "[Metronome] Failed to ingest usage events"
+    );
+    throw err;
   }
+  logger.info(
+    { eventCount: validEvents.length },
+    "[Metronome] Ingested usage events"
+  );
 }
 
 // ---------------------------------------------------------------------------

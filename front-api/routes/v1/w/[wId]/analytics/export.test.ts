@@ -1,6 +1,7 @@
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
+import { ENSURE_IS_BUILDER_ERROR_MESSAGE } from "@front-api/middlewares/ensure_role";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/api/assistant/observability/messages_metrics", async () => ({
@@ -171,9 +172,8 @@ describe("GET /api/v1/w/[wId]/analytics/export", () => {
     expect(response.status).toBe(403);
     expect(await response.json()).toEqual({
       error: {
-        type: "insufficient_key_scope",
-        message:
-          "Workspace analytics export requires an API key with admin scope.",
+        type: "workspace_auth_error",
+        message: ENSURE_IS_BUILDER_ERROR_MESSAGE,
       },
     });
   });

@@ -3,7 +3,6 @@ import { CreateOrUpdateConnectionBigQueryModal } from "@app/components/data_sour
 import { CreateOrUpdateConnectionSnowflakeModal } from "@app/components/data_source/CreateOrUpdateConnectionSnowflakeModal";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useSendNotification } from "@app/hooks/useNotification";
-import type { RegionInfo } from "@app/lib/api/regions/config";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import {
@@ -34,6 +33,7 @@ import { setupOAuthConnection } from "@app/types/oauth/client/setup";
 import type { OAuthUseCase } from "@app/types/oauth/lib";
 import { isOAuthProvider } from "@app/types/oauth/lib";
 import type { PlanType } from "@app/types/plan";
+import type { RegionInfo } from "@app/types/region";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";

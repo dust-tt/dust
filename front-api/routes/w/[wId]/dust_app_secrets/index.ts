@@ -8,7 +8,10 @@ import logger from "@app/logger/logger";
 import type { DustAppSecretType } from "@app/types/dust_app_secret";
 import { encrypt } from "@app/types/shared/utils/encryption";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsBuilder } from "@front-api/middlewares/ensure_role";
+import {
+  ensureIsAdmin,
+  ensureIsBuilder,
+} from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -62,7 +65,7 @@ app.get(
 
 app.post(
   "/",
-  ensureIsBuilder(),
+  ensureIsAdmin(),
   validate("json", PostDustAppSecretBodySchema),
   async (ctx): HandlerResult<PostDustAppSecretsResponseBody> => {
     const auth = ctx.get("auth");
@@ -82,16 +85,6 @@ app.post(
         api_error: {
           type: "rate_limit_error",
           message: "You have reached the rate limit for this workspace.",
-        },
-      });
-    }
-
-    if (!auth.isAdmin()) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "app_auth_error",
-          message: "You do not have the required permissions.",
         },
       });
     }

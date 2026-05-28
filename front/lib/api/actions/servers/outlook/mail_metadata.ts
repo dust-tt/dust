@@ -232,6 +232,35 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
       done: "Send email",
     },
   },
+  move_messages: {
+    description:
+      'Move one or more messages to a destination folder in Outlook. The destination is given as a path of folder names from the top level (e.g. ["Archive", "2026", "Receipts"]). Any folders along the path that do not exist are created automatically. Prefer passing all messages destined for the same folder in a single call rather than calling this tool in parallel. Note: Microsoft Graph assigns a new message ID after a move.',
+    schema: {
+      messageIds: z
+        .array(z.string())
+        .min(1)
+        .describe("The IDs of the messages to move"),
+      destinationFolderPath: z
+        .array(z.string())
+        .min(1)
+        .describe(
+          'Path to the destination folder as a list of folder names from the top level (e.g. ["Archive", "2026", "Receipts"]). Pass a single-element array for a top-level folder. Any missing folders along the path are created automatically.'
+        ),
+      sharedMailboxAddress: z
+        .string()
+        .optional()
+        .describe(
+          "The email address of the shared mailbox to access (e.g. 'support@company.com'). " +
+            "Leave empty to access your own mailbox. " +
+            "Note: the shared mailbox address must be known in advance — there is no API to auto-discover it."
+        ),
+    },
+    stake: "medium",
+    displayLabels: {
+      running: "Moving messages",
+      done: "Move messages",
+    },
+  },
   get_contacts: {
     description:
       "Get contacts from Outlook. Supports search queries to filter contacts.",

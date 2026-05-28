@@ -1,12 +1,12 @@
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
-import type { RegionType } from "@app/lib/api/regions/config";
 import type {
   AuthContextNoWorkspaceValue,
   AuthContextValue,
 } from "@app/lib/auth/AuthContext";
 import { AuthContext, AuthContextNoWorkspace } from "@app/lib/auth/AuthContext";
 import { usePokeRegion } from "@app/lib/swr/poke";
+import type { RegionType } from "@app/types/region";
 import type React from "react";
 
 export interface PokeLayoutProps {

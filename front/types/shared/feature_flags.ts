@@ -92,10 +92,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Transcript feature (Labs)",
     stage: "on_demand",
   },
-  openai_o1_custom_assistants_feature: {
-    description: "OpenAI o1 model for custom assistants",
-    stage: "on_demand",
-  },
   openai_o1_feature: {
     description: "Access to OpenAI o1 model",
     stage: "on_demand",
@@ -204,11 +200,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   sandbox_workspace_admin: {
     description:
       "Workspace admin configuration for the Computer (sandbox): whitelisted domains, environment variables, and the agent egress request setting/tool",
-    stage: "dust_only",
-  },
-  skills_as_user_messages: {
-    description:
-      "Render skills in assistant conversations as synthetic user messages instead of in the system prompt",
     stage: "dust_only",
   },
   run_tools_from_prompt: {

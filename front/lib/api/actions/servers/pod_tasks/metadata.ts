@@ -43,7 +43,7 @@ export const POD_TASKS_TOOLS_METADATA = createToolsRecord({
           "When status is 'done' or 'all', limit completed tasks to this many days back. Defaults to 7."
         ),
       dustPod: ConfigurableToolInputSchemas[
-        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
       ]
         .optional()
         .describe(
@@ -80,7 +80,7 @@ export const POD_TASKS_TOOLS_METADATA = createToolsRecord({
         .max(50)
         .describe("List of task sIds to mark as done."),
       dustPod: ConfigurableToolInputSchemas[
-        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
       ]
         .optional()
         .describe(
@@ -122,7 +122,7 @@ export const POD_TASKS_TOOLS_METADATA = createToolsRecord({
           "Optional additional instructions appended to the kickoff message sent to the selected agent."
         ),
       dustPod: ConfigurableToolInputSchemas[
-        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
       ]
         .optional()
         .describe(
