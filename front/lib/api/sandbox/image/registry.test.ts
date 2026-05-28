@@ -1,6 +1,6 @@
 import {
-  SANDBOX_ROOT_CONSUMED_DIRS,
   SANDBOX_ROOT_SAFE_PATH,
+  SANDBOX_STATIC_ROOT_CONSUMED_DIRS,
 } from "@app/lib/api/sandbox/hardening";
 import { getSandboxImageFromRegistry } from "@app/lib/api/sandbox/image/registry";
 import {
@@ -140,11 +140,8 @@ describe("sandbox image registry", () => {
       expect(command).toContain(
         "install -d -o root -g root -m 755 /opt/bin /usr/local /usr/local/sbin /usr/local/bin /usr/local/lib"
       );
-      expect(command).toContain("/usr/local/lib/systemd/system");
-      expect(command).toContain("/etc/systemd/system.control");
-      expect(command).toContain("/run/systemd/generator.early");
-      expect(command).toContain("/run/systemd/system.attached");
-      expect(command).toContain("/run/systemd/system");
+      expect(command).toContain("/usr/bin/systemd-analyze unit-paths");
+      expect(command).toContain("systemd unit path must be absolute");
       expect(command).toContain(
         "for path in /opt/bin/dsbx /usr/local/bin/dust-install-trust-bundle"
       );
@@ -162,20 +159,18 @@ describe("sandbox image registry", () => {
 
   test("keeps root-consumed lookup directories root-owned", () => {
     const runCommands = getRunCommands(getDustBaseImageOperations());
-    const rootConsumedDirs = SANDBOX_ROOT_CONSUMED_DIRS.join(" ");
+    const staticRootConsumedDirs = SANDBOX_STATIC_ROOT_CONSUMED_DIRS.join(" ");
 
     expect(runCommands).toEqual(
       expect.arrayContaining([
         expect.stringContaining(
-          `/usr/bin/install -d -o root -g root -m 755 ${rootConsumedDirs}`
+          `/usr/bin/install -d -o root -g root -m 755 ${staticRootConsumedDirs}`
         ),
       ])
     );
-    expect(runCommands.join("\n")).toContain("/usr/local/lib/systemd/system");
-    expect(runCommands.join("\n")).toContain("/etc/systemd/system.control");
-    expect(runCommands.join("\n")).toContain("/run/systemd/generator.early");
-    expect(runCommands.join("\n")).toContain("/run/systemd/system.attached");
-    expect(runCommands.join("\n")).toContain("/run/systemd/system");
+    expect(runCommands.join("\n")).toContain(
+      "/usr/bin/systemd-analyze unit-paths"
+    );
   });
 
   test("disables and hardens sshd in the base image", () => {

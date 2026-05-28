@@ -1,14 +1,13 @@
 import { shellEscape } from "@app/lib/api/sandbox/shell";
 
 export const SANDBOX_ROOT_SAFE_PATH = "/usr/sbin:/usr/bin:/sbin:/bin:/opt/bin";
-export const SANDBOX_ROOT_CONSUMED_DIRS = [
+export const SANDBOX_STATIC_ROOT_CONSUMED_DIRS = [
   "/opt/bin",
   "/usr/local",
   "/usr/local/sbin",
   "/usr/local/bin",
   "/usr/local/lib",
   "/usr/local/lib/systemd",
-  "/usr/local/lib/systemd/system",
   "/usr/local/lib/systemd/system-generators",
   "/usr/local/lib/tmpfiles.d",
   "/usr/local/share",
@@ -20,31 +19,20 @@ export const SANDBOX_ROOT_CONSUMED_DIRS = [
   "/etc/ld.so.conf.d",
   "/etc/profile.d",
   "/etc/systemd",
-  "/etc/systemd/system.control",
-  "/etc/systemd/system",
-  "/etc/systemd/system.attached",
   "/etc/systemd/system-generators",
   "/etc/tmpfiles.d",
   "/run/environment.d",
   "/run/systemd",
-  "/run/systemd/system.control",
-  "/run/systemd/transient",
-  "/run/systemd/generator.early",
-  "/run/systemd/system",
-  "/run/systemd/system.attached",
-  "/run/systemd/generator",
-  "/run/systemd/generator.late",
   "/run/systemd/system-generators",
   "/run/tmpfiles.d",
   "/usr/lib/environment.d",
+  "/usr/lib",
   "/usr/lib/systemd",
-  "/usr/lib/systemd/system",
   "/usr/lib/systemd/system-generators",
   "/usr/lib/tmpfiles.d",
   "/usr/share/dbus-1",
   "/usr/share/dbus-1/system-services",
   "/lib/systemd",
-  "/lib/systemd/system",
   "/lib/systemd/system-generators",
   "/lib/tmpfiles.d",
 ] as const;
@@ -54,8 +42,39 @@ export const SANDBOX_ROOT_INVOKED_HELPERS = [
 ] as const;
 
 const ROOT_SAFE_PATH_PROFILE = "/etc/profile.d/zz-dust-root-safe-path.sh";
-const ROOT_CONSUMED_DIRS = SANDBOX_ROOT_CONSUMED_DIRS.join(" ");
+const STATIC_ROOT_CONSUMED_DIRS = SANDBOX_STATIC_ROOT_CONSUMED_DIRS.join(" ");
 const ROOT_INVOKED_HELPERS = SANDBOX_ROOT_INVOKED_HELPERS.join(" ");
+
+export function getRootConsumedPathHardeningCommand(): string {
+  const hardenStaticRootConsumedDirs = [
+    `/usr/bin/install -d -o root -g root -m 755 ${STATIC_ROOT_CONSUMED_DIRS}`,
+    `/usr/bin/chown root:root ${STATIC_ROOT_CONSUMED_DIRS}`,
+    `/usr/bin/chmod 755 ${STATIC_ROOT_CONSUMED_DIRS}`,
+  ].join(" && ");
+  const hardenSystemdUnitPaths = [
+    "if [ ! -x /usr/bin/systemd-analyze ]; then",
+    "echo 'systemd-analyze must exist to harden systemd unit lookup paths' >&2;",
+    "exit 1;",
+    "fi;",
+    "systemd_unit_paths=$(/usr/bin/systemd-analyze unit-paths) || exit 1;",
+    'printf "%s\\n" "$systemd_unit_paths" | while IFS= read -r dir; do',
+    '[ -n "$dir" ] || continue;',
+    'case "$dir" in /*) ;; *) echo "systemd unit path must be absolute: $dir" >&2; exit 1 ;; esac;',
+    'path="$dir";',
+    'while [ "$path" != "/" ]; do',
+    'case "$path" in',
+    "/etc/systemd|/etc/systemd/*|/run/systemd|/run/systemd/*|/usr/local|/usr/local/lib|/usr/local/lib/systemd|/usr/local/lib/systemd/*|/usr/lib|/usr/lib/systemd|/usr/lib/systemd/*|/lib|/lib/systemd|/lib/systemd/*)",
+    '/usr/bin/install -d -o root -g root -m 755 "$path" || exit 1;;',
+    "esac;",
+    'next="${path%/*}";',
+    '[ "$next" != "$path" ] || next="/";',
+    'path="$next";',
+    "done;",
+    "done",
+  ].join(" ");
+
+  return [hardenStaticRootConsumedDirs, hardenSystemdUnitPaths].join(" && ");
+}
 
 export function getLocalAccountPrivilegeHardeningCommand(): string {
   const installRootSafePathProfile = [
@@ -130,11 +149,6 @@ export function getLocalAccountPrivilegeHardeningCommand(): string {
     'if [ -e "$path" ]; then chmod u-s "$path"; fi;',
     "done",
   ].join(" ");
-  const hardenRootConsumedDirs = [
-    `/usr/bin/install -d -o root -g root -m 755 ${ROOT_CONSUMED_DIRS}`,
-    `/usr/bin/chown root:root ${ROOT_CONSUMED_DIRS}`,
-    `/usr/bin/chmod 755 ${ROOT_CONSUMED_DIRS}`,
-  ].join(" && ");
   const hardenRootInvokedHelpers = [
     `for path in ${ROOT_INVOKED_HELPERS}; do`,
     'if [ -e "$path" ]; then /usr/bin/chown root:root "$path"; /usr/bin/chmod 755 "$path"; fi;',
@@ -176,10 +190,26 @@ export function getLocalAccountPrivilegeHardeningCommand(): string {
     'if [ -e "$path" ] && [ -u "$path" ]; then echo "local auth helper must not be setuid: $path" >&2; exit 1; fi;',
     "done",
   ].join(" ");
-  const assertRootConsumedDirsSafe = [
-    `for dir in ${ROOT_CONSUMED_DIRS}; do`,
+  const assertStaticRootConsumedDirsSafe = [
+    `for dir in ${STATIC_ROOT_CONSUMED_DIRS}; do`,
     'if [ "$(/usr/bin/stat -c \'%U:%G\' "$dir")" != root:root ] || /usr/bin/find "$dir" -maxdepth 0 -perm /022 | /usr/bin/grep -q .; then',
     'echo "root-consumed directory must be root-owned and not group/other writable: $dir" >&2;',
+    "exit 1;",
+    "fi;",
+    "done",
+  ].join(" ");
+  const assertSystemdUnitPathsSafe = [
+    "if [ ! -x /usr/bin/systemd-analyze ]; then",
+    "echo 'systemd-analyze must exist to audit systemd unit lookup paths' >&2;",
+    "exit 1;",
+    "fi;",
+    "systemd_unit_paths=$(/usr/bin/systemd-analyze unit-paths) || exit 1;",
+    'printf "%s\\n" "$systemd_unit_paths" | while IFS= read -r dir; do',
+    '[ -n "$dir" ] || continue;',
+    'case "$dir" in /*) ;; *) echo "systemd unit path must be absolute: $dir" >&2; exit 1 ;; esac;',
+    'if [ ! -d "$dir" ]; then echo "systemd unit path must exist after hardening: $dir" >&2; exit 1; fi;',
+    'if [ "$(/usr/bin/stat -c \'%U:%G\' "$dir")" != root:root ] || /usr/bin/find "$dir" -maxdepth 0 -perm /022 | /usr/bin/grep -q .; then',
+    'echo "systemd unit path must be root-owned and not group/other writable: $dir" >&2;',
     "exit 1;",
     "fi;",
     "done",
@@ -203,14 +233,15 @@ export function getLocalAccountPrivilegeHardeningCommand(): string {
     removePasswordlessSudoersRules,
     removeSudoBinary,
     hardenLocalAuthHelpers,
-    hardenRootConsumedDirs,
+    getRootConsumedPathHardeningCommand(),
     hardenRootInvokedHelpers,
     assertNoEmptyPasswordAccounts,
     assertNoPrivilegedGroupMembers,
     assertNoPrivilegedPrimaryGroups,
     assertNoPasswordlessSudoers,
     assertLocalAuthHelpersNotSetuid,
-    assertRootConsumedDirsSafe,
+    assertStaticRootConsumedDirsSafe,
+    assertSystemdUnitPathsSafe,
     assertRootInvokedHelpersSafe,
     "if command -v sudo >/dev/null 2>&1; then echo 'sudo must not be installed in sandbox images' >&2; exit 1; fi",
   ].join(" && ");

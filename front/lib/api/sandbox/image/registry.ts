@@ -1,6 +1,6 @@
 import {
   getLocalAccountPrivilegeHardeningCommand,
-  SANDBOX_ROOT_CONSUMED_DIRS,
+  getRootConsumedPathHardeningCommand,
 } from "@app/lib/api/sandbox/hardening";
 import { PROFILE_DIR } from "@app/lib/api/sandbox/image/profile";
 import { buildDustToolsBinary } from "@app/lib/api/sandbox/image/profile/build";
@@ -181,16 +181,6 @@ function getEgressResolverUserSetupCommand(): string {
   return [
     "groupadd --system dust-egress-resolver",
     "useradd --system --no-create-home --gid dust-egress-resolver --shell /usr/sbin/nologin dust-egress-resolver",
-  ].join(" && ");
-}
-
-function getRootConsumedPathHardeningCommand(): string {
-  const rootConsumedDirs = SANDBOX_ROOT_CONSUMED_DIRS.join(" ");
-
-  return [
-    `/usr/bin/install -d -o root -g root -m 755 ${rootConsumedDirs}`,
-    `/usr/bin/chown root:root ${rootConsumedDirs}`,
-    `/usr/bin/chmod 755 ${rootConsumedDirs}`,
   ].join(" && ");
 }
 

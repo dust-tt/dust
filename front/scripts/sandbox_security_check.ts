@@ -1,8 +1,8 @@
 import config from "@app/lib/api/config";
 import {
-  SANDBOX_ROOT_CONSUMED_DIRS,
   SANDBOX_ROOT_INVOKED_HELPERS,
   SANDBOX_ROOT_SAFE_PATH,
+  SANDBOX_STATIC_ROOT_CONSUMED_DIRS,
 } from "@app/lib/api/sandbox/hardening";
 import {
   formatSandboxImageId,
@@ -438,7 +438,7 @@ export function assertLocalAuthHelpersNotSetuid(output: string): void {
   }
 }
 
-export function assertRootConsumedDirsSafe(output: string): void {
+export function assertStaticRootConsumedDirsSafe(output: string): void {
   const lineByPath = new Map<string, string>();
   for (const line of output.split("\n")) {
     const [path] = line.split(/\s+/, 1);
@@ -447,7 +447,7 @@ export function assertRootConsumedDirsSafe(output: string): void {
     }
   }
 
-  for (const dir of SANDBOX_ROOT_CONSUMED_DIRS) {
+  for (const dir of SANDBOX_STATIC_ROOT_CONSUMED_DIRS) {
     const line = lineByPath.get(dir);
     if (!line) {
       throw new Error(
@@ -463,6 +463,38 @@ export function assertRootConsumedDirsSafe(output: string): void {
     if (owner !== "root:root" || Number.isNaN(mode) || (mode & 0o022) !== 0) {
       throw new Error(
         `root-consumed directory ${dir} is not root-owned and non-writable by group/other:\n${line}`
+      );
+    }
+  }
+}
+
+export function assertSystemdUnitPathsSafe(output: string): void {
+  const errorLines = output
+    .split("\n")
+    .filter((line) => line.startsWith("SYSTEMD_UNIT_PATH_ERROR="));
+  if (errorLines.length > 0) {
+    throw new Error(
+      `systemd unit path audit failed:\n${errorLines.join("\n")}`
+    );
+  }
+
+  const auditLines = output
+    .split("\n")
+    .filter((line) => line.startsWith("SYSTEMD_UNIT_PATH="));
+  if (auditLines.length === 0) {
+    throw new Error(`missing systemd unit path audit lines:\n${output}`);
+  }
+
+  for (const line of auditLines) {
+    const fields = line.replace("SYSTEMD_UNIT_PATH=", "").split(/\s+/);
+    const path = fields[0];
+    const owner = fields[1];
+    const modeText = fields[2];
+    const mode = Number.parseInt(modeText, 8);
+
+    if (owner !== "root:root" || Number.isNaN(mode) || (mode & 0o022) !== 0) {
+      throw new Error(
+        `systemd unit path ${path} is not root-owned and non-writable by group/other:\n${line}`
       );
     }
   }
@@ -547,11 +579,28 @@ for path in ${LOCAL_AUTH_HELPER_PATHS.map((path) => shellQuote(path)).join(
   fi
 done
 echo "--- root-consumed-dirs ---"
-for dir in ${SANDBOX_ROOT_CONSUMED_DIRS.map((dir) => shellQuote(dir)).join(
-      " "
-    )}; do
+for dir in ${SANDBOX_STATIC_ROOT_CONSUMED_DIRS.map((dir) =>
+      shellQuote(dir)
+    ).join(" ")}; do
   stat -c '%n %U:%G %a %A' "$dir"
 done
+echo "--- systemd-unit-paths ---"
+if [ ! -x /usr/bin/systemd-analyze ]; then
+  echo "SYSTEMD_UNIT_PATH_ERROR=missing /usr/bin/systemd-analyze"
+else
+  /usr/bin/systemd-analyze unit-paths | while IFS= read -r dir; do
+    [ -n "$dir" ] || continue
+    case "$dir" in
+      /*) ;;
+      *) echo "SYSTEMD_UNIT_PATH_ERROR=non-absolute $dir"; continue ;;
+    esac
+    if [ ! -d "$dir" ]; then
+      echo "SYSTEMD_UNIT_PATH_ERROR=missing $dir"
+      continue
+    fi
+    /usr/bin/stat -c 'SYSTEMD_UNIT_PATH=%n %U:%G %a %A' "$dir"
+  done
+fi
 echo "--- root-invoked-helpers ---"
 for path in ${SANDBOX_ROOT_INVOKED_HELPERS.map((path) => shellQuote(path)).join(
       " "
@@ -573,7 +622,8 @@ printf 'ROOT_EXEC_PATH=%s\n' "$PATH"
   assertNoPasswordlessSudoers(output);
   assertNoEmptyPasswordAccounts(output);
   assertLocalAuthHelpersNotSetuid(output);
-  assertRootConsumedDirsSafe(output);
+  assertStaticRootConsumedDirsSafe(output);
+  assertSystemdUnitPathsSafe(output);
   assertRootInvokedHelpersSafe(output);
   assertRootPathSafe(output);
 }
