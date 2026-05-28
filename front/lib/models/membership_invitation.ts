@@ -15,6 +15,7 @@ export class MembershipInvitationModel extends WorkspaceAwareModel<MembershipInv
   declare initialRole: Exclude<RoleType, "none">;
 
   declare invitedUserId: ForeignKey<UserModel["id"]> | null;
+  declare reminderSentAt: CreationOptional<Date> | null;
 }
 MembershipInvitationModel.init(
   {
@@ -45,6 +46,11 @@ MembershipInvitationModel.init(
       type: DataTypes.STRING,
       allowNull: false,
       defaultValue: "user",
+    },
+    reminderSentAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
     },
   },
   {

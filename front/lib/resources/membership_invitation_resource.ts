@@ -441,6 +441,10 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
     });
   }
 
+  async markReminderSent() {
+    return this.update({ reminderSentAt: new Date() });
+  }
+
   async revoke(transaction?: Transaction) {
     return this.update(
       {
