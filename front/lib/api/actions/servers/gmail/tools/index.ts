@@ -325,7 +325,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
       }
       encodedMessage = encodedMessageResult.value;
     } else {
-      if (!subject) {
+      if (!subject?.trim()) {
         return new Err(
           new MCPError("Subject is required when not replying to a message.")
         );
@@ -871,7 +871,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
       }
       encodedMessage = encodedMessageResult.value;
     } else {
-      if (!subject) {
+      if (!subject?.trim()) {
         return new Err(
           new MCPError("Subject is required when not replying to a message.")
         );
