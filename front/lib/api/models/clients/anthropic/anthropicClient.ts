@@ -48,6 +48,7 @@ export abstract class Anthropic extends LargeLanguageModel<
   abstract model: AnthropicModel;
   client: AnthropicClient;
   configSchema: z.ZodType<z.infer<typeof configSchema>> = configSchema;
+  byok = true;
 
   constructor(credentials: Credentials) {
     super(credentials);
