@@ -1,3 +1,4 @@
+import { DustModel } from "@app/lib/api/models/dust-model";
 import type { inputConfigSchema } from "@app/lib/api/models/types/config";
 import type { Credentials } from "@app/lib/api/models/types/credentials";
 
@@ -12,8 +13,10 @@ import type { Model } from "@app/lib/api/models/types/providers";
 import { computeUsageCost } from "@app/lib/api/models/utils/computeUsageCost";
 import { getIdFromModel } from "@app/lib/api/models/utils/getIdFromModel";
 import type { z } from "zod";
-
-export abstract class LargeLanguageModel<I = unknown, O = unknown> {
+export abstract class LargeLanguageModel<
+  I = unknown,
+  O = unknown,
+> extends DustModel {
   abstract model: Model;
   abstract contextWindow: number;
   abstract tokenPricing: TokenPricing;
@@ -23,6 +26,7 @@ export abstract class LargeLanguageModel<I = unknown, O = unknown> {
   credentials: Credentials;
 
   constructor(credentials: Credentials) {
+    super();
     this.credentials = credentials;
   }
 
