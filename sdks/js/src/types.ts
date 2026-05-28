@@ -1742,6 +1742,7 @@ const APIErrorTypeSchema = FlexibleEnumSchema<
   | "plan_limit_error"
   | "plan_message_limit_exceeded"
   | "credits_exhausted"
+  | "user_cap_reached"
   | "plugin_execution_failed"
   | "plugin_not_found"
   | "provider_auth_error"

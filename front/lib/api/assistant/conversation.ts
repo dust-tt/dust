@@ -2411,16 +2411,26 @@ async function checkMessagesLimit(
   const plan = auth.subscription()?.plan;
   const user = auth.user();
   if (owner.metronomeCustomerId && plan && isCreditPricedPlan(plan)) {
-    const blocked = user
+    const blockedReason = user
       ? await isUserBlocked(owner.sId, user.sId)
-      : await isApiBlocked(owner.sId);
-    if (blocked) {
+      : (await isApiBlocked(owner.sId))
+        ? ("credits_exhausted" as const)
+        : null;
+    if (blockedReason === "user_cap_reached") {
+      return new Err({
+        status_code: 403,
+        api_error: {
+          type: "user_cap_reached",
+          message: "You have reached your personal usage cap.",
+        },
+      });
+    }
+    if (blockedReason === "credits_exhausted") {
       return new Err({
         status_code: 403,
         api_error: {
           type: "credits_exhausted",
-          message:
-            "Your workspace has run out of credits. Please purchase more credits to continue.",
+          message: "Your workspace has run out of credits.",
         },
       });
     }

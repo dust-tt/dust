@@ -154,7 +154,9 @@ export function useSubmitMessage({
               ? "plan_limit_reached_error"
               : data.error.type === "credits_exhausted"
                 ? "credits_exhausted_error"
-                : "message_send_error",
+                : data.error.type === "user_cap_reached"
+                  ? "user_cap_reached_error"
+                  : "message_send_error",
           title: "Your message could not be sent.",
           // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           message: data.error.message || "Please try again or contact us.",

@@ -293,6 +293,7 @@ export async function runTriggeredAgentsActivity({
     const isNonRetryable =
       errorType === "plan_message_limit_exceeded" ||
       errorType === "credits_exhausted" ||
+      errorType === "user_cap_reached" ||
       errorType === "model_disabled" ||
       errorType === "invalid_request_error" ||
       errorType === "agent_inaccessible" ||
