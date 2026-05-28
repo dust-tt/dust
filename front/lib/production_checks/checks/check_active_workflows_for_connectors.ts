@@ -14,14 +14,16 @@ import {
 } from "@app/types/connectors/workflows";
 import type { ConnectorProvider } from "@app/types/data_source";
 import type { ActionLink, CheckFunction } from "@app/types/production_checks";
+import type { ModelId } from "@app/types/shared/model_id";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type { Client, ScheduleHandle } from "@temporalio/client";
 import chunk from "lodash/chunk";
 import { QueryTypes } from "sequelize";
 
-const TEMPORAL_WORKFLOW_LIST_BATCH_SIZE = 100;
+const WORKFLOW_LIST_BATCH_SIZE = 100;
 
 interface ConnectorBlob {
-  id: number;
+  id: ModelId;
   dataSourceId: string;
   workspaceId: string;
   pausedAt: Date | null;
@@ -33,7 +35,7 @@ interface ProviderCheck {
 }
 
 interface MissingActiveWorkflow {
-  connectorId: number;
+  connectorId: ModelId;
   workspaceId: string;
   dataSourceId: string;
   missingEntities: string[];
@@ -111,10 +113,9 @@ async function listRunningWorkflowIds(
 ) {
   const runningWorkflowIds = new Set<string>();
 
-  for (const workflowIdBatch of chunk(
-    workflowIds,
-    TEMPORAL_WORKFLOW_LIST_BATCH_SIZE
-  )) {
+  // Chunking to avoid having a huge IN (id1, id2, ..., idx).
+  const workflowIdBatches = chunk(workflowIds, WORKFLOW_LIST_BATCH_SIZE);
+  for (const workflowIdBatch of workflowIdBatches) {
     heartbeat();
 
     try {
@@ -123,11 +124,8 @@ async function listRunningWorkflowIds(
       })) {
         runningWorkflowIds.add(workflow.workflowId);
       }
-    } catch (err) {
-      logger.error(
-        { err, workflowIds: workflowIdBatch },
-        "Failed to list running Temporal workflows."
-      );
+    } catch (error) {
+      logger.error({ error }, "Failed to list running Temporal workflows.");
     }
   }
 
@@ -198,8 +196,8 @@ export const checkActiveWorkflows: CheckFunction = async (
         heartbeat
       );
 
-      missingActiveWorkflows = workflowIdsByConnector.flatMap(
-        ({ connector, workflowIds }): MissingActiveWorkflow[] => {
+      missingActiveWorkflows = removeNulls(
+        workflowIdsByConnector.map(({ connector, workflowIds }) => {
           const missingEntities = workflowIds.filter(
             (workflowId) => !runningWorkflowIds.has(workflowId)
           );
@@ -212,7 +210,7 @@ export const checkActiveWorkflows: CheckFunction = async (
                 missingEntities,
               }
             : null;
-        }
+        })
       );
     } else {
       for (const connector of activeConnectors) {
