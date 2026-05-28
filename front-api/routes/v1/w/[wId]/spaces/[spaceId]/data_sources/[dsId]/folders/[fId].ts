@@ -27,10 +27,9 @@ const ParamsSchema = z.object({
  */
 const app = publicApiApp();
 
-app.use("*", ensureIsSystemKey());
-
 app.get(
   "/",
+  ensureIsSystemKey(),
   validate("param", ParamsSchema),
   async (ctx): HandlerResult<GetFolderResponseType> => {
     const auth = ctx.get("auth");
@@ -84,6 +83,7 @@ app.get(
 
 app.post(
   "/",
+  ensureIsSystemKey(),
   validate("param", ParamsSchema),
   validate("json", UpsertDataSourceFolderRequestSchema),
   async (ctx): HandlerResult<UpsertFolderResponseType> => {
@@ -216,6 +216,7 @@ app.post(
 
 app.delete(
   "/",
+  ensureIsSystemKey(),
   validate("param", ParamsSchema),
   async (ctx): HandlerResult<DeleteFolderResponseType> => {
     const auth = ctx.get("auth");

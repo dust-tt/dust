@@ -19,8 +19,6 @@ import fId from "./[fId]";
  */
 const app = publicApiApp();
 
-app.use("*", ensureIsSystemKey());
-
 app.route("/:fId", fId);
 
 const ParamsSchema = z.object({
@@ -34,6 +32,7 @@ const QuerySchema = z.object({
 
 app.get(
   "/",
+  ensureIsSystemKey(),
   validate("param", ParamsSchema),
   validate("query", QuerySchema),
   async (ctx): HandlerResult<GetFoldersResponseType> => {

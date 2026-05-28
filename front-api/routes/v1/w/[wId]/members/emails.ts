@@ -3,7 +3,6 @@ import type { ListMemberEmailsResponseType } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import { ensureIsSystemKey } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
-import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
@@ -19,10 +18,9 @@ const QuerySchema = z.object({
 // Mounted at /api/v1/w/:wId/members/emails.
 const app = publicApiApp();
 
-app.use("*", ensureIsSystemKey());
-
 app.get(
   "/",
+  ensureIsSystemKey(),
   validate("query", QuerySchema),
   async (ctx): HandlerResult<ListMemberEmailsResponseType> => {
     const auth = ctx.get("auth");

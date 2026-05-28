@@ -11,9 +11,7 @@ export type { GetWorkspaceVerifiedDomainsResponseType } from "@dust-tt/client";
 // Mounted at /api/v1/w/:wId/verified_domains.
 const app = publicApiApp();
 
-app.use("*", ensureIsSystemKey());
-
-app.get("/", async (ctx) => {
+app.get("/", ensureIsSystemKey(), async (ctx) => {
   const auth = ctx.get("auth");
   const workspace = auth.getNonNullableWorkspace();
   const workspaceResource = await WorkspaceResource.fetchById(workspace.sId);

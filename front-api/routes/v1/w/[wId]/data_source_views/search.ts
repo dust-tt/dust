@@ -4,7 +4,6 @@ import { SearchDataSourceViewsRequestSchema } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import { ensureIsSystemKey } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
-import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 
 /**
@@ -13,10 +12,9 @@ import { validate } from "@front-api/middlewares/validator";
  */
 const app = publicApiApp();
 
-app.use("*", ensureIsSystemKey());
-
 app.get(
   "/",
+  ensureIsSystemKey(),
   validate("query", SearchDataSourceViewsRequestSchema),
   async (ctx): HandlerResult<SearchDataSourceViewsResponseType> => {
     const auth = ctx.get("auth");

@@ -1,4 +1,7 @@
-import type { PublicApiCtx, WorkspaceAwareCtx } from "@front-api/middlewares/ctx";
+import type {
+  PublicApiCtx,
+  WorkspaceAwareCtx,
+} from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { createMiddleware } from "hono/factory";
 

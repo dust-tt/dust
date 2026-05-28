@@ -13,10 +13,9 @@ import { withSpace } from "@front-api/middlewares/with_space";
 // Mounted at /api/v1/w/:wId/spaces/:spaceId/apps/export.
 const app = publicApiApp();
 
-app.use("*", ensureIsSystemKey());
-
 app.get(
   "/",
+  ensureIsSystemKey(),
   withSpace({ requireCanRead: true }),
   async (ctx): HandlerResult<GetAppsResponseType> => {
     const auth = ctx.get("auth");

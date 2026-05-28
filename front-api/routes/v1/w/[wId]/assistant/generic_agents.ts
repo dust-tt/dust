@@ -30,10 +30,9 @@ const CreateGenericAgentRequestSchema = z.object({
 // Mounted at /api/v1/w/:wId/assistant/generic_agents.
 const app = publicApiApp();
 
-app.use("*", ensureIsSystemKey());
-
 app.post(
   "/",
+  ensureIsSystemKey(),
   withFeatureFlag("agent_management_tool", {
     message:
       "The agent_management_tool feature flag is required to use this endpoint",

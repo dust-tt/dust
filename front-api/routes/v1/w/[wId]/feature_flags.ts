@@ -10,9 +10,7 @@ export type { GetWorkspaceFeatureFlagsResponseType } from "@dust-tt/client";
 // Mounted at /api/v1/w/:wId/feature_flags.
 const app = publicApiApp();
 
-app.use("*", ensureIsSystemKey());
-
-app.get("/", async (ctx) => {
+app.get("/", ensureIsSystemKey(), async (ctx) => {
   const auth = ctx.get("auth");
   const feature_flags = await getFeatureFlags(auth);
   const body: GetWorkspaceFeatureFlagsResponseType = { feature_flags };

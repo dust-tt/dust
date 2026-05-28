@@ -24,10 +24,9 @@ const ParamsSchema = z.object({
 // Mounted at /api/v1/w/:wId/spaces/:spaceId/project_metadata.
 const app = publicApiApp();
 
-app.use("*", ensureIsSystemKey());
-
 app.get(
   "/",
+  ensureIsSystemKey(),
   validate("param", ParamsSchema),
   async (ctx): HandlerResult<GetSpaceMetadataResponseType> => {
     const auth = ctx.get("auth");
