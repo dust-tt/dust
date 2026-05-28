@@ -1,7 +1,7 @@
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type {
+  ClientSideMCPToolConfigurationType,
   LightServerSideMCPToolConfigurationType,
-  MCPToolConfigurationType,
   ServerSideMCPServerConfigurationType,
   ToolNotificationEvent,
 } from "@app/lib/actions/mcp";
@@ -740,11 +740,19 @@ describe("tryCallMCPTool", () => {
 });
 
 describe("postProcessMCPToolResult - structuredContent", () => {
-  // Minimal client-side tool config: only needs type + clientSideMcpServerId for the guards.
-  const clientConfig = {
+  const clientConfig: ClientSideMCPToolConfigurationType = {
+    id: -1,
+    sId: "test-sid",
     type: "mcp_configuration",
+    name: "test_tool",
+    description: null,
     clientSideMcpServerId: "client-server-id",
-  } as unknown as MCPToolConfigurationType;
+    inputSchema: { type: "object", properties: {} },
+    permission: "never_ask",
+    toolServerId: "client-server-id",
+    originalName: "test_tool",
+    mcpServerName: "test_server",
+  };
 
   type ToolCallResult = Awaited<ReturnType<Client["callTool"]>>;
 

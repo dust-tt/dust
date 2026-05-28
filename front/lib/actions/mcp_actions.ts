@@ -744,14 +744,16 @@ export function postProcessMCPToolResult(
   toolConfiguration: MCPToolConfigurationType
 ): CallToolResult {
   // Type inference is not working here because of them using passthrough in the zod schema.
-  const content: CallToolResult["content"] = (toolCallResult.content ??
+  let content: CallToolResult["content"] = (toolCallResult.content ??
     []) as CallToolResult["content"];
 
   if (content.length === 0 && toolCallResult.structuredContent) {
-    content.push({
-      type: "text",
-      text: JSON.stringify(toolCallResult.structuredContent),
-    });
+    content = [
+      {
+        type: "text",
+        text: JSON.stringify(toolCallResult.structuredContent),
+      },
+    ];
   }
 
   let serverType;
