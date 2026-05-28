@@ -2,7 +2,9 @@ import {
   isEntreprisePlanPrefix,
   isFreeTrialPhonePlan,
 } from "@app/lib/plans/plan_codes";
+import { useAppRouter } from "@app/lib/platform";
 import type { SubscriptionType } from "@app/types/plan";
+import { isCreditPricedPlan } from "@app/types/plan";
 import { Button, cn, LinkWrapper } from "@dust-tt/sparkle";
 import { useMemo, useRef } from "react";
 
@@ -10,6 +12,13 @@ const SUBSCRIPTION_BANNER_DISPLAY_THRESHOLD_DAYS = 30;
 const THRESHOLD_MS =
   SUBSCRIPTION_BANNER_DISPLAY_THRESHOLD_DAYS * 24 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+function isSubscriptionManagementRoute(path: string) {
+  return (
+    /^\/w\/[^/]+\/billing$/.test(path) ||
+    /^\/w\/[^/]+\/subscription$/.test(path)
+  );
+}
 
 interface SubscriptionEndBannerProps {
   isAdmin: boolean;
@@ -22,9 +31,14 @@ export function SubscriptionEndBanner({
   owner,
   subscription,
 }: SubscriptionEndBannerProps) {
+  const router = useAppRouter();
   const endDate = subscription.endDate;
   const isTrial = isFreeTrialPhonePlan(subscription.plan.code);
   const isEnterprise = isEntreprisePlanPrefix(subscription.plan.code);
+  const currentPath = router.pathname || router.asPath.split("?")[0];
+  const ctaHref = isCreditPricedPlan(subscription.plan)
+    ? `/w/${owner.sId}/billing`
+    : `/w/${owner.sId}/subscription`;
 
   // Capture initial timestamp in a ref to avoid re-computation on re-renders.
   // This is intentionally not reactive - the banner state is stable for the session.
@@ -47,6 +61,10 @@ export function SubscriptionEndBanner({
 
     return { hasEnded, daysRemaining };
   }, [endDate]);
+
+  if (isSubscriptionManagementRoute(currentPath)) {
+    return null;
+  }
 
   if (!bannerState) {
     return null;
@@ -98,12 +116,9 @@ export function SubscriptionEndBanner({
         </span>
       </div>
       {isAdmin && !isEnterprise && (
-        <LinkWrapper
-          href={`/w/${owner.sId}/subscription`}
-          className="shrink-0 no-underline"
-        >
+        <LinkWrapper href={ctaHref} className="shrink-0 no-underline">
           <Button
-            label="Subscribe to Dust"
+            label={isTrial ? "Subscribe to Dust" : "Resume subscription"}
             className={cn(
               "bg-sky-600 dark:bg-sky-600-night",
               "dark:text-white-night text-white",
