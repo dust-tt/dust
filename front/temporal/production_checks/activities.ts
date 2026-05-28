@@ -215,7 +215,7 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
 
       logger.info("Check done");
 
-      const result: CheckActivityResult = {
+      results.push({
         checkName: check.name,
         status: checkSucceeded ? "success" : "failure",
         timestamp: new Date().toISOString(),
@@ -229,8 +229,7 @@ async function runAllChecks(checks: Check[]): Promise<CheckActivityResult[]> {
             ? [...new Set(errorMessages)].join("; ")
             : null,
         actionLinks: allActionLinks,
-      };
-      results.push(result);
+      });
 
       sendCheckHeartbeat(
         {
