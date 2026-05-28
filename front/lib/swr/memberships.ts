@@ -228,15 +228,11 @@ export function useMembersUsage({
 }) {
   const { fetcher } = useFetcher();
   const membersUsageFetcher: Fetcher<GetMembersUsageResponseBody> = fetcher;
-  const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(searchTerm);
 
   useEffect(() => {
-    const debouncedSearch = () => {
-      setDebouncedSearchTerm(searchTerm);
-    };
-
-    debounce(debounceHandle, debouncedSearch, 300);
+    const id = setTimeout(() => setDebouncedSearchTerm(searchTerm), 300);
+    return () => clearTimeout(id);
   }, [searchTerm]);
 
   const searchParams = new URLSearchParams({

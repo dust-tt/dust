@@ -133,10 +133,6 @@ export function UsagePage() {
     pageSize: DEFAULT_PAGE_SIZE,
   });
 
-  // Reset to first page whenever the search term changes.
-  useEffect(() => {
-    setPagination({ pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE });
-  }, [searchTerm]);
   const [showBuyCreditDialog, setShowBuyCreditDialog] = useState(false);
   const [changeSeatMember, setChangeSeatMember] =
     useState<MemberUsageType | null>(null);

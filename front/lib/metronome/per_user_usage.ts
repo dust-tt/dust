@@ -3,16 +3,6 @@ import { getProductAiUsageId } from "@app/lib/metronome/constants";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
-/**
- * Fetch per-user AWU consumption for the current billing period by reading
- * the draft invoice's line items directly.
- *
- * The "AI Usage" product is configured with presentation_group_key: ["user_id"],
- * so each line item has presentation_group_values.user_id set to the user's sId
- * when the usage is user-attributed. Summing `quantity` per user_id gives total
- * AWU consumed per user, regardless of which credit type (pool, seat, etc.)
- * funded the usage.
- */
 export async function fetchPerUserAwuUsage({
   metronomeCustomerId,
   metronomeContractId,
