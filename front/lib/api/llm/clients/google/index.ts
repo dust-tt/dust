@@ -5,7 +5,7 @@ import {
   overwriteLLMParameters,
 } from "@app/lib/api/llm/clients/google/types";
 import {
-  toContent,
+  toContents,
   toTool,
 } from "@app/lib/api/llm/clients/google/utils/conversation_to_google";
 import {
@@ -123,10 +123,9 @@ export class GoogleLLM extends LLM<GoogleGenerateContentRequestParams> {
     payload: GoogleGenerateContentRequestParams
   ): AsyncGenerator<LLMEvent> {
     try {
-      const contents = await Promise.all(
-        payload.conversation.messages.map((message) =>
-          toContent(message, this.modelId)
-        )
+      const contents = await toContents(
+        payload.conversation.messages,
+        this.modelId
       );
 
       const generateContentResponses =
@@ -194,10 +193,7 @@ export class GoogleLLM extends LLM<GoogleGenerateContentRequestParams> {
       specifications,
       forceToolCall,
     } of params) {
-      const contents = [];
-      for (const message of conversation.messages) {
-        contents.push(await toContent(message, this.modelId));
-      }
+      const contents = await toContents(conversation.messages, this.modelId);
       inlinedRequests.push({
         contents,
         config: this.buildGenerateContentConfig(
