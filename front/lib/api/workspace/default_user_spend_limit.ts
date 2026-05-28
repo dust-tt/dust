@@ -8,11 +8,12 @@ import {
   getMetronomeDefaultUserCapAlert,
   upsertMetronomeDefaultUserCapAlert,
 } from "@app/lib/metronome/alerts/spend_limits";
+import {
+  MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
+  MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
+} from "@app/types/credits";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-
-export const MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS = 1000;
-export const MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS = 1_000_000;
 
 export type DefaultUserSpendLimit = {
   awuCredits: number;
