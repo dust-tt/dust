@@ -3,6 +3,7 @@ language js
 
 // Prevents defining inline `{ success: true }` response body types in front-api routes.
 // Use `SuccessResponseBody` from `@front-api/routes/types` instead.
+// The definition file (front-api/routes/types.ts) is excluded via biome.json.
 // The formatter produces two forms:
 //   - Single-line: `type X = { success: true };`  (no inner semicolon)
 //   - Multi-line:  `type X = { success: true; };` (inner semicolon)

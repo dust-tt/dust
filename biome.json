@@ -95,10 +95,8 @@
       ]
     },
     {
-      "includes": ["front-api/**/*.ts"],
-      "plugins": [
-        "./.grit/patterns/noInlineSuccessResponseBody.grit"
-      ]
+      "includes": ["front-api/**/*.ts", "!front-api/routes/types.ts"],
+      "plugins": ["./.grit/patterns/noInlineSuccessResponseBody.grit"]
     },
     {
       "includes": [
