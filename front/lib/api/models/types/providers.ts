@@ -1,7 +1,12 @@
 export const OPENAI_PROVIDER_ID = "openai" as const;
 export const ANTHROPIC_PROVIDER_ID = "anthropic" as const;
+export const GOOGLE_AI_STUDIO_PROVIDER_ID = "google-ai-studio" as const;
 
-const PROVIDER_IDS = [OPENAI_PROVIDER_ID, ANTHROPIC_PROVIDER_ID] as const;
+const PROVIDER_IDS = [
+  OPENAI_PROVIDER_ID,
+  ANTHROPIC_PROVIDER_ID,
+  GOOGLE_AI_STUDIO_PROVIDER_ID,
+] as const;
 export type ProviderId = (typeof PROVIDER_IDS)[number];
 
 export const GPT_5_4_MODEL_ID = "gpt-5.4" as const;
