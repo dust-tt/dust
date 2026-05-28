@@ -49,7 +49,7 @@ export function getDefaultSkillFormData({
     icon: null,
     extendedSkillId,
     isDefault: false,
-    reinforcement: "off",
+    reinforcement: "on",
     additionalSpaces: [],
   };
 }
