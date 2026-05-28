@@ -1,5 +1,4 @@
 import { listMetronomeDraftInvoices } from "@app/lib/metronome/client";
-import { getProductAiUsageId } from "@app/lib/metronome/constants";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -33,11 +32,13 @@ export async function fetchPerUserAwuUsage({
     return new Ok(new Map());
   }
 
-  const aiUsageProductId = getProductAiUsageId();
   const perUser = new Map<string, number>();
 
   for (const lineItem of currentInvoice.line_items) {
-    if (lineItem.type !== "usage" || lineItem.product_id !== aiUsageProductId) {
+    if (
+      lineItem.type !== "usage" ||
+      !lineItem.product_tags?.includes("usage")
+    ) {
       continue;
     }
     const userId = lineItem.presentation_group_values?.["user_id"];
