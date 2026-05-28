@@ -212,6 +212,9 @@ async function handler(
     });
   });
   res.setHeader("Content-Type", targetFile.contentType);
+  if (targetFile.contentType === "image/svg+xml") {
+    res.setHeader("Content-Disposition", "attachment");
+  }
   readStream.pipe(res);
 
   return;
