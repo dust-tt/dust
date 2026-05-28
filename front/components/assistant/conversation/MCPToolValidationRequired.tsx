@@ -125,6 +125,14 @@ const MCP_TOOL_OVERRIDES: Partial<
       title: (agentName) =>
         `Allow ${asDisplayName(agentName)} to schedule a wake-up?`,
     },
+    list_wakeups: {
+      title: (agentName) =>
+        `Allow ${asDisplayName(agentName)} to list wake-ups?`,
+    },
+    cancel_wakeup: {
+      title: (agentName) =>
+        `Allow ${asDisplayName(agentName)} to cancel a wake-up?`,
+    },
   },
 };
 
