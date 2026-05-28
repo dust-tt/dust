@@ -181,55 +181,60 @@ export const checkActiveWorkflows: CheckFunction = async (
       (connector) => !connector.pausedAt
     );
 
-    if (info.type === "workflow") {
-      const workflowIdsByConnector = activeConnectors.map((connector) => ({
-        connector,
-        workflowIds: info.makeIdsFn(connector),
-      }));
-      const workflowIds = workflowIdsByConnector.flatMap(
-        ({ workflowIds }) => workflowIds
-      );
-      const runningWorkflowIds = await listRunningWorkflowIds(
-        client,
-        workflowIds,
-        logger,
-        heartbeat
-      );
-
-      missingActiveWorkflows = removeNulls(
-        workflowIdsByConnector.map(({ connector, workflowIds }) => {
-          const missingEntities = workflowIds.filter(
-            (workflowId) => !runningWorkflowIds.has(workflowId)
-          );
-
-          return missingEntities.length > 0
-            ? {
-                connectorId: connector.id,
-                workspaceId: connector.workspaceId,
-                dataSourceId: connector.dataSourceId,
-                missingEntities,
-              }
-            : null;
-        })
-      );
-    } else {
-      for (const connector of activeConnectors) {
-        heartbeat();
-
-        const missingEntities = await getMissingTemporalSchedulesActive(
-          client,
+    switch (info.type) {
+      case "workflow": {
+        const workflowIdsByConnector = activeConnectors.map((connector) => ({
           connector,
-          info
+          workflowIds: info.makeIdsFn(connector),
+        }));
+        const workflowIds = workflowIdsByConnector.flatMap(
+          ({ workflowIds }) => workflowIds
+        );
+        const runningWorkflowIds = await listRunningWorkflowIds(
+          client,
+          workflowIds,
+          logger,
+          heartbeat
         );
 
-        if (missingEntities.length > 0) {
-          missingActiveWorkflows.push({
-            connectorId: connector.id,
-            workspaceId: connector.workspaceId,
-            dataSourceId: connector.dataSourceId,
-            missingEntities,
-          });
+        missingActiveWorkflows = removeNulls(
+          workflowIdsByConnector.map(({ connector, workflowIds }) => {
+            const missingEntities = workflowIds.filter(
+              (workflowId) => !runningWorkflowIds.has(workflowId)
+            );
+
+            return missingEntities.length > 0
+              ? {
+                  connectorId: connector.id,
+                  workspaceId: connector.workspaceId,
+                  dataSourceId: connector.dataSourceId,
+                  missingEntities,
+                }
+              : null;
+          })
+        );
+        break;
+      }
+      case "schedule": {
+        for (const connector of activeConnectors) {
+          heartbeat();
+
+          const missingEntities = await getMissingTemporalSchedulesActive(
+            client,
+            connector,
+            info
+          );
+
+          if (missingEntities.length > 0) {
+            missingActiveWorkflows.push({
+              connectorId: connector.id,
+              workspaceId: connector.workspaceId,
+              dataSourceId: connector.dataSourceId,
+              missingEntities,
+            });
+          }
         }
+        break;
       }
     }
 
