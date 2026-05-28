@@ -19,6 +19,7 @@ import {
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import logger from "@app/logger/logger";
+import { isCreditPricedPlan } from "@app/types/plan";
 import { Err, Ok } from "@app/types/shared/result";
 import { addYears, format } from "date-fns";
 import { z } from "zod";
@@ -141,6 +142,10 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
         dependsOn: { field: "isFreeCredit", value: false },
       },
     },
+  },
+  isApplicableTo: (auth) => {
+    const plan = auth.plan();
+    return plan === null || !isCreditPricedPlan(plan);
   },
   populateAsyncArgs: async (auth) => {
     const config =

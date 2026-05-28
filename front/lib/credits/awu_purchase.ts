@@ -1,5 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
 import { getBillingCycle } from "@app/lib/client/subscription";
+import { resolveAwuPurchaseDiscountPercent } from "@app/lib/credits/awu_discount";
 import {
   recordAwuPurchaseAttemptSyncFailure,
   setAwuPurchaseAttemptPending,
@@ -21,7 +22,6 @@ import {
 import { getCreditTypeFromContract } from "@app/lib/metronome/coupons";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import { getStripeClient } from "@app/lib/plans/stripe";
-import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import logger from "@app/logger/logger";
 import type { SupportedCurrency } from "@app/types/currency";
 import {
@@ -32,7 +32,6 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type Stripe from "stripe";
 import {
-  MAX_AWU_DISCOUNT_PERCENT,
   MAX_AWU_PURCHASE_CREDITS_PER_CYCLE,
   MIN_AWU_PURCHASE_CREDITS,
 } from "./awu_purchase_constants";
@@ -114,39 +113,6 @@ async function resolveAwuPurchaseCurrency(
     return new Err(creditTypeResult.error);
   }
   return new Ok(creditTypeResult.value.currency);
-}
-
-/**
- * Resolves the AWU purchase discount from the workspace's credit usage
- * configuration. AWU has its own discount cap (`MAX_AWU_DISCOUNT_PERCENT`)
- * — distinct from the programmatic `MAX_DISCOUNT_PERCENT` — because the
- * per-credit economics differ. A misconfigured discount above the cap is
- * dropped and logged rather than honoured.
- */
-async function resolveAwuPurchaseDiscountPercent(
-  auth: Authenticator
-): Promise<number> {
-  const creditConfig =
-    await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
-  const discountPercent = creditConfig?.defaultDiscountPercent ?? 0;
-
-  if (discountPercent <= 0) {
-    return 0;
-  }
-
-  if (discountPercent > MAX_AWU_DISCOUNT_PERCENT) {
-    logger.error(
-      {
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        discountPercent,
-        maxAwuDiscountPercent: MAX_AWU_DISCOUNT_PERCENT,
-      },
-      "[AWU Purchase] Discount exceeds AWU maximum allowed — ignoring"
-    );
-    return 0;
-  }
-
-  return discountPercent;
 }
 
 async function checkAwuPurchaseEligibility(
