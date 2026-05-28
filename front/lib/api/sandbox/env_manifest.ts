@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 
 import { renderEgressSecretPlaceholder } from "@app/lib/api/sandbox/env_vars";
-import { shellEscape } from "@app/lib/api/sandbox/shell";
+import { rootCommand } from "@app/lib/api/sandbox/root_command";
 import type { Authenticator } from "@app/lib/auth";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
@@ -93,14 +93,23 @@ export async function writeSandboxEnvManifestFile(
   }
 
   const tmpPath = `${SANDBOX_ENV_MANIFEST_DIR}/.sandbox-env-manifest.json.${randomBytes(8).toString("hex")}.tmp`;
-  const command =
-    `/usr/bin/mkdir -p ${shellEscape(SANDBOX_ENV_MANIFEST_DIR)} && ` +
-    `/usr/bin/install -o root -g root -m 644 /dev/stdin ${shellEscape(tmpPath)} && ` +
-    `/usr/bin/mv ${shellEscape(tmpPath)} ${shellEscape(SANDBOX_ENV_MANIFEST_PATH)}`;
+  const command = rootCommand.and([
+    rootCommand.exec("/usr/bin/mkdir", ["-p", SANDBOX_ENV_MANIFEST_DIR]),
+    rootCommand.exec("/usr/bin/install", [
+      "-o",
+      "root",
+      "-g",
+      "root",
+      "-m",
+      "644",
+      "/dev/stdin",
+      tmpPath,
+    ]),
+    rootCommand.exec("/usr/bin/mv", [tmpPath, SANDBOX_ENV_MANIFEST_PATH]),
+  ]);
 
-  const result = await sandbox.exec(auth, command, {
+  const result = await sandbox.execRoot(auth, command, {
     stdin: JSON.stringify(manifestResult.value),
-    user: "root",
   });
   if (result.isErr()) {
     return result;

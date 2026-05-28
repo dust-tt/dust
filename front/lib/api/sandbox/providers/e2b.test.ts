@@ -78,6 +78,7 @@ vi.mock("e2b", () => {
 import { CommandExitError } from "e2b";
 
 import { SANDBOX_ROOT_SAFE_PATH } from "../hardening";
+import { rootCommand } from "../root_command";
 import { E2BSandboxProvider } from "./e2b";
 
 describe("E2BSandboxProvider", () => {
@@ -182,10 +183,10 @@ describe("E2BSandboxProvider", () => {
       domain: undefined,
     });
 
-    const result = await provider.exec(
+    const result = await provider.execRoot(
       "provider-id",
-      "nohup /bin/true",
-      { user: "root" },
+      rootCommand.nohup(rootCommand.exec("/bin/true")),
+      undefined,
       { workspaceId: "workspace-id" }
     );
 
@@ -202,6 +203,65 @@ describe("E2BSandboxProvider", () => {
     expect(command).toContain("nohup /bin/true");
     expect(command).not.toContain("/opt/venv/bin");
     expect(command).not.toContain("/home/agent/.local/bin");
+  });
+
+  it("rejects raw root commands on the generic exec path", async () => {
+    const provider = new E2BSandboxProvider({
+      apiKey: "api-key",
+      domain: undefined,
+    });
+
+    const result = await provider.exec(
+      "provider-id",
+      "cat /tmp/deny.log",
+      // @ts-expect-error Root commands must use execRoot.
+      { user: "root" },
+      { workspaceId: "workspace-id" }
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain("Use execRoot()");
+    }
+    expect(mockConnect).not.toHaveBeenCalled();
+    expect(mockRun).not.toHaveBeenCalled();
+  });
+
+  it("rejects unsupported users on the generic exec path", async () => {
+    const provider = new E2BSandboxProvider({
+      apiKey: "api-key",
+      domain: undefined,
+    });
+
+    const uidResult = await provider.exec(
+      "provider-id",
+      "id",
+      // @ts-expect-error Only SandboxExecUser values are allowed.
+      { user: "0" },
+      { workspaceId: "workspace-id" }
+    );
+
+    expect(uidResult.isErr()).toBe(true);
+    if (uidResult.isErr()) {
+      expect(uidResult.error.message).toContain("Invalid sandbox exec user: 0");
+    }
+
+    const localUserResult = await provider.exec(
+      "provider-id",
+      "id",
+      // @ts-expect-error The legacy local user account must not be a runtime exec target.
+      { user: "user" },
+      { workspaceId: "workspace-id" }
+    );
+
+    expect(localUserResult.isErr()).toBe(true);
+    if (localUserResult.isErr()) {
+      expect(localUserResult.error.message).toContain(
+        "Invalid sandbox exec user: user"
+      );
+    }
+    expect(mockConnect).not.toHaveBeenCalled();
+    expect(mockRun).not.toHaveBeenCalled();
   });
 
   it("does not wrap non-root commands", async () => {
@@ -304,13 +364,12 @@ describe("E2BSandboxProvider", () => {
     const stdin = "super-secret-json";
     const command = "install -m 600 /dev/stdin /run/dust/egress-secrets.json";
 
-    const result = await provider.exec(
+    const result = await provider.execRoot(
       "provider-id",
-      command,
+      rootCommand.unsafeShell(command, "test legacy stdin root command"),
       {
         stdin,
         timeoutMs: 5_000,
-        user: "root",
       },
       { workspaceId: "workspace-id" }
     );
@@ -357,10 +416,13 @@ describe("E2BSandboxProvider", () => {
       domain: undefined,
     });
 
-    const result = await provider.exec(
+    const result = await provider.execRoot(
       "provider-id",
-      "install -m 600 /dev/stdin /run/dust/egress-secrets.json",
-      { stdin: "secret-json", timeoutMs: 5_000, user: "root" },
+      rootCommand.unsafeShell(
+        "install -m 600 /dev/stdin /run/dust/egress-secrets.json",
+        "test legacy stdin root command"
+      ),
+      { stdin: "secret-json", timeoutMs: 5_000 },
       { workspaceId: "workspace-id" }
     );
 

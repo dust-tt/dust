@@ -1,3 +1,7 @@
+import {
+  type RootCommand,
+  renderRootCommand,
+} from "@app/lib/api/sandbox/root_command";
 import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { Ok } from "@app/types/shared/result";
@@ -163,7 +167,7 @@ describe("sandbox environment manifest", () => {
     }
 
     const sandbox = {
-      exec: vi
+      execRoot: vi
         .fn()
         .mockResolvedValue(new Ok({ exitCode: 0, stdout: "", stderr: "" })),
     };
@@ -174,11 +178,12 @@ describe("sandbox environment manifest", () => {
     );
 
     expect(result).toEqual(new Ok(undefined));
-    expect(sandbox.exec).toHaveBeenCalledTimes(1);
-    const command = sandbox.exec.mock.calls[0][1] as string;
-    const opts = sandbox.exec.mock.calls[0][2] as {
+    expect(sandbox.execRoot).toHaveBeenCalledTimes(1);
+    const command = renderRootCommand(
+      sandbox.execRoot.mock.calls[0][1] as RootCommand
+    );
+    const opts = sandbox.execRoot.mock.calls[0][2] as {
       stdin: string;
-      user: string;
     };
     // Pin the exact install flags so a future drift to a tighter mode (or a
     // different owner) does not silently pass.
@@ -187,7 +192,6 @@ describe("sandbox environment manifest", () => {
     );
     expect(command).toContain(SANDBOX_ENV_MANIFEST_PATH);
     expect(command).not.toContain("api-secret");
-    expect(opts.user).toBe("root");
     expect(JSON.stringify(JSON.parse(opts.stdin))).not.toContain("api-secret");
   });
 });
