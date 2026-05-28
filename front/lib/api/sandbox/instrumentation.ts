@@ -40,7 +40,7 @@ export function recordToolDuration(
   tool: string,
   durationMs: number,
   ctx: MetricContext,
-  status: "success" | "error" | "paused" = "success"
+  status: "success" | "error" = "success"
 ): void {
   getStatsDClient().distribution("sandbox.tools.duration", durationMs, [
     ...buildTags(ctx),
