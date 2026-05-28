@@ -4,7 +4,8 @@
  * files MCP tools.
  */
 
-import { DustFileSystem } from "@app/lib/api/file_system";
+import type { DustFileSystem } from "@app/lib/api/file_system";
+import type { DustFileSystemError } from "@app/lib/api/file_system/types";
 import {
   SCOPED_PREFIX_CONVERSATION,
   SCOPED_PREFIX_POD,
@@ -176,10 +177,7 @@ export async function renameCanonicalFile(
   scopedPath: string,
   newFileName: string
 ): Promise<
-  Result<
-    { dest: string; sourceDeletionFailed: boolean },
-    import("@app/lib/api/file_system").DustFileSystemError
-  >
+  Result<{ dest: string; sourceDeletionFailed: boolean }, DustFileSystemError>
 > {
   const srcGcsPath = dustFs.toMountFilePath(scopedPath);
   let linkedFile: FileResource | undefined;
@@ -227,12 +225,7 @@ export async function moveCanonicalFile(
   dustFs: DustFileSystem,
   src: string,
   dest: string
-): Promise<
-  Result<
-    { sourceDeletionFailed: boolean },
-    import("@app/lib/api/file_system").DustFileSystemError
-  >
-> {
+): Promise<Result<{ sourceDeletionFailed: boolean }, DustFileSystemError>> {
   // Look up the linked FileResource before the bytes move.
   const srcGcsPath = dustFs.toMountFilePath(src);
   let linkedFile: FileResource | undefined;
