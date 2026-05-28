@@ -134,7 +134,7 @@ export function ConversationFilesPanel({
         isDownloadingRef.current = false;
       }
     },
-    [openFile, owner, conversation.sId, sendNotification]
+    [openFile, owner, sendNotification]
   );
 
   const fileRows = useMemo(
