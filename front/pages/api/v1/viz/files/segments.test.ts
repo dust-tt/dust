@@ -1,11 +1,14 @@
+import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { generateVizAccessToken } from "@app/lib/api/viz/access_tokens";
-import { getPrivateUploadBucket } from "@app/lib/file_storage";
+import { DustError } from "@app/lib/error";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { frameContentType } from "@app/types/files";
+import type { ModelId } from "@app/types/shared/model_id";
+import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createMocks } from "node-mocks-http";
@@ -25,6 +28,24 @@ vi.mock("@app/lib/plans/usage/seats", () => ({
   invalidateActiveSeatsCache: vi.fn().mockResolvedValue(undefined),
 }));
 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Returns a minimal DustFileSystem-compatible mock. */
+function makeMockFs({ found = true }: { found?: boolean } = {}): DustFileSystem {
+  return {
+    stat: vi.fn().mockResolvedValue(
+      found
+        ? new Ok({ contentType: "image/png", sizeBytes: 100 })
+        : new Ok(null)
+    ),
+    read: vi.fn().mockResolvedValue(
+      found ? new Ok(new PassThrough()) : new Ok(null)
+    ),
+  } as unknown as DustFileSystem;
+}
+
 describe("/api/v1/viz/files/[...segments] security tests", () => {
   let workspace: LightWorkspaceType;
   let auth: Awaited<ReturnType<typeof createResourceTest>>["authenticator"];
@@ -36,21 +57,11 @@ describe("/api/v1/viz/files/[...segments] security tests", () => {
     auth = setup.authenticator;
   });
 
-  // Call this AFTER makeFrameAndToken so file creation uses the global mock,
-  // and the handler gets the success bucket via mockReturnValueOnce.
-  function mockGcsFound() {
-    vi.mocked(getPrivateUploadBucket).mockReturnValueOnce({
-      getFileContentType: vi.fn().mockResolvedValue({
-        isOk: () => true,
-        isErr: () => false,
-        value: "image/png",
-      }),
-      file: vi.fn().mockReturnValue({
-        createReadStream: vi.fn().mockReturnValue(new PassThrough()),
-      }),
-    } as never);
-  }
-
+  /**
+   * Creates a real frame file in the test DB and returns its share JWT.
+   * The share token is real so that WorkspaceResource.fetchByModelId (called
+   * by the handler after fetchByShareToken) resolves to the correct workspace.
+   */
   async function makeFrameAndToken(
     useCaseMetadata: Record<string, string>,
     shareScope: "public" | "workspace" = "public"
@@ -77,220 +88,44 @@ describe("/api/v1/viz/files/[...segments] security tests", () => {
       shareScope,
     });
 
-    return { frameFile, accessToken };
+    return { frameFile, accessToken, fileToken };
   }
 
-  it("should serve a GCS file for a valid conversation-scoped path", async () => {
-    const conversation = await ConversationFactory.create(auth, {
-      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
-      messagesCreatedAt: [new Date()],
-    });
+  /**
+   * Stubs fetchByShareToken so no DB round-trip is needed for the token
+   * lookup. WorkspaceResource.fetchByModelId still runs against the real DB
+   * (frameFile.workspaceId points to the test workspace created in beforeEach).
+   */
+  function mockFetchByShareToken(
+    frameFile: FileResource,
+    opts: {
+      shareScope?: "public" | "workspace";
+      conversationSpaceId?: string | null;
+      fs?: DustFileSystem;
+    } = {}
+  ) {
+    const {
+      shareScope = "public",
+      conversationSpaceId = null,
+      fs = makeMockFs({ found: true }),
+    } = opts;
 
-    const { frameFile, accessToken } = await makeFrameAndToken({
-      conversationId: conversation.sId,
-    });
-
-    const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
-      method: "GET",
-      query: { segments: ["conversation", "chart.png"] },
-      headers: { authorization: `Bearer ${accessToken}` },
-    });
-
-    vi.spyOn(FileResource, "fetchByShareTokenWithContent").mockResolvedValue({
-      file: frameFile,
-      content: "<html>Frame content</html>",
-      shareScope: "public",
-      conversationSpaceId: null,
-    });
-
-    mockGcsFound();
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(200);
-  });
-
-  it("should resolve conversationId from sourceConversationId for promoted frames", async () => {
-    const conversation = await ConversationFactory.create(auth, {
-      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
-      messagesCreatedAt: [new Date()],
-    });
-
-    // Promoted frame: spaceId + sourceConversationId, no conversationId.
-    const { frameFile, accessToken } = await makeFrameAndToken({
-      spaceId: "vlt_someSpaceId",
-      sourceConversationId: conversation.sId,
-    });
-
-    const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
-      method: "GET",
-      query: { segments: ["conversation", "chart.png"] },
-      headers: { authorization: `Bearer ${accessToken}` },
-    });
-
-    vi.spyOn(FileResource, "fetchByShareTokenWithContent").mockResolvedValue({
-      file: frameFile,
-      content: "<html>Frame content</html>",
-      shareScope: "public",
-      conversationSpaceId: null,
-    });
-
-    mockGcsFound();
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(200);
-  });
-
-  it("should reject when frame has no conversation context", async () => {
-    const { frameFile, accessToken } = await makeFrameAndToken({}); // No conversationId.
-
-    const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
-      method: "GET",
-      query: { segments: ["conversation", "chart.png"] },
-      headers: { authorization: `Bearer ${accessToken}` },
-    });
-
-    vi.spyOn(FileResource, "fetchByShareTokenWithContent").mockResolvedValue({
-      file: frameFile,
-      content: "<html>Frame content</html>",
-      shareScope: "public",
-      conversationSpaceId: null,
-    });
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(400);
-    expect(res._getJSONData()).toEqual({
-      error: {
-        type: "invalid_request_error",
-        message: "Frame has no conversation context for this path.",
-      },
-    });
-  });
-
-  it("should reject when shareScope has changed since token was issued", async () => {
-    const conversation = await ConversationFactory.create(auth, {
-      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
-      messagesCreatedAt: [new Date()],
-    });
-
-    const { frameFile, accessToken } = await makeFrameAndToken(
-      { conversationId: conversation.sId },
-      "public"
+    vi.spyOn(FileResource, "fetchByShareToken").mockResolvedValue(
+      new Ok({
+        file: frameFile,
+        shareScope,
+        shareableFileId: 1 as unknown as ModelId,
+        workspace,
+        conversationSpaceId,
+        fs,
+      })
     );
+    return fs;
+  }
 
-    const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
-      method: "GET",
-      query: { segments: ["conversation", "chart.png"] },
-      headers: { authorization: `Bearer ${accessToken}` },
-    });
-
-    vi.spyOn(FileResource, "fetchByShareTokenWithContent").mockResolvedValue({
-      file: frameFile,
-      content: "<html>Frame content</html>",
-      shareScope: "workspace", // Changed from "public".
-      conversationSpaceId: null,
-    });
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(404);
-  });
-
-  it("should reject path traversal attempts", async () => {
-    const conversation = await ConversationFactory.create(auth, {
-      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
-      messagesCreatedAt: [new Date()],
-    });
-
-    const { frameFile, accessToken } = await makeFrameAndToken({
-      conversationId: conversation.sId,
-    });
-
-    const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
-      method: "GET",
-      query: { segments: ["conversation", "..", "..", "etc", "passwd"] },
-      headers: { authorization: `Bearer ${accessToken}` },
-    });
-
-    vi.spyOn(FileResource, "fetchByShareTokenWithContent").mockResolvedValue({
-      file: frameFile,
-      content: "<html>Frame content</html>",
-      shareScope: "public",
-      conversationSpaceId: null,
-    });
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(403);
-    expect(res._getJSONData()).toEqual({
-      error: {
-        type: "workspace_auth_error",
-        message: "Access denied: path is outside allowed scope.",
-      },
-    });
-  });
-
-  it("should reject an invalid scope segment", async () => {
-    const conversation = await ConversationFactory.create(auth, {
-      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
-      messagesCreatedAt: [new Date()],
-    });
-
-    const { frameFile, accessToken } = await makeFrameAndToken({
-      conversationId: conversation.sId,
-    });
-
-    const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
-      method: "GET",
-      query: { segments: ["invalid_scope", "chart.png"] },
-      headers: { authorization: `Bearer ${accessToken}` },
-    });
-
-    vi.spyOn(FileResource, "fetchByShareTokenWithContent").mockResolvedValue({
-      file: frameFile,
-      content: "<html>Frame content</html>",
-      shareScope: "public",
-      conversationSpaceId: null,
-    });
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(400);
-    expect(res._getJSONData().error.type).toBe("invalid_request_error");
-  });
-
-  it("should return 404 when GCS file does not exist", async () => {
-    const conversation = await ConversationFactory.create(auth, {
-      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
-      messagesCreatedAt: [new Date()],
-    });
-
-    const { frameFile, accessToken } = await makeFrameAndToken({
-      conversationId: conversation.sId,
-    });
-
-    // Default mock already returns isErr: () => true — file not found.
-
-    const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
-      method: "GET",
-      query: { segments: ["conversation", "missing.png"] },
-      headers: { authorization: `Bearer ${accessToken}` },
-    });
-
-    vi.spyOn(FileResource, "fetchByShareTokenWithContent").mockResolvedValue({
-      file: frameFile,
-      content: "<html>Frame content</html>",
-      shareScope: "public",
-      conversationSpaceId: null,
-    });
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(404);
-    expect(res._getJSONData()).toEqual({
-      error: { type: "file_not_found", message: "File not found." },
-    });
-  });
+  // -------------------------------------------------------------------------
+  // Auth / token checks (no DB setup needed)
+  // -------------------------------------------------------------------------
 
   it("should reject requests without Authorization header", async () => {
     const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
@@ -332,31 +167,7 @@ describe("/api/v1/viz/files/[...segments] security tests", () => {
     expect(res._getStatusCode()).toBe(405);
   });
 
-  it("should serve a GCS file for a pod-scoped frame (spaceId in metadata)", async () => {
-    const { frameFile, accessToken } = await makeFrameAndToken({
-      spaceId: "vlt_someSpaceId",
-    });
-
-    const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
-      method: "GET",
-      query: { segments: ["pod", "chart.png"] },
-      headers: { authorization: `Bearer ${accessToken}` },
-    });
-
-    vi.spyOn(FileResource, "fetchByShareTokenWithContent").mockResolvedValue({
-      file: frameFile,
-      content: "<html>Frame content</html>",
-      shareScope: "public",
-      conversationSpaceId: null,
-    });
-
-    mockGcsFound();
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(200);
-  });
-
-  it("should serve a GCS file for a conversation-scoped frame via conversationSpaceId", async () => {
+  it("should reject an invalid scope segment", async () => {
     const conversation = await ConversationFactory.create(auth, {
       agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
       messagesCreatedAt: [new Date()],
@@ -368,58 +179,69 @@ describe("/api/v1/viz/files/[...segments] security tests", () => {
 
     const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
       method: "GET",
-      query: { segments: ["pod", "chart.png"] },
+      query: { segments: ["invalid_scope", "chart.png"] },
       headers: { authorization: `Bearer ${accessToken}` },
     });
 
-    vi.spyOn(FileResource, "fetchByShareTokenWithContent").mockResolvedValue({
-      file: frameFile,
-      content: "<html>Frame content</html>",
-      shareScope: "public",
-      conversationSpaceId: "vlt_derivedSpaceId",
-    });
-
-    mockGcsFound();
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(200);
-  });
-
-  it("should reject pod-scoped path when frame has no project context", async () => {
-    const conversation = await ConversationFactory.create(auth, {
-      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
-      messagesCreatedAt: [new Date()],
-    });
-
-    const { frameFile, accessToken } = await makeFrameAndToken({
-      conversationId: conversation.sId,
-    });
-
-    const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
-      method: "GET",
-      query: { segments: ["pod", "chart.png"] },
-      headers: { authorization: `Bearer ${accessToken}` },
-    });
-
-    vi.spyOn(FileResource, "fetchByShareTokenWithContent").mockResolvedValue({
-      file: frameFile,
-      content: "<html>Frame content</html>",
-      shareScope: "public",
-      conversationSpaceId: null,
-    });
-
+    // Scope validation happens before fetchByShareToken; no need to mock it.
+    mockFetchByShareToken(frameFile);
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(400);
+    expect(res._getJSONData().error.type).toBe("invalid_request_error");
+  });
+
+  // -------------------------------------------------------------------------
+  // fetchByShareToken failure
+  // -------------------------------------------------------------------------
+
+  it("should return 404 when the share token is not found", async () => {
+    const { frameFile, accessToken } = await makeFrameAndToken({});
+
+    vi.spyOn(FileResource, "fetchByShareToken").mockResolvedValue(
+      new Err(new DustError("file_not_found", "Share not found"))
+    );
+
+    const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+      method: "GET",
+      query: { segments: ["conversation", "chart.png"] },
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(404);
     expect(res._getJSONData()).toEqual({
-      error: {
-        type: "invalid_request_error",
-        message: "Frame has no pod context for this path.",
-      },
+      error: { type: "file_not_found", message: "File not found." },
     });
   });
 
-  it("should reject non-frame files as the frame", async () => {
+  it("should reject when shareScope has changed since token was issued", async () => {
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+    });
+
+    // Token says "public" but mock returns "workspace" — scope has changed.
+    const { frameFile, accessToken } = await makeFrameAndToken(
+      { conversationId: conversation.sId },
+      "public"
+    );
+
+    mockFetchByShareToken(frameFile, { shareScope: "workspace" });
+
+    const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+      method: "GET",
+      query: { segments: ["conversation", "chart.png"] },
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(404);
+  });
+
+  it("should reject non-frame files used as the frame", async () => {
     const conversation = await ConversationFactory.create(auth, {
       agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
       messagesCreatedAt: [new Date()],
@@ -434,21 +256,17 @@ describe("/api/v1/viz/files/[...segments] security tests", () => {
       useCaseMetadata: { conversationId: conversation.sId },
     });
 
-    const { accessToken } = await makeFrameAndToken({
+    const { frameFile, accessToken } = await makeFrameAndToken({
       conversationId: conversation.sId,
     });
+
+    // The token resolves to a non-frame file.
+    mockFetchByShareToken(nonFrameFile);
 
     const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
       method: "GET",
       query: { segments: ["conversation", "chart.png"] },
       headers: { authorization: `Bearer ${accessToken}` },
-    });
-
-    vi.spyOn(FileResource, "fetchByShareTokenWithContent").mockResolvedValue({
-      file: nonFrameFile,
-      content: "",
-      shareScope: "public",
-      conversationSpaceId: null,
     });
 
     await handler(req, res);
@@ -460,5 +278,405 @@ describe("/api/v1/viz/files/[...segments] security tests", () => {
         message: "Only frame files can be shared publicly.",
       },
     });
+  });
+
+  // -------------------------------------------------------------------------
+  // Path traversal
+  // -------------------------------------------------------------------------
+
+  it("should reject path traversal attempts", async () => {
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+    });
+
+    const { frameFile, accessToken } = await makeFrameAndToken({
+      conversationId: conversation.sId,
+    });
+
+    mockFetchByShareToken(frameFile);
+
+    const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+      method: "GET",
+      query: { segments: ["conversation", "..", "..", "etc", "passwd"] },
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(403);
+    expect(res._getJSONData()).toEqual({
+      error: {
+        type: "workspace_auth_error",
+        message: "Access denied: path is outside allowed scope.",
+      },
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Legacy conversation scope
+  // -------------------------------------------------------------------------
+
+  it("should serve a file for a legacy conversation-scoped path", async () => {
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+    });
+
+    const { frameFile, accessToken } = await makeFrameAndToken({
+      conversationId: conversation.sId,
+    });
+
+    mockFetchByShareToken(frameFile);
+
+    const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+      method: "GET",
+      query: { segments: ["conversation", "chart.png"] },
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+  });
+
+  it("should resolve conversationId from sourceConversationId for promoted frames", async () => {
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+    });
+
+    // Promoted frame: spaceId + sourceConversationId, no conversationId.
+    const { frameFile, accessToken } = await makeFrameAndToken({
+      spaceId: "vlt_someSpaceId",
+      sourceConversationId: conversation.sId,
+    });
+
+    mockFetchByShareToken(frameFile);
+
+    const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+      method: "GET",
+      query: { segments: ["conversation", "chart.png"] },
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+  });
+
+  it("should reject when frame has no conversation context for a legacy conversation path", async () => {
+    const { frameFile, accessToken } = await makeFrameAndToken({}); // No conversationId.
+
+    mockFetchByShareToken(frameFile);
+
+    const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+      method: "GET",
+      query: { segments: ["conversation", "chart.png"] },
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
+    expect(res._getJSONData()).toEqual({
+      error: {
+        type: "invalid_request_error",
+        message: "Frame has no conversation context for this path.",
+      },
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Legacy project scope
+  // -------------------------------------------------------------------------
+
+  it("should serve a file for a project-scoped frame (spaceId in metadata)", async () => {
+    const { frameFile, accessToken } = await makeFrameAndToken({
+      spaceId: "vlt_someSpaceId",
+    });
+
+    mockFetchByShareToken(frameFile);
+
+    const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+      method: "GET",
+      query: { segments: ["project", "chart.png"] },
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+  });
+
+  it("should serve a file via conversationSpaceId when frame has no spaceId in metadata", async () => {
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+    });
+
+    const { frameFile, accessToken } = await makeFrameAndToken({
+      conversationId: conversation.sId,
+    });
+
+    // conversationSpaceId is resolved by fetchByShareToken from the conversation's space.
+    mockFetchByShareToken(frameFile, {
+      conversationSpaceId: "vlt_derivedSpaceId",
+    });
+
+    const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+      method: "GET",
+      query: { segments: ["project", "chart.png"] },
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+  });
+
+  it("should reject a legacy project path when frame has no project context", async () => {
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+    });
+
+    const { frameFile, accessToken } = await makeFrameAndToken({
+      conversationId: conversation.sId,
+    });
+
+    // No spaceId in metadata and no conversationSpaceId.
+    mockFetchByShareToken(frameFile, { conversationSpaceId: null });
+
+    const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+      method: "GET",
+      query: { segments: ["project", "chart.png"] },
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
+    expect(res._getJSONData()).toEqual({
+      error: {
+        type: "invalid_request_error",
+        message: "Frame has no project context for this path.",
+      },
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // File not found via the FS
+  // -------------------------------------------------------------------------
+
+  it("should return 404 when the scoped file does not exist", async () => {
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+    });
+
+    const { frameFile, accessToken } = await makeFrameAndToken({
+      conversationId: conversation.sId,
+    });
+
+    // fs.stat returns Ok(null) → file not found.
+    mockFetchByShareToken(frameFile, { fs: makeMockFs({ found: false }) });
+
+    const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+      method: "GET",
+      query: { segments: ["conversation", "missing.png"] },
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(404);
+    expect(res._getJSONData()).toEqual({
+      error: { type: "file_not_found", message: "File not found." },
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Canonical conversation scope
+  // -------------------------------------------------------------------------
+
+  it("should serve a file for a canonical conversation-scoped path", async () => {
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+    });
+
+    const { frameFile, accessToken } = await makeFrameAndToken({
+      conversationId: conversation.sId,
+    });
+
+    mockFetchByShareToken(frameFile);
+
+    const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+      method: "GET",
+      query: {
+        segments: [`conversation-${conversation.sId}`, "chart.png"],
+      },
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+  });
+
+  it("should reject a canonical conversation path when the ID does not match the frame", async () => {
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+    });
+
+    const { frameFile, accessToken } = await makeFrameAndToken({
+      conversationId: conversation.sId,
+    });
+
+    mockFetchByShareToken(frameFile);
+
+    const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+      method: "GET",
+      // Intentionally wrong conversation ID.
+      query: { segments: ["conversation-different_conv_id", "chart.png"] },
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(403);
+    expect(res._getJSONData()).toEqual({
+      error: {
+        type: "workspace_auth_error",
+        message:
+          "Access denied: conversation ID does not match frame context.",
+      },
+    });
+  });
+
+  it("should resolve sourceConversationId for canonical conversation paths on promoted frames", async () => {
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+    });
+
+    // Promoted frame: only sourceConversationId, no conversationId.
+    const { frameFile, accessToken } = await makeFrameAndToken({
+      spaceId: "vlt_someSpaceId",
+      sourceConversationId: conversation.sId,
+    });
+
+    mockFetchByShareToken(frameFile);
+
+    const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+      method: "GET",
+      query: {
+        segments: [`conversation-${conversation.sId}`, "chart.png"],
+      },
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+  });
+
+  // -------------------------------------------------------------------------
+  // Canonical pod scope
+  // -------------------------------------------------------------------------
+
+  it("should serve a file for a canonical pod-scoped path", async () => {
+    const podId = "vlt_mypod";
+    const { frameFile, accessToken } = await makeFrameAndToken({
+      spaceId: podId,
+    });
+
+    mockFetchByShareToken(frameFile);
+
+    const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+      method: "GET",
+      query: { segments: [`pod-${podId}`, "data.csv"] },
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+  });
+
+  it("should resolve pod ID from conversationSpaceId for a canonical pod path", async () => {
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+    });
+    const derivedSpaceId = "vlt_derivedSpace";
+
+    const { frameFile, accessToken } = await makeFrameAndToken({
+      conversationId: conversation.sId,
+    });
+
+    mockFetchByShareToken(frameFile, { conversationSpaceId: derivedSpaceId });
+
+    const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+      method: "GET",
+      query: { segments: [`pod-${derivedSpaceId}`, "shared.md"] },
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+  });
+
+  it("should reject a canonical pod path when the ID does not match the frame", async () => {
+    const { frameFile, accessToken } = await makeFrameAndToken({
+      spaceId: "vlt_correctpod",
+    });
+
+    mockFetchByShareToken(frameFile);
+
+    const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+      method: "GET",
+      // Intentionally wrong pod ID.
+      query: { segments: ["pod-vlt_wrongpod", "data.csv"] },
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(403);
+    expect(res._getJSONData()).toEqual({
+      error: {
+        type: "workspace_auth_error",
+        message: "Access denied: pod ID does not match frame context.",
+      },
+    });
+  });
+
+  it("should reject a canonical path with a missing resource ID", async () => {
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+    });
+
+    const { frameFile, accessToken } = await makeFrameAndToken({
+      conversationId: conversation.sId,
+    });
+
+    mockFetchByShareToken(frameFile);
+
+    const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+      method: "GET",
+      // "conversation-" with no ID after the dash.
+      query: { segments: ["conversation-", "chart.png"] },
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
+    expect(res._getJSONData().error.type).toBe("invalid_request_error");
   });
 });
