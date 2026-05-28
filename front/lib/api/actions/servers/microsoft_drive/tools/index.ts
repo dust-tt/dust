@@ -24,6 +24,18 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type AdmZip from "adm-zip";
 
+interface DriveChildItem {
+  id: string;
+  name: string;
+  webUrl?: string;
+  size?: number;
+  folder?: { childCount?: number };
+  file?: { mimeType?: string };
+  parentReference?: { driveId?: string; id?: string; path?: string };
+  createdDateTime?: string;
+  lastModifiedDateTime?: string;
+}
+
 const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
   search_in_files: async (
     { query, dataSource, maximumResults },
@@ -96,6 +108,96 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
       return new Err(
         new MCPError(
           normalizeError(err).message || "Failed to search drive items"
+        )
+      );
+    }
+  },
+
+  list_drive_items: async (
+    { driveId, siteId, parentFolderId, itemType = "all", top, skipToken },
+    { authInfo }
+  ) => {
+    const client = await getGraphClient(authInfo);
+    if (!client) {
+      return new Err(
+        new MCPError("Failed to authenticate with Microsoft Graph")
+      );
+    }
+
+    try {
+      const baseEndpoint = await getDriveItemEndpoint(
+        parentFolderId,
+        driveId,
+        siteId
+      );
+      const endpoint = parentFolderId
+        ? `${baseEndpoint}/children`
+        : `${baseEndpoint}/root/children`;
+
+      const pageSize = Math.min(Math.max(top ?? 50, 1), 200);
+
+      let request = client
+        .api(endpoint)
+        .select(
+          "id,name,webUrl,folder,file,size,parentReference,createdDateTime,lastModifiedDateTime"
+        )
+        .top(pageSize);
+      if (skipToken) {
+        request = request.query({ $skiptoken: skipToken });
+      }
+
+      const response = await request.get();
+
+      const items = ((response.value ?? []) as DriveChildItem[])
+        .filter(
+          (item) =>
+            itemType === "all" ||
+            (itemType === "folder" && item.folder) ||
+            (itemType === "file" && item.file)
+        )
+        .map((item) => ({
+          id: item.id,
+          name: item.name,
+          type: item.folder ? "folder" : "file",
+          webUrl: item.webUrl,
+          size: item.size,
+          childCount: item.folder?.childCount,
+          mimeType: item.file?.mimeType,
+          parentReference: item.parentReference,
+          createdDateTime: item.createdDateTime,
+          lastModifiedDateTime: item.lastModifiedDateTime,
+        }));
+
+      const nextLink: string | undefined = response["@odata.nextLink"];
+      let nextSkipToken: string | undefined;
+      if (nextLink) {
+        try {
+          nextSkipToken =
+            new URL(nextLink).searchParams.get("$skiptoken") ?? undefined;
+        } catch {
+          // Unparseable nextLink — leave undefined; caller can re-list.
+        }
+      }
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            {
+              items,
+              count: items.length,
+              nextSkipToken,
+              hasMore: !!nextSkipToken,
+            },
+            null,
+            2
+          ),
+        },
+      ]);
+    } catch (err) {
+      return new Err(
+        new MCPError(
+          normalizeError(err).message || "Failed to list drive items"
         )
       );
     }
