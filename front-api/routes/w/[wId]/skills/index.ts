@@ -6,10 +6,11 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
-import type {
-  SkillType,
-  SkillWithoutInstructionsAndToolsType,
-  SkillWithoutInstructionsAndToolsWithRelationsType,
+import {
+  SKILL_REINFORCEMENT_MODES,
+  type SkillType,
+  type SkillWithoutInstructionsAndToolsType,
+  type SkillWithoutInstructionsAndToolsWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { isBuilder } from "@app/types/user";
@@ -69,6 +70,7 @@ const PostSkillRequestBodySchema = z.intersection(
     additionalRequestedSpaceIds: z.array(z.string()).optional(),
     fileAttachments: z.array(z.object({ fileId: z.string() })).optional(),
     isDefault: z.boolean().optional(),
+    reinforcement: z.enum(SKILL_REINFORCEMENT_MODES).optional(),
   }),
   z.union([
     z.object({
@@ -405,6 +407,7 @@ app.post(
         source: body.source ?? "web_app",
         sourceMetadata: body.sourceMetadata ?? null,
         isDefault: body.isDefault ?? false,
+        reinforcement: body.reinforcement ?? "off",
       },
       {
         mcpServerViews,
