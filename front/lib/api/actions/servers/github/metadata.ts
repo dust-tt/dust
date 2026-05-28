@@ -258,7 +258,11 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
     description:
       "Search issues and pull requests using GitHub's advanced search syntax with AND/OR operators and nested searches. " +
       "Supports advanced query syntax like 'is:issue AND assignee:@me AND (label:support OR comments:>5)' or 'is:pr AND assignee:@me'. " +
-      "Use 'is:issue' to search for issues, 'is:pr' to search for pull requests, or omit to search both. ",
+      "Use 'is:issue' to search for issues, 'is:pr' to search for pull requests, or omit to search both. " +
+      "Note that `@me` behavior depends on the connection type: " +
+      "with a personal connection, `@me` resolves to the user's GitHub account (example: `is:issue AND assignee:@me`); " +
+      "with a workspace (shared) connection, `@me` resolves to the Dust GitHub App bot, NOT the user, " +
+      "use the user's actual GitHub username instead (example: `is:issue AND assignee:username`).",
     schema: {
       query: z
         .string()
