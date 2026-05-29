@@ -3035,7 +3035,7 @@ async function syncPackages(): Promise<void> {
 // ---------------------------------------------------------------------------
 
 const CUSTOM_FIELD_KEYS: Array<{
-  entity: "contract" | "contract_product" | "contract_credit";
+  entity: "contract" | "contract_product" | "contract_credit" | "commit";
   key: string;
 }> = [
   { entity: "contract", key: "MAU_TIERS" },

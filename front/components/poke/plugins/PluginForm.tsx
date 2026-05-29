@@ -122,7 +122,11 @@ export function PluginForm({
       ...new Set(
         Object.values(manifest.args)
           .filter((arg) => arg.dependsOn)
-          .map((arg) => arg.dependsOn!.field)
+          .flatMap((arg) =>
+            Array.isArray(arg.dependsOn)
+              ? arg.dependsOn.map((c) => c.field)
+              : [arg.dependsOn!.field]
+          )
       ),
     ];
   }, [manifest]);
@@ -156,9 +160,14 @@ export function PluginForm({
       >
         <div className="max-h-[50vh] space-y-8 overflow-y-auto pr-2">
           {Object.entries(manifest.args).map(([key, arg]) => {
-            const isDependentFieldHidden =
-              arg.dependsOn &&
-              watchedValues[arg.dependsOn.field] !== arg.dependsOn.value;
+            const conditions = arg.dependsOn
+              ? Array.isArray(arg.dependsOn)
+                ? arg.dependsOn
+                : [arg.dependsOn]
+              : [];
+            const isDependentFieldHidden = conditions.some(
+              (c) => watchedValues[c.field] !== c.value
+            );
 
             if (isDependentFieldHidden) {
               return null;

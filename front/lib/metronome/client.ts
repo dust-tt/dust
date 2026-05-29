@@ -1297,6 +1297,7 @@ export async function createMetronomeCommit({
   idempotencyKey,
   priority,
   invoiceSchedule,
+  customFields,
 }: {
   metronomeCustomerId: string;
   productId: string;
@@ -1314,6 +1315,7 @@ export async function createMetronomeCommit({
     quantity: number;
     timestamp: Date;
   };
+  customFields?: Record<string, string>;
 }): Promise<Result<{ id: string } | null, Error>> {
   // Metronome requires dates on hour boundaries — round down start, round up end.
   const roundedStartingAt = floorToHourISO(startingAt);
@@ -1363,6 +1365,9 @@ export async function createMetronomeCommit({
               ],
             },
           }
+        : {}),
+      ...(customFields && Object.keys(customFields).length > 0
+        ? { custom_fields: customFields }
         : {}),
       uniqueness_key: idempotencyKey,
     });
