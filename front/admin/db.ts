@@ -64,6 +64,7 @@ import {
 } from "@app/lib/models/skill/conversation_skill";
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { SelfImprovingSkillsUsageModel } from "@app/lib/models/skill/self_improving_skills_usage";
+import { SkillReferenceModel } from "@app/lib/models/skill/skill_reference";
 import { SkillSuggestionModel } from "@app/lib/models/skill/skill_suggestion";
 import { TagModel } from "@app/lib/models/tags";
 import { WorkspaceSensitivityLabelConfigModel } from "@app/lib/models/workspace_sensitivity_label_config";
@@ -230,6 +231,7 @@ export function loadAllModels() {
     SkillDataSourceConfigurationModel,
     SkillVersionModel,
     GroupSkillModel,
+    SkillReferenceModel,
     AgentSkillModel,
     ConversationSkillModel,
     AgentMessageSkillModel,
