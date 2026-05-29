@@ -9,7 +9,6 @@ import { UsageNotificationsCard } from "@app/components/workspace/usage/UsageNot
 import { UsageSettingsCard } from "@app/components/workspace/usage/UsageSettingsCard";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
-import { getPriceAsString } from "@app/lib/client/subscription";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
 import {
@@ -152,8 +151,6 @@ export function UsagePage() {
     totalActiveCredits,
     resetDate,
     overageCredits,
-    overageAmountCents,
-    overageCurrency,
     isAwuPoolSummaryLoading,
     isAwuPoolSummaryError,
   } = useAwuPoolSummary({
@@ -261,13 +258,20 @@ export function UsagePage() {
                   {formatCredits(totalConsumedCredits)} /{" "}
                   {formatCredits(initialTotalCredits)}
                 </span>
-                <button
-                  className="flex cursor-pointer items-center gap-1 text-xs font-medium text-highlight-500 dark:text-highlight-500-night"
-                  onClick={() => setShowBuyCreditDialog(true)}
-                >
-                  <Icon visual={ArrowUpIcon} size="xs" />
-                  Top up
-                </button>
+                <div className="flex items-center gap-2">
+                  {overageCredits !== null && overageCredits > 0 && (
+                    <span className="text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
+                      {formatCredits(overageCredits)} Overage
+                    </span>
+                  )}
+                  <button
+                    className="flex cursor-pointer items-center gap-1 text-xs font-medium text-highlight-500 dark:text-highlight-500-night"
+                    onClick={() => setShowBuyCreditDialog(true)}
+                  >
+                    <Icon visual={ArrowUpIcon} size="xs" />
+                    Top up
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -295,26 +299,6 @@ export function UsagePage() {
               consumedCredits={totalConsumedCredits}
             />
           )}
-
-          {!isAwuPoolSummaryLoading &&
-            !isAwuPoolSummaryError &&
-            overageCredits !== null &&
-            overageCredits > 0 &&
-            overageAmountCents !== null &&
-            overageCurrency !== null && (
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground dark:text-muted-foreground-night">
-                  Overage this period
-                </span>
-                <span className="font-medium text-foreground dark:text-foreground-night">
-                  {formatCredits(overageCredits)} credits ·{" "}
-                  {getPriceAsString({
-                    currency: overageCurrency,
-                    priceInCents: overageAmountCents,
-                  })}
-                </span>
-              </div>
-            )}
 
           {isAwuPoolSummaryLoading && (
             <div className="flex justify-center py-8">
