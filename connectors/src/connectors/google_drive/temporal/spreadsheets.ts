@@ -19,7 +19,7 @@ import { ProviderWorkflowError, TablesError } from "@connectors/lib/error";
 import type { GoogleDriveFilesModel } from "@connectors/lib/models/google_drive";
 import { GoogleDriveSheetModel } from "@connectors/lib/models/google_drive";
 import type { Logger } from "@connectors/logger/logger";
-import { getActivityLogger } from "@connectors/logger/logger";
+import { getActivityLogger, getLoggerArgs } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { GoogleDriveObjectType, ModelId } from "@connectors/types";
 import {
@@ -47,6 +47,14 @@ export type Sheet = sheets_v4.Schema$ValueRange & {
   };
   title: string;
 };
+
+function getSpreadsheetLoggerArgs(fileId: string) {
+  return {
+    documentId: getInternalId(fileId),
+    fileId,
+    spreadsheetId: fileId,
+  };
+}
 
 async function upsertSheetInDb(
   connector: ConnectorResource,
@@ -93,8 +101,8 @@ async function upsertGdriveTable(
       tableCsv: csv,
       loggerArgs: {
         connectorId: connector.id,
+        ...getSpreadsheetLoggerArgs(spreadsheet.id),
         sheetId: id,
-        spreadsheetId: spreadsheet.id,
       },
       truncate: true,
       parents: [tableId, ...parents],
@@ -170,13 +178,14 @@ async function processSheet(
   connector: ConnectorResource,
   sheet: Sheet,
   parents: string[],
-  tags: string[]
+  tags: string[],
+  spreadsheetLogger: Logger
 ): Promise<boolean> {
   if (!sheet.values) {
     return false;
   }
   const { id, spreadsheet, title } = sheet;
-  const localLogger = getActivityLogger(connector).child({
+  const localLogger = spreadsheetLogger.child({
     sheet: {
       id,
       spreadsheet,
@@ -420,6 +429,11 @@ export async function syncSpreadSheet(
       }
 
       const localLogger = logger.child({
+        ...getLoggerArgs(connector, {
+          ...getSpreadsheetLoggerArgs(file.id),
+          fileSize: file.size,
+          mimeType: file.mimeType,
+        }),
         spreadsheet: {
           id: file.id,
           size: file.size,
@@ -580,7 +594,8 @@ export async function syncSpreadSheet(
           connector,
           sheet,
           parents,
-          file.labels
+          file.labels,
+          localLogger
         );
         if (isImported) {
           successfulSheetIdImports.push(sheet.id);
@@ -615,7 +630,10 @@ async function deleteSheetForSpreadsheet(
 ) {
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
-  const localLogger = getActivityLogger(connector);
+  const localLogger = getActivityLogger(
+    connector,
+    getSpreadsheetLoggerArgs(spreadsheetFileId)
+  );
   localLogger.info(
     {
       sheet,
@@ -632,8 +650,8 @@ async function deleteSheetForSpreadsheet(
     tableId: getGoogleSheetTableId(spreadsheetFileId, sheet.driveSheetId),
     loggerArgs: {
       connectorId: connector.id,
+      ...getSpreadsheetLoggerArgs(spreadsheetFileId),
       sheetId: sheet.driveSheetId,
-      spreadsheetId: spreadsheetFileId,
     },
   });
 
@@ -666,7 +684,10 @@ export async function deleteSpreadsheet(
       connectorId: connector.id,
     },
   });
-  const localLogger = getActivityLogger(connector);
+  const localLogger = getActivityLogger(
+    connector,
+    getSpreadsheetLoggerArgs(file.driveFileId)
+  );
   localLogger.info(
     {
       spreadsheet: file,
@@ -680,7 +701,7 @@ export async function deleteSpreadsheet(
     folderId: getInternalId(file.driveFileId),
     loggerArgs: {
       connectorId: connector.id,
-      spreadsheetId: file.driveFileId,
+      ...getSpreadsheetLoggerArgs(file.driveFileId),
     },
   });
 
