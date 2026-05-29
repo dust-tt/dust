@@ -14,9 +14,9 @@ import {
   type LargeLanguageModelId,
   MODELS,
   type Model,
-  type ProviderId,
 } from "@app/lib/api/models/types/providers";
 import type { Region } from "@app/lib/api/models/types/regions";
+import type { Scope } from "@app/lib/api/models/types/scopes";
 import { getIdFromModel } from "@app/lib/api/models/utils/getIdFromModel";
 import type { RegionType } from "@app/types/region";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
@@ -38,9 +38,9 @@ export function getModel(
   credentials: Credentials,
   model: Model
 ): LargeLanguageModel {
-  const ModelClass = MODEL_REGISTRY[getIdFromModel(model)];
+  const ModelConstructor = MODEL_REGISTRY[getIdFromModel(model)];
 
-  return new ModelClass(credentials);
+  return new ModelConstructor(credentials);
 }
 
 const REGIONS_MAP: Record<RegionType, Region> = {
@@ -51,17 +51,21 @@ const REGIONS_MAP: Record<RegionType, Region> = {
 export function getModels(
   credentials: Credentials,
   {
-    providerId,
     featureFlags,
     region,
+    scope,
   }: {
-    providerId?: ProviderId;
     featureFlags: WhitelistableFeature[];
     region: RegionType;
+    scope: Scope;
+  },
+  filters?: {
+    providerId?: Model["providerId"];
+    modelId?: Model["modelId"];
   }
 ): LargeLanguageModel[] {
   return MODELS.filter(
-    (model) => !providerId || model.providerId === providerId
+    (model) => !filters?.providerId || model.providerId === filters.providerId
   )
     .map((model) => getModel(credentials, model))
     .filter(
@@ -70,7 +74,9 @@ export function getModels(
         (dustModel.featureflag === null ||
           featureFlags.includes(dustModel.featureflag)) &&
         // Region availability check
-        dustModel.regions[REGIONS_MAP[region]]
+        dustModel.regions[REGIONS_MAP[region]] &&
+        // Right to display check
+        dustModel.scopes[scope]
     );
 }
 
