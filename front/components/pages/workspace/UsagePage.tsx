@@ -9,7 +9,7 @@ import { UsageNotificationsCard } from "@app/components/workspace/usage/UsageNot
 import { UsageSettingsCard } from "@app/components/workspace/usage/UsageSettingsCard";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
-import { isUpgraded } from "@app/lib/plans/plan_codes";
+import { isEntreprisePlanPrefix, isUpgraded } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
 import {
   useAwuPoolSummary,
@@ -186,6 +186,7 @@ export function UsagePage() {
   const isSeatBased = Object.keys(seatPlans).length > 1;
 
   const plan = subscription.plan;
+  const isEnterprise = isEntreprisePlanPrefix(plan.code);
   const isManualInvitationsEnabled =
     owner.metadata?.disableManualInvitations !== true;
 
@@ -264,13 +265,29 @@ export function UsagePage() {
                       {formatCredits(overageCredits)} Overage
                     </span>
                   )}
-                  <button
-                    className="flex cursor-pointer items-center gap-1 text-xs font-medium text-highlight-500 dark:text-highlight-500-night"
-                    onClick={() => setShowBuyCreditDialog(true)}
-                  >
-                    <Icon visual={ArrowUpIcon} size="xs" />
-                    Top up
-                  </button>
+                  {isEnterprise ? (
+                    <Tooltip
+                      tooltipTriggerAsChild
+                      label="Contact your Dust sales representative to top up."
+                      trigger={
+                        <button
+                          className="flex items-center gap-1 text-xs font-medium text-highlight-500 opacity-50 dark:text-highlight-500-night"
+                          disabled
+                        >
+                          <Icon visual={ArrowUpIcon} size="xs" />
+                          Top up
+                        </button>
+                      }
+                    />
+                  ) : (
+                    <button
+                      className="flex cursor-pointer items-center gap-1 text-xs font-medium text-highlight-500 dark:text-highlight-500-night"
+                      onClick={() => setShowBuyCreditDialog(true)}
+                    >
+                      <Icon visual={ArrowUpIcon} size="xs" />
+                      Top up
+                    </button>
+                  )}
                 </div>
               </div>
             )}

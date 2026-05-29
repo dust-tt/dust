@@ -19,6 +19,7 @@ import {
   getCreditTypeAwuId,
   getProductPrepaidCommitId,
 } from "@app/lib/metronome/constants";
+import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import { getStripeClient } from "@app/lib/plans/stripe";
 import logger from "@app/logger/logger";
 import type { SupportedCurrency } from "@app/types/currency";
@@ -40,6 +41,7 @@ export type AwuPurchaseInfo =
       reason:
         | "not_metronome_billed"
         | "legacy_plan"
+        | "enterprise_plan"
         | "no_stripe_customer"
         | "pending_purchase";
     }
@@ -57,6 +59,7 @@ export type AwuPurchaseResult = {
 export type AwuPurchaseError =
   | { code: "not_metronome_billed" }
   | { code: "legacy_plan" }
+  | { code: "enterprise_plan" }
   | { code: "no_stripe_customer" }
   | { code: "pending_purchase" }
   | { code: "invalid_amount"; message: string }
@@ -109,6 +112,10 @@ async function checkAwuPurchaseEligibility(
 
   if (!isCreditPricedPlan(subscription.plan)) {
     return new Err({ code: "legacy_plan" });
+  }
+
+  if (isEntreprisePlanPrefix(subscription.plan.code)) {
+    return new Err({ code: "enterprise_plan" });
   }
 
   const stripeCustomerResult =
