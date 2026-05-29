@@ -177,10 +177,7 @@ export abstract class GoogleAiStudio extends LargeLanguageModel<
   async *streamRaw(
     input: GoogleAiStudioRequestPayload
   ): AsyncGenerator<GenerateContentResponse> {
-    console.log("✅ Converting conversation to contents");
     const contents = await this.conversationToContents(input.conversation);
-
-    console.log("✅ Contents built, starting streaming");
 
     const stream = await this.client.models.generateContentStream({
       model: input.model,
