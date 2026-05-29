@@ -29,15 +29,6 @@ app.post(
   async (ctx): HandlerResult<PostStateResponseBody> => {
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("param");
-    if (!aId) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid path parameters.",
-        },
-      });
-    }
 
     const appResource = await AppResource.fetchById(auth, aId);
     if (!appResource) {

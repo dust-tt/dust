@@ -24,15 +24,6 @@ app.get(
   validate("param", ParamsSchema),
   async (ctx): HandlerResult<GetConnectorRedirectResponse> => {
     const { connectorId } = ctx.req.valid("param");
-    if (!connectorId) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid connector ID.",
-        },
-      });
-    }
 
     const connectorsAPI = new ConnectorsAPI(
       config.getConnectorsAPIConfig(),

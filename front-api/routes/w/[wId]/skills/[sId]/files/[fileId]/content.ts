@@ -1,6 +1,5 @@
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { isString } from "@app/types/shared/utils/general";
 import { readableToReadableStream } from "@app/types/shared/utils/streams";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
@@ -18,26 +17,6 @@ const app = workspaceApp();
 app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
   const { sId, fileId } = ctx.req.valid("param");
-
-  if (!isString(sId)) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid skill ID.",
-      },
-    });
-  }
-
-  if (!isString(fileId)) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid file ID.",
-      },
-    });
-  }
 
   const skill = await SkillResource.fetchById(auth, sId);
   if (!skill) {

@@ -42,16 +42,6 @@ app.get(
     const { wId } = ctx.req.valid("param");
     const { t, cId } = ctx.req.query();
 
-    if (!isString(wId)) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: {
-          type: "workspace_not_found",
-          message: "The workspace was not found.",
-        },
-      });
-    }
-
     const workspaceResource = await WorkspaceResource.fetchById(wId);
     const maintenance = workspaceResource?.metadata?.maintenance;
 

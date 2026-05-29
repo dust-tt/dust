@@ -18,15 +18,6 @@ app.get(
   validate("param", ParamsSchema),
   async (ctx): HandlerResult<FetchAgentTemplateResponse> => {
     const { tId: templateId } = ctx.req.valid("param");
-    if (!templateId) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: {
-          type: "template_not_found",
-          message: "Template not found.",
-        },
-      });
-    }
 
     const template = await TemplateResource.fetchByExternalId(templateId);
     if (!template || !template.isPublished()) {

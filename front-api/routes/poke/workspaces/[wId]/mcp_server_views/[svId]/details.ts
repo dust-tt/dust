@@ -23,15 +23,6 @@ app.get(
   async (ctx): HandlerResult<PokeGetMCPServerViewDetails> => {
     const auth = ctx.get("auth");
     const { svId } = ctx.req.valid("param");
-    if (!svId) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid MCP server view ID.",
-        },
-      });
-    }
 
     const mcpServerView = await MCPServerViewResource.fetchById(auth, svId);
     if (!mcpServerView) {

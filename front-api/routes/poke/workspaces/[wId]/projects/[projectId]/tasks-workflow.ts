@@ -39,15 +39,6 @@ app.get(
   async (ctx): HandlerResult<PokeGetProjectWorkflow> => {
     const auth = ctx.get("auth");
     const { projectId } = ctx.req.valid("param");
-    if (!projectId) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid project ID.",
-        },
-      });
-    }
 
     const owner = auth.getNonNullableWorkspace();
 

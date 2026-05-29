@@ -34,15 +34,6 @@ app.get(
   async (ctx): HandlerResult<PokeGetAppDetails> => {
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("param");
-    if (!aId) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid app ID.",
-        },
-      });
-    }
 
     const { hash } = ctx.req.valid("query");
 

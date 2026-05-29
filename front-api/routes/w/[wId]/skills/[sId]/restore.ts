@@ -1,5 +1,4 @@
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { isString } from "@app/types/shared/utils/general";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -20,16 +19,6 @@ app.post(
   async (ctx): HandlerResult<SuccessResponseBody> => {
     const auth = ctx.get("auth");
     const { sId } = ctx.req.valid("param");
-
-    if (!isString(sId)) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid skill ID.",
-        },
-      });
-    }
 
     const skillResource = await SkillResource.fetchById(auth, sId);
 

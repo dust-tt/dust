@@ -33,15 +33,6 @@ app.patch(
   async (ctx): HandlerResult<PatchWorkspaceSandboxEnvVarResponseBody> => {
     const auth = ctx.get("auth");
     const { id } = ctx.req.valid("param");
-    if (!id) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid sandbox environment variable id.",
-        },
-      });
-    }
 
     const { allowedDomains, kind } = ctx.req.valid("json");
     if (kind === undefined && allowedDomains === undefined) {
@@ -135,15 +126,6 @@ app.delete(
   async (ctx): HandlerResult<SuccessResponseBody> => {
     const auth = ctx.get("auth");
     const { id } = ctx.req.valid("param");
-    if (!id) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid sandbox environment variable id.",
-        },
-      });
-    }
 
     const envVar = await WorkspaceSandboxEnvVarResource.fetchById(auth, id);
     if (!envVar) {

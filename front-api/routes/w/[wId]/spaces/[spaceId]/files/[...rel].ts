@@ -63,18 +63,6 @@ async function buildContext(
     };
   }
 
-  if (rel.length === 0) {
-    return {
-      error: apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Missing file path.",
-        },
-      }),
-    };
-  }
-
   const owner = auth.getNonNullableWorkspace();
   const basePath = getPodFilesBasePath({
     workspaceId: owner.sId,
@@ -280,16 +268,6 @@ app.post(
         api_error: {
           type: "invalid_request_error",
           message: "Files are only available for project spaces.",
-        },
-      });
-    }
-
-    if (!isString(rel) || rel.length === 0) {
-      return apiError(c, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Missing file path.",
         },
       });
     }

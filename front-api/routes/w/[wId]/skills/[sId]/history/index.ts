@@ -2,7 +2,6 @@ import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instruc
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { GetSkillHistoryQuerySchema } from "@app/types/api/internal/skill";
 import type { SkillWithVersionType } from "@app/types/assistant/skill_configuration";
-import { isString } from "@app/types/shared/utils/general";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -27,16 +26,6 @@ app.get(
   async (ctx): HandlerResult<GetSkillHistoryResponseBody> => {
     const auth = ctx.get("auth");
     const { sId } = ctx.req.valid("param");
-
-    if (!isString(sId)) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid skill ID provided.",
-        },
-      });
-    }
 
     // Check that user has access to this skill.
     const skill = await SkillResource.fetchById(auth, sId);

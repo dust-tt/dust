@@ -26,15 +26,6 @@ app.get(
   async (ctx): HandlerResult<PokeListSuggestions> => {
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("param");
-    if (!aId) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid agent ID.",
-        },
-      });
-    }
 
     const suggestions =
       await AgentSuggestionResource.listByAgentConfigurationId(auth, aId);

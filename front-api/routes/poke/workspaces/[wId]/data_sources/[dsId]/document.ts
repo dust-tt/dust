@@ -30,15 +30,6 @@ app.get(
   async (ctx): HandlerResult<PokeGetDocument> => {
     const auth = ctx.get("auth");
     const { dsId } = ctx.req.valid("param");
-    if (!dsId) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid data source ID.",
-        },
-      });
-    }
     const { documentId } = ctx.req.valid("query");
 
     const dataSource = await DataSourceResource.fetchById(auth, dsId, {

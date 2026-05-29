@@ -45,15 +45,6 @@ app.post(
   validate("query", RunPluginQuerySchema),
   async (ctx): HandlerResult<PokeRunPluginResponseBody> => {
     const { pluginId } = ctx.req.valid("param");
-    if (!pluginId) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Missing `pluginId` in path.",
-        },
-      });
-    }
 
     const { resourceType, resourceId, workspaceId } = ctx.req.valid("query");
 

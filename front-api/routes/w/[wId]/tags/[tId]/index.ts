@@ -25,16 +25,6 @@ app.delete(
     const auth = ctx.get("auth");
     const { tId } = ctx.req.valid("param");
 
-    if (!tId) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Tag ID is required",
-        },
-      });
-    }
-
     const tag = await TagResource.fetchById(auth, tId);
 
     if (!tag) {
@@ -71,16 +61,6 @@ app.put(
   async (ctx) => {
     const auth = ctx.get("auth");
     const { tId } = ctx.req.valid("param");
-
-    if (!tId) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Tag ID is required",
-        },
-      });
-    }
 
     const tag = await TagResource.fetchById(auth, tId);
 

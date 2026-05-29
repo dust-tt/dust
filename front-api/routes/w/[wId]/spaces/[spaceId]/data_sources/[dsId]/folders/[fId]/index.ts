@@ -24,15 +24,6 @@ app.delete(
     const auth = ctx.get("auth");
     const dataSource = ctx.get("dataSource");
     const { fId } = ctx.req.valid("param");
-    if (!fId) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid path parameters.",
-        },
-      });
-    }
 
     if (!dataSource.canWrite(auth)) {
       return apiError(ctx, {

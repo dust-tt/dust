@@ -25,15 +25,6 @@ app.get(
   validate("param", ParamsSchema),
   async (ctx): HandlerResult<PokeGetPluginDetailsResponseBody> => {
     const { pluginId } = ctx.req.valid("param");
-    if (!pluginId) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Missing `pluginId` in path.",
-        },
-      });
-    }
 
     const plugin = pluginManager.getPluginById(pluginId);
     if (!plugin) {

@@ -91,15 +91,6 @@ app.get(
     }
 
     const { uId } = ctx.req.valid("param");
-    if (!uId) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid query parameters, `uId` (string) is required.",
-        },
-      });
-    }
 
     const result = await getUserSpendLimit(auth, { userId: uId });
     if (result.isErr()) {
@@ -129,15 +120,6 @@ app.put(
     }
 
     const { uId } = ctx.req.valid("param");
-    if (!uId) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid query parameters, `uId` (string) is required.",
-        },
-      });
-    }
 
     const auditContext = getAuditLogContext(auth);
     const result = await setUserSpendLimit(auth, {

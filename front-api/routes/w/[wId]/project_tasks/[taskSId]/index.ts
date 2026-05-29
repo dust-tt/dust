@@ -29,15 +29,6 @@ const app = workspaceApp();
 app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
   const { taskSId } = ctx.req.valid("param");
-  if (!taskSId) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Missing or invalid task id.",
-      },
-    });
-  }
 
   const taskRow = await ProjectTaskResource.fetchBySId(auth, taskSId);
   if (!taskRow) {

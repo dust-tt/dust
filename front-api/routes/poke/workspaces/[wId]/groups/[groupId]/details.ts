@@ -25,15 +25,6 @@ app.get(
   async (ctx): HandlerResult<PokeGetGroupDetails> => {
     const auth = ctx.get("auth");
     const { groupId } = ctx.req.valid("param");
-    if (!groupId) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid group ID.",
-        },
-      });
-    }
 
     const groupRes = await GroupResource.fetchById(auth, groupId);
     if (groupRes.isErr()) {

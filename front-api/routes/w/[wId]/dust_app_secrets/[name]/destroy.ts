@@ -1,5 +1,4 @@
 import { getDustAppSecret } from "@app/lib/api/dust_app_secrets";
-import { isString } from "@app/types/shared/utils/general";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
@@ -21,15 +20,6 @@ app.delete(
     const auth = ctx.get("auth");
 
     const { name } = ctx.req.valid("param");
-    if (!isString(name)) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid path parameters.",
-        },
-      });
-    }
 
     const secret = await getDustAppSecret(auth, name);
 

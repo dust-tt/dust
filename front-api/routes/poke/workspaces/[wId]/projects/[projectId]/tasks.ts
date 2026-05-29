@@ -37,15 +37,6 @@ app.get(
   async (ctx): HandlerResult<PokeListProjectTasks> => {
     const auth = ctx.get("auth");
     const { projectId } = ctx.req.valid("param");
-    if (!projectId) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid project ID.",
-        },
-      });
-    }
 
     const space = await SpaceResource.fetchById(auth, projectId);
     if (!space || !space.isProject()) {

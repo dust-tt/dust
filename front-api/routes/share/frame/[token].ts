@@ -31,15 +31,6 @@ app.get(
   validate("param", ParamsSchema),
   async (ctx): HandlerResult<GetShareFrameMetadataResponseBody> => {
     const { token } = ctx.req.valid("param");
-    if (!token) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Missing token parameter.",
-        },
-      });
-    }
 
     const result = await FileResource.fetchByShareToken(token);
     if (result.isErr()) {

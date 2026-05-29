@@ -32,15 +32,6 @@ app.patch(
     }
 
     const { iId: invitationId } = ctx.req.valid("param");
-    if (!invitationId) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid query parameters, `iId` (string) is required.",
-        },
-      });
-    }
 
     const workspaceAdminAuth = await Authenticator.internalAdminForWorkspace(
       owner.sId

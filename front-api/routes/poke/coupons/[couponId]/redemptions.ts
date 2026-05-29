@@ -35,15 +35,6 @@ app.get(
   validate("param", ParamsSchema),
   async (ctx): HandlerResult<GetPokeCouponRedemptionsResponseBody> => {
     const { couponId } = ctx.req.valid("param");
-    if (!couponId) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: {
-          type: "coupon_not_found",
-          message: "Could not find the coupon.",
-        },
-      });
-    }
 
     const coupon = await CouponResource.fetchByCouponId(couponId);
     if (!coupon) {

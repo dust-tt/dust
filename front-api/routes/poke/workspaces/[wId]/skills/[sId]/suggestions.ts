@@ -27,15 +27,6 @@ app.get(
   async (ctx): HandlerResult<PokeListSkillSuggestions> => {
     const auth = ctx.get("auth");
     const { sId } = ctx.req.valid("param");
-    if (!sId) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid skill ID.",
-        },
-      });
-    }
 
     const suggestions =
       await SkillSuggestionResource.listBySkillConfigurationId(auth, sId, {

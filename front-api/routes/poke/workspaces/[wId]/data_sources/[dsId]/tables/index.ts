@@ -32,15 +32,6 @@ app.get(
   async (ctx): HandlerResult<GetTablesResponseBody> => {
     const auth = ctx.get("auth");
     const { dsId } = ctx.req.valid("param");
-    if (!dsId) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid data source ID.",
-        },
-      });
-    }
 
     const dataSource = await DataSourceResource.fetchById(auth, dsId);
     if (!dataSource) {

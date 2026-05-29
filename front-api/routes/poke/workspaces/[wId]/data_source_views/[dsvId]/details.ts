@@ -23,15 +23,6 @@ app.get(
   async (ctx): HandlerResult<PokeGetDataSourceViewDetails> => {
     const auth = ctx.get("auth");
     const { dsvId } = ctx.req.valid("param");
-    if (!dsvId) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid data source view ID.",
-        },
-      });
-    }
 
     const dataSourceView = await DataSourceViewResource.fetchById(auth, dsvId, {
       includeEditedBy: true,

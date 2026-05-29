@@ -24,15 +24,6 @@ app.get(
   validate("param", ParamsSchema),
   async (ctx): HandlerResult<GetCheckHistoryResponseBody> => {
     const { checkName } = ctx.req.valid("param");
-    if (!checkName) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "checkName is required.",
-        },
-      });
-    }
 
     const registeredCheck = getRegisteredCheck(checkName);
     if (!registeredCheck) {

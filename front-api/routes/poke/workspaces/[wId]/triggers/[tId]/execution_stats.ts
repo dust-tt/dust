@@ -29,15 +29,6 @@ app.get(
   async (ctx): HandlerResult<PokeGetTriggerExecutionStats> => {
     const auth = ctx.get("auth");
     const { tId } = ctx.req.valid("param");
-    if (!tId) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid trigger ID.",
-        },
-      });
-    }
 
     const trigger = await TriggerResource.fetchById(auth, tId);
     if (!trigger) {

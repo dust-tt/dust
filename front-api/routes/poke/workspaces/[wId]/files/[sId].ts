@@ -34,15 +34,6 @@ app.get(
   async (ctx): HandlerResult<GetPokeFileResponseBody> => {
     const auth = ctx.get("auth");
     const { sId } = ctx.req.valid("param");
-    if (!sId) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "The sId parameter is required.",
-        },
-      });
-    }
 
     const result = await readInteractiveContentFile(auth, sId);
     if (result.isErr()) {

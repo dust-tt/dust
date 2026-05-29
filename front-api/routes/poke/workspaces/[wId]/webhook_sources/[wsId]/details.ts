@@ -31,15 +31,6 @@ app.get(
   async (ctx): HandlerResult<PokeGetWebhookSourceDetails> => {
     const auth = ctx.get("auth");
     const { wsId } = ctx.req.valid("param");
-    if (!wsId) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid webhook source ID.",
-        },
-      });
-    }
 
     const source = await WebhookSourceResource.fetchById(auth, wsId);
     if (!source) {

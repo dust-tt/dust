@@ -36,15 +36,6 @@ app.get(
   validate("param", ParamsSchema),
   async (ctx): HandlerResult<PokeFetchAssistantTemplateResponse> => {
     const { tId: templateId } = ctx.req.valid("param");
-    if (!templateId) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: {
-          type: "template_not_found",
-          message: "Could not find the template.",
-        },
-      });
-    }
 
     const template = await TemplateResource.fetchByExternalId(templateId);
     if (!template) {
@@ -66,15 +57,6 @@ app.patch(
   validate("param", ParamsSchema),
   async (ctx): HandlerResult<PokeCreateTemplateResponseBody> => {
     const { tId: templateId } = ctx.req.valid("param");
-    if (!templateId) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: {
-          type: "template_not_found",
-          message: "Could not find the template.",
-        },
-      });
-    }
 
     const body = await ctx.req.json().catch(() => null);
     const bodyValidation = CreateTemplateFormSchema.decode(body);
@@ -156,15 +138,6 @@ app.delete(
   async (ctx): HandlerResult<PokeCreateTemplateResponseBody> => {
     const auth = ctx.get("auth");
     const { tId: templateId } = ctx.req.valid("param");
-    if (!templateId) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: {
-          type: "template_not_found",
-          message: "Could not find the template.",
-        },
-      });
-    }
 
     const template = await TemplateResource.fetchByExternalId(templateId);
     if (!template) {

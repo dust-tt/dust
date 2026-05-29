@@ -27,15 +27,6 @@ app.get(
   async (ctx): HandlerResult<PokeGetSkillDetails> => {
     const auth = ctx.get("auth");
     const { sId } = ctx.req.valid("param");
-    if (!sId) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid skill ID.",
-        },
-      });
-    }
 
     const skill = await SkillResource.fetchById(auth, sId);
     if (!skill) {
