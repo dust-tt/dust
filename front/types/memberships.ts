@@ -22,7 +22,10 @@ export function isMembershipOriginType(
   return MEMBERSHIP_ORIGIN_TYPES.includes(value as MembershipOriginType);
 }
 
-export const MEMBERSHIP_SEAT_TYPES = [
+// Billable seat types — each maps to a Metronome product. Kept as the single
+// source of truth so the full seat-type union and the billable subset can't
+// drift apart.
+export const BILLABLE_SEAT_TYPES = [
   "free",
   "workspace",
   "workspace_yearly",
@@ -30,6 +33,14 @@ export const MEMBERSHIP_SEAT_TYPES = [
   "pro_yearly",
   "max",
   "max_yearly",
+] as const;
+
+export const MEMBERSHIP_SEAT_TYPES = [
+  // `none` is a special seat type for members who could not be assigned any
+  // billable seat (every billable tier was at its configured `max`). Members
+  // on `none` consume no billable seat and cannot send messages.
+  "none",
+  ...BILLABLE_SEAT_TYPES,
 ] as const;
 
 export type MembershipSeatType = (typeof MEMBERSHIP_SEAT_TYPES)[number];
@@ -41,6 +52,16 @@ export function isMembershipSeatType(
     typeof value === "string" &&
     MEMBERSHIP_SEAT_TYPES.includes(value as MembershipSeatType)
   );
+}
+
+// A "billable" seat type is any seat type other than `none`. `none` members
+// hold no seat and are excluded from Metronome seat billing.
+export type BillableSeatType = (typeof BILLABLE_SEAT_TYPES)[number];
+
+export function isBillableSeatType(
+  value: MembershipSeatType
+): value is BillableSeatType {
+  return value !== "none";
 }
 
 // Per-user credit state on a membership. Only models the per-user dimension, the

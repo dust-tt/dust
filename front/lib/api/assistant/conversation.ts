@@ -2411,6 +2411,28 @@ async function checkMessagesLimit(
   const plan = auth.subscription()?.plan;
   const user = auth.user();
   if (owner.metronomeCustomerId && plan && isCreditPricedPlan(plan)) {
+    // Members with the `none` seat type hold no billable seat (every seat tier
+    // was at its configured max when they joined) and cannot send messages
+    // until a seat frees up. API-key calls without a user are unaffected.
+    if (user) {
+      const membership =
+        await MembershipResource.getActiveMembershipOfUserInWorkspace({
+          user,
+          workspace: owner,
+        });
+      if (membership?.seatType === "none") {
+        return new Err({
+          status_code: 403,
+          api_error: {
+            type: "no_seat",
+            message:
+              "You don't have a seat in this workspace. Ask a workspace admin " +
+              "to assign you one to start sending messages.",
+          },
+        });
+      }
+    }
+
     const blockedReason = user
       ? await isUserBlocked(owner.sId, user.sId)
       : (await isApiBlocked(owner.sId))

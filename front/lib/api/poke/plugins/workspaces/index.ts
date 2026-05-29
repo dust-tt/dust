@@ -22,6 +22,7 @@ export * from "./manage_authorized_domains";
 export * from "./manage_conversation_kill_switch";
 export * from "./manage_credit_usage_configuration";
 export * from "./manage_programmatic_usage_configuration";
+export * from "./manage_seat_limits";
 export * from "./manage_workspace_kill_switch";
 export * from "./project_task_details";
 export * from "./reinforcement_workflow";

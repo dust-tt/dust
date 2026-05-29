@@ -118,6 +118,20 @@ export type FreeSeatCounts = {
 };
 
 /**
+ * Per-seat-type max cap (`maxSeats`) gating which tier a new membership can be
+ * assigned. Sourced from `WorkspaceSeatLimitResource.fetchByWorkspace`. A tier
+ * whose active count has reached its `maxSeats` is skipped; if every tier is
+ * capped the resolver falls through to `none`. Seat types absent from the map
+ * are uncapped.
+ */
+export type SeatMaxCounts = {
+  // Active member count per seat type, right now.
+  counts: Partial<Record<MembershipSeatType, number>>;
+  // Configured maxSeats per seat type (null/absent = uncapped).
+  maxBySeatType: Map<MembershipSeatType, number | null>;
+};
+
+/**
  * Returns the seat type to assign to a new membership on this contract.
  *
  * The default is derived from the contract itself — no rate-card custom
@@ -142,8 +156,17 @@ export type FreeSeatCounts = {
  *   - `freeSeatCounts.lifetime >= freeSeatLimits.maxLifetimeFreeUsers`
  *     (and the limit is not `-1`).
  *
- * Returns `undefined` when no remaining tier is assignable (e.g. a
- * free-only contract that has exhausted its lifetime cap).
+ * When a per-seat-type max cap is configured (`seatMaxCounts`), a tier whose
+ * active count has reached its `maxSeats` is skipped — the resolver advances
+ * to the next tier. When every billable tier is capped (or otherwise
+ * unassignable), the resolver returns `"none"` rather than failing: the new
+ * member joins without a seat and simply cannot send messages until one frees
+ * up.
+ *
+ * Returns `"none"` when the contract bills seats but no tier is assignable
+ * (e.g. every tier at its max, or a free-only contract that has exhausted its
+ * lifetime cap). Returns `"workspace"` for legacy contracts with no seat
+ * subscriptions at all.
  *
  * The workspace-wide active-member cap (`plan.limits.users.maxUsers`) is
  * NOT enforced here — it's already enforced upstream by
@@ -158,13 +181,15 @@ export function getDefaultSeatTypeForContract(
     useFreeSeat = true,
     freeSeatCounts,
     freeSeatLimits,
+    seatMaxCounts,
   }: {
     isReturningMember?: boolean;
     useFreeSeat?: boolean;
     freeSeatCounts?: FreeSeatCounts;
     freeSeatLimits?: FreeSeatLimits;
+    seatMaxCounts?: SeatMaxCounts;
   } = {}
-): MembershipSeatType | undefined {
+): MembershipSeatType {
   const seatTypesOnContract = [
     ...getSeatSubscriptionsFromContract(contract, productSeatTypes).keys(),
   ];
@@ -202,9 +227,22 @@ export function getDefaultSeatTypeForContract(
         continue;
       }
     }
+    // Skip any tier that has reached its configured max-seat cap.
+    if (seatMaxCounts) {
+      const max = seatMaxCounts.maxBySeatType.get(seatType);
+      if (
+        max !== undefined &&
+        max !== null &&
+        (seatMaxCounts.counts[seatType] ?? 0) >= max
+      ) {
+        continue;
+      }
+    }
     return seatType;
   }
-  return undefined;
+  // The contract bills seats but no tier is assignable — assign no seat
+  // instead of rejecting the membership.
+  return "none";
 }
 
 /**

@@ -21,6 +21,7 @@ import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { WorkspaceSeatLimitResource } from "@app/lib/resources/workspace_seat_limit_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -91,33 +92,41 @@ async function resolveSeatTypeForNewMembership(
   // otherwise.
   const limitsActive =
     planLimits.maxFreeUsers !== -1 || planLimits.maxLifetimeFreeUsers !== -1;
-  const [productSeatTypes, isReturningMember, freeSeatCounts] =
-    await Promise.all([
-      getProductSeatTypes(),
-      MembershipResource.hasAnyMembershipOfUserInWorkspace({ user, workspace }),
-      limitsActive
-        ? MembershipResource.getFreeSeatCounts({ workspace })
-        : Promise.resolve(undefined),
-    ]);
-  const defaultSeatType = getDefaultSeatTypeForContract(
-    contract,
+  const [
     productSeatTypes,
-    {
-      isReturningMember,
-      useFreeSeat,
-      freeSeatCounts,
-      freeSeatLimits: {
-        maxActiveFreeUsers: planLimits.maxFreeUsers,
-        maxLifetimeFreeUsers: planLimits.maxLifetimeFreeUsers,
-      },
-    }
-  );
-  if (!defaultSeatType) {
-    throw new Error(
-      `Cannot resolve a seat type for user ${user.sId} in workspace ${workspace.sId}: contract has seat subscriptions but no tier is assignable${isReturningMember ? " (returning user; `free` is one-shot)" : ""}.`
-    );
+    isReturningMember,
+    freeSeatCounts,
+    seatLimits,
+    seatCounts,
+  ] = await Promise.all([
+    getProductSeatTypes(),
+    MembershipResource.hasAnyMembershipOfUserInWorkspace({ user, workspace }),
+    limitsActive
+      ? MembershipResource.getFreeSeatCounts({ workspace })
+      : Promise.resolve(undefined),
+    WorkspaceSeatLimitResource.fetchByWorkspace({ workspace }),
+    MembershipResource.getActiveSeatTypeCountsForWorkspace({ workspace }),
+  ]);
+
+  const maxBySeatType = new Map<MembershipSeatType, number | null>();
+  for (const [seatType, limit] of seatLimits) {
+    maxBySeatType.set(seatType, limit.maxSeats);
   }
-  return defaultSeatType;
+
+  // `getDefaultSeatTypeForContract` returns `"none"` when the contract bills
+  // seats but no tier is assignable (every tier at its configured max, or a
+  // free-only contract that exhausted its cap). The membership is created
+  // anyway — the user just holds no seat and cannot send messages.
+  return getDefaultSeatTypeForContract(contract, productSeatTypes, {
+    isReturningMember,
+    useFreeSeat,
+    freeSeatCounts,
+    freeSeatLimits: {
+      maxActiveFreeUsers: planLimits.maxFreeUsers,
+      maxLifetimeFreeUsers: planLimits.maxLifetimeFreeUsers,
+    },
+    seatMaxCounts: { counts: seatCounts, maxBySeatType },
+  });
 }
 
 /**

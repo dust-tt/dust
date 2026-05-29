@@ -16,7 +16,10 @@ import {
   useAwuPurchaseInfo,
   useSeatPlan,
 } from "@app/lib/swr/credits";
-import { useMembersUsage } from "@app/lib/swr/memberships";
+import {
+  useMembersUsage,
+  useUpdateMemberSeatType,
+} from "@app/lib/swr/memberships";
 import {
   usePerSeatPricing,
   useWorkspaceSeatAvailability,
@@ -178,6 +181,22 @@ export function UsagePage() {
   const { seatPlans } = useSeatPlan({
     workspaceId: owner.sId,
   });
+
+  const { doUpdateSeatType } = useUpdateMemberSeatType({
+    workspaceId: owner.sId,
+  });
+
+  const onRemoveSeat = useCallback(
+    (member: MemberUsageType) => {
+      void doUpdateSeatType({
+        memberId: member.sId,
+        memberName: member.name,
+        seatType: "none",
+        isCancellingScheduledChange: false,
+      });
+    },
+    [doUpdateSeatType]
+  );
 
   const { perSeatPricing } = usePerSeatPricing({
     workspaceId: owner.sId,
@@ -398,6 +417,7 @@ export function UsagePage() {
             seatTypeFilter={seatTypeFilter}
             isSeatBased={isSeatBased}
             onChangeSeat={setChangeSeatMember}
+            onRemoveSeat={onRemoveSeat}
             onEditSpendLimit={setEditSpendLimitMember}
             pagination={pagination}
             setPagination={setPagination}

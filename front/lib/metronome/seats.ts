@@ -1,6 +1,7 @@
 import {
   getMetronomeContractById,
   getMetronomeSubscriptionAssignedSeatIds,
+  getMetronomeSubscriptionSeatState,
   updateSubscriptionQuantity,
   updateSubscriptionSeats,
 } from "@app/lib/metronome/client";
@@ -13,6 +14,8 @@ import {
 } from "@app/lib/metronome/seat_types";
 import type { BillingFrequency } from "@app/lib/metronome/types";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import type { SeatLimit } from "@app/lib/resources/workspace_seat_limit_resource";
+import { WorkspaceSeatLimitResource } from "@app/lib/resources/workspace_seat_limit_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
   bestEffortInvalidateCacheWithRedis,
@@ -122,6 +125,10 @@ export type SeatChangeOutcome =
  * Branches:
  * - Same seat as current: `cancelled` if a pending future change exists,
  *   else `noop`.
+ * - Target `none` (removing the seat): always `deferred` to the next
+ *   billing-period start — the member keeps the access they've paid for
+ *   through the current period, even if the previous tier had a zero
+ *   allocation (e.g. legacy workspace seats).
  * - New allocation ≥ previous: `immediate` (the user gains/keeps access
  *   right away).
  * - New allocation < previous: `deferred` at the next billing-period start
@@ -156,12 +163,15 @@ export function classifySeatChange({
     newSeatType,
     productSeatTypes
   );
-  if (newAllocation >= previousAllocation) {
+  // Removing a seat (`none`) always defers to the end of the current period,
+  // regardless of allocation comparison. Any other change that keeps or gains
+  // allocation takes effect immediately.
+  if (newSeatType !== "none" && newAllocation >= previousAllocation) {
     return { kind: "immediate" };
   }
 
-  // Downgrade — defer to the start of the next billing period so the user
-  // keeps the richer access they've already paid for. Billing-period
+  // Downgrade (or removal) — defer to the start of the next billing period so
+  // the user keeps the richer access they've already paid for. Billing-period
   // boundaries aren't anchored to midnight on the contract, so ceil to
   // midnight UTC to match how the invoice timestamp is displayed.
   const nextStartingAt = (contract.subscriptions ?? [])
@@ -293,13 +303,24 @@ export async function syncSeatCount({
       }
     }
 
+    // Per-seat-type min/max configuration for this workspace (used to clamp
+    // the count sent to Metronome). Seat types without a row are uncapped /
+    // have no floor.
+    const seatLimits = await WorkspaceSeatLimitResource.fetchByWorkspace({
+      workspace,
+    });
+
     // Surface memberships whose seat type has no matching subscription on the
-    // contract — those users will not be billed.
+    // contract — those users will not be billed. `none` is intentionally
+    // unbilled (the member holds no seat), so it is excluded from this warning.
     const coveredSeatTypes = new Set(
       seatSubscriptions.map(({ seatType }) => seatType)
     );
     const uncoveredUsersBySeatType = new Map<MembershipSeatType, string[]>();
     for (const [userSId, seatType] of currentSeatByUserSId) {
+      if (seatType === "none") {
+        continue;
+      }
       if (!coveredSeatTypes.has(seatType)) {
         const bucket = uncoveredUsersBySeatType.get(seatType) ?? [];
         bucket.push(userSId);
@@ -365,6 +386,7 @@ export async function syncSeatCount({
     for (const { sub, seatType } of seatSubscriptions) {
       const subscriptionId = sub.id!;
       const quantityMode = sub.quantity_management_mode ?? "QUANTITY_ONLY";
+      const seatLimit = seatLimits.get(seatType);
 
       if (quantityMode === "SEAT_BASED") {
         // Now segment.
@@ -374,6 +396,7 @@ export async function syncSeatCount({
           subscriptionId,
           seatType,
           desiredSIds: desiredSIdsAt(seatType, Date.now()),
+          seatLimit,
           startingAt,
           workspaceId: workspace.sId,
         });
@@ -391,6 +414,7 @@ export async function syncSeatCount({
             subscriptionId,
             seatType,
             desiredSIds: desiredSIdsAt(seatType, tMs),
+            seatLimit,
             startingAt: at.toISOString(),
             coveringDate: at,
             workspaceId: workspace.sId,
@@ -404,22 +428,31 @@ export async function syncSeatCount({
         // QUANTITY_ONLY: only sync the "now" total. Scheduled changes within
         // a quantity-only seat tier are not modeled — they're rare in practice
         // (free / unlimited tiers) and Metronome doesn't bill them per-seat.
-        const nowQuantity = desiredSIdsAt(seatType, Date.now()).length;
+        const actualQuantity = desiredSIdsAt(seatType, Date.now()).length;
+        // Clamp the billed quantity to the configured [min, max]. Below `min`
+        // we still bill the floor; we never bill above `max` (assignment
+        // already prevents exceeding it, this is a defensive clamp).
+        const quantity = clampSeatCount(actualQuantity, seatLimit);
         logger.info(
           {
             workspaceId: workspace.sId,
             contractId,
             subscriptionId,
             seatType,
-            quantity: nowQuantity,
+            actualQuantity,
+            quantity,
+            minSeats: seatLimit?.minSeats,
+            maxSeats: seatLimit?.maxSeats,
           },
-          "[Metronome] Updating seat quantity"
+          quantity !== actualQuantity
+            ? "[Metronome] Updating seat quantity (clamped to configured min/max)"
+            : "[Metronome] Updating seat quantity"
         );
         const updateResult = await updateSubscriptionQuantity({
           metronomeCustomerId,
           contractId,
           subscriptionId,
-          quantity: nowQuantity,
+          quantity,
           startingAt,
         });
         if (updateResult.isErr()) {
@@ -441,9 +474,33 @@ export async function syncSeatCount({
 }
 
 /**
+ * Clamp a seat count to the configured [minSeats, maxSeats]. Counts below
+ * `minSeats` are raised to the floor; counts above `maxSeats` are capped.
+ * A missing limit / `null` max means no bound on that side.
+ */
+function clampSeatCount(
+  count: number,
+  seatLimit: SeatLimit | undefined
+): number {
+  let clamped = count;
+  if (seatLimit) {
+    clamped = Math.max(clamped, seatLimit.minSeats);
+    if (seatLimit.maxSeats !== null) {
+      clamped = Math.min(clamped, seatLimit.maxSeats);
+    }
+  }
+  return clamped;
+}
+
+/**
  * Reconcile one SEAT_BASED segment for a single subscription. Reads the
  * current assignment from Metronome at `coveringDate` (defaults to now) and
  * applies only the delta. Idempotent against repeated invocations.
+ *
+ * When a `minSeats` floor is configured and fewer real users are assigned than
+ * the floor, the shortfall is added as *unassigned* seats so the contracted
+ * minimum is still billed. The unassigned count is reconciled to the exact
+ * desired value (added or removed) so repeated runs converge.
  */
 async function reconcileSeatBasedSegment({
   metronomeCustomerId,
@@ -451,6 +508,7 @@ async function reconcileSeatBasedSegment({
   subscriptionId,
   seatType,
   desiredSIds,
+  seatLimit,
   startingAt,
   coveringDate,
   workspaceId,
@@ -460,11 +518,12 @@ async function reconcileSeatBasedSegment({
   subscriptionId: string;
   seatType: MembershipSeatType;
   desiredSIds: string[];
+  seatLimit?: SeatLimit;
   startingAt?: string;
   coveringDate?: Date;
   workspaceId: string;
 }): Promise<Result<boolean, Error>> {
-  const currentResult = await getMetronomeSubscriptionAssignedSeatIds({
+  const currentResult = await getMetronomeSubscriptionSeatState({
     metronomeCustomerId,
     contractId,
     subscriptionId,
@@ -473,13 +532,52 @@ async function reconcileSeatBasedSegment({
   if (currentResult.isErr()) {
     return new Err(currentResult.error);
   }
+  const { assignedSeatIds, unassignedSeats: currentUnassigned } =
+    currentResult.value;
 
   const desired = new Set(desiredSIds);
-  const current = new Set(currentResult.value);
+  const current = new Set(assignedSeatIds);
   const addSeatIds = desiredSIds.filter((id) => !current.has(id));
-  const removeSeatIds = currentResult.value.filter((id) => !desired.has(id));
+  const removeSeatIds = assignedSeatIds.filter((id) => !desired.has(id));
 
-  if (addSeatIds.length === 0 && removeSeatIds.length === 0) {
+  // Assignment enforces the max cap upstream; warn (don't clamp seat IDs) if
+  // we somehow ended up over it so the discrepancy is visible.
+  if (
+    seatLimit?.maxSeats !== undefined &&
+    seatLimit?.maxSeats !== null &&
+    desiredSIds.length > seatLimit.maxSeats
+  ) {
+    logger.warn(
+      {
+        workspaceId,
+        contractId,
+        subscriptionId,
+        seatType,
+        assignedCount: desiredSIds.length,
+        maxSeats: seatLimit.maxSeats,
+      },
+      "[Metronome] Assigned seats exceed configured max — billing all assigned seats"
+    );
+  }
+
+  // Top up to the `minSeats` floor with unassigned seats when fewer real
+  // users are assigned than the floor.
+  const desiredUnassigned = Math.max(
+    0,
+    (seatLimit?.minSeats ?? 0) - desiredSIds.length
+  );
+  const addUnassignedSeats = Math.max(0, desiredUnassigned - currentUnassigned);
+  const removeUnassignedSeats = Math.max(
+    0,
+    currentUnassigned - desiredUnassigned
+  );
+
+  if (
+    addSeatIds.length === 0 &&
+    removeSeatIds.length === 0 &&
+    addUnassignedSeats === 0 &&
+    removeUnassignedSeats === 0
+  ) {
     return new Ok(false);
   }
 
@@ -491,6 +589,9 @@ async function reconcileSeatBasedSegment({
       seatType,
       addCount: addSeatIds.length,
       removeCount: removeSeatIds.length,
+      addUnassignedSeats,
+      removeUnassignedSeats,
+      minSeats: seatLimit?.minSeats,
       startingAt,
     },
     "[Metronome] Updating seat-based subscription assignments"
@@ -502,6 +603,8 @@ async function reconcileSeatBasedSegment({
     fromSubscriptionId: subscriptionId,
     addSeatIds,
     removeSeatIds,
+    addUnassignedSeats,
+    removeUnassignedSeats,
     startingAt,
   });
   if (updateResult.isErr()) {

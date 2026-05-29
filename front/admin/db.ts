@@ -134,6 +134,7 @@ import { WakeUpModel } from "@app/lib/resources/storage/models/wakeup";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import { WorkspaceSandboxEnvVarModel } from "@app/lib/resources/storage/models/workspace_sandbox_env_var";
+import { WorkspaceSeatLimitModel } from "@app/lib/resources/storage/models/workspace_seat_limit";
 import { WorkspaceVerificationAttemptModel } from "@app/lib/resources/storage/models/workspace_verification_attempt";
 import logger from "@app/logger/logger";
 import { sendInitDbMessage } from "@app/types/shared/deployment";
@@ -257,6 +258,7 @@ export function loadAllModels() {
     UserProjectPreferencesModel,
     WorkspaceSensitivityLabelConfigModel,
     WorkspaceSandboxEnvVarModel,
+    WorkspaceSeatLimitModel,
   ];
 }
 

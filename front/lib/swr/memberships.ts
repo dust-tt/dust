@@ -314,14 +314,25 @@ export function useUpdateMemberSeatType({
 
       const body = await res.json();
       const isDeferred = !!body?.scheduledSeatChangeAt;
+      const isRemoval = seatType === "none";
       sendNotification({
         type: "success",
-        title: isDeferred ? "Seat change scheduled" : "Seat updated",
-        description: isDeferred
-          ? `${memberName}'s seat will change to ${seatType} at the next credit refresh.`
-          : isCancellingScheduledChange
-            ? `${memberName}'s scheduled seat change has been cancelled.`
-            : `${memberName}'s seat has been updated to ${seatType}.`,
+        title: isRemoval
+          ? isDeferred
+            ? "Seat removal scheduled"
+            : "Seat removed"
+          : isDeferred
+            ? "Seat change scheduled"
+            : "Seat updated",
+        description: isRemoval
+          ? isDeferred
+            ? `${memberName}'s seat will be removed at the next credit refresh. They keep access until then.`
+            : `${memberName}'s seat has been removed. They can no longer send messages until a seat is reassigned.`
+          : isDeferred
+            ? `${memberName}'s seat will change to ${seatType} at the next credit refresh.`
+            : isCancellingScheduledChange
+              ? `${memberName}'s scheduled seat change has been cancelled.`
+              : `${memberName}'s seat has been updated to ${seatType}.`,
       });
 
       await invalidateMembersUsage(workspaceId);

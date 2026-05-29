@@ -35,7 +35,11 @@ import { useEffect, useRef, useState } from "react";
 // Per-seat-type display icon. The label / name comes from the API
 // (`SeatTypeInfo.name`) so adding a new seat tier only requires tagging the
 // product in Metronome — no code change here.
-const SEAT_TYPE_ICONS: Record<MembershipSeatType, React.ComponentType> = {
+// Billable seat types only — `none` is never offered in the seat picker, so it
+// has no icon. Lookups fall back to `SeatProIcon`.
+const SEAT_TYPE_ICONS: Partial<
+  Record<MembershipSeatType, React.ComponentType>
+> = {
   free: SeatFreeIcon,
   pro: SeatProIcon,
   pro_yearly: SeatProIcon,
@@ -134,7 +138,7 @@ function SeatCard({
   badge,
   onClick,
 }: SeatCardProps) {
-  const Icon = SEAT_TYPE_ICONS[seatType];
+  const Icon = SEAT_TYPE_ICONS[seatType] ?? SeatProIcon;
 
   return (
     <Card
