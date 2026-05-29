@@ -1,11 +1,17 @@
 import { createPlugin } from "@app/lib/api/poke/types";
-import { resolveAwuPurchaseDiscountPercent } from "@app/lib/credits/awu_discount";
+import {
+  computeAwuInvoiceUnitPrice,
+  resolveAwuPurchaseCurrency,
+  resolveAwuPurchaseDiscountPercent,
+} from "@app/lib/credits/awu_discount";
+import { MAX_AWU_DISCOUNT_PERCENT } from "@app/lib/credits/awu_purchase_constants";
 import {
   createMetronomeCommit,
   createMetronomeCredit,
 } from "@app/lib/metronome/client";
 import {
   AWU_PRIORITY_PURCHASED_COMMIT,
+  CURRENCY_TO_CREDIT_TYPE_ID,
   getCreditTypeAwuId,
   getProductFreeCreditId,
   getProductPrepaidCommitId,
@@ -25,6 +31,15 @@ const GrantAwuCreditsArgsSchema = z
       .positive("Amount must be greater than 0")
       .finite("Amount must be a valid number"),
     isFreeCredit: z.boolean(),
+    overrideDiscount: z.boolean(),
+    discountPercent: z
+      .number()
+      .min(0, "Discount must be at least 0%")
+      .max(
+        MAX_AWU_DISCOUNT_PERCENT,
+        `Discount cannot exceed ${MAX_AWU_DISCOUNT_PERCENT}%`
+      )
+      .finite("Discount must be a valid number"),
     startDate: z.coerce.date(),
     expirationDate: z.coerce.date(),
     confirm: z.boolean(),
@@ -41,7 +56,7 @@ export const grantAwuCreditsPlugin = createPlugin({
     description:
       "Grant Agentic Work Unit (AWU) credits to a workspace at the Metronome customer level. " +
       "Choose between free credits (no invoice, given for free) or prepaid commits (paid commit, " +
-      "assumes the customer is already invoiced separately).",
+      "the customer will be invoiced).",
     resourceTypes: ["workspaces"],
     args: {
       amountCredits: {
@@ -56,6 +71,22 @@ export const grantAwuCreditsPlugin = createPlugin({
         label: "Free Credit (no invoice)",
         description:
           "When enabled, grants free AWU credits. When disabled, grants a commit (the customer will be invoiced through Metronome).",
+      },
+      overrideDiscount: {
+        type: "boolean",
+        variant: "toggle",
+        label: "Override Default Discount",
+        async: true,
+        asyncDescription: true,
+        dependsOn: { field: "isFreeCredit", value: false },
+      },
+      discountPercent: {
+        type: "number",
+        variant: "text",
+        async: true,
+        label: "AWU Discount (%)",
+        description: "Discount applied to the AWU commit invoice.",
+        dependsOn: { field: "overrideDiscount", value: true },
       },
       startDate: {
         type: "date",
@@ -81,10 +112,15 @@ export const grantAwuCreditsPlugin = createPlugin({
     const plan = auth.plan();
     return plan !== null && isCreditPricedPlan(plan);
   },
-  populateAsyncArgs: async () => {
+  populateAsyncArgs: async (auth) => {
+    const workspace = auth.getNonNullableWorkspace();
+    const defaultDiscount = await resolveAwuPurchaseDiscountPercent(auth);
+
     const today = new Date();
     const oneYearFromNow = addYears(today, 1);
     return new Ok({
+      overrideDiscountDescription: `Override the customer's default discount. Current default for ${workspace.name}: ${defaultDiscount}%`,
+      discountPercent: defaultDiscount,
       startDate: format(today, "yyyy-MM-dd"),
       expirationDate: format(oneYearFromNow, "yyyy-MM-dd"),
     });
@@ -126,7 +162,7 @@ export const grantAwuCreditsPlugin = createPlugin({
         amount: amountCredits,
         startingAt: startDate.toISOString(),
         endingBefore: expirationDate.toISOString(),
-        name: `Credits granted from Poke: ${amountCredits.toLocaleString()}`,
+        name: `Credits granted from Poke: ${amountCredits.toLocaleString()} credits`,
         idempotencyKey,
         priority: 1,
         applicableProductTags: ["usage"],
@@ -151,32 +187,63 @@ export const grantAwuCreditsPlugin = createPlugin({
       });
     }
 
-    // Mirror the discount semantics from `awu_purchase` (where a discount
-    // reduces the per-credit invoice price for the same credit count): the
-    // operator inputs the invoiced credit count, and we grant
-    // `amountCredits / (1 - discount%)` so the customer effectively pays a
-    // discounted per-credit rate against the invoice raised separately.
-    const discountPercent = await resolveAwuPurchaseDiscountPercent(auth);
-    const grantedAmount =
-      discountPercent > 0
-        ? Math.round(amountCredits / (1 - discountPercent / 100))
-        : amountCredits;
+    // Commit path: an invoice is raised through Metronome. The invoice
+    // unit price mirrors `awu_purchase` semantics — full AWU rate adjusted
+    // by the workspace's AWU discount, converted to Metronome's fiat unit.
+    // Metronome also requires `invoice_contract_id` whenever a customer-
+    // level commit ships with an `invoice_schedule`, so we need the
+    // workspace's active Metronome contract.
+    const metronomeContractId = auth.subscription()?.metronomeContractId;
+    if (!metronomeContractId) {
+      return new Err(
+        new Error(
+          `Workspace "${workspace.name}" has no active Metronome contract.`
+        )
+      );
+    }
+
+    const currencyResult = await resolveAwuPurchaseCurrency(workspace.sId);
+    if (currencyResult.isErr()) {
+      return new Err(
+        new Error(
+          `Failed to resolve billing currency: ${currencyResult.error.message}`
+        )
+      );
+    }
+    const currency = currencyResult.value;
+
+    const discountPercent = validatedArgs.overrideDiscount
+      ? validatedArgs.discountPercent
+      : await resolveAwuPurchaseDiscountPercent(auth);
+
+    const invoiceUnitPrice = computeAwuInvoiceUnitPrice({
+      amountCredits,
+      currency,
+      discountPercent,
+    });
 
     const commitName =
       discountPercent > 0
-        ? `Commits granted from Poke: ${grantedAmount.toLocaleString()} (${amountCredits.toLocaleString()} invoiced, ${discountPercent}% discount)`
-        : `Commits granted from Poke: ${grantedAmount.toLocaleString()}`;
+        ? `Commits granted from Poke: ${amountCredits.toLocaleString()} credits (${discountPercent}% discount)`
+        : `Commits granted from Poke: ${amountCredits.toLocaleString()} credits`;
 
     const result = await createMetronomeCommit({
       metronomeCustomerId,
       productId: getProductPrepaidCommitId(),
       creditTypeId: getCreditTypeAwuId(),
-      amount: grantedAmount,
+      amount: amountCredits,
       startingAt: startDate,
       endingBefore: expirationDate,
       name: commitName,
       idempotencyKey,
       priority: AWU_PRIORITY_PURCHASED_COMMIT,
+      invoiceSchedule: {
+        contractId: metronomeContractId,
+        creditTypeId: CURRENCY_TO_CREDIT_TYPE_ID[currency],
+        unitPrice: invoiceUnitPrice,
+        quantity: 1,
+        timestamp: startDate,
+      },
     });
 
     if (result.isErr()) {
@@ -185,8 +252,9 @@ export const grantAwuCreditsPlugin = createPlugin({
           workspaceId: workspace.sId,
           metronomeCustomerId,
           amountCredits,
-          grantedAmount,
           discountPercent,
+          invoiceUnitPrice,
+          currency,
           error: result.error.message,
         },
         "[Poke Plugin] Failed to grant prepaid AWU commit in Metronome"
@@ -195,13 +263,11 @@ export const grantAwuCreditsPlugin = createPlugin({
     }
 
     const discountSuffix =
-      discountPercent > 0
-        ? ` (${amountCredits.toLocaleString()} invoiced credits × ${discountPercent}% discount bonus)`
-        : "";
+      discountPercent > 0 ? ` with ${discountPercent}% discount` : "";
 
     return new Ok({
       display: "text",
-      value: `Successfully granted ${grantedAmount.toLocaleString()} AWU credits as a prepaid commit${discountSuffix} (${formattedStart} to ${formattedEnd}). No invoice was generated by this plugin — make sure the customer is billed separately.`,
+      value: `Successfully granted ${amountCredits.toLocaleString()} AWU credits as a prepaid commit${discountSuffix} (${formattedStart} to ${formattedEnd}). Metronome will invoice the customer.`,
     });
   },
 });

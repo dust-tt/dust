@@ -1231,6 +1231,14 @@ export async function updateSubscriptionSeats({
 
 /**
  * Add paid credits (=commits) to a Metronome customer.
+ *
+ * When `invoiceSchedule` is provided, Metronome also raises the matching
+ * invoice for the commit (pushed to Stripe through the integration).
+ * `unitPrice` must be in Metronome's fiat unit for the invoice credit type
+ * (cents for USD, whole units for other currencies — see `metronomeAmount`).
+ * `contractId` is required by Metronome whenever an `invoice_schedule` is
+ * set on a customer-level commit — it tells Metronome which contract
+ * should host the invoice line.
  */
 export async function createMetronomeCommit({
   metronomeCustomerId,
@@ -1242,6 +1250,7 @@ export async function createMetronomeCommit({
   name,
   idempotencyKey,
   priority,
+  invoiceSchedule,
 }: {
   metronomeCustomerId: string;
   productId: string;
@@ -1252,6 +1261,13 @@ export async function createMetronomeCommit({
   idempotencyKey: string;
   name?: string;
   priority?: number;
+  invoiceSchedule?: {
+    contractId: string;
+    creditTypeId: string;
+    unitPrice: number;
+    quantity: number;
+    timestamp: Date;
+  };
 }): Promise<Result<{ id: string } | null, Error>> {
   // Metronome requires dates on hour boundaries — round down start, round up end.
   const roundedStartingAt = floorToHourISO(startingAt);
@@ -1265,6 +1281,7 @@ export async function createMetronomeCommit({
         amount,
         roundedStartingAt,
         roundedEndingBefore,
+        hasInvoiceSchedule: invoiceSchedule !== undefined,
       },
       "[Metronome] Adding commits to customer"
     );
@@ -1286,6 +1303,21 @@ export async function createMetronomeCommit({
           },
         ],
       },
+      ...(invoiceSchedule
+        ? {
+            invoice_contract_id: invoiceSchedule.contractId,
+            invoice_schedule: {
+              credit_type_id: invoiceSchedule.creditTypeId,
+              schedule_items: [
+                {
+                  unit_price: invoiceSchedule.unitPrice,
+                  quantity: invoiceSchedule.quantity,
+                  timestamp: floorToHourISO(invoiceSchedule.timestamp),
+                },
+              ],
+            },
+          }
+        : {}),
       uniqueness_key: idempotencyKey,
     });
 
