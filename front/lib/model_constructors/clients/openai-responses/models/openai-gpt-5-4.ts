@@ -30,7 +30,8 @@ const maxOutputTokens = 128_000;
 const configSchema = z.union([
   inputConfigSchema.extend({
     reasoning: z.object({ effort: z.enum(NON_NULL_REASONING_EFFORTS) }),
-    temperature: z.literal(1).optional(),
+    // Reasoning requires temperature=1; accept any value but coerce to 1.
+    temperature: temperatureSchema.optional().transform(() => 1 as const),
   }),
   inputConfigSchema.extend({
     reasoning: z

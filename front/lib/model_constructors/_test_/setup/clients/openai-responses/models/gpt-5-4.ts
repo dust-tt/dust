@@ -13,61 +13,52 @@ export const openaiGptFiveDotFourSetup: Setup = {
     // Does not support minimal reasoning effort
     "simple/no-tools/t-default/r-minimal": {
       checkers: [INPUT_CONFIGURATION_ERROR],
-      shouldRun: false,
+      shouldRun: true,
     },
     "simple/no-tools/t-0/r-minimal": {
       checkers: [INPUT_CONFIGURATION_ERROR],
-      shouldRun: false,
+      shouldRun: true,
     },
     "simple/no-tools/t-0.1/r-minimal": {
       checkers: [INPUT_CONFIGURATION_ERROR],
-      shouldRun: false,
+      shouldRun: true,
     },
     "simple/no-tools/t-1/r-minimal": {
       checkers: [INPUT_CONFIGURATION_ERROR],
-      shouldRun: false,
+      shouldRun: true,
     },
 
-    // Can not set temperature <> 1 with reasoning effort different than "none"
+    // Temperature overwritten to 1 when reasoning is not none
     "simple/no-tools/t-0/r-low": {
-      checkers: [INPUT_CONFIGURATION_ERROR],
-      shouldRun: false,
+      shouldRun: true,
     },
     "simple/no-tools/t-0/r-medium": {
-      checkers: [INPUT_CONFIGURATION_ERROR],
-      shouldRun: false,
+      shouldRun: true,
     },
     "simple/no-tools/t-0/r-high": {
-      checkers: [INPUT_CONFIGURATION_ERROR],
-      shouldRun: false,
+      shouldRun: true,
     },
     "simple/no-tools/t-0/r-maximal": {
-      checkers: [INPUT_CONFIGURATION_ERROR],
-      shouldRun: false,
+      shouldRun: true,
     },
     "simple/no-tools/t-0.1/r-low": {
-      checkers: [INPUT_CONFIGURATION_ERROR],
-      shouldRun: false,
+      shouldRun: true,
     },
     "simple/no-tools/t-0.1/r-medium": {
-      checkers: [INPUT_CONFIGURATION_ERROR],
-      shouldRun: false,
+      shouldRun: true,
     },
     "simple/no-tools/t-0.1/r-high": {
-      checkers: [INPUT_CONFIGURATION_ERROR],
-      shouldRun: false,
+      shouldRun: true,
     },
     "simple/no-tools/t-0.1/r-maximal": {
-      checkers: [INPUT_CONFIGURATION_ERROR],
-      shouldRun: false,
+      shouldRun: true,
     },
     "calc/calc/t-0.1/r-medium": {
-      checkers: [INPUT_CONFIGURATION_ERROR],
-      shouldRun: false,
+      shouldRun: true,
     },
 
     // Run normally
-    "simple/no-tools/t-default/r-default": { shouldRun: false, debug: false },
+    "simple/no-tools/t-default/r-default": { shouldRun: true, debug: false },
     "simple/no-tools/t-default/r-none": { shouldRun: false },
     "simple/no-tools/t-default/r-low": { shouldRun: false },
     "simple/no-tools/t-default/r-medium": { shouldRun: false },
@@ -88,10 +79,13 @@ export const openaiGptFiveDotFourSetup: Setup = {
     "calc/calc/t-default/r-medium": { shouldRun: false },
 
     "calc/calc/t-default/r-default/force-tool-default": {
-      shouldRun: false,
+      shouldRun: true,
     },
     "calc/calc/t-default/r-default/force-tool": {
-      shouldRun: false,
+      shouldRun: true,
+    },
+    "calc/calc/t-default/r-none/force-tool": {
+      shouldRun: true,
     },
 
     "reasoning/no-tools/t-default/r-none": { shouldRun: false },
