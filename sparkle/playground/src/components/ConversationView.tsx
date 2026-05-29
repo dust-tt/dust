@@ -453,21 +453,6 @@ export function ConversationView({
 
   const breadcrumbItems: BreadcrumbsItem[] = [];
 
-  if (showBackButton && projectTitle) {
-    if (onBack) {
-      breadcrumbItems.push({
-        label: projectTitle,
-        icon: ArrowLeftIcon,
-        onClick: onBack,
-      });
-    } else {
-      breadcrumbItems.push({
-        label: projectTitle,
-        icon: ArrowLeftIcon,
-      });
-    }
-  }
-
   breadcrumbItems.push({
     label: displayTitle,
     onClick: () => {

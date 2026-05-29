@@ -1492,6 +1492,7 @@ function DustMain() {
         conversations={allConversations}
         users={mockUsers}
         agents={mockAgents}
+        currentUserId={user?.id}
         onConversationClick={(conversation) => {
           setShowProfileView(false);
           setPreviousSpaceId(null);

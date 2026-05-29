@@ -88,6 +88,7 @@ import {
   type User,
 } from "../data";
 import { getDataSourcesBySpaceId } from "../data/dataSources";
+import { getRandomGreetingForName } from "../data/greetings";
 import {
   buildPodTabOptions,
   getDefaultMainTabOrder,
@@ -148,6 +149,12 @@ function getRandomParticipants(conversation: Conversation) {
 export default function Pods_After() {
   // ── Bootstrap state ───────────────────────────────────────────────────────
   const [user, setUser] = useState<User | null>(null);
+  const [greeting, setGreeting] = useState<string>("");
+  useEffect(() => {
+    if (user) {
+      setGreeting(getRandomGreetingForName(user.firstName));
+    }
+  }, [user]);
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [conversationsWithMessages, setConversationsWithMessages] = useState<
     Conversation[]
@@ -985,6 +992,7 @@ export default function Pods_After() {
           conversations={allConversations}
           users={mockUsers}
           agents={mockAgents}
+          currentUserId={user.id}
           activeTab={inboxActiveTab}
           selectedConversationId={
             p3View?.kind === "conversation" ? p3View.conversationId : null
@@ -1095,7 +1103,7 @@ export default function Pods_After() {
       <div className="s-flex s-h-full s-w-full s-items-center s-justify-center s-bg-background dark:s-bg-background-night">
         <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6 s-px-4 s-py-8">
           <div className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
-            Welcome, {user.firstName}!
+            {greeting}
           </div>
           <InputBar placeholder="Ask a question" />
           <div className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
@@ -1319,6 +1327,12 @@ export default function Pods_After() {
                 size="sm"
                 icon={ChatBubbleBottomCenterTextIcon}
                 label="New"
+                onClick={() => {
+                  setP2View({ kind: "welcome" });
+                  setP3View(null);
+                  setP4Citation(null);
+                  setCameFromInbox(false);
+                }}
               />
               <DropdownMenu
                 open={isAgentsDropdownOpen}

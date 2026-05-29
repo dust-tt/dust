@@ -14,9 +14,10 @@ import {
   UniversalSearchItem,
 } from "@dust-tt/sparkle";
 import { cn } from "@sparkle/lib/utils";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { getAgentById } from "../data/agents";
+import { getRandomGreetingForName } from "../data/greetings";
 import type { Agent, Conversation, Space, User } from "../data/types";
 import { getUserById } from "../data/users";
 import { TaskItem } from "./TaskItem";
@@ -44,6 +45,7 @@ interface InboxViewProps {
   agents: Agent[];
   activeTab?: InboxTab;
   selectedConversationId?: string | null;
+  currentUserId?: string;
   onConversationClick?: (conversation: Conversation) => void;
   onMyPodClick?: () => void;
   onSpaceClick?: (space: Space) => void;
@@ -249,10 +251,18 @@ export function InboxView({
   agents,
   activeTab = "conversations",
   selectedConversationId = null,
+  currentUserId,
   onConversationClick,
   onMyPodClick,
   onSpaceClick,
 }: InboxViewProps) {
+  const currentUserFirstName = currentUserId
+    ? (getUserById(currentUserId)?.firstName ?? "there")
+    : "there";
+  const [greeting, setGreeting] = useState<string>("");
+  useEffect(() => {
+    setGreeting(getRandomGreetingForName(currentUserFirstName));
+  }, [currentUserFirstName]);
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(
     new Set()
   );
@@ -821,6 +831,11 @@ export function InboxView({
     <div className="s-flex s-h-full s-w-full s-flex-col s-bg-background dark:s-bg-background-night">
       <div className="s-flex s-h-full s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto s-px-4">
         <div className="s-mx-auto s-flex s-h-full s-w-full s-max-w-4xl s-flex-col s-gap-3 s-py-6">
+          {greeting && (
+            <h2 className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
+              {greeting}
+            </h2>
+          )}
           {activeTab === "conversations"
             ? renderConversationsTab()
             : renderTasksTab()}
