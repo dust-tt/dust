@@ -69,6 +69,7 @@ import type {
   SkillSourceType,
   SkillStatus,
   SkillType,
+  UsedBySkillType,
 } from "@app/types/assistant/skill_configuration";
 import type { AgentsUsageType } from "@app/types/data_source";
 import { SKILL_GROUP_PREFIX } from "@app/types/groups";
@@ -2037,6 +2038,79 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         }))
         .sort((a, b) => a.name.localeCompare(b.name));
       result.set(skill.sId, { count: agents.length, agents });
+    }
+
+    return result;
+  }
+
+  /**
+   * Batch fetch skill references for multiple child skills.
+   * Keyed by child skill sId to avoid collisions with global skills.
+   */
+  static async batchFetchUsedBySkills(
+    auth: Authenticator,
+    skills: SkillResource[]
+  ): Promise<Map<string, UsedBySkillType[]>> {
+    const result = new Map<string, UsedBySkillType[]>(
+      skills.map((skill) => [skill.sId, []])
+    );
+
+    const customSkills = skills.filter((skill) => !skill.globalSId);
+    if (customSkills.length === 0) {
+      return result;
+    }
+
+    const workspace = auth.getNonNullableWorkspace();
+    const childSkillModelIds = customSkills.map((skill) => skill.id);
+
+    const skillReferences = await SkillReferenceModel.findAll({
+      attributes: ["childSkillId", "parentSkillId"],
+      where: {
+        workspaceId: workspace.id,
+        childSkillId: {
+          [Op.in]: childSkillModelIds,
+        },
+      },
+    });
+
+    if (skillReferences.length === 0) {
+      return result;
+    }
+
+    const parentSkills = await this.fetchByModelIds(
+      auth,
+      uniq(skillReferences.map((reference) => reference.parentSkillId))
+    );
+
+    const parentSkillByModelId = new Map(
+      parentSkills.map((skill) => [skill.id, skill])
+    );
+    const childSkillIdToSkillId = new Map(
+      customSkills.map((skill) => [skill.id, skill.sId])
+    );
+
+    const usedBySkillsByChildSkillId = new Map<string, UsedBySkillType[]>();
+    for (const reference of skillReferences) {
+      const childSkillId = childSkillIdToSkillId.get(reference.childSkillId);
+      const parentSkill = parentSkillByModelId.get(reference.parentSkillId);
+      if (!childSkillId || !parentSkill) {
+        continue;
+      }
+
+      const usedBySkills = usedBySkillsByChildSkillId.get(childSkillId) ?? [];
+      usedBySkills.push({
+        sId: parentSkill.sId,
+        name: parentSkill.name,
+        icon: parentSkill.icon,
+      });
+      usedBySkillsByChildSkillId.set(childSkillId, usedBySkills);
+    }
+
+    for (const [childSkillId, usedBySkills] of usedBySkillsByChildSkillId) {
+      const sortedUsedBySkills = [...usedBySkills].sort((a, b) =>
+        a.name.localeCompare(b.name)
+      );
+      result.set(childSkillId, sortedUsedBySkills);
     }
 
     return result;
