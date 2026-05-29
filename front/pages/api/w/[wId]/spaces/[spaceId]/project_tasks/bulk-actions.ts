@@ -114,7 +114,10 @@ async function handler(
 
     case "approve_agent_suggestion": {
       const user = auth.getNonNullableUser();
-      for (const sId of body.taskIds) {
+      // Approve in reverse so the first-listed task is saved last and keeps
+      // the latest `updatedAt`, preserving display order under the client's
+      // `updatedAt desc` initial sort (matches `seedInitialPodTasks`).
+      for (const sId of [...body.taskIds].reverse()) {
         const todo = await ProjectTaskResource.fetchBySId(auth, sId);
         if (
           !todo ||
