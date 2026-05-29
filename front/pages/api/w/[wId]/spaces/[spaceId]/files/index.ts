@@ -1,13 +1,12 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
+import type { FileSystemEntry } from "@app/lib/api/file_system/types";
+import { SCOPED_PREFIX_POD } from "@app/lib/api/file_system/types";
 import { isGCSMountDirectoryAlreadyExistsError } from "@app/lib/api/files/gcs_mount/errors";
-import {
-  type GCSMountDirectoryEntry,
-  type GCSMountEntry,
-  type GCSMountFileEntry,
-  listGCSMountFiles,
-} from "@app/lib/api/files/gcs_mount/files";
+import type { GCSMountDirectoryEntry } from "@app/lib/api/files/gcs_mount/files";
+import { enrichListWithFileResourceIds } from "@app/lib/api/files/file_system_ops";
 import { createProjectFolder } from "@app/lib/api/projects/context";
 import { PostPodFolderRequestBodySchema } from "@app/lib/api/projects/pod_mount_schemas";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
@@ -18,10 +17,11 @@ import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
-export type { GCSMountDirectoryEntry, GCSMountEntry, GCSMountFileEntry };
+export type { GCSMountDirectoryEntry };
+export type { FileSystemEntry };
 
 export type GetSpaceFilesResponseBody = {
-  files: GCSMountEntry[];
+  files: FileSystemEntry[];
 };
 
 export type PostSpaceFolderResponseBody = {
@@ -50,10 +50,23 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const files = await listGCSMountFiles(auth, {
-        useCase: "pod",
-        podId: space.sId,
-      });
+      const fsResult = await DustFileSystem.forPod(auth, space);
+      if (fsResult.isErr()) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to initialise file system.",
+          },
+        });
+      }
+
+      const dustFs = fsResult.value;
+      const files = await enrichListWithFileResourceIds(
+        auth,
+        dustFs,
+        await dustFs.list(`${SCOPED_PREFIX_POD}${space.sId}`)
+      );
 
       return res.status(200).json({ files });
     }

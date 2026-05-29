@@ -8,7 +8,7 @@ import {
 } from "@app/components/file_explorer/utils";
 import { useConversationSandboxFiles } from "@app/hooks/conversations/useConversationSandboxFiles";
 import config from "@app/lib/api/config";
-import { downloadSandboxFile } from "@app/lib/swr/files";
+import { downloadFile } from "@app/lib/swr/files";
 import { useMoveMountFile } from "@app/lib/swr/mount_files";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -42,7 +42,7 @@ export function ConversationFileExplorer({
   );
 
   const getFileResponse = useCallback(
-    (path: string) => downloadSandboxFile(owner, path),
+    (path: string) => downloadFile(owner, path),
     [owner]
   );
 
