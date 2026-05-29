@@ -327,11 +327,14 @@ export function useRenamePodFile({
         .split("/")
         .map(encodeURIComponent)
         .join("/");
-      const res = await clientFetch(`/api/w/${owner.sId}/files/path/${encoded}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "rename", fileName: newFileName }),
-      });
+      const res = await clientFetch(
+        `/api/w/${owner.sId}/files/path/${encoded}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "rename", fileName: newFileName }),
+        }
+      );
 
       if (!res.ok) {
         const errorData = await getErrorFromResponse(res);
@@ -463,11 +466,7 @@ export function useDeletePodFile({
   };
 }
 
-export function useMovePodFile({
-  owner,
-}: {
-  owner: LightWorkspaceType;
-}) {
+export function useMovePodFile({ owner }: { owner: LightWorkspaceType }) {
   const sendNotification = useSendNotification();
 
   return async ({

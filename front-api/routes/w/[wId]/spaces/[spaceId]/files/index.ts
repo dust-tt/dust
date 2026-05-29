@@ -1,9 +1,9 @@
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import type { FileSystemEntry } from "@app/lib/api/file_system/types";
 import { SCOPED_PREFIX_POD } from "@app/lib/api/file_system/types";
+import { enrichListWithFileResourceIds } from "@app/lib/api/files/file_system_ops";
 import { isGCSMountDirectoryAlreadyExistsError } from "@app/lib/api/files/gcs_mount/errors";
 import type { GCSMountDirectoryEntry } from "@app/lib/api/files/gcs_mount/files";
-import { enrichListWithFileResourceIds } from "@app/lib/api/files/file_system_ops";
 import { createProjectFolder } from "@app/lib/api/projects/context";
 import { PostPodFolderRequestBodySchema } from "@app/lib/api/projects/pod_mount_schemas";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -14,8 +14,7 @@ import { withSpace } from "@front-api/middlewares/with_space";
 
 import rel from "./[...rel]";
 
-export type { GCSMountDirectoryEntry };
-export type { FileSystemEntry };
+export type { FileSystemEntry, GCSMountDirectoryEntry };
 
 export type GetSpaceFilesResponseBody = {
   files: FileSystemEntry[];

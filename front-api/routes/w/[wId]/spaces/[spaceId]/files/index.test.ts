@@ -18,7 +18,11 @@ function makeGCSFile(
   workspaceId: string,
   podId: string,
   relPath: string,
-  overrides: Partial<{ contentType: string; size: string; updated: string }> = {}
+  overrides: Partial<{
+    contentType: string;
+    size: string;
+    updated: string;
+  }> = {}
 ) {
   return {
     name: `w/${workspaceId}/pods/${podId}/files/${relPath}`,
@@ -113,14 +117,11 @@ describe("GET /api/w/:wId/spaces/:spaceId/files", () => {
 
     expect(res.status).toBe(200);
     const body = await res.json();
-    const dir = body.files.find(
-      (f: { isDirectory: boolean }) => f.isDirectory
-    );
+    const dir = body.files.find((f: { isDirectory: boolean }) => f.isDirectory);
     expect(dir).toBeDefined();
     expect(dir.path).toBe(`pod-${project.sId}/reports`);
     expect(dir.fileName).toBe("reports");
   });
-
 });
 
 describe("POST /api/w/:wId/spaces/:spaceId/files (create folder)", () => {

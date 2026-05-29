@@ -424,7 +424,13 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
 
       await refreshPodFiles();
     },
-    [movePodFile, pod.sId, podMountParentRelativePath, podFileUpload, refreshPodFiles]
+    [
+      movePodFile,
+      pod.sId,
+      podMountParentRelativePath,
+      podFileUpload,
+      refreshPodFiles,
+    ]
   );
 
   const handleFileChange = useCallback(
@@ -501,6 +507,7 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
     [
       confirm,
       deletePodFile,
+      pod.sId,
       refreshPodContextAttachments,
       refreshPodFiles,
       removePodContextContentNodes,
