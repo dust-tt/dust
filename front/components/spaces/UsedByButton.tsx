@@ -18,12 +18,20 @@ import {
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
-function SkillDropdownIcon({ icon }: { icon: string | null }) {
+interface SkillDropdownIconProps {
+  icon: string | null;
+}
+
+function SkillDropdownIcon({ icon }: SkillDropdownIconProps) {
   const SkillAvatar = getSkillAvatarIcon(icon);
   return <SkillAvatar size="xs" />;
 }
 
-function UsedByButtonIcon({ count }: { count: number }) {
+interface UsedByButtonIconProps {
+  count: number;
+}
+
+function UsedByButtonIcon({ count }: UsedByButtonIconProps) {
   return (
     <span className="inline-flex h-4 items-center justify-center gap-1 leading-none">
       <span className="inline-flex h-4 items-center gap-0.5">
@@ -40,15 +48,17 @@ function UsedByButtonIcon({ count }: { count: number }) {
   );
 }
 
+interface UsedByButtonProps {
+  usage: SkillUsageType | null;
+  onItemClick: (assistantSid: string) => void;
+  onSkillClick?: (skillId: string) => void;
+}
+
 export const UsedByButton = ({
   usage,
   onItemClick,
   onSkillClick,
-}: {
-  usage: SkillUsageType | null;
-  onItemClick: (assistantSid: string) => void;
-  onSkillClick?: (skillId: string) => void;
-}) => {
+}: UsedByButtonProps) => {
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
 
