@@ -108,7 +108,7 @@ export const UsedByButton = ({
         variant="ghost-secondary"
         isSelect={false}
         size="xs"
-        className="px-0"
+        className="px-2"
         aria-label="Used by 0 agents"
         disabled
       />
@@ -167,7 +167,7 @@ export const UsedByButton = ({
           variant="ghost-secondary"
           isSelect={false}
           size="xs"
-          className="px-0"
+          className="px-2"
           aria-label={`Used by ${usageLabel}`}
           onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
             e.stopPropagation();
