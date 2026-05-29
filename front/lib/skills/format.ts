@@ -1,6 +1,6 @@
 export type SkillReference = {
   id: string;
-  icon?: string | null;
+  icon: string | null;
   name: string;
 };
 
@@ -20,7 +20,7 @@ function parseSkillTagAttributes(attributes: string): SkillReference | null {
 
   return {
     id,
-    icon,
+    icon: icon ?? null,
     name,
   };
 }
