@@ -1,3 +1,4 @@
+import { AnthropicError, APIError } from "@anthropic-ai/sdk";
 import type {
   CacheControlEphemeral,
   ImageBlockParam,
@@ -52,8 +53,79 @@ import type {
 } from "@app/lib/model_constructors/types/messages";
 // biome-ignore lint/plugin/noAppImportsInModels: monorepo-global utility with no domain meaning
 import { assertNever } from "@app/types/shared/utils/assert_never";
+// biome-ignore lint/plugin/noAppImportsInModels: monorepo-global utility with no domain meaning
+import { isRecord } from "@app/types/shared/utils/general";
+// biome-ignore lint/plugin/noAppImportsInModels: monorepo-global utility with no domain meaning
+import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 
 import type { z } from "zod";
+
+// Eager input streaming can produce invalid JSON. We validate inputs below this
+// size to avoid spending time parsing very large payloads.
+const MAX_EAGER_VALIDATION_INPUT_LENGTH = 5_000;
+const INVALID_JSON_MARKER = "JSON: ";
+const INVALID_TOOL_JSON_NEEDLE = "Unable to parse tool parameter JSON";
+
+/**
+ * Type guard for an APIError whose body carries the nested error.message with
+ * the invalid-tool-JSON diagnostic from the Anthropic API (server-side detection).
+ */
+function isApiInvalidToolJsonError(
+  err: unknown
+): err is APIError & { error: { error: { message: string } } } {
+  if (!(err instanceof APIError) || err.type !== "invalid_request_error") {
+    return false;
+  }
+  const body = err.error;
+  if (typeof body !== "object" || body === null || !isRecord(body)) {
+    return false;
+  }
+  const innerError = body.error;
+  if (
+    typeof innerError !== "object" ||
+    innerError === null ||
+    !isRecord(innerError)
+  ) {
+    return false;
+  }
+  const { message } = innerError;
+  return (
+    typeof message === "string" &&
+    message.includes(INVALID_TOOL_JSON_NEEDLE) &&
+    message.includes(INVALID_JSON_MARKER)
+  );
+}
+
+/**
+ * Type guard for an AnthropicError thrown by the SDK's BetaMessageStream when
+ * it fails to parse tool parameter JSON client-side.
+ */
+function isAnthropicInvalidToolJsonError(err: unknown): err is AnthropicError {
+  return (
+    err instanceof AnthropicError &&
+    err.message.includes(INVALID_TOOL_JSON_NEEDLE) &&
+    err.message.includes(INVALID_JSON_MARKER)
+  );
+}
+
+/**
+ * Extracts the error message from an Anthropic "Unable to parse tool parameter JSON"
+ * error, or returns null if the error is unrelated. Two shapes are possible:
+ *  1. APIError (server-side): API aborts the stream with an SSE error event. Message
+ *     lives at err.error.error.message.
+ *  2. AnthropicError (client-side): SDK stream fails to parse partial tool JSON.
+ *     Message is on err.message.
+ * Both end with `JSON: <raw invalid json>`.
+ */
+function getInvalidToolJsonMessage(err: unknown): string | null {
+  if (isApiInvalidToolJsonError(err)) {
+    return err.error.error.message;
+  }
+  if (isAnthropicInvalidToolJsonError(err)) {
+    return err.message;
+  }
+  return null;
+}
 
 type Constructor<T> = abstract new (...args: any[]) => T;
 
@@ -197,6 +269,12 @@ export function WithAnthropicConverter<T extends Constructor<Anthropic>>(
       return {
         name: tool.name,
         description: tool.description,
+        // Eager input streaming lets the model start streaming tool call arguments
+        // before the full input is generated, avoiding hangs on long arguments.
+        // The trade-off is that Anthropic no longer validates the JSON, so callers
+        // must validate at content_block_stop and recover on invalid JSON.
+        // https://platform.claude.com/docs/en/agents-and-tools/tool-use/fine-grained-tool-streaming
+        eager_input_streaming: true,
         input_schema: { type: "object", ...tool.inputSchema },
       };
     }
@@ -369,6 +447,23 @@ export function WithAnthropicConverter<T extends Constructor<Anthropic>>(
       };
     }
 
+    /**
+     * Wraps invalid tool-call JSON in a `{ INVALID_JSON: ... }` argument so the
+     * agent loop can send it back as a tool result and let the model self-correct.
+     * https://platform.claude.com/docs/en/agents-and-tools/tool-use/fine-grained-tool-streaming#handling-invalid-json-in-tool-responses
+     */
+    invalidJsonToolCallToToolCallEvent(
+      id: string,
+      name: string,
+      invalidJson: string
+    ): ToolCallEvent {
+      return {
+        type: "tool_call",
+        content: { id, name, arguments: { INVALID_JSON: invalidJson } },
+        metadata: this.model,
+      };
+    }
+
     messageDeltaUsageToTokenUsageEvent(
       usage: MessageDeltaUsage
     ): TokenUsageEvent {
@@ -504,14 +599,34 @@ export function WithAnthropicConverter<T extends Constructor<Anthropic>>(
               block.signature || undefined
             ),
           ];
-        case "tool_use":
+        case "tool_use": {
+          const input = block.accumulator;
+          // With eager_input_streaming enabled, the model may produce invalid
+          // JSON. Validate inputs below a size limit; if invalid, wrap as
+          // INVALID_JSON so the agent loop can self-correct.
+          if (
+            input.length < MAX_EAGER_VALIDATION_INPUT_LENGTH &&
+            input.trim() !== ""
+          ) {
+            const parsed = safeParseJSON(input);
+            if (parsed.isErr()) {
+              return [
+                this.invalidJsonToolCallToToolCallEvent(
+                  block.toolId,
+                  block.toolName,
+                  input
+                ),
+              ];
+            }
+          }
           return [
             this.accumulatedToolCallToToolCallEvent(
               block.toolId,
               block.toolName,
-              block.accumulator
+              input
             ),
           ];
+        }
         default:
           assertNever(block);
       }
@@ -543,9 +658,46 @@ export function WithAnthropicConverter<T extends Constructor<Anthropic>>(
         usage: null,
       };
 
-      for await (const event of stream) {
-        let outputEvents: LargeLanguageModelResponseEvent[];
+      while (true) {
+        let result: IteratorResult<RawMessageStreamEvent>;
+        try {
+          result = await stream.next();
+        } catch (err) {
+          // Anthropic sometimes aborts the stream with an error when the model
+          // produces invalid tool parameter JSON — server-side via APIError, or
+          // client-side via AnthropicError from the SDK's stream. If a tool_use
+          // block is in progress, recover by emitting a tool_call wrapping the
+          // invalid JSON so the agent loop can send it back and let the model
+          // self-correct. Otherwise, propagate the error.
+          const invalidJsonMessage = getInvalidToolJsonMessage(err);
+          if (
+            invalidJsonMessage !== null &&
+            blockState.current !== null &&
+            blockState.current.type === "tool_use"
+          ) {
+            const invalidJson = invalidJsonMessage.slice(
+              invalidJsonMessage.lastIndexOf(INVALID_JSON_MARKER) +
+                INVALID_JSON_MARKER.length
+            );
+            const ev = this.invalidJsonToolCallToToolCallEvent(
+              blockState.current.toolId,
+              blockState.current.toolName,
+              invalidJson
+            );
+            aggregated.push(ev);
+            yield ev;
+            blockState.current = null;
+            break;
+          }
+          throw err;
+        }
+        if (result.done) {
+          break;
+        }
+        
+        const event = result.value;
 
+        let outputEvents: LargeLanguageModelResponseEvent[];
         switch (event.type) {
           case "message_start":
             outputEvents = [this.messageStartToResponseIdEvent(event)];
