@@ -491,6 +491,11 @@ export function WithAnthropicConverter<T extends Constructor<Anthropic>>(
       const cacheCreated = usage.cache_creation_input_tokens ?? 0;
       const cacheHit = usage.cache_read_input_tokens ?? 0;
       const uncachedInput = usage.input_tokens ?? 0;
+      // thinking_tokens is the raw reasoning portion of output_tokens; subtracting
+      // yields non-reasoning generation. The field is null on non-reasoning
+      // responses and on streams where the API does not surface a breakdown — in
+      // which case reasoning rolls into standardOutput, same as before.
+      const thinkingTokens = usage.output_tokens_details?.thinking_tokens ?? 0;
 
       return {
         type: "token_usage",
@@ -498,8 +503,8 @@ export function WithAnthropicConverter<T extends Constructor<Anthropic>>(
           cacheCreated,
           cacheHit,
           standardInput: uncachedInput,
-          standardOutput: usage.output_tokens,
-          reasoning: 0,
+          standardOutput: usage.output_tokens - thinkingTokens,
+          reasoning: thinkingTokens,
         },
         metadata: this.model,
       };
