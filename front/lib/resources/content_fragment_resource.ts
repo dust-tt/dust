@@ -10,8 +10,8 @@ import {
 } from "@app/lib/api/assistant/conversation/attachments";
 import appConfig from "@app/lib/api/config";
 import config from "@app/lib/api/config";
-import { getScopedPathFromGCSPath } from "@app/lib/api/files/gcs_mount/files";
 import { getConversationFilesBasePath } from "@app/lib/api/files/mount_path";
+import { SCOPED_PREFIX_CONVERSATION } from "@app/lib/api/file_system";
 import {
   PASTED_CONTENT_MAX_CHARACTERS,
   TRUNCATED_SNIPPET_SIZE,
@@ -94,11 +94,13 @@ function getConversationFilePath({
     return null;
   }
 
-  return getScopedPathFromGCSPath({
-    prefix: getConversationFilesBasePath({ workspaceId, conversationId }),
-    gcsPath: mountFilePath,
-    useCase: "conversation",
-  });
+  const prefix = getConversationFilesBasePath({ workspaceId, conversationId });
+  if (!mountFilePath.startsWith(prefix)) {
+    return null;
+  }
+
+  const rel = mountFilePath.slice(prefix.length);
+  return `${SCOPED_PREFIX_CONVERSATION}${conversationId}/${rel}`;
 }
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -1048,7 +1050,6 @@ export async function getContentFragmentFromAttachmentFile(
 ): Promise<Result<ContentFragmentMessageTypeModel, Error>> {
   // At time of writing, passed resourceId can be either a file or a content fragment.
   // TODO(durable agents): check if this is actually true (seems false)
-
   const { resourceName } = getResourceNameAndIdFromSId(
     conversationAttachmentId(attachment)
   ) ?? {
@@ -1175,11 +1176,10 @@ export async function getContentFragmentFromAttachmentFile(
               content: truncatedContent,
               truncated,
               // Show path only when truncated so the model can read the full file.
-              path: truncated
-                ? ((isFileAttachmentType(attachment)
-                    ? attachment.path
-                    : null) ?? `conversation/${attachment.title}`)
-                : undefined,
+              path:
+                truncated && isFileAttachmentType(attachment)
+                  ? (attachment.path ?? undefined)
+                  : undefined,
             }),
           },
         ],
@@ -1217,20 +1217,11 @@ function renderFileOrAttachmentXml(
   }
 ): string {
   if (isNewFileExplorer) {
-    const explicitPath = "path" in attachment ? attachment.path : null;
-    const path = explicitPath ?? `conversation/${attachment.title}`;
-    if (!explicitPath) {
-      logger.warn(
-        {
-          fileId: "fileId" in attachment ? attachment.fileId : null,
-          title: attachment.title,
-        },
-        "Falling back to file title for new file explorer path."
-      );
-    }
+    const path = "path" in attachment ? attachment.path : null;
+    const pathAttr = path ? ` path="${path}"` : "";
     return content
-      ? `<file name="${attachment.title}" path="${path}">${content}\n</file>`
-      : `<file name="${attachment.title}" path="${path}"/>`;
+      ? `<file name="${attachment.title}"${pathAttr}>${content}\n</file>`
+      : `<file name="${attachment.title}"${pathAttr}/>`;
   }
 
   return renderAttachmentXml({ attachment, content: content ?? null });
@@ -1293,10 +1284,10 @@ export async function renderLightContentFragmentForModel(
             content: snippet,
             truncated,
             // Show path only when truncated so the model can read the full file.
-            path: truncated
-              ? ((isFileAttachmentType(attachment) ? attachment.path : null) ??
-                `conversation/${attachment.title}`)
-              : undefined,
+            path:
+              truncated && isFileAttachmentType(attachment)
+                ? (attachment.path ?? undefined)
+                : undefined,
           }),
         },
       ],
