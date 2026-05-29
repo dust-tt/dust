@@ -1713,13 +1713,22 @@ export async function listMetronomeUsageWithGroups({
   endingBefore,
   windowSize,
   groupKey,
+  groupFilters,
 }: {
   customerId: string;
   billableMetricId: string;
+  // Must be UTC midnight (Metronome requirement). To restrict to an
+  // hour-precise period, query midnight-aligned bounds with an HOUR window and
+  // trim the returned buckets to the exact range. (The API's `current_period`
+  // flag is not an option: it requires a legacy v1 Plan, which our
+  // contract-based customers don't have.)
   startingOn: string;
   endingBefore: string;
   windowSize: WindowSize;
   groupKey: string[];
+  // Restrict returned groups to these values per group key. Keys must be part
+  // of `groupKey`; an omitted key returns all of its values.
+  groupFilters?: Record<string, string[]>;
 }): Promise<Result<MetronomeUsageWithGroupsResponse[], Error>> {
   if (!config.getMetronomeApiKey()) {
     return new Ok([]);
@@ -1732,10 +1741,11 @@ export async function listMetronomeUsageWithGroups({
     for await (const entry of client.v1.usage.listWithGroups({
       customer_id: customerId,
       billable_metric_id: billableMetricId,
-      starting_on: startingOn,
-      ending_before: endingBefore,
       window_size: windowSize,
       group_key: groupKey,
+      starting_on: startingOn,
+      ending_before: endingBefore,
+      ...(groupFilters ? { group_filters: groupFilters } : {}),
     })) {
       results.push({
         startingOn: entry.starting_on,

@@ -46,7 +46,20 @@ function truncatePropertyValue(value: string): string {
 // Advanced: 3 AWU
 export const TOOL_CATEGORIES = ["basic", "advanced"] as const;
 
-type ToolCategory = (typeof TOOL_CATEGORIES)[number];
+export type ToolCategory = (typeof TOOL_CATEGORIES)[number];
+
+// AWU price per tool invocation by category (1 AWU = $0.01). Canonical source
+// for both the Tool Usage rate-card prices (scripts/metronome_setup.ts) and the
+// runtime per-user AWU spend computation (per_user_usage.ts) — keep both in
+// sync by importing from here rather than redefining.
+export const TOOL_CATEGORY_AWU_WEIGHTS: Record<ToolCategory, number> = {
+  basic: 1,
+  advanced: 3,
+};
+
+export function isToolCategory(value: string): value is ToolCategory {
+  return value in TOOL_CATEGORY_AWU_WEIGHTS;
+}
 
 // Exhaustive map — TypeScript will error if a new internal MCP server is added
 // without being categorized here.
