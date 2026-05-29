@@ -181,9 +181,9 @@ export function SkillInfoTab({
                   key={childSkill.sId}
                   label={childSkill.userFacingDescription || childSkill.name}
                   trigger={
-                    <div className="flex flex-row items-center gap-2">
+                    <div className="flex min-w-0 flex-row items-center gap-2">
                       <SkillAvatar size="xs" />
-                      <div className="truncate">{childSkill.name}</div>
+                      <div className="min-w-0 truncate">{childSkill.name}</div>
                     </div>
                   }
                   tooltipTriggerAsChild
