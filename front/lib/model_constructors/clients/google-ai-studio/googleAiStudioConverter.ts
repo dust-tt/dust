@@ -59,6 +59,15 @@ const GOOGLE_AI_STUDIO_SUPPORTED_MIME_TYPES = [
   "image/heif",
 ];
 
+function isFunctionResponseContent(content: Content): boolean {
+  const parts = content.parts ?? [];
+  return (
+    content.role === "user" &&
+    parts.length > 0 &&
+    parts.every((part) => part.functionResponse !== undefined)
+  );
+}
+
 export function WithGoogleAiStudioConverter<
   T extends Constructor<GoogleAiStudio>,
 >(Base: T) {
@@ -276,11 +285,10 @@ export function WithGoogleAiStudioConverter<
       const contents: Content[] = [];
 
       for (const message of conversation.messages) {
+        let content: Content;
         switch (message.role) {
           case "user":
-            contents.push(
-              await this.userMessageToContent(message, callIdToName)
-            );
+            content = await this.userMessageToContent(message, callIdToName);
             break;
           case "assistant":
             if (message.type === "tool_call_request") {
@@ -289,10 +297,27 @@ export function WithGoogleAiStudioConverter<
                 message.content.toolName
               );
             }
-            contents.push(this.assistantMessageToContent(message));
+            content = this.assistantMessageToContent(message);
             break;
           default:
             assertNever(message);
+        }
+
+        // Merge consecutive function-response Contents into one user turn:
+        // Gemini requires the functionResponse part count to match the
+        // functionCall count of the preceding model turn.
+        const previous = contents[contents.length - 1];
+        if (
+          previous &&
+          isFunctionResponseContent(previous) &&
+          isFunctionResponseContent(content)
+        ) {
+          contents[contents.length - 1] = {
+            ...previous,
+            parts: [...(previous.parts ?? []), ...(content.parts ?? [])],
+          };
+        } else {
+          contents.push(content);
         }
       }
 
