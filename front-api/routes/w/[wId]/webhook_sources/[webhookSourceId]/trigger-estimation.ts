@@ -15,15 +15,20 @@ const GetTriggerEstimationQuerySchema = z.object({
   event: z.string().optional(),
 });
 
+const ParamsSchema = z.object({
+  webhookSourceId: z.string(),
+});
+
 // Mounted at /api/w/:wId/webhook_sources/:webhookSourceId/trigger-estimation.
 const app = workspaceApp();
 
 app.get(
   "/",
+  validate("param", ParamsSchema),
   validate("query", GetTriggerEstimationQuerySchema),
   async (ctx): HandlerResult<GetTriggerEstimationResponseBody> => {
     const auth = ctx.get("auth");
-    const webhookSourceId = ctx.req.param("webhookSourceId") ?? "";
+    const { webhookSourceId } = ctx.req.valid("param");
     const { filter, event } = ctx.req.valid("query");
 
     const webhookSourceResource = await WebhookSourceResource.fetchById(

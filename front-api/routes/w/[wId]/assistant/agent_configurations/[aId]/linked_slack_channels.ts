@@ -12,6 +12,10 @@ import { validate } from "@front-api/middlewares/validator";
 import type { SuccessResponseBody } from "@front-api/routes/types";
 import { z } from "zod";
 
+const ParamsSchema = z.object({
+  aId: z.string(),
+});
+
 const PatchLinkedSlackChannelsRequestBodySchema = z.object({
   slack_channel_internal_ids: z.array(z.string()),
   provider: z.enum(["slack", "slack_bot"]),
@@ -23,11 +27,12 @@ const app = workspaceApp();
 
 app.patch(
   "/",
+  validate("param", ParamsSchema),
   ensureIsBuilder(),
   validate("json", PatchLinkedSlackChannelsRequestBodySchema),
   async (ctx): HandlerResult<SuccessResponseBody> => {
     const auth = ctx.get("auth");
-    const aId = ctx.req.param("aId") ?? "";
+    const { aId } = ctx.req.valid("param");
     const body = ctx.req.valid("json");
 
     if (body.auto_respond_without_mention) {

@@ -5,6 +5,13 @@ import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversati
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  cId: z.string(),
+  wuId: z.string(),
+});
 
 export type DeleteConversationWakeUpResponseBody = {
   wakeUp: WakeUpType;
@@ -15,10 +22,10 @@ const app = workspaceApp();
 
 app.delete(
   "/",
+  validate("param", ParamsSchema),
   async (ctx): HandlerResult<DeleteConversationWakeUpResponseBody> => {
     const auth = ctx.get("auth");
-    const cId = ctx.req.param("cId") ?? "";
-    const wuId = ctx.req.param("wuId") ?? "";
+    const { cId, wuId } = ctx.req.valid("param");
 
     // The fetchConversationWithoutContent method checks for conversation
     // accessibility (inside the resource through `baseFetchWithAuthorization`).

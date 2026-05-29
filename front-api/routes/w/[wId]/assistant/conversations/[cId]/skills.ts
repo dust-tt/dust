@@ -7,6 +7,10 @@ import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
+const ParamsSchema = z.object({
+  cId: z.string(),
+});
+
 const ConversationSkillActionRequestSchema = z.object({
   action: z.enum(["add", "delete"]),
   skillId: z.string(),
@@ -15,9 +19,9 @@ const ConversationSkillActionRequestSchema = z.object({
 // Mounted at /api/w/:wId/assistant/conversations/:cId/skills.
 const app = workspaceApp();
 
-app.get("/", async (ctx) => {
+app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
-  const conversationId = ctx.req.param("cId") ?? "";
+  const { cId: conversationId } = ctx.req.valid("param");
 
   const conversationRes =
     await ConversationResource.fetchConversationWithoutContent(
@@ -38,10 +42,11 @@ app.get("/", async (ctx) => {
 
 app.post(
   "/",
+  validate("param", ParamsSchema),
   validate("json", ConversationSkillActionRequestSchema),
   async (ctx) => {
     const auth = ctx.get("auth");
-    const conversationId = ctx.req.param("cId") ?? "";
+    const { cId: conversationId } = ctx.req.valid("param");
 
     const conversationRes =
       await ConversationResource.fetchConversationWithoutContent(

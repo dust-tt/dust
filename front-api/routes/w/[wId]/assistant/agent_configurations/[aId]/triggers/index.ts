@@ -13,6 +13,10 @@ import { z } from "zod";
 
 import tId from "./[tId]";
 
+const ParamsSchema = z.object({
+  aId: z.string(),
+});
+
 export type GetTriggersResponseBody = {
   triggers: (TriggerType & {
     isEditor: boolean;
@@ -45,50 +49,60 @@ function isWebhookTriggerData(trigger: {
 // Mounted under /api/w/:wId/assistant/agent_configurations/:aId/triggers.
 const app = workspaceApp();
 
-app.get("/", async (ctx): HandlerResult<GetTriggersResponseBody> => {
-  const auth = ctx.get("auth");
-  const aId = ctx.req.param("aId") ?? "";
+app.get(
+  "/",
+  validate("param", ParamsSchema),
+  async (ctx): HandlerResult<GetTriggersResponseBody> => {
+    const auth = ctx.get("auth");
+    const { aId } = ctx.req.valid("param");
 
-  const agentConfiguration = await getAgentConfiguration(auth, {
-    agentId: aId,
-    variant: "light",
-  });
-  if (!agentConfiguration || (!agentConfiguration.canRead && !auth.isAdmin())) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "agent_configuration_not_found",
-        message: "The agent configuration was not found.",
-      },
+    const agentConfiguration = await getAgentConfiguration(auth, {
+      agentId: aId,
+      variant: "light",
     });
+    if (
+      !agentConfiguration ||
+      (!agentConfiguration.canRead && !auth.isAdmin())
+    ) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "agent_configuration_not_found",
+          message: "The agent configuration was not found.",
+        },
+      });
+    }
+
+    const allTriggers = await TriggerResource.listByAgentConfigurationId(
+      auth,
+      aId
+    );
+
+    const editorIds = [
+      ...new Set(allTriggers.map((trigger) => trigger.editor)),
+    ];
+    const editorUsers = await UserResource.fetchByModelIds(editorIds);
+    const editorNamesMap = new Map(
+      editorUsers.map((user) => [user.id, user.fullName()])
+    );
+
+    const triggers = allTriggers.map((trigger) => ({
+      ...trigger.toJSON(),
+      isEditor: trigger.editor === auth.getNonNullableUser().id,
+      editorName: editorNamesMap.get(trigger.editor),
+    }));
+
+    return ctx.json({ triggers });
   }
-
-  const allTriggers = await TriggerResource.listByAgentConfigurationId(
-    auth,
-    aId
-  );
-
-  const editorIds = [...new Set(allTriggers.map((trigger) => trigger.editor))];
-  const editorUsers = await UserResource.fetchByModelIds(editorIds);
-  const editorNamesMap = new Map(
-    editorUsers.map((user) => [user.id, user.fullName()])
-  );
-
-  const triggers = allTriggers.map((trigger) => ({
-    ...trigger.toJSON(),
-    isEditor: trigger.editor === auth.getNonNullableUser().id,
-    editorName: editorNamesMap.get(trigger.editor),
-  }));
-
-  return ctx.json({ triggers });
-});
+);
 
 app.delete(
   "/",
+  validate("param", ParamsSchema),
   validate("json", DeleteTriggersRequestBodySchema),
   async (ctx) => {
     const auth = ctx.get("auth");
-    const aId = ctx.req.param("aId") ?? "";
+    const { aId } = ctx.req.valid("param");
 
     const agentConfiguration = await getAgentConfiguration(auth, {
       agentId: aId,
@@ -154,10 +168,11 @@ app.delete(
 
 app.patch(
   "/",
+  validate("param", ParamsSchema),
   validate("json", PatchTriggersRequestBodySchema),
   async (ctx) => {
     const auth = ctx.get("auth");
-    const aId = ctx.req.param("aId") ?? "";
+    const { aId } = ctx.req.valid("param");
 
     const agentConfiguration = await getAgentConfiguration(auth, {
       agentId: aId,
@@ -248,88 +263,96 @@ app.patch(
   }
 );
 
-app.post("/", validate("json", PostTriggersRequestBodySchema), async (ctx) => {
-  const auth = ctx.get("auth");
-  const aId = ctx.req.param("aId") ?? "";
+app.post(
+  "/",
+  validate("param", ParamsSchema),
+  validate("json", PostTriggersRequestBodySchema),
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const { aId } = ctx.req.valid("param");
 
-  const agentConfiguration = await getAgentConfiguration(auth, {
-    agentId: aId,
-    variant: "light",
-  });
-  if (!agentConfiguration || (!agentConfiguration.canRead && !auth.isAdmin())) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "agent_configuration_not_found",
-        message: "The agent configuration was not found.",
-      },
+    const agentConfiguration = await getAgentConfiguration(auth, {
+      agentId: aId,
+      variant: "light",
     });
-  }
-
-  const { triggers } = ctx.req.valid("json");
-  const workspace = auth.getNonNullableWorkspace();
-
-  for (const triggerData of triggers) {
-    const triggerValidation = TriggerSchema.safeParse({
-      ...triggerData,
-      editor: auth.getNonNullableUser().id,
-    });
-    if (!triggerValidation.success) {
+    if (
+      !agentConfiguration ||
+      (!agentConfiguration.canRead && !auth.isAdmin())
+    ) {
       return apiError(ctx, {
-        status_code: 400,
+        status_code: 404,
         api_error: {
-          type: "invalid_request_error",
-          message: `Invalid trigger data: ${triggerValidation.error.message}`,
+          type: "agent_configuration_not_found",
+          message: "The agent configuration was not found.",
         },
       });
     }
 
-    const validatedTrigger = triggerValidation.data;
-    const webhookSourceViewId = isWebhookTriggerData(validatedTrigger)
-      ? getResourceIdFromSId(validatedTrigger.webhookSourceViewId)
-      : null;
-    const executionPerDay = isWebhookTriggerData(validatedTrigger)
-      ? validatedTrigger.executionPerDayLimitOverride
-      : null;
+    const { triggers } = ctx.req.valid("json");
+    const workspace = auth.getNonNullableWorkspace();
 
-    const newTrigger = await TriggerResource.makeNew(auth, {
-      workspaceId: workspace.id,
-      agentConfigurationId: aId,
-      name: validatedTrigger.name,
-      kind: validatedTrigger.kind,
-      status: validatedTrigger.status ?? "enabled",
-      configuration: validatedTrigger.configuration,
-      naturalLanguageDescription: validatedTrigger.naturalLanguageDescription,
-      customPrompt: validatedTrigger.customPrompt,
-      editor: auth.getNonNullableUser().id,
-      webhookSourceViewId,
-      executionPerDayLimitOverride: executionPerDay,
-      executionMode: validatedTrigger.kind === "webhook" ? "fair_use" : null,
-      origin: "user",
-    });
-
-    if (newTrigger.isErr()) {
-      logger.error(
-        {
-          workspaceId: workspace.sId,
-          agentConfigurationId: aId,
-          triggerName: validatedTrigger.name,
-          error: newTrigger.error,
-        },
-        "Failed to create trigger"
-      );
-      return apiError(ctx, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: `Failed to create trigger ${validatedTrigger.name}.`,
-        },
+    for (const triggerData of triggers) {
+      const triggerValidation = TriggerSchema.safeParse({
+        ...triggerData,
+        editor: auth.getNonNullableUser().id,
       });
-    }
-  }
+      if (!triggerValidation.success) {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid trigger data: ${triggerValidation.error.message}`,
+          },
+        });
+      }
 
-  return ctx.body(null, 204);
-});
+      const validatedTrigger = triggerValidation.data;
+      const webhookSourceViewId = isWebhookTriggerData(validatedTrigger)
+        ? getResourceIdFromSId(validatedTrigger.webhookSourceViewId)
+        : null;
+      const executionPerDay = isWebhookTriggerData(validatedTrigger)
+        ? validatedTrigger.executionPerDayLimitOverride
+        : null;
+
+      const newTrigger = await TriggerResource.makeNew(auth, {
+        workspaceId: workspace.id,
+        agentConfigurationId: aId,
+        name: validatedTrigger.name,
+        kind: validatedTrigger.kind,
+        status: validatedTrigger.status ?? "enabled",
+        configuration: validatedTrigger.configuration,
+        naturalLanguageDescription: validatedTrigger.naturalLanguageDescription,
+        customPrompt: validatedTrigger.customPrompt,
+        editor: auth.getNonNullableUser().id,
+        webhookSourceViewId,
+        executionPerDayLimitOverride: executionPerDay,
+        executionMode: validatedTrigger.kind === "webhook" ? "fair_use" : null,
+        origin: "user",
+      });
+
+      if (newTrigger.isErr()) {
+        logger.error(
+          {
+            workspaceId: workspace.sId,
+            agentConfigurationId: aId,
+            triggerName: validatedTrigger.name,
+            error: newTrigger.error,
+          },
+          "Failed to create trigger"
+        );
+        return apiError(ctx, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: `Failed to create trigger ${validatedTrigger.name}.`,
+          },
+        });
+      }
+    }
+
+    return ctx.body(null, 204);
+  }
+);
 
 app.route("/:tId", tId);
 

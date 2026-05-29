@@ -66,15 +66,20 @@ export type DeleteMCPServerResponseBody = {
   deleted: boolean;
 };
 
+const ParamsSchema = z.object({
+  serverId: z.string(),
+});
+
 // Mounted under /api/w/:wId/mcp/:serverId.
 const app = workspaceApp();
 
 app.get(
   "/",
+  validate("param", ParamsSchema),
   ensureIsUser(),
   async (ctx): HandlerResult<GetMCPServerResponseBody> => {
     const auth = ctx.get("auth");
-    const serverId = ctx.req.param("serverId") ?? "";
+    const { serverId } = ctx.req.valid("param");
 
     const { serverType, id } = getServerTypeAndIdFromSId(serverId);
     switch (serverType) {
@@ -121,11 +126,12 @@ app.get(
 
 app.patch(
   "/",
+  validate("param", ParamsSchema),
   ensureIsUser(),
   validate("json", PatchMCPServerBodySchema),
   async (ctx): HandlerResult<PatchMCPServerResponseBody> => {
     const auth = ctx.get("auth");
-    const serverId = ctx.req.param("serverId") ?? "";
+    const { serverId } = ctx.req.valid("param");
     const body = ctx.req.valid("json");
 
     const { serverType } = getServerTypeAndIdFromSId(serverId);
@@ -168,10 +174,11 @@ app.patch(
 
 app.delete(
   "/",
+  validate("param", ParamsSchema),
   ensureIsUser(),
   async (ctx): HandlerResult<DeleteMCPServerResponseBody> => {
     const auth = ctx.get("auth");
-    const serverId = ctx.req.param("serverId") ?? "";
+    const { serverId } = ctx.req.valid("param");
 
     const { serverType } = getServerTypeAndIdFromSId(serverId);
 

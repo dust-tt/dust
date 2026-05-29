@@ -11,17 +11,22 @@ const PostStartPodTaskBodySchema = z.object({
   agentConfigurationId: z.string().optional(),
 });
 
+const ParamsSchema = z.object({
+  taskId: z.string(),
+});
+
 // Mounted under /api/w/:wId/spaces/:spaceId/project_tasks/:taskId/start.
 const app = workspaceApp();
 
 app.post(
   "/",
+  validate("param", ParamsSchema),
   withSpace({ requireCanRead: true }),
   validate("json", PostStartPodTaskBodySchema),
   async (ctx) => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");
-    const taskId = ctx.req.param("taskId") ?? "";
+    const { taskId } = ctx.req.valid("param");
 
     if (!space.isProject()) {
       return apiError(ctx, {

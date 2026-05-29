@@ -2,19 +2,25 @@ import type { MCPServerConnectionType } from "@app/lib/resources/mcp_server_conn
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import type { Context } from "hono";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  cId: z.string(),
+});
 
 // Mounted at /api/w/:wId/mcp/connections/:connectionType/:cId.
 const app = workspaceApp();
 
-async function loadConnection(ctx: Context) {
+async function loadConnection(ctx: Context, cId: string) {
   const auth = ctx.get("auth");
-  const cId = ctx.req.param("cId") ?? "";
   return MCPServerConnectionResource.fetchById(auth, cId);
 }
 
-app.get("/", async (ctx) => {
-  const connectionRes = await loadConnection(ctx);
+app.get("/", validate("param", ParamsSchema), async (ctx) => {
+  const { cId } = ctx.req.valid("param");
+  const connectionRes = await loadConnection(ctx, cId);
   if (connectionRes.isErr()) {
     return apiError(ctx, {
       status_code: 404,
@@ -31,9 +37,10 @@ app.get("/", async (ctx) => {
   return ctx.json(value);
 });
 
-app.delete("/", async (ctx) => {
+app.delete("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
-  const connectionRes = await loadConnection(ctx);
+  const { cId } = ctx.req.valid("param");
+  const connectionRes = await loadConnection(ctx, cId);
   if (connectionRes.isErr()) {
     return apiError(ctx, {
       status_code: 404,

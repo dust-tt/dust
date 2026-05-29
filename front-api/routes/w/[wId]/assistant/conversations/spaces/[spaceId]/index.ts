@@ -8,6 +8,12 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  spaceId: z.string(),
+});
 
 export type GetSpaceConversationsResponseBody = {
   conversations: LightConversationType[];
@@ -34,87 +40,91 @@ import unread from "./unread";
 // Mounted at /api/w/:wId/assistant/conversations/spaces/:spaceId.
 const app = workspaceApp();
 
-app.get("/", async (ctx): HandlerResult<GetSpaceConversationsResponseBody> => {
-  const auth = ctx.get("auth");
-  const spaceId = ctx.req.param("spaceId") ?? "";
+app.get(
+  "/",
+  validate("param", ParamsSchema),
+  async (ctx): HandlerResult<GetSpaceConversationsResponseBody> => {
+    const auth = ctx.get("auth");
+    const { spaceId } = ctx.req.valid("param");
 
-  const paginationRes = getPaginationParams(ctx.req.query(), {
-    defaultLimit: 20,
-    defaultOrderColumn: "updatedAt",
-    defaultOrderDirection: "desc",
-    supportedOrderColumn: ["updatedAt"],
-  });
-
-  if (paginationRes.isErr()) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: paginationRes.error.reason,
-      },
+    const paginationRes = getPaginationParams(ctx.req.query(), {
+      defaultLimit: 20,
+      defaultOrderColumn: "updatedAt",
+      defaultOrderDirection: "desc",
+      supportedOrderColumn: ["updatedAt"],
     });
-  }
 
-  const pagination = paginationRes.value;
-  const conversationFilter = parseFilter(ctx.req.query("filter"));
+    if (paginationRes.isErr()) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: paginationRes.error.reason,
+        },
+      });
+    }
 
-  // Fetch and verify space access.
-  const space = await SpaceResource.fetchById(auth, spaceId);
-  if (!space || !space.canReadOrAdministrate(auth)) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "space_not_found",
-        message: "Space not found or access denied",
-      },
-    });
-  }
+    const pagination = paginationRes.value;
+    const conversationFilter = parseFilter(ctx.req.query("filter"));
 
-  // Get paginated conversations for the space.
-  const {
-    conversations: spaceConversations,
-    hasMore,
-    lastValue,
-  } = await ConversationResource.listConversationsInSpacePaginated(auth, {
-    spaceId,
-    options: { excludeTest: true },
-    pagination: {
-      limit: pagination.limit,
-      lastValue: pagination.lastValue,
-      orderDirection: pagination.orderDirection,
-    },
-    filter: conversationFilter,
-  });
+    // Fetch and verify space access.
+    const space = await SpaceResource.fetchById(auth, spaceId);
+    if (!space || !space.canReadOrAdministrate(auth)) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "space_not_found",
+          message: "Space not found or access denied",
+        },
+      });
+    }
 
-  const { conversations: allConversations } =
-    await ConversationResource.listConversationsInSpacePaginated(auth, {
+    // Get paginated conversations for the space.
+    const {
+      conversations: spaceConversations,
+      hasMore,
+      lastValue,
+    } = await ConversationResource.listConversationsInSpacePaginated(auth, {
       spaceId,
       options: { excludeTest: true },
       pagination: {
-        limit: 1,
+        limit: pagination.limit,
+        lastValue: pagination.lastValue,
         orderDirection: pagination.orderDirection,
       },
-      filter: "all",
+      filter: conversationFilter,
     });
-  const isEmpty = allConversations.length === 0;
 
-  // Fetch full conversation details for the paginated results.
-  // N+1 queries here, bad for scaling — TODO(@jd) find a better way.
-  const spaceConversationsFull = await concurrentExecutor(
-    spaceConversations,
-    async (conv) => getLightConversation(auth, conv.sId),
-    { concurrency: 10 }
-  );
+    const { conversations: allConversations } =
+      await ConversationResource.listConversationsInSpacePaginated(auth, {
+        spaceId,
+        options: { excludeTest: true },
+        pagination: {
+          limit: 1,
+          orderDirection: pagination.orderDirection,
+        },
+        filter: "all",
+      });
+    const isEmpty = allConversations.length === 0;
 
-  return ctx.json({
-    conversations: removeNulls(
-      spaceConversationsFull.map((res) => (res.isOk() ? res.value : null))
-    ),
-    hasMore,
-    lastValue,
-    isEmpty,
-  });
-});
+    // Fetch full conversation details for the paginated results.
+    // N+1 queries here, bad for scaling — TODO(@jd) find a better way.
+    const spaceConversationsFull = await concurrentExecutor(
+      spaceConversations,
+      async (conv) => getLightConversation(auth, conv.sId),
+      { concurrency: 10 }
+    );
+
+    return ctx.json({
+      conversations: removeNulls(
+        spaceConversationsFull.map((res) => (res.isOk() ? res.value : null))
+      ),
+      hasMore,
+      lastValue,
+      isEmpty,
+    });
+  }
+);
 
 app.route("/unread", unread);
 

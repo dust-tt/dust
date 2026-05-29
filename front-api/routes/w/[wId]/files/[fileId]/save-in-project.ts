@@ -18,15 +18,20 @@ const SaveInProjectRequestBodySchema = z.object({
   projectId: z.string().min(1, "projectId is required"),
 });
 
+const ParamsSchema = z.object({
+  fileId: z.string(),
+});
+
 // Mounted at /api/w/:wId/files/:fileId/save-in-project.
 const app = workspaceApp();
 
 app.post(
   "/",
+  validate("param", ParamsSchema),
   validate("json", SaveInProjectRequestBodySchema),
   async (ctx): HandlerResult<SaveInProjectResponseBody> => {
     const auth = ctx.get("auth");
-    const fileId = ctx.req.param("fileId") ?? "";
+    const { fileId } = ctx.req.valid("param");
 
     const file = await FileResource.fetchById(auth, fileId);
     if (!file) {

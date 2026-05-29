@@ -7,8 +7,15 @@ import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversati
 import { createHono } from "@front-api/lib/hono";
 import type { WorkspaceAwareCtx } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import type { HttpBindings } from "@hono/node-server";
 import { IncomingForm } from "formidable";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  cId: z.string(),
+  mId: z.string(),
+});
 
 const privateUploadGcs = getPrivateUploadBucket();
 
@@ -31,11 +38,10 @@ function isValidContentFormat(
 // handler.
 const app = createHono<WorkspaceAwareCtx & { Bindings: HttpBindings }>();
 
-app.get("/", async (ctx) => {
+app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
   const owner = auth.getNonNullableWorkspace();
-  const conversationId = ctx.req.param("cId") ?? "";
-  const messageId = ctx.req.param("mId") ?? "";
+  const { cId: conversationId, mId: messageId } = ctx.req.valid("param");
 
   const conversationRes = await getConversation(auth, conversationId);
   if (conversationRes.isErr()) {
@@ -78,11 +84,10 @@ app.get("/", async (ctx) => {
 });
 
 // TODO(2024-07-02 flav) Remove this endpoint.
-app.post("/", async (ctx) => {
+app.post("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
   const owner = auth.getNonNullableWorkspace();
-  const conversationId = ctx.req.param("cId") ?? "";
-  const messageId = ctx.req.param("mId") ?? "";
+  const { cId: conversationId, mId: messageId } = ctx.req.valid("param");
 
   const conversationRes = await getConversation(auth, conversationId);
   if (conversationRes.isErr()) {

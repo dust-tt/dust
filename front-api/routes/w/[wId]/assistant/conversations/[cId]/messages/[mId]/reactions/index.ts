@@ -13,6 +13,11 @@ import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
+const ParamsSchema = z.object({
+  cId: z.string(),
+  mId: z.string(),
+});
+
 const MessageReactionRequestBodySchema = z.object({
   reaction: z.string(),
 });
@@ -22,12 +27,12 @@ const app = workspaceApp();
 
 app.post(
   "/",
+  validate("param", ParamsSchema),
   validate("json", MessageReactionRequestBodySchema),
   async (ctx) => {
     const auth = ctx.get("auth");
     const user = auth.getNonNullableUser();
-    const conversationId = ctx.req.param("cId") ?? "";
-    const messageId = ctx.req.param("mId") ?? "";
+    const { cId: conversationId, mId: messageId } = ctx.req.valid("param");
 
     const conversation = await ConversationResource.fetchById(
       auth,
@@ -126,12 +131,12 @@ app.post(
 
 app.delete(
   "/",
+  validate("param", ParamsSchema),
   validate("json", MessageReactionRequestBodySchema),
   async (ctx) => {
     const auth = ctx.get("auth");
     const user = auth.getNonNullableUser();
-    const conversationId = ctx.req.param("cId") ?? "";
-    const messageId = ctx.req.param("mId") ?? "";
+    const { cId: conversationId, mId: messageId } = ctx.req.valid("param");
 
     const conversation = await ConversationResource.fetchById(
       auth,

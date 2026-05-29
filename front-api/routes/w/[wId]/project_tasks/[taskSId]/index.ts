@@ -10,6 +10,12 @@ import type { PodTaskType } from "@app/types/project_task";
 import type { PodType } from "@app/types/space";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  taskSId: z.string(),
+});
 
 export interface GetWorkspaceProjectTaskResponseBody {
   task: PodTaskType;
@@ -20,9 +26,9 @@ export interface GetWorkspaceProjectTaskResponseBody {
 // Mounted at /api/w/:wId/project_tasks/:taskSId.
 const app = workspaceApp();
 
-app.get("/", async (ctx) => {
+app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
-  const taskSId = ctx.req.param("taskSId") ?? "";
+  const { taskSId } = ctx.req.valid("param");
   if (!taskSId) {
     return apiError(ctx, {
       status_code: 400,

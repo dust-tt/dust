@@ -8,6 +8,12 @@ import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { sessionApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  wId: z.string(),
+});
 
 export type GetWorkspaceAuthContextResponseType = {
   user: UserType;
@@ -31,9 +37,10 @@ const app = sessionApp();
 
 app.get(
   "/",
+  validate("param", ParamsSchema),
   async (ctx): HandlerResult<GetWorkspaceAuthContextResponseType> => {
     const session = ctx.get("session");
-    const wId = ctx.req.param("wId") ?? "";
+    const { wId } = ctx.req.valid("param");
 
     const auth = await Authenticator.fromSession(session, wId);
 

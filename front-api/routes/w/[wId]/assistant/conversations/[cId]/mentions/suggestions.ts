@@ -12,6 +12,10 @@ export type MentionSuggestionsResponseBody = {
   suggestions: RichMention[];
 };
 
+const ParamsSchema = z.object({
+  cId: z.string(),
+});
+
 const MentionSuggestionsQuerySchema = z.object({
   query: z.string().optional().default(""),
   select: z.union([z.string(), z.array(z.string())]).optional(),
@@ -23,10 +27,11 @@ const app = workspaceApp();
 
 app.get(
   "/",
+  validate("param", ParamsSchema),
   validate("query", MentionSuggestionsQuerySchema),
   async (ctx): HandlerResult<MentionSuggestionsResponseBody> => {
     const auth = ctx.get("auth");
-    const cId = ctx.req.param("cId") ?? "";
+    const { cId } = ctx.req.valid("param");
 
     const conversationRes = await ConversationResource.fetchById(auth, cId);
     if (!conversationRes) {

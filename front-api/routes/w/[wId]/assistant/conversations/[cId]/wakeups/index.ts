@@ -4,8 +4,14 @@ import type { WakeUpType } from "@app/types/assistant/wakeups";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
 
 import wakeup from "./[wuId]";
+
+const ParamsSchema = z.object({
+  cId: z.string(),
+});
 
 export type GetConversationWakeUpsResponseBody = {
   wakeUps: WakeUpType[];
@@ -14,22 +20,26 @@ export type GetConversationWakeUpsResponseBody = {
 // Mounted at /api/w/:wId/assistant/conversations/:cId/wakeups.
 const app = workspaceApp();
 
-app.get("/", async (ctx): HandlerResult<GetConversationWakeUpsResponseBody> => {
-  const auth = ctx.get("auth");
-  const cId = ctx.req.param("cId") ?? "";
+app.get(
+  "/",
+  validate("param", ParamsSchema),
+  async (ctx): HandlerResult<GetConversationWakeUpsResponseBody> => {
+    const auth = ctx.get("auth");
+    const { cId } = ctx.req.valid("param");
 
-  // The fetchConversationWithoutContent method checks for conversation
-  // accessibility (inside the resource through `baseFetchWithAuthorization`).
-  const conversationRes =
-    await ConversationResource.fetchConversationWithoutContent(auth, cId);
-  if (conversationRes.isErr()) {
-    return apiErrorForConversation(ctx, conversationRes.error);
+    // The fetchConversationWithoutContent method checks for conversation
+    // accessibility (inside the resource through `baseFetchWithAuthorization`).
+    const conversationRes =
+      await ConversationResource.fetchConversationWithoutContent(auth, cId);
+    if (conversationRes.isErr()) {
+      return apiErrorForConversation(ctx, conversationRes.error);
+    }
+    const conversation = conversationRes.value;
+
+    const wakeUps = await WakeUpResource.listByConversation(auth, conversation);
+    return ctx.json({ wakeUps: wakeUps.map((w) => w.toJSON()) });
   }
-  const conversation = conversationRes.value;
-
-  const wakeUps = await WakeUpResource.listByConversation(auth, conversation);
-  return ctx.json({ wakeUps: wakeUps.map((w) => w.toJSON()) });
-});
+);
 
 app.route("/:wuId", wakeup);
 

@@ -4,7 +4,13 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import { withSpace } from "@front-api/middlewares/with_space";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  svId: z.string(),
+});
 
 export type DeleteMCPServerViewResponseBody = {
   deleted: boolean;
@@ -15,12 +21,13 @@ const app = workspaceApp();
 
 app.delete(
   "/",
+  validate("param", ParamsSchema),
   ensureIsAdmin(),
   withSpace({ requireCanReadOrAdministrate: true }),
   async (ctx): HandlerResult<DeleteMCPServerViewResponseBody> => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");
-    const serverViewId = ctx.req.param("svId") ?? "";
+    const { svId: serverViewId } = ctx.req.valid("param");
 
     const mcpServerView = await MCPServerViewResource.fetchById(
       auth,

@@ -14,7 +14,6 @@ import type {
 } from "@app/types/assistant/skill_configuration";
 import type { APIErrorResponse } from "@app/types/error";
 import type { ModelId } from "@app/types/shared/model_id";
-import { isString } from "@app/types/shared/utils/general";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -53,6 +52,10 @@ export type DeleteSkillResponseBody = {
   success: boolean;
 };
 
+const ParamsSchema = z.object({
+  sId: z.string(),
+});
+
 // Request body schema for PATCH.
 const PatchSkillRequestBodySchema = z.object({
   name: z.string(),
@@ -76,23 +79,13 @@ const PatchSkillRequestBodySchema = z.object({
 // Shared per-request prelude: resolve :sId to a SkillResource or return a
 // failure Response. See [API10].
 async function loadSkill(
-  ctx: Context
+  ctx: Context,
+  sId: string
 ): Promise<
   | { skill: SkillResource; sId: string }
   | (Response & TypedResponse<APIErrorResponse>)
 > {
   const auth = ctx.get("auth");
-  const sId = ctx.req.param("sId");
-
-  if (!isString(sId)) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid skill ID.",
-      },
-    });
-  }
 
   const skill = await SkillResource.fetchById(auth, sId);
   if (!skill) {
@@ -120,14 +113,16 @@ app.route("/files/:fileId/content", filesRoute);
 
 app.get(
   "/",
+  validate("param", ParamsSchema),
   async (
     ctx
   ): HandlerResult<
     GetSkillResponseBody | GetSkillWithRelationsResponseBody
   > => {
     const auth = ctx.get("auth");
+    const { sId } = ctx.req.valid("param");
 
-    const loaded = await loadSkill(ctx);
+    const loaded = await loadSkill(ctx, sId);
     if (loaded instanceof Response) {
       return loaded;
     }
@@ -183,12 +178,14 @@ app.get(
 
 app.patch(
   "/",
+  validate("param", ParamsSchema),
   validate("json", PatchSkillRequestBodySchema),
   async (ctx): HandlerResult<PatchSkillResponseBody> => {
     const auth = ctx.get("auth");
     const owner = auth.getNonNullableWorkspace();
+    const { sId } = ctx.req.valid("param");
 
-    const loaded = await loadSkill(ctx);
+    const loaded = await loadSkill(ctx, sId);
     if (loaded instanceof Response) {
       return loaded;
     }
@@ -437,40 +434,45 @@ app.patch(
   }
 );
 
-app.delete("/", async (ctx): HandlerResult<DeleteSkillResponseBody> => {
-  const auth = ctx.get("auth");
-  const owner = auth.getNonNullableWorkspace();
+app.delete(
+  "/",
+  validate("param", ParamsSchema),
+  async (ctx): HandlerResult<DeleteSkillResponseBody> => {
+    const auth = ctx.get("auth");
+    const owner = auth.getNonNullableWorkspace();
+    const { sId } = ctx.req.valid("param");
 
-  const loaded = await loadSkill(ctx);
-  if (loaded instanceof Response) {
-    return loaded;
+    const loaded = await loadSkill(ctx, sId);
+    if (loaded instanceof Response) {
+      return loaded;
+    }
+    const { skill } = loaded;
+
+    // Check if user can write.
+    if (!skill.canWrite(auth)) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "app_auth_error",
+          message: "Only editors can delete this skill.",
+        },
+      });
+    }
+
+    if (skill.status === "suggested") {
+      logger.info(
+        {
+          skillId: skill.sId,
+          workspaceId: owner.sId,
+        },
+        "Suggested skill rejected"
+      );
+    }
+
+    await skill.archive(auth);
+
+    return ctx.json({ success: true });
   }
-  const { skill } = loaded;
-
-  // Check if user can write.
-  if (!skill.canWrite(auth)) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "app_auth_error",
-        message: "Only editors can delete this skill.",
-      },
-    });
-  }
-
-  if (skill.status === "suggested") {
-    logger.info(
-      {
-        skillId: skill.sId,
-        workspaceId: owner.sId,
-      },
-      "Suggested skill rejected"
-    );
-  }
-
-  await skill.archive(auth);
-
-  return ctx.json({ success: true });
-});
+);
 
 export default app;

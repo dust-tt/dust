@@ -11,6 +11,11 @@ import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
+const ParamsSchema = z.object({
+  cId: z.string(),
+  mId: z.string(),
+});
+
 const MessageFeedbackRequestBodySchema = z.object({
   thumbDirection: z.string(),
   feedbackContent: z.string().nullish(),
@@ -22,12 +27,12 @@ const app = workspaceApp();
 
 app.post(
   "/",
+  validate("param", ParamsSchema),
   validate("json", MessageFeedbackRequestBodySchema),
   async (ctx) => {
     const auth = ctx.get("auth");
     const user = auth.getNonNullableUser();
-    const conversationId = ctx.req.param("cId") ?? "";
-    const messageId = ctx.req.param("mId") ?? "";
+    const { cId: conversationId, mId: messageId } = ctx.req.valid("param");
 
     const conversationResource = await ConversationResource.fetchById(
       auth,
@@ -100,11 +105,10 @@ app.post(
   }
 );
 
-app.delete("/", async (ctx) => {
+app.delete("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
   const user = auth.getNonNullableUser();
-  const conversationId = ctx.req.param("cId") ?? "";
-  const messageId = ctx.req.param("mId") ?? "";
+  const { cId: conversationId, mId: messageId } = ctx.req.valid("param");
 
   const conversationResource = await ConversationResource.fetchById(
     auth,

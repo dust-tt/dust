@@ -2,13 +2,16 @@ import type { GroupResource } from "@app/lib/resources/group_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { isString } from "@app/types/shared/utils/general";
 import type { UserType } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import type { Context } from "hono";
 import { z } from "zod";
+
+const ParamsSchema = z.object({
+  sId: z.string(),
+});
 
 const PatchSkillEditorsRequestBodySchema = z
   .object({
@@ -42,20 +45,10 @@ export interface PatchSkillEditorsResponseBody {
 // resources or a Response describing the failure — keeps the validation
 // prelude in one place per [API10].
 async function loadSkillAndEditorGroup(
-  ctx: Context
+  ctx: Context,
+  sId: string
 ): Promise<{ skill: SkillResource; editorGroup: GroupResource } | Response> {
   const auth = ctx.get("auth");
-  const sId = ctx.req.param("sId");
-
-  if (!isString(sId)) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid skill id.",
-      },
-    });
-  }
 
   const skill = await SkillResource.fetchById(auth, sId);
   if (!skill) {
@@ -85,10 +78,11 @@ async function loadSkillAndEditorGroup(
 // Mounted at /api/w/:wId/skills/:sId/editors.
 const app = workspaceApp();
 
-app.get("/", async (ctx) => {
+app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
+  const { sId } = ctx.req.valid("param");
 
-  const loaded = await loadSkillAndEditorGroup(ctx);
+  const loaded = await loadSkillAndEditorGroup(ctx, sId);
   if (loaded instanceof Response) {
     return loaded;
   }
@@ -102,11 +96,13 @@ app.get("/", async (ctx) => {
 
 app.patch(
   "/",
+  validate("param", ParamsSchema),
   validate("json", PatchSkillEditorsRequestBodySchema),
   async (ctx) => {
     const auth = ctx.get("auth");
+    const { sId } = ctx.req.valid("param");
 
-    const loaded = await loadSkillAndEditorGroup(ctx);
+    const loaded = await loadSkillAndEditorGroup(ctx, sId);
     if (loaded instanceof Response) {
       return loaded;
     }

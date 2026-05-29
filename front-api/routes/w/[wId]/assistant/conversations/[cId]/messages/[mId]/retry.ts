@@ -7,14 +7,20 @@ import { isAgentMessageType } from "@app/types/assistant/conversation";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  cId: z.string(),
+  mId: z.string(),
+});
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/messages/:mId/retry.
 const app = workspaceApp();
 
-app.post("/", async (ctx) => {
+app.post("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
-  const conversationId = ctx.req.param("cId") ?? "";
-  const messageId = ctx.req.param("mId") ?? "";
+  const { cId: conversationId, mId: messageId } = ctx.req.valid("param");
 
   const conversationResource = await ConversationResource.fetchById(
     auth,

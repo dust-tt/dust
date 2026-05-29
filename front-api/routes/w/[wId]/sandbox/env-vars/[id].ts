@@ -19,15 +19,20 @@ const PatchWorkspaceSandboxEnvVarBodySchema = z.object({
   allowedDomains: z.array(z.string()).optional(),
 });
 
+const ParamsSchema = z.object({
+  id: z.string(),
+});
+
 // Mounted at /api/w/:wId/sandbox/env-vars/:id.
 const app = workspaceApp();
 
 app.patch(
   "/",
+  validate("param", ParamsSchema),
   validate("json", PatchWorkspaceSandboxEnvVarBodySchema),
   async (ctx): HandlerResult<PatchWorkspaceSandboxEnvVarResponseBody> => {
     const auth = ctx.get("auth");
-    const id = ctx.req.param("id");
+    const { id } = ctx.req.valid("param");
     if (!id) {
       return apiError(ctx, {
         status_code: 400,
@@ -124,44 +129,48 @@ app.patch(
   }
 );
 
-app.delete("/", async (ctx): HandlerResult<SuccessResponseBody> => {
-  const auth = ctx.get("auth");
-  const id = ctx.req.param("id");
-  if (!id) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid sandbox environment variable id.",
-      },
-    });
-  }
+app.delete(
+  "/",
+  validate("param", ParamsSchema),
+  async (ctx): HandlerResult<SuccessResponseBody> => {
+    const auth = ctx.get("auth");
+    const { id } = ctx.req.valid("param");
+    if (!id) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Invalid sandbox environment variable id.",
+        },
+      });
+    }
 
-  const envVar = await WorkspaceSandboxEnvVarResource.fetchById(auth, id);
-  if (!envVar) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Sandbox environment variable not found.",
-      },
-    });
-  }
+    const envVar = await WorkspaceSandboxEnvVarResource.fetchById(auth, id);
+    if (!envVar) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Sandbox environment variable not found.",
+        },
+      });
+    }
 
-  const deleteResult = await envVar.delete(auth, {
-    context: getAuditLogContext(auth),
-  });
-  if (deleteResult.isErr()) {
-    return apiError(ctx, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: deleteResult.error.message,
-      },
+    const deleteResult = await envVar.delete(auth, {
+      context: getAuditLogContext(auth),
     });
-  }
+    if (deleteResult.isErr()) {
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: deleteResult.error.message,
+        },
+      });
+    }
 
-  return ctx.json({ success: true });
-});
+    return ctx.json({ success: true });
+  }
+);
 
 export default app;

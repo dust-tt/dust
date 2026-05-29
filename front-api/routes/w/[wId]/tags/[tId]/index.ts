@@ -10,80 +10,95 @@ const PutBodySchema = z.object({
   kind: z.enum(["standard", "protected"]),
 });
 
+const ParamsSchema = z.object({
+  tId: z.string(),
+});
+
 // Mounted at /api/w/:wId/tags/:tId.
 const app = workspaceApp();
 
-app.delete("/", ensureIsAdmin(), async (ctx) => {
-  const auth = ctx.get("auth");
-  const tId = ctx.req.param("tId");
+app.delete(
+  "/",
+  validate("param", ParamsSchema),
+  ensureIsAdmin(),
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const { tId } = ctx.req.valid("param");
 
-  if (!tId) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Tag ID is required",
-      },
-    });
+    if (!tId) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Tag ID is required",
+        },
+      });
+    }
+
+    const tag = await TagResource.fetchById(auth, tId);
+
+    if (!tag) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Tag not found",
+        },
+      });
+    }
+
+    const result = await tag.delete(auth);
+
+    if (result.isErr()) {
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "Failed to delete tag",
+        },
+      });
+    }
+
+    return ctx.body(null, 204);
   }
+);
 
-  const tag = await TagResource.fetchById(auth, tId);
+app.put(
+  "/",
+  validate("param", ParamsSchema),
+  ensureIsAdmin(),
+  validate("json", PutBodySchema),
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const { tId } = ctx.req.valid("param");
 
-  if (!tag) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Tag not found",
-      },
-    });
+    if (!tId) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Tag ID is required",
+        },
+      });
+    }
+
+    const tag = await TagResource.fetchById(auth, tId);
+
+    if (!tag) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Tag not found",
+        },
+      });
+    }
+
+    const { name, kind } = ctx.req.valid("json");
+    await tag.updateTag({ name, kind });
+
+    return ctx.body(null, 200);
   }
-
-  const result = await tag.delete(auth);
-
-  if (result.isErr()) {
-    return apiError(ctx, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: "Failed to delete tag",
-      },
-    });
-  }
-
-  return ctx.body(null, 204);
-});
-
-app.put("/", ensureIsAdmin(), validate("json", PutBodySchema), async (ctx) => {
-  const auth = ctx.get("auth");
-  const tId = ctx.req.param("tId");
-
-  if (!tId) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Tag ID is required",
-      },
-    });
-  }
-
-  const tag = await TagResource.fetchById(auth, tId);
-
-  if (!tag) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Tag not found",
-      },
-    });
-  }
-
-  const { name, kind } = ctx.req.valid("json");
-  await tag.updateTag({ name, kind });
-
-  return ctx.body(null, 200);
-});
+);
 
 export default app;

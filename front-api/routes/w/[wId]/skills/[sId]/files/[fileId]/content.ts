@@ -4,14 +4,20 @@ import { isString } from "@app/types/shared/utils/general";
 import { readableToReadableStream } from "@app/types/shared/utils/streams";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  sId: z.string(),
+  fileId: z.string(),
+});
 
 // Mounted at /api/w/:wId/skills/:sId/files/:fileId/content.
 const app = workspaceApp();
 
-app.get("/", async (ctx) => {
+app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
-  const sId = ctx.req.param("sId");
-  const fileId = ctx.req.param("fileId");
+  const { sId, fileId } = ctx.req.valid("param");
 
   if (!isString(sId)) {
     return apiError(ctx, {

@@ -5,7 +5,14 @@ import { CoreAPI } from "@app/types/core/core_api";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import { withSpace } from "@front-api/middlewares/with_space";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  aId: z.string(),
+  runId: z.string(),
+});
 
 export type PostRunCancelResponseBody = {
   success: boolean;
@@ -16,12 +23,12 @@ const app = workspaceApp();
 
 app.post(
   "/",
+  validate("param", ParamsSchema),
   withSpace({ requireCanWrite: true }),
   async (ctx): HandlerResult<PostRunCancelResponseBody> => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");
-    const aId = ctx.req.param("aId") ?? "";
-    const runId = ctx.req.param("runId") ?? "";
+    const { aId, runId } = ctx.req.valid("param");
 
     const found = await AppResource.fetchById(auth, aId);
     if (!found || found.space.sId !== space.sId) {

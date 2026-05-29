@@ -10,6 +10,11 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import type { Context } from "hono";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  dsId: z.string(),
+});
 
 const RECENT_URLS_COUNT = 100;
 
@@ -78,9 +83,9 @@ function errorJson(
 // Mounted at /api/w/:wId/data_sources/:dsId/managed/notion_url_sync.
 const app = workspaceApp();
 
-app.get("/", async (ctx) => {
+app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
-  const dsId = ctx.req.param("dsId") ?? "";
+  const { dsId } = ctx.req.valid("param");
 
   const result = await fetchManagedNotionDataSource(auth, dsId);
   if (result.kind === "err") {
@@ -100,56 +105,61 @@ app.get("/", async (ctx) => {
   return ctx.json({ syncResults: lastSyncedUrls });
 });
 
-app.post("/", validate("json", PostNotionSyncPayloadSchema), async (ctx) => {
-  const auth = ctx.get("auth");
-  const dsId = ctx.req.param("dsId") ?? "";
+app.post(
+  "/",
+  validate("param", ParamsSchema),
+  validate("json", PostNotionSyncPayloadSchema),
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const { dsId } = ctx.req.valid("param");
 
-  const result = await fetchManagedNotionDataSource(auth, dsId);
-  if (result.kind === "err") {
-    return errorJson(ctx, result);
-  }
-
-  const owner = auth.getNonNullableWorkspace();
-  const { urls, method } = ctx.req.valid("json");
-
-  const syncResults = (
-    await syncNotionUrls({
-      urlsArray: urls,
-      dataSourceId: dsId,
-      workspaceId: owner.sId,
-      method,
-    })
-  ).map((urlResult) => ({
-    url: urlResult.url,
-    method,
-    timestamp: urlResult.timestamp,
-    success: urlResult.success,
-    ...(urlResult.error && { error_message: urlResult.error.message }),
-  }));
-
-  // Store the last RECENT_URLS_COUNT synced urls (expires in 1 day if no URL is synced).
-  await runOnRedis({ origin: "notion_url_sync" }, async (redis) => {
-    const redisKey = getRedisKeyForNotionUrlSync(owner.sId);
-
-    await redis.zAdd(
-      redisKey,
-      syncResults.map((urlResult) => ({
-        method,
-        score: urlResult.timestamp,
-        value: JSON.stringify(urlResult),
-      }))
-    );
-
-    await redis.expire(redisKey, 24 * 60 * 60);
-
-    // Delete the oldest URL if the list has more than RECENT_URLS_COUNT items.
-    const count = await redis.zCard(redisKey);
-    if (count > RECENT_URLS_COUNT) {
-      await redis.zRemRangeByRank(redisKey, 0, count - RECENT_URLS_COUNT);
+    const result = await fetchManagedNotionDataSource(auth, dsId);
+    if (result.kind === "err") {
+      return errorJson(ctx, result);
     }
-  });
 
-  return ctx.json({ syncResults });
-});
+    const owner = auth.getNonNullableWorkspace();
+    const { urls, method } = ctx.req.valid("json");
+
+    const syncResults = (
+      await syncNotionUrls({
+        urlsArray: urls,
+        dataSourceId: dsId,
+        workspaceId: owner.sId,
+        method,
+      })
+    ).map((urlResult) => ({
+      url: urlResult.url,
+      method,
+      timestamp: urlResult.timestamp,
+      success: urlResult.success,
+      ...(urlResult.error && { error_message: urlResult.error.message }),
+    }));
+
+    // Store the last RECENT_URLS_COUNT synced urls (expires in 1 day if no URL is synced).
+    await runOnRedis({ origin: "notion_url_sync" }, async (redis) => {
+      const redisKey = getRedisKeyForNotionUrlSync(owner.sId);
+
+      await redis.zAdd(
+        redisKey,
+        syncResults.map((urlResult) => ({
+          method,
+          score: urlResult.timestamp,
+          value: JSON.stringify(urlResult),
+        }))
+      );
+
+      await redis.expire(redisKey, 24 * 60 * 60);
+
+      // Delete the oldest URL if the list has more than RECENT_URLS_COUNT items.
+      const count = await redis.zCard(redisKey);
+      if (count > RECENT_URLS_COUNT) {
+        await redis.zRemRangeByRank(redisKey, 0, count - RECENT_URLS_COUNT);
+      }
+    });
+
+    return ctx.json({ syncResults });
+  }
+);
 
 export default app;

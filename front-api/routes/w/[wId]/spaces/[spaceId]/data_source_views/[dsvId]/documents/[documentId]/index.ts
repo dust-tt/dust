@@ -5,8 +5,14 @@ import type { CoreAPIDocument } from "@app/types/core/data_source";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import { withDataSourceView } from "@front-api/middlewares/with_data_source_view";
 import { withSpace } from "@front-api/middlewares/with_space";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  documentId: z.string(),
+});
 
 export type GetDataSourceViewDocumentResponseBody = {
   document: CoreAPIDocument;
@@ -18,11 +24,12 @@ const app = workspaceApp();
 
 app.get(
   "/",
+  validate("param", ParamsSchema),
   withSpace({ requireCanRead: true }),
   withDataSourceView({ requireCanRead: true }),
   async (ctx): HandlerResult<GetDataSourceViewDocumentResponseBody> => {
     const dataSourceView = ctx.get("dataSourceView");
-    const documentId = ctx.req.param("documentId") ?? "";
+    const { documentId } = ctx.req.valid("param");
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
     const doc = await coreAPI.getDataSourceDocument({
       dataSourceId: dataSourceView.dataSource.dustAPIDataSourceId,

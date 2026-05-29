@@ -9,6 +9,12 @@ import { isString } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 import { createHono } from "@front-api/lib/hono";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  wId: z.string(),
+});
 
 type OnboardingType =
   | "email_invite"
@@ -31,8 +37,9 @@ const app = createHono();
 
 app.get(
   "/",
+  validate("param", ParamsSchema),
   async (ctx): HandlerResult<GetJoinResponseBody | GetJoinErrorBody> => {
-    const wId = ctx.req.param("wId");
+    const { wId } = ctx.req.valid("param");
     const { t, cId } = ctx.req.query();
 
     if (!isString(wId)) {

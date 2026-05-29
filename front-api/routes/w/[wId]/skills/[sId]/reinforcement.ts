@@ -36,15 +36,20 @@ export type PatchSkillReinforcementResponseBody = {
   skill: SkillType;
 };
 
+const ParamsSchema = z.object({
+  sId: z.string(),
+});
+
 // Mounted at /api/w/:wId/skills/:sId/reinforcement.
 const app = workspaceApp();
 
 app.patch(
   "/",
+  validate("param", ParamsSchema),
   validate("json", PatchSkillReinforcementBodySchema),
   async (ctx): HandlerResult<PatchSkillReinforcementResponseBody> => {
     const auth = ctx.get("auth");
-    const sId = ctx.req.param("sId");
+    const { sId } = ctx.req.valid("param");
 
     if (!isString(sId)) {
       return apiError(ctx, {

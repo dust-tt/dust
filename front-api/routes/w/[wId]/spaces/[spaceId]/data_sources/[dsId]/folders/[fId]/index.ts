@@ -3,20 +3,27 @@ import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import { withDataSource } from "@front-api/middlewares/with_data_source";
 import { withSpace } from "@front-api/middlewares/with_space";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  fId: z.string(),
+});
 
 // Mounted under /api/w/:wId/spaces/:spaceId/data_sources/:dsId/folders/:fId.
 const app = workspaceApp();
 
 app.delete(
   "/",
+  validate("param", ParamsSchema),
   withSpace({ requireCanReadOrAdministrate: true }),
   withDataSource({ requireCanReadOrAdministrate: true }),
   async (ctx) => {
     const auth = ctx.get("auth");
     const dataSource = ctx.get("dataSource");
-    const fId = ctx.req.param("fId") ?? "";
+    const { fId } = ctx.req.valid("param");
     if (!fId) {
       return apiError(ctx, {
         status_code: 400,
