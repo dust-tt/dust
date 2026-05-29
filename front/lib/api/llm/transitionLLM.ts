@@ -427,6 +427,19 @@ export class TransitionLLM extends LLM {
 
     const baseMessages = conversation.messages.flatMap(toBaseMessages);
 
+    // Cache breakpoint on the last user-role message so the conversation
+    // prefix is reused across turns. Mirrors the legacy cache_control:
+    // ephemeral marker on the last user content block, and the request-level
+    // cache_control that acted as a default trailing breakpoint for
+    // tool-result turns.
+    for (let i = baseMessages.length - 1; i >= 0; i--) {
+      const msg = baseMessages[i];
+      if (msg.role === "user") {
+        baseMessages[i] = { ...msg, cache: "short" };
+        break;
+      }
+    }
+
     const { instructions, sharedContext, ephemeralContext } =
       normalizePrompt(prompt);
 
