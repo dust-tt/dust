@@ -4,6 +4,7 @@ import type {
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { DustFileSystem } from "@app/lib/api/file_system";
+import { enrichListWithFileResourceIds } from "@app/lib/api/files/file_system_ops";
 import { parseProcessedFilename } from "@app/lib/api/files/mount_path";
 import {
   isInteractiveContentType,
@@ -73,7 +74,12 @@ export async function listHandler(
     scopedPrefix = `${mount.scopedPrefix}/`;
   }
 
-  const entries = await dustFs.list(scopedPrefix, { includeProcessed: true });
+  // Enrich, so we can expose ids for interactive content files.
+  const entries = await enrichListWithFileResourceIds(
+    extra.auth,
+    dustFs,
+    await dustFs.list(scopedPrefix, { includeProcessed: true })
+  );
 
   const [dirs, files] = partition(entries, (e) => e.isDirectory);
 
