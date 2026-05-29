@@ -1,5 +1,5 @@
+import { redirectToSse } from "@front-api/lib/api/sse/redirect";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import type { Context } from "hono";
 
 // Mounted at /api/w/:wId/mcp/requests.
 //
@@ -13,14 +13,6 @@ import type { Context } from "hono";
 //   2. Reserve the literal `requests` segment so Hono's sibling `:serverId`
 //      param route under `/mcp/` does not swallow it as a server id.
 const app = workspaceApp();
-
-const SSE_PREFIX = "/api/sse";
-
-function redirectToSse(ctx: Context) {
-  const url = new URL(ctx.req.url);
-  const sseUrl = `${url.origin}${SSE_PREFIX}${url.pathname}${url.search}`;
-  return ctx.redirect(sseUrl, 307);
-}
 
 app.get("/", redirectToSse);
 
