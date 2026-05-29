@@ -6,7 +6,6 @@ import type {
 import {
   Avatar,
   Button,
-  ChevronDownIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -29,32 +28,35 @@ function SkillDropdownIcon({ icon }: SkillDropdownIconProps) {
 }
 
 interface UsedByButtonIconProps {
-  count: number;
-  showChevron: boolean;
+  agentCount: number;
+  skillCount: number;
 }
 
-function UsedByButtonIcon({ count, showChevron }: UsedByButtonIconProps) {
+function UsedByButtonIcon({ agentCount, skillCount }: UsedByButtonIconProps) {
+  const hasAgents = agentCount > 0;
+  const hasSkills = skillCount > 0;
+
   return (
-    <span className="relative inline-flex h-4 w-20 items-center justify-center leading-none">
-      <span className="inline-flex h-4 items-center justify-center gap-1 leading-none">
-        <span className="inline-flex h-4 items-center gap-0.5">
-          <RobotIcon className="h-3.5 w-3.5 shrink-0" />
-          <span className="inline-flex h-3.5 items-center text-xs leading-none">
-            /
+    <span className="inline-flex h-5 items-center justify-center gap-2 leading-none">
+      {(hasAgents || !hasSkills) && (
+        <span className="inline-flex h-5 items-center gap-1">
+          <RobotIcon className="h-4 w-4 shrink-0" />
+          <span className="inline-flex h-5 items-center text-sm leading-none tabular-nums">
+            {agentCount}
           </span>
-          <PuzzleIcon className="h-3.5 w-3.5 shrink-0" />
         </span>
-        <span className="inline-flex h-4 items-center text-xs leading-none tabular-nums">
-          {count}
+      )}
+      {hasAgents && hasSkills && (
+        <span className="h-1 w-1 rounded-full bg-muted-foreground/30" />
+      )}
+      {hasSkills && (
+        <span className="inline-flex h-5 items-center gap-1">
+          <PuzzleIcon className="h-4 w-4 shrink-0" />
+          <span className="inline-flex h-5 items-center text-sm leading-none tabular-nums">
+            {skillCount}
+          </span>
         </span>
-      </span>
-      <ChevronDownIcon
-        className={
-          showChevron
-            ? "absolute right-0 h-4 w-4 shrink-0"
-            : "invisible absolute right-0 h-4 w-4 shrink-0"
-        }
-      />
+      )}
     </span>
   );
 }
@@ -73,25 +75,34 @@ export const UsedByButton = ({
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
 
-  const totalCount = usage?.count ?? 0;
+  const agents = usage?.agents ?? [];
+  const skills = usage?.skills ?? [];
+  const agentCount = agents.length;
+  const skillCount = skills.length;
+  const totalCount = agentCount + skillCount;
+
+  const usageLabel =
+    agentCount > 0 && skillCount > 0
+      ? `${agentCount} agent${agentCount === 1 ? "" : "s"} and ${skillCount} skill${skillCount === 1 ? "" : "s"}`
+      : skillCount > 0
+        ? `${skillCount} skill${skillCount === 1 ? "" : "s"}`
+        : `${agentCount} agent${agentCount === 1 ? "" : "s"}`;
 
   if (totalCount === 0) {
     return (
       <Button
-        icon={<UsedByButtonIcon count={0} showChevron={false} />}
+        icon={<UsedByButtonIcon agentCount={0} skillCount={0} />}
         variant="ghost-secondary"
         isSelect={false}
         size="xs"
         className="px-1"
-        aria-label="0 uses"
+        aria-label="Used by 0 agents"
         disabled
       />
     );
   }
 
   const query = searchText.toLowerCase();
-  const agents = usage?.agents ?? [];
-  const skills = usage?.skills ?? [];
   const filteredAgents =
     query.length === 0
       ? agents
@@ -133,12 +144,14 @@ export const UsedByButton = ({
     >
       <DropdownMenuTrigger asChild>
         <Button
-          icon={<UsedByButtonIcon count={totalCount} showChevron />}
+          icon={
+            <UsedByButtonIcon agentCount={agentCount} skillCount={skillCount} />
+          }
           variant="ghost-secondary"
           isSelect={false}
           size="xs"
           className="px-1"
-          aria-label={`${totalCount} uses`}
+          aria-label={`Used by ${usageLabel}`}
           onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
             e.stopPropagation();
           }}
