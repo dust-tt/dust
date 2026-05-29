@@ -12,6 +12,7 @@ import {
   FILES_SERVER_NAME,
 } from "@app/lib/api/actions/servers/files/metadata";
 import { runIncludeDataRetrieval } from "@app/lib/api/actions/servers/include_data/include_function";
+import { buildPodSearchDataSources } from "@app/lib/api/actions/servers/pod_manager/build_pod_search_data_sources";
 import {
   buildProjectRetrieveDataSources,
   getPod,
@@ -22,8 +23,10 @@ import {
 import {
   LIST_MEMBERS_TOOL_NAME,
   POD_MANAGER_TOOLS_METADATA,
+  SEMANTIC_SEARCH_TOOL_NAME,
   UPDATE_MEMBERS_TOOL_NAME,
 } from "@app/lib/api/actions/servers/pod_manager/metadata";
+import { searchFunction } from "@app/lib/api/actions/servers/search/tools";
 import { resolveAgentConfigurationIdByName } from "@app/lib/api/assistant/configuration/agent";
 import {
   createConversation,
@@ -801,6 +804,49 @@ export function createProjectManagerTools(
           retrievalTopK: agentLoopContext.runContext.stepContext.retrievalTopK,
         });
       }, "Failed to retrieve recent Pod documents");
+    },
+
+    [SEMANTIC_SEARCH_TOOL_NAME]: async (params) => {
+      return withErrorHandling(async () => {
+        if (!agentLoopContext?.runContext) {
+          return new Err(
+            new MCPError("No conversation context available", {
+              tracked: false,
+            })
+          );
+        }
+
+        const scope = params.searchScope ?? "all";
+        const contextRes = await getPod(auth, {
+          agentLoopContext,
+          dustPod: params.dustPod,
+        });
+        if (contextRes.isErr()) {
+          return contextRes;
+        }
+
+        const { pod } = contextRes.value;
+        const dataSources = await buildPodSearchDataSources(auth, pod, scope);
+
+        if (dataSources.length === 0) {
+          return new Err(
+            new MCPError(
+              scope === "conversations"
+                ? "No Pod data source available to search conversations, or the Pod connector is not linked (required to scope transcript documents)."
+                : "No Pod data sources available to search for this scope.",
+              { tracked: false }
+            )
+          );
+        }
+
+        return searchFunction(auth, {
+          query: params.query,
+          relativeTimeFrame: params.relativeTimeFrame ?? "all",
+          dataSources,
+          nodeIds: params.nodeIds,
+          agentLoopContext,
+        });
+      }, "Failed to search Pod");
     },
 
     create_conversation: async (params) => {
