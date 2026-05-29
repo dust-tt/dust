@@ -70,6 +70,19 @@ describe("buildSkillAnalysisPrompt", () => {
     expect(userMessage).toContain("Always verify data before responding.");
   });
 
+  it("strips tool icon attributes from instructionsHtml in the user message", () => {
+    const skill = makeSkill({
+      instructionsHtml:
+        '<p>Use <tool id="mcp_server_view_1" name="GitHub Search" icon="GithubLogo"></tool>.</p>',
+    });
+    const { userMessage } = buildSkillAnalysisPrompt("User: hello", [skill]);
+
+    expect(userMessage).toContain(
+      '<tool id="mcp_server_view_1" name="GitHub Search" />'
+    );
+    expect(userMessage).not.toContain('icon="GithubLogo"');
+  });
+
   it("omits instructions when null", () => {
     const skill = makeSkill({ instructions: null, instructionsHtml: null });
     const { userMessage } = buildSkillAnalysisPrompt("User: hello", [skill]);
