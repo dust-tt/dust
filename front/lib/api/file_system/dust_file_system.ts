@@ -109,21 +109,24 @@ export class DustFileSystem {
     const owner = auth.getNonNullableWorkspace();
     const mounts: FileSystemMount[] = [];
 
-    conversations.forEach((conversation, idx) => {
+    // Legacy mount points are only meaningful for sandbox use, which is always single-conversation.
+    const includeLegacy = conversations.length === 1;
+
+    for (const conversation of conversations) {
       mounts.push({
         kind: "conversation",
         id: conversation.sId,
         scopedPrefix: `${SCOPED_PREFIX_CONVERSATION}${conversation.sId}`,
         sandboxMountPoint: `/files/${SCOPED_PREFIX_CONVERSATION}${conversation.sId}`,
-        // Only the first conversation gets the legacy mount for backward-compat sandbox symlinks.
-        legacyPrefix: idx === 0 ? LEGACY_PREFIX_CONVERSATION : null,
-        legacySandboxMountPoint:
-          idx === 0 ? `/files/${LEGACY_PREFIX_CONVERSATION}` : null,
+        legacyPrefix: includeLegacy ? LEGACY_PREFIX_CONVERSATION : null,
+        legacySandboxMountPoint: includeLegacy
+          ? `/files/${LEGACY_PREFIX_CONVERSATION}`
+          : null,
         // Conversation access is always read+write when the caller holds a valid auth for it.
         // The handler is responsible for verifying conversation access before calling this factory.
         permissions: { canRead: true, canWrite: true },
       });
-    });
+    }
 
     // Collect unique pod spaces from pod conversations, preserving order.
     const seenSpaceIds = new Set<string>();
