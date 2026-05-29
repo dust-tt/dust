@@ -55,9 +55,12 @@ export async function resolveFile(
   } else {
     if (!isPodConversation(conversation)) {
       return new Err(
-        new MCPError("Pod file paths are only available in Pod conversations.", {
-          tracked: false,
-        })
+        new MCPError(
+          "Pod file paths are only available in Pod conversations.",
+          {
+            tracked: false,
+          }
+        )
       );
     }
     const space = await SpaceResource.fetchById(auth, conversation.spaceId);
