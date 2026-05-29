@@ -22,23 +22,18 @@ import {
   buildFolderTree,
   countFoldersInTree,
   getFolderBreadcrumbSegments,
-  getParentFolderRelativePath,
   getScopedRelativePath,
   isFileExplorerMovableFile,
 } from "@app/components/file_explorer/utils";
-import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import type { FileSystemEntry } from "@app/lib/api/file_system/types";
 import { isInteractiveContentType } from "@app/types/files";
 import { Err, type Result } from "@app/types/shared/result";
 import {
-  Button,
   cn,
   FolderOpenIcon,
   PencilSquareIcon,
   TrashIcon,
-  XMarkIcon,
 } from "@dust-tt/sparkle";
-import { AnimatePresence, motion } from "framer-motion";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -47,14 +42,12 @@ interface FileExplorerProps {
   contentNodes?: ContentNodeEntry[];
   defaultViewMode?: ViewMode;
   emptyState?: React.ReactNode;
-  hideTitleBorder?: boolean;
+  hideBreadcrumbAtRoot?: boolean;
   files: FileSystemEntry[];
   getFileUrl: (path: string) => string;
-  rootTitle?: React.ReactNode;
   toolbarExtraActions?: React.ReactNode;
   isLoading: boolean;
   navigationResetKey?: number;
-  onClose?: () => void;
   onCurrentFolderChange?: (relativePath: string) => void;
   onDelete?: (entry: FileExplorerEntry) => Promise<void>;
   onFileDownload: (entry: FileEntry) => Promise<void>;
@@ -76,12 +69,10 @@ export function FileExplorer({
   emptyState,
   files,
   getFileUrl,
-  rootTitle,
   toolbarExtraActions,
-  hideTitleBorder = false,
+  hideBreadcrumbAtRoot = false,
   isLoading,
   navigationResetKey,
-  onClose,
   onCurrentFolderChange,
   onDelete,
   onFileDownload,
@@ -220,10 +211,6 @@ export function FileExplorer({
     setCurrentFolderPath(node.path);
   };
 
-  const handleGoUp = () => {
-    setCurrentFolderPath(getParentFolderRelativePath(currentFolderPath));
-  };
-
   const fileDragEnabled = Boolean(onMoveFile && totalFolderCount > 0);
 
   const handleMoveFileDrop = useCallback(
@@ -281,80 +268,31 @@ export function FileExplorer({
       ? () => setPreviewFile(fileEntriesAtLevel[previewIndex + 1] ?? null)
       : undefined;
 
-  const inPanel = !!onClose;
+  const showBreadcrumb = !(hideBreadcrumbAtRoot && currentFolderPath === "");
 
   return (
     <>
       <div className="flex h-full w-full min-h-0 flex-1 flex-col">
-        {inPanel && (
-          <AppLayoutTitle
-            className={hideTitleBorder ? "border-b-0" : undefined}
-          >
-            <div
-              className={cn(
-                "flex h-full items-center justify-between gap-2",
-                contentClassName
-              )}
-            >
-              <div className="relative flex h-full flex-1 min-w-0 items-center">
-                <AnimatePresence initial={false}>
-                  {currentFolderPath === "" && rootTitle !== undefined ? (
-                    <motion.div
-                      key="title"
-                      className="absolute inset-0 flex items-center"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.15 }}
-                    >
-                      {rootTitle}
-                    </motion.div>
-                  ) : (
-                    <motion.div
-                      key="breadcrumb"
-                      className="absolute inset-0 flex items-center"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.15 }}
-                    >
-                      <FileExplorerBreadcrumb
-                        currentFolderPath={currentFolderPath}
-                        onGoUp={handleGoUp}
-                        onNavigate={handleBreadcrumbNavigate}
-                        onMoveFileDrop={
-                          fileDragEnabled ? handleMoveFileDrop : undefined
-                        }
-                      />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                icon={XMarkIcon}
-                onClick={onClose}
+        <div
+          className={cn("flex flex-1 min-h-0 flex-col gap-5", contentClassName)}
+        >
+          {showBreadcrumb && (
+            <div className={cn("px-4", hideBreadcrumbAtRoot && "pt-5")}>
+              <FileExplorerBreadcrumb
+                currentFolderPath={currentFolderPath}
+                onNavigate={handleBreadcrumbNavigate}
+                onMoveFileDrop={
+                  fileDragEnabled ? handleMoveFileDrop : undefined
+                }
               />
             </div>
-          </AppLayoutTitle>
-        )}
-        <div
-          className={cn(
-            "flex flex-1 min-h-0 flex-col gap-5",
-            contentClassName,
-            inPanel ? "pt-5" : undefined
           )}
-        >
-          {!inPanel && (
-            <FileExplorerBreadcrumb
-              currentFolderPath={currentFolderPath}
-              onGoUp={handleGoUp}
-              onNavigate={handleBreadcrumbNavigate}
-              onMoveFileDrop={fileDragEnabled ? handleMoveFileDrop : undefined}
-            />
-          )}
-          <div className="px-4">
+          <div
+            className={cn(
+              "px-4",
+              hideBreadcrumbAtRoot && !showBreadcrumb && "pt-5"
+            )}
+          >
             <FileExplorerToolbar
               searchQuery={searchQuery}
               onSearchQueryChange={setSearchQuery}

@@ -8,12 +8,10 @@ import {
   ROOT_FOLDER_LABEL,
 } from "@app/components/file_explorer/utils";
 import {
-  ArrowLeftIcon,
   Breadcrumb,
   BreadcrumbButton,
   BreadcrumbItem,
   BreadcrumbPage,
-  Button,
   cn,
 } from "@dust-tt/sparkle";
 import type React from "react";
@@ -62,14 +60,12 @@ function BreadcrumbDropZone({
 
 export interface FileExplorerBreadcrumbProps {
   currentFolderPath: string;
-  onGoUp: () => void;
   onNavigate: (index: number) => void;
   onMoveFileDrop?: (scopedFilePath: string, parentRelativePath: string) => void;
 }
 
 export function FileExplorerBreadcrumb({
   currentFolderPath,
-  onGoUp,
   onNavigate,
   onMoveFileDrop,
 }: FileExplorerBreadcrumbProps) {
@@ -82,20 +78,11 @@ export function FileExplorerBreadcrumb({
 
   return (
     <div className="flex items-center gap-2">
-      {currentFolderPath !== "" &&
-        (isDragging ? (
-          <span className="animate-in fade-in slide-in-from-left-1 duration-150 text-sm font-medium leading-5 text-foreground dark:text-foreground-night">
-            Move to…
-          </span>
-        ) : (
-          <Button
-            aria-label="Go to parent folder"
-            variant="ghost"
-            size="sm"
-            icon={ArrowLeftIcon}
-            onClick={onGoUp}
-          />
-        ))}
+      {currentFolderPath !== "" && isDragging && (
+        <span className="animate-in fade-in slide-in-from-left-1 duration-150 text-sm font-medium leading-5 text-foreground dark:text-foreground-night">
+          Move to…
+        </span>
+      )}
       <Breadcrumb>
         {allItems.map((item, index) => {
           const isLast = index === allItems.length - 1;
@@ -111,7 +98,7 @@ export function FileExplorerBreadcrumb({
                 ) : (
                   <BreadcrumbButton
                     label={item.label}
-                    variant={isDragging ? "outline" : "ghost"}
+                    variant="outline"
                     onClick={() => onNavigate(index - 1)}
                   />
                 )}
