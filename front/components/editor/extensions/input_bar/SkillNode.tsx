@@ -125,12 +125,10 @@ export const SkillNode = Node.create({
   }),
 
   renderMarkdown: (node) =>
-    isString(node.attrs?.skillId) &&
-    isString(node.attrs?.skillIcon) &&
-    isString(node.attrs?.skillName)
+    isString(node.attrs?.skillId) && isString(node.attrs?.skillName)
       ? serializeSkillTag({
           id: node.attrs.skillId,
-          icon: node.attrs.skillIcon,
+          icon: isString(node.attrs.skillIcon) ? node.attrs.skillIcon : null,
           name: node.attrs.skillName,
         })
       : "",

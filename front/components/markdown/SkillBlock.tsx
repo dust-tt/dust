@@ -7,7 +7,7 @@ import { visit } from "unist-util-visit";
 
 export interface SkillDirectiveProps {
   skillId: string;
-  skillIcon: string;
+  skillIcon: string | null;
   skillName: string;
 }
 

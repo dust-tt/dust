@@ -151,15 +151,15 @@ export function extractFromEditorJSON(node?: JSONContent): {
     const skillIcon = node.attrs?.skillIcon;
     const skillName = node.attrs?.skillName;
 
-    if (isString(skillId) && isString(skillIcon) && isString(skillName)) {
+    if (isString(skillId) && isString(skillName)) {
       skills.push({
         id: skillId,
-        icon: skillIcon,
+        icon: isString(skillIcon) ? skillIcon : null,
         name: skillName,
       });
       textContent += serializeSkillTag({
         id: skillId,
-        icon: skillIcon,
+        icon: isString(skillIcon) ? skillIcon : null,
         name: skillName,
       });
     }
