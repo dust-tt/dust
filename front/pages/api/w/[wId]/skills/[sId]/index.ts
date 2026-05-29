@@ -299,6 +299,24 @@ async function handler(
       ]);
 
       const featureFlags = await getFeatureFlags(auth);
+      const enableSkillReferences = featureFlags.includes("nested_skills");
+      if (enableSkillReferences) {
+        const skillReferenceValidation =
+          SkillResource.validateSkillReferenceIds(auth, {
+            instructions: body.instructions,
+            parentSkillId: skill.id,
+          });
+
+        if (skillReferenceValidation.isErr()) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: skillReferenceValidation.error.message,
+            },
+          });
+        }
+      }
 
       // Validate file attachments if provided (gated behind sandbox_tools).
       let files: FileResource[] | undefined;
@@ -366,7 +384,7 @@ async function handler(
         name,
         reinforcement: body.reinforcement,
         requestedSpaceIds,
-        enableSkillReferences: featureFlags.includes("nested_skills"),
+        enableSkillReferences,
         userFacingDescription: body.userFacingDescription,
         ...(shouldActivate ? { status: "active" as const } : {}),
       });

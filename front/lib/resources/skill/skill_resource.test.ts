@@ -666,6 +666,37 @@ describe("SkillResource", () => {
         })
       ).rejects.toThrow("Invalid skill reference ID: not-a-skill-reference");
     });
+
+    it("throws when syncing an out-of-workspace nested skill reference", async () => {
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Skill With Out Of Workspace Reference",
+      });
+      const outOfWorkspaceSkillId = SkillResource.modelIdToSId({
+        id: skill.id + 1,
+        workspaceId: testContext.workspace.id + 1,
+      });
+      const outOfWorkspaceSkillReferenceTag = serializeSkillTag({
+        id: outOfWorkspaceSkillId,
+        icon: null,
+        name: "Out Of Workspace Skill Reference",
+      });
+
+      await expect(
+        skill.updateSkill(testContext.authenticator, {
+          name: skill.name,
+          agentFacingDescription: skill.agentFacingDescription,
+          userFacingDescription: skill.userFacingDescription,
+          instructions: `Use ${outOfWorkspaceSkillReferenceTag}.`,
+          icon: skill.icon,
+          mcpServerViews: [],
+          attachedKnowledge: [],
+          requestedSpaceIds: [],
+          enableSkillReferences: true,
+        })
+      ).rejects.toThrow(
+        `Skill reference ID does not belong to this workspace: ${outOfWorkspaceSkillId}`
+      );
+    });
   });
 
   describe("archive and restore", () => {

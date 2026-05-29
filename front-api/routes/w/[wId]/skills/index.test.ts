@@ -571,6 +571,37 @@ describe("POST /api/w/:wId/skills", () => {
     ).resolves.toBe(1);
   });
 
+  it("returns 400 for invalid nested skill references", async () => {
+    const { auth, workspace } = await setupTest("admin");
+
+    await FeatureFlagFactory.basic(auth, "nested_skills");
+    const invalidSkillReferenceTag = serializeSkillTag({
+      id: "not-a-skill-reference",
+      icon: null,
+      name: "Invalid Skill Reference",
+    });
+
+    const response = await postSkill(workspace, {
+      name: "Parent Skill",
+      agentFacingDescription: "To use with another skill",
+      userFacingDescription: "A skill with an invalid nested reference",
+      instructions: `Start with ${invalidSkillReferenceTag}.`,
+      icon: "PuzzleIcon",
+      tools: [],
+      extendedSkillId: null,
+      attachedKnowledge: [],
+      instructionsHtml: null,
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "invalid_request_error",
+        message: "Invalid skill reference ID: not-a-skill-reference",
+      },
+    });
+  });
+
   it("creates a skill configuration with additional requested spaces", async () => {
     const { auth, workspace, globalGroup } = await setupTest("admin");
 

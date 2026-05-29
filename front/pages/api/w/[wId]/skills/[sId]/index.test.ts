@@ -430,6 +430,37 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
     ).resolves.toBe(0);
   });
 
+  it("returns 400 for out-of-workspace nested skill references", async () => {
+    const { req, res, skill, requestUserAuth, workspace } = await setupTest({
+      requestUserRole: "admin",
+      method: "PATCH",
+    });
+
+    await FeatureFlagFactory.basic(requestUserAuth, "nested_skills");
+    const outOfWorkspaceSkillId = SkillResource.modelIdToSId({
+      id: skill.id + 1,
+      workspaceId: workspace.id + 1,
+    });
+    const outOfWorkspaceSkillReferenceTag = serializeSkillTag({
+      id: outOfWorkspaceSkillId,
+      icon: null,
+      name: "Other Workspace Skill",
+    });
+
+    req.body = makePatchSkillBody(skill, {
+      instructions: `Use ${outOfWorkspaceSkillReferenceTag}.`,
+    });
+
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(400);
+    expect(res._getJSONData()).toEqual({
+      error: {
+        type: "invalid_request_error",
+        message: `Skill reference ID does not belong to this workspace: ${outOfWorkspaceSkillId}`,
+      },
+    });
+  });
+
   it("should update requestedSpaceIds when adding a tool from a new space", async () => {
     const { req, res, skill, workspace, requestUser, requestUserAuth } =
       await setupTest({

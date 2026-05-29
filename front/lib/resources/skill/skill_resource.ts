@@ -2266,6 +2266,66 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     await this.update({ lastReinforcementAnalysisAt: new Date() });
   }
 
+  private static getValidatedSkillReferenceModelIds(
+    auth: Authenticator,
+    {
+      instructions,
+      parentSkillId,
+    }: {
+      instructions: string;
+      parentSkillId?: ModelId;
+    }
+  ): Result<ModelId[], Error> {
+    const workspace = auth.getNonNullableWorkspace();
+    const childSkillModelIds = new Set<ModelId>();
+
+    for (const skillId of extractUniqueSkillIds(instructions)) {
+      const parsed = getResourceNameAndIdFromSId(skillId);
+
+      if (!parsed || parsed.resourceName !== "skill") {
+        return new Err(new Error(`Invalid skill reference ID: ${skillId}`));
+      }
+
+      if (parsed.workspaceModelId !== workspace.id) {
+        return new Err(
+          new Error(
+            `Skill reference ID does not belong to this workspace: ${skillId}`
+          )
+        );
+      }
+
+      if (parsed.resourceModelId === parentSkillId) {
+        continue;
+      }
+
+      childSkillModelIds.add(parsed.resourceModelId);
+    }
+
+    return new Ok([...childSkillModelIds]);
+  }
+
+  static validateSkillReferenceIds(
+    auth: Authenticator,
+    {
+      instructions,
+      parentSkillId,
+    }: {
+      instructions: string;
+      parentSkillId?: ModelId;
+    }
+  ): Result<undefined, Error> {
+    const validation = this.getValidatedSkillReferenceModelIds(auth, {
+      instructions,
+      parentSkillId,
+    });
+
+    if (validation.isErr()) {
+      return validation;
+    }
+
+    return new Ok(undefined);
+  }
+
   /**
    * Persist the custom skills referenced by the skill instructions.
    */
@@ -2280,24 +2340,17 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   ): Promise<void> {
     const workspace = auth.getNonNullableWorkspace();
     const parentSkillId = this.id;
-    const childSkillModelIds = new Set<ModelId>();
+    const childSkillModelIdsRes =
+      SkillResource.getValidatedSkillReferenceModelIds(auth, {
+        instructions,
+        parentSkillId,
+      });
 
-    for (const skillId of extractUniqueSkillIds(instructions)) {
-      const parsed = getResourceNameAndIdFromSId(skillId);
-
-      if (!parsed || parsed.resourceName !== "skill") {
-        throw new Error(`Invalid skill reference ID: ${skillId}`);
-      }
-
-      if (
-        parsed.workspaceModelId !== workspace.id ||
-        parsed.resourceModelId === parentSkillId
-      ) {
-        continue;
-      }
-
-      childSkillModelIds.add(parsed.resourceModelId);
+    if (childSkillModelIdsRes.isErr()) {
+      throw childSkillModelIdsRes.error;
     }
+
+    const childSkillModelIds = childSkillModelIdsRes.value;
 
     const existingReferences = await SkillReferenceModel.findAll({
       where: {
@@ -2307,7 +2360,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       transaction,
     });
 
-    if (childSkillModelIds.size === 0) {
+    if (childSkillModelIds.length === 0) {
       if (existingReferences.length > 0) {
         await SkillReferenceModel.destroy({
           where: {
@@ -2323,7 +2376,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     const referencedSkills = await this.model.findAll({
       where: {
-        id: { [Op.in]: [...childSkillModelIds] },
+        id: { [Op.in]: childSkillModelIds },
         workspaceId: workspace.id,
       },
       attributes: ["id"],
