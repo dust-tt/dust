@@ -1,5 +1,12 @@
 import { Authenticator } from "@app/lib/auth";
-import { listMetronomePackages } from "@app/lib/metronome/client";
+import {
+  addPrepaidCommitToContract,
+  listMetronomePackages,
+} from "@app/lib/metronome/client";
+import {
+  AWU_PRIORITY_PURCHASED_COMMIT,
+  getProductPrepaidCommitId,
+} from "@app/lib/metronome/constants";
 import {
   ensureMetronomeCustomerForWorkspace,
   provisionMetronomeContract,
@@ -34,6 +41,7 @@ vi.mock("@app/lib/metronome/client", async () => {
   return {
     ...actual,
     listMetronomePackages: vi.fn(),
+    addPrepaidCommitToContract: vi.fn(),
   };
 });
 
@@ -211,6 +219,9 @@ beforeEach(() => {
     new Ok({ metronomeContractId: NEW_CONTRACT_ID })
   );
   vi.mocked(scheduleSubscriptionCancellation).mockResolvedValue(true);
+  vi.mocked(addPrepaidCommitToContract).mockResolvedValue(
+    new Ok({ editId: "edit_xxx" })
+  );
 });
 
 describe("POST /api/poke/workspaces/[wId]/switch_contract — Enterprise", () => {
@@ -677,5 +688,73 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
       await CreditUsageConfigurationResource.fetchByWorkspaceId(adminAuth);
     expect(config?.paygEnabled).toBe(false);
     expect(config?.usageCapCredits).toBe(100_000);
+  });
+});
+
+describe("POST /api/poke/workspaces/[wId]/switch_contract — initial credits", () => {
+  it("adds a contract-level prepaid commit with the converted invoice amount", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      isSuperUser: true,
+    });
+    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
+
+    // USD: $5000 invoice → 500000 cents → 500000 Metronome units (USD is cents).
+    req.body = businessBody({
+      initialCredits: { amountCredits: 100_000, invoiceAmount: 5000 },
+    });
+    req.query.wId = workspace.sId;
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(addPrepaidCommitToContract).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metronomeContractId: NEW_CONTRACT_ID,
+        productId: getProductPrepaidCommitId(),
+        accessAmount: 100_000,
+        invoiceUnitPrice: 500_000,
+        invoiceQuantity: 1,
+        priority: AWU_PRIORITY_PURCHASED_COMMIT,
+      })
+    );
+  });
+
+  it("does not add a commit when initial credits are omitted", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      isSuperUser: true,
+    });
+    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
+
+    req.body = businessBody();
+    req.query.wId = workspace.sId;
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(addPrepaidCommitToContract).not.toHaveBeenCalled();
+  });
+
+  it("rejects initial credits when no Stripe customer is provided", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      isSuperUser: true,
+    });
+    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
+
+    req.body = businessBody({
+      stripeCustomerId: undefined,
+      initialCredits: { amountCredits: 100_000, invoiceAmount: 5000 },
+    });
+    req.query.wId = workspace.sId;
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
+    expect(res._getJSONData().error.message).toContain(
+      "Initial credits require a Stripe customer"
+    );
+    expect(addPrepaidCommitToContract).not.toHaveBeenCalled();
   });
 });
