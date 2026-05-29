@@ -1,6 +1,7 @@
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
 import type { LightGoogleDrive } from "@connectors/connectors/google_drive/temporal/activities/common/types";
 import { getDrives } from "@connectors/connectors/google_drive/temporal/activities/common/utils";
+import { GDRIVE_INCREMENTAL_SYNC_INTERVAL_MS } from "@connectors/connectors/google_drive/temporal/config";
 import { getAuthObject } from "@connectors/connectors/google_drive/temporal/utils";
 import {
   GoogleDriveFoldersModel,
@@ -9,9 +10,11 @@ import {
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 
-const GDRIVE_BASE_INCREMENTAL_SYNC_INTERVAL_MS = 5 * 60 * 1000;
-const GDRIVE_MAX_INCREMENTAL_SYNC_INTERVAL_MS = 20 * 60 * 1000;
 const GDRIVE_QUIET_DRIVE_BACKOFF_MULTIPLIER = 2;
+const GDRIVE_MAX_INCREMENTAL_SYNC_INTERVAL_MULTIPLIER = 4;
+const GDRIVE_MAX_INCREMENTAL_SYNC_INTERVAL_MS =
+  GDRIVE_MAX_INCREMENTAL_SYNC_INTERVAL_MULTIPLIER *
+  GDRIVE_INCREMENTAL_SYNC_INTERVAL_MS;
 
 // Get the list of drives that have folders selected for sync.
 export async function getDrivesToSync(
@@ -57,12 +60,12 @@ export async function getDrivesToSync(
 
   return filterDrivesByRecentChanges(drives);
 
+  // Drive syncs are adaptive: drives with few changes sync less often. For
+  // example, if a drive synced 5 minutes ago and had no relevant changes, we
+  // skip it this time. The maximum wait is still bounded.
   async function filterDrivesByRecentChanges(
     drives: LightGoogleDrive[]
   ): Promise<LightGoogleDrive[]> {
-    // Drive syncs are adaptive: drives with few changes sync less often. For
-    // example, if a drive synced 5 minutes ago and had no relevant changes, we
-    // skip it this time. The maximum wait is still bounded.
     if (drives.length === 0) {
       return drives;
     }
@@ -90,7 +93,7 @@ export async function getDrivesToSync(
           GDRIVE_QUIET_DRIVE_BACKOFF_MULTIPLIER *
             (syncToken.lastSyncAt.getTime() -
               syncToken.lastRelevantChangeAt.getTime()),
-          GDRIVE_BASE_INCREMENTAL_SYNC_INTERVAL_MS
+          GDRIVE_INCREMENTAL_SYNC_INTERVAL_MS
         ),
         GDRIVE_MAX_INCREMENTAL_SYNC_INTERVAL_MS
       );

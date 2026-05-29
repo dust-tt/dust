@@ -18,7 +18,10 @@ import uniq from "lodash/uniq";
 
 import { concurrentExecutor } from "../../../lib/async_utils";
 import { GOOGLE_DRIVE_USER_SPACE_VIRTUAL_DRIVE_ID } from "../lib/consts";
-import { GDRIVE_MAX_CONCURRENT_FOLDER_SYNCS } from "./config";
+import {
+  GDRIVE_INCREMENTAL_SYNC_INTERVAL_MS,
+  GDRIVE_MAX_CONCURRENT_FOLDER_SYNCS,
+} from "./config";
 import { folderUpdatesSignal } from "./signals";
 
 const {
@@ -297,7 +300,7 @@ export async function googleDriveIncrementalSync(
 
   await syncSucceeded(connectorId);
 
-  await sleep("10 minutes");
+  await sleep(GDRIVE_INCREMENTAL_SYNC_INTERVAL_MS);
   await continueAsNew<typeof googleDriveIncrementalSync>(connectorId);
 }
 
@@ -799,6 +802,6 @@ export async function googleDriveIncrementalSyncV2(
   await syncSucceeded(connectorId);
 
   // Sleep and continue
-  await sleep("10 minutes");
+  await sleep(GDRIVE_INCREMENTAL_SYNC_INTERVAL_MS);
   await continueAsNew<typeof googleDriveIncrementalSyncV2>(connectorId);
 }
