@@ -27,7 +27,6 @@ import {
   PLAN_CODE_CUSTOM_FIELD_KEY,
   PROD_CREDIT_TYPE_AWU_ID,
   PROD_CREDIT_TYPE_PROG_USD_ID,
-  PURCHASE_ORDER_ID_CUSTOM_FIELD_KEY,
   SEAT_PRODUCT_YEARLY_SUFFIX,
   SEAT_TYPE_CUSTOM_FIELD_KEY,
   STRIPE_PRODUCT_ID_CUSTOM_FIELD_KEY,
@@ -3056,10 +3055,6 @@ const CUSTOM_FIELD_KEYS: Array<{
     entity: "contract_credit",
     key: CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
   },
-  // Stamped on individual commits to carry the customer's purchase order
-  // reference through to the Metronome-generated Stripe invoice. Set by the
-  // `grant-awu-credits` Poke plugin when the operator fills in a PO number.
-  { entity: "commit", key: PURCHASE_ORDER_ID_CUSTOM_FIELD_KEY },
   // Stamped on each seat-style product (Workspace / Pro / Max / Free).
   // Runtime code reads `product.custom_fields.DUST_SEAT_TYPE` (cached in
   // Redis) instead of comparing product names/IDs, which change on every

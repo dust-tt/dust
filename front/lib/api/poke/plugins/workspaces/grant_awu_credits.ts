@@ -16,7 +16,6 @@ import {
   getCreditTypeAwuId,
   getProductFreeCreditId,
   getProductPrepaidCommitId,
-  PURCHASE_ORDER_ID_CUSTOM_FIELD_KEY,
 } from "@app/lib/metronome/constants";
 import logger from "@app/logger/logger";
 import type { SupportedCurrency } from "@app/types/currency";
@@ -318,11 +317,6 @@ export const grantAwuCreditsPlugin = createPlugin({
         quantity: 1,
         timestamp: startDate,
       },
-      customFields: validatedArgs.purchaseOrderId
-        ? {
-            [PURCHASE_ORDER_ID_CUSTOM_FIELD_KEY]: validatedArgs.purchaseOrderId,
-          }
-        : undefined,
     });
 
     if (result.isErr()) {
