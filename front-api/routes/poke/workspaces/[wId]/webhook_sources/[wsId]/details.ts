@@ -8,6 +8,8 @@ import type {
 import type { UserType } from "@app/types/user";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
 
 export type PokeGetWebhookSourceDetails = {
   webhookSource: WebhookSourceForAdminType;
@@ -16,36 +18,44 @@ export type PokeGetWebhookSourceDetails = {
   requestStats: { last24h: number; last7d: number; last30d: number };
 };
 
+const ParamsSchema = z.object({
+  wsId: z.string(),
+});
+
 // Mounted at /api/poke/workspaces/:wId/webhook_sources/:wsId/details.
 const app = pokeApp();
 
-app.get("/", async (ctx): HandlerResult<PokeGetWebhookSourceDetails> => {
-  const auth = ctx.get("auth");
-  const wsId = ctx.req.param("wsId");
-  if (!wsId) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid webhook source ID.",
-      },
-    });
+app.get(
+  "/",
+  validate("param", ParamsSchema),
+  async (ctx): HandlerResult<PokeGetWebhookSourceDetails> => {
+    const auth = ctx.get("auth");
+    const { wsId } = ctx.req.valid("param");
+    if (!wsId) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Invalid webhook source ID.",
+        },
+      });
+    }
+
+    const source = await WebhookSourceResource.fetchById(auth, wsId);
+    if (!source) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "webhook_source_not_found",
+          message: "Webhook source not found.",
+        },
+      });
+    }
+
+    const details = await getWebhookSourceAdminDetails(auth, source);
+
+    return ctx.json(details);
   }
-
-  const source = await WebhookSourceResource.fetchById(auth, wsId);
-  if (!source) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "webhook_source_not_found",
-        message: "Webhook source not found.",
-      },
-    });
-  }
-
-  const details = await getWebhookSourceAdminDetails(auth, source);
-
-  return ctx.json(details);
-});
+);
 
 export default app;

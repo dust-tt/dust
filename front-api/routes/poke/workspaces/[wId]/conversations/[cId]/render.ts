@@ -38,6 +38,10 @@ const RenderConversationBodySchema = z.object({
   onMissingAction: z.enum(["inject-placeholder", "skip"]).optional(),
 });
 
+const ParamsSchema = z.object({
+  cId: z.string(),
+});
+
 export type PostRenderConversationResponseBody = {
   tokensUsed: number;
   modelConversation: unknown;
@@ -51,10 +55,11 @@ const app = pokeApp();
 
 app.post(
   "/",
+  validate("param", ParamsSchema),
   validate("json", RenderConversationBodySchema),
   async (ctx): HandlerResult<PostRenderConversationResponseBody> => {
     const auth = ctx.get("auth");
-    const cId = ctx.req.param("cId") ?? "";
+    const { cId } = ctx.req.valid("param");
     const {
       agentId,
       contextSizeOverride,

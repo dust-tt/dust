@@ -14,64 +14,74 @@ const DeleteSuggestionQuerySchema = z.object({
   suggestionSId: z.string(),
 });
 
+const ParamsSchema = z.object({
+  sId: z.string(),
+});
+
 // Mounted at /api/poke/workspaces/:wId/skills/:sId/suggestions.
 const app = pokeApp();
 
-app.get("/", async (ctx): HandlerResult<PokeListSkillSuggestions> => {
-  const auth = ctx.get("auth");
-  const sId = ctx.req.param("sId");
-  if (!sId) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid skill ID.",
-      },
-    });
-  }
-
-  const suggestions = await SkillSuggestionResource.listBySkillConfigurationId(
-    auth,
-    sId,
-    {
-      sources: [...SKILL_SUGGESTION_SOURCES],
-      dangerouslyBypassConversationsVisibilityCheck: true,
+app.get(
+  "/",
+  validate("param", ParamsSchema),
+  async (ctx): HandlerResult<PokeListSkillSuggestions> => {
+    const auth = ctx.get("auth");
+    const { sId } = ctx.req.valid("param");
+    if (!sId) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Invalid skill ID.",
+        },
+      });
     }
-  );
 
-  return ctx.json({ suggestions: suggestions.map((s) => s.toJSON()) });
-});
+    const suggestions =
+      await SkillSuggestionResource.listBySkillConfigurationId(auth, sId, {
+        sources: [...SKILL_SUGGESTION_SOURCES],
+        dangerouslyBypassConversationsVisibilityCheck: true,
+      });
 
-app.delete("/", validate("query", DeleteSuggestionQuerySchema), async (ctx) => {
-  const auth = ctx.get("auth");
-  const { suggestionSId } = ctx.req.valid("query");
-
-  const suggestion = await SkillSuggestionResource.fetchById(
-    auth,
-    suggestionSId
-  );
-  if (!suggestion) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "skill_not_found",
-        message: "The suggestion was not found.",
-      },
-    });
+    return ctx.json({ suggestions: suggestions.map((s) => s.toJSON()) });
   }
+);
 
-  const deleteResult = await suggestion.delete(auth);
-  if (deleteResult.isErr()) {
-    return apiError(ctx, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: "Failed to delete suggestion.",
-      },
-    });
+app.delete(
+  "/",
+  validate("param", ParamsSchema),
+  validate("query", DeleteSuggestionQuerySchema),
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const { suggestionSId } = ctx.req.valid("query");
+
+    const suggestion = await SkillSuggestionResource.fetchById(
+      auth,
+      suggestionSId
+    );
+    if (!suggestion) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "skill_not_found",
+          message: "The suggestion was not found.",
+        },
+      });
+    }
+
+    const deleteResult = await suggestion.delete(auth);
+    if (deleteResult.isErr()) {
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "Failed to delete suggestion.",
+        },
+      });
+    }
+
+    return ctx.body(null, 204);
   }
-
-  return ctx.body(null, 204);
-});
+);
 
 export default app;

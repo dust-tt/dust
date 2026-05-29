@@ -11,6 +11,10 @@ const PostStateRequestBodySchema = z.object({
   run: z.string().optional(),
 });
 
+const ParamsSchema = z.object({
+  aId: z.string(),
+});
+
 type PostStateResponseBody = {
   app: AppType;
 };
@@ -20,10 +24,11 @@ const app = pokeApp();
 
 app.post(
   "/",
+  validate("param", ParamsSchema),
   validate("json", PostStateRequestBodySchema),
   async (ctx): HandlerResult<PostStateResponseBody> => {
     const auth = ctx.get("auth");
-    const aId = ctx.req.param("aId");
+    const { aId } = ctx.req.valid("param");
     if (!aId) {
       return apiError(ctx, {
         status_code: 400,

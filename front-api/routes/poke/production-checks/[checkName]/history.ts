@@ -5,40 +5,50 @@ import {
 import type { CheckHistoryRun } from "@app/types/production_checks";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
 
 export type GetCheckHistoryResponseBody = {
   runs: CheckHistoryRun[];
 };
 
+const ParamsSchema = z.object({
+  checkName: z.string(),
+});
+
 // Mounted at /api/poke/production-checks/:checkName/history.
 const app = pokeApp();
 
-app.get("/", async (ctx): HandlerResult<GetCheckHistoryResponseBody> => {
-  const checkName = ctx.req.param("checkName");
-  if (!checkName) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "checkName is required.",
-      },
-    });
+app.get(
+  "/",
+  validate("param", ParamsSchema),
+  async (ctx): HandlerResult<GetCheckHistoryResponseBody> => {
+    const { checkName } = ctx.req.valid("param");
+    if (!checkName) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "checkName is required.",
+        },
+      });
+    }
+
+    const registeredCheck = getRegisteredCheck(checkName);
+    if (!registeredCheck) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "action_not_found",
+          message: `Check "${checkName}" not found.`,
+        },
+      });
+    }
+
+    const runs = await getCheckHistoryRuns(checkName);
+
+    return ctx.json({ runs });
   }
-
-  const registeredCheck = getRegisteredCheck(checkName);
-  if (!registeredCheck) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "action_not_found",
-        message: `Check "${checkName}" not found.`,
-      },
-    });
-  }
-
-  const runs = await getCheckHistoryRuns(checkName);
-
-  return ctx.json({ runs });
-});
+);
 
 export default app;

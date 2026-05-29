@@ -13,57 +13,68 @@ const DeleteSuggestionQuerySchema = z.object({
   sId: z.string(),
 });
 
+const ParamsSchema = z.object({
+  aId: z.string(),
+});
+
 // Mounted at /api/poke/workspaces/:wId/assistants/:aId/suggestions.
 const app = pokeApp();
 
-app.get("/", async (ctx): HandlerResult<PokeListSuggestions> => {
-  const auth = ctx.get("auth");
-  const aId = ctx.req.param("aId");
-  if (!aId) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid agent ID.",
-      },
-    });
+app.get(
+  "/",
+  validate("param", ParamsSchema),
+  async (ctx): HandlerResult<PokeListSuggestions> => {
+    const auth = ctx.get("auth");
+    const { aId } = ctx.req.valid("param");
+    if (!aId) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Invalid agent ID.",
+        },
+      });
+    }
+
+    const suggestions =
+      await AgentSuggestionResource.listByAgentConfigurationId(auth, aId);
+
+    return ctx.json({ suggestions: suggestions.map((s) => s.toJSON()) });
   }
+);
 
-  const suggestions = await AgentSuggestionResource.listByAgentConfigurationId(
-    auth,
-    aId
-  );
+app.delete(
+  "/",
+  validate("param", ParamsSchema),
+  validate("query", DeleteSuggestionQuerySchema),
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const { sId } = ctx.req.valid("query");
 
-  return ctx.json({ suggestions: suggestions.map((s) => s.toJSON()) });
-});
+    const suggestion = await AgentSuggestionResource.fetchById(auth, sId);
+    if (!suggestion) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "agent_configuration_not_found",
+          message: "The suggestion was not found.",
+        },
+      });
+    }
 
-app.delete("/", validate("query", DeleteSuggestionQuerySchema), async (ctx) => {
-  const auth = ctx.get("auth");
-  const { sId } = ctx.req.valid("query");
+    const deleteResult = await suggestion.delete(auth);
+    if (deleteResult.isErr()) {
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "Failed to delete suggestion.",
+        },
+      });
+    }
 
-  const suggestion = await AgentSuggestionResource.fetchById(auth, sId);
-  if (!suggestion) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "agent_configuration_not_found",
-        message: "The suggestion was not found.",
-      },
-    });
+    return ctx.body(null, 204);
   }
-
-  const deleteResult = await suggestion.delete(auth);
-  if (deleteResult.isErr()) {
-    return apiError(ctx, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: "Failed to delete suggestion.",
-      },
-    });
-  }
-
-  return ctx.body(null, 204);
-});
+);
 
 export default app;

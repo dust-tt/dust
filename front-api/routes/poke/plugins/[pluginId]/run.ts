@@ -24,6 +24,10 @@ const RunPluginQuerySchema = z.object({
   workspaceId: z.string().optional(),
 });
 
+const ParamsSchema = z.object({
+  pluginId: z.string(),
+});
+
 export interface PokeRunPluginResponseBody {
   result: PluginResponse;
 }
@@ -37,9 +41,10 @@ const app = createHono<PokeCtx & { Bindings: HttpBindings }>();
 
 app.post(
   "/",
+  validate("param", ParamsSchema),
   validate("query", RunPluginQuerySchema),
   async (ctx): HandlerResult<PokeRunPluginResponseBody> => {
-    const pluginId = ctx.req.param("pluginId");
+    const { pluginId } = ctx.req.valid("param");
     if (!pluginId) {
       return apiError(ctx, {
         status_code: 400,

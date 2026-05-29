@@ -21,14 +21,19 @@ const AsyncArgsQuerySchema = z.object({
   workspaceId: z.string().optional(),
 });
 
+const ParamsSchema = z.object({
+  pluginId: z.string(),
+});
+
 // Mounted at /api/poke/plugins/:pluginId/async-args.
 const app = pokeApp();
 
 app.get(
   "/",
+  validate("param", ParamsSchema),
   validate("query", AsyncArgsQuerySchema),
   async (ctx): HandlerResult<PokeGetPluginAsyncArgsResponseBody> => {
-    const pluginId = ctx.req.param("pluginId");
+    const { pluginId } = ctx.req.valid("param");
     if (!pluginId) {
       return apiError(ctx, {
         status_code: 400,

@@ -13,6 +13,10 @@ const QuerySchema = z.object({
   offset: z.coerce.number().int().nonnegative().optional().default(0),
 });
 
+const ParamsSchema = z.object({
+  dsId: z.string(),
+});
+
 export type PokeGetDocumentsResponseBody = {
   documents: DocumentType[];
   total: number;
@@ -23,10 +27,11 @@ const app = pokeApp();
 
 app.get(
   "/",
+  validate("param", ParamsSchema),
   validate("query", QuerySchema),
   async (ctx): HandlerResult<PokeGetDocumentsResponseBody> => {
     const auth = ctx.get("auth");
-    const dsId = ctx.req.param("dsId") ?? "";
+    const { dsId } = ctx.req.valid("param");
     const { limit, offset } = ctx.req.valid("query");
 
     const dataSource = await DataSourceResource.fetchById(auth, dsId);

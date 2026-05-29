@@ -16,15 +16,20 @@ const QuerySchema = z.object({
   documentId: z.string(),
 });
 
+const ParamsSchema = z.object({
+  dsId: z.string(),
+});
+
 // Mounted at /api/poke/workspaces/:wId/data_sources/:dsId/document.
 const app = pokeApp();
 
 app.get(
   "/",
+  validate("param", ParamsSchema),
   validate("query", QuerySchema),
   async (ctx): HandlerResult<PokeGetDocument> => {
     const auth = ctx.get("auth");
-    const dsId = ctx.req.param("dsId");
+    const { dsId } = ctx.req.valid("param");
     if (!dsId) {
       return apiError(ctx, {
         status_code: 400,

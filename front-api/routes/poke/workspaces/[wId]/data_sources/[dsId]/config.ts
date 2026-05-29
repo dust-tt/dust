@@ -12,6 +12,10 @@ const PostConfigBodySchema = z.object({
   configValue: z.string(),
 });
 
+const ParamsSchema = z.object({
+  dsId: z.string(),
+});
+
 export type SetConfigResponseBody = {
   configKey: string;
   configValue: string;
@@ -22,10 +26,11 @@ const app = pokeApp();
 
 app.post(
   "/",
+  validate("param", ParamsSchema),
   validate("json", PostConfigBodySchema),
   async (ctx): HandlerResult<SetConfigResponseBody> => {
     const auth = ctx.get("auth");
-    const dsId = ctx.req.param("dsId");
+    const { dsId } = ctx.req.valid("param");
     if (!dsId) {
       return apiError(ctx, {
         status_code: 400,
