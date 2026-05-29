@@ -14,7 +14,10 @@ import type { Editor } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-function useEditorService(editor: Editor | null) {
+function useEditorService(
+  editor: Editor | null,
+  { enableSkillReferences }: { enableSkillReferences: boolean }
+) {
   return useMemo(() => {
     return {
       getMarkdown() {
@@ -41,10 +44,15 @@ function useEditorService(editor: Editor | null) {
       setContent(content: string) {
         // Safety check for Safari: ensure editor and docView are available
         if (editor && !editor.isDestroyed) {
-          editor.commands.setContent(preprocessMarkdownForEditor(content), {
-            emitUpdate: false,
-            contentType: "markdown",
-          });
+          editor.commands.setContent(
+            preprocessMarkdownForEditor(content, {
+              enableSkillReferences,
+            }),
+            {
+              emitUpdate: false,
+              contentType: "markdown",
+            }
+          );
         }
       },
 
@@ -82,13 +90,18 @@ function useEditorService(editor: Editor | null) {
         return editor?.isDestroyed ?? true;
       },
     };
-  }, [editor]);
+  }, [editor, enableSkillReferences]);
+}
+
+interface SkillInstructionsSkillReferencesOptions {
+  enableSkillReferences: boolean;
 }
 
 interface UseSkillInstructionsEditorProps {
   content: string;
   htmlContent?: string;
   isReadOnly: boolean;
+  skillReferences?: SkillInstructionsSkillReferencesOptions;
   onUpdate?: (props: { editor: Editor; transaction: Transaction }) => void;
   onBlur?: () => void;
   onDelete?: (editor: Editor) => void;
@@ -111,17 +124,22 @@ export function useSkillInstructionsEditor({
   content,
   htmlContent,
   isReadOnly,
+  skillReferences,
   onUpdate,
   onBlur,
   onDelete,
 }: UseSkillInstructionsEditorProps) {
+  const enableSkillReferences = skillReferences?.enableSkillReferences === true;
   const extensions = useMemo(
     () =>
       buildSkillInstructionsExtensions(
         isReadOnly,
-        skillInstructionsEditableExtensions
+        skillInstructionsEditableExtensions,
+        {
+          enableSkillReferences,
+        }
       ),
-    [isReadOnly]
+    [enableSkillReferences, isReadOnly]
   );
 
   // Track if initial content has been set
@@ -140,7 +158,7 @@ export function useSkillInstructionsEditor({
     [extensions, isReadOnly]
   );
 
-  const editorService = useEditorService(editor);
+  const editorService = useEditorService(editor, { enableSkillReferences });
 
   // Set initial content after editor is created
   useEffect(() => {
@@ -158,17 +176,22 @@ export function useSkillInstructionsEditor({
           if (htmlContent) {
             editor.commands.setContent(htmlContent, { emitUpdate: false });
           } else {
-            editor.commands.setContent(preprocessMarkdownForEditor(content), {
-              emitUpdate: false,
-              contentType: "markdown",
-            });
+            editor.commands.setContent(
+              preprocessMarkdownForEditor(content, {
+                enableSkillReferences,
+              }),
+              {
+                emitUpdate: false,
+                contentType: "markdown",
+              }
+            );
           }
           initialContentSetRef.current = true;
           setIsContentReady(true);
         }
       });
     }
-  }, [editor, content, htmlContent]);
+  }, [editor, content, htmlContent, enableSkillReferences]);
 
   return { editor, editorService, isContentReady };
 }
