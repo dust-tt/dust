@@ -6,7 +6,7 @@ import type {
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
-  getProjectSpace,
+  getPod,
   withErrorHandling,
 } from "@app/lib/api/actions/servers/pod_manager/helpers";
 import {
@@ -103,24 +103,24 @@ export function createProjectTasksTools(
       dustPod,
     }) => {
       return withErrorHandling(async () => {
-        const contextRes = await getProjectSpace(auth, {
+        const contextRes = await getPod(auth, {
           agentLoopContext,
           dustPod,
         });
         if (contextRes.isErr()) {
           return contextRes;
         }
-        const { space } = contextRes.value;
+        const { pod } = contextRes.value;
 
         let rows: ProjectTaskResource[] = [];
 
         if (assigneeFilter === "mine") {
           rows = await ProjectTaskResource.fetchLatestBySpace(auth, {
-            spaceId: space.id,
+            spaceId: pod.id,
           });
         } else if (assigneeFilter === "all") {
           rows = await ProjectTaskResource.fetchBySpace(auth, {
-            spaceId: space.id,
+            spaceId: pod.id,
             timeScope: "all",
           });
         }
@@ -175,17 +175,17 @@ export function createProjectTasksTools(
 
     [CREATE_TASKS_TOOL_NAME]: async ({ creatorType, tasks, dustPod }) => {
       return withErrorHandling(async () => {
-        const contextRes = await getProjectSpace(auth, {
+        const contextRes = await getPod(auth, {
           agentLoopContext,
           dustPod,
         });
         if (contextRes.isErr()) {
           return contextRes;
         }
-        const { space } = contextRes.value;
+        const { pod } = contextRes.value;
 
         const assignmentPool =
-          await space.fetchDistinctActiveManualGroupMembers(auth);
+          await pod.fetchDistinctActiveManualGroupMembers(auth);
         const soleAssigneeModelId =
           assignmentPool.length === 1 ? assignmentPool[0]!.id : null;
 
@@ -202,7 +202,7 @@ export function createProjectTasksTools(
               item.userId,
               owner.sId
             );
-            if (!contextRes.value.space.isMember(userAuth)) {
+            if (!contextRes.value.pod.isMember(userAuth)) {
               errors.push(
                 `Could not create task ${item.text} for user ${item.userId} because they are not a member of the Pod.`
               );
@@ -217,7 +217,7 @@ export function createProjectTasksTools(
           }
 
           const row = await ProjectTaskResource.makeNew(auth, {
-            spaceId: space.id,
+            spaceId: pod.id,
             userId: newUserId,
             createdByType: creatorType,
             createdByAgentConfigurationId:
@@ -275,7 +275,7 @@ export function createProjectTasksTools(
 
     mark_task_done: async ({ actorType, taskIds, dustPod }) => {
       return withErrorHandling(async () => {
-        const contextRes = await getProjectSpace(auth, {
+        const contextRes = await getPod(auth, {
           agentLoopContext,
           dustPod,
         });
@@ -343,14 +343,14 @@ export function createProjectTasksTools(
 
     [UPDATE_TASKS_TOOL_NAME]: async ({ tasks, dustPod }) => {
       return withErrorHandling(async () => {
-        const contextRes = await getProjectSpace(auth, {
+        const contextRes = await getPod(auth, {
           agentLoopContext,
           dustPod,
         });
         if (contextRes.isErr()) {
           return contextRes;
         }
-        const { space } = contextRes.value;
+        const { pod } = contextRes.value;
 
         const updated: string[] = [];
         const errors: string[] = [];
@@ -364,7 +364,7 @@ export function createProjectTasksTools(
           }
 
           const payloadRes = await buildTaskUpdatePayload(
-            space,
+            pod,
             owner.sId,
             row,
             item
@@ -401,7 +401,7 @@ export function createProjectTasksTools(
       dustPod,
     }) => {
       return withErrorHandling(async () => {
-        const contextRes = await getProjectSpace(auth, {
+        const contextRes = await getPod(auth, {
           agentLoopContext,
           dustPod,
         });
@@ -409,7 +409,7 @@ export function createProjectTasksTools(
           return contextRes;
         }
 
-        const { space } = contextRes.value;
+        const { pod } = contextRes.value;
         let agentConfigurationId: string | undefined;
         if (agentName) {
           const matchedAgentId = await resolveAgentConfigurationIdByName(
@@ -427,7 +427,7 @@ export function createProjectTasksTools(
         }
 
         const startRes = await startAgentForProjectTask(auth, {
-          space,
+          space: pod,
           taskId,
           agentConfigurationId,
           customMessage,
