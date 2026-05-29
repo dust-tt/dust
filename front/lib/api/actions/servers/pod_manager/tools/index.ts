@@ -11,7 +11,6 @@ import {
   FILES_LIST_ACTION_NAME,
   FILES_SERVER_NAME,
 } from "@app/lib/api/actions/servers/files/metadata";
-import { listProjectFiles } from "@app/lib/api/actions/servers/files/tools/utils";
 import { runIncludeDataRetrieval } from "@app/lib/api/actions/servers/include_data/include_function";
 import {
   buildProjectRetrieveDataSources,
@@ -36,6 +35,7 @@ import {
   getLightConversation,
 } from "@app/lib/api/assistant/conversation/fetch";
 import config from "@app/lib/api/config";
+import { DustFileSystem, SCOPED_PREFIX_POD } from "@app/lib/api/file_system";
 import {
   addContentNodeToProject,
   listProjectContextAttachments,
@@ -434,13 +434,18 @@ export function createProjectManagerTools(
             dataSourceViewId: node.nodeDataSourceViewId,
           }));
 
-        const projectFilesRes = await listProjectFiles(auth, space);
-        if (projectFilesRes.isErr()) {
-          return projectFilesRes;
+        const fsResult = await DustFileSystem.forPod(auth, space);
+        if (fsResult.isErr()) {
+          return new Err(
+            new MCPError("Failed to initialise file system for this Pod.", {
+              tracked: true,
+            })
+          );
         }
-        const projectFileCount = projectFilesRes.value.filter(
-          (e) => !e.isDirectory
-        ).length;
+        const podFiles = await fsResult.value.list(
+          `${SCOPED_PREFIX_POD}${space.sId}`
+        );
+        const projectFileCount = podFiles.filter((e) => !e.isDirectory).length;
 
         // Construct project URL
         const projectPath = getPodRoute(owner.sId, space.sId);
