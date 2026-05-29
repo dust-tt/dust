@@ -22,8 +22,8 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
-export interface ProjectSpaceContext {
-  space: SpaceResource;
+interface PodContext {
+  pod: SpaceResource;
 }
 
 export async function buildProjectRetrieveDataSources(
@@ -97,12 +97,12 @@ export async function buildProjectRetrieveDataSources(
  * If dustPod is provided, uses that to fetch all spaces. Otherwise, gets from conversation.
  * The conversation must be in a project (space) if dustPod is not provided.
  */
-export async function getProjectSpace(
+export async function getPod(
   auth: Authenticator,
   from:
     | { agentLoopContext?: AgentLoopContextType }
     | { dustPod?: DustPodConfigurationType }
-): Promise<Result<ProjectSpaceContext, MCPError>> {
+): Promise<Result<PodContext, MCPError>> {
   if ("dustPod" in from && from.dustPod) {
     const { dustPod } = from;
     const authWorkspaceId = auth.getNonNullableWorkspace().sId;
@@ -130,14 +130,14 @@ export async function getProjectSpace(
     }
 
     // Fetch the space by podId.
-    const space = await SpaceResource.fetchById(auth, podId);
-    if (!space) {
+    const pod = await SpaceResource.fetchById(auth, podId);
+    if (!pod) {
       return new Err(
         new MCPError(`Pod not found: ${podId}`, { tracked: false })
       );
     }
 
-    return new Ok({ space });
+    return new Ok({ pod });
   }
 
   // Otherwise, use the existing logic to get space from conversation context.
@@ -182,7 +182,7 @@ export async function getProjectSpace(
       return new Err(new MCPError("Pod not found", { tracked: false }));
     }
 
-    return new Ok({ space });
+    return new Ok({ pod: space });
   }
 
   return new Err(new MCPError("No Pod context available", { tracked: false }));
@@ -210,21 +210,21 @@ export function checkWritePermission(
  * Gets the space context and verifies write permissions for all spaces.
  * This is a convenience function that combines getProjectSpace and checkWritePermission.
  */
-export async function getWritableProjectContext(
+export async function getWritablePodContext(
   auth: Authenticator,
   from:
     | { agentLoopContext?: AgentLoopContextType }
     | { dustPod?: DustPodConfigurationType }
-): Promise<Result<ProjectSpaceContext, MCPError>> {
-  const contextRes = await getProjectSpace(auth, from);
+): Promise<Result<PodContext, MCPError>> {
+  const contextRes = await getPod(auth, from);
   if (contextRes.isErr()) {
     return contextRes;
   }
 
-  const { space } = contextRes.value;
+  const { pod } = contextRes.value;
 
   // Check write permissions for all spaces.
-  const permissionRes = checkWritePermission(auth, space);
+  const permissionRes = checkWritePermission(auth, pod);
   if (permissionRes.isErr()) {
     return permissionRes;
   }
