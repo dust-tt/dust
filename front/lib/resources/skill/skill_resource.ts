@@ -23,6 +23,7 @@ import {
   ConversationSkillModel,
 } from "@app/lib/models/skill/conversation_skill";
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
+import { SkillReferenceModel } from "@app/lib/models/skill/skill_reference";
 import { SkillSuggestionModel } from "@app/lib/models/skill/skill_suggestion";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -2565,6 +2566,22 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           transaction,
         });
 
+        await SkillReferenceModel.destroy({
+          where: {
+            workspaceId: workspace.id,
+            parentSkillId: this.id,
+          },
+          transaction,
+        });
+
+        await SkillReferenceModel.destroy({
+          where: {
+            workspaceId: workspace.id,
+            childSkillId: this.id,
+          },
+          transaction,
+        });
+
         return this.model.destroy({
           where: {
             id: this.id,
@@ -2853,6 +2870,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
 
     await ConversationSkillModel.destroy({
+      where: { workspaceId },
+    });
+
+    await SkillReferenceModel.destroy({
       where: { workspaceId },
     });
 
