@@ -10,6 +10,7 @@ import type { Fetcher } from "swr";
 import type { SWRInfiniteMutatorOptions } from "swr/infinite";
 
 const DEFAULT_LIMIT = 100;
+const CONVERSATIONS_FOCUS_THROTTLE_INTERVAL_MS = 60 * 1000; // 1 minute
 
 type ConversationsUpdater = (
   prevData: ConversationListItemType[] | undefined
@@ -51,10 +52,13 @@ export function useConversations({
       },
       conversationsFetcher,
       {
+        // Personal conversations are kept fresh via optimistic cache writes in
+        // ConversationViewer and action hooks. Revalidate on focus/reconnect as
+        // a safety net.
         revalidateAll: false,
-        revalidateFirstPage: false,
-        revalidateOnFocus: false,
-        revalidateOnReconnect: false,
+        revalidateOnFocus: true,
+        revalidateOnReconnect: true,
+        focusThrottleInterval: CONVERSATIONS_FOCUS_THROTTLE_INTERVAL_MS,
         disabled: options?.disabled,
       }
     );
@@ -83,7 +87,7 @@ export function useConversations({
       const swrOptions: SWRInfiniteMutatorOptions<
         GetConversationsResponseBody[]
       > = {
-        revalidate: options?.revalidate ?? true,
+        revalidate: options?.revalidate ?? false,
       };
 
       return mutate((prevPages) => {

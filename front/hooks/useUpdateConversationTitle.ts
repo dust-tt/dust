@@ -45,7 +45,11 @@ export function useUpdateConversationTitle({
       }
 
       await mutateConversation();
-      void mutateConversations();
+      void mutateConversations(
+        (prev) =>
+          prev?.map((c) => (c.sId === conversationId ? { ...c, title } : c)),
+        { revalidate: false }
+      );
       sendNotification({ type: "success", title: "Title edited" });
       return true;
     },
