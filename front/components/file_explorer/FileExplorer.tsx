@@ -354,7 +354,7 @@ export function FileExplorer({
               onMoveFileDrop={fileDragEnabled ? handleMoveFileDrop : undefined}
             />
           )}
-          <div className={inPanel ? "px-4" : undefined}>
+          <div className="px-4">
             <FileExplorerToolbar
               searchQuery={searchQuery}
               onSearchQueryChange={setSearchQuery}
@@ -366,7 +366,7 @@ export function FileExplorer({
             />
           </div>
           {Object.keys(filterCounts).length > 1 && (
-            <div className={inPanel ? "px-4" : undefined}>
+            <div className="px-4">
               <FileExplorerFilters
                 active={activeFilter}
                 onActiveChange={setActiveFilter}
