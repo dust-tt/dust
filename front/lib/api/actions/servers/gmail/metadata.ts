@@ -36,19 +36,26 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
         .array(z.string())
         .optional()
         .describe(
-          "The email addresses of the recipients. Required if replyToMessageId is not set. If replyToMessageId is set and to is not provided, will fall back to the From field of the original message. If you are the sender of the original message, you must provide to explicitly."
+          "The email addresses of the recipients (optional if replyToMessageId is set, acts as override)."
         ),
       cc: z
         .array(z.string())
         .optional()
         .describe(
-          "The CC email addresses (optional if replyToMessageId is set, acts as override)."
+          "The CC email addresses (optional, acts as override if replyToMessageId is set)."
         ),
       bcc: z
         .array(z.string())
         .optional()
         .describe(
-          "The BCC email addresses (optional if replyToMessageId is set, acts as override)."
+          "The BCC email addresses (optional, acts as override if replyToMessageId is set)."
+        ),
+      from: z
+        .string()
+        .email()
+        .optional()
+        .describe(
+          "Optional. The email address to send from. Must be configured as a send-as alias in the user's Gmail settings (e.g. a shared Google Group address like team@company.com). If omitted, Gmail will use the authenticated user's primary address."
         ),
       subject: z
         .string()
@@ -58,8 +65,9 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
         ),
       contentType: z
         .enum(["text/plain", "text/html"])
+        .optional()
         .describe(
-          "The content type of the email body. Use text/plain for plain text or text/html for HTML. Must be text/html when replyToMessageId is set."
+          "The content type of the email body, use text/plain for plain text or text/html for HTML (required if replyToMessageId is not set, must be omitted if replyToMessageId is set (forced to text/html))."
         ),
       body: z.string().describe("The body of the email"),
       replyToMessageId: z
@@ -194,19 +202,19 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
         .array(z.string())
         .optional()
         .describe(
-          "The email addresses of the recipients. Required if replyToMessageId is not set. If replyToMessageId is set and to is not provided, will fall back to the From field of the original message. If you are the sender of the original message, you must provide to explicitly."
+          "The email addresses of the recipients (optional if replyToMessageId is set, acts as override)."
         ),
       cc: z
         .array(z.string())
         .optional()
         .describe(
-          "The CC email addresses (optional if replyToMessageId is set, acts as override)."
+          "The CC email addresses (optional, acts as override if replyToMessageId is set)."
         ),
       bcc: z
         .array(z.string())
         .optional()
         .describe(
-          "The BCC email addresses (optional if replyToMessageId is set, acts as override)."
+          "The BCC email addresses (optional, acts as override if replyToMessageId is set)."
         ),
       from: z
         .string()
@@ -223,8 +231,9 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
         ),
       contentType: z
         .enum(["text/plain", "text/html"])
+        .optional()
         .describe(
-          "The content type of the email body. Use text/plain for plain text or text/html for HTML. Must be text/html when replyToMessageId is set."
+          "The content type of the email body, use text/plain for plain text or text/html for HTML (required if replyToMessageId is not set, must be omitted if replyToMessageId is set (forced to text/html))."
         ),
       body: z.string().describe("The body of the email"),
       replyToMessageId: z

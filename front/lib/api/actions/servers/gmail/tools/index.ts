@@ -35,8 +35,8 @@ import { unescape } from "html-escaper";
 // Validates email addresses to prevent header injection attacks.
 function validateEmailAddresses(
   to: string[],
-  cc?: string[] | null,
-  bcc?: string[] | null,
+  cc: string[] | null,
+  bcc: string[] | null,
   from?: string
 ): Err<MCPError> | null {
   const allAddresses = [...to, ...(cc ?? []), ...(bcc ?? [])];
@@ -55,8 +55,8 @@ function validateEmailAddresses(
 // Used by both create_draft and send_mail to avoid code duplication.
 function buildAndEncodeEmail(params: {
   to: string[];
-  cc?: string[] | null;
-  bcc?: string[] | null;
+  cc: string[] | null;
+  bcc: string[] | null;
   from?: string;
   subject: string;
   contentType: string;
@@ -99,11 +99,10 @@ function buildAndEncodeEmail(params: {
 async function buildReplyContext(params: {
   replyToMessageId: string;
   accessToken: string;
-  to?: string[];
-  cc?: string[] | null;
-  bcc?: string[] | null;
+  to: string[] | null;
+  cc: string[] | null;
+  bcc: string[] | null;
   body: string;
-  contentType: "text/plain" | "text/html";
   subject?: string;
 }): Promise<
   | Err<MCPError>
@@ -120,12 +119,6 @@ async function buildReplyContext(params: {
   if (params.subject) {
     return new Err(
       new MCPError("Subject should not be provided when replying to a message.")
-    );
-  }
-
-  if (params.contentType === "text/plain") {
-    return new Err(
-      new MCPError("Content type must be text/html when replying to a message.")
     );
   }
 
@@ -179,7 +172,7 @@ async function buildReplyContext(params: {
 
   const fullBody = buildReplyBody(
     params.body,
-    params.contentType,
+    "text/html",
     originalBody,
     originalDate,
     originalFrom
@@ -273,7 +266,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
   },
 
   create_draft: async (
-    { to, cc, bcc, subject, contentType, body, replyToMessageId },
+    { to, cc, bcc, from, subject, contentType, body, replyToMessageId },
     { authInfo }
   ) => {
     const accessToken = authInfo?.token;
@@ -281,18 +274,50 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
       return new Err(new MCPError("Authentication required"));
     }
 
+    // If a from alias was requested, verify it's a configured send-as address
+    // before sending. Gmail silently falls back to the primary address if the
+    // alias isn't set up, so we fail early to surface the issue.
+    if (from) {
+      const sendAsResponse = await fetchFromGmail(
+        "/gmail/v1/users/me/settings/sendAs",
+        accessToken,
+        { method: "GET" }
+      );
+      if (sendAsResponse.ok) {
+        const sendAsResult = await sendAsResponse.json();
+        const aliases: { sendAsEmail: string }[] = sendAsResult.sendAs ?? [];
+        const aliasConfigured = aliases.some(
+          (a) => a.sendAsEmail.toLowerCase() === from.toLowerCase()
+        );
+        if (!aliasConfigured) {
+          return new Err(
+            new MCPError(
+              `"${from}" is not configured as a send-as alias in Gmail settings. The email was not sent.`
+            )
+          );
+        }
+      }
+    }
+
     let encodedMessage: string | undefined = undefined;
     let threadId: string | undefined = undefined;
 
     if (replyToMessageId) {
+      if (contentType) {
+        return new Err(
+          new MCPError(
+            "contentType must be omitted when replying to a message."
+          )
+        );
+      }
+
       const replyContext = await buildReplyContext({
         replyToMessageId,
         accessToken,
-        to,
-        cc,
-        bcc,
+        to: to ?? null,
+        cc: cc ?? null,
+        bcc: bcc ?? null,
         body,
-        contentType,
         subject,
       });
       if (replyContext.isErr()) {
@@ -313,6 +338,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
         to: replyTo,
         cc: replyCc,
         bcc: replyBcc,
+        from,
         subject: originalSubject?.startsWith("Re: ")
           ? originalSubject
           : `Re: ${originalSubject ?? "No Subject"}`,
@@ -325,6 +351,13 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
       }
       encodedMessage = encodedMessageResult.value;
     } else {
+      if (!contentType) {
+        return new Err(
+          new MCPError(
+            "contentType is required when not replying to a message."
+          )
+        );
+      }
       if (!subject?.trim()) {
         return new Err(
           new MCPError("Subject is required when not replying to a message.")
@@ -341,12 +374,11 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
 
       const encodedMessageResult = buildAndEncodeEmail({
         to,
-        cc,
-        bcc,
+        cc: cc ?? null,
+        bcc: bcc ?? null,
         subject,
         contentType,
         body,
-        threadingHeaders: [],
       });
 
       if (encodedMessageResult.isErr()) {
@@ -828,14 +860,21 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
     let threadId: string | undefined = undefined;
 
     if (replyToMessageId) {
+      if (contentType) {
+        return new Err(
+          new MCPError(
+            "contentType must be omitted when replying to a message."
+          )
+        );
+      }
+
       const replyContext = await buildReplyContext({
         replyToMessageId,
         accessToken,
-        to,
-        cc,
-        bcc,
+        to: to ?? null,
+        cc: cc ?? null,
+        bcc: bcc ?? null,
         body,
-        contentType,
         subject,
       });
       if (replyContext.isErr()) {
@@ -871,12 +910,18 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
       }
       encodedMessage = encodedMessageResult.value;
     } else {
+      if (!contentType) {
+        return new Err(
+          new MCPError(
+            "contentType is required when not replying to a message."
+          )
+        );
+      }
       if (!subject?.trim()) {
         return new Err(
           new MCPError("Subject is required when not replying to a message.")
         );
       }
-
       if (!to?.length) {
         return new Err(
           new MCPError(
@@ -887,13 +932,12 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
 
       const encodedMessageResult = buildAndEncodeEmail({
         to,
-        cc,
-        bcc,
+        cc: cc ?? null,
+        bcc: bcc ?? null,
         from,
         subject,
         contentType,
         body,
-        threadingHeaders: [],
       });
 
       if (encodedMessageResult.isErr()) {
