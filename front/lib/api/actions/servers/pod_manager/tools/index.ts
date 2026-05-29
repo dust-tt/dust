@@ -50,6 +50,7 @@ import { seedInitialPodTasks } from "@app/lib/project_task/seed_initial_pod_task
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import type { ProjectMetadataBlob } from "@app/lib/resources/project_metadata_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -258,7 +259,7 @@ export function createProjectManagerTools(
           );
         }
 
-        const updates: Record<string, unknown> = {};
+        const updates: ProjectMetadataBlob & { title?: string } = {};
 
         if (title !== undefined) {
           const updateNameRes = await pod.updateName(auth, title);
@@ -270,42 +271,36 @@ export function createProjectManagerTools(
           updates.title = title.trim();
         }
 
-        if (description !== undefined || pinnedFramePath !== undefined) {
-          if (pinnedFramePath !== undefined) {
-            const validation = await validatePinnedFramePath(
-              auth,
-              pod,
-              pinnedFramePath
+        if (description !== undefined) {
+          updates.description = description;
+        }
+
+        if (pinnedFramePath !== undefined) {
+          const validation = await validatePinnedFramePath(
+            auth,
+            pod,
+            pinnedFramePath
+          );
+          if (validation.isErr()) {
+            return new Err(
+              new MCPError(validation.error.message, { tracked: false })
             );
-            if (validation.isErr()) {
-              return new Err(
-                new MCPError(validation.error.message, { tracked: false })
-              );
-            }
           }
 
-          let metadata = await ProjectMetadataResource.fetchBySpace(auth, pod);
+          // Use the normalized path.
+          updates.pinnedFramePath = validation.value;
+        }
 
-          if (!metadata) {
-            metadata = await ProjectMetadataResource.makeNew(auth, pod, {
-              description: description ?? null,
-              pinnedFramePath: pinnedFramePath ?? null,
-            });
-          } else {
-            if (description !== undefined) {
-              await metadata.updateDescription(description);
-            }
-            if (pinnedFramePath !== undefined) {
-              await metadata.updatePinnedFramePath(pinnedFramePath);
-            }
-          }
-
-          if (description !== undefined) {
-            updates.description = description;
-          }
-          if (pinnedFramePath !== undefined) {
-            updates.pinnedFramePath = pinnedFramePath;
-          }
+        const { title: _title, ...podUpdates } = updates;
+        let metadata = await ProjectMetadataResource.fetchBySpace(auth, pod);
+        if (!metadata) {
+          metadata = await ProjectMetadataResource.makeNew(
+            auth,
+            pod,
+            podUpdates
+          );
+        } else {
+          await metadata.updateDescriptionAndPinnedFramePath(podUpdates);
         }
 
         return new Ok(

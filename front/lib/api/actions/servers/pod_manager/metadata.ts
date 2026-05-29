@@ -6,6 +6,7 @@ import {
   SearchWithNodesInputSchema,
 } from "@app/lib/actions/mcp_internal_actions/types";
 import { FILES_SERVER_NAME } from "@app/lib/api/actions/servers/files/metadata";
+import { SCOPED_PREFIX_POD } from "@app/lib/api/file_system/types";
 import { DATA_SOURCE_NODE_ID } from "@app/types/core/content_node";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
@@ -85,7 +86,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
         .nullable()
         .optional()
         .describe(
-          "Path to a Pod file to pin as the Pod banner frame (e.g. pod/banner.html). Pass null to unpin."
+          `Path to a Pod file to pin as the Pod banner frame (e.g. ${SCOPED_PREFIX_POD}<id>/banner.html). Pass null to unpin.`
         ),
       dustPod: ConfigurableToolInputSchemas[
         INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
@@ -131,7 +132,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
     description:
       "Get information about the Pod: URL, title, description, pinned frame, and linked content nodes " +
       "attached to the Pod context. Does NOT list Pod files. Pod files live under " +
-      `\`pod-{podId}/<rel>\` scoped paths and are discovered through the \`${FILES_SERVER_NAME}\` MCP server.`,
+      `\`${SCOPED_PREFIX_POD}<id>/<rel>\` scoped paths and are discovered through the \`${FILES_SERVER_NAME}\` MCP server.`,
     schema: {
       dustPod: ConfigurableToolInputSchemas[
         INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
@@ -361,7 +362,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
 
 const POD_MANAGER_INSTRUCTIONS =
   "Pod files and metadata are shared across all conversations in this Pod. " +
-  `Pod files are managed through the \`${FILES_SERVER_NAME}\` MCP server using \`pod-{podId}/<rel>\` scoped paths ` +
+  `Pod files are managed through the \`${FILES_SERVER_NAME}\` MCP server using \`${SCOPED_PREFIX_POD}<id>/<rel>\` scoped paths ` +
   "(create, cat, grep, list, delete), not through this server. " +
   "Use `add_content_node` to reference a Company Data node in the Pod context, and " +
   "`remove_content_node` to remove such a reference. " +
@@ -380,7 +381,7 @@ export const POD_MANAGER_SERVER = {
     description:
       "Manage Pod metadata, members, conversations, and Company Data references. " +
       `Raw Pod file operations (create, read, search, write, delete) live in the \`${FILES_SERVER_NAME}\` MCP ` +
-      "server under `pod-{podId}/<rel>` scoped paths.",
+      `server under \`${SCOPED_PREFIX_POD}<id>/<rel>\` scoped paths.`,
     icon: "ActionDocumentTextIcon",
     authorization: null,
     documentationUrl: null,
