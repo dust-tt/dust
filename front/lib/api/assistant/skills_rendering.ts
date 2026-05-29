@@ -4,6 +4,7 @@ import {
 } from "@app/lib/actions/constants";
 import { SKILL_MANAGEMENT_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { stripSkillTagPresentationAttributes } from "@app/lib/skills/format";
 import { stripToolTagPresentationAttributes } from "@app/lib/tools/format";
 import type { UserMessageTypeModel } from "@app/types/assistant/generation";
 
@@ -19,19 +20,26 @@ function renderSystemSkillMessage(text: string): UserMessageTypeModel {
   };
 }
 
+function stripInstructionPresentationAttributes(content: string): string {
+  return stripSkillTagPresentationAttributes(
+    stripToolTagPresentationAttributes(content)
+  );
+}
+
 export function getEnabledSkillInstructions(
   skill: Pick<SkillResource, "name" | "instructions"> & {
     extendedSkill: Pick<SkillResource, "instructions"> | null;
   }
 ): string {
   const { name, instructions, extendedSkill } = skill;
-  const modelInstructions = stripToolTagPresentationAttributes(instructions);
+  const modelInstructions =
+    stripInstructionPresentationAttributes(instructions);
 
   if (!extendedSkill) {
     return `<${name}>\n${modelInstructions}\n</${name}>`;
   }
 
-  const extendedModelInstructions = stripToolTagPresentationAttributes(
+  const extendedModelInstructions = stripInstructionPresentationAttributes(
     extendedSkill.instructions
   );
 
