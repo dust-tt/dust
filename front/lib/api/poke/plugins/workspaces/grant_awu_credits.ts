@@ -190,9 +190,6 @@ export const grantAwuCreditsPlugin = createPlugin({
     // Commit path: an invoice is raised through Metronome. The invoice
     // unit price mirrors `awu_purchase` semantics — full AWU rate adjusted
     // by the workspace's AWU discount, converted to Metronome's fiat unit.
-    // Metronome also requires `invoice_contract_id` whenever a customer-
-    // level commit ships with an `invoice_schedule`, so we need the
-    // workspace's active Metronome contract.
     const metronomeContractId = auth.subscription()?.metronomeContractId;
     if (!metronomeContractId) {
       return new Err(

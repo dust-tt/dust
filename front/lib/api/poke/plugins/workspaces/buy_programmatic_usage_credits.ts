@@ -145,7 +145,7 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
   },
   isApplicableTo: (auth) => {
     const plan = auth.plan();
-    return plan === null || !isCreditPricedPlan(plan);
+    return plan !== null && !isCreditPricedPlan(plan);
   },
   populateAsyncArgs: async (auth) => {
     const config =
