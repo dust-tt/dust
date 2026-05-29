@@ -128,28 +128,30 @@ export class DustFileSystem {
       });
     }
 
-    // Collect unique pod spaces from pod conversations, preserving order.
-    const seenSpaceIds = new Set<string>();
-    for (const conversation of conversations.filter(isPodConversation)) {
-      if (seenSpaceIds.has(conversation.spaceId)) {
-        continue;
-      }
-      seenSpaceIds.add(conversation.spaceId);
+    // Collect unique pod space IDs, then batch-fetch to avoid N+1 queries.
+    const podConversations = conversations.filter(isPodConversation);
+    const uniqueSpaceIds = [...new Set(podConversations.map((c) => c.spaceId))];
 
-      const space = await SpaceResource.fetchById(auth, conversation.spaceId);
-      if (space) {
-        mounts.push({
-          kind: "pod",
-          id: space.sId,
-          scopedPrefix: `${SCOPED_PREFIX_POD}${space.sId}`,
-          sandboxMountPoint: `/files/${SCOPED_PREFIX_POD}${space.sId}`,
-          legacyPrefix: LEGACY_PREFIX_PROJECT,
-          legacySandboxMountPoint: `/files/${LEGACY_PREFIX_PROJECT}`,
-          permissions: {
-            canRead: space.canRead(auth),
-            canWrite: space.canWrite(auth),
-          },
-        });
+    if (uniqueSpaceIds.length > 0) {
+      const spaces = await SpaceResource.fetchByIds(auth, uniqueSpaceIds);
+      const spaceById = new Map(spaces.map((s) => [s.sId, s]));
+
+      for (const spaceId of uniqueSpaceIds) {
+        const space = spaceById.get(spaceId);
+        if (space) {
+          mounts.push({
+            kind: "pod",
+            id: space.sId,
+            scopedPrefix: `${SCOPED_PREFIX_POD}${space.sId}`,
+            sandboxMountPoint: `/files/${SCOPED_PREFIX_POD}${space.sId}`,
+            legacyPrefix: LEGACY_PREFIX_PROJECT,
+            legacySandboxMountPoint: `/files/${LEGACY_PREFIX_PROJECT}`,
+            permissions: {
+              canRead: space.canRead(auth),
+              canWrite: space.canWrite(auth),
+            },
+          });
+        }
       }
     }
 
