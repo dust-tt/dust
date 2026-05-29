@@ -4,6 +4,7 @@ import type {
   UsedBySkillType,
 } from "@app/types/assistant/skill_configuration";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { removeNulls } from "@app/types/shared/utils/general";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import {
   Avatar,
@@ -123,12 +124,10 @@ export const UsedByButton = ({
   const totalCount = agentCount + skillCount;
 
   const usageLabel =
-    [
+    removeNulls([
       agentCount > 0 ? `${agentCount} agent${pluralize(agentCount)}` : null,
       skillCount > 0 ? `${skillCount} skill${pluralize(skillCount)}` : null,
-    ]
-      .filter((label): label is string => label !== null)
-      .join(" and ") || "0 agents";
+    ]).join(" and ") || "0 agents";
 
   if (totalCount === 0) {
     return (
