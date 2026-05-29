@@ -1,13 +1,13 @@
+import {
+  filterSkillsForSlashSuggestions,
+  getSkillSlashCommandItem,
+  SELECT_SKILL_SLASH_COMMAND_ACTION,
+} from "@app/components/editor/extensions/shared/SlashCommandSkillItems";
 import type {
   SlashCommand,
   SlashCommandDropdownRef,
 } from "@app/components/editor/extensions/skill_builder/SlashCommandDropdown";
 import { SlashCommandDropdown } from "@app/components/editor/extensions/skill_builder/SlashCommandDropdown";
-import {
-  filterSkillsForSlashSuggestions,
-  getSkillSlashCommandItem,
-  SELECT_SKILL_SLASH_COMMAND_ACTION,
-} from "@app/components/editor/extensions/skill_builder/SlashCommandSkillItems";
 import { useSkills } from "@app/lib/swr/skill_configurations";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { LightWorkspaceType } from "@app/types/user";
