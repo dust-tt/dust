@@ -9,6 +9,7 @@ import {
 import type { SuggestionProps } from "@tiptap/suggestion";
 import type React from "react";
 import {
+  Fragment,
   forwardRef,
   useCallback,
   useEffect,
@@ -38,10 +39,18 @@ const EMPTY_SCROLL_FADE_STATE: ScrollFadeState = {
 
 export interface SlashCommand {
   action: string;
+  data?: {
+    skill?: {
+      icon?: string | null;
+      id: string;
+      name: string;
+    };
+  };
   description?: string;
   icon: React.ComponentType<any>;
   id: string;
   label: string;
+  sectionLabel?: string;
   tooltip?: SlashCommandTooltip;
 }
 
@@ -269,9 +278,13 @@ export const SlashCommandDropdown = forwardRef<
                     aria-hidden
                   />
                   {items.map((item, index) => {
+                    const sectionLabel =
+                      item.sectionLabel &&
+                      items[index - 1]?.sectionLabel !== item.sectionLabel
+                        ? item.sectionLabel
+                        : undefined;
                     const menuItem = (
                       <DropdownMenuItem
-                        key={item.id}
                         icon={item.icon}
                         itemId={item.id}
                         label={item.label}
@@ -288,21 +301,29 @@ export const SlashCommandDropdown = forwardRef<
                     );
 
                     // Wrap with DropdownTooltipTrigger if command has tooltip property.
-                    if (item.tooltip) {
-                      return (
-                        <DropdownTooltipTrigger
-                          key={item.id}
-                          description={item.tooltip.description}
-                          media={item.tooltip.media}
-                          side="right"
-                          sideOffset={8}
-                        >
-                          {menuItem}
-                        </DropdownTooltipTrigger>
-                      );
-                    }
+                    const itemContent = item.tooltip ? (
+                      <DropdownTooltipTrigger
+                        description={item.tooltip.description}
+                        media={item.tooltip.media}
+                        side="right"
+                        sideOffset={8}
+                      >
+                        {menuItem}
+                      </DropdownTooltipTrigger>
+                    ) : (
+                      menuItem
+                    );
 
-                    return menuItem;
+                    return (
+                      <Fragment key={item.id}>
+                        {sectionLabel ? (
+                          <div className="px-3 py-2 text-xs font-semibold text-muted-foreground dark:text-muted-foreground-night">
+                            {sectionLabel}
+                          </div>
+                        ) : null}
+                        {itemContent}
+                      </Fragment>
+                    );
                   })}
                 </div>
               </div>

@@ -69,14 +69,23 @@ export function filterSkillsForSlashSuggestions({
 }
 
 export function getSkillSlashCommandItem(
-  skill: SlashCommandSkillSuggestion
+  skill: SlashCommandSkillSuggestion,
+  { sectionLabel }: { sectionLabel?: string } = {}
 ): SlashCommand {
   return {
     action: SELECT_SKILL_SLASH_COMMAND_ACTION,
+    data: {
+      skill: {
+        icon: skill.icon,
+        id: skill.sId,
+        name: skill.name,
+      },
+    },
     description: skill.userFacingDescription,
     icon: getSkillAvatarIcon(skill.icon),
     id: skill.sId,
     label: skill.name,
+    sectionLabel,
     tooltip: skill.userFacingDescription
       ? {
           description: skill.userFacingDescription,

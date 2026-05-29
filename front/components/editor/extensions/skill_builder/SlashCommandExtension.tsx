@@ -1,8 +1,16 @@
+import {
+  filterSkillsForSlashSuggestions,
+  getSkillSlashCommandItem,
+  SELECT_SKILL_SLASH_COMMAND_ACTION,
+  type SlashCommandSkillSuggestion,
+} from "@app/components/editor/extensions/shared/SlashCommandSkillItems";
 import type {
   SlashCommand,
   SlashCommandDropdownRef,
 } from "@app/components/editor/extensions/skill_builder/SlashCommandDropdown";
 import { SlashCommandDropdown } from "@app/components/editor/extensions/skill_builder/SlashCommandDropdown";
+import { useSkills } from "@app/lib/swr/skill_configurations";
+import type { LightWorkspaceType } from "@app/types/user";
 import { AttachmentIcon } from "@dust-tt/sparkle";
 import { Extension } from "@tiptap/core";
 import { PluginKey } from "@tiptap/pm/state";
@@ -10,6 +18,7 @@ import type { EditorView } from "@tiptap/pm/view";
 import { ReactRenderer } from "@tiptap/react";
 import type { SuggestionOptions, SuggestionProps } from "@tiptap/suggestion";
 import { exitSuggestion, Suggestion } from "@tiptap/suggestion";
+import { forwardRef, useMemo } from "react";
 
 const slashCommandPluginKey = new PluginKey("slashCommand");
 
@@ -35,7 +44,129 @@ const SLASH_COMMANDS: SlashCommand[] = [
   },
 ];
 
+export function buildSkillBuilderSlashCommandItems({
+  baseItems,
+  currentSkillId,
+  includeSkillSuggestions,
+  query,
+  skills,
+}: {
+  baseItems: SlashCommand[];
+  currentSkillId?: string | null;
+  includeSkillSuggestions: boolean;
+  query: string;
+  skills: SlashCommandSkillSuggestion[];
+}): SlashCommand[] {
+  if (!includeSkillSuggestions) {
+    return baseItems;
+  }
+
+  const skillItems = filterSkillsForSlashSuggestions({ query, skills })
+    .filter((skill) => skill.sId !== currentSkillId)
+    .map((skill, index) =>
+      getSkillSlashCommandItem(skill, {
+        sectionLabel: index === 0 ? "Capabilities" : undefined,
+      })
+    );
+
+  return [...baseItems, ...skillItems];
+}
+
+interface SkillBuilderSlashCommandDropdownProps
+  extends Pick<
+    SuggestionProps<SlashCommand>,
+    "clientRect" | "command" | "items" | "query"
+  > {
+  currentSkillId?: string | null;
+  includeSkillSuggestions: boolean;
+  onClose: () => void;
+  owner?: LightWorkspaceType;
+}
+
+interface SkillBuilderSlashCommandDropdownWithSkillsProps
+  extends SkillBuilderSlashCommandDropdownProps {
+  owner: LightWorkspaceType;
+}
+
+const SkillBuilderSlashCommandDropdownWithSkills = forwardRef<
+  SlashCommandDropdownRef,
+  SkillBuilderSlashCommandDropdownWithSkillsProps
+>(
+  (
+    { clientRect, command, currentSkillId, items, onClose, owner, query },
+    ref
+  ) => {
+    const isOpen = Boolean(clientRect);
+    const { skills, isSkillsLoading } = useSkills({
+      disabled: !isOpen,
+      owner,
+      status: "active",
+    });
+
+    const slashCommandItems = useMemo(
+      () =>
+        buildSkillBuilderSlashCommandItems({
+          baseItems: items,
+          currentSkillId,
+          includeSkillSuggestions: true,
+          query,
+          skills,
+        }),
+      [currentSkillId, items, query, skills]
+    );
+
+    return (
+      <SlashCommandDropdown
+        key={isSkillsLoading ? "loading" : "loaded"}
+        ref={ref}
+        items={slashCommandItems}
+        command={command}
+        clientRect={clientRect}
+        emptyMessage={
+          isSkillsLoading ? "Loading capabilities…" : "No commands found"
+        }
+        onClose={onClose}
+        size="wide"
+      />
+    );
+  }
+);
+
+SkillBuilderSlashCommandDropdownWithSkills.displayName =
+  "SkillBuilderSlashCommandDropdownWithSkills";
+
+const SkillBuilderSlashCommandDropdown = forwardRef<
+  SlashCommandDropdownRef,
+  SkillBuilderSlashCommandDropdownProps
+>((props, ref) => {
+  if (props.includeSkillSuggestions && props.owner) {
+    return (
+      <SkillBuilderSlashCommandDropdownWithSkills
+        {...props}
+        owner={props.owner}
+        ref={ref}
+      />
+    );
+  }
+
+  return (
+    <SlashCommandDropdown
+      ref={ref}
+      items={props.items}
+      command={props.command}
+      clientRect={props.clientRect}
+      onClose={props.onClose}
+    />
+  );
+});
+
+SkillBuilderSlashCommandDropdown.displayName =
+  "SkillBuilderSlashCommandDropdown";
+
 export interface SlashCommandExtensionOptions {
+  currentSkillId?: string | null;
+  includeSkillSuggestions: boolean;
+  owner?: LightWorkspaceType;
   suggestion: Partial<SuggestionOptions>;
 }
 
@@ -58,6 +189,9 @@ export const SlashCommandExtension =
 
     addOptions() {
       return {
+        currentSkillId: null,
+        includeSkillSuggestions: false,
+        owner: undefined,
         suggestion: {
           char: "/",
           pluginKey: slashCommandPluginKey,
@@ -81,6 +215,7 @@ export const SlashCommandExtension =
     },
 
     addProseMirrorPlugins() {
+      const extensionOptions = this.options;
       const extensionStorage = this.storage;
 
       return [
@@ -96,6 +231,20 @@ export const SlashCommandExtension =
                 .deleteRange(range)
                 .insertKnowledgeNode()
                 .run();
+            } else if (props.action === SELECT_SKILL_SLASH_COMMAND_ACTION) {
+              const skill = props.data?.skill;
+              if (skill) {
+                editor
+                  .chain()
+                  .focus()
+                  .deleteRange(range)
+                  .insertSkillNode({
+                    skillId: skill.id,
+                    skillIcon: skill.icon,
+                    skillName: skill.name,
+                  })
+                  .run();
+              }
             }
           },
           render: () => {
@@ -113,13 +262,20 @@ export const SlashCommandExtension =
             return {
               onStart: (props: SuggestionProps) => {
                 activeEditorView = props.editor.view;
-                component = new ReactRenderer(SlashCommandDropdown, {
-                  props: {
-                    ...props,
-                    onClose: closeSuggestionDropdown,
-                  },
-                  editor: props.editor,
-                });
+                component = new ReactRenderer(
+                  SkillBuilderSlashCommandDropdown,
+                  {
+                    props: {
+                      ...props,
+                      currentSkillId: extensionOptions.currentSkillId,
+                      includeSkillSuggestions:
+                        extensionOptions.includeSkillSuggestions,
+                      onClose: closeSuggestionDropdown,
+                      owner: extensionOptions.owner,
+                    },
+                    editor: props.editor,
+                  }
+                );
 
                 if (!props.clientRect) {
                   return;
@@ -132,7 +288,11 @@ export const SlashCommandExtension =
                 activeEditorView = props.editor.view;
                 component?.updateProps({
                   ...props,
+                  currentSkillId: extensionOptions.currentSkillId,
+                  includeSkillSuggestions:
+                    extensionOptions.includeSkillSuggestions,
                   onClose: closeSuggestionDropdown,
+                  owner: extensionOptions.owner,
                 });
 
                 if (!props.clientRect) {
