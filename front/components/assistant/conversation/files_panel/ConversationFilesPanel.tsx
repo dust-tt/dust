@@ -15,7 +15,7 @@ import { useConversationSandboxStatus } from "@app/hooks/conversations/useConver
 import { useSendNotification } from "@app/hooks/useNotification";
 import { isFileAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import type { FileSystemFileEntry } from "@app/lib/api/file_system/types";
-import { downloadSandboxFile } from "@app/lib/swr/files";
+import { downloadFile } from "@app/lib/swr/files";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { isInteractiveContentType } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -110,7 +110,7 @@ export function ConversationFilesPanel({
       // File only exists in GCS, download and open as blob URL.
       isDownloadingRef.current = true;
       try {
-        const res = await downloadSandboxFile(owner, entry.path);
+        const res = await downloadFile(owner, entry.path);
         const blob = await res.blob();
         if (blobUrlRef.current) {
           URL.revokeObjectURL(blobUrlRef.current);

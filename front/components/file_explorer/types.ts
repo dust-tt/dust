@@ -44,6 +44,7 @@ export type FilePanelCategory =
 
 export type FileSystemTreeNode = {
   name: string;
+  /** Relative path within the mount (scope prefix stripped), e.g. `"reports/q1.pdf"`. */
   path: string;
   isDirectory: boolean;
   contentType: string | null;

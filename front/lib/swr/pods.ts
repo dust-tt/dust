@@ -18,7 +18,7 @@ import {
 import type { PostSeedInitialPodTasksResponseBody } from "@app/pages/api/w/[wId]/pods/[podId]/tasks/seed";
 import type { GetWorkspacePodTaskResponseBody } from "@app/pages/api/w/[wId]/project_tasks/[taskSId]/index";
 import type {
-  GCSMountEntry,
+  FileSystemEntry,
   GetSpaceFilesResponseBody,
 } from "@app/pages/api/w/[wId]/spaces/[spaceId]/files";
 import type {
@@ -128,7 +128,7 @@ export function usePodFiles({
   }, [mutateRegardlessOfQueryParams]);
 
   return {
-    files: data?.files ?? emptyArray<GCSMountEntry>(),
+    files: data?.files ?? emptyArray<FileSystemEntry>(),
     isPodFilesLoading: !disabled && !error && !data,
     isPodFilesError: !!error,
     mutatePodFiles: mutate,
@@ -311,7 +311,7 @@ export function useRemovePodContextContentNodes({
 
 export function useRenamePodFile({
   owner,
-  podId,
+  podId: _podId,
 }: {
   owner: LightWorkspaceType;
   podId: string;
@@ -319,16 +319,20 @@ export function useRenamePodFile({
   const sendNotification = useSendNotification();
 
   return async (
-    relPath: string,
+    canonicalPath: string,
     newFileName: string
   ): Promise<Result<void, Error>> => {
     try {
+      const encoded = canonicalPath
+        .split("/")
+        .map(encodeURIComponent)
+        .join("/");
       const res = await clientFetch(
-        `/api/w/${owner.sId}/spaces/${podId}/files/${relPath}`,
+        `/api/w/${owner.sId}/files/path/${encoded}`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fileName: newFileName }),
+          body: JSON.stringify({ action: "rename", fileName: newFileName }),
         }
       );
 
@@ -416,17 +420,21 @@ export function useCreatePodFolder({
 
 export function useDeletePodFile({
   owner,
-  podId,
+  podId: _podId,
 }: {
   owner: LightWorkspaceType;
   podId: string;
 }) {
   const sendNotification = useSendNotification();
 
-  return async (relPath: string): Promise<Result<void, Error>> => {
+  return async (canonicalPath: string): Promise<Result<void, Error>> => {
     try {
+      const encoded = canonicalPath
+        .split("/")
+        .map(encodeURIComponent)
+        .join("/");
       const res = await clientFetch(
-        `/api/w/${owner.sId}/spaces/${podId}/files/${relPath}`,
+        `/api/w/${owner.sId}/files/path/${encoded}`,
         { method: "DELETE" }
       );
 
@@ -451,6 +459,60 @@ export function useDeletePodFile({
       sendNotification({
         type: "error",
         title: "Failed to delete file",
+        description: errorMessage,
+      });
+      return new Err(new Error(errorMessage));
+    }
+  };
+}
+
+export function useMovePodFile({ owner }: { owner: LightWorkspaceType }) {
+  const sendNotification = useSendNotification();
+
+  return async ({
+    srcCanonicalPath,
+    destCanonicalPath,
+  }: {
+    /** Full canonical scoped path of the source file, e.g. `pod-{sId}/subdir/file.txt`. */
+    srcCanonicalPath: string;
+    /** Full canonical scoped path of the destination, e.g. `pod-{sId}/other/file.txt`. */
+    destCanonicalPath: string;
+  }): Promise<Result<void, Error>> => {
+    try {
+      const encoded = srcCanonicalPath
+        .split("/")
+        .map(encodeURIComponent)
+        .join("/");
+      const res = await clientFetch(
+        `/api/w/${owner.sId}/files/path/${encoded}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "move", dest: destCanonicalPath }),
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+        sendNotification({
+          type: "error",
+          title: "Failed to move file",
+          description: errorData.message,
+        });
+        return new Err(new Error(errorData.message));
+      }
+
+      sendNotification({
+        type: "success",
+        title: "File moved",
+      });
+
+      return new Ok(undefined);
+    } catch (e) {
+      const errorMessage = normalizeError(e).message;
+      sendNotification({
+        type: "error",
+        title: "Failed to move file",
         description: errorMessage,
       });
       return new Err(new Error(errorMessage));
