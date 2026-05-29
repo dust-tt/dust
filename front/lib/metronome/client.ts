@@ -1557,6 +1557,123 @@ export async function addPaymentGatedCommitToContract({
 }
 
 /**
+ * Add a plain (non-payment-gated) PREPAID commit to an existing contract via
+ * `v2.contracts.edit`. Unlike `addPaymentGatedCommitToContract`, the credits
+ * are available immediately (no Stripe payment gate); Metronome raises the
+ * invoice through the contract's billing configuration on its normal cadence,
+ * and collection follows the customer's Stripe collection method.
+ *
+ * `invoiceUnitPrice` is the per-unit fiat price in the invoice credit type's
+ * units — cents for USD, whole units for other fiat currencies (matches
+ * Metronome's fiat unit convention; see `metronomeAmount`). Passing
+ * `invoiceQuantity: 1` makes `invoiceUnitPrice` the full invoice total.
+ */
+export async function addPrepaidCommitToContract({
+  metronomeCustomerId,
+  metronomeContractId,
+  productId,
+  accessAmount,
+  accessCreditTypeId,
+  accessStartingAt,
+  accessEndingBefore,
+  invoiceUnitPrice,
+  invoiceQuantity,
+  invoiceCreditTypeId,
+  invoiceTimestamp,
+  priority,
+  name,
+  uniquenessKey,
+}: {
+  metronomeCustomerId: string;
+  metronomeContractId: string;
+  productId: string;
+  accessAmount: number;
+  accessCreditTypeId: string;
+  accessStartingAt: Date;
+  accessEndingBefore: Date;
+  invoiceUnitPrice: number;
+  invoiceQuantity: number;
+  invoiceCreditTypeId: string;
+  invoiceTimestamp: Date;
+  priority: number;
+  name: string;
+  uniquenessKey: string;
+}): Promise<Result<{ editId: string }, Error>> {
+  try {
+    const response = await getMetronomeClient().v2.contracts.edit({
+      customer_id: metronomeCustomerId,
+      contract_id: metronomeContractId,
+      uniqueness_key: uniquenessKey,
+      add_commits: [
+        {
+          product_id: productId,
+          type: "PREPAID",
+          name,
+          priority,
+          applicable_product_tags: ["usage"],
+          access_schedule: {
+            credit_type_id: accessCreditTypeId,
+            schedule_items: [
+              {
+                amount: accessAmount,
+                starting_at: floorToHourISO(accessStartingAt),
+                ending_before: floorToHourISO(accessEndingBefore),
+              },
+            ],
+          },
+          invoice_schedule: {
+            credit_type_id: invoiceCreditTypeId,
+            schedule_items: [
+              {
+                unit_price: invoiceUnitPrice,
+                quantity: invoiceQuantity,
+                timestamp: floorToHourISO(invoiceTimestamp),
+              },
+            ],
+          },
+        },
+      ],
+    });
+
+    logger.info(
+      {
+        metronomeCustomerId,
+        metronomeContractId,
+        editId: response.data.id,
+        accessAmount,
+        invoiceUnitPrice,
+        invoiceQuantity,
+      },
+      "[Metronome] Prepaid commit added to contract"
+    );
+
+    return new Ok({ editId: response.data.id });
+  } catch (err) {
+    if (err instanceof ConflictError) {
+      logger.info(
+        { metronomeCustomerId, metronomeContractId, uniquenessKey },
+        "[Metronome] Prepaid commit edit already exists (idempotent)"
+      );
+      return new Ok({ editId: "" });
+    }
+
+    const error = normalizeError(err);
+    logger.error(
+      {
+        error,
+        metronomeCustomerId,
+        metronomeContractId,
+        accessAmount,
+        invoiceUnitPrice,
+        invoiceQuantity,
+      },
+      "[Metronome] Failed to add prepaid commit to contract"
+    );
+    return new Err(error);
+  }
+}
+
+/**
  * Find a customer-level commit by its uniqueness_key.
  * Used to recover the id after a 409 conflict on creation.
  * Scoped via covering_date so we don't paginate through expired commits.

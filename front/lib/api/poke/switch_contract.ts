@@ -5,11 +5,19 @@ import {
 import { isMetronomeBillingEnabled } from "@app/lib/api/subscription";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
+import { metronomeAmount } from "@app/lib/metronome/amounts";
 import {
+  addPrepaidCommitToContract,
   ceilToHourISO,
   floorToHourISO,
   listMetronomePackages,
 } from "@app/lib/metronome/client";
+import {
+  AWU_PRIORITY_PURCHASED_COMMIT,
+  CURRENCY_TO_CREDIT_TYPE_ID,
+  getCreditTypeAwuId,
+  getProductPrepaidCommitId,
+} from "@app/lib/metronome/constants";
 import {
   ensureMetronomeCustomerForWorkspace,
   provisionMetronomeContract,
@@ -63,6 +71,19 @@ export const SwitchContractBodySchema = z.object({
     .number()
     .int("Usage cap must be an integer number of credits")
     .min(1, "Usage cap must be at least 1 credit")
+    .optional(),
+  // Optional one-off initial AWU credits granted alongside the switch as a
+  // contract-level prepaid commit (priority 300, same as purchased commits).
+  // Requires a Stripe customer so the commit can be invoiced. `invoiceAmount`
+  // is in the customer's billing currency major units (e.g. dollars / euros).
+  initialCredits: z
+    .object({
+      amountCredits: z
+        .number()
+        .int("Initial credits must be an integer number of credits")
+        .min(1, "Initial credits must be at least 1 credit"),
+      invoiceAmount: z.number().min(0, "Invoice amount must be zero or more"),
+    })
     .optional(),
 });
 
@@ -258,6 +279,18 @@ export async function switchContract({
     );
   }
 
+  // Initial credits are invoiced through the contract's Stripe billing config,
+  // so they require a Stripe customer (and therefore a resolved currency).
+  if (body.initialCredits && !resolvedCurrency) {
+    return new Err(
+      new SwitchContractError(
+        "invalid_request",
+        "Initial credits require a Stripe customer to invoice — provide a " +
+          "stripeCustomerId."
+      )
+    );
+  }
+
   // Resolve when the swap happens.
   //  - startingAt provided: schedule at the requested moment, ceiled to the
   //    next hour boundary. Must be ≥1h in the future.
@@ -328,6 +361,50 @@ export async function switchContract({
       ? floorToHourISO(startingAtDate)
       : ceilToHourISO(startingAtDate)
   );
+
+  // Optional one-off initial credits: a contract-level prepaid AWU commit
+  // starting with the contract and lasting one year. `invoiceAmount` is in the
+  // customer's currency major units; convert to Metronome fiat units (cents
+  // for USD, whole units for EUR) for the invoice unit price.
+  if (body.initialCredits && resolvedCurrency) {
+    const oneYearAfterStart = new Date(alignedStart);
+    oneYearAfterStart.setUTCFullYear(oneYearAfterStart.getUTCFullYear() + 1);
+
+    const invoiceAmountCents = Math.round(
+      body.initialCredits.invoiceAmount * 100
+    );
+    const invoiceUnitPrice = metronomeAmount(
+      invoiceAmountCents,
+      resolvedCurrency
+    );
+
+    const commitResult = await addPrepaidCommitToContract({
+      metronomeCustomerId,
+      metronomeContractId,
+      productId: getProductPrepaidCommitId(),
+      accessAmount: body.initialCredits.amountCredits,
+      accessCreditTypeId: getCreditTypeAwuId(),
+      accessStartingAt: alignedStart,
+      accessEndingBefore: oneYearAfterStart,
+      invoiceUnitPrice,
+      invoiceQuantity: 1,
+      invoiceCreditTypeId: CURRENCY_TO_CREDIT_TYPE_ID[resolvedCurrency],
+      invoiceTimestamp: alignedStart,
+      priority: AWU_PRIORITY_PURCHASED_COMMIT,
+      name: `Initial credits: ${body.initialCredits.amountCredits.toLocaleString()} credits`,
+      uniquenessKey: `initial-credits-${owner.sId}-${alignedStart.getTime()}-${body.initialCredits.amountCredits}`,
+    });
+    if (commitResult.isErr()) {
+      return new Err(
+        new SwitchContractError(
+          "provision_inconsistent",
+          `Provisioned Metronome contract ${metronomeContractId} but failed to ` +
+            `add the initial credits commit: ${commitResult.error.message}. ` +
+            "Manual cleanup may be required."
+        )
+      );
+    }
+  }
 
   // Persist the future-state subscription in `created_backend_only`; the
   // `contract.start` webhook flips it to `active` (and ends the current one).

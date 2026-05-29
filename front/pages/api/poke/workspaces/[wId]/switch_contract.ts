@@ -116,7 +116,10 @@ async function handler(
     body.usageCapCredits !== undefined
       ? ` Usage cap: ${body.usageCapCredits} credits.`
       : "";
-  const paygStatus = `${paygSummary}${capSummary}`;
+  const initialCreditsSummary = body.initialCredits
+    ? ` Initial credits: ${body.initialCredits.amountCredits} credits invoiced ${body.initialCredits.invoiceAmount}.`
+    : "";
+  const paygStatus = `${paygSummary}${capSummary}${initialCreditsSummary}`;
   await pluginRun.recordResult({
     display: "text",
     value:

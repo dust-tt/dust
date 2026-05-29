@@ -55,6 +55,19 @@ const SwitchContractFormSchema = z.object({
     .int("Usage cap must be an integer number of credits")
     .min(1, "Usage cap must be at least 1 credit")
     .optional(),
+  // One-off initial credits (contract-level prepaid commit). Toggled on via
+  // `showInitialCredits`; both fields are then required together and assembled
+  // into `initialCredits` on submit.
+  showInitialCredits: z.boolean().default(false),
+  initialCreditsAmount: z
+    .number()
+    .int("Initial credits must be an integer number of credits")
+    .min(1, "Initial credits must be at least 1 credit")
+    .optional(),
+  initialCreditsInvoiceAmount: z
+    .number()
+    .min(0, "Invoice amount must be zero or more")
+    .optional(),
 });
 type SwitchContractFormValues = z.infer<typeof SwitchContractFormSchema>;
 
@@ -131,6 +144,9 @@ export default function SwitchContractDialog({
       stripeCollectionMethod: "charge_automatically",
       paygEnabled: false,
       usageCapCredits: undefined,
+      showInitialCredits: false,
+      initialCreditsAmount: undefined,
+      initialCreditsInvoiceAmount: undefined,
     },
   });
 
@@ -253,6 +269,8 @@ export default function SwitchContractDialog({
   const paygEligible =
     selectedTier !== null && isPaygEligibleTier(selectedTier);
 
+  const showInitialCredits = form.watch("showInitialCredits");
+
   const onSubmit = useCallback(
     (values: SwitchContractFormValues) => {
       const trimmedStripe = values.stripeCustomerId.trim();
@@ -270,6 +288,28 @@ export default function SwitchContractDialog({
       }
       if (values.usageCapCredits !== undefined) {
         cleaned.usageCapCredits = values.usageCapCredits;
+      }
+      // Initial credits: only sent when the operator toggled the section on.
+      // Both the credit amount and the invoice amount are then required, and a
+      // Stripe customer must be present to invoice against.
+      if (values.showInitialCredits) {
+        if (
+          values.initialCreditsAmount === undefined ||
+          values.initialCreditsInvoiceAmount === undefined
+        ) {
+          setError(
+            "Initial credits require both a credit amount and an invoice amount."
+          );
+          return;
+        }
+        if (!trimmedStripe) {
+          setError("Initial credits require a Stripe customer to invoice.");
+          return;
+        }
+        cleaned.initialCredits = {
+          amountCredits: values.initialCreditsAmount,
+          invoiceAmount: values.initialCreditsInvoiceAmount,
+        };
       }
       if (
         selectedTier === "enterprise" &&
@@ -327,19 +367,20 @@ export default function SwitchContractDialog({
             Business packages swap at the current hour.
           </DialogDescription>
         </DialogHeader>
-        <DialogContainer>
-          {error && <div className="text-warning">{error}</div>}
-          {isSubmitting && (
+        {isSubmitting ? (
+          <DialogContainer>
             <div className="flex justify-center">
               <Spinner size="lg" />
             </div>
-          )}
-          {!isSubmitting && (
-            <PokeForm {...form}>
-              <form
-                onSubmit={form.handleSubmit(onSubmit)}
-                className="space-y-4"
-              >
+          </DialogContainer>
+        ) : (
+          <PokeForm {...form}>
+            <form
+              onSubmit={form.handleSubmit(onSubmit)}
+              className="flex flex-grow flex-col overflow-hidden"
+            >
+              <DialogContainer className="space-y-4">
+                {error && <div className="text-warning">{error}</div>}
                 <InputField
                   control={form.control}
                   name="stripeCustomerId"
@@ -468,21 +509,57 @@ export default function SwitchContractDialog({
                     />
                   </div>
                 )}
-                <DialogFooter>
-                  <Button
-                    type="submit"
-                    variant="warning"
-                    label="Switch"
-                    disabled={
-                      !selectedTier ||
-                      (selectedTier !== "free" && !resolvedCurrency)
-                    }
-                  />
-                </DialogFooter>
-              </form>
-            </PokeForm>
-          )}
-        </DialogContainer>
+                {trimmedStripeCustomerId && resolvedCurrency && (
+                  <div className="space-y-4 border-t pt-4">
+                    <div className="flex items-center gap-2">
+                      <SliderToggle
+                        selected={showInitialCredits}
+                        onClick={() =>
+                          form.setValue(
+                            "showInitialCredits",
+                            !showInitialCredits
+                          )
+                        }
+                      />
+                      <Label className="text-sm">
+                        Initial credits (one-off prepaid commit)
+                      </Label>
+                    </div>
+                    {showInitialCredits && (
+                      <>
+                        <InputField
+                          control={form.control}
+                          name="initialCreditsAmount"
+                          title="Initial Credits (AWU credits)"
+                          type="number"
+                          placeholder="e.g., 100000"
+                        />
+                        <InputField
+                          control={form.control}
+                          name="initialCreditsInvoiceAmount"
+                          title={`Amount to Invoice (${resolvedCurrency.toUpperCase()})`}
+                          type="number"
+                          placeholder="e.g., 5000 — amount billed to the customer"
+                        />
+                      </>
+                    )}
+                  </div>
+                )}
+              </DialogContainer>
+              <DialogFooter>
+                <Button
+                  type="submit"
+                  variant="warning"
+                  label="Switch"
+                  disabled={
+                    !selectedTier ||
+                    (selectedTier !== "free" && !resolvedCurrency)
+                  }
+                />
+              </DialogFooter>
+            </form>
+          </PokeForm>
+        )}
       </DialogContent>
     </Dialog>
   );

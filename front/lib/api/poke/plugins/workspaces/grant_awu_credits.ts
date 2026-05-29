@@ -164,7 +164,7 @@ export const grantAwuCreditsPlugin = createPlugin({
         endingBefore: expirationDate.toISOString(),
         name: `Credits granted from Poke: ${amountCredits.toLocaleString()} credits`,
         idempotencyKey,
-        priority: 1,
+        priority: AWU_PRIORITY_PURCHASED_COMMIT,
         applicableProductTags: ["usage"],
       });
 
