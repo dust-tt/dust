@@ -535,6 +535,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   "query_tables_v2": {
     "execute_database_query": "never_ask",
     "get_database_schema": "never_ask",
+    "list_tables": "never_ask",
   },
   "run_agent": {
     "run_agent": "never_ask",
