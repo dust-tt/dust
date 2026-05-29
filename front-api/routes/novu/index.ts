@@ -12,18 +12,12 @@ import { NovuRequestHandler } from "@novu/framework";
 // platform. The Novu platform calls this endpoint to execute workflow steps.
 // See: https://docs.novu.co/framework/endpoint
 
-// Novu ships per-framework adapters under subpaths (e.g. `@novu/framework/next`),
-// but the Next adapter does `import { NextRequest } from "next/server"` at the
-// top of its module, which forces Node to resolve and load Next at module-load
-// time. That breaks the standalone Hono server whenever Next is not available
-// (e.g. locally) and violates [API9].
-//
-// Instead we build a thin Hono-native adapter directly on `NovuRequestHandler`
-// from the root package, following Novu's documented "custom serve" pattern:
+// We build the handler directly on `NovuRequestHandler` (Novu's documented
+// "custom serve" pattern) rather than `@novu/framework/next`: the Next adapter
+// imports `next/server` at module load, which would pull Next into the
+// standalone Hono server and violate [API9]. Novu only touches the standard
+// Fetch `Request` surface at runtime, which `ctx.req.raw` already provides.
 // https://docs.novu.co/framework/endpoint#writing-a-custom-serve-function
-// At runtime Novu only touches the standard Fetch `Request` surface
-// (method/headers/body/url), which `ctx.req.raw` already provides — so no Next
-// types or runtime are involved.
 
 const options: ServeHandlerOptions = {
   workflows: [
