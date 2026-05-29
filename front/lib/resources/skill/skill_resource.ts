@@ -424,18 +424,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           transaction,
         });
 
-      if (enableSkillReferences) {
-        await this.syncSkillReferences(
-          auth,
-          {
-            instructions: blob.instructions,
-            parentSkillId: skill.id,
-          },
-          { transaction }
-        );
-      }
-
-      return new this(this.model, skill.get(), {
+      const resource = new this(this.model, skill.get(), {
         dataSourceConfigurations,
         editorGroup,
         fileAttachments,
@@ -443,6 +432,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           view,
         })),
       });
+
+      if (enableSkillReferences) {
+        await resource.syncSkillReferences(
+          auth,
+          { instructions: blob.instructions },
+          { transaction }
+        );
+      }
+
+      return resource;
     });
   }
 
@@ -2220,14 +2219,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       );
 
       if (enableSkillReferences) {
-        await SkillResource.syncSkillReferences(
-          auth,
-          {
-            instructions,
-            parentSkillId: this.id,
-          },
-          { transaction }
-        );
+        await this.syncSkillReferences(auth, { instructions }, { transaction });
       }
 
       await this.updateMCPServerViews(auth, mcpServerViews, { transaction });
@@ -2277,18 +2269,17 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   /**
    * Persist the custom skills referenced by the skill instructions.
    */
-  private static async syncSkillReferences(
+  private async syncSkillReferences(
     auth: Authenticator,
     {
       instructions,
-      parentSkillId,
     }: {
       instructions: string;
-      parentSkillId: ModelId;
     },
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<void> {
     const workspace = auth.getNonNullableWorkspace();
+    const parentSkillId = this.id;
     const childSkillModelIds = new Set<ModelId>();
 
     for (const skillId of extractUniqueSkillIds(instructions)) {
