@@ -32,7 +32,8 @@ const configSchema = z.union([
     reasoning: z
       .object({ effort: z.enum(NON_NULL_REASONING_EFFORTS) })
       .default({ effort: "medium" }),
-    temperature: z.literal(1).optional(),
+    // Reasoning requires temperature=1; accept any value but coerce to 1.
+    temperature: temperatureSchema.optional().transform(() => 1 as const),
   }),
   inputConfigSchema.extend({
     reasoning: z.object({ effort: z.literal("none") }),
