@@ -190,6 +190,9 @@ COPY --from=base-deps /app/front/scripts ./scripts
 # Copy compiled migration script (built in base-deps, works without TypeScript sources)
 COPY --from=base-deps /app/front/dist/migrate.js ./dist/migrate.js
 COPY --from=base-deps /app/front/dist/migrate.js.map ./dist/migrate.js.map
+# Copy migration scripts
+COPY --from=base-deps /app/front/migrations/pre-deploy ./migrations/pre-deploy
+COPY --from=base-deps /app/front/migrations/post-deploy ./migrations/post-deploy
 
 # Re-declare build args needed at runtime
 ARG NEXT_PUBLIC_DUST_API_URL
