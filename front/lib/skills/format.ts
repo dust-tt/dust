@@ -1,6 +1,6 @@
 export type SkillReference = {
   id: string;
-  icon: string;
+  icon?: string | null;
   name: string;
 };
 
@@ -14,7 +14,7 @@ function parseSkillTagAttributes(attributes: string): SkillReference | null {
   const name = attributes.match(/\bname="([^"]+)"/)?.[1];
   const icon = attributes.match(/\bicon="([^"]+)"/)?.[1];
 
-  if (!id || !name || !icon) {
+  if (!id || !name) {
     return null;
   }
 
@@ -46,5 +46,7 @@ export function extractUniqueSkillIds(content: string): string[] {
 }
 
 export function serializeSkillTag({ id, name, icon }: SkillReference): string {
-  return `<${SKILL_TAG_NAME} id="${id}" name="${name}" icon="${icon}" />`;
+  const iconAttribute = icon ? ` icon="${icon}"` : "";
+
+  return `<${SKILL_TAG_NAME} id="${id}" name="${name}"${iconAttribute} />`;
 }
