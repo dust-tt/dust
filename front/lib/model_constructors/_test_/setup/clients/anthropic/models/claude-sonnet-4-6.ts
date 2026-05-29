@@ -27,55 +27,50 @@ export const anthropicClaudeSonnetFourDotSixSetup: Setup = {
       shouldRun: false,
       checkers: [INPUT_CONFIGURATION_ERROR],
     },
+    // When forcing tool use, reasoning must be set to none
+    "calc/calc/t-default/r-default/force-tool": {
+      shouldRun: true,
+      debug: false,
+      checkers: [INPUT_CONFIGURATION_ERROR],
+    },
 
-    // In thinking mode, temperature <> 1 is not supported
+    // In thinking mode, temperature <> 1 is overwritten
     "simple/no-tools/t-0/r-default": {
       shouldRun: false,
-      checkers: [INPUT_CONFIGURATION_ERROR],
     },
     "simple/no-tools/t-0/r-low": {
       shouldRun: false,
-      checkers: [INPUT_CONFIGURATION_ERROR],
     },
     "simple/no-tools/t-0/r-medium": {
       shouldRun: false,
-      checkers: [INPUT_CONFIGURATION_ERROR],
     },
     "simple/no-tools/t-0/r-high": {
       shouldRun: false,
-      checkers: [INPUT_CONFIGURATION_ERROR],
     },
     "simple/no-tools/t-0/r-maximal": {
       shouldRun: false,
-      checkers: [INPUT_CONFIGURATION_ERROR],
     },
     "simple/no-tools/t-0.1/r-default": {
       shouldRun: false,
-      checkers: [INPUT_CONFIGURATION_ERROR],
     },
     "simple/no-tools/t-0.1/r-low": {
       shouldRun: false,
-      checkers: [INPUT_CONFIGURATION_ERROR],
     },
     "simple/no-tools/t-0.1/r-medium": {
       shouldRun: false,
-      checkers: [INPUT_CONFIGURATION_ERROR],
     },
     "simple/no-tools/t-0.1/r-high": {
       shouldRun: false,
-      checkers: [INPUT_CONFIGURATION_ERROR],
     },
     "simple/no-tools/t-0.1/r-maximal": {
       shouldRun: false,
-      checkers: [INPUT_CONFIGURATION_ERROR],
+      debug: false,
     },
     "calc/calc/t-0.1/r-default": {
-      shouldRun: false,
-      checkers: [INPUT_CONFIGURATION_ERROR],
+      shouldRun: true,
     },
     "calc/calc/t-0.1/r-medium": {
-      shouldRun: false,
-      checkers: [INPUT_CONFIGURATION_ERROR],
+      shouldRun: true,
     },
 
     "simple/no-tools/t-default/r-default": { shouldRun: false },
@@ -90,21 +85,19 @@ export const anthropicClaudeSonnetFourDotSixSetup: Setup = {
     "simple/no-tools/t-1/r-none": { shouldRun: false },
     "simple/no-tools/t-1/r-low": { shouldRun: false },
     "simple/no-tools/t-1/r-medium": { shouldRun: false },
-    "simple/no-tools/t-1/r-high": { shouldRun: false, debug: true },
+    "simple/no-tools/t-1/r-high": { shouldRun: false, debug: false },
     "simple/no-tools/t-1/r-maximal": { shouldRun: false },
-    "calc/calc/t-default/r-medium": { shouldRun: false },
-    "calc/calc/t-default/r-default/force-tool-default": {
-      shouldRun: false,
-      debug: true,
-    },
-    "calc/calc/t-default/r-default/force-tool": { shouldRun: false },
-    "reasoning/no-tools/t-default/r-none": { shouldRun: false },
+    "calc/calc/t-default/r-medium": { shouldRun: true },
+
+    "calc/calc/t-default/r-default/force-tool-default": { shouldRun: true },
+    "calc/calc/t-default/r-none/force-tool": { shouldRun: true },
+    "reasoning/no-tools/t-default/r-none": { shouldRun: true },
     "reasoning/no-tools/t-default/r-low": { shouldRun: true },
 
     // Output format
     "output-format/json-schema/t-default/r-none": {
       shouldRun: true,
-      debug: false,
+      debug: true,
     },
     "output-format/json-schema/t-default/r-high": {
       shouldRun: true,

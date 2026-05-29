@@ -34,6 +34,7 @@ const configSchema = z.union([
         effort: z.enum(ANTHROPIC_SUPPORTED_NON_NULL_REASONING_EFFORTS),
       })
       .default({ effort: "high" }),
+    forceTool: z.undefined(),
     // Reasoning requires temperature=1; accept any value but coerce to 1.
     temperature: temperatureSchema.optional().transform(() => 1 as const),
   }),
