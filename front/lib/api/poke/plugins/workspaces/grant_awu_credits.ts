@@ -5,6 +5,7 @@ import {
   resolveAwuPurchaseDiscountPercent,
 } from "@app/lib/credits/awu_pricing";
 import { MAX_AWU_DISCOUNT_PERCENT } from "@app/lib/credits/awu_purchase_constants";
+import { metronomeAmount } from "@app/lib/metronome/amounts";
 import {
   createMetronomeCommit,
   createMetronomeCredit,
@@ -15,8 +16,10 @@ import {
   getCreditTypeAwuId,
   getProductFreeCreditId,
   getProductPrepaidCommitId,
+  PURCHASE_ORDER_ID_CUSTOM_FIELD_KEY,
 } from "@app/lib/metronome/constants";
 import logger from "@app/logger/logger";
+import type { SupportedCurrency } from "@app/types/currency";
 import { isCreditPricedPlan } from "@app/types/plan";
 import { Err, Ok } from "@app/types/shared/result";
 import { addYears, format } from "date-fns";
@@ -31,6 +34,12 @@ const GrantAwuCreditsArgsSchema = z
       .positive("Amount must be greater than 0")
       .finite("Amount must be a valid number"),
     isFreeCredit: z.boolean(),
+    setPrice: z.boolean(),
+    price: z
+      .number()
+      .positive("Price must be greater than 0")
+      .finite("Price must be a valid number")
+      .optional(),
     overrideDiscount: z.boolean(),
     discountPercent: z
       .number()
@@ -42,12 +51,23 @@ const GrantAwuCreditsArgsSchema = z
       .finite("Discount must be a valid number"),
     startDate: z.coerce.date(),
     expirationDate: z.coerce.date(),
+    purchaseOrderId: z
+      .string()
+      .max(140, "Purchase Order ID cannot exceed 140 characters")
+      .optional(),
     confirm: z.boolean(),
   })
   .refine((data) => data.confirm === true, {
     message: "Please confirm by checking the confirmation box",
     path: ["confirm"],
-  });
+  })
+  .refine(
+    (data) => !data.setPrice || (data.price !== undefined && data.price > 0),
+    {
+      message: "Price is required when 'Set Price' is enabled",
+      path: ["price"],
+    }
+  );
 
 export const grantAwuCreditsPlugin = createPlugin({
   manifest: {
@@ -72,13 +92,34 @@ export const grantAwuCreditsPlugin = createPlugin({
         description:
           "When enabled, grants free AWU credits. When disabled, grants a commit (the customer will be invoiced through Metronome).",
       },
+      setPrice: {
+        type: "boolean",
+        variant: "toggle",
+        label: "Set Price",
+        description:
+          "Enter the total invoice price and currency directly instead of computing them from AWU rates and the workspace discount. Bypasses any configured discount.",
+        dependsOn: { field: "isFreeCredit", value: false },
+      },
+      price: {
+        type: "number",
+        variant: "text",
+        async: true,
+        asyncDescription: true,
+        label: "Total invoice price",
+        description:
+          "Total invoice amount in the customer's billing currency (e.g. 1000 = 1,000 units).",
+        dependsOn: { field: "setPrice", value: true },
+      },
       overrideDiscount: {
         type: "boolean",
         variant: "toggle",
         label: "Override Default Discount",
         async: true,
         asyncDescription: true,
-        dependsOn: { field: "isFreeCredit", value: false },
+        dependsOn: [
+          { field: "isFreeCredit", value: false },
+          { field: "setPrice", value: false },
+        ],
       },
       discountPercent: {
         type: "number",
@@ -86,7 +127,10 @@ export const grantAwuCreditsPlugin = createPlugin({
         async: true,
         label: "AWU Discount (%)",
         description: "Discount applied to the AWU commit invoice.",
-        dependsOn: { field: "overrideDiscount", value: true },
+        dependsOn: [
+          { field: "overrideDiscount", value: true },
+          { field: "setPrice", value: false },
+        ],
       },
       startDate: {
         type: "date",
@@ -99,6 +143,14 @@ export const grantAwuCreditsPlugin = createPlugin({
         async: true,
         label: "Expiration Date",
         description: "When the credits expire.",
+      },
+      purchaseOrderId: {
+        type: "string",
+        variant: "text",
+        label: "Purchase Order ID (optional)",
+        description:
+          "Customer's PO number to include on the Metronome-generated Stripe invoice.",
+        dependsOn: { field: "isFreeCredit", value: false },
       },
       confirm: {
         type: "boolean",
@@ -116,11 +168,20 @@ export const grantAwuCreditsPlugin = createPlugin({
     const workspace = auth.getNonNullableWorkspace();
     const defaultDiscount = await resolveAwuPurchaseDiscountPercent(auth);
 
+    // Resolve currency for the price-field hint. Swallow errors here so the
+    // form still loads for workspaces without an active Metronome contract
+    // (e.g. when the operator only intends to grant a free credit).
+    const currencyResult = await resolveAwuPurchaseCurrency(workspace.sId);
+    const priceDescription = currencyResult.isOk()
+      ? `Total invoice amount in ${currencyResult.value.toUpperCase()} (e.g. 1000 = 1,000 ${currencyResult.value.toUpperCase()}).`
+      : "Total invoice amount in the customer's billing currency.";
+
     const today = new Date();
     const oneYearFromNow = addYears(today, 1);
     return new Ok({
-      overrideDiscountDescription: `Override the customer's default discount. Current default for ${workspace.name}: ${defaultDiscount}%`,
+      overrideDiscount_description: `Override the customer's default discount. Current default for ${workspace.name}: ${defaultDiscount}%`,
       discountPercent: defaultDiscount,
+      price_description: priceDescription,
       startDate: format(today, "yyyy-MM-dd"),
       expirationDate: format(oneYearFromNow, "yyyy-MM-dd"),
     });
@@ -207,20 +268,33 @@ export const grantAwuCreditsPlugin = createPlugin({
         )
       );
     }
-    const currency = currencyResult.value;
+    const currency: SupportedCurrency = currencyResult.value;
 
-    const discountPercent = validatedArgs.overrideDiscount
-      ? validatedArgs.discountPercent
-      : await resolveAwuPurchaseDiscountPercent(auth);
+    let invoiceUnitPrice: number;
+    let discountPercent = 0;
 
-    const invoiceUnitPrice = computeAwuInvoiceUnitPrice({
-      amountCredits,
-      currency,
-      discountPercent,
-    });
+    if (validatedArgs.setPrice) {
+      // Operator-supplied price wins — skip rate computation and any
+      // workspace discount.
+      invoiceUnitPrice = metronomeAmount(
+        Math.round(validatedArgs.price! * 100),
+        currency
+      );
+    } else {
+      discountPercent = validatedArgs.overrideDiscount
+        ? validatedArgs.discountPercent
+        : await resolveAwuPurchaseDiscountPercent(auth);
 
-    const commitName =
-      discountPercent > 0
+      invoiceUnitPrice = computeAwuInvoiceUnitPrice({
+        amountCredits,
+        currency,
+        discountPercent,
+      });
+    }
+
+    const commitName = validatedArgs.setPrice
+      ? `Commits granted from Poke: ${amountCredits.toLocaleString()} credits (manual price)`
+      : discountPercent > 0
         ? `Commits granted from Poke: ${amountCredits.toLocaleString()} credits (${discountPercent}% discount)`
         : `Commits granted from Poke: ${amountCredits.toLocaleString()} credits`;
 
@@ -241,6 +315,11 @@ export const grantAwuCreditsPlugin = createPlugin({
         quantity: 1,
         timestamp: startDate,
       },
+      customFields: validatedArgs.purchaseOrderId
+        ? {
+            [PURCHASE_ORDER_ID_CUSTOM_FIELD_KEY]: validatedArgs.purchaseOrderId,
+          }
+        : undefined,
     });
 
     if (result.isErr()) {
@@ -259,12 +338,15 @@ export const grantAwuCreditsPlugin = createPlugin({
       return new Err(result.error);
     }
 
-    const discountSuffix =
-      discountPercent > 0 ? ` with ${discountPercent}% discount` : "";
+    const pricingSuffix = validatedArgs.setPrice
+      ? ` at a manual price of ${validatedArgs.price!.toLocaleString()} ${currency.toUpperCase()}`
+      : discountPercent > 0
+        ? ` with ${discountPercent}% discount (${currency.toUpperCase()})`
+        : ` (${currency.toUpperCase()})`;
 
     return new Ok({
       display: "text",
-      value: `Successfully granted ${amountCredits.toLocaleString()} AWU credits as a prepaid commit${discountSuffix} (${formattedStart} to ${formattedEnd}). Metronome will invoice the customer.`,
+      value: `Successfully granted ${amountCredits.toLocaleString()} AWU credits as a prepaid commit${pricingSuffix} (${formattedStart} to ${formattedEnd}). Metronome will invoice the customer.`,
     });
   },
 });

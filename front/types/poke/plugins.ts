@@ -2,16 +2,20 @@ import { z } from "zod";
 
 import type { LightWorkspaceType } from "../user";
 
+export interface DependsOnCondition {
+  field: string;
+  value: boolean;
+}
+
 interface BaseArgDefinition {
   description?: string;
   label: string;
   redact?: boolean;
   async?: boolean;
   asyncDescription?: boolean;
-  dependsOn?: {
-    field: string;
-    value: boolean;
-  };
+  // A single condition, or an array of conditions ANDed together — the field
+  // renders only when every condition matches.
+  dependsOn?: DependsOnCondition | DependsOnCondition[];
 }
 
 type AtLeastTwoElements<T> = readonly [T, T, ...T[]];

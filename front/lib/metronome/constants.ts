@@ -97,6 +97,11 @@ export const CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY =
 export const CONTRACT_CREDIT_TYPE_EXCESS = "excess";
 export const CONTRACT_CREDIT_TYPE_POOL = "pool";
 
+// Stamped on commits that were granted with a customer purchase order
+// reference (currently set by the `grant-awu-credits` Poke plugin). Lets the
+// PO number flow through to the Metronome-generated Stripe invoice.
+export const PURCHASE_ORDER_ID_CUSTOM_FIELD_KEY = "DUST_PURCHASE_ORDER_ID";
+
 // Suffix appended to the annual variant of each seat product name in
 // Metronome (e.g. "Pro Seat (Yearly)"). Used by the setup script when
 // declaring products and by the UI to strip the suffix from displayed seat
