@@ -23,6 +23,8 @@ export function usePokeFileDetails({
   return {
     file: data?.file ?? null,
     content: data?.content ?? null,
+    shareInfo: data?.shareInfo ?? null,
+    sharingGrants: data?.sharingGrants ?? [],
     isFileLoading: !error && !data && !disabled && !!sId,
     isFileError: error,
     mutateFile: mutate,

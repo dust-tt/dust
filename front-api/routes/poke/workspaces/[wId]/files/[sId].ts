@@ -1,5 +1,9 @@
 import { readInteractiveContentFile } from "@app/lib/api/files/read";
-import type { FileTypeWithMetadata } from "@app/types/files";
+import type {
+  FileShareScope,
+  FileTypeWithMetadata,
+  SharingGrantType,
+} from "@app/types/files";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -7,6 +11,12 @@ import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 export interface GetPokeFileResponseBody {
   content: string;
   file: FileTypeWithMetadata;
+  shareInfo: {
+    scope: FileShareScope;
+    sharedAt: number;
+    shareUrl: string;
+  } | null;
+  sharingGrants: SharingGrantType[];
 }
 
 // Mounted at /api/poke/workspaces/:wId/files/:sId.
@@ -37,6 +47,7 @@ app.get("/", async (ctx): HandlerResult<GetPokeFileResponseBody> => {
             message: "File not found.",
           },
         });
+
       case "not_interactive_content":
         return apiError(ctx, {
           status_code: 400,
@@ -45,6 +56,7 @@ app.get("/", async (ctx): HandlerResult<GetPokeFileResponseBody> => {
             message: "Only interactive content files can be viewed.",
           },
         });
+
       default:
         return assertNever(err);
     }

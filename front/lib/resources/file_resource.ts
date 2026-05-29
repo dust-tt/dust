@@ -1378,7 +1378,7 @@ export class FileResource extends BaseResource<FileModel> {
 
   async getShareInfo(): Promise<{
     scope: FileShareScope;
-    sharedAt: Date;
+    sharedAt: number;
     shareUrl: string;
   } | null> {
     if (!this.isInteractiveContent) {
@@ -1392,7 +1392,7 @@ export class FileResource extends BaseResource<FileModel> {
     if (shareableFile) {
       return {
         scope: shareableFile.shareScope,
-        sharedAt: shareableFile.sharedAt,
+        sharedAt: shareableFile.sharedAt.getTime(),
         shareUrl: this.getShareUrlForShareableFile({
           shareableFileToken: shareableFile.token,
         }),
@@ -1580,6 +1580,28 @@ export class FileResource extends BaseResource<FileModel> {
         workspaceId: this.workspaceId,
         shareableFileId,
         revokedAt: null,
+      },
+      order: [["grantedAt", "DESC"]],
+    });
+
+    const userIds = removeNulls(grants.map((g) => g.grantedBy));
+    const users = await UserResource.fetchByModelIds(userIds);
+    const usersById = new Map(users.map((u) => [u.id, u]));
+
+    return grants.map((grant) => renderSharingGrant(grant, usersById));
+  }
+
+  async listAllSharingGrants(): Promise<SharingGrantType[]> {
+    assert(
+      this.isInteractiveContent,
+      "listAllSharingGrants requires interactive content file"
+    );
+    const shareableFileId = await this.getShareableFileId();
+
+    const grants = await SharingGrantModel.findAll({
+      where: {
+        workspaceId: this.workspaceId,
+        shareableFileId,
       },
       order: [["grantedAt", "DESC"]],
     });
@@ -1950,9 +1972,10 @@ function renderSharingGrant(
   return {
     id: grant.id,
     email: grant.email,
-    grantedAt: grant.grantedAt,
+    grantedAt: grant.grantedAt.getTime(),
     grantedBy: user?.toJSON() ?? null,
-    expiresAt: grant.expiresAt,
-    lastViewedAt: grant.lastViewedAt,
+    expiresAt: grant.expiresAt ? grant.expiresAt.getTime() : null,
+    revokedAt: grant.revokedAt ? grant.revokedAt.getTime() : null,
+    lastViewedAt: grant.lastViewedAt ? grant.lastViewedAt.getTime() : null,
   };
 }
