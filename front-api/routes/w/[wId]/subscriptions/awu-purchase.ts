@@ -85,6 +85,15 @@ app.post(
                 "AWU credit purchases are not available for legacy plan workspaces.",
             },
           });
+        case "enterprise_plan":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "AWU credit purchases are not available for Enterprise workspaces. Please contact your Dust sales representative.",
+            },
+          });
         case "no_stripe_customer":
           return apiError(ctx, {
             status_code: 400,
