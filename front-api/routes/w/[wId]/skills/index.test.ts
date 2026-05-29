@@ -1,8 +1,10 @@
 import { Authenticator } from "@app/lib/auth";
 import { SkillMCPServerConfigurationModel } from "@app/lib/models/skill";
+import { SkillReferenceModel } from "@app/lib/models/skill/skill_reference";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { discoverToolsSkill } from "@app/lib/resources/skill/code_defined/discover_tools";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { serializeSkillTag } from "@app/lib/skills/format";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
@@ -523,6 +525,50 @@ describe("POST /api/w/:wId/skills", () => {
       responseData.skill.sId
     );
     expect(createdSkill).not.toBeNull();
+  });
+
+  it("creates skill references when nested skills is enabled", async () => {
+    const { auth, workspace } = await setupTest("admin");
+
+    await FeatureFlagFactory.basic(auth, "nested_skills");
+    const childSkill = await SkillFactory.create(auth, {
+      name: "Referenced Skill",
+    });
+    const skillReferenceTag = serializeSkillTag({
+      id: childSkill.sId,
+      icon: null,
+      name: childSkill.name,
+    });
+
+    const response = await postSkill(workspace, {
+      name: "Parent Skill",
+      agentFacingDescription: "To use with another skill",
+      userFacingDescription: "A skill with a nested reference",
+      instructions: `Start with ${skillReferenceTag}.`,
+      icon: "PuzzleIcon",
+      tools: [],
+      extendedSkillId: null,
+      attachedKnowledge: [],
+      instructionsHtml: null,
+    });
+
+    expect(response.status).toBe(200);
+
+    const createdSkill = await SkillResource.fetchById(
+      auth,
+      (await response.json()).skill.sId
+    );
+    expect(createdSkill).not.toBeNull();
+
+    await expect(
+      SkillReferenceModel.count({
+        where: {
+          workspaceId: workspace.id,
+          parentSkillId: createdSkill!.id,
+          childSkillId: childSkill.id,
+        },
+      })
+    ).resolves.toBe(1);
   });
 
   it("creates a skill configuration with additional requested spaces", async () => {

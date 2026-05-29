@@ -331,10 +331,11 @@ app.post(
       });
     }
 
+    const featureFlags = await getFeatureFlags(auth);
+
     // Validate file attachments if provided (gated behind sandbox_tools).
     let files: FileResource[] | undefined;
     if (fileAttachments) {
-      const featureFlags = await getFeatureFlags(auth);
       if (
         !featureFlags.includes("sandbox_tools") &&
         fileAttachments.length > 0
@@ -414,6 +415,7 @@ app.post(
         mcpServerViews,
         attachedKnowledge: attachedKnowledgeWithDataSourceViews,
         fileAttachments: files,
+        enableSkillReferences: featureFlags.includes("nested_skills"),
       }
     );
 
