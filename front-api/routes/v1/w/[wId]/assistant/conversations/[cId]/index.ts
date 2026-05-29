@@ -14,6 +14,7 @@ import { z } from "zod";
 import actions from "./actions";
 import cancel from "./cancel";
 import contentFragments from "./content_fragments";
+import events from "./events";
 import feedbacks from "./feedbacks";
 import files from "./files";
 import mentions from "./mentions";
@@ -214,6 +215,7 @@ app.patch(
 app.route("/actions", actions);
 app.route("/cancel", cancel);
 app.route("/content_fragments", contentFragments);
+app.route("/events", events);
 app.route("/feedbacks", feedbacks);
 app.route("/files", files);
 app.route("/mentions", mentions);
