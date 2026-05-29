@@ -11,7 +11,7 @@ import {
 } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Button, ButtonGroup } from "@dust-tt/sparkle";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 
 type FilesTab = "conversation" | "pod";
 
@@ -54,31 +54,6 @@ export function ConversationFileExplorer({
 
   const onFileDownload = useFileDownload({ getFileResponse });
 
-  const rootTitle = useMemo(() => {
-    if (!isPod) {
-      return undefined;
-    }
-    return (
-      <ButtonGroup
-        removeGaps={false}
-        className="rounded-lg bg-muted dark:bg-muted-night p-0.5"
-      >
-        <Button
-          size="xs"
-          variant={activeTab === "conversation" ? "outline" : "ghost"}
-          label="Conversation Files"
-          onClick={() => setActiveTab("conversation")}
-        />
-        <Button
-          size="xs"
-          variant={activeTab === "pod" ? "outline" : "ghost"}
-          label="Pod Files"
-          onClick={() => setActiveTab("pod")}
-        />
-      </ButtonGroup>
-    );
-  }, [activeTab, isPod]);
-
   const isOnPodTab = isPod && activeTab === "pod";
 
   return (
@@ -89,7 +64,27 @@ export function ConversationFileExplorer({
       getFileUrl={getFileUrl}
       onFileDownload={onFileDownload}
       onClose={closePanel}
-      rootTitle={rootTitle}
+      rootTitle={
+        isPod ? (
+          <ButtonGroup
+            removeGaps={false}
+            className="rounded-lg bg-muted dark:bg-muted-night p-0.5"
+          >
+            <Button
+              size="xs"
+              variant={activeTab === "conversation" ? "outline" : "ghost"}
+              label="Conversation Files"
+              onClick={() => setActiveTab("conversation")}
+            />
+            <Button
+              size="xs"
+              variant={activeTab === "pod" ? "outline" : "ghost"}
+              label="Pod Files"
+              onClick={() => setActiveTab("pod")}
+            />
+          </ButtonGroup>
+        ) : undefined
+      }
       onOpenInteractive={(entry) =>
         openPanel({ type: "interactive_content", fileId: entry.fileId })
       }
