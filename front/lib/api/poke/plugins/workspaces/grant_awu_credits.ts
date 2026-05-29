@@ -3,7 +3,7 @@ import {
   computeAwuInvoiceUnitPrice,
   resolveAwuPurchaseCurrency,
   resolveAwuPurchaseDiscountPercent,
-} from "@app/lib/credits/awu_discount";
+} from "@app/lib/credits/awu_pricing";
 import { MAX_AWU_DISCOUNT_PERCENT } from "@app/lib/credits/awu_purchase_constants";
 import {
   createMetronomeCommit,

@@ -4,7 +4,7 @@ import {
   computeAwuInvoiceUnitPrice,
   resolveAwuPurchaseCurrency,
   resolveAwuPurchaseDiscountPercent,
-} from "@app/lib/credits/awu_discount";
+} from "@app/lib/credits/awu_pricing";
 import {
   recordAwuPurchaseAttemptSyncFailure,
   setAwuPurchaseAttemptPending,

@@ -38,7 +38,7 @@ export async function resolveAwuPurchaseDiscountPercent(
         discountPercent,
         maxAwuDiscountPercent: MAX_AWU_DISCOUNT_PERCENT,
       },
-      "[AWU Discount] Discount exceeds AWU maximum allowed — ignoring"
+      "[AWU Pricing] Discount exceeds AWU maximum allowed — ignoring"
     );
     return 0;
   }
