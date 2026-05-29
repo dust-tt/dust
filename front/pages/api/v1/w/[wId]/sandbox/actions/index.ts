@@ -1,3 +1,4 @@
+// @migration-status: MIGRATED_TO_HONO
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { SANDBOX_TOOL_NAME } from "@app/lib/api/actions/servers/sandbox/metadata";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
