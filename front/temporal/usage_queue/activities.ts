@@ -16,6 +16,10 @@ import {
 } from "@app/lib/metronome/mau_sync";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import {
+  hasContractSeatSubscription,
+  syncSeatCount,
+} from "@app/lib/metronome/seats";
+import {
   AgentMessageModel,
   MessageModel,
   UserMessageModel,
@@ -433,4 +437,87 @@ export async function syncMauCountToMetronomeForAllWorkspacesActivity(): Promise
     },
     { concurrency: 10 }
   );
+}
+
+/**
+ * Sync the Metronome seat count for a single workspace after membership changes were debounced.
+ */
+export async function syncMetronomeSeatCountActivity(
+  workspaceId: string
+): Promise<void> {
+  const workspace = await WorkspaceResource.fetchById(workspaceId);
+  if (!workspace) {
+    logger.info(
+      {
+        workspaceId,
+      },
+      "[Metronome] Skipping seat count sync: workspace not found"
+    );
+    return;
+  }
+
+  if (!workspace.metronomeCustomerId) {
+    logger.info(
+      {
+        workspaceId: workspace.sId,
+      },
+      "[Metronome] Skipping seat count sync: workspace missing metronomeCustomerId"
+    );
+    return;
+  }
+
+  const subscription = await SubscriptionResource.fetchActiveByWorkspaceModelId(
+    workspace.id
+  );
+  if (!subscription?.metronomeContractId) {
+    logger.info(
+      {
+        workspaceId: workspace.sId,
+        metronomeCustomerId: workspace.metronomeCustomerId,
+      },
+      "[Metronome] Skipping seat count sync: workspace missing metronomeContractId"
+    );
+    return;
+  }
+
+  const contract = await getActiveContract(workspace.sId);
+  if (!contract) {
+    logger.info(
+      {
+        workspaceId: workspace.sId,
+        metronomeCustomerId: workspace.metronomeCustomerId,
+        metronomeContractId: subscription.metronomeContractId,
+      },
+      "[Metronome] Skipping seat count sync: no active contract found for workspace"
+    );
+    return;
+  }
+
+  logger.info(
+    {
+      workspaceId: workspace.sId,
+      metronomeCustomerId: workspace.metronomeCustomerId,
+      metronomeContractId: subscription.metronomeContractId,
+    },
+    "[Metronome] Executing debounced seat count sync"
+  );
+
+  const hasSeatSubscription = await hasContractSeatSubscription(contract);
+  if (!hasSeatSubscription) {
+    return;
+  }
+
+  const result = await syncSeatCount({
+    metronomeCustomerId: workspace.metronomeCustomerId,
+    contractId: subscription.metronomeContractId,
+    workspace: renderLightWorkspaceType({ workspace }),
+    contract,
+  });
+  if (result.isErr()) {
+    logger.error(
+      { workspaceId: workspace.sId, error: result.error },
+      "[Metronome] Failed to sync seat count for workspace"
+    );
+    throw result.error;
+  }
 }

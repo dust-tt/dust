@@ -6,6 +6,7 @@ import * as activities from "@app/temporal/usage_queue/activities";
 import { launchMetronomeGaugeSchedule } from "@app/temporal/usage_queue/client";
 import type { Context } from "@temporalio/activity";
 import { Worker } from "@temporalio/worker";
+import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 
 import { QUEUE_NAME } from "./config";
 
@@ -29,6 +30,15 @@ export async function runUpdateWorkspaceUsageWorker() {
           };
         },
       ],
+    },
+    bundlerOptions: {
+      // Update the webpack config to use aliases from our tsconfig.json.
+      webpackConfigHook: (config) => {
+        const plugins = config.resolve?.plugins ?? [];
+
+        config.resolve!.plugins = [...plugins, new TsconfigPathsPlugin({})];
+        return config;
+      },
     },
   });
 

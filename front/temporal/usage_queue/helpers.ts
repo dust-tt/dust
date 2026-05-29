@@ -21,3 +21,11 @@ export function makeMetronomeUsageEventsWorkflowId({
 }): string {
   return `metronome-usage-${workspaceId}-${conversationId}-${agentMessageId}`;
 }
+
+export function makeMetronomeSeatCountSyncWorkflowId({
+  workspaceId,
+}: {
+  workspaceId: string;
+}): string {
+  return `metronome-seat-count-sync-${workspaceId}`;
+}
