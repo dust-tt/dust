@@ -38,6 +38,7 @@ type CitationProps = CardProps & {
   children: React.ReactNode;
   compact?: boolean;
   isLoading?: boolean;
+  loadingLabel?: React.ReactNode;
   tooltip?: string;
 };
 
@@ -48,6 +49,7 @@ const Citation = React.forwardRef<HTMLDivElement, CitationProps>(
       compact = false,
       variant = "secondary",
       isLoading,
+      loadingLabel,
       className,
       tooltip,
       ...props
@@ -91,7 +93,7 @@ const Citation = React.forwardRef<HTMLDivElement, CitationProps>(
         <CitationContext.Provider value={{ compact }}>
           {contentWithDescription}
         </CitationContext.Provider>
-        {isLoading && <CitationLoading />}
+        {isLoading && <CitationLoading label={loadingLabel} />}
       </Card>
     );
 
@@ -250,19 +252,24 @@ CitationIcons.displayName = "CitationIcons";
 
 const CitationLoading = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => {
+  React.HTMLAttributes<HTMLDivElement> & { label?: React.ReactNode }
+>(({ className, label, ...props }, ref) => {
   return (
     <div
       ref={ref}
       className={cn(
-        "s-absolute s-inset-0 s-z-20 s-flex s-h-full s-w-full s-items-center s-justify-center s-rounded-xl s-backdrop-blur-sm",
+        "s-absolute s-inset-0 s-z-20 s-flex s-h-full s-w-full s-flex-col s-items-center s-justify-center s-gap-1 s-rounded-xl s-backdrop-blur-sm",
         "s-bg-primary-100/80 dark:s-bg-primary-100-night/80",
         className
       )}
       {...props}
     >
       <Spinner size="md" />
+      {label != null && (
+        <span className="s-heading-xs s-font-mono s-text-muted-foreground dark:s-text-muted-foreground-night">
+          {label}
+        </span>
+      )}
     </div>
   );
 });

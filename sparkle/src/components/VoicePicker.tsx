@@ -73,10 +73,16 @@ export function VoicePicker({
   const isLoading = status === "authorizing_microphone";
   const shouldShowStop = isRecording && interactionMode === "click";
 
+  const lastRecordingSecondsRef = React.useRef(0);
+  React.useEffect(() => {
+    if (isRecording) {
+      lastRecordingSecondsRef.current = elapsedSeconds;
+    }
+  }, [isRecording, elapsedSeconds]);
+
   const transcribingProgress = useTranscribingProgress({
-    isRecording,
-    isTranscribing,
-    elapsedRecordingSeconds: elapsedSeconds,
+    isActive: isTranscribing,
+    recordingSeconds: lastRecordingSecondsRef.current,
   });
 
   function clearPressTimeout(): void {
@@ -222,7 +228,7 @@ export function VoicePicker({
   const icon = shouldShowStop ? SquareIcon : MicIcon;
   const variant = shouldShowStop ? "highlight" : "ghost-secondary";
   const label = isTranscribing
-    ? `${transcribingProgress}%`
+    ? `${transcribingProgress ?? 0}%`
     : shouldShowStop && showStopLabel
       ? "Stop"
       : undefined;

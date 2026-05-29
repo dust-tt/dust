@@ -14,6 +14,7 @@ export type FileAttachment = {
   title: string;
   contentType: AllSupportedFileContentType;
   isUploading: boolean;
+  size?: number;
   onRemove?: () => void;
   description?: string;
   sourceUrl?: string;
@@ -54,6 +55,8 @@ export interface FileAttachmentCitation extends BaseAttachmentCitation {
   description: string | null;
   fileId: string | null;
   isUploading?: boolean;
+  // File size in bytes, used to estimate transcription progress for audio files.
+  size?: number;
 }
 
 export interface NodeAttachmentCitation extends BaseAttachmentCitation {

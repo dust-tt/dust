@@ -25,6 +25,7 @@ import {
   cn,
   Icon,
   Tooltip,
+  useTranscribingProgress,
 } from "@dust-tt/sparkle";
 import type React from "react";
 import { useContext, useState } from "react";
@@ -70,6 +71,23 @@ export function AttachmentCitation({
 
   const isLoading =
     attachmentCitation.type === "file" && attachmentCitation.isUploading;
+
+  const isTranscribingAudio =
+    isLoading === true && isAudioContentType(attachmentCitation);
+  const audioSizeBytes =
+    attachmentCitation.type === "file" &&
+    attachmentCitation.attachmentCitationType !== "mcp"
+      ? attachmentCitation.size
+      : undefined;
+
+  const transcriptionProgress = useTranscribingProgress({
+    isActive: isTranscribingAudio,
+    sizeBytes: audioSizeBytes ?? 0,
+  });
+  const loadingLabel =
+    isTranscribingAudio && transcriptionProgress !== null
+      ? `${transcriptionProgress}%`
+      : undefined;
 
   const fileResourceId =
     attachmentCitation.type === "file" && attachmentCitation.fileId
@@ -143,6 +161,7 @@ export function AttachmentCitation({
           <Citation
             {...dialogOrDownloadProps}
             isLoading={isLoading}
+            loadingLabel={loadingLabel}
             compact={compact}
             containerClassName={cn("h-full", isImage && "min-h-24")}
             action={

@@ -241,6 +241,7 @@ export function attachmentToAttachmentCitation(
       title: attachment.title,
       sourceUrl: attachment.sourceUrl ?? null,
       isUploading: attachment.isUploading,
+      size: attachment.size,
       visual: (
         <IconForAttachmentCitation
           contentType={attachment.contentType}
