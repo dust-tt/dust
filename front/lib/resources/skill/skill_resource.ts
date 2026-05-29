@@ -2328,7 +2328,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return;
     }
 
-    const referencedSkills = await SkillConfigurationModel.findAll({
+    const referencedSkills = await this.model.findAll({
       where: {
         id: { [Op.in]: [...childSkillModelIds] },
         workspaceId: workspace.id,
@@ -3004,7 +3004,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       where: { workspaceId },
     });
 
-    await SkillConfigurationModel.destroy({
+    await this.model.destroy({
       where: { workspaceId },
     });
   }
