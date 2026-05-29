@@ -28,7 +28,10 @@ import { useActivePodId } from "@app/hooks/useActivePodId";
 import { useDeleteConversation } from "@app/hooks/useDeleteConversation";
 import { useHideTriggeredConversations } from "@app/hooks/useHideTriggeredConversations";
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
-import { useMoveConversationToPod } from "@app/hooks/useMoveConversationToPod";
+import {
+  useBulkMoveConversationsToPod,
+  useMoveConversationToPod,
+} from "@app/hooks/useMoveConversationToPod";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { usePodsSectionCollapsed } from "@app/hooks/usePodsSectionCollapsed";
 import { useSearchPods } from "@app/hooks/useSearchPods";
@@ -60,6 +63,7 @@ import type { WorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
 import {
   ActionTimeIcon,
+  ArrowRightIcon,
   Avatar,
   BoltIcon,
   BoltOffIcon,
@@ -417,6 +421,7 @@ export function AgentSidebarMenu({
   const activePodId = useActivePodId();
   const { hasFeature } = useFeatureFlags();
   const moveConversationToPod = useMoveConversationToPod(owner);
+  const bulkMoveConversationsToPod = useBulkMoveConversationsToPod(owner);
 
   const { providersHealth } = useAuth();
   const noHealthyProviders = !hasHealthyProviders(providersHealth);
@@ -498,6 +503,7 @@ export function AgentSidebarMenu({
     "all" | "selection" | null
   >(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isMoving, setIsMoving] = useState(false);
   const [titleFilter, setTitleFilter] = useState<string>("");
   const [isCreatePodModalOpen, setIsCreatePodModalOpen] = useState(false);
   const [isImportSkillDialogOpen, setIsImportSkillDialogOpen] = useState(false);
@@ -596,6 +602,26 @@ export function AgentSidebarMenu({
       });
     }
   }, [doDelete, selectedConversations, sendNotification, toggleMultiSelect]);
+
+  const availablePods = useMemo(
+    () => summary.map(({ space }) => space),
+    [summary]
+  );
+
+  const moveSelectionToPod = useCallback(
+    async (pod: PodType) => {
+      setIsMoving(true);
+      const successCount = await bulkMoveConversationsToPod(
+        selectedConversations,
+        pod
+      );
+      setIsMoving(false);
+      if (successCount > 0) {
+        toggleMultiSelect();
+      }
+    },
+    [bulkMoveConversationsToPod, selectedConversations, toggleMultiSelect]
+  );
 
   const deleteAll = useCallback(async () => {
     setIsDeleting(true);
@@ -869,14 +895,45 @@ export function AgentSidebarMenu({
           <div className="flex w-full flex-col">
             {isMultiSelect ? (
               <div className="z-50 flex justify-between gap-2 border-b border-border-dark/60 p-2 dark:border-border-dark/60">
-                <Button
-                  variant={
-                    selectedConversations.length === 0 ? "outline" : "warning"
-                  }
-                  label="Delete"
-                  disabled={selectedConversations.length === 0}
-                  onClick={() => setShowDeleteDialog("selection")}
-                />
+                <div className="flex gap-2">
+                  <DropdownMenu modal={false}>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        label="Move to Pod"
+                        icon={ArrowRightIcon}
+                        disabled={
+                          selectedConversations.length === 0 ||
+                          availablePods.length === 0
+                        }
+                        isLoading={isMoving}
+                      />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      className="max-w-60"
+                      onFocusOutside={(e) => e.preventDefault()}
+                    >
+                      <DropdownMenuLabel label="Pods" />
+                      {availablePods.map((pod) => (
+                        <DropdownMenuItem
+                          key={pod.sId}
+                          icon={getSpaceIcon(pod)}
+                          label={pod.name}
+                          truncateText
+                          onClick={() => moveSelectionToPod(pod)}
+                        />
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <Button
+                    variant={
+                      selectedConversations.length === 0 ? "outline" : "warning"
+                    }
+                    label="Delete"
+                    disabled={selectedConversations.length === 0}
+                    onClick={() => setShowDeleteDialog("selection")}
+                  />
+                </div>
                 <Button
                   variant="ghost"
                   icon={XMarkIcon}
