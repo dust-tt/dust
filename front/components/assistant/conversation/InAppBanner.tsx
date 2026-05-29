@@ -139,11 +139,11 @@ function PodBanner({
       </div>
       <div className="relative px-4 py-3">
         <div className="mb-1 text-sm font-medium text-foreground dark:text-foreground-night">
-          Collaboration just got an upgrade: Introducing Pods!
+          Introducing Pods: bring everyone into the room
         </div>
         <h4 className="mb-3 text-xs leading-tight text-primary dark:text-primary-night">
-          Pods bring humans and agents together in one shared workspace, so
-          nothing gets lost between them.
+          Pods bring your team of humans and agents into one place with the
+          context, tools and goals to move faster on complex work
         </h4>
         <div className="flex flex-wrap items-center gap-2">
           <Button

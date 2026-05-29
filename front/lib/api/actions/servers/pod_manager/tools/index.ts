@@ -419,7 +419,7 @@ export function createProjectManagerTools(
         );
 
         // Linked content nodes (Company Data references) have no other discovery surface, so we
-        // surface them here. Pod files do (they live under `pod/<rel>` scoped paths and are
+        // surface them here. Pod files do (they live under `pod-{podId}/<rel>` scoped paths and are
         // discovered through the `files` MCP server), so we only report a count plus a hint.
         const attachments = await listProjectContextAttachments(auth, space);
         const contentNodes = attachments
