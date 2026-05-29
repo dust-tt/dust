@@ -8,7 +8,6 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import {
   Avatar,
-  Button,
   ChevronDownIcon,
   DropdownMenu,
   DropdownMenuContent,
@@ -77,7 +76,7 @@ function UsedByButtonIcon({
   const hasSkills = skillCount > 0;
 
   return (
-    <span className="mx-0.5 inline-flex h-5 items-center justify-center gap-1.5 leading-none">
+    <span className="inline-flex h-5 items-center justify-center gap-1.5 leading-none">
       {(hasAgents || !hasSkills) && (
         <span className="inline-flex h-5 items-center gap-1">
           <RobotIcon className="h-4 w-4 shrink-0" />
@@ -109,6 +108,9 @@ interface UsedByButtonProps {
   onSkillClick?: (skillId: string) => void;
 }
 
+const USED_BY_TRIGGER_CLASS_NAME =
+  "inline-flex h-7 select-none items-center justify-center whitespace-nowrap rounded-full px-2.5 text-muted-foreground transition-colors hover:bg-muted-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:cursor-default disabled:text-primary-400 disabled:hover:bg-transparent dark:text-muted-foreground-night dark:hover:bg-muted-background-night dark:hover:text-foreground-night dark:disabled:text-primary-400-night";
+
 export const UsedByButton = ({
   usage,
   onItemClick,
@@ -131,17 +133,14 @@ export const UsedByButton = ({
 
   if (totalCount === 0) {
     return (
-      <Button
-        icon={
-          <UsedByButtonIcon agentCount={0} skillCount={0} showChevron={false} />
-        }
-        variant="ghost-secondary"
-        isSelect={false}
-        size="xs"
-        isRounded
+      <button
+        type="button"
+        className={USED_BY_TRIGGER_CLASS_NAME}
         aria-label="Used by 0 agents"
         disabled
-      />
+      >
+        <UsedByButtonIcon agentCount={0} skillCount={0} showChevron={false} />
+      </button>
     );
   }
 
@@ -207,23 +206,20 @@ export const UsedByButton = ({
       }}
     >
       <DropdownMenuTrigger asChild>
-        <Button
-          icon={
-            <UsedByButtonIcon
-              agentCount={agentCount}
-              skillCount={skillCount}
-              showChevron
-            />
-          }
-          variant="ghost-secondary"
-          isSelect={false}
-          size="xs"
-          isRounded
+        <button
+          type="button"
+          className={USED_BY_TRIGGER_CLASS_NAME}
           aria-label={`Used by ${usageLabel}`}
           onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
             e.stopPropagation();
           }}
-        />
+        >
+          <UsedByButtonIcon
+            agentCount={agentCount}
+            skillCount={skillCount}
+            showChevron
+          />
+        </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
         className="h-96 w-72"
