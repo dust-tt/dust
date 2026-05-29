@@ -130,4 +130,22 @@ describe("convertMarkdownToBlockHtml", () => {
     expect(html).toContain('id="n1"');
     expect(html).toContain('title="My Doc"');
   });
+
+  it("recovers standalone <tool /> lines as tool nodes with id, name, and icon", () => {
+    const md = [
+      "Intro",
+      "",
+      '<tool id="mcp_server_view_1" name="GitHub Search" icon="GithubLogo" />',
+      "",
+      "Outro",
+    ].join("\n");
+
+    const html = convertMarkdownToBlockHtml(md);
+
+    expect(html).not.toContain("&lt;tool");
+    expect(html).toContain("<tool");
+    expect(html).toContain('id="mcp_server_view_1"');
+    expect(html).toContain('name="GitHub Search"');
+    expect(html).toContain('icon="GithubLogo"');
+  });
 });
