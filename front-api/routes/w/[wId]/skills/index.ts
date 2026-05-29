@@ -334,12 +334,10 @@ app.post(
     const featureFlags = await getFeatureFlags(auth);
     const enableSkillReferences = featureFlags.includes("nested_skills");
     if (enableSkillReferences) {
-      const skillReferenceValidation = SkillResource.validateSkillReferenceIds(
-        auth,
-        {
+      const skillReferenceValidation =
+        SkillResource.getValidatedSkillReferenceModelIds(auth, {
           instructions: body.instructions,
-        }
-      );
+        });
 
       if (skillReferenceValidation.isErr()) {
         return apiError(ctx, {

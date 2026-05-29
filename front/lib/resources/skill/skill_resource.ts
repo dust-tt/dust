@@ -2266,7 +2266,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     await this.update({ lastReinforcementAnalysisAt: new Date() });
   }
 
-  private static getValidatedSkillReferenceModelIds(
+  static getValidatedSkillReferenceModelIds(
     auth: Authenticator,
     {
       instructions,
@@ -2302,28 +2302,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
 
     return new Ok([...childSkillModelIds]);
-  }
-
-  static validateSkillReferenceIds(
-    auth: Authenticator,
-    {
-      instructions,
-      parentSkillId,
-    }: {
-      instructions: string;
-      parentSkillId?: ModelId;
-    }
-  ): Result<undefined, Error> {
-    const validation = this.getValidatedSkillReferenceModelIds(auth, {
-      instructions,
-      parentSkillId,
-    });
-
-    if (validation.isErr()) {
-      return validation;
-    }
-
-    return new Ok(undefined);
   }
 
   /**

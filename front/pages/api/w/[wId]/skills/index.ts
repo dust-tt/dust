@@ -336,7 +336,7 @@ async function handler(
       const enableSkillReferences = featureFlags.includes("nested_skills");
       if (enableSkillReferences) {
         const skillReferenceValidation =
-          SkillResource.validateSkillReferenceIds(auth, {
+          SkillResource.getValidatedSkillReferenceModelIds(auth, {
             instructions: body.instructions,
           });
 
