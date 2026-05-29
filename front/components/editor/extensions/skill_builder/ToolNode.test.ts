@@ -131,9 +131,14 @@ describe("ToolNode", () => {
       name: TOOL_ATTRS.toolName,
     })} now.`;
 
-    editor.commands.setContent(preprocessMarkdownForEditor(markdown), {
-      contentType: "markdown",
-    });
+    editor.commands.setContent(
+      preprocessMarkdownForEditor(markdown, {
+        enableSkillReferences: true,
+      }),
+      {
+        contentType: "markdown",
+      }
+    );
 
     expect(toolNodes(editor)).toEqual([
       {

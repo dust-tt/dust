@@ -23,6 +23,14 @@ describe("skill instructions preprocessing", () => {
     ).toContain("<\u200Bskill");
   });
 
+  it("escapes tool tags by default", () => {
+    expect(
+      preprocessMarkdownForEditor(
+        '<tool id="mcp_server_view_123" name="GitHub Search" />'
+      )
+    ).toContain("<\u200Btool");
+  });
+
   it("preserves skill tags when skill references are enabled", () => {
     editor = new Editor({
       extensions: buildSkillInstructionsExtensions(false, [], {
@@ -57,12 +65,19 @@ describe("skill instructions preprocessing", () => {
     });
 
     editor = new Editor({
-      extensions: buildSkillInstructionsExtensions(false),
+      extensions: buildSkillInstructionsExtensions(false, [], {
+        enableSkillReferences: true,
+      }),
     });
 
-    editor.commands.setContent(preprocessMarkdownForEditor(`Use ${toolTag}.`), {
-      contentType: "markdown",
-    });
+    editor.commands.setContent(
+      preprocessMarkdownForEditor(`Use ${toolTag}.`, {
+        enableSkillReferences: true,
+      }),
+      {
+        contentType: "markdown",
+      }
+    );
 
     expect(postProcessMarkdown(editor.getMarkdown())).toContain(toolTag);
   });

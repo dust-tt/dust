@@ -27,16 +27,9 @@ import { useController, useFormContext } from "react-hook-form";
 const INSTRUCTIONS_FIELD_NAME = "instructions";
 const INSTRUCTIONS_HTML_FIELD_NAME = "instructionsHtml";
 const ATTACHED_KNOWLEDGE_FIELD_NAME = "attachedKnowledge";
-const BASE_ALLOWED_INSTRUCTIONS_TAGS = ["knowledge", "tool"];
-const BASE_ALLOWED_INSTRUCTIONS_ATTRS = [
-  "space",
-  "dsv",
-  "hasChildren",
-  "id",
-  "name",
-  "icon",
-];
-const SKILL_REFERENCE_ALLOWED_TAGS = ["skill"];
+const BASE_ALLOWED_INSTRUCTIONS_TAGS = ["knowledge"];
+const BASE_ALLOWED_INSTRUCTIONS_ATTRS = ["space", "dsv", "hasChildren"];
+const SKILL_REFERENCE_ALLOWED_TAGS = ["skill", "tool"];
 const SKILL_REFERENCE_ALLOWED_ATTRS = ["id", "name", "icon"];
 
 function getSkillInstructionsSanitizeConfig({

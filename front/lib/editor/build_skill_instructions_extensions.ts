@@ -22,7 +22,6 @@ export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
 
 interface BuildSkillInstructionsExtensionsOptions {
   enableSkillReferences?: boolean;
-  enableToolReferences?: boolean;
 }
 
 /**
@@ -36,7 +35,6 @@ export function buildSkillInstructionsExtensions(
   editableExtensions: Extensions = [],
   {
     enableSkillReferences = false,
-    enableToolReferences = true,
   }: BuildSkillInstructionsExtensionsOptions = {}
 ): Extensions {
   const baseExtensions: Extensions = [
@@ -99,7 +97,7 @@ export function buildSkillInstructionsExtensions(
     KnowledgeNodeWithView.configure({ readOnly: isReadOnly }),
   ];
 
-  if (enableToolReferences) {
+  if (enableSkillReferences) {
     baseExtensions.push(ToolNodeWithView);
   }
 

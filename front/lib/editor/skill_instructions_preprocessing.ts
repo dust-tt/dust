@@ -60,15 +60,17 @@ export function preprocessMarkdownForEditor(
     preservedTags.push("skill");
   }
   const preservedTagsPattern = preservedTags.join("|");
-
-  return withPreservedToolTags(markdown, (markdownWithToolPlaceholders) =>
+  const escapeUnsupportedTags = (markdownToProcess: string) =>
     escapeMathEmphasis(
-      markdownWithToolPlaceholders.replace(
+      markdownToProcess.replace(
         new RegExp(`<(?!(?:/?(?:${preservedTagsPattern}))[\\s>/])(/?\\w)`, "g"),
         `<${ZWS}$1`
       )
-    )
-  );
+    );
+
+  return enableSkillReferences
+    ? withPreservedToolTags(markdown, escapeUnsupportedTags)
+    : escapeUnsupportedTags(markdown);
 }
 
 /**
