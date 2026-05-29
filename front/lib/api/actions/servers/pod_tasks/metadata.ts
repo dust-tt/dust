@@ -13,6 +13,7 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 export const POD_TASKS_SERVER_NAME = "pod_tasks" as const;
 export const CREATE_TASKS_TOOL_NAME = "create_tasks" as const;
 export const UPDATE_TASKS_TOOL_NAME = "update_tasks" as const;
+export const START_TASK_AGENT_TOOL_NAME = "start_task_agent" as const;
 
 export const POD_TASKS_TOOLS_METADATA = createToolsRecord({
   list_tasks: {
@@ -56,7 +57,7 @@ export const POD_TASKS_TOOLS_METADATA = createToolsRecord({
       done: "List tasks",
     },
   },
-  create_tasks: {
+  [CREATE_TASKS_TOOL_NAME]: {
     description:
       "Create one or more new tasks at once in the Pod. Omitting userId (or null) creates an unassigned task unless the Pod has exactly one assignable member, in which case that member is assigned. Pass userId when a specific person should own the task.",
     schema: PodTasksCreateTasksInputSchema.shape,
@@ -93,7 +94,7 @@ export const POD_TASKS_TOOLS_METADATA = createToolsRecord({
       done: "Mark tasks as done",
     },
   },
-  update_tasks: {
+  [UPDATE_TASKS_TOOL_NAME]: {
     description: "Update one or more existing tasks at once in the Pod.",
     schema: PodTasksUpdateTasksInputSchema.shape,
     stake: "low",
@@ -102,7 +103,7 @@ export const POD_TASKS_TOOLS_METADATA = createToolsRecord({
       done: "Update tasks",
     },
   },
-  start_task_agent: {
+  [START_TASK_AGENT_TOOL_NAME]: {
     description:
       "Start an agent conversation to work on one of your open tasks with status 'todo'. " +
       "If already started, it reuses the existing linked conversation.",

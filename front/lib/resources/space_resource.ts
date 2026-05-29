@@ -968,9 +968,16 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     );
 
     const users = await UserResource.fetchByIds(userIds);
+    const foundIds = new Set(users.map((user) => user.sId));
+    const missingIds = userIds.filter((id) => !foundIds.has(id));
 
-    if (!users) {
-      return new Err(new DustError("user_not_found", "User not found."));
+    if (missingIds.length > 0) {
+      return new Err(
+        new DustError(
+          "user_not_found",
+          `User(s) not found: ${missingIds.join(", ")}`
+        )
+      );
     }
 
     const memberGroupSpaces = await GroupSpaceMemberResource.fetchBySpace({
@@ -1025,7 +1032,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     const users = await UserResource.fetchByIds(userIds);
 
     if (!users) {
-      return new Err(new DustError("user_not_found", "User not found."));
+      return new Err(new DustError("user_not_found", "User not found"));
     }
 
     // Get the GroupSpaceMemberResource for the member group
