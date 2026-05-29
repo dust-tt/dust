@@ -36,7 +36,9 @@ import type {
   TextDeltaEvent,
   TextEvent,
   TokenUsageEvent,
+  ToolCallDeltaEvent,
   ToolCallEvent,
+  ToolCallStartedEvent,
 } from "@app/lib/model_constructors/types/events";
 import type {
   BaseAssistantMessage,
@@ -422,6 +424,25 @@ export function WithAnthropicConverter<T extends Constructor<Anthropic>>(
       };
     }
 
+    toolUseBlockStartToToolCallStartedEvent(
+      id: string,
+      index: number,
+      name: string
+    ): ToolCallStartedEvent {
+      return {
+        type: "tool_call_started",
+        content: { id, index, name },
+        metadata: this.model,
+      };
+    }
+
+    inputJsonDeltaToToolCallDeltaEvent(): ToolCallDeltaEvent {
+      return {
+        type: "tool_call_delta",
+        metadata: this.model,
+      };
+    }
+
     accumulatedToolCallToToolCallEvent(
       id: string,
       name: string,
@@ -540,7 +561,13 @@ export function WithAnthropicConverter<T extends Constructor<Anthropic>>(
             toolId: block.id,
             toolName: block.name,
           };
-          return [];
+          return [
+            this.toolUseBlockStartToToolCallStartedEvent(
+              block.id,
+              event.index,
+              block.name
+            ),
+          ];
         case "redacted_thinking":
         case "server_tool_use":
         case "web_search_tool_result":
@@ -567,7 +594,7 @@ export function WithAnthropicConverter<T extends Constructor<Anthropic>>(
           return [this.reasoningDeltaToReasoningDeltaEvent(delta.thinking)];
         case "input_json_delta":
           state.current.accumulator += delta.partial_json;
-          return [];
+          return [this.inputJsonDeltaToToolCallDeltaEvent()];
         case "signature_delta":
           if (state.current.type === "reasoning") {
             state.current.signature = delta.signature;
@@ -694,7 +721,7 @@ export function WithAnthropicConverter<T extends Constructor<Anthropic>>(
         if (result.done) {
           break;
         }
-        
+
         const event = result.value;
 
         let outputEvents: LargeLanguageModelResponseEvent[];

@@ -298,6 +298,21 @@ async function* convertToOldEvents(
         };
         break;
 
+      case "tool_call_started":
+        yield {
+          type: "tool_call_started",
+          content: event.content,
+          metadata,
+        };
+        break;
+
+      case "tool_call_delta":
+        yield {
+          type: "tool_call_delta",
+          metadata,
+        };
+        break;
+
       case "tool_call":
         yield {
           type: "tool_call",

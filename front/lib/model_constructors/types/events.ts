@@ -26,6 +26,24 @@ export interface TextEvent {
   metadata: Metadata;
 }
 
+export type ToolCallStartedContent = {
+  id: string;
+  index: number;
+  name: string;
+};
+export interface ToolCallStartedEvent {
+  type: "tool_call_started";
+  content: ToolCallStartedContent;
+  metadata: Metadata;
+}
+
+// Tool call deltas are not streamed to the UI but used internally as a
+// heartbeat to know the LLM is still active.
+export interface ToolCallDeltaEvent {
+  type: "tool_call_delta";
+  metadata: Metadata;
+}
+
 export type ToolCallContent = {
   id: string;
   name: string;
@@ -112,6 +130,8 @@ export type LargeLanguageModelResponseEvent =
   | TextEvent
   | ReasoningDeltaEvent
   | ReasoningEvent
+  | ToolCallStartedEvent
+  | ToolCallDeltaEvent
   | ToolCallEvent
   | TokenUsageEvent
   | SuccessEvent
