@@ -10,6 +10,7 @@ import {
   Avatar,
   Button,
   ChevronDownIcon,
+  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -140,7 +141,10 @@ export const UsedByButton = ({
         variant="ghost-secondary"
         isSelect={false}
         size="xs"
-        className="border-0 hover:bg-muted-background hover:text-foreground dark:hover:bg-muted-background-night dark:hover:text-foreground-night"
+        className={cn(
+          "border-0 hover:bg-muted-background hover:text-foreground",
+          "dark:hover:bg-muted-background-night dark:hover:text-foreground-night"
+        )}
         aria-label="Used by 0 agents"
         disabled
       />
@@ -220,7 +224,10 @@ export const UsedByButton = ({
           variant="ghost-secondary"
           isSelect={false}
           size="xs"
-          className="border-0 hover:bg-muted-background hover:text-foreground dark:hover:bg-muted-background-night dark:hover:text-foreground-night"
+          className={cn(
+            "border-0 hover:bg-muted-background hover:text-foreground",
+            "dark:hover:bg-muted-background-night dark:hover:text-foreground-night"
+          )}
           aria-label={`Used by ${usageLabel}`}
           onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
             e.stopPropagation();
