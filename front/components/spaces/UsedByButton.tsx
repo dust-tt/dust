@@ -25,10 +25,12 @@ function SkillDropdownIcon({ icon }: { icon: string | null }) {
 
 function UsedByButtonIcon() {
   return (
-    <span className="flex items-center gap-0.5">
-      <RobotIcon className="h-3 w-3" />
-      <span className="text-[10px] leading-none">/</span>
-      <PuzzleIcon className="h-3 w-3" />
+    <span className="inline-flex h-4 items-center justify-center gap-0.5 leading-none">
+      <RobotIcon className="h-3.5 w-3.5 shrink-0" />
+      <span className="inline-flex h-3.5 items-center text-xs leading-none">
+        /
+      </span>
+      <PuzzleIcon className="h-3.5 w-3.5 shrink-0" />
     </span>
   );
 }
