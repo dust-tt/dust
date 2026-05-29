@@ -2687,14 +2687,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           transaction,
         });
 
-        await SkillReferenceModel.destroy({
-          where: {
-            workspaceId: workspace.id,
-            [Op.or]: [{ parentSkillId: this.id }, { childSkillId: this.id }],
-          },
-          transaction,
-        });
-
         await SkillSuggestionModel.destroy({
           where: whereWorkspaceIdAndSkillId,
           transaction,
@@ -2997,10 +2989,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
 
     await SkillSuggestionModel.destroy({
-      where: { workspaceId },
-    });
-
-    await SkillReferenceModel.destroy({
       where: { workspaceId },
     });
 
