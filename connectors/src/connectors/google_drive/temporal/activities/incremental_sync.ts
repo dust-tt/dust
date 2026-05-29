@@ -431,7 +431,9 @@ async function getQuietDriveBaselineAt(
     where: { connectorId, driveId },
   });
 
-  return syncToken?.lastRelevantChangeAt ?? syncToken?.lastSyncAt ?? completedAt;
+  return (
+    syncToken?.lastRelevantChangeAt ?? syncToken?.lastSyncAt ?? completedAt
+  );
 }
 
 async function recurseUpdateParents(
