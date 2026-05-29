@@ -8,7 +8,11 @@ import {
   FILES_MOVE_ACTION_NAME,
   FILES_SERVER_NAME,
 } from "@app/lib/api/actions/servers/files/metadata";
-import { DustFileSystem } from "@app/lib/api/file_system";
+import {
+  getDustFileSystemForAgentLoop,
+  requireAgentLoopConversation,
+  scopedPathsFromArgs,
+} from "@app/lib/api/actions/servers/files/tools/agent_loop_fs";
 import {
   isInteractiveContentType,
   stripMimeParameters,
@@ -19,11 +23,9 @@ export async function copyHandler(
   { source, dest }: { source: string; dest: string },
   { auth, agentLoopContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const conversation = agentLoopContext?.runContext?.conversation;
-  if (!conversation) {
-    return new Err(
-      new MCPError("No conversation context available.", { tracked: false })
-    );
+  const conversationRes = requireAgentLoopConversation({ agentLoopContext });
+  if (conversationRes.isErr()) {
+    return conversationRes;
   }
 
   if (source === dest) {
@@ -34,9 +36,13 @@ export async function copyHandler(
     );
   }
 
-  const fsResult = await DustFileSystem.forConversation(auth, conversation);
+  const fsResult = await getDustFileSystemForAgentLoop(
+    auth,
+    conversationRes.value,
+    scopedPathsFromArgs(source, dest)
+  );
   if (fsResult.isErr()) {
-    return new Err(new MCPError(fsResult.error.message, { tracked: false }));
+    return fsResult;
   }
 
   const dustFs = fsResult.value;

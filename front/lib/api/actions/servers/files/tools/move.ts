@@ -4,7 +4,11 @@ import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { DustFileSystem } from "@app/lib/api/file_system";
+import {
+  getDustFileSystemForAgentLoop,
+  requireAgentLoopConversation,
+  scopedPathsFromArgs,
+} from "@app/lib/api/actions/servers/files/tools/agent_loop_fs";
 import { moveCanonicalFile } from "@app/lib/api/files/file_system_ops";
 import {
   isAllSupportedFileContentType,
@@ -17,11 +21,9 @@ export async function moveHandler(
   { source, dest }: { source: string; dest: string },
   { auth, agentLoopContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const conversation = agentLoopContext?.runContext?.conversation;
-  if (!conversation) {
-    return new Err(
-      new MCPError("No conversation context available.", { tracked: false })
-    );
+  const conversationRes = requireAgentLoopConversation({ agentLoopContext });
+  if (conversationRes.isErr()) {
+    return conversationRes;
   }
 
   if (source === dest) {
@@ -32,9 +34,13 @@ export async function moveHandler(
     );
   }
 
-  const fsResult = await DustFileSystem.forConversation(auth, conversation);
+  const fsResult = await getDustFileSystemForAgentLoop(
+    auth,
+    conversationRes.value,
+    scopedPathsFromArgs(source, dest)
+  );
   if (fsResult.isErr()) {
-    return new Err(new MCPError(fsResult.error.message, { tracked: false }));
+    return fsResult;
   }
   const dustFs = fsResult.value;
 
