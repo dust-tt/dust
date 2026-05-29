@@ -1,7 +1,4 @@
-import {
-  ANTHROPIC_PROVIDER_ID,
-  overwriteLLMParameters,
-} from "@app/lib/api/llm/clients/anthropic/types";
+import { ANTHROPIC_PROVIDER_ID } from "@app/lib/api/llm/clients/anthropic/types";
 import { LLM } from "@app/lib/api/llm/llm";
 import {
   handleGenericError,
@@ -25,8 +22,7 @@ import {
   extractEncryptedContentFromMetadata,
   parseResponseFormatSchema,
 } from "@app/lib/api/llm/utils";
-import { getModel, type LargeLanguageModel } from "@app/lib/api/models";
-import type { AnthropicModel } from "@app/lib/api/models/clients/anthropic/anthropicClient";
+import type { LargeLanguageModel } from "@app/lib/api/models";
 import type { ToolSpecification } from "@app/lib/api/models/types/config";
 import type {
   ErrorType,
@@ -48,7 +44,6 @@ import type {
 import type { ModelMessageTypeMultiActionsWithoutContentFragment } from "@app/types/assistant/generation";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import assert from "assert";
 
 /**
  * Maps old reasoning effort values to the new model's effort values.
@@ -388,30 +383,22 @@ async function* convertToOldEvents(
 }
 
 /**
- * Wrapper that bridges the old LLM system with the new AnthropicClaudeSonnetFourDotSix model.
+ * Wrapper that bridges the old LLM system with the new.
  *
  * - Extends the old LLM base class (used by the existing agent pipeline).
  * - Converts old message types to BaseMessage and delegates to the new model's buildRequestPayload.
  * - Delegates streaming and event parsing to the new model class.
  */
-export class AnthropicModelLLM extends LLM {
+export class TransitionLLM extends LLM {
   private model: LargeLanguageModel;
 
   constructor(
     auth: Authenticator,
-    llmParameters: LLMParameters & {
-      modelId: AnthropicModel["modelId"];
-    }
+    llmParameters: LLMParameters,
+    model: LargeLanguageModel
   ) {
-    // We still need to overwrite as some config sent to the models are not valid
-    const params = overwriteLLMParameters(llmParameters);
-    super(auth, ANTHROPIC_PROVIDER_ID, params);
-    this.model = getModel(llmParameters.credentials, {
-      providerId: ANTHROPIC_PROVIDER_ID,
-      modelId: llmParameters.modelId,
-    });
-    const { ANTHROPIC_API_KEY } = llmParameters.credentials;
-    assert(ANTHROPIC_API_KEY, "ANTHROPIC_API_KEY credential is required");
+    super(auth, ANTHROPIC_PROVIDER_ID, llmParameters);
+    this.model = model;
   }
 
   protected buildStreamRequestPayload(streamParameters: LLMStreamParameters) {
