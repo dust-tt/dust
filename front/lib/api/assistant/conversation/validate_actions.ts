@@ -13,7 +13,7 @@ import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversati
 import { resumeAncestorConversations as resumeAncestorConversationsHelper } from "@app/lib/api/assistant/conversation/resume_ancestor_conversations";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
-import { resumeSandboxChildAction } from "@app/lib/api/sandbox/resume_child_action";
+import { resolveSandboxChildBlock } from "@app/lib/api/sandbox/sandbox_child_block";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
@@ -160,20 +160,27 @@ export async function validateAction(
       : false;
   }, getMessageChannelId(messageId));
 
-  if (isSandboxChildActionInfo(action.stepContext.sandboxChildActionInfo)) {
-    if (approvalState !== "rejected") {
-      await resumeSandboxChildAction(auth, {
-        action,
-        conversationId,
-        conversationTitle,
+  const { sandboxChildActionInfo } = action.stepContext;
+  if (isSandboxChildActionInfo(sandboxChildActionInfo)) {
+    // Sandbox-child actions always pause the parent bash on any block, so
+    // the parent is sitting in `blocked_child_action_input_required` by
+    // the time we get here. Relaunch the parent agent loop in resume mode;
+    // checkForResume + getExistingActionsAndBlobs dispatches both the
+    // parent (resume mode via stored execId) and the now-ready child.
+    await resolveSandboxChildBlock(auth, {
+      action,
+      sandboxChildActionInfo,
+      agentLoopArgs: {
         agentMessageId,
         agentMessageVersion,
-        branchId,
+        conversationBranchId: branchId,
+        conversationId,
+        conversationTitle,
         userMessageId,
         userMessageVersion,
         userMessageOrigin,
-      });
-    }
+      },
+    });
     return new Ok(undefined);
   }
 
