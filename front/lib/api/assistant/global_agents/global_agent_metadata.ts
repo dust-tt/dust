@@ -266,7 +266,7 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         sId: GLOBAL_AGENTS_SID.DUST_EDGE,
         name: "dust-edge",
         description:
-          "Same as dust but on another model to experiment internally.",
+          "Same as dust but running Claude Opus 4.8 to experiment internally.",
         pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.DUST_QUICK:

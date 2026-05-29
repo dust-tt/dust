@@ -31,7 +31,7 @@ Rules:
 - additional targets describe the affected entities, such as `user`, `space`, `trigger`, `tool`,
   `agent`, or `api_key`
 - `metadata` is optional, but every metadata value must be declared as `"string"`
-- use camelCase metadata keys
+- use snake_case metadata keys (see `[AUDIT9]`)
 
 Example shape:
 
@@ -43,7 +43,7 @@ Example shape:
     { "type": "resource" }
   ],
   "metadata": {
-    "fieldName": "string"
+    "field_name": "string"
   }
 }
 ```
@@ -78,7 +78,7 @@ void emitAuditLogEvent({
   ],
   context: getAuditLogContext(auth, req),
   metadata: {
-    fieldName: String(value),
+    field_name: String(value),
   },
 });
 ```
@@ -126,9 +126,12 @@ Check all of the following:
 - metadata values are wrapped with `String(...)` when needed
 - request-backed events use `getAuditLogContext(auth, req)` when `req` is available
 - the emit call uses `void`
+- the targets in the emit call exactly match (in type and count) the targets in the schema JSON file
+- if modifying an existing event's targets, the schema JSON file has been updated to match
+- if the schema JSON file changed, `register_audit_log_schemas.ts --execute --changed` must be run after merge and before deploy
 
 ## References
 
 - `front/lib/api/audit/workos_audit.ts`
 - `front/admin/audit_log_schemas/`
-- `front/CODING_RULES.md` entries `[AUDIT1]` through `[AUDIT8]`
+- `front/CODING_RULES.md` entries `[AUDIT1]` through `[AUDIT10]`

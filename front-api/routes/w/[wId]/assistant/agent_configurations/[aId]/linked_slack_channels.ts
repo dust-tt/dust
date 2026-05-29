@@ -9,11 +9,8 @@ import { ensureIsBuilder } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import type { SuccessResponseBody } from "@front-api/routes/types";
 import { z } from "zod";
-
-export type PatchLinkedSlackChannelsResponseBody = {
-  success: true;
-};
 
 const PatchLinkedSlackChannelsRequestBodySchema = z.object({
   slack_channel_internal_ids: z.array(z.string()),
@@ -28,7 +25,7 @@ app.patch(
   "/",
   ensureIsBuilder(),
   validate("json", PatchLinkedSlackChannelsRequestBodySchema),
-  async (ctx): HandlerResult<PatchLinkedSlackChannelsResponseBody> => {
+  async (ctx): HandlerResult<SuccessResponseBody> => {
     const auth = ctx.get("auth");
     const aId = ctx.req.param("aId") ?? "";
     const body = ctx.req.valid("json");

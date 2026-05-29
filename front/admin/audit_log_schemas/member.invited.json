@@ -2,6 +2,9 @@
   "action": "member.invited",
   "targets": [
     {
+      "type": "workspace"
+    },
+    {
       "type": "user"
     }
   ],

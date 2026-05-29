@@ -5,14 +5,11 @@ import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import type { SuccessResponseBody } from "@front-api/routes/types";
 import { z } from "zod";
 
 export type GetKillSwitchesResponseBody = {
   killSwitches: KillSwitchType[];
-};
-
-export type PostKillSwitchResponseBody = {
-  success: true;
 };
 
 const KillSwitchTypeSchema = z.object({
@@ -31,7 +28,7 @@ app.get("/", async (ctx): HandlerResult<GetKillSwitchesResponseBody> => {
 app.post(
   "/",
   validate("json", KillSwitchTypeSchema),
-  async (ctx): HandlerResult<PostKillSwitchResponseBody> => {
+  async (ctx): HandlerResult<SuccessResponseBody> => {
     const { enabled, type } = ctx.req.valid("json");
     if (!isKillSwitchType(type)) {
       return apiError(ctx, {

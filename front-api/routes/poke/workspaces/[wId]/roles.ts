@@ -10,11 +10,8 @@ import { ACTIVE_ROLES } from "@app/types/user";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import type { SuccessResponseBody } from "@front-api/routes/types";
 import { z } from "zod";
-
-export type PokePostRoleUserResponseBody = {
-  success: true;
-};
 
 const PostRoleUserBodySchema = z.object({
   userId: z.string(),
@@ -27,7 +24,7 @@ const app = pokeApp();
 app.post(
   "/",
   validate("json", PostRoleUserBodySchema),
-  async (ctx): HandlerResult<PokePostRoleUserResponseBody> => {
+  async (ctx): HandlerResult<SuccessResponseBody> => {
     const auth = ctx.get("auth");
     const owner = auth.getNonNullableWorkspace();
     const { userId, role } = ctx.req.valid("json");

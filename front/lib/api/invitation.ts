@@ -474,9 +474,12 @@ export async function handleMembershipInvitations(
     void emitAuditLogEvent({
       auth,
       action: "member.invited",
-      targets: successfulInvites.map((r) =>
-        buildAuditLogTarget("user", { sId: r.email, name: r.email })
-      ),
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        ...successfulInvites.map((r) =>
+          buildAuditLogTarget("user", { sId: r.email, name: r.email })
+        ),
+      ],
       context: getAuditLogContext(auth),
       metadata: {
         invited_count: String(successfulInvites.length),

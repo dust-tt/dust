@@ -112,7 +112,13 @@ async function handler(
       void emitAuditLogEvent({
         auth,
         action: "credentials.created",
-        targets: [buildAuditLogTarget("workspace", owner)],
+        targets: [
+          buildAuditLogTarget("workspace", owner),
+          buildAuditLogTarget("credential", {
+            sId: response.value.credential.credential_id,
+            name: String(bodyValidation.data.provider),
+          }),
+        ],
         context: getAuditLogContext(auth, req),
         metadata: {
           provider: String(bodyValidation.data.provider),

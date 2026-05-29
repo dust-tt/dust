@@ -7,11 +7,8 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import { streamingTag } from "@front-api/middlewares/streaming";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import type { SuccessResponseBody } from "@front-api/routes/types";
 import { z } from "zod";
-
-export type PostMessageEventResponseBody = {
-  success: true;
-};
 
 const PostMessageEventBodySchema = z.object({
   action: z.enum(["cancel", "gracefully_stop", "interrupt"]),
@@ -26,7 +23,7 @@ app.use("*", streamingTag);
 app.post(
   "/",
   validate("json", PostMessageEventBodySchema),
-  async (ctx): HandlerResult<PostMessageEventResponseBody> => {
+  async (ctx): HandlerResult<SuccessResponseBody> => {
     const auth = ctx.get("auth");
     const conversationId = ctx.req.param("cId") ?? "";
 
