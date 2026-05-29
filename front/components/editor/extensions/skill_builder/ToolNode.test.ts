@@ -67,6 +67,14 @@ describe("ToolNode tag helpers", () => {
     ).toBeNull();
   });
 
+  it("does not parse prefixed attributes as tool attributes", () => {
+    const tag =
+      '<tool data-id="mcp_server_view_123" data-name="GitHub Search" />';
+
+    expect(parseToolTag(tag)).toBeNull();
+    expect(extractToolTags(tag)).toEqual([]);
+  });
+
   it("extracts valid tool tags from content", () => {
     expect(
       extractToolTags(

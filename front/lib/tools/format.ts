@@ -15,7 +15,7 @@ export const TOOL_TAG_REGEX_BEGINNING = /^<tool\s+([^>]*?)\s*\/>/;
 const TOOL_ELEMENT_REGEX = /<tool\b([^>]*)>[\s\S]*?<\/tool>/g;
 
 function parseAttribute(attributes: string, name: string): string | null {
-  const value = new RegExp(`\\b${name}="([^"]*)"`).exec(attributes)?.[1];
+  const value = new RegExp(`(?:^|\\s)${name}="([^"]*)"`).exec(attributes)?.[1];
   if (value === undefined || value === "") {
     return null;
   }
