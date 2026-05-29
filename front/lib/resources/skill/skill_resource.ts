@@ -424,7 +424,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           transaction,
         });
 
-      const resource = new this(this.model, skill.get(), {
+      const skillResource = new this(this.model, skill.get(), {
         dataSourceConfigurations,
         editorGroup,
         fileAttachments,
@@ -434,14 +434,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       });
 
       if (enableSkillReferences) {
-        await resource.syncSkillReferences(
+        await skillResource.syncSkillReferences(
           auth,
           { instructions: blob.instructions },
           { transaction }
         );
       }
 
-      return resource;
+      return skillResource;
     });
   }
 
