@@ -5,7 +5,8 @@ language js
 // cannot import from @dust-tt/client or any of its subpaths.
 //
 // Applies to both front/ (Next.js) and front-api/ (Hono). In front-api,
-// the public API equivalent of pages/api/v1/ is routes/v1/.
+// the public API equivalent of pages/api/v1/ is routes/v1/ (and routes/sse/v1/
+// for the SSE streaming endpoints).
 //
 // Uses two snippet patterns: one for the exact package import and one with
 // a metavariable to catch any subpath import (e.g. @dust-tt/client/src/foo).
@@ -21,6 +22,7 @@ pattern client_import_source() {
         $filename <: not or {
             r".*pages/api/v1/.*",
             r".*/front-api/routes/v1/.*",
+            r".*/front-api/routes/sse/v1/.*",
             r".*lib/actions/mcp_internal_actions/.*",
             r".*lib/api/actions/servers/.*",
             r".*\.test\..*",

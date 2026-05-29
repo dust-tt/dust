@@ -3,10 +3,9 @@ import type { Context } from "hono";
 
 // Mounted at /api/w/:wId/mcp/requests.
 //
-// This endpoint is SSE: the actual handler lives in Next at
-// `front/pages/api/sse/w/[wId]/mcp/requests.ts` (re-export of
-// `front/pages/api/w/[wId]/mcp/requests.ts`), so it can be served by the
-// dedicated front-sse pods via the `/api/sse/` ingress rule.
+// This endpoint is SSE: the actual handler lives in Hono at
+// `front-api/routes/sse/w/[wId]/mcp/requests.ts`, served under the
+// `/api/sse/` prefix that the ingress routes to dedicated front-sse pods.
 //
 // Hono only registers a 307 redirect here for two reasons:
 //   1. Match the Next middleware redirect at the same path, so the routing
