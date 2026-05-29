@@ -28,6 +28,7 @@ export function ArchiveSkillDialog({
 }: DeleteSkillDialogProps) {
   const [isArchiving, setIsArchiving] = useState(false);
   const doArchive = useArchiveSkill({ owner, skill: skill });
+  const agentsUsageCount = skill.relations.usage.agents.length;
 
   return (
     <Dialog
@@ -45,9 +46,9 @@ export function ArchiveSkillDialog({
             <div>
               This will archive the skill{" "}
               <span className="font-bold">{skill?.name}</span>{" "}
-              {skill.relations.usage.count === 0
+              {agentsUsageCount === 0
                 ? "for everyone."
-                : `used by ${skill.relations.usage.count} agent${pluralize(skill.relations.usage.count)}.`}
+                : `used by ${agentsUsageCount} agent${pluralize(agentsUsageCount)}.`}
             </div>
           </DialogDescription>
         </DialogHeader>

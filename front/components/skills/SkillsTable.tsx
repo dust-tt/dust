@@ -94,8 +94,7 @@ const usedByColumn = (
   onUsedBySkillClick: (skillId: string) => void
 ) => ({
   header: "Used by",
-  accessorFn: (row: RowData) =>
-    (row.usage?.count ?? 0) + (row.usage.skills?.length ?? 0),
+  accessorFn: (row: RowData) => row.usage?.count ?? 0,
   cell: (info: CellContext<RowData, number>) => (
     <DataTable.CellContent>
       <UsedByButton

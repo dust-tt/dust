@@ -47,9 +47,7 @@ export const UsedByButton = ({
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
 
-  const agentCount = usage?.count ?? 0;
-  const skillCount = usage?.skills?.length ?? 0;
-  const totalCount = agentCount + skillCount;
+  const totalCount = usage?.count ?? 0;
 
   if (totalCount === 0) {
     return (
