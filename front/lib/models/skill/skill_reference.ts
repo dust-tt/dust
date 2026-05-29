@@ -1,7 +1,7 @@
 import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
 export class SkillReferenceModel extends WorkspaceAwareModel<SkillReferenceModel> {
