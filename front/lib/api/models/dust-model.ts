@@ -6,7 +6,7 @@ import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 export abstract class DustModel {
   byok: boolean = false;
   scopes: Record<Scope, boolean> = {
-    use: true,
+    run: true,
     build: true,
   };
   regions: Record<Region, boolean> = {
