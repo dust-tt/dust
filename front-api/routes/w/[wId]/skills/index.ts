@@ -140,16 +140,26 @@ app.get(
     });
 
     if (withRelations === "true") {
-      const [extendedSkills, usageMap, editorsMap, editedByUsersMap] =
-        await Promise.all([
-          SkillResource.fetchByIds(
-            auth,
-            removeNulls(uniq(skills.map((s) => s.extendedSkillId)))
-          ),
-          SkillResource.batchFetchUsage(auth, skills),
-          SkillResource.batchListEditors(auth, skills),
-          SkillResource.batchFetchEditedByUsers(auth, skills),
-        ]);
+      const featureFlags = await getFeatureFlags(auth);
+      const includeChildSkills = featureFlags.includes("nested_skills");
+
+      const extendedSkills = await SkillResource.fetchByIds(
+        auth,
+        removeNulls(uniq(skills.map((s) => s.extendedSkillId)))
+      );
+      const usageMap = await SkillResource.batchFetchUsage(auth, skills);
+      const editorsMap = await SkillResource.batchListEditors(auth, skills);
+      const editedByUsersMap = await SkillResource.batchFetchEditedByUsers(
+        auth,
+        skills
+      );
+      let childSkillsMap = new Map<string, SkillResource[]>();
+      if (includeChildSkills) {
+        childSkillsMap = await SkillResource.batchFetchChildSkills(
+          auth,
+          skills
+        );
+      }
 
       const extendedSkillsMap = new Map(extendedSkills.map((s) => [s.sId, s]));
 
@@ -175,6 +185,22 @@ app.get(
               ? (extendedSkillsMap.get(sc.extendedSkillId)?.toJSON(auth) ??
                 null)
               : null,
+            ...(includeChildSkills
+              ? {
+                  childSkills: (childSkillsMap.get(sc.sId) ?? []).map(
+                    (childSkill) => {
+                      const {
+                        instructions,
+                        instructionsHtml,
+                        tools,
+                        ...childSkillWithoutInstructionsAndTools
+                      } = childSkill.toJSON(auth);
+
+                      return childSkillWithoutInstructionsAndTools;
+                    }
+                  ),
+                }
+              : {}),
           },
         } satisfies SkillWithoutInstructionsAndToolsWithRelationsType;
       });
@@ -388,7 +414,6 @@ app.post(
           { error: iconResult.error },
           "Failed to generate icon suggestion for skill"
         );
-        icon = "ActionListIcon";
       }
     }
 

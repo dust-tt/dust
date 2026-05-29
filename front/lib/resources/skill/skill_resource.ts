@@ -893,6 +893,54 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
   }
 
+  static async batchFetchChildSkills(
+    auth: Authenticator,
+    parentSkills: SkillResource[]
+  ): Promise<Map<string, SkillResource[]>> {
+    const workspace = auth.getNonNullableWorkspace();
+    const customParentSkills = parentSkills.filter((skill) => !skill.globalSId);
+
+    if (customParentSkills.length === 0) {
+      return new Map();
+    }
+
+    const skillReferences = await SkillReferenceModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        parentSkillId: customParentSkills.map((skill) => skill.id),
+      },
+    });
+
+    const childSkills = await this.fetchByModelIds(
+      auth,
+      uniq(skillReferences.map((reference) => reference.childSkillId))
+    );
+    const childSkillsByModelId = new Map(
+      childSkills.map((skill) => [skill.id, skill])
+    );
+    const referencesByParentSkillId = groupBy(skillReferences, "parentSkillId");
+
+    return new Map(
+      customParentSkills.map((parentSkill) => [
+        parentSkill.sId,
+        removeNulls(
+          (referencesByParentSkillId[parentSkill.id] ?? []).map(
+            (reference) =>
+              childSkillsByModelId.get(reference.childSkillId) ?? null
+          )
+        ),
+      ])
+    );
+  }
+
+  async fetchChildSkills(auth: Authenticator): Promise<SkillResource[]> {
+    const childSkillsMap = await SkillResource.batchFetchChildSkills(auth, [
+      this,
+    ]);
+
+    return childSkillsMap.get(this.sId) ?? [];
+  }
+
   /**
    * Fetches skills from rows that reference them via customSkillId or globalSkillId.
    */

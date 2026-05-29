@@ -1,5 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
 import { SkillMCPServerConfigurationModel } from "@app/lib/models/skill";
+import { SkillReferenceModel } from "@app/lib/models/skill/skill_reference";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { discoverToolsSkill } from "@app/lib/resources/skill/code_defined/discover_tools";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -464,6 +465,60 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
         },
       },
     });
+  });
+
+  it("should return child skills when nested_skills is enabled", async () => {
+    const { req, res, workspace, user } = await setupTest();
+
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+
+    await FeatureFlagFactory.basic(auth, "nested_skills");
+
+    const parentSkill = await SkillFactory.create(auth, {
+      name: "Parent Skill",
+    });
+    const childSkill = await SkillFactory.create(auth, {
+      name: "Child Skill",
+    });
+    await SkillReferenceModel.create({
+      workspaceId: workspace.id,
+      parentSkillId: parentSkill.id,
+      childSkillId: childSkill.id,
+    });
+
+    req.query = { ...req.query, wId: workspace.sId, withRelations: "true" };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+
+    const parentSkillId = SkillResource.modelIdToSId({
+      id: parentSkill.id,
+      workspaceId: workspace.id,
+    });
+    const skillResult = res
+      ._getJSONData()
+      .skills.find(
+        (s: SkillWithoutInstructionsAndToolsWithRelationsType) =>
+          s.sId === parentSkillId
+      );
+
+    expect(skillResult).toMatchObject({
+      relations: {
+        childSkills: [
+          {
+            sId: childSkill.sId,
+            name: "Child Skill",
+          },
+        ],
+      },
+    });
+    expect(skillResult.relations.childSkills?.[0]).not.toHaveProperty(
+      "instructions"
+    );
   });
 
   it("should return skills without usage when withRelations is not set", async () => {
