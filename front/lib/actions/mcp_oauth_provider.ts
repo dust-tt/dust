@@ -22,8 +22,8 @@ export class MCPOAuthProvider implements OAuthClientProvider {
   constructor(tokens?: OAuthTokens) {
     this.token = tokens;
   }
-  get redirectUrl(): string {
-    throw new MCPOAuthProviderError("redirectUrl");
+  get redirectUrl(): undefined {
+    return undefined;
   }
 
   get clientMetadata(): OAuthClientMetadata {
