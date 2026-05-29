@@ -78,3 +78,35 @@ export function stripSkillTagPresentationAttributes(content: string): string {
       });
     });
 }
+
+// Matches a <skill ...> opening tag, whether self-closing (<skill ... />, the
+// form stored in the markdown `instructions`) or paired (<skill ...></skill>,
+// the form stored in the rendered `instructionsHtml`).
+const SKILL_OPEN_TAG_REGEX = /<skill\b[^>]*?\/?>/g;
+
+const SKILL_NAME_ATTRIBUTE_REGEX = /(\bname=")[^"]*(")/;
+
+/**
+ * Rewrites the `name` attribute of every inline reference to `skillId` from
+ * `previousName` to `newName`, leaving all other skill tags untouched. Used to
+ * propagate a skill rename into the instructions of skills that reference it
+ * inline. References are matched by `id` (always present in the Markdown
+ * `instructions` and in client-saved `instructionsHtml`).
+ */
+export function renameSkillReferencesInContent(
+  content: string,
+  {
+    skillId,
+    newName,
+  }: { skillId: string; newName: string }
+): string {
+  return content.replace(SKILL_OPEN_TAG_REGEX, (tag) => {
+    const id = tag.match(/\bid="([^"]+)"/)?.[1];
+
+    if (id === skillId) {
+      return tag.replace(SKILL_NAME_ATTRIBUTE_REGEX, `$1${newName}$2`);
+    }
+
+    return tag;
+  });
+}

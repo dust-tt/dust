@@ -18,6 +18,7 @@ import {
   SkillMCPServerConfigurationModel,
   SkillVersionModel,
 } from "@app/lib/models/skill";
+import { SkillReferenceModel } from "@app/lib/models/skill/skill_reference";
 import {
   AgentMessageSkillModel,
   ConversationSkillModel,
@@ -48,7 +49,10 @@ import {
   makeSId,
 } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { extractUniqueSkillIds } from "@app/lib/skills/format";
+import {
+  extractUniqueSkillIds,
+  renameSkillReferencesInContent,
+} from "@app/lib/skills/format";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
@@ -2236,6 +2240,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   ): Promise<void> {
     assert(this.canWrite(auth), "User is not authorized to update this skill");
 
+    // Snapshot the previous name before updating to detect a rename below.
+    const previousName = this.name;
+
     await withTransaction(async (transaction) => {
       // Save the current version before updating.
       await this.saveVersion(auth, { transaction });
@@ -2268,6 +2275,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
       if (enableSkillReferences) {
         await this.syncSkillReferences(auth, { instructions }, { transaction });
+
+        // When the name changes, propagate it to the inline references that
+        // other skills hold to this skill in their instructions.
+        if (name !== previousName) {
+          await this.propagateRenameToReferencingSkills(
+            auth,
+            { newName: name },
+            { transaction }
+          );
+        }
       }
 
       await this.updateMCPServerViews(auth, mcpServerViews, { transaction });
@@ -2292,6 +2309,74 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
 
     await this.upsertCurrentUserAsEditor(auth);
+  }
+
+  /**
+   * Rewrites the inline `<skill ... />` references to this skill in the
+   * instructions of every skill that references it to reflect the new name.
+   */
+  private async propagateRenameToReferencingSkills(
+    auth: Authenticator,
+    { newName }: { newName: string },
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    const references = await SkillReferenceModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        childSkillId: this.id,
+      },
+      transaction,
+    });
+
+    // Exclude self-references: this skill's own instructions were just written
+    // from the request body and must not be overwritten here.
+    const referencingSkillIds = uniq(
+      references
+        .map((reference) => reference.parentSkillId)
+        .filter((parentSkillId) => parentSkillId !== this.id)
+    );
+
+    if (referencingSkillIds.length === 0) {
+      return;
+    }
+
+    const referencingSkills = await this.model.findAll({
+      where: {
+        workspaceId: workspace.id,
+        id: referencingSkillIds,
+      },
+      transaction,
+    });
+
+    // Each update carries distinct instructions content so it cannot be
+    // batched. Bounded by the number of skills referencing this one.
+    for (const referencingSkill of referencingSkills) {
+      const instructions = renameSkillReferencesInContent(
+        referencingSkill.instructions,
+        { skillId: this.sId, newName }
+      );
+      const instructionsHtml =
+        referencingSkill.instructionsHtml != null
+          ? renameSkillReferencesInContent(referencingSkill.instructionsHtml, {
+              skillId: this.sId,
+              newName,
+            })
+          : referencingSkill.instructionsHtml;
+
+      if (
+        instructions === referencingSkill.instructions &&
+        instructionsHtml === referencingSkill.instructionsHtml
+      ) {
+        continue;
+      }
+
+      await referencingSkill.update(
+        { instructions, instructionsHtml },
+        { transaction }
+      );
+    }
   }
 
   async updateReinforcement(
