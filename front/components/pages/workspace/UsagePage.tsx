@@ -262,7 +262,7 @@ export function UsagePage() {
                 <div className="flex items-center gap-2">
                   {overageCredits !== null && overageCredits > 0 && (
                     <span className="text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
-                      {formatCredits(overageCredits)} Overage
+                      {formatCredits(overageCredits)} overage credits.
                     </span>
                   )}
                   {isEnterprise ? (
