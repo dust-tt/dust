@@ -188,6 +188,28 @@ export function ManageSkillsPage() {
     [setSkillIdParam]
   );
 
+  const knownSkillsById = useMemo(
+    () =>
+      new Map(
+        [...activeSkills, ...archivedSkills, ...suggestedSkills].map(
+          (skill) => [skill.sId, skill]
+        )
+      ),
+    [activeSkills, archivedSkills, suggestedSkills]
+  );
+
+  const handleUsedBySkillSelect = useCallback(
+    (skillId: string) => {
+      const skill = knownSkillsById.get(skillId);
+      if (skill) {
+        handleSkillSelect(skill);
+      } else {
+        setSkillIdParam(skillId);
+      }
+    },
+    [handleSkillSelect, knownSkillsById, setSkillIdParam]
+  );
+
   const visibleTabs = useMemo(() => {
     return !isEmptyString(skillSearch)
       ? [SKILL_SEARCH_TAB]
@@ -322,6 +344,7 @@ export function ManageSkillsPage() {
                   skills={skillsByTab[activeTab]}
                   onSkillClick={handleSkillSelect}
                   onAgentClick={setAgentId}
+                  onUsedBySkillClick={handleUsedBySkillSelect}
                 />
               </>
             )}

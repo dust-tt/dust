@@ -6,8 +6,10 @@ import { getSkillAvatarIcon } from "@app/lib/skill";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
-import type { SkillWithoutInstructionsAndToolsWithRelationsType } from "@app/types/assistant/skill_configuration";
-import type { AgentsUsageType } from "@app/types/data_source";
+import type {
+  SkillUsageType,
+  SkillWithoutInstructionsAndToolsWithRelationsType,
+} from "@app/types/assistant/skill_configuration";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
@@ -25,7 +27,7 @@ type RowData = {
   icon: string | null;
   description: string;
   editors: UserType[] | null;
-  usage: AgentsUsageType;
+  usage: SkillUsageType;
   updatedAt: number | null;
   createdAt: number | null;
   onClick: () => void;
@@ -87,14 +89,19 @@ const editorsColumn = {
   },
 };
 
-const usedByColumn = (onAgentClick: (agentId: string) => void) => ({
+const usedByColumn = (
+  onAgentClick: (agentId: string) => void,
+  onUsedBySkillClick: (skillId: string) => void
+) => ({
   header: "Used by",
-  accessorFn: (row: RowData) => row.usage?.count ?? 0,
+  accessorFn: (row: RowData) =>
+    (row.usage?.count ?? 0) + (row.usage.skills?.length ?? 0),
   cell: (info: CellContext<RowData, number>) => (
     <DataTable.CellContent>
       <UsedByButton
         usage={info.row.original.usage}
         onItemClick={onAgentClick}
+        onSkillClick={onUsedBySkillClick}
       />
     </DataTable.CellContent>
   ),
@@ -129,7 +136,10 @@ const menuColumn = {
   },
 };
 
-const getTableColumns = (onAgentClick: (agentId: string) => void) => {
+const getTableColumns = (
+  onAgentClick: (agentId: string) => void,
+  onUsedBySkillClick: (skillId: string) => void
+) => {
   /**
    * Columns order:
    * - Name (always)
@@ -141,7 +151,7 @@ const getTableColumns = (onAgentClick: (agentId: string) => void) => {
 
   return [
     nameColumn,
-    usedByColumn(onAgentClick),
+    usedByColumn(onAgentClick, onUsedBySkillClick),
     editorsColumn,
     lastEditedColumn,
     menuColumn,
@@ -155,6 +165,7 @@ type SkillsTableProps = {
     skill: SkillWithoutInstructionsAndToolsWithRelationsType
   ) => void;
   onAgentClick: (agentId: string) => void;
+  onUsedBySkillClick: (skillId: string) => void;
 };
 
 export function SkillsTable({
@@ -162,6 +173,7 @@ export function SkillsTable({
   owner,
   onSkillClick,
   onAgentClick,
+  onUsedBySkillClick,
 }: SkillsTableProps) {
   const router = useAppRouter();
   const { pagination, setPagination } = usePaginationFromUrl({});
@@ -237,7 +249,7 @@ export function SkillsTable({
             : [],
       })),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- router is not stable, mutating the skills list which prevent pagination to work
-    [skills, onSkillClick, owner.sId]
+    [skills, onSkillClick, onUsedBySkillClick, owner.sId]
   );
 
   if (rows.length === 0) {
@@ -259,7 +271,7 @@ export function SkillsTable({
       <DataTable
         className="relative"
         data={rows}
-        columns={getTableColumns(onAgentClick)}
+        columns={getTableColumns(onAgentClick, onUsedBySkillClick)}
         pagination={pagination}
         setPagination={setPagination}
       />
