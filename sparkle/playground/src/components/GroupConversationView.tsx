@@ -1,4 +1,3 @@
-import type { BreadcrumbItem } from "@dust-tt/sparkle";
 import {
   AnimatedText,
   ArchiveIcon,
@@ -6,7 +5,6 @@ import {
   ArrowRightIcon,
   ArrowUpOnSquareIcon,
   Avatar,
-  Breadcrumbs,
   Button,
   ButtonsSwitch,
   ButtonsSwitchList,
@@ -18,7 +16,6 @@ import {
   CloudArrowUpIcon,
   ContentMessage,
   ConversationListItem,
-  DataTable,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -107,6 +104,8 @@ import {
   DATA_SOURCE_FILE_DRAG_MIME,
   DATA_SOURCE_FILE_NAME_DRAG_MIME,
 } from "./FreeButtonSwitch";
+import { Breadcrumbs, type BreadcrumbsItem } from "./BreadcrumbsDnd";
+import { DataTable } from "./DataTableDnd";
 import { FilePreviewPanel } from "./FilePreviewPanel";
 import { InputBar, type InputBarTaskCommand } from "./InputBar";
 import { SuggestionBox } from "./SuggestionBox";
@@ -2383,7 +2382,7 @@ export function GroupConversationView({
     [dataSources, currentFolderId]
   );
 
-  const folderBreadcrumbItems = useMemo((): BreadcrumbItem[] => {
+  const folderBreadcrumbItems = useMemo((): BreadcrumbsItem[] => {
     const path = getFolderPath(dataSources, currentFolderId);
     const isDragActive = draggingFileId !== null;
 
@@ -2391,7 +2390,7 @@ export function GroupConversationView({
       targetId: string,
       targetParentId: string | null
     ): Pick<
-      BreadcrumbItem,
+      BreadcrumbsItem,
       "isPulsing" | "isDropHighlight" | "onDragOver" | "onDragLeave" | "onDrop"
     > => ({
       isPulsing: isDragActive,
@@ -2403,7 +2402,7 @@ export function GroupConversationView({
       onDrop: (event) => handleDropOnTarget(targetId, targetParentId, event),
     });
 
-    const items: BreadcrumbItem[] = [
+    const items: BreadcrumbsItem[] = [
       currentFolderId === null
         ? { label: "Files", icon: FolderIcon }
         : {
@@ -3818,7 +3817,20 @@ export function GroupConversationView({
                             >
                               <ConversationListItem
                                 conversation={conversation}
-                                initiator={listItem.initiator || undefined}
+                                avatar={
+                                  podVariant === "personal" &&
+                                  listItem.initiator
+                                    ? {
+                                        name: listItem.initiator.name,
+                                        visual: listItem.initiator.portrait,
+                                        emoji: listItem.initiator.emoji,
+                                        backgroundColor:
+                                          listItem.initiator.backgroundColor,
+                                        isRounded:
+                                          listItem.initiator.isRounded ?? true,
+                                      }
+                                    : undefined
+                                }
                                 creator={
                                   podVariant === "personal"
                                     ? undefined

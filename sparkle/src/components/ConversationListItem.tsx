@@ -85,14 +85,6 @@ export function ReplySection({
   );
 }
 
-export interface ConversationListItemInitiator {
-  name: string;
-  portrait?: string;
-  emoji?: string;
-  backgroundColor?: string;
-  isRounded?: boolean;
-}
-
 export interface ConversationListItemProps {
   conversation: {
     id: string;
@@ -111,7 +103,6 @@ export interface ConversationListItemProps {
     fullName: string;
     portrait?: string;
   };
-  initiator?: ConversationListItemInitiator;
   time: string;
   replySection?: ReactNode;
   onClick?: () => void;
@@ -124,7 +115,6 @@ export function ConversationListItem({
   conversation,
   avatar,
   creator,
-  initiator,
   time,
   replySection,
   onClick,
@@ -162,21 +152,15 @@ export function ConversationListItem({
       onClick={onClick}
       groupName="conversation-item"
       className={cn(
-        "s-transition-colors s-duration-500",
-        isFocusVisible && "s-bg-highlight-50 dark:s-bg-highlight-100-night",
+        `s-transition-colors s-duration-500 ${
+          isFocusVisible
+            ? "s-bg-highlight-50 dark:s-bg-highlight-100-night"
+            : ""
+        }`,
         className
       )}
     >
-      {initiator ? (
-        <Avatar
-          name={initiator.name}
-          visual={initiator.portrait}
-          emoji={initiator.emoji}
-          size="sm"
-          isRounded={initiator.isRounded ?? true}
-          backgroundColor={initiator.backgroundColor}
-        />
-      ) : creator ? (
+      {creator ? (
         <Avatar
           name={creator.fullName}
           visual={creator.portrait}
@@ -205,9 +189,9 @@ export function ConversationListItem({
                 conversation.title
               )}
             </span>
-            {(initiator || creator) && (
+            {(creator || avatar?.name) && (
               <span className="s-hidden s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night sm:s-inline">
-                {initiator?.name ?? creator?.fullName}
+                {creator?.fullName ?? avatar?.name}
               </span>
             )}
           </div>

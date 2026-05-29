@@ -62,7 +62,6 @@ export {
 } from "./ContentMessage";
 export { ContextItem } from "./ContextItem";
 export type {
-  ConversationListItemInitiator,
   ConversationListItemProps,
   ReplySectionProps,
 } from "./ConversationListItem";
