@@ -452,7 +452,7 @@ export function createProjectManagerTools(
               contentNodes,
               files: {
                 count: projectFileCount,
-                hint: `Use \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_LIST_ACTION_NAME)}\` with \`scope: "pod"\` to enumerate.`,
+                hint: `Use \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_LIST_ACTION_NAME)}\` with \`scope: { type: "pod" }\` to enumerate.`,
               },
             },
             message: "Successfully retrieved Pod information",

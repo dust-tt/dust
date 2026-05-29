@@ -145,6 +145,25 @@ function hasMount(mounts: FileSystemMount[], scopedPrefix: string): boolean {
   return mounts.some((m) => m.scopedPrefix === scopedPrefix);
 }
 
+function assertAllMountsReadable(
+  mounts: FileSystemMount[]
+): Result<void, DustFileSystemError> {
+  for (const mount of mounts) {
+    if (!mount.permissions.canRead) {
+      return new Err(
+        new DustFileSystemError(
+          "unauthorized",
+          mount.kind === "pod"
+            ? "You do not have read access to this pod."
+            : `Read access denied for mount: ${mount.scopedPrefix}`
+        )
+      );
+    }
+  }
+
+  return new Ok(undefined);
+}
+
 // ---------------------------------------------------------------------------
 // DustFileSystem
 // ---------------------------------------------------------------------------
@@ -268,30 +287,26 @@ export class DustFileSystem {
       scopedPaths?: string[];
     }
   ): Promise<Result<DustFileSystem, DustFileSystemError>> {
-    const baseResult = await DustFileSystem.forConversation(auth, conversation);
-    if (baseResult.isErr()) {
-      return baseResult;
-    }
-
     const { conversationIds, podIds } =
       collectScopedPrefixesFromPaths(scopedPaths);
-    const mounts = [...baseResult.value.getMounts()];
 
-    const conversationIdsToFetch = [...conversationIds].filter(
-      (conversationId) =>
-        !hasMount(mounts, `${SCOPED_PREFIX_CONVERSATION}${conversationId}`)
+    const additionalConversationIds = [...conversationIds].filter(
+      (conversationId) => conversationId !== conversation.sId
     );
 
-    if (conversationIdsToFetch.length > 0) {
-      const conversations = await ConversationResource.fetchByIds(
+    const additionalConversations: ConversationWithoutContentType[] = [];
+    if (additionalConversationIds.length > 0) {
+      const fetchedConversations = await ConversationResource.fetchByIds(
         auth,
-        conversationIdsToFetch
+        additionalConversationIds
       );
-      const conversationById = new Map(conversations.map((c) => [c.sId, c]));
+      const conversationById = new Map(
+        fetchedConversations.map((c) => [c.sId, c])
+      );
 
-      for (const conversationId of conversationIdsToFetch) {
-        const conversation = conversationById.get(conversationId);
-        if (!conversation) {
+      for (const conversationId of additionalConversationIds) {
+        const fetchedConversation = conversationById.get(conversationId);
+        if (!fetchedConversation) {
           return new Err(
             new DustFileSystemError(
               "not_found",
@@ -300,13 +315,19 @@ export class DustFileSystem {
           );
         }
 
-        mounts.push(
-          createConversationMount(conversation.toJSON(), {
-            includeLegacy: false,
-          })
-        );
+        additionalConversations.push(fetchedConversation.toJSON());
       }
     }
+
+    const fsResult = await DustFileSystem.forConversations(auth, [
+      conversation,
+      ...additionalConversations,
+    ]);
+    if (fsResult.isErr()) {
+      return fsResult;
+    }
+
+    const mounts = [...fsResult.value.getMounts()];
 
     const podIdsToFetch = [...podIds].filter(
       (podId) => !hasMount(mounts, `${SCOPED_PREFIX_POD}${podId}`)
@@ -324,17 +345,17 @@ export class DustFileSystem {
           );
         }
 
-        if (!space.canRead(auth)) {
-          return new Err(
-            new DustFileSystemError(
-              "unauthorized",
-              "You do not have read access to this space."
-            )
-          );
-        }
-
         mounts.push(createPodMount(auth, space));
       }
+    }
+
+    const readableResult = assertAllMountsReadable(mounts);
+    if (readableResult.isErr()) {
+      return readableResult;
+    }
+
+    if (podIdsToFetch.length === 0) {
+      return fsResult;
     }
 
     const owner = auth.getNonNullableWorkspace();
