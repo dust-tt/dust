@@ -6,6 +6,7 @@ import type {
 import {
   Avatar,
   Button,
+  ChevronDownIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -30,14 +31,19 @@ function SkillDropdownIcon({ icon }: SkillDropdownIconProps) {
 interface UsedByButtonIconProps {
   agentCount: number;
   skillCount: number;
+  showChevron: boolean;
 }
 
-function UsedByButtonIcon({ agentCount, skillCount }: UsedByButtonIconProps) {
+function UsedByButtonIcon({
+  agentCount,
+  skillCount,
+  showChevron,
+}: UsedByButtonIconProps) {
   const hasAgents = agentCount > 0;
   const hasSkills = skillCount > 0;
 
   return (
-    <span className="inline-flex h-5 items-center justify-center gap-2 leading-none">
+    <span className="inline-flex h-5 items-center justify-center gap-1.5 leading-none">
       {(hasAgents || !hasSkills) && (
         <span className="inline-flex h-5 items-center gap-1">
           <RobotIcon className="h-4 w-4 shrink-0" />
@@ -57,6 +63,11 @@ function UsedByButtonIcon({ agentCount, skillCount }: UsedByButtonIconProps) {
           </span>
         </span>
       )}
+      <ChevronDownIcon
+        className={
+          showChevron ? "h-4 w-4 shrink-0" : "invisible h-4 w-4 shrink-0"
+        }
+      />
     </span>
   );
 }
@@ -91,11 +102,13 @@ export const UsedByButton = ({
   if (totalCount === 0) {
     return (
       <Button
-        icon={<UsedByButtonIcon agentCount={0} skillCount={0} />}
+        icon={
+          <UsedByButtonIcon agentCount={0} skillCount={0} showChevron={false} />
+        }
         variant="ghost-secondary"
         isSelect={false}
         size="xs"
-        className="px-1"
+        className="px-0"
         aria-label="Used by 0 agents"
         disabled
       />
@@ -145,12 +158,16 @@ export const UsedByButton = ({
       <DropdownMenuTrigger asChild>
         <Button
           icon={
-            <UsedByButtonIcon agentCount={agentCount} skillCount={skillCount} />
+            <UsedByButtonIcon
+              agentCount={agentCount}
+              skillCount={skillCount}
+              showChevron
+            />
           }
           variant="ghost-secondary"
           isSelect={false}
           size="xs"
-          className="px-1"
+          className="px-0"
           aria-label={`Used by ${usageLabel}`}
           onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
             e.stopPropagation();
