@@ -80,7 +80,8 @@ app.patch(
         auth,
         {
           defaultDiscountPercent: 0,
-          paygCapCredits: null,
+          paygEnabled: false,
+          usageCapCredits: null,
           disableCreditCapWarning: false,
           ...patch,
         }

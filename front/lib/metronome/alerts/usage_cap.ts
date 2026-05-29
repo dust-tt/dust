@@ -7,33 +7,37 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
-function paygAlertUniquenessKey(workspaceId: string): string {
+// Keep the literal `payg-cap-` prefix: this value is persisted on Metronome's
+// side as the alert uniqueness key. Changing it would orphan any existing
+// alert (the new key wouldn't match, so `clearMetronomeUsageCapAlert` would
+// silently no-op for workspaces that have a pre-rename alert).
+function usageCapAlertUniquenessKey(workspaceId: string): string {
   return `payg-cap-${workspaceId}`;
 }
 
 /**
  * Idempotently ensure a Metronome `spend_threshold_reached` alert exists on
- * the customer matching the workspace's AWU PAYG cap. If an alert with a
+ * the customer matching the workspace's AWU usage cap. If an alert with a
  * different threshold already exists, it's archived (with key release) and
  * recreated. The cap is expressed in AWU credits (the same unit Metronome
  * tracks AWU consumption in).
  */
-export async function upsertMetronomePaygCapAlert({
+export async function upsertMetronomeUsageCapAlert({
   metronomeCustomerId,
-  paygCapCredits,
+  usageCapCredits,
   workspaceId,
 }: {
   metronomeCustomerId: string;
-  paygCapCredits: number;
+  usageCapCredits: number;
   workspaceId: string;
 }): Promise<Result<{ alertId: string }, Error>> {
   const upsertResult = await upsertMetronomeAlert({
     alert_type: "spend_threshold_reached",
-    name: `PAYG cap workspace ${workspaceId} (${paygCapCredits} AWU)`,
-    threshold: paygCapCredits,
+    name: `Usage cap workspace ${workspaceId} (${usageCapCredits} AWU)`,
+    threshold: usageCapCredits,
     credit_type_id: getCreditTypeAwuId(),
     customer_id: metronomeCustomerId,
-    uniqueness_key: paygAlertUniquenessKey(workspaceId),
+    uniqueness_key: usageCapAlertUniquenessKey(workspaceId),
   });
   if (upsertResult.isErr()) {
     return new Err(upsertResult.error);
@@ -44,18 +48,18 @@ export async function upsertMetronomePaygCapAlert({
       workspaceId,
       metronomeCustomerId,
       alertId: upsertResult.value.alertId,
-      paygCapCredits,
+      usageCapCredits,
     },
-    "[Metronome PAYG] Synced PAYG cap alert"
+    "[Metronome UsageCap] Synced usage cap alert"
   );
   return new Ok({ alertId: upsertResult.value.alertId });
 }
 
 /**
- * Archive the workspace's PAYG cap alert, if any. Idempotent — no-op when
+ * Archive the workspace's usage cap alert, if any. Idempotent — no-op when
  * no matching alert exists.
  */
-export async function clearMetronomePaygCapAlert({
+export async function clearMetronomeUsageCapAlert({
   metronomeCustomerId,
   workspaceId,
 }: {
@@ -64,7 +68,7 @@ export async function clearMetronomePaygCapAlert({
 }): Promise<Result<void, Error>> {
   const result = await clearMetronomeAlert({
     metronomeCustomerId,
-    uniquenessKey: paygAlertUniquenessKey(workspaceId),
+    uniquenessKey: usageCapAlertUniquenessKey(workspaceId),
   });
   if (result.isErr()) {
     return new Err(result.error);
@@ -77,7 +81,7 @@ export async function clearMetronomePaygCapAlert({
         metronomeCustomerId,
         alertId: result.value.alertId,
       },
-      "[Metronome PAYG] Cleared PAYG cap alert"
+      "[Metronome UsageCap] Cleared usage cap alert"
     );
   }
   return new Ok(undefined);

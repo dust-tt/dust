@@ -40,34 +40,19 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
-// PAYG cap is denominated in AWU credits and stored verbatim on
-// `credit_usage_configuration.paygCapCredits` — no fiat conversion.
-// Keep this in sync with `MAX_PAYG_CAP_CREDITS` in
-// `front/lib/api/poke/switch_contract.ts`.
-const MAX_PAYG_CAP_CREDITS = 2_000_000;
-
-const SwitchContractFormSchema = z
-  .object({
-    metronomePackageId: z.string().min(1, "Required"),
-    planCode: z.string().min(1, "Required"),
-    startingAt: z.string().optional(),
-    startImmediately: z.boolean().default(false),
-    stripeCustomerId: z.string(),
-    paygEnabled: z.boolean().default(false),
-    paygCapCredits: z
-      .number()
-      .int("PAYG cap must be an integer number of credits")
-      .min(1, "PAYG cap must be at least 1 credit")
-      .max(
-        MAX_PAYG_CAP_CREDITS,
-        `PAYG cap cannot exceed ${MAX_PAYG_CAP_CREDITS.toLocaleString()} credits`
-      )
-      .optional(),
-  })
-  .refine((data) => !data.paygEnabled || data.paygCapCredits !== undefined, {
-    message: "PAYG cap is required when Pay-as-you-go is enabled.",
-    path: ["paygCapCredits"],
-  });
+const SwitchContractFormSchema = z.object({
+  metronomePackageId: z.string().min(1, "Required"),
+  planCode: z.string().min(1, "Required"),
+  startingAt: z.string().optional(),
+  startImmediately: z.boolean().default(false),
+  stripeCustomerId: z.string(),
+  paygEnabled: z.boolean().default(false),
+  usageCapCredits: z
+    .number()
+    .int("Usage cap must be an integer number of credits")
+    .min(1, "Usage cap must be at least 1 credit")
+    .optional(),
+});
 type SwitchContractFormValues = z.infer<typeof SwitchContractFormSchema>;
 
 function snapDatetimeLocalToHour(value: string): string {
@@ -127,9 +112,9 @@ export default function SwitchContractDialog({
     );
   }, []);
 
-  // No prefilled PAYG cap: the legacy `programmatic_usage_configuration.paygCapMicroUsd`
+  // No prefilled usage cap: the legacy `programmatic_usage_configuration.paygCapMicroUsd`
   // is for the programmatic-usage / Stripe flow and must not be read here.
-  // The credit-priced PAYG cap lives on `credit_usage_configuration.paygCapCredits`
+  // The credit-priced usage cap lives on `credit_usage_configuration.usageCapCredits`
   // and is managed via the "Manage Credit Usage Configuration" plugin — operators
   // enter the desired cap (in AWU credits) fresh when switching contracts.
   const form = useForm<SwitchContractFormValues>({
@@ -141,7 +126,7 @@ export default function SwitchContractDialog({
       startImmediately: false,
       stripeCustomerId: stripeCustomerId ?? "",
       paygEnabled: false,
-      paygCapCredits: undefined,
+      usageCapCredits: undefined,
     },
   });
 
@@ -240,7 +225,7 @@ export default function SwitchContractDialog({
     }
     if (selectedTier && !isPaygEligibleTier(selectedTier)) {
       form.setValue("paygEnabled", false);
-      form.setValue("paygCapCredits", undefined);
+      form.setValue("usageCapCredits", undefined);
     }
   }, [selectedTier, selectedName, form, minStartingAtLocal]);
 
@@ -277,8 +262,8 @@ export default function SwitchContractDialog({
       if (trimmedStripe) {
         cleaned.stripeCustomerId = trimmedStripe;
       }
-      if (values.paygEnabled && values.paygCapCredits !== undefined) {
-        cleaned.paygCapCredits = values.paygCapCredits;
+      if (values.usageCapCredits !== undefined) {
+        cleaned.usageCapCredits = values.usageCapCredits;
       }
       if (
         selectedTier === "enterprise" &&
@@ -440,8 +425,8 @@ export default function SwitchContractDialog({
                   </div>
                 )}
                 {paygEligible && (
-                  <div className="border-t pt-4">
-                    <div className="mb-4 flex items-center gap-2">
+                  <div className="space-y-4 border-t pt-4">
+                    <div className="flex items-center gap-2">
                       <SliderToggle
                         selected={paygEnabled}
                         onClick={() =>
@@ -450,17 +435,13 @@ export default function SwitchContractDialog({
                       />
                       <Label className="text-sm">Pay-as-you-go</Label>
                     </div>
-                    {paygEnabled && (
-                      <div className="ml-6">
-                        <InputField
-                          control={form.control}
-                          name="paygCapCredits"
-                          title="PAYG Spending Cap (AWU credits)"
-                          type="number"
-                          placeholder="e.g., 100000"
-                        />
-                      </div>
-                    )}
+                    <InputField
+                      control={form.control}
+                      name="usageCapCredits"
+                      title="Usage Cap (AWU credits, optional)"
+                      type="number"
+                      placeholder="e.g., 100000 — leave empty for no alert"
+                    />
                   </div>
                 )}
                 <DialogFooter>

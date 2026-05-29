@@ -105,7 +105,8 @@ export class CreditUsageConfigurationResource extends BaseResource<CreditUsageCo
     auth: Authenticator,
     blob: Partial<{
       defaultDiscountPercent: number;
-      paygCapCredits: number | null;
+      paygEnabled: boolean;
+      usageCapCredits: number | null;
       disableCreditCapWarning: boolean;
     }>,
     { transaction }: { transaction?: Transaction } = {}
@@ -149,7 +150,8 @@ export class CreditUsageConfigurationResource extends BaseResource<CreditUsageCo
       sId: this.sId,
       createdAt: this.createdAt.getTime(),
       defaultDiscountPercent: this.defaultDiscountPercent,
-      paygCapCredits: this.paygCapCredits,
+      paygEnabled: this.paygEnabled,
+      usageCapCredits: this.usageCapCredits,
       disableCreditCapWarning: this.disableCreditCapWarning,
     };
   }
@@ -159,7 +161,8 @@ export class CreditUsageConfigurationResource extends BaseResource<CreditUsageCo
       sId: this.sId,
       workspaceId: this.workspaceId,
       defaultDiscountPercent: this.defaultDiscountPercent,
-      paygCapCredits: this.paygCapCredits,
+      paygEnabled: String(this.paygEnabled),
+      usageCapCredits: this.usageCapCredits,
       disableCreditCapWarning: String(this.disableCreditCapWarning),
     };
   }

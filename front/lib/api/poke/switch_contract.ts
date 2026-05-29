@@ -41,40 +41,24 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { z } from "zod";
 
-// PAYG cap for credit-priced contracts is denominated in AWU credits, written
-// to `credit_usage_configuration.paygCapCredits` verbatim. We deliberately do
-// NOT accept dollars/euros here and do NOT convert from any fiat unit —
-// `programmatic_usage_configuration.paygCapMicroUsd` (micro_usd) is a legacy
-// concern of the programmatic-usage flow and must stay out of this path.
-export const MAX_PAYG_CAP_CREDITS = 2_000_000;
-
-export const SwitchContractBodySchema = z
-  .object({
-    planCode: z.string().min(1),
-    metronomePackageId: z.string().min(1),
-    // ISO timestamp. Required and validated to be ≥1h in the future when the
-    // selected package is enterprise-tier; forbidden otherwise (Pro/Business
-    // swap at the current hour).
-    startingAt: z.string().optional(),
-    // Optional: required for paid tiers (pro/business/enterprise), omitted
-    // for free-tier switches where Metronome contracts have no Stripe link.
-    stripeCustomerId: z.string().min(1).optional(),
-    paygEnabled: z.boolean().default(false),
-    // AWU credits — written directly to `credit_usage_configuration.paygCapCredits`.
-    paygCapCredits: z
-      .number()
-      .int("PAYG cap must be an integer number of credits")
-      .min(1, "PAYG cap must be at least 1 credit")
-      .max(
-        MAX_PAYG_CAP_CREDITS,
-        `PAYG cap cannot exceed ${MAX_PAYG_CAP_CREDITS.toLocaleString()} credits`
-      )
-      .optional(),
-  })
-  .refine((data) => !data.paygEnabled || data.paygCapCredits !== undefined, {
-    message: "PAYG cap is required when Pay-as-you-go is enabled.",
-    path: ["paygCapCredits"],
-  });
+export const SwitchContractBodySchema = z.object({
+  planCode: z.string().min(1),
+  metronomePackageId: z.string().min(1),
+  // ISO timestamp. Required and validated to be ≥1h in the future when the
+  // selected package is enterprise-tier; forbidden otherwise (Pro/Business
+  // swap at the current hour).
+  startingAt: z.string().optional(),
+  // Optional: required for paid tiers (pro/business/enterprise), omitted
+  // for free-tier switches where Metronome contracts have no Stripe link.
+  stripeCustomerId: z.string().min(1).optional(),
+  paygEnabled: z.boolean().default(false),
+  // AWU credits — written directly to `credit_usage_configuration.usageCapCredits`.
+  usageCapCredits: z
+    .number()
+    .int("Usage cap must be an integer number of credits")
+    .min(1, "Usage cap must be at least 1 credit")
+    .optional(),
+});
 
 export type SwitchContractBody = z.infer<typeof SwitchContractBodySchema>;
 
@@ -403,16 +387,15 @@ export async function switchContract({
     }
   }
 
-  // The operator supplies the PAYG cap in AWU credits directly — no fiat
+  // The operator supplies the AWU usage cap in credits directly — no fiat
   // conversion. The value is written verbatim to
-  // `credit_usage_configuration.paygCapCredits` (see `MAX_PAYG_CAP_CREDITS`).
-  const paygCapCredits =
-    body.paygEnabled && body.paygCapCredits !== undefined
-      ? body.paygCapCredits
-      : null;
+  // `credit_usage_configuration.usageCapCredits` (see `MAX_USAGE_CAP_CREDITS`).
+  // `paygEnabled` and `usageCapCredits` are stored independently.
+  const usageCapCredits = body.usageCapCredits ?? null;
   if (creditConfig) {
     const updateResult = await creditConfig.updateConfiguration(auth, {
-      paygCapCredits,
+      paygEnabled: body.paygEnabled,
+      usageCapCredits,
     });
     if (updateResult.isErr()) {
       return new Err(
@@ -422,10 +405,11 @@ export async function switchContract({
         )
       );
     }
-  } else if (paygCapCredits !== null) {
+  } else if (body.paygEnabled || usageCapCredits !== null) {
     const createResult = await CreditUsageConfigurationResource.makeNew(auth, {
       defaultDiscountPercent: 0,
-      paygCapCredits,
+      paygEnabled: body.paygEnabled,
+      usageCapCredits,
       disableCreditCapWarning: false,
     });
     if (createResult.isErr()) {

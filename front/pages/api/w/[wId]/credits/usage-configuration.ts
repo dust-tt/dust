@@ -131,7 +131,8 @@ async function handlePatch(
   } else {
     const createResult = await CreditUsageConfigurationResource.makeNew(auth, {
       defaultDiscountPercent: 0,
-      paygCapCredits: null,
+      paygEnabled: false,
+      usageCapCredits: null,
       disableCreditCapWarning: false,
       ...patch,
     });
