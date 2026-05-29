@@ -38,6 +38,7 @@ import {
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
+import { AnimatePresence, motion } from "framer-motion";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -49,6 +50,7 @@ interface FileExplorerProps {
   hideTitleBorder?: boolean;
   files: FileSystemEntry[];
   getFileUrl: (path: string) => string;
+  rootTitle?: React.ReactNode;
   toolbarExtraActions?: React.ReactNode;
   isLoading: boolean;
   navigationResetKey?: number;
@@ -74,6 +76,7 @@ export function FileExplorer({
   emptyState,
   files,
   getFileUrl,
+  rootTitle,
   toolbarExtraActions,
   hideTitleBorder = false,
   isLoading,
@@ -293,14 +296,40 @@ export function FileExplorer({
                 contentClassName
               )}
             >
-              <FileExplorerBreadcrumb
-                currentFolderPath={currentFolderPath}
-                onGoUp={handleGoUp}
-                onNavigate={handleBreadcrumbNavigate}
-                onMoveFileDrop={
-                  fileDragEnabled ? handleMoveFileDrop : undefined
-                }
-              />
+              <div className="relative flex h-full flex-1 min-w-0 items-center">
+                <AnimatePresence initial={false}>
+                  {currentFolderPath === "" && rootTitle !== undefined ? (
+                    <motion.div
+                      key="title"
+                      className="absolute inset-0 flex items-center"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.15 }}
+                    >
+                      {rootTitle}
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="breadcrumb"
+                      className="absolute inset-0 flex items-center"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.15 }}
+                    >
+                      <FileExplorerBreadcrumb
+                        currentFolderPath={currentFolderPath}
+                        onGoUp={handleGoUp}
+                        onNavigate={handleBreadcrumbNavigate}
+                        onMoveFileDrop={
+                          fileDragEnabled ? handleMoveFileDrop : undefined
+                        }
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
               <Button
                 variant="ghost"
                 size="sm"
@@ -325,7 +354,7 @@ export function FileExplorer({
               onMoveFileDrop={fileDragEnabled ? handleMoveFileDrop : undefined}
             />
           )}
-          <div className={inPanel ? "px-4" : undefined}>
+          <div className="px-4">
             <FileExplorerToolbar
               searchQuery={searchQuery}
               onSearchQueryChange={setSearchQuery}
@@ -337,7 +366,7 @@ export function FileExplorer({
             />
           </div>
           {Object.keys(filterCounts).length > 1 && (
-            <div className={inPanel ? "px-4" : undefined}>
+            <div className="px-4">
               <FileExplorerFilters
                 active={activeFilter}
                 onActiveChange={setActiveFilter}
