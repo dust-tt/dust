@@ -1,4 +1,3 @@
-import { getFeatureFlags } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { FileType } from "@app/types/files";
@@ -32,19 +31,6 @@ app.patch(
         status_code: 404,
         api_error: { type: "file_not_found", message: "File not found." },
       });
-    }
-
-    if (file.useCase === "project_context") {
-      const featureFlags = await getFeatureFlags(auth);
-      if (!featureFlags.includes("projects")) {
-        return apiError(ctx, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "Feature not supported",
-          },
-        });
-      }
     }
 
     // Plan-mode files are agent-owned; users cannot rename them.

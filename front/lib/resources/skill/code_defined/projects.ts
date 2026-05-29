@@ -2,7 +2,6 @@ import { SEARCH_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/consta
 import { FILES_SERVER_NAME } from "@app/lib/api/actions/servers/files/metadata";
 import { POD_MANAGER_SERVER_NAME } from "@app/lib/api/actions/servers/pod_manager/metadata";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import {
@@ -60,11 +59,7 @@ When you need to find information, use this order (skip steps if the relevant to
   mcpServers: [{ name: "pod_manager" }, { name: "pod_tasks" }],
   version: 3,
   icon: "ActionFolderIcon",
-  isRestricted: async (auth: Authenticator) => {
-    const flags = await getFeatureFlags(auth);
-
-    return !flags.includes("projects");
-  },
+  isRestricted: undefined,
   // Note: we auto enabled in listForAgentLoop for project conversations.
 } as const satisfies GlobalSkillDefinition;
 

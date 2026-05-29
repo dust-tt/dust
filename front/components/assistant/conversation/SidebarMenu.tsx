@@ -95,7 +95,6 @@ import {
   PencilSquareIcon,
   PlusIcon,
   RobotIcon,
-  SearchInput,
   Spinner,
   StarIcon,
   TrashIcon,
@@ -423,7 +422,6 @@ export function AgentSidebarMenu({
   const noHealthyProviders = !hasHealthyProviders(providersHealth);
 
   const agentsSearchInputRef = useRef<HTMLInputElement>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
   const [searchText, setSearchText] = useState("");
   const { agentConfigurations } = useUnifiedAgentConfigurations({
     workspaceId: owner.sId,
@@ -453,23 +451,18 @@ export function AgentSidebarMenu({
     isLoadingMore,
   } = useConversations({ workspaceId: owner.sId });
 
-  const hasPodConversations = hasFeature("projects");
-
   const {
     summary,
     isLoading: isSummaryLoading,
     mutate: mutatePodConversationSummary,
   } = usePodConversationsSummary({
     workspaceId: owner.sId,
-    options: { disabled: !hasPodConversations },
   });
 
   useEffect(() => {
     const handleConversationsUpdated = () => {
       void mutateConversations();
-      if (hasPodConversations) {
-        void mutatePodConversationSummary();
-      }
+      void mutatePodConversationSummary();
     };
     window.addEventListener(
       CONVERSATIONS_UPDATED_EVENT,
@@ -481,7 +474,7 @@ export function AgentSidebarMenu({
         handleConversationsUpdated
       );
     };
-  }, [hasPodConversations, mutateConversations, mutatePodConversationSummary]);
+  }, [mutateConversations, mutatePodConversationSummary]);
 
   const [isMultiSelect, setIsMultiSelect] = useState(false);
   const [selectedConversations, setSelectedConversations] = useState<
@@ -518,7 +511,7 @@ export function AgentSidebarMenu({
   } = useSearchPods({
     workspaceId: owner.sId,
     query: titleFilter,
-    enabled: hasPodConversations && titleFilter.trim().length > 0,
+    enabled: titleFilter.trim().length > 0,
   });
 
   const {
@@ -527,7 +520,7 @@ export function AgentSidebarMenu({
   } = useSearchPodConversations({
     workspaceId: owner.sId,
     query: titleFilter,
-    enabled: hasPodConversations && titleFilter.trim().length > 0,
+    enabled: titleFilter.trim().length > 0,
   });
 
   const {
@@ -539,7 +532,7 @@ export function AgentSidebarMenu({
   } = useSearchPrivateConversations({
     workspaceId: owner.sId,
     query: titleFilter,
-    enabled: hasPodConversations && titleFilter.trim().length > 0,
+    enabled: titleFilter.trim().length > 0,
   });
 
   const { isUploading: isUploadingYAML, triggerYAMLUpload } = useYAMLUpload({
@@ -668,14 +661,11 @@ export function AgentSidebarMenu({
     );
   }, [conversations, hideTriggeredConversations]);
 
-  const isSearchActive = hasPodConversations && titleFilter.trim().length > 0;
+  const isSearchActive = titleFilter.trim().length > 0;
 
-  const sidebarTitleFilter = hasPodConversations ? "" : titleFilter;
+  const sidebarTitleFilter = titleFilter;
 
   const starredSection = useMemo(() => {
-    if (!hasPodConversations) {
-      return null;
-    }
     const starredSummary = summary.filter(({ space }) => space.isStarred);
     const starredCountInSummary = starredSummary.length;
 
@@ -720,7 +710,6 @@ export function AgentSidebarMenu({
       </NavigationList>
     );
   }, [
-    hasPodConversations,
     summary,
     owner,
     sidebarTitleFilter,
@@ -731,9 +720,6 @@ export function AgentSidebarMenu({
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const podsSection = useMemo(() => {
-    if (!hasPodConversations) {
-      return null;
-    }
     const nonStarredSummary = summary.filter((pod) => !pod.space.isStarred);
     const podCountInSummary = nonStarredSummary.length;
     const showCount = isPodsSectionCollapsed && podCountInSummary > 0;
@@ -801,7 +787,6 @@ export function AgentSidebarMenu({
       </NavigationList>
     );
   }, [
-    hasPodConversations,
     owner,
     summary,
     setIsCreatePodModalOpen,
@@ -900,24 +885,12 @@ export function AgentSidebarMenu({
               </div>
             ) : (
               <div className="z-50 flex justify-end gap-2 p-2">
-                {hasPodConversations ? (
-                  <div className="flex-1">
-                    <SidebarSearch
-                      titleFilter={titleFilter}
-                      onTitleFilterChange={setTitleFilter}
-                    />
-                  </div>
-                ) : (
-                  <div className="flex-1">
-                    <SearchInput
-                      ref={searchInputRef}
-                      name="search"
-                      placeholder="Search"
-                      value={titleFilter}
-                      onChange={setTitleFilter}
-                    />
-                  </div>
-                )}
+                <div className="flex-1">
+                  <SidebarSearch
+                    titleFilter={titleFilter}
+                    onTitleFilterChange={setTitleFilter}
+                  />
+                </div>
                 <div className="flex gap-2">
                   <Button
                     label="New"

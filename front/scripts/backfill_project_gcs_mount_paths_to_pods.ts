@@ -1,5 +1,4 @@
 import { toPodMountFilePath } from "@app/lib/api/files/mount_path";
-import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import assert from "@app/lib/utils/assert";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -64,19 +63,6 @@ makeScript(
 
     await runOnAllWorkspaces(
       async (workspace) => {
-        const auth = await Authenticator.internalBuilderForWorkspace(
-          workspace.sId
-        );
-
-        const hasProjectEnabled = await hasFeatureFlag(auth, "projects");
-        if (!hasProjectEnabled) {
-          logger.info(
-            { workspaceId: workspace.sId },
-            "[backfill_project_gcs_mount_paths_to_pods] Workspace does not have `projects` FF enabled, skipping"
-          );
-          return;
-        }
-
         let totalProcessed = 0;
         let totalCopied = 0;
         let totalWouldCopy = 0;

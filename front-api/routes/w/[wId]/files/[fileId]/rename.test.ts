@@ -1,4 +1,3 @@
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -140,8 +139,6 @@ describe("PATCH /api/w/:wId/files/:fileId/rename", () => {
         role: "user",
       });
 
-      await FeatureFlagFactory.basic(auth, "projects");
-
       const projectSpace = await SpaceFactory.project(workspace, user.id);
 
       const file = await FileFactory.create(auth, user, {
@@ -168,8 +165,6 @@ describe("PATCH /api/w/:wId/files/:fileId/rename", () => {
         method: "PATCH",
         role: "user",
       });
-
-      await FeatureFlagFactory.basic(auth, "projects");
 
       const space = await SpaceFactory.regular(workspace);
 

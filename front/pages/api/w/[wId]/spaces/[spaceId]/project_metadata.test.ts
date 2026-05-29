@@ -1,6 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -115,8 +114,6 @@ describe("PATCH /api/w/[wId]/spaces/[spaceId]/project_metadata", () => {
       role: "admin",
     });
 
-    await FeatureFlagFactory.basic(auth, "projects");
-
     const projectSpace = await SpaceFactory.project(workspace);
     await ProjectMetadataResource.makeNew(auth, projectSpace, {
       description: "Test description",
@@ -144,8 +141,6 @@ describe("PATCH /api/w/[wId]/spaces/[spaceId]/project_metadata", () => {
       role: "admin",
     });
 
-    await FeatureFlagFactory.basic(auth, "projects");
-
     const projectSpace = await SpaceFactory.project(workspace);
     await ProjectMetadataResource.makeNew(auth, projectSpace, {
       description: "Test",
@@ -170,8 +165,6 @@ describe("PATCH /api/w/[wId]/spaces/[spaceId]/project_metadata", () => {
       method: "PATCH",
       role: "admin",
     });
-
-    await FeatureFlagFactory.basic(auth, "projects");
 
     const projectSpace = await SpaceFactory.project(workspace);
     await ProjectMetadataResource.makeNew(auth, projectSpace, {

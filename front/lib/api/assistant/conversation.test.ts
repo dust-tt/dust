@@ -94,7 +94,6 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 // Mock rateLimiter from the utils module
 import * as rateLimiterModule from "@app/lib/utils/rate_limiter";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 
 const TEST_PROGRAMMATIC_CREDIT_AMOUNT_MICRO_USD = 100_000_000;
 const TEST_CREDIT_START_DELAY_MS = 1000;
@@ -2683,7 +2682,6 @@ describe("postUserMessage", () => {
     describe("with projects feature flag enabled regarding branches", () => {
       beforeEach(async () => {
         await setupProjectWithRestrictedAgent();
-        await FeatureFlagFactory.basic(auth, "projects");
       });
 
       it("should create a branch and put first message in branch when posting with restricted agent", async () => {
@@ -2838,7 +2836,6 @@ describe("postUserMessage", () => {
     describe("with empty conversation and projects feature flag enabled", () => {
       beforeEach(async () => {
         await setupProjectWithRestrictedAgent({ messagesCreatedAt: [] });
-        await FeatureFlagFactory.basic(auth, "projects");
       });
 
       it("should create a branch with an anchor message when first message mentions a restricted agent", async () => {

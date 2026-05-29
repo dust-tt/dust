@@ -1,5 +1,4 @@
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getSpaceIcon, getSpaceName } from "@app/lib/spaces";
 import { useSpaceProjectsLookup } from "@app/lib/swr/spaces";
 import type { PodType, SpaceType } from "@app/types/space";
@@ -63,8 +62,6 @@ export function SpaceSelectionSheet({
   setSelectedSpaces,
 }: SpaceSelectionSheetProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const { hasFeature } = useFeatureFlags();
-  const isProjectsEnabled = includeProjects && hasFeature("projects");
 
   const handleClose = () => {
     setSearchQuery("");
@@ -87,21 +84,16 @@ export function SpaceSelectionSheet({
     >
       <SheetContent>
         <SheetHeader>
-          <SheetTitle>
-            {isProjectsEnabled ? "Add Spaces and Pods" : "Add Spaces"}
-          </SheetTitle>
+          <SheetTitle>Add Spaces and Pods</SheetTitle>
           <SheetDescription>
-            {isProjectsEnabled
-              ? `Choose the spaces and Pods you want the ${entityName} to have access to.`
-              : `Choose the spaces you want the ${entityName} to have access to.`}
+            Choose the spaces and Pods you want the {entityName} to have access
+            to.
           </SheetDescription>
           <SearchInput
             name="space"
             onChange={(query) => setSearchQuery(query)}
             value={searchQuery}
-            placeholder={
-              isProjectsEnabled ? "Search spaces and Pods" : "Search spaces"
-            }
+            placeholder="Search spaces and Pods"
             className="mt-4"
           />
         </SheetHeader>
@@ -149,10 +141,6 @@ export function SpaceSelectionPageContent({
   const allSpaces = useMemo(() => {
     return [...spaces, ...missingSpaces];
   }, [spaces, missingSpaces]);
-
-  const { hasFeature } = useFeatureFlags();
-
-  const isProjectsEnabled = includeProjects && hasFeature("projects");
 
   const selectableSpaces = useMemo(() => {
     return allSpaces
@@ -288,70 +276,64 @@ export function SpaceSelectionPageContent({
               return rowContent;
             })}
           </ListGroup>
-          {isProjectsEnabled && (
-            <>
-              <ListItemSection size="sm">Pods</ListItemSection>
-              <ListGroup>
-                {projectsTableData.map((row) => {
-                  const ProjectIcon = getSpaceIcon(row.space);
-                  const rowContent = (
-                    <ListItem
+          <>
+            <ListItemSection size="sm">Pods</ListItemSection>
+            <ListGroup>
+              {projectsTableData.map((row) => {
+                const ProjectIcon = getSpaceIcon(row.space);
+                const rowContent = (
+                  <ListItem
+                    key={row.sId}
+                    itemsAlignment="center"
+                    onClick={row.isAlreadyRequested ? undefined : row.onToggle}
+                    className={cn(
+                      row.isSelected
+                        ? "bg-primary-50 dark:bg-primary-50-night"
+                        : "",
+                      row.isAlreadyRequested
+                        ? "cursor-not-allowed opacity-60"
+                        : "cursor-pointer"
+                    )}
+                  >
+                    <ProjectIcon className="w-5 h-5 min-w-5 min-h-5" />
+                    <div className="flex min-w-0 flex-1 flex-col items-start">
+                      <span className="heading-sm max-w-full truncate text-foreground dark:text-foreground-night">
+                        {row.name}
+                      </span>
+                      <span className="truncate max-w-full text-xs text-muted-foreground dark:text-muted-foreground-night">
+                        {row.description}
+                      </span>
+                    </div>
+                    <Checkbox
+                      checked={row.isSelected}
+                      onCheckedChange={row.onToggle}
+                      disabled={row.isAlreadyRequested}
+                      onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                    />
+                  </ListItem>
+                );
+
+                if (row.isAlreadyRequested) {
+                  return (
+                    <Tooltip
                       key={row.sId}
-                      itemsAlignment="center"
-                      onClick={
-                        row.isAlreadyRequested ? undefined : row.onToggle
-                      }
-                      className={cn(
-                        row.isSelected
-                          ? "bg-primary-50 dark:bg-primary-50-night"
-                          : "",
-                        row.isAlreadyRequested
-                          ? "cursor-not-allowed opacity-60"
-                          : "cursor-pointer"
-                      )}
-                    >
-                      <ProjectIcon className="w-5 h-5 min-w-5 min-h-5" />
-                      <div className="flex min-w-0 flex-1 flex-col items-start">
-                        <span className="heading-sm max-w-full truncate text-foreground dark:text-foreground-night">
-                          {row.name}
-                        </span>
-                        <span className="truncate max-w-full text-xs text-muted-foreground dark:text-muted-foreground-night">
-                          {row.description}
-                        </span>
-                      </div>
-                      <Checkbox
-                        checked={row.isSelected}
-                        onCheckedChange={row.onToggle}
-                        disabled={row.isAlreadyRequested}
-                        onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                      />
-                    </ListItem>
+                      label="Used by other resources"
+                      side="right"
+                      trigger={rowContent}
+                    />
                   );
+                }
 
-                  if (row.isAlreadyRequested) {
-                    return (
-                      <Tooltip
-                        key={row.sId}
-                        label="Used by other resources"
-                        side="right"
-                        trigger={rowContent}
-                      />
-                    );
-                  }
-
-                  return rowContent;
-                })}
-              </ListGroup>
-            </>
-          )}
+                return rowContent;
+              })}
+            </ListGroup>
+          </>
         </div>
       ) : (
         <div className="py-4 text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
           {searchQuery.length > 0
             ? "No results found for your search"
-            : isProjectsEnabled
-              ? "No spaces and Pods available"
-              : "No spaces available"}
+            : "No spaces and Pods available"}
         </div>
       )}
     </div>

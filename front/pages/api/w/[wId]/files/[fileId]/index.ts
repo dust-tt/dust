@@ -135,7 +135,6 @@ import {
 } from "@app/lib/api/files/upsert";
 import { addFileToProject } from "@app/lib/api/projects/context";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { FileVersion } from "@app/lib/resources/file_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -276,19 +275,6 @@ async function handler(
 
   let space: SpaceResource | null = null;
   if (file.useCaseMetadata?.spaceId) {
-    if (file.useCase === "project_context") {
-      const featureFlags = await getFeatureFlags(auth);
-      if (!featureFlags.includes("projects")) {
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "Feature not supported",
-          },
-        });
-      }
-    }
-
     space = await SpaceResource.fetchById(auth, file.useCaseMetadata.spaceId);
   }
   if (

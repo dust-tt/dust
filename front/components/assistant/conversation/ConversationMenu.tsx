@@ -164,7 +164,7 @@ export function ConversationMenu({
   openDetailsInNewTab,
 }: ConversationMenuProps) {
   const { user, providersHealth } = useAuth();
-  const { hasFeature, featureFlags } = useFeatureFlags();
+  const { featureFlags } = useFeatureFlags();
   const confirm = useContext(ConfirmContext);
 
   const clientType = useClientType();
@@ -239,7 +239,7 @@ export function ConversationMenu({
 
   const { summary } = usePodConversationsSummary({
     workspaceId: owner.sId,
-    options: { disabled: shouldWaitBeforeFetching || !hasFeature("projects") },
+    options: { disabled: shouldWaitBeforeFetching },
   });
 
   const filteredPods = summary
@@ -415,48 +415,46 @@ export function ConversationMenu({
             disabled={isBranching}
           />
           <DropdownMenuSeparator />
-          {hasFeature("projects") && (
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger
-                icon={ArrowRightIcon}
-                label={canMoveOutOfPod ? "Move to..." : "Move to Pod"}
-                disabled={canMoveOutOfPod ? false : !filteredPods.length}
-              />
-              <DropdownMenuPortal>
-                <DropdownMenuSubContent
-                  collisionPadding={16}
-                  className="max-w-60"
-                >
-                  {canMoveOutOfPod && (
-                    <>
-                      <DropdownMenuItem
-                        icon={ChatBubbleBottomCenterTextIcon}
-                        label="Personal conversations"
-                        onClick={async () =>
-                          moveConversationOutOfPod(conversation)
-                        }
-                      />
-                      <DropdownMenuSeparator />
-                      <DropdownMenuLabel label="Pods" />
-                    </>
-                  )}
-                  {filteredPods.map((pod) => (
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger
+              icon={ArrowRightIcon}
+              label={canMoveOutOfPod ? "Move to..." : "Move to Pod"}
+              disabled={canMoveOutOfPod ? false : !filteredPods.length}
+            />
+            <DropdownMenuPortal>
+              <DropdownMenuSubContent
+                collisionPadding={16}
+                className="max-w-60"
+              >
+                {canMoveOutOfPod && (
+                  <>
                     <DropdownMenuItem
-                      key={pod.sId}
-                      icon={getSpaceIcon(pod)}
-                      label={pod.name}
-                      truncateText
+                      icon={ChatBubbleBottomCenterTextIcon}
+                      label="Personal conversations"
                       onClick={async () =>
-                        conversation
-                          ? moveConversationToPod(conversation, pod)
-                          : Promise.resolve(false)
+                        moveConversationOutOfPod(conversation)
                       }
                     />
-                  ))}
-                </DropdownMenuSubContent>
-              </DropdownMenuPortal>
-            </DropdownMenuSub>
-          )}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel label="Pods" />
+                  </>
+                )}
+                {filteredPods.map((pod) => (
+                  <DropdownMenuItem
+                    key={pod.sId}
+                    icon={getSpaceIcon(pod)}
+                    label={pod.name}
+                    truncateText
+                    onClick={async () =>
+                      conversation
+                        ? moveConversationToPod(conversation, pod)
+                        : Promise.resolve(false)
+                    }
+                  />
+                ))}
+              </DropdownMenuSubContent>
+            </DropdownMenuPortal>
+          </DropdownMenuSub>
           <DropdownMenuSub>
             <DropdownMenuSubTrigger
               icon={ContactsUserIcon}
