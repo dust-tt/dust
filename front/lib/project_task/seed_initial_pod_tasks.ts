@@ -1,12 +1,12 @@
 import type { Authenticator } from "@app/lib/auth";
-import {
-  INITIAL_POD_TASKS,
-  PROJECT_MANAGER_AGENT_SID,
-} from "@app/lib/project_task/initial_project_tasks";
+import { INITIAL_POD_TASKS } from "@app/lib/project_task/initial_project_tasks";
 import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
-import type { PodTaskType } from "@app/types/project_task";
+import {
+  POD_MANAGER_AGENT_SID,
+  type PodTaskType,
+} from "@app/types/project_task";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
@@ -56,7 +56,7 @@ export async function seedInitialPodTasks(
         userId: assignee.id,
         createdByType: "agent",
         createdByUserId: null,
-        createdByAgentConfigurationId: PROJECT_MANAGER_AGENT_SID,
+        createdByAgentConfigurationId: POD_MANAGER_AGENT_SID,
         markedAsDoneByType: null,
         markedAsDoneByUserId: null,
         markedAsDoneByAgentConfigurationId: null,
