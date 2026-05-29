@@ -3,8 +3,10 @@ import {
   SkillFileAttachmentModel,
   SkillVersionModel,
 } from "@app/lib/models/skill";
+import { SkillReferenceModel } from "@app/lib/models/skill/skill_reference";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { serializeSkillTag } from "@app/lib/skills/format";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
@@ -16,7 +18,9 @@ import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory"
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import type { NextApiRequest, NextApiResponse } from "next";
 import type { RequestMethod } from "node-mocks-http";
+import { createMocks } from "node-mocks-http";
 import type { WhereOptions } from "sequelize";
 import { describe, expect, it } from "vitest";
 
@@ -125,6 +129,42 @@ async function setupTest(
     globalGroup,
     workspace,
   };
+}
+
+function makePatchSkillBody(
+  skill: SkillResource,
+  overrides: Partial<{
+    instructions: string;
+    instructionsHtml: string | null;
+  }> = {}
+) {
+  return {
+    name: skill.name,
+    agentFacingDescription: skill.agentFacingDescription,
+    userFacingDescription: skill.userFacingDescription,
+    instructions: skill.instructions,
+    icon: skill.icon,
+    tools: [],
+    attachedKnowledge: [],
+    instructionsHtml: skill.instructionsHtml,
+    ...overrides,
+  };
+}
+
+function createPatchSkillRequest({
+  body,
+  skillId,
+  workspaceId,
+}: {
+  body: ReturnType<typeof makePatchSkillBody>;
+  skillId: string;
+  workspaceId: string;
+}) {
+  return createMocks<NextApiRequest, NextApiResponse>({
+    method: "PATCH",
+    query: { wId: workspaceId, sId: skillId },
+    body,
+  });
 }
 
 describe("GET /api/w/[wId]/skills/[sId]", () => {
@@ -316,6 +356,109 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
     );
     expect(updatedSkill).not.toBeNull();
     expect(updatedSkill?.agentFacingDescription).toBe(newDescription);
+  });
+
+  it("syncs nested skill references when the feature is enabled", async () => {
+    const { req, res, skill, requestUserAuth, workspace } = await setupTest({
+      requestUserRole: "admin",
+      method: "PATCH",
+    });
+
+    const childSkill = await SkillFactory.create(requestUserAuth, {
+      name: "Referenced Skill",
+    });
+    const skillReferenceTag = serializeSkillTag({
+      id: childSkill.sId,
+      icon: null,
+      name: childSkill.name,
+    });
+    const instructionsWithReference = `Use ${skillReferenceTag} for deeper analysis.`;
+
+    req.body = makePatchSkillBody(skill, {
+      instructions: instructionsWithReference,
+    });
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(200);
+    await expect(
+      SkillReferenceModel.count({
+        where: {
+          workspaceId: workspace.id,
+          parentSkillId: skill.id,
+        },
+      })
+    ).resolves.toBe(0);
+
+    await FeatureFlagFactory.basic(requestUserAuth, "nested_skills");
+
+    const { req: enabledReq, res: enabledRes } = createPatchSkillRequest({
+      workspaceId: workspace.sId,
+      skillId: skill.sId,
+      body: makePatchSkillBody(skill, {
+        instructions: instructionsWithReference,
+      }),
+    });
+
+    await handler(enabledReq, enabledRes);
+    expect(enabledRes._getStatusCode()).toBe(200);
+    await expect(
+      SkillReferenceModel.count({
+        where: {
+          workspaceId: workspace.id,
+          parentSkillId: skill.id,
+          childSkillId: childSkill.id,
+        },
+      })
+    ).resolves.toBe(1);
+
+    const { req: removeReq, res: removeRes } = createPatchSkillRequest({
+      workspaceId: workspace.sId,
+      skillId: skill.sId,
+      body: makePatchSkillBody(skill, {
+        instructions: "No nested skill references here.",
+      }),
+    });
+
+    await handler(removeReq, removeRes);
+    expect(removeRes._getStatusCode()).toBe(200);
+    await expect(
+      SkillReferenceModel.count({
+        where: {
+          workspaceId: workspace.id,
+          parentSkillId: skill.id,
+        },
+      })
+    ).resolves.toBe(0);
+  });
+
+  it("returns 400 for out-of-workspace nested skill references", async () => {
+    const { req, res, skill, requestUserAuth, workspace } = await setupTest({
+      requestUserRole: "admin",
+      method: "PATCH",
+    });
+
+    await FeatureFlagFactory.basic(requestUserAuth, "nested_skills");
+    const outOfWorkspaceSkillId = SkillResource.modelIdToSId({
+      id: skill.id + 1,
+      workspaceId: workspace.id + 1,
+    });
+    const outOfWorkspaceSkillReferenceTag = serializeSkillTag({
+      id: outOfWorkspaceSkillId,
+      icon: null,
+      name: "Other Workspace Skill",
+    });
+
+    req.body = makePatchSkillBody(skill, {
+      instructions: `Use ${outOfWorkspaceSkillReferenceTag}.`,
+    });
+
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(400);
+    expect(res._getJSONData()).toEqual({
+      error: {
+        type: "invalid_request_error",
+        message: `Skill reference ID does not belong to this workspace: ${outOfWorkspaceSkillId}`,
+      },
+    });
   });
 
   it("should update requestedSpaceIds when adding a tool from a new space", async () => {

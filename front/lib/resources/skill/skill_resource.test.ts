@@ -6,6 +6,7 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import type { SkillAttachedKnowledge } from "@app/lib/resources/skill/skill_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
+import { serializeSkillTag } from "@app/lib/skills/format";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
@@ -639,6 +640,62 @@ describe("SkillResource", () => {
       // sharedSpace kept because skill2 still requires it.
       expect(spaceIds).toContain(sharedSpace.id);
       expect(spaceIds).toContain(skill1OnlySpace.id);
+    });
+
+    it("throws when syncing an invalid nested skill reference", async () => {
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Skill With Invalid Reference",
+      });
+      const invalidSkillReferenceTag = serializeSkillTag({
+        id: "not-a-skill-reference",
+        icon: null,
+        name: "Invalid Skill Reference",
+      });
+
+      await expect(
+        skill.updateSkill(testContext.authenticator, {
+          name: skill.name,
+          agentFacingDescription: skill.agentFacingDescription,
+          userFacingDescription: skill.userFacingDescription,
+          instructions: `Use ${invalidSkillReferenceTag}.`,
+          icon: skill.icon,
+          mcpServerViews: [],
+          attachedKnowledge: [],
+          requestedSpaceIds: [],
+          enableSkillReferences: true,
+        })
+      ).rejects.toThrow("Invalid skill reference ID: not-a-skill-reference");
+    });
+
+    it("throws when syncing an out-of-workspace nested skill reference", async () => {
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Skill With Out Of Workspace Reference",
+      });
+      const outOfWorkspaceSkillId = SkillResource.modelIdToSId({
+        id: skill.id + 1,
+        workspaceId: testContext.workspace.id + 1,
+      });
+      const outOfWorkspaceSkillReferenceTag = serializeSkillTag({
+        id: outOfWorkspaceSkillId,
+        icon: null,
+        name: "Out Of Workspace Skill Reference",
+      });
+
+      await expect(
+        skill.updateSkill(testContext.authenticator, {
+          name: skill.name,
+          agentFacingDescription: skill.agentFacingDescription,
+          userFacingDescription: skill.userFacingDescription,
+          instructions: `Use ${outOfWorkspaceSkillReferenceTag}.`,
+          icon: skill.icon,
+          mcpServerViews: [],
+          attachedKnowledge: [],
+          requestedSpaceIds: [],
+          enableSkillReferences: true,
+        })
+      ).rejects.toThrow(
+        `Skill reference ID does not belong to this workspace: ${outOfWorkspaceSkillId}`
+      );
     });
   });
 

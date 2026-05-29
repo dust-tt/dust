@@ -320,10 +320,29 @@ app.patch(
       ...additionalRequestedSpaceIds,
     ]);
 
+    const featureFlags = await getFeatureFlags(auth);
+    const enableSkillReferences = featureFlags.includes("nested_skills");
+    if (enableSkillReferences) {
+      const skillReferenceValidation =
+        SkillResource.getValidatedSkillReferenceModelIds(auth, {
+          instructions: body.instructions,
+          parentSkillId: skill.id,
+        });
+
+      if (skillReferenceValidation.isErr()) {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: skillReferenceValidation.error.message,
+          },
+        });
+      }
+    }
+
     // Validate file attachments if provided (gated behind sandbox_tools).
     let files: FileResource[] | undefined;
     if (fileAttachments) {
-      const featureFlags = await getFeatureFlags(auth);
       if (
         !featureFlags.includes("sandbox_tools") &&
         fileAttachments.length > 0
@@ -387,6 +406,7 @@ app.patch(
       name,
       reinforcement: body.reinforcement,
       requestedSpaceIds,
+      enableSkillReferences,
       userFacingDescription: body.userFacingDescription,
       ...(shouldActivate ? { status: "active" as const } : {}),
     });
