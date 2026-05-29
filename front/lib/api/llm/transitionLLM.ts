@@ -147,6 +147,7 @@ function toBaseMessages(
                     toolName: c.value.name,
                     arguments: c.value.arguments,
                   },
+                  signature: c.value.metadata?.thoughtSignature,
                 },
               ];
             default:
@@ -200,7 +201,12 @@ function convertAggregatedItem(
           name: item.content.name,
           arguments: item.content.arguments,
         },
-        metadata,
+        metadata: {
+          ...metadata,
+          ...(typeof item.metadata.content?.signature === "string"
+            ? { thoughtSignature: item.metadata.content.signature }
+            : {}),
+        },
       };
     default:
       assertNever(item);
@@ -321,7 +327,12 @@ async function* convertToOldEvents(
             name: event.content.name,
             arguments: event.content.arguments,
           },
-          metadata,
+          metadata: {
+            ...metadata,
+            ...(typeof event.metadata.content?.signature === "string"
+              ? { thoughtSignature: event.metadata.content.signature }
+              : {}),
+          },
         };
         break;
 

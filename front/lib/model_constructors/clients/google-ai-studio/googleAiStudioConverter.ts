@@ -217,6 +217,7 @@ export function WithGoogleAiStudioConverter<
           name: message.content.toolName,
           args: parsedArgs,
         },
+        thoughtSignature: message.signature,
       };
     }
 
@@ -358,7 +359,12 @@ export function WithGoogleAiStudioConverter<
           name: fnCall.name,
           arguments: fnCall.args ?? {},
         },
-        metadata: this.model,
+        metadata: {
+          ...this.model,
+          ...(part.thoughtSignature
+            ? { content: { signature: part.thoughtSignature } }
+            : {}),
+        },
       };
     }
 

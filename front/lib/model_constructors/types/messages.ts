@@ -46,6 +46,7 @@ export type BaseAssistantToolCallRequestMessage = {
     toolName: string;
     arguments: string;
   };
+  signature?: string;
 };
 
 export type BaseAssistantMessage =
