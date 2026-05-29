@@ -23,14 +23,19 @@ function SkillDropdownIcon({ icon }: { icon: string | null }) {
   return <SkillAvatar size="xs" />;
 }
 
-function UsedByButtonIcon() {
+function UsedByButtonIcon({ count }: { count: number }) {
   return (
-    <span className="inline-flex h-4 items-center justify-center gap-0.5 leading-none">
-      <RobotIcon className="h-3.5 w-3.5 shrink-0" />
-      <span className="inline-flex h-3.5 items-center text-xs leading-none">
-        /
+    <span className="inline-flex h-4 items-center justify-center gap-1 leading-none">
+      <span className="inline-flex h-4 items-center gap-0.5">
+        <RobotIcon className="h-3.5 w-3.5 shrink-0" />
+        <span className="inline-flex h-3.5 items-center text-xs leading-none">
+          /
+        </span>
+        <PuzzleIcon className="h-3.5 w-3.5 shrink-0" />
       </span>
-      <PuzzleIcon className="h-3.5 w-3.5 shrink-0" />
+      <span className="inline-flex h-4 items-center text-xs leading-none tabular-nums">
+        {count}
+      </span>
     </span>
   );
 }
@@ -52,11 +57,11 @@ export const UsedByButton = ({
   if (totalCount === 0) {
     return (
       <Button
-        icon={<UsedByButtonIcon />}
+        icon={<UsedByButtonIcon count={0} />}
         variant="ghost-secondary"
         isSelect={false}
         size="xs"
-        label="0"
+        aria-label="0 uses"
         disabled
       />
     );
@@ -106,11 +111,11 @@ export const UsedByButton = ({
     >
       <DropdownMenuTrigger asChild>
         <Button
-          icon={<UsedByButtonIcon />}
+          icon={<UsedByButtonIcon count={totalCount} />}
           variant="ghost-secondary"
           isSelect
           size="xs"
-          label={`${totalCount}`}
+          aria-label={`${totalCount} uses`}
           onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
             e.stopPropagation();
           }}

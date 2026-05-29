@@ -96,7 +96,7 @@ const usedByColumn = (
   header: "Used by",
   accessorFn: (row: RowData) => row.usage?.count ?? 0,
   cell: (info: CellContext<RowData, number>) => (
-    <DataTable.CellContent>
+    <DataTable.CellContent className="justify-center">
       <UsedByButton
         usage={info.row.original.usage}
         onItemClick={onAgentClick}
@@ -105,7 +105,7 @@ const usedByColumn = (
     </DataTable.CellContent>
   ),
   meta: {
-    className: "hidden @sm:w-24 @sm:table-cell",
+    className: "hidden text-center @sm:w-24 @sm:table-cell",
   },
 });
 
