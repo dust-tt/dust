@@ -1,5 +1,9 @@
 import { buildSkillInstructionsExtensions } from "@app/lib/editor/build_skill_instructions_extensions";
-import { preprocessMarkdownForEditor } from "@app/lib/editor/skill_instructions_preprocessing";
+import {
+  postProcessMarkdown,
+  preprocessMarkdownForEditor,
+} from "@app/lib/editor/skill_instructions_preprocessing";
+import { serializeToolTag } from "@app/lib/tools/format";
 import { Editor } from "@tiptap/react";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -43,5 +47,23 @@ describe("skill instructions preprocessing", () => {
     expect(editor.getMarkdown()).toContain(
       '<skill id="skill_123" name="Create memo" />'
     );
+  });
+
+  it("keeps escaped tool attributes when post-processing editor markdown", () => {
+    const toolTag = serializeToolTag({
+      icon: "GithubLogo",
+      id: "mcp_server_view_123",
+      name: 'GitHub & "Issues" <Prod>',
+    });
+
+    editor = new Editor({
+      extensions: buildSkillInstructionsExtensions(false),
+    });
+
+    editor.commands.setContent(preprocessMarkdownForEditor(`Use ${toolTag}.`), {
+      contentType: "markdown",
+    });
+
+    expect(postProcessMarkdown(editor.getMarkdown())).toContain(toolTag);
   });
 });
