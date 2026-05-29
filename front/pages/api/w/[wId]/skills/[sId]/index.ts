@@ -1,7 +1,10 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { replaceUnavailableSkillReferencesForFrontend } from "@app/lib/api/skills/skill_references";
+import {
+  replaceUnavailableSkillReferencesForFrontend,
+  restoreUnavailableSkillReferencesForPersistence,
+} from "@app/lib/api/skills/skill_references";
 import { resolveAdditionalRequestedSpaceModelIds } from "@app/lib/api/skills/space_requirements";
 import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { pruneOutdatedSkillEditSuggestions } from "@app/lib/reinforcement/skill_suggestion_pruning";
@@ -403,13 +406,35 @@ async function handler(
         );
       }
 
+      const restoredSkillReferences =
+        restoreUnavailableSkillReferencesForPersistence({
+          current: {
+            instructions: skill.instructions,
+            instructionsHtml: skill.instructionsHtml,
+          },
+          updated: {
+            instructions: body.instructions,
+            instructionsHtml: body.instructionsHtml,
+          },
+        });
+
+      if (restoredSkillReferences.isErr()) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: restoredSkillReferences.error.message,
+          },
+        });
+      }
+
       await skill.updateSkill(auth, {
         agentFacingDescription: body.agentFacingDescription,
         attachedKnowledge: attachedKnowledgeWithDataSourceViews,
         fileAttachments: files,
         icon: body.icon,
-        instructions: body.instructions,
-        instructionsHtml: body.instructionsHtml,
+        instructions: restoredSkillReferences.value.instructions,
+        instructionsHtml: restoredSkillReferences.value.instructionsHtml,
         isDefault: body.isDefault,
         mcpServerViews,
         name,
