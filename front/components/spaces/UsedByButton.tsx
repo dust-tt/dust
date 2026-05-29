@@ -6,6 +6,7 @@ import type {
 import {
   Avatar,
   Button,
+  ChevronDownIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -29,21 +30,31 @@ function SkillDropdownIcon({ icon }: SkillDropdownIconProps) {
 
 interface UsedByButtonIconProps {
   count: number;
+  showChevron: boolean;
 }
 
-function UsedByButtonIcon({ count }: UsedByButtonIconProps) {
+function UsedByButtonIcon({ count, showChevron }: UsedByButtonIconProps) {
   return (
-    <span className="inline-flex h-4 items-center justify-center gap-1 leading-none">
-      <span className="inline-flex h-4 items-center gap-0.5">
-        <RobotIcon className="h-3.5 w-3.5 shrink-0" />
-        <span className="inline-flex h-3.5 items-center text-xs leading-none">
-          /
+    <span className="relative inline-flex h-4 w-20 items-center justify-center leading-none">
+      <span className="inline-flex h-4 items-center justify-center gap-1 leading-none">
+        <span className="inline-flex h-4 items-center gap-0.5">
+          <RobotIcon className="h-3.5 w-3.5 shrink-0" />
+          <span className="inline-flex h-3.5 items-center text-xs leading-none">
+            /
+          </span>
+          <PuzzleIcon className="h-3.5 w-3.5 shrink-0" />
         </span>
-        <PuzzleIcon className="h-3.5 w-3.5 shrink-0" />
+        <span className="inline-flex h-4 items-center text-xs leading-none tabular-nums">
+          {count}
+        </span>
       </span>
-      <span className="inline-flex h-4 items-center text-xs leading-none tabular-nums">
-        {count}
-      </span>
+      <ChevronDownIcon
+        className={
+          showChevron
+            ? "absolute right-0 h-4 w-4 shrink-0"
+            : "invisible absolute right-0 h-4 w-4 shrink-0"
+        }
+      />
     </span>
   );
 }
@@ -67,10 +78,11 @@ export const UsedByButton = ({
   if (totalCount === 0) {
     return (
       <Button
-        icon={<UsedByButtonIcon count={0} />}
+        icon={<UsedByButtonIcon count={0} showChevron={false} />}
         variant="ghost-secondary"
         isSelect={false}
         size="xs"
+        className="px-1"
         aria-label="0 uses"
         disabled
       />
@@ -121,10 +133,11 @@ export const UsedByButton = ({
     >
       <DropdownMenuTrigger asChild>
         <Button
-          icon={<UsedByButtonIcon count={totalCount} />}
+          icon={<UsedByButtonIcon count={totalCount} showChevron />}
           variant="ghost-secondary"
-          isSelect
+          isSelect={false}
           size="xs"
+          className="px-1"
           aria-label={`${totalCount} uses`}
           onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
             e.stopPropagation();
