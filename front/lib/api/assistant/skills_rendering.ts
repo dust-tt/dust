@@ -11,10 +11,6 @@ export type EnabledSkill = SkillResource & {
   extendedSkill: SkillResource | null;
 };
 
-type SkillInstructionsSource = Pick<SkillResource, "name" | "instructions"> & {
-  extendedSkill: Pick<SkillResource, "instructions"> | null;
-};
-
 function renderSystemSkillMessage(text: string): UserMessageTypeModel {
   return {
     role: "user",
@@ -24,7 +20,9 @@ function renderSystemSkillMessage(text: string): UserMessageTypeModel {
 }
 
 export function getEnabledSkillInstructions(
-  skill: SkillInstructionsSource
+  skill: Pick<SkillResource, "name" | "instructions"> & {
+    extendedSkill: Pick<SkillResource, "instructions"> | null;
+  }
 ): string {
   const { name, instructions, extendedSkill } = skill;
   const modelInstructions = stripToolTagPresentationAttributes(instructions);
