@@ -10,7 +10,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -197,7 +196,6 @@ export const UsedByButton = ({
       >
         {filteredAgents.length > 0 ? (
           <>
-            {skills.length > 0 && <DropdownMenuLabel label="Agents" />}
             {filteredAgents.map((agent) => (
               <DropdownMenuItem
                 key={`assistant-picker-${agent.sId}`}
@@ -214,12 +212,8 @@ export const UsedByButton = ({
             ))}
           </>
         ) : null}
-        {filteredAgents.length > 0 && filteredSkills.length > 0 && (
-          <DropdownMenuSeparator />
-        )}
         {filteredSkills.length > 0 && (
           <>
-            {agents.length > 0 && <DropdownMenuLabel label="Skills" />}
             {filteredSkills.map((skill: UsedBySkillType) => (
               <DropdownMenuItem
                 key={`skill-picker-${skill.sId}`}
