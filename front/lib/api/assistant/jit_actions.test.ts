@@ -12,7 +12,6 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
@@ -206,7 +205,6 @@ describe("getJITServers", () => {
 
   describe("projects feature", () => {
     it("should not include legacy project_context_and_conversations JIT server (search is on pod_manager)", async () => {
-      await FeatureFlagFactory.basic(auth, "projects");
       await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
       await DataSourceViewFactory.fromConnector(
@@ -233,8 +231,6 @@ describe("getJITServers", () => {
     });
 
     it("should enable projects skill in listForAgentLoop when feature flag is enabled and conversation is in a project", async () => {
-      // Enable projects feature flag.
-      await FeatureFlagFactory.basic(auth, "projects");
       await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
       const conversationInProject = {
@@ -256,22 +252,7 @@ describe("getJITServers", () => {
       expect(viewNames).toContain("pod_manager");
     });
 
-    it("should not enable projects skill in listForAgentLoop when feature flag is disabled", async () => {
-      const { enabledSkills } = await SkillResource.listForAgentLoop(auth, {
-        agentConfiguration: agentConfig,
-        conversation: {
-          ...conversation,
-          spaceId: conversationsSpace.sId,
-        },
-      });
-
-      expect(enabledSkills.some((s) => s.sId === "projects")).toBe(false);
-    });
-
     it("should not enable projects skill in listForAgentLoop when conversation is not in a project", async () => {
-      // Enable projects feature flag.
-      await FeatureFlagFactory.basic(auth, "projects");
-
       const { enabledSkills } = await SkillResource.listForAgentLoop(auth, {
         agentConfiguration: agentConfig,
         conversation,

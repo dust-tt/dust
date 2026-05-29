@@ -1,4 +1,3 @@
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { Button, PlusIcon, XMarkIcon } from "@dust-tt/sparkle";
 import { AnimatePresence, motion } from "framer-motion";
@@ -182,9 +181,6 @@ export function StackedInAppBanners({
   owner: _owner,
   onCreatePod,
 }: StackedInAppBannersProps) {
-  const { hasFeature } = useFeatureFlags();
-  const isPodsEnabled = hasFeature("projects");
-
   const [showSteeringBanner, setShowSteeringBanner] = useState(
     () => localStorage.getItem(STEERING_BANNER_LOCAL_STORAGE_KEY) !== "true"
   );
@@ -199,14 +195,12 @@ export function StackedInAppBanners({
         showSteeringBanner={showSteeringBanner}
         onShowSteeringBanner={setShowSteeringBanner}
       />
-      {isPodsEnabled && (
-        <PodBanner
-          key="pod-banner"
-          showPodBanner={showPodBanner}
-          onShowPodBanner={setShowPodBanner}
-          onCreatePod={onCreatePod}
-        />
-      )}
+      <PodBanner
+        key="pod-banner"
+        showPodBanner={showPodBanner}
+        onShowPodBanner={setShowPodBanner}
+        onCreatePod={onCreatePod}
+      />
     </AnimatePresence>
   );
 }

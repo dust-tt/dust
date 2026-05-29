@@ -179,10 +179,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Discord bot integration for workspace-level Discord integration",
     stage: "dust_only",
   },
-  projects: {
-    description: "Enable the Projects feature",
-    stage: "on_demand",
-  },
   databricks_tool: {
     description: "Databricks MCP tool",
     stage: "on_demand",

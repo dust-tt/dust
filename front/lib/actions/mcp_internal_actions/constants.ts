@@ -1002,9 +1002,7 @@ export const INTERNAL_MCP_SERVERS = {
     availability: "auto_hidden_builder",
     allowMultipleInstances: false,
     isPreview: false,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("projects");
-    },
+    isRestricted: undefined,
     tools_arguments_requiring_approval: {
       create_conversation: ["dustPod"],
       add_message_to_conversation: ["dustPod"],
@@ -1018,9 +1016,7 @@ export const INTERNAL_MCP_SERVERS = {
     availability: "auto_hidden_builder",
     allowMultipleInstances: false,
     isPreview: false,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("projects");
-    },
+    isRestricted: undefined,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,

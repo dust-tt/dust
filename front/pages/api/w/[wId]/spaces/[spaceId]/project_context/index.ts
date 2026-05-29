@@ -7,7 +7,6 @@ import {
   listProjectContextAttachments,
 } from "@app/lib/api/projects/context";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -122,17 +121,6 @@ async function handler(
     }
 
     case "POST": {
-      const featureFlags = await getFeatureFlags(auth);
-      if (!featureFlags.includes("projects")) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Projects feature is not enabled for this workspace.",
-          },
-        });
-      }
-
       if (!space.isProject()) {
         return apiError(req, res, {
           status_code: 400,

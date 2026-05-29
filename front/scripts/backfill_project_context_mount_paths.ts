@@ -1,4 +1,4 @@
-import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -41,11 +41,6 @@ makeScript(
 
         const auth =
           await Authenticator.internalBuilderForWorkspace(workspaceId);
-
-        const hasProjectEnabled = await hasFeatureFlag(auth, "projects");
-        if (!hasProjectEnabled) {
-          throw new Error("Workspace does not have `projects` FF enabled.");
-        }
 
         logger.info(
           { workspaceId, execute },

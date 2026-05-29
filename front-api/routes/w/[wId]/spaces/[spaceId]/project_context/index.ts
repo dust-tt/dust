@@ -3,7 +3,6 @@ import {
   addContentNodeToProject,
   listProjectContextAttachments,
 } from "@app/lib/api/projects/context";
-import { getFeatureFlags } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { ContentNodeType } from "@app/types/core/content_node";
@@ -96,17 +95,6 @@ app.post(
   async (ctx): HandlerResult<PostProjectContextContentNodeResponseBody> => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");
-
-    const featureFlags = await getFeatureFlags(auth);
-    if (!featureFlags.includes("projects")) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Projects feature is not enabled for this workspace.",
-        },
-      });
-    }
 
     if (!space.isProject()) {
       return apiError(ctx, {

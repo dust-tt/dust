@@ -42,14 +42,6 @@ vi.mock("@app/lib/api/files/upsert", () => ({
   }),
 }));
 
-vi.mock("@app/lib/auth", async () => {
-  const actual: any = await vi.importActual("@app/lib/auth");
-  return {
-    ...actual,
-    getFeatureFlags: vi.fn(async () => ["projects"]),
-  };
-});
-
 function fileUrl(workspace: { sId: string }, fileId: string, query = "") {
   return `/api/w/${workspace.sId}/files/${fileId}${query}`;
 }

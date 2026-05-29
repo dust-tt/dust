@@ -1,5 +1,4 @@
 import { useOpenProjectsPolicy } from "@app/hooks/useOpenProjectsPolicy";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -31,13 +30,8 @@ const OPEN_PROJECTS_POLICIES = [
 ] as const;
 
 export function OpenProjectsPolicy({ owner }: { owner: WorkspaceType }) {
-  const { featureFlags } = useFeatureFlags();
   const { allowOpenProjects, isChanging, doUpdateOpenProjectsPolicy } =
     useOpenProjectsPolicy({ owner });
-
-  if (!featureFlags.includes("projects")) {
-    return null;
-  }
 
   const selectedPolicy = OPEN_PROJECTS_POLICIES.find(
     (policy) => policy.allowOpenProjects === allowOpenProjects

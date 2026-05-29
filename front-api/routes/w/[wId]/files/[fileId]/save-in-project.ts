@@ -1,5 +1,4 @@
 import { addFileToProject } from "@app/lib/api/projects/context";
-import { getFeatureFlags } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -28,17 +27,6 @@ app.post(
   async (ctx): HandlerResult<SaveInProjectResponseBody> => {
     const auth = ctx.get("auth");
     const fileId = ctx.req.param("fileId") ?? "";
-
-    const featureFlags = await getFeatureFlags(auth);
-    if (!featureFlags.includes("projects")) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Projects feature is not enabled for this workspace.",
-        },
-      });
-    }
 
     const file = await FileResource.fetchById(auth, fileId);
     if (!file) {
