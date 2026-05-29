@@ -331,7 +331,10 @@ const findFolderByPath = async (
     parentFolderId = folder.id;
   }
 
-  return { folderId: parentFolderId as string };
+  if (parentFolderId === null) {
+    return { error: new MCPError("No folder resolved from path") };
+  }
+  return { folderId: parentFolderId };
 };
 
 const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
