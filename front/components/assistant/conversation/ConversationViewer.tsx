@@ -23,6 +23,7 @@ import {
   convertLightMessageTypeToVirtuosoMessages,
   getPredicateForRankAndBranch,
   isAgentMessageWithStreaming,
+  isAtInitialStreamState,
   isCompactionMessage,
   isConversationForkNotice,
   isUserMessage,
@@ -60,7 +61,6 @@ import {
   type ConversationForkedChildType,
   type ConversationListItemType,
   isLightAgentMessageType,
-  isTerminalAgentMessageStatus,
   isUserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
@@ -732,21 +732,30 @@ export const ConversationViewer = ({
                 virtuosoMessageListRef.current.data.find(predicate);
 
               if (exists) {
-                // On replay (e.g. after navigating away and coming back), the
-                // existing message may already reflect the final state from
-                // the SWR snapshot. The replayed event always carries the
-                // initial "created" payload, so replacing would downgrade the
-                // status (re-activating shouldStream and the message-events
-                // stream) and wipe inlineActivitySteps. Skip the replace only
-                // when the existing message is the same logical message (same
-                // sId) and already terminal. A retry creates a new sId at the
-                // same rank/branch, so it must still go through the replace.
-                const isReplayOfTerminalMessage =
+                // Guard against conversation SSE replays overwriting a message
+                // that the message-level SSE has already partially or fully
+                // streamed.
+                //
+                // Two independent SSE streams feed each message:
+                //   1. Conversation stream — carries agent_message_new (structural events)
+                //   2. Message stream      — carries generation_tokens, tool_* (content events)
+                //
+                // When the conversation stream drops and reconnects, the server
+                // replays agent_message_new with the message's original "created"
+                // payload: null content, agentState = "thinking", empty steps.
+                // Replacing the Virtuoso entry with that stale payload would wipe
+                // whatever the message stream already delivered, so we skip the
+                // replace when the existing entry is the same logical message
+                // (same sId) and has already progressed past its initial state.
+                //
+                // Retries carry a new sId at the same rank/branch, so they
+                // always fall through to the replace path.
+                const shouldSkipReplace =
                   isAgentMessageWithStreaming(exists) &&
                   exists.sId === agentMessage.sId &&
-                  isTerminalAgentMessageStatus(exists.status);
+                  !isAtInitialStreamState(exists);
 
-                if (!isReplayOfTerminalMessage) {
+                if (!shouldSkipReplace) {
                   virtuosoMessageListRef.current.data.map((m) =>
                     predicate(m) ? agentMessage : m
                   );
