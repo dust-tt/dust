@@ -43,7 +43,7 @@ function UsedByButtonIcon({
   const hasSkills = skillCount > 0;
 
   return (
-    <span className="inline-flex h-5 items-center justify-center gap-1.5 leading-none">
+    <span className="mx-0.5 inline-flex h-5 items-center justify-center gap-1.5 leading-none">
       {(hasAgents || !hasSkills) && (
         <span className="inline-flex h-5 items-center gap-1">
           <RobotIcon className="h-4 w-4 shrink-0" />
@@ -105,7 +105,6 @@ export const UsedByButton = ({
         variant="ghost-secondary"
         isSelect={false}
         size="xs"
-        className="px-2"
         aria-label="Used by 0 agents"
         disabled
       />
@@ -164,7 +163,6 @@ export const UsedByButton = ({
           variant="ghost-secondary"
           isSelect={false}
           size="xs"
-          className="px-2"
           aria-label={`Used by ${usageLabel}`}
           onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
             e.stopPropagation();
