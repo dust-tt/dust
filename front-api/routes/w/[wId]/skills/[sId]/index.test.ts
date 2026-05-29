@@ -626,6 +626,79 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
     expect(data.skill.requestedSpaceIds).toContain(openSpace.sId);
   });
 
+  it("should preserve unavailable nested skill references on save", async () => {
+    const { workspace, skill, skillOwnerAuth, requestUser } = await setupTest({
+      requestUserRole: "builder",
+      skillOwnerRole: "admin",
+    });
+    if (!skill.editorGroup) {
+      throw new Error("Expected skill editor group");
+    }
+
+    const addEditorResult = await skill.editorGroup.dangerouslyAddMember(
+      skillOwnerAuth,
+      {
+        user: requestUser.toJSON(),
+      }
+    );
+    expect(addEditorResult.isOk()).toBe(true);
+
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    const inaccessibleSkill = await SkillFactory.create(skillOwnerAuth, {
+      name: "Restricted child skill",
+      requestedSpaceIds: [restrictedSpace.id],
+    });
+    const originalInstructionTag = `<skill id="${inaccessibleSkill.sId}" name="${inaccessibleSkill.name}" />`;
+    const originalHtmlTag = `<skill id="${inaccessibleSkill.sId}" name="${inaccessibleSkill.name}"></skill>`;
+
+    await skill.updateSkill(skillOwnerAuth, {
+      name: skill.name,
+      agentFacingDescription: skill.agentFacingDescription,
+      userFacingDescription: skill.userFacingDescription,
+      instructions: `Use ${originalInstructionTag}.`,
+      instructionsHtml: `<p>Use ${originalHtmlTag}.</p>`,
+      icon: skill.icon,
+      mcpServerViews: [],
+      attachedKnowledge: [],
+      requestedSpaceIds: skill.requestedSpaceIds,
+    });
+
+    const getResponse = await getSkill(workspace, skill.sId);
+
+    expect(getResponse.status).toBe(200);
+    const maskedSkill = (await getResponse.json()).skill;
+    expect(maskedSkill.instructions).toContain(
+      `<unavailable_skill id="${inaccessibleSkill.sId}" />`
+    );
+
+    const response = await patchSkill(workspace, skill.sId, {
+      name: skill.name,
+      agentFacingDescription: "Updated agent description",
+      userFacingDescription: skill.userFacingDescription,
+      instructions: maskedSkill.instructions,
+      icon: skill.icon,
+      tools: [],
+      attachedKnowledge: [],
+      instructionsHtml: maskedSkill.instructionsHtml,
+    });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.skill.instructions).toContain(
+      `<unavailable_skill id="${inaccessibleSkill.sId}" />`
+    );
+
+    const persistedSkill = await SkillResource.fetchById(
+      skillOwnerAuth,
+      skill.sId
+    );
+    expect(persistedSkill).not.toBeNull();
+    expect(persistedSkill?.instructions).toContain(originalInstructionTag);
+    expect(persistedSkill?.instructions).not.toContain("unavailable_skill");
+    expect(persistedSkill?.instructionsHtml).toContain(originalHtmlTag);
+    expect(persistedSkill?.instructionsHtml).not.toContain("unavailable_skill");
+  });
+
   it("should correctly reflect updated tools in the response", async () => {
     const { workspace, skill, requestUser, requestUserAuth } = await setupTest({
       requestUserRole: "admin",

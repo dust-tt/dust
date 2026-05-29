@@ -1,4 +1,7 @@
-import { replaceUnavailableSkillReferencesForFrontend } from "@app/lib/api/skills/skill_references";
+import {
+  replaceUnavailableSkillReferencesForFrontend,
+  restoreUnavailableSkillReferencesForPersistence,
+} from "@app/lib/api/skills/skill_references";
 import { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -70,5 +73,46 @@ describe("skill reference availability", () => {
     expect(renderedSkill.instructionsHtml).toContain(
       `<unavailable_skill id="${inaccessibleSkill.sId}"></unavailable_skill>`
     );
+  });
+
+  it("restores unavailable skill references before persistence", async () => {
+    const current = {
+      instructions:
+        'Use <skill id="skill_123" name="Restricted child skill" />.',
+      instructionsHtml:
+        '<p>Use <skill id="skill_123" name="Restricted child skill"></skill>.</p>',
+    };
+
+    const result = restoreUnavailableSkillReferencesForPersistence({
+      current,
+      updated: {
+        instructions: 'Use <unavailable_skill id="skill_123" />.',
+        instructionsHtml:
+          '<p>Use <unavailable_skill id="skill_123"></unavailable_skill>.</p>',
+      },
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toEqual(current);
+    }
+  });
+
+  it("rejects unavailable skill references without matching persisted references", () => {
+    const result = restoreUnavailableSkillReferencesForPersistence({
+      current: {
+        instructions: "No skill reference.",
+        instructionsHtml: null,
+      },
+      updated: {
+        instructions: 'Use <unavailable_skill id="skill_123" />.',
+        instructionsHtml: null,
+      },
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain("skill_123");
+    }
   });
 });
