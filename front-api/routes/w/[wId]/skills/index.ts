@@ -414,6 +414,7 @@ app.post(
           { error: iconResult.error },
           "Failed to generate icon suggestion for skill"
         );
+        icon = "ActionListIcon";
       }
     }
 

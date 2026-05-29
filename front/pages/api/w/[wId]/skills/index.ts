@@ -415,6 +415,7 @@ async function handler(
             { error: iconResult.error },
             "Failed to generate icon suggestion for skill"
           );
+          icon = "ActionListIcon";
         }
       }
 
