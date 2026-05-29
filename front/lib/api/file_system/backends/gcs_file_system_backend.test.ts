@@ -460,15 +460,24 @@ describe("GCSFileSystemBackend.delete", () => {
 
 describe("GCSFileSystemBackend.copy", () => {
   let copyFileMock: ReturnType<typeof vi.fn>;
+  let existsMock: ReturnType<typeof vi.fn>;
+  let getAllFilesByPrefixMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     copyFileMock = vi.fn().mockResolvedValue(undefined);
+    // By default, the source resolves as a regular file.
+    existsMock = vi.fn().mockResolvedValue([true]);
+    getAllFilesByPrefixMock = vi
+      .fn()
+      .mockResolvedValue({ files: [], pageFetchCount: 1 });
     vi.mocked(getPrivateUploadBucket).mockReturnValue({
       copyFile: copyFileMock,
+      file: vi.fn().mockReturnValue({ exists: existsMock }),
+      getAllFilesByPrefix: getAllFilesByPrefixMock,
     } as unknown as ReturnType<typeof getPrivateUploadBucket>);
   });
 
-  it("copies from conversation to conversation with correct GCS paths", async () => {
+  it("copies a file from conversation to conversation with correct GCS paths", async () => {
     const destConvId = "conv-dest";
     await makeBackend().copy({
       src: `conversation-${CONV_ID}/report.pdf`,
@@ -481,7 +490,7 @@ describe("GCSFileSystemBackend.copy", () => {
     );
   });
 
-  it("copies from conversation to pod with correct GCS paths", async () => {
+  it("copies a file from conversation to pod with correct GCS paths", async () => {
     await makeBackend().copy({
       src: `conversation-${CONV_ID}/report.pdf`,
       dest: `pod-${POD_ID}/report.pdf`,
@@ -491,6 +500,49 @@ describe("GCSFileSystemBackend.copy", () => {
       `w/${WORKSPACE_ID}/conversations/${CONV_ID}/files/report.pdf`,
       `w/${WORKSPACE_ID}/pods/${POD_ID}/files/report.pdf`
     );
+  });
+
+  it("copies all files under a directory prefix when source is a directory", async () => {
+    existsMock.mockResolvedValue([false]); // not a direct file
+    getAllFilesByPrefixMock.mockResolvedValue({
+      files: [
+        gcsFile({
+          name: `w/${WORKSPACE_ID}/pods/${POD_ID}/files/reports/q1.pdf`,
+        }),
+        gcsFile({
+          name: `w/${WORKSPACE_ID}/pods/${POD_ID}/files/reports/q2.pdf`,
+        }),
+      ],
+      pageFetchCount: 1,
+    });
+
+    await makeBackend().copy({
+      src: `pod-${POD_ID}/reports`,
+      dest: `pod-${POD_ID}/renamed-reports`,
+    });
+
+    expect(copyFileMock).toHaveBeenCalledWith(
+      `w/${WORKSPACE_ID}/pods/${POD_ID}/files/reports/q1.pdf`,
+      `w/${WORKSPACE_ID}/pods/${POD_ID}/files/renamed-reports/q1.pdf`
+    );
+    expect(copyFileMock).toHaveBeenCalledWith(
+      `w/${WORKSPACE_ID}/pods/${POD_ID}/files/reports/q2.pdf`,
+      `w/${WORKSPACE_ID}/pods/${POD_ID}/files/renamed-reports/q2.pdf`
+    );
+  });
+
+  it("returns Err(not_found) when source is neither a file nor a directory", async () => {
+    existsMock.mockResolvedValue([false]);
+    getAllFilesByPrefixMock.mockResolvedValue({ files: [], pageFetchCount: 1 });
+
+    const result = await makeBackend().copy({
+      src: `pod-${POD_ID}/missing`,
+      dest: `pod-${POD_ID}/dest`,
+    });
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("not_found");
+    }
   });
 
   it("returns Err(invalid_path) for unrecognised source path", async () => {

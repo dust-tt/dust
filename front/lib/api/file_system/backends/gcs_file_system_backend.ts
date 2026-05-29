@@ -394,6 +394,37 @@ export class GCSFileSystemBackend implements FileSystemBackend {
     }
   }
 
+  /**
+   * Copy every GCS object whose name starts with `srcPrefix` to the corresponding name under
+   * `destPrefix`.  GCS has no native directory rename, so this is the only way to move a "folder".
+   */
+  private async copyDir({
+    destPrefix,
+    srcPrefix,
+  }: {
+    destPrefix: string;
+    srcPrefix: string;
+  }): Promise<Result<void, DustFileSystemError>> {
+    const bucket = getPrivateUploadBucket();
+    const { files } = await bucket.getAllFilesByPrefix({ prefix: srcPrefix });
+
+    if (files.length === 0) {
+      return new Err(
+        new DustFileSystemError(
+          "not_found",
+          `Directory not found or empty: ${srcPrefix}`
+        )
+      );
+    }
+
+    for (const file of files) {
+      const relative = file.name.slice(srcPrefix.length);
+      await bucket.copyFile(file.name, `${destPrefix}${relative}`);
+    }
+
+    return new Ok(undefined);
+  }
+
   async copy({
     src,
     dest,
@@ -422,9 +453,20 @@ export class GCSFileSystemBackend implements FileSystemBackend {
     }
 
     try {
-      await getPrivateUploadBucket().copyFile(srcGCS, destGCS);
+      const bucket = getPrivateUploadBucket();
 
-      return new Ok(undefined);
+      // Try as a regular file first.
+      const [fileExists] = await bucket.file(srcGCS).exists();
+      if (fileExists) {
+        await bucket.copyFile(srcGCS, destGCS);
+        return new Ok(undefined);
+      }
+
+      // Fall back to directory copy.
+      return this.copyDir({
+        srcPrefix: `${srcGCS}/`,
+        destPrefix: `${destGCS}/`,
+      });
     } catch (err) {
       return new Err(
         new DustFileSystemError("internal", normalizeError(err).message)
