@@ -358,7 +358,7 @@ export default function SwitchContractDialog({
       <DialogTrigger asChild>
         <Button variant="outline" label="🔁 Switch contract" />
       </DialogTrigger>
-      <DialogContent className="bg-primary-50 dark:bg-primary-50-night sm:max-w-[600px]">
+      <DialogContent className="bg-primary-50 dark:bg-primary-50-night sm:h-[90vh] sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>Switch contract for {owner.name}</DialogTitle>
           <DialogDescription>
@@ -377,7 +377,7 @@ export default function SwitchContractDialog({
           <PokeForm {...form}>
             <form
               onSubmit={form.handleSubmit(onSubmit)}
-              className="flex flex-grow flex-col overflow-hidden"
+              style={{ display: "contents" }}
             >
               <DialogContainer className="space-y-4">
                 {error && <div className="text-warning">{error}</div>}
