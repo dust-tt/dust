@@ -218,6 +218,8 @@ function constructSkillsSection({
     `If a user message contains a \`<skill id=\"...\" name=\"...\" />\` tag, treat it as a strong hint that the ` +
     "referenced skill is relevant: it means the user specifically mentioned this skill. If the skill is not already " +
     `enabled, and it would help, enable it with \`${toolDisplayName}\`.\n` +
+    "It is expected that these skills do not appear in the list of available skills, they are specifically requested " +
+    "by the user and can be enabled safely." +
     "Only enable skills you actually need, enabling a skill loads its full instructions into context.\n" +
     "If you need to enable multiple skills, enable them in parallel.\n\n" +
     "When in doubt about enabling a skill, prefer enabling it as it may give you a new " +
