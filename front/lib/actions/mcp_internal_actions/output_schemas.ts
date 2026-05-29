@@ -1173,6 +1173,42 @@ export const isAgentPauseOutputResourceType = (
   );
 };
 
+// Outlook mail folder list tool output.
+
+export const OUTLOOK_MAIL_FOLDER_LIST_MIME_TYPE =
+  "application/vnd.dust.tool-output.outlook-mail-folder-list" as const;
+
+const OutlookFolderItemSchema = z.object({
+  name: z.string(),
+  childFolderCount: z.number().optional(),
+  unreadItemCount: z.number().optional(),
+  totalItemCount: z.number().optional(),
+});
+
+export const OutlookMailFolderListResourceSchema = z.object({
+  mimeType: z.literal(OUTLOOK_MAIL_FOLDER_LIST_MIME_TYPE),
+  uri: z.literal(""),
+  text: z.string(),
+  path: z.array(z.string()),
+  folders: z.array(OutlookFolderItemSchema),
+});
+
+export type OutlookMailFolderListResourceType = z.infer<
+  typeof OutlookMailFolderListResourceSchema
+>;
+
+export const isOutlookMailFolderListResource = (
+  outputBlock: CallToolResult["content"][number]
+): outputBlock is {
+  type: "resource";
+  resource: OutlookMailFolderListResourceType;
+} => {
+  return (
+    outputBlock.type === "resource" &&
+    OutlookMailFolderListResourceSchema.safeParse(outputBlock.resource).success
+  );
+};
+
 // Clari Copilot tool outputs.
 
 export const CLARI_CALL_LIST_MIME_TYPE =

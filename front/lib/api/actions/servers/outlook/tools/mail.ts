@@ -1,4 +1,5 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import { OUTLOOK_MAIL_FOLDER_LIST_MIME_TYPE } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
@@ -592,23 +593,22 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
     const result = await response.json();
     const folders = (result.value ?? []) as OutlookFolder[];
 
+    const path = folderPath ?? [];
     return new Ok([
-      { type: "text" as const, text: "Folders listed successfully" },
       {
-        type: "text" as const,
-        text: JSON.stringify(
-          {
-            path: folderPath ?? [],
-            folders: folders.map((f) => ({
-              name: f.displayName,
-              childFolderCount: f.childFolderCount,
-              unreadItemCount: f.unreadItemCount,
-              totalItemCount: f.totalItemCount,
-            })),
-          },
-          null,
-          2
-        ),
+        type: "resource" as const,
+        resource: {
+          mimeType: OUTLOOK_MAIL_FOLDER_LIST_MIME_TYPE,
+          uri: "",
+          text: `${folders.length} folder(s) listed${path.length > 0 ? ` in "${path.join("/")}"` : ""}`,
+          path,
+          folders: folders.map((f) => ({
+            name: f.displayName,
+            childFolderCount: f.childFolderCount,
+            unreadItemCount: f.unreadItemCount,
+            totalItemCount: f.totalItemCount,
+          })),
+        },
       },
     ]);
   },
