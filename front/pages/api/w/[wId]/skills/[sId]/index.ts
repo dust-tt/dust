@@ -298,10 +298,11 @@ async function handler(
         ...additionalRequestedSpaceIds,
       ]);
 
+      const featureFlags = await getFeatureFlags(auth);
+
       // Validate file attachments if provided (gated behind sandbox_tools).
       let files: FileResource[] | undefined;
       if (fileAttachments) {
-        const featureFlags = await getFeatureFlags(auth);
         if (
           !featureFlags.includes("sandbox_tools") &&
           fileAttachments.length > 0
@@ -365,6 +366,9 @@ async function handler(
         name,
         reinforcement: body.reinforcement,
         requestedSpaceIds,
+        skillReferences: {
+          enabled: featureFlags.includes("nested_skills"),
+        },
         userFacingDescription: body.userFacingDescription,
         ...(shouldActivate ? { status: "active" as const } : {}),
       });

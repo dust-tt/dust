@@ -42,10 +42,12 @@ import type { SkillConfigurationFindOptions } from "@app/lib/resources/skill/typ
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
+  getResourceNameAndIdFromSId,
   getResourceIdFromSId,
   isResourceSId,
   makeSId,
 } from "@app/lib/resources/string_ids";
+import { extractUniqueSkillIds } from "@app/lib/skills/format";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -135,6 +137,10 @@ type ConversationSkillCreationAttributes =
           agentConfigurationId: string;
         }
     );
+
+type SkillReferenceSyncOptions = {
+  enabled: boolean;
+};
 
 function isSkillResourceWithVersion(
   skill: SkillResource
@@ -361,11 +367,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       addCurrentUserAsEditor = true,
       attachedKnowledge = [],
       fileAttachments = [],
+      skillReferences,
     }: {
       mcpServerViews: MCPServerViewResource[];
       addCurrentUserAsEditor?: boolean;
       attachedKnowledge?: SkillAttachedKnowledge[];
       fileAttachments?: FileResource[];
+      skillReferences?: SkillReferenceSyncOptions;
     }
   ): Promise<SkillResource> {
     const owner = auth.getNonNullableWorkspace();
@@ -419,6 +427,17 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         await SkillDataSourceConfigurationModel.bulkCreate(toUpsert, {
           transaction,
         });
+
+      if (skillReferences?.enabled) {
+        await this.syncSkillReferences(
+          auth,
+          {
+            instructions: blob.instructions,
+            parentSkillId: skill.id,
+          },
+          { transaction }
+        );
+      }
 
       return new this(this.model, skill.get(), {
         dataSourceConfigurations,
@@ -2151,6 +2170,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       source,
       sourceMetadata,
       status,
+      skillReferences,
       userFacingDescription,
     }: {
       agentFacingDescription: string;
@@ -2167,6 +2187,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       source?: SkillSourceType;
       sourceMetadata?: SkillSourceMetadata;
       status?: SkillStatus;
+      skillReferences?: SkillReferenceSyncOptions;
       userFacingDescription: string;
     }
   ): Promise<void> {
@@ -2201,6 +2222,17 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         },
         transaction
       );
+
+      if (skillReferences?.enabled) {
+        await SkillResource.syncSkillReferences(
+          auth,
+          {
+            instructions,
+            parentSkillId: this.id,
+          },
+          { transaction }
+        );
+      }
 
       await this.updateMCPServerViews(auth, mcpServerViews, { transaction });
 
@@ -2244,6 +2276,105 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   async recordReinforcementAnalysisCompletion(): Promise<void> {
     await this.update({ lastReinforcementAnalysisAt: new Date() });
+  }
+
+  /**
+   * Persist the custom skills referenced by the skill instructions.
+   */
+  private static async syncSkillReferences(
+    auth: Authenticator,
+    {
+      instructions,
+      parentSkillId,
+    }: {
+      instructions: string;
+      parentSkillId: ModelId;
+    },
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    const workspace = auth.getNonNullableWorkspace();
+    const childSkillModelIds = new Set<ModelId>();
+
+    for (const skillId of extractUniqueSkillIds(instructions)) {
+      const parsed = getResourceNameAndIdFromSId(skillId);
+
+      if (
+        !parsed ||
+        parsed.resourceName !== "skill" ||
+        parsed.workspaceModelId !== workspace.id ||
+        parsed.resourceModelId === parentSkillId
+      ) {
+        continue;
+      }
+
+      childSkillModelIds.add(parsed.resourceModelId);
+    }
+
+    const existingReferences = await SkillReferenceModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        parentSkillId,
+      },
+      transaction,
+    });
+
+    if (childSkillModelIds.size === 0) {
+      if (existingReferences.length > 0) {
+        await SkillReferenceModel.destroy({
+          where: {
+            id: { [Op.in]: existingReferences.map((ref) => ref.id) },
+            workspaceId: workspace.id,
+          },
+          transaction,
+        });
+      }
+
+      return;
+    }
+
+    const referencedSkills = await SkillConfigurationModel.findAll({
+      where: {
+        id: { [Op.in]: [...childSkillModelIds] },
+        workspaceId: workspace.id,
+        status: ["active", "archived", "suggested"],
+      },
+      attributes: ["id"],
+      transaction,
+    });
+
+    const desiredChildSkillIds = new Set(
+      referencedSkills.map((skill) => skill.id)
+    );
+    const existingChildSkillIds = new Set(
+      existingReferences.map((ref) => ref.childSkillId)
+    );
+
+    const referencesToDelete = existingReferences.filter(
+      (ref) => !desiredChildSkillIds.has(ref.childSkillId)
+    );
+    if (referencesToDelete.length > 0) {
+      await SkillReferenceModel.destroy({
+        where: {
+          id: { [Op.in]: referencesToDelete.map((ref) => ref.id) },
+          workspaceId: workspace.id,
+        },
+        transaction,
+      });
+    }
+
+    const childSkillIdsToCreate = [...desiredChildSkillIds].filter(
+      (childSkillId) => !existingChildSkillIds.has(childSkillId)
+    );
+    if (childSkillIdsToCreate.length > 0) {
+      await SkillReferenceModel.bulkCreate(
+        childSkillIdsToCreate.map((childSkillId) => ({
+          workspaceId: workspace.id,
+          parentSkillId,
+          childSkillId,
+        })),
+        { transaction }
+      );
+    }
   }
 
   /**
@@ -2556,6 +2687,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           transaction,
         });
 
+        await SkillReferenceModel.destroy({
+          where: {
+            workspaceId: workspace.id,
+            [Op.or]: [{ parentSkillId: this.id }, { childSkillId: this.id }],
+          },
+          transaction,
+        });
+
         await SkillSuggestionModel.destroy({
           where: whereWorkspaceIdAndSkillId,
           transaction,
@@ -2858,6 +2997,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
 
     await SkillSuggestionModel.destroy({
+      where: { workspaceId },
+    });
+
+    await SkillReferenceModel.destroy({
       where: { workspaceId },
     });
 
