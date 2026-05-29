@@ -1,3 +1,8 @@
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
+import {
+  POD_TASKS_SERVER_NAME,
+  UPDATE_TASKS_TOOL_NAME,
+} from "@app/lib/api/actions/servers/pod_tasks/metadata";
 import {
   createConversation,
   postNewContentFragment,
@@ -104,7 +109,7 @@ function buildTaskKickoffPrompt({
     "",
     "After the initial delivery, avoid marking the task as done solely based on your own judgment—provide a clear summary for user review and response.",
     "",
-    'Once there is explicit acceptance in this chat (e.g. "ok good for me", "looks good", "perfect", "works for me", "thanks that\'s what I needed", or any unequivocal statement of satisfaction or task completion), mark the task as done in the same turn using the Pod task management tools. Verbal approval in chat is required; do not assume closure will only happen via the UI. A prompt acknowledgment is sufficient, but always mark the task as done upon clear approval.',
+    `Once there is explicit acceptance in this chat (e.g. "ok good for me", "looks good", "perfect", "works for me", "thanks that's what I needed", or any unequivocal statement of satisfaction or task completion), mark the task as done in the same turn using the \`${getPrefixedToolName(POD_TASKS_SERVER_NAME, UPDATE_TASKS_TOOL_NAME)}\` tool. Verbal approval in chat is required; do not assume closure will only happen via the UI. A prompt acknowledgment is sufficient, but always mark the task as done upon clear approval.`,
     "",
     "If further changes are requested, if feedback indicates the work is not complete, or if the user instructs to keep the task open, do not mark it as done.",
     ...(trimmedAgentInstructions
