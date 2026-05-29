@@ -18,7 +18,7 @@ import type { EditorView } from "@tiptap/pm/view";
 import { ReactRenderer } from "@tiptap/react";
 import type { SuggestionOptions, SuggestionProps } from "@tiptap/suggestion";
 import { exitSuggestion, Suggestion } from "@tiptap/suggestion";
-import { forwardRef, useMemo } from "react";
+import { forwardRef, useImperativeHandle, useMemo, useRef } from "react";
 
 const slashCommandPluginKey = new PluginKey("slashCommand");
 
@@ -96,6 +96,7 @@ const SkillBuilderSlashCommandDropdownWithSkills = forwardRef<
     { clientRect, command, currentSkillId, items, onClose, owner, query },
     ref
   ) => {
+    const dropdownRef = useRef<SlashCommandDropdownRef>(null);
     const isOpen = Boolean(clientRect);
     const { skills, isSkillsLoading } = useSkills({
       disabled: !isOpen,
@@ -115,10 +116,28 @@ const SkillBuilderSlashCommandDropdownWithSkills = forwardRef<
       [currentSkillId, items, query, skills]
     );
 
+    useImperativeHandle(
+      ref,
+      () => ({
+        onKeyDown: ({ event }) => {
+          if (
+            (event.key === "Enter" || event.key === "Tab") &&
+            (isSkillsLoading || slashCommandItems.length === 0)
+          ) {
+            event.preventDefault();
+            return true;
+          }
+
+          return dropdownRef.current?.onKeyDown({ event }) ?? false;
+        },
+      }),
+      [isSkillsLoading, slashCommandItems.length]
+    );
+
     return (
       <SlashCommandDropdown
         key={isSkillsLoading ? "loading" : "loaded"}
-        ref={ref}
+        ref={dropdownRef}
         items={slashCommandItems}
         command={command}
         clientRect={clientRect}
