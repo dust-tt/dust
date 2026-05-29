@@ -1,5 +1,6 @@
 import {
   ActivityFailure,
+  ApplicationFailure,
   type ProtoFailure,
   RetryState,
   TemporalFailure,
@@ -7,10 +8,13 @@ import {
   TimeoutType,
 } from "@temporalio/common";
 
+import { isRunModelAndCreateActionsLLMUnresponsiveFailureType } from "./run_model_errors";
+
 export const RUN_MODEL_AND_CREATE_ACTIONS_ACTIVITY_NAME =
   "runModelAndCreateActionsActivity";
 
-const LLM_UNRESPONSIVE_MESSAGE_REGEXP =
+// Keep matching failures produced before runModel started throwing typed ApplicationFailures.
+const LEGACY_LLM_UNRESPONSIVE_MESSAGE_REGEXP =
   /(?:^|Error:\s*)LLM error \((?:llm_timeout_error|timeout_error)\): /;
 
 function isRunModelAndCreateActionsActivityFailure(
@@ -28,30 +32,6 @@ function isTerminalRetryState(retryState: RetryState): boolean {
     retryState === RetryState.MAXIMUM_ATTEMPTS_REACHED ||
     retryState === RetryState.TIMEOUT
   );
-}
-
-function* getErrorMessages(error: Error): Generator<string> {
-  if (error.message) {
-    yield error.message;
-  }
-
-  if (error instanceof TemporalFailure && error.failure) {
-    yield* getProtoFailureMessages(error.failure);
-  }
-
-  if (error.cause instanceof Error) {
-    yield* getErrorMessages(error.cause);
-  }
-}
-
-function* getProtoFailureMessages(failure: ProtoFailure): Generator<string> {
-  if (failure.message) {
-    yield failure.message;
-  }
-
-  if (failure.cause) {
-    yield* getProtoFailureMessages(failure.cause);
-  }
 }
 
 export function isTerminalRunModelAndCreateActionsTimeout(
@@ -82,11 +62,64 @@ export function isRunModelAndCreateActionsActivityLLMUnresponsive(
     return false;
   }
 
-  for (const message of getErrorMessages(error)) {
-    if (LLM_UNRESPONSIVE_MESSAGE_REGEXP.test(message)) {
-      return true;
-    }
+  return isRunModelAndCreateActionsActivityLLMUnresponsiveError(error);
+}
+
+function isRunModelAndCreateActionsActivityLLMUnresponsiveError(
+  error: Error
+): boolean {
+  if (
+    error instanceof ApplicationFailure &&
+    isRunModelAndCreateActionsLLMUnresponsiveFailureType(error.type)
+  ) {
+    return true;
+  }
+
+  if (isLegacyRunModelAndCreateActionsLLMUnresponsiveMessage(error.message)) {
+    return true;
+  }
+
+  if (
+    error instanceof TemporalFailure &&
+    error.failure &&
+    isRunModelAndCreateActionsActivityLLMUnresponsiveProtoFailure(error.failure)
+  ) {
+    return true;
+  }
+
+  if (error.cause instanceof Error) {
+    return isRunModelAndCreateActionsActivityLLMUnresponsiveError(error.cause);
   }
 
   return false;
+}
+
+function isRunModelAndCreateActionsActivityLLMUnresponsiveProtoFailure(
+  failure: ProtoFailure
+): boolean {
+  if (
+    isRunModelAndCreateActionsLLMUnresponsiveFailureType(
+      failure.applicationFailureInfo?.type
+    )
+  ) {
+    return true;
+  }
+
+  if (isLegacyRunModelAndCreateActionsLLMUnresponsiveMessage(failure.message)) {
+    return true;
+  }
+
+  if (failure.cause) {
+    return isRunModelAndCreateActionsActivityLLMUnresponsiveProtoFailure(
+      failure.cause
+    );
+  }
+
+  return false;
+}
+
+function isLegacyRunModelAndCreateActionsLLMUnresponsiveMessage(
+  message: string | null | undefined
+): boolean {
+  return Boolean(message?.match(LEGACY_LLM_UNRESPONSIVE_MESSAGE_REGEXP));
 }

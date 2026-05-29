@@ -335,6 +335,9 @@ export async function agentLoopWorkflow({
     });
   } catch (err) {
     const workflowError = err instanceof Error ? err : new Error(String(err));
+    // The activity publishes user-facing model errors when our code regains control. We swallow
+    // only terminal Temporal timeouts whose failure chain proves the blocked work was an LLM
+    // provider timeout, so unrelated infrastructure timeouts still surface as workflow failures.
     const shouldSwallowWorkflowFailure =
       isTerminalRunModelAndCreateActionsTimeout(err) &&
       isRunModelAndCreateActionsActivityLLMUnresponsive(err);
