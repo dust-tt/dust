@@ -1,6 +1,7 @@
 import { InstructionSuggestionExtension } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { CodeExtension } from "@app/components/editor/extensions/CodeExtension";
 import { HeadingExtension } from "@app/components/editor/extensions/HeadingExtension";
+import { SkillNode } from "@app/components/editor/extensions/input_bar/SkillNode";
 import { BlockIdExtension } from "@app/components/editor/extensions/instructions/BlockIdExtension";
 import { InstructionsDocumentExtension } from "@app/components/editor/extensions/instructions/InstructionsDocumentExtension";
 import { InstructionsRootExtension } from "@app/components/editor/extensions/instructions/InstructionsRootExtension";
@@ -18,6 +19,10 @@ import { StarterKit } from "@tiptap/starter-kit";
 
 export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
 
+interface BuildSkillInstructionsExtensionsOptions {
+  includeSkillNode?: boolean;
+}
+
 /**
  * Build the TipTap extension list for the skill instructions editor.
  *
@@ -26,7 +31,8 @@ export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
  */
 export function buildSkillInstructionsExtensions(
   isReadOnly: boolean,
-  editableExtensions: Extensions = []
+  editableExtensions: Extensions = [],
+  { includeSkillNode = false }: BuildSkillInstructionsExtensionsOptions = {}
 ): Extensions {
   const baseExtensions: Extensions = [
     InstructionsDocumentExtension,
@@ -90,6 +96,10 @@ export function buildSkillInstructionsExtensions(
     RawMarkdownBlock,
     ...rawMarkdownBlockParsers,
   ];
+
+  if (includeSkillNode) {
+    baseExtensions.push(SkillNode);
+  }
 
   if (!isReadOnly) {
     baseExtensions.push(...editableExtensions);

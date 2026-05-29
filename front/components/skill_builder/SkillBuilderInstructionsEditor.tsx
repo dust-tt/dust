@@ -50,11 +50,16 @@ function toAttachedKnowledge(
   }));
 }
 
-function sanitizeSkillInstructionsHtml(html: string): string {
+function sanitizeSkillInstructionsHtml(
+  html: string,
+  { preserveSkillTags = false }: { preserveSkillTags?: boolean } = {}
+): string {
   try {
     const config: Config = {
-      ADD_TAGS: ["knowledge"],
-      ADD_ATTR: ["space", "dsv", "hasChildren"],
+      ADD_TAGS: preserveSkillTags ? ["knowledge", "skill"] : ["knowledge"],
+      ADD_ATTR: preserveSkillTags
+        ? ["space", "dsv", "hasChildren", "id", "name", "icon"]
+        : ["space", "dsv", "hasChildren"],
       FORBID_ATTR: ["style", "class"],
     };
     return DOMPurify.sanitize(html, config);
@@ -75,6 +80,12 @@ export function SkillBuilderInstructionsEditor({
   const { compareVersion, isDiffMode } = useSkillVersionComparisonContext();
   const { resetField } = useFormContext<SkillBuilderFormData>();
   const initializedAttachedKnowledgeEditorRef = useRef<Editor | null>(null);
+  const { owner, skillId, selectedSuggestionId, setAcceptInstructionEdits } =
+    useSkillBuilderContext();
+  const { hasFeature } = useFeatureFlags();
+  const hasReinforcementFeature =
+    hasFeature("reinforced_agents") && hasFeature("reinforcement_ui");
+  const hasNestedSkillsFeature = hasFeature("nested_skills");
 
   const { field: instructionsField, fieldState: instructionsFieldState } =
     useController<SkillBuilderFormData, typeof INSTRUCTIONS_FIELD_NAME>({
@@ -115,11 +126,14 @@ export function SkillBuilderInstructionsEditor({
         postProcessMarkdown(editor.getMarkdown()).trim()
       );
       instructionsHtmlField.onChange(
-        sanitizeSkillInstructionsHtml(editor.getHTML())
+        sanitizeSkillInstructionsHtml(editor.getHTML(), {
+          preserveSkillTags: hasNestedSkillsFeature,
+        })
       );
       syncAttachedKnowledgeFromEditor(editor);
     },
     [
+      hasNestedSkillsFeature,
       instructionsField.onChange,
       instructionsHtmlField.onChange,
       syncAttachedKnowledgeFromEditor,
@@ -158,11 +172,6 @@ export function SkillBuilderInstructionsEditor({
     [syncAttachedKnowledgeFromEditor]
   );
 
-  const { owner, skillId, selectedSuggestionId, setAcceptInstructionEdits } =
-    useSkillBuilderContext();
-  const { hasFeature } = useFeatureFlags();
-  const hasReinforcementFeature =
-    hasFeature("reinforced_agents") && hasFeature("reinforcement_ui");
   const { suggestions, isSuggestionsLoading } = useSkillSuggestions({
     skillId,
     states: ["pending"],
@@ -176,6 +185,11 @@ export function SkillBuilderInstructionsEditor({
     content: instructionsField.value ?? "",
     htmlContent: instructionsHtmlField.value ?? undefined,
     isReadOnly: hasSuggestions,
+    nestedSkills: {
+      currentSkillId: skillId,
+      enabled: hasNestedSkillsFeature,
+      owner,
+    },
     onUpdate: handleUpdate,
     onBlur: handleBlur,
     onDelete: handleDelete,
@@ -377,11 +391,13 @@ export function SkillBuilderInstructionsEditor({
     }
 
     const incomingHtml = instructionsHtmlField.value;
-    const currentHtml = sanitizeSkillInstructionsHtml(editor.getHTML());
+    const currentHtml = sanitizeSkillInstructionsHtml(editor.getHTML(), {
+      preserveSkillTags: hasNestedSkillsFeature,
+    });
     if (currentHtml !== incomingHtml) {
       editor.commands.setContent(incomingHtml, { emitUpdate: false });
     }
-  }, [editor, isDiffMode, instructionsHtmlField.value]);
+  }, [editor, hasNestedSkillsFeature, isDiffMode, instructionsHtmlField.value]);
 
   useEffect(() => {
     if (!editor || editor.isDestroyed) {
@@ -401,13 +417,22 @@ export function SkillBuilderInstructionsEditor({
         const compareText = compareVersion.instructions ?? "";
         const currentText = instructionsField.value ?? "";
 
-        editor.commands.setContent(preprocessMarkdownForEditor(currentText), {
-          emitUpdate: false,
-          contentType: "markdown",
-        });
+        editor.commands.setContent(
+          preprocessMarkdownForEditor(currentText, {
+            preserveSkillTags: hasNestedSkillsFeature,
+          }),
+          {
+            emitUpdate: false,
+            contentType: "markdown",
+          }
+        );
         editor.commands.applyDiff(
-          preprocessMarkdownForEditor(compareText),
-          preprocessMarkdownForEditor(currentText)
+          preprocessMarkdownForEditor(compareText, {
+            preserveSkillTags: hasNestedSkillsFeature,
+          }),
+          preprocessMarkdownForEditor(currentText, {
+            preserveSkillTags: hasNestedSkillsFeature,
+          })
         );
         editor.setEditable(false);
       } else if (editor.storage.agentInstructionDiff?.isDiffMode) {
@@ -420,7 +445,9 @@ export function SkillBuilderInstructionsEditor({
           });
         } else {
           editor.commands.setContent(
-            preprocessMarkdownForEditor(instructionsField.value ?? ""),
+            preprocessMarkdownForEditor(instructionsField.value ?? "", {
+              preserveSkillTags: hasNestedSkillsFeature,
+            }),
             {
               emitUpdate: false,
               contentType: "markdown",
@@ -438,6 +465,7 @@ export function SkillBuilderInstructionsEditor({
   }, [
     compareVersion,
     editor,
+    hasNestedSkillsFeature,
     instructionsField.value,
     instructionsHtmlField.value,
   ]);

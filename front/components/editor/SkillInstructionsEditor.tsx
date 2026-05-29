@@ -7,6 +7,7 @@ import {
   INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
 } from "@app/lib/editor/build_skill_instructions_extensions";
 import { preprocessMarkdownForEditor } from "@app/lib/editor/skill_instructions_preprocessing";
+import type { LightWorkspaceType } from "@app/types/user";
 import { cn } from "@dust-tt/sparkle";
 import { CharacterCount, Placeholder } from "@tiptap/extensions";
 import type { Transaction } from "@tiptap/pm/state";
@@ -14,7 +15,10 @@ import type { Editor } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-function useEditorService(editor: Editor | null) {
+function useEditorService(
+  editor: Editor | null,
+  { includeSkillNode }: { includeSkillNode: boolean }
+) {
   return useMemo(() => {
     return {
       getMarkdown() {
@@ -41,10 +45,15 @@ function useEditorService(editor: Editor | null) {
       setContent(content: string) {
         // Safety check for Safari: ensure editor and docView are available
         if (editor && !editor.isDestroyed) {
-          editor.commands.setContent(preprocessMarkdownForEditor(content), {
-            emitUpdate: false,
-            contentType: "markdown",
-          });
+          editor.commands.setContent(
+            preprocessMarkdownForEditor(content, {
+              preserveSkillTags: includeSkillNode,
+            }),
+            {
+              emitUpdate: false,
+              contentType: "markdown",
+            }
+          );
         }
       },
 
@@ -82,46 +91,78 @@ function useEditorService(editor: Editor | null) {
         return editor?.isDestroyed ?? true;
       },
     };
-  }, [editor]);
+  }, [editor, includeSkillNode]);
+}
+
+interface SkillInstructionsNestedSkillsOptions {
+  currentSkillId?: string | null;
+  enabled: boolean;
+  owner?: LightWorkspaceType;
 }
 
 interface UseSkillInstructionsEditorProps {
   content: string;
   htmlContent?: string;
   isReadOnly: boolean;
+  nestedSkills?: SkillInstructionsNestedSkillsOptions;
   onUpdate?: (props: { editor: Editor; transaction: Transaction }) => void;
   onBlur?: () => void;
   onDelete?: (editor: Editor) => void;
 }
 
-const skillInstructionsEditableExtensions = [
-  SlashCommandExtension,
-  AgentInstructionDiffExtension,
-  Placeholder.configure({
-    placeholder: "What does this skill do? How should it behave?",
-    emptyNodeClass:
-      "first:before:text-gray-400 first:before:italic first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:absolute",
-  }),
-  CharacterCount.configure({
-    limit: INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
-  }),
-];
+function buildSkillInstructionsEditableExtensions({
+  nestedSkills,
+}: {
+  nestedSkills?: SkillInstructionsNestedSkillsOptions;
+}) {
+  return [
+    SlashCommandExtension.configure({
+      currentSkillId: nestedSkills?.currentSkillId ?? null,
+      includeSkills: nestedSkills?.enabled === true && !!nestedSkills.owner,
+      owner: nestedSkills?.owner,
+    }),
+    AgentInstructionDiffExtension,
+    Placeholder.configure({
+      placeholder: "What does this skill do? How should it behave?",
+      emptyNodeClass:
+        "first:before:text-gray-400 first:before:italic first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:absolute",
+    }),
+    CharacterCount.configure({
+      limit: INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
+    }),
+  ];
+}
 
 export function useSkillInstructionsEditor({
   content,
   htmlContent,
   isReadOnly,
+  nestedSkills,
   onUpdate,
   onBlur,
   onDelete,
 }: UseSkillInstructionsEditorProps) {
+  const includeSkillNode = nestedSkills?.enabled === true;
+  const nestedSkillsCurrentSkillId = nestedSkills?.currentSkillId ?? null;
+  const nestedSkillsOwner = nestedSkills?.owner;
+  const editableExtensions = useMemo(
+    () =>
+      buildSkillInstructionsEditableExtensions({
+        nestedSkills: {
+          currentSkillId: nestedSkillsCurrentSkillId,
+          enabled: includeSkillNode,
+          owner: nestedSkillsOwner,
+        },
+      }),
+    [includeSkillNode, nestedSkillsCurrentSkillId, nestedSkillsOwner]
+  );
+
   const extensions = useMemo(
     () =>
-      buildSkillInstructionsExtensions(
-        isReadOnly,
-        skillInstructionsEditableExtensions
-      ),
-    [isReadOnly]
+      buildSkillInstructionsExtensions(isReadOnly, editableExtensions, {
+        includeSkillNode,
+      }),
+    [editableExtensions, includeSkillNode, isReadOnly]
   );
 
   // Track if initial content has been set
@@ -140,7 +181,7 @@ export function useSkillInstructionsEditor({
     [extensions, isReadOnly]
   );
 
-  const editorService = useEditorService(editor);
+  const editorService = useEditorService(editor, { includeSkillNode });
 
   // Set initial content after editor is created
   useEffect(() => {
@@ -158,17 +199,22 @@ export function useSkillInstructionsEditor({
           if (htmlContent) {
             editor.commands.setContent(htmlContent, { emitUpdate: false });
           } else {
-            editor.commands.setContent(preprocessMarkdownForEditor(content), {
-              emitUpdate: false,
-              contentType: "markdown",
-            });
+            editor.commands.setContent(
+              preprocessMarkdownForEditor(content, {
+                preserveSkillTags: includeSkillNode,
+              }),
+              {
+                emitUpdate: false,
+                contentType: "markdown",
+              }
+            );
           }
           initialContentSetRef.current = true;
           setIsContentReady(true);
         }
       });
     }
-  }, [editor, content, htmlContent]);
+  }, [editor, content, htmlContent, includeSkillNode]);
 
   return { editor, editorService, isContentReady };
 }
