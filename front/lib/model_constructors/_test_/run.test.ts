@@ -179,7 +179,7 @@ const allTestEntries = Object.entries(TEST_CASES) as [
 
 /**
  * Run from root with:
- *   NODE_ENV=test RUN_LLM_TEST=true npx -w front vitest --config lib/api/models/_test_/vite.config.js lib/api/models/_test_/run.test.ts --run --bail 1
+ *   NODE_ENV=test RUN_LLM_TEST=true npx -w front vitest --config lib/model_constructors/_test_/vite.config.js lib/model_constructors/_test_/run.test.ts --run --bail 1
  */
 if (process.env.NODE_ENV !== "test") {
   console.warn(
