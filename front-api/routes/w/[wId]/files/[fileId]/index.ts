@@ -344,7 +344,7 @@ app.post("/", async (ctx) => {
   return ctx.json({
     file: {
       ...file.toJSON(auth),
-      path: resolveUploadMountScopedPath(auth, file),
+      path: file.toScopedPath(auth),
     },
   });
 });
