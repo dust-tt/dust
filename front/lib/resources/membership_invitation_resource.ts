@@ -16,7 +16,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import type { ActiveRoleType, LightWorkspaceType } from "@app/types/user";
 import { verify } from "jsonwebtoken";
 import type { Attributes, CreationAttributes, Transaction } from "sequelize";
-import { Op } from "sequelize";
+import { col, fn, Op } from "sequelize";
 
 import { generateRandomModelSId } from "./string_ids_server";
 import type { WorkspaceResource } from "./workspace_resource";
@@ -81,6 +81,29 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
           workspace: invitation.workspace,
         })
       : null;
+  }
+
+  static async fetchByIds(
+    auth: Authenticator,
+    ids: string[]
+  ): Promise<Map<string, MembershipInvitationResource>> {
+    if (ids.length === 0) {
+      return new Map();
+    }
+    const invitations = await this.model.findAll({
+      where: {
+        sId: { [Op.in]: ids },
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+    return new Map(
+      invitations.map((inv) => [
+        inv.sId,
+        new MembershipInvitationResource(this.model, inv.get(), {
+          workspace: inv.workspace,
+        }),
+      ])
+    );
   }
 
   private static invitationExpired(createdAt: Date) {
@@ -323,6 +346,73 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
       values: { initialRole: role },
       transaction,
     });
+  }
+
+  static async listEligibleForReminder(
+    workspaceModelIds: ModelId[],
+    { limit }: { limit: number }
+  ): Promise<MembershipInvitationResource[]> {
+    if (workspaceModelIds.length === 0) {
+      return [];
+    }
+
+    const sevenDaysAgo = new Date(
+      Date.now() - INVITATION_EXPIRATION_TIME_SEC * 1000
+    );
+    const tenDaysAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
+
+    const pendingInvitations = await this.model.findAll({
+      where: {
+        workspaceId: { [Op.in]: workspaceModelIds },
+        status: "pending",
+        createdAt: { [Op.lt]: sevenDaysAgo, [Op.gt]: tenDaysAgo },
+      },
+      limit,
+      include: [WorkspaceModel],
+      // WORKSPACE_ISOLATION_BYPASS: Reminder job scans across all ENT workspaces.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+    });
+
+    if (pendingInvitations.length === 0) {
+      return [];
+    }
+
+    // For each (inviteEmail, workspaceId) pair, count all invitations ever (any status).
+    // Skip pairs with more than one record: a reminder was already sent, or the admin manually
+    // resent the invitation (via poke or the members UI). In both cases the user already received
+    // a follow-up and is intentionally excluded from automated reminders going forward.
+    const emails = pendingInvitations.map((i) => i.inviteEmail);
+
+    const pairCounts = await this.model.findAll({
+      attributes: [
+        "inviteEmail",
+        "workspaceId",
+        [fn("COUNT", col("id")), "totalCount"],
+      ],
+      where: {
+        workspaceId: { [Op.in]: workspaceModelIds },
+        inviteEmail: { [Op.in]: emails },
+      },
+      group: ["inviteEmail", "workspaceId"],
+      // WORKSPACE_ISOLATION_BYPASS: Same as above.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+    });
+
+    const singleRecordPairs = new Set(
+      pairCounts
+        .filter((row) => Number(row.get("totalCount")) === 1)
+        .map((row) => `${row.inviteEmail}:${row.workspaceId}`)
+    );
+
+    return pendingInvitations
+      .filter((inv) =>
+        singleRecordPairs.has(`${inv.inviteEmail}:${inv.workspaceId}`)
+      )
+      .map(
+        (inv) => new this(this.model, inv.get(), { workspace: inv.workspace })
+      );
   }
 
   static async getPendingInvitations(

@@ -6,6 +6,7 @@ import { runCreditAlertsWorker } from "@app/temporal/credit_alerts/worker";
 import { runDataRetentionWorker } from "@app/temporal/data_retention/worker";
 import { runESIndexationQueueWorker } from "@app/temporal/es_indexation/worker";
 import { runHardDeleteWorker } from "@app/temporal/hard_delete/worker";
+import { runInvitationRemindersWorker } from "@app/temporal/invitation_reminders/worker";
 import { runLabsTranscriptsWorker } from "@app/temporal/labs/transcripts/worker";
 import { runMentionsCountWorker } from "@app/temporal/mentions_count_queue/worker";
 import { runMentionsQueueWorker } from "@app/temporal/mentions_queue/worker";
@@ -28,6 +29,7 @@ import { runWorkOSEventsWorker } from "@app/temporal/workos_events_queue/worker"
 export type WorkerName =
   | "agent_loop"
   | "agent_schedule"
+  | "invitation_reminders"
   | "agent_trigger_webhook"
   | "analytics_queue"
   | "conversation_fork_queue"
@@ -55,6 +57,7 @@ export type WorkerName =
 
 export const workerFunctions: Record<WorkerName, () => Promise<void>> = {
   agent_loop: runAgentLoopWorker,
+  invitation_reminders: runInvitationRemindersWorker,
   agent_schedule: runAgentTriggerWorker,
   agent_trigger_webhook: runAgentTriggerWebhookWorker,
   analytics_queue: runAnalyticsWorker,

@@ -97,6 +97,25 @@ export function getMembershipInvitationUrl(
   return getMembershipInvitationUrlForToken(owner, invitationToken);
 }
 
+export async function sendWorkspaceInvitationReminderEmail(
+  owner: WorkspaceType,
+  invitation: MembershipInvitationType
+) {
+  // TODO: use a dedicated reminder template with "reminder" wording.
+  const message = {
+    to: invitation.inviteEmail,
+    from: config.getSupportEmailAddress(),
+    templateId: config.getInvitationEmailTemplate(),
+    dynamic_template_data: {
+      inviteLink: getMembershipInvitationUrl(owner, invitation),
+      workspaceName: owner.name,
+    },
+  };
+
+  sgMail.setApiKey(config.getSendgridApiKey());
+  await sgMail.send(message);
+}
+
 export async function sendWorkspaceInvitationEmail(
   owner: WorkspaceType,
   user: UserType,

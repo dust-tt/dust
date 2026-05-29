@@ -54,6 +54,7 @@ MembershipInvitationModel.init(
       { fields: ["workspaceId", "status"] },
       { unique: true, fields: ["sId"] },
       { fields: ["inviteEmail", "status"] },
+      { fields: ["workspaceId", "inviteEmail"], concurrently: true },
     ],
   }
 );
