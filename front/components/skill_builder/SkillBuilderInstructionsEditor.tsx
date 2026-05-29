@@ -29,7 +29,7 @@ const INSTRUCTIONS_HTML_FIELD_NAME = "instructionsHtml";
 const ATTACHED_KNOWLEDGE_FIELD_NAME = "attachedKnowledge";
 const BASE_ALLOWED_INSTRUCTIONS_TAGS = ["knowledge"];
 const BASE_ALLOWED_INSTRUCTIONS_ATTRS = ["space", "dsv", "hasChildren"];
-const SKILL_REFERENCE_ALLOWED_TAGS = ["skill"];
+const SKILL_REFERENCE_ALLOWED_TAGS = ["skill", "tool"];
 const SKILL_REFERENCE_ALLOWED_ATTRS = ["id", "name", "icon"];
 
 function getSkillInstructionsSanitizeConfig({

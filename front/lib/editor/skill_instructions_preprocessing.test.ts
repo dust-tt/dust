@@ -1,5 +1,9 @@
 import { buildSkillInstructionsExtensions } from "@app/lib/editor/build_skill_instructions_extensions";
-import { preprocessMarkdownForEditor } from "@app/lib/editor/skill_instructions_preprocessing";
+import {
+  postProcessMarkdown,
+  preprocessMarkdownForEditor,
+} from "@app/lib/editor/skill_instructions_preprocessing";
+import { serializeToolTag } from "@app/lib/tools/format";
 import { Editor } from "@tiptap/react";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -17,6 +21,14 @@ describe("skill instructions preprocessing", () => {
         'Use <skill id="skill_123" name="Create memo" /> here.'
       )
     ).toContain("<\u200Bskill");
+  });
+
+  it("escapes tool tags by default", () => {
+    expect(
+      preprocessMarkdownForEditor(
+        '<tool id="mcp_server_view_123" name="GitHub Search" />'
+      )
+    ).toContain("<\u200Btool");
   });
 
   it("preserves skill tags when skill references are enabled", () => {
@@ -43,5 +55,30 @@ describe("skill instructions preprocessing", () => {
     expect(editor.getMarkdown()).toContain(
       '<skill id="skill_123" name="Create memo" />'
     );
+  });
+
+  it("keeps escaped tool attributes when post-processing editor markdown", () => {
+    const toolTag = serializeToolTag({
+      icon: "GithubLogo",
+      id: "mcp_server_view_123",
+      name: 'GitHub & "Issues" <Prod>',
+    });
+
+    editor = new Editor({
+      extensions: buildSkillInstructionsExtensions(false, [], {
+        enableSkillReferences: true,
+      }),
+    });
+
+    editor.commands.setContent(
+      preprocessMarkdownForEditor(`Use ${toolTag}.`, {
+        enableSkillReferences: true,
+      }),
+      {
+        contentType: "markdown",
+      }
+    );
+
+    expect(postProcessMarkdown(editor.getMarkdown())).toContain(toolTag);
   });
 });

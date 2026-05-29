@@ -2,6 +2,10 @@ import { ToolNode } from "@app/components/editor/extensions/skill_builder/ToolNo
 import type { ToolNodeAttributes } from "@app/components/editor/extensions/skill_builder/ToolNodeTypes";
 import { EditorFactory } from "@app/components/editor/extensions/tests/utils";
 import {
+  postProcessMarkdown,
+  preprocessMarkdownForEditor,
+} from "@app/lib/editor/skill_instructions_preprocessing";
+import {
   extractToolTags,
   parseToolTag,
   serializeToolTag,
@@ -127,9 +131,14 @@ describe("ToolNode", () => {
       name: TOOL_ATTRS.toolName,
     })} now.`;
 
-    editor.commands.setContent(markdown, {
-      contentType: "markdown",
-    });
+    editor.commands.setContent(
+      preprocessMarkdownForEditor(markdown, {
+        enableSkillReferences: true,
+      }),
+      {
+        contentType: "markdown",
+      }
+    );
 
     expect(toolNodes(editor)).toEqual([
       {
@@ -144,6 +153,18 @@ describe("ToolNode", () => {
         name: TOOL_ATTRS.toolName,
       })
     );
+  });
+
+  it("keeps malformed markdown tool tags as text", () => {
+    const markdown =
+      'Literal <tool name="GitHub Search">example</tool> and <tool id="mcp_server_view_123" />.';
+
+    editor.commands.setContent(preprocessMarkdownForEditor(markdown), {
+      contentType: "markdown",
+    });
+
+    expect(toolNodes(editor)).toEqual([]);
+    expect(postProcessMarkdown(editor.getMarkdown())).toContain(markdown);
   });
 
   it("round-trips stored HTML tool tags", () => {
