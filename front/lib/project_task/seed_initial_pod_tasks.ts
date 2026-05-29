@@ -1,6 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
 import {
-  INITIAL_PROJECT_TASKS,
+  INITIAL_POD_TASKS,
   PROJECT_MANAGER_AGENT_SID,
 } from "@app/lib/project_task/initial_project_tasks";
 import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
@@ -33,7 +33,7 @@ export async function seedInitialPodTasks(
   }
 
   const assignee = auth.getNonNullableUser();
-  const initialTexts = new Set(INITIAL_PROJECT_TASKS.map((seed) => seed.text));
+  const initialTexts = new Set(INITIAL_POD_TASKS.map((seed) => seed.text));
   const existingTasks = await ProjectTaskResource.fetchBySpace(auth, {
     spaceId: space.id,
     timeScope: "active",
@@ -50,7 +50,7 @@ export async function seedInitialPodTasks(
   try {
     // Insert in reverse array order so the first-defined task is saved last and sorts
     // to the top under default client ordering (`updatedAt` desc).
-    for (const seed of INITIAL_PROJECT_TASKS.slice().reverse()) {
+    for (const seed of INITIAL_POD_TASKS.slice().reverse()) {
       const task = await ProjectTaskResource.makeNew(auth, {
         spaceId: space.id,
         userId: assignee.id,

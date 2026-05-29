@@ -20,7 +20,11 @@ import {
   makeSuccessResponse,
   withErrorHandling,
 } from "@app/lib/api/actions/servers/pod_manager/helpers";
-import { POD_MANAGER_TOOLS_METADATA } from "@app/lib/api/actions/servers/pod_manager/metadata";
+import {
+  LIST_MEMBERS_TOOL_NAME,
+  POD_MANAGER_TOOLS_METADATA,
+  UPDATE_MEMBERS_TOOL_NAME,
+} from "@app/lib/api/actions/servers/pod_manager/metadata";
 import { resolveAgentConfigurationIdByName } from "@app/lib/api/assistant/configuration/agent";
 import {
   createConversation,
@@ -317,7 +321,7 @@ export function createProjectManagerTools(
       }, "Failed to edit Pod information");
     },
 
-    update_members: async (params) => {
+    [UPDATE_MEMBERS_TOOL_NAME]: async (params) => {
       return withErrorHandling(async () => {
         const contextRes = await getProjectSpace(auth, {
           agentLoopContext,
@@ -462,7 +466,7 @@ export function createProjectManagerTools(
         );
       }, "Failed to get Pod information");
     },
-    list_members: async (params) => {
+    [LIST_MEMBERS_TOOL_NAME]: async (params) => {
       return withErrorHandling(async () => {
         const contextRes = await getProjectSpace(auth, {
           agentLoopContext,

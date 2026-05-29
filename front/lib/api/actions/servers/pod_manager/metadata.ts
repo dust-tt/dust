@@ -14,6 +14,7 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const POD_MANAGER_SERVER_NAME = "pod_manager" as const;
 export const UPDATE_MEMBERS_TOOL_NAME = "update_members" as const;
+export const LIST_MEMBERS_TOOL_NAME = "list_members" as const;
 
 export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
   add_content_node: {
@@ -100,7 +101,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
       done: "Edit Pod information",
     },
   },
-  update_members: {
+  [UPDATE_MEMBERS_TOOL_NAME]: {
     description:
       "Add or remove Pod members by user sId. Requires Pod editor permissions.",
     schema: {
@@ -146,7 +147,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
       done: "Get Pod information",
     },
   },
-  list_members: {
+  [LIST_MEMBERS_TOOL_NAME]: {
     description:
       "List members of the Pod. Each entry includes user ID, name, email and status within the Pod.",
     schema: {

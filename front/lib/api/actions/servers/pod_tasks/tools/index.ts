@@ -9,7 +9,12 @@ import {
   getProjectSpace,
   withErrorHandling,
 } from "@app/lib/api/actions/servers/pod_manager/helpers";
-import { POD_TASKS_TOOLS_METADATA } from "@app/lib/api/actions/servers/pod_tasks/metadata";
+import {
+  CREATE_TASKS_TOOL_NAME,
+  POD_TASKS_TOOLS_METADATA,
+  START_TASK_AGENT_TOOL_NAME,
+  UPDATE_TASKS_TOOL_NAME,
+} from "@app/lib/api/actions/servers/pod_tasks/metadata";
 import { inferProjectTaskSourceFromUrl } from "@app/lib/api/actions/servers/pod_tasks/source_utils";
 import { resolveAgentConfigurationIdByName } from "@app/lib/api/assistant/configuration/agent";
 import config from "@app/lib/api/config";
@@ -168,7 +173,7 @@ export function createProjectTasksTools(
       }, "Failed to list tasks");
     },
 
-    create_tasks: async ({ creatorType, tasks, dustPod }) => {
+    [CREATE_TASKS_TOOL_NAME]: async ({ creatorType, tasks, dustPod }) => {
       return withErrorHandling(async () => {
         const contextRes = await getProjectSpace(auth, {
           agentLoopContext,
@@ -336,7 +341,7 @@ export function createProjectTasksTools(
       }, "Failed to mark task as done");
     },
 
-    update_tasks: async ({ tasks, dustPod }) => {
+    [UPDATE_TASKS_TOOL_NAME]: async ({ tasks, dustPod }) => {
       return withErrorHandling(async () => {
         const contextRes = await getProjectSpace(auth, {
           agentLoopContext,
@@ -389,7 +394,12 @@ export function createProjectTasksTools(
       }, "Failed to update tasks");
     },
 
-    start_task_agent: async ({ taskId, agentName, customMessage, dustPod }) => {
+    [START_TASK_AGENT_TOOL_NAME]: async ({
+      taskId,
+      agentName,
+      customMessage,
+      dustPod,
+    }) => {
       return withErrorHandling(async () => {
         const contextRes = await getProjectSpace(auth, {
           agentLoopContext,
