@@ -81,11 +81,11 @@ export const PodTasksUpdateTaskItemInputSchema = z.object({
     .max(256)
     .optional()
     .describe("The new task description."),
-  userId: z
+  assigneeUserId: z
     .union([z.string(), z.null()])
     .optional()
     .describe(
-      "The sId of the user to assign the task to; must be a member of the Pod. Pass null to unassign. Omit to keep the current assignee."
+      "The sId of the user to assign the task to (the task's new assignee); must be a member of the Pod. Pass null to unassign. Omit to keep the current assignee."
     ),
   doneRationale: z
     .string()
@@ -97,6 +97,12 @@ export const PodTasksUpdateTaskItemInputSchema = z.object({
     .enum(["todo", "in_progress", "done"])
     .optional()
     .describe("The new task status. Defaults to the current status."),
+  markAsDoneByType: z
+    .enum(["user", "agent"])
+    .optional()
+    .describe(
+      "Who should be recorded as having marked this task done. Use 'user' when the user explicitly asked for it; 'agent' when the agent is autonomously closing it. Only consulted when the task transitions to 'done'. Defaults to 'agent' if omitted."
+    ),
 });
 
 export const PodTasksUpdateTasksInputSchema = z.object({

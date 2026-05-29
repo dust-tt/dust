@@ -67,33 +67,6 @@ export const POD_TASKS_TOOLS_METADATA = createToolsRecord({
       done: "Create tasks",
     },
   },
-  mark_task_done: {
-    description: "Mark one or more tasks as done.",
-    schema: {
-      actorType: z
-        .enum(["user", "agent"])
-        .describe(
-          "Who is marking the task done? Use 'user' when the user explicitly asked for it."
-        ),
-      taskIds: z
-        .array(z.string())
-        .min(1)
-        .max(50)
-        .describe("List of task sIds to mark as done."),
-      dustPod: ConfigurableToolInputSchemas[
-        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
-      ]
-        .optional()
-        .describe(
-          "Optional Pod to resolve tasks in; falls back to the conversation's Pod."
-        ),
-    },
-    stake: "low",
-    displayLabels: {
-      running: "Marking tasks as done",
-      done: "Mark tasks as done",
-    },
-  },
   [UPDATE_TASKS_TOOL_NAME]: {
     description: "Update one or more existing tasks at once in the Pod.",
     schema: PodTasksUpdateTasksInputSchema.shape,

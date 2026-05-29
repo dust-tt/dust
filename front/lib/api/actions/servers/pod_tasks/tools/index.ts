@@ -19,60 +19,169 @@ import { inferProjectTaskSourceFromUrl } from "@app/lib/api/actions/servers/pod_
 import { resolveAgentConfigurationIdByName } from "@app/lib/api/assistant/configuration/agent";
 import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
+import { DustError } from "@app/lib/error";
 import { startAgentForProjectTask } from "@app/lib/project_task/start_agent";
-import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
+import {
+  ProjectTaskResource,
+  type UpdateBlob,
+} from "@app/lib/resources/project_task_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type { PodTaskStatus } from "@app/types/project_task";
+import type { PodTaskActorType, PodTaskStatus } from "@app/types/project_task";
 import { POD_TASK_NO_ASSIGNEE_LABEL } from "@app/types/project_task";
 import type { ModelId } from "@app/types/shared/model_id";
-import { Err, Ok } from "@app/types/shared/result";
+import { Err, Ok, type Result } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
-type PodTaskUpdateItem = {
+export type PodTaskUpdateItem = {
   taskId: string;
   text?: string;
-  userId?: string | null;
+  assigneeUserId?: string | null;
   doneRationale?: string;
   status?: PodTaskStatus;
+  markAsDoneByType?: PodTaskActorType;
 };
 
-async function buildTaskUpdatePayload(
+type DoneAttribution = Pick<
+  UpdateBlob,
+  | "markedAsDoneByType"
+  | "markedAsDoneByUserId"
+  | "markedAsDoneByAgentConfigurationId"
+>;
+
+export function doneAttribution(
+  actorType: PodTaskActorType,
+  actorUserId: ModelId | null,
+  agentConfigId: string | null
+): DoneAttribution {
+  switch (actorType) {
+    case "user":
+      return {
+        markedAsDoneByType: "user",
+        markedAsDoneByUserId: actorUserId,
+        markedAsDoneByAgentConfigurationId: null,
+      };
+    case "agent":
+      return {
+        markedAsDoneByType: "agent",
+        markedAsDoneByUserId: null,
+        markedAsDoneByAgentConfigurationId: agentConfigId,
+      };
+    default:
+      return assertNever(actorType);
+  }
+}
+
+export function statusTransitionUpdates(
+  nextStatus: PodTaskStatus,
+  actorType: PodTaskActorType,
+  actorUserId: ModelId | null,
+  agentConfigId: string | null
+): UpdateBlob {
+  switch (nextStatus) {
+    case "done":
+      return {
+        status: "done",
+        doneAt: new Date(),
+        ...doneAttribution(actorType, actorUserId, agentConfigId),
+      };
+    case "todo":
+    case "in_progress":
+      return {
+        status: nextStatus,
+        doneAt: null,
+        markedAsDoneByType: null,
+        markedAsDoneByUserId: null,
+        markedAsDoneByAgentConfigurationId: null,
+      };
+    default:
+      return assertNever(nextStatus);
+  }
+}
+
+async function resolveAssigneeUpdate(
   space: SpaceResource,
-  workspaceSId: string,
+  workspaceId: string,
+  itemUserId: string | null | undefined
+): Promise<Result<{ userId?: number | null }, DustError<"user_not_member">>> {
+  if (itemUserId === undefined) {
+    return new Ok({ userId: undefined });
+  }
+  if (itemUserId === null) {
+    return new Ok({ userId: null });
+  }
+  const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+    itemUserId,
+    workspaceId
+  );
+  if (!space.isMember(userAuth)) {
+    return new Err(
+      new DustError(
+        "user_not_member",
+        `User ${itemUserId} is not a member of the Pod.`
+      )
+    );
+  }
+  return new Ok({ userId: userAuth.getNonNullableUser().id });
+}
+
+export function rationaleUpdate(
+  item: PodTaskUpdateItem,
+  prevStatus: PodTaskStatus,
+  nextStatus: PodTaskStatus
+): Pick<UpdateBlob, "actorRationale"> {
+  if (item.doneRationale !== undefined) {
+    return { actorRationale: item.doneRationale };
+  }
+  if (nextStatus !== "done" && prevStatus === "done") {
+    return { actorRationale: null };
+  }
+  return {};
+}
+
+export async function buildTaskUpdatePayload(
+  auth: Authenticator,
+  space: SpaceResource,
   row: ProjectTaskResource,
-  item: PodTaskUpdateItem
-): Promise<
-  | { updates: Parameters<ProjectTaskResource["updateWithVersion"]>[1] }
-  | { error: string }
-> {
-  const updates: Parameters<ProjectTaskResource["updateWithVersion"]>[1] = {
-    status: item.doneRationale ? "done" : (item.status ?? row.status),
-    doneAt: item.doneRationale ? new Date() : null,
-    actorRationale: item.doneRationale ?? row.actorRationale,
+  item: PodTaskUpdateItem,
+  agentConfigId: string | null
+): Promise<Result<{ taskUpdates: UpdateBlob }, DustError<"user_not_member">>> {
+  const actorUserId = auth.user()?.id ?? null;
+  const workspaceSId = auth.getNonNullableWorkspace().sId;
+
+  const nextStatus: PodTaskStatus = item.doneRationale
+    ? "done"
+    : (item.status ?? row.status);
+
+  const updates: UpdateBlob = {
+    ...(nextStatus !== row.status
+      ? statusTransitionUpdates(
+          nextStatus,
+          item.markAsDoneByType ?? "agent",
+          actorUserId,
+          agentConfigId
+        )
+      : {}),
+    ...rationaleUpdate(item, row.status, nextStatus),
+    ...(item.text !== undefined ? { text: item.text } : {}),
   };
 
-  if (item.text !== undefined) {
-    updates.text = item.text;
+  const assignee = await resolveAssigneeUpdate(
+    space,
+    workspaceSId,
+    item.assigneeUserId
+  );
+  if (assignee.isErr()) {
+    return assignee;
   }
 
-  if (item.userId === null) {
-    updates.userId = null;
-  } else if (typeof item.userId === "string") {
-    const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
-      item.userId,
-      workspaceSId
-    );
-    if (!space.isMember(userAuth)) {
-      return {
-        error: `User ${item.userId} is not a member of the Pod for task ${item.taskId}.`,
-      };
-    }
-    updates.userId = userAuth.getNonNullableUser().id;
+  if (assignee.value.userId !== undefined) {
+    updates.userId = assignee.value.userId;
   }
 
-  return { updates };
+  return new Ok({ taskUpdates: updates });
 }
 
 function formatTaskListingLine(row: ProjectTaskResource): string {
@@ -273,74 +382,6 @@ export function createProjectTasksTools(
       }, "Failed to create tasks");
     },
 
-    mark_task_done: async ({ actorType, taskIds, dustPod }) => {
-      return withErrorHandling(async () => {
-        const contextRes = await getPod(auth, {
-          agentLoopContext,
-          dustPod,
-        });
-        if (contextRes.isErr()) {
-          return contextRes;
-        }
-
-        const marked: string[] = [];
-        const alreadyDone: string[] = [];
-        const notFound: string[] = [];
-
-        for (const taskId of taskIds) {
-          const row = await ProjectTaskResource.fetchBySId(auth, taskId);
-          if (!row) {
-            notFound.push(taskId);
-            continue;
-          }
-
-          if (row.status === "done") {
-            alreadyDone.push(taskId);
-            continue;
-          }
-
-          await row.updateWithVersion(auth, {
-            status: "done",
-            doneAt: new Date(),
-            markedAsDoneByType: actorType,
-            markedAsDoneByUserId: actorType === "user" ? row.userId : null,
-            markedAsDoneByAgentConfigurationId:
-              actorType === "agent"
-                ? (agentLoopContext?.runContext?.agentConfiguration?.sId ??
-                  null)
-                : null,
-          });
-          marked.push(`${taskId} ("${row.text}")`);
-        }
-
-        const lines: string[] = [];
-        if (marked.length > 0) {
-          lines.push(`Marked ${marked.length} task(s) as done:`);
-          for (const item of marked) {
-            lines.push(`- ${item}`);
-          }
-        }
-        if (alreadyDone.length > 0) {
-          lines.push(
-            `Already done (${alreadyDone.length}): ${alreadyDone.join(", ")}`
-          );
-        }
-        if (notFound.length > 0) {
-          lines.push(`Not found (${notFound.length}): ${notFound.join(", ")}`);
-        }
-        if (lines.length === 0) {
-          lines.push("No tasks were updated.");
-        }
-
-        return new Ok([
-          {
-            type: "text" as const,
-            text: lines.join("\n"),
-          },
-        ]);
-      }, "Failed to mark task as done");
-    },
-
     [UPDATE_TASKS_TOOL_NAME]: async ({ tasks, dustPod }) => {
       return withErrorHandling(async () => {
         const contextRes = await getPod(auth, {
@@ -351,6 +392,9 @@ export function createProjectTasksTools(
           return contextRes;
         }
         const { pod } = contextRes.value;
+
+        const agentConfigId =
+          agentLoopContext?.runContext?.agentConfiguration?.sId ?? null;
 
         const updated: string[] = [];
         const errors: string[] = [];
@@ -364,20 +408,25 @@ export function createProjectTasksTools(
           }
 
           const payloadRes = await buildTaskUpdatePayload(
+            auth,
             pod,
-            owner.sId,
             row,
-            item
+            item,
+            agentConfigId
           );
-          if ("error" in payloadRes) {
-            errors.push(payloadRes.error);
+          if (payloadRes.isErr()) {
+            errors.push(payloadRes.error.message);
             continue;
           }
 
-          const updatedRow = await row.updateWithVersion(
-            auth,
-            payloadRes.updates
-          );
+          const { taskUpdates } = payloadRes.value;
+
+          if (Object.keys(taskUpdates).length === 0) {
+            updated.push(formatTaskListingLine(row));
+            continue;
+          }
+
+          const updatedRow = await row.updateWithVersion(auth, taskUpdates);
           updated.push(formatTaskListingLine(updatedRow));
         }
 

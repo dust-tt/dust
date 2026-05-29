@@ -44,6 +44,26 @@ type ProjectTaskVersionCreationAttributes =
     version: number;
   };
 
+export type UpdateBlob = Partial<
+  Pick<
+    CreationAttributes<ProjectTaskModel>,
+    | "category"
+    | "userId"
+    | "text"
+    | "status"
+    | "doneAt"
+    | "actorRationale"
+    | "agentInstructions"
+    | "markedAsDoneByType"
+    | "markedAsDoneByUserId"
+    | "markedAsDoneByAgentConfigurationId"
+    | "deletedAt"
+    | "agentSuggestionStatus"
+    | "agentSuggestionReviewedAt"
+    | "agentSuggestionReviewedByUserId"
+  >
+>;
+
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface ProjectTaskResource
@@ -142,25 +162,7 @@ export class ProjectTaskResource extends BaseResource<ProjectTaskModel> {
   // snapshot count + 1.
   async updateWithVersion(
     auth: Authenticator,
-    updates: Partial<
-      Pick<
-        CreationAttributes<ProjectTaskModel>,
-        | "category"
-        | "userId"
-        | "text"
-        | "status"
-        | "doneAt"
-        | "actorRationale"
-        | "agentInstructions"
-        | "markedAsDoneByType"
-        | "markedAsDoneByUserId"
-        | "markedAsDoneByAgentConfigurationId"
-        | "deletedAt"
-        | "agentSuggestionStatus"
-        | "agentSuggestionReviewedAt"
-        | "agentSuggestionReviewedByUserId"
-      >
-    >,
+    updates: UpdateBlob,
     transaction?: Transaction
   ): Promise<ProjectTaskResource> {
     if (this.workspaceId !== auth.getNonNullableWorkspace().id) {
