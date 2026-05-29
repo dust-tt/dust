@@ -1,4 +1,3 @@
-import { TransitionLLM } from "@app/lib/api/llm/AnthropicModelLLM";
 import { AnthropicLLM } from "@app/lib/api/llm/clients/anthropic";
 import {
   isAnthropicVertexWhitelistedModelId,
@@ -20,6 +19,7 @@ import { isOpenAIResponsesWhitelistedModelId } from "@app/lib/api/llm/clients/op
 import { XaiLLM } from "@app/lib/api/llm/clients/xai";
 import { isXaiWhitelistedModelId } from "@app/lib/api/llm/clients/xai/types";
 import type { LLM } from "@app/lib/api/llm/llm";
+import { TransitionLLM } from "@app/lib/api/llm/transitionLLM";
 import type { LLMParameters } from "@app/lib/api/llm/types/options";
 import { getModels } from "@app/lib/api/models";
 import type { Model } from "@app/lib/api/models/types/providers";
@@ -110,7 +110,7 @@ export async function getLLM(
     },
     featureFlags
   );
-  
+
   if (newLLM) {
     return newLLM;
   }
