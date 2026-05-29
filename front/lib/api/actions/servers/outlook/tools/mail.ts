@@ -13,6 +13,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { Err, Ok } from "@app/types/shared/result";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import sanitizeHtml from "sanitize-html";
+import { z } from "zod";
 
 const DEFAULT_MESSAGE_FIELDS = [
   "id",
@@ -163,14 +164,19 @@ interface OutlookFileAttachment {
   contentBytes?: string; // Standard base64-encoded content
 }
 
-interface OutlookFolder {
-  id: string;
-  displayName: string;
-  parentFolderId?: string;
-  childFolderCount?: number;
-  unreadItemCount?: number;
-  totalItemCount?: number;
-}
+const OutlookFolderSchema = z.object({
+  id: z.string(),
+  displayName: z.string(),
+  parentFolderId: z.string().optional(),
+  childFolderCount: z.number().optional(),
+  unreadItemCount: z.number().optional(),
+  totalItemCount: z.number().optional(),
+});
+type OutlookFolder = z.infer<typeof OutlookFolderSchema>;
+
+const GraphFolderListResponseSchema = z.object({
+  value: z.array(OutlookFolderSchema).default([]),
+});
 
 const foldersEndpoint = (
   basePath: string,
@@ -199,9 +205,11 @@ const findFolderIdByName = async (
       ),
     };
   }
-  const result = await response.json();
-  const folders = (result.value ?? []) as OutlookFolder[];
-  const folder = folders.find(
+  const parsed = GraphFolderListResponseSchema.safeParse(await response.json());
+  if (!parsed.success) {
+    return { error: new MCPError("Unexpected response format from Graph API") };
+  }
+  const folder = parsed.data.value.find(
     (f) => f.displayName.toLowerCase() === folderName.toLowerCase()
   );
   return { folderId: folder?.id ?? null };
@@ -313,8 +321,15 @@ const findFolderByPath = async (
         ),
       };
     }
-    const result = await response.json();
-    const folders = (result.value ?? []) as OutlookFolder[];
+    const parsed = GraphFolderListResponseSchema.safeParse(
+      await response.json()
+    );
+    if (!parsed.success) {
+      return {
+        error: new MCPError("Unexpected response format from Graph API"),
+      };
+    }
+    const folders = parsed.data.value;
     const folder = folders.find(
       (f) => f.displayName.toLowerCase() === segment.toLowerCase()
     );
@@ -593,8 +608,13 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
       );
     }
 
-    const result = await response.json();
-    const folders = (result.value ?? []) as OutlookFolder[];
+    const parsed = GraphFolderListResponseSchema.safeParse(
+      await response.json()
+    );
+    if (!parsed.success) {
+      return new Err(new MCPError("Unexpected response format from Graph API"));
+    }
+    const folders = parsed.data.value;
 
     const path = folderPath ?? [];
     return new Ok([
