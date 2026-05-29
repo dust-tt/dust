@@ -95,10 +95,7 @@ const SKILL_NAME_ATTRIBUTE_REGEX = /(\bname=")[^"]*(")/;
  */
 export function renameSkillReferencesInContent(
   content: string,
-  {
-    skillId,
-    newName,
-  }: { skillId: string; newName: string }
+  { skillId, newName }: { skillId: string; newName: string }
 ): string {
   return content.replace(SKILL_OPEN_TAG_REGEX, (tag) => {
     const id = tag.match(/\bid="([^"]+)"/)?.[1];

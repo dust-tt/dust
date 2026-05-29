@@ -18,7 +18,6 @@ import {
   SkillMCPServerConfigurationModel,
   SkillVersionModel,
 } from "@app/lib/models/skill";
-import { SkillReferenceModel } from "@app/lib/models/skill/skill_reference";
 import {
   AgentMessageSkillModel,
   ConversationSkillModel,
