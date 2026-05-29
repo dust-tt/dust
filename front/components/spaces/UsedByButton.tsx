@@ -52,9 +52,6 @@ function UsedByButtonIcon({
           </span>
         </span>
       )}
-      {hasAgents && hasSkills && (
-        <span className="h-1 w-1 rounded-full bg-muted-foreground/30" />
-      )}
       {hasSkills && (
         <span className="inline-flex h-5 items-center gap-1">
           <PuzzleIcon className="h-4 w-4 shrink-0" />
