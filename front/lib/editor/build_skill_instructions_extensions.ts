@@ -20,7 +20,7 @@ import { StarterKit } from "@tiptap/starter-kit";
 export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
 
 interface BuildSkillInstructionsExtensionsOptions {
-  includeSkillNode?: boolean;
+  enableSkillReferences?: boolean;
 }
 
 /**
@@ -32,7 +32,9 @@ interface BuildSkillInstructionsExtensionsOptions {
 export function buildSkillInstructionsExtensions(
   isReadOnly: boolean,
   editableExtensions: Extensions = [],
-  { includeSkillNode = false }: BuildSkillInstructionsExtensionsOptions = {}
+  {
+    enableSkillReferences = false,
+  }: BuildSkillInstructionsExtensionsOptions = {}
 ): Extensions {
   const baseExtensions: Extensions = [
     InstructionsDocumentExtension,
@@ -97,7 +99,7 @@ export function buildSkillInstructionsExtensions(
     ...rawMarkdownBlockParsers,
   ];
 
-  if (includeSkillNode) {
+  if (enableSkillReferences) {
     baseExtensions.push(SkillNode);
   }
 

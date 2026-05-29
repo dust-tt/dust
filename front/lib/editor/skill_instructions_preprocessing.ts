@@ -17,9 +17,9 @@ function escapeMathEmphasis(markdown: string): string {
  */
 export function preprocessMarkdownForEditor(
   markdown: string,
-  { preserveSkillTags = false }: { preserveSkillTags?: boolean } = {}
+  { enableSkillReferences = false }: { enableSkillReferences?: boolean } = {}
 ): string {
-  const preservedTags = preserveSkillTags ? "knowledge|skill" : "knowledge";
+  const preservedTags = enableSkillReferences ? "knowledge|skill" : "knowledge";
 
   return escapeMathEmphasis(
     markdown.replace(

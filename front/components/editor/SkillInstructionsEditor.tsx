@@ -17,7 +17,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 function useEditorService(
   editor: Editor | null,
-  { includeSkillNode }: { includeSkillNode: boolean }
+  { enableSkillReferences }: { enableSkillReferences: boolean }
 ) {
   return useMemo(() => {
     return {
@@ -47,7 +47,7 @@ function useEditorService(
         if (editor && !editor.isDestroyed) {
           editor.commands.setContent(
             preprocessMarkdownForEditor(content, {
-              preserveSkillTags: includeSkillNode,
+              enableSkillReferences,
             }),
             {
               emitUpdate: false,
@@ -91,12 +91,12 @@ function useEditorService(
         return editor?.isDestroyed ?? true;
       },
     };
-  }, [editor, includeSkillNode]);
+  }, [editor, enableSkillReferences]);
 }
 
-interface SkillInstructionsNestedSkillsOptions {
+interface SkillInstructionsSkillReferencesOptions {
   currentSkillId?: string | null;
-  enabled: boolean;
+  enableSkillReferences: boolean;
   owner?: LightWorkspaceType;
 }
 
@@ -104,22 +104,26 @@ interface UseSkillInstructionsEditorProps {
   content: string;
   htmlContent?: string;
   isReadOnly: boolean;
-  nestedSkills?: SkillInstructionsNestedSkillsOptions;
+  skillReferences?: SkillInstructionsSkillReferencesOptions;
   onUpdate?: (props: { editor: Editor; transaction: Transaction }) => void;
   onBlur?: () => void;
   onDelete?: (editor: Editor) => void;
 }
 
 function buildSkillInstructionsEditableExtensions({
-  nestedSkills,
+  currentSkillId,
+  includeSkillSuggestions,
+  owner,
 }: {
-  nestedSkills?: SkillInstructionsNestedSkillsOptions;
+  currentSkillId?: string | null;
+  includeSkillSuggestions: boolean;
+  owner?: LightWorkspaceType;
 }) {
   return [
     SlashCommandExtension.configure({
-      currentSkillId: nestedSkills?.currentSkillId ?? null,
-      includeSkills: nestedSkills?.enabled === true && !!nestedSkills.owner,
-      owner: nestedSkills?.owner,
+      currentSkillId: currentSkillId ?? null,
+      includeSkillSuggestions,
+      owner,
     }),
     AgentInstructionDiffExtension,
     Placeholder.configure({
@@ -137,32 +141,31 @@ export function useSkillInstructionsEditor({
   content,
   htmlContent,
   isReadOnly,
-  nestedSkills,
+  skillReferences,
   onUpdate,
   onBlur,
   onDelete,
 }: UseSkillInstructionsEditorProps) {
-  const includeSkillNode = nestedSkills?.enabled === true;
-  const nestedSkillsCurrentSkillId = nestedSkills?.currentSkillId ?? null;
-  const nestedSkillsOwner = nestedSkills?.owner;
+  const enableSkillReferences = skillReferences?.enableSkillReferences === true;
+  const currentSkillId = skillReferences?.currentSkillId ?? null;
+  const owner = skillReferences?.owner;
+  const includeSkillSuggestions = enableSkillReferences && !!owner;
   const editableExtensions = useMemo(
     () =>
       buildSkillInstructionsEditableExtensions({
-        nestedSkills: {
-          currentSkillId: nestedSkillsCurrentSkillId,
-          enabled: includeSkillNode,
-          owner: nestedSkillsOwner,
-        },
+        currentSkillId,
+        includeSkillSuggestions,
+        owner,
       }),
-    [includeSkillNode, nestedSkillsCurrentSkillId, nestedSkillsOwner]
+    [currentSkillId, includeSkillSuggestions, owner]
   );
 
   const extensions = useMemo(
     () =>
       buildSkillInstructionsExtensions(isReadOnly, editableExtensions, {
-        includeSkillNode,
+        enableSkillReferences,
       }),
-    [editableExtensions, includeSkillNode, isReadOnly]
+    [editableExtensions, enableSkillReferences, isReadOnly]
   );
 
   // Track if initial content has been set
@@ -181,7 +184,7 @@ export function useSkillInstructionsEditor({
     [extensions, isReadOnly]
   );
 
-  const editorService = useEditorService(editor, { includeSkillNode });
+  const editorService = useEditorService(editor, { enableSkillReferences });
 
   // Set initial content after editor is created
   useEffect(() => {
@@ -201,7 +204,7 @@ export function useSkillInstructionsEditor({
           } else {
             editor.commands.setContent(
               preprocessMarkdownForEditor(content, {
-                preserveSkillTags: includeSkillNode,
+                enableSkillReferences,
               }),
               {
                 emitUpdate: false,
@@ -214,7 +217,7 @@ export function useSkillInstructionsEditor({
         }
       });
     }
-  }, [editor, content, htmlContent, includeSkillNode]);
+  }, [editor, content, htmlContent, enableSkillReferences]);
 
   return { editor, editorService, isContentReady };
 }

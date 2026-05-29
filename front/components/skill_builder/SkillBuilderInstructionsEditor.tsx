@@ -27,6 +27,26 @@ import { useController, useFormContext } from "react-hook-form";
 const INSTRUCTIONS_FIELD_NAME = "instructions";
 const INSTRUCTIONS_HTML_FIELD_NAME = "instructionsHtml";
 const ATTACHED_KNOWLEDGE_FIELD_NAME = "attachedKnowledge";
+const BASE_ALLOWED_INSTRUCTIONS_TAGS = ["knowledge"];
+const BASE_ALLOWED_INSTRUCTIONS_ATTRS = ["space", "dsv", "hasChildren"];
+const SKILL_REFERENCE_ALLOWED_TAGS = ["skill"];
+const SKILL_REFERENCE_ALLOWED_ATTRS = ["id", "name", "icon"];
+
+function getSkillInstructionsSanitizeConfig({
+  enableSkillReferences,
+}: {
+  enableSkillReferences: boolean;
+}): Config {
+  return {
+    ADD_TAGS: enableSkillReferences
+      ? [...BASE_ALLOWED_INSTRUCTIONS_TAGS, ...SKILL_REFERENCE_ALLOWED_TAGS]
+      : [...BASE_ALLOWED_INSTRUCTIONS_TAGS],
+    ADD_ATTR: enableSkillReferences
+      ? [...BASE_ALLOWED_INSTRUCTIONS_ATTRS, ...SKILL_REFERENCE_ALLOWED_ATTRS]
+      : [...BASE_ALLOWED_INSTRUCTIONS_ATTRS],
+    FORBID_ATTR: ["style", "class"],
+  };
+}
 
 function collectKnowledgeItems(editor: Editor): KnowledgeItem[] {
   const items: KnowledgeItem[] = [];
@@ -52,17 +72,13 @@ function toAttachedKnowledge(
 
 function sanitizeSkillInstructionsHtml(
   html: string,
-  { preserveSkillTags = false }: { preserveSkillTags?: boolean } = {}
+  { enableSkillReferences = false }: { enableSkillReferences?: boolean } = {}
 ): string {
   try {
-    const config: Config = {
-      ADD_TAGS: preserveSkillTags ? ["knowledge", "skill"] : ["knowledge"],
-      ADD_ATTR: preserveSkillTags
-        ? ["space", "dsv", "hasChildren", "id", "name", "icon"]
-        : ["space", "dsv", "hasChildren"],
-      FORBID_ATTR: ["style", "class"],
-    };
-    return DOMPurify.sanitize(html, config);
+    return DOMPurify.sanitize(
+      html,
+      getSkillInstructionsSanitizeConfig({ enableSkillReferences })
+    );
   } catch {
     return html;
   }
@@ -85,7 +101,7 @@ export function SkillBuilderInstructionsEditor({
   const { hasFeature } = useFeatureFlags();
   const hasReinforcementFeature =
     hasFeature("reinforced_agents") && hasFeature("reinforcement_ui");
-  const hasNestedSkillsFeature = hasFeature("nested_skills");
+  const enableSkillReferences = hasFeature("nested_skills");
 
   const { field: instructionsField, fieldState: instructionsFieldState } =
     useController<SkillBuilderFormData, typeof INSTRUCTIONS_FIELD_NAME>({
@@ -127,13 +143,13 @@ export function SkillBuilderInstructionsEditor({
       );
       instructionsHtmlField.onChange(
         sanitizeSkillInstructionsHtml(editor.getHTML(), {
-          preserveSkillTags: hasNestedSkillsFeature,
+          enableSkillReferences,
         })
       );
       syncAttachedKnowledgeFromEditor(editor);
     },
     [
-      hasNestedSkillsFeature,
+      enableSkillReferences,
       instructionsField.onChange,
       instructionsHtmlField.onChange,
       syncAttachedKnowledgeFromEditor,
@@ -185,9 +201,9 @@ export function SkillBuilderInstructionsEditor({
     content: instructionsField.value ?? "",
     htmlContent: instructionsHtmlField.value ?? undefined,
     isReadOnly: hasSuggestions,
-    nestedSkills: {
+    skillReferences: {
       currentSkillId: skillId,
-      enabled: hasNestedSkillsFeature,
+      enableSkillReferences,
       owner,
     },
     onUpdate: handleUpdate,
@@ -392,12 +408,12 @@ export function SkillBuilderInstructionsEditor({
 
     const incomingHtml = instructionsHtmlField.value;
     const currentHtml = sanitizeSkillInstructionsHtml(editor.getHTML(), {
-      preserveSkillTags: hasNestedSkillsFeature,
+      enableSkillReferences,
     });
     if (currentHtml !== incomingHtml) {
       editor.commands.setContent(incomingHtml, { emitUpdate: false });
     }
-  }, [editor, hasNestedSkillsFeature, isDiffMode, instructionsHtmlField.value]);
+  }, [editor, enableSkillReferences, isDiffMode, instructionsHtmlField.value]);
 
   useEffect(() => {
     if (!editor || editor.isDestroyed) {
@@ -419,7 +435,7 @@ export function SkillBuilderInstructionsEditor({
 
         editor.commands.setContent(
           preprocessMarkdownForEditor(currentText, {
-            preserveSkillTags: hasNestedSkillsFeature,
+            enableSkillReferences,
           }),
           {
             emitUpdate: false,
@@ -428,10 +444,10 @@ export function SkillBuilderInstructionsEditor({
         );
         editor.commands.applyDiff(
           preprocessMarkdownForEditor(compareText, {
-            preserveSkillTags: hasNestedSkillsFeature,
+            enableSkillReferences,
           }),
           preprocessMarkdownForEditor(currentText, {
-            preserveSkillTags: hasNestedSkillsFeature,
+            enableSkillReferences,
           })
         );
         editor.setEditable(false);
@@ -446,7 +462,7 @@ export function SkillBuilderInstructionsEditor({
         } else {
           editor.commands.setContent(
             preprocessMarkdownForEditor(instructionsField.value ?? "", {
-              preserveSkillTags: hasNestedSkillsFeature,
+              enableSkillReferences,
             }),
             {
               emitUpdate: false,
@@ -465,7 +481,7 @@ export function SkillBuilderInstructionsEditor({
   }, [
     compareVersion,
     editor,
-    hasNestedSkillsFeature,
+    enableSkillReferences,
     instructionsField.value,
     instructionsHtmlField.value,
   ]);

@@ -124,7 +124,7 @@ function InstructionEditDiffBlock({
 }: InstructionEditDiffBlockProps) {
   const { targetBlockId, content } = edit;
   const { hasFeature } = useFeatureFlags();
-  const hasNestedSkillsFeature = hasFeature("nested_skills");
+  const enableSkillReferences = hasFeature("nested_skills");
 
   const blockHtml = useMemo(() => {
     const instructionsHtml = getSkillInstructionsHtml();
@@ -138,7 +138,7 @@ function InstructionEditDiffBlock({
     {
       extensions: [
         ...buildSkillInstructionsExtensions(true, [], {
-          includeSkillNode: hasNestedSkillsFeature,
+          enableSkillReferences,
         }),
       ],
       editable: false,
@@ -156,7 +156,7 @@ function InstructionEditDiffBlock({
         e.commands.setHighlightedSuggestion(targetBlockId);
       },
     },
-    [blockHtml, hasNestedSkillsFeature]
+    [blockHtml, enableSkillReferences]
   );
 
   return <DiffBlock>{editor && <EditorContent editor={editor} />}</DiffBlock>;

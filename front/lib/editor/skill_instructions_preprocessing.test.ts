@@ -19,17 +19,17 @@ describe("skill instructions preprocessing", () => {
     ).toContain("<\u200Bskill");
   });
 
-  it("preserves skill tags when skill nodes are enabled", () => {
+  it("preserves skill tags when skill references are enabled", () => {
     editor = new Editor({
       extensions: buildSkillInstructionsExtensions(false, [], {
-        includeSkillNode: true,
+        enableSkillReferences: true,
       }),
     });
 
     editor.commands.setContent(
       preprocessMarkdownForEditor(
         'Use <skill id="skill_123" name="Create memo" /> here.',
-        { preserveSkillTags: true }
+        { enableSkillReferences: true }
       ),
       {
         contentType: "markdown",

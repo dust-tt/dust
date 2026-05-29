@@ -48,7 +48,7 @@ describe("buildSkillBuilderSlashCommandItems", () => {
   it("keeps the existing command when skill suggestions are disabled", () => {
     const result = buildSkillBuilderSlashCommandItems({
       baseItems: [attachKnowledgeItem],
-      includeSkills: false,
+      includeSkillSuggestions: false,
       query: "",
       skills: [
         makeSkill({
@@ -65,7 +65,7 @@ describe("buildSkillBuilderSlashCommandItems", () => {
     const result = buildSkillBuilderSlashCommandItems({
       baseItems: [attachKnowledgeItem],
       currentSkillId: "skill_current",
-      includeSkills: true,
+      includeSkillSuggestions: true,
       query: "memo",
       skills: [
         makeSkill({

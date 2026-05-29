@@ -114,7 +114,7 @@ export function SkillInfoTab({
           <SkillInstructionsReadOnlyEditor
             content={skill.instructions}
             htmlContent={skill.instructionsHtml ?? ""}
-            includeSkillReferences={hasFeature("nested_skills")}
+            enableSkillReferences={hasFeature("nested_skills")}
             owner={owner}
             onKnowledgeItemsChange={handleKnowledgeItemsChange}
             className="max-h-150 overflow-y-auto"

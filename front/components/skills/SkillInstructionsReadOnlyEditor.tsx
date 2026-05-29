@@ -10,7 +10,7 @@ import { useEffect } from "react";
 interface SkillInstructionsReadOnlyEditorProps {
   content: string;
   htmlContent?: string;
-  includeSkillReferences?: boolean;
+  enableSkillReferences?: boolean;
   owner: LightWorkspaceType;
   onKnowledgeItemsChange?: (items: KnowledgeItem[]) => void;
   className?: string;
@@ -19,7 +19,7 @@ interface SkillInstructionsReadOnlyEditorProps {
 export function SkillInstructionsReadOnlyEditor({
   content,
   htmlContent,
-  includeSkillReferences = false,
+  enableSkillReferences = false,
   owner,
   onKnowledgeItemsChange,
   className,
@@ -31,8 +31,8 @@ export function SkillInstructionsReadOnlyEditor({
     content,
     htmlContent: htmlForEditor,
     isReadOnly: true,
-    nestedSkills: {
-      enabled: includeSkillReferences,
+    skillReferences: {
+      enableSkillReferences,
     },
   });
 

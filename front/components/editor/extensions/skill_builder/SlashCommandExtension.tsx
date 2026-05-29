@@ -47,17 +47,17 @@ const SLASH_COMMANDS: SlashCommand[] = [
 export function buildSkillBuilderSlashCommandItems({
   baseItems,
   currentSkillId,
-  includeSkills,
+  includeSkillSuggestions,
   query,
   skills,
 }: {
   baseItems: SlashCommand[];
   currentSkillId?: string | null;
-  includeSkills: boolean;
+  includeSkillSuggestions: boolean;
   query: string;
   skills: SkillWithoutInstructionsAndToolsType[];
 }): SlashCommand[] {
-  if (!includeSkills) {
+  if (!includeSkillSuggestions) {
     return baseItems;
   }
 
@@ -78,14 +78,19 @@ interface SkillBuilderSlashCommandDropdownProps
     "clientRect" | "command" | "items" | "query"
   > {
   currentSkillId?: string | null;
-  includeSkills: boolean;
+  includeSkillSuggestions: boolean;
   onClose: () => void;
   owner?: LightWorkspaceType;
 }
 
+interface SkillBuilderSlashCommandDropdownWithSkillsProps
+  extends SkillBuilderSlashCommandDropdownProps {
+  owner: LightWorkspaceType;
+}
+
 const SkillBuilderSlashCommandDropdownWithSkills = forwardRef<
   SlashCommandDropdownRef,
-  SkillBuilderSlashCommandDropdownProps & { owner: LightWorkspaceType }
+  SkillBuilderSlashCommandDropdownWithSkillsProps
 >(
   (
     { clientRect, command, currentSkillId, items, onClose, owner, query },
@@ -103,7 +108,7 @@ const SkillBuilderSlashCommandDropdownWithSkills = forwardRef<
         buildSkillBuilderSlashCommandItems({
           baseItems: items,
           currentSkillId,
-          includeSkills: true,
+          includeSkillSuggestions: true,
           query,
           skills,
         }),
@@ -134,7 +139,7 @@ const SkillBuilderSlashCommandDropdown = forwardRef<
   SlashCommandDropdownRef,
   SkillBuilderSlashCommandDropdownProps
 >((props, ref) => {
-  if (props.includeSkills && props.owner) {
+  if (props.includeSkillSuggestions && props.owner) {
     return (
       <SkillBuilderSlashCommandDropdownWithSkills
         {...props}
@@ -160,7 +165,7 @@ SkillBuilderSlashCommandDropdown.displayName =
 
 export interface SlashCommandExtensionOptions {
   currentSkillId?: string | null;
-  includeSkills: boolean;
+  includeSkillSuggestions: boolean;
   owner?: LightWorkspaceType;
   suggestion: Partial<SuggestionOptions>;
 }
@@ -185,7 +190,7 @@ export const SlashCommandExtension =
     addOptions() {
       return {
         currentSkillId: null,
-        includeSkills: false,
+        includeSkillSuggestions: false,
         owner: undefined,
         suggestion: {
           char: "/",
@@ -263,7 +268,8 @@ export const SlashCommandExtension =
                     props: {
                       ...props,
                       currentSkillId: extensionOptions.currentSkillId,
-                      includeSkills: extensionOptions.includeSkills,
+                      includeSkillSuggestions:
+                        extensionOptions.includeSkillSuggestions,
                       onClose: closeSuggestionDropdown,
                       owner: extensionOptions.owner,
                     },
@@ -283,7 +289,8 @@ export const SlashCommandExtension =
                 component?.updateProps({
                   ...props,
                   currentSkillId: extensionOptions.currentSkillId,
-                  includeSkills: extensionOptions.includeSkills,
+                  includeSkillSuggestions:
+                    extensionOptions.includeSkillSuggestions,
                   onClose: closeSuggestionDropdown,
                   owner: extensionOptions.owner,
                 });
