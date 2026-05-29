@@ -9,9 +9,6 @@ import {
   START_TASK_AGENT_TOOL_NAME,
 } from "@app/lib/api/actions/servers/pod_tasks/metadata";
 
-/** Seeded via POST /pods/:podId/tasks/seed (editors only). */
-export const PROJECT_MANAGER_AGENT_SID = "project_manager" as const;
-
 const NEXT_TASK_PROMPT = `After the user agrees to mark this task done, check what other tasks are still open in the Pod. Propose tackling the most relevant next open one to the user. If they agree, use \`${getPrefixedToolName(POD_TASKS_SERVER_NAME, START_TASK_AGENT_TOOL_NAME)}\` to kick off a conversation for it and share the conversation link in your reply.`;
 
 export const INITIAL_POD_TASKS: {

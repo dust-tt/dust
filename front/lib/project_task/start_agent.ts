@@ -86,7 +86,7 @@ function buildTaskKickoffPrompt({
   });
 
   return [
-    "Assist with the following project task. Repeating the full title is not necessary unless helpful for clarity.",
+    "Assist with the following Pod task. Repeating the full title is not necessary unless helpful for clarity.",
     "",
     "For tools requiring a task reference, use:",
     "",
@@ -97,14 +97,14 @@ function buildTaskKickoffPrompt({
     "## Instructions",
     "",
     "1. Clarify initial assumptions and planning; independently use available tools or context as needed.",
-    "2. Leverage project context and accessible tools to complete the task end-to-end.",
+    "2. Leverage Pod context and accessible tools to complete the task end-to-end.",
     "3. Provide a summary of actions taken and highlight anything that should be verified.",
     "",
     "## Completion Criteria",
     "",
     "After the initial delivery, avoid marking the task as done solely based on your own judgment—provide a clear summary for user review and response.",
     "",
-    'Once there is explicit acceptance in this chat (e.g. "ok good for me", "looks good", "perfect", "works for me", "thanks that\'s what I needed", or any unequivocal statement of satisfaction or task completion), mark the task as done in the same turn using the project task management tools. Verbal approval in chat is required; do not assume closure will only happen via the UI. A prompt acknowledgment is sufficient, but always mark the task as done upon clear approval.',
+    'Once there is explicit acceptance in this chat (e.g. "ok good for me", "looks good", "perfect", "works for me", "thanks that\'s what I needed", or any unequivocal statement of satisfaction or task completion), mark the task as done in the same turn using the Pod task management tools. Verbal approval in chat is required; do not assume closure will only happen via the UI. A prompt acknowledgment is sufficient, but always mark the task as done upon clear approval.',
     "",
     "If further changes are requested, if feedback indicates the work is not complete, or if the user instructs to keep the task open, do not mark it as done.",
     ...(trimmedAgentInstructions
@@ -141,7 +141,7 @@ export async function startAgentForProjectTask(
     return new Err({
       statusCode: 400,
       type: "invalid_request_error",
-      message: "Tasks are only available for project spaces.",
+      message: "Tasks are only available for Pod spaces.",
     });
   }
 

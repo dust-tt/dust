@@ -3,6 +3,7 @@ import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useUser } from "@app/lib/swr/user";
 import { timeAgoFrom } from "@app/lib/utils";
 import {
+  POD_MANAGER_AGENT_SID,
   POD_TASK_NO_ASSIGNEE_LABEL,
   type PodTaskActorType,
   type PodTaskAssigneeType,
@@ -45,7 +46,7 @@ function formatActorLabel(
   }
   switch (type) {
     case "agent":
-      if (agentId === "butler") {
+      if (agentId === POD_MANAGER_AGENT_SID || agentId === "project_manager") {
         return "Dust";
       }
       const name = agentId ? agentNameById.get(agentId) : null;
@@ -102,7 +103,7 @@ export function TaskMetadataTooltip({
     <div className="flex flex-col gap-1">
       {isAssistantWorkInProgress && (
         <div className="text-xs font-medium text-foreground dark:text-foreground-night">
-          An Agent is working on this todo.
+          An agent is working on this task.
         </div>
       )}
       <div className="text-xs">
