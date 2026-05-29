@@ -44,7 +44,7 @@ const SKILL_REFERENCE_ALLOWED_TAGS = [
   UNAVAILABLE_SKILL_TAG_NAME,
   TOOL_TAG_NAME,
 ];
-const SKILL_REFERENCE_ALLOWED_ATTRS = ["id", "name", "icon", "unavailable"];
+const SKILL_REFERENCE_ALLOWED_ATTRS = ["id", "name", "icon"];
 
 function getSkillInstructionsSanitizeConfig({
   enableSkillReferences,
