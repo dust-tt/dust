@@ -4,11 +4,8 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import type { SuccessResponseBody } from "@front-api/routes/types";
 import { z } from "zod";
-
-export type PokeRevokeUserResponseBody = {
-  success: true;
-};
 
 const RevokeBodySchema = z.object({
   userId: z.string(),
@@ -20,7 +17,7 @@ const app = pokeApp();
 app.post(
   "/",
   validate("json", RevokeBodySchema),
-  async (ctx): HandlerResult<PokeRevokeUserResponseBody> => {
+  async (ctx): HandlerResult<SuccessResponseBody> => {
     const auth = ctx.get("auth");
     const { userId } = ctx.req.valid("json");
 

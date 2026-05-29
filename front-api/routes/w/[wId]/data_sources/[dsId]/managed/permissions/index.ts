@@ -16,16 +16,13 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import type { SuccessResponseBody } from "@front-api/routes/types";
 import { z } from "zod";
 
 export type GetDataSourcePermissionsResponseBody<
   T extends ConnectorPermission = ConnectorPermission,
 > = {
   resources: (T extends "read" ? ContentNodeWithParent : ContentNode)[];
-};
-
-export type SetDataSourcePermissionsResponseBody = {
-  success: true;
 };
 
 const SetConnectorPermissionsRequestBodySchema = z.object({
@@ -161,7 +158,7 @@ app.get(
 app.post(
   "/",
   validate("json", SetConnectorPermissionsRequestBodySchema),
-  async (ctx): HandlerResult<SetDataSourcePermissionsResponseBody> => {
+  async (ctx): HandlerResult<SuccessResponseBody> => {
     const auth = ctx.get("auth");
     const dsId = ctx.req.param("dsId") ?? "";
 

@@ -1,0 +1,25 @@
+engine biome(1.0)
+language js
+
+// Prevents defining inline `{ success: true }` response body types in front-api routes.
+// Use `SuccessResponseBody` from `@front-api/routes/types` instead.
+// The definition file (front-api/routes/types.ts) is excluded via biome.json.
+// The formatter produces two forms:
+//   - Single-line: `type X = { success: true };`  (no inner semicolon)
+//   - Multi-line:  `type X = { success: true; };` (inner semicolon)
+pattern inline_success_type() {
+    or {
+        `type $name = { success: true }`,
+        `export type $name = { success: true }`,
+        `type $name = { success: true; }`,
+        `export type $name = { success: true; }`,
+    }
+}
+
+inline_success_type() as $match where {
+    register_diagnostic(
+        span = $match,
+        message = "Do not define inline `{ success: true }` types. Use `SuccessResponseBody` from `@front-api/routes/types` instead.",
+        severity = "error"
+    )
+}
