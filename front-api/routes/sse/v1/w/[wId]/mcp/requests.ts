@@ -15,6 +15,10 @@ import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import type { Context } from "hono";
 
+// Re-exported so the private mirror can reuse the query schema without importing
+// `@dust-tt/client` itself (that dependency stays confined to public-API files).
+export { PostMCPRequestsRequestQuerySchema };
+
 export async function streamMcpRequests(
   ctx: Context,
   auth: Authenticator,

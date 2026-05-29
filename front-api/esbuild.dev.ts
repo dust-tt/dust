@@ -15,9 +15,7 @@ import {
   getBaseBuildOptions,
 } from "./esbuild.shared";
 
-// The watch loop only follows the default entry. The strangler shim is
-// opt-in (autostart: false in mprocs) and rarely the focus of inner-loop
-// dev — keeping a single child process here avoids racing two ports.
+// There is a single runtime target; the watch loop follows it.
 const WATCH_TARGET = BUILD_TARGETS[0];
 
 const SHUTDOWN_GRACE_MS = 2000;

@@ -1,67 +1,14 @@
-// Editing this file edits both the v1 (public API) and private SSE
-// conversation-events handlers — the private mirror under
-// `front-api/routes/sse/w/[wId]/assistant/conversations/[cId]/events.ts`
-// imports `streamConversationEventsForRoute` from here. Public-API
-// stability rules ([BACK12]) apply.
-
 import { isConversationEventAllowedForAuth } from "@app/lib/api/assistant/conversation";
-import { getConversationEvents } from "@app/lib/api/assistant/pubsub";
-import type { ConversationEvents } from "@app/lib/api/assistant/streaming/types";
 import { addBackwardCompatibleAgentMessageFields } from "@app/lib/api/v1/backward_compatibility";
-import type { Authenticator } from "@app/lib/auth";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
+import type { ConversationEventsOptions } from "@front-api/lib/api/sse/conversation_events";
 import {
-  SseQuerySchema,
-  streamEvents,
-} from "@front-api/lib/api/sse/stream_events";
+  ConversationParamSchema,
+  streamConversationEventsForRoute,
+} from "@front-api/lib/api/sse/conversation_events";
+import { SseQuerySchema } from "@front-api/lib/api/sse/stream_events";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import { streamingTag } from "@front-api/middlewares/streaming";
 import { validate } from "@front-api/middlewares/validator";
-import type { Context } from "hono";
-import { z } from "zod";
-
-type ConversationEvent = { eventId: string; data: ConversationEvents };
-
-export const ConversationParamSchema = z.object({
-  cId: z.string().min(1),
-});
-
-export type ConversationEventsOptions = {
-  transformEvent: (
-    auth: Authenticator,
-    event: ConversationEvent
-  ) => Promise<unknown | null>;
-};
-
-export async function streamConversationEventsForRoute(
-  ctx: Context,
-  auth: Authenticator,
-  { conversationId, lastEventId }: { conversationId: string; lastEventId: string | null },
-  opts: ConversationEventsOptions
-) {
-  const conversationRes =
-    await ConversationResource.fetchConversationWithoutContent(
-      auth,
-      conversationId
-    );
-  if (conversationRes.isErr()) {
-    return apiErrorForConversation(ctx, conversationRes.error);
-  }
-
-  const conversation = conversationRes.value;
-
-  return streamEvents({
-    ctx,
-    iterator: (signal) =>
-      getConversationEvents({
-        conversationId: conversation.sId,
-        lastEventId,
-        signal,
-      }),
-    transform: (event) => opts.transformEvent(auth, event),
-  });
-}
 
 const transformForV1: ConversationEventsOptions["transformEvent"] = async (
   auth,

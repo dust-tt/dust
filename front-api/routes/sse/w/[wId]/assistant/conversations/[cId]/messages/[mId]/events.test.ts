@@ -1,10 +1,9 @@
+import { fetchConversationMessages } from "@app/lib/api/assistant/messages";
 import type { MessageStreamEvent } from "@app/lib/api/assistant/pubsub";
 import type { Authenticator } from "@app/lib/auth";
-import { MessageModel } from "@app/lib/models/agent/conversation";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import type { ModelId } from "@app/types/shared/model_id";
 import { honoApp } from "@front-api/app";
 import {
   asyncIteratorFrom,
@@ -17,22 +16,25 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // v1 sibling. These tests confirm the private route wires workspace auth +
 // the private (identity) transform.
 
-async function getMessageByRank(
+async function getMessageSIdByRank(
   auth: Authenticator,
-  conversationId: ModelId,
+  conversationId: string,
   rank: number
-): Promise<MessageModel> {
-  const message = await MessageModel.findOne({
-    where: {
-      workspaceId: auth.getNonNullableWorkspace().id,
-      conversationId,
-      rank,
-    },
+): Promise<string> {
+  const messagesRes = await fetchConversationMessages(auth, {
+    conversationId,
+    limit: 100,
+    lastRank: null,
+    viewType: "light",
   });
+  if (messagesRes.isErr()) {
+    throw messagesRes.error;
+  }
+  const message = messagesRes.value.messages.find((m) => m.rank === rank);
   if (!message) {
     throw new Error(`No message found at rank ${rank}`);
   }
-  return message;
+  return message.sId;
 }
 
 vi.mock("@app/lib/api/assistant/pubsub", async (importOriginal) => {
@@ -79,7 +81,11 @@ describe("GET /api/sse/w/[wId]/assistant/conversations/[cId]/messages/[mId]/even
       agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
       messagesCreatedAt: [new Date()],
     });
-    const agentMessage = await getMessageByRank(auth, conversation.id, 1);
+    const agentMessageSId = await getMessageSIdByRank(
+      auth,
+      conversation.sId,
+      1
+    );
 
     const event: MessageStreamEvent = {
       eventId: "evt",
@@ -98,7 +104,7 @@ describe("GET /api/sse/w/[wId]/assistant/conversations/[cId]/messages/[mId]/even
     const response = await getMessageEvents(
       workspace.sId,
       conversation.sId,
-      agentMessage.sId
+      agentMessageSId
     );
 
     expect(response.status).toBe(200);

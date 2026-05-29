@@ -95,7 +95,7 @@ procs:
       while [ ! -f "$READY_FILE" ]; do sleep 1; done
       echo "sdks-js ready. Starting front-api (Hono strangler with Next fallback)."
       export NODE_ENV=development
-      exec ../node_modules/.bin/tsx ./server-strangler.ts
+      exec ../node_modules/.bin/tsx ./server.ts
     autostart: false
 
   front-workers:

@@ -14,10 +14,7 @@ const app = workspaceApp();
 app.use("*", workspaceAuth());
 
 app.route("/assistant/conversations/:cId/events", conversationEvents);
-app.route(
-  "/assistant/conversations/:cId/messages/:mId/events",
-  messageEvents
-);
+app.route("/assistant/conversations/:cId/messages/:mId/events", messageEvents);
 app.route("/mcp/requests", mcpRequests);
 
 export default app;

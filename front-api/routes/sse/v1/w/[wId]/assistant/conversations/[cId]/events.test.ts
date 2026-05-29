@@ -184,18 +184,18 @@ describe("GET /api/sse/v1/w/[wId]/assistant/conversations/[cId]/events", () => {
     const { workspace, key, conversation } = await setupConversation();
     const abortObserved = vi.fn();
 
-    vi.mocked(getConversationEvents).mockImplementation(
-      async function* ({ signal }) {
-        yield titleEvent("first");
-        await new Promise<void>((resolve) => {
-          signal.addEventListener("abort", () => {
-            abortObserved();
-            resolve();
-          });
+    vi.mocked(getConversationEvents).mockImplementation(async function* ({
+      signal,
+    }) {
+      yield titleEvent("first");
+      await new Promise<void>((resolve) => {
+        signal.addEventListener("abort", () => {
+          abortObserved();
+          resolve();
         });
-        yield titleEvent("never-sent");
-      }
-    );
+      });
+      yield titleEvent("never-sent");
+    });
 
     const response = await getEvents(
       workspace.sId,

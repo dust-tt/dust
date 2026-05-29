@@ -1,8 +1,10 @@
-import { PostMCPRequestsRequestQuerySchema } from "@dust-tt/client";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { streamingTag } from "@front-api/middlewares/streaming";
 import { validate } from "@front-api/middlewares/validator";
-import { streamMcpRequests } from "@front-api/routes/sse/v1/w/[wId]/mcp/requests";
+import {
+  PostMCPRequestsRequestQuerySchema,
+  streamMcpRequests,
+} from "@front-api/routes/sse/v1/w/[wId]/mcp/requests";
 
 // Mounted at /api/sse/w/:wId/mcp/requests. Handler logic lives in the
 // v1 sibling file.

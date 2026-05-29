@@ -1,16 +1,16 @@
 import { isConversationEventAllowedForAuth } from "@app/lib/api/assistant/conversation";
+import type { ConversationEventsOptions } from "@front-api/lib/api/sse/conversation_events";
+import {
+  ConversationParamSchema,
+  streamConversationEventsForRoute,
+} from "@front-api/lib/api/sse/conversation_events";
 import { SseQuerySchema } from "@front-api/lib/api/sse/stream_events";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { streamingTag } from "@front-api/middlewares/streaming";
 import { validate } from "@front-api/middlewares/validator";
-import type { ConversationEventsOptions } from "@front-api/routes/sse/v1/w/[wId]/assistant/conversations/[cId]/events";
-import {
-  ConversationParamSchema,
-  streamConversationEventsForRoute,
-} from "@front-api/routes/sse/v1/w/[wId]/assistant/conversations/[cId]/events";
 
 // Mounted at /api/sse/w/:wId/assistant/conversations/:cId/events. Handler
-// logic lives in the v1 sibling file.
+// logic lives in `@front-api/lib/api/sse/conversation_events`.
 
 const PRIVATE_OPTIONS: ConversationEventsOptions = {
   transformEvent: async (auth, event) => {
