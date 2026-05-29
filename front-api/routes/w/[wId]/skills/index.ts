@@ -178,10 +178,12 @@ app.get(
         const usage = usageMap.get(sc.sId) ?? { count: 0, agents: [] };
         const editors = editorsMap.get(sc.sId) ?? null;
         const editedByUser = editedByUsersMap.get(sc.sId) ?? null;
+        const usedBySkills = usedBySkillsMap.get(sc.sId) ?? [];
         const usageWithSkills = includeNestedSkills
           ? {
               ...usage,
-              skills: usedBySkillsMap.get(sc.sId) ?? [],
+              count: usage.count + usedBySkills.length,
+              skills: usedBySkills,
             }
           : usage;
 

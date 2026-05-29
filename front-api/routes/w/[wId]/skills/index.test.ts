@@ -524,7 +524,7 @@ describe("GET /api/w/:wId/skills?withRelations=true", () => {
     expect(skillResult).toMatchObject({
       relations: {
         usage: {
-          count: 0,
+          count: 1,
           agents: [],
           skills: [
             {
