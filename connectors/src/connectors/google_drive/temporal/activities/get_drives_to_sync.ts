@@ -2,9 +2,16 @@ import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/go
 import type { LightGoogleDrive } from "@connectors/connectors/google_drive/temporal/activities/common/types";
 import { getDrives } from "@connectors/connectors/google_drive/temporal/activities/common/utils";
 import { getAuthObject } from "@connectors/connectors/google_drive/temporal/utils";
-import { GoogleDriveFoldersModel } from "@connectors/lib/models/google_drive";
+import {
+  GoogleDriveFoldersModel,
+  GoogleDriveSyncTokenModel,
+} from "@connectors/lib/models/google_drive";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
+
+const GDRIVE_BASE_INCREMENTAL_SYNC_INTERVAL_MS = 5 * 60 * 1000;
+const GDRIVE_MAX_INCREMENTAL_SYNC_INTERVAL_MS = 20 * 60 * 1000;
+const GDRIVE_QUIET_DRIVE_BACKOFF_MULTIPLIER = 2;
 
 // Get the list of drives that have folders selected for sync.
 export async function getDrivesToSync(
@@ -46,5 +53,41 @@ export async function getDrivesToSync(
     }
   }
 
-  return Object.values(drives);
+  const drivesToSync = Object.values(drives);
+  if (drivesToSync.length === 0) {
+    return drivesToSync;
+  }
+
+  // Uses the existing unique (connectorId, driveId) index and only fetches
+  // sync tokens for selected drives.
+  const syncTokens = await GoogleDriveSyncTokenModel.findAll({
+    attributes: ["driveId", "lastSyncAt", "lastRelevantChangeAt"],
+    where: {
+      connectorId,
+      driveId: drivesToSync.map((drive) => drive.id),
+    },
+  });
+  const syncTokenByDriveId = new Map(
+    syncTokens.map((syncToken) => [syncToken.driveId, syncToken])
+  );
+  const nowMs = Date.now();
+
+  return drivesToSync.filter((drive) => {
+    const syncToken = syncTokenByDriveId.get(drive.id);
+    if (!syncToken?.lastSyncAt || !syncToken.lastRelevantChangeAt) {
+      return true;
+    }
+
+    const intervalMs = Math.min(
+      Math.max(
+        GDRIVE_QUIET_DRIVE_BACKOFF_MULTIPLIER *
+          (syncToken.lastSyncAt.getTime() -
+            syncToken.lastRelevantChangeAt.getTime()),
+        GDRIVE_BASE_INCREMENTAL_SYNC_INTERVAL_MS
+      ),
+      GDRIVE_MAX_INCREMENTAL_SYNC_INTERVAL_MS
+    );
+
+    return nowMs - syncToken.lastSyncAt.getTime() >= intervalMs;
+  });
 }
