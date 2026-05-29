@@ -58,7 +58,7 @@ import {
   type ConversationListItemType,
   getConversationDisplayTitle,
 } from "@app/types/assistant/conversation";
-import type { PodType } from "@app/types/space";
+import type { PodType, SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
 import {
@@ -81,6 +81,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuPortal,
   DropdownMenuSearchbar,
+  DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
@@ -506,6 +507,7 @@ export function AgentSidebarMenu({
   const [isMoving, setIsMoving] = useState(false);
   const [titleFilter, setTitleFilter] = useState<string>("");
   const [isCreatePodModalOpen, setIsCreatePodModalOpen] = useState(false);
+  const [pendingMoveToNewPod, setPendingMoveToNewPod] = useState(false);
   const [isImportSkillDialogOpen, setIsImportSkillDialogOpen] = useState(false);
 
   const {
@@ -609,7 +611,7 @@ export function AgentSidebarMenu({
   );
 
   const moveSelectionToPod = useCallback(
-    async (pod: PodType) => {
+    async (pod: PodType | SpaceType) => {
       setIsMoving(true);
       const successCount = await bulkMoveConversationsToPod(
         selectedConversations,
@@ -619,6 +621,7 @@ export function AgentSidebarMenu({
       if (successCount > 0) {
         toggleMultiSelect();
       }
+      return successCount;
     },
     [bulkMoveConversationsToPod, selectedConversations, toggleMultiSelect]
   );
@@ -880,8 +883,18 @@ export function AgentSidebarMenu({
       />
       <CreatePodModal
         isOpen={isCreatePodModalOpen}
-        onClose={() => setIsCreatePodModalOpen(false)}
-        onCreated={() => setSidebarOpen(false)}
+        onClose={() => {
+          setIsCreatePodModalOpen(false);
+          setPendingMoveToNewPod(false);
+        }}
+        onCreated={async (pod) => {
+          setSidebarOpen(false);
+          if (pendingMoveToNewPod) {
+            setPendingMoveToNewPod(false);
+            await moveSelectionToPod(pod);
+          }
+          void router.push(getPodRoute(owner.sId, pod.sId));
+        }}
         owner={owner}
       />
       {isImportSkillDialogOpen && (
@@ -902,10 +915,7 @@ export function AgentSidebarMenu({
                         variant="outline"
                         label="Move to Pod"
                         icon={ArrowRightIcon}
-                        disabled={
-                          selectedConversations.length === 0 ||
-                          availablePods.length === 0
-                        }
+                        disabled={selectedConversations.length === 0}
                         isLoading={isMoving}
                       />
                     </DropdownMenuTrigger>
@@ -913,16 +923,29 @@ export function AgentSidebarMenu({
                       className="max-w-60"
                       onFocusOutside={(e) => e.preventDefault()}
                     >
-                      <DropdownMenuLabel label="Pods" />
-                      {availablePods.map((pod) => (
-                        <DropdownMenuItem
-                          key={pod.sId}
-                          icon={getSpaceIcon(pod)}
-                          label={pod.name}
-                          truncateText
-                          onClick={() => moveSelectionToPod(pod)}
-                        />
-                      ))}
+                      <DropdownMenuItem
+                        icon={PlusIcon}
+                        label="New Pod"
+                        onClick={() => {
+                          setPendingMoveToNewPod(true);
+                          setIsCreatePodModalOpen(true);
+                        }}
+                      />
+                      {availablePods.length > 0 && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuLabel label="Pods" />
+                          {availablePods.map((pod) => (
+                            <DropdownMenuItem
+                              key={pod.sId}
+                              icon={getSpaceIcon(pod)}
+                              label={pod.name}
+                              truncateText
+                              onClick={() => moveSelectionToPod(pod)}
+                            />
+                          ))}
+                        </>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                   <Button

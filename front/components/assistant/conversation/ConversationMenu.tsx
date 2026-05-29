@@ -1,3 +1,4 @@
+import { CreatePodModal } from "@app/components/assistant/conversation/CreatePodModal";
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
 import { EditConversationTitleDialog } from "@app/components/assistant/conversation/EditConversationTitleDialog";
 import { LeaveConversationDialog } from "@app/components/assistant/conversation/LeaveConversationDialog";
@@ -60,6 +61,7 @@ import {
   LinkIcon,
   PencilSquareIcon,
   PlusCircleIcon,
+  PlusIcon,
   SidekickIcon,
   TrashIcon,
   XMarkIcon,
@@ -272,6 +274,8 @@ export function ConversationMenu({
   const [showDeleteDialog, setShowDeleteDialog] = useState<boolean>(false);
   const [showLeaveDialog, setShowLeaveDialog] = useState<boolean>(false);
   const [showRenameDialog, setShowRenameDialog] = useState<boolean>(false);
+  const [isCreatePodModalOpen, setIsCreatePodModalOpen] =
+    useState<boolean>(false);
   const handleConversationBranched = useCallback(() => {
     if (isConversationDisplayed) {
       void mutateConversation();
@@ -380,6 +384,17 @@ export function ConversationMenu({
           conversation ? getConversationDisplayTitle(conversation) : ""
         }
       />
+      <CreatePodModal
+        isOpen={isCreatePodModalOpen}
+        onClose={() => setIsCreatePodModalOpen(false)}
+        onCreated={async (pod) => {
+          if (conversation) {
+            await moveConversationToPod(conversation, pod);
+          }
+          void router.push(getPodRoute(owner.sId, pod.sId));
+        }}
+        owner={owner}
+      />
       <DropdownMenu modal={false} open={isOpen} onOpenChange={onOpenChange}>
         {triggerPosition ? (
           <>
@@ -419,15 +434,20 @@ export function ConversationMenu({
             <DropdownMenuSubTrigger
               icon={ArrowRightIcon}
               label={canMoveOutOfPod ? "Move to..." : "Move to Pod"}
-              disabled={canMoveOutOfPod ? false : !filteredPods.length}
             />
             <DropdownMenuPortal>
               <DropdownMenuSubContent
                 collisionPadding={16}
                 className="max-w-60"
               >
+                <DropdownMenuItem
+                  icon={PlusIcon}
+                  label="New Pod"
+                  onClick={() => setIsCreatePodModalOpen(true)}
+                />
                 {canMoveOutOfPod && (
                   <>
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem
                       icon={ChatBubbleBottomCenterTextIcon}
                       label="Personal conversations"
@@ -435,23 +455,27 @@ export function ConversationMenu({
                         moveConversationOutOfPod(conversation)
                       }
                     />
-                    <DropdownMenuSeparator />
-                    <DropdownMenuLabel label="Pods" />
                   </>
                 )}
-                {filteredPods.map((pod) => (
-                  <DropdownMenuItem
-                    key={pod.sId}
-                    icon={getSpaceIcon(pod)}
-                    label={pod.name}
-                    truncateText
-                    onClick={async () =>
-                      conversation
-                        ? moveConversationToPod(conversation, pod)
-                        : Promise.resolve(false)
-                    }
-                  />
-                ))}
+                {filteredPods.length > 0 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    {canMoveOutOfPod && <DropdownMenuLabel label="Pods" />}
+                    {filteredPods.map((pod) => (
+                      <DropdownMenuItem
+                        key={pod.sId}
+                        icon={getSpaceIcon(pod)}
+                        label={pod.name}
+                        truncateText
+                        onClick={async () =>
+                          conversation
+                            ? moveConversationToPod(conversation, pod)
+                            : Promise.resolve(false)
+                        }
+                      />
+                    ))}
+                  </>
+                )}
               </DropdownMenuSubContent>
             </DropdownMenuPortal>
           </DropdownMenuSub>
