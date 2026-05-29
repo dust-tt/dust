@@ -170,13 +170,29 @@ export function usePodTasksPanelState({
     );
   }, [assigneeScopedTasks, normalizedTaskSearchNeedle]);
 
+  // `seedInitialPodTasks` inserts INITIAL_POD_TASKS in reverse, so the largest
+  // `createdAt` among the seeded onboarding rows is the first onboarding task.
+  // Unlike `updatedAt`, `createdAt` never changes, so the pulse target stays
+  // stable as users approve/edit/complete tasks out of order.
   const getFirstOnboardingTaskId = (tasks: PodTaskType[]): string | null => {
+    let firstOnboardingTask: PodTaskType | null = null;
     for (const task of tasks) {
-      if (isOnboardingTask(task) && task.status !== "done") {
-        return task.sId;
+      if (
+        !isOnboardingTask(task) ||
+        task.status === "done" ||
+        task.agentSuggestionStatus === "pending"
+      ) {
+        continue;
+      }
+      if (
+        firstOnboardingTask === null ||
+        new Date(task.createdAt).getTime() >
+          new Date(firstOnboardingTask.createdAt).getTime()
+      ) {
+        firstOnboardingTask = task;
       }
     }
-    return null;
+    return firstOnboardingTask?.sId ?? null;
   };
   const firstOnboardingTaskId = getFirstOnboardingTaskId(filteredTasks);
 
