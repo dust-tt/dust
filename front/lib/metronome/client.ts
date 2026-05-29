@@ -26,12 +26,14 @@ import type {
   MetronomeEvent,
   MetronomePackageTier,
   MetronomeSeatBalance,
+  MetronomeStripeCollectionMethod,
   MetronomeUsageListResponse,
   MetronomeUsageWithGroupsResponse,
 } from "./types";
 import {
   classifyMetronomePackageByName,
   classifyMetronomePackageCurrencyByName,
+  DEFAULT_METRONOME_STRIPE_COLLECTION_METHOD,
   isMetronomeSeatBalance,
 } from "./types";
 
@@ -167,10 +169,12 @@ export async function createMetronomeCustomer({
   workspaceId,
   workspaceName,
   stripeCustomerId,
+  stripeCollectionMethod = DEFAULT_METRONOME_STRIPE_COLLECTION_METHOD,
 }: {
   workspaceId: string;
   workspaceName: string;
   stripeCustomerId?: string;
+  stripeCollectionMethod?: MetronomeStripeCollectionMethod;
 }): Promise<Result<{ metronomeCustomerId: string }, Error>> {
   try {
     const response = await getMetronomeClient().v1.customers.create({
@@ -184,7 +188,7 @@ export async function createMetronomeCustomer({
                 delivery_method: "direct_to_billing_provider",
                 configuration: {
                   stripe_customer_id: stripeCustomerId,
-                  stripe_collection_method: "charge_automatically",
+                  stripe_collection_method: stripeCollectionMethod,
                 },
               },
             ],
@@ -278,17 +282,20 @@ export async function getMetronomeCustomerStripeCustomerId(
  * configuration pointing to the given `stripeCustomerId`.
  *
  * - No active Stripe config: adds one.
- * - Active Stripe config already pointing to `stripeCustomerId`: no-op.
- * - Active Stripe config pointing to a different `stripeCustomerId`: archives
- *   the stale config(s) and adds a new one (defensive: should be rare, but
- *   covers cases like a recreated Stripe customer).
+ * - Active Stripe config already pointing to `stripeCustomerId` with the same
+ *   collection method: no-op.
+ * - Active Stripe config pointing to a different `stripeCustomerId` or using a
+ *   different collection method: archives the stale config(s) and adds a new
+ *   one (covers a recreated Stripe customer or a collection-method change).
  */
 export async function ensureMetronomeStripeBillingConfig({
   metronomeCustomerId,
   stripeCustomerId,
+  stripeCollectionMethod = DEFAULT_METRONOME_STRIPE_COLLECTION_METHOD,
 }: {
   metronomeCustomerId: string;
   stripeCustomerId: string;
+  stripeCollectionMethod?: MetronomeStripeCollectionMethod;
 }): Promise<Result<void, Error>> {
   try {
     const existing =
@@ -301,7 +308,9 @@ export async function ensureMetronomeStripeBillingConfig({
     );
 
     const alreadyCorrect = activeStripeConfigs.some(
-      (c) => c.configuration?.stripe_customer_id === stripeCustomerId
+      (c) =>
+        c.configuration?.stripe_customer_id === stripeCustomerId &&
+        c.configuration?.stripe_collection_method === stripeCollectionMethod
     );
     if (alreadyCorrect) {
       return new Ok(undefined);
@@ -334,14 +343,14 @@ export async function ensureMetronomeStripeBillingConfig({
           delivery_method: "direct_to_billing_provider",
           configuration: {
             stripe_customer_id: stripeCustomerId,
-            stripe_collection_method: "charge_automatically",
+            stripe_collection_method: stripeCollectionMethod,
           },
         },
       ],
     });
 
     logger.info(
-      { metronomeCustomerId, stripeCustomerId },
+      { metronomeCustomerId, stripeCustomerId, stripeCollectionMethod },
       "[Metronome] Stripe billing config added to customer"
     );
     return new Ok(undefined);

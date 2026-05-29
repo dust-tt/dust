@@ -46,6 +46,9 @@ const SwitchContractFormSchema = z.object({
   startingAt: z.string().optional(),
   startImmediately: z.boolean().default(false),
   stripeCustomerId: z.string(),
+  stripeCollectionMethod: z
+    .enum(["charge_automatically", "send_invoice"])
+    .default("charge_automatically"),
   paygEnabled: z.boolean().default(false),
   usageCapCredits: z
     .number()
@@ -125,6 +128,7 @@ export default function SwitchContractDialog({
       startingAt: "",
       startImmediately: false,
       stripeCustomerId: stripeCustomerId ?? "",
+      stripeCollectionMethod: "charge_automatically",
       paygEnabled: false,
       usageCapCredits: undefined,
     },
@@ -258,9 +262,11 @@ export default function SwitchContractDialog({
         paygEnabled: values.paygEnabled,
       };
       // For free-tier switches, the operator can omit the Stripe customer —
-      // the resulting Metronome contract has no Stripe billing link.
+      // the resulting Metronome contract has no Stripe billing link. The
+      // collection method only matters when a Stripe customer is wired in.
       if (trimmedStripe) {
         cleaned.stripeCustomerId = trimmedStripe;
+        cleaned.stripeCollectionMethod = values.stripeCollectionMethod;
       }
       if (values.usageCapCredits !== undefined) {
         cleaned.usageCapCredits = values.usageCapCredits;
@@ -352,6 +358,24 @@ export default function SwitchContractDialog({
                     Failed to resolve currency from Stripe customer:{" "}
                     {currencyError.message}
                   </div>
+                )}
+                {trimmedStripeCustomerId && (
+                  <SelectField
+                    control={form.control}
+                    name="stripeCollectionMethod"
+                    title="Stripe Collection Method"
+                    mountPortalContainer={portalContainer}
+                    options={[
+                      {
+                        value: "charge_automatically",
+                        display: "Charge automatically (card on file)",
+                      },
+                      {
+                        value: "send_invoice",
+                        display: "Send invoice (manual payment)",
+                      },
+                    ]}
+                  />
                 )}
                 {isPackagesLoading && (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">

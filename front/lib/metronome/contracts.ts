@@ -30,7 +30,10 @@ import {
   hasContractSeatSubscription,
   syncSeatCount,
 } from "@app/lib/metronome/seats";
-import { LEGACY_ENTERPRISE_PACKAGE_ALIAS } from "@app/lib/metronome/types";
+import {
+  LEGACY_ENTERPRISE_PACKAGE_ALIAS,
+  type MetronomeStripeCollectionMethod,
+} from "@app/lib/metronome/types";
 import {
   resolveCurrencyFromStripe,
   resolvePackageAliasForCurrency,
@@ -73,9 +76,11 @@ import { metronomeAmount } from "./amounts";
 export async function ensureMetronomeCustomerForWorkspace({
   workspace,
   stripeCustomerId,
+  stripeCollectionMethod,
 }: {
   workspace: LightWorkspaceType;
   stripeCustomerId?: string;
+  stripeCollectionMethod?: MetronomeStripeCollectionMethod;
 }): Promise<Result<{ metronomeCustomerId: string }, Error>> {
   let metronomeCustomerId: string | null = workspace.metronomeCustomerId;
 
@@ -91,6 +96,7 @@ export async function ensureMetronomeCustomerForWorkspace({
       workspaceId: workspace.sId,
       workspaceName: workspace.name,
       stripeCustomerId,
+      stripeCollectionMethod,
     });
     if (createResult.isErr()) {
       return new Err(createResult.error);
@@ -117,6 +123,7 @@ export async function ensureMetronomeCustomerForWorkspace({
     const billingResult = await ensureMetronomeStripeBillingConfig({
       metronomeCustomerId,
       stripeCustomerId,
+      stripeCollectionMethod,
     });
     if (billingResult.isErr()) {
       return new Err(billingResult.error);
