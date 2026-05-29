@@ -11,6 +11,7 @@ import {
   RawMarkdownBlock,
   rawMarkdownBlockParsers,
 } from "@app/components/editor/extensions/skill_builder/RawMarkdownBlock";
+import { ToolNodeWithView } from "@app/components/editor/extensions/skill_builder/ToolNodeWithView";
 import { LinkExtension } from "@app/components/editor/input_bar/LinkExtension";
 import { markdownStyles } from "@dust-tt/sparkle";
 import type { Extensions } from "@tiptap/core";
@@ -21,6 +22,7 @@ export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
 
 interface BuildSkillInstructionsExtensionsOptions {
   enableSkillReferences?: boolean;
+  enableToolReferences?: boolean;
 }
 
 /**
@@ -34,6 +36,7 @@ export function buildSkillInstructionsExtensions(
   editableExtensions: Extensions = [],
   {
     enableSkillReferences = false,
+    enableToolReferences = true,
   }: BuildSkillInstructionsExtensionsOptions = {}
 ): Extensions {
   const baseExtensions: Extensions = [
@@ -94,10 +97,17 @@ export function buildSkillInstructionsExtensions(
     }),
     BlockIdExtension,
     KnowledgeNodeWithView.configure({ readOnly: isReadOnly }),
+  ];
+
+  if (enableToolReferences) {
+    baseExtensions.push(ToolNodeWithView);
+  }
+
+  baseExtensions.push(
     InstructionSuggestionExtension.configure({ showBlockHighlight: false }),
     RawMarkdownBlock,
-    ...rawMarkdownBlockParsers,
-  ];
+    ...rawMarkdownBlockParsers
+  );
 
   if (enableSkillReferences) {
     baseExtensions.push(SkillNode);
