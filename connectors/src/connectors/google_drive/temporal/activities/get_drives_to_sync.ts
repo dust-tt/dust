@@ -60,14 +60,13 @@ export async function getDrivesToSync(
   async function filterDrivesByRecentChanges(
     drives: LightGoogleDrive[]
   ): Promise<LightGoogleDrive[]> {
+    // Drive syncs are adaptive: drives with few changes sync less often. For
+    // example, if a drive synced 5 minutes ago and had no relevant changes, we
+    // skip it this time. The maximum wait is still bounded.
     if (drives.length === 0) {
       return drives;
     }
 
-    // Drives with no adaptive state must sync once. Otherwise, quiet drives
-    // back off to twice the age of their last relevant change, clamped between
-    // the base and max intervals. A relevant change resets both timestamps, so
-    // the next interval returns to the base cadence.
     const syncTokens = await GoogleDriveSyncTokenModel.findAll({
       attributes: ["driveId", "lastSyncAt", "lastRelevantChangeAt"],
       where: {
