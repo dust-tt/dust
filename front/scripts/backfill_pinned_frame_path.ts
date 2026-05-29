@@ -1,5 +1,5 @@
-import { ProjectMetadataModel } from "@app/lib/resources/storage/models/project_metadata";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { ProjectMetadataModel } from "@app/lib/resources/storage/models/project_metadata";
 import { makeScript } from "@app/scripts/helpers";
 import { Op } from "sequelize";
 
