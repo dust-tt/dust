@@ -41,7 +41,7 @@ export async function updateWorkspaceUsageWorkflow(workspaceId: string) {
 }
 
 export async function syncMetronomeSeatCountWorkflow(
-  authType: AuthenticatorType
+  workspaceId: string
 ): Promise<void> {
   let pendingSync = true;
 
@@ -50,9 +50,9 @@ export async function syncMetronomeSeatCountWorkflow(
   });
 
   while (pendingSync) {
-    await sleep(METRONOME_SEAT_COUNT_DEBOUNCE_MS);
     pendingSync = false;
-    await syncMetronomeSeatCountActivity(authType);
+    await sleep(METRONOME_SEAT_COUNT_DEBOUNCE_MS);
+    await syncMetronomeSeatCountActivity(workspaceId);
   }
 }
 

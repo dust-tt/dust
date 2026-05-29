@@ -443,10 +443,18 @@ export async function syncMauCountToMetronomeForAllWorkspacesActivity(): Promise
  * Sync the Metronome seat count for a single workspace after membership changes were debounced.
  */
 export async function syncMetronomeSeatCountActivity(
-  authType: AuthenticatorType
+  workspaceId: string
 ): Promise<void> {
-  const auth = await Authenticator.fromJSON(authType);
-  const workspace = auth.getNonNullableWorkspace();
+  const workspace = await WorkspaceResource.fetchById(workspaceId);
+  if (!workspace) {
+    logger.info(
+      {
+        workspaceId,
+      },
+      "[Metronome] Skipping seat count sync: workspace not found"
+    );
+    return;
+  }
 
   if (!workspace.metronomeCustomerId) {
     logger.info(
@@ -458,7 +466,9 @@ export async function syncMetronomeSeatCountActivity(
     return;
   }
 
-  const subscription = auth.subscriptionResource();
+  const subscription = await SubscriptionResource.fetchActiveByWorkspaceModelId(
+    workspace.id
+  );
   if (!subscription?.metronomeContractId) {
     logger.info(
       {
@@ -500,7 +510,7 @@ export async function syncMetronomeSeatCountActivity(
   const result = await syncSeatCount({
     metronomeCustomerId: workspace.metronomeCustomerId,
     contractId: subscription.metronomeContractId,
-    workspace,
+    workspace: renderLightWorkspaceType({ workspace }),
     contract,
   });
   if (result.isErr()) {
