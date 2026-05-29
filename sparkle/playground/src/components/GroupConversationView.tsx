@@ -99,6 +99,7 @@ import type {
   Space,
   User,
 } from "../data/types";
+import { getRandomGreetingForName } from "../data/greetings";
 import { getUserById } from "../data/users";
 import {
   DATA_SOURCE_FILE_DRAG_MIME,
@@ -1351,6 +1352,13 @@ export function GroupConversationView({
 }: GroupConversationViewProps) {
   const [searchText, setSearchText] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const currentUserFirstName = currentUserId
+    ? (getUserById(currentUserId)?.firstName ?? "there")
+    : "there";
+  const [greeting, setGreeting] = useState<string>("");
+  useEffect(() => {
+    setGreeting(getRandomGreetingForName(currentUserFirstName));
+  }, [currentUserFirstName]);
   const [personalConversationFilter, setPersonalConversationFilter] =
     useState<MyPodConversationFilter>("all");
   const [selectedConversationRow, setSelectedConversationRow] = useState<{
@@ -3551,6 +3559,11 @@ export function GroupConversationView({
         {/* Conversations Tab */}
         <GroupConversationTabContent value="conversations">
           {/* New conversation section */}
+          {greeting && (
+            <h2 className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
+              {greeting}
+            </h2>
+          )}
           <InputBar placeholder={`Start a conversation in ${space.name}`} />
 
           {!hasHistory && (
