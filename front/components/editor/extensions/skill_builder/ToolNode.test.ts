@@ -2,6 +2,10 @@ import { ToolNode } from "@app/components/editor/extensions/skill_builder/ToolNo
 import type { ToolNodeAttributes } from "@app/components/editor/extensions/skill_builder/ToolNodeTypes";
 import { EditorFactory } from "@app/components/editor/extensions/tests/utils";
 import {
+  postProcessMarkdown,
+  preprocessMarkdownForEditor,
+} from "@app/lib/editor/skill_instructions_preprocessing";
+import {
   extractToolTags,
   parseToolTag,
   serializeToolTag,
@@ -57,6 +61,16 @@ describe("ToolNode tag helpers", () => {
     });
   });
 
+  it("rejects malformed tool tags", () => {
+    expect(parseToolTag('<tool name="GitHub Search" />')).toBeNull();
+    expect(parseToolTag('<tool id="mcp_server_view_123" />')).toBeNull();
+    expect(
+      parseToolTag(
+        '<tool id="mcp_server_view_123" name="GitHub Search"></tool>'
+      )
+    ).toBeNull();
+  });
+
   it("extracts valid tool tags from content", () => {
     expect(
       extractToolTags(
@@ -103,16 +117,15 @@ describe("ToolNode", () => {
   });
 
   it("round-trips markdown tool tags", () => {
-    editor.commands.setContent(
-      `Use ${serializeToolTag({
-        icon: TOOL_ATTRS.toolIcon,
-        id: TOOL_ATTRS.mcpServerViewId,
-        name: TOOL_ATTRS.toolName,
-      })} now.`,
-      {
-        contentType: "markdown",
-      }
-    );
+    const markdown = `Use ${serializeToolTag({
+      icon: TOOL_ATTRS.toolIcon,
+      id: TOOL_ATTRS.mcpServerViewId,
+      name: TOOL_ATTRS.toolName,
+    })} now.`;
+
+    editor.commands.setContent(preprocessMarkdownForEditor(markdown), {
+      contentType: "markdown",
+    });
 
     expect(toolNodes(editor)).toEqual([
       {
@@ -127,6 +140,18 @@ describe("ToolNode", () => {
         name: TOOL_ATTRS.toolName,
       })
     );
+  });
+
+  it("keeps malformed markdown tool tags as text", () => {
+    const markdown =
+      'Literal <tool name="GitHub Search">example</tool> and <tool id="mcp_server_view_123" />.';
+
+    editor.commands.setContent(preprocessMarkdownForEditor(markdown), {
+      contentType: "markdown",
+    });
+
+    expect(toolNodes(editor)).toEqual([]);
+    expect(postProcessMarkdown(editor.getMarkdown())).toContain(markdown);
   });
 
   it("round-trips stored HTML tool tags", () => {
@@ -144,6 +169,15 @@ describe("ToolNode", () => {
     expect(editor.getHTML()).toContain('id="mcp_server_view_123"');
     expect(editor.getHTML()).toContain('name="GitHub Search"');
     expect(editor.getHTML()).toContain('icon="GithubLogo"');
+  });
+
+  it("does not parse malformed stored HTML tool tags", () => {
+    editor.commands.setContent(
+      '<p>Literal <tool name="GitHub Search">example</tool>.</p>'
+    );
+
+    expect(toolNodes(editor)).toEqual([]);
+    expect(editor.getText()).toContain("Literal example.");
   });
 
   it("inserts a tool node followed by a space", () => {

@@ -55,7 +55,20 @@ export const ToolNode = Node.create({
   },
 
   parseHTML() {
-    return [{ tag: TOOL_TAG_NAME }];
+    return [
+      {
+        tag: TOOL_TAG_NAME,
+        getAttrs: (node) => {
+          if (!(node instanceof HTMLElement)) {
+            return false;
+          }
+
+          return node.getAttribute("id") && node.getAttribute("name")
+            ? null
+            : false;
+        },
+      },
+    ];
   },
 
   renderHTML({ node, HTMLAttributes }) {

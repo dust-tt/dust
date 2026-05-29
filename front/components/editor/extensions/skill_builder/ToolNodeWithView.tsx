@@ -65,7 +65,7 @@ const ToolNodeView: React.FC<NodeViewProps> = ({
   const onRemove = editor.isEditable ? handleRemove : undefined;
 
   return (
-    <NodeViewWrapper className="inline">
+    <NodeViewWrapper as="span" className="inline">
       {display.kind === "error" ? (
         <ToolErrorChip title={display.title} onRemove={onRemove} />
       ) : (

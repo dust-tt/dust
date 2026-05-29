@@ -1,6 +1,9 @@
+import { parseToolTag, TOOL_TAG_REGEX } from "@app/lib/tools/format";
 import { unescape } from "html-escaper";
 
 const ZWS = "\u200B";
+const TOOL_TAG_PLACEHOLDER_PREFIX = "\uE000DUST_TOOL_TAG_";
+const TOOL_TAG_PLACEHOLDER_SUFFIX = "\uE001";
 
 /**
  * Escape emphasis delimiters (_ and *) inside $$ ... $$ math blocks so
@@ -19,17 +22,45 @@ export function preprocessMarkdownForEditor(
   markdown: string,
   { enableSkillReferences = false }: { enableSkillReferences?: boolean } = {}
 ): string {
-  const preservedTags = ["knowledge", "tool"];
+  const toolTags: string[] = [];
+  const markdownWithToolPlaceholders = markdown.replace(
+    TOOL_TAG_REGEX,
+    (tag) => {
+      if (!parseToolTag(tag)) {
+        return tag;
+      }
+
+      const placeholder = `${TOOL_TAG_PLACEHOLDER_PREFIX}${toolTags.length}${TOOL_TAG_PLACEHOLDER_SUFFIX}`;
+      toolTags.push(tag);
+      return placeholder;
+    }
+  );
+
+  const preservedTags = ["knowledge"];
   if (enableSkillReferences) {
     preservedTags.push("skill");
   }
   const preservedTagsPattern = preservedTags.join("|");
 
   return escapeMathEmphasis(
-    markdown.replace(
-      new RegExp(`<(?!(?:/?(?:${preservedTagsPattern}))[\\s>/])(/?\\w)`, "g"),
-      `<${ZWS}$1`
-    )
+    markdownWithToolPlaceholders
+      .replace(
+        new RegExp(`<(?!(?:/?(?:${preservedTagsPattern}))[\\s>/])(/?\\w)`, "g"),
+        `<${ZWS}$1`
+      )
+      .replace(
+        new RegExp(
+          `${TOOL_TAG_PLACEHOLDER_PREFIX}(\\d+)${TOOL_TAG_PLACEHOLDER_SUFFIX}`,
+          "g"
+        ),
+        (_, index: string) => {
+          const toolTag = toolTags[Number(index)];
+          if (!toolTag) {
+            throw new Error("Missing preserved tool tag placeholder.");
+          }
+          return toolTag;
+        }
+      )
   );
 }
 
