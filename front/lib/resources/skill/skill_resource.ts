@@ -2285,9 +2285,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     for (const skillId of extractUniqueSkillIds(instructions)) {
       const parsed = getResourceNameAndIdFromSId(skillId);
 
+      if (!parsed || parsed.resourceName !== "skill") {
+        throw new Error(`Invalid skill reference ID: ${skillId}`);
+      }
+
       if (
-        !parsed ||
-        parsed.resourceName !== "skill" ||
         parsed.workspaceModelId !== workspace.id ||
         parsed.resourceModelId === parentSkillId
       ) {
