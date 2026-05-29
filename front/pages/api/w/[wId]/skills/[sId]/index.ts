@@ -1,6 +1,7 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { replaceUnavailableSkillReferencesForFrontend } from "@app/lib/api/skills/skill_references";
 import { resolveAdditionalRequestedSpaceModelIds } from "@app/lib/api/skills/space_requirements";
 import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { pruneOutdatedSkillEditSuggestions } from "@app/lib/reinforcement/skill_suggestion_pruning";
@@ -110,7 +111,11 @@ async function handler(
     case "GET": {
       const { withRelations } = req.query;
 
-      const serializedSkill = skill.toJSON(auth);
+      const serializedSkill =
+        await replaceUnavailableSkillReferencesForFrontend(
+          auth,
+          skill.toJSON(auth)
+        );
 
       if (withRelations === "true") {
         const featureFlags = await getFeatureFlags(auth);
@@ -125,6 +130,12 @@ async function handler(
         const childSkills = includeChildSkills
           ? await skill.fetchChildSkills(auth)
           : [];
+        const serializedExtendedSkill = extendedSkill
+          ? await replaceUnavailableSkillReferencesForFrontend(
+              auth,
+              extendedSkill.toJSON(auth)
+            )
+          : null;
 
         const skillWithRelations: SkillWithRelationsType = {
           ...serializedSkill,
@@ -132,7 +143,7 @@ async function handler(
             usage,
             editors: editors ? editors.map((e) => e.toJSON()) : null,
             editedByUser: editedByUser ? editedByUser.toJSON() : null,
-            extendedSkill: extendedSkill ? extendedSkill.toJSON(auth) : null,
+            extendedSkill: serializedExtendedSkill,
             ...(includeChildSkills
               ? {
                   childSkills: childSkills.map((childSkill) => {
@@ -411,8 +422,14 @@ async function handler(
 
       await pruneOutdatedSkillEditSuggestions(auth, skill);
 
+      const serializedSkill =
+        await replaceUnavailableSkillReferencesForFrontend(
+          auth,
+          skill.toJSON(auth)
+        );
+
       return res.status(200).json({
-        skill: skill.toJSON(auth),
+        skill: serializedSkill,
       });
     }
 

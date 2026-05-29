@@ -195,6 +195,43 @@ describe("GET /api/w/:wId/skills/:sId", () => {
     expect(data.skill.relations).not.toHaveProperty("childSkills");
   });
 
+  it("should replace inaccessible nested skill references", async () => {
+    const { workspace, skill, skillOwnerAuth } = await setupTest({
+      requestUserRole: "user",
+      skillOwnerRole: "admin",
+    });
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    const inaccessibleSkill = await SkillFactory.create(skillOwnerAuth, {
+      name: "Restricted child skill",
+      requestedSpaceIds: [restrictedSpace.id],
+    });
+
+    await skill.updateSkill(skillOwnerAuth, {
+      name: skill.name,
+      agentFacingDescription: skill.agentFacingDescription,
+      userFacingDescription: skill.userFacingDescription,
+      instructions: `Use <skill id="${inaccessibleSkill.sId}" name="${inaccessibleSkill.name}" />.`,
+      instructionsHtml: `<p>Use <skill id="${inaccessibleSkill.sId}" name="${inaccessibleSkill.name}"></skill>.</p>`,
+      icon: skill.icon,
+      mcpServerViews: [],
+      attachedKnowledge: [],
+      requestedSpaceIds: skill.requestedSpaceIds,
+    });
+
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/skills/${skill.sId}?withRelations=true`
+    );
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.skill.instructions).toContain(
+      `<unavailable_skill id="${inaccessibleSkill.sId}" />`
+    );
+    expect(data.skill.instructionsHtml).toContain(
+      `<unavailable_skill id="${inaccessibleSkill.sId}"></unavailable_skill>`
+    );
+  });
+
   it("should return 404 for non-existent skill", async () => {
     const { workspace } = await setupTest();
 
