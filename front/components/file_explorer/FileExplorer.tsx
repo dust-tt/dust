@@ -1,11 +1,11 @@
 import { FileExplorerBreadcrumb } from "@app/components/file_explorer/FileExplorerBreadcrumb";
 import { FileExplorerContent } from "@app/components/file_explorer/FileExplorerContent";
+import { canMoveFileToParentFolder } from "@app/components/file_explorer/fileExplorerDragDrop";
 import { FileExplorerFilters } from "@app/components/file_explorer/FileExplorerFilters";
 import type { ViewMode } from "@app/components/file_explorer/FileExplorerItem";
+import { getFileExplorerPipeline } from "@app/components/file_explorer/fileExplorerPipeline";
 import { FileExplorerToolbar } from "@app/components/file_explorer/FileExplorerToolbar";
 import { FilePreviewDialog } from "@app/components/file_explorer/FilePreviewDialog";
-import { canMoveFileToParentFolder } from "@app/components/file_explorer/fileExplorerDragDrop";
-import { getFileExplorerPipeline } from "@app/components/file_explorer/fileExplorerPipeline";
 import { MoveFileToFolderDialog } from "@app/components/file_explorer/MoveFileToFolderDialog";
 import type {
   ContentNodeEntry,
@@ -38,6 +38,7 @@ import {
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
+import { AnimatePresence, motion } from "framer-motion";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -49,6 +50,7 @@ interface FileExplorerProps {
   hideTitleBorder?: boolean;
   files: FileSystemEntry[];
   getFileUrl: (path: string) => string;
+  rootTitle?: React.ReactNode;
   toolbarExtraActions?: React.ReactNode;
   isLoading: boolean;
   navigationResetKey?: number;
@@ -74,6 +76,7 @@ export function FileExplorer({
   emptyState,
   files,
   getFileUrl,
+  rootTitle,
   toolbarExtraActions,
   hideTitleBorder = false,
   isLoading,
@@ -293,14 +296,40 @@ export function FileExplorer({
                 contentClassName
               )}
             >
-              <FileExplorerBreadcrumb
-                currentFolderPath={currentFolderPath}
-                onGoUp={handleGoUp}
-                onNavigate={handleBreadcrumbNavigate}
-                onMoveFileDrop={
-                  fileDragEnabled ? handleMoveFileDrop : undefined
-                }
-              />
+              <div className="relative flex h-full flex-1 min-w-0 items-center">
+                <AnimatePresence initial={false}>
+                  {currentFolderPath === "" && rootTitle !== undefined ? (
+                    <motion.div
+                      key="title"
+                      className="absolute inset-0 flex items-center"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.15 }}
+                    >
+                      {rootTitle}
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="breadcrumb"
+                      className="absolute inset-0 flex items-center"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.15 }}
+                    >
+                      <FileExplorerBreadcrumb
+                        currentFolderPath={currentFolderPath}
+                        onGoUp={handleGoUp}
+                        onNavigate={handleBreadcrumbNavigate}
+                        onMoveFileDrop={
+                          fileDragEnabled ? handleMoveFileDrop : undefined
+                        }
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
               <Button
                 variant="ghost"
                 size="sm"

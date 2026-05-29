@@ -1,18 +1,19 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { FileExplorer } from "@app/components/file_explorer/FileExplorer";
-import type { FileEntry } from "@app/components/file_explorer/types";
 import { useFileDownload } from "@app/components/file_explorer/useFileDownload";
-import {
-  getScopedRelativePath,
-  joinMountRelativePath,
-} from "@app/components/file_explorer/utils";
 import { useConversationSandboxFiles } from "@app/hooks/conversations/useConversationSandboxFiles";
 import config from "@app/lib/api/config";
 import { downloadFile } from "@app/lib/swr/files";
-import { useMoveMountFile } from "@app/lib/swr/mount_files";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { usePodFiles } from "@app/lib/swr/pods";
+import {
+  isPodConversation,
+  type ConversationWithoutContentType,
+} from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
-import { useCallback } from "react";
+import { Button, ButtonGroup } from "@dust-tt/sparkle";
+import { useCallback, useMemo, useState } from "react";
+
+type FilesTab = "conversation" | "pod";
 
 interface ConversationFileExplorerProps {
   conversation: ConversationWithoutContentType;
@@ -24,20 +25,25 @@ export function ConversationFileExplorer({
   owner,
 }: ConversationFileExplorerProps) {
   const { closePanel, openPanel } = useConversationSidePanelContext();
+  const isPod = isPodConversation(conversation);
+  const [activeTab, setActiveTab] = useState<FilesTab>("conversation");
 
-  const { sandboxFiles, isSandboxFilesLoading, mutateSandboxFiles } =
-    useConversationSandboxFiles({
-      conversationId: conversation.sId,
-      owner,
-    });
+  const { sandboxFiles, isSandboxFilesLoading } = useConversationSandboxFiles({
+    conversationId: conversation.sId,
+    owner,
+  });
 
-  const moveMountFile = useMoveMountFile({
-    filesApiBasePath: `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}/files`,
+  const { files: podFiles, isPodFilesLoading } = usePodFiles({
+    owner,
+    podId: isPod ? conversation.spaceId : "",
+    disabled: !isPod || activeTab !== "pod",
   });
 
   const getFileUrl = useCallback(
-    (path: string) =>
-      `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/path/${path}`,
+    (path: string) => {
+      const encoded = path.split("/").map(encodeURIComponent).join("/");
+      return `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/path/${encoded}`;
+    },
     [owner.sId]
   );
 
@@ -48,31 +54,42 @@ export function ConversationFileExplorer({
 
   const onFileDownload = useFileDownload({ getFileResponse });
 
-  // Pass to FileExplorer component to enable file moving.
-  const _onMoveFile = useCallback(
-    async (entry: FileEntry, parentRelativePath: string) => {
-      const result = await moveMountFile({
-        relativeFilePath: getScopedRelativePath(entry.path),
-        destRelativeFilePath: joinMountRelativePath(
-          parentRelativePath,
-          entry.fileName
-        ),
-      });
-      if (result.isOk()) {
-        await mutateSandboxFiles();
-      }
-      return result;
-    },
-    [moveMountFile, mutateSandboxFiles]
-  );
+  const rootTitle = useMemo(() => {
+    if (!isPod) {
+      return undefined;
+    }
+    return (
+      <ButtonGroup
+        removeGaps={false}
+        className="rounded-lg bg-muted dark:bg-muted-night p-0.5"
+      >
+        <Button
+          size="xs"
+          variant={activeTab === "conversation" ? "outline" : "ghost"}
+          label="Conversation Files"
+          onClick={() => setActiveTab("conversation")}
+        />
+        <Button
+          size="xs"
+          variant={activeTab === "pod" ? "outline" : "ghost"}
+          label="Pod Files"
+          onClick={() => setActiveTab("pod")}
+        />
+      </ButtonGroup>
+    );
+  }, [activeTab, isPod]);
+
+  const isOnPodTab = isPod && activeTab === "pod";
 
   return (
     <FileExplorer
-      files={sandboxFiles}
-      isLoading={isSandboxFilesLoading}
+      key={activeTab}
+      files={isOnPodTab ? podFiles : sandboxFiles}
+      isLoading={isOnPodTab ? isPodFilesLoading : isSandboxFilesLoading}
       getFileUrl={getFileUrl}
       onFileDownload={onFileDownload}
       onClose={closePanel}
+      rootTitle={rootTitle}
       onOpenInteractive={(entry) =>
         openPanel({ type: "interactive_content", fileId: entry.fileId })
       }
