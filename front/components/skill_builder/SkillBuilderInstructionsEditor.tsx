@@ -27,6 +27,26 @@ import { useController, useFormContext } from "react-hook-form";
 const INSTRUCTIONS_FIELD_NAME = "instructions";
 const INSTRUCTIONS_HTML_FIELD_NAME = "instructionsHtml";
 const ATTACHED_KNOWLEDGE_FIELD_NAME = "attachedKnowledge";
+const BASE_ALLOWED_INSTRUCTIONS_TAGS = ["knowledge"];
+const BASE_ALLOWED_INSTRUCTIONS_ATTRS = ["space", "dsv", "hasChildren"];
+const SKILL_REFERENCE_ALLOWED_TAGS = ["skill"];
+const SKILL_REFERENCE_ALLOWED_ATTRS = ["id", "name", "icon"];
+
+function getSkillInstructionsSanitizeConfig({
+  enableSkillReferences,
+}: {
+  enableSkillReferences: boolean;
+}): Config {
+  return {
+    ADD_TAGS: enableSkillReferences
+      ? [...BASE_ALLOWED_INSTRUCTIONS_TAGS, ...SKILL_REFERENCE_ALLOWED_TAGS]
+      : [...BASE_ALLOWED_INSTRUCTIONS_TAGS],
+    ADD_ATTR: enableSkillReferences
+      ? [...BASE_ALLOWED_INSTRUCTIONS_ATTRS, ...SKILL_REFERENCE_ALLOWED_ATTRS]
+      : [...BASE_ALLOWED_INSTRUCTIONS_ATTRS],
+    FORBID_ATTR: ["style", "class"],
+  };
+}
 
 function collectKnowledgeItems(editor: Editor): KnowledgeItem[] {
   const items: KnowledgeItem[] = [];
@@ -50,14 +70,15 @@ function toAttachedKnowledge(
   }));
 }
 
-function sanitizeSkillInstructionsHtml(html: string): string {
+function sanitizeSkillInstructionsHtml(
+  html: string,
+  { enableSkillReferences = false }: { enableSkillReferences?: boolean } = {}
+): string {
   try {
-    const config: Config = {
-      ADD_TAGS: ["knowledge"],
-      ADD_ATTR: ["space", "dsv", "hasChildren"],
-      FORBID_ATTR: ["style", "class"],
-    };
-    return DOMPurify.sanitize(html, config);
+    return DOMPurify.sanitize(
+      html,
+      getSkillInstructionsSanitizeConfig({ enableSkillReferences })
+    );
   } catch {
     return html;
   }
@@ -75,6 +96,12 @@ export function SkillBuilderInstructionsEditor({
   const { compareVersion, isDiffMode } = useSkillVersionComparisonContext();
   const { resetField } = useFormContext<SkillBuilderFormData>();
   const initializedAttachedKnowledgeEditorRef = useRef<Editor | null>(null);
+  const { owner, skillId, selectedSuggestionId, setAcceptInstructionEdits } =
+    useSkillBuilderContext();
+  const { hasFeature } = useFeatureFlags();
+  const hasReinforcementFeature =
+    hasFeature("reinforced_agents") && hasFeature("reinforcement_ui");
+  const enableSkillReferences = hasFeature("nested_skills");
 
   const { field: instructionsField, fieldState: instructionsFieldState } =
     useController<SkillBuilderFormData, typeof INSTRUCTIONS_FIELD_NAME>({
@@ -115,11 +142,14 @@ export function SkillBuilderInstructionsEditor({
         postProcessMarkdown(editor.getMarkdown()).trim()
       );
       instructionsHtmlField.onChange(
-        sanitizeSkillInstructionsHtml(editor.getHTML())
+        sanitizeSkillInstructionsHtml(editor.getHTML(), {
+          enableSkillReferences,
+        })
       );
       syncAttachedKnowledgeFromEditor(editor);
     },
     [
+      enableSkillReferences,
       instructionsField.onChange,
       instructionsHtmlField.onChange,
       syncAttachedKnowledgeFromEditor,
@@ -158,11 +188,6 @@ export function SkillBuilderInstructionsEditor({
     [syncAttachedKnowledgeFromEditor]
   );
 
-  const { owner, skillId, selectedSuggestionId, setAcceptInstructionEdits } =
-    useSkillBuilderContext();
-  const { hasFeature } = useFeatureFlags();
-  const hasReinforcementFeature =
-    hasFeature("reinforced_agents") && hasFeature("reinforcement_ui");
   const { suggestions, isSuggestionsLoading } = useSkillSuggestions({
     skillId,
     states: ["pending"],
@@ -176,6 +201,9 @@ export function SkillBuilderInstructionsEditor({
     content: instructionsField.value ?? "",
     htmlContent: instructionsHtmlField.value ?? undefined,
     isReadOnly: hasSuggestions,
+    skillReferences: {
+      enableSkillReferences,
+    },
     onUpdate: handleUpdate,
     onBlur: handleBlur,
     onDelete: handleDelete,
@@ -377,11 +405,13 @@ export function SkillBuilderInstructionsEditor({
     }
 
     const incomingHtml = instructionsHtmlField.value;
-    const currentHtml = sanitizeSkillInstructionsHtml(editor.getHTML());
+    const currentHtml = sanitizeSkillInstructionsHtml(editor.getHTML(), {
+      enableSkillReferences,
+    });
     if (currentHtml !== incomingHtml) {
       editor.commands.setContent(incomingHtml, { emitUpdate: false });
     }
-  }, [editor, isDiffMode, instructionsHtmlField.value]);
+  }, [editor, enableSkillReferences, isDiffMode, instructionsHtmlField.value]);
 
   useEffect(() => {
     if (!editor || editor.isDestroyed) {
@@ -401,13 +431,22 @@ export function SkillBuilderInstructionsEditor({
         const compareText = compareVersion.instructions ?? "";
         const currentText = instructionsField.value ?? "";
 
-        editor.commands.setContent(preprocessMarkdownForEditor(currentText), {
-          emitUpdate: false,
-          contentType: "markdown",
-        });
+        editor.commands.setContent(
+          preprocessMarkdownForEditor(currentText, {
+            enableSkillReferences,
+          }),
+          {
+            emitUpdate: false,
+            contentType: "markdown",
+          }
+        );
         editor.commands.applyDiff(
-          preprocessMarkdownForEditor(compareText),
-          preprocessMarkdownForEditor(currentText)
+          preprocessMarkdownForEditor(compareText, {
+            enableSkillReferences,
+          }),
+          preprocessMarkdownForEditor(currentText, {
+            enableSkillReferences,
+          })
         );
         editor.setEditable(false);
       } else if (editor.storage.agentInstructionDiff?.isDiffMode) {
@@ -420,7 +459,9 @@ export function SkillBuilderInstructionsEditor({
           });
         } else {
           editor.commands.setContent(
-            preprocessMarkdownForEditor(instructionsField.value ?? ""),
+            preprocessMarkdownForEditor(instructionsField.value ?? "", {
+              enableSkillReferences,
+            }),
             {
               emitUpdate: false,
               contentType: "markdown",
@@ -438,6 +479,7 @@ export function SkillBuilderInstructionsEditor({
   }, [
     compareVersion,
     editor,
+    enableSkillReferences,
     instructionsField.value,
     instructionsHtmlField.value,
   ]);
