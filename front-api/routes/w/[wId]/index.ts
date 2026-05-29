@@ -17,6 +17,7 @@ import { validate } from "@front-api/middlewares/validator";
 import { workspaceAuth } from "@front-api/middlewares/workspace_auth";
 import { escape } from "html-escaper";
 import { z } from "zod";
+import analytics from "./analytics";
 import assistant from "./assistant";
 import auditLogs from "./audit-logs";
 import authContext from "./auth-context";
@@ -562,6 +563,7 @@ app.post(
 
 // Sub-apps using the catch-all default + the partial-subtree exception
 // targets declared above.
+app.route("/analytics", analytics);
 app.route("/assistant", assistant);
 app.route("/audit-logs", auditLogs);
 app.route("/billing", billing);
