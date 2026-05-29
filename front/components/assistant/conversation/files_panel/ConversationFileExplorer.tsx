@@ -37,8 +37,8 @@ export function ConversationFileExplorer({
 
   const getFileUrl = useCallback(
     (path: string) =>
-      `${config.getApiBaseUrl()}/api/w/${owner.sId}/assistant/conversations/${conversation.sId}/files/${path}`,
-    [conversation.sId, owner.sId]
+      `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/path/${path}`,
+    [owner.sId]
   );
 
   const getFileResponse = useCallback(

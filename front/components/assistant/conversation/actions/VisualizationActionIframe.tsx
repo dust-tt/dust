@@ -313,37 +313,26 @@ export const VisualizationActionIframe = forwardRef<
     async (fileId: string) => {
       let url: string;
 
-      if (fileId.startsWith("conversation/")) {
+      if (fileId.startsWith("conversation-") || fileId.startsWith("pod-")) {
+        // Canonical scoped paths — the global endpoint resolves auth from the prefix.
+        const encodedPath = fileId.split("/").map(encodeURIComponent).join("/");
+        url = `/api/w/${workspaceId}/files/path/${encodedPath}`;
+      } else if (fileId.startsWith("conversation/")) {
+        // Legacy path: normalize to canonical using context conversationId.
         if (!conversationId) {
           return null;
         }
-        url = `/api/w/${workspaceId}/assistant/conversations/${conversationId}/files/${fileId}`;
-      } else if (fileId.startsWith("pod/")) {
+        const rel = fileId.slice("conversation/".length);
+        url = `/api/w/${workspaceId}/files/path/conversation-${conversationId}/${rel}`;
+      } else if (fileId.startsWith("pod/") || fileId.startsWith("project/")) {
+        // Legacy paths: normalize to canonical using context spaceId.
         if (!spaceId) {
           return null;
         }
-        url = `/api/w/${workspaceId}/spaces/${spaceId}/files/${fileId}`;
-      } else if (fileId.startsWith("project/")) {
-        // Legacy "project/" scope. The Pod files endpoint only accepts the
-        // "pod/" prefix and resolves everything under the pods/ base path, so
-        // we rewrite the prefix. Log remaining usage so we can drop this branch
-        // once no clients emit "project/" paths anymore.
-        if (!spaceId) {
-          return null;
-        }
-        datadogLogger.info("Legacy project/ file scope used in visualization", {
-          fileId,
-        });
-        const podFileId = `pod/${fileId.slice("project/".length)}`;
-        url = `/api/w/${workspaceId}/spaces/${spaceId}/files/${podFileId}`;
-      } else if (
-        fileId.startsWith("conversation-") ||
-        fileId.startsWith("pod-")
-      ) {
-        // Canonical scoped paths (e.g. conversation-{cId}/file.txt, pod-{pId}/data.csv).
-        // The new /files/path endpoint resolves auth from the path prefix itself.
-        const encodedPath = fileId.split("/").map(encodeURIComponent).join("/");
-        url = `/api/w/${workspaceId}/files/path/${encodedPath}`;
+        const rel = fileId.startsWith("pod/")
+          ? fileId.slice("pod/".length)
+          : fileId.slice("project/".length);
+        url = `/api/w/${workspaceId}/files/path/pod-${spaceId}/${rel}`;
       } else {
         url = `/api/w/${workspaceId}/files/${fileId}?action=view`;
       }
