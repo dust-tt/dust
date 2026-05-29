@@ -10,8 +10,8 @@ import {
 } from "@app/lib/api/assistant/conversation/attachments";
 import appConfig from "@app/lib/api/config";
 import config from "@app/lib/api/config";
-import { getConversationFilesBasePath } from "@app/lib/api/files/mount_path";
 import { SCOPED_PREFIX_CONVERSATION } from "@app/lib/api/file_system";
+import { getConversationFilesBasePath } from "@app/lib/api/files/mount_path";
 import {
   PASTED_CONTENT_MAX_CHARACTERS,
   TRUNCATED_SNIPPET_SIZE,
