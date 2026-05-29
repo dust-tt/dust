@@ -60,7 +60,10 @@ export const VIZ_FILE_HANDLING_GUIDELINES = `
   - Files attached to the conversation can be accessed using the \`useFile()\` React hook (all files can be accessed by the hook irrespective of their status).
   - \`useFile\` has to be imported from \`"@dust/react-hooks"\`.
   - Like any React hook, \`useFile\` must be called inside a React component at the top level (not in event handlers, loops, or conditions).
-  - \`useFile()\` accepts either a file ID (e.g. \`"fil_abc123"\`, as found in \`<attachment id="fil_..." ...>\` tags) or a scoped file path (e.g. \`"conversation/report.csv"\`). Pass whichever you already have.
+  - \`useFile()\` accepts either a file ID (e.g. \`"fil_abc123"\`, as found in \`<attachment id="fil_..." ...>\` tags) or a scoped file path. Supported scoped path formats:
+    - \`"conversation-{conversationId}/report.csv"\` — a file in a specific conversation (portable)
+    - \`"pod-{podId}/filename.md"\` — a file in a specific pod (portable)
+    - **Never use bare \`"conversation/filename"\` or \`"pod/filename"\` (without their respective ID)** — these paths are context-dependent: they only resolve correctly when the frame is rendered inside that exact conversation or pod. They are non-portable and will silently load the wrong file or fail in any other context. Always use the explicit \`"conversation-{conversationId}/filename"\` or \`"pod-{podId}/filename"\` forms instead.
   - File IDs, that will be used with \`useFile()\`, should be stored as non-breaking strings in the code, e.g store and use \`"fil_..."\` and NOT concatenation \`"fil_" + file.id\`
   - Once/if the file is available, \`useFile()\` will return a non-null \`File\` object. The \`File\` object is a browser File object. Examples of using \`useFile\` are available below.
   - \`file.text()\` is ASYNC - Always use await \`file.text()\` inside useEffect with async function. Never call \`file.text()\` directly in render logic as it returns a Promise, not a string.

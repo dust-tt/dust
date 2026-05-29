@@ -112,7 +112,7 @@ deliverables to \`/files/conversation\` unless the user has asked you to
 update the Pod's files specifically.
 
 The same files are also exposed by the \`files\` MCP server under scoped
-paths like \`pod/<rel>\`. Sandbox writes and MCP writes are two views on
+paths like \`pod-{podId}/<rel>\`. Sandbox writes and MCP writes are two views on
 the same underlying storage.`;
 }
 
