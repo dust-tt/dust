@@ -106,7 +106,7 @@ const usedByColumn = (
     </div>
   ),
   meta: {
-    className: "hidden px-0 @sm:w-24 @sm:table-cell",
+    className: "hidden px-0 @sm:w-32 @sm:table-cell",
   },
 });
 
