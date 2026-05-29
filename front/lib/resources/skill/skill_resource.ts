@@ -138,10 +138,6 @@ type ConversationSkillCreationAttributes =
         }
     );
 
-type SkillReferenceSyncOptions = {
-  enabled: boolean;
-};
-
 function isSkillResourceWithVersion(
   skill: SkillResource
 ): skill is SkillResource & { version: number } {
@@ -367,13 +363,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       addCurrentUserAsEditor = true,
       attachedKnowledge = [],
       fileAttachments = [],
-      skillReferences,
+      enableSkillReferences = false,
     }: {
       mcpServerViews: MCPServerViewResource[];
       addCurrentUserAsEditor?: boolean;
       attachedKnowledge?: SkillAttachedKnowledge[];
       fileAttachments?: FileResource[];
-      skillReferences?: SkillReferenceSyncOptions;
+      enableSkillReferences?: boolean;
     }
   ): Promise<SkillResource> {
     const owner = auth.getNonNullableWorkspace();
@@ -428,7 +424,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           transaction,
         });
 
-      if (skillReferences?.enabled) {
+      if (enableSkillReferences) {
         await this.syncSkillReferences(
           auth,
           {
@@ -2170,7 +2166,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       source,
       sourceMetadata,
       status,
-      skillReferences,
+      enableSkillReferences = false,
       userFacingDescription,
     }: {
       agentFacingDescription: string;
@@ -2187,7 +2183,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       source?: SkillSourceType;
       sourceMetadata?: SkillSourceMetadata;
       status?: SkillStatus;
-      skillReferences?: SkillReferenceSyncOptions;
+      enableSkillReferences?: boolean;
       userFacingDescription: string;
     }
   ): Promise<void> {
@@ -2223,7 +2219,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         transaction
       );
 
-      if (skillReferences?.enabled) {
+      if (enableSkillReferences) {
         await SkillResource.syncSkillReferences(
           auth,
           {

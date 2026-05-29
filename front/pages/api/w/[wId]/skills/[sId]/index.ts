@@ -366,9 +366,7 @@ async function handler(
         name,
         reinforcement: body.reinforcement,
         requestedSpaceIds,
-        skillReferences: {
-          enabled: featureFlags.includes("nested_skills"),
-        },
+        enableSkillReferences: featureFlags.includes("nested_skills"),
         userFacingDescription: body.userFacingDescription,
         ...(shouldActivate ? { status: "active" as const } : {}),
       });

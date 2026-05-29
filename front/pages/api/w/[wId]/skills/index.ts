@@ -416,9 +416,7 @@ async function handler(
           mcpServerViews,
           attachedKnowledge: attachedKnowledgeWithDataSourceViews,
           fileAttachments: files,
-          skillReferences: {
-            enabled: featureFlags.includes("nested_skills"),
-          },
+          enableSkillReferences: featureFlags.includes("nested_skills"),
         }
       );
 
