@@ -290,6 +290,49 @@ const resolveFolderPath = async (
   return { folderId: parentFolderId as string, createdSegments };
 };
 
+const findFolderByPath = async (
+  pathSegments: string[],
+  basePath: string,
+  accessToken: string
+): Promise<{ folderId: string } | { error: MCPError }> => {
+  let parentFolderId: string | null = null;
+
+  for (let i = 0; i < pathSegments.length; i++) {
+    const segment = pathSegments[i];
+    const response = await fetchFromOutlook(
+      `${foldersEndpoint(basePath, parentFolderId)}?$top=250`,
+      accessToken,
+      { method: "GET" }
+    );
+    if (!response.ok) {
+      const errorText = await getErrorText(response);
+      return {
+        error: new MCPError(
+          `Failed to fetch folders: ${response.status} ${response.statusText} - ${errorText}`
+        ),
+      };
+    }
+    const result = await response.json();
+    const folders = (result.value ?? []) as OutlookFolder[];
+    const folder = folders.find(
+      (f) => f.displayName.toLowerCase() === segment.toLowerCase()
+    );
+    if (!folder) {
+      const parentPath = pathSegments.slice(0, i).join("/");
+      const locationHint = parentPath ? ` in "${parentPath}"` : "";
+      const available = folders.map((f) => f.displayName).join(", ");
+      return {
+        error: new MCPError(
+          `Folder "${segment}" not found${locationHint}. Available folders${locationHint}: ${available}`
+        ),
+      };
+    }
+    parentFolderId = folder.id;
+  }
+
+  return { folderId: parentFolderId as string };
+};
+
 const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
   get_messages: async (
     { search, folderName, top = 10, skip = 0, select, sharedMailboxAddress },
@@ -302,43 +345,22 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
 
     const basePath = getMailboxBasePath(sharedMailboxAddress);
 
-    // If folderName is provided, search for the folder and get its ID
+    // If folderName is provided, resolve it (supports "/" separated paths like "Inbox/Projects")
     let folderId: string | undefined;
     if (folderName) {
-      const foldersResponse = await fetchFromOutlook(
-        `${basePath}/mailFolders`,
-        accessToken,
-        {
-          method: "GET",
-        }
+      const pathSegments = folderName
+        .split("/")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const resolved = await findFolderByPath(
+        pathSegments,
+        basePath,
+        accessToken
       );
-
-      if (!foldersResponse.ok) {
-        const errorText = await getErrorText(foldersResponse);
-        return new Err(
-          new MCPError(
-            `Failed to fetch folders: ${foldersResponse.status} ${foldersResponse.statusText} - ${errorText}`
-          )
-        );
+      if ("error" in resolved) {
+        return new Err(resolved.error);
       }
-
-      const foldersResult = await foldersResponse.json();
-      const folders = (foldersResult.value ?? []) as OutlookFolder[];
-
-      // Search for the folder by name (case-insensitive)
-      const folder = folders.find(
-        (f) => f.displayName.toLowerCase() === folderName.toLowerCase()
-      );
-
-      if (!folder) {
-        return new Err(
-          new MCPError(
-            `Folder "${folderName}" not found. Available folders: ${folders.map((f) => f.displayName).join(", ")}`
-          )
-        );
-      }
-
-      folderId = folder.id;
+      folderId = resolved.folderId;
     }
 
     const allowedLabels = await getAllowedLabelsForMCPServer(
@@ -523,6 +545,66 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
             messages: (result.value || []) as OutlookMessage[],
             nextLink: result["@odata.nextLink"],
             totalCount: result["@odata.count"],
+          },
+          null,
+          2
+        ),
+      },
+    ]);
+  },
+
+  list_folders: async ({ folderPath, sharedMailboxAddress }, { authInfo }) => {
+    const accessToken = authInfo?.token;
+    if (!accessToken) {
+      return new Err(new MCPError("Authentication required"));
+    }
+
+    const basePath = getMailboxBasePath(sharedMailboxAddress);
+    let parentFolderId: string | null = null;
+
+    if (folderPath && folderPath.length > 0) {
+      const resolved = await findFolderByPath(
+        folderPath,
+        basePath,
+        accessToken
+      );
+      if ("error" in resolved) {
+        return new Err(resolved.error);
+      }
+      parentFolderId = resolved.folderId;
+    }
+
+    const response = await fetchFromOutlook(
+      `${foldersEndpoint(basePath, parentFolderId)}?$top=250`,
+      accessToken,
+      { method: "GET" }
+    );
+
+    if (!response.ok) {
+      const errorText = await getErrorText(response);
+      return new Err(
+        new MCPError(
+          `Failed to fetch folders: ${response.status} ${response.statusText} - ${errorText}`
+        )
+      );
+    }
+
+    const result = await response.json();
+    const folders = (result.value ?? []) as OutlookFolder[];
+
+    return new Ok([
+      { type: "text" as const, text: "Folders listed successfully" },
+      {
+        type: "text" as const,
+        text: JSON.stringify(
+          {
+            path: folderPath ?? [],
+            folders: folders.map((f) => ({
+              name: f.displayName,
+              childFolderCount: f.childFolderCount,
+              unreadItemCount: f.unreadItemCount,
+              totalItemCount: f.totalItemCount,
+            })),
           },
           null,
           2

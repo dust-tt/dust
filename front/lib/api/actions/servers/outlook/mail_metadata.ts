@@ -21,7 +21,7 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
         .string()
         .optional()
         .describe(
-          'The name of the folder to get messages from. Examples: "Inbox", "Sent Items", "Drafts". The tool will search for a folder matching this name. Leave empty to get messages from all folders.'
+          'The folder to get messages from. Use a plain name for top-level folders (e.g. "Inbox", "Sent Items") or a "/" separated path to target a subfolder (e.g. "Inbox/Projects", "Inbox/test"). The lookup is case-insensitive. Leave empty to get messages from all folders. Use the list_folders tool to discover the available folder hierarchy.'
         ),
       top: z
         .number()
@@ -50,6 +50,31 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
     displayLabels: {
       running: "Fetching messages",
       done: "Fetch messages",
+    },
+  },
+  list_folders: {
+    description:
+      "List mail folders in an Outlook mailbox. Returns the immediate children of the specified folder path, or top-level folders when no path is given. Use this to discover the full folder hierarchy before calling get_messages with a subfolder path.",
+    schema: {
+      folderPath: z
+        .array(z.string())
+        .optional()
+        .describe(
+          'Path of the folder whose children to list, as an ordered list of folder names from the top level (e.g. ["Inbox"] to list subfolders of Inbox, ["Inbox", "Projects"] to go one level deeper). Omit or pass an empty array to list top-level folders.'
+        ),
+      sharedMailboxAddress: z
+        .string()
+        .optional()
+        .describe(
+          "The email address of the shared mailbox to access (e.g. 'support@company.com'). " +
+            "Leave empty to access your own mailbox. " +
+            "Note: the shared mailbox address must be known in advance — there is no API to auto-discover it."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing folders",
+      done: "List folders",
     },
   },
   get_attachments: {
