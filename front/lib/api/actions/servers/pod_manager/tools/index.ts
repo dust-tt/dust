@@ -50,10 +50,8 @@ import { seedInitialPodTasks } from "@app/lib/project_task/seed_initial_pod_task
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import {
-  ProjectMetadataBlob,
-  ProjectMetadataResource,
-} from "@app/lib/resources/project_metadata_resource";
+import type { ProjectMetadataBlob } from "@app/lib/resources/project_metadata_resource";
+import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -67,7 +65,6 @@ import { extractDataSourceIdFromNodeId } from "@app/types/core/content_node";
 import { Err, Ok } from "@app/types/shared/result";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { formatConversationsForDisplay } from "./conversation_formatting";
-import { CreationAttributes } from "sequelize";
 
 const LIST_CONVERSATIONS_DEFAULT_LOOKBACK_MS = 30 * 24 * 60 * 60 * 1000;
 
