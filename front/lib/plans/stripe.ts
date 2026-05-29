@@ -912,6 +912,28 @@ export async function scheduleSubscriptionCancellation({
 }
 
 /**
+ * Clear a previously scheduled cancellation (the reverse of
+ * `scheduleSubscriptionCancellation`). Used when a pending contract switch is
+ * cancelled so the current Stripe subscription keeps running instead of
+ * stopping at the (now abandoned) swap time.
+ */
+export async function clearScheduledSubscriptionCancellation({
+  stripeSubscriptionId,
+}: {
+  stripeSubscriptionId: string;
+}): Promise<Result<void, Error>> {
+  try {
+    const stripe = getStripeClient();
+    await stripe.subscriptions.update(stripeSubscriptionId, {
+      cancel_at: null,
+    });
+    return new Ok(undefined);
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
+}
+
+/**
  * Creates a new Stripe Business subscription for upgrading Pro → Business.
  * The old subscription is cancelled separately after the DB flip.
  */
