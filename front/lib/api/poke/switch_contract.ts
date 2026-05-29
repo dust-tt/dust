@@ -51,6 +51,12 @@ export const SwitchContractBodySchema = z.object({
   // Optional: required for paid tiers (pro/business/enterprise), omitted
   // for free-tier switches where Metronome contracts have no Stripe link.
   stripeCustomerId: z.string().min(1).optional(),
+  // How Metronome collects Stripe invoices for this customer. Only takes
+  // effect when a Stripe customer is wired in. `charge_automatically` charges
+  // the card on file; `send_invoice` emails the invoice for manual payment.
+  stripeCollectionMethod: z
+    .enum(["charge_automatically", "send_invoice"])
+    .default("charge_automatically"),
   paygEnabled: z.boolean().default(false),
   // AWU credits — written directly to `credit_usage_configuration.usageCapCredits`.
   usageCapCredits: z
@@ -185,6 +191,7 @@ export async function switchContract({
   const customerResult = await ensureMetronomeCustomerForWorkspace({
     workspace: renderLightWorkspaceType({ workspace: owner }),
     stripeCustomerId: body.stripeCustomerId,
+    stripeCollectionMethod: body.stripeCollectionMethod,
   });
   if (customerResult.isErr()) {
     return new Err(
