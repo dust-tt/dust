@@ -202,7 +202,9 @@ export function SkillBuilderInstructionsEditor({
     htmlContent: instructionsHtmlField.value ?? undefined,
     isReadOnly: hasSuggestions,
     skillReferences: {
+      currentSkillId: skillId,
       enableSkillReferences,
+      owner,
     },
     onUpdate: handleUpdate,
     onBlur: handleBlur,

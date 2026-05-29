@@ -7,6 +7,7 @@ import {
   INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
 } from "@app/lib/editor/build_skill_instructions_extensions";
 import { preprocessMarkdownForEditor } from "@app/lib/editor/skill_instructions_preprocessing";
+import type { LightWorkspaceType } from "@app/types/user";
 import { cn } from "@dust-tt/sparkle";
 import { CharacterCount, Placeholder } from "@tiptap/extensions";
 import type { Transaction } from "@tiptap/pm/state";
@@ -94,7 +95,9 @@ function useEditorService(
 }
 
 interface SkillInstructionsSkillReferencesOptions {
+  currentSkillId?: string | null;
   enableSkillReferences: boolean;
+  owner?: LightWorkspaceType;
 }
 
 interface UseSkillInstructionsEditorProps {
@@ -107,18 +110,32 @@ interface UseSkillInstructionsEditorProps {
   onDelete?: (editor: Editor) => void;
 }
 
-const skillInstructionsEditableExtensions = [
-  SlashCommandExtension,
-  AgentInstructionDiffExtension,
-  Placeholder.configure({
-    placeholder: "What does this skill do? How should it behave?",
-    emptyNodeClass:
-      "first:before:text-gray-400 first:before:italic first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:absolute",
-  }),
-  CharacterCount.configure({
-    limit: INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
-  }),
-];
+function buildSkillInstructionsEditableExtensions({
+  currentSkillId,
+  includeSkillSuggestions,
+  owner,
+}: {
+  currentSkillId?: string | null;
+  includeSkillSuggestions: boolean;
+  owner?: LightWorkspaceType;
+}) {
+  return [
+    SlashCommandExtension.configure({
+      currentSkillId: currentSkillId ?? null,
+      includeSkillSuggestions,
+      owner,
+    }),
+    AgentInstructionDiffExtension,
+    Placeholder.configure({
+      placeholder: "What does this skill do? How should it behave?",
+      emptyNodeClass:
+        "first:before:text-gray-400 first:before:italic first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:absolute",
+    }),
+    CharacterCount.configure({
+      limit: INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
+    }),
+  ];
+}
 
 export function useSkillInstructionsEditor({
   content,
@@ -130,16 +147,25 @@ export function useSkillInstructionsEditor({
   onDelete,
 }: UseSkillInstructionsEditorProps) {
   const enableSkillReferences = skillReferences?.enableSkillReferences === true;
+  const currentSkillId = skillReferences?.currentSkillId ?? null;
+  const owner = skillReferences?.owner;
+  const includeSkillSuggestions = enableSkillReferences && !!owner;
+  const editableExtensions = useMemo(
+    () =>
+      buildSkillInstructionsEditableExtensions({
+        currentSkillId,
+        includeSkillSuggestions,
+        owner,
+      }),
+    [currentSkillId, includeSkillSuggestions, owner]
+  );
+
   const extensions = useMemo(
     () =>
-      buildSkillInstructionsExtensions(
-        isReadOnly,
-        skillInstructionsEditableExtensions,
-        {
-          enableSkillReferences,
-        }
-      ),
-    [enableSkillReferences, isReadOnly]
+      buildSkillInstructionsExtensions(isReadOnly, editableExtensions, {
+        enableSkillReferences,
+      }),
+    [editableExtensions, enableSkillReferences, isReadOnly]
   );
 
   // Track if initial content has been set
