@@ -127,6 +127,21 @@ pre-commit:
       run: cargo fmt -- {staged_files}
       stage_fixed: true
 
+    # Guard against adding files to frozen migrations/db/ directories
+    no-legacy-db-migration-connectors:
+      glob: "connectors/migrations/db/*.sql"
+      run: |
+        echo ""
+        echo "ERROR: connectors/migrations/db/ is frozen. Do not add files here."
+        echo ""
+        echo "Use the new phased migration system instead:"
+        echo "  npm run -w connectors migration:generate:pre-deploy <description>"
+        echo "  npm run -w connectors migration:generate:post-deploy <description>"
+        echo ""
+        echo "See: https://app.notion.com/p/dust-tt/Runbook-Deploy-Run-migrations-5669e328475d489ba16298a77f2aa45c?source=copy_link#36728599d94180898358cf59a8725740"
+        exit 1
+      priority: 1
+
     # Biome checks (all JS/TS files in monorepo)
     biome:
       glob: "*.{js,jsx,ts,tsx,css,scss}"

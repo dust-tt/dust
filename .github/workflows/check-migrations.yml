@@ -1,0 +1,37 @@
+name: Check connectors/migrations/db/ is frozen
+
+on:
+  push:
+    paths:
+      - "connectors/migrations/db/**"
+      - ".github/workflows/check-migrations.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  check-frozen-migration-dirs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+      - name: Check no new files added to frozen migration dir
+        run: |
+          NEW_FILES=$(git diff --diff-filter=A --name-only origin/main...HEAD \
+            -- 'connectors/migrations/db/')
+
+          if [ -n "$NEW_FILES" ]; then
+            echo ""
+            echo "ERROR: connectors/migrations/db/ is frozen. New files detected:"
+            echo "$NEW_FILES" | sed 's/^/  /'
+            echo ""
+            echo "Use the new phased migration system instead:"
+            echo "  npm run -w connectors migration:generate:pre-deploy <description>"
+            echo "  npm run -w connectors migration:generate:post-deploy <description>"
+            echo ""
+            echo "See: https://app.notion.com/p/dust-tt/Runbook-Deploy-Run-migrations-5669e328475d489ba16298a77f2aa45c?source=copy_link#36728599d94180898358cf59a8725740"
+            exit 1
+          fi
+
+          echo "OK: no new files in frozen migration dir."
