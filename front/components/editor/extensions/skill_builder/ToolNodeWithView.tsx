@@ -23,9 +23,16 @@ function useToolNodeDisplay(attrs: ToolNodeAttributes) {
       };
     }
 
-    const view = ctx.mcpServerViews.find(
-      (v) => v.sId === attrs.mcpServerViewId
-    );
+    const labeledView =
+      ctx.mcpServerViewsWithoutKnowledge.find(
+        (v) => v.sId === attrs.mcpServerViewId
+      ) ??
+      ctx.mcpServerViewsWithKnowledge.find(
+        (v) => v.sId === attrs.mcpServerViewId
+      );
+    const view =
+      labeledView ??
+      ctx.mcpServerViews.find((v) => v.sId === attrs.mcpServerViewId);
 
     if (!view || ctx.isMCPServerViewsError) {
       return {
@@ -36,7 +43,7 @@ function useToolNodeDisplay(attrs: ToolNodeAttributes) {
 
     return {
       kind: "tool" as const,
-      title: getMcpServerViewDisplayName(view),
+      title: labeledView?.label ?? getMcpServerViewDisplayName(view),
       toolIcon: view.server.icon,
     };
   }, [attrs.mcpServerViewId, attrs.toolIcon, attrs.toolName, ctx]);
