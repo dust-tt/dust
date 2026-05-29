@@ -236,6 +236,43 @@ describe("GET /api/w/[wId]/skills/[sId]", () => {
     );
   });
 
+  it("should replace inaccessible nested skill references", async () => {
+    const { req, res, skill, skillOwnerAuth, workspace } = await setupTest({
+      requestUserRole: "user",
+      skillOwnerRole: "admin",
+    });
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    const inaccessibleSkill = await SkillFactory.create(skillOwnerAuth, {
+      name: "Restricted child skill",
+      requestedSpaceIds: [restrictedSpace.id],
+    });
+
+    await skill.updateSkill(skillOwnerAuth, {
+      name: skill.name,
+      agentFacingDescription: skill.agentFacingDescription,
+      userFacingDescription: skill.userFacingDescription,
+      instructions: `Use <skill id="${inaccessibleSkill.sId}" name="${inaccessibleSkill.name}" />.`,
+      instructionsHtml: `<p>Use <skill id="${inaccessibleSkill.sId}" name="${inaccessibleSkill.name}"></skill>.</p>`,
+      icon: skill.icon,
+      mcpServerViews: [],
+      attachedKnowledge: [],
+      requestedSpaceIds: skill.requestedSpaceIds,
+    });
+
+    req.query.withRelations = "true";
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+    expect(data.skill.instructions).toContain(
+      `<unavailable_skill id="${inaccessibleSkill.sId}" />`
+    );
+    expect(data.skill.instructionsHtml).toContain(
+      `<unavailable_skill id="${inaccessibleSkill.sId}"></unavailable_skill>`
+    );
+  });
+
   it("should return 404 for non-existent skill", async () => {
     const { req, res } = await setupTest();
     req.query.sId = "non_existent_skill_sid";
