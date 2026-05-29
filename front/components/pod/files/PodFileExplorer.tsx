@@ -776,7 +776,6 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
         emptyState={hasFiles ? undefined : emptyState}
         files={podGCSFiles}
         getFileUrl={getFileUrl}
-        hideTitleBorder
         navigationResetKey={navigationResetKey}
         onCurrentFolderChange={setCurrentFolderPath}
         onFileDownload={onFileDownload}
