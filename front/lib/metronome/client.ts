@@ -901,6 +901,43 @@ export async function reactivateMetronomeContract({
 }
 
 /**
+ * Permanently archive a Metronome contract along with its commits and credits.
+ * Used to undo a not-yet-started contract (e.g. cancelling a pending contract
+ * switch). `voidInvoices` voids any finalized invoices generated for the
+ * contract — safe to set for a future-dated contract that has not billed yet.
+ */
+export async function archiveMetronomeContract({
+  metronomeCustomerId,
+  contractId,
+  voidInvoices = true,
+}: {
+  metronomeCustomerId: string;
+  contractId: string;
+  voidInvoices?: boolean;
+}): Promise<Result<void, Error>> {
+  try {
+    await getMetronomeClient().v1.contracts.archive({
+      customer_id: metronomeCustomerId,
+      contract_id: contractId,
+      void_invoices: voidInvoices,
+    });
+
+    logger.info(
+      { metronomeCustomerId, contractId, voidInvoices },
+      "[Metronome] Contract archived"
+    );
+    return new Ok(undefined);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, contractId },
+      "[Metronome] Failed to archive contract"
+    );
+    return new Err(error);
+  }
+}
+
+/**
  * Generic wrapper around `v2.contracts.edit`. The Metronome edit endpoint is
  * an omnibus mutation (add subscriptions, commits, credits, overrides, billing
  * provider, etc.) — callers compose the body and we surface the resulting
