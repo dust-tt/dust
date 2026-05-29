@@ -28,7 +28,7 @@ export async function getDrivesToSync(
   }
   const allSharedDrives = await getDrives(connectorId);
   const authCredentials = await getAuthObject(connector.connectionId);
-  const drives: Record<string, LightGoogleDrive> = {};
+  const drivesById: Record<string, LightGoogleDrive> = {};
 
   for (const folder of selectedFolders) {
     const remoteFolder = await getGoogleDriveObject({
@@ -44,7 +44,7 @@ export async function getDrivesToSync(
       // so we need to filter them out.
       // This is the case for files "shared with me" for example.
       if (allSharedDrives.find((d) => d.id === remoteFolder.driveId)) {
-        drives[remoteFolder.driveId] = {
+        drivesById[remoteFolder.driveId] = {
           id: remoteFolder.driveId,
           name: remoteFolder.name,
           isSharedDrive: remoteFolder.isInSharedDrive,
@@ -53,41 +53,52 @@ export async function getDrivesToSync(
     }
   }
 
-  const drivesToSync = Object.values(drives);
-  if (drivesToSync.length === 0) {
-    return drivesToSync;
-  }
+  const drives = Object.values(drivesById);
 
-  // Uses the existing unique (connectorId, driveId) index and only fetches
-  // sync tokens for selected drives.
-  const syncTokens = await GoogleDriveSyncTokenModel.findAll({
-    attributes: ["driveId", "lastSyncAt", "lastRelevantChangeAt"],
-    where: {
-      connectorId,
-      driveId: drivesToSync.map((drive) => drive.id),
-    },
-  });
-  const syncTokenByDriveId = new Map(
-    syncTokens.map((syncToken) => [syncToken.driveId, syncToken])
-  );
-  const nowMs = Date.now();
+  return filterDrivesByRecentChanges(drives);
 
-  return drivesToSync.filter((drive) => {
-    const syncToken = syncTokenByDriveId.get(drive.id);
-    if (!syncToken?.lastSyncAt || !syncToken.lastRelevantChangeAt) {
-      return true;
+  async function filterDrivesByRecentChanges(
+    drives: LightGoogleDrive[]
+  ): Promise<LightGoogleDrive[]> {
+    if (drives.length === 0) {
+      return drives;
     }
 
-    const intervalMs = Math.min(
-      Math.max(
-        GDRIVE_QUIET_DRIVE_BACKOFF_MULTIPLIER *
-          (syncToken.lastSyncAt.getTime() -
-            syncToken.lastRelevantChangeAt.getTime()),
-        GDRIVE_BASE_INCREMENTAL_SYNC_INTERVAL_MS
-      ),
-      GDRIVE_MAX_INCREMENTAL_SYNC_INTERVAL_MS
+    // Drives with no adaptive state must sync once. Otherwise, quiet drives
+    // back off to twice the age of their last relevant change, clamped between
+    // the base and max intervals. A relevant change resets both timestamps, so
+    // the next interval returns to the base cadence.
+    const syncTokens = await GoogleDriveSyncTokenModel.findAll({
+      attributes: ["driveId", "lastSyncAt", "lastRelevantChangeAt"],
+      where: {
+        connectorId,
+        driveId: drives.map((drive) => drive.id),
+      },
+    });
+    const syncTokenByDriveId = new Map(
+      syncTokens.map((syncToken) => [syncToken.driveId, syncToken])
     );
+    const nowMs = Date.now();
 
-    return nowMs - syncToken.lastSyncAt.getTime() >= intervalMs;
-  });
+    const isDriveDueForIncrementalSync = (drive: LightGoogleDrive) => {
+      const syncToken = syncTokenByDriveId.get(drive.id);
+      if (!syncToken?.lastSyncAt || !syncToken.lastRelevantChangeAt) {
+        return true;
+      }
+
+      const intervalMs = Math.min(
+        Math.max(
+          GDRIVE_QUIET_DRIVE_BACKOFF_MULTIPLIER *
+            (syncToken.lastSyncAt.getTime() -
+              syncToken.lastRelevantChangeAt.getTime()),
+          GDRIVE_BASE_INCREMENTAL_SYNC_INTERVAL_MS
+        ),
+        GDRIVE_MAX_INCREMENTAL_SYNC_INTERVAL_MS
+      );
+
+      return nowMs - syncToken.lastSyncAt.getTime() >= intervalMs;
+    };
+
+    return drives.filter(isDriveDueForIncrementalSync);
+  }
 }
