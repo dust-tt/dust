@@ -157,7 +157,11 @@ async function buildReplyContext(params: {
   const headers = originalMessage.payload?.headers || [];
   const originalFrom = getHeaderValue(headers, "From");
   const originalDate = getHeaderValue(headers, "Date");
-  const originalBody = decodeMessageBody(originalMessage.payload);
+  const rawBody = decodeMessageBody(originalMessage.payload);
+  const originalBody = unescape(rawBody)
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
   const originalCc = getHeaderValue(headers, "Cc");
   const originalBcc = getHeaderValue(headers, "Bcc");
   const originalSubject = getHeaderValue(headers, "Subject") ?? null;
