@@ -189,9 +189,9 @@ export function ConversationListItem({
                 conversation.title
               )}
             </span>
-            {(creator || avatar?.name) && (
+            {creator && (
               <span className="s-hidden s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night sm:s-inline">
-                {creator?.fullName ?? avatar?.name}
+                {creator.fullName}
               </span>
             )}
           </div>
