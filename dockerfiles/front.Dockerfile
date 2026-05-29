@@ -193,6 +193,9 @@ COPY --from=base-deps /app/front/dist/migrate.js.map ./dist/migrate.js.map
 # Copy migration scripts
 COPY --from=base-deps /app/front/migrations/pre-deploy ./migrations/pre-deploy
 COPY --from=base-deps /app/front/migrations/post-deploy ./migrations/post-deploy
+# yargs and umzug are required by dist/migrate.js but absent from the Next.js standalone node_modules
+COPY --from=base-deps /app/node_modules/yargs /app/node_modules/yargs
+COPY --from=base-deps /app/node_modules/umzug /app/node_modules/umzug
 
 # Re-declare build args needed at runtime
 ARG NEXT_PUBLIC_DUST_API_URL
