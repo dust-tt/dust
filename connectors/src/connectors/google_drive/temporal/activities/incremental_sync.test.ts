@@ -1,6 +1,9 @@
 import { randomUUID } from "node:crypto";
 
-import { GoogleDriveFilesModel } from "@connectors/lib/models/google_drive";
+import {
+  GoogleDriveFilesModel,
+  GoogleDriveSyncTokenModel,
+} from "@connectors/lib/models/google_drive";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { GoogleDriveObjectType } from "@connectors/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -574,12 +577,69 @@ describe("google drive incremental sync folder metadata", () => {
         driveFileId: folderId,
       },
     });
+    const syncToken = await GoogleDriveSyncTokenModel.findOne({
+      where: {
+        connectorId: connector.id,
+        driveId: "drive-1",
+      },
+    });
 
     expect(result).toEqual({
       newFolders: [folderId],
       nextPageToken: undefined,
     });
     expect(folder).toBeNull();
+    expect(syncToken?.syncToken).toBe("sync-token");
+    expect(syncToken?.lastSyncAt).toBeInstanceOf(Date);
+    expect(syncToken?.lastRelevantChangeAt).toBeInstanceOf(Date);
     expect(mocks.upsertDataSourceFolder).not.toHaveBeenCalled();
+  });
+
+  it("preserves the relevant-change timestamp when a completed sync is quiet", async () => {
+    const suffix = randomUUID();
+    const connector = await makeConnector(suffix);
+    const previousLastSyncAt = new Date("2025-01-02T00:00:00.000Z");
+    const previousLastRelevantChangeAt = new Date("2025-01-01T00:00:00.000Z");
+
+    await GoogleDriveSyncTokenModel.create({
+      connectorId: connector.id,
+      driveId: "drive-1",
+      syncToken: "old-sync-token",
+      lastSyncAt: previousLastSyncAt,
+      lastRelevantChangeAt: previousLastRelevantChangeAt,
+    });
+
+    mocks.changeList.mockResolvedValue({
+      data: {
+        changes: [],
+        newStartPageToken: "sync-token",
+        nextPageToken: undefined,
+      },
+      status: 200,
+    });
+
+    const result = await incrementalSync(
+      connector.id,
+      "drive-1",
+      false,
+      Date.now(),
+      "page-token"
+    );
+
+    const syncToken = await GoogleDriveSyncTokenModel.findOne({
+      where: {
+        connectorId: connector.id,
+        driveId: "drive-1",
+      },
+    });
+
+    expect(result).toEqual({ newFolders: [], nextPageToken: undefined });
+    expect(syncToken?.syncToken).toBe("sync-token");
+    expect(syncToken?.lastSyncAt?.getTime()).toBeGreaterThan(
+      previousLastSyncAt.getTime()
+    );
+    expect(syncToken?.lastRelevantChangeAt?.toISOString()).toBe(
+      previousLastRelevantChangeAt.toISOString()
+    );
   });
 });
