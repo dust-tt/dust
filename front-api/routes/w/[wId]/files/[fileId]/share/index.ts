@@ -15,12 +15,9 @@ import { validate } from "@front-api/middlewares/validator";
 import type { Context, TypedResponse } from "hono";
 import { z } from "zod";
 
-// `sharedAt` is `Date` at the resource layer but JSON-serializes to a string.
-// The Hono type declares the wire format; the Next type still declares `Date`
-// for legacy reasons and will be reconciled when the Next file is retired.
 export type ShareFileResponseBody = {
   scope: FileShareScope;
-  sharedAt: string;
+  sharedAt: number;
   shareUrl: string;
 };
 
