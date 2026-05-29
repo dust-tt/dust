@@ -30,6 +30,10 @@ import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { getCompletionDuration } from "@app/lib/api/assistant/messages";
 import { getSkillServers } from "@app/lib/api/assistant/skill_actions";
+import {
+  resolveEnabledSkillReferencesForAgentLoop,
+  resolveSkillReferencesForAgentLoop,
+} from "@app/lib/api/assistant/skill_references";
 import { renderEquippedSkillsUserMessage } from "@app/lib/api/assistant/skills_rendering";
 import {
   buildAuditLogTarget,
@@ -256,6 +260,12 @@ export async function runModel(
       agentConfiguration,
       skills: [...systemSkills, ...enabledSkills],
     });
+    const resolvedEnabledSkills =
+      await resolveEnabledSkillReferencesForAgentLoop(auth, enabledSkills);
+    const resolvedSystemSkills = await resolveSkillReferencesForAgentLoop(
+      auth,
+      systemSkills
+    );
 
     const {
       serverToolsAndInstructions: mcpActions,
@@ -275,9 +285,9 @@ export async function runModel(
 
     return {
       hasConditionalJITTools,
-      enabledSkills,
+      enabledSkills: resolvedEnabledSkills,
       equippedSkills,
-      systemSkills,
+      systemSkills: resolvedSystemSkills,
       mcpActions,
       mcpToolsListingError,
     };
