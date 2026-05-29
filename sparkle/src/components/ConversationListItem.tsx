@@ -1,3 +1,4 @@
+import { AnimatedText } from "@sparkle/components/AnimatedText";
 import { Avatar } from "@sparkle/components/Avatar";
 import { ListItem } from "@sparkle/components/ListItem";
 import { cn } from "@sparkle/lib/utils";
@@ -106,6 +107,7 @@ export interface ConversationListItemProps {
   replySection?: ReactNode;
   onClick?: () => void;
   showFocus?: boolean;
+  textAnimation?: "none" | "streaming";
   className?: string;
 }
 
@@ -117,6 +119,7 @@ export function ConversationListItem({
   replySection,
   onClick,
   showFocus = false,
+  textAnimation = "none",
   className,
 }: ConversationListItemProps) {
   const [isFocusVisible, setIsFocusVisible] = React.useState(false);
@@ -177,7 +180,15 @@ export function ConversationListItem({
       <div className="s-mb-0.5 s-flex s-min-w-0 s-grow s-flex-col s-gap-1">
         <div className="s-heading-sm s-flex s-w-full s-items-center s-justify-between s-gap-2 s-text-foreground dark:s-text-foreground-night">
           <div className="s-flex s-min-w-0 s-flex-1 s-gap-2 s-overflow-hidden">
-            <span className="s-min-w-0 s-truncate">{conversation.title}</span>
+            <span className="s-min-w-0 s-truncate">
+              {textAnimation === "streaming" ? (
+                <AnimatedText variant="muted">
+                  {conversation.title}
+                </AnimatedText>
+              ) : (
+                conversation.title
+              )}
+            </span>
             {creator && (
               <span className="s-hidden s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night sm:s-inline">
                 {creator.fullName}
@@ -190,7 +201,13 @@ export function ConversationListItem({
         </div>
         {conversation.description && (
           <div className="s-line-clamp-2 s-text-sm s-font-normal s-text-muted-foreground dark:s-text-muted-foreground-night">
-            {conversation.description}
+            {textAnimation === "streaming" ? (
+              <AnimatedText variant="muted">
+                {conversation.description}
+              </AnimatedText>
+            ) : (
+              conversation.description
+            )}
           </div>
         )}
         {replySection && replySection}
