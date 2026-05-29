@@ -292,11 +292,14 @@ export const grantAwuCreditsPlugin = createPlugin({
       });
     }
 
-    const commitName = validatedArgs.setPrice
+    const commitNameBase = validatedArgs.setPrice
       ? `Commits granted from Poke: ${amountCredits.toLocaleString()} credits (manual price)`
       : discountPercent > 0
         ? `Commits granted from Poke: ${amountCredits.toLocaleString()} credits (${discountPercent}% discount)`
         : `Commits granted from Poke: ${amountCredits.toLocaleString()} credits`;
+    const commitName = validatedArgs.purchaseOrderId
+      ? `${commitNameBase} [PO: ${validatedArgs.purchaseOrderId}]`
+      : commitNameBase;
 
     const result = await createMetronomeCommit({
       metronomeCustomerId,
