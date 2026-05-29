@@ -4,8 +4,14 @@ import type { GetDataSourcesResponseType } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
 
 import dsId from "./[dsId]";
+
+const ParamsSchema = z.object({
+  spaceId: z.string().optional(),
+});
 
 /**
  * @swagger
@@ -47,34 +53,42 @@ import dsId from "./[dsId]";
  */
 const app = publicApiApp();
 
-app.get("/", async (ctx): HandlerResult<GetDataSourcesResponseType> => {
-  const auth = ctx.get("auth");
+app.get(
+  "/",
+  validate("param", ParamsSchema),
+  async (ctx): HandlerResult<GetDataSourcesResponseType> => {
+    const auth = ctx.get("auth");
 
-  // The same handler serves both `/spaces/:spaceId/data_sources` and the
-  // legacy `/data_sources` mount; in the legacy case `spaceId` is undefined
-  // and we fall back to the workspace's global space (matching the Next
-  // `withSpaceFromRoute` legacy behavior).
-  const spaceIdParam = ctx.req.param("spaceId");
-  const space = spaceIdParam
-    ? await SpaceResource.fetchById(auth, spaceIdParam)
-    : await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+    // The same handler serves both `/spaces/:spaceId/data_sources` and the
+    // legacy `/data_sources` mount; in the legacy case `spaceId` is undefined
+    // and we fall back to the workspace's global space (matching the Next
+    // `withSpaceFromRoute` legacy behavior).
+    const { spaceId: spaceIdParam } = ctx.req.valid("param");
+    const space = spaceIdParam
+      ? await SpaceResource.fetchById(auth, spaceIdParam)
+      : await SpaceResource.fetchWorkspaceGlobalSpace(auth);
 
-  if (!space || space.isConversations() || !space.canReadOrAdministrate(auth)) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "space_not_found",
-        message: "The space you requested was not found.",
-      },
+    if (
+      !space ||
+      space.isConversations() ||
+      !space.canReadOrAdministrate(auth)
+    ) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "space_not_found",
+          message: "The space you requested was not found.",
+        },
+      });
+    }
+
+    const dataSources = await DataSourceResource.listBySpace(auth, space);
+
+    return ctx.json({
+      data_sources: dataSources.map((ds) => ds.toJSON()),
     });
   }
-
-  const dataSources = await DataSourceResource.listBySpace(auth, space);
-
-  return ctx.json({
-    data_sources: dataSources.map((ds) => ds.toJSON()),
-  });
-});
+);
 
 app.route("/:dsId", dsId);
 

@@ -21,6 +21,7 @@ import rId from "./[rId]";
 const ParamsSchema = z.object({
   dsId: z.string(),
   tId: z.string(),
+  spaceId: z.string().optional(),
 });
 
 /**
@@ -175,7 +176,7 @@ app.get(
     const auth = ctx.get("auth");
     const owner = auth.getNonNullableWorkspace();
 
-    const { dsId, tId } = ctx.req.valid("param");
+    const { dsId, tId, spaceId: spaceIdParam } = ctx.req.valid("param");
 
     const dataSource = await DataSourceResource.fetchByNameOrId(
       auth,
@@ -186,7 +187,7 @@ app.get(
 
     const spaceId = await resolveLegacyDataSourceSpaceId(
       auth,
-      ctx.req.param("spaceId"),
+      spaceIdParam,
       dataSource
     );
 
@@ -258,7 +259,7 @@ app.post(
     const auth = ctx.get("auth");
     const owner = auth.getNonNullableWorkspace();
 
-    const { dsId, tId } = ctx.req.valid("param");
+    const { dsId, tId, spaceId: spaceIdParam } = ctx.req.valid("param");
 
     const dataSource = await DataSourceResource.fetchByNameOrId(
       auth,
@@ -269,7 +270,7 @@ app.post(
 
     const spaceId = await resolveLegacyDataSourceSpaceId(
       auth,
-      ctx.req.param("spaceId"),
+      spaceIdParam,
       dataSource
     );
 

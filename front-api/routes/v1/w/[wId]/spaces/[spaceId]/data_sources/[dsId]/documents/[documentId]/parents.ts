@@ -79,6 +79,7 @@ const app = publicApiApp();
 const ParamsSchema = z.object({
   dsId: z.string(),
   documentId: z.string(),
+  spaceId: z.string().optional(),
 });
 
 const PostParentsBodySchema = z.object({
@@ -92,7 +93,7 @@ app.post(
   validate("json", PostParentsBodySchema),
   async (ctx): HandlerResult<PostParentsResponseType> => {
     const auth = ctx.get("auth");
-    const { dsId, documentId } = ctx.req.valid("param");
+    const { dsId, documentId, spaceId: spaceIdParam } = ctx.req.valid("param");
 
     const dataSource = await DataSourceResource.fetchByNameOrId(
       auth,
@@ -103,7 +104,7 @@ app.post(
 
     const spaceId = await resolveLegacyDataSourceSpaceId(
       auth,
-      ctx.req.param("spaceId"),
+      spaceIdParam,
       dataSource
     );
 

@@ -19,6 +19,7 @@ import { z } from "zod";
 const ParamsSchema = z.object({
   dsId: z.string(),
   fId: z.string(),
+  spaceId: z.string().optional(),
 });
 
 /**
@@ -33,12 +34,12 @@ app.get(
   validate("param", ParamsSchema),
   async (ctx): HandlerResult<GetFolderResponseType> => {
     const auth = ctx.get("auth");
-    const { dsId, fId } = ctx.req.valid("param");
+    const { dsId, fId, spaceId: spaceIdParam } = ctx.req.valid("param");
 
     const dataSource = await DataSourceResource.fetchById(auth, dsId);
     const spaceId = await resolveLegacyDataSourceSpaceId(
       auth,
-      ctx.req.param("spaceId"),
+      spaceIdParam,
       dataSource
     );
 
@@ -88,12 +89,12 @@ app.post(
   validate("json", UpsertDataSourceFolderRequestSchema),
   async (ctx): HandlerResult<UpsertFolderResponseType> => {
     const auth = ctx.get("auth");
-    const { dsId, fId } = ctx.req.valid("param");
+    const { dsId, fId, spaceId: spaceIdParam } = ctx.req.valid("param");
 
     const dataSource = await DataSourceResource.fetchById(auth, dsId);
     const spaceId = await resolveLegacyDataSourceSpaceId(
       auth,
-      ctx.req.param("spaceId"),
+      spaceIdParam,
       dataSource
     );
 
@@ -220,12 +221,12 @@ app.delete(
   validate("param", ParamsSchema),
   async (ctx): HandlerResult<DeleteFolderResponseType> => {
     const auth = ctx.get("auth");
-    const { dsId, fId } = ctx.req.valid("param");
+    const { dsId, fId, spaceId: spaceIdParam } = ctx.req.valid("param");
 
     const dataSource = await DataSourceResource.fetchById(auth, dsId);
     const spaceId = await resolveLegacyDataSourceSpaceId(
       auth,
-      ctx.req.param("spaceId"),
+      spaceIdParam,
       dataSource
     );
 
