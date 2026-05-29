@@ -4,10 +4,15 @@ import {
 } from "@app/lib/actions/constants";
 import { SKILL_MANAGEMENT_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { stripToolTagPresentationAttributes } from "@app/lib/tools/format";
 import type { UserMessageTypeModel } from "@app/types/assistant/generation";
 
 export type EnabledSkill = SkillResource & {
   extendedSkill: SkillResource | null;
+};
+
+type SkillInstructionsSource = Pick<SkillResource, "name" | "instructions"> & {
+  extendedSkill: Pick<SkillResource, "instructions"> | null;
 };
 
 function renderSystemSkillMessage(text: string): UserMessageTypeModel {
@@ -18,18 +23,25 @@ function renderSystemSkillMessage(text: string): UserMessageTypeModel {
   };
 }
 
-export function getEnabledSkillInstructions(skill: EnabledSkill): string {
+export function getEnabledSkillInstructions(
+  skill: SkillInstructionsSource
+): string {
   const { name, instructions, extendedSkill } = skill;
+  const modelInstructions = stripToolTagPresentationAttributes(instructions);
 
   if (!extendedSkill) {
-    return `<${name}>\n${instructions}\n</${name}>`;
+    return `<${name}>\n${modelInstructions}\n</${name}>`;
   }
+
+  const extendedModelInstructions = stripToolTagPresentationAttributes(
+    extendedSkill.instructions
+  );
 
   return [
     `<${name}>`,
-    extendedSkill.instructions,
+    extendedModelInstructions,
     "<additional_guidelines>",
-    instructions,
+    modelInstructions,
     "</additional_guidelines>",
     `</${name}>`,
   ].join("\n");
