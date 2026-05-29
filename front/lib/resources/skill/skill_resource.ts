@@ -2323,7 +2323,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       where: {
         id: { [Op.in]: [...childSkillModelIds] },
         workspaceId: workspace.id,
-        status: ["active", "archived", "suggested"],
       },
       attributes: ["id"],
       transaction,
