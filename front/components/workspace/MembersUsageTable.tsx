@@ -33,6 +33,8 @@ type RowData = {
   seatType: MembershipSeatType | null;
   memberUsageLimit: number | null;
   consumedAwuCredits: number;
+  consumedFromAllowanceAwuCredits: number;
+  consumedFromPoolAwuCredits: number;
   spendLimitAwuCredits: number | null;
   billingFrequency: BillingFrequency | null;
   scheduledSeatType: MembershipSeatType | null;
@@ -82,6 +84,11 @@ function formatCredits(credits: number): string {
 
 interface AwuUsageBarProps {
   consumed: number;
+  // Of `consumed`, the part drawn from the seat allowance vs. the workspace
+  // pool (+ overage). Provided by the API so the bar doesn't re-derive the
+  // split. `consumedFromAllowance + consumedFromPool === consumed`.
+  consumedFromAllowance: number;
+  consumedFromPool: number;
   memberUsageLimit: number | null;
   limit: number | null;
   seatType: MembershipSeatType | null;
@@ -110,58 +117,69 @@ function getSeatBarClasses(seatType: MembershipSeatType | null) {
 
 function AwuUsageBar({
   consumed,
+  consumedFromAllowance,
+  consumedFromPool,
   memberUsageLimit,
   limit,
   seatType,
 }: AwuUsageBarProps) {
-  const hasSeatAllocation = memberUsageLimit !== null && memberUsageLimit > 0;
+  const seatColors = getSeatBarClasses(seatType);
+  const allowance = memberUsageLimit ?? 0;
 
-  if (!hasSeatAllocation) {
-    const percent =
-      limit === null
-        ? 100
-        : limit > 0
-          ? Math.min((consumed / limit) * 100, 100)
-          : 0;
-    return (
-      <div className="flex w-full flex-col gap-1">
-        <div className="flex justify-between text-xs tabular-nums text-foreground dark:text-foreground-night">
-          <span>{formatCredits(consumed)}</span>
-          <span>{limit === null ? "∞" : formatCredits(limit)}</span>
-        </div>
-        <div
-          className={`h-1 w-full overflow-hidden rounded-full ${MUTED_BAR_CLASSES.track}`}
-        >
-          <div
-            className={`h-full ${MUTED_BAR_CLASSES.fill} transition-all`}
-            style={{ width: `${percent}%` }}
-          />
-        </div>
-      </div>
-    );
+  // The bar is up to four contiguous sections, each with its own tooltip:
+  //   seat consumed · seat remaining · pool consumed · pool remaining
+  // Zero-width sections are skipped, so in practice it renders as:
+  //   - within allowance:   seat consumed · seat remaining · pool remaining
+  //   - overflowed to pool: seat consumed · pool consumed · pool remaining
+  //   - no seat allowance:  pool consumed · pool remaining
+  // `pool remaining` is omitted when the user is uncapped (no finite headroom).
+  const seatConsumed = consumedFromAllowance;
+  const seatRemaining = Math.max(0, allowance - seatConsumed);
+  const poolConsumed = consumedFromPool;
+  const poolRemaining =
+    limit !== null ? Math.max(0, limit - allowance - poolConsumed) : null;
+
+  const sections: Array<{
+    key: string;
+    value: number;
+    className: string;
+    label: string;
+  }> = [];
+  if (seatConsumed > 0) {
+    sections.push({
+      key: "seat-consumed",
+      value: seatConsumed,
+      className: seatColors.fill,
+      label: `${formatCredits(seatConsumed)} of ${formatCredits(allowance)} seat allowance used`,
+    });
+  }
+  if (seatRemaining > 0) {
+    sections.push({
+      key: "seat-remaining",
+      value: seatRemaining,
+      className: seatColors.track,
+      label: `${formatCredits(seatRemaining)} of ${formatCredits(allowance)} seat allowance remaining`,
+    });
+  }
+  if (poolConsumed > 0) {
+    sections.push({
+      key: "pool-consumed",
+      value: poolConsumed,
+      className: MUTED_BAR_CLASSES.fill,
+      label: `${formatCredits(poolConsumed)} credits used from the workspace pool`,
+    });
+  }
+  if (poolRemaining !== null && poolRemaining > 0) {
+    sections.push({
+      key: "pool-remaining",
+      value: poolRemaining,
+      className: MUTED_BAR_CLASSES.track,
+      label: `${formatCredits(poolRemaining)} credits remaining before spend limit`,
+    });
   }
 
-  const seatColors = getSeatBarClasses(seatType);
-  const seatConsumed = Math.min(consumed, memberUsageLimit);
-  const overflow = Math.max(0, consumed - memberUsageLimit);
-  const overflowRange =
-    limit !== null ? Math.max(0, limit - memberUsageLimit) : null;
-  const seatFillPercent =
-    limit === null ? 100 : (seatConsumed / memberUsageLimit) * 100;
-  const overflowFillPercent =
-    limit === null
-      ? 100
-      : overflowRange !== null && overflowRange > 0
-        ? Math.min((overflow / overflowRange) * 100, 100)
-        : overflow > 0
-          ? 100
-          : 0;
-  const seatWidthPercent =
-    limit !== null && limit > memberUsageLimit
-      ? (memberUsageLimit / limit) * 100
-      : 50;
-  const overflowWidthPercent = 100 - seatWidthPercent;
-  const remaining = limit !== null ? Math.max(0, limit - consumed) : null;
+  const total = sections.reduce((sum, s) => sum + s.value, 0);
+
   return (
     <div className="flex w-full flex-col gap-1">
       <div className="flex justify-between text-xs tabular-nums text-foreground dark:text-foreground-night">
@@ -169,44 +187,29 @@ function AwuUsageBar({
         <span>{limit === null ? "∞" : formatCredits(limit)}</span>
       </div>
       <div className="flex w-full items-center gap-px">
-        <Tooltip
-          tooltipTriggerAsChild
-          label={`${formatCredits(seatConsumed)} credits consumed over ${formatCredits(memberUsageLimit)} seat limit`}
-          trigger={
-            <div
-              className="flex h-3 items-center"
-              style={{ width: `${seatWidthPercent}%` }}
-            >
-              <div
-                className={`h-1 w-full overflow-hidden rounded-full ${seatColors.track}`}
-              >
+        {total > 0 ? (
+          sections.map((s) => (
+            <Tooltip
+              key={s.key}
+              tooltipTriggerAsChild
+              label={s.label}
+              trigger={
                 <div
-                  className={`h-full ${seatColors.fill} transition-all`}
-                  style={{ width: `${seatFillPercent}%` }}
-                />
-              </div>
-            </div>
-          }
-        />
-        <Tooltip
-          tooltipTriggerAsChild
-          label={`${remaining === null ? "∞" : formatCredits(remaining)} credits remaining`}
-          trigger={
-            <div
-              className="flex h-3 items-center"
-              style={{ width: `${overflowWidthPercent}%` }}
-            >
-              <div
-                className={`h-1 w-full overflow-hidden rounded-full ${MUTED_BAR_CLASSES.track}`}
-              >
-                <div
-                  className={`h-full ${MUTED_BAR_CLASSES.fill} transition-all`}
-                  style={{ width: `${overflowFillPercent}%` }}
-                />
-              </div>
-            </div>
-          }
-        />
+                  className="flex h-3 items-center"
+                  style={{ width: `${(s.value / total) * 100}%` }}
+                >
+                  <div
+                    className={`h-1 w-full rounded-full ${s.className} transition-all`}
+                  />
+                </div>
+              }
+            />
+          ))
+        ) : (
+          <div
+            className={`h-1 w-full rounded-full ${MUTED_BAR_CLASSES.track}`}
+          />
+        )}
       </div>
     </div>
   );
@@ -316,6 +319,10 @@ const consumedAwuCreditsColumn: ColumnDef<RowData, string> = {
     <div className="w-full pr-3">
       <AwuUsageBar
         consumed={info.row.original.consumedAwuCredits}
+        consumedFromAllowance={
+          info.row.original.consumedFromAllowanceAwuCredits
+        }
+        consumedFromPool={info.row.original.consumedFromPoolAwuCredits}
         memberUsageLimit={info.row.original.memberUsageLimit}
         limit={info.row.original.spendLimitAwuCredits}
         seatType={info.row.original.seatType}
@@ -417,6 +424,8 @@ export function MembersUsageTable({
         seatType: m.seatType,
         memberUsageLimit: m.memberUsageLimit,
         consumedAwuCredits: m.consumedAwuCredits,
+        consumedFromAllowanceAwuCredits: m.consumedFromAllowanceAwuCredits,
+        consumedFromPoolAwuCredits: m.consumedFromPoolAwuCredits,
         spendLimitAwuCredits: m.spendLimitAwuCredits,
         billingFrequency: m.billingFrequency,
         scheduledSeatType: m.scheduledSeatType,

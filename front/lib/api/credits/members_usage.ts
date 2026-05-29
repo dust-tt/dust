@@ -36,6 +36,16 @@ export type MemberUsageType = {
   // was covered by the seat allocation or overflowed into the workspace
   // pool.
   consumedAwuCredits: number;
+  // Breakdown of `consumedAwuCredits`: the portion covered by the user's seat
+  // allowance (credits drain seat-first) vs. the portion that overflowed into
+  // the workspace pool (plus any PAYG overage). Always sums to
+  // `consumedAwuCredits`. Derived from total usage capped at the seat
+  // allocation: Metronome materializes seat (INDIVIDUAL) credits as a single
+  // per-subscription pool with no per-user balance, so an exact ledger split
+  // isn't available — but per-user usage is exact, so this is exact except
+  // when a mid-period-prorated user exceeds their (prorated) allocation.
+  consumedFromAllowanceAwuCredits: number;
+  consumedFromPoolAwuCredits: number;
   // Billing cadence for the seat subscription the user is assigned to; null when unknown.
   billingFrequency: BillingFrequency | null;
   // Set when a future seat change is scheduled (e.g. at the next credit refresh).
@@ -370,6 +380,16 @@ export async function getMembersUsage({
     const awuAllocation = seatData?.awuAllocation ?? 0;
     const scheduled = scheduledByUserId.get(membership.userId);
 
+    // Credits drain seat-allowance-first, then the workspace pool, so the
+    // allowance covers up to the user's seat allocation and the remainder
+    // overflows to the pool.
+    const consumedFromAllowanceAwuCredits = Math.min(
+      totalConsumedCredits,
+      awuAllocation
+    );
+    const consumedFromPoolAwuCredits =
+      totalConsumedCredits - consumedFromAllowanceAwuCredits;
+
     return [
       {
         sId: userId,
@@ -379,6 +399,8 @@ export async function getMembersUsage({
         seatType: membership.seatType ?? null,
         memberUsageLimit: awuAllocation > 0 ? awuAllocation : null,
         consumedAwuCredits: totalConsumedCredits,
+        consumedFromAllowanceAwuCredits,
+        consumedFromPoolAwuCredits,
         billingFrequency: seatData?.billingFrequency ?? null,
         scheduledSeatType: scheduled?.seatType ?? null,
         scheduledSeatChangeAt: scheduled?.startAt.toISOString() ?? null,
