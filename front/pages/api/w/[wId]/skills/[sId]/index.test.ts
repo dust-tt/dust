@@ -5,8 +5,8 @@ import {
 } from "@app/lib/models/skill";
 import { SkillReferenceModel } from "@app/lib/models/skill/skill_reference";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { serializeSkillTag } from "@app/lib/skills/format";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { serializeSkillTag } from "@app/lib/skills/format";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";

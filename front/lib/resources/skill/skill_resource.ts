@@ -42,13 +42,13 @@ import type { SkillConfigurationFindOptions } from "@app/lib/resources/skill/typ
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
-  getResourceNameAndIdFromSId,
   getResourceIdFromSId,
+  getResourceNameAndIdFromSId,
   isResourceSId,
   makeSId,
 } from "@app/lib/resources/string_ids";
-import { extractUniqueSkillIds } from "@app/lib/skills/format";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { extractUniqueSkillIds } from "@app/lib/skills/format";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
