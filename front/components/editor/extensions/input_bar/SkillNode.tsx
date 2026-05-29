@@ -1,9 +1,11 @@
 import { SkillNodeComponent } from "@app/components/editor/input_bar/SkillNodeComponent";
 import {
-  parseSkillTag,
+  parseSkillReferenceTag,
+  SKILL_REFERENCE_TAG_REGEX_BEGINNING,
   SKILL_TAG_NAME,
-  SKILL_TAG_REGEX_BEGINNING,
   serializeSkillTag,
+  serializeUnavailableSkillTag,
+  UNAVAILABLE_SKILL_TAG_NAME,
 } from "@app/lib/skills/format";
 import { isString } from "@app/types/shared/utils/general";
 import { Node } from "@tiptap/core";
@@ -13,9 +15,22 @@ export type SkillNodeAttributes = {
   skillId: string;
   skillIcon?: string | null;
   skillName: string;
+  skillUnavailable?: boolean;
 };
 
 export const SKILL_NODE_TYPE = "skill";
+
+function findSkillReferenceTagStart(src: string): number {
+  const skillTagStart = src.indexOf(`<${SKILL_TAG_NAME}`);
+  const unavailableSkillTagStart = src.indexOf(
+    `<${UNAVAILABLE_SKILL_TAG_NAME}`
+  );
+  const starts = [skillTagStart, unavailableSkillTagStart].filter(
+    (start) => start >= 0
+  );
+
+  return starts.length > 0 ? Math.min(...starts) : -1;
+}
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
@@ -54,19 +69,35 @@ export const SkillNode = Node.create({
         renderHTML: (attributes) =>
           isString(attributes.skillIcon) ? { icon: attributes.skillIcon } : {},
       },
+      skillUnavailable: {
+        default: false,
+        parseHTML: (element) =>
+          element.tagName.toLowerCase() === UNAVAILABLE_SKILL_TAG_NAME,
+      },
     };
   },
 
   // HTML serialization and deserialization.
   parseHTML() {
-    return [{ tag: SKILL_TAG_NAME }];
+    return [{ tag: SKILL_TAG_NAME }, { tag: UNAVAILABLE_SKILL_TAG_NAME }];
   },
 
-  renderHTML({ HTMLAttributes }) {
+  renderHTML({ node, HTMLAttributes }) {
+    if (node.attrs.skillUnavailable === true) {
+      return [
+        UNAVAILABLE_SKILL_TAG_NAME,
+        isString(node.attrs.skillId) ? { id: node.attrs.skillId } : {},
+      ];
+    }
+
     return [SKILL_TAG_NAME, HTMLAttributes];
   },
 
   renderText({ node }) {
+    if (node.attrs.skillUnavailable === true) {
+      return "/Unavailable skill";
+    }
+
     return `/${node.attrs.skillName ?? "skill"}`;
   },
 
@@ -93,14 +124,14 @@ export const SkillNode = Node.create({
   markdownTokenizer: {
     name: SKILL_NODE_TYPE,
     level: "inline",
-    start: (src) => src.indexOf(`<${SKILL_TAG_NAME}`),
+    start: findSkillReferenceTagStart,
     tokenize: (src) => {
-      const match = SKILL_TAG_REGEX_BEGINNING.exec(src);
+      const match = SKILL_REFERENCE_TAG_REGEX_BEGINNING.exec(src);
       if (!match) {
         return undefined;
       }
 
-      const skill = parseSkillTag(match[0]);
+      const skill = parseSkillReferenceTag(match[0]);
       if (!skill) {
         return undefined;
       }
@@ -111,6 +142,7 @@ export const SkillNode = Node.create({
         skillId: skill.id,
         skillIcon: skill.icon,
         skillName: skill.name,
+        skillUnavailable: skill.unavailable,
       };
     },
   },
@@ -121,15 +153,25 @@ export const SkillNode = Node.create({
       skillId: token.skillId,
       skillIcon: token.skillIcon,
       skillName: token.skillName,
+      skillUnavailable: token.skillUnavailable,
     },
   }),
 
-  renderMarkdown: (node) =>
-    isString(node.attrs?.skillId) && isString(node.attrs?.skillName)
+  renderMarkdown: (node) => {
+    if (!isString(node.attrs?.skillId)) {
+      return "";
+    }
+
+    if (node.attrs.skillUnavailable === true) {
+      return serializeUnavailableSkillTag({ id: node.attrs.skillId });
+    }
+
+    return isString(node.attrs?.skillName)
       ? serializeSkillTag({
           id: node.attrs.skillId,
           icon: isString(node.attrs.skillIcon) ? node.attrs.skillIcon : null,
           name: node.attrs.skillName,
         })
-      : "",
+      : "";
+  },
 });

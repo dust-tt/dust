@@ -81,4 +81,30 @@ describe("skill instructions preprocessing", () => {
 
     expect(postProcessMarkdown(editor.getMarkdown())).toContain(toolTag);
   });
+
+  it("preserves unavailable skill tags when skill references are enabled", () => {
+    editor = new Editor({
+      extensions: buildSkillInstructionsExtensions(false, [], {
+        enableSkillReferences: true,
+      }),
+    });
+
+    editor.commands.setContent(
+      preprocessMarkdownForEditor(
+        'Use <unavailable_skill id="skill_123" /> here.',
+        { enableSkillReferences: true }
+      ),
+      {
+        contentType: "markdown",
+      }
+    );
+
+    const json = editor.getJSON();
+    expect(JSON.stringify(json)).toContain('"type":"skill"');
+    expect(JSON.stringify(json)).toContain('"skillId":"skill_123"');
+    expect(JSON.stringify(json)).toContain('"skillUnavailable":true');
+    expect(editor.getMarkdown()).toContain(
+      '<unavailable_skill id="skill_123" />'
+    );
+  });
 });

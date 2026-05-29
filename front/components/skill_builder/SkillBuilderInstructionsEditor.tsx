@@ -19,6 +19,11 @@ import {
   postProcessMarkdown,
   preprocessMarkdownForEditor,
 } from "@app/lib/editor/skill_instructions_preprocessing";
+import {
+  SKILL_TAG_NAME,
+  UNAVAILABLE_SKILL_TAG_NAME,
+} from "@app/lib/skills/format";
+import { TOOL_TAG_NAME } from "@app/lib/tools/format";
 import { isString } from "@app/types/shared/utils/general";
 import { cn } from "@dust-tt/sparkle";
 import type { Transaction } from "@tiptap/pm/state";
@@ -34,8 +39,12 @@ const INSTRUCTIONS_HTML_FIELD_NAME = "instructionsHtml";
 const ATTACHED_KNOWLEDGE_FIELD_NAME = "attachedKnowledge";
 const BASE_ALLOWED_INSTRUCTIONS_TAGS = ["knowledge"];
 const BASE_ALLOWED_INSTRUCTIONS_ATTRS = ["space", "dsv", "hasChildren"];
-const SKILL_REFERENCE_ALLOWED_TAGS = ["skill", "tool"];
-const SKILL_REFERENCE_ALLOWED_ATTRS = ["id", "name", "icon"];
+const SKILL_REFERENCE_ALLOWED_TAGS = [
+  SKILL_TAG_NAME,
+  UNAVAILABLE_SKILL_TAG_NAME,
+  TOOL_TAG_NAME,
+];
+const SKILL_REFERENCE_ALLOWED_ATTRS = ["id", "name", "icon", "unavailable"];
 
 function getSkillInstructionsSanitizeConfig({
   enableSkillReferences,

@@ -2,28 +2,39 @@ export type SkillReference = {
   id: string;
   icon: string | null;
   name: string;
+  unavailable?: boolean;
 };
 
 export const SKILL_TAG_NAME = "skill";
+export const UNAVAILABLE_SKILL_TAG_NAME = "unavailable_skill";
+export const UNAVAILABLE_SKILL_LABEL = "Unavailable skill";
 
-export const SKILL_TAG_REGEX = /<skill\s+([^>]*?)\s*\/>/g;
-export const SKILL_TAG_REGEX_BEGINNING = /^<skill\s+([^>]*?)\s*\/>/;
+export const SKILL_TAG_REGEX = /<skill\s+([^>]*?)\s*(?:\/>|><\/skill>)/g;
+export const SKILL_TAG_REGEX_BEGINNING =
+  /^<skill\s+([^>]*?)\s*(?:\/>|><\/skill>)/;
+export const SKILL_REFERENCE_TAG_REGEX_BEGINNING =
+  /^<(skill|unavailable_skill)\s+([^>]*?)\s*(?:\/>|><\/\1>)/;
 
 const SKILL_ELEMENT_REGEX = /<skill\b([^>]*)>[\s\S]*?<\/skill>/g;
 
-function parseSkillTagAttributes(attributes: string): SkillReference | null {
+function parseSkillTagAttributes(
+  attributes: string,
+  { unavailable = false }: { unavailable?: boolean } = {}
+): SkillReference | null {
   const id = attributes.match(/\bid="([^"]+)"/)?.[1];
   const name = attributes.match(/\bname="([^"]+)"/)?.[1];
   const icon = attributes.match(/\bicon="([^"]+)"/)?.[1];
+  const parsedName = unavailable ? UNAVAILABLE_SKILL_LABEL : name;
 
-  if (!id || !name) {
+  if (!id || !parsedName) {
     return null;
   }
 
   return {
     id,
     icon: icon ?? null,
-    name,
+    name: parsedName,
+    unavailable,
   };
 }
 
@@ -35,6 +46,20 @@ export function parseSkillTag(tag: string): SkillReference | null {
   }
 
   return parseSkillTagAttributes(attributes);
+}
+
+export function parseSkillReferenceTag(tag: string): SkillReference | null {
+  const match = SKILL_REFERENCE_TAG_REGEX_BEGINNING.exec(tag);
+
+  if (!match) {
+    return null;
+  }
+
+  const [, tagName, attributes] = match;
+
+  return parseSkillTagAttributes(attributes, {
+    unavailable: tagName === UNAVAILABLE_SKILL_TAG_NAME,
+  });
 }
 
 export function extractSkillTags(content: string): SkillReference[] {
@@ -51,6 +76,17 @@ export function serializeSkillTag({ id, name, icon }: SkillReference): string {
   const iconAttribute = icon ? ` icon="${icon}"` : "";
 
   return `<${SKILL_TAG_NAME} id="${id}" name="${name}"${iconAttribute} />`;
+}
+
+export function serializeUnavailableSkillTag(
+  { id }: { id: string },
+  { html = false }: { html?: boolean } = {}
+): string {
+  if (html) {
+    return `<${UNAVAILABLE_SKILL_TAG_NAME} id="${id}"></${UNAVAILABLE_SKILL_TAG_NAME}>`;
+  }
+
+  return `<${UNAVAILABLE_SKILL_TAG_NAME} id="${id}" />`;
 }
 
 export function stripSkillTagPresentationAttributes(content: string): string {
