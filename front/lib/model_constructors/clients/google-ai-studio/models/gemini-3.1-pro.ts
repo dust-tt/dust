@@ -1,10 +1,12 @@
 import {
-  GOOGLE_AI_STUDIO_SUPPORTED_NON_NULL_REASONING_EFFORTS,
   GoogleAiStudio,
   type GoogleAiStudioRequestPayload,
 } from "@app/lib/model_constructors/clients/google-ai-studio/googleAiStudioClient";
 import { WithGoogleAiStudioConverter } from "@app/lib/model_constructors/clients/google-ai-studio/googleAiStudioConverter";
-import { inputConfigSchema } from "@app/lib/model_constructors/types/config";
+import {
+  inputConfigSchema,
+  temperatureSchema,
+} from "@app/lib/model_constructors/types/config";
 import type { Payload } from "@app/lib/model_constructors/types/messages";
 import type { TokenPricing } from "@app/lib/model_constructors/types/pricing";
 import {
@@ -13,6 +15,8 @@ import {
   type Model,
 } from "@app/lib/model_constructors/types/providers";
 import { z } from "zod";
+
+const SUPPORTED_NON_NULL_REASONING_EFFORTS = ["low", "medium", "high"] as const;
 
 const baseConfig = inputConfigSchema.extend({
   cacheKey: z.undefined(),
@@ -23,14 +27,15 @@ const model = {
 } as const satisfies Model;
 const contextWindow = 1_000_000;
 const maxOutputTokens = 64_000;
-// Google "strongly recommends" temperature=1 for Gemini 3 models; we lock it.
 const configSchema = baseConfig.extend({
   reasoning: z
     .object({
-      effort: z.enum(GOOGLE_AI_STUDIO_SUPPORTED_NON_NULL_REASONING_EFFORTS),
+      effort: z.enum(SUPPORTED_NON_NULL_REASONING_EFFORTS),
     })
     .default({ effort: "high" }),
-  temperature: z.literal(1).optional().default(1),
+  // Google strongly recommends temperature=1 for Gemini 3 models; accept any
+  // value but coerce to 1.
+  temperature: temperatureSchema.optional().transform(() => 1 as const),
 });
 // https://ai.google.dev/gemini-api/docs/pricing#gemini-3.1-pro
 const tokenPricing = [
