@@ -8,9 +8,7 @@ import {
   finalizeCancellation,
   finalizeGracefulStop,
   finalizeInterruption,
-  getWorkflowErrorContent,
   notifyWorkflowError,
-  type WorkflowErrorInfo,
 } from "@app/temporal/agent_loop/activities/common";
 import { handleMentions } from "@app/temporal/agent_loop/activities/mentions";
 import { conversationUnreadNotification } from "@app/temporal/agent_loop/activities/notification";
@@ -113,12 +111,11 @@ export async function finalizeCancelledAgentLoopActivity(
 export async function finalizeErroredAgentLoopActivity(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs,
-  error: WorkflowErrorInfo
+  error: { message: string; name: string }
 ): Promise<void> {
   await notifyWorkflowError(authType, agentLoopArgs, error);
 
   const auth = await Authenticator.fromJSON(authType);
-  const errorContent = getWorkflowErrorContent(error);
 
   await Promise.all([
     snapshotAgentMessageSkills(auth, agentLoopArgs),
@@ -128,7 +125,7 @@ export async function finalizeErroredAgentLoopActivity(
     sendEmailReplyOnError(
       auth,
       agentLoopArgs,
-      `Agent execution failed: ${errorContent.message}`
+      `Agent execution failed: ${error.message}`
     ),
   ]);
 }

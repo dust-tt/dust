@@ -8,16 +8,13 @@ import {
 import { describe, expect, it } from "vitest";
 
 import {
-  getTerminalRunModelAndCreateActionsProviderTimeout,
-  isTerminalRunModelAndCreateActionsProviderTimeout,
-  LLM_PROVIDER_TIMEOUT_ERROR_NAME,
+  isRunModelAndCreateActionsActivityLLMUnresponsive,
+  isTerminalRunModelAndCreateActionsTimeout,
   RUN_MODEL_AND_CREATE_ACTIONS_ACTIVITY_NAME,
 } from "./workflow_failures";
 
 const LLM_TIMEOUT_MESSAGE =
   "LLM error (llm_timeout_error): Anthropic is taking longer than expected. Please try again.";
-const USER_FACING_LLM_TIMEOUT_MESSAGE =
-  "Anthropic is taking longer than expected. Please try again.";
 
 function makeActivityFailure({
   activityType = RUN_MODEL_AND_CREATE_ACTIONS_ACTIVITY_NAME,
@@ -56,35 +53,32 @@ function makeActivityFailure({
   );
 }
 
-describe("getTerminalRunModelAndCreateActionsProviderTimeout", () => {
+function shouldSwallowWorkflowFailure(error: unknown): boolean {
+  return (
+    isTerminalRunModelAndCreateActionsTimeout(error) &&
+    isRunModelAndCreateActionsActivityLLMUnresponsive(error)
+  );
+}
+
+describe("workflow failure predicates", () => {
   it("matches terminal heartbeat timeouts with an LLM timeout cause", () => {
     const failure = makeActivityFailure();
 
-    expect(getTerminalRunModelAndCreateActionsProviderTimeout(failure)).toEqual(
-      {
-        message: USER_FACING_LLM_TIMEOUT_MESSAGE,
-        name: LLM_PROVIDER_TIMEOUT_ERROR_NAME,
-        timeoutType: TimeoutType.HEARTBEAT,
-      }
-    );
-    expect(isTerminalRunModelAndCreateActionsProviderTimeout(failure)).toBe(
+    expect(isTerminalRunModelAndCreateActionsTimeout(failure)).toBe(true);
+    expect(isRunModelAndCreateActionsActivityLLMUnresponsive(failure)).toBe(
       true
     );
+    expect(shouldSwallowWorkflowFailure(failure)).toBe(true);
   });
 
   it("matches terminal StartToClose timeouts with an LLM request timeout cause", () => {
     const failure = makeActivityFailure({
       llmErrorMessage: "LLM error (timeout_error): The request timed out.",
+      retryState: RetryState.TIMEOUT,
       timeoutType: TimeoutType.START_TO_CLOSE,
     });
 
-    expect(getTerminalRunModelAndCreateActionsProviderTimeout(failure)).toEqual(
-      {
-        message: "The request timed out.",
-        name: LLM_PROVIDER_TIMEOUT_ERROR_NAME,
-        timeoutType: TimeoutType.START_TO_CLOSE,
-      }
-    );
+    expect(shouldSwallowWorkflowFailure(failure)).toBe(true);
   });
 
   it("ignores activity timeouts without an LLM timeout cause", () => {
@@ -93,12 +87,11 @@ describe("getTerminalRunModelAndCreateActionsProviderTimeout", () => {
       timeoutType: TimeoutType.START_TO_CLOSE,
     });
 
-    expect(
-      getTerminalRunModelAndCreateActionsProviderTimeout(failure)
-    ).toBeNull();
-    expect(isTerminalRunModelAndCreateActionsProviderTimeout(failure)).toBe(
+    expect(isTerminalRunModelAndCreateActionsTimeout(failure)).toBe(true);
+    expect(isRunModelAndCreateActionsActivityLLMUnresponsive(failure)).toBe(
       false
     );
+    expect(shouldSwallowWorkflowFailure(failure)).toBe(false);
   });
 
   it("ignores non-timeout LLM causes", () => {
@@ -106,21 +99,28 @@ describe("getTerminalRunModelAndCreateActionsProviderTimeout", () => {
       llmErrorMessage: "LLM error (rate_limit_error): Too many requests.",
     });
 
-    expect(
-      getTerminalRunModelAndCreateActionsProviderTimeout(failure)
-    ).toBeNull();
+    expect(isTerminalRunModelAndCreateActionsTimeout(failure)).toBe(true);
+    expect(isRunModelAndCreateActionsActivityLLMUnresponsive(failure)).toBe(
+      false
+    );
+    expect(shouldSwallowWorkflowFailure(failure)).toBe(false);
   });
 
   it("ignores non-terminal or unrelated activity failures", () => {
+    const nonTerminalFailure = makeActivityFailure({
+      retryState: RetryState.IN_PROGRESS,
+    });
+    const unrelatedActivityFailure = makeActivityFailure({
+      activityType: "runToolActivity",
+    });
+
+    expect(isTerminalRunModelAndCreateActionsTimeout(nonTerminalFailure)).toBe(
+      false
+    );
+    expect(shouldSwallowWorkflowFailure(nonTerminalFailure)).toBe(false);
     expect(
-      getTerminalRunModelAndCreateActionsProviderTimeout(
-        makeActivityFailure({ retryState: RetryState.IN_PROGRESS })
-      )
-    ).toBeNull();
-    expect(
-      getTerminalRunModelAndCreateActionsProviderTimeout(
-        makeActivityFailure({ activityType: "runToolActivity" })
-      )
-    ).toBeNull();
+      isTerminalRunModelAndCreateActionsTimeout(unrelatedActivityFailure)
+    ).toBe(false);
+    expect(shouldSwallowWorkflowFailure(unrelatedActivityFailure)).toBe(false);
   });
 });
