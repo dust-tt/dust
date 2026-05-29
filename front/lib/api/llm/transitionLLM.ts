@@ -22,20 +22,20 @@ import {
   extractEncryptedContentFromMetadata,
   parseResponseFormatSchema,
 } from "@app/lib/api/llm/utils";
-import type { LargeLanguageModel } from "@app/lib/api/models";
-import type { ToolSpecification } from "@app/lib/api/models/types/config";
+import type { Authenticator } from "@app/lib/auth";
+import type { LargeLanguageModel } from "@app/lib/model_constructors";
+import type { ToolSpecification } from "@app/lib/model_constructors/types/config";
 import type {
   ErrorType,
   LargeLanguageModelResponseEvent,
   ReasoningEvent as NewReasoningEvent,
   TextEvent as NewTextEvent,
   ToolCallEvent as NewToolCallEvent,
-} from "@app/lib/api/models/types/events";
+} from "@app/lib/model_constructors/types/events";
 import type {
   BaseMessage,
   SystemTextMessage,
-} from "@app/lib/api/models/types/messages";
-import type { Authenticator } from "@app/lib/auth";
+} from "@app/lib/model_constructors/types/messages";
 import type {
   AgentFunctionCallContentType,
   AgentReasoningContentType,

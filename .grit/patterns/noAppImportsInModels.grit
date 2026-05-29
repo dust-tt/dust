@@ -13,15 +13,15 @@ pattern app_import_source() {
         `import * as $_ from $source`,
     } where {
         $source <: r"\"@app/.*\"",
-        $source <: not r"\"@app/lib/api/models.*\""
+        $source <: not r"\"@app/lib/model_constructors/.*\""
     }
 }
 
 app_import_source() as $import where {
-    $filename <: r".*/front/lib/api/models/.*",
+    $filename <: r".*/front/lib/model_constructors/.*",
     register_diagnostic(
         span = $import,
-        message = "Imports from '@app/*' are not allowed in 'front/lib/api/models/'. This directory must remain self-contained.",
+        message = "Imports from '@app/*' are not allowed in 'front/lib/model_constructors/'. This directory must remain self-contained.",
         severity = "error"
     )
 }

@@ -188,7 +188,7 @@
       }
     },
     {
-      "includes": ["front/lib/api/models/**"],
+      "includes": ["front/lib/model_constructors/**"],
       "plugins": ["./.grit/patterns/noAppImportsInModels.grit"]
     },
     {
