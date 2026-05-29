@@ -2,9 +2,14 @@
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
 import config from "@app/lib/api/config";
+import {
+  SCOPED_PREFIX_CONVERSATION,
+  SCOPED_PREFIX_POD,
+} from "@app/lib/api/file_system";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import {
   disambiguateFileName,
+  getConversationFilesBasePath,
   getConversationFilePath,
   getPodFilesBasePath,
   makeProcessedMountFileName,
@@ -1085,6 +1090,54 @@ export class FileResource extends BaseResource<FileModel> {
     const isTaken = await this.isMountFilePathTaken(desiredPath);
 
     return isTaken ? `${basePath}${disambiguateFileName(this)}` : desiredPath;
+  }
+
+  /**
+   * Returns the canonical scoped path for this file (e.g. `pod-{spaceId}/report.pdf` or
+   * `conversation-{cId}/file.txt`), or `null` when the file has no mount path or its use
+   * case does not produce a scoped path.
+   *
+   * This is the shape that gcsfuse consumers (agents, file explorer) expect, and what the
+   * file upload API returns in the `path` field.
+   */
+  // TODO(FILE SYSTEM MIGRATION): Temporary until file is not tighted for file system anymore.
+  toScopedPath(auth: Authenticator): string | null {
+    if (!this.mountFilePath) {
+      return null;
+    }
+
+    const owner = auth.getNonNullableWorkspace();
+
+    if (this.useCase === "project_context" && this.useCaseMetadata?.spaceId) {
+      const spaceId = this.useCaseMetadata.spaceId;
+      const prefix = getPodFilesBasePath({
+        workspaceId: owner.sId,
+        podId: spaceId,
+      });
+      if (!this.mountFilePath.startsWith(prefix)) {
+        return null;
+      }
+
+      return `${SCOPED_PREFIX_POD}${spaceId}/${this.mountFilePath.slice(prefix.length)}`;
+    }
+
+    if (
+      isConversationFileUseCase(this.useCase) &&
+      this.useCaseMetadata?.conversationId
+    ) {
+      const conversationId = this.useCaseMetadata.conversationId;
+      const prefix = getConversationFilesBasePath({
+        workspaceId: owner.sId,
+        conversationId,
+      });
+      if (!this.mountFilePath.startsWith(prefix)) {
+        return null;
+      }
+
+      return `${SCOPED_PREFIX_CONVERSATION}${conversationId}/${this.mountFilePath.slice(prefix.length)}`;
+    }
+
+    return null;
   }
 
   /**

@@ -341,7 +341,12 @@ app.post("/", async (ctx) => {
     }
   }
 
-  return ctx.json({ file: file.toJSON(auth) });
+  return ctx.json({
+    file: {
+      ...file.toJSON(auth),
+      path: resolveUploadMountScopedPath(auth, file),
+    },
+  });
 });
 
 app.route("/edit-text", editText);
