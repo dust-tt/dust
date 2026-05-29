@@ -1,11 +1,11 @@
 import { FileExplorerBreadcrumb } from "@app/components/file_explorer/FileExplorerBreadcrumb";
 import { FileExplorerContent } from "@app/components/file_explorer/FileExplorerContent";
-import { canMoveFileToParentFolder } from "@app/components/file_explorer/fileExplorerDragDrop";
 import { FileExplorerFilters } from "@app/components/file_explorer/FileExplorerFilters";
 import type { ViewMode } from "@app/components/file_explorer/FileExplorerItem";
-import { getFileExplorerPipeline } from "@app/components/file_explorer/fileExplorerPipeline";
 import { FileExplorerToolbar } from "@app/components/file_explorer/FileExplorerToolbar";
 import { FilePreviewDialog } from "@app/components/file_explorer/FilePreviewDialog";
+import { canMoveFileToParentFolder } from "@app/components/file_explorer/fileExplorerDragDrop";
+import { getFileExplorerPipeline } from "@app/components/file_explorer/fileExplorerPipeline";
 import { MoveFileToFolderDialog } from "@app/components/file_explorer/MoveFileToFolderDialog";
 import type {
   ContentNodeEntry,

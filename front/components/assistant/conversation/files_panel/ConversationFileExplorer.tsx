@@ -6,8 +6,8 @@ import config from "@app/lib/api/config";
 import { downloadFile } from "@app/lib/swr/files";
 import { usePodFiles } from "@app/lib/swr/pods";
 import {
-  isPodConversation,
   type ConversationWithoutContentType,
+  isPodConversation,
 } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Button, ButtonGroup } from "@dust-tt/sparkle";
