@@ -7,9 +7,9 @@ import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
-import sId from "./[sId]";
-import importRoute from "./import";
-import search from "./search";
+import sId from "./agent_configurations/[sId]";
+import importRoute from "./agent_configurations/import";
+import search from "./agent_configurations/search";
 
 const GetAgentConfigurationsQuerySchema = z.object({
   view: z

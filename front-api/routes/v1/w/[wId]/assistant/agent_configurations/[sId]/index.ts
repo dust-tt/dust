@@ -16,7 +16,7 @@ import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
-import exportRoutes from "./export";
+import yaml from "./export/yaml";
 
 const AgentConfigurationParamSchema = z.object({
   sId: z.string(),
@@ -253,7 +253,7 @@ const VariantQuerySchema = z.object({
 // Mounted at /api/v1/w/:wId/assistant/agent_configurations/:sId.
 const app = publicApiApp();
 
-app.route("/export", exportRoutes);
+app.route("/export/yaml", yaml);
 
 app.get(
   "/",
