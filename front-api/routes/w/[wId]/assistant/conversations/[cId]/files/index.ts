@@ -1,7 +1,9 @@
+import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import {
-  type GCSMountEntry,
-  listGCSMountFiles,
-} from "@app/lib/api/files/gcs_mount/files";
+  type FileSystemEntry,
+  SCOPED_PREFIX_CONVERSATION,
+} from "@app/lib/api/file_system/types";
+import { enrichListWithFileResourceIds } from "@app/lib/api/files/file_system_ops";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -11,7 +13,7 @@ import download from "./download";
 import thumbnail from "./thumbnail";
 
 export type GetConversationFilesResponseBody = {
-  files: GCSMountEntry[];
+  files: FileSystemEntry[];
 };
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/files.
@@ -32,10 +34,28 @@ app.get("/", async (ctx): HandlerResult<GetConversationFilesResponseBody> => {
     });
   }
 
-  const files = await listGCSMountFiles(auth, {
-    useCase: "conversation",
-    conversationId: cId,
-  });
+  const fsResult = await DustFileSystem.forConversation(
+    auth,
+    conversation.toJSON()
+  );
+  if (fsResult.isErr()) {
+    return apiError(ctx, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: "Failed to initialise file system.",
+      },
+    });
+  }
+
+  // Scope the listing to the conversation mount only. For pod conversations the
+  // DustFileSystem also has a pod mount and we do not want to expose pod files here.
+  const dustFs = fsResult.value;
+  const files = await enrichListWithFileResourceIds(
+    auth,
+    dustFs,
+    await dustFs.list(`${SCOPED_PREFIX_CONVERSATION}${cId}`)
+  );
 
   return ctx.json({ files });
 });

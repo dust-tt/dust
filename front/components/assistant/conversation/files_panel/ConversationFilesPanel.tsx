@@ -14,7 +14,7 @@ import { useConversationAttachments } from "@app/hooks/conversations/useConversa
 import { useConversationSandboxStatus } from "@app/hooks/conversations/useConversationSandboxStatus";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { isFileAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
-import type { GCSMountFileEntry } from "@app/lib/api/files/gcs_mount/files";
+import type { FileSystemFileEntry } from "@app/lib/api/file_system/types";
 import { downloadSandboxFile } from "@app/lib/swr/files";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { isInteractiveContentType } from "@app/types/files";
@@ -93,7 +93,7 @@ export function ConversationFilesPanel({
   );
 
   const handleSandboxFileClick = useCallback(
-    async (entry: GCSMountFileEntry) => {
+    async (entry: FileSystemFileEntry) => {
       if (entry.fileId) {
         openFile({
           fileId: entry.fileId,
@@ -107,14 +107,10 @@ export function ConversationFilesPanel({
         return;
       }
 
-      // File only exists in GCS — download via POST and open as blob URL.
+      // File only exists in GCS, download and open as blob URL.
       isDownloadingRef.current = true;
       try {
-        const res = await downloadSandboxFile(
-          owner,
-          conversation.sId,
-          entry.path
-        );
+        const res = await downloadSandboxFile(owner, entry.path);
         const blob = await res.blob();
         if (blobUrlRef.current) {
           URL.revokeObjectURL(blobUrlRef.current);
@@ -138,7 +134,7 @@ export function ConversationFilesPanel({
         isDownloadingRef.current = false;
       }
     },
-    [openFile, owner, conversation.sId, sendNotification]
+    [openFile, owner, sendNotification]
   );
 
   const fileRows = useMemo(

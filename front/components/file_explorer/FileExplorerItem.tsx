@@ -15,7 +15,7 @@ import {
   getSingularFileCategoryLabelForContentType,
 } from "@app/components/file_explorer/utils";
 import { cn } from "@app/components/poke/shadcn/lib/utils";
-import type { GCSMountFileEntry } from "@app/lib/api/files/gcs_mount/files";
+import type { FileSystemFileEntry } from "@app/lib/api/file_system/types";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import {
@@ -214,7 +214,10 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
   );
 }
 
-function getFileSubtitle(entry: GCSMountFileEntry, viewMode: ViewMode): string {
+function getFileSubtitle(
+  entry: FileSystemFileEntry,
+  viewMode: ViewMode
+): string {
   const typeLabel = getSingularFileCategoryLabelForContentType(
     entry.contentType
   );

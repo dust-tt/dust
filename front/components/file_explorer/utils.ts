@@ -1,5 +1,5 @@
 import { getFilePreviewConfig } from "@app/components/spaces/FilePreviewSheet";
-import type { GCSMountEntry } from "@app/lib/api/files/gcs_mount/files";
+import type { FileSystemEntry } from "@app/lib/api/file_system/types";
 import {
   frameSlideshowContentType,
   isInteractiveContentType,
@@ -239,7 +239,7 @@ function ensureDirectoryNode(
  * sandbox working directory root.
  */
 export function buildFileSystemTree(
-  entries: GCSMountEntry[]
+  entries: FileSystemEntry[]
 ): FileSystemTreeNode[] {
   const root: FileSystemTreeNode[] = [];
   const nodeMap = new Map<string, FileSystemTreeNode>();
@@ -329,7 +329,7 @@ function filterDirectoryNodes(
 
 /** Folder-only view of the sandbox tree (no files). */
 export function buildFolderTree(
-  entries: GCSMountEntry[]
+  entries: FileSystemEntry[]
 ): FileSystemTreeNode[] {
   return filterDirectoryNodes(buildFileSystemTree(entries));
 }

@@ -6,9 +6,8 @@ import {
 } from "@app/components/file_explorer/utils";
 import { useConversationSandboxFiles } from "@app/hooks/conversations/useConversationSandboxFiles";
 import { useDebounce } from "@app/hooks/useDebounce";
-import type { GCSMountFileEntry } from "@app/lib/api/files/gcs_mount/files";
+import type { FileSystemFileEntry } from "@app/lib/api/file_system/types";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
-import { downloadSandboxFile, getFileProcessedUrl } from "@app/lib/swr/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Card,
@@ -20,59 +19,18 @@ import {
   Tooltip,
 } from "@dust-tt/sparkle";
 import moment from "moment";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 
 interface SandboxImageCardProps {
-  owner: LightWorkspaceType;
-  conversationId: string;
-  entry: GCSMountFileEntry;
+  entry: FileSystemFileEntry;
   onClick: () => void;
 }
 
-function SandboxImageCard({
-  owner,
-  conversationId,
-  entry,
-  onClick,
-}: SandboxImageCardProps) {
-  const [src, setSrc] = useState<string | null>(() =>
-    entry.fileId ? getFileProcessedUrl(owner, entry.fileId) : null
-  );
-
-  useEffect(() => {
-    if (entry.fileId) {
-      setSrc(getFileProcessedUrl(owner, entry.fileId));
-      return;
-    }
-
-    let cancelled = false;
-    let objectUrl: string | null = null;
-
-    const loadImage = async () => {
-      try {
-        const res = await downloadSandboxFile(
-          owner,
-          conversationId,
-          entry.path
-        );
-        const blob = await res.blob();
-        if (!cancelled) {
-          objectUrl = URL.createObjectURL(blob);
-          setSrc(objectUrl);
-        }
-      } catch {
-        // Silently fail — the spinner stays, which is acceptable for thumbnails.
-      }
-    };
-    void loadImage();
-
-    return () => {
-      cancelled = true;
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
-      }
-    };
-  }, [owner, conversationId, entry.path, entry.fileId]);
+function SandboxImageCard({ entry, onClick }: SandboxImageCardProps) {
+  // thumbnailUrl is populated by DustFileSystem for image entries.
+  // Fall back to the processed-file URL when the entry has a fileId (legacy
+  // records uploaded before the unified path endpoint existed).
+  const src = entry.thumbnailUrl ?? null;
 
   return (
     <Card
@@ -116,7 +74,7 @@ interface SandboxTabProps {
   conversationId: string;
   disabled?: boolean;
   owner: LightWorkspaceType;
-  onFileClick: (entry: GCSMountFileEntry) => void;
+  onFileClick: (entry: FileSystemFileEntry) => void;
 }
 
 export function SandboxTab({
@@ -140,7 +98,7 @@ export function SandboxTab({
   const files = useMemo(
     () =>
       sandboxFiles.filter(
-        (f): f is GCSMountFileEntry =>
+        (f): f is FileSystemFileEntry =>
           !f.isDirectory && !f.fileName.startsWith(".")
       ),
     [sandboxFiles]
@@ -155,7 +113,7 @@ export function SandboxTab({
   }, [files, debouncedSearch]);
 
   const groupedByCategory = useMemo(() => {
-    const groups = new Map<FilePanelCategory, GCSMountFileEntry[]>();
+    const groups = new Map<FilePanelCategory, FileSystemFileEntry[]>();
     for (const file of filteredFiles) {
       const category = getCategoryFromContentType(file.contentType);
       const existing = groups.get(category);
@@ -214,8 +172,6 @@ export function SandboxTab({
                       return (
                         <SandboxImageCard
                           key={entry.path}
-                          owner={owner}
-                          conversationId={conversationId}
                           entry={entry}
                           onClick={() => onFileClick(entry)}
                         />
