@@ -19,7 +19,7 @@ import {
   PencilSquareIcon,
   TrashIcon,
 } from "@dust-tt/sparkle";
-import type { CellContext } from "@tanstack/react-table";
+import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 
 type RowData = {
@@ -92,20 +92,21 @@ const editorsColumn = {
 const usedByColumn = (
   onAgentClick: (agentId: string) => void,
   onUsedBySkillClick: (skillId: string) => void
-) => ({
-  header: "Used by",
+): ColumnDef<RowData, number> => ({
+  id: "usedBy",
+  header: () => <div className="flex w-full justify-center">Used by</div>,
   accessorFn: (row: RowData) => row.usage?.count ?? 0,
   cell: (info: CellContext<RowData, number>) => (
-    <DataTable.CellContent className="justify-center">
+    <div className="flex h-12 w-full items-center justify-center">
       <UsedByButton
         usage={info.row.original.usage}
         onItemClick={onAgentClick}
         onSkillClick={onUsedBySkillClick}
       />
-    </DataTable.CellContent>
+    </div>
   ),
   meta: {
-    className: "hidden text-center @sm:w-24 @sm:table-cell",
+    className: "hidden px-0 @sm:w-24 @sm:table-cell",
   },
 });
 
