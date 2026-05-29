@@ -55,7 +55,6 @@ export interface FileAttachmentCitation extends BaseAttachmentCitation {
   description: string | null;
   fileId: string | null;
   isUploading?: boolean;
-  // File size in bytes, used to estimate transcription progress for audio files.
   size?: number;
 }
 
