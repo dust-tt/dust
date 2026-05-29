@@ -193,7 +193,7 @@ describe("renderLightContentFragmentForModel", () => {
   });
 
   describe("useFileSystem: true", () => {
-    it("renders a regular file as <file> without snippet", async () => {
+    it("renders a regular file as <file> without snippet and without path when path is null", async () => {
       const result = await renderLightContentFragmentForModel(
         authenticator,
         makeFileFragment("application/pdf"),
@@ -202,11 +202,11 @@ describe("renderLightContentFragmentForModel", () => {
       );
       expect(result?.content[0]).toMatchObject({
         type: "text",
-        text: `<file name="file" path="conversation/file"/>`,
+        text: `<file name="file"/>`,
       });
     });
 
-    it("renders a regular file as <file> with snippet", async () => {
+    it("renders a regular file as <file> with snippet and without path when path is null", async () => {
       const result = await renderLightContentFragmentForModel(
         authenticator,
         makeFileFragment("text/plain", { snippet: "First 256 chars..." }),
@@ -215,15 +215,15 @@ describe("renderLightContentFragmentForModel", () => {
       );
       expect(result?.content[0]).toMatchObject({
         type: "text",
-        text: `<file name="file" path="conversation/file">First 256 chars...\n</file>`,
+        text: `<file name="file">First 256 chars...\n</file>`,
       });
     });
 
-    it("renders a slim file reference using the mount path when available", async () => {
+    it("renders a slim file reference using the canonical scoped path when available", async () => {
       const result = await renderLightContentFragmentForModel(
         authenticator,
         makeFileFragment("application/pdf", {
-          path: "conversation/report_fil_abc123.pdf",
+          path: "conversation-conv123/report_fil_abc123.pdf",
         }),
         visionModel,
         { excludeImages: false, useFileSystem: true }
@@ -231,7 +231,7 @@ describe("renderLightContentFragmentForModel", () => {
       expect(result).not.toBeNull();
       expect(result?.content[0]).toMatchObject({
         type: "text",
-        text: `<file name="file" path="conversation/report_fil_abc123.pdf"/>`,
+        text: `<file name="file" path="conversation-conv123/report_fil_abc123.pdf"/>`,
       });
     });
 
@@ -277,12 +277,16 @@ describe("renderLightContentFragmentForModel", () => {
     it("renders an image with excludeImages as <file> with description", async () => {
       const result = await renderLightContentFragmentForModel(
         authenticator,
-        makeFileFragment("image/png"),
+        makeFileFragment("image/png", {
+          path: "conversation-conv123/image.png",
+        }),
         visionModel,
         { excludeImages: true, useFileSystem: true }
       );
       const text = (result?.content[0] as { text: string }).text;
-      expect(text).toContain(`<file name="file" path="conversation/file">`);
+      expect(text).toContain(
+        `<file name="file" path="conversation-conv123/image.png">`
+      );
       expect(text).toContain(
         "Image content interpreted by a vision-enabled model"
       );
@@ -291,12 +295,16 @@ describe("renderLightContentFragmentForModel", () => {
     it("renders an image with non-vision model as <file> with description", async () => {
       const result = await renderLightContentFragmentForModel(
         authenticator,
-        makeFileFragment("image/png"),
+        makeFileFragment("image/png", {
+          path: "conversation-conv123/image.png",
+        }),
         nonVisionModel,
         { excludeImages: false, useFileSystem: true }
       );
       const text = (result?.content[0] as { text: string }).text;
-      expect(text).toContain(`<file name="file" path="conversation/file">`);
+      expect(text).toContain(
+        `<file name="file" path="conversation-conv123/image.png">`
+      );
       expect(text).toContain(
         "Image content interpreted by a vision-enabled model"
       );
@@ -305,7 +313,9 @@ describe("renderLightContentFragmentForModel", () => {
     it("renders an image with vision model as image_url + <file> tag", async () => {
       const result = await renderLightContentFragmentForModel(
         authenticator,
-        makeFileFragment("image/png"),
+        makeFileFragment("image/png", {
+          path: "conversation-conv123/image.png",
+        }),
         visionModel,
         { excludeImages: false, useFileSystem: true }
       );
@@ -313,7 +323,7 @@ describe("renderLightContentFragmentForModel", () => {
       expect(result?.content[0]).toMatchObject({ type: "image_url" });
       expect(result?.content[1]).toMatchObject({
         type: "text",
-        text: `<file name="file" path="conversation/file"/>`,
+        text: `<file name="file" path="conversation-conv123/image.png"/>`,
       });
     });
   });
