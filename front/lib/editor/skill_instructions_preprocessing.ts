@@ -15,9 +15,21 @@ function escapeMathEmphasis(markdown: string): string {
 /**
  * Preprocess markdown before loading it into the TipTap editor.
  */
-export function preprocessMarkdownForEditor(markdown: string): string {
+export function preprocessMarkdownForEditor(
+  markdown: string,
+  { enableSkillReferences = false }: { enableSkillReferences?: boolean } = {}
+): string {
+  const preservedTags = ["knowledge", "tool"];
+  if (enableSkillReferences) {
+    preservedTags.push("skill");
+  }
+  const preservedTagsPattern = preservedTags.join("|");
+
   return escapeMathEmphasis(
-    markdown.replace(/<(?!\/?knowledge[\s>/])(\/?\w)/g, `<${ZWS}$1`)
+    markdown.replace(
+      new RegExp(`<(?!(?:/?(?:${preservedTagsPattern}))[\\s>/])(/?\\w)`, "g"),
+      `<${ZWS}$1`
+    )
   );
 }
 

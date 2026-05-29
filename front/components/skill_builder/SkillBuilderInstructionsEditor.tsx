@@ -27,6 +27,23 @@ import { useController, useFormContext } from "react-hook-form";
 const INSTRUCTIONS_FIELD_NAME = "instructions";
 const INSTRUCTIONS_HTML_FIELD_NAME = "instructionsHtml";
 const ATTACHED_KNOWLEDGE_FIELD_NAME = "attachedKnowledge";
+const ALLOWED_INSTRUCTIONS_TAGS = ["knowledge", "tool"];
+const ALLOWED_INSTRUCTIONS_ATTRS = [
+  "space",
+  "dsv",
+  "hasChildren",
+  "id",
+  "name",
+  "icon",
+];
+
+function getSkillInstructionsSanitizeConfig(): Config {
+  return {
+    ADD_TAGS: [...ALLOWED_INSTRUCTIONS_TAGS],
+    ADD_ATTR: [...ALLOWED_INSTRUCTIONS_ATTRS],
+    FORBID_ATTR: ["style", "class"],
+  };
+}
 
 function collectKnowledgeItems(editor: Editor): KnowledgeItem[] {
   const items: KnowledgeItem[] = [];
@@ -52,12 +69,7 @@ function toAttachedKnowledge(
 
 function sanitizeSkillInstructionsHtml(html: string): string {
   try {
-    const config: Config = {
-      ADD_TAGS: ["knowledge"],
-      ADD_ATTR: ["space", "dsv", "hasChildren"],
-      FORBID_ATTR: ["style", "class"],
-    };
-    return DOMPurify.sanitize(html, config);
+    return DOMPurify.sanitize(html, getSkillInstructionsSanitizeConfig());
   } catch {
     return html;
   }

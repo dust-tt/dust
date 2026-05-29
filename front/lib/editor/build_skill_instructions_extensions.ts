@@ -10,6 +10,7 @@ import {
   RawMarkdownBlock,
   rawMarkdownBlockParsers,
 } from "@app/components/editor/extensions/skill_builder/RawMarkdownBlock";
+import { ToolNodeWithView } from "@app/components/editor/extensions/skill_builder/ToolNodeWithView";
 import { LinkExtension } from "@app/components/editor/input_bar/LinkExtension";
 import { markdownStyles } from "@dust-tt/sparkle";
 import type { Extensions } from "@tiptap/core";
@@ -17,6 +18,10 @@ import { Markdown } from "@tiptap/markdown";
 import { StarterKit } from "@tiptap/starter-kit";
 
 export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
+
+interface BuildSkillInstructionsExtensionsOptions {
+  enableToolReferences?: boolean;
+}
 
 /**
  * Build the TipTap extension list for the skill instructions editor.
@@ -26,7 +31,8 @@ export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
  */
 export function buildSkillInstructionsExtensions(
   isReadOnly: boolean,
-  editableExtensions: Extensions = []
+  editableExtensions: Extensions = [],
+  { enableToolReferences = true }: BuildSkillInstructionsExtensionsOptions = {}
 ): Extensions {
   const baseExtensions: Extensions = [
     InstructionsDocumentExtension,
@@ -86,10 +92,17 @@ export function buildSkillInstructionsExtensions(
     }),
     BlockIdExtension,
     KnowledgeNodeWithView.configure({ readOnly: isReadOnly }),
+  ];
+
+  if (enableToolReferences) {
+    baseExtensions.push(ToolNodeWithView);
+  }
+
+  baseExtensions.push(
     InstructionSuggestionExtension.configure({ showBlockHighlight: false }),
     RawMarkdownBlock,
-    ...rawMarkdownBlockParsers,
-  ];
+    ...rawMarkdownBlockParsers
+  );
 
   if (!isReadOnly) {
     baseExtensions.push(...editableExtensions);
