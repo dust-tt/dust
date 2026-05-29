@@ -3,6 +3,7 @@ import type {
   SkillUsageType,
   UsedBySkillType,
 } from "@app/types/assistant/skill_configuration";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import {
   Avatar,
   Button,
@@ -17,6 +18,38 @@ import {
   RobotIcon,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
+
+type UsedByDropdownItem =
+  | {
+      kind: "agent";
+      agent: SkillUsageType["agents"][number];
+    }
+  | {
+      kind: "skill";
+      skill: UsedBySkillType;
+    };
+
+function getUsedByDropdownItemName(item: UsedByDropdownItem) {
+  switch (item.kind) {
+    case "agent":
+      return item.agent.name;
+    case "skill":
+      return item.skill.name;
+    default:
+      return assertNever(item);
+  }
+}
+
+function getUsedByDropdownItemId(item: UsedByDropdownItem) {
+  switch (item.kind) {
+    case "agent":
+      return item.agent.sId;
+    case "skill":
+      return item.skill.sId;
+    default:
+      return assertNever(item);
+  }
+}
 
 interface SkillDropdownIconProps {
   icon: string | null;
@@ -112,14 +145,30 @@ export const UsedByButton = ({
   }
 
   const query = searchText.toLowerCase();
-  const filteredAgents =
-    query.length === 0
-      ? agents
-      : agents.filter((a) => a.name.toLowerCase().includes(query));
-  const filteredSkills =
-    query.length === 0
-      ? skills
-      : skills.filter((skill) => skill.name.toLowerCase().includes(query));
+  const dropdownItems: UsedByDropdownItem[] = [
+    ...agents.map((agent) => ({ kind: "agent" as const, agent })),
+    ...skills.map((skill) => ({ kind: "skill" as const, skill })),
+  ]
+    .filter(
+      (item) =>
+        query.length === 0 ||
+        getUsedByDropdownItemName(item).toLowerCase().includes(query)
+    )
+    .sort((a, b) => {
+      const nameComparison = getUsedByDropdownItemName(a).localeCompare(
+        getUsedByDropdownItemName(b),
+        undefined,
+        { sensitivity: "base" }
+      );
+
+      if (nameComparison !== 0) {
+        return nameComparison;
+      }
+
+      return getUsedByDropdownItemId(a).localeCompare(
+        getUsedByDropdownItemId(b)
+      );
+    });
 
   const closeMenu = () => {
     setSearchText("");
@@ -127,17 +176,22 @@ export const UsedByButton = ({
   };
 
   const onFirstItemClick = () => {
-    const firstAgent = filteredAgents[0];
-    if (firstAgent) {
-      onItemClick(firstAgent.sId);
-      closeMenu();
+    const firstItem = dropdownItems[0];
+    if (!firstItem) {
       return;
     }
 
-    const firstSkill = filteredSkills[0];
-    if (firstSkill && onSkillClick) {
-      onSkillClick(firstSkill.sId);
-      closeMenu();
+    switch (firstItem.kind) {
+      case "agent":
+        onItemClick(firstItem.agent.sId);
+        closeMenu();
+        return;
+      case "skill":
+        onSkillClick?.(firstItem.skill.sId);
+        closeMenu();
+        return;
+      default:
+        assertNever(firstItem);
     }
   };
 
@@ -194,43 +248,45 @@ export const UsedByButton = ({
           </>
         }
       >
-        {filteredAgents.length > 0 ? (
-          <>
-            {filteredAgents.map((agent) => (
-              <DropdownMenuItem
-                key={`assistant-picker-${agent.sId}`}
-                icon={() => <Avatar size="xs" visual={agent.pictureUrl} />}
-                label={agent.name}
-                truncateText
-                className="py-1"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onItemClick(agent.sId);
-                  closeMenu();
-                }}
-              />
-            ))}
-          </>
-        ) : null}
-        {filteredSkills.length > 0 && (
-          <>
-            {filteredSkills.map((skill: UsedBySkillType) => (
-              <DropdownMenuItem
-                key={`skill-picker-${skill.sId}`}
-                icon={() => <SkillDropdownIcon icon={skill.icon} />}
-                label={skill.name}
-                truncateText
-                className="py-1"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSkillClick?.(skill.sId);
-                  closeMenu();
-                }}
-              />
-            ))}
-          </>
-        )}
-        {filteredAgents.length === 0 && filteredSkills.length === 0 && (
+        {dropdownItems.map((item) => {
+          switch (item.kind) {
+            case "agent":
+              return (
+                <DropdownMenuItem
+                  key={`assistant-picker-${item.agent.sId}`}
+                  icon={() => (
+                    <Avatar size="xs" visual={item.agent.pictureUrl} />
+                  )}
+                  label={item.agent.name}
+                  truncateText
+                  className="py-1"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onItemClick(item.agent.sId);
+                    closeMenu();
+                  }}
+                />
+              );
+            case "skill":
+              return (
+                <DropdownMenuItem
+                  key={`skill-picker-${item.skill.sId}`}
+                  icon={() => <SkillDropdownIcon icon={item.skill.icon} />}
+                  label={item.skill.name}
+                  truncateText
+                  className="py-1"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSkillClick?.(item.skill.sId);
+                    closeMenu();
+                  }}
+                />
+              );
+            default:
+              return assertNever(item);
+          }
+        })}
+        {dropdownItems.length === 0 && (
           <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
             {skills.length > 0 ? "No matches found" : "No agents found"}
           </div>
