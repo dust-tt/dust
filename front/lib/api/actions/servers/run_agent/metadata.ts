@@ -1,5 +1,10 @@
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
+import {
+  FILES_LIST_ACTION_NAME,
+  FILES_SERVER_NAME,
+} from "@app/lib/api/actions/servers/files/metadata";
 import { getResourcePrefix } from "@app/lib/resources/string_ids";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
@@ -86,11 +91,11 @@ export const RUN_AGENT_TOOL_SCHEMA = {
   filePaths: z
     .array(z.string())
     .describe(
-      "Scoped file paths (e.g. `conversation/foo.md`, `pod/spec.md`) to forward to the " +
-        "sub-agent. Use when you have a scoped path from a file-listing tool or that you " +
-        "produced yourself in this conversation. `conversation/...` paths are copied into " +
-        "the sub-conversation; `pod/...` paths are passed through (the Pod file " +
-        "system is shared across the Pod's conversations). " +
+      `Scoped file paths (e.g. \`conversation-<id>/foo.md\`, \`pod-<id>/spec.md\`) to forward ` +
+        `to the sub-agent. Use paths as returned by \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_LIST_ACTION_NAME)}\`. ` +
+        "`conversation-<id>/...` paths are copied into the sub-conversation; " +
+        "`pod-<id>/...` paths are passed through (the Pod file system is shared across " +
+        "the Pod's conversations). " +
         "For binary sources (PDFs, images, audio), also include their `*.processed.<ext>` " +
         "sibling so the sub-agent can read the model-friendly representation."
     )

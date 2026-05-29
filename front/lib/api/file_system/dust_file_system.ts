@@ -6,9 +6,10 @@
  * Legacy paths (`conversation/...`, `project/...`) are accepted for backward compat.
  *
  * Factories:
- *   DustFileSystem.forConversation(auth, conversation)  conversation mount (+pod if project space)
- *   DustFileSystem.forPod(auth, space)                  pod (project-space) mount only
- *   DustFileSystem.fromScopedPath(auth, scopedPath)     infers context from the path prefix
+ *   DustFileSystem.forConversation(auth, conversation)   single conversation mount (+pod if project space)
+ *   DustFileSystem.forConversations(auth, conversations) multiple conversation mounts (+pod if project space)
+ *   DustFileSystem.forPod(auth, space)                   pod (project-space) mount only
+ *   DustFileSystem.fromScopedPath(auth, scopedPath)      infers context from the path prefix
  */
 
 import config from "@app/lib/api/config";
@@ -91,47 +92,66 @@ export class DustFileSystem {
   // --------------------------------------------------------------------------
 
   /**
-   * Build a DustFileSystem scoped to a conversation.
+   * Build a DustFileSystem scoped to one or more conversations.
    *
-   * Always includes the conversation mount. When the conversation belongs to a project space,
-   * the pod mount is added with permissions derived from the space's canRead/canWrite checks.
+   * Each conversation gets its own read+write mount. When a conversation belongs to a project
+   * space, the pod mount is added (deduplicated when multiple conversations share the same space).
+   *
+   * The first conversation in the list receives the legacy sandbox mount point for backward
+   * compatibility. Additional conversations get null legacy paths (they are only used when
+   * mounting a sandbox, which is always a single-conversation context).
    */
-  static async forConversation(
+  static async forConversations(
     auth: Authenticator,
-    // TODO(FILE SYSTEM MIGRATION): Ideally, we accept a ConversationResource directly.
-    conversation: ConversationWithoutContentType
+    // TODO(FILE SYSTEM MIGRATION): Ideally, we accept ConversationResource directly.
+    conversations: ConversationWithoutContentType[]
   ): Promise<Result<DustFileSystem, DustFileSystemError>> {
     const owner = auth.getNonNullableWorkspace();
+    const mounts: FileSystemMount[] = [];
 
-    const convMount: FileSystemMount = {
-      kind: "conversation",
-      id: conversation.sId,
-      scopedPrefix: `${SCOPED_PREFIX_CONVERSATION}${conversation.sId}`,
-      sandboxMountPoint: `/files/${SCOPED_PREFIX_CONVERSATION}${conversation.sId}`,
-      legacyPrefix: LEGACY_PREFIX_CONVERSATION,
-      legacySandboxMountPoint: `/files/${LEGACY_PREFIX_CONVERSATION}`,
-      // Conversation access is always read+write when the caller holds a valid auth for it.
-      // The handler is responsible for verifying conversation access before calling this factory.
-      permissions: { canRead: true, canWrite: true },
-    };
+    // Legacy mount points are only meaningful for sandbox use, which is always single-conversation.
+    const includeLegacy = conversations.length === 1;
 
-    const mounts: FileSystemMount[] = [convMount];
+    for (const conversation of conversations) {
+      mounts.push({
+        kind: "conversation",
+        id: conversation.sId,
+        scopedPrefix: `${SCOPED_PREFIX_CONVERSATION}${conversation.sId}`,
+        sandboxMountPoint: `/files/${SCOPED_PREFIX_CONVERSATION}${conversation.sId}`,
+        legacyPrefix: includeLegacy ? LEGACY_PREFIX_CONVERSATION : null,
+        legacySandboxMountPoint: includeLegacy
+          ? `/files/${LEGACY_PREFIX_CONVERSATION}`
+          : null,
+        // Conversation access is always read+write when the caller holds a valid auth for it.
+        // The handler is responsible for verifying conversation access before calling this factory.
+        permissions: { canRead: true, canWrite: true },
+      });
+    }
 
-    if (isPodConversation(conversation)) {
-      const space = await SpaceResource.fetchById(auth, conversation.spaceId);
-      if (space) {
-        mounts.push({
-          kind: "pod",
-          id: space.sId,
-          scopedPrefix: `${SCOPED_PREFIX_POD}${space.sId}`,
-          sandboxMountPoint: `/files/${SCOPED_PREFIX_POD}${space.sId}`,
-          legacyPrefix: LEGACY_PREFIX_PROJECT,
-          legacySandboxMountPoint: `/files/${LEGACY_PREFIX_PROJECT}`,
-          permissions: {
-            canRead: space.canRead(auth),
-            canWrite: space.canWrite(auth),
-          },
-        });
+    // Collect unique pod space IDs, then batch-fetch to avoid N+1 queries.
+    const podConversations = conversations.filter(isPodConversation);
+    const uniqueSpaceIds = [...new Set(podConversations.map((c) => c.spaceId))];
+
+    if (uniqueSpaceIds.length > 0) {
+      const spaces = await SpaceResource.fetchByIds(auth, uniqueSpaceIds);
+      const spaceById = new Map(spaces.map((s) => [s.sId, s]));
+
+      for (const spaceId of uniqueSpaceIds) {
+        const space = spaceById.get(spaceId);
+        if (space) {
+          mounts.push({
+            kind: "pod",
+            id: space.sId,
+            scopedPrefix: `${SCOPED_PREFIX_POD}${space.sId}`,
+            sandboxMountPoint: `/files/${SCOPED_PREFIX_POD}${space.sId}`,
+            legacyPrefix: LEGACY_PREFIX_PROJECT,
+            legacySandboxMountPoint: `/files/${LEGACY_PREFIX_PROJECT}`,
+            permissions: {
+              canRead: space.canRead(auth),
+              canWrite: space.canWrite(auth),
+            },
+          });
+        }
       }
     }
 
@@ -141,6 +161,19 @@ export class DustFileSystem {
     );
 
     return new Ok(new DustFileSystem(auth, mounts, backend));
+  }
+
+  /**
+   * Build a DustFileSystem scoped to a single conversation.
+   *
+   * Always includes the conversation mount. When the conversation belongs to a project space,
+   * the pod mount is added with permissions derived from the space's canRead/canWrite checks.
+   */
+  static async forConversation(
+    auth: Authenticator,
+    conversation: ConversationWithoutContentType
+  ): Promise<Result<DustFileSystem, DustFileSystemError>> {
+    return DustFileSystem.forConversations(auth, [conversation]);
   }
 
   /**
