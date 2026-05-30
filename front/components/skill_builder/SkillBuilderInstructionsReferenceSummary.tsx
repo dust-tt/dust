@@ -208,7 +208,7 @@ export function SkillBuilderInstructionsReferenceSummary({
         "dark:border-border-night/70 dark:bg-background-night/75"
       )}
     >
-      <div className="mb-2 text-sm font-semibold text-foreground dark:text-foreground-night">
+      <div className="mb-2 text-sm font-medium text-muted-foreground dark:text-muted-foreground-night">
         Capabilities and knowledge
       </div>
       <div className="flex flex-wrap gap-2">
