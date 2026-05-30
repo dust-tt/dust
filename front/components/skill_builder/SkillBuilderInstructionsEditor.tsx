@@ -129,11 +129,12 @@ export function SkillBuilderInstructionsEditor({
   const displayError =
     !!instructionsFieldState.error || !!attachedKnowledgeFieldState.error;
   const hasInstructionReferenceSummary =
-    (attachedKnowledgeField.value?.length ?? 0) > 0 ||
-    tools.length > 0 ||
-    (instructionsField.value?.includes("<knowledge ") ?? false) ||
-    (instructionsField.value?.includes("<skill ") ?? false) ||
-    (instructionsField.value?.includes("<tool ") ?? false);
+    enableSkillReferences &&
+    ((attachedKnowledgeField.value?.length ?? 0) > 0 ||
+      tools.length > 0 ||
+      (instructionsField.value?.includes("<knowledge ") ?? false) ||
+      (instructionsField.value?.includes("<skill ") ?? false) ||
+      (instructionsField.value?.includes("<tool ") ?? false));
 
   const syncAttachedKnowledgeFromEditor = useCallback(
     (editor: Editor) => {
@@ -508,11 +509,13 @@ export function SkillBuilderInstructionsEditor({
           editor={editor}
           isReadOnly={hasSuggestions}
         />
-        <SkillBuilderInstructionsReferenceSummary
-          attachedKnowledge={attachedKnowledgeField.value}
-          instructions={instructionsField.value ?? ""}
-          tools={tools}
-        />
+        {enableSkillReferences && (
+          <SkillBuilderInstructionsReferenceSummary
+            attachedKnowledge={attachedKnowledgeField.value}
+            instructions={instructionsField.value ?? ""}
+            tools={tools}
+          />
+        )}
       </div>
 
       {instructionsFieldState.error && (
