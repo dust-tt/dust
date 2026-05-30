@@ -82,36 +82,34 @@ export async function formatMessagesForUpsert({
             .join("\n")
         : "";
 
-      // Slack stores forwarded/shared messages in `attachments`.
+      // Slack attachments can contain forwarded/shared messages or app content.
       // Link-unfurl attachments (from_url is set) are skipped to avoid noise.
-      const forwardedInfo =
-        message.attachments?.length
-          ? "\n" +
-            message.attachments
-              .filter((a) => !a.from_url)
-              .map((a) => {
-                const parts: string[] = [];
-                if (a.author_name) {
-                  parts.push(`Forwarded from @${a.author_name}:`);
-                }
-                if (a.text) {
-                  parts.push(a.text);
-                } else if (a.fallback) {
-                  parts.push(a.fallback);
-                }
-                return parts.join("\n");
-              })
-              .filter(Boolean)
-              .join("\n---\n")
-          : "";
+      const attachmentText =
+        message.attachments
+          ?.filter((a) => !a.from_url)
+          .map((a) => {
+            const parts: string[] = [];
+            if (a.author_name) {
+              parts.push(`Forwarded from @${a.author_name}:`);
+            }
+            if (a.text) {
+              parts.push(a.text);
+            } else if (a.fallback) {
+              parts.push(a.fallback);
+            }
+            return parts.join("\n");
+          })
+          .filter(Boolean)
+          .join("\n---\n") ?? "";
+      const attachmentsInfo = attachmentText ? `\n${attachmentText}` : "";
 
       return {
         messageDate,
         dateStr: messageDateStr,
         authorName,
         authorEmail,
-        text: text + filesInfo + forwardedInfo,
-        content: text + forwardedInfo + "\n",
+        text: text + filesInfo + attachmentsInfo,
+        content: text + attachmentsInfo + "\n",
         sections: [],
       };
     })
