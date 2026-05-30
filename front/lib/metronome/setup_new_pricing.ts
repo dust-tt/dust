@@ -13,7 +13,7 @@ import {
 } from "@app/lib/metronome/constants";
 import { TOOL_CATEGORIES } from "@app/lib/metronome/events";
 import {
-  BILLING_CYCLE_CONFIG,
+  BILLING_CYCLE_CONFIG_FIRST_OF_MONTH,
   FREE_SEAT_CREDIT_NAME,
   FREE_SEAT_PRODUCT_NAME,
   getCreditTypeAwuId,
@@ -484,7 +484,7 @@ export function getNewPackages(): PackageDef[] {
           price: 24000,
         },
       ]),
-      ...BILLING_CYCLE_CONFIG,
+      ...BILLING_CYCLE_CONFIG_FIRST_OF_MONTH,
     },
     {
       name: "Enterprise Pooled EUR",
@@ -501,7 +501,7 @@ export function getNewPackages(): PackageDef[] {
           price: 240,
         },
       ]),
-      ...BILLING_CYCLE_CONFIG,
+      ...BILLING_CYCLE_CONFIG_FIRST_OF_MONTH,
     },
     {
       name: "Enterprise Seat-based USD",
@@ -522,7 +522,7 @@ export function getNewPackages(): PackageDef[] {
           price: 168000,
         },
       ]),
-      ...BILLING_CYCLE_CONFIG,
+      ...BILLING_CYCLE_CONFIG_FIRST_OF_MONTH,
     },
     {
       name: "Enterprise Seat-based EUR",
@@ -543,7 +543,7 @@ export function getNewPackages(): PackageDef[] {
           price: 1680,
         },
       ]),
-      ...BILLING_CYCLE_CONFIG,
+      ...BILLING_CYCLE_CONFIG_FIRST_OF_MONTH,
     },
     // Business USD / EUR — Pro and Max seats (plus the free starter seat) priced
     // via overrides; per-seat INDIVIDUAL AWU credit allocations (Pro: 8000 /
@@ -569,7 +569,7 @@ export function getNewPackages(): PackageDef[] {
         },
         { product_name: FREE_SEAT_PRODUCT_NAME, price: 0 },
       ]),
-      ...BILLING_CYCLE_CONFIG,
+      ...BILLING_CYCLE_CONFIG_FIRST_OF_MONTH,
     },
     {
       name: "Business EUR",
@@ -591,7 +591,7 @@ export function getNewPackages(): PackageDef[] {
         },
         { product_name: FREE_SEAT_PRODUCT_NAME, price: 0 },
       ]),
-      ...BILLING_CYCLE_CONFIG,
+      ...BILLING_CYCLE_CONFIG_FIRST_OF_MONTH,
     },
     // Free plan — entitles only the Free Seat.
     {
@@ -604,7 +604,7 @@ export function getNewPackages(): PackageDef[] {
       overrides: buildSeatEntitlementOverrides(CREDIT_TYPE_USD_ID, [
         { product_name: FREE_SEAT_PRODUCT_NAME, price: 0 },
       ]),
-      ...BILLING_CYCLE_CONFIG,
+      ...BILLING_CYCLE_CONFIG_FIRST_OF_MONTH,
     },
   ];
 }
