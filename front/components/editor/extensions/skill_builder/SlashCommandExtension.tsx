@@ -13,7 +13,7 @@ import { useSkills } from "@app/lib/swr/skill_configurations";
 import type { LightWorkspaceType } from "@app/types/user";
 import { AttachmentIcon } from "@dust-tt/sparkle";
 import { Extension } from "@tiptap/core";
-import { PluginKey } from "@tiptap/pm/state";
+import { type EditorState, Plugin, PluginKey } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
 import { ReactRenderer } from "@tiptap/react";
 import type { SuggestionOptions, SuggestionProps } from "@tiptap/suggestion";
@@ -25,6 +25,23 @@ const capabilitiesOnlySlashCommandMetaKey =
   "skillBuilderCapabilitiesOnlySlashCommand";
 
 const INSERT_KNOWLEDGE_NODE_ACTION = "insert-knowledge-node";
+
+function hasSlashCharacterAtPosition(state: EditorState, position: number) {
+  const docSize = state.doc.content.size;
+
+  if (position < 1 || position > docSize) {
+    return false;
+  }
+
+  return (
+    state.doc.textBetween(
+      position,
+      Math.min(position + 1, docSize + 1),
+      undefined,
+      "\ufffc"
+    ) === "/"
+  );
+}
 
 // Define available slash commands.
 const SLASH_COMMANDS: SlashCommand[] = [
@@ -231,7 +248,7 @@ export const SlashCommandExtension =
         // This prevents the slash command dropdown from triggering when content
         // ending with "/" is loaded programmatically via setContent on mount.
         hasBeenFocused: false,
-        showCapabilitiesOnly: false,
+        capabilitiesOnlyTriggerStart: null as number | null,
       };
     },
 
@@ -259,8 +276,6 @@ export const SlashCommandExtension =
         openCapabilitiesSlashCommand:
           () =>
           ({ chain }) => {
-            this.storage.showCapabilitiesOnly = true;
-
             const inserted = chain()
               .focus()
               .command(({ tr }) => {
@@ -269,9 +284,6 @@ export const SlashCommandExtension =
               })
               .insertContent("/")
               .run();
-            if (!inserted) {
-              this.storage.showCapabilitiesOnly = false;
-            }
 
             return inserted;
           },
@@ -286,13 +298,17 @@ export const SlashCommandExtension =
         Suggestion({
           editor: this.editor,
           ...this.options.suggestion,
-          items: ({ query }) =>
-            extensionStorage.showCapabilitiesOnly
+          items: ({ editor, query }) => {
+            const state = slashCommandPluginKey.getState(editor.state);
+
+            return state?.range.from ===
+              extensionStorage.capabilitiesOnlyTriggerStart
               ? []
-              : filterSlashCommands(query),
-          shouldShow: ({ transaction }) => {
+              : filterSlashCommands(query);
+          },
+          shouldShow: ({ range, transaction }) => {
             if (transaction.getMeta(capabilitiesOnlySlashCommandMetaKey)) {
-              extensionStorage.showCapabilitiesOnly = true;
+              extensionStorage.capabilitiesOnlyTriggerStart = range.from;
             }
 
             return true;
@@ -348,7 +364,8 @@ export const SlashCommandExtension =
                       onClose: closeSuggestionDropdown,
                       owner: extensionOptions.owner,
                       showCapabilitiesOnly:
-                        extensionStorage.showCapabilitiesOnly,
+                        props.range.from ===
+                        extensionStorage.capabilitiesOnlyTriggerStart,
                     },
                     editor: props.editor,
                   }
@@ -370,7 +387,9 @@ export const SlashCommandExtension =
                     extensionOptions.includeSkillSuggestions,
                   onClose: closeSuggestionDropdown,
                   owner: extensionOptions.owner,
-                  showCapabilitiesOnly: extensionStorage.showCapabilitiesOnly,
+                  showCapabilitiesOnly:
+                    props.range.from ===
+                    extensionStorage.capabilitiesOnlyTriggerStart,
                 });
 
                 if (!props.clientRect) {
@@ -388,7 +407,6 @@ export const SlashCommandExtension =
               },
 
               onExit() {
-                extensionStorage.showCapabilitiesOnly = false;
                 activeEditorView = null;
                 component?.element?.remove();
                 component?.destroy();
@@ -396,6 +414,22 @@ export const SlashCommandExtension =
               },
             };
           },
+        }),
+        new Plugin({
+          key: new PluginKey("skillBuilderSlashCommandCleanup"),
+          view: () => ({
+            update: (view) => {
+              const triggerStart =
+                extensionStorage.capabilitiesOnlyTriggerStart;
+
+              if (
+                triggerStart !== null &&
+                !hasSlashCharacterAtPosition(view.state, triggerStart)
+              ) {
+                extensionStorage.capabilitiesOnlyTriggerStart = null;
+              }
+            },
+          }),
         }),
       ];
     },
