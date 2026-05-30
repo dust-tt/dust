@@ -192,10 +192,10 @@ cli
   });
 
 cli
-  .command("stop [...targets]", "Stop all services in environments (or a single service)")
+  .command("stop [name] [service]", "Stop all services (or a single service) in environment")
   .alias("x")
-  .action(async (targets: string[] | undefined) => {
-    await prepareAndRun(stopCommand(targets));
+  .action(async (name: string | undefined, service: string | undefined) => {
+    await prepareAndRun(stopCommand(name, service));
   });
 
 cli

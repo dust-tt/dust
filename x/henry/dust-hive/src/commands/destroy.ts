@@ -12,7 +12,7 @@ import { getWorktreeDir } from "../lib/paths";
 import { getInstallInstructions } from "../lib/platform";
 import { cleanupServicePorts, formatBlockedPorts } from "../lib/ports";
 import { readPid, stopAllServices } from "../lib/process";
-import { restoreTerminal, selectMultipleEnvironments } from "../lib/prompt";
+import { confirm, restoreTerminal, selectMultipleEnvironments } from "../lib/prompt";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
 import type { ServiceName } from "../lib/services";
 import { type Settings, loadSettings } from "../lib/settings";
@@ -224,7 +224,28 @@ export async function destroyCommand(
     names.length > 0 ? await resolveExplicitDestroyEnvs(names) : await selectDestroyEnvs();
   if (!envsResult.ok) return envsResult;
 
+  if (names.length > 0) {
+    const confirmResult = await confirmDestroyEnvs(envsResult.value);
+    if (!confirmResult.ok) return confirmResult;
+  }
+
   return destroyEnvironments(envsResult.value, resolvedOptions, settings);
+}
+
+async function confirmDestroyEnvs(envs: Environment[]): Promise<Result<void>> {
+  const message =
+    envs.length === 1
+      ? `Destroy environment '${envs[0]?.name}'?`
+      : `Destroy ${envs.length} environment(s): ${envs.map((env) => env.name).join(", ")}?`;
+
+  const confirmed = await confirm(message, false);
+  restoreTerminal();
+
+  if (!confirmed) {
+    return Err(new CommandError("Destroy cancelled"));
+  }
+
+  return Ok(undefined);
 }
 
 async function selectDestroyEnvs(): Promise<Result<Environment[]>> {
