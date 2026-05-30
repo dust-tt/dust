@@ -145,6 +145,21 @@ export class CreditUsageConfigurationResource extends BaseResource<CreditUsageCo
     return new Ok(undefined);
   }
 
+  /**
+   * Delete all credit-usage-configuration rows for a workspace. Called during
+   * workspace deletion/scrubbing to satisfy the `ON DELETE RESTRICT` FK before
+   * the workspace row itself is removed.
+   */
+  static async deleteAllForWorkspace(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    await this.model.destroy({
+      where: { workspaceId: auth.getNonNullableWorkspace().id },
+      transaction,
+    });
+  }
+
   toJSON() {
     return {
       sId: this.sId,
