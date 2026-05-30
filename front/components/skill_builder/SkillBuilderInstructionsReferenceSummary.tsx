@@ -204,7 +204,7 @@ export function SkillBuilderInstructionsReferenceSummary({
     <div
       className={cn(
         "absolute inset-x-px bottom-px z-10 max-h-40 overflow-y-auto rounded-b-xl border-t px-3 pb-3 pt-3",
-        "border-border/70 bg-background/75 shadow-[0_-12px_24px_rgba(0,0,0,0.08)] backdrop-blur-md",
+        "border-border/70 bg-background/75 shadow-[0_-12px_24px_rgba(0,0,0,0.08)] backdrop-blur-sm",
         "dark:border-border-night/70 dark:bg-background-night/75"
       )}
     >
