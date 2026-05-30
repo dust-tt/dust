@@ -163,14 +163,14 @@ cli
   });
 
 cli
-  .command("warm [name]", "Start docker and all services")
+  .command("warm [...names]", "Start docker and all services")
   .alias("w")
   .option("-F, --no-forward", "Disable OAuth port forwarding")
   .option("-p, --force-ports", "Kill processes blocking service ports")
   .action(
-    async (name: string | undefined, options: { forward?: boolean; forcePorts?: boolean }) => {
+    async (names: string[] | undefined, options: { forward?: boolean; forcePorts?: boolean }) => {
       await prepareAndRun(
-        warmCommand(name, {
+        warmCommand(names, {
           noForward: options.forward === false,
           forcePorts: Boolean(options.forcePorts),
         })
@@ -179,10 +179,10 @@ cli
   );
 
 cli
-  .command("cool [name]", "Stop services, keep SDK watch")
+  .command("cool [...names]", "Stop services, keep SDK watch")
   .alias("c")
-  .action(async (name: string | undefined) => {
-    await prepareAndRun(coolCommand(name));
+  .action(async (names: string[] | undefined) => {
+    await prepareAndRun(coolCommand(names));
   });
 
 cli

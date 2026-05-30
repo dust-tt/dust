@@ -1,4 +1,4 @@
-import { withEnvironment } from "../lib/commands";
+import { withEnvironments } from "../lib/commands";
 import { pauseDocker } from "../lib/docker";
 import { logger } from "../lib/logger";
 import { stopService } from "../lib/process";
@@ -6,7 +6,7 @@ import { CommandError, Err, Ok } from "../lib/result";
 import { ALL_SERVICES, COLD_STATE_SERVICES } from "../lib/services";
 import { getStateInfo } from "../lib/state";
 
-export const coolCommand = withEnvironment("cool", async (env) => {
+export const coolCommand = withEnvironments("cool", async (env) => {
   // Check state
   const stateInfo = await getStateInfo(env);
   if (stateInfo.state !== "warm") {
