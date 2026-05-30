@@ -70,6 +70,48 @@ _dust_hive_envs() {
   printf '%s\n' "${result[@]}"
 }
 
+_dust_hive_envs_by_state() {
+  local desired_state="${1:?usage: _dust_hive_envs_by_state <state>}"
+  local envs=()
+  local name
+
+  while IFS= read -r name; do
+    [[ -n "$name" ]] && envs+=("$name")
+  done < <(
+    command dust-hive list 2>/dev/null | awk -v desired_state="$desired_state" '
+      /^[[:space:]]*$/ { next }
+      /^NAME[[:space:]]/ { next }
+      /^-+/ { next }
+      $2 == desired_state { print $1 }
+    '
+  )
+
+  local current
+  current="$(_dust_hive_current_env)"
+
+  local result=()
+  if [[ -n "$current" ]]; then
+    for name in "${envs[@]}"; do
+      [[ "$name" == "$current" ]] && result+=("$name")
+    done
+    for name in "${envs[@]}"; do
+      [[ "$name" != "$current" ]] && result+=("$name")
+    done
+  else
+    result=("${envs[@]}")
+  fi
+
+  printf '%s\n' "${result[@]}"
+}
+
+_dust_hive_warmable_envs() {
+  _dust_hive_envs_by_state cold
+}
+
+_dust_hive_coolable_envs() {
+  _dust_hive_envs_by_state warm
+}
+
 _dust_hive_complete() {
   local cur prev words cword
   _init_completion 2>/dev/null || {
@@ -150,11 +192,20 @@ _dust_hive_complete() {
           COMPREPLY=($(compgen -W "-F --no-forward -p --force-ports" -- "$cur"))
           ;;
         *)
-          COMPREPLY=($(compgen -W "$(_dust_hive_envs)" -- "$cur"))
+          COMPREPLY=($(compgen -W "$(_dust_hive_warmable_envs)" -- "$cur"))
           ;;
       esac
       ;;
-    cool|c|start)
+    cool|c)
+      case "$cur" in
+        -*)
+          ;;
+        *)
+          COMPREPLY=($(compgen -W "$(_dust_hive_coolable_envs)" -- "$cur"))
+          ;;
+      esac
+      ;;
+    start)
       case "$cur" in
         -*)
           ;;
