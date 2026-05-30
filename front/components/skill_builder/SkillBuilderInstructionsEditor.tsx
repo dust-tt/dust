@@ -8,6 +8,7 @@ import {
 import { SKILL_BUILDER_INSTRUCTIONS_BLUR_EVENT } from "@app/components/skill_builder/events";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
+import { SkillBuilderInstructionsReferenceSummary } from "@app/components/skill_builder/SkillBuilderInstructionsReferenceSummary";
 import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
 import { useSkillSuggestions } from "@app/hooks/useSkillSuggestions";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
@@ -22,7 +23,7 @@ import type { Config } from "dompurify";
 import DOMPurify from "dompurify";
 import debounce from "lodash/debounce";
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { useController, useFormContext } from "react-hook-form";
+import { useController, useFormContext, useWatch } from "react-hook-form";
 
 const INSTRUCTIONS_FIELD_NAME = "instructions";
 const INSTRUCTIONS_HTML_FIELD_NAME = "instructionsHtml";
@@ -94,7 +95,7 @@ export function SkillBuilderInstructionsEditor({
   onAddKnowledge,
 }: SkillBuilderInstructionsEditorProps) {
   const { compareVersion, isDiffMode } = useSkillVersionComparisonContext();
-  const { resetField } = useFormContext<SkillBuilderFormData>();
+  const { control, resetField } = useFormContext<SkillBuilderFormData>();
   const initializedAttachedKnowledgeEditorRef = useRef<Editor | null>(null);
   const { owner, skillId, selectedSuggestionId, setAcceptInstructionEdits } =
     useSkillBuilderContext();
@@ -123,9 +124,16 @@ export function SkillBuilderInstructionsEditor({
       name: ATTACHED_KNOWLEDGE_FIELD_NAME,
     }
   );
+  const tools = useWatch({ control, name: "tools" }) ?? [];
 
   const displayError =
     !!instructionsFieldState.error || !!attachedKnowledgeFieldState.error;
+  const hasInstructionReferenceSummary =
+    (attachedKnowledgeField.value?.length ?? 0) > 0 ||
+    tools.length > 0 ||
+    (instructionsField.value?.includes("<knowledge ") ?? false) ||
+    (instructionsField.value?.includes("<skill ") ?? false) ||
+    (instructionsField.value?.includes("<tool ") ?? false);
 
   const syncAttachedKnowledgeFromEditor = useCallback(
     (editor: Editor) => {
@@ -383,12 +391,19 @@ export function SkillBuilderInstructionsEditor({
               disabled: isDiffMode,
               readOnly: hasSuggestions,
             }),
-            INSTRUCTIONS_EDITOR_SIZE
+            INSTRUCTIONS_EDITOR_SIZE,
+            hasInstructionReferenceSummary && "pb-36"
           ),
         },
       },
     });
-  }, [editor, displayError, isDiffMode, hasSuggestions]);
+  }, [
+    editor,
+    displayError,
+    isDiffMode,
+    hasSuggestions,
+    hasInstructionReferenceSummary,
+  ]);
 
   // Sync external changes to the editor content
   useEffect(() => {
@@ -488,10 +503,17 @@ export function SkillBuilderInstructionsEditor({
 
   return (
     <div className="space-y-1 p-px">
-      <SkillInstructionsEditorContent
-        editor={editor}
-        isReadOnly={hasSuggestions}
-      />
+      <div className="relative overflow-hidden rounded-xl">
+        <SkillInstructionsEditorContent
+          editor={editor}
+          isReadOnly={hasSuggestions}
+        />
+        <SkillBuilderInstructionsReferenceSummary
+          attachedKnowledge={attachedKnowledgeField.value}
+          instructions={instructionsField.value ?? ""}
+          tools={tools}
+        />
+      </div>
 
       {instructionsFieldState.error && (
         <div className="dark:text-warning-night ml-2 text-xs text-warning">
