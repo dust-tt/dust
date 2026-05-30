@@ -186,16 +186,16 @@ cli
   });
 
 cli
-  .command("start [name]", "Resume stopped environment (start SDK watch)")
-  .action(async (name: string | undefined) => {
-    await prepareAndRun(startCommand(name));
+  .command("start [...names]", "Resume stopped environment (start SDK watch)")
+  .action(async (names: string[] | undefined) => {
+    await prepareAndRun(startCommand(names));
   });
 
 cli
-  .command("stop [name] [service]", "Stop all services (or a single service) in environment")
+  .command("stop [...targets]", "Stop all services in environments (or a single service)")
   .alias("x")
-  .action(async (name: string | undefined, service: string | undefined) => {
-    await prepareAndRun(stopCommand(name, service));
+  .action(async (targets: string[] | undefined) => {
+    await prepareAndRun(stopCommand(targets));
   });
 
 cli
@@ -221,18 +221,20 @@ cli
   });
 
 cli
-  .command("destroy [name]", "Remove environment")
+  .command("destroy [...names]", "Remove environments")
   .alias("rm")
   .option("-f, --force", "Force destroy even with uncommitted changes")
   .option("-k, --keep-branch", "Delete worktree but keep the git branch")
-  .action(async (name: string | undefined, options: { force?: boolean; keepBranch?: boolean }) => {
-    await prepareAndRun(
-      destroyCommand(name, {
-        force: Boolean(options.force),
-        keepBranch: Boolean(options.keepBranch),
-      })
-    );
-  });
+  .action(
+    async (names: string[] | undefined, options: { force?: boolean; keepBranch?: boolean }) => {
+      await prepareAndRun(
+        destroyCommand(names, {
+          force: Boolean(options.force),
+          keepBranch: Boolean(options.keepBranch),
+        })
+      );
+    }
+  );
 
 cli
   .command("list", "Show all environments")

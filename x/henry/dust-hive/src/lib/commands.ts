@@ -5,9 +5,9 @@ import { type Environment, getEnvironment } from "./environment";
 import { restoreTerminal, selectEnvironment } from "./prompt";
 import { CommandError, Err, Ok, type Result, envNotFoundError } from "./result";
 
-type EnvironmentNameArg = string | string[] | undefined;
+export type EnvironmentNameArg = string | string[] | undefined;
 
-function normalizeEnvironmentNames(nameArg: EnvironmentNameArg): string[] {
+export function normalizeEnvironmentNames(nameArg: EnvironmentNameArg): string[] {
   if (nameArg === undefined) {
     return [];
   }
