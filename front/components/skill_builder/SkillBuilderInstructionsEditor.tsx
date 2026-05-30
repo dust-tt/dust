@@ -1,4 +1,5 @@
 import { editorVariants } from "@app/components/editor/editorStyles";
+import type { SkillNodeAttributes } from "@app/components/editor/extensions/input_bar/SkillNode";
 import { KNOWLEDGE_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import {
@@ -86,11 +87,17 @@ function sanitizeSkillInstructionsHtml(
 
 const INSTRUCTIONS_EDITOR_SIZE = "min-h-60 max-h-[1024px]";
 
+export type SkillBuilderCapability = SkillNodeAttributes;
+
 interface SkillBuilderInstructionsEditorProps {
+  onAddCapability?: (
+    addCapability: (capability: SkillBuilderCapability) => void
+  ) => void;
   onAddKnowledge?: (addKnowledge: () => void) => void;
 }
 
 export function SkillBuilderInstructionsEditor({
+  onAddCapability,
   onAddKnowledge,
 }: SkillBuilderInstructionsEditorProps) {
   const { compareVersion, isDiffMode } = useSkillVersionComparisonContext();
@@ -260,6 +267,23 @@ export function SkillBuilderInstructionsEditor({
       onAddKnowledge(handleAddKnowledge);
     }
   }, [editor, handleAddKnowledge, onAddKnowledge]);
+
+  const handleAddCapability = useCallback(
+    (capability: SkillBuilderCapability) => {
+      if (!editor || !enableSkillReferences) {
+        return;
+      }
+
+      editor.chain().focus().insertSkillNode(capability).run();
+    },
+    [editor, enableSkillReferences]
+  );
+
+  useEffect(() => {
+    if (editor && enableSkillReferences && onAddCapability) {
+      onAddCapability(handleAddCapability);
+    }
+  }, [editor, enableSkillReferences, handleAddCapability, onAddCapability]);
 
   // Register a callback that the suggestions panel can call to accept a
   // suggestion directly via the editor's ProseMirror commands.
