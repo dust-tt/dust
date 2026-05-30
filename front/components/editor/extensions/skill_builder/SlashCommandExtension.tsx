@@ -21,6 +21,8 @@ import { exitSuggestion, Suggestion } from "@tiptap/suggestion";
 import { forwardRef, useImperativeHandle, useMemo, useRef } from "react";
 
 const slashCommandPluginKey = new PluginKey("slashCommand");
+const capabilitiesOnlySlashCommandMetaKey =
+  "skillBuilderCapabilitiesOnlySlashCommand";
 
 const INSERT_KNOWLEDGE_NODE_ACTION = "insert-knowledge-node";
 
@@ -193,7 +195,7 @@ const SkillBuilderSlashCommandDropdown = forwardRef<
   return (
     <SlashCommandDropdown
       ref={ref}
-      items={props.items}
+      items={props.showCapabilitiesOnly ? [] : props.items}
       command={props.command}
       clientRect={props.clientRect}
       onClose={props.onClose}
@@ -259,7 +261,14 @@ export const SlashCommandExtension =
           ({ chain }) => {
             this.storage.showCapabilitiesOnly = true;
 
-            const inserted = chain().focus().insertContent("/").run();
+            const inserted = chain()
+              .focus()
+              .command(({ tr }) => {
+                tr.setMeta(capabilitiesOnlySlashCommandMetaKey, true);
+                return true;
+              })
+              .insertContent("/")
+              .run();
             if (!inserted) {
               this.storage.showCapabilitiesOnly = false;
             }
@@ -281,6 +290,13 @@ export const SlashCommandExtension =
             extensionStorage.showCapabilitiesOnly
               ? []
               : filterSlashCommands(query),
+          shouldShow: ({ transaction }) => {
+            if (transaction.getMeta(capabilitiesOnlySlashCommandMetaKey)) {
+              extensionStorage.showCapabilitiesOnly = true;
+            }
+
+            return true;
+          },
           allow: () => extensionStorage.hasBeenFocused,
           command: ({ editor, range, props }) => {
             if (props.action === INSERT_KNOWLEDGE_NODE_ACTION) {
