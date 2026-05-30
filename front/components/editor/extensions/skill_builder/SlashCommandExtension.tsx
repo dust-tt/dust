@@ -44,6 +44,18 @@ const SLASH_COMMANDS: SlashCommand[] = [
   },
 ];
 
+function filterSlashCommands(query: string): SlashCommand[] {
+  if (!query || query.length === 0) {
+    return SLASH_COMMANDS;
+  }
+
+  return SLASH_COMMANDS.filter(
+    (command) =>
+      command.label.toLowerCase().includes(query.toLowerCase()) ||
+      command.tooltip?.description.toLowerCase().includes(query.toLowerCase())
+  );
+}
+
 export function buildSkillBuilderSlashCommandItems({
   baseItems,
   currentSkillId,
@@ -235,19 +247,7 @@ export const SlashCommandExtension =
           pluginKey: slashCommandPluginKey,
           allowSpaces: false,
           startOfLine: false,
-          items: ({ query }: { query: string }) => {
-            if (!query || query.length === 0) {
-              return SLASH_COMMANDS;
-            }
-
-            return SLASH_COMMANDS.filter(
-              (command) =>
-                command.label.toLowerCase().includes(query.toLowerCase()) ||
-                command.tooltip?.description
-                  .toLowerCase()
-                  .includes(query.toLowerCase())
-            );
-          },
+          items: ({ query }: { query: string }) => filterSlashCommands(query),
         },
       };
     },
@@ -277,6 +277,10 @@ export const SlashCommandExtension =
         Suggestion({
           editor: this.editor,
           ...this.options.suggestion,
+          items: ({ query }) =>
+            extensionStorage.showCapabilitiesOnly
+              ? []
+              : filterSlashCommands(query),
           allow: () => extensionStorage.hasBeenFocused,
           command: ({ editor, range, props }) => {
             if (props.action === INSERT_KNOWLEDGE_NODE_ACTION) {
