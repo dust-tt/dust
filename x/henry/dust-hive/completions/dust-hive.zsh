@@ -77,16 +77,23 @@ _dust_hive_describe_envs() {
   fi
 }
 
-_dust_hive_envs_by_state() {
-  local desired_state="${1:?usage: _dust_hive_envs_by_state <state>}"
+_dust_hive_envs_by_states() {
+  (( $# )) || return
+  local desired_states="$*"
   local -a envs
 
   envs=(${(f)"$(
-    command dust-hive list 2>/dev/null | awk -v desired_state="$desired_state" '
+    command dust-hive list 2>/dev/null | awk -v desired_states="$desired_states" '
+      BEGIN {
+        split(desired_states, states, " ")
+        for (i in states) {
+          state_set[states[i]] = 1
+        }
+      }
       /^[[:space:]]*$/ { next }
       /^NAME[[:space:]]/ { next }
       /^-+/ { next }
-      $2 == desired_state { print $1 }
+      state_set[$2] { print $1 }
     '
   )"})
 
@@ -94,11 +101,23 @@ _dust_hive_envs_by_state() {
 }
 
 _dust_hive_warmable_envs() {
-  _dust_hive_envs_by_state cold
+  _dust_hive_envs_by_states cold
+}
+
+_dust_hive_warm_envs() {
+  _dust_hive_envs_by_states warm
 }
 
 _dust_hive_coolable_envs() {
-  _dust_hive_envs_by_state warm
+  _dust_hive_warm_envs
+}
+
+_dust_hive_startable_envs() {
+  _dust_hive_envs_by_states stopped
+}
+
+_dust_hive_stoppable_envs() {
+  _dust_hive_envs_by_states cold warm
 }
 
 _dust_hive_service() {
@@ -203,11 +222,11 @@ _dust-hive() {
           _arguments '1::name:_dust_hive_coolable_envs'
           ;;
         start)
-          _arguments '1::name:_dust_hive_envs'
+          _arguments '1::name:_dust_hive_startable_envs'
           ;;
         stop|x)
           _arguments \
-            '1::name:_dust_hive_envs' \
+            '1::name:_dust_hive_stoppable_envs' \
             '2::service:_dust_hive_service'
           ;;
         up)
@@ -284,12 +303,12 @@ _dust-hive() {
           ;;
         feed)
           _arguments \
-            '1::name:_dust_hive_envs' \
+            '1::name:_dust_hive_warm_envs' \
             '2::scenario:'
           ;;
         flag)
           _arguments \
-            '1::name:_dust_hive_envs' \
+            '1::name:_dust_hive_warm_envs' \
             '2::flag name:' \
             '-d[Disable the flag]' \
             '--disable[Disable the flag]'
