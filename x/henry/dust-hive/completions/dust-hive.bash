@@ -70,19 +70,26 @@ _dust_hive_envs() {
   printf '%s\n' "${result[@]}"
 }
 
-_dust_hive_envs_by_state() {
-  local desired_state="${1:?usage: _dust_hive_envs_by_state <state>}"
+_dust_hive_envs_by_states() {
+  local desired_states=("$@")
+  [[ ${#desired_states[@]} -gt 0 ]] || return
   local envs=()
   local name
 
   while IFS= read -r name; do
     [[ -n "$name" ]] && envs+=("$name")
   done < <(
-    command dust-hive list 2>/dev/null | awk -v desired_state="$desired_state" '
+    command dust-hive list 2>/dev/null | awk -v desired_states="${desired_states[*]}" '
+      BEGIN {
+        split(desired_states, states, " ")
+        for (i in states) {
+          state_set[states[i]] = 1
+        }
+      }
       /^[[:space:]]*$/ { next }
       /^NAME[[:space:]]/ { next }
       /^-+/ { next }
-      $2 == desired_state { print $1 }
+      state_set[$2] { print $1 }
     '
   )
 
@@ -105,11 +112,23 @@ _dust_hive_envs_by_state() {
 }
 
 _dust_hive_warmable_envs() {
-  _dust_hive_envs_by_state cold
+  _dust_hive_envs_by_states cold
+}
+
+_dust_hive_warm_envs() {
+  _dust_hive_envs_by_states warm
 }
 
 _dust_hive_coolable_envs() {
-  _dust_hive_envs_by_state warm
+  _dust_hive_warm_envs
+}
+
+_dust_hive_startable_envs() {
+  _dust_hive_envs_by_states stopped
+}
+
+_dust_hive_stoppable_envs() {
+  _dust_hive_envs_by_states cold warm
 }
 
 _dust_hive_complete() {
@@ -210,7 +229,7 @@ _dust_hive_complete() {
         -*)
           ;;
         *)
-          COMPREPLY=($(compgen -W "$(_dust_hive_envs)" -- "$cur"))
+          COMPREPLY=($(compgen -W "$(_dust_hive_startable_envs)" -- "$cur"))
           ;;
       esac
       ;;
@@ -221,7 +240,7 @@ _dust_hive_complete() {
         [[ "${COMP_WORDS[$i]}" != -* ]] && (( pos++ ))
       done
       if (( pos == 0 )); then
-        COMPREPLY=($(compgen -W "$(_dust_hive_envs)" -- "$cur"))
+        COMPREPLY=($(compgen -W "$(_dust_hive_stoppable_envs)" -- "$cur"))
       elif (( pos == 1 )); then
         COMPREPLY=($(compgen -W "${_dust_hive_services[*]}" -- "$cur"))
       fi
@@ -307,7 +326,7 @@ _dust_hive_complete() {
         [[ "${COMP_WORDS[$i]}" != -* ]] && (( pos++ ))
       done
       if (( pos == 0 )); then
-        COMPREPLY=($(compgen -W "$(_dust_hive_envs)" -- "$cur"))
+        COMPREPLY=($(compgen -W "$(_dust_hive_warm_envs)" -- "$cur"))
       fi
       ;;
     flag)
@@ -321,7 +340,7 @@ _dust_hive_complete() {
             [[ "${COMP_WORDS[$i]}" != -* ]] && (( pos++ ))
           done
           if (( pos == 0 )); then
-            COMPREPLY=($(compgen -W "$(_dust_hive_envs)" -- "$cur"))
+            COMPREPLY=($(compgen -W "$(_dust_hive_warm_envs)" -- "$cur"))
           fi
           ;;
       esac
