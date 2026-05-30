@@ -290,7 +290,7 @@ _dust-hive() {
           _arguments '*::names:_dust_hive_coolable_envs'
           ;;
         start)
-          _arguments '1::name:_dust_hive_startable_envs'
+          _arguments '*::names:_dust_hive_startable_envs'
           ;;
         stop|x)
           _arguments \
@@ -313,7 +313,7 @@ _dust-hive() {
           ;;
         destroy|rm)
           _arguments \
-            '1::name:_dust_hive_envs' \
+            '*::names:_dust_hive_envs' \
             '-f[Force destroy even with uncommitted changes]' \
             '--force[Force destroy even with uncommitted changes]' \
             '-k[Keep the git branch]' \

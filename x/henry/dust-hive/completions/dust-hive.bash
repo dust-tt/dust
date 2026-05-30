@@ -300,7 +300,7 @@ _dust_hive_complete() {
       esac
       ;;
     stop|x)
-      # 1st positional = env, 2nd = service
+      # 1st positional = env, 2nd = service or another env, later positionals = envs
       local pos=0
       for (( i=cmd_index+1; i<cword; i++ )); do
         [[ "${COMP_WORDS[$i]}" != -* ]] && (( pos++ ))
@@ -308,7 +308,9 @@ _dust_hive_complete() {
       if (( pos == 0 )); then
         COMPREPLY=($(compgen -W "$(_dust_hive_stoppable_envs)" -- "$cur"))
       elif (( pos == 1 )); then
-        COMPREPLY=($(compgen -W "${_dust_hive_services[*]}" -- "$cur"))
+        COMPREPLY=($(compgen -W "${_dust_hive_services[*]} $(_dust_hive_envs)" -- "$cur"))
+      else
+        COMPREPLY=($(compgen -W "$(_dust_hive_envs)" -- "$cur"))
       fi
       ;;
     up)

@@ -166,9 +166,9 @@ dust-hive down
 | `spawn [NAME] [--no-open] [--no-attach] [--warm] [--wait]` | Create new environment |
 | `warm [NAME...] [--no-forward] [--force-ports]` | Start docker + all services |
 | `cool [NAME...]` | Pause services + docker, keep SDK (fast restart) |
-| `start [NAME]` | Resume stopped environment (when NAME provided) |
-| `stop [NAME]` | Full stop + remove docker containers |
-| `destroy [NAME] [--force]` | Remove environment completely (multi-select if NAME omitted) |
+| `start [NAME...]` | Resume stopped environments |
+| `stop [NAME...]` | Full stop + remove docker containers; `stop NAME SERVICE` stops one service |
+| `destroy [NAME...] [--force]` | Remove environments completely (multi-select if NAME omitted) |
 | `restart [NAME] SERVICE` | Restart a single service |
 | `open [NAME]` | Open zellij terminal session |
 | `reload [NAME]` | Kill and reopen zellij session |
