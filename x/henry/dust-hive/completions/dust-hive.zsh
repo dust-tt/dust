@@ -280,14 +280,14 @@ _dust-hive() {
           ;;
         warm|w)
           _arguments \
-            '1::name:_dust_hive_warmable_envs' \
+            '*::names:_dust_hive_warmable_envs' \
             '-F[Disable OAuth port forwarding]' \
             '--no-forward[Disable OAuth port forwarding]' \
             '-p[Kill processes blocking service ports]' \
             '--force-ports[Kill processes blocking service ports]'
           ;;
         cool|c)
-          _arguments '1::name:_dust_hive_coolable_envs'
+          _arguments '*::names:_dust_hive_coolable_envs'
           ;;
         start)
           _arguments '1::name:_dust_hive_startable_envs'
