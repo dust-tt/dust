@@ -56,6 +56,13 @@ _dust_hive_envs() {
   fi
   (( $#envs )) || return
 
+  _dust_hive_describe_envs "${envs[@]}"
+}
+
+_dust_hive_describe_envs() {
+  local -a envs=("$@")
+  (( $#envs )) || return
+
   local current
   current="$(_dust_hive_current_env)"
 
@@ -68,6 +75,30 @@ _dust_hive_envs() {
   else
     _describe -V 'environment' envs
   fi
+}
+
+_dust_hive_envs_by_state() {
+  local desired_state="${1:?usage: _dust_hive_envs_by_state <state>}"
+  local -a envs
+
+  envs=(${(f)"$(
+    command dust-hive list 2>/dev/null | awk -v desired_state="$desired_state" '
+      /^[[:space:]]*$/ { next }
+      /^NAME[[:space:]]/ { next }
+      /^-+/ { next }
+      $2 == desired_state { print $1 }
+    '
+  )"})
+
+  _dust_hive_describe_envs "${envs[@]}"
+}
+
+_dust_hive_warmable_envs() {
+  _dust_hive_envs_by_state cold
+}
+
+_dust_hive_coolable_envs() {
+  _dust_hive_envs_by_state warm
 }
 
 _dust_hive_service() {
@@ -162,14 +193,14 @@ _dust-hive() {
           ;;
         warm|w)
           _arguments \
-            '1::name:_dust_hive_envs' \
+            '1::name:_dust_hive_warmable_envs' \
             '-F[Disable OAuth port forwarding]' \
             '--no-forward[Disable OAuth port forwarding]' \
             '-p[Kill processes blocking service ports]' \
             '--force-ports[Kill processes blocking service ports]'
           ;;
         cool|c)
-          _arguments '1::name:_dust_hive_envs'
+          _arguments '1::name:_dust_hive_coolable_envs'
           ;;
         start)
           _arguments '1::name:_dust_hive_envs'
