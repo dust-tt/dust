@@ -81,6 +81,7 @@ interface SkillBuilderSlashCommandDropdownProps
   includeSkillSuggestions: boolean;
   onClose: () => void;
   owner?: LightWorkspaceType;
+  showCapabilitiesOnly: boolean;
 }
 
 interface SkillBuilderSlashCommandDropdownWithSkillsProps
@@ -93,7 +94,16 @@ const SkillBuilderSlashCommandDropdownWithSkills = forwardRef<
   SkillBuilderSlashCommandDropdownWithSkillsProps
 >(
   (
-    { clientRect, command, currentSkillId, items, onClose, owner, query },
+    {
+      clientRect,
+      command,
+      currentSkillId,
+      items,
+      onClose,
+      owner,
+      query,
+      showCapabilitiesOnly,
+    },
     ref
   ) => {
     const dropdownRef = useRef<SlashCommandDropdownRef>(null);
@@ -107,13 +117,13 @@ const SkillBuilderSlashCommandDropdownWithSkills = forwardRef<
     const slashCommandItems = useMemo(
       () =>
         buildSkillBuilderSlashCommandItems({
-          baseItems: items,
+          baseItems: showCapabilitiesOnly ? [] : items,
           currentSkillId,
           includeSkillSuggestions: true,
           query,
           skills,
         }),
-      [currentSkillId, items, query, skills]
+      [currentSkillId, items, query, showCapabilitiesOnly, skills]
     );
 
     useImperativeHandle(
@@ -189,6 +199,14 @@ export interface SlashCommandExtensionOptions {
   suggestion: Partial<SuggestionOptions>;
 }
 
+declare module "@tiptap/core" {
+  interface Commands<ReturnType> {
+    skillBuilderSlashCommand: {
+      openCapabilitiesSlashCommand: () => ReturnType;
+    };
+  }
+}
+
 export const SlashCommandExtension =
   Extension.create<SlashCommandExtensionOptions>({
     name: "slashCommand",
@@ -199,6 +217,7 @@ export const SlashCommandExtension =
         // This prevents the slash command dropdown from triggering when content
         // ending with "/" is loaded programmatically via setContent on mount.
         hasBeenFocused: false,
+        showCapabilitiesOnly: false,
       };
     },
 
@@ -230,6 +249,23 @@ export const SlashCommandExtension =
             );
           },
         },
+      };
+    },
+
+    addCommands() {
+      return {
+        openCapabilitiesSlashCommand:
+          () =>
+          ({ chain }) => {
+            this.storage.showCapabilitiesOnly = true;
+
+            const inserted = chain().focus().insertContent("/").run();
+            if (!inserted) {
+              this.storage.showCapabilitiesOnly = false;
+            }
+
+            return inserted;
+          },
       };
     },
 
@@ -291,6 +327,8 @@ export const SlashCommandExtension =
                         extensionOptions.includeSkillSuggestions,
                       onClose: closeSuggestionDropdown,
                       owner: extensionOptions.owner,
+                      showCapabilitiesOnly:
+                        extensionStorage.showCapabilitiesOnly,
                     },
                     editor: props.editor,
                   }
@@ -312,6 +350,7 @@ export const SlashCommandExtension =
                     extensionOptions.includeSkillSuggestions,
                   onClose: closeSuggestionDropdown,
                   owner: extensionOptions.owner,
+                  showCapabilitiesOnly: extensionStorage.showCapabilitiesOnly,
                 });
 
                 if (!props.clientRect) {
@@ -329,6 +368,7 @@ export const SlashCommandExtension =
               },
 
               onExit() {
+                extensionStorage.showCapabilitiesOnly = false;
                 activeEditorView = null;
                 component?.element?.remove();
                 component?.destroy();

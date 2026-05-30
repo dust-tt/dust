@@ -268,7 +268,7 @@ export function SkillBuilderInstructionsEditor({
       return;
     }
 
-    editor.chain().focus().insertContent("/").run();
+    editor.commands.openCapabilitiesSlashCommand();
   }, [editor, enableSkillReferences]);
 
   useEffect(() => {
