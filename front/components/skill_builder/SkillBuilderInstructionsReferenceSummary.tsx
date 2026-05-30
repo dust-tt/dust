@@ -6,6 +6,7 @@ import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getSkillIcon } from "@app/lib/skill";
 import { extractSkillTags } from "@app/lib/skills/format";
 import { extractToolTags } from "@app/lib/tools/format";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { AttachmentChip, Chip, cn, DocumentIcon } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
@@ -14,6 +15,25 @@ interface SkillBuilderInstructionsReferenceSummaryProps {
   instructions: string;
   tools: BuilderAction[];
 }
+
+type ReferenceSummaryItem =
+  | {
+      id: string;
+      kind: "knowledge";
+      title: string;
+    }
+  | {
+      icon: string | null;
+      id: string;
+      kind: "skill";
+      title: string;
+    }
+  | {
+      icon: string | null;
+      id: string;
+      kind: "tool";
+      title: string;
+    };
 
 function dedupeById<T extends { id: string }>(items: T[]): T[] {
   const seenIds = new Set<string>();
@@ -26,6 +46,53 @@ function dedupeById<T extends { id: string }>(items: T[]): T[] {
     seenIds.add(item.id);
     return true;
   });
+}
+
+function compareReferenceSummaryItems(
+  a: ReferenceSummaryItem,
+  b: ReferenceSummaryItem
+) {
+  return (
+    a.title.localeCompare(b.title, undefined, { sensitivity: "base" }) ||
+    a.kind.localeCompare(b.kind) ||
+    a.id.localeCompare(b.id)
+  );
+}
+
+function renderReferenceSummaryItem(item: ReferenceSummaryItem) {
+  switch (item.kind) {
+    case "knowledge":
+      return (
+        <AttachmentChip
+          key={`${item.kind}:${item.id}`}
+          label={item.title}
+          icon={{ visual: DocumentIcon }}
+          color="white"
+          size="xs"
+        />
+      );
+    case "skill":
+      return (
+        <Chip
+          key={`${item.kind}:${item.id}`}
+          label={item.title}
+          icon={getSkillIcon(item.icon)}
+          color="white"
+          size="xs"
+        />
+      );
+    case "tool":
+      return (
+        <ToolChip
+          key={`${item.kind}:${item.id}`}
+          title={item.title}
+          toolIcon={item.icon}
+          color="white"
+        />
+      );
+    default:
+      return assertNever(item);
+  }
 }
 
 export function SkillBuilderInstructionsReferenceSummary({
@@ -104,12 +171,32 @@ export function SkillBuilderInstructionsReferenceSummary({
     ...selectedToolReferences,
   ]);
 
-  const hasReferences =
-    knowledgeReferences.length > 0 ||
-    skillReferences.length > 0 ||
-    toolReferences.length > 0;
+  const referenceItems = useMemo(
+    () =>
+      [
+        ...knowledgeReferences.map(
+          (item): ReferenceSummaryItem => ({
+            ...item,
+            kind: "knowledge",
+          })
+        ),
+        ...skillReferences.map(
+          (skill): ReferenceSummaryItem => ({
+            ...skill,
+            kind: "skill",
+          })
+        ),
+        ...toolReferences.map(
+          (tool): ReferenceSummaryItem => ({
+            ...tool,
+            kind: "tool",
+          })
+        ),
+      ].toSorted(compareReferenceSummaryItems),
+    [knowledgeReferences, skillReferences, toolReferences]
+  );
 
-  if (!hasReferences) {
+  if (referenceItems.length === 0) {
     return null;
   }
 
@@ -125,32 +212,7 @@ export function SkillBuilderInstructionsReferenceSummary({
         Capabilities and knowledge
       </div>
       <div className="flex flex-wrap gap-2">
-        {skillReferences.map((skill) => (
-          <Chip
-            key={skill.id}
-            label={skill.title}
-            icon={getSkillIcon(skill.icon)}
-            color="white"
-            size="xs"
-          />
-        ))}
-        {knowledgeReferences.map((item) => (
-          <AttachmentChip
-            key={item.id}
-            label={item.title}
-            icon={{ visual: DocumentIcon }}
-            color="white"
-            size="xs"
-          />
-        ))}
-        {toolReferences.map((tool) => (
-          <ToolChip
-            key={tool.id}
-            title={tool.title}
-            toolIcon={tool.icon}
-            color="white"
-          />
-        ))}
+        {referenceItems.map(renderReferenceSummaryItem)}
       </div>
     </div>
   );
