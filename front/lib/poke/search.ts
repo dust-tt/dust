@@ -17,7 +17,6 @@ import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { WorkspaceVerificationAttemptResource } from "@app/lib/resources/workspace_verification_attempt_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import type { ConnectorType } from "@app/types/data_source";
@@ -197,23 +196,24 @@ async function searchPokeDataSourcesByDustAPIId(
   auth: Authenticator,
   searchTerm: string
 ): Promise<PokeItemBase[]> {
-  let dataSources: DataSourceResource[] = [];
+  let dataSource: DataSourceResource | null = null;
   if (DUST_API_DATA_SOURCE_ID_REGEX.test(searchTerm)) {
-    dataSources = await DataSourceResource.fetchByDustAPIDataSourceIds(auth, [
-      searchTerm,
-    ]);
+    dataSource = await DataSourceResource.fetchByDustAPIDataSourceId(
+      auth,
+      searchTerm
+    );
   } else if (DUST_API_PROJECT_ID_REGEX.test(searchTerm)) {
-    dataSources = await DataSourceResource.fetchByDustAPIProjectId(
+    dataSource = await DataSourceResource.fetchByDustAPIProjectId(
       auth,
       searchTerm
     );
   }
 
-  return concurrentExecutor(
-    dataSources,
-    (dataSource) => dataSourceToPokeJSON(dataSource),
-    { concurrency: 8 }
-  );
+  if (!dataSource) {
+    return [];
+  }
+
+  return [await dataSourceToPokeJSON(dataSource)];
 }
 
 async function searchByPhoneNumber(

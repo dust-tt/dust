@@ -363,8 +363,8 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
     auth: Authenticator,
     dustAPIProjectId: string,
     options?: FetchDataSourceOptions
-  ) {
-    return this.baseFetch(auth, options, {
+  ): Promise<DataSourceResource | null> {
+    const [dataSource] = await this.baseFetch(auth, options, {
       where: {
         dustAPIProjectId,
       },
@@ -373,6 +373,8 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
       // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
+
+    return dataSource ?? null;
   }
 
   static async listByWorkspace(
