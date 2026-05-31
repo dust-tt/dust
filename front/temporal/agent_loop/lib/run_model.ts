@@ -375,7 +375,10 @@ export async function runModel(
   });
 
   const isNewFileExplorer = conversation.metadata?.useFileSystem === true;
-  const hasSandboxTools = await hasFeatureFlag(auth, "sandbox_tools");
+  const [hasSandboxTools, hasNestedSkills] = await Promise.all([
+    hasFeatureFlag(auth, "sandbox_tools"),
+    hasFeatureFlag(auth, "nested_skills"),
+  ]);
 
   const prompt = constructPromptMultiActions(auth, {
     userMessage,
@@ -397,6 +400,7 @@ export async function runModel(
     projectContext,
     isNewFileExplorer,
     hasSandboxTools,
+    hasNestedSkills,
   });
   const leadingMessages = removeNulls([
     renderEquippedSkillsUserMessage(equippedSkills),

@@ -11,7 +11,7 @@ import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { getSkillServers } from "@app/lib/api/assistant/skill_actions";
 import { renderEquippedSkillsUserMessage } from "@app/lib/api/assistant/skills_rendering";
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
-import { Authenticator } from "@app/lib/auth";
+import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { constructProjectContext } from "@app/lib/resources/skill/code_defined/projects";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -182,6 +182,7 @@ makeScript(
     });
 
     const isNewFileExplorer = conversation.metadata?.useFileSystem === true;
+    const hasNestedSkills = await hasFeatureFlag(auth, "nested_skills");
 
     const promptSections = constructPromptMultiActions(auth, {
       userMessage,
@@ -198,6 +199,7 @@ makeScript(
       equippedSkills,
       projectContext,
       isNewFileExplorer,
+      hasNestedSkills,
     });
     const prompt = systemPromptToText(promptSections);
     const leadingMessages = removeNulls([
