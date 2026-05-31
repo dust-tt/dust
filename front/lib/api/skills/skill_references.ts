@@ -1,5 +1,11 @@
 import type { Authenticator } from "@app/lib/auth";
-import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { SkillConfigurationModel } from "@app/lib/models/skill";
+import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/global_registry";
+import { SystemSkillsRegistry } from "@app/lib/resources/skill/code_defined/system_registry";
+import {
+  getResourceIdFromSId,
+  isResourceSId,
+} from "@app/lib/resources/string_ids";
 import {
   extractUniqueSkillIds,
   parseSkillReferenceTag,
@@ -8,7 +14,9 @@ import {
   serializeUnavailableSkillTag,
 } from "@app/lib/skills/format";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type { ModelId } from "@app/types/shared/model_id";
 import { Err, Ok, type Result } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
 
 export type SkillInstructionsOverride = {
   instructionsOverride?: string;
@@ -17,28 +25,111 @@ export type SkillInstructionsOverride = {
 const UNAVAILABLE_SKILL_TAG_REGEX =
   /<unavailable_skill\s+([^>]*?)\s*(?:\/>|><\/unavailable_skill>)/g;
 
-export async function getUnavailableSkillReferenceIds(
-  auth: Authenticator,
-  contents: (string | null | undefined)[]
-): Promise<Set<string>> {
-  const skillIds = [
-    ...new Set(
-      contents.flatMap((content) => extractUniqueSkillIds(content ?? ""))
-    ),
-  ];
+type SkillReferenceParent = {
+  contents: (string | null | undefined)[];
+  requestedSpaceIds: readonly ModelId[];
+};
 
-  if (skillIds.length === 0) {
-    return new Set();
+async function fetchReferencedSkillRequestedSpaceIds(
+  auth: Authenticator,
+  skillIds: string[]
+): Promise<Map<string, readonly ModelId[]>> {
+  const workspace = auth.getNonNullableWorkspace();
+  const requestedSpaceIdsBySkillId = new Map<string, readonly ModelId[]>();
+  const customSkillSIdByModelId = new Map<ModelId, string>();
+  const globalSkillIds: string[] = [];
+
+  for (const skillId of skillIds) {
+    if (isResourceSId("skill", skillId)) {
+      const modelId = getResourceIdFromSId(skillId);
+      if (modelId !== null) {
+        customSkillSIdByModelId.set(modelId, skillId);
+      }
+    } else {
+      globalSkillIds.push(skillId);
+    }
   }
 
-  const accessibleSkills = await SkillResource.fetchByIds(auth, skillIds);
-  const accessibleSkillIds = new Set(
-    accessibleSkills.map((skill) => skill.sId)
+  const customSkillIds = [...customSkillSIdByModelId.keys()];
+  if (customSkillIds.length > 0) {
+    const customSkills = await SkillConfigurationModel.findAll({
+      where: {
+        id: customSkillIds,
+        status: ["active", "archived", "suggested"],
+        workspaceId: workspace.id,
+      },
+      attributes: ["id", "requestedSpaceIds"],
+    });
+
+    for (const skill of customSkills) {
+      const sId = customSkillSIdByModelId.get(skill.id);
+      if (sId) {
+        requestedSpaceIdsBySkillId.set(sId, skill.requestedSpaceIds);
+      }
+    }
+  }
+
+  if (globalSkillIds.length > 0) {
+    const [globalSkills, systemSkills] = await Promise.all([
+      GlobalSkillsRegistry.findAll(auth, { sId: globalSkillIds }),
+      SystemSkillsRegistry.findAll(auth, { sId: globalSkillIds }),
+    ]);
+
+    for (const skill of [...globalSkills, ...systemSkills]) {
+      requestedSpaceIdsBySkillId.set(skill.sId, []);
+    }
+  }
+
+  return requestedSpaceIdsBySkillId;
+}
+
+export async function getUnavailableSkillReferenceIdsByParent(
+  auth: Authenticator,
+  parents: SkillReferenceParent[]
+): Promise<Set<string>[]> {
+  const skillIdsByParent = parents.map((parent) => [
+    ...new Set(
+      parent.contents.flatMap((content) => extractUniqueSkillIds(content ?? ""))
+    ),
+  ]);
+
+  const skillIds = [...new Set(skillIdsByParent.flat())];
+
+  if (skillIds.length === 0) {
+    return parents.map(() => new Set());
+  }
+
+  const requestedSpaceIdsBySkillId =
+    await fetchReferencedSkillRequestedSpaceIds(auth, skillIds);
+
+  return parents.map((parent, index) => {
+    const parentRequestedSpaceIds = new Set(parent.requestedSpaceIds);
+
+    return new Set(
+      skillIdsByParent[index].filter((skillId) => {
+        const childRequestedSpaceIds = requestedSpaceIdsBySkillId.get(skillId);
+
+        return (
+          !childRequestedSpaceIds ||
+          !childRequestedSpaceIds.every((spaceId) =>
+            parentRequestedSpaceIds.has(spaceId)
+          )
+        );
+      })
+    );
+  });
+}
+
+export async function getUnavailableSkillReferenceIdsForParent(
+  auth: Authenticator,
+  parent: SkillReferenceParent
+): Promise<Set<string>> {
+  const [unavailableSkillIds] = await getUnavailableSkillReferenceIdsByParent(
+    auth,
+    [parent]
   );
 
-  return new Set(
-    skillIds.filter((skillId) => !accessibleSkillIds.has(skillId))
-  );
+  return unavailableSkillIds;
 }
 
 export function replaceUnavailableSkillReferences(
@@ -65,10 +156,15 @@ export async function replaceUnavailableSkillReferencesForFrontend(
   auth: Authenticator,
   skill: SkillType
 ): Promise<SkillType> {
-  const unavailableSkillIds = await getUnavailableSkillReferenceIds(auth, [
-    skill.instructions,
-    skill.instructionsHtml,
-  ]);
+  const unavailableSkillIds = await getUnavailableSkillReferenceIdsForParent(
+    auth,
+    {
+      contents: [skill.instructions, skill.instructionsHtml],
+      requestedSpaceIds: removeNulls(
+        skill.requestedSpaceIds.map(getResourceIdFromSId)
+      ),
+    }
+  );
 
   if (unavailableSkillIds.size === 0) {
     return skill;

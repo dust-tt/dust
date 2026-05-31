@@ -39,6 +39,7 @@ describe("skill reference availability", () => {
       adminAuth,
       inaccessibleSkill,
       requestAuth,
+      restrictedSpace,
     };
   }
 
@@ -72,6 +73,51 @@ describe("skill reference availability", () => {
     );
     expect(renderedSkill.instructionsHtml).toContain(
       `<unavailable_skill id="${inaccessibleSkill.sId}"></unavailable_skill>`
+    );
+  });
+
+  it("uses parent requested spaces instead of requester permissions", async () => {
+    const { adminAuth, inaccessibleSkill, restrictedSpace } = await setup();
+    const addAdminToRestrictedSpaceRes = await restrictedSpace.addMembers(
+      adminAuth,
+      { userIds: [adminAuth.getNonNullableUser().sId] }
+    );
+    expect(addAdminToRestrictedSpaceRes.isOk()).toBe(true);
+    await adminAuth.refresh();
+
+    expect(
+      await SkillResource.fetchById(adminAuth, inaccessibleSkill.sId)
+    ).not.toBeNull();
+
+    const parentWithoutChildSpaces = await SkillFactory.create(adminAuth, {
+      name: "Parent without child spaces",
+      instructions: `Use <skill id="${inaccessibleSkill.sId}" name="${inaccessibleSkill.name}" />.`,
+    });
+
+    const renderedParentWithoutChildSpaces =
+      await replaceUnavailableSkillReferencesForFrontend(
+        adminAuth,
+        parentWithoutChildSpaces.toJSON(adminAuth)
+      );
+
+    expect(renderedParentWithoutChildSpaces.instructions).toContain(
+      `<unavailable_skill id="${inaccessibleSkill.sId}" />`
+    );
+
+    const parentWithChildSpaces = await SkillFactory.create(adminAuth, {
+      name: "Parent with child spaces",
+      instructions: `Use <skill id="${inaccessibleSkill.sId}" name="${inaccessibleSkill.name}" />.`,
+      requestedSpaceIds: [restrictedSpace.id],
+    });
+
+    const renderedParentWithChildSpaces =
+      await replaceUnavailableSkillReferencesForFrontend(
+        adminAuth,
+        parentWithChildSpaces.toJSON(adminAuth)
+      );
+
+    expect(renderedParentWithChildSpaces.instructions).toContain(
+      `<skill id="${inaccessibleSkill.sId}" name="${inaccessibleSkill.name}" />`
     );
   });
 
