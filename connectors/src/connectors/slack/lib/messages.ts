@@ -90,18 +90,18 @@ export async function formatMessagesForUpsert({
               a.is_msg_unfurl || a.is_reply_unfurl || a.is_thread_root_unfurl
           )
           .map((a) => {
-            const parts: string[] = [];
-            if (a.author_name) {
-              parts.push(`Forwarded from @${a.author_name}:`);
+            const forwardedMessageBody = a.text || a.fallback;
+            if (!forwardedMessageBody?.trim()) {
+              return null;
             }
-            if (a.text) {
-              parts.push(a.text);
-            } else if (a.fallback) {
-              parts.push(a.fallback);
-            }
-            return parts.join("\n");
+
+            const forwardedMessageHeader = a.author_name
+              ? `Forwarded from @${a.author_name}:`
+              : "Forwarded message:";
+
+            return `${forwardedMessageHeader}\n${forwardedMessageBody}`;
           })
-          .filter(Boolean)
+          .filter((text): text is string => text !== null)
           .join("\n---\n") ?? "";
       const forwardedMessagesInfo = forwardedMessagesText
         ? `\n${forwardedMessagesText}`
