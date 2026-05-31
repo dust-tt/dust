@@ -1,12 +1,13 @@
-import { resolveEnabledSkillReferencesForAgentLoop } from "@app/lib/api/assistant/skill_references";
+import {
+  resolveEnabledSkillReferencesForAgentLoop,
+  resolveSkillReferencesForAgentLoop,
+} from "@app/lib/api/assistant/skill_references";
 import { getEnabledSkillInstructions } from "@app/lib/api/assistant/skills_rendering";
-import { Authenticator } from "@app/lib/auth";
+import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { UserFactory } from "@app/tests/utils/UserFactory";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 describe("agent loop skill reference availability", () => {
@@ -14,67 +15,101 @@ describe("agent loop skill reference availability", () => {
     vi.restoreAllMocks();
   });
 
-  it("replaces unavailable skill references in skill instructions", async () => {
+  it("uses parent requested spaces for enabled and extended skill references", async () => {
     const { authenticator: adminAuth, workspace } = await createResourceTest({
       role: "admin",
     });
-    const requestUser = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, requestUser, {
-      role: "user",
-    });
-    const requestAuth = await Authenticator.fromUserIdAndWorkspaceId(
-      requestUser.sId,
-      workspace.sId
-    );
-
-    const accessibleSkill = await SkillFactory.create(adminAuth, {
-      name: "Accessible skill",
-    });
     const restrictedSpace = await SpaceFactory.regular(workspace);
-    const inaccessibleSkill = await SkillFactory.create(adminAuth, {
-      name: "Restricted skill",
+    const addAdminToRestrictedSpaceRes = await restrictedSpace.addMembers(
+      adminAuth,
+      { userIds: [adminAuth.getNonNullableUser().sId] }
+    );
+    expect(addAdminToRestrictedSpaceRes.isOk()).toBe(true);
+    await adminAuth.refresh();
+
+    const restrictedChildSkill = await SkillFactory.create(adminAuth, {
+      name: "Restricted child skill",
       requestedSpaceIds: [restrictedSpace.id],
     });
-    const skill = await SkillFactory.create(adminAuth, {
-      name: "Parent skill",
-      instructions:
-        `Use <skill id="${accessibleSkill.sId}" name="${accessibleSkill.name}" /> ` +
-        `and <skill id="${inaccessibleSkill.sId}" name="${inaccessibleSkill.name}" />.`,
+
+    expect(
+      await SkillResource.fetchById(adminAuth, restrictedChildSkill.sId)
+    ).not.toBeNull();
+
+    const parentWithoutChildSpaces = await SkillFactory.create(adminAuth, {
+      name: "Parent without child spaces",
+      instructions: `Use <skill id="${restrictedChildSkill.sId}" name="${restrictedChildSkill.name}" />.`,
+    });
+    const parentWithChildSpaces = await SkillFactory.create(adminAuth, {
+      name: "Parent with child spaces",
+      instructions: `Use <skill id="${restrictedChildSkill.sId}" name="${restrictedChildSkill.name}" />.`,
+      requestedSpaceIds: [restrictedSpace.id],
+    });
+    const parentWithExtendedSkill = await SkillFactory.create(adminAuth, {
+      name: "Parent with extended skill",
+      instructions: "Base instructions.",
     });
     const extendedSkill = await SkillFactory.create(adminAuth, {
       name: "Extended skill",
-      instructions: `Extend with <skill id="${inaccessibleSkill.sId}" name="${inaccessibleSkill.name}" />.`,
-    });
-    const secondSkill = await SkillFactory.create(adminAuth, {
-      name: "Second parent skill",
-      instructions: `Reuse <skill id="${accessibleSkill.sId}" name="${accessibleSkill.name}" />.`,
+      instructions: `Extend with <skill id="${restrictedChildSkill.sId}" name="${restrictedChildSkill.name}" />.`,
+      requestedSpaceIds: [restrictedSpace.id],
     });
 
-    const fetchByIdsSpy = vi.spyOn(SkillResource, "fetchByIds");
+    const findAllSpy = vi.spyOn(SkillConfigurationModel, "findAll");
 
-    const [renderedSkill, secondRenderedSkill] =
-      await resolveEnabledSkillReferencesForAgentLoop(requestAuth, [
-        SkillFactory.withExtendedSkill(skill),
-        SkillFactory.withExtendedSkill(secondSkill, extendedSkill),
-      ]);
+    const [
+      renderedParentWithoutChildSpaces,
+      renderedParentWithChildSpaces,
+      renderedParentWithExtendedSkill,
+    ] = await resolveEnabledSkillReferencesForAgentLoop(adminAuth, [
+      SkillFactory.withExtendedSkill(parentWithoutChildSpaces),
+      SkillFactory.withExtendedSkill(parentWithChildSpaces),
+      SkillFactory.withExtendedSkill(parentWithExtendedSkill, extendedSkill),
+    ]);
 
-    const instructions = getEnabledSkillInstructions(renderedSkill);
-    const secondInstructions = getEnabledSkillInstructions(secondRenderedSkill);
+    const instructionsWithoutChildSpaces = getEnabledSkillInstructions(
+      renderedParentWithoutChildSpaces
+    );
+    const instructionsWithChildSpaces = getEnabledSkillInstructions(
+      renderedParentWithChildSpaces
+    );
+    const extendedInstructions = getEnabledSkillInstructions(
+      renderedParentWithExtendedSkill
+    );
 
-    expect(instructions).toContain(
-      `<skill id="${accessibleSkill.sId}" name="${accessibleSkill.name}" />`
+    expect(instructionsWithoutChildSpaces).toContain(
+      `<unavailable_skill id="${restrictedChildSkill.sId}" />`
     );
-    expect(instructions).toContain(
-      `<unavailable_skill id="${inaccessibleSkill.sId}" />`
+    expect(instructionsWithChildSpaces).toContain(
+      `<skill id="${restrictedChildSkill.sId}" name="${restrictedChildSkill.name}" />`
     );
-    expect(secondInstructions).toContain(
-      `<unavailable_skill id="${inaccessibleSkill.sId}" />`
+    expect(extendedInstructions).toContain(
+      `<skill id="${restrictedChildSkill.sId}" name="${restrictedChildSkill.name}" />`
     );
-    expect(fetchByIdsSpy).toHaveBeenCalledTimes(1);
-    const fetchedIds = fetchByIdsSpy.mock.calls[0]?.[1] ?? [];
-    expect(fetchedIds).toHaveLength(2);
-    expect(fetchedIds).toEqual(
-      expect.arrayContaining([accessibleSkill.sId, inaccessibleSkill.sId])
+    expect(findAllSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses parent requested spaces for system skill references", async () => {
+    const { authenticator: adminAuth, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    const restrictedChildSkill = await SkillFactory.create(adminAuth, {
+      name: "Restricted child skill",
+      requestedSpaceIds: [restrictedSpace.id],
+    });
+    const systemSkill = await SkillFactory.create(adminAuth, {
+      name: "System skill",
+      instructions: `Use <skill id="${restrictedChildSkill.sId}" name="${restrictedChildSkill.name}" />.`,
+    });
+
+    const [renderedSystemSkill] = await resolveSkillReferencesForAgentLoop(
+      adminAuth,
+      [systemSkill]
+    );
+
+    expect(renderedSystemSkill.instructionsOverride).toContain(
+      `<unavailable_skill id="${restrictedChildSkill.sId}" />`
     );
   });
 });
