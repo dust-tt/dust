@@ -3,7 +3,9 @@ import {
   InputField,
   SelectField,
 } from "@app/components/poke/shadcn/ui/form/fields";
+import type { SwitchContractBodySchema } from "@app/lib/api/poke/switch_contract";
 import { clientFetch } from "@app/lib/egress/client";
+import { amountCents } from "@app/lib/metronome/amounts";
 import { isPaygEligibleTier } from "@app/lib/metronome/types";
 import {
   CREDIT_PRICED_BUSINESS_PLAN_CODE,
@@ -44,11 +46,27 @@ const SwitchContractFormSchema = z.object({
   metronomePackageId: z.string().min(1, "Required"),
   planCode: z.string().min(1, "Required"),
   startingAt: z.string().optional(),
-  startImmediately: z.boolean().default(false),
+  // How the enterprise contract's start moment is resolved:
+  //  - "immediately": swap at the current hour (no startingAt sent).
+  //  - "retroactive_first_of_month": backdate to the 1st of the current month,
+  //    00:00 UTC.
+  //  - "select": use the operator-chosen `startingAt` (the only mode that
+  //    surfaces the date picker).
+  startMode: z
+    .enum(["immediately", "retroactive_first_of_month", "select"])
+    .default("select"),
   stripeCustomerId: z.string(),
   stripeCollectionMethod: z
     .enum(["charge_automatically", "send_invoice"])
     .default("charge_automatically"),
+  // Net payment terms in days (e.g. 30 for "Net 30"). Only relevant for
+  // `send_invoice`; empty leaves Metronome's account default in place.
+  netPaymentTermsDays: z
+    .number()
+    .int("Net payment terms must be a whole number of days")
+    .min(0, "Net payment terms must be ≥ 0")
+    .max(365, "Net payment terms must be ≤ 365")
+    .optional(),
   paygEnabled: z.boolean().default(false),
   usageCapCredits: z
     .number()
@@ -68,8 +86,25 @@ const SwitchContractFormSchema = z.object({
     .number()
     .min(0, "Invoice amount must be zero or more")
     .optional(),
+  // Per-seat-type settings, keyed by seat type. Only the seats of the selected
+  // package are shown/submitted. `minSeats` is the billing floor (0 = none);
+  // `rate` is the per-seat rate, prefilled from the package override default;
+  // `commitmentPrice` (optional) creates a prepaid commit of `minSeats * rate`
+  // invoiced at that price.
+  seats: z
+    .record(
+      z.string(),
+      z.object({
+        minSeats: z.number().int().min(0),
+        rate: z.number().min(0),
+        commitmentPrice: z.number().min(0).optional(),
+      })
+    )
+    .default({}),
 });
 type SwitchContractFormValues = z.infer<typeof SwitchContractFormSchema>;
+
+type SwitchContractBodyInput = z.input<typeof SwitchContractBodySchema>;
 
 function snapDatetimeLocalToHour(value: string): string {
   if (
@@ -113,9 +148,10 @@ export default function SwitchContractDialog({
   } = usePokeMetronomePackages({ disabled: !open });
   const router = useAppRouter();
 
-  // Min datetime for enterprise startingAt — ≥1h future, snapped to the next
-  // local hour boundary.
-  const minStartingAtLocal = useMemo(() => {
+  // Default datetime seeded into the enterprise startingAt field: the next
+  // local hour boundary (≥1h from now). The operator may freely change it to
+  // any moment, including the past — there is no enforced minimum.
+  const defaultStartingAtLocal = useMemo(() => {
     const d = new Date(Date.now() + 60 * 60 * 1000);
     if (d.getMinutes() > 0 || d.getSeconds() > 0 || d.getMilliseconds() > 0) {
       d.setHours(d.getHours() + 1);
@@ -139,14 +175,16 @@ export default function SwitchContractDialog({
       metronomePackageId: "",
       planCode: "",
       startingAt: "",
-      startImmediately: false,
+      startMode: "select",
       stripeCustomerId: stripeCustomerId ?? "",
       stripeCollectionMethod: "charge_automatically",
+      netPaymentTermsDays: undefined,
       paygEnabled: false,
       usageCapCredits: undefined,
       showInitialCredits: false,
       initialCreditsAmount: undefined,
       initialCreditsInvoiceAmount: undefined,
+      seats: {},
     },
   });
 
@@ -198,6 +236,27 @@ export default function SwitchContractDialog({
   );
   const selectedTier = selectedPackage?.tier ?? null;
   const selectedName = selectedPackage?.name ?? null;
+  const selectedSeats = useMemo(
+    () => selectedPackage?.seats ?? [],
+    [selectedPackage]
+  );
+
+  // Reset the seat settings to the seats of the newly selected package: min
+  // seats defaults to 0, the rate is prefilled from the package override
+  // default. The default is in Metronome's fiat unit (cents for USD, whole
+  // units for EUR); the dialog works in major units (dollars/euros), so convert
+  // for display. Avoids stale values leaking across package selections.
+  useEffect(() => {
+    const next: Record<string, { minSeats: number; rate: number }> = {};
+    for (const seat of selectedSeats) {
+      const rate =
+        seat.defaultRate != null && resolvedCurrency
+          ? amountCents(seat.defaultRate, resolvedCurrency) / 100
+          : (seat.defaultRate ?? 0);
+      next[seat.seatType] = { minSeats: 0, rate };
+    }
+    form.setValue("seats", next);
+  }, [selectedSeats, form, resolvedCurrency]);
 
   // Clear a stale package selection when the resolved currency changes so a
   // previously-picked package can't survive a currency switch silently. Free
@@ -225,7 +284,7 @@ export default function SwitchContractDialog({
         assert("There is no non-legacy pro plan");
       }
       form.setValue("startingAt", "");
-      form.setValue("startImmediately", false);
+      form.setValue("startMode", "select");
     } else if (selectedTier === "business") {
       if (isLegacyPackageName(selectedName ?? "")) {
         form.setValue("planCode", PRO_PLAN_SEAT_39_CODE);
@@ -233,23 +292,49 @@ export default function SwitchContractDialog({
         form.setValue("planCode", CREDIT_PRICED_BUSINESS_PLAN_CODE);
       }
       form.setValue("startingAt", "");
-      form.setValue("startImmediately", false);
+      form.setValue("startMode", "select");
     } else if (selectedTier === "enterprise") {
       form.setValue("planCode", "");
-      form.setValue("startingAt", minStartingAtLocal);
-      form.setValue("startImmediately", false);
+      form.setValue("startingAt", defaultStartingAtLocal);
+      form.setValue("startMode", "select");
     } else if (selectedTier === "free") {
       form.setValue("planCode", CREDIT_PRICED_FREE_PLAN_CODE);
       form.setValue("startingAt", "");
-      form.setValue("startImmediately", false);
+      form.setValue("startMode", "select");
     }
     if (selectedTier && !isPaygEligibleTier(selectedTier)) {
       form.setValue("paygEnabled", false);
       form.setValue("usageCapCredits", undefined);
     }
-  }, [selectedTier, selectedName, form, minStartingAtLocal]);
+  }, [selectedTier, selectedName, form, defaultStartingAtLocal]);
 
-  const startImmediately = form.watch("startImmediately");
+  const startMode = form.watch("startMode");
+
+  // 1st of the current month at 00:00 UTC — the "retroactive" anchor. Computed
+  // as an ISO string sent verbatim to the server (no datetime-local conversion).
+  const { retroactiveFirstOfMonthISO, retroactiveFirstOfMonthLabel } =
+    useMemo(() => {
+      const now = new Date();
+      const d = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0)
+      );
+      return {
+        retroactiveFirstOfMonthISO: d.toISOString(),
+        retroactiveFirstOfMonthLabel: d.toUTCString(),
+      };
+    }, []);
+
+  const startModeOptions = useMemo(
+    () => [
+      { value: "immediately", display: "Start immediately" },
+      {
+        value: "retroactive_first_of_month",
+        display: `Start retroactively on ${retroactiveFirstOfMonthLabel}`,
+      },
+      { value: "select", display: "Select start time" },
+    ],
+    [retroactiveFirstOfMonthLabel]
+  );
 
   const enterprisePlanOptions = useMemo(
     () =>
@@ -270,11 +355,12 @@ export default function SwitchContractDialog({
     selectedTier !== null && isPaygEligibleTier(selectedTier);
 
   const showInitialCredits = form.watch("showInitialCredits");
+  const stripeCollectionMethod = form.watch("stripeCollectionMethod");
 
   const onSubmit = useCallback(
     (values: SwitchContractFormValues) => {
       const trimmedStripe = values.stripeCustomerId.trim();
-      const cleaned: Record<string, unknown> = {
+      const cleaned: SwitchContractBodyInput = {
         metronomePackageId: values.metronomePackageId.trim(),
         planCode: values.planCode.trim(),
         paygEnabled: values.paygEnabled,
@@ -285,6 +371,9 @@ export default function SwitchContractDialog({
       if (trimmedStripe) {
         cleaned.stripeCustomerId = trimmedStripe;
         cleaned.stripeCollectionMethod = values.stripeCollectionMethod;
+      }
+      if (values.netPaymentTermsDays !== undefined) {
+        cleaned.netPaymentTermsDays = values.netPaymentTermsDays;
       }
       if (values.usageCapCredits !== undefined) {
         cleaned.usageCapCredits = values.usageCapCredits;
@@ -311,14 +400,46 @@ export default function SwitchContractDialog({
           invoiceAmount: values.initialCreditsInvoiceAmount,
         };
       }
-      if (
-        selectedTier === "enterprise" &&
-        !values.startImmediately &&
-        values.startingAt
-      ) {
-        // datetime-local strings have no timezone — convert to ISO so the
-        // server's Date.parse is unambiguous.
-        cleaned.startingAt = new Date(values.startingAt).toISOString();
+      // Resolve the start moment for enterprise. "immediately" leaves
+      // `startingAt` unset so the server swaps at the current hour.
+      if (selectedTier === "enterprise") {
+        if (values.startMode === "retroactive_first_of_month") {
+          cleaned.startingAt = retroactiveFirstOfMonthISO;
+        } else if (values.startMode === "select" && values.startingAt) {
+          // datetime-local strings have no timezone — convert to ISO so the
+          // server's Date.parse is unambiguous.
+          cleaned.startingAt = new Date(values.startingAt).toISOString();
+        }
+      }
+      // Seats: only the selected package's seat types. Include a seat when it
+      // has a positive floor and/or a positive commitment price.
+      const seats: SwitchContractBodyInput["seats"] = [];
+      for (const { seatType, defaultRate } of selectedSeats) {
+        const entry = values.seats?.[seatType];
+        const minSeats = Number.isFinite(entry?.minSeats)
+          ? (entry?.minSeats ?? 0)
+          : 0;
+        const rate = Number.isFinite(entry?.rate) ? (entry?.rate ?? 0) : 0;
+        const commitmentPrice =
+          typeof entry?.commitmentPrice === "number" &&
+          Number.isFinite(entry.commitmentPrice) &&
+          entry.commitmentPrice > 0
+            ? entry.commitmentPrice
+            : undefined;
+        // Include a seat when it has a floor, a commitment, or a changed rate
+        // (the rate override only fires when it differs from the default). The
+        // form rate is in major units; convert the native default to compare.
+        const defaultRateMajor =
+          defaultRate != null && resolvedCurrency
+            ? amountCents(defaultRate, resolvedCurrency) / 100
+            : (defaultRate ?? 0);
+        const rateChanged = rate > 0 && rate !== defaultRateMajor;
+        if (minSeats > 0 || commitmentPrice !== undefined || rateChanged) {
+          seats.push({ seatType, minSeats, rate, commitmentPrice });
+        }
+      }
+      if (seats.length > 0) {
+        cleaned.seats = seats;
       }
 
       const submit = async () => {
@@ -350,7 +471,15 @@ export default function SwitchContractDialog({
       };
       void submit();
     },
-    [form, owner.sId, router, selectedTier]
+    [
+      form,
+      owner.sId,
+      router,
+      selectedTier,
+      selectedSeats,
+      retroactiveFirstOfMonthISO,
+      resolvedCurrency,
+    ]
   );
 
   return (
@@ -358,7 +487,7 @@ export default function SwitchContractDialog({
       <DialogTrigger asChild>
         <Button variant="outline" label="🔁 Switch contract" />
       </DialogTrigger>
-      <DialogContent className="bg-primary-50 dark:bg-primary-50-night sm:h-[90vh] sm:max-w-[600px]">
+      <DialogContent className="bg-primary-50 dark:bg-primary-50-night sm:h-[90vh] sm:max-w-[860px]">
         <DialogHeader>
           <DialogTitle>Switch contract for {owner.name}</DialogTitle>
           <DialogDescription>
@@ -418,6 +547,16 @@ export default function SwitchContractDialog({
                     ]}
                   />
                 )}
+                {trimmedStripeCustomerId &&
+                  stripeCollectionMethod === "send_invoice" && (
+                    <InputField
+                      control={form.control}
+                      name="netPaymentTermsDays"
+                      title="Net Payment Terms (days — e.g. 30 for Net 30)"
+                      type="number"
+                      placeholder="Leave empty for the Metronome account default"
+                    />
+                  )}
                 {isPackagesLoading && (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Spinner size="sm" />
@@ -454,25 +593,19 @@ export default function SwitchContractDialog({
                       mountPortalContainer={portalContainer}
                       options={enterprisePlanOptions}
                     />
-                    <div className="flex items-center gap-2">
-                      <SliderToggle
-                        selected={startImmediately}
-                        onClick={() =>
-                          form.setValue("startImmediately", !startImmediately)
-                        }
-                      />
-                      <Label className="text-sm">
-                        Start immediately (swap at current hour, bypass the 1h
-                        delay)
-                      </Label>
-                    </div>
-                    {!startImmediately && (
+                    <SelectField
+                      control={form.control}
+                      name="startMode"
+                      title="Start"
+                      mountPortalContainer={portalContainer}
+                      options={startModeOptions}
+                    />
+                    {startMode === "select" && (
                       <InputField
                         control={form.control}
                         name="startingAt"
-                        title="Starts At (local time, ≥ 1h from now, on the hour)"
+                        title="Starts At (local time, on the hour — past allowed)"
                         type="datetime-local"
-                        min={minStartingAtLocal}
                         step={3600}
                         transformValue={snapDatetimeLocalToHour}
                       />
@@ -507,6 +640,58 @@ export default function SwitchContractDialog({
                       type="number"
                       placeholder="e.g., 100000 — leave empty for no alert"
                     />
+                  </div>
+                )}
+                {selectedSeats.length > 0 && (
+                  <div className="space-y-3 border-t pt-4">
+                    <Label className="text-sm">
+                      Seats configuration{" "}
+                      {resolvedCurrency
+                        ? `(rate & price in ${resolvedCurrency.toUpperCase()})`
+                        : ""}
+                    </Label>
+                    {selectedSeats.map(({ seatType }) => (
+                      <div key={seatType} className="flex items-end gap-3">
+                        <div className="w-24 shrink-0 pb-2 font-mono text-sm">
+                          {seatType}
+                        </div>
+                        <div className="flex-1">
+                          <InputField
+                            control={form.control}
+                            name={`seats.${seatType}.minSeats`}
+                            title="Min seats"
+                            type="number"
+                            placeholder="0"
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <InputField
+                            control={form.control}
+                            name={`seats.${seatType}.rate`}
+                            title={
+                              resolvedCurrency
+                                ? `Seat rate (${resolvedCurrency.toUpperCase()})`
+                                : "Seat rate"
+                            }
+                            type="number"
+                            placeholder="0"
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <InputField
+                            control={form.control}
+                            name={`seats.${seatType}.commitmentPrice`}
+                            title={
+                              resolvedCurrency
+                                ? `Commitment price (${resolvedCurrency.toUpperCase()})`
+                                : "Commitment price"
+                            }
+                            type="number"
+                            placeholder="optional"
+                          />
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
                 {trimmedStripeCustomerId && resolvedCurrency && (

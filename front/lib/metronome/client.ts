@@ -3,9 +3,12 @@ import {
   CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
   CONTRACT_CREDIT_TYPE_POOL,
   PLAN_CODE_CUSTOM_FIELD_KEY,
+  SEAT_TYPE_CUSTOM_FIELD_KEY,
 } from "@app/lib/metronome/constants";
 import logger from "@app/logger/logger";
 import type { SupportedCurrency } from "@app/types/currency";
+import type { MembershipSeatType } from "@app/types/memberships";
+import { isMembershipSeatType } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -459,6 +462,102 @@ export interface MetronomePackageSummary {
   rateCardId?: string;
   tier: MetronomePackageTier;
   currency: SupportedCurrency;
+  seats: PackageSeatConfig[];
+}
+
+/**
+ * A seat type sold by a package, plus the default per-seat flat rate stamped by
+ * the package's entitlement override (in the rate card's fiat unit, e.g. cents
+ * for USD). `defaultRate` is null when the override only flips entitlement
+ * without an explicit rate. `productId` is the Metronome seat product the
+ * override targets — used to apply a rate override on the provisioned contract.
+ */
+export interface PackageSeatConfig {
+  seatType: MembershipSeatType;
+  productId: string;
+  productName: string;
+  defaultRate: number | null;
+}
+
+// Structural shape of the package list-response overrides we read — only the
+// fields needed to resolve entitled seat products and their flat rate.
+type PackageEntitlementOverride = {
+  entitled?: boolean;
+  product?: { id?: string };
+  override_specifiers?: Array<{ product_id?: string }>;
+  overwrite_rate?: { price?: number };
+};
+
+/**
+ * Resolve the seats a package sells from its entitlement overrides. A package
+ * flips `entitled: true` on the seat products it sells (and stamps their flat
+ * rate via `overwrite_rate`); we map those product IDs to seat types via the
+ * `productId → seatType` map and surface the override's default rate.
+ */
+// `productId → { seatType, name }` for all seat products.
+type SeatProductInfo = { seatType: MembershipSeatType; name: string };
+
+function seatConfigsFromPackageOverrides(
+  overrides: PackageEntitlementOverride[] | undefined,
+  seatProducts: Map<string, SeatProductInfo>
+): PackageSeatConfig[] {
+  const bySeatType = new Map<MembershipSeatType, PackageSeatConfig>();
+  for (const override of overrides ?? []) {
+    if (override.entitled !== true) {
+      continue;
+    }
+    const productIds = [
+      override.product?.id,
+      ...(override.override_specifiers ?? []).map((s) => s.product_id),
+    ];
+    for (const productId of productIds) {
+      const info = productId ? seatProducts.get(productId) : undefined;
+      if (productId && info && !bySeatType.has(info.seatType)) {
+        bySeatType.set(info.seatType, {
+          seatType: info.seatType,
+          productId,
+          productName: info.name,
+          defaultRate: override.overwrite_rate?.price ?? null,
+        });
+      }
+    }
+  }
+  return [...bySeatType.values()].sort((a, b) =>
+    a.seatType.localeCompare(b.seatType)
+  );
+}
+
+/**
+ * Build a `productId → { seatType, name }` map from all Metronome products
+ * tagged with the `DUST_SEAT_TYPE` custom field. Returns an empty map (and
+ * logs) on error so package listing degrades gracefully rather than failing
+ * entirely.
+ *
+ * Kept inline here (rather than reusing `seat_types.getProductSeatTypes`) to
+ * avoid a `client ↔ seat_types` import cycle.
+ */
+async function buildProductSeatTypeMap(): Promise<
+  Map<string, SeatProductInfo>
+> {
+  const result = new Map<string, SeatProductInfo>();
+  const productsResult = await listMetronomeProducts();
+  if (productsResult.isErr()) {
+    logger.warn(
+      { error: productsResult.error },
+      "[Metronome] Failed to resolve product seat types for package listing"
+    );
+    return result;
+  }
+  for (const product of productsResult.value) {
+    const value = product.custom_fields?.[SEAT_TYPE_CUSTOM_FIELD_KEY];
+    if (value && isMembershipSeatType(value)) {
+      result.set(product.id, {
+        seatType: value,
+        name: product.current?.name ?? "",
+      });
+    }
+  }
+  return result;
 }
 
 // Cache the package list for a few minutes as the catalog rarely changes and
@@ -507,6 +606,7 @@ export async function listMetronomePackages(): Promise<
   }
 
   try {
+    const productSeatTypes = await buildProductSeatTypeMap();
     const packages: MetronomePackageSummary[] = [];
     for await (const pkg of getMetronomeClient().v1.packages.list()) {
       const aliases = pkg.aliases?.map((a) => a.name) ?? [];
@@ -526,6 +626,7 @@ export async function listMetronomePackages(): Promise<
         rateCardId: pkg.rate_card_id ?? undefined,
         tier,
         currency: classifyMetronomePackageCurrencyByName(name),
+        seats: seatConfigsFromPackageOverrides(pkg.overrides, productSeatTypes),
       });
     }
     packages.sort(comparePackagesForDisplay);
@@ -1629,6 +1730,8 @@ export async function addPrepaidCommitToContract({
   priority,
   name,
   uniquenessKey,
+  applicableProductIds,
+  applicableProductTags,
 }: {
   metronomeCustomerId: string;
   metronomeContractId: string;
@@ -1644,6 +1747,8 @@ export async function addPrepaidCommitToContract({
   priority: number;
   name: string;
   uniquenessKey: string;
+  applicableProductIds?: string[];
+  applicableProductTags?: string[];
 }): Promise<Result<{ editId: string }, Error>> {
   try {
     const response = await getMetronomeClient().v2.contracts.edit({
@@ -1656,7 +1761,12 @@ export async function addPrepaidCommitToContract({
           type: "PREPAID",
           name,
           priority,
-          applicable_product_tags: ["usage"],
+          ...(applicableProductIds && applicableProductIds.length > 0
+            ? { applicable_product_ids: applicableProductIds }
+            : {}),
+          ...(applicableProductTags && applicableProductTags.length > 0
+            ? { applicable_product_tags: applicableProductTags }
+            : {}),
           access_schedule: {
             credit_type_id: accessCreditTypeId,
             schedule_items: [
