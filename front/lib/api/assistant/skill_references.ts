@@ -1,12 +1,8 @@
-import {
-  getUnavailableSkillReferenceIdsByParent,
-  replaceUnavailableSkillReferenceTags,
-  type SkillInstructionsOverride,
-} from "@app/lib/api/skills/skill_references";
 import type { Authenticator } from "@app/lib/auth";
-import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
-
-const EMPTY_UNAVAILABLE_SKILL_IDS = new Set<string>();
+import {
+  type SkillInstructionsOverride,
+  SkillResource,
+} from "@app/lib/resources/skill/skill_resource";
 
 function withInstructionsOverride(
   skill: SkillResource,
@@ -21,23 +17,19 @@ function withInstructionsOverride(
   });
 }
 
-async function getUnavailableSkillReferenceIdsBySkill(
+async function getSkillReferenceInstructionsBySkill(
   auth: Authenticator,
   skills: SkillResource[]
-): Promise<Map<SkillResource, ReadonlySet<string>>> {
-  const unavailableSkillIdsByParent =
-    await getUnavailableSkillReferenceIdsByParent(
-      auth,
-      skills.map((skill) => ({
-        contents: [skill.instructions],
-        requestedSpaceIds: skill.requestedSpaceIds,
-      }))
-    );
+): Promise<Map<SkillResource, string>> {
+  const replacements = await SkillResource.replaceUnavailableSkillReferences(
+    auth,
+    skills
+  );
 
   return new Map(
     skills.map((skill, index) => [
       skill,
-      unavailableSkillIdsByParent[index] ?? EMPTY_UNAVAILABLE_SKILL_IDS,
+      replacements[index]?.instructions ?? skill.instructions,
     ])
   );
 }
@@ -53,32 +45,20 @@ export async function resolveEnabledSkillReferencesForAgentLoop<
       extendedSkill: (SkillResource & SkillInstructionsOverride) | null;
     })[]
 > {
-  const unavailableSkillIdsBySkill =
-    await getUnavailableSkillReferenceIdsBySkill(
-      auth,
-      skills.flatMap((skill) =>
-        skill.extendedSkill ? [skill, skill.extendedSkill] : [skill]
-      )
-    );
+  const instructionsBySkill = await getSkillReferenceInstructionsBySkill(
+    auth,
+    skills.flatMap((skill) =>
+      skill.extendedSkill ? [skill, skill.extendedSkill] : [skill]
+    )
+  );
 
   return skills.map((skill) => {
-    const unavailableSkillIds =
-      unavailableSkillIdsBySkill.get(skill) ?? EMPTY_UNAVAILABLE_SKILL_IDS;
-    const instructions = replaceUnavailableSkillReferenceTags(
-      skill.instructions,
-      unavailableSkillIds
-    );
-    const extendedSkillUnavailableSkillIds = skill.extendedSkill
-      ? (unavailableSkillIdsBySkill.get(skill.extendedSkill) ??
-        EMPTY_UNAVAILABLE_SKILL_IDS)
-      : EMPTY_UNAVAILABLE_SKILL_IDS;
+    const instructions = instructionsBySkill.get(skill) ?? skill.instructions;
     const extendedSkill = skill.extendedSkill
       ? withInstructionsOverride(
           skill.extendedSkill,
-          replaceUnavailableSkillReferenceTags(
-            skill.extendedSkill.instructions,
-            extendedSkillUnavailableSkillIds
-          )
+          instructionsBySkill.get(skill.extendedSkill) ??
+            skill.extendedSkill.instructions
         )
       : null;
 
@@ -95,16 +75,15 @@ export async function resolveSkillReferencesForAgentLoop(
   auth: Authenticator,
   skills: SkillResource[]
 ): Promise<(SkillResource & SkillInstructionsOverride)[]> {
-  const unavailableSkillIdsBySkill =
-    await getUnavailableSkillReferenceIdsBySkill(auth, skills);
+  const instructionsBySkill = await getSkillReferenceInstructionsBySkill(
+    auth,
+    skills
+  );
 
   return skills.map((skill) =>
     withInstructionsOverride(
       skill,
-      replaceUnavailableSkillReferenceTags(
-        skill.instructions,
-        unavailableSkillIdsBySkill.get(skill) ?? EMPTY_UNAVAILABLE_SKILL_IDS
-      )
+      instructionsBySkill.get(skill) ?? skill.instructions
     )
   );
 }
