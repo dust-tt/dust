@@ -50,7 +50,10 @@ import {
 import { UserResource } from "@app/lib/resources/user_resource";
 import {
   extractUniqueSkillIds,
+  parseSkillTag,
   renameSkillReferencesInContent,
+  SKILL_TAG_REGEX,
+  serializeUnavailableSkillTag,
 } from "@app/lib/skills/format";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -100,6 +103,26 @@ export type SkillMCPServerConfiguration = {
   view: MCPServerViewResource;
   childAgentId?: string;
   serverNameOverride?: string;
+};
+
+export type SkillInstructionsOverride = {
+  instructionsOverride?: string;
+};
+
+type SkillReferenceParent = {
+  contents: (string | null | undefined)[];
+  requestedSpaceIds: readonly ModelId[];
+};
+
+export type SkillReferenceReplacementInput = {
+  instructions: string;
+  instructionsHtml: string | null;
+  requestedSpaceIds: readonly ModelId[];
+};
+
+export type SkillReferenceReplacement = {
+  instructions: string;
+  instructionsHtml: string | null;
 };
 
 type SkillResourceConstructorOptions =
@@ -3247,6 +3270,180 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     await this.model.destroy({
       where: { workspaceId },
     });
+  }
+
+  private static async fetchReferencedSkillRequestedSpaceIds(
+    auth: Authenticator,
+    skillIds: string[]
+  ): Promise<Map<string, readonly ModelId[]>> {
+    const workspace = auth.getNonNullableWorkspace();
+    const requestedSpaceIdsBySkillId = new Map<string, readonly ModelId[]>();
+    const customSkillSIdByModelId = new Map<ModelId, string>();
+    const globalSkillIds: string[] = [];
+
+    for (const skillId of skillIds) {
+      if (isResourceSId("skill", skillId)) {
+        const modelId = getResourceIdFromSId(skillId);
+        if (modelId !== null) {
+          customSkillSIdByModelId.set(modelId, skillId);
+        }
+      } else {
+        globalSkillIds.push(skillId);
+      }
+    }
+
+    const customSkillIds = [...customSkillSIdByModelId.keys()];
+    if (customSkillIds.length > 0) {
+      const customSkills = await SkillConfigurationModel.findAll({
+        where: {
+          id: customSkillIds,
+          status: ["active", "archived", "suggested"],
+          workspaceId: workspace.id,
+        },
+        attributes: ["id", "requestedSpaceIds"],
+      });
+
+      for (const skill of customSkills) {
+        const sId = customSkillSIdByModelId.get(skill.id);
+        if (sId) {
+          requestedSpaceIdsBySkillId.set(sId, skill.requestedSpaceIds);
+        }
+      }
+    }
+
+    if (globalSkillIds.length > 0) {
+      const [globalSkills, systemSkills] = await Promise.all([
+        GlobalSkillsRegistry.findAll(auth, { sId: globalSkillIds }),
+        SystemSkillsRegistry.findAll(auth, { sId: globalSkillIds }),
+      ]);
+
+      for (const skill of [...globalSkills, ...systemSkills]) {
+        requestedSpaceIdsBySkillId.set(skill.sId, []);
+      }
+    }
+
+    return requestedSpaceIdsBySkillId;
+  }
+
+  private static async getUnavailableSkillReferenceIdsByParent(
+    auth: Authenticator,
+    parents: SkillReferenceParent[]
+  ): Promise<Set<string>[]> {
+    const skillIdsByParent = parents.map((parent) => [
+      ...new Set(
+        parent.contents.flatMap((content) =>
+          extractUniqueSkillIds(content ?? "")
+        )
+      ),
+    ]);
+
+    const skillIds = [...new Set(skillIdsByParent.flat())];
+
+    if (skillIds.length === 0) {
+      return parents.map(() => new Set());
+    }
+
+    const requestedSpaceIdsBySkillId =
+      await SkillResource.fetchReferencedSkillRequestedSpaceIds(auth, skillIds);
+
+    return parents.map((parent, index) => {
+      const parentRequestedSpaceIds = new Set(parent.requestedSpaceIds);
+
+      return new Set(
+        skillIdsByParent[index].filter((skillId) => {
+          const childRequestedSpaceIds =
+            requestedSpaceIdsBySkillId.get(skillId);
+
+          return (
+            !childRequestedSpaceIds ||
+            !childRequestedSpaceIds.every((spaceId) =>
+              parentRequestedSpaceIds.has(spaceId)
+            )
+          );
+        })
+      );
+    });
+  }
+
+  private static replaceUnavailableSkillReferenceTags(
+    content: string,
+    unavailableSkillIds: ReadonlySet<string>,
+    { html = false }: { html?: boolean } = {}
+  ): string {
+    if (unavailableSkillIds.size === 0) {
+      return content;
+    }
+
+    return content.replace(SKILL_TAG_REGEX, (tag) => {
+      const skill = parseSkillTag(tag);
+
+      if (!skill || !unavailableSkillIds.has(skill.id)) {
+        return tag;
+      }
+
+      return serializeUnavailableSkillTag({ id: skill.id }, { html });
+    });
+  }
+
+  static async replaceUnavailableSkillReferences(
+    auth: Authenticator,
+    skills: readonly SkillReferenceReplacementInput[]
+  ): Promise<SkillReferenceReplacement[]> {
+    const unavailableSkillIdsByParent =
+      await SkillResource.getUnavailableSkillReferenceIdsByParent(
+        auth,
+        skills.map((skill) => ({
+          contents: [skill.instructions, skill.instructionsHtml],
+          requestedSpaceIds: skill.requestedSpaceIds,
+        }))
+      );
+
+    return skills.map((skill, index) => {
+      const unavailableSkillIds =
+        unavailableSkillIdsByParent[index] ?? new Set<string>();
+
+      return {
+        instructions: SkillResource.replaceUnavailableSkillReferenceTags(
+          skill.instructions,
+          unavailableSkillIds
+        ),
+        instructionsHtml: skill.instructionsHtml
+          ? SkillResource.replaceUnavailableSkillReferenceTags(
+              skill.instructionsHtml,
+              unavailableSkillIds,
+              {
+                html: true,
+              }
+            )
+          : skill.instructionsHtml,
+      };
+    });
+  }
+
+  async toJSONWithUnavailableSkillReferences(
+    auth: Authenticator
+  ): Promise<SkillType> {
+    const serializedSkill = this.toJSON(auth);
+    if (serializedSkill.instructions === null) {
+      return serializedSkill;
+    }
+
+    const [replacement] = await SkillResource.replaceUnavailableSkillReferences(
+      auth,
+      [
+        {
+          instructions: serializedSkill.instructions,
+          instructionsHtml: serializedSkill.instructionsHtml,
+          requestedSpaceIds: this.requestedSpaceIds,
+        },
+      ]
+    );
+
+    return {
+      ...serializedSkill,
+      instructions: replacement.instructions,
+      instructionsHtml: replacement.instructionsHtml,
+    };
   }
 
   toJSON(auth: Authenticator): SkillType {

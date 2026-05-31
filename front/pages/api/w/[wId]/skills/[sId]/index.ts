@@ -1,10 +1,7 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import {
-  replaceUnavailableSkillReferences,
-  restoreUnavailableSkillReferencesForPersistence,
-} from "@app/lib/api/skills/skill_references";
+import { restoreUnavailableSkillReferencesForPersistence } from "@app/lib/api/skills/skill_references";
 import { resolveAdditionalRequestedSpaceModelIds } from "@app/lib/api/skills/space_requirements";
 import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { pruneOutdatedSkillEditSuggestions } from "@app/lib/reinforcement/skill_suggestion_pruning";
@@ -114,10 +111,8 @@ async function handler(
     case "GET": {
       const { withRelations } = req.query;
 
-      const serializedSkill = await replaceUnavailableSkillReferences(
-        auth,
-        skill.toJSON(auth)
-      );
+      const serializedSkill =
+        await skill.toJSONWithUnavailableSkillReferences(auth);
 
       if (withRelations === "true") {
         const featureFlags = await getFeatureFlags(auth);
@@ -133,10 +128,7 @@ async function handler(
           ? await skill.fetchChildSkills(auth)
           : [];
         const serializedExtendedSkill = extendedSkill
-          ? await replaceUnavailableSkillReferences(
-              auth,
-              extendedSkill.toJSON(auth)
-            )
+          ? await extendedSkill.toJSONWithUnavailableSkillReferences(auth)
           : null;
 
         const skillWithRelations: SkillWithRelationsType = {
@@ -446,10 +438,8 @@ async function handler(
 
       await pruneOutdatedSkillEditSuggestions(auth, skill);
 
-      const serializedSkill = await replaceUnavailableSkillReferences(
-        auth,
-        skill.toJSON(auth)
-      );
+      const serializedSkill =
+        await skill.toJSONWithUnavailableSkillReferences(auth);
 
       return res.status(200).json({
         skill: serializedSkill,

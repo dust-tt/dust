@@ -1,7 +1,4 @@
-import {
-  replaceUnavailableSkillReferences,
-  restoreUnavailableSkillReferencesForPersistence,
-} from "@app/lib/api/skills/skill_references";
+import { restoreUnavailableSkillReferencesForPersistence } from "@app/lib/api/skills/skill_references";
 import { resolveAdditionalRequestedSpaceModelIds } from "@app/lib/api/skills/space_requirements";
 import { getFeatureFlags } from "@app/lib/auth";
 import { pruneOutdatedSkillEditSuggestions } from "@app/lib/reinforcement/skill_suggestion_pruning";
@@ -139,10 +136,8 @@ app.get(
 
     const withRelations = ctx.req.query("withRelations");
 
-    const serializedSkill = await replaceUnavailableSkillReferences(
-      auth,
-      skill.toJSON(auth)
-    );
+    const serializedSkill =
+      await skill.toJSONWithUnavailableSkillReferences(auth);
 
     if (withRelations === "true") {
       const featureFlags = await getFeatureFlags(auth);
@@ -158,10 +153,7 @@ app.get(
         ? await skill.fetchChildSkills(auth)
         : [];
       const serializedExtendedSkill = extendedSkill
-        ? await replaceUnavailableSkillReferences(
-            auth,
-            extendedSkill.toJSON(auth)
-          )
+        ? await extendedSkill.toJSONWithUnavailableSkillReferences(auth)
         : null;
 
       const skillWithRelations: SkillWithRelationsType = {
@@ -469,7 +461,7 @@ app.patch(
     await pruneOutdatedSkillEditSuggestions(auth, skill);
 
     return ctx.json({
-      skill: await replaceUnavailableSkillReferences(auth, skill.toJSON(auth)),
+      skill: await skill.toJSONWithUnavailableSkillReferences(auth),
     });
   }
 );

@@ -1,7 +1,4 @@
-import {
-  replaceUnavailableSkillReferences,
-  restoreUnavailableSkillReferencesForPersistence,
-} from "@app/lib/api/skills/skill_references";
+import { restoreUnavailableSkillReferencesForPersistence } from "@app/lib/api/skills/skill_references";
 import { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -60,10 +57,8 @@ describe("skill reference availability", () => {
         `and <skill id="${inaccessibleSkill.sId}" name="${inaccessibleSkill.name}"></skill>.</p>`,
     });
 
-    const renderedSkill = await replaceUnavailableSkillReferences(
-      requestAuth,
-      skill.toJSON(adminAuth)
-    );
+    const renderedSkill =
+      await skill.toJSONWithUnavailableSkillReferences(requestAuth);
 
     expect(renderedSkill.instructions).toContain(
       `<skill id="${accessibleSkill.sId}" name="${accessibleSkill.name}" />`
@@ -95,9 +90,8 @@ describe("skill reference availability", () => {
     });
 
     const renderedParentWithoutChildSpaces =
-      await replaceUnavailableSkillReferences(
-        adminAuth,
-        parentWithoutChildSpaces.toJSON(adminAuth)
+      await parentWithoutChildSpaces.toJSONWithUnavailableSkillReferences(
+        adminAuth
       );
 
     expect(renderedParentWithoutChildSpaces.instructions).toContain(
@@ -111,9 +105,8 @@ describe("skill reference availability", () => {
     });
 
     const renderedParentWithChildSpaces =
-      await replaceUnavailableSkillReferences(
-        adminAuth,
-        parentWithChildSpaces.toJSON(adminAuth)
+      await parentWithChildSpaces.toJSONWithUnavailableSkillReferences(
+        adminAuth
       );
 
     expect(renderedParentWithChildSpaces.instructions).toContain(
