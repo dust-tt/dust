@@ -672,6 +672,7 @@ export type SubmitMessageError = {
     | "plan_limit_reached_error"
     | "credits_exhausted_error"
     | "user_cap_reached_error"
+    | "no_seat_error"
     | "content_too_large";
   title: string;
   message: string;

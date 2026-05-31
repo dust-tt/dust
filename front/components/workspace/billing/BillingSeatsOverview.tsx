@@ -63,6 +63,10 @@ function seatTypeGroup(seatType: MembershipSeatType): MembershipSeatType {
       return "pro";
     case "max_yearly":
       return "max";
+    case "none":
+      // `none` is not a billable seat — it has no plan/icon/order and is not
+      // surfaced in the billed-seats overview.
+      return "none";
     default:
       assertNeverAndIgnore(seatType);
       return seatType;

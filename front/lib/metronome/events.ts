@@ -262,7 +262,7 @@ export function buildLlmUsageEvents({
       // Provider cost without markup — markup is applied in Metronome rate card. Only used for legacy rates.
       cost_micro_usd: group.costMicroUsd,
       // 1 AWU credit = $0.0085
-      cost_awu: Math.ceil(group.costMicroUsd / 0.85 / 10_000),
+      cost_awu: Math.ceil(group.costMicroUsd / 0.85 / 1),
       // TODO: Remove is_programmatic_usage & is_free_usage, this is replaced by single property "usage type"
       is_programmatic_usage: isProgrammaticUsage ? "true" : "false",
       is_free_usage: "false",

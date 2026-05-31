@@ -12,6 +12,8 @@ import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 const UpdateMemberSeatTypeBodySchema = z.object({
+  // `none` is allowed: admins can remove a member's seat (assign `none`), which
+  // stops them from sending messages until a seat is reassigned.
   seatType: z.enum(MEMBERSHIP_SEAT_TYPES),
 });
 

@@ -396,7 +396,10 @@ export async function getMembersUsage({
         name: u.name,
         email: u.email ?? null,
         image: u.imageUrl ?? null,
-        seatType: membership.seatType ?? null,
+        // The members table represents "no seat" as `null` (drives the "No
+        // seat" filter and an empty seat-type cell). The `none` seat type is
+        // exactly that — a member holding no billable seat — so map it to null.
+        seatType: membership.seatType === "none" ? null : membership.seatType,
         memberUsageLimit: awuAllocation > 0 ? awuAllocation : null,
         consumedAwuCredits: totalConsumedCredits,
         consumedFromAllowanceAwuCredits,

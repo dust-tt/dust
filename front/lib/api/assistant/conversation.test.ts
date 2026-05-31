@@ -39,6 +39,7 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { ProjectFileFactory } from "@app/tests/utils/ProjectFileFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type {
   ContentFragmentInputWithContentNode,
   ContentFragmentInputWithFileIdType,
@@ -4489,6 +4490,61 @@ describe("conversation fetch forkingData", () => {
       expect(conversationResult.value.forkingData).toEqual({
         forkedChildren: expectedForkedChildren,
       });
+    }
+  });
+});
+
+describe("postUserMessage no-seat gate", () => {
+  it("rejects messages from a member with the `none` seat type", async () => {
+    // Credit-priced (Metronome) workspace — the seat gate only applies there.
+    const workspace = await WorkspaceFactory.creditPriced();
+    await SpaceFactory.defaults(
+      await Authenticator.internalAdminForWorkspace(workspace.sId)
+    );
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, {
+      role: "user",
+      seatType: "none",
+    });
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+
+    const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Seatless Test Agent",
+      description: "Agent for the no-seat gate test",
+    });
+    const created = await ConversationFactory.create(auth, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [],
+      visibility: "unlisted",
+    });
+    const fetched = await getConversation(auth, created.sId);
+    if (fetched.isErr()) {
+      throw new Error("Failed to fetch conversation");
+    }
+
+    const userJson = user.toJSON();
+    const result = await postUserMessage(auth, {
+      conversation: fetched.value,
+      content: `Hello @${agent.name}`,
+      mentions: [{ configurationId: agent.sId } satisfies AgentMention],
+      context: {
+        username: userJson.username,
+        timezone: "UTC",
+        fullName: userJson.fullName,
+        email: userJson.email,
+        profilePictureUrl: userJson.image,
+        origin: "web",
+      },
+      skipToolsValidation: false,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.status_code).toBe(403);
+      expect(result.error.api_error.type).toBe("no_seat");
     }
   });
 });
