@@ -188,27 +188,21 @@ async function searchPokeFrames(searchTerm: string): Promise<PokeItemBase[]> {
   ];
 }
 
-// `dustAPIDataSourceId` is a 64-character hex string; `dustAPIProjectId` is a numeric string.
-const DUST_API_DATA_SOURCE_ID_REGEX = /^[0-9a-f]{64}$/i;
+// `dustAPIProjectId` is a numeric string.
 const DUST_API_PROJECT_ID_REGEX = /^\d+$/;
 
-async function searchPokeDataSourcesByDustAPIId(
+async function searchPokeDataSourcesByDustAPIProjectId(
   auth: Authenticator,
   searchTerm: string
 ): Promise<PokeItemBase[]> {
-  let dataSource: DataSourceResource | null = null;
-  if (DUST_API_DATA_SOURCE_ID_REGEX.test(searchTerm)) {
-    dataSource = await DataSourceResource.fetchByDustAPIDataSourceId(
-      auth,
-      searchTerm
-    );
-  } else if (DUST_API_PROJECT_ID_REGEX.test(searchTerm)) {
-    dataSource = await DataSourceResource.fetchByDustAPIProjectId(
-      auth,
-      searchTerm
-    );
+  if (!DUST_API_PROJECT_ID_REGEX.test(searchTerm)) {
+    return [];
   }
 
+  const dataSource = await DataSourceResource.fetchByDustAPIProjectId(
+    auth,
+    searchTerm
+  );
   if (!dataSource) {
     return [];
   }
@@ -273,7 +267,7 @@ export async function searchPokeResources(
       searchPokeFrames(searchTerm),
       searchByStripeSubscriptionId(searchTerm),
       searchByPhoneNumber(searchTerm),
-      searchPokeDataSourcesByDustAPIId(auth, searchTerm),
+      searchPokeDataSourcesByDustAPIProjectId(auth, searchTerm),
     ])
   ).flat();
 }

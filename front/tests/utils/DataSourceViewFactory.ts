@@ -10,7 +10,7 @@ export class DataSourceViewFactory {
     workspace: WorkspaceType,
     space: SpaceResource,
     editedByUser?: UserResource | null,
-    overrides?: { dustAPIProjectId?: string; dustAPIDataSourceId?: string }
+    overrides?: { dustAPIProjectId?: string }
   ) {
     return DataSourceViewResource.createDataSourceAndDefaultView(
       {
@@ -20,7 +20,6 @@ export class DataSourceViewFactory {
           overrides?.dustAPIProjectId ??
           "dust-project-id" + faker.string.alphanumeric(8),
         dustAPIDataSourceId:
-          overrides?.dustAPIDataSourceId ??
           "dust-datasource-id" + faker.string.alphanumeric(8),
         workspaceId: workspace.id,
       },

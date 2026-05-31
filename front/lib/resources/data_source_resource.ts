@@ -352,10 +352,6 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
       where: {
         dustAPIDataSourceId: dustAPIDataSourceIds,
       },
-      // WORKSPACE_ISOLATION_BYPASS: `dustAPIDataSourceId` is globally unique, so this lookup is
-      // intentionally cross-workspace. Permissions are still enforced by `canFetch` after fetch.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
-      dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
   }
 
