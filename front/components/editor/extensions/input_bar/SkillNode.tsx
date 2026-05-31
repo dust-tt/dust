@@ -20,18 +20,6 @@ export type SkillNodeAttributes = {
 
 export const SKILL_NODE_TYPE = "skill";
 
-function findSkillReferenceTagStart(src: string): number {
-  const skillTagStart = src.indexOf(`<${SKILL_TAG_NAME}`);
-  const unavailableSkillTagStart = src.indexOf(
-    `<${UNAVAILABLE_SKILL_TAG_NAME}`
-  );
-  const starts = [skillTagStart, unavailableSkillTagStart].filter(
-    (start) => start >= 0
-  );
-
-  return starts.length > 0 ? Math.min(...starts) : -1;
-}
-
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
     skillNode: {
@@ -124,7 +112,17 @@ export const SkillNode = Node.create({
   markdownTokenizer: {
     name: SKILL_NODE_TYPE,
     level: "inline",
-    start: findSkillReferenceTagStart,
+    start: (src) => {
+      const skillTagStart = src.indexOf(`<${SKILL_TAG_NAME}`);
+      const unavailableSkillTagStart = src.indexOf(
+        `<${UNAVAILABLE_SKILL_TAG_NAME}`
+      );
+      const starts = [skillTagStart, unavailableSkillTagStart].filter(
+        (start) => start >= 0
+      );
+
+      return starts.length > 0 ? Math.min(...starts) : -1;
+    },
     tokenize: (src) => {
       const match = SKILL_REFERENCE_TAG_REGEX_BEGINNING.exec(src);
       if (!match) {
