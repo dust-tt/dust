@@ -188,6 +188,28 @@ async function searchPokeFrames(searchTerm: string): Promise<PokeItemBase[]> {
   ];
 }
 
+// `dustAPIProjectId` is a numeric string.
+const DUST_API_PROJECT_ID_REGEX = /^\d+$/;
+
+async function searchPokeDataSourcesByDustAPIProjectId(
+  auth: Authenticator,
+  searchTerm: string
+): Promise<PokeItemBase[]> {
+  if (!DUST_API_PROJECT_ID_REGEX.test(searchTerm)) {
+    return [];
+  }
+
+  const dataSource = await DataSourceResource.unsafeFetchByDustAPIProjectId(
+    auth,
+    searchTerm
+  );
+  if (!dataSource) {
+    return [];
+  }
+
+  return [await dataSourceToPokeJSON(dataSource)];
+}
+
 async function searchByPhoneNumber(
   searchTerm: string
 ): Promise<PokeItemBase[]> {
@@ -245,6 +267,7 @@ export async function searchPokeResources(
       searchPokeFrames(searchTerm),
       searchByStripeSubscriptionId(searchTerm),
       searchByPhoneNumber(searchTerm),
+      searchPokeDataSourcesByDustAPIProjectId(auth, searchTerm),
     ])
   ).flat();
 }
