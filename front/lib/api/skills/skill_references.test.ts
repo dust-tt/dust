@@ -1,5 +1,5 @@
 import {
-  replaceUnavailableSkillReferencesForFrontend,
+  replaceUnavailableSkillReferences,
   restoreUnavailableSkillReferencesForPersistence,
 } from "@app/lib/api/skills/skill_references";
 import { Authenticator } from "@app/lib/auth";
@@ -60,7 +60,7 @@ describe("skill reference availability", () => {
         `and <skill id="${inaccessibleSkill.sId}" name="${inaccessibleSkill.name}"></skill>.</p>`,
     });
 
-    const renderedSkill = await replaceUnavailableSkillReferencesForFrontend(
+    const renderedSkill = await replaceUnavailableSkillReferences(
       requestAuth,
       skill.toJSON(adminAuth)
     );
@@ -95,7 +95,7 @@ describe("skill reference availability", () => {
     });
 
     const renderedParentWithoutChildSpaces =
-      await replaceUnavailableSkillReferencesForFrontend(
+      await replaceUnavailableSkillReferences(
         adminAuth,
         parentWithoutChildSpaces.toJSON(adminAuth)
       );
@@ -111,7 +111,7 @@ describe("skill reference availability", () => {
     });
 
     const renderedParentWithChildSpaces =
-      await replaceUnavailableSkillReferencesForFrontend(
+      await replaceUnavailableSkillReferences(
         adminAuth,
         parentWithChildSpaces.toJSON(adminAuth)
       );
