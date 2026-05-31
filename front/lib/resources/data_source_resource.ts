@@ -355,7 +355,7 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
     });
   }
 
-  static async fetchByDustAPIProjectId(
+  static async unsafeFetchByDustAPIProjectId(
     auth: Authenticator,
     dustAPIProjectId: string,
     options?: FetchDataSourceOptions

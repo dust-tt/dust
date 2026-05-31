@@ -199,7 +199,7 @@ async function searchPokeDataSourcesByDustAPIProjectId(
     return [];
   }
 
-  const dataSource = await DataSourceResource.fetchByDustAPIProjectId(
+  const dataSource = await DataSourceResource.unsafeFetchByDustAPIProjectId(
     auth,
     searchTerm
   );
