@@ -89,9 +89,7 @@ export function getSeatTypeForSubscription(
  * contract creation); seat contracts never have it. Use this gate before any
  * seat-related work on a contract.
  */
-export function isMauContract(
-  contract: Pick<CachedContract, "custom_fields">
-): boolean {
+export function isMauContract(contract: CachedContract): boolean {
   return Boolean(contract.custom_fields?.MAU_THRESHOLD);
 }
 
@@ -151,7 +149,7 @@ export type FreeSeatCounts = {
  * creation).
  */
 export function getDefaultSeatTypeForContract(
-  contract: Pick<CachedContract, "subscriptions" | "recurring_credits">,
+  contract: CachedContract,
   productSeatTypes: Map<string, MembershipSeatType>,
   {
     isReturningMember = false,
@@ -208,19 +206,67 @@ export function getDefaultSeatTypeForContract(
 }
 
 /**
+ * Seat product IDs the contract actually *sells*, i.e. flipped on with an
+ * `entitled: true` override. Non-legacy rate cards carry every seat product at
+ * `entitled: false`; each package/contract entitles only the seats it sells, so
+ * a bare subscription does NOT mean the seat is billable — the entitlement
+ * override does.
+ */
+function getEntitledSeatProductIds(
+  contract: CachedContract,
+  productSeatTypes: Map<string, MembershipSeatType>
+): Set<string> {
+  const ids = new Set<string>();
+  for (const override of contract.overrides ?? []) {
+    if (override.entitled !== true) {
+      continue;
+    }
+    const productIds = [
+      override.product?.id,
+      ...(override.override_specifiers ?? []).map((s) => s.product_id),
+    ];
+    for (const productId of productIds) {
+      if (productId && productSeatTypes.has(productId)) {
+        ids.add(productId);
+      }
+    }
+  }
+  return ids;
+}
+
+/**
  * Walk a contract's subscriptions and build a `seatType → subscription`
  * index using the cached product seat-type map.
+ *
+ * Only seats the contract actually *sells* are included: a seat must be
+ * entitled (`entitled: true` override) — a bare subscription is not enough,
+ * since every package carries all seat subscriptions with the unsold ones at
+ * `entitled: false`. Contracts that don't express seat entitlement at all
+ * (legacy) fall back to including every seat subscription.
  */
 export function getSeatSubscriptionsFromContract(
-  contract: Pick<CachedContract, "subscriptions">,
+  contract: CachedContract,
   productSeatTypes: Map<string, MembershipSeatType>
 ): Map<MembershipSeatType, Subscription> {
+  const entitledSeatProductIds = getEntitledSeatProductIds(
+    contract,
+    productSeatTypes
+  );
   const result = new Map<MembershipSeatType, Subscription>();
   for (const sub of contract.subscriptions ?? []) {
     const seatType = getSeatTypeForSubscription(sub, productSeatTypes);
-    if (seatType) {
-      result.set(seatType, sub);
+    if (!seatType) {
+      continue;
     }
+    // When the contract expresses seat entitlement, keep only entitled seats;
+    // otherwise (no seat entitlement overrides → legacy) keep all.
+    if (
+      entitledSeatProductIds.size > 0 &&
+      !entitledSeatProductIds.has(sub.subscription_rate.product.id)
+    ) {
+      continue;
+    }
+    result.set(seatType, sub);
   }
   return result;
 }
@@ -231,7 +277,7 @@ export function getSeatSubscriptionsFromContract(
  * that exposes only product IDs.
  */
 export function getSeatTypesByProductIdFromContract(
-  contract: Pick<CachedContract, "subscriptions">,
+  contract: CachedContract,
   productSeatTypes: Map<string, MembershipSeatType>
 ): Map<string, MembershipSeatType> {
   const result = new Map<string, MembershipSeatType>();
@@ -286,7 +332,7 @@ function getSeatAwuCreditsPeriod(
  * seats on legacy plans).
  */
 export function getAwuAllocationInfoForSeatType(
-  contract: Pick<CachedContract, "subscriptions" | "recurring_credits">,
+  contract: CachedContract,
   seatType: MembershipSeatType,
   productSeatTypes: Map<string, MembershipSeatType>
 ): SeatAwuAllocationInfo {
@@ -312,7 +358,7 @@ export function getAwuAllocationInfoForSeatType(
 }
 
 export function getAwuAllocationForSeatType(
-  contract: Pick<CachedContract, "subscriptions" | "recurring_credits">,
+  contract: CachedContract,
   seatType: MembershipSeatType,
   productSeatTypes: Map<string, MembershipSeatType>
 ): number {
