@@ -7,9 +7,10 @@ import { renderDocumentTitleAndContent } from "@connectors/lib/data_sources";
 import { formatDateForUpsert } from "@connectors/lib/formatting";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
 import { safeSubstring } from "@connectors/types";
-import { removeNulls } from "@connectors/types/shared/utils/general";
 import type { WebClient } from "@slack/web-api";
 import type { MessageElement } from "@slack/web-api/dist/types/response/ConversationsRepliesResponse";
+
+import { formatSlackMessageUnfurlAttachments } from "./message_attachments";
 
 async function processMessageForMentions(
   message: string,
@@ -84,25 +85,9 @@ export async function formatMessagesForUpsert({
         : "";
 
       // Slack renders forwarded/shared messages as message unfurl attachments.
-      const forwardedMessagesText = removeNulls(
+      const forwardedMessagesText = formatSlackMessageUnfurlAttachments(
         message.attachments
-          ?.filter(
-            (a) =>
-              a.is_msg_unfurl || a.is_reply_unfurl || a.is_thread_root_unfurl
-          )
-          .map((a) => {
-            const forwardedMessageBody = a.text || a.fallback;
-            if (!forwardedMessageBody?.trim()) {
-              return null;
-            }
-
-            const forwardedMessageHeader = a.author_name
-              ? `Forwarded from @${a.author_name}:`
-              : "Forwarded message:";
-
-            return `${forwardedMessageHeader}\n${forwardedMessageBody}`;
-          }) ?? []
-      ).join("\n---\n");
+      );
 
       const forwardedMessagesInfo = forwardedMessagesText
         ? `\n${forwardedMessagesText}`

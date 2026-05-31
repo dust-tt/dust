@@ -1,5 +1,6 @@
 import { botAnswerMessage } from "@connectors/connectors/slack/bot";
 import { getBotUserIdResponse } from "@connectors/connectors/slack/lib/bot_user_helpers";
+import { formatSlackMessageUnfurlAttachments } from "@connectors/connectors/slack/lib/message_attachments";
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import { throttleWithRedis } from "@connectors/lib/throttle";
 import type { Logger } from "@connectors/logger/logger";
@@ -7,6 +8,8 @@ import { apiError } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
+import { removeNulls } from "@connectors/types/shared/utils/general";
+import type { MessageElement } from "@slack/web-api/dist/types/response/ConversationsRepliesResponse";
 import tracer from "dd-trace";
 import type { Request, Response } from "express";
 
@@ -69,6 +72,7 @@ export interface SlackWebhookEvent<T = string> {
   type?: string; // event type (eg: message)
   channel_type?: "channel" | "group" | "im" | "mpim";
   text: string; // content of the message
+  attachments?: MessageElement["attachments"];
   old_name?: string; // when renaming channel: old channel name
   name?: string; // when renaming channel: new channel name
   message?: {
@@ -153,7 +157,13 @@ export async function handleChatBot(
 ) {
   const { event } = req.body;
 
-  const slackMessage = event.text;
+  const forwardedMessagesText = formatSlackMessageUnfurlAttachments(
+    event.attachments
+  );
+  const slackMessage = removeNulls([
+    event.text || null,
+    forwardedMessagesText || null,
+  ]).join("\n");
   const slackTeamId = req.body.team_id;
   const slackChannel = event.channel;
   const slackUserId = event.user;
