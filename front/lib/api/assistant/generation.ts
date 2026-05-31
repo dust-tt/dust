@@ -201,10 +201,10 @@ function constructToolsSection({
 
 function constructSkillsSection({
   systemSkills,
-  hasNestedSkills,
+  hasNestedSkills = false,
 }: {
   systemSkills: SkillResource[];
-  hasNestedSkills: boolean;
+  hasNestedSkills?: boolean;
 }): string {
   const toolDisplayName = `${SKILL_MANAGEMENT_SERVER_NAME}${TOOL_NAME_SEPARATOR}${ENABLE_SKILL_TOOL_NAME}`;
 

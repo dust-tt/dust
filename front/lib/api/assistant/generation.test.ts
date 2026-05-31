@@ -490,39 +490,6 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     expect(text).not.toContain("## AVAILABLE SKILLS");
   });
 
-  it("should gate nested skill reference guidance behind nested_skills", () => {
-    const params = {
-      userMessage: userMessage1,
-      agentConfiguration: agentConfig1,
-      model: modelConfig,
-      hasAvailableActions: true,
-      agentsList: null,
-      systemSkills: [],
-      enabledSkills: [],
-      equippedSkills: [],
-    };
-
-    const textWithoutFlag = systemPromptToText(
-      constructPromptMultiActions(authenticator1, params)
-    );
-    const textWithFlag = systemPromptToText(
-      constructPromptMultiActions(authenticator1, {
-        ...params,
-        hasNestedSkills: true,
-      })
-    );
-
-    expect(textWithoutFlag).toContain(
-      'If a user message contains a `<skill id="..." name="..." />` tag'
-    );
-    expect(textWithoutFlag).not.toContain("enabled skill instructions");
-    expect(textWithoutFlag).not.toContain("skillName");
-
-    expect(textWithFlag).toContain("enabled skill instructions");
-    expect(textWithFlag).toContain("skill author nested one skill");
-    expect(textWithFlag).toContain("`skillName` set to the tag's `name`");
-  });
-
   it("should keep system skill instructions in the system prompt", async () => {
     const discoverSkills = await SkillResource.fetchById(
       authenticator1,

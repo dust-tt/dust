@@ -45,7 +45,7 @@ import {
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
-import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
+import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import type { DurationRecorder } from "@app/lib/duration_recorder";
 import {
   AgentMessageContentParser,
@@ -375,10 +375,9 @@ export async function runModel(
   });
 
   const isNewFileExplorer = conversation.metadata?.useFileSystem === true;
-  const [hasSandboxTools, hasNestedSkills] = await Promise.all([
-    hasFeatureFlag(auth, "sandbox_tools"),
-    hasFeatureFlag(auth, "nested_skills"),
-  ]);
+  const featureFlags = await getFeatureFlags(auth);
+  const hasSandboxTools = featureFlags.includes("sandbox_tools");
+  const hasNestedSkills = featureFlags.includes("nested_skills");
 
   const prompt = constructPromptMultiActions(auth, {
     userMessage,

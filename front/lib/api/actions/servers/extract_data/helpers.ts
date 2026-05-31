@@ -5,7 +5,7 @@ import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import type { CoreDataSourceSearchCriteria } from "@app/lib/api/assistant/process_data_sources";
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
-import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
@@ -139,7 +139,6 @@ export async function getPromptForProcessDustApp({
       equippedSkills: [],
       agentsList: null,
       conversation,
-      hasNestedSkills: await hasFeatureFlag(auth, "nested_skills"),
     })
   );
 }
