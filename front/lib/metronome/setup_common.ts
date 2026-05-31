@@ -173,7 +173,9 @@ export interface PackageDef {
   aliases: Array<{ name: string }>;
   rate_card_name: string;
   subscriptions?: PackageSubscription[];
-  // Billing cycle anchored to contract start date (matches Stripe subscription anniversary).
+  // Billing cycle anchor. "contract_start_date" anchors periods to the contract
+  // start day-of-month; "first_billing_period" aligns them to calendar month
+  // boundaries (1st → 1st), leaving a partial first period.
   billing_anchor_date?: "contract_start_date" | "first_billing_period";
   usage_statement_schedule?: {
     frequency: "MONTHLY" | "QUARTERLY" | "ANNUAL" | "WEEKLY";
@@ -242,12 +244,25 @@ const SEAT_TAG = "seat";
 const MONTHLY_TAG = "monthly";
 const YEARLY_TAG = "yearly";
 
-// Billing cycle config shared by all packages — anchored to contract start date.
+// Billing cycle config for legacy packages — anchored to the contract start
+// date (periods recur on the contract start day-of-month).
 export const BILLING_CYCLE_CONFIG = {
   billing_anchor_date: "contract_start_date" as const,
   usage_statement_schedule: {
     frequency: "MONTHLY" as const,
     day: "CONTRACT_START" as const,
+  },
+};
+
+// Billing cycle config for new-pricing packages — anchored to the first of the
+// month. Billing periods (and the usage statement that closes them) align to
+// calendar month boundaries (1st → 1st) regardless of when a contract starts;
+// the first period is a partial stub from contract start to the next 1st.
+export const BILLING_CYCLE_CONFIG_FIRST_OF_MONTH = {
+  billing_anchor_date: "first_billing_period" as const,
+  usage_statement_schedule: {
+    frequency: "MONTHLY" as const,
+    day: "FIRST_OF_MONTH" as const,
   },
 };
 

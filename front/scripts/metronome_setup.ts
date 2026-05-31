@@ -799,6 +799,14 @@ interface ExistingPackage {
   aliases?: Array<{ name: string }>;
   rate_card_id?: string;
   scheduled_charges_on_usage_invoices?: "ALL";
+  // Returned by packages.list — the billing-cycle anchor lives here (`day`).
+  // Note: the package-level `billing_anchor_date` we send on create is NOT
+  // echoed back, so we compare `usage_statement_schedule` (the real driver)
+  // rather than that field, which would always mismatch and recreate every run.
+  usage_statement_schedule?: {
+    frequency?: string;
+    day?: string;
+  };
   subscriptions?: Array<{
     collection_schedule: string;
     proration: {
@@ -960,6 +968,30 @@ function packageMatches(ex: ExistingPackage, desired: PackageDef): boolean {
       `    [diff] ${desired.name}: scheduled_charges_on_usage_invoices ${ex.scheduled_charges_on_usage_invoices} → ${desired.scheduled_charges_on_usage_invoices}`
     );
     return false;
+  }
+
+  // Billing cycle: compare the usage statement schedule (frequency + day). The
+  // `day` is what actually anchors billing periods (CONTRACT_START vs
+  // FIRST_OF_MONTH), so a change here must force a package recreation.
+  if (desired.usage_statement_schedule) {
+    if (
+      ex.usage_statement_schedule?.frequency !==
+      desired.usage_statement_schedule.frequency
+    ) {
+      console.log(
+        `    [diff] ${desired.name}: usage_statement_schedule.frequency ${ex.usage_statement_schedule?.frequency} → ${desired.usage_statement_schedule.frequency}`
+      );
+      return false;
+    }
+    if (
+      (ex.usage_statement_schedule?.day ?? undefined) !==
+      (desired.usage_statement_schedule.day ?? undefined)
+    ) {
+      console.log(
+        `    [diff] ${desired.name}: usage_statement_schedule.day ${ex.usage_statement_schedule?.day} → ${desired.usage_statement_schedule.day}`
+      );
+      return false;
+    }
   }
 
   const desiredCredits = desired.recurring_credits ?? [];
