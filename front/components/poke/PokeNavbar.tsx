@@ -222,6 +222,14 @@ function PokeSearchCommandUI({
                   <span className="font-mono">dts_abc123</span>
                 </div>
                 <div>
+                  <span className="font-medium">Dust API project ID:</span>{" "}
+                  <span className="font-mono">123456</span>
+                </div>
+                <div>
+                  <span className="font-medium">Dust API data source ID:</span>{" "}
+                  <span className="font-mono">d563f5c9de2a...</span>
+                </div>
+                <div>
                   <span className="font-medium">Connector ID:</span>{" "}
                   <span className="font-mono">78901</span>
                 </div>

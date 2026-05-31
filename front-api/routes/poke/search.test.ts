@@ -1,5 +1,7 @@
 import { WorkspaceVerificationAttemptResource } from "@app/lib/resources/workspace_verification_attempt_resource";
+import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { faker } from "@faker-js/faker";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it, vi } from "vitest";
 
@@ -149,6 +151,78 @@ describe("GET /api/poke/search - phone number", () => {
     await createPrivateApiMockRequest({ isSuperUser: true });
 
     const response = await searchRequest("hello world");
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.results).toEqual([]);
+  });
+});
+
+describe("GET /api/poke/search - data source", () => {
+  it("returns the data source when searching by dustAPIDataSourceId", async () => {
+    const { workspace, globalSpace } = await createPrivateApiMockRequest({
+      isSuperUser: true,
+      role: "admin",
+    });
+
+    const dustAPIDataSourceId = faker.string.hexadecimal({
+      length: 64,
+      prefix: "",
+      casing: "lower",
+    });
+    await DataSourceViewFactory.folder(workspace, globalSpace, null, {
+      dustAPIDataSourceId,
+    });
+
+    const response = await searchRequest(dustAPIDataSourceId);
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.results).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          dustAPIDataSourceId,
+          type: "Data Source",
+        }),
+      ])
+    );
+  });
+
+  it("returns the data source when searching by dustAPIProjectId", async () => {
+    const { workspace, globalSpace } = await createPrivateApiMockRequest({
+      isSuperUser: true,
+      role: "admin",
+    });
+
+    const dustAPIProjectId = faker.string.numeric(9);
+    await DataSourceViewFactory.folder(workspace, globalSpace, null, {
+      dustAPIProjectId,
+    });
+
+    const response = await searchRequest(dustAPIProjectId);
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.results).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          dustAPIProjectId,
+          type: "Data Source",
+        }),
+      ])
+    );
+  });
+
+  it("returns no data source for an unknown dustAPIDataSourceId", async () => {
+    await createPrivateApiMockRequest({ isSuperUser: true });
+
+    const unknownId = faker.string.hexadecimal({
+      length: 64,
+      prefix: "",
+      casing: "lower",
+    });
+
+    const response = await searchRequest(unknownId);
 
     expect(response.status).toBe(200);
     const data = await response.json();
