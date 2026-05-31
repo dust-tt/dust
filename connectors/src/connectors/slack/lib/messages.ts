@@ -7,6 +7,7 @@ import { renderDocumentTitleAndContent } from "@connectors/lib/data_sources";
 import { formatDateForUpsert } from "@connectors/lib/formatting";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
 import { safeSubstring } from "@connectors/types";
+import { removeNulls } from "@connectors/types/shared/utils/general";
 import type { WebClient } from "@slack/web-api";
 import type { MessageElement } from "@slack/web-api/dist/types/response/ConversationsRepliesResponse";
 
@@ -83,7 +84,7 @@ export async function formatMessagesForUpsert({
         : "";
 
       // Slack renders forwarded/shared messages as message unfurl attachments.
-      const forwardedMessagesText =
+      const forwardedMessagesText = removeNulls(
         message.attachments
           ?.filter(
             (a) =>
@@ -100,9 +101,9 @@ export async function formatMessagesForUpsert({
               : "Forwarded message:";
 
             return `${forwardedMessageHeader}\n${forwardedMessageBody}`;
-          })
-          .filter((text): text is string => text !== null)
-          .join("\n---\n") ?? "";
+          }) ?? []
+      ).join("\n---\n");
+
       const forwardedMessagesInfo = forwardedMessagesText
         ? `\n${forwardedMessagesText}`
         : "";
