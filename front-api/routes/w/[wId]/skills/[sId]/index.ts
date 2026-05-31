@@ -1,5 +1,5 @@
 import {
-  replaceUnavailableSkillReferencesForFrontend,
+  replaceUnavailableSkillReferences,
   restoreUnavailableSkillReferencesForPersistence,
 } from "@app/lib/api/skills/skill_references";
 import { resolveAdditionalRequestedSpaceModelIds } from "@app/lib/api/skills/space_requirements";
@@ -139,7 +139,7 @@ app.get(
 
     const withRelations = ctx.req.query("withRelations");
 
-    const serializedSkill = await replaceUnavailableSkillReferencesForFrontend(
+    const serializedSkill = await replaceUnavailableSkillReferences(
       auth,
       skill.toJSON(auth)
     );
@@ -158,7 +158,7 @@ app.get(
         ? await skill.fetchChildSkills(auth)
         : [];
       const serializedExtendedSkill = extendedSkill
-        ? await replaceUnavailableSkillReferencesForFrontend(
+        ? await replaceUnavailableSkillReferences(
             auth,
             extendedSkill.toJSON(auth)
           )
@@ -469,10 +469,7 @@ app.patch(
     await pruneOutdatedSkillEditSuggestions(auth, skill);
 
     return ctx.json({
-      skill: await replaceUnavailableSkillReferencesForFrontend(
-        auth,
-        skill.toJSON(auth)
-      ),
+      skill: await replaceUnavailableSkillReferences(auth, skill.toJSON(auth)),
     });
   }
 );

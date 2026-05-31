@@ -2,7 +2,7 @@
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import {
-  replaceUnavailableSkillReferencesForFrontend,
+  replaceUnavailableSkillReferences,
   restoreUnavailableSkillReferencesForPersistence,
 } from "@app/lib/api/skills/skill_references";
 import { resolveAdditionalRequestedSpaceModelIds } from "@app/lib/api/skills/space_requirements";
@@ -114,11 +114,10 @@ async function handler(
     case "GET": {
       const { withRelations } = req.query;
 
-      const serializedSkill =
-        await replaceUnavailableSkillReferencesForFrontend(
-          auth,
-          skill.toJSON(auth)
-        );
+      const serializedSkill = await replaceUnavailableSkillReferences(
+        auth,
+        skill.toJSON(auth)
+      );
 
       if (withRelations === "true") {
         const featureFlags = await getFeatureFlags(auth);
@@ -134,7 +133,7 @@ async function handler(
           ? await skill.fetchChildSkills(auth)
           : [];
         const serializedExtendedSkill = extendedSkill
-          ? await replaceUnavailableSkillReferencesForFrontend(
+          ? await replaceUnavailableSkillReferences(
               auth,
               extendedSkill.toJSON(auth)
             )
@@ -447,11 +446,10 @@ async function handler(
 
       await pruneOutdatedSkillEditSuggestions(auth, skill);
 
-      const serializedSkill =
-        await replaceUnavailableSkillReferencesForFrontend(
-          auth,
-          skill.toJSON(auth)
-        );
+      const serializedSkill = await replaceUnavailableSkillReferences(
+        auth,
+        skill.toJSON(auth)
+      );
 
       return res.status(200).json({
         skill: serializedSkill,

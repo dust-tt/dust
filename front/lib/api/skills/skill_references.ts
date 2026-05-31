@@ -132,7 +132,7 @@ export async function getUnavailableSkillReferenceIdsForParent(
   return unavailableSkillIds;
 }
 
-export function replaceUnavailableSkillReferences(
+export function replaceUnavailableSkillReferenceTags(
   content: string,
   unavailableSkillIds: ReadonlySet<string>,
   { html = false }: { html?: boolean } = {}
@@ -152,7 +152,7 @@ export function replaceUnavailableSkillReferences(
   });
 }
 
-export async function replaceUnavailableSkillReferencesForFrontend(
+export async function replaceUnavailableSkillReferences(
   auth: Authenticator,
   skill: SkillType
 ): Promise<SkillType> {
@@ -173,13 +173,13 @@ export async function replaceUnavailableSkillReferencesForFrontend(
   return {
     ...skill,
     instructions: skill.instructions
-      ? replaceUnavailableSkillReferences(
+      ? replaceUnavailableSkillReferenceTags(
           skill.instructions,
           unavailableSkillIds
         )
       : skill.instructions,
     instructionsHtml: skill.instructionsHtml
-      ? replaceUnavailableSkillReferences(
+      ? replaceUnavailableSkillReferenceTags(
           skill.instructionsHtml,
           unavailableSkillIds,
           {
