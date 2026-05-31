@@ -476,8 +476,8 @@ export function getNewPackages(): PackageDef[] {
       subscriptions: ALL_SEAT_SUBSCRIPTIONS,
       scheduled_charges_on_usage_invoices: "ALL",
       recurring_credits: getAllSeatRecurringCredits(),
+      // Enterprise contracts are yearly-only: only the annual seat is entitled.
       overrides: buildSeatEntitlementOverrides(CREDIT_TYPE_USD_ID, [
-        { product_name: WORKSPACE_SEAT_PRODUCT_NAME, price: 2000 },
         {
           product_name:
             WORKSPACE_SEAT_PRODUCT_NAME + SEAT_PRODUCT_YEARLY_SUFFIX,
@@ -493,8 +493,8 @@ export function getNewPackages(): PackageDef[] {
       subscriptions: ALL_SEAT_SUBSCRIPTIONS,
       scheduled_charges_on_usage_invoices: "ALL",
       recurring_credits: getAllSeatRecurringCredits(),
+      // Enterprise contracts are yearly-only: only the annual seat is entitled.
       overrides: buildSeatEntitlementOverrides(CREDIT_TYPE_EUR_ID, [
-        { product_name: WORKSPACE_SEAT_PRODUCT_NAME, price: 20 },
         {
           product_name:
             WORKSPACE_SEAT_PRODUCT_NAME + SEAT_PRODUCT_YEARLY_SUFFIX,
@@ -510,13 +510,12 @@ export function getNewPackages(): PackageDef[] {
       subscriptions: ALL_SEAT_SUBSCRIPTIONS,
       scheduled_charges_on_usage_invoices: "ALL",
       recurring_credits: getAllSeatRecurringCredits(),
+      // Enterprise contracts are yearly-only: only the annual seats are entitled.
       overrides: buildSeatEntitlementOverrides(CREDIT_TYPE_USD_ID, [
-        { product_name: PRO_SEAT_PRODUCT_NAME, price: 4400 },
         {
           product_name: PRO_SEAT_PRODUCT_NAME + SEAT_PRODUCT_YEARLY_SUFFIX,
           price: 52800,
         },
-        { product_name: MAX_SEAT_PRODUCT_NAME, price: 14000 },
         {
           product_name: MAX_SEAT_PRODUCT_NAME + SEAT_PRODUCT_YEARLY_SUFFIX,
           price: 168000,
@@ -531,13 +530,12 @@ export function getNewPackages(): PackageDef[] {
       subscriptions: ALL_SEAT_SUBSCRIPTIONS,
       scheduled_charges_on_usage_invoices: "ALL",
       recurring_credits: getAllSeatRecurringCredits(),
+      // Enterprise contracts are yearly-only: only the annual seats are entitled.
       overrides: buildSeatEntitlementOverrides(CREDIT_TYPE_EUR_ID, [
-        { product_name: PRO_SEAT_PRODUCT_NAME, price: 44 },
         {
           product_name: PRO_SEAT_PRODUCT_NAME + SEAT_PRODUCT_YEARLY_SUFFIX,
           price: 528,
         },
-        { product_name: MAX_SEAT_PRODUCT_NAME, price: 140 },
         {
           product_name: MAX_SEAT_PRODUCT_NAME + SEAT_PRODUCT_YEARLY_SUFFIX,
           price: 1680,
