@@ -1,6 +1,6 @@
 import {
   getUnavailableSkillReferenceIdsByParent,
-  replaceUnavailableSkillReferences,
+  replaceUnavailableSkillReferenceTags,
   type SkillInstructionsOverride,
 } from "@app/lib/api/skills/skill_references";
 import type { Authenticator } from "@app/lib/auth";
@@ -64,7 +64,7 @@ export async function resolveEnabledSkillReferencesForAgentLoop<
   return skills.map((skill) => {
     const unavailableSkillIds =
       unavailableSkillIdsBySkill.get(skill) ?? EMPTY_UNAVAILABLE_SKILL_IDS;
-    const instructions = replaceUnavailableSkillReferences(
+    const instructions = replaceUnavailableSkillReferenceTags(
       skill.instructions,
       unavailableSkillIds
     );
@@ -75,7 +75,7 @@ export async function resolveEnabledSkillReferencesForAgentLoop<
     const extendedSkill = skill.extendedSkill
       ? withInstructionsOverride(
           skill.extendedSkill,
-          replaceUnavailableSkillReferences(
+          replaceUnavailableSkillReferenceTags(
             skill.extendedSkill.instructions,
             extendedSkillUnavailableSkillIds
           )
@@ -101,7 +101,7 @@ export async function resolveSkillReferencesForAgentLoop(
   return skills.map((skill) =>
     withInstructionsOverride(
       skill,
-      replaceUnavailableSkillReferences(
+      replaceUnavailableSkillReferenceTags(
         skill.instructions,
         unavailableSkillIdsBySkill.get(skill) ?? EMPTY_UNAVAILABLE_SKILL_IDS
       )
