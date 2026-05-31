@@ -82,11 +82,13 @@ export async function formatMessagesForUpsert({
             .join("\n")
         : "";
 
-      // Slack attachments can contain forwarded/shared messages or app content.
-      // Link-unfurl attachments (from_url is set) are skipped to avoid noise.
-      const attachmentText =
+      // Slack renders forwarded/shared messages as message unfurl attachments.
+      const forwardedMessagesText =
         message.attachments
-          ?.filter((a) => !a.from_url)
+          ?.filter(
+            (a) =>
+              a.is_msg_unfurl || a.is_reply_unfurl || a.is_thread_root_unfurl
+          )
           .map((a) => {
             const parts: string[] = [];
             if (a.author_name) {
@@ -101,15 +103,17 @@ export async function formatMessagesForUpsert({
           })
           .filter(Boolean)
           .join("\n---\n") ?? "";
-      const attachmentsInfo = attachmentText ? `\n${attachmentText}` : "";
+      const forwardedMessagesInfo = forwardedMessagesText
+        ? `\n${forwardedMessagesText}`
+        : "";
 
       return {
         messageDate,
         dateStr: messageDateStr,
         authorName,
         authorEmail,
-        text: text + filesInfo + attachmentsInfo,
-        content: text + attachmentsInfo + "\n",
+        text: text + filesInfo + forwardedMessagesInfo,
+        content: text + forwardedMessagesInfo + "\n",
         sections: [],
       };
     })
