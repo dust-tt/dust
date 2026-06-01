@@ -256,6 +256,7 @@ describe("GET /api/w/[wId]/skills/[sId]", () => {
       mcpServerViews: [],
       attachedKnowledge: [],
       requestedSpaceIds: skill.requestedSpaceIds,
+      enableSkillReferences: true,
     });
 
     req.query.withRelations = "true";
@@ -716,6 +717,13 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
     expect(addEditorResult.isOk()).toBe(true);
 
     const restrictedSpace = await SpaceFactory.regular(workspace);
+    const addOwnerToRestrictedSpaceRes = await restrictedSpace.addMembers(
+      skillOwnerAuth,
+      { userIds: [skillOwnerAuth.getNonNullableUser().sId] }
+    );
+    expect(addOwnerToRestrictedSpaceRes.isOk()).toBe(true);
+    await skillOwnerAuth.refresh();
+
     const inaccessibleSkill = await SkillFactory.create(skillOwnerAuth, {
       name: "Restricted child skill",
       requestedSpaceIds: [restrictedSpace.id],
@@ -733,6 +741,7 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
       mcpServerViews: [],
       attachedKnowledge: [],
       requestedSpaceIds: skill.requestedSpaceIds,
+      enableSkillReferences: true,
     });
 
     const { req: getReq, res: getRes } = createMocks<
@@ -781,10 +790,19 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
       skill.sId
     );
     expect(persistedSkill).not.toBeNull();
-    expect(persistedSkill?.instructions).toContain(originalInstructionTag);
-    expect(persistedSkill?.instructions).not.toContain("unavailable_skill");
-    expect(persistedSkill?.instructionsHtml).toContain(originalHtmlTag);
-    expect(persistedSkill?.instructionsHtml).not.toContain("unavailable_skill");
+    expect(persistedSkill?.instructions).toContain(
+      `<unavailable_skill id="${inaccessibleSkill.sId}" />`
+    );
+    expect(persistedSkill?.instructionsHtml).toContain(
+      `<unavailable_skill id="${inaccessibleSkill.sId}"></unavailable_skill>`
+    );
+    await expect(
+      persistedSkill!.fetchChildSkills(skillOwnerAuth)
+    ).resolves.toEqual([
+      expect.objectContaining({
+        sId: inaccessibleSkill.sId,
+      }),
+    ]);
   });
 
   it("should correctly reflect updated tools in the response", async () => {

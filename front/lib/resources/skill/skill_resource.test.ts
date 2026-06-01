@@ -645,6 +645,158 @@ describe("SkillResource", () => {
       expect(spaceIds).toContain(skill1OnlySpace.id);
     });
 
+    it("normalizes unavailable nested skill references when creating a parent skill", async () => {
+      const restrictedSpace = await SpaceFactory.regular(testContext.workspace);
+      const addAdminToRestrictedSpaceRes = await restrictedSpace.addMembers(
+        testContext.authenticator,
+        { userIds: [testContext.authenticator.getNonNullableUser().sId] }
+      );
+      expect(addAdminToRestrictedSpaceRes.isOk()).toBe(true);
+      await testContext.authenticator.refresh();
+
+      const childSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Restricted Child Skill",
+        requestedSpaceIds: [restrictedSpace.id],
+      });
+      const skillReferenceTag =
+        SkillFactory.serializeSkillReferenceTag(childSkill);
+      const skillReferenceHtmlTag = serializeSkillTag(
+        {
+          icon: childSkill.icon,
+          id: childSkill.sId,
+          name: childSkill.name,
+        },
+        { html: true }
+      );
+
+      const parentSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Parent Skill",
+        instructions: `Use ${skillReferenceTag}.`,
+        instructionsHtml: `<p>Use ${skillReferenceHtmlTag}.</p>`,
+        enableSkillReferences: true,
+      });
+
+      expect(parentSkill.instructions).toContain(
+        `<unavailable_skill id="${childSkill.sId}" />`
+      );
+      expect(parentSkill.instructionsHtml).toContain(
+        `<unavailable_skill id="${childSkill.sId}"></unavailable_skill>`
+      );
+      await expect(
+        parentSkill.fetchChildSkills(testContext.authenticator)
+      ).resolves.toEqual([
+        expect.objectContaining({
+          sId: childSkill.sId,
+        }),
+      ]);
+    });
+
+    it("normalizes nested skill references when parent requested spaces change", async () => {
+      const restrictedSpace = await SpaceFactory.regular(testContext.workspace);
+      const addAdminToRestrictedSpaceRes = await restrictedSpace.addMembers(
+        testContext.authenticator,
+        { userIds: [testContext.authenticator.getNonNullableUser().sId] }
+      );
+      expect(addAdminToRestrictedSpaceRes.isOk()).toBe(true);
+      await testContext.authenticator.refresh();
+
+      const childSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Restricted Child Skill",
+        requestedSpaceIds: [restrictedSpace.id],
+      });
+      const parentSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Parent Skill",
+        instructions: `Use ${SkillFactory.serializeSkillReferenceTag(childSkill)}.`,
+        enableSkillReferences: true,
+      });
+
+      expect(parentSkill.instructions).toContain(
+        `<unavailable_skill id="${childSkill.sId}" />`
+      );
+
+      await parentSkill.updateSkill(testContext.authenticator, {
+        name: parentSkill.name,
+        agentFacingDescription: parentSkill.agentFacingDescription,
+        userFacingDescription: parentSkill.userFacingDescription,
+        instructions: parentSkill.instructions,
+        instructionsHtml: parentSkill.instructionsHtml,
+        icon: parentSkill.icon,
+        mcpServerViews: [],
+        attachedKnowledge: [],
+        requestedSpaceIds: [restrictedSpace.id],
+        enableSkillReferences: true,
+      });
+
+      const updatedParentSkill = await SkillResource.fetchById(
+        testContext.authenticator,
+        parentSkill.sId
+      );
+
+      expect(updatedParentSkill?.instructions).toContain(
+        SkillFactory.serializeSkillReferenceTag(childSkill)
+      );
+    });
+
+    it("updates parent skill references when child requested spaces change", async () => {
+      const restrictedSpace = await SpaceFactory.regular(testContext.workspace);
+      const childSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Child Skill",
+      });
+      const parentSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Parent Skill",
+        instructions: `Use ${SkillFactory.serializeSkillReferenceTag(childSkill)}.`,
+        enableSkillReferences: true,
+      });
+
+      expect(parentSkill.instructions).toContain(
+        SkillFactory.serializeSkillReferenceTag(childSkill)
+      );
+
+      await childSkill.updateSkill(testContext.authenticator, {
+        name: childSkill.name,
+        agentFacingDescription: childSkill.agentFacingDescription,
+        userFacingDescription: childSkill.userFacingDescription,
+        instructions: childSkill.instructions,
+        instructionsHtml: childSkill.instructionsHtml,
+        icon: childSkill.icon,
+        mcpServerViews: [],
+        attachedKnowledge: [],
+        requestedSpaceIds: [restrictedSpace.id],
+        enableSkillReferences: true,
+      });
+
+      const unavailableParentSkill = await SkillResource.fetchById(
+        testContext.authenticator,
+        parentSkill.sId
+      );
+
+      expect(unavailableParentSkill?.instructions).toContain(
+        `<unavailable_skill id="${childSkill.sId}" />`
+      );
+
+      await childSkill.updateSkill(testContext.authenticator, {
+        name: childSkill.name,
+        agentFacingDescription: childSkill.agentFacingDescription,
+        userFacingDescription: childSkill.userFacingDescription,
+        instructions: childSkill.instructions,
+        instructionsHtml: childSkill.instructionsHtml,
+        icon: childSkill.icon,
+        mcpServerViews: [],
+        attachedKnowledge: [],
+        requestedSpaceIds: [],
+        enableSkillReferences: true,
+      });
+
+      const availableParentSkill = await SkillResource.fetchById(
+        testContext.authenticator,
+        parentSkill.sId
+      );
+
+      expect(availableParentSkill?.instructions).toContain(
+        SkillFactory.serializeSkillReferenceTag(childSkill)
+      );
+    });
+
     it("throws when syncing an invalid nested skill reference", async () => {
       const skill = await SkillFactory.create(testContext.authenticator, {
         name: "Skill With Invalid Reference",

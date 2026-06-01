@@ -1,6 +1,5 @@
-import { restoreUnavailableSkillReferencesForPersistence } from "@app/lib/api/skills/skill_references";
 import { resolveAdditionalRequestedSpaceModelIds } from "@app/lib/api/skills/space_requirements";
-import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { pruneOutdatedSkillEditSuggestions } from "@app/lib/reinforcement/skill_suggestion_pruning";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -74,36 +73,6 @@ const PatchSkillRequestBodySchema = z.object({
   reinforcement: z.enum(["auto", "on", "off"]).optional(),
 });
 
-async function withReplacedSkillReferences(
-  auth: Authenticator,
-  skill: SkillResource
-): Promise<SkillType> {
-  const serializedSkill = skill.toJSON(auth);
-  if (serializedSkill.instructions === null) {
-    return serializedSkill;
-  }
-
-  const [replacement] = await SkillResource.replaceUnavailableSkillReferences(
-    auth,
-    [
-      {
-        instructions: serializedSkill.instructions,
-        instructionsHtml: serializedSkill.instructionsHtml,
-        requestedSpaceIds: skill.requestedSpaceIds,
-      },
-    ]
-  );
-  if (!replacement) {
-    return serializedSkill;
-  }
-
-  return {
-    ...serializedSkill,
-    instructions: replacement.instructions,
-    instructionsHtml: replacement.instructionsHtml,
-  };
-}
-
 // Shared per-request prelude: resolve :sId to a SkillResource or return a
 // failure Response. See [API10].
 async function loadSkill(
@@ -166,7 +135,7 @@ app.get(
 
     const withRelations = ctx.req.query("withRelations");
 
-    const serializedSkill = await withReplacedSkillReferences(auth, skill);
+    const serializedSkill = skill.toJSON(auth);
 
     if (withRelations === "true") {
       const featureFlags = await getFeatureFlags(auth);
@@ -182,7 +151,7 @@ app.get(
         ? await skill.fetchChildSkills(auth)
         : [];
       const serializedExtendedSkill = extendedSkill
-        ? await withReplacedSkillReferences(auth, extendedSkill)
+        ? extendedSkill.toJSON(auth)
         : null;
 
       const skillWithRelations: SkillWithRelationsType = {
@@ -448,35 +417,13 @@ app.patch(
       );
     }
 
-    const restoredSkillReferences =
-      restoreUnavailableSkillReferencesForPersistence({
-        current: {
-          instructions: skill.instructions,
-          instructionsHtml: skill.instructionsHtml,
-        },
-        updated: {
-          instructions: body.instructions,
-          instructionsHtml: body.instructionsHtml,
-        },
-      });
-
-    if (restoredSkillReferences.isErr()) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: restoredSkillReferences.error.message,
-        },
-      });
-    }
-
     await skill.updateSkill(auth, {
       agentFacingDescription: body.agentFacingDescription,
       attachedKnowledge: attachedKnowledgeWithDataSourceViews,
       fileAttachments: files,
       icon: body.icon,
-      instructions: restoredSkillReferences.value.instructions,
-      instructionsHtml: restoredSkillReferences.value.instructionsHtml,
+      instructions: body.instructions,
+      instructionsHtml: body.instructionsHtml,
       isDefault: body.isDefault,
       mcpServerViews,
       name,
@@ -490,7 +437,7 @@ app.patch(
     await pruneOutdatedSkillEditSuggestions(auth, skill);
 
     return ctx.json({
-      skill: await withReplacedSkillReferences(auth, skill),
+      skill: skill.toJSON(auth),
     });
   }
 );
