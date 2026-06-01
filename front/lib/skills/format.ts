@@ -101,7 +101,11 @@ export function renameSkillReferencesInContent(
     const id = tag.match(/\bid="([^"]+)"/)?.[1];
 
     if (id === skillId) {
-      return tag.replace(SKILL_NAME_ATTRIBUTE_REGEX, `$1${newName}$2`);
+      return tag.replace(
+        SKILL_NAME_ATTRIBUTE_REGEX,
+        (_match, prefix: string, suffix: string) =>
+          `${prefix}${newName}${suffix}`
+      );
     }
 
     return tag;
