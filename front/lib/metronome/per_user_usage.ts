@@ -6,6 +6,9 @@ import {
 import {
   getMetricLlmProviderCostAwuId,
   getMetricToolInvocationsId,
+  USAGE_TYPE_GROUP_KEY,
+  USAGE_TYPE_PROGRAMMATIC,
+  USAGE_TYPE_USER,
 } from "@app/lib/metronome/constants";
 import { getMetronomeCurrentBillingPeriod } from "@app/lib/metronome/contracts";
 import {
@@ -19,7 +22,7 @@ import { Err, Ok } from "@app/types/shared/result";
 // usage_type slices that incur AWU spend. The "free" slice is priced at 0 AWU
 // on every rate card, so it's excluded to mirror the per-user
 // `spend_threshold_reached` alert (AWU credit type) that backs per-user caps.
-const PAID_USAGE_TYPES = ["user", "programmatic"];
+const PAID_USAGE_TYPES = [USAGE_TYPE_USER, USAGE_TYPE_PROGRAMMATIC];
 
 /**
  * Per-user AWU consumption for the current billing period.
@@ -81,8 +84,8 @@ export async function fetchPerUserAwuUsage({
       startingOn,
       endingBefore,
       windowSize: "HOUR",
-      groupKey: ["user_id", "usage_type"],
-      groupFilters: { usage_type: PAID_USAGE_TYPES },
+      groupKey: ["user_id", USAGE_TYPE_GROUP_KEY],
+      groupFilters: { [USAGE_TYPE_GROUP_KEY]: PAID_USAGE_TYPES },
     }),
     listMetronomeUsageWithGroups({
       customerId: metronomeCustomerId,
@@ -90,8 +93,8 @@ export async function fetchPerUserAwuUsage({
       startingOn,
       endingBefore,
       windowSize: "HOUR",
-      groupKey: ["user_id", "usage_type", "tool_category"],
-      groupFilters: { usage_type: PAID_USAGE_TYPES },
+      groupKey: ["user_id", USAGE_TYPE_GROUP_KEY, "tool_category"],
+      groupFilters: { [USAGE_TYPE_GROUP_KEY]: PAID_USAGE_TYPES },
     }),
   ]);
   if (aiResult.isErr()) {

@@ -3,7 +3,11 @@ import {
   findMetronomeAlert,
   upsertMetronomeAlert,
 } from "@app/lib/metronome/alerts";
-import { getCreditTypeAwuId } from "@app/lib/metronome/constants";
+import {
+  getCreditTypeAwuId,
+  USAGE_TYPE_GROUP_KEY,
+  USAGE_TYPE_PROGRAMMATIC,
+} from "@app/lib/metronome/constants";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -74,7 +78,7 @@ export async function upsertMetronomeProgrammaticCapAlerts({
   // Scope every alert to programmatic AWU usage only, so contract/pool spend
   // doesn't contribute to the cap thresholds.
   const programmaticGroupValues = [
-    { key: "usage_type", value: "programmatic" },
+    { key: USAGE_TYPE_GROUP_KEY, value: USAGE_TYPE_PROGRAMMATIC },
   ];
 
   // Main cap alert.

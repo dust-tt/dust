@@ -10,6 +10,10 @@ import {
   CREDIT_TYPE_EUR_ID,
   CREDIT_TYPE_USD_ID,
   SEAT_PRODUCT_YEARLY_SUFFIX,
+  USAGE_TYPE_FREE,
+  USAGE_TYPE_GROUP_KEY,
+  USAGE_TYPE_PROGRAMMATIC,
+  USAGE_TYPE_USER,
 } from "@app/lib/metronome/constants";
 import { TOOL_CATEGORIES } from "@app/lib/metronome/events";
 import {
@@ -62,7 +66,7 @@ export const NEW_METRICS: MetricDef[] = [
     event_type_filter: { in_values: ["tool_use_v3"] },
     property_filters: [
       { name: "count", exists: true },
-      { name: "usage_type", exists: true },
+      { name: USAGE_TYPE_GROUP_KEY, exists: true },
       { name: "tool_category", exists: true },
       { name: "tool_group", exists: true },
       { name: "user_id", exists: true },
@@ -76,13 +80,13 @@ export const NEW_METRICS: MetricDef[] = [
     // 7 group keys — Metronome's default cap is 5; this metric needs an
     // explicit limit increase (granted by Metronome support).
     group_keys: [
-      ["user_id", "usage_type", "tool_category"],
+      ["user_id", USAGE_TYPE_GROUP_KEY, "tool_category"],
       ["user_id"],
       ["api_key_name"],
       ["tool_category"],
       ["origin"],
       ["agent_id"],
-      ["usage_type"],
+      [USAGE_TYPE_GROUP_KEY],
     ],
   },
   // AWU-based AI cost metric — sums cost_awu directly (no unit conversion).
@@ -94,7 +98,7 @@ export const NEW_METRICS: MetricDef[] = [
     event_type_filter: { in_values: ["llm_usage_v3"] },
     property_filters: [
       { name: "cost_awu", exists: true },
-      { name: "usage_type", exists: true },
+      { name: USAGE_TYPE_GROUP_KEY, exists: true },
       { name: "user_id", exists: true },
       { name: "api_key_name", exists: true },
       { name: "model_id", exists: true },
@@ -105,13 +109,13 @@ export const NEW_METRICS: MetricDef[] = [
     aggregation_key: "cost_awu",
     // 7 group keys — see note on Tool Invocations above.
     group_keys: [
-      ["user_id", "usage_type"],
+      ["user_id", USAGE_TYPE_GROUP_KEY],
       ["user_id"],
       ["api_key_name"],
       ["model_id"],
       ["origin"],
       ["agent_id"],
-      ["usage_type"],
+      [USAGE_TYPE_GROUP_KEY],
     ],
   },
   // Phase 2 token metrics removed — will be added when Pricing Index is ready.
@@ -129,7 +133,7 @@ const TOOL_CATEGORY_PRICES_AWU: Record<
 // usage_type splits each AWU usage rate: "user" and "programmatic" use the
 // nominal price, "free" is priced at 0 (covers free-tagged events, replacing
 // the prior recurring-credit mechanism).
-const PAID_USAGE_TYPES = ["user", "programmatic"] as const;
+const PAID_USAGE_TYPES = [USAGE_TYPE_USER, USAGE_TYPE_PROGRAMMATIC] as const;
 
 function buildAwuToolUsageRates(): RateDef[] {
   return TOOL_CATEGORIES.flatMap((category): RateDef[] => [
@@ -143,7 +147,7 @@ function buildAwuToolUsageRates(): RateDef[] {
         credit_type_id: getCreditTypeAwuId(),
         pricing_group_values: {
           tool_category: category,
-          usage_type: usageType,
+          [USAGE_TYPE_GROUP_KEY]: usageType,
         },
       })
     ),
@@ -154,7 +158,10 @@ function buildAwuToolUsageRates(): RateDef[] {
       rate_type: "FLAT",
       price: 0,
       credit_type_id: getCreditTypeAwuId(),
-      pricing_group_values: { tool_category: category, usage_type: "free" },
+      pricing_group_values: {
+        tool_category: category,
+        [USAGE_TYPE_GROUP_KEY]: USAGE_TYPE_FREE,
+      },
     },
   ]);
 }
@@ -171,7 +178,7 @@ function buildAwuAiUsageRates(): RateDef[] {
         rate_type: "FLAT",
         price: 1,
         credit_type_id: getCreditTypeAwuId(),
-        pricing_group_values: { usage_type: usageType },
+        pricing_group_values: { [USAGE_TYPE_GROUP_KEY]: usageType },
       })
     ),
     {
@@ -181,7 +188,7 @@ function buildAwuAiUsageRates(): RateDef[] {
       rate_type: "FLAT",
       price: 0,
       credit_type_id: getCreditTypeAwuId(),
-      pricing_group_values: { usage_type: "free" },
+      pricing_group_values: { [USAGE_TYPE_GROUP_KEY]: USAGE_TYPE_FREE },
     },
   ];
 }

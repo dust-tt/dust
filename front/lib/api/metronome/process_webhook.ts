@@ -50,6 +50,8 @@ import {
   getCreditTypeAwuId,
   getProductExcessCreditsId,
   PLAN_CODE_CUSTOM_FIELD_KEY,
+  USAGE_TYPE_GROUP_KEY,
+  USAGE_TYPE_PROGRAMMATIC,
 } from "@app/lib/metronome/constants";
 import { invalidateContractCache } from "@app/lib/metronome/plan_type";
 import type { ProgrammaticCreditEvent } from "@app/lib/metronome/programmatic_credit_state_machine";
@@ -88,7 +90,8 @@ function isProgrammaticMonthlyCap(
   }
   return (
     event.properties.group_values?.some(
-      (g) => g.key === "usage_type" && g.value === "programmatic"
+      (g) =>
+        g.key === USAGE_TYPE_GROUP_KEY && g.value === USAGE_TYPE_PROGRAMMATIC
     ) ?? false
   );
 }
