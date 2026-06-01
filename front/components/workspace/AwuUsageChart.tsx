@@ -62,20 +62,17 @@ function formatCredits(credits: number): string {
   return Math.round(credits).toLocaleString("en-US");
 }
 
-const GROUP_BY_TYPE_OPTIONS: {
+const GROUP_BY_OPTIONS: {
   value: AwuUsageGroupByType;
   label: string;
 }[] = [
   { value: "usage_type", label: "By usage type" },
+  { value: "user", label: "By User" },
+  { value: "agent", label: "By Agent" },
   { value: "api_key", label: "By API Key" },
   { value: "model", label: "By Model" },
   { value: "origin", label: "By Source" },
 ];
-
-const GROUP_BY_OPTIONS: {
-  value: "global" | AwuUsageGroupByType;
-  label: string;
-}[] = [{ value: "global", label: "Global" }, ...GROUP_BY_TYPE_OPTIONS];
 
 const TOP_K_OPTIONS = [
   { value: 5, label: "Top 5" },
@@ -402,7 +399,7 @@ function BaseAwuUsageChart({
   );
 
   const activeFilterChips = useMemo(() => {
-    return GROUP_BY_TYPE_OPTIONS.flatMap(({ value: type }) =>
+    return GROUP_BY_OPTIONS.flatMap(({ value: type }) =>
       (filter[type] ?? []).map((key) => ({
         groupByType: type,
         filterKey: key,
@@ -556,9 +553,8 @@ function BaseAwuUsageChart({
             <DropdownMenuTrigger asChild>
               <Button
                 label={
-                  groupBy
-                    ? GROUP_BY_OPTIONS.find((o) => o.value === groupBy)?.label
-                    : "Global"
+                  GROUP_BY_OPTIONS.find((o) => o.value === groupBy)?.label ??
+                  "By usage type"
                 }
                 size="xs"
                 variant="outline"
@@ -570,9 +566,7 @@ function BaseAwuUsageChart({
                 <DropdownMenuItem
                   key={o.value}
                   label={o.label}
-                  onClick={() =>
-                    setGroupBy(o.value === "global" ? undefined : o.value)
-                  }
+                  onClick={() => setGroupBy(o.value)}
                 />
               ))}
             </DropdownMenuContent>

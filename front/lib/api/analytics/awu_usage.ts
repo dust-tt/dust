@@ -6,6 +6,7 @@ import {
   DAY_MS,
   getTimestampsForWindow,
 } from "@app/lib/api/analytics/time_utils";
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
 import { getBillingCycleFromDay } from "@app/lib/client/subscription";
 import {
@@ -18,9 +19,18 @@ import {
 import {
   getCreditTypeAwuId,
   getMetricLlmProviderCostAwuId,
+  getMetricToolInvocationsId,
+  USAGE_TYPE_FREE,
+  USAGE_TYPE_GROUP_KEY,
+  USAGE_TYPE_USER,
 } from "@app/lib/metronome/constants";
+import {
+  isToolCategory,
+  TOOL_CATEGORY_AWU_WEIGHTS,
+} from "@app/lib/metronome/events";
 import type { MetronomeBalance } from "@app/lib/metronome/types";
 import { isMetronomeExcessCredit } from "@app/lib/metronome/types";
+import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -33,6 +43,8 @@ import { z } from "zod";
 // applied here, and credit balances are returned as whole AWU credits.
 const AWU_USAGE_GROUP_BY_KEYS = [
   "usage_type",
+  "user",
+  "agent",
   "api_key",
   "model",
   "origin",
@@ -47,12 +59,23 @@ const USAGE_TYPE_LABELS: Record<string, string> = {
   free: "Free",
 };
 
+// Primary Metronome event property for each grouping (used for error
+// reporting). The full per-grouping query config lives in getLlmQueryConfig.
 const GROUP_BY_TO_EVENT_PROPERTY: Record<AwuUsageGroupByType, string> = {
-  usage_type: "usage_type",
+  usage_type: USAGE_TYPE_GROUP_KEY,
+  user: "user_id",
+  agent: "agent_id",
   api_key: "api_key_name",
   model: "model_id",
   origin: "origin",
 };
+
+// Sentinel bucket key for missing dimension values (e.g. user_id="unknown").
+const UNKNOWN_KEY = "unknown";
+
+// usage_type values to keep when grouping by user: user usage isn't
+// attributable to programmatic API traffic, so programmatic is dropped.
+const NON_PROGRAMMATIC_USAGE_TYPES = [USAGE_TYPE_USER, USAGE_TYPE_FREE];
 
 export const AwuUsageQuerySchema = z.object({
   groupBy: z.enum(AWU_USAGE_GROUP_BY_KEYS).optional(),
@@ -168,10 +191,149 @@ export function calculateAwuCreditTotalsFromBalances(
   return result;
 }
 
-function resolveGroupLabels(
+// LLM (cost_awu) query config per grouping. cost_awu is already AWU credits.
+function getLlmQueryConfig(groupBy: AwuUsageGroupByType): {
+  groupKey: string[];
+  bucketProp: string;
+  groupFilters?: Record<string, string[]>;
+  // Bucket keys to drop after aggregation (e.g. user traffic has no api_key).
+  dropKeys?: string[];
+} {
+  switch (groupBy) {
+    case "user":
+      // Group by user, excluding programmatic traffic (not user-attributable).
+      return {
+        groupKey: ["user_id", USAGE_TYPE_GROUP_KEY],
+        bucketProp: "user_id",
+        groupFilters: { [USAGE_TYPE_GROUP_KEY]: NON_PROGRAMMATIC_USAGE_TYPES },
+      };
+    case "api_key":
+      // API-key traffic is programmatic; user traffic carries no api_key (it is
+      // emitted as "unknown"), so that bucket is dropped.
+      return {
+        groupKey: ["api_key_name"],
+        bucketProp: "api_key_name",
+        dropKeys: [UNKNOWN_KEY],
+      };
+    case "agent":
+      return { groupKey: ["agent_id"], bucketProp: "agent_id" };
+    case "model":
+      return { groupKey: ["model_id"], bucketProp: "model_id" };
+    case "origin":
+      return { groupKey: ["origin"], bucketProp: "origin" };
+    case "usage_type":
+      return {
+        groupKey: [USAGE_TYPE_GROUP_KEY],
+        bucketProp: USAGE_TYPE_GROUP_KEY,
+      };
+    default:
+      assertNever(groupBy);
+  }
+}
+
+// Tool AWU is an invocation count weighted per tool_category. Each grouping
+// queries the tool metric grouped by [dimension, tool_category] and sums
+// count × category weight. by-model is LLM-only by nature (tools carry no
+// model_id). The [dimension, tool_category] group keys must exist on the Tool
+// Invocations metric (see setup_new_pricing.ts); where they don't yet (an
+// environment whose metric hasn't been recreated), the tool query fails and
+// the caller falls back to LLM-only.
+function getToolQueryConfig(groupBy: AwuUsageGroupByType): {
+  groupKey: string[];
+  bucketProp: string;
+  groupFilters?: Record<string, string[]>;
+} | null {
+  switch (groupBy) {
+    case "usage_type":
+      return {
+        groupKey: [USAGE_TYPE_GROUP_KEY, "tool_category"],
+        bucketProp: USAGE_TYPE_GROUP_KEY,
+      };
+    case "user":
+      // Needs usage_type in the key to drop programmatic; aggregate over it.
+      return {
+        groupKey: ["user_id", USAGE_TYPE_GROUP_KEY, "tool_category"],
+        bucketProp: "user_id",
+        groupFilters: { [USAGE_TYPE_GROUP_KEY]: NON_PROGRAMMATIC_USAGE_TYPES },
+      };
+    case "agent":
+      return {
+        groupKey: ["agent_id", "tool_category"],
+        bucketProp: "agent_id",
+      };
+    case "api_key":
+      return {
+        groupKey: ["api_key_name", "tool_category"],
+        bucketProp: "api_key_name",
+      };
+    case "origin":
+      return { groupKey: ["origin", "tool_category"], bucketProp: "origin" };
+    case "model":
+      return null;
+    default:
+      assertNever(groupBy);
+  }
+}
+
+interface GroupedUsageEntry {
+  startingOn: string;
+  value: number | null;
+  group: Record<string, string> | null;
+}
+
+// Accumulate grouped Metronome entries into bucketKey → (timestamp → value).
+// `weight` returns the value to add, or null to skip the entry.
+function bucketGroupedEntries(
+  entries: GroupedUsageEntry[],
+  bucketProp: string,
+  weight: (entry: GroupedUsageEntry) => number | null,
+  needsFourHourAggregation: boolean
+): Map<string, Map<number, number>> {
+  const map = new Map<string, Map<number, number>>();
+  for (const entry of entries) {
+    const w = weight(entry);
+    if (w === null) {
+      continue;
+    }
+    const key = entry.group?.[bucketProp] ?? UNKNOWN_KEY;
+    const ts = new Date(entry.startingOn).getTime();
+    let tsMap = map.get(key);
+    if (!tsMap) {
+      tsMap = new Map();
+      map.set(key, tsMap);
+    }
+    tsMap.set(ts, (tsMap.get(ts) ?? 0) + w);
+  }
+  if (needsFourHourAggregation) {
+    for (const key of [...map.keys()]) {
+      map.set(key, aggregateToFourHourBuckets(map.get(key)!));
+    }
+  }
+  return map;
+}
+
+// Add `source` buckets into `target` (sum per bucketKey/timestamp), in place.
+function mergeBuckets(
+  target: Map<string, Map<number, number>>,
+  source: Map<string, Map<number, number>>
+): void {
+  for (const [key, tsMap] of source) {
+    let targetTsMap = target.get(key);
+    if (!targetTsMap) {
+      targetTsMap = new Map();
+      target.set(key, targetTsMap);
+    }
+    for (const [ts, value] of tsMap) {
+      targetTsMap.set(ts, (targetTsMap.get(ts) ?? 0) + value);
+    }
+  }
+}
+
+async function resolveGroupLabels(
+  auth: Authenticator,
   groupBy: AwuUsageGroupByType,
   groupKeys: string[]
-): Map<string, string> {
+): Promise<Map<string, string>> {
   const labelMap = new Map<string, string>();
   switch (groupBy) {
     case "usage_type":
@@ -179,6 +341,33 @@ function resolveGroupLabels(
         labelMap.set(key, USAGE_TYPE_LABELS[key] ?? key);
       }
       break;
+    case "user": {
+      const users = await UserResource.fetchByIds(
+        groupKeys.filter((k) => k !== UNKNOWN_KEY)
+      );
+      const byId = new Map(users.map((u) => [u.sId, u.fullName()]));
+      for (const key of groupKeys) {
+        labelMap.set(
+          key,
+          key === UNKNOWN_KEY ? "Unknown" : (byId.get(key) ?? key)
+        );
+      }
+      break;
+    }
+    case "agent": {
+      const agents = await getAgentConfigurations(auth, {
+        agentIds: groupKeys.filter((k) => k !== UNKNOWN_KEY),
+        variant: "extra_light",
+      });
+      const byId = new Map(agents.map((a) => [a.sId, a.name]));
+      for (const key of groupKeys) {
+        labelMap.set(
+          key,
+          key === UNKNOWN_KEY ? "Unknown" : (byId.get(key) ?? key)
+        );
+      }
+      break;
+    }
     case "api_key":
     case "model":
     case "origin":
@@ -267,47 +456,84 @@ export async function getAwuUsage(
 
     availableGroups.push({ groupKey: "total", groupLabel: "Total usage" });
   } else {
-    const eventProperty = GROUP_BY_TO_EVENT_PROPERTY[groupBy];
+    const llmCfg = getLlmQueryConfig(groupBy);
+    const toolCfg = getToolQueryConfig(groupBy);
 
-    const groupedResult = await listMetronomeUsageWithGroups({
-      customerId: metronomeCustomerId,
-      billableMetricId: awuMetricId,
-      startingOn,
-      endingBefore,
-      windowSize: metronomeApiWindowSize,
-      groupKey: [eventProperty],
-    });
+    const [llmResult, toolResult] = await Promise.all([
+      listMetronomeUsageWithGroups({
+        customerId: metronomeCustomerId,
+        billableMetricId: awuMetricId,
+        startingOn,
+        endingBefore,
+        windowSize: metronomeApiWindowSize,
+        groupKey: llmCfg.groupKey,
+        groupFilters: llmCfg.groupFilters,
+      }),
+      toolCfg
+        ? listMetronomeUsageWithGroups({
+            customerId: metronomeCustomerId,
+            billableMetricId: getMetricToolInvocationsId(),
+            startingOn,
+            endingBefore,
+            windowSize: metronomeApiWindowSize,
+            groupKey: toolCfg.groupKey,
+            groupFilters: toolCfg.groupFilters,
+          })
+        : null,
+    ]);
 
-    if (groupedResult.isErr()) {
-      const msg = groupedResult.error.message;
-      const isGroupKeyError =
-        msg.includes("group") || msg.includes("not found");
-      if (isGroupKeyError) {
-        return new Err({ type: "invalid_group_key", groupBy, eventProperty });
+    if (llmResult.isErr()) {
+      const msg = llmResult.error.message;
+      if (msg.includes("group") || msg.includes("not found")) {
+        return new Err({
+          type: "invalid_group_key",
+          groupBy,
+          eventProperty: GROUP_BY_TO_EVENT_PROPERTY[groupBy],
+        });
       }
       return new Err({
         type: "internal_error",
         message: `Failed to retrieve AWU grouped usage: ${msg}`,
       });
     }
-
-    const mergedGroupMap = new Map<string, Map<number, number>>();
-    for (const entry of groupedResult.value) {
-      const key = entry.group?.[eventProperty] ?? "unknown";
-      const ts = new Date(entry.startingOn).getTime();
-      let keyMap = mergedGroupMap.get(key);
-      if (!keyMap) {
-        keyMap = new Map();
-        mergedGroupMap.set(key, keyMap);
-      }
-      keyMap.set(ts, (keyMap.get(ts) ?? 0) + (entry.value ?? 0));
+    // Tool usage is supplementary: if its query fails (e.g. the
+    // [dimension, tool_category] group key isn't present on this environment's
+    // metric yet), log and fall back to LLM-only rather than failing the chart.
+    if (toolResult && toolResult.isErr()) {
+      logger.warn(
+        { error: toolResult.error, groupBy, workspaceId: workspace.sId },
+        "[Metronome] Tool usage query failed; falling back to LLM-only."
+      );
     }
 
-    if (needsFourHourAggregation) {
-      for (const key of [...mergedGroupMap.keys()]) {
-        const tsMap = mergedGroupMap.get(key)!;
-        mergedGroupMap.set(key, aggregateToFourHourBuckets(tsMap));
-      }
+    // LLM cost_awu is already AWU credits.
+    const mergedGroupMap = bucketGroupedEntries(
+      llmResult.value,
+      llmCfg.bucketProp,
+      (entry) => entry.value ?? 0,
+      needsFourHourAggregation
+    );
+
+    // Tool invocations are a count; weight per category into AWU credits and
+    // merge into the same buckets.
+    if (toolCfg && toolResult && toolResult.isOk()) {
+      const toolMap = bucketGroupedEntries(
+        toolResult.value,
+        toolCfg.bucketProp,
+        (entry) => {
+          const category = entry.group?.["tool_category"];
+          if (entry.value === null || !category || !isToolCategory(category)) {
+            return null;
+          }
+          return entry.value * TOOL_CATEGORY_AWU_WEIGHTS[category];
+        },
+        needsFourHourAggregation
+      );
+      mergeBuckets(mergedGroupMap, toolMap);
+    }
+
+    for (const key of llmCfg.dropKeys ?? []) {
+      mergedGroupMap.delete(key);
     }
 
     const totalMap = new Map<number, number>();
@@ -332,7 +558,7 @@ export async function getAwuUsage(
     }
 
     const groupKeys = topGroups.map((g) => g.key);
-    const labelMap = resolveGroupLabels(groupBy, groupKeys);
+    const labelMap = await resolveGroupLabels(auth, groupBy, groupKeys);
     for (const key of groupKeys) {
       availableGroups.push({
         groupKey: key,
