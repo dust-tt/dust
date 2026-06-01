@@ -91,8 +91,8 @@ describe("GET /api/w/:wId/members/search", () => {
     const data = await response.json();
     expect(data.total).toBe(1);
     expect(data.members).toHaveLength(1);
-    expect(data.members[0].id).toBe(user.id);
-    expect(data.members[0].workspace.role).toBe("user");
+    expect(data.members[0].sId).toBe(user.sId);
+    expect(data.members[0].workspace).toBeUndefined();
   });
 
   it("handles search by term", async () => {
