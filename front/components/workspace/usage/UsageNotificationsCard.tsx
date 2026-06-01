@@ -37,29 +37,25 @@ export function UsageNotificationsCard({
   }, [usageNotifications.balanceThresholdCredits]);
 
   const handleCommitBalanceThreshold = async () => {
-    const current = usageNotifications.balanceThresholdCredits ?? 0;
+    const currentThreshold = usageNotifications.balanceThresholdCredits ?? 0;
     const trimmed = balanceThresholdInput.trim();
 
-    // An empty value falls back to 0 (warning off).
-    const next = trimmed === "" ? 0 : Number(trimmed);
+    // An empty value falls back to 0 (warning off). The input only ever holds
+    // digits (see onChange), so `next` is always a non-negative integer.
+    const nextThreshold = trimmed === "" ? 0 : Number(trimmed);
 
-    if (!Number.isInteger(next) || next < 0) {
-      setBalanceThresholdInput(String(current));
-      return;
-    }
-
-    if (next === current) {
-      setBalanceThresholdInput(String(current));
+    if (nextThreshold === currentThreshold) {
       return;
     }
 
     setIsSavingBalanceThreshold(true);
     try {
       const ok = await doUpdateUsageNotifications({
-        balanceThresholdCredits: next,
+        balanceThresholdCredits: nextThreshold,
       });
       if (!ok) {
-        setBalanceThresholdInput(String(current));
+        // reset to the current value
+        setBalanceThresholdInput(String(currentThreshold));
       }
     } finally {
       setIsSavingBalanceThreshold(false);
