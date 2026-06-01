@@ -15,7 +15,7 @@ import { fromError } from "zod-validation-error";
 export type CreditUsageConfigurationBody = {
   // Credit balance (in AWU credits) below which workspace admins are emailed.
   // `null` means no threshold is configured (the warning is off). Derived from
-  // the workspace's Metronome balance-threshold alert, not the database.
+  // the workspace's Metronome balance-threshold alert.
   balanceThresholdCredits: number | null;
 };
 
