@@ -46,7 +46,6 @@ import {
   CONTRACT_CREDIT_TYPE_EXCESS,
   CONTRACT_CREDIT_TYPE_POOL,
   getCreditTypeAwuId,
-  getCreditTypeProgrammaticUsdId,
   getProductExcessCreditsId,
   PLAN_CODE_CUSTOM_FIELD_KEY,
 } from "@app/lib/metronome/constants";
@@ -616,9 +615,7 @@ export async function processMetronomeWebhook({
         if (handleResult.isErr()) {
           return handleResult;
         }
-      } else if (
-        event.properties.credit_type_id === getCreditTypeProgrammaticUsdId()
-      ) {
+      } else if (event.properties.credit_type_id === getCreditTypeAwuId()) {
         // Programmatic monthly cap alerts. Three alerts exist per workspace
         // with distinct names; route to the matching dispatcher.
         const alertName = event.properties.alert_name ?? "";
@@ -690,9 +687,7 @@ export async function processMetronomeWebhook({
         if (handleResult.isErr()) {
           return handleResult;
         }
-      } else if (
-        event.properties.credit_type_id === getCreditTypeProgrammaticUsdId()
-      ) {
+      } else if (event.properties.credit_type_id === getCreditTypeAwuId()) {
         await dispatchProgrammaticCapReset({ workspace });
         logger.info(
           { eventId: event.id, workspaceId: workspace.sId },

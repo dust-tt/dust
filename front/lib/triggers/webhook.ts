@@ -268,28 +268,23 @@ async function checkWorkspaceRateLimit({
   // Credit-priced pool gate: applies to any execution mode. If the pool is
   // depleted, no downstream message can be posted, so reject early instead of
   // spinning up the trigger workflow only to fail in `checkMessagesLimit`.
-  if (
-    plan &&
-    isCreditPricedPlan(plan) &&
-    owner.metronomeCustomerId &&
-    (await isApiBlocked(owner.sId))
-  ) {
-    errorMessage =
-      "Your workspace has run out of credits. Please purchase more credits to continue.";
-  }
+  if (plan && isCreditPricedPlan(plan)) {
+    if (owner.metronomeCustomerId && (await isApiBlocked(owner.sId))) {
+      errorMessage =
+        "Your workspace has run out of credits. Please purchase more credits to continue.";
+    }
 
-  // Programmatic monthly cap gate: if the programmatic cap is reached, reject
-  // early for programmatic triggers.
-  if (
-    !errorMessage &&
-    plan &&
-    isCreditPricedPlan(plan) &&
-    owner.metronomeCustomerId &&
-    trigger.executionMode === "programmatic" &&
-    (await isProgrammaticApiBlocked(owner.sId))
-  ) {
-    errorMessage =
-      "Your workspace has reached its programmatic monthly spending cap.";
+    // Programmatic monthly cap gate: if the programmatic cap is reached, reject
+    // early for programmatic triggers.
+    if (
+      !errorMessage &&
+      owner.metronomeCustomerId &&
+      trigger.executionMode === "programmatic" &&
+      (await isProgrammaticApiBlocked(owner.sId))
+    ) {
+      errorMessage =
+        "Your workspace has reached its programmatic monthly spending cap.";
+    }
   }
 
   /**

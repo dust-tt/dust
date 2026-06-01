@@ -3,7 +3,7 @@ import {
   findMetronomeAlert,
   upsertMetronomeAlert,
 } from "@app/lib/metronome/alerts";
-import { getCreditTypeProgrammaticUsdId } from "@app/lib/metronome/constants";
+import { getCreditTypeAwuId } from "@app/lib/metronome/constants";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -69,7 +69,7 @@ export async function upsertMetronomeProgrammaticCapAlerts({
   workspaceId: string;
   monthlyCapCredits: number;
 }): Promise<Result<void, Error>> {
-  const creditTypeId = getCreditTypeProgrammaticUsdId();
+  const creditTypeId = getCreditTypeAwuId();
 
   // Main cap alert.
   const capResult = await upsertMetronomeAlert({
