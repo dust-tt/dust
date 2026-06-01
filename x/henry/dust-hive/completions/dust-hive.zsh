@@ -26,6 +26,10 @@
 _dust_hive_services=(
   sdk sparkle front core oauth connectors front-workers front-spa-poke front-spa-app viz
 )
+_dust_hive_warm_state_services=(
+  front front-api core oauth connectors front-workers front-spa-poke front-spa-app viz
+)
+# Avoid invoking the Bun CLI from completion; derive state from PID files plus one Docker scan.
 
 _dust_hive_current_env() {
   # 1. Detect from cwd (inside a .hives/<name> worktree)
@@ -56,6 +60,13 @@ _dust_hive_envs() {
   fi
   (( $#envs )) || return
 
+  _dust_hive_describe_envs "${envs[@]}"
+}
+
+_dust_hive_describe_envs() {
+  local -a envs=("$@")
+  (( $#envs )) || return
+
   local current
   current="$(_dust_hive_current_env)"
 
@@ -68,6 +79,113 @@ _dust_hive_envs() {
   else
     _describe -V 'environment' envs
   fi
+}
+
+_dust_hive_pid_is_running() {
+  local pid_file="${1:?usage: _dust_hive_pid_is_running <pid-file>}"
+  local pid
+
+  [[ -r "$pid_file" ]] || return 1
+  IFS= read -r pid < "$pid_file" || [[ -n "$pid" ]] || return 1
+  [[ "$pid" =~ ^[0-9]+$ ]] || return 1
+
+  kill -0 "$pid" 2>/dev/null
+}
+
+_dust_hive_service_is_running() {
+  local env_name="${1:?usage: _dust_hive_service_is_running <env> <service>}"
+  local service="${2:?usage: _dust_hive_service_is_running <env> <service>}"
+
+  _dust_hive_pid_is_running "$HOME/.dust-hive/envs/$env_name/$service.pid"
+}
+
+_dust_hive_docker_warm_envs() {
+  command docker ps --format '{{.Label "com.docker.compose.project"}}' 2>/dev/null |
+    awk '/^dust-hive-/ { sub(/^dust-hive-/, ""); print }' |
+    sort -u
+}
+
+_dust_hive_name_in_lines() {
+  local name="${1:?usage: _dust_hive_name_in_lines <name> <lines>}"
+  local lines="${2-}"
+
+  [[ "
+$lines
+" == *"
+$name
+"* ]]
+}
+
+_dust_hive_fast_state_rows() {
+  local docker_warm_envs env_dir env_name state service
+
+  [[ -d "$HOME/.dust-hive/envs" ]] || return
+
+  docker_warm_envs="$(_dust_hive_docker_warm_envs)"
+
+  while IFS= read -r env_dir; do
+    env_name="${env_dir##*/}"
+    [[ -f "$env_dir/metadata.json" ]] || continue
+
+    state="stopped"
+    if _dust_hive_name_in_lines "$env_name" "$docker_warm_envs"; then
+      state="warm"
+    elif _dust_hive_service_is_running "$env_name" "sdk" &&
+      _dust_hive_service_is_running "$env_name" "sparkle"; then
+      state="cold"
+    fi
+
+    if [[ "$state" != "warm" ]]; then
+      for service in "${_dust_hive_warm_state_services[@]}"; do
+        if _dust_hive_service_is_running "$env_name" "$service"; then
+          state="warm"
+          break
+        fi
+      done
+    fi
+
+    printf '%s %s\n' "$env_name" "$state"
+  done < <(command find "$HOME/.dust-hive/envs" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
+}
+
+_dust_hive_envs_by_states() {
+  (( $# )) || return
+  local desired_states="$*"
+  local -a envs
+
+  envs=(${(f)"$(
+    _dust_hive_fast_state_rows | awk -v desired_states="$desired_states" '
+      BEGIN {
+        split(desired_states, states, " ")
+        for (i in states) {
+          state_set[states[i]] = 1
+        }
+      }
+      state_set[$2] { print $1 }
+    '
+  )"})
+
+  _dust_hive_describe_envs "${envs[@]}"
+}
+
+_dust_hive_warmable_envs() {
+  _dust_hive_envs_by_states cold
+}
+
+_dust_hive_warm_envs() {
+  _dust_hive_envs_by_states warm
+}
+
+_dust_hive_coolable_envs() {
+  _dust_hive_warm_envs
+}
+
+_dust_hive_startable_envs() {
+  _dust_hive_envs_by_states stopped
+}
+
+_dust_hive_stoppable_envs() {
+  _dust_hive_envs_by_states cold warm
 }
 
 _dust_hive_service() {
@@ -162,21 +280,21 @@ _dust-hive() {
           ;;
         warm|w)
           _arguments \
-            '1::name:_dust_hive_envs' \
+            '1::name:_dust_hive_warmable_envs' \
             '-F[Disable OAuth port forwarding]' \
             '--no-forward[Disable OAuth port forwarding]' \
             '-p[Kill processes blocking service ports]' \
             '--force-ports[Kill processes blocking service ports]'
           ;;
         cool|c)
-          _arguments '1::name:_dust_hive_envs'
+          _arguments '1::name:_dust_hive_coolable_envs'
           ;;
         start)
-          _arguments '1::name:_dust_hive_envs'
+          _arguments '1::name:_dust_hive_startable_envs'
           ;;
         stop|x)
           _arguments \
-            '1::name:_dust_hive_envs' \
+            '1::name:_dust_hive_stoppable_envs' \
             '2::service:_dust_hive_service'
           ;;
         up)
@@ -253,12 +371,12 @@ _dust-hive() {
           ;;
         feed)
           _arguments \
-            '1::name:_dust_hive_envs' \
+            '1::name:_dust_hive_warm_envs' \
             '2::scenario:'
           ;;
         flag)
           _arguments \
-            '1::name:_dust_hive_envs' \
+            '1::name:_dust_hive_warm_envs' \
             '2::flag name:' \
             '-d[Disable the flag]' \
             '--disable[Disable the flag]'
