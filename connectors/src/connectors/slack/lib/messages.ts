@@ -10,6 +10,8 @@ import { safeSubstring } from "@connectors/types";
 import type { WebClient } from "@slack/web-api";
 import type { MessageElement } from "@slack/web-api/dist/types/response/ConversationsRepliesResponse";
 
+import { formatSlackMessageUnfurlAttachments } from "./message_attachments";
+
 async function processMessageForMentions(
   message: string,
   connectorId: ModelId,
@@ -82,13 +84,22 @@ export async function formatMessagesForUpsert({
             .join("\n")
         : "";
 
+      // Slack renders forwarded/shared messages as message unfurl attachments.
+      const forwardedMessagesText = formatSlackMessageUnfurlAttachments(
+        message.attachments
+      );
+
+      const forwardedMessagesInfo = forwardedMessagesText
+        ? `\n${forwardedMessagesText}`
+        : "";
+
       return {
         messageDate,
         dateStr: messageDateStr,
         authorName,
         authorEmail,
-        text: text + filesInfo,
-        content: text + "\n",
+        text: text + filesInfo + forwardedMessagesInfo,
+        content: text + forwardedMessagesInfo + "\n",
         sections: [],
       };
     })
