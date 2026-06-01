@@ -74,13 +74,19 @@ The heading uses an explicit chroma accent (\`text-indigo-700\`). The structural
 
 ### Data And File Handling
 
-- Decide where the data lives based on what the brief gives you.
-- If a structured file is available because the user attached one or the brief references one, use \`useFile\` and read directly from it. Do not recopy the file contents into the component source; that wastes tokens and can silently drift from the source of truth.
-- If the data is small and already embedded in the brief, such as a handful of items, a roadmap of ten entries, or a few KPIs, inline it as a literal in the component.
-- If both a file and inline snippets exist, prefer the actual file.
-- Do not synthesize a fake file from inline data, and do not paraphrase inline data into \`useFile\` loading code.
-- If a declared data array such as \`ITEMS\`, \`STORIES\`, or \`ROWS\` exists, rendered JSX must consume it. Do not declare correct data and render stale hardcoded content.
-- Never fabricate missing names, numbers, URLs, booleans, totals, or logos. If the brief does not provide a value, omit it or show \`No data available\`.
+Data for a frame can come from any of these sources:
+- The user's prompt (inline values, or files the user attached to the conversation).
+- A tool output earlier in the conversation, which often returns a file (CSV, JSON, image) rather than inline content.
+- A file available in the pod environment (when the agent runs inside a pod), referenced by its scoped path.
+
+The same decision rule applies regardless of where the data came from:
+
+- If a structured file is available for the data the frame needs to render, use \`useFile\` and read directly from that file. This covers user attachments, tool-output files, and pod files identically. Do not recopy the file contents into the component source; that wastes tokens and silently drifts from the source of truth as soon as the underlying file changes.
+- If the data is small and already inline in the conversation (a handful of items in the user's prompt, a short list returned in a tool's text output, a few KPIs), inline it as a literal in the component. Setting up \`useFile\` plumbing for trivial data is overkill.
+- If both a file and inline snippets exist for the same data, prefer the file.
+- Do not synthesize a fake file from inline data, and do not paraphrase inline data or tool output into \`useFile\` loading code.
+- If a declared data array such as \`ITEMS\`, \`STORIES\`, or \`ROWS\` exists, the rendered JSX must consume it. Do not declare correct data and render stale hardcoded content.
+- Never fabricate missing names, numbers, URLs, booleans, totals, or logos. If no source provides a value, omit it or show \`No data available\`.
 - Every async source, including \`useFile\` or \`fetch\`, must expose loading, ok, empty, and error states.
 - Never block the whole render on \`if (!data) return <p>Loading...</p>\`. Keep the frame shell visible and show state-specific content in the data region.
 - Parse file content inside \`useEffect\` with visible fallback UI. Catch JSON, CSV, and file-read errors.
@@ -108,12 +114,14 @@ The heading uses an explicit chroma accent (\`text-indigo-700\`). The structural
 - Do not register global arrow-key navigation with \`window.addEventListener("keydown", ...)\`. It hijacks the host page. If keyboard navigation is necessary, scope \`onKeyDown\` to a focused element with \`tabIndex={0}\`.
 - Nullable numeric or sentinel state must use explicit checks such as \`state !== null && state !== undefined\`. Do not use \`if (state)\` when \`0\` is valid.
 
-### Brief Fidelity Rules
+### Data Fidelity Rules
 
-- Preserve named items, exact counts, titles, labels, dates, priorities, and quoted strings from the brief.
-- Honor explicit \`remove\`, \`keep\`, \`group\`, \`split\`, and \`do not split\` instructions verbatim.
-- Do not rename or paraphrase required item names unless the user asks for rewriting.
-- Do not add provenance disclaimers, audits of the user's facts, or meta-commentary. Render the requested content.
+These apply to data from any source: the user's prompt, attached files, tool outputs, or pod files.
+
+- Preserve named items, exact counts, titles, labels, dates, priorities, IDs, and quoted strings exactly as the source provides them.
+- Honor explicit user instructions like \`remove\`, \`keep\`, \`group\`, \`split\`, and \`do not split\` verbatim.
+- Do not rename or paraphrase required item names unless the user asks for rewriting. This also applies to values returned by tools: treat the names, IDs, counts, and timestamps in tool output as ground truth.
+- Do not add provenance disclaimers, audits of the data, or meta-commentary. Render the requested content.
 - If adapting a template, replace old-period literals everywhere. New declared data must drive the JSX.
 
 ### Output And Imports
@@ -125,7 +133,7 @@ The heading uses an explicit chroma accent (\`text-indigo-700\`). The structural
 `;
 
 export const INTERACTIVE_CONTENT_USE_FILE_EXAMPLES_V2 = `\
-Example using small inline data from the brief:
+Example with small inline data (suitable when the source provides a handful of items directly in the conversation, whether from the user or from a tool output):
 
 \`\`\`tsx
 const ROADMAP_ITEMS = [
