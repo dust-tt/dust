@@ -1,3 +1,4 @@
+import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import { editorVariants } from "@app/components/editor/editorStyles";
 import { KNOWLEDGE_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
@@ -11,6 +12,7 @@ import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBu
 import { SkillBuilderInstructionsReferenceSummary } from "@app/components/skill_builder/SkillBuilderInstructionsReferenceSummary";
 import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
 import { useSkillSuggestions } from "@app/hooks/useSkillSuggestions";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import {
   postProcessMarkdown,
@@ -23,7 +25,7 @@ import type { Config } from "dompurify";
 import DOMPurify from "dompurify";
 import debounce from "lodash/debounce";
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { useController, useFormContext, useWatch } from "react-hook-form";
+import { useController, useFormContext } from "react-hook-form";
 
 const INSTRUCTIONS_FIELD_NAME = "instructions";
 const INSTRUCTIONS_HTML_FIELD_NAME = "instructionsHtml";
@@ -97,7 +99,7 @@ export function SkillBuilderInstructionsEditor({
   onOpenCapabilities,
 }: SkillBuilderInstructionsEditorProps) {
   const { compareVersion, isDiffMode } = useSkillVersionComparisonContext();
-  const { control, resetField } = useFormContext<SkillBuilderFormData>();
+  const { resetField } = useFormContext<SkillBuilderFormData>();
   const initializedAttachedKnowledgeEditorRef = useRef<Editor | null>(null);
   const { owner, skillId, selectedSuggestionId, setAcceptInstructionEdits } =
     useSkillBuilderContext();
@@ -126,7 +128,12 @@ export function SkillBuilderInstructionsEditor({
       name: ATTACHED_KNOWLEDGE_FIELD_NAME,
     }
   );
-  const tools = useWatch({ control, name: "tools" }) ?? [];
+
+  const {
+    field: { onChange: onToolsChange, value: tools },
+  } = useController<SkillBuilderFormData, "tools">({
+    name: "tools",
+  });
 
   const displayError =
     !!instructionsFieldState.error || !!attachedKnowledgeFieldState.error;
@@ -199,6 +206,21 @@ export function SkillBuilderInstructionsEditor({
     [syncAttachedKnowledgeFromEditor]
   );
 
+  const handleSelectToolReference = useCallback(
+    (view: MCPServerViewType) => {
+      const alreadyAdded = tools.some(
+        (tool) => tool.configuration.mcpServerViewId === view.sId
+      );
+
+      if (alreadyAdded) {
+        return;
+      }
+
+      onToolsChange([...tools, getDefaultMCPAction(view)]);
+    },
+    [onToolsChange, tools]
+  );
+
   const { suggestions, isSuggestionsLoading } = useSkillSuggestions({
     skillId,
     states: ["pending"],
@@ -215,6 +237,7 @@ export function SkillBuilderInstructionsEditor({
     skillReferences: {
       currentSkillId: skillId,
       enableSkillReferences,
+      onSelectTool: handleSelectToolReference,
       owner,
     },
     onUpdate: handleUpdate,

@@ -2,6 +2,7 @@ import { AgentInstructionDiffExtension } from "@app/components/editor/extensions
 import { KNOWLEDGE_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import { SlashCommandExtension } from "@app/components/editor/extensions/skill_builder/SlashCommandExtension";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {
   buildSkillInstructionsExtensions,
   INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
@@ -97,6 +98,7 @@ function useEditorService(
 interface SkillInstructionsSkillReferencesOptions {
   currentSkillId?: string | null;
   enableSkillReferences: boolean;
+  onSelectTool?: (tool: MCPServerViewType) => void;
   owner?: LightWorkspaceType;
 }
 
@@ -113,16 +115,19 @@ interface UseSkillInstructionsEditorProps {
 function buildSkillInstructionsEditableExtensions({
   currentSkillId,
   includeSkillSuggestions,
+  onSelectTool,
   owner,
 }: {
   currentSkillId?: string | null;
   includeSkillSuggestions: boolean;
+  onSelectTool?: (tool: MCPServerViewType) => void;
   owner?: LightWorkspaceType;
 }) {
   return [
     SlashCommandExtension.configure({
       currentSkillId: currentSkillId ?? null,
       includeSkillSuggestions,
+      onSelectTool,
       owner,
     }),
     AgentInstructionDiffExtension,
@@ -148,6 +153,7 @@ export function useSkillInstructionsEditor({
 }: UseSkillInstructionsEditorProps) {
   const enableSkillReferences = skillReferences?.enableSkillReferences === true;
   const currentSkillId = skillReferences?.currentSkillId ?? null;
+  const onSelectTool = skillReferences?.onSelectTool;
   const owner = skillReferences?.owner;
   const includeSkillSuggestions = enableSkillReferences && !!owner;
   const editableExtensions = useMemo(
@@ -155,9 +161,10 @@ export function useSkillInstructionsEditor({
       buildSkillInstructionsEditableExtensions({
         currentSkillId,
         includeSkillSuggestions,
+        onSelectTool,
         owner,
       }),
-    [currentSkillId, includeSkillSuggestions, owner]
+    [currentSkillId, includeSkillSuggestions, onSelectTool, owner]
   );
 
   const extensions = useMemo(
