@@ -85,15 +85,27 @@ impl GoogleCloudStorageDatabasesStore {
         match csv.parse().await {
             Ok(rows) => Ok(rows),
             Err(e) => match e.downcast_ref::<cloud_storage::Error>() {
-                // Treat a non-existing file as an empty table
-                // Checking for this is trickier than it should be, due to how the cloud_storage crate handles errors.
-                // In particular, when it can't download a file because it doesn't exist, it returns an 'Other' error,
-                // instead of the more meaningful Google(GoogleErrorResponse) with a 404 (which it correctly uses
-                // when trying to *delete* a non-existing file).
+                // Treat a non-existing file as an empty table.
+                // Checking for this is trickier than it should be, due to how the cloud_storage crate handles errors,
+                // and depends on which underlying GCS call hits the missing object first:
+                //  - Object::download (the actual file download) returns an 'Other' error containing "No such object".
+                //  - Object::read (the metadata probe parse() does for its file-size check) returns the more
+                //    meaningful Google(GoogleErrorResponse) with a 404, same as Object::delete on a missing object.
+                // We treat both as an empty table.
                 Some(cloud_storage::Error::Other(s)) if s.contains("No such object") => {
                     info!(
                         table_id = table.table_id(),
                         "DSSTRUCTSTAT [get_rows_from_csv] no GCS file, treating as empty table"
+                    );
+                    Ok(Vec::new())
+                }
+                Some(cloud_storage::Error::Google(GoogleErrorResponse {
+                    error: ErrorList { code: 404, .. },
+                    ..
+                })) => {
+                    info!(
+                        table_id = table.table_id(),
+                        "DSSTRUCTSTAT [get_rows_from_csv] no GCS file (404), treating as empty table"
                     );
                     Ok(Vec::new())
                 }
