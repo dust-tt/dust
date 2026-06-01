@@ -27,7 +27,6 @@ export type SearchMembersResponseBody = {
   total: number;
 };
 
-
 // Mounted at /api/w/:wId/members/search.
 const app = workspaceApp();
 

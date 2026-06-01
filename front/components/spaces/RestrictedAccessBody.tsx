@@ -2,10 +2,7 @@ import { ConfirmContext } from "@app/components/Confirm";
 import { GroupSelectionTable } from "@app/components/groups/GroupSelectionTable";
 import { MemberSelectionTable } from "@app/components/members/MemberSelectionTable";
 import type { GroupType } from "@app/types/groups";
-import type {
-  LightMemberType,
-  LightWorkspaceType,
-} from "@app/types/user";
+import type { LightMemberType, LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   DropdownMenu,

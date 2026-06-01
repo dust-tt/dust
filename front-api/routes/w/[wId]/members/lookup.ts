@@ -30,7 +30,6 @@ export type MembersLookupResponseBody = {
   users: LightLookupUserType[];
 };
 
-
 // Mounted at /api/w/:wId/members/lookup.
 const app = workspaceApp();
 

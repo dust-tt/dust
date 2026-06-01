@@ -10,12 +10,11 @@ import type {
   PutUserSpendLimitResponseBody,
 } from "@app/pages/api/w/[wId]/members/[uId]/spend_limit";
 import type { MembersLookupResponseBody } from "@app/pages/api/w/[wId]/members/lookup";
-import type { LightMemberType } from "@app/types/user";
 import type { GroupKind } from "@app/types/groups";
 import { isGroupKind } from "@app/types/groups";
 import type { MembershipSeatType } from "@app/types/memberships";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import type { LightWorkspaceType } from "@app/types/user";
+import type { LightMemberType, LightWorkspaceType } from "@app/types/user";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Fetcher } from "swr";
 import { mutate } from "swr";
@@ -136,8 +135,10 @@ export function useSearchMembers({
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
-  const searchMembersFetcher: Fetcher<{ members: LightMemberType[]; total: number }> =
-    fetcher;
+  const searchMembersFetcher: Fetcher<{
+    members: LightMemberType[];
+    total: number;
+  }> = fetcher;
   const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(searchTerm);
 

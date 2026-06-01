@@ -59,9 +59,7 @@ export function CreateOrEditSpaceModal({
 }: CreateOrEditSpaceModalProps) {
   const confirm = React.useContext(ConfirmContext);
   const [spaceName, setSpaceName] = useState<string>(space?.name ?? "");
-  const [selectedMembers, setSelectedMembers] = useState<LightMemberType[]>(
-    []
-  );
+  const [selectedMembers, setSelectedMembers] = useState<LightMemberType[]>([]);
   const [selectedGroups, setSelectedGroups] = useState<GroupType[]>([]);
 
   const [isSaving, setIsSaving] = useState(false);
