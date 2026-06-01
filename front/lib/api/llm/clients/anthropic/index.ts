@@ -153,7 +153,12 @@ export class AnthropicLLM extends LLM<LLMStreamParameters> {
         toMessage(msg, {
           isLast: index === conversation.messages.length - 1,
           omittedThinking: this.omittedThinking,
-          convertToBase64: this.useVertex,
+          // Always base64-inline images rather than handing Anthropic a URL to
+          // fetch. Image URLs are short-lived signed GCS URLs that Anthropic
+          // cannot reliably download (it returns 400 "Unable to download the
+          // file"), so we fetch them ourselves and send the bytes inline. This
+          // matches the Vertex and Google clients.
+          convertToBase64: true,
         }),
       { concurrency: MESSAGE_CONVERSION_CONCURRENCY }
     );
