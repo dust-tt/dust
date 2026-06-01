@@ -3420,32 +3420,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
   }
 
-  async toJSONWithUnavailableSkillReferences(
-    auth: Authenticator
-  ): Promise<SkillType> {
-    const serializedSkill = this.toJSON(auth);
-    if (serializedSkill.instructions === null) {
-      return serializedSkill;
-    }
-
-    const [replacement] = await SkillResource.replaceUnavailableSkillReferences(
-      auth,
-      [
-        {
-          instructions: serializedSkill.instructions,
-          instructionsHtml: serializedSkill.instructionsHtml,
-          requestedSpaceIds: this.requestedSpaceIds,
-        },
-      ]
-    );
-
-    return {
-      ...serializedSkill,
-      instructions: replacement.instructions,
-      instructionsHtml: replacement.instructionsHtml,
-    };
-  }
-
   toJSON(auth: Authenticator): SkillType {
     const requestedSpaceIds = this.requestedSpaceIds.map((spaceId) =>
       SpaceResource.modelIdToSId({
