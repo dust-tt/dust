@@ -5,6 +5,7 @@ import {
   IncludeInputSchema,
   SearchWithNodesInputSchema,
 } from "@app/lib/actions/mcp_internal_actions/types";
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import { FILES_SERVER_NAME } from "@app/lib/api/actions/servers/files/metadata";
 import { SCOPED_PREFIX_POD } from "@app/lib/api/file_system/types";
 import { DATA_SOURCE_NODE_ID } from "@app/types/core/content_node";
@@ -16,6 +17,7 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 export const POD_MANAGER_SERVER_NAME = "pod_manager" as const;
 export const UPDATE_MEMBERS_TOOL_NAME = "update_members" as const;
 export const LIST_MEMBERS_TOOL_NAME = "list_members" as const;
+export const SEMANTIC_SEARCH_TOOL_NAME = "semantic_search" as const;
 
 export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
   add_content_node: {
@@ -243,6 +245,43 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
       done: "Retrieve recent Pod documents",
     },
   },
+  [SEMANTIC_SEARCH_TOOL_NAME]: {
+    description:
+      "Semantic search over a Pod using the same retrieval pipeline as company data search. Scope selects the Pod data source slice (files vs conversation transcripts vs both) plus searchable context nodes for files/all.",
+    schema: {
+      query: z
+        .string()
+        .describe(
+          "Natural-language query; include enough context from the conversation for good retrieval."
+        ),
+      searchScope: z
+        .enum(["files", "conversations", "all"])
+        .optional()
+        .describe(
+          "files: Pod files, metadata, and linked searchable nodes (excludes conversation transcripts in the Pod data source); conversations: only those transcripts; all: entire Pod data source plus linked nodes (default when omitted)."
+        ),
+      relativeTimeFrame: z
+        .string()
+        .regex(/^(all|\d+[hdwmy])$/)
+        .optional()
+        .describe(
+          "Restrict matches by document time (same as company search): `all`, or `{k}h|d|w|m|y`. Omit for all time."
+        ),
+      nodeIds: SearchWithNodesInputSchema.shape.nodeIds,
+      dustPod: ConfigurableToolInputSchemas[
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
+      ]
+        .optional()
+        .describe(
+          "Optional Pod to search, will fallback to the conversation's Pod."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Searching Pod",
+      done: "Search Pod",
+    },
+  },
   create_conversation: {
     description:
       "Create a new conversation in the Pod and post a user message. Default: always pass an agentName to delegate the task to an agent running inside the Pod. Do NOT do the work yourself. If work needs to be done, delegate it via agentName. Omit agentName only when posting a simple message that requires no intellectual work (e.g. a status update, a comment, a note) or when explicitly asked to post the final output.",
@@ -371,6 +410,8 @@ const POD_MANAGER_INSTRUCTIONS =
   "Use `list_pods` to discover Pods you can access and obtain the dustPod uri for other tools. " +
   "Use `retrieve_recent_documents` to load recent content from the Pod data source and from " +
   "knowledge nodes in the Pod context. " +
+  `Use \`${getPrefixedToolName(POD_MANAGER_SERVER_NAME, SEMANTIC_SEARCH_TOOL_NAME)}\` to find relevant chunks in Pod files and/or conversations ` +
+  "(scope: files, conversations, or all). " +
   "Requires write permissions on the Pod for state-changing operations.";
 
 export const POD_MANAGER_SERVER = {
