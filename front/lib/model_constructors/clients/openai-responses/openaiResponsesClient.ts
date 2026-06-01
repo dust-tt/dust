@@ -2,9 +2,9 @@ import { LargeLanguageModel } from "@app/lib/model_constructors/large-language-m
 import type { Credentials } from "@app/lib/model_constructors/types/credentials";
 import type { ErrorEvent } from "@app/lib/model_constructors/types/events";
 import type {
-  Model,
+  ModelEndpoint,
   OPENAI_PROVIDER_ID,
-} from "@app/lib/model_constructors/types/providers";
+} from "@app/lib/model_constructors/types/model-endpoints";
 import OpenAI, { APIConnectionError, APIError } from "openai";
 import type {
   ResponseCreateParamsStreaming,
@@ -12,7 +12,7 @@ import type {
 } from "openai/resources/responses/responses";
 
 export type OpenAiModel = Extract<
-  Model,
+  ModelEndpoint,
   { providerId: typeof OPENAI_PROVIDER_ID }
 >;
 
@@ -22,7 +22,7 @@ export abstract class OpenAiResponses extends LargeLanguageModel<
   ResponseCreateParamsStreaming,
   ResponseStreamEvent
 > {
-  abstract model: OpenAiModel;
+  abstract modelEndpoint: OpenAiModel;
   client: OpenAI;
   byok = true;
 
@@ -47,7 +47,7 @@ export abstract class OpenAiResponses extends LargeLanguageModel<
           message: `Network error connecting to OpenAI: ${error.message}`,
           originalError: error,
         },
-        metadata: this.model,
+        metadata: this.modelEndpoint,
       };
     }
 
@@ -64,7 +64,7 @@ export abstract class OpenAiResponses extends LargeLanguageModel<
               message: `Invalid request to OpenAI: ${error.message}`,
               originalError: error,
             },
-            metadata: this.model,
+            metadata: this.modelEndpoint,
           };
         case 401:
           return {
@@ -74,7 +74,7 @@ export abstract class OpenAiResponses extends LargeLanguageModel<
               message: `Authentication failed for OpenAI: ${error.message}`,
               originalError: error,
             },
-            metadata: this.model,
+            metadata: this.modelEndpoint,
           };
         case 403:
           return {
@@ -84,7 +84,7 @@ export abstract class OpenAiResponses extends LargeLanguageModel<
               message: `Permission denied for OpenAI: ${error.message}`,
               originalError: error,
             },
-            metadata: this.model,
+            metadata: this.modelEndpoint,
           };
         case 404:
           return {
@@ -94,17 +94,17 @@ export abstract class OpenAiResponses extends LargeLanguageModel<
               message: `Resource not found for OpenAI: ${error.message}`,
               originalError: error,
             },
-            metadata: this.model,
+            metadata: this.modelEndpoint,
           };
         case 429:
           return {
             type: "error",
             content: {
               type: "rate_limit_error",
-              message: `Rate limit exceeded for OpenAI/${this.model.modelId}: ${error.message}`,
+              message: `Rate limit exceeded for OpenAI/${this.modelEndpoint.modelId}: ${error.message}`,
               originalError: error,
             },
-            metadata: this.model,
+            metadata: this.modelEndpoint,
           };
         default:
           if (status >= 500 && status < 600) {
@@ -115,7 +115,7 @@ export abstract class OpenAiResponses extends LargeLanguageModel<
                 message: `Server error from OpenAI (${status}): ${error.message}`,
                 originalError: error,
               },
-              metadata: this.model,
+              metadata: this.modelEndpoint,
             };
           }
 
@@ -126,7 +126,7 @@ export abstract class OpenAiResponses extends LargeLanguageModel<
               message: `Error from OpenAI (${status}): ${error.message}`,
               originalError: error,
             },
-            metadata: this.model,
+            metadata: this.modelEndpoint,
           };
       }
     }
@@ -138,7 +138,7 @@ export abstract class OpenAiResponses extends LargeLanguageModel<
         message: `Unknown error from OpenAI`,
         originalError: error,
       },
-      metadata: this.model,
+      metadata: this.modelEndpoint,
     };
   }
 

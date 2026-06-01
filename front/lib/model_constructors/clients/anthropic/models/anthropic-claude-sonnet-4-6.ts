@@ -9,22 +9,25 @@ import {
   temperatureSchema,
 } from "@app/lib/model_constructors/types/config";
 import type { Payload } from "@app/lib/model_constructors/types/messages";
-import type { TokenPricing } from "@app/lib/model_constructors/types/pricing";
 import {
+  ANTHROPIC_API,
   ANTHROPIC_PROVIDER_ID,
   CLAUDE_SONNET_4_6_MODEL_ID,
-  type Model,
-} from "@app/lib/model_constructors/types/providers";
+} from "@app/lib/model_constructors/types/model-endpoints";
+import type { TokenPricing } from "@app/lib/model_constructors/types/pricing";
+import { GLOBAL } from "@app/lib/model_constructors/types/regions";
 import merge from "lodash/merge";
 import { z } from "zod";
 
 const baseConfig = inputConfigSchema.extend({
   cacheKey: z.undefined(),
 });
-const model = {
+const modelEndpoint = {
   modelId: CLAUDE_SONNET_4_6_MODEL_ID,
   providerId: ANTHROPIC_PROVIDER_ID,
-} as const satisfies Model;
+  region: GLOBAL,
+  api: ANTHROPIC_API,
+} as const;
 const contextWindow = 1_000_000;
 const maxOutputTokens = 64_000;
 const configSchema = z.union([
@@ -60,13 +63,13 @@ const tokenPricing = [
 export class AnthropicClaudeSonnetFourDotSix extends WithAnthropicConverter(
   Anthropic
 ) {
-  static readonly model = model;
+  static readonly modelEndpoint = modelEndpoint;
   static readonly contextWindow = contextWindow;
   static readonly maxOutputTokens = maxOutputTokens;
   static readonly configSchema = configSchema;
   static readonly tokenPricing = tokenPricing;
 
-  model = AnthropicClaudeSonnetFourDotSix.model;
+  modelEndpoint = AnthropicClaudeSonnetFourDotSix.modelEndpoint;
   contextWindow = AnthropicClaudeSonnetFourDotSix.contextWindow;
   maxOutputTokens = AnthropicClaudeSonnetFourDotSix.maxOutputTokens;
   configSchema = AnthropicClaudeSonnetFourDotSix.configSchema;
@@ -88,7 +91,7 @@ export class AnthropicClaudeSonnetFourDotSix extends WithAnthropicConverter(
     const adaptiveReasoningObject = this.reasoningToThinkingConfig(reasoning);
 
     return {
-      model: this.model.modelId,
+      model: this.modelEndpoint.modelId,
       max_tokens: this.maxOutputTokens,
       messages: this.conversationToMessages(conversation),
       system: this.systemMessagesToSystemParam(conversation.system),

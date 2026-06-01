@@ -3,11 +3,13 @@ import { geminiThreeDotOneProSetup } from "@app/lib/model_constructors/_test_/se
 import { openaiGptFiveDotTwoSetup } from "@app/lib/model_constructors/_test_/setup/clients/openai-responses/models/gpt-5-2";
 import { openaiGptFiveDotFourSetup } from "@app/lib/model_constructors/_test_/setup/clients/openai-responses/models/gpt-5-4";
 import type { Setup } from "@app/lib/model_constructors/_test_/setup/types";
-import type { LargeLanguageModelId } from "@app/lib/model_constructors/types/providers";
+import type { ModelEndpointId } from "@app/lib/model_constructors/types/model-endpoints";
 
-export const SETUPS: Record<LargeLanguageModelId, Setup> = {
-  "openai/gpt-5.4": openaiGptFiveDotFourSetup,
-  "openai/gpt-5.2": openaiGptFiveDotTwoSetup,
-  "anthropic/claude-sonnet-4-6": anthropicClaudeSonnetFourDotSixSetup,
-  "google-ai-studio/gemini-3.1-pro-preview": geminiThreeDotOneProSetup,
+export const SETUPS: Record<ModelEndpointId, Setup> = {
+  "openai/openai/global/gpt-5.4": openaiGptFiveDotFourSetup,
+  "openai/openai/global/gpt-5.2": openaiGptFiveDotTwoSetup,
+  "anthropic/anthropic/global/claude-sonnet-4-6":
+    anthropicClaudeSonnetFourDotSixSetup,
+  "google-ai-studio/google-ai-studio/global/gemini-3.1-pro-preview":
+    geminiThreeDotOneProSetup,
 };

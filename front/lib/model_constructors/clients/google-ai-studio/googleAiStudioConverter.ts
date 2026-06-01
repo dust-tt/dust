@@ -384,7 +384,7 @@ export function WithGoogleAiStudioConverter<
       return {
         type: "response_id",
         content: { responseId },
-        metadata: this.model,
+        metadata: this.modelEndpoint,
       };
     }
 
@@ -392,7 +392,7 @@ export function WithGoogleAiStudioConverter<
       return {
         type: "text_delta",
         content: { value: delta },
-        metadata: this.model,
+        metadata: this.modelEndpoint,
       };
     }
 
@@ -400,7 +400,7 @@ export function WithGoogleAiStudioConverter<
       return {
         type: "reasoning_delta",
         content: { value: delta },
-        metadata: this.model,
+        metadata: this.modelEndpoint,
       };
     }
 
@@ -408,7 +408,7 @@ export function WithGoogleAiStudioConverter<
       return {
         type: "text",
         content: { value: text },
-        metadata: this.model,
+        metadata: this.modelEndpoint,
       };
     }
 
@@ -420,7 +420,7 @@ export function WithGoogleAiStudioConverter<
         type: "reasoning",
         content: { value: text },
         metadata: {
-          ...this.model,
+          ...this.modelEndpoint,
           ...(signature ? { content: { signature } } : {}),
         },
       };
@@ -441,7 +441,7 @@ export function WithGoogleAiStudioConverter<
           arguments: fnCall.args ?? {},
         },
         metadata: {
-          ...this.model,
+          ...this.modelEndpoint,
           ...(part.thoughtSignature
             ? { content: { signature: part.thoughtSignature } }
             : {}),
@@ -471,7 +471,7 @@ export function WithGoogleAiStudioConverter<
           standardOutput: candidates,
           reasoning,
         },
-        metadata: this.model,
+        metadata: this.modelEndpoint,
       };
     }
 
@@ -486,7 +486,7 @@ export function WithGoogleAiStudioConverter<
               type: "stop_error",
               message: "The maximum response length was reached.",
             },
-            metadata: this.model,
+            metadata: this.modelEndpoint,
           };
         case FinishReason.SAFETY:
         case FinishReason.RECITATION:
@@ -504,7 +504,7 @@ export function WithGoogleAiStudioConverter<
               message:
                 "Google safety filters prevented this response. Try starting a new conversation or rephrasing your request.",
             },
-            metadata: this.model,
+            metadata: this.modelEndpoint,
           };
         case FinishReason.MALFORMED_FUNCTION_CALL:
         case FinishReason.UNEXPECTED_TOOL_CALL:
@@ -514,7 +514,7 @@ export function WithGoogleAiStudioConverter<
               type: "server_error",
               message: `Tool call error from Google: ${reason}`,
             },
-            metadata: this.model,
+            metadata: this.modelEndpoint,
           };
         case FinishReason.NO_IMAGE:
         case FinishReason.IMAGE_OTHER:
@@ -526,7 +526,7 @@ export function WithGoogleAiStudioConverter<
               type: "unknown_error",
               message: `Unknown stop reason from Google: ${reason}`,
             },
-            metadata: this.model,
+            metadata: this.modelEndpoint,
           };
         default:
           assertNever(reason);
@@ -647,7 +647,7 @@ export function WithGoogleAiStudioConverter<
       const successEvent: SuccessEvent = {
         type: "success",
         content: { aggregated },
-        metadata: this.model,
+        metadata: this.modelEndpoint,
       };
       yield successEvent;
     }

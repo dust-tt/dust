@@ -5,8 +5,8 @@ import type { ErrorEvent } from "@app/lib/model_constructors/types/events";
 import type { BaseConversation } from "@app/lib/model_constructors/types/messages";
 import type {
   GOOGLE_AI_STUDIO_PROVIDER_ID,
-  Model,
-} from "@app/lib/model_constructors/types/providers";
+  ModelEndpoint,
+} from "@app/lib/model_constructors/types/model-endpoints";
 import type {
   Content,
   GenerateContentConfig,
@@ -16,7 +16,7 @@ import { ApiError, GoogleGenAI } from "@google/genai";
 import { z } from "zod";
 
 export type GoogleAiStudioModel = Extract<
-  Model,
+  ModelEndpoint,
   { providerId: typeof GOOGLE_AI_STUDIO_PROVIDER_ID }
 >;
 
@@ -64,7 +64,7 @@ export abstract class GoogleAiStudio extends LargeLanguageModel<
   GoogleAiStudioRequestPayload,
   GenerateContentResponse
 > {
-  abstract model: GoogleAiStudioModel;
+  abstract modelEndpoint: GoogleAiStudioModel;
   client: GoogleGenAI;
   configSchema: z.ZodType<z.infer<typeof configSchema>> = configSchema;
   byok = true;
@@ -89,7 +89,7 @@ export abstract class GoogleAiStudio extends LargeLanguageModel<
           message: error.message,
           originalError: error,
         },
-        metadata: this.model,
+        metadata: this.modelEndpoint,
       };
     }
 
@@ -107,7 +107,7 @@ export abstract class GoogleAiStudio extends LargeLanguageModel<
             message: `Authentication failed for Google AI Studio: ${error.message}`,
             originalError: error,
           },
-          metadata: this.model,
+          metadata: this.modelEndpoint,
         };
       }
 
@@ -120,7 +120,7 @@ export abstract class GoogleAiStudio extends LargeLanguageModel<
               message: `Invalid request to Google AI Studio: ${error.message}`,
               originalError: error,
             },
-            metadata: this.model,
+            metadata: this.modelEndpoint,
           };
         case 403:
           return {
@@ -130,7 +130,7 @@ export abstract class GoogleAiStudio extends LargeLanguageModel<
               message: `Permission denied for Google AI Studio: ${error.message}`,
               originalError: error,
             },
-            metadata: this.model,
+            metadata: this.modelEndpoint,
           };
         case 404:
           return {
@@ -140,17 +140,17 @@ export abstract class GoogleAiStudio extends LargeLanguageModel<
               message: `Resource not found for Google AI Studio: ${error.message}`,
               originalError: error,
             },
-            metadata: this.model,
+            metadata: this.modelEndpoint,
           };
         case 429:
           return {
             type: "error",
             content: {
               type: "rate_limit_error",
-              message: `Rate limit exceeded for Google AI Studio/${this.model.modelId}: ${error.message}`,
+              message: `Rate limit exceeded for Google AI Studio/${this.modelEndpoint.modelId}: ${error.message}`,
               originalError: error,
             },
-            metadata: this.model,
+            metadata: this.modelEndpoint,
           };
         case 503:
           return {
@@ -160,7 +160,7 @@ export abstract class GoogleAiStudio extends LargeLanguageModel<
               message: `Google AI Studio is overloaded: ${error.message}`,
               originalError: error,
             },
-            metadata: this.model,
+            metadata: this.modelEndpoint,
           };
         default:
           if (status >= 500 && status < 600) {
@@ -171,7 +171,7 @@ export abstract class GoogleAiStudio extends LargeLanguageModel<
                 message: `Server error from Google AI Studio (${status}): ${error.message}`,
                 originalError: error,
               },
-              metadata: this.model,
+              metadata: this.modelEndpoint,
             };
           }
           return {
@@ -181,7 +181,7 @@ export abstract class GoogleAiStudio extends LargeLanguageModel<
               message: `Error from Google AI Studio (${status}): ${error.message}`,
               originalError: error,
             },
-            metadata: this.model,
+            metadata: this.modelEndpoint,
           };
       }
     }
@@ -193,7 +193,7 @@ export abstract class GoogleAiStudio extends LargeLanguageModel<
         message: `Unknown error from Google AI Studio`,
         originalError: error,
       },
-      metadata: this.model,
+      metadata: this.modelEndpoint,
     };
   }
 

@@ -14,12 +14,12 @@ import type { Credentials } from "@app/lib/model_constructors/types/credentials"
 import type { ErrorEvent } from "@app/lib/model_constructors/types/events";
 import type {
   ANTHROPIC_PROVIDER_ID,
-  Model,
-} from "@app/lib/model_constructors/types/providers";
+  ModelEndpoint,
+} from "@app/lib/model_constructors/types/model-endpoints";
 import { z } from "zod";
 
 export type AnthropicModel = Extract<
-  Model,
+  ModelEndpoint,
   { providerId: typeof ANTHROPIC_PROVIDER_ID }
 >;
 
@@ -45,7 +45,7 @@ export abstract class Anthropic extends LargeLanguageModel<
   MessageCreateParamsStreaming,
   RawMessageStreamEvent
 > {
-  abstract model: AnthropicModel;
+  abstract modelEndpoint: AnthropicModel;
   client: AnthropicClient;
   configSchema: z.ZodType<z.infer<typeof configSchema>> = configSchema;
   byok = true;
@@ -66,7 +66,7 @@ export abstract class Anthropic extends LargeLanguageModel<
           message: `Network error connecting to Anthropic: ${error.message}`,
           originalError: error,
         },
-        metadata: this.model,
+        metadata: this.modelEndpoint,
       };
     }
 
@@ -83,7 +83,7 @@ export abstract class Anthropic extends LargeLanguageModel<
               message: `Invalid request to Anthropic: ${error.message}`,
               originalError: error,
             },
-            metadata: this.model,
+            metadata: this.modelEndpoint,
           };
         case 401:
           return {
@@ -93,7 +93,7 @@ export abstract class Anthropic extends LargeLanguageModel<
               message: `Authentication failed for Anthropic: ${error.message}`,
               originalError: error,
             },
-            metadata: this.model,
+            metadata: this.modelEndpoint,
           };
         case 403:
           return {
@@ -103,7 +103,7 @@ export abstract class Anthropic extends LargeLanguageModel<
               message: `Permission denied for Anthropic: ${error.message}`,
               originalError: error,
             },
-            metadata: this.model,
+            metadata: this.modelEndpoint,
           };
         case 404:
           return {
@@ -113,17 +113,17 @@ export abstract class Anthropic extends LargeLanguageModel<
               message: `Resource not found for Anthropic: ${error.message}`,
               originalError: error,
             },
-            metadata: this.model,
+            metadata: this.modelEndpoint,
           };
         case 429:
           return {
             type: "error",
             content: {
               type: "rate_limit_error",
-              message: `Rate limit exceeded for Anthropic/${this.model.modelId}: ${error.message}`,
+              message: `Rate limit exceeded for Anthropic/${this.modelEndpoint.modelId}: ${error.message}`,
               originalError: error,
             },
-            metadata: this.model,
+            metadata: this.modelEndpoint,
           };
         case 503:
           return {
@@ -133,7 +133,7 @@ export abstract class Anthropic extends LargeLanguageModel<
               message: `Anthropic is overloaded: ${error.message}`,
               originalError: error,
             },
-            metadata: this.model,
+            metadata: this.modelEndpoint,
           };
         default:
           if (status >= 500 && status < 600) {
@@ -144,7 +144,7 @@ export abstract class Anthropic extends LargeLanguageModel<
                 message: `Server error from Anthropic (${status}): ${error.message}`,
                 originalError: error,
               },
-              metadata: this.model,
+              metadata: this.modelEndpoint,
             };
           }
 
@@ -155,7 +155,7 @@ export abstract class Anthropic extends LargeLanguageModel<
               message: `Error from Anthropic (${status}): ${error.message}`,
               originalError: error,
             },
-            metadata: this.model,
+            metadata: this.modelEndpoint,
           };
       }
     }
@@ -167,7 +167,7 @@ export abstract class Anthropic extends LargeLanguageModel<
         message: `Unknown error from Anthropic`,
         originalError: error,
       },
-      metadata: this.model,
+      metadata: this.modelEndpoint,
     };
   }
 

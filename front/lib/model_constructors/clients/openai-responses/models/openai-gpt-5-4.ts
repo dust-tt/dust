@@ -5,12 +5,13 @@ import {
   temperatureSchema,
 } from "@app/lib/model_constructors/types/config";
 import type { Payload } from "@app/lib/model_constructors/types/messages";
-import type { TokenPricing } from "@app/lib/model_constructors/types/pricing";
 import {
   GPT_5_4_MODEL_ID,
-  type Model,
+  OPENAI_API,
   OPENAI_PROVIDER_ID,
-} from "@app/lib/model_constructors/types/providers";
+} from "@app/lib/model_constructors/types/model-endpoints";
+import type { TokenPricing } from "@app/lib/model_constructors/types/pricing";
+import { GLOBAL } from "@app/lib/model_constructors/types/regions";
 import type { ResponseCreateParamsStreaming } from "openai/resources/responses/responses";
 import { z } from "zod";
 
@@ -21,10 +22,12 @@ const NON_NULL_REASONING_EFFORTS = [
   "maximal",
 ] as const;
 
-const model = {
+const modelEndpoint = {
   modelId: GPT_5_4_MODEL_ID,
   providerId: OPENAI_PROVIDER_ID,
-} as const satisfies Model;
+  region: GLOBAL,
+  api: OPENAI_API,
+} as const;
 const contextWindow = 1_050_000;
 const maxOutputTokens = 128_000;
 const configSchema = z.union([
@@ -55,13 +58,13 @@ const tokenPricing = [
 export class OpenAiGptFiveDotFour extends WithOpenAiResponsesConverter(
   OpenAiResponses
 ) {
-  static readonly model = model;
+  static readonly modelEndpoint = modelEndpoint;
   static readonly contextWindow = contextWindow;
   static readonly maxOutputTokens = maxOutputTokens;
   static readonly configSchema = configSchema;
   static readonly tokenPricing = tokenPricing;
 
-  model = OpenAiGptFiveDotFour.model;
+  modelEndpoint = OpenAiGptFiveDotFour.modelEndpoint;
   contextWindow = OpenAiGptFiveDotFour.contextWindow;
   maxOutputTokens = OpenAiGptFiveDotFour.maxOutputTokens;
   configSchema = OpenAiGptFiveDotFour.configSchema;
@@ -85,7 +88,7 @@ export class OpenAiGptFiveDotFour extends WithOpenAiResponsesConverter(
     const input = this.conversationToResponseInput(conversation);
 
     const payload: ResponseCreateParamsStreaming = {
-      model: this.model.modelId,
+      model: this.modelEndpoint.modelId,
       input,
       temperature: temperature ?? null,
       reasoning: this.toReasoning(reasoning),

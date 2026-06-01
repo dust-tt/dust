@@ -12,16 +12,15 @@ import type {
   TokenUsageContent,
 } from "@app/lib/model_constructors/types/events";
 import type { Payload } from "@app/lib/model_constructors/types/messages";
+import type { ModelEndpoint } from "@app/lib/model_constructors/types/model-endpoints";
 import type { TokenPricing } from "@app/lib/model_constructors/types/pricing";
-import type { Model } from "@app/lib/model_constructors/types/providers";
 import { computeUsageCost } from "@app/lib/model_constructors/utils/computeUsageCost";
-import { getIdFromModel } from "@app/lib/model_constructors/utils/getIdFromModel";
 import type { z } from "zod";
 export abstract class LargeLanguageModel<
   I = unknown,
   O = unknown,
 > extends DustModel {
-  abstract model: Model;
+  abstract modelEndpoint: ModelEndpoint;
   abstract contextWindow: number;
   abstract tokenPricing: TokenPricing;
   abstract maxOutputTokens: number;
@@ -64,7 +63,7 @@ export abstract class LargeLanguageModel<
           message: "Configuration is invalid.",
           originalError: configValidationResult.error.format(),
         },
-        metadata: this.model,
+        metadata: this.modelEndpoint,
       };
       return;
     }
@@ -88,15 +87,6 @@ export abstract class LargeLanguageModel<
     return computeUsageCost(usage, this.tokenPricing);
   }
 
-  get modelId() {
-    return this.model.modelId;
-  }
-  get providerId() {
-    return this.model.providerId;
-  }
-  get id() {
-    return getIdFromModel(this.model);
-  }
   get supportedReasoningEfforts(): ReasoningEffort[] {
     return ORDERED_REASONING_EFFORTS.filter(
       (effort) => this.configSchema.safeParse({ reasoning: { effort } }).success

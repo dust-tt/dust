@@ -388,7 +388,7 @@ export function WithAnthropicConverter<T extends Constructor<Anthropic>>(
       return {
         type: "response_id",
         content: { responseId: event.message.id },
-        metadata: this.model,
+        metadata: this.modelEndpoint,
       };
     }
 
@@ -396,7 +396,7 @@ export function WithAnthropicConverter<T extends Constructor<Anthropic>>(
       return {
         type: "text_delta",
         content: { value: delta },
-        metadata: this.model,
+        metadata: this.modelEndpoint,
       };
     }
 
@@ -404,7 +404,7 @@ export function WithAnthropicConverter<T extends Constructor<Anthropic>>(
       return {
         type: "reasoning_delta",
         content: { value: delta },
-        metadata: this.model,
+        metadata: this.modelEndpoint,
       };
     }
 
@@ -412,7 +412,7 @@ export function WithAnthropicConverter<T extends Constructor<Anthropic>>(
       return {
         type: "text",
         content: { value: text },
-        metadata: this.model,
+        metadata: this.modelEndpoint,
       };
     }
 
@@ -424,7 +424,7 @@ export function WithAnthropicConverter<T extends Constructor<Anthropic>>(
         type: "reasoning",
         content: { value: text },
         metadata: {
-          ...this.model,
+          ...this.modelEndpoint,
           ...(signature ? { content: { signature } } : {}),
         },
       };
@@ -438,14 +438,14 @@ export function WithAnthropicConverter<T extends Constructor<Anthropic>>(
       return {
         type: "tool_call_started",
         content: { id, index, name },
-        metadata: this.model,
+        metadata: this.modelEndpoint,
       };
     }
 
     inputJsonDeltaToToolCallDeltaEvent(): ToolCallDeltaEvent {
       return {
         type: "tool_call_delta",
-        metadata: this.model,
+        metadata: this.modelEndpoint,
       };
     }
 
@@ -470,7 +470,7 @@ export function WithAnthropicConverter<T extends Constructor<Anthropic>>(
       return {
         type: "tool_call",
         content: { id, name, arguments: parsedArguments },
-        metadata: this.model,
+        metadata: this.modelEndpoint,
       };
     }
 
@@ -487,7 +487,7 @@ export function WithAnthropicConverter<T extends Constructor<Anthropic>>(
       return {
         type: "tool_call",
         content: { id, name, arguments: { INVALID_JSON: invalidJson } },
-        metadata: this.model,
+        metadata: this.modelEndpoint,
       };
     }
 
@@ -512,7 +512,7 @@ export function WithAnthropicConverter<T extends Constructor<Anthropic>>(
           standardOutput: usage.output_tokens - thinkingTokens,
           reasoning: thinkingTokens,
         },
-        metadata: this.model,
+        metadata: this.modelEndpoint,
       };
     }
 
@@ -525,7 +525,7 @@ export function WithAnthropicConverter<T extends Constructor<Anthropic>>(
               type: "stop_error",
               message: "The maximum response length was reached.",
             },
-            metadata: this.model,
+            metadata: this.modelEndpoint,
           };
         case "refusal":
           return {
@@ -535,7 +535,7 @@ export function WithAnthropicConverter<T extends Constructor<Anthropic>>(
               message:
                 "Claude safety filters prevented this response. Try starting a new conversation or rephrasing your request.",
             },
-            metadata: this.model,
+            metadata: this.modelEndpoint,
           };
         default:
           return null;
@@ -778,7 +778,7 @@ export function WithAnthropicConverter<T extends Constructor<Anthropic>>(
       const successEvent: SuccessEvent = {
         type: "success",
         content: { aggregated },
-        metadata: this.model,
+        metadata: this.modelEndpoint,
       };
       yield successEvent;
     }

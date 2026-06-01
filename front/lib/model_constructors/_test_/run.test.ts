@@ -6,12 +6,12 @@ import {
   TEST_CASES,
   type TestCase,
 } from "@app/lib/model_constructors/_test_/types";
-import type { LargeLanguageModel } from "@app/lib/model_constructors/index";
-import type { LargeLanguageModelResponseEvent } from "@app/lib/model_constructors/types/events";
 import {
-  type LargeLanguageModelId,
-  MODELS,
-} from "@app/lib/model_constructors/types/providers";
+  getIdFromModelEndpoint,
+  type LargeLanguageModel,
+} from "@app/lib/model_constructors/index";
+import type { LargeLanguageModelResponseEvent } from "@app/lib/model_constructors/types/events";
+import { MODEL_ENDPOINTS } from "@app/lib/model_constructors/types/model-endpoints";
 // biome-ignore lint/plugin/noAppImportsInModels: monorepo-global utility with no domain meaning
 import { assertNever } from "@app/types/shared/utils/assert_never";
 // biome-ignore lint/plugin/noAppImportsInModels: monorepo-global utility with no domain meaning
@@ -156,9 +156,7 @@ function checkResponseChecker(
   }
 }
 
-const allModelIds = MODELS.map(
-  (m) => `${m.providerId}/${m.modelId}` as LargeLanguageModelId
-);
+const allModelIds = MODEL_ENDPOINTS.map(getIdFromModelEndpoint);
 const testedModels = allModelIds.filter((id) => SETUPS[id].shouldRun);
 const skippedModels = allModelIds.filter((id) => !SETUPS[id].shouldRun);
 
@@ -220,7 +218,7 @@ if (process.env.NODE_ENV !== "test") {
     );
 
     console.warn(
-      `\n\x1b[33m${"=".repeat(60)}\n🧪 ${instance.id}\n⚠️  Running ${modelTests.length}/${allTestEntries.length} focused test case(s):\n${modelTests.map(([id]) => `   - ${id}`).join("\n")}\n${"=".repeat(60)}\x1b[0m\n`
+      `\n\x1b[33m${"=".repeat(60)}\n🧪 ${getIdFromModelEndpoint(instance.modelEndpoint)}\n⚠️  Running ${modelTests.length}/${allTestEntries.length} focused test case(s):\n${modelTests.map(([id]) => `   - ${id}`).join("\n")}\n${"=".repeat(60)}\x1b[0m\n`
     );
 
     it.skipIf(modelTests.length === 0).each(modelTests)(

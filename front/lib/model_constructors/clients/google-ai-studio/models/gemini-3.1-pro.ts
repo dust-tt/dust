@@ -8,12 +8,13 @@ import {
   temperatureSchema,
 } from "@app/lib/model_constructors/types/config";
 import type { Payload } from "@app/lib/model_constructors/types/messages";
-import type { TokenPricing } from "@app/lib/model_constructors/types/pricing";
 import {
   GEMINI_3_1_PRO_MODEL_ID,
+  GOOGLE_AI_STUDIO_API,
   GOOGLE_AI_STUDIO_PROVIDER_ID,
-  type Model,
-} from "@app/lib/model_constructors/types/providers";
+} from "@app/lib/model_constructors/types/model-endpoints";
+import type { TokenPricing } from "@app/lib/model_constructors/types/pricing";
+import { GLOBAL } from "@app/lib/model_constructors/types/regions";
 import { z } from "zod";
 
 const SUPPORTED_NON_NULL_REASONING_EFFORTS = ["low", "medium", "high"] as const;
@@ -21,10 +22,12 @@ const SUPPORTED_NON_NULL_REASONING_EFFORTS = ["low", "medium", "high"] as const;
 const baseConfig = inputConfigSchema.extend({
   cacheKey: z.undefined(),
 });
-const model = {
+const modelEndpoint = {
   modelId: GEMINI_3_1_PRO_MODEL_ID,
   providerId: GOOGLE_AI_STUDIO_PROVIDER_ID,
-} as const satisfies Model;
+  region: GLOBAL,
+  api: GOOGLE_AI_STUDIO_API,
+} as const;
 const contextWindow = 1_000_000;
 const maxOutputTokens = 64_000;
 const configSchema = baseConfig.extend({
@@ -59,13 +62,13 @@ const tokenPricing = [
 export class GeminiThreeDotOnePro extends WithGoogleAiStudioConverter(
   GoogleAiStudio
 ) {
-  static readonly model = model;
+  static readonly modelEndpoint = modelEndpoint;
   static readonly contextWindow = contextWindow;
   static readonly maxOutputTokens = maxOutputTokens;
   static readonly configSchema = configSchema;
   static readonly tokenPricing = tokenPricing;
 
-  model = GeminiThreeDotOnePro.model;
+  modelEndpoint = GeminiThreeDotOnePro.modelEndpoint;
   contextWindow = GeminiThreeDotOnePro.contextWindow;
   maxOutputTokens = GeminiThreeDotOnePro.maxOutputTokens;
   configSchema = GeminiThreeDotOnePro.configSchema;
@@ -86,7 +89,7 @@ export class GeminiThreeDotOnePro extends WithGoogleAiStudioConverter(
       : {};
 
     return {
-      model: this.model.modelId,
+      model: this.modelEndpoint.modelId,
       conversation,
       generationConfig: {
         temperature,

@@ -265,7 +265,7 @@ export function WithOpenAiResponsesConverter<
       return {
         type: "response_id",
         content: { responseId },
-        metadata: this.model,
+        metadata: this.modelEndpoint,
       };
     }
 
@@ -273,7 +273,7 @@ export function WithOpenAiResponsesConverter<
       return {
         type: "text_delta",
         content: { value: delta },
-        metadata: this.model,
+        metadata: this.modelEndpoint,
       };
     }
 
@@ -281,7 +281,7 @@ export function WithOpenAiResponsesConverter<
       return {
         type: "reasoning_delta",
         content: { value: delta },
-        metadata: this.model,
+        metadata: this.modelEndpoint,
       };
     }
 
@@ -294,7 +294,7 @@ export function WithOpenAiResponsesConverter<
                 type: "text",
                 content: { value: content.text },
                 metadata: {
-                  ...this.model,
+                  ...this.modelEndpoint,
                   content: {
                     itemId: outputMessage.id,
                     phase: outputMessage.phase,
@@ -318,7 +318,7 @@ export function WithOpenAiResponsesConverter<
         type: "reasoning",
         content: { value: concatenatedSummary },
         metadata: {
-          ...this.model,
+          ...this.modelEndpoint,
           content: {
             encryptedContent: item.encrypted_content ?? undefined,
             itemId: item.id,
@@ -338,7 +338,7 @@ export function WithOpenAiResponsesConverter<
           arguments: parsedArguments,
         },
         metadata: {
-          ...this.model,
+          ...this.modelEndpoint,
           content: {
             itemId: item.id,
             callId: item.call_id,
@@ -361,7 +361,7 @@ export function WithOpenAiResponsesConverter<
           standardOutput: usage.output_tokens - reasoningTokens,
           reasoning: reasoningTokens,
         },
-        metadata: this.model,
+        metadata: this.modelEndpoint,
       };
     }
 
@@ -445,7 +445,7 @@ export function WithOpenAiResponsesConverter<
       const successEvent: SuccessEvent = {
         type: "success",
         content: { aggregated },
-        metadata: this.model,
+        metadata: this.modelEndpoint,
       };
       yield successEvent;
     }

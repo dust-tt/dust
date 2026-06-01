@@ -28,7 +28,7 @@ export function WithStreamDebug<I, O, T extends AbstractConstructor<I, O>>(
             message: "Configuration is invalid.",
             originalError: configValidationResult.error.format(),
           },
-          metadata: this.model,
+          metadata: this.modelEndpoint,
         };
         return;
       }

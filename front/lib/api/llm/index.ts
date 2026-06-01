@@ -26,17 +26,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import { getModels } from "@app/lib/model_constructors";
-import type { Model } from "@app/lib/model_constructors/types/providers";
-import { CLAUDE_SONNET_4_6_MODEL_ID } from "@app/types/assistant/models/anthropic";
-import type { ModelIdType } from "@app/types/assistant/models/types";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
-
-const MODEL_ID_TO_NEW_MODEL_TYPE: Partial<Record<ModelIdType, Model>> = {
-  [CLAUDE_SONNET_4_6_MODEL_ID]: {
-    providerId: "anthropic",
-    modelId: "claude-sonnet-4-6",
-  },
-};
 
 function getNewLLM(
   auth: Authenticator,
@@ -47,19 +37,20 @@ function getNewLLM(
     return null;
   }
 
-  const newModel = MODEL_ID_TO_NEW_MODEL_TYPE[llmParameters.modelId];
-  if (!newModel) {
-    return null;
-  }
-
   const models = getModels(
     llmParameters.credentials,
     {
       featureFlags,
-      region: multiRegionsConfig.getCurrentRegion(),
       scope: "run",
     },
-    newModel
+    {
+      // @ts-expect-error
+      modelId: llmParameters.modelId,
+      region: multiRegionsConfig.getCurrentRegion(),
+      api: featureFlags.includes("use_vertex_for_supported_models")
+        ? "agent-platform"
+        : undefined,
+    }
   );
 
   const model = models[0];

@@ -11,13 +11,14 @@ import {
   GEMINI_3_1_PRO_MODEL_ID,
   GPT_5_2_MODEL_ID,
   GPT_5_4_MODEL_ID,
-  type LargeLanguageModelId,
-  MODELS,
-  type Model,
-} from "@app/lib/model_constructors/types/providers";
+  MODEL_ENDPOINTS,
+  type ModelEndpoint,
+  type ModelEndpointId,
+  type ProviderApi,
+  type ProviderId,
+} from "@app/lib/model_constructors/types/model-endpoints";
 import type { Region } from "@app/lib/model_constructors/types/regions";
 import type { Scope } from "@app/lib/model_constructors/types/scopes";
-import { getIdFromModel } from "@app/lib/model_constructors/utils/getIdFromModel";
 import type { RegionType } from "@app/types/region";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
@@ -28,17 +29,19 @@ type ModelClassConstructor = {
 };
 
 const MODEL_REGISTRY = {
-  "anthropic/claude-sonnet-4-6": AnthropicClaudeSonnetFourDotSix,
-  "openai/gpt-5.2": OpenAiGptFiveDotTwo,
-  "openai/gpt-5.4": OpenAiGptFiveDotFour,
-  "google-ai-studio/gemini-3.1-pro-preview": GeminiThreeDotOnePro,
-} as const satisfies Record<LargeLanguageModelId, ModelClassConstructor>;
+  "anthropic/anthropic/global/claude-sonnet-4-6":
+    AnthropicClaudeSonnetFourDotSix,
+  "openai/openai/global/gpt-5.2": OpenAiGptFiveDotTwo,
+  "openai/openai/global/gpt-5.4": OpenAiGptFiveDotFour,
+  "google-ai-studio/google-ai-studio/global/gemini-3.1-pro-preview":
+    GeminiThreeDotOnePro,
+} as const satisfies Record<ModelEndpointId, ModelClassConstructor>;
 
-export function getModel(
+export function getModelInstance(
   credentials: Credentials,
-  model: Model
+  modelEndpointId: ModelEndpointId
 ): LargeLanguageModel {
-  const ModelConstructor = MODEL_REGISTRY[getIdFromModel(model)];
+  const ModelConstructor = MODEL_REGISTRY[modelEndpointId];
 
   return new ModelConstructor(credentials);
 }
@@ -52,43 +55,54 @@ export function getModels(
   credentials: Credentials,
   {
     featureFlags,
-    region,
     scope,
   }: {
     featureFlags: WhitelistableFeature[];
-    region: RegionType;
     scope: Scope;
   },
   filters?: {
-    providerId?: Model["providerId"];
-    modelId?: Model["modelId"];
+    region: RegionType;
+    providerId?: ProviderId;
+    modelId?: ModelEndpoint["modelId"];
+    api?: ProviderApi;
   }
 ): LargeLanguageModel[] {
-  return MODELS.filter(
-    (model) => !filters?.providerId || model.providerId === filters.providerId
+  return MODEL_ENDPOINTS.filter(
+    (modelEndpoint) =>
+      (!filters?.providerId ||
+        modelEndpoint.providerId === filters.providerId) &&
+      (!filters?.modelId || modelEndpoint.modelId === filters.modelId) &&
+      (!filters?.api || modelEndpoint.api === filters.api) &&
+      (!filters?.region || modelEndpoint.region === REGIONS_MAP[filters.region])
   )
-    .map((model) => getModel(credentials, model))
+    .map((modelEndpoint) =>
+      getModelInstance(credentials, getIdFromModelEndpoint(modelEndpoint))
+    )
     .filter(
       (dustModel) =>
         // Feature flag check
         (dustModel.featureflag === null ||
           featureFlags.includes(dustModel.featureflag)) &&
-        // Region availability check
-        dustModel.regions[REGIONS_MAP[region]] &&
         // Right to display check
         dustModel.scopes[scope]
     );
 }
 
-function _getModelFromId(id: LargeLanguageModelId): Model {
+function _getModelFromId(id: ModelEndpointId): ModelEndpoint {
   return MODEL_REGISTRY[id].prototype.model;
 }
 
-const _BEST_PERFORMING_MODEL_IDS: Model["modelId"][] = [
+export function getIdFromModelEndpoint(
+  modelEndpoint: ModelEndpoint
+): ModelEndpointId {
+  return `${modelEndpoint.providerId}/${modelEndpoint.api}/${modelEndpoint.region}/${modelEndpoint.modelId}` as ModelEndpointId;
+}
+
+const _BEST_PERFORMING_MODEL_IDS: ModelEndpoint["modelId"][] = [
   GPT_5_4_MODEL_ID,
   GPT_5_2_MODEL_ID,
   CLAUDE_SONNET_4_6_MODEL_ID,
   GEMINI_3_1_PRO_MODEL_ID,
 ];
 
-const _ORDERED_LARGE_LANGUAGE_MODEL_IDS: Model["modelId"][] = [];
+const _ORDERED_LARGE_LANGUAGE_MODEL_IDS: ModelEndpoint["modelId"][] = [];

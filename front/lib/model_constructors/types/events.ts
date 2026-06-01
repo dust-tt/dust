@@ -1,4 +1,4 @@
-import type { Model } from "@app/lib/model_constructors/types/providers";
+import type { ModelEndpoint } from "@app/lib/model_constructors/types/model-endpoints";
 
 export type ResponseIdContent = { responseId: string };
 
@@ -125,7 +125,7 @@ export interface ErrorEvent {
   metadata: Metadata;
 }
 
-type Metadata = Model & { content?: Record<string, unknown> };
+type Metadata = ModelEndpoint & { content?: Record<string, unknown> };
 
 export type LargeLanguageModelResponseEvent =
   | ResponseIdEvent
