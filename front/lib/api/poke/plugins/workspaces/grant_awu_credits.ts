@@ -222,7 +222,7 @@ export const grantAwuCreditsPlugin = createPlugin({
         amount: amountCredits,
         startingAt: startDate.toISOString(),
         endingBefore: expirationDate.toISOString(),
-        name: `Credits granted from Poke: ${amountCredits.toLocaleString()} credits`,
+        name: `Credits granted by Dust representative: ${amountCredits.toLocaleString()} credits`,
         idempotencyKey,
         priority: AWU_PRIORITY_PURCHASED_COMMIT,
         applicableProductTags: ["usage"],
@@ -292,10 +292,10 @@ export const grantAwuCreditsPlugin = createPlugin({
     }
 
     const commitNameBase = validatedArgs.setPrice
-      ? `Commits granted from Poke: ${amountCredits.toLocaleString()} credits (manual price)`
+      ? `Commits added by Dust representative: ${amountCredits.toLocaleString()} credits (manual price)`
       : discountPercent > 0
-        ? `Commits granted from Poke: ${amountCredits.toLocaleString()} credits (${discountPercent}% discount)`
-        : `Commits granted from Poke: ${amountCredits.toLocaleString()} credits`;
+        ? `Commits added by Dust representative: ${amountCredits.toLocaleString()} credits (${discountPercent}% discount)`
+        : `Commits added by Dust representative: ${amountCredits.toLocaleString()} credits`;
     const commitName = validatedArgs.purchaseOrderId
       ? `${commitNameBase} [PO: ${validatedArgs.purchaseOrderId}]`
       : commitNameBase;
