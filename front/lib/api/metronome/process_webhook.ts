@@ -5,6 +5,9 @@ import {
   dispatchPerUserCapReached,
   dispatchPerUserCapResolved,
   dispatchPoolExhausted,
+  dispatchProgrammaticCapReached,
+  dispatchProgrammaticCapReset,
+  dispatchProgrammaticLowBalance,
   syncPoolCreditStateFromBalance,
 } from "@app/lib/api/metronome/credit_state_dispatcher";
 import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
@@ -20,6 +23,13 @@ import {
   grantFreeCreditFromMetronomeSegment,
   YEARLY_MULTIPLIER,
 } from "@app/lib/credits/free";
+import {
+  CRITICAL_BALANCE_OFFSET,
+  LOW_BALANCE_OFFSET,
+  PROGRAMMATIC_CAP_ALERT_NAME,
+  PROGRAMMATIC_CRITICAL_BALANCE_ALERT_NAME,
+  PROGRAMMATIC_LOW_BALANCE_ALERT_NAME,
+} from "@app/lib/metronome/alerts/programmatic_cap";
 import {
   getMetronomeDefaultUserCapAlert,
   getMetronomePerUserCap,
@@ -42,6 +52,7 @@ import {
   PLAN_CODE_CUSTOM_FIELD_KEY,
 } from "@app/lib/metronome/constants";
 import { invalidateContractCache } from "@app/lib/metronome/plan_type";
+import type { ProgrammaticCreditEvent } from "@app/lib/metronome/programmatic_credit_state_machine";
 import { isMetronomeFreeCredit } from "@app/lib/metronome/types";
 import type { MetronomeWebhookEvent } from "@app/lib/metronome/webhook_events";
 import { PlanModel } from "@app/lib/models/plan";
@@ -59,6 +70,53 @@ import type { Commit, Credit } from "@metronome/sdk/resources";
 import type { CustomerAlert } from "@metronome/sdk/resources/v1/customers";
 
 type MetronomeAlertState = CustomerAlert["customer_status"];
+
+// Programmatic cap alerts share the AWU credit type with PAYG cap alerts;
+// the `usage_type=programmatic` group filter is what distinguishes them.
+function isProgrammaticMonthlyCap(
+  event: Extract<
+    MetronomeWebhookEvent,
+    {
+      type:
+        | "alerts.spend_threshold_reached"
+        | "alerts.spend_threshold_resolved";
+    }
+  >
+): boolean {
+  if (event.properties.credit_type_id !== getCreditTypeAwuId()) {
+    return false;
+  }
+  return (
+    event.properties.group_values?.some(
+      (g) => g.key === "usage_type" && g.value === "programmatic"
+    ) ?? false
+  );
+}
+
+// Map a programmatic cap alert name to the state-machine event it should
+// dispatch. Returns null when the alert name doesn't match any of the three
+// programmatic alerts (defensive — Metronome shouldn't fire anything else
+// under the AWU credit type on this code path).
+function programmaticEventFromAlertName(
+  alertName: string
+): ProgrammaticCreditEvent | null {
+  if (alertName.startsWith(PROGRAMMATIC_CAP_ALERT_NAME)) {
+    return { type: "programmatic_cap_reached" };
+  }
+  if (alertName.startsWith(PROGRAMMATIC_CRITICAL_BALANCE_ALERT_NAME)) {
+    return {
+      type: "programmatic_low_balance",
+      remainingCredits: CRITICAL_BALANCE_OFFSET,
+    };
+  }
+  if (alertName.startsWith(PROGRAMMATIC_LOW_BALANCE_ALERT_NAME)) {
+    return {
+      type: "programmatic_low_balance",
+      remainingCredits: LOW_BALANCE_OFFSET,
+    };
+  }
+  return null;
+}
 
 export class ProcessMetronomeWebhookError extends Error {
   constructor(
@@ -607,6 +665,39 @@ export async function processMetronomeWebhook({
         if (handleResult.isErr()) {
           return handleResult;
         }
+      } else if (isProgrammaticMonthlyCap(event)) {
+        // Programmatic monthly cap alerts. Three alerts exist per workspace
+        // with distinct names; route to the matching dispatcher.
+        const alertName = event.properties.alert_name ?? "";
+        const programmaticEvent = programmaticEventFromAlertName(alertName);
+        if (programmaticEvent) {
+          switch (programmaticEvent.type) {
+            case "programmatic_cap_reached":
+              await dispatchProgrammaticCapReached({ workspace });
+              break;
+            case "programmatic_low_balance":
+              await dispatchProgrammaticLowBalance({
+                workspace,
+                remainingCredits: programmaticEvent.remainingCredits,
+              });
+              break;
+            case "programmatic_cap_reset":
+              // never happens in spend_threshold_reached
+              // dispatch below by spend_threshold_resolved case
+              break;
+            default:
+              assertNever(programmaticEvent);
+          }
+        }
+        logger.info(
+          {
+            eventId: event.id,
+            workspaceId: workspace.sId,
+            alertName,
+            currentSpend: event.properties.current_spend,
+          },
+          "[Metronome Webhook] spend_threshold_reached: programmatic alert dispatched"
+        );
       } else {
         await dispatchPaygCapReached({ workspace });
         logger.info(
@@ -651,6 +742,12 @@ export async function processMetronomeWebhook({
         if (handleResult.isErr()) {
           return handleResult;
         }
+      } else if (isProgrammaticMonthlyCap(event)) {
+        await dispatchProgrammaticCapReset({ workspace });
+        logger.info(
+          { eventId: event.id, workspaceId: workspace.sId },
+          "[Metronome Webhook] spend_threshold_resolved: programmatic cap reset dispatched"
+        );
       } else {
         logger.info(
           { eventId: event.id, workspaceId: workspace.sId },

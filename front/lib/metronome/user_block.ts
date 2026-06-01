@@ -24,8 +24,14 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-import type { WorkspacePoolCreditState } from "@app/types/credits";
-import { isWorkspacePoolCreditState } from "@app/types/credits";
+import type {
+  WorkspacePoolCreditState,
+  WorkspaceProgrammaticCreditState,
+} from "@app/types/credits";
+import {
+  isWorkspacePoolCreditState,
+  isWorkspaceProgrammaticCreditState,
+} from "@app/types/credits";
 
 export type UserBlockedReason = "credits_exhausted" | "user_cap_reached";
 
@@ -43,6 +49,16 @@ function buildWorkspacePoolDepletedKey(workspaceId: string): string {
 
 function buildWorkspaceCreditPoolStatusKey(workspaceId: string): string {
   return `metronome:pool_credit_status:${workspaceId}`;
+}
+
+function buildWorkspaceProgrammaticDepletedKey(workspaceId: string): string {
+  return `metronome:programmatic_depleted:${workspaceId}`;
+}
+
+function buildWorkspaceProgrammaticCreditStatusKey(
+  workspaceId: string
+): string {
+  return `metronome:programmatic_credit_status:${workspaceId}`;
 }
 
 function isBlockFlag(value: string | null): value is "0" | "1" {
@@ -247,6 +263,102 @@ export async function getWorkspaceCreditPoolStatus(
   const status = workspace.poolCreditState;
   await setFlag(buildWorkspaceCreditPoolStatusKey(workspaceId), status);
   return status;
+}
+
+// Workspace programmatic credit state (monthly cap).
+
+export async function setWorkspaceProgrammaticDepleted(
+  workspaceId: string
+): Promise<void> {
+  await setFlag(
+    buildWorkspaceProgrammaticDepletedKey(workspaceId),
+    BLOCKED_FLAG
+  );
+}
+
+export async function clearWorkspaceProgrammaticDepleted(
+  workspaceId: string
+): Promise<void> {
+  await setFlag(
+    buildWorkspaceProgrammaticDepletedKey(workspaceId),
+    NOT_BLOCKED_FLAG
+  );
+}
+
+export async function setWorkspaceProgrammaticCreditStatus(
+  workspaceId: string,
+  status: WorkspaceProgrammaticCreditState
+): Promise<void> {
+  await setFlag(buildWorkspaceProgrammaticCreditStatusKey(workspaceId), status);
+}
+
+export async function getWorkspaceProgrammaticCreditStatus(
+  workspaceId: string
+): Promise<WorkspaceProgrammaticCreditState> {
+  const cached = await runOnRedis({ origin: REDIS_ORIGIN }, async (client) =>
+    client.get(buildWorkspaceProgrammaticCreditStatusKey(workspaceId))
+  );
+
+  if (cached && isWorkspaceProgrammaticCreditState(cached)) {
+    return cached;
+  }
+
+  logger.info(
+    {
+      workspaceId,
+      workspaceProgrammaticCreditStatusCacheHit: false,
+    },
+    "[MetronomeUserBlock] Cache miss during programmatic credit status check, falling back to DB"
+  );
+
+  const workspace = await WorkspaceResource.fetchById(workspaceId);
+  if (!workspace) {
+    logger.warn(
+      { workspaceId },
+      "[MetronomeUserBlock] Workspace not found during programmatic credit status cache read-through fallback"
+    );
+    return "active";
+  }
+
+  const status = workspace.programmaticCreditState;
+  await setFlag(buildWorkspaceProgrammaticCreditStatusKey(workspaceId), status);
+  return status;
+}
+
+export async function isProgrammaticApiBlocked(
+  workspaceId: string
+): Promise<boolean> {
+  const depleted = await runOnRedis({ origin: REDIS_ORIGIN }, async (client) =>
+    client.get(buildWorkspaceProgrammaticDepletedKey(workspaceId))
+  );
+
+  if (isBlockFlag(depleted)) {
+    return depleted === BLOCKED_FLAG;
+  }
+
+  logger.info(
+    {
+      workspaceId,
+      workspaceProgrammaticCacheHit: false,
+    },
+    "[MetronomeUserBlock] Cache miss during programmatic API blocked check, falling back to DB"
+  );
+
+  const workspace = await WorkspaceResource.fetchById(workspaceId);
+  if (!workspace) {
+    logger.warn(
+      { workspaceId },
+      "[MetronomeUserBlock] Workspace not found during programmatic API blocked cache read-through fallback"
+    );
+    return false;
+  }
+
+  const programmaticDepleted = workspace.programmaticCreditState === "depleted";
+  await setFlag(
+    buildWorkspaceProgrammaticDepletedKey(workspaceId),
+    programmaticDepleted ? BLOCKED_FLAG : NOT_BLOCKED_FLAG
+  );
+  return programmaticDepleted;
 }
 
 // Workspace-pool-only read for API calls (no per-user cap).

@@ -13,7 +13,10 @@ import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import { getRemainingDailyCapMicroUsd } from "@app/lib/api/programmatic_usage/daily_cap";
 import { checkProgrammaticUsageLimits } from "@app/lib/api/programmatic_usage/tracking";
 import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
-import { isApiBlocked } from "@app/lib/metronome/user_block";
+import {
+  isApiBlocked,
+  isProgrammaticApiBlocked,
+} from "@app/lib/metronome/user_block";
 import {
   AgentMessageModel,
   MessageModel,
@@ -582,13 +585,20 @@ export async function getReinforcementSettingsActivity({
     );
   const globalCapMicroUsd = getReinforcementMonthlyCapMicroUsd(workspace);
 
+  // Credit-priced plans check pool + programmatic cap via Metronome state;
+  // legacy plans check programmatic credits via CreditResource.
   const plan = auth.subscription()?.plan;
-  const programmaticUsageLimitReached =
-    !!plan && isCreditPricedPlan(plan) && !!workspace.metronomeCustomerId
-      ? // If the workspace pool is depleted, no downstream message can be posted.
-        await isApiBlocked(workspace.sId)
-      : // Legacy check
-        (await checkProgrammaticUsageLimits(auth)).isErr();
+  let programmaticUsageLimitReached: boolean;
+  if (plan && isCreditPricedPlan(plan) && workspace.metronomeCustomerId) {
+    programmaticUsageLimitReached =
+      (await isApiBlocked(workspace.sId)) ||
+      (await isProgrammaticApiBlocked(workspace.sId));
+  } else {
+    // Legacy check for not metronome workspaces
+    programmaticUsageLimitReached = (
+      await checkProgrammaticUsageLimits(auth)
+    ).isErr();
+  }
 
   // Compute remaining programmatic budget: total remaining credits capped by
   // the daily usage allowance.

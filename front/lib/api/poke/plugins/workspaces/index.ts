@@ -21,6 +21,7 @@ export * from "./manage_audit_logs_kill_switch";
 export * from "./manage_authorized_domains";
 export * from "./manage_conversation_kill_switch";
 export * from "./manage_credit_usage_configuration";
+export * from "./manage_programmatic_monthly_cap";
 export * from "./manage_programmatic_usage_configuration";
 export * from "./manage_seat_limits";
 export * from "./manage_workspace_kill_switch";
