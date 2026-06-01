@@ -1,7 +1,6 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { restoreUnavailableSkillReferencesForPersistence } from "@app/lib/api/skills/skill_references";
 import { resolveAdditionalRequestedSpaceModelIds } from "@app/lib/api/skills/space_requirements";
 import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { pruneOutdatedSkillEditSuggestions } from "@app/lib/reinforcement/skill_suggestion_pruning";
@@ -71,36 +70,6 @@ const PatchSkillRequestBodySchema = z.object({
 
 type PatchSkillRequestBody = z.infer<typeof PatchSkillRequestBodySchema>;
 
-async function withReplacedSkillReferences(
-  auth: Authenticator,
-  skill: SkillResource
-): Promise<SkillType> {
-  const serializedSkill = skill.toJSON(auth);
-  if (serializedSkill.instructions === null) {
-    return serializedSkill;
-  }
-
-  const [replacement] = await SkillResource.replaceUnavailableSkillReferences(
-    auth,
-    [
-      {
-        instructions: serializedSkill.instructions,
-        instructionsHtml: serializedSkill.instructionsHtml,
-        requestedSpaceIds: skill.requestedSpaceIds,
-      },
-    ]
-  );
-  if (!replacement) {
-    return serializedSkill;
-  }
-
-  return {
-    ...serializedSkill,
-    instructions: replacement.instructions,
-    instructionsHtml: replacement.instructionsHtml,
-  };
-}
-
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
@@ -141,7 +110,7 @@ async function handler(
     case "GET": {
       const { withRelations } = req.query;
 
-      const serializedSkill = await withReplacedSkillReferences(auth, skill);
+      const serializedSkill = skill.toJSON(auth);
 
       if (withRelations === "true") {
         const featureFlags = await getFeatureFlags(auth);
@@ -157,7 +126,7 @@ async function handler(
           ? await skill.fetchChildSkills(auth)
           : [];
         const serializedExtendedSkill = extendedSkill
-          ? await withReplacedSkillReferences(auth, extendedSkill)
+          ? extendedSkill.toJSON(auth)
           : null;
 
         const skillWithRelations: SkillWithRelationsType = {
@@ -426,35 +395,13 @@ async function handler(
         );
       }
 
-      const restoredSkillReferences =
-        restoreUnavailableSkillReferencesForPersistence({
-          current: {
-            instructions: skill.instructions,
-            instructionsHtml: skill.instructionsHtml,
-          },
-          updated: {
-            instructions: body.instructions,
-            instructionsHtml: body.instructionsHtml,
-          },
-        });
-
-      if (restoredSkillReferences.isErr()) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: restoredSkillReferences.error.message,
-          },
-        });
-      }
-
       await skill.updateSkill(auth, {
         agentFacingDescription: body.agentFacingDescription,
         attachedKnowledge: attachedKnowledgeWithDataSourceViews,
         fileAttachments: files,
         icon: body.icon,
-        instructions: restoredSkillReferences.value.instructions,
-        instructionsHtml: restoredSkillReferences.value.instructionsHtml,
+        instructions: body.instructions,
+        instructionsHtml: body.instructionsHtml,
         isDefault: body.isDefault,
         mcpServerViews,
         name,
@@ -467,7 +414,7 @@ async function handler(
 
       await pruneOutdatedSkillEditSuggestions(auth, skill);
 
-      const serializedSkill = await withReplacedSkillReferences(auth, skill);
+      const serializedSkill = skill.toJSON(auth);
 
       return res.status(200).json({
         skill: serializedSkill,
