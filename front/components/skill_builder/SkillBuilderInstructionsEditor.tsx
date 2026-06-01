@@ -295,43 +295,6 @@ export function SkillBuilderInstructionsEditor({
     onDelete: handleDelete,
   });
 
-  const handleRemoveToolReference = useCallback(
-    (toolId: string) => {
-      const nextTools = toolsRef.current.filter(
-        (tool) => tool.configuration.mcpServerViewId !== toolId
-      );
-      toolsRef.current = nextTools;
-      onToolsChange(nextTools);
-
-      if (!editor || editor.isDestroyed) {
-        return;
-      }
-
-      const ranges: { from: number; to: number }[] = [];
-      editor.state.doc.descendants((node, position) => {
-        if (
-          node.type.name === TOOL_NODE_TYPE &&
-          node.attrs?.mcpServerViewId === toolId
-        ) {
-          ranges.push({ from: position, to: position + node.nodeSize });
-        }
-      });
-
-      if (ranges.length === 0) {
-        return;
-      }
-
-      const transaction = editor.state.tr;
-      for (const range of ranges.toReversed()) {
-        transaction.delete(range.from, range.to);
-      }
-
-      editor.view.dispatch(transaction);
-      syncInstructionsFromEditor(editor);
-    },
-    [editor, onToolsChange, syncInstructionsFromEditor]
-  );
-
   useEffect(() => {
     if (!editor || editor.isDestroyed) {
       return;
@@ -645,7 +608,6 @@ export function SkillBuilderInstructionsEditor({
           <SkillBuilderInstructionsReferenceSummary
             attachedKnowledge={attachedKnowledgeField.value}
             instructions={instructionsField.value ?? ""}
-            onRemoveTool={isDiffMode ? undefined : handleRemoveToolReference}
             tools={tools}
           />
         )}

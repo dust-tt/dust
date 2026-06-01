@@ -13,7 +13,6 @@ import { useMemo } from "react";
 interface SkillBuilderInstructionsReferenceSummaryProps {
   attachedKnowledge?: AttachedKnowledgeFormData[];
   instructions: string;
-  onRemoveTool?: (toolId: string) => void;
   tools: BuilderAction[];
 }
 
@@ -60,13 +59,7 @@ function compareReferenceSummaryItems(
   );
 }
 
-function renderReferenceSummaryItem({
-  item,
-  onRemoveTool,
-}: {
-  item: ReferenceSummaryItem;
-  onRemoveTool?: (toolId: string) => void;
-}) {
+function renderReferenceSummaryItem(item: ReferenceSummaryItem) {
   switch (item.kind) {
     case "knowledge":
       return (
@@ -94,7 +87,6 @@ function renderReferenceSummaryItem({
           key={`${item.kind}:${item.id}`}
           title={item.title}
           toolIcon={item.icon}
-          onRemove={onRemoveTool ? () => onRemoveTool(item.id) : undefined}
           color="white"
         />
       );
@@ -106,7 +98,6 @@ function renderReferenceSummaryItem({
 export function SkillBuilderInstructionsReferenceSummary({
   attachedKnowledge,
   instructions,
-  onRemoveTool,
   tools,
 }: SkillBuilderInstructionsReferenceSummaryProps) {
   const { mcpServerViews, isMCPServerViewsLoading } =
@@ -221,9 +212,7 @@ export function SkillBuilderInstructionsReferenceSummary({
         Capabilities and knowledge
       </div>
       <div className="flex flex-wrap gap-2">
-        {referenceItems.map((item) =>
-          renderReferenceSummaryItem({ item, onRemoveTool })
-        )}
+        {referenceItems.map(renderReferenceSummaryItem)}
       </div>
     </div>
   );
