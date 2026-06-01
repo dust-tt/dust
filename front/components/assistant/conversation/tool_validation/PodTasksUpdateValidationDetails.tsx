@@ -21,6 +21,7 @@ interface PodTasksUpdateValidationDetailsProps {
   input: PodTasksUpdateTasksInput;
   owner: LightWorkspaceType;
   user: UserType;
+  agentName: string;
   conversationId?: string | null;
 }
 
@@ -42,6 +43,7 @@ interface TaskUpdateRowProps {
   workspaceId: string;
   taskInput: PodTasksUpdateTaskItemInput;
   user: UserType;
+  agentName: string;
 }
 
 interface FormatAssigneeLabelParams {
@@ -169,7 +171,12 @@ function AssigneeChangeRow({
   return <ChangeRow label="Assignee" before={beforeLabel} after={afterLabel} />;
 }
 
-function TaskUpdateRow({ workspaceId, taskInput, user }: TaskUpdateRowProps) {
+function TaskUpdateRow({
+  workspaceId,
+  taskInput,
+  user,
+  agentName,
+}: TaskUpdateRowProps) {
   const {
     task: currentTask,
     isWorkspacePodTaskLoading: isWorkspaceProjectTaskLoading,
@@ -183,16 +190,16 @@ function TaskUpdateRow({ workspaceId, taskInput, user }: TaskUpdateRowProps) {
     if (currentTask?.user?.sId) {
       ids.add(currentTask.user.sId);
     }
-    if (taskInput.userId !== undefined) {
+    if (taskInput.assigneeUserId !== undefined) {
       const normalizedNextAssigneeSId = normalizeAssigneeUserId(
-        taskInput.userId
+        taskInput.assigneeUserId
       );
       if (normalizedNextAssigneeSId) {
         ids.add(normalizedNextAssigneeSId);
       }
     }
     return [...ids];
-  }, [currentTask?.user?.sId, taskInput.userId]);
+  }, [currentTask?.user?.sId, taskInput.assigneeUserId]);
 
   const { membersBySId, isMembersLoading } = useMemberDetails({
     workspaceId,
@@ -205,14 +212,15 @@ function TaskUpdateRow({ workspaceId, taskInput, user }: TaskUpdateRowProps) {
 
   const currentAssigneeSId = currentTask?.user?.sId ?? null;
   const nextAssigneeSId =
-    taskInput.userId !== undefined
-      ? normalizeAssigneeUserId(taskInput.userId)
+    taskInput.assigneeUserId !== undefined
+      ? normalizeAssigneeUserId(taskInput.assigneeUserId)
       : currentAssigneeSId;
 
   const textChange =
     taskInput.text !== undefined && taskInput.text !== currentTask?.text;
   const assigneeChange =
-    taskInput.userId !== undefined && nextAssigneeSId !== currentAssigneeSId;
+    taskInput.assigneeUserId !== undefined &&
+    nextAssigneeSId !== currentAssigneeSId;
   const currentStatus = currentTask?.status;
   const statusChange =
     currentStatus !== undefined && effectiveStatus !== currentStatus;
@@ -265,6 +273,18 @@ function TaskUpdateRow({ workspaceId, taskInput, user }: TaskUpdateRowProps) {
                 after={formatTaskStatusLabel(effectiveStatus)}
               />
             )}
+            {statusChange && effectiveStatus === "done" && (
+              <div className="flex flex-col gap-0.5">
+                <span className="text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
+                  Marked done by
+                </span>
+                <span className="text-sm font-medium text-foreground dark:text-foreground-night">
+                  {taskInput.markAsDoneByType === "user"
+                    ? "You"
+                    : `@${agentName}`}
+                </span>
+              </div>
+            )}
             {taskInput.doneRationale && (
               <div className="flex flex-col gap-0.5">
                 <span className="text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
@@ -296,21 +316,21 @@ function TaskUpdateRow({ workspaceId, taskInput, user }: TaskUpdateRowProps) {
                 after={taskInput.text}
               />
             )}
-            {taskInput.userId !== undefined &&
-              normalizeAssigneeUserId(taskInput.userId) !== null && (
+            {taskInput.assigneeUserId !== undefined &&
+              normalizeAssigneeUserId(taskInput.assigneeUserId) !== null && (
                 <ChangeRow
                   label="Assignee"
                   before="—"
                   after={formatAssigneeLabel({
-                    userId: normalizeAssigneeUserId(taskInput.userId),
+                    userId: normalizeAssigneeUserId(taskInput.assigneeUserId),
                     currentUserSId: user.sId,
                     memberDisplayBySId: membersBySId,
                     isMembersLoading,
                   })}
                 />
               )}
-            {taskInput.userId !== undefined &&
-              normalizeAssigneeUserId(taskInput.userId) === null && (
+            {taskInput.assigneeUserId !== undefined &&
+              normalizeAssigneeUserId(taskInput.assigneeUserId) === null && (
                 <ChangeRow
                   label="Assignee"
                   before="—"
@@ -323,6 +343,18 @@ function TaskUpdateRow({ workspaceId, taskInput, user }: TaskUpdateRowProps) {
                 before="—"
                 after={formatTaskStatusLabel(taskInput.status)}
               />
+            )}
+            {(taskInput.status === "done" || taskInput.doneRationale) && (
+              <div className="flex flex-col gap-0.5">
+                <span className="text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
+                  Marked done by
+                </span>
+                <span className="text-sm font-medium text-foreground dark:text-foreground-night">
+                  {taskInput.markAsDoneByType === "user"
+                    ? "You"
+                    : `@${agentName}`}
+                </span>
+              </div>
             )}
             {taskInput.doneRationale && (
               <div className="flex flex-col gap-0.5">
@@ -345,6 +377,7 @@ export function PodTasksUpdateValidationDetails({
   input,
   owner,
   user,
+  agentName,
   conversationId,
 }: PodTasksUpdateValidationDetailsProps) {
   const { podLabel, isPodLabelLoading } = usePodLabel({
@@ -359,7 +392,7 @@ export function PodTasksUpdateValidationDetails({
   return (
     <div className="flex flex-col gap-3 pt-2">
       <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-        The agent wants to update{" "}
+        @{agentName} wants to update{" "}
         <span className="font-medium text-foreground dark:text-foreground-night">
           {taskCount}
         </span>{" "}
@@ -377,6 +410,7 @@ export function PodTasksUpdateValidationDetails({
             workspaceId={owner.sId}
             taskInput={taskInput}
             user={user}
+            agentName={agentName}
           />
         ))}
       </div>
