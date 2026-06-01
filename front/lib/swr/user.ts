@@ -11,6 +11,7 @@ import type { EmailProviderType } from "@app/lib/utils/email_provider_detection"
 import type { GetUserResponseBody } from "@app/pages/api/user";
 import type { GetUserMetadataResponseBody } from "@app/pages/api/user/metadata/[key]";
 import type { GetUserApprovalsResponseBody } from "@app/pages/api/w/[wId]/me/approvals";
+import type { GetUserAwuStatusResponseBody } from "@app/pages/api/w/[wId]/me/awu-status";
 import type { GetPendingInvitationsResponseBody } from "@app/pages/api/w/[wId]/me/pending-invitations";
 import type { GetSlackNotificationResponseBody } from "@app/pages/api/w/[wId]/me/slack-notifications";
 import type { FavoritePlatform } from "@app/types/favorite_platforms";
@@ -249,5 +250,26 @@ export function useSlackNotifications(
   return {
     isSlackSetupLoading,
     canConfigureSlack,
+  };
+}
+
+export function useUserAwuStatus({
+  owner,
+  disabled,
+}: {
+  owner: LightWorkspaceType;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const awuStatusFetcher: Fetcher<GetUserAwuStatusResponseBody> = fetcher;
+  const { data, error } = useSWRWithDefaults(
+    `/api/w/${owner.sId}/me/awu-status`,
+    awuStatusFetcher,
+    { disabled }
+  );
+
+  return {
+    awuStatus: data?.status ?? "normal",
+    isAwuStatusLoading: !error && !data && !disabled,
   };
 }

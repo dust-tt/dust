@@ -13,6 +13,7 @@ const {
   mockSetUserCapBlocked,
   mockClearUserCapBlocked,
   mockInvalidateCacheAfterCommit,
+  mockClearUserAwuWarned,
 } = vi.hoisted(() => ({
   mockSetUserCapBlocked: vi.fn(),
   mockClearUserCapBlocked: vi.fn(),
@@ -23,11 +24,13 @@ const {
       void fn();
     }
   ),
+  mockClearUserAwuWarned: vi.fn(),
 }));
 
 vi.mock("@app/lib/metronome/user_block", () => ({
   setUserCapBlocked: mockSetUserCapBlocked,
   clearUserCapBlocked: mockClearUserCapBlocked,
+  clearUserAwuWarned: mockClearUserAwuWarned,
 }));
 
 vi.mock("@app/lib/utils/cache", () => ({

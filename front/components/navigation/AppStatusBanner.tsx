@@ -5,11 +5,12 @@ import {
   isEntreprisePlanPrefix,
 } from "@app/lib/plans/plan_codes";
 import { useAppStatus } from "@app/lib/swr/useAppStatus";
+import { useUserAwuStatus } from "@app/lib/swr/user";
 import { DEFAULT_EMBEDDING_PROVIDER_ID } from "@app/types/assistant/models/embedding";
 import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
 import type { SubscriptionType } from "@app/types/plan";
 import { PRETTIFIED_PROVIDER_NAMES } from "@app/types/provider_selection";
-import type { WorkspaceType } from "@app/types/user";
+import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import { cn, LinkWrapper } from "@dust-tt/sparkle";
 import { cva, type VariantProps } from "class-variance-authority";
@@ -198,12 +199,41 @@ function SubscriptionPastDueBanner() {
   );
 }
 
+interface UserAwuCapBannerProps {
+  owner: LightWorkspaceType;
+}
+
+function UserAwuCapBanner({ owner }: UserAwuCapBannerProps) {
+  const { awuStatus } = useUserAwuStatus({ owner });
+
+  if (awuStatus === "normal") {
+    return null;
+  }
+
+  return (
+    <StatusBanner
+      variant={awuStatus === "blocked" ? "danger" : "warning"}
+      title={
+        awuStatus === "blocked"
+          ? "You've reached your usage limit"
+          : "You've used 80% of your usage limit"
+      }
+      description={
+        awuStatus === "blocked"
+          ? "You can no longer run agents. Contact your admin to increase your limit."
+          : "Contact your admin to increase your limit before you are blocked."
+      }
+    />
+  );
+}
+
 export function SidebarBanners() {
   const { workspace: owner, subscription } = useAuth();
   const { appStatus } = useAppStatus();
 
   return (
     <>
+      <UserAwuCapBanner owner={owner} />
       <UnhealthyCredentialsBanner owner={owner} subscription={subscription} />
       {appStatus && <AppStatusBanner appStatus={appStatus} />}
       {subscription.paymentFailingSince &&
