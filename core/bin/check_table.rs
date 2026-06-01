@@ -97,6 +97,7 @@ async fn main() -> Result<()> {
                 SqlDialect::DustSqlite => "DustSqlite",
                 SqlDialect::Snowflake => "Snowflake",
                 SqlDialect::Bigquery => "BigQuery",
+                SqlDialect::Databricks => "Databricks",
             };
             println!("SQL Dialect: {}", dialect_name);
 
