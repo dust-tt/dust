@@ -516,8 +516,8 @@ export function WithAnthropicConverter<T extends Constructor<Anthropic>>(
           return {
             type: "error",
             content: {
-              type: "stream_error",
-              message: `Stop reason: ${stopReason}`,
+              type: "stop_error",
+              message: "The maximum response length was reached.",
             },
             metadata: this.model,
           };
@@ -525,7 +525,7 @@ export function WithAnthropicConverter<T extends Constructor<Anthropic>>(
           return {
             type: "error",
             content: {
-              type: "stream_error",
+              type: "refusal_error",
               message:
                 "Claude safety filters prevented this response. Try starting a new conversation or rephrasing your request.",
             },
