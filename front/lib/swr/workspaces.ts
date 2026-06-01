@@ -1,6 +1,10 @@
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type {
+  AwuUsageGroupByType,
+  GetAwuUsageResponse,
+} from "@app/lib/api/analytics/awu_usage";
+import type {
   GetMetronomeUsageResponse,
   MetronomeUsageGroupByType,
 } from "@app/lib/api/analytics/metronome_usage";
@@ -624,6 +628,56 @@ export function useMetronomeUsage({
     isMetronomeUsageLoading: !error && !data && !disabled,
     isMetronomeUsageError: error,
     isMetronomeUsageValidating: isValidating,
+  };
+}
+
+export function useAwuUsage({
+  workspaceId,
+  groupBy,
+  groupByCount,
+  selectedPeriod,
+  billingCycleStartDay,
+  windowSize,
+  disabled,
+}: {
+  workspaceId: string;
+  groupBy?: AwuUsageGroupByType;
+  groupByCount?: number;
+  selectedPeriod?: string;
+  billingCycleStartDay: number;
+  windowSize?: "HOUR" | "DAY";
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const fetcherFn: Fetcher<GetAwuUsageResponse> = fetcher;
+
+  const queryParams = new URLSearchParams();
+  queryParams.set("billingCycleStartDay", billingCycleStartDay.toString());
+  if (selectedPeriod) {
+    queryParams.set("selectedPeriod", selectedPeriod);
+  }
+  if (groupBy) {
+    queryParams.set("groupBy", groupBy);
+  }
+  if (groupByCount !== undefined) {
+    queryParams.set("groupByCount", groupByCount.toString());
+  }
+  if (windowSize) {
+    queryParams.set("windowSize", windowSize);
+  }
+  const queryString = queryParams.toString();
+  const key = `/api/w/${workspaceId}/analytics/awu-usage?${queryString}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    awuUsageData: data,
+    isAwuUsageLoading: !error && !data && !disabled,
+    isAwuUsageError: error,
+    isAwuUsageValidating: isValidating,
   };
 }
 

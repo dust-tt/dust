@@ -1,6 +1,7 @@
 import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { InviteEmailButtonWithModal } from "@app/components/members/InviteEmailButtonWithModal";
+import { AwuUsageChart } from "@app/components/workspace/AwuUsageChart";
 import { BuyAwuCreditsDialog } from "@app/components/workspace/BuyAwuCreditsDialog";
 import { ChangeSeatModal } from "@app/components/workspace/ChangeSeatModal";
 import { EditSpendLimitModal } from "@app/components/workspace/EditSpendLimitModal";
@@ -14,6 +15,7 @@ import { useAppRouter } from "@app/lib/platform";
 import {
   useAwuPoolSummary,
   useAwuPurchaseInfo,
+  useCreditPurchaseInfo,
   useSeatPlan,
 } from "@app/lib/swr/credits";
 import { useMembersUsage } from "@app/lib/swr/memberships";
@@ -161,6 +163,11 @@ export function UsagePage() {
     useAwuPurchaseInfo({
       workspaceId: owner.sId,
       disabled: !showBuyCreditDialog,
+    });
+
+  const { billingCycleStartDay, isCreditPurchaseInfoLoading } =
+    useCreditPurchaseInfo({
+      workspaceId: owner.sId,
     });
 
   const { membersUsage, isMembersUsageLoading, totalMembersUsage } =
@@ -323,6 +330,15 @@ export function UsagePage() {
             </div>
           )}
         </Page.Vertical>
+
+        {isCreditPurchaseInfoLoading ? (
+          <div className="h-64 animate-pulse rounded bg-muted-foreground/20" />
+        ) : (
+          <AwuUsageChart
+            workspaceId={owner.sId}
+            billingCycleStartDay={billingCycleStartDay ?? 1}
+          />
+        )}
 
         <UsageSettingsCard workspaceId={owner.sId} />
 
