@@ -1,15 +1,30 @@
 import type { Authenticator } from "@app/lib/auth";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
-import { SkillReferenceModel } from "@app/lib/models/skill/skill_reference";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { GlobalSkillId } from "@app/lib/resources/skill/code_defined/global_registry";
 import type { SystemSkillId } from "@app/lib/resources/skill/code_defined/system_registry";
 import type { SkillAttachedKnowledge } from "@app/lib/resources/skill/skill_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SKILL_ICON } from "@app/lib/skill";
+import { serializeSkillTag } from "@app/lib/skills/format";
 import type { SkillStatus } from "@app/types/assistant/skill_configuration";
 import type { ModelId } from "@app/types/shared/model_id";
 import assert from "assert";
+
+type CreateSkillOverrides = Partial<{
+  name: string;
+  agentFacingDescription: string;
+  userFacingDescription: string;
+  instructions: string;
+  instructionsHtml: string | null;
+  status: SkillStatus;
+  version: number;
+  requestedSpaceIds: ModelId[];
+  addCurrentUserAsEditor: boolean;
+  attachedKnowledge: SkillAttachedKnowledge[];
+  mcpServerViews: MCPServerViewResource[];
+  enableSkillReferences: boolean;
+}>;
 
 export class SkillFactory {
   static withExtendedSkill(
@@ -21,19 +36,7 @@ export class SkillFactory {
 
   static async create(
     auth: Authenticator,
-    overrides: Partial<{
-      name: string;
-      agentFacingDescription: string;
-      userFacingDescription: string;
-      instructions: string;
-      instructionsHtml: string | null;
-      status: SkillStatus;
-      version: number;
-      requestedSpaceIds: ModelId[];
-      addCurrentUserAsEditor: boolean;
-      attachedKnowledge: SkillAttachedKnowledge[];
-      mcpServerViews: MCPServerViewResource[];
-    }> = {}
+    overrides: CreateSkillOverrides = {}
   ): Promise<SkillResource> {
     const user = auth.user();
     assert(user, "User is required");
@@ -68,8 +71,86 @@ export class SkillFactory {
         mcpServerViews,
         addCurrentUserAsEditor: overrides.addCurrentUserAsEditor,
         attachedKnowledge,
+        enableSkillReferences: overrides.enableSkillReferences,
       }
     );
+  }
+
+  static serializeSkillReferenceTag(
+    skill: Pick<SkillResource, "sId" | "icon" | "name">
+  ): string {
+    return serializeSkillTag({
+      id: skill.sId,
+      icon: skill.icon,
+      name: skill.name,
+    });
+  }
+
+  static async createWithNestedSkill(
+    auth: Authenticator,
+    {
+      parentOverrides = {},
+      childOverrides = {},
+    }: {
+      parentOverrides?: CreateSkillOverrides;
+      childOverrides?: CreateSkillOverrides;
+    } = {}
+  ): Promise<{
+    parentSkill: SkillResource;
+    childSkill: SkillResource;
+    skillReferenceTag: string;
+  }> {
+    const childSkill = await this.create(auth, childOverrides);
+    const skillReferenceTag = this.serializeSkillReferenceTag(childSkill);
+    const parentSkill = await this.create(auth, {
+      ...parentOverrides,
+      instructions: parentOverrides.instructions ?? `Use ${skillReferenceTag}.`,
+      enableSkillReferences: true,
+    });
+
+    return { parentSkill, childSkill, skillReferenceTag };
+  }
+
+  static async updateNestedSkillReferences(
+    auth: Authenticator,
+    {
+      childSkills,
+      instructions,
+      parentSkill,
+    }: {
+      childSkills: SkillResource[];
+      instructions?: string;
+      parentSkill: SkillResource;
+    }
+  ): Promise<SkillResource> {
+    const nestedSkillInstructions =
+      instructions ??
+      (childSkills.length > 0
+        ? `Use ${childSkills
+            .map((childSkill) => this.serializeSkillReferenceTag(childSkill))
+            .join(", ")}.`
+        : "No nested skill references.");
+
+    await parentSkill.updateSkill(auth, {
+      name: parentSkill.name,
+      agentFacingDescription: parentSkill.agentFacingDescription,
+      userFacingDescription: parentSkill.userFacingDescription,
+      instructions: nestedSkillInstructions,
+      instructionsHtml: parentSkill.instructionsHtml,
+      icon: parentSkill.icon,
+      mcpServerViews: parentSkill.mcpServerViews,
+      attachedKnowledge: await parentSkill.getAttachedKnowledge(auth),
+      requestedSpaceIds: parentSkill.requestedSpaceIds,
+      enableSkillReferences: true,
+    });
+
+    const updatedParentSkill = await SkillResource.fetchById(
+      auth,
+      parentSkill.sId
+    );
+    assert(updatedParentSkill, "Updated parent skill is required");
+
+    return updatedParentSkill;
   }
 
   static async linkToAgent(
@@ -114,25 +195,5 @@ export class SkillFactory {
     });
 
     return agentSkill;
-  }
-
-  // TODO(2026-05-29 aubin): replace with resource methods.
-  static async linkSkillToSkill(
-    auth: Authenticator,
-    {
-      parentSkillId,
-      childSkillId,
-    }: {
-      parentSkillId: ModelId;
-      childSkillId: ModelId;
-    }
-  ): Promise<SkillReferenceModel> {
-    const workspace = auth.getNonNullableWorkspace();
-
-    return SkillReferenceModel.create({
-      workspaceId: workspace.id,
-      parentSkillId,
-      childSkillId,
-    });
   }
 }

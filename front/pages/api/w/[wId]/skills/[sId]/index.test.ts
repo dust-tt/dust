@@ -3,7 +3,6 @@ import {
   SkillFileAttachmentModel,
   SkillVersionModel,
 } from "@app/lib/models/skill";
-import { SkillReferenceModel } from "@app/lib/models/skill/skill_reference";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { serializeSkillTag } from "@app/lib/skills/format";
@@ -182,7 +181,7 @@ describe("GET /api/w/[wId]/skills/[sId]", () => {
   });
 
   it("should return child skills when nested_skills is enabled", async () => {
-    const { req, res, skill, skillOwnerAuth, workspace } = await setupTest({
+    const { req, res, skill, skillOwnerAuth } = await setupTest({
       requestUserRole: "admin",
     });
 
@@ -191,10 +190,9 @@ describe("GET /api/w/[wId]/skills/[sId]", () => {
     const childSkill = await SkillFactory.create(skillOwnerAuth, {
       name: "Child Skill",
     });
-    await SkillReferenceModel.create({
-      workspaceId: workspace.id,
-      parentSkillId: skill.id,
-      childSkillId: childSkill.id,
+    await SkillFactory.updateNestedSkillReferences(skillOwnerAuth, {
+      parentSkill: skill,
+      childSkills: [childSkill],
     });
 
     req.query = { ...req.query, withRelations: "true" };
@@ -216,17 +214,16 @@ describe("GET /api/w/[wId]/skills/[sId]", () => {
   });
 
   it("should not return child skills when nested_skills is disabled", async () => {
-    const { req, res, skill, skillOwnerAuth, workspace } = await setupTest({
+    const { req, res, skill, skillOwnerAuth } = await setupTest({
       requestUserRole: "admin",
     });
 
     const childSkill = await SkillFactory.create(skillOwnerAuth, {
       name: "Hidden Child Skill",
     });
-    await SkillReferenceModel.create({
-      workspaceId: workspace.id,
-      parentSkillId: skill.id,
-      childSkillId: childSkill.id,
+    await SkillFactory.updateNestedSkillReferences(skillOwnerAuth, {
+      parentSkill: skill,
+      childSkills: [childSkill],
     });
 
     req.query = { ...req.query, withRelations: "true" };
@@ -425,11 +422,8 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
     const childSkill = await SkillFactory.create(requestUserAuth, {
       name: "Referenced Skill",
     });
-    const skillReferenceTag = serializeSkillTag({
-      id: childSkill.sId,
-      icon: null,
-      name: childSkill.name,
-    });
+    const skillReferenceTag =
+      SkillFactory.serializeSkillReferenceTag(childSkill);
     const instructionsWithReference = `Use ${skillReferenceTag} for deeper analysis.`;
 
     req.body = makePatchSkillBody(skill, {
@@ -437,14 +431,14 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
     });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
+    const skillWithoutFeatureFlag = await SkillResource.fetchById(
+      requestUserAuth,
+      skill.sId
+    );
+    expect(skillWithoutFeatureFlag).not.toBeNull();
     await expect(
-      SkillReferenceModel.count({
-        where: {
-          workspaceId: workspace.id,
-          parentSkillId: skill.id,
-        },
-      })
-    ).resolves.toBe(0);
+      skillWithoutFeatureFlag!.fetchChildSkills(requestUserAuth)
+    ).resolves.toHaveLength(0);
 
     await FeatureFlagFactory.basic(requestUserAuth, "nested_skills");
 
@@ -458,15 +452,18 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
 
     await handler(enabledReq, enabledRes);
     expect(enabledRes._getStatusCode()).toBe(200);
+    const skillWithReference = await SkillResource.fetchById(
+      requestUserAuth,
+      skill.sId
+    );
+    expect(skillWithReference).not.toBeNull();
     await expect(
-      SkillReferenceModel.count({
-        where: {
-          workspaceId: workspace.id,
-          parentSkillId: skill.id,
-          childSkillId: childSkill.id,
-        },
-      })
-    ).resolves.toBe(1);
+      skillWithReference!.fetchChildSkills(requestUserAuth)
+    ).resolves.toEqual([
+      expect.objectContaining({
+        sId: childSkill.sId,
+      }),
+    ]);
 
     const { req: removeReq, res: removeRes } = createPatchSkillRequest({
       workspaceId: workspace.sId,
@@ -478,14 +475,14 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
 
     await handler(removeReq, removeRes);
     expect(removeRes._getStatusCode()).toBe(200);
+    const skillWithoutReference = await SkillResource.fetchById(
+      requestUserAuth,
+      skill.sId
+    );
+    expect(skillWithoutReference).not.toBeNull();
     await expect(
-      SkillReferenceModel.count({
-        where: {
-          workspaceId: workspace.id,
-          parentSkillId: skill.id,
-        },
-      })
-    ).resolves.toBe(0);
+      skillWithoutReference!.fetchChildSkills(requestUserAuth)
+    ).resolves.toHaveLength(0);
   });
 
   it("returns 400 for out-of-workspace nested skill references", async () => {
