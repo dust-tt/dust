@@ -265,6 +265,95 @@ export type AshbyApplicationInfoResponse = z.infer<
   typeof AshbyApplicationInfoResponseSchema
 >;
 
+// Opening list
+
+export const AshbyOpeningStateSchema = z.enum([
+  "Approved",
+  "Closed",
+  "Draft",
+  "Filled",
+  "Open",
+]);
+
+export type AshbyOpeningState = z.infer<typeof AshbyOpeningStateSchema>;
+
+export const AshbyOpeningLatestVersionSchema = z
+  .object({
+    id: z.string(),
+    identifier: z.string().optional(),
+    description: z.string().nullish(),
+    authorId: z.string().optional(),
+    createdAt: z.string().optional(),
+    teamId: z.string().nullish(),
+    jobIds: z.array(z.string()).optional(),
+    targetHireDate: z.string().nullish(),
+    targetStartDate: z.string().nullish(),
+    isBackfill: z.boolean().optional(),
+    employmentType: z.string().nullish(),
+    locationIds: z.array(z.string()).optional(),
+    hiringTeam: z
+      .array(
+        z
+          .object({
+            email: z.string().optional(),
+            firstName: z.string().optional(),
+            lastName: z.string().optional(),
+            role: z.string().optional(),
+            userId: z.string().optional(),
+          })
+          .passthrough()
+      )
+      .optional(),
+    customFields: z
+      .array(
+        z
+          .object({
+            id: z.string().optional(),
+            isPrivate: z.boolean().optional(),
+            title: z.string().optional(),
+            valueLabel: z.union([z.string(), z.array(z.string())]).optional(),
+            value: z.unknown().optional(),
+          })
+          .passthrough()
+      )
+      .optional(),
+  })
+  .passthrough();
+
+export type AshbyOpeningLatestVersion = z.infer<
+  typeof AshbyOpeningLatestVersionSchema
+>;
+
+export const AshbyOpeningSchema = z
+  .object({
+    id: z.string(),
+    openedAt: z.string().nullish(),
+    closedAt: z.string().nullish(),
+    isArchived: z.boolean(),
+    archivedAt: z.string().nullish(),
+    closeReasonId: z.string().nullish(),
+    openingState: AshbyOpeningStateSchema,
+    latestVersion: AshbyOpeningLatestVersionSchema.nullish(),
+  })
+  .passthrough();
+
+export type AshbyOpening = z.infer<typeof AshbyOpeningSchema>;
+
+export const AshbyOpeningListRequestSchema = z.object({
+  cursor: z.string().optional(),
+  limit: z.number().int().min(1).max(100).optional(),
+});
+
+export type AshbyOpeningListRequest = z.infer<
+  typeof AshbyOpeningListRequestSchema
+>;
+
+export const AshbyOpeningListResponseSchema = z.array(AshbyOpeningSchema);
+
+export type AshbyOpeningListResponse = z.infer<
+  typeof AshbyOpeningListResponseSchema
+>;
+
 // Job list
 
 export const AshbyJobSchema = z

@@ -7,6 +7,7 @@ import type {
   AshbyJobInfo,
   AshbyJobPosting,
   AshbyOfferInfo,
+  AshbyOpening,
   AshbyReferralFormInfo,
   AshbyReportSynchronousResponse,
 } from "@app/lib/api/actions/servers/ashby/types";
@@ -222,6 +223,98 @@ export function renderJobPostingList(postings: AshbyJobPosting[]): string {
           ? `\n  Compensation: ${p.compensationTierSummary}`
           : "")
     )
+    .join("\n\n");
+}
+
+function truncateSingleLine(value: string, maxLength: number): string {
+  const singleLine = value.replace(/\s+/g, " ").trim();
+
+  if (singleLine.length <= maxLength) {
+    return singleLine;
+  }
+
+  return `${singleLine.slice(0, maxLength - 3)}...`;
+}
+
+function formatOpeningValue(value: unknown): string {
+  if (Array.isArray(value)) {
+    return value.map(formatFieldValue).join(", ");
+  }
+
+  return formatFieldValue(value);
+}
+
+export function renderOpeningList(openings: AshbyOpening[]): string {
+  return openings
+    .map((opening) => {
+      const version = opening.latestVersion;
+      const title = version?.identifier ?? opening.id;
+      const lines = [
+        `- **${title}** (Opening ID: ${opening.id})`,
+        `  State: ${opening.openingState} | Archived: ${opening.isArchived}`,
+      ];
+
+      if (opening.openedAt) {
+        lines.push(`  Opened: ${new Date(opening.openedAt).toISOString()}`);
+      }
+      if (opening.closedAt) {
+        lines.push(`  Closed: ${new Date(opening.closedAt).toISOString()}`);
+      }
+      if (opening.closeReasonId) {
+        lines.push(`  Close reason ID: ${opening.closeReasonId}`);
+      }
+      if (version?.description) {
+        lines.push(
+          `  Description: ${truncateSingleLine(version.description, 300)}`
+        );
+      }
+      if (version?.jobIds && version.jobIds.length > 0) {
+        lines.push(`  Linked job IDs: ${version.jobIds.join(", ")}`);
+      }
+      if (version?.employmentType) {
+        lines.push(`  Employment type: ${version.employmentType}`);
+      }
+      if (version?.targetHireDate) {
+        lines.push(`  Target hire date: ${version.targetHireDate}`);
+      }
+      if (version?.targetStartDate) {
+        lines.push(`  Target start date: ${version.targetStartDate}`);
+      }
+      if (version?.isBackfill !== undefined) {
+        lines.push(`  Backfill: ${version.isBackfill}`);
+      }
+      if (version?.locationIds && version.locationIds.length > 0) {
+        lines.push(`  Location IDs: ${version.locationIds.join(", ")}`);
+      }
+      if (version?.hiringTeam && version.hiringTeam.length > 0) {
+        lines.push(
+          `  Hiring team: ${version.hiringTeam
+            .map((member) => {
+              const name = [member.firstName, member.lastName]
+                .filter(Boolean)
+                .join(" ");
+              const person = name || member.email || member.userId;
+
+              return [member.role, person].filter(Boolean).join(": ");
+            })
+            .join("; ")}`
+        );
+      }
+      if (version?.customFields && version.customFields.length > 0) {
+        lines.push(
+          `  Custom fields: ${version.customFields
+            .map((field) => {
+              const title = field.title ?? field.id ?? "Unknown";
+              const value = field.valueLabel ?? field.value;
+
+              return `${title}: ${formatOpeningValue(value)}`;
+            })
+            .join("; ")}`
+        );
+      }
+
+      return lines.join("\n");
+    })
     .join("\n\n");
 }
 
