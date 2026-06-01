@@ -1,7 +1,6 @@
+import { redirectToSse } from "@front-api/lib/api/sse/redirect";
 import { Hono } from "hono";
 import { describe, expect, it } from "vitest";
-
-import { redirectToSse } from "@front-api/lib/api/sse/redirect";
 
 function requestSseRedirect(routePattern: string, path: string) {
   const app = new Hono();
@@ -31,15 +30,16 @@ describe("redirectToSse", () => {
       path: "/api/w/w1/mcp/requests",
       expected: "/api/sse/w/w1/mcp/requests",
     },
-  ])(
-    "rewrites the leading /api/ segment to /api/sse/ for the $name path",
-    async ({ routePattern, path, expected }) => {
-      const res = await requestSseRedirect(routePattern, path);
+  ])("rewrites the leading /api/ segment to /api/sse/ for the $name path", async ({
+    routePattern,
+    path,
+    expected,
+  }) => {
+    const res = await requestSseRedirect(routePattern, path);
 
-      expect(res.status).toBe(307);
-      expect(new URL(res.headers.get("location")!).pathname).toBe(expected);
-    }
-  );
+    expect(res.status).toBe(307);
+    expect(new URL(res.headers.get("location")!).pathname).toBe(expected);
+  });
 
   it("preserves the query string on the redirected location", async () => {
     const res = await requestSseRedirect(
