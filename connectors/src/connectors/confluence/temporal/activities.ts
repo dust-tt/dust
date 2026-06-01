@@ -695,6 +695,14 @@ export async function confluenceUpsertPageWithFullParentsActivity({
     return false;
   }
 
+  if (page.parentType === "database") {
+    localLogger.info(
+      { parentId: page.parentId },
+      "Skipping Confluence page with database parent."
+    );
+    return false;
+  }
+
   let spaceName = cachedSpaceNames[page.spaceId];
   if (!spaceName) {
     const space = await client.getSpaceById(page.spaceId);

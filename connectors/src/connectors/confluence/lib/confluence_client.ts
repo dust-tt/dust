@@ -49,6 +49,7 @@ const ConfluencePageCodec = t.intersection([
     parentType: t.union([
       t.literal("page"),
       t.literal("folder"),
+      t.literal("database"),
       t.null,
       t.undefined,
     ]),
