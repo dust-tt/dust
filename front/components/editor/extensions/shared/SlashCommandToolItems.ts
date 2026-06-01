@@ -17,7 +17,7 @@ export type SlashCommandToolSuggestion = MCPServerViewType & {
   label?: string;
 };
 
-function getToolLabel(tool: SlashCommandToolSuggestion) {
+export function getToolSlashCommandLabel(tool: SlashCommandToolSuggestion) {
   return tool.label ?? getMcpServerViewDisplayName(tool);
 }
 
@@ -35,12 +35,12 @@ export function filterToolsForSlashSuggestions({
     items: tools
       .filter((tool) =>
         matchesSlashCommandQuery({
-          label: getToolLabel(tool),
+          label: getToolSlashCommandLabel(tool),
           query: normalizedQuery,
         })
       )
       .map((tool) => ({
-        sortName: getToolLabel(tool).toLowerCase(),
+        sortName: getToolSlashCommandLabel(tool).toLowerCase(),
         tool,
       })),
   }).map(({ tool }) => tool);
@@ -50,7 +50,7 @@ export function getToolSlashCommandItem(
   tool: SlashCommandToolSuggestion,
   { sectionLabel }: { sectionLabel?: string } = {}
 ): SlashCommand {
-  const name = getToolLabel(tool);
+  const name = getToolSlashCommandLabel(tool);
   const description = getMcpServerViewDescription(tool);
 
   return {

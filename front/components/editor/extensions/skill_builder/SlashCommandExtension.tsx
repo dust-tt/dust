@@ -1,12 +1,13 @@
 import {
-  filterSkillsForSlashSuggestions,
   getSkillSlashCommandItem,
+  matchesSlashCommandQuery,
   SELECT_SKILL_SLASH_COMMAND_ACTION,
   type SlashCommandSkillSuggestion,
+  sortSlashCommandMatches,
 } from "@app/components/editor/extensions/shared/SlashCommandSkillItems";
 import {
-  filterToolsForSlashSuggestions,
   getToolSlashCommandItem,
+  getToolSlashCommandLabel,
   SELECT_TOOL_SLASH_COMMAND_ACTION,
   type SlashCommandToolSuggestion,
 } from "@app/components/editor/extensions/shared/SlashCommandToolItems";
@@ -15,7 +16,7 @@ import type {
   SlashCommandDropdownRef,
 } from "@app/components/editor/extensions/skill_builder/SlashCommandDropdown";
 import { SlashCommandDropdown } from "@app/components/editor/extensions/skill_builder/SlashCommandDropdown";
-import { useMaybeMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
+import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useSkills } from "@app/lib/swr/skill_configurations";
@@ -84,6 +85,63 @@ function filterSlashCommands(query: string): SlashCommand[] {
   );
 }
 
+type SkillBuilderSlashCommandCapability =
+  | {
+      kind: "skill";
+      skill: SlashCommandSkillSuggestion;
+      sortName: string;
+    }
+  | {
+      kind: "tool";
+      tool: SlashCommandToolSuggestion;
+      sortName: string;
+    };
+
+function filterSkillBuilderSlashCommandCapabilities({
+  currentSkillId,
+  query,
+  skills,
+  tools,
+}: {
+  currentSkillId?: string | null;
+  query: string;
+  skills: SlashCommandSkillSuggestion[];
+  tools: SlashCommandToolSuggestion[];
+}): SkillBuilderSlashCommandCapability[] {
+  const normalizedQuery = query.trim().toLowerCase();
+
+  return sortSlashCommandMatches({
+    normalizedQuery,
+    items: [
+      ...skills
+        .filter((skill) => skill.sId !== currentSkillId)
+        .filter((skill) =>
+          matchesSlashCommandQuery({
+            label: skill.name,
+            query: normalizedQuery,
+          })
+        )
+        .map((skill) => ({
+          kind: "skill" as const,
+          skill,
+          sortName: skill.name.toLowerCase(),
+        })),
+      ...tools
+        .filter((tool) =>
+          matchesSlashCommandQuery({
+            label: getToolSlashCommandLabel(tool),
+            query: normalizedQuery,
+          })
+        )
+        .map((tool) => ({
+          kind: "tool" as const,
+          tool,
+          sortName: getToolSlashCommandLabel(tool).toLowerCase(),
+        })),
+    ],
+  });
+}
+
 export function buildSkillBuilderSlashCommandItems({
   baseItems,
   currentSkillId,
@@ -103,23 +161,20 @@ export function buildSkillBuilderSlashCommandItems({
     return baseItems;
   }
 
-  const skillItems = filterSkillsForSlashSuggestions({ query, skills })
-    .filter((skill) => skill.sId !== currentSkillId)
-    .map((skill, index) =>
-      getSkillSlashCommandItem(skill, {
-        sectionLabel: index === 0 ? "Capabilities" : undefined,
-      })
-    );
+  const capabilityItems = filterSkillBuilderSlashCommandCapabilities({
+    currentSkillId,
+    query,
+    skills,
+    tools,
+  }).map((capability, index) => {
+    const sectionLabel = index === 0 ? "Capabilities" : undefined;
 
-  const toolItems = filterToolsForSlashSuggestions({ query, tools }).map(
-    (tool, index) =>
-      getToolSlashCommandItem(tool, {
-        sectionLabel:
-          skillItems.length === 0 && index === 0 ? "Capabilities" : undefined,
-      })
-  );
+    return capability.kind === "skill"
+      ? getSkillSlashCommandItem(capability.skill, { sectionLabel })
+      : getToolSlashCommandItem(capability.tool, { sectionLabel });
+  });
 
-  return [...baseItems, ...skillItems, ...toolItems];
+  return [...baseItems, ...capabilityItems];
 }
 
 interface SkillBuilderSlashCommandDropdownProps
@@ -158,17 +213,14 @@ const SkillBuilderSlashCommandDropdownWithSkills = forwardRef<
   ) => {
     const dropdownRef = useRef<SlashCommandDropdownRef>(null);
     const isOpen = Boolean(clientRect);
-    const mcpServerViewsContext = useMaybeMCPServerViewsContext();
+    const mcpServerViewsContext = useMCPServerViewsContext();
     const { skills, isSkillsLoading } = useSkills({
       disabled: !isOpen,
       owner,
       status: "active",
     });
     const tools = useMemo(() => {
-      if (
-        !mcpServerViewsContext ||
-        mcpServerViewsContext.isMCPServerViewsError
-      ) {
+      if (mcpServerViewsContext.isMCPServerViewsError) {
         return [];
       }
 
@@ -177,8 +229,7 @@ const SkillBuilderSlashCommandDropdownWithSkills = forwardRef<
       );
     }, [mcpServerViewsContext]);
     const isCapabilitiesLoading =
-      isSkillsLoading ||
-      (mcpServerViewsContext?.isMCPServerViewsLoading ?? false);
+      isSkillsLoading || mcpServerViewsContext.isMCPServerViewsLoading;
 
     const slashCommandItems = useMemo(
       () =>

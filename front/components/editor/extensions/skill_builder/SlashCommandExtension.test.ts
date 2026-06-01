@@ -122,9 +122,9 @@ describe("buildSkillBuilderSlashCommandItems", () => {
     });
   });
 
-  it("adds filtered tools after skills", () => {
+  it("sorts filtered skills and tools together", () => {
     const tool = toolSuggestion({
-      label: "Search docs",
+      label: "Alpha search",
       name: null,
       sId: "mcp_server_view_search",
     });
@@ -132,7 +132,7 @@ describe("buildSkillBuilderSlashCommandItems", () => {
     const result = buildSkillBuilderSlashCommandItems({
       baseItems: [attachKnowledgeItem],
       includeSkillSuggestions: true,
-      query: "search",
+      query: "",
       skills: [
         skillSuggestion({
           name: "Search checklist",
@@ -144,20 +144,20 @@ describe("buildSkillBuilderSlashCommandItems", () => {
 
     expect(result.map((item) => item.id)).toEqual([
       "add-knowledge",
-      "skill_search_checklist",
       "mcp_server_view_search",
+      "skill_search_checklist",
     ]);
     expect(result[1]?.sectionLabel).toBe("Capabilities");
-    expect(result[2]).toMatchObject({
+    expect(result[2]?.sectionLabel).toBeUndefined();
+    expect(result[1]).toMatchObject({
       action: "select-tool",
       data: {
         tool: {
           id: "mcp_server_view_search",
-          name: "Search docs",
+          name: "Alpha search",
           view: tool,
         },
       },
-      sectionLabel: undefined,
     });
   });
 

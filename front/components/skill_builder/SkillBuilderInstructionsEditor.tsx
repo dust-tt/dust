@@ -25,7 +25,7 @@ import type { Config } from "dompurify";
 import DOMPurify from "dompurify";
 import debounce from "lodash/debounce";
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { useController, useFormContext, useWatch } from "react-hook-form";
+import { useController, useFormContext } from "react-hook-form";
 
 const INSTRUCTIONS_FIELD_NAME = "instructions";
 const INSTRUCTIONS_HTML_FIELD_NAME = "instructionsHtml";
@@ -99,8 +99,7 @@ export function SkillBuilderInstructionsEditor({
   onOpenCapabilities,
 }: SkillBuilderInstructionsEditorProps) {
   const { compareVersion, isDiffMode } = useSkillVersionComparisonContext();
-  const { control, getValues, resetField, setValue } =
-    useFormContext<SkillBuilderFormData>();
+  const { resetField } = useFormContext<SkillBuilderFormData>();
   const initializedAttachedKnowledgeEditorRef = useRef<Editor | null>(null);
   const { owner, skillId, selectedSuggestionId, setAcceptInstructionEdits } =
     useSkillBuilderContext();
@@ -129,7 +128,12 @@ export function SkillBuilderInstructionsEditor({
       name: ATTACHED_KNOWLEDGE_FIELD_NAME,
     }
   );
-  const tools = useWatch({ control, name: "tools" }) ?? [];
+
+  const {
+    field: { onChange: onToolsChange, value: tools },
+  } = useController<SkillBuilderFormData, "tools">({
+    name: "tools",
+  });
 
   const displayError =
     !!instructionsFieldState.error || !!attachedKnowledgeFieldState.error;
@@ -204,8 +208,7 @@ export function SkillBuilderInstructionsEditor({
 
   const handleSelectToolReference = useCallback(
     (view: MCPServerViewType) => {
-      const currentTools = getValues("tools");
-      const alreadyAdded = currentTools.some(
+      const alreadyAdded = tools.some(
         (tool) => tool.configuration.mcpServerViewId === view.sId
       );
 
@@ -213,12 +216,9 @@ export function SkillBuilderInstructionsEditor({
         return;
       }
 
-      setValue("tools", [...currentTools, getDefaultMCPAction(view)], {
-        shouldDirty: true,
-        shouldValidate: true,
-      });
+      onToolsChange([...tools, getDefaultMCPAction(view)]);
     },
-    [getValues, setValue]
+    [onToolsChange, tools]
   );
 
   const { suggestions, isSuggestionsLoading } = useSkillSuggestions({
