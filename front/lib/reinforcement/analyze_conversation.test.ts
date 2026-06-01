@@ -130,6 +130,18 @@ describe("buildSkillAnalysisPrompt", () => {
 
     expect(systemPrompt).toContain("edit_skill");
     expect(systemPrompt).toContain("get_available_tools");
+    expect(systemPrompt).not.toContain("inline <tool>");
+  });
+
+  it("system prompt mentions inline tool references when inline tools are enabled", () => {
+    const { systemPrompt } = buildSkillAnalysisPrompt(
+      "User: hello",
+      [makeSkill()],
+      { useInlineTools: true }
+    );
+
+    expect(systemPrompt).toContain("edit_skill");
+    expect(systemPrompt).toContain("get_available_tools");
     expect(systemPrompt).toContain("inline <tool>");
   });
 
@@ -143,7 +155,7 @@ describe("buildSkillAnalysisPrompt", () => {
     expect(systemPrompt).toMatch(/routing|when to enable/i);
   });
 
-  it("does not include skill tools as a separate user message block", () => {
+  it("includes skill tools as a separate user message block by default", () => {
     const skill = makeSkill({
       tools: [
         {
@@ -153,6 +165,24 @@ describe("buildSkillAnalysisPrompt", () => {
       ],
     });
     const { userMessage } = buildSkillAnalysisPrompt("User: hello", [skill]);
+
+    expect(userMessage).toContain("<tools>");
+    expect(userMessage).toContain('sId="tool-ws"');
+    expect(userMessage).toContain('name="web_search"');
+  });
+
+  it("does not include skill tools as a separate user message block when inline tools are enabled", () => {
+    const skill = makeSkill({
+      tools: [
+        {
+          sId: "tool-ws",
+          name: "web_search",
+        } as SkillType["tools"][number],
+      ],
+    });
+    const { userMessage } = buildSkillAnalysisPrompt("User: hello", [skill], {
+      useInlineTools: true,
+    });
 
     expect(userMessage).not.toContain("<tools>");
     expect(userMessage).not.toContain('sId="tool-ws"');

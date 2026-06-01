@@ -1,6 +1,6 @@
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 
-export const SKILL_INSTRUCTION_HTML_EDIT_PROMPT = `
+const BASE_SKILL_INSTRUCTION_HTML_EDIT_PROMPT = `
 Skill instructions are organized as a hierarchy of blocks. You design this hierarchy
 so that future edits are precise. Group related instructions under parent blocks.
 Keep each leaf block to a single concern. A well-structured hierarchy means most
@@ -75,9 +75,9 @@ Example:
 \`\`\`
 <p data-block-id="a1b2c3d4">When answering questions about onboarding, refer to <knowledge id="doc_abc123" title="Onboarding Guide" space="space_xyz" dsv="dsv_456" hasChildren="false"/>.</p>
 \`\`\`
-</knowledge_nodes>
+</knowledge_nodes>`;
 
-<tool_references>
+const SKILL_TOOL_REFERENCES_INSTRUCTION_PROMPT = `<tool_references>
 Instructions can reference MCP tools using inline \`<tool>\` tags.
 During runtime, tools referenced this way are attached to the skill and available to the agent using it.
 
@@ -101,3 +101,20 @@ Example:
 <p data-block-id="a1b2c3d4">When researching pull requests, use <tool id="mcp_server_view_123" name="GitHub"/> and summarize the files changed before commenting.</p>
 \`\`\`
 </tool_references>`;
+
+export function buildSkillInstructionHtmlEditPrompt({
+  useInlineTools,
+}: {
+  useInlineTools: boolean;
+}): string {
+  if (!useInlineTools) {
+    return BASE_SKILL_INSTRUCTION_HTML_EDIT_PROMPT;
+  }
+
+  return `${BASE_SKILL_INSTRUCTION_HTML_EDIT_PROMPT}
+
+${SKILL_TOOL_REFERENCES_INSTRUCTION_PROMPT}`;
+}
+
+export const SKILL_INSTRUCTION_HTML_EDIT_PROMPT =
+  buildSkillInstructionHtmlEditPrompt({ useInlineTools: true });

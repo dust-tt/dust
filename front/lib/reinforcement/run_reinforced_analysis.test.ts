@@ -1,5 +1,8 @@
 import { buildReinforcedSkillsLLMParams } from "@app/lib/reinforcement/run_reinforced_analysis";
-import { TOOL_SCHEMAS } from "@app/lib/reinforcement/types";
+import {
+  getEditSkillToolSchema,
+  TOOL_SCHEMAS,
+} from "@app/lib/reinforcement/types";
 import { describe, expect, it } from "vitest";
 
 describe("buildReinforcedSkillsLLMParams", () => {
@@ -116,6 +119,19 @@ describe("TOOL_SCHEMAS.edit_skill agentFacingDescriptionEdit", () => {
   });
 });
 
+describe("getEditSkillToolSchema", () => {
+  it("accepts legacy tool edits when inline tools are disabled", () => {
+    const parsed = getEditSkillToolSchema({
+      useInlineTools: false,
+    }).safeParse({
+      skillId: "skl_abc",
+      toolEdits: [{ action: "add", toolId: "tool_x" }],
+    });
+
+    expect(parsed.success).toBe(true);
+  });
+});
+
 describe("buildReinforcedSkillsLLMParams edit_skill spec", () => {
   it("exposes agentFacingDescriptionEdit on the analyze edit_skill input schema", () => {
     const params = buildReinforcedSkillsLLMParams(
@@ -147,10 +163,24 @@ describe("buildReinforcedSkillsLLMParams edit_skill spec", () => {
     );
   });
 
-  it("does not expose toolEdits on the edit_skill input schema", () => {
+  it("exposes toolEdits by default when inline tools are disabled", () => {
     const params = buildReinforcedSkillsLLMParams(
       { systemPrompt: "System.", userMessage: "User." },
       "reinforcement_analyze_conversation"
+    );
+    const editSkillSpec = params.specifications?.find(
+      (s) => s.name === "edit_skill"
+    );
+
+    expect(editSkillSpec).toBeDefined();
+    expect(JSON.stringify(editSkillSpec?.inputSchema)).toContain("toolEdits");
+  });
+
+  it("does not expose toolEdits when inline tools are enabled", () => {
+    const params = buildReinforcedSkillsLLMParams(
+      { systemPrompt: "System.", userMessage: "User." },
+      "reinforcement_analyze_conversation",
+      { useInlineTools: true }
     );
     const editSkillSpec = params.specifications?.find(
       (s) => s.name === "edit_skill"
