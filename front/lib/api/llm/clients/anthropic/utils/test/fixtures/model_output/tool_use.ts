@@ -23,6 +23,7 @@ export const toolUseModelEvents: BetaRawMessageStreamEvent[] = [
           ephemeral_1h_input_tokens: 0,
         },
         output_tokens: 0,
+        output_tokens_details: null,
         service_tier: "standard",
         server_tool_use: null,
         inference_geo: null,
@@ -31,6 +32,7 @@ export const toolUseModelEvents: BetaRawMessageStreamEvent[] = [
       },
       container: null,
       context_management: null,
+      diagnostics: null,
     },
   },
   {
@@ -98,6 +100,7 @@ export const toolUseModelEvents: BetaRawMessageStreamEvent[] = [
       cache_creation_input_tokens: 0,
       cache_read_input_tokens: 0,
       output_tokens: 128,
+      output_tokens_details: null,
       server_tool_use: null,
       iterations: null,
     },

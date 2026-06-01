@@ -82,9 +82,9 @@ export const reasoningLLMEvents: LLMEvent[] = [
     type: "token_usage",
     content: {
       inputTokens: 2500,
-      outputTokens: 180,
+      outputTokens: 130,
       cachedTokens: 0,
-      reasoningTokens: 0,
+      reasoningTokens: 50,
       cacheCreationTokens: 0,
       totalTokens: 2680,
       uncachedInputTokens: 2500,

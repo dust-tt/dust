@@ -1,8 +1,5 @@
 import Anthropic, { APIError } from "@anthropic-ai/sdk";
-import type {
-  MessageCountTokensParams,
-  MessageCreateParamsNonStreaming,
-} from "@anthropic-ai/sdk/resources";
+import type { MessageCreateParamsNonStreaming } from "@anthropic-ai/sdk/resources";
 import type { BetaMessageStreamParams } from "@anthropic-ai/sdk/resources/beta/messages";
 import type AnthropicVertex from "@anthropic-ai/vertex-sdk";
 
@@ -33,7 +30,6 @@ import {
 import {
   getInferenceClient,
   getModel,
-  getModelForTokenCount,
 } from "@app/lib/api/llm/clients/anthropic/utils/vertex";
 import { LLM } from "@app/lib/api/llm/llm";
 import type { BatchResult, BatchStatus } from "@app/lib/api/llm/types/batch";
@@ -199,27 +195,6 @@ export class AnthropicLLM extends LLM<LLMStreamParameters> {
     return streamParameters;
   }
 
-  private createCountTokensCallback() {
-    const shouldCountReasoningTokens =
-      this.reasoningEffort !== "none" &&
-      (this.reasoningEffort !== "light" ||
-        !!this.modelConfig.useNativeLightReasoning);
-
-    if (!shouldCountReasoningTokens) {
-      return undefined;
-    }
-
-    const model = getModelForTokenCount(this.useVertex, {
-      modelId: this.modelId,
-    });
-
-    return (body: MessageCountTokensParams) =>
-      this.inferenceClient.messages.countTokens({
-        ...body,
-        model,
-      });
-  }
-
   protected async *sendRequest(
     streamParameters: LLMStreamParameters
   ): AsyncGenerator<LLMEvent> {
@@ -242,11 +217,7 @@ export class AnthropicLLM extends LLM<LLMStreamParameters> {
     try {
       const events = this.inferenceClient.beta.messages.stream(payload);
 
-      yield* streamLLMEvents(
-        events,
-        this.metadata,
-        this.createCountTokensCallback()
-      );
+      yield* streamLLMEvents(events, this.metadata);
     } catch (err) {
       if (err instanceof APIError) {
         yield handleError(err, this.metadata);
@@ -293,11 +264,7 @@ export class AnthropicLLM extends LLM<LLMStreamParameters> {
     const batchResult: BatchResult = new Map();
 
     for await (const item of results) {
-      const events = await batchResultToLLMEvents(
-        item.result,
-        this.metadata,
-        this.createCountTokensCallback()
-      );
+      const events = await batchResultToLLMEvents(item.result, this.metadata);
       batchResult.set(item.custom_id, events);
     }
 
