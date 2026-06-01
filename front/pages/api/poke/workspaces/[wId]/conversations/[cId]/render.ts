@@ -15,7 +15,7 @@ import { renderEquippedSkillsUserMessage } from "@app/lib/api/assistant/skills_r
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
-import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
+import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { constructProjectContext } from "@app/lib/resources/skill/code_defined/projects";
@@ -260,7 +260,9 @@ async function handler(
       });
 
       const isNewFileExplorer = conversation.metadata?.useFileSystem === true;
-      const hasNestedSkills = await hasFeatureFlag(auth, "nested_skills");
+      const featureFlags = await getFeatureFlags(auth);
+      const hasNestedSkills = featureFlags.includes("nested_skills");
+      const useFramesV2 = featureFlags.includes("frames_skill_v2");
 
       const promptSections = constructPromptMultiActions(auth, {
         userMessage,
@@ -278,6 +280,7 @@ async function handler(
         projectContext,
         isNewFileExplorer,
         hasNestedSkills,
+        useFramesV2,
       });
       const prompt = systemPromptToText(promptSections);
       const leadingMessages = removeNulls([
@@ -318,6 +321,7 @@ async function handler(
         agentConfiguration,
         leadingMessages,
         enabledSkills,
+        useFramesV2,
       });
 
       if (convoRes.isErr()) {

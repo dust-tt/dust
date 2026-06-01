@@ -197,11 +197,6 @@ export const AgentConfigurationSchema = LightAgentConfigurationSchema.extend({
 
 export type AgentConfigurationType = z.infer<typeof AgentConfigurationSchema>;
 
-// Internal prompt-assembly hint for code-defined global agents. It is not part
-// of the public agent configuration schema; resolved by sId at prompt-assembly
-// time via getFramesVariantForAgent in global_agents/configurations/dust/dust.
-export type FramesVariant = "openai-v1";
-
 export interface TemplateAgentConfigurationType {
   name: string;
   pictureUrl: string;

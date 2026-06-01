@@ -10,7 +10,12 @@ import {
   VIZ_STYLING_GUIDELINES,
   VIZ_USE_FILE_EXAMPLES,
 } from "@app/lib/api/actions/servers/common/viz/instructions";
-import { INTERACTIVE_CONTENT_AUTHORING_PROSE_OPENAI_V1 } from "@app/lib/api/actions/servers/interactive_content/instructions_openai_v1";
+import {
+  INTERACTIVE_CONTENT_AUTHORING_PROSE_V2,
+  INTERACTIVE_CONTENT_CHART_EXAMPLES_V2,
+  INTERACTIVE_CONTENT_FRAME_IMPORT_EXAMPLE_V2,
+  INTERACTIVE_CONTENT_USE_FILE_EXAMPLES_V2,
+} from "@app/lib/api/actions/servers/interactive_content/instructions_v2";
 import {
   CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
@@ -250,16 +255,35 @@ Examples:
 ${VIZ_CHART_EXAMPLES}
 `;
 
-function buildInteractiveContentInstructions(authoringProse: string): string {
-  return `${INTERACTIVE_CONTENT_TOOLS_PROSE_BEFORE_AUTHORING}\n${authoringProse}\n${INTERACTIVE_CONTENT_TOOLS_PROSE_AFTER_AUTHORING}`;
+export const INTERACTIVE_CONTENT_TOOLS_PROSE_AFTER_AUTHORING_V2 =
+  INTERACTIVE_CONTENT_TOOLS_PROSE_AFTER_AUTHORING.replace(
+    VIZ_USE_FILE_EXAMPLES,
+    () => INTERACTIVE_CONTENT_USE_FILE_EXAMPLES_V2
+  )
+    .replace(
+      VIZ_FRAME_IMPORT_EXAMPLE,
+      () => INTERACTIVE_CONTENT_FRAME_IMPORT_EXAMPLE_V2
+    )
+    .replace(VIZ_CHART_EXAMPLES, () => INTERACTIVE_CONTENT_CHART_EXAMPLES_V2);
+
+function buildInteractiveContentInstructions({
+  afterAuthoringProse,
+  authoringProse,
+}: {
+  afterAuthoringProse: string;
+  authoringProse: string;
+}): string {
+  return `${INTERACTIVE_CONTENT_TOOLS_PROSE_BEFORE_AUTHORING}\n${authoringProse}\n${afterAuthoringProse}`;
 }
 
 export const INTERACTIVE_CONTENT_INSTRUCTIONS =
-  buildInteractiveContentInstructions(
-    INTERACTIVE_CONTENT_AUTHORING_PROSE_DEFAULT
-  );
+  buildInteractiveContentInstructions({
+    afterAuthoringProse: INTERACTIVE_CONTENT_TOOLS_PROSE_AFTER_AUTHORING,
+    authoringProse: INTERACTIVE_CONTENT_AUTHORING_PROSE_DEFAULT,
+  });
 
-export const INTERACTIVE_CONTENT_INSTRUCTIONS_OPENAI_V1 =
-  buildInteractiveContentInstructions(
-    INTERACTIVE_CONTENT_AUTHORING_PROSE_OPENAI_V1
-  );
+export const INTERACTIVE_CONTENT_INSTRUCTIONS_V2 =
+  buildInteractiveContentInstructions({
+    afterAuthoringProse: INTERACTIVE_CONTENT_TOOLS_PROSE_AFTER_AUTHORING_V2,
+    authoringProse: INTERACTIVE_CONTENT_AUTHORING_PROSE_V2,
+  });

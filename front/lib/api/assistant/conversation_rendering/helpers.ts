@@ -75,11 +75,11 @@ export type Step = {
 function renderEnabledSkillMessagesForAction(
   action: AgentMCPActionWithOutputType,
   {
-    agentSId,
     enabledSkillById,
+    useFramesV2,
   }: {
-    agentSId?: string;
     enabledSkillById: ReadonlyMap<string, EnabledSkill>;
+    useFramesV2: boolean;
   }
 ): UserMessageTypeModel[] {
   const enabledSkillMessages: UserMessageTypeModel[] = [];
@@ -97,8 +97,8 @@ function renderEnabledSkillMessagesForAction(
 
     enabledSkillMessages.push(
       renderEnabledSkillUserMessageFromInstructions({
-        agentSId,
         skill,
+        useFramesV2,
       })
     );
   }
@@ -215,19 +215,19 @@ export async function getSteps(
   {
     model,
     message,
-    agentSId,
     workspaceId,
     conversationId,
     onMissingAction,
     enabledSkillById,
+    useFramesV2 = false,
   }: {
     model: ModelConfigurationType;
     message: AgentMessageType;
-    agentSId?: string;
     workspaceId: string;
     conversationId: string;
     onMissingAction: "inject-placeholder" | "skip";
     enabledSkillById: ReadonlyMap<string, EnabledSkill>;
+    useFramesV2?: boolean;
   }
 ): Promise<Step[]> {
   const supportedModel = getSupportedModelConfig(model);
@@ -254,8 +254,8 @@ export async function getSteps(
         conversationId,
       }),
       enabledSkillMessages: renderEnabledSkillMessagesForAction(action, {
-        agentSId,
         enabledSkillById,
+        useFramesV2,
       }),
     }),
     { concurrency: RENDER_ACTIONS_CONCURRENCY }

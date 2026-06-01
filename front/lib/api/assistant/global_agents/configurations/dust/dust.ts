@@ -37,14 +37,10 @@ import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type {
   AgentConfigurationType,
   AgentModelConfigurationType,
-  FramesVariant,
   GlobalAgentContext,
 } from "@app/types/assistant/agent";
 import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
-import {
-  GLOBAL_AGENTS_SID,
-  isGlobalAgentId,
-} from "@app/types/assistant/assistant";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import {
   CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
@@ -1094,31 +1090,4 @@ export function _getCustomModelDustLikeGlobalAgent(
     preferredReasoningEffort: config.preferredReasoningEffort,
     requiredPreferredModelConfiguration: true,
   });
-}
-
-// Per-agent override for the Frames skill's authoring prose. Kept off the
-// agent object itself so it does not leak into client serialization or
-// require widening AgentConfigurationType. Resolved server-side at prompt
-// assembly time by skills_rendering's resolveSkillInstructions.
-const FRAMES_VARIANT_BY_AGENT_SID: Partial<
-  Record<GLOBAL_AGENTS_SID, FramesVariant>
-> = {
-  [GLOBAL_AGENTS_SID.DUST_OAI]: "openai-v1",
-  [GLOBAL_AGENTS_SID.DUST_OAI_MEDIUM]: "openai-v1",
-  [GLOBAL_AGENTS_SID.DUST_OAI_HIGH]: "openai-v1",
-  [GLOBAL_AGENTS_SID.DUST_CHAWI]: "openai-v1",
-  [GLOBAL_AGENTS_SID.DUST_CHAWI_MEDIUM]: "openai-v1",
-  [GLOBAL_AGENTS_SID.DUST_CHAWI_HIGH]: "openai-v1",
-  [GLOBAL_AGENTS_SID.DUST_SOUPINOU]: "openai-v1",
-  [GLOBAL_AGENTS_SID.DUST_SOUPINOU_MEDIUM]: "openai-v1",
-  [GLOBAL_AGENTS_SID.DUST_SOUPINOU_HIGH]: "openai-v1",
-};
-
-export function getFramesVariantForAgent(
-  agentSId: string | undefined | null
-): FramesVariant | undefined {
-  if (!agentSId || !isGlobalAgentId(agentSId)) {
-    return undefined;
-  }
-  return FRAMES_VARIANT_BY_AGENT_SID[agentSId];
 }

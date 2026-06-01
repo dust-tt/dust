@@ -203,13 +203,13 @@ function constructToolsSection({
 }
 
 function constructSkillsSection({
-  agentSId,
   systemSkills,
   hasNestedSkills = false,
+  useFramesV2,
 }: {
-  agentSId: string;
   systemSkills: SkillResource[];
   hasNestedSkills?: boolean;
+  useFramesV2: boolean;
 }): string {
   const toolDisplayName = `${SKILL_MANAGEMENT_SERVER_NAME}${TOOL_NAME_SEPARATOR}${ENABLE_SKILL_TOOL_NAME}`;
 
@@ -246,8 +246,8 @@ function constructSkillsSection({
         .map(
           (skill) =>
             `<${skill.name}>\n${resolveSkillInstructions({
-              agentSId,
               skill,
+              useFramesV2,
             })}\n</${skill.name}>`
         )
         .join("\n") +
@@ -412,6 +412,7 @@ export function constructPromptMultiActions(
     isNewFileExplorer = false,
     hasSandboxTools = false,
     hasNestedSkills = false,
+    useFramesV2 = false,
   }: {
     userMessage: UserMessageType;
     agentConfiguration: AgentConfigurationType;
@@ -433,6 +434,7 @@ export function constructPromptMultiActions(
     isNewFileExplorer?: boolean;
     hasSandboxTools?: boolean;
     hasNestedSkills?: boolean;
+    useFramesV2?: boolean;
   }
 ): SystemPromptSections {
   const owner = auth.workspace();
@@ -469,9 +471,9 @@ export function constructPromptMultiActions(
     serverToolsAndInstructions,
   });
   const skillsSection = constructSkillsSection({
-    agentSId: agentConfiguration.sId,
     systemSkills,
     hasNestedSkills,
+    useFramesV2,
   });
   const attachmentsSection = isNewFileExplorer
     ? constructAttachmentsSectionNewFileExplorer({ hasSandboxTools })
