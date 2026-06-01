@@ -71,6 +71,12 @@ export async function upsertMetronomeProgrammaticCapAlerts({
 }): Promise<Result<void, Error>> {
   const creditTypeId = getCreditTypeAwuId();
 
+  // Scope every alert to programmatic AWU usage only, so contract/pool spend
+  // doesn't contribute to the cap thresholds.
+  const programmaticGroupValues = [
+    { key: "usage_type", value: "programmatic" },
+  ];
+
   // Main cap alert.
   const capResult = await upsertMetronomeAlert({
     alert_type: "spend_threshold_reached",
@@ -78,6 +84,7 @@ export async function upsertMetronomeProgrammaticCapAlerts({
     threshold: monthlyCapCredits,
     credit_type_id: creditTypeId,
     customer_id: metronomeCustomerId,
+    group_values: programmaticGroupValues,
     uniqueness_key: programmaticCapUniquenessKey(workspaceId),
   });
   if (capResult.isErr()) {
@@ -92,6 +99,7 @@ export async function upsertMetronomeProgrammaticCapAlerts({
     threshold: lowThreshold,
     credit_type_id: creditTypeId,
     customer_id: metronomeCustomerId,
+    group_values: programmaticGroupValues,
     uniqueness_key: programmaticCapLowUniquenessKey(workspaceId),
   });
   if (lowResult.isErr()) {
@@ -109,6 +117,7 @@ export async function upsertMetronomeProgrammaticCapAlerts({
     threshold: criticalThreshold,
     credit_type_id: creditTypeId,
     customer_id: metronomeCustomerId,
+    group_values: programmaticGroupValues,
     uniqueness_key: programmaticCapCriticalUniquenessKey(workspaceId),
   });
   if (criticalResult.isErr()) {
