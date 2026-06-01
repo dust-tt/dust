@@ -9,6 +9,28 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import { describe, expect, it } from "vitest";
 
 describe("skill reference availability", () => {
+  async function getSkillReferenceReplacement(
+    auth: Authenticator,
+    skill: SkillResource
+  ) {
+    const [replacement] = await SkillResource.replaceUnavailableSkillReferences(
+      auth,
+      [
+        {
+          instructions: skill.instructions,
+          instructionsHtml: skill.instructionsHtml,
+          requestedSpaceIds: skill.requestedSpaceIds,
+        },
+      ]
+    );
+
+    if (!replacement) {
+      throw new Error("Expected skill reference replacement.");
+    }
+
+    return replacement;
+  }
+
   async function setup() {
     const { authenticator: adminAuth, workspace } = await createResourceTest({
       role: "admin",
@@ -57,16 +79,15 @@ describe("skill reference availability", () => {
         `and <skill id="${inaccessibleSkill.sId}" name="${inaccessibleSkill.name}"></skill>.</p>`,
     });
 
-    const renderedSkill =
-      await skill.toJSONWithUnavailableSkillReferences(requestAuth);
+    const replacement = await getSkillReferenceReplacement(requestAuth, skill);
 
-    expect(renderedSkill.instructions).toContain(
+    expect(replacement.instructions).toContain(
       `<skill id="${accessibleSkill.sId}" name="${accessibleSkill.name}" />`
     );
-    expect(renderedSkill.instructions).toContain(
+    expect(replacement.instructions).toContain(
       `<unavailable_skill id="${inaccessibleSkill.sId}" />`
     );
-    expect(renderedSkill.instructionsHtml).toContain(
+    expect(replacement.instructionsHtml).toContain(
       `<unavailable_skill id="${inaccessibleSkill.sId}"></unavailable_skill>`
     );
   });
@@ -89,12 +110,12 @@ describe("skill reference availability", () => {
       instructions: `Use <skill id="${inaccessibleSkill.sId}" name="${inaccessibleSkill.name}" />.`,
     });
 
-    const renderedParentWithoutChildSpaces =
-      await parentWithoutChildSpaces.toJSONWithUnavailableSkillReferences(
-        adminAuth
-      );
+    const replacementWithoutChildSpaces = await getSkillReferenceReplacement(
+      adminAuth,
+      parentWithoutChildSpaces
+    );
 
-    expect(renderedParentWithoutChildSpaces.instructions).toContain(
+    expect(replacementWithoutChildSpaces.instructions).toContain(
       `<unavailable_skill id="${inaccessibleSkill.sId}" />`
     );
 
@@ -104,12 +125,12 @@ describe("skill reference availability", () => {
       requestedSpaceIds: [restrictedSpace.id],
     });
 
-    const renderedParentWithChildSpaces =
-      await parentWithChildSpaces.toJSONWithUnavailableSkillReferences(
-        adminAuth
-      );
+    const replacementWithChildSpaces = await getSkillReferenceReplacement(
+      adminAuth,
+      parentWithChildSpaces
+    );
 
-    expect(renderedParentWithChildSpaces.instructions).toContain(
+    expect(replacementWithChildSpaces.instructions).toContain(
       `<skill id="${inaccessibleSkill.sId}" name="${inaccessibleSkill.name}" />`
     );
   });

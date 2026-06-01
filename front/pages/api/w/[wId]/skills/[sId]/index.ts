@@ -71,6 +71,36 @@ const PatchSkillRequestBodySchema = z.object({
 
 type PatchSkillRequestBody = z.infer<typeof PatchSkillRequestBodySchema>;
 
+async function withReplacedSkillReferences(
+  auth: Authenticator,
+  skill: SkillResource
+): Promise<SkillType> {
+  const serializedSkill = skill.toJSON(auth);
+  if (serializedSkill.instructions === null) {
+    return serializedSkill;
+  }
+
+  const [replacement] = await SkillResource.replaceUnavailableSkillReferences(
+    auth,
+    [
+      {
+        instructions: serializedSkill.instructions,
+        instructionsHtml: serializedSkill.instructionsHtml,
+        requestedSpaceIds: skill.requestedSpaceIds,
+      },
+    ]
+  );
+  if (!replacement) {
+    return serializedSkill;
+  }
+
+  return {
+    ...serializedSkill,
+    instructions: replacement.instructions,
+    instructionsHtml: replacement.instructionsHtml,
+  };
+}
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
@@ -111,8 +141,7 @@ async function handler(
     case "GET": {
       const { withRelations } = req.query;
 
-      const serializedSkill =
-        await skill.toJSONWithUnavailableSkillReferences(auth);
+      const serializedSkill = await withReplacedSkillReferences(auth, skill);
 
       if (withRelations === "true") {
         const featureFlags = await getFeatureFlags(auth);
@@ -128,7 +157,7 @@ async function handler(
           ? await skill.fetchChildSkills(auth)
           : [];
         const serializedExtendedSkill = extendedSkill
-          ? await extendedSkill.toJSONWithUnavailableSkillReferences(auth)
+          ? await withReplacedSkillReferences(auth, extendedSkill)
           : null;
 
         const skillWithRelations: SkillWithRelationsType = {
@@ -438,8 +467,7 @@ async function handler(
 
       await pruneOutdatedSkillEditSuggestions(auth, skill);
 
-      const serializedSkill =
-        await skill.toJSONWithUnavailableSkillReferences(auth);
+      const serializedSkill = await withReplacedSkillReferences(auth, skill);
 
       return res.status(200).json({
         skill: serializedSkill,
