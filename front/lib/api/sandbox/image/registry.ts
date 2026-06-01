@@ -19,8 +19,8 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.10.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.32";
-const DSBX_CLI_VERSION = "0.1.23";
+const DUST_BASE_IMAGE_VERSION = "0.8.33";
+const DSBX_CLI_VERSION = "0.1.24";
 // Identity, not coverage list: agent-proxied is a specific Linux user. The
 // nftables ruleset covers SANDBOX_UNTRUSTED_UIDS as a set; reordering that
 // list must not silently change this user's UID.

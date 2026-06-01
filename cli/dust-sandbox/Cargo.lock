@@ -313,7 +313,7 @@ checksum = "92773504d58c093f6de2459af4af33faa518c13451eb8f2b5698ed3d36e7c813"
 
 [[package]]
 name = "dust-sandbox"
-version = "0.1.23"
+version = "0.1.24"
 dependencies = [
  "anyhow",
  "base64",
@@ -572,11 +572,11 @@ dependencies = [
  "hyper",
  "hyper-util",
  "rustls",
+ "rustls-native-certs",
  "rustls-pki-types",
  "tokio",
  "tokio-rustls",
  "tower-service",
- "webpki-roots",
 ]
 
 [[package]]
@@ -1172,6 +1172,7 @@ dependencies = [
  "pin-project-lite",
  "quinn",
  "rustls",
+ "rustls-native-certs",
  "rustls-pki-types",
  "serde",
  "serde_json",
@@ -1186,7 +1187,6 @@ dependencies = [
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
- "webpki-roots",
 ]
 
 [[package]]
@@ -1919,15 +1919,6 @@ checksum = "5a6580f308b1fad9207618087a65c04e7a10bc77e02c8e84e9b00dd4b12fa0bb"
 dependencies = [
  "js-sys",
  "wasm-bindgen",
-]
-
-[[package]]
-name = "webpki-roots"
-version = "1.0.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "22cfaf3c063993ff62e73cb4311efde4db1efb31ab78a3e5c457939ad5cc0bed"
-dependencies = [
- "rustls-pki-types",
 ]
 
 [[package]]
