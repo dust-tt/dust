@@ -1,5 +1,7 @@
-import type { SlashCommandSkillSuggestion } from "@app/components/editor/extensions/shared/SlashCommandSkillItems";
-import type { SlashCommandToolSuggestion } from "@app/components/editor/extensions/shared/SlashCommandToolItems";
+import type {
+  SlashCommandSkillSuggestion,
+  SlashCommandToolSuggestion,
+} from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { describe, expect, it } from "vitest";
 

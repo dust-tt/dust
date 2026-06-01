@@ -1,8 +1,8 @@
 import {
   getSkillSlashCommandItem,
-  matchesSlashCommandQuery,
-  sortSlashCommandMatches,
-} from "@app/components/editor/extensions/shared/SlashCommandSkillItems";
+  matchesSlashCommandCapabilityQuery,
+  sortSlashCommandCapabilityMatches,
+} from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import type {
   SlashCommand,
   SlashCommandDropdownRef,
@@ -53,7 +53,7 @@ export function filterInputBarSlashSuggestions({
   })[] = [
     ...skills
       .filter((skill) =>
-        matchesSlashCommandQuery({
+        matchesSlashCommandCapabilityQuery({
           label: skill.name,
           query: normalizedQuery,
         })
@@ -67,7 +67,7 @@ export function filterInputBarSlashSuggestions({
       .filter((serverView) => isJITMCPServerView(serverView))
       .filter((serverView) => !selectedMCPServerViewIds.has(serverView.sId))
       .filter((serverView) =>
-        matchesSlashCommandQuery({
+        matchesSlashCommandCapabilityQuery({
           label: getMcpServerViewDisplayName(serverView),
           query: normalizedQuery,
         })
@@ -79,7 +79,7 @@ export function filterInputBarSlashSuggestions({
       })),
   ];
 
-  return sortSlashCommandMatches({
+  return sortSlashCommandCapabilityMatches({
     items: capabilities,
     normalizedQuery,
   }).map(({ sortName: _sortName, ...capability }) => capability);

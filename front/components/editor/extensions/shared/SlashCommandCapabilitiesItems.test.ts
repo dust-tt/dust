@@ -2,10 +2,11 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { describe, expect, it } from "vitest";
 
 import {
-  filterToolsForSlashSuggestions,
   getToolSlashCommandItem,
+  matchesSlashCommandCapabilityQuery,
   type SlashCommandToolSuggestion,
-} from "./SlashCommandToolItems";
+  sortSlashCommandCapabilityMatches,
+} from "./SlashCommandCapabilitiesItems";
 
 function toolSuggestion({
   description = "Search data.",
@@ -51,28 +52,34 @@ function toolSuggestion({
   };
 }
 
-describe("filterToolsForSlashSuggestions", () => {
-  it("filters tools by their display label", () => {
-    const tools = [
-      toolSuggestion({
+describe("matchesSlashCommandCapabilityQuery", () => {
+  it("matches capability labels with fuzzy slash query matching", () => {
+    expect(
+      matchesSlashCommandCapabilityQuery({
         label: "Search docs",
-        name: null,
-        serverName: "search",
-        sId: "mcp_server_view_search",
-      }),
-      toolSuggestion({
-        name: "Create ticket",
-        serverName: "linear",
-        sId: "mcp_server_view_linear",
-      }),
-    ];
+        query: "docs",
+      })
+    ).toBe(true);
+    expect(
+      matchesSlashCommandCapabilityQuery({
+        label: "Create ticket",
+        query: "docs",
+      })
+    ).toBe(false);
+  });
+});
 
-    const result = filterToolsForSlashSuggestions({
-      query: "docs",
-      tools,
+describe("sortSlashCommandCapabilityMatches", () => {
+  it("sorts capabilities alphabetically when no query is provided", () => {
+    const result = sortSlashCommandCapabilityMatches({
+      normalizedQuery: "",
+      items: [
+        { id: "z", sortName: "zendesk" },
+        { id: "a", sortName: "asana" },
+      ],
     });
 
-    expect(result.map((tool) => tool.sId)).toEqual(["mcp_server_view_search"]);
+    expect(result.map((item) => item.id)).toEqual(["a", "z"]);
   });
 });
 
