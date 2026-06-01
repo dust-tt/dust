@@ -23,10 +23,10 @@ export type ReferenceSummaryTarget =
   | { id: string; kind: "skill" }
   | { id: string; kind: "tool" };
 
-type ReferenceSummaryItem =
-  | { id: string; kind: "knowledge"; title: string }
-  | { icon: string | null; id: string; kind: "skill"; title: string }
-  | { icon: string | null; id: string; kind: "tool"; title: string };
+type ReferenceSummaryItem = ReferenceSummaryTarget & {
+  icon?: string | null;
+  title: string;
+};
 
 function dedupeById<T extends { id: string }>(items: T[]): T[] {
   const seenIds = new Set<string>();
@@ -78,7 +78,7 @@ function renderReferenceSummaryItem({
         <Chip
           key={`${item.kind}:${item.id}`}
           label={item.title}
-          icon={getSkillIcon(item.icon)}
+          icon={getSkillIcon(item.icon ?? null)}
           color="white"
           size="xs"
           onClick={handleClick}
@@ -89,7 +89,7 @@ function renderReferenceSummaryItem({
         <ToolChip
           key={`${item.kind}:${item.id}`}
           title={item.title}
-          toolIcon={item.icon}
+          toolIcon={item.icon ?? null}
           color="white"
           onClick={handleClick}
         />
