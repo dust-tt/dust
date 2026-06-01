@@ -1,13 +1,12 @@
-import type { MemberRowData } from "@app/components/members/MemberSelectionTable";
-import { MemberSelectionTable } from "@app/components/members/MemberSelectionTable";
+import {
+  MemberSelectionTable,
+  type MemberRowData,
+  type SearchMemberType,
+} from "@app/components/members/MemberSelectionTable";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useUpdateSpace } from "@app/lib/swr/spaces";
 import type { SpaceType } from "@app/types/space";
-import type {
-  LightMemberType,
-  LightWorkspaceType,
-  SpaceUserType,
-} from "@app/types/user";
+import type { LightWorkspaceType, SpaceUserType } from "@app/types/user";
 import {
   Button,
   CheckIcon,
@@ -37,8 +36,8 @@ interface SpaceMembersMode extends BaseManageUsersPanelProps {
 
 interface EditorsOnlyMode extends BaseManageUsersPanelProps {
   mode: "editors-only";
-  editors: LightMemberType[];
-  onEditorsChange: (editors: LightMemberType[]) => void;
+  editors: SearchMemberType[];
+  onEditorsChange: (editors: SearchMemberType[]) => void;
   title?: string;
   buildersOnly?: boolean;
 }
@@ -56,7 +55,7 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
 
   const [currentMembers, setCurrentMembers] = useState<Set<string>>(new Set());
   const [currentEditors, setCurrentEditors] = useState<Set<string>>(new Set());
-  const [selectedUsers, setSelectedUsers] = useState<LightMemberType[]>([]);
+  const [selectedUsers, setSelectedUsers] = useState<SearchMemberType[]>([]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset state when panel opens
   useEffect(() => {
@@ -146,7 +145,7 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
 
   const handleSelectionChange = (
     newMembers: Set<string>,
-    users: LightMemberType[]
+    users: SearchMemberType[]
   ) => {
     setCurrentMembers(newMembers);
     setSelectedUsers(users);

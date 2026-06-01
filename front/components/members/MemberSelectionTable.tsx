@@ -1,5 +1,9 @@
 import { useSearchMembers } from "@app/lib/swr/memberships";
-import type { LightMemberType, LightWorkspaceType } from "@app/types/user";
+import type {
+  LightMemberType,
+  LightWorkspaceType,
+  UserTypeWithWorkspace,
+} from "@app/types/user";
 import {
   Avatar,
   createSelectionColumn,
@@ -14,30 +18,32 @@ import type {
 } from "@tanstack/react-table";
 import { useMemo, useRef, useState } from "react";
 
+export type SearchMemberType = LightMemberType | UserTypeWithWorkspace;
+
 export interface MemberRowData {
   sId: string;
   fullName: string;
   image: string;
+  email?: string;
   onClick?: () => void;
 }
 
-function getMemberTableRows(
-  members: Pick<LightMemberType, "sId" | "fullName" | "image">[]
-): MemberRowData[] {
+function getMemberTableRows(members: SearchMemberType[]): MemberRowData[] {
   return members.map((user) => ({
     sId: user.sId,
     fullName: user.fullName,
     image: user.image ?? "",
+    email: "email" in user ? user.email : undefined,
   }));
 }
 
 interface MemberSelectionTableProps {
   owner: LightWorkspaceType;
   selectedMemberIds: Set<string>;
-  onSelectionChange: (ids: Set<string>, users: LightMemberType[]) => void;
+  onSelectionChange: (ids: Set<string>, users: SearchMemberType[]) => void;
   extraColumns?: ColumnDef<MemberRowData>[];
   buildersOnly?: boolean;
-  initialMembers?: LightMemberType[];
+  initialMembers?: SearchMemberType[];
 }
 
 export function MemberSelectionTable({
@@ -59,19 +65,20 @@ export function MemberSelectionTable({
     setPagination((prev) => ({ ...prev, pageIndex: 0 }));
   };
 
-  const { members, totalMembersCount, isLoading } = useSearchMembers({
-    workspaceId: owner.sId,
-    searchTerm: searchText,
-    pageIndex: pagination.pageIndex,
-    pageSize: pagination.pageSize,
-    buildersOnly,
-    disabled: !searchText,
-  });
+  const { members, totalMembersCount, isLoading } =
+    useSearchMembers<SearchMemberType>({
+      workspaceId: owner.sId,
+      searchTerm: searchText,
+      pageIndex: pagination.pageIndex,
+      pageSize: pagination.pageSize,
+      buildersOnly,
+      disabled: !searchText,
+    });
 
-  // Internal map to resolve sId -> LightMemberType, seeded with initialMembers
+  // Internal map to resolve sId -> SearchMemberType, seeded with initialMembers
   // and updated as search results come in.
   const userMapRef = useRef(
-    new Map<string, LightMemberType>(
+    new Map<string, SearchMemberType>(
       (initialMembers ?? []).map((m) => [m.sId, m])
     )
   );
@@ -88,7 +95,7 @@ export function MemberSelectionTable({
     if (!searchText) {
       const selectedUsers = Array.from(selectedMemberIds)
         .map((sId) => userMapRef.current.get(sId))
-        .filter((u): u is LightMemberType => !!u);
+        .filter((u): u is SearchMemberType => !!u);
       return getMemberTableRows(selectedUsers);
     }
     return getMemberTableRows(members);
@@ -132,7 +139,7 @@ export function MemberSelectionTable({
           className: "w-full",
         },
         cell: (info: CellContext<MemberRowData, unknown>) => {
-          const { fullName, image } = info.row.original;
+          const { fullName, image, email } = info.row.original;
           return (
             <DataTable.CellContent>
               <div className="flex items-center gap-2">
@@ -142,7 +149,14 @@ export function MemberSelectionTable({
                   size="xs"
                   isRounded
                 />
-                <span className="text-sm">{fullName}</span>
+                <div className="flex flex-col">
+                  <span className="text-sm">{fullName}</span>
+                  {email && (
+                    <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                      {email}
+                    </span>
+                  )}
+                </div>
               </div>
             </DataTable.CellContent>
           );
