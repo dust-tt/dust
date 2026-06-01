@@ -34,12 +34,23 @@ pub const REDIS_LOCK_TTL_SECONDS: u64 = 60;
 
 const UPSERT_DEBOUNCE_TIME_MS: u64 = 10_000;
 
+// Entries that have been stuck in the queue far past the debounce window are
+// poison items (consistently failing), which we'd otherwise retry forever.
+// Drop them once they exceed this age.
+const MAX_UPSERT_AGE_MS: u64 = 60 * 60 * 1_000; // 1 hour
+
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct TableUpsertActivityData {
     pub time: u64,
     pub project_id: i64,
     pub data_source_id: String,
     pub table_id: String,
+    // Number of times we've tried and failed to process this entry. Bumped on each
+    // failed attempt and used to ensure we never drop an entry that has never been
+    // tried (e.g. after the worker was down longer than MAX_UPSERT_AGE_MS). Existing
+    // entries written before this field existed default to 0.
+    #[serde(default)]
+    pub attempts: u32,
 }
 
 pub struct TableUpsertsBackgroundWorker {
@@ -75,8 +86,8 @@ impl TableUpsertsBackgroundWorker {
     async fn process_table(
         &mut self,
         table: &Table,
-        key: String,
-        table_data: TableUpsertActivityData,
+        key: &str,
+        table_data: &TableUpsertActivityData,
     ) -> Result<(), anyhow::Error> {
         let files =
             GoogleCloudStorageBackgroundProcessingStore::get_gcs_csv_file_names_for_table(&table)
@@ -170,7 +181,7 @@ impl TableUpsertsBackgroundWorker {
         }
 
         let lock_manager = LockManager::new(vec![REDIS_URI.clone()]);
-        for (key, table_data) in active_tables {
+        for (key, mut table_data) in active_tables {
             // They're ordered from oldest to newest, meaning we first see those that are most
             // likely to be past the debounce time. As soon as we find one that is not
             // past the debounce time, we can stop processing.
@@ -178,6 +189,29 @@ impl TableUpsertsBackgroundWorker {
             let time_since_last_upsert = utils::now() - table_data.time; // time is in milliseconds, so we can compare directly
             if time_since_last_upsert < UPSERT_DEBOUNCE_TIME_MS {
                 break;
+            }
+
+            // Drop entries that have been stuck far past the debounce window AND have already
+            // failed at least once. These are poison items (consistently failing) that we'd
+            // otherwise retry forever. The attempts > 0 guard ensures we never drop an entry
+            // that has never been tried (e.g. if the worker was down for a long time, every
+            // queued entry would be old but untried).
+            // Note: this leaves the table's CSV files orphaned in GCS, which is an
+            // acceptable (small, separately cleanable) trade-off for not blocking the queue.
+            if time_since_last_upsert > MAX_UPSERT_AGE_MS && table_data.attempts > 0 {
+                error!(
+                    project_id = table_data.project_id,
+                    data_source_id = table_data.data_source_id,
+                    table_id = table_data.table_id,
+                    age_ms = time_since_last_upsert,
+                    attempts = table_data.attempts,
+                    "TableUpsertsBackgroundWorker: Entry exceeded max age after failed attempts, dropping"
+                );
+                let _: () = self
+                    .redis_conn
+                    .hdel(REDIS_TABLE_UPSERT_HASH_NAME, key)
+                    .await?;
+                continue;
             }
 
             let table = self
@@ -220,11 +254,25 @@ impl TableUpsertsBackgroundWorker {
 
                     // If it fails, log an error but continue processing other tables.
                     // Also, we need to make sure the lock is always released.
-                    if let Err(e) = self.process_table(&table, key, table_data).await {
+                    if let Err(e) = self.process_table(&table, &key, &table_data).await {
                         error!(
                             table_id = table.table_id(),
                             "TableUpsertsBackgroundWorker: Failed to process table: {}", e
                         );
+
+                        // Record the failed attempt so that, once this entry exceeds the max
+                        // age, it gets dropped instead of being retried forever. We keep `time`
+                        // unchanged so the age anchor is preserved. New activity from the
+                        // producer will overwrite this entry and reset attempts to 0.
+                        table_data.attempts += 1;
+                        let _: () = self
+                            .redis_conn
+                            .hset(
+                                REDIS_TABLE_UPSERT_HASH_NAME,
+                                &key,
+                                serde_json::to_string(&table_data)?,
+                            )
+                            .await?;
                     }
 
                     lock_manager.unlock(&lock).await;
