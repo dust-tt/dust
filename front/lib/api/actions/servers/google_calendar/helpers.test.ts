@@ -1,7 +1,6 @@
-import { describe, expect, it } from "vitest";
-
 import type { EnrichedGoogleCalendarEvent } from "@app/lib/api/actions/servers/google_calendar/helpers";
 import { formatEventAsText } from "@app/lib/api/actions/servers/google_calendar/helpers";
+import { describe, expect, it } from "vitest";
 
 describe("formatEventAsText - attachments", () => {
   it("surfaces attachment title, mime type and file URL", () => {
