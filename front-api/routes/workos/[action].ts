@@ -163,7 +163,16 @@ async function handleLogin(ctx: Context) {
 }
 
 async function handleAuthenticate(ctx: Context) {
-  const body = await ctx.req.json().catch(() => ({}));
+  // The Chrome extension follows the OAuth 2.0 token-endpoint convention and
+  // sends this request as `application/x-www-form-urlencoded` (Next's body
+  // parser decoded it transparently; Hono's `ctx.req.json()` does not). Parse
+  // form bodies when the header says so, and default to JSON otherwise.
+  const contentType = ctx.req.header("content-type") ?? "";
+  const body: Record<string, unknown> = contentType.includes(
+    "application/x-www-form-urlencoded"
+  )
+    ? await ctx.req.parseBody().catch(() => ({}))
+    : await ctx.req.json().catch(() => ({}));
   const { code, grant_type, refresh_token, code_verifier } = body;
 
   if (grant_type && !isString(grant_type)) {
@@ -221,7 +230,7 @@ async function handleAuthenticate(ctx: Context) {
   try {
     const authResult = await authenticateWithWorkOSCode({
       code,
-      codeVerifier: code_verifier,
+      codeVerifier: isString(code_verifier) ? code_verifier : undefined,
     });
 
     const jwtPayload = JSON.parse(
