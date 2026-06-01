@@ -414,6 +414,56 @@ describe("GET /api/w/:wId/skills?withRelations=true", () => {
     });
   });
 
+  it("should return child skills when nested_skills is enabled", async () => {
+    const { workspace, user } = await setupTest();
+
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+
+    await FeatureFlagFactory.basic(auth, "nested_skills");
+
+    const parentSkill = await SkillFactory.create(auth, {
+      name: "Parent Skill",
+    });
+    const childSkill = await SkillFactory.create(auth, {
+      name: "Child Skill",
+    });
+    await SkillReferenceModel.create({
+      workspaceId: workspace.id,
+      parentSkillId: parentSkill.id,
+      childSkillId: childSkill.id,
+    });
+
+    const response = await getSkills(workspace, { withRelations: "true" });
+
+    expect(response.status).toBe(200);
+
+    const parentSkillId = SkillResource.modelIdToSId({
+      id: parentSkill.id,
+      workspaceId: workspace.id,
+    });
+    const skillResult = (await response.json()).skills.find(
+      (s: SkillWithoutInstructionsAndToolsWithRelationsType) =>
+        s.sId === parentSkillId
+    );
+
+    expect(skillResult).toMatchObject({
+      relations: {
+        childSkills: [
+          {
+            sId: childSkill.sId,
+            name: "Child Skill",
+          },
+        ],
+      },
+    });
+    expect(skillResult.relations.childSkills?.[0]).not.toHaveProperty(
+      "instructions"
+    );
+  });
+
   it("should return skills without usage when withRelations is not set", async () => {
     const { workspace, user } = await setupTest();
 

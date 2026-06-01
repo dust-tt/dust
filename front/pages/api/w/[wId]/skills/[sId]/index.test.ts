@@ -181,6 +181,64 @@ describe("GET /api/w/[wId]/skills/[sId]", () => {
     expect(data.skill.name).toBe("Test Skill");
   });
 
+  it("should return child skills when nested_skills is enabled", async () => {
+    const { req, res, skill, skillOwnerAuth, workspace } = await setupTest({
+      requestUserRole: "admin",
+    });
+
+    await FeatureFlagFactory.basic(skillOwnerAuth, "nested_skills");
+
+    const childSkill = await SkillFactory.create(skillOwnerAuth, {
+      name: "Child Skill",
+    });
+    await SkillReferenceModel.create({
+      workspaceId: workspace.id,
+      parentSkillId: skill.id,
+      childSkillId: childSkill.id,
+    });
+
+    req.query = { ...req.query, withRelations: "true" };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+
+    expect(data.skill.relations.childSkills).toEqual([
+      expect.objectContaining({
+        sId: childSkill.sId,
+        name: "Child Skill",
+      }),
+    ]);
+    expect(data.skill.relations.childSkills[0]).not.toHaveProperty(
+      "instructions"
+    );
+  });
+
+  it("should not return child skills when nested_skills is disabled", async () => {
+    const { req, res, skill, skillOwnerAuth, workspace } = await setupTest({
+      requestUserRole: "admin",
+    });
+
+    const childSkill = await SkillFactory.create(skillOwnerAuth, {
+      name: "Hidden Child Skill",
+    });
+    await SkillReferenceModel.create({
+      workspaceId: workspace.id,
+      parentSkillId: skill.id,
+      childSkillId: childSkill.id,
+    });
+
+    req.query = { ...req.query, withRelations: "true" };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData().skill.relations).not.toHaveProperty(
+      "childSkills"
+    );
+  });
+
   it("should return 404 for non-existent skill", async () => {
     const { req, res } = await setupTest();
     req.query.sId = "non_existent_skill_sid";

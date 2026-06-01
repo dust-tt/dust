@@ -111,6 +111,12 @@ function getSkill(workspace: { sId: string }, sId: string) {
   return honoApp.request(`/api/w/${workspace.sId}/skills/${sId}`);
 }
 
+function getSkillWithRelations(workspace: { sId: string }, sId: string) {
+  return honoApp.request(
+    `/api/w/${workspace.sId}/skills/${sId}?withRelations=true`
+  );
+}
+
 function patchSkill(workspace: { sId: string }, sId: string, body: unknown) {
   return honoApp.request(`/api/w/${workspace.sId}/skills/${sId}`, {
     method: "PATCH",
@@ -136,6 +142,60 @@ describe("GET /api/w/:wId/skills/:sId", () => {
     expect(data).toHaveProperty("skill");
     expect(data.skill.sId).toBe(skill.sId);
     expect(data.skill.name).toBe("Test Skill");
+  });
+
+  it("should return child skills when nested_skills is enabled", async () => {
+    const { workspace, skill, skillOwnerAuth } = await setupTest({
+      requestUserRole: "admin",
+    });
+
+    await FeatureFlagFactory.basic(skillOwnerAuth, "nested_skills");
+
+    const childSkill = await SkillFactory.create(skillOwnerAuth, {
+      name: "Child Skill",
+    });
+    await SkillReferenceModel.create({
+      workspaceId: workspace.id,
+      parentSkillId: skill.id,
+      childSkillId: childSkill.id,
+    });
+
+    const response = await getSkillWithRelations(workspace, skill.sId);
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+
+    expect(data.skill.relations.childSkills).toEqual([
+      expect.objectContaining({
+        sId: childSkill.sId,
+        name: "Child Skill",
+      }),
+    ]);
+    expect(data.skill.relations.childSkills[0]).not.toHaveProperty(
+      "instructions"
+    );
+  });
+
+  it("should not return child skills when nested_skills is disabled", async () => {
+    const { workspace, skill, skillOwnerAuth } = await setupTest({
+      requestUserRole: "admin",
+    });
+
+    const childSkill = await SkillFactory.create(skillOwnerAuth, {
+      name: "Hidden Child Skill",
+    });
+    await SkillReferenceModel.create({
+      workspaceId: workspace.id,
+      parentSkillId: skill.id,
+      childSkillId: childSkill.id,
+    });
+
+    const response = await getSkillWithRelations(workspace, skill.sId);
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+
+    expect(data.skill.relations).not.toHaveProperty("childSkills");
   });
 
   it("should return 404 for non-existent skill", async () => {

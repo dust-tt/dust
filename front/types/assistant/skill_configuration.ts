@@ -75,6 +75,7 @@ export type SkillRelations = {
   editors: UserType[] | null;
   editedByUser: UserType | null;
   extendedSkill: SkillType | null;
+  childSkills?: SkillWithoutInstructionsAndToolsType[];
 };
 
 export type SkillWithRelationsType = SkillType & {
