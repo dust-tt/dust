@@ -89,9 +89,9 @@ function buildAndEncodeEmail(params: {
 
   if (params.attachment) {
     const boundary = crypto.randomUUID().replace(/-/g, "");
-    const safeContentType = params.attachment.contentType
-      .replace(/[\r\n]/g, "")
-      .trim() || "application/octet-stream";
+    const safeContentType =
+      params.attachment.contentType.replace(/[\r\n]/g, "").trim() ||
+      "application/octet-stream";
     // Create the email message with proper headers, content and attachment file
     messageLines = [
       `To: ${params.to.join(", ")}`,
