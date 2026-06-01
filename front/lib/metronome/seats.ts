@@ -1,6 +1,7 @@
 import {
   getMetronomeContractById,
   getMetronomeSubscriptionAssignedSeatIds,
+  getMetronomeSubscriptionSeatState,
   updateSubscriptionQuantity,
   updateSubscriptionSeats,
 } from "@app/lib/metronome/client";
@@ -13,6 +14,8 @@ import {
 } from "@app/lib/metronome/seat_types";
 import type { BillingFrequency } from "@app/lib/metronome/types";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import type { SeatLimit } from "@app/lib/resources/workspace_seat_limit_resource";
+import { WorkspaceSeatLimitResource } from "@app/lib/resources/workspace_seat_limit_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
   bestEffortInvalidateCacheWithRedis,
@@ -261,10 +264,13 @@ export async function syncSeatCount({
     // transitions: each row has `startAt > now` and represents the seat
     // type the user will be on from `startAt` forward. The companion "current"
     // row (with `endAt = startAt`) still appears in `getActiveMemberships`.
-    const [{ memberships: activeMemberships }, futureMemberships] =
+    const [{ memberships: activeMemberships }, futureMemberships, seatLimits] =
       await Promise.all([
         MembershipResource.getActiveMemberships({ workspace }),
         MembershipResource.getScheduledFutureMemberships({ workspace }),
+        // Per-seat-type min/max configuration (only `minSeats` today). Used to
+        // clamp the count sent to Metronome up to the configured floor.
+        WorkspaceSeatLimitResource.fetchByWorkspace({ workspace }),
       ]);
 
     // userSId → current seat type (the seat they are on right now).
@@ -365,6 +371,7 @@ export async function syncSeatCount({
     for (const { sub, seatType } of seatSubscriptions) {
       const subscriptionId = sub.id!;
       const quantityMode = sub.quantity_management_mode ?? "QUANTITY_ONLY";
+      const seatLimit = seatLimits.get(seatType);
 
       if (quantityMode === "SEAT_BASED") {
         // Now segment.
@@ -374,6 +381,7 @@ export async function syncSeatCount({
           subscriptionId,
           seatType,
           desiredSIds: desiredSIdsAt(seatType, Date.now()),
+          seatLimit,
           startingAt,
           workspaceId: workspace.sId,
         });
@@ -391,6 +399,7 @@ export async function syncSeatCount({
             subscriptionId,
             seatType,
             desiredSIds: desiredSIdsAt(seatType, tMs),
+            seatLimit,
             startingAt: at.toISOString(),
             coveringDate: at,
             workspaceId: workspace.sId,
@@ -404,22 +413,29 @@ export async function syncSeatCount({
         // QUANTITY_ONLY: only sync the "now" total. Scheduled changes within
         // a quantity-only seat tier are not modeled — they're rare in practice
         // (free / unlimited tiers) and Metronome doesn't bill them per-seat.
-        const nowQuantity = desiredSIdsAt(seatType, Date.now()).length;
+        const actualQuantity = desiredSIdsAt(seatType, Date.now()).length;
+        // Clamp up to the configured billing floor: below `minSeats` we still
+        // bill the floor.
+        const quantity = clampSeatCountToMin(actualQuantity, seatLimit);
         logger.info(
           {
             workspaceId: workspace.sId,
             contractId,
             subscriptionId,
             seatType,
-            quantity: nowQuantity,
+            actualQuantity,
+            quantity,
+            minSeats: seatLimit?.minSeats,
           },
-          "[Metronome] Updating seat quantity"
+          quantity !== actualQuantity
+            ? "[Metronome] Updating seat quantity (clamped up to configured min)"
+            : "[Metronome] Updating seat quantity"
         );
         const updateResult = await updateSubscriptionQuantity({
           metronomeCustomerId,
           contractId,
           subscriptionId,
-          quantity: nowQuantity,
+          quantity,
           startingAt,
         });
         if (updateResult.isErr()) {
@@ -441,9 +457,25 @@ export async function syncSeatCount({
 }
 
 /**
+ * Clamp a seat count up to the configured `minSeats` billing floor. Counts at
+ * or above the floor (or with no limit configured) are returned unchanged.
+ */
+function clampSeatCountToMin(
+  count: number,
+  seatLimit: SeatLimit | undefined
+): number {
+  return seatLimit ? Math.max(count, seatLimit.minSeats) : count;
+}
+
+/**
  * Reconcile one SEAT_BASED segment for a single subscription. Reads the
  * current assignment from Metronome at `coveringDate` (defaults to now) and
  * applies only the delta. Idempotent against repeated invocations.
+ *
+ * When a `minSeats` floor is configured and fewer real users are assigned than
+ * the floor, the shortfall is added as *unassigned* seats so the contracted
+ * minimum is still billed. The unassigned count is reconciled to the exact
+ * desired value (added or removed) so repeated runs converge.
  */
 async function reconcileSeatBasedSegment({
   metronomeCustomerId,
@@ -451,6 +483,7 @@ async function reconcileSeatBasedSegment({
   subscriptionId,
   seatType,
   desiredSIds,
+  seatLimit,
   startingAt,
   coveringDate,
   workspaceId,
@@ -460,11 +493,12 @@ async function reconcileSeatBasedSegment({
   subscriptionId: string;
   seatType: MembershipSeatType;
   desiredSIds: string[];
+  seatLimit?: SeatLimit;
   startingAt?: string;
   coveringDate?: Date;
   workspaceId: string;
 }): Promise<Result<boolean, Error>> {
-  const currentResult = await getMetronomeSubscriptionAssignedSeatIds({
+  const currentResult = await getMetronomeSubscriptionSeatState({
     metronomeCustomerId,
     contractId,
     subscriptionId,
@@ -473,13 +507,32 @@ async function reconcileSeatBasedSegment({
   if (currentResult.isErr()) {
     return new Err(currentResult.error);
   }
+  const { assignedSeatIds, unassignedSeats: currentUnassigned } =
+    currentResult.value;
 
   const desired = new Set(desiredSIds);
-  const current = new Set(currentResult.value);
+  const current = new Set(assignedSeatIds);
   const addSeatIds = desiredSIds.filter((id) => !current.has(id));
-  const removeSeatIds = currentResult.value.filter((id) => !desired.has(id));
+  const removeSeatIds = assignedSeatIds.filter((id) => !desired.has(id));
 
-  if (addSeatIds.length === 0 && removeSeatIds.length === 0) {
+  // Top up to the `minSeats` floor with unassigned seats when fewer real users
+  // are assigned than the floor.
+  const desiredUnassigned = Math.max(
+    0,
+    (seatLimit?.minSeats ?? 0) - desiredSIds.length
+  );
+  const addUnassignedSeats = Math.max(0, desiredUnassigned - currentUnassigned);
+  const removeUnassignedSeats = Math.max(
+    0,
+    currentUnassigned - desiredUnassigned
+  );
+
+  if (
+    addSeatIds.length === 0 &&
+    removeSeatIds.length === 0 &&
+    addUnassignedSeats === 0 &&
+    removeUnassignedSeats === 0
+  ) {
     return new Ok(false);
   }
 
@@ -491,6 +544,9 @@ async function reconcileSeatBasedSegment({
       seatType,
       addCount: addSeatIds.length,
       removeCount: removeSeatIds.length,
+      addUnassignedSeats,
+      removeUnassignedSeats,
+      minSeats: seatLimit?.minSeats,
       startingAt,
     },
     "[Metronome] Updating seat-based subscription assignments"
@@ -502,6 +558,8 @@ async function reconcileSeatBasedSegment({
     fromSubscriptionId: subscriptionId,
     addSeatIds,
     removeSeatIds,
+    addUnassignedSeats,
+    removeUnassignedSeats,
     startingAt,
   });
   if (updateResult.isErr()) {

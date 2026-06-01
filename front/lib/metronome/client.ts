@@ -1106,10 +1106,19 @@ interface SubscriptionSeatsHistoryResponse {
 }
 
 /**
- * Fetch the assigned seat IDs on a SEAT_BASED subscription at `coveringDate`
- * (defaults to now).
+ * The seat state of a SEAT_BASED subscription segment: the explicitly assigned
+ * seat IDs plus the count of unassigned (paid-for but unallocated) seats.
  */
-export async function getMetronomeSubscriptionAssignedSeatIds({
+export type SubscriptionSeatState = {
+  assignedSeatIds: string[];
+  unassignedSeats: number;
+};
+
+/**
+ * Fetch the seat state (assigned seat IDs + unassigned seat count) on a
+ * SEAT_BASED subscription at `coveringDate` (defaults to now).
+ */
+export async function getMetronomeSubscriptionSeatState({
   metronomeCustomerId,
   contractId,
   subscriptionId,
@@ -1121,7 +1130,7 @@ export async function getMetronomeSubscriptionAssignedSeatIds({
   // Defaults to `now`. Pass a future date to read the assignments projected
   // at that point in time.
   coveringDate?: Date;
-}): Promise<Result<string[], Error>> {
+}): Promise<Result<SubscriptionSeatState, Error>> {
   try {
     const response =
       await getMetronomeClient().post<SubscriptionSeatsHistoryResponse>(
@@ -1137,9 +1146,11 @@ export async function getMetronomeSubscriptionAssignedSeatIds({
       );
     // History is returned ascending by starting_at; take the last entry to
     // get the segment active at `coveringDate` (earlier entries are stale).
-    return new Ok(
-      response.data[response.data.length - 1]?.assigned_seat_ids ?? []
-    );
+    const segment = response.data[response.data.length - 1];
+    return new Ok({
+      assignedSeatIds: segment?.assigned_seat_ids ?? [],
+      unassignedSeats: segment?.unassigned_seats ?? 0,
+    });
   } catch (err) {
     const error = normalizeError(err);
     logger.error(
@@ -1148,6 +1159,36 @@ export async function getMetronomeSubscriptionAssignedSeatIds({
     );
     return new Err(error);
   }
+}
+
+/**
+ * Fetch the assigned seat IDs on a SEAT_BASED subscription at `coveringDate`
+ * (defaults to now). Thin wrapper over `getMetronomeSubscriptionSeatState` for
+ * callers that don't need the unassigned-seat count.
+ */
+export async function getMetronomeSubscriptionAssignedSeatIds({
+  metronomeCustomerId,
+  contractId,
+  subscriptionId,
+  coveringDate,
+}: {
+  metronomeCustomerId: string;
+  contractId: string;
+  subscriptionId: string;
+  // Defaults to `now`. Pass a future date to read the assignments projected
+  // at that point in time.
+  coveringDate?: Date;
+}): Promise<Result<string[], Error>> {
+  const stateResult = await getMetronomeSubscriptionSeatState({
+    metronomeCustomerId,
+    contractId,
+    subscriptionId,
+    coveringDate,
+  });
+  if (stateResult.isErr()) {
+    return new Err(stateResult.error);
+  }
+  return new Ok(stateResult.value.assignedSeatIds);
 }
 
 /**
