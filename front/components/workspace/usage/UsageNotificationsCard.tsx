@@ -2,8 +2,15 @@ import {
   useUpdateUsageNotifications,
   useUsageNotifications,
 } from "@app/lib/swr/usage_settings";
-import { Page, SettingsList, SliderToggle } from "@dust-tt/sparkle";
-import { useState } from "react";
+import {
+  ActionCreditCoinsIcon,
+  Icon,
+  Input,
+  Page,
+  SettingsList,
+  SliderToggle,
+} from "@dust-tt/sparkle";
+import { useEffect, useState } from "react";
 
 interface UsageNotificationsCardProps {
   workspaceId: string;
@@ -12,13 +19,26 @@ interface UsageNotificationsCardProps {
 export function UsageNotificationsCard({
   workspaceId,
 }: UsageNotificationsCardProps) {
-  const { usageNotifications } = useUsageNotifications({ workspaceId });
+  const { usageNotifications, isUsageNotificationsLoading } =
+    useUsageNotifications({ workspaceId });
   const { doUpdateUsageNotifications } = useUpdateUsageNotifications({
     workspaceId,
   });
 
   const [isSavingCreditCapWarning, setIsSavingCreditCapWarning] =
     useState(false);
+
+  const [balanceThresholdInput, setBalanceThresholdInput] =
+    useState<string>("");
+  const [isSavingBalanceThreshold, setIsSavingBalanceThreshold] =
+    useState(false);
+
+  useEffect(() => {
+    // Defaults to 0 when nothing is configured yet (null in the db).
+    setBalanceThresholdInput(
+      String(usageNotifications.balanceThresholdCredits ?? 0)
+    );
+  }, [usageNotifications.balanceThresholdCredits]);
 
   const handleToggleCreditCapWarning = async () => {
     setIsSavingCreditCapWarning(true);
@@ -28,6 +48,36 @@ export function UsageNotificationsCard({
       });
     } finally {
       setIsSavingCreditCapWarning(false);
+    }
+  };
+
+  const handleCommitBalanceThreshold = async () => {
+    const current = usageNotifications.balanceThresholdCredits ?? 0;
+    const trimmed = balanceThresholdInput.trim();
+
+    // An empty value falls back to the default of 0.
+    const next = trimmed === "" ? 0 : Number(trimmed);
+
+    if (!Number.isInteger(next) || next < 0) {
+      setBalanceThresholdInput(String(current));
+      return;
+    }
+
+    if (next === current) {
+      setBalanceThresholdInput(String(current));
+      return;
+    }
+
+    setIsSavingBalanceThreshold(true);
+    try {
+      const ok = await doUpdateUsageNotifications({
+        balanceThresholdCredits: next,
+      });
+      if (!ok) {
+        setBalanceThresholdInput(String(current));
+      }
+    } finally {
+      setIsSavingBalanceThreshold(false);
     }
   };
 
@@ -44,13 +94,40 @@ export function UsageNotificationsCard({
       <SettingsList>
         <SettingsList.Row
           title="Credit cap warning"
-          description="Get an email before your workspace hits 80% of its credit cap. Sent to all workspace admins."
+          description="Email all workspace admins when your remaining credit balance falls below the threshold set below."
           action={
             <SliderToggle
               selected={usageNotifications.creditCapWarning}
               disabled={isSavingCreditCapWarning}
               onClick={() => void handleToggleCreditCapWarning()}
             />
+          }
+        />
+        <SettingsList.Row
+          title="Credit balance threshold"
+          description="The remaining credit balance, in credits, at which the warning email is sent."
+          action={
+            <div className="relative w-32">
+              <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground dark:text-muted-foreground-night">
+                <Icon visual={ActionCreditCoinsIcon} size="xs" />
+              </div>
+              <Input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={balanceThresholdInput}
+                onChange={(e) =>
+                  setBalanceThresholdInput(e.target.value.replace(/[^\d]/g, ""))
+                }
+                onBlur={() => void handleCommitBalanceThreshold()}
+                disabled={
+                  isSavingBalanceThreshold ||
+                  isUsageNotificationsLoading ||
+                  !usageNotifications.creditCapWarning
+                }
+                className="pl-8 text-right"
+              />
+            </div>
           }
         />
       </SettingsList>

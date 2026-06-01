@@ -33,6 +33,7 @@ export interface UsageSettings {
 export interface UsageNotifications {
   creditUsageAlertPercent: number;
   creditCapWarning: boolean;
+  balanceThresholdCredits: number | null;
   upgradeRequestEmail: boolean;
 }
 
@@ -44,6 +45,7 @@ const DEFAULT_USAGE_SETTINGS: UsageSettings = {
 const DEFAULT_USAGE_NOTIFICATIONS: UsageNotifications = {
   creditUsageAlertPercent: 80,
   creditCapWarning: true,
+  balanceThresholdCredits: null,
   upgradeRequestEmail: true,
 };
 
@@ -131,7 +133,10 @@ export function useUsageNotifications({
   );
 
   const fromServer: Partial<UsageNotifications> = data
-    ? { creditCapWarning: !data.configuration.disableCreditCapWarning }
+    ? {
+        creditCapWarning: !data.configuration.disableCreditCapWarning,
+        balanceThresholdCredits: data.configuration.balanceThresholdCredits,
+      }
     : {};
 
   const usageNotifications: UsageNotifications = {
@@ -162,6 +167,9 @@ export function useUpdateUsageNotifications({
       const body: Record<string, unknown> = {};
       if (patch.creditCapWarning !== undefined) {
         body.disableCreditCapWarning = !patch.creditCapWarning;
+      }
+      if (patch.balanceThresholdCredits !== undefined) {
+        body.balanceThresholdCredits = patch.balanceThresholdCredits;
       }
 
       if (Object.keys(body).length > 0) {
