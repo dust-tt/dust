@@ -107,7 +107,7 @@ export async function maybeNotifyAdminsBalanceThresholdReached({
       return;
     }
 
-    const { threshold, alertId: configuredAlertId } =
+    const { threshold: thresholdCredits, alertId: configuredAlertId } =
       await getCachedWorkspaceBalanceThreshold({
         metronomeCustomerId,
         workspaceId,
@@ -115,7 +115,7 @@ export async function maybeNotifyAdminsBalanceThresholdReached({
 
     // Only notify for the workspace's own configured balance-threshold alert.
     if (
-      threshold === null ||
+      thresholdCredits === null ||
       configuredAlertId === null ||
       configuredAlertId !== alertId
     ) {
@@ -153,7 +153,7 @@ export async function maybeNotifyAdminsBalanceThresholdReached({
       })),
       workspaceId,
       workspaceName: workspace.name,
-      balanceThresholdCredits: threshold,
+      balanceThresholdCredits: thresholdCredits,
       remainingBalanceCredits,
       isEnterprise: isEntreprisePlanPrefix(auth.getNonNullablePlan().code),
       eventId,
