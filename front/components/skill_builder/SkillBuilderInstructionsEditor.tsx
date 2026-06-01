@@ -119,6 +119,7 @@ export function SkillBuilderInstructionsEditor({
   const { resetField } = useFormContext<SkillBuilderFormData>();
   const initializedAttachedKnowledgeEditorRef = useRef<Editor | null>(null);
   const previousInlineToolIdsRef = useRef<Set<string>>(new Set());
+  const toolsRef = useRef<SkillBuilderFormData["tools"]>([]);
   const { owner, skillId, selectedSuggestionId, setAcceptInstructionEdits } =
     useSkillBuilderContext();
   const { hasFeature } = useFeatureFlags();
@@ -153,6 +154,10 @@ export function SkillBuilderInstructionsEditor({
     name: "tools",
   });
 
+  useEffect(() => {
+    toolsRef.current = tools;
+  }, [tools]);
+
   const displayError =
     !!instructionsFieldState.error || !!attachedKnowledgeFieldState.error;
   const hasInstructionReferenceSummary =
@@ -181,16 +186,16 @@ export function SkillBuilderInstructionsEditor({
 
       if (removedToolIds.length > 0) {
         const removedToolIdsSet = new Set(removedToolIds);
-        onToolsChange(
-          tools.filter(
-            (tool) => !removedToolIdsSet.has(tool.configuration.mcpServerViewId)
-          )
+        const nextTools = toolsRef.current.filter(
+          (tool) => !removedToolIdsSet.has(tool.configuration.mcpServerViewId)
         );
+        toolsRef.current = nextTools;
+        onToolsChange(nextTools);
       }
 
       previousInlineToolIdsRef.current = currentInlineToolIds;
     },
-    [onToolsChange, tools]
+    [onToolsChange]
   );
 
   const syncInstructionsFromEditor = useCallback(
@@ -251,7 +256,7 @@ export function SkillBuilderInstructionsEditor({
 
   const handleSelectToolReference = useCallback(
     (view: MCPServerViewType) => {
-      const alreadyAdded = tools.some(
+      const alreadyAdded = toolsRef.current.some(
         (tool) => tool.configuration.mcpServerViewId === view.sId
       );
 
@@ -259,9 +264,11 @@ export function SkillBuilderInstructionsEditor({
         return;
       }
 
-      onToolsChange([...tools, getDefaultMCPAction(view)]);
+      const nextTools = [...toolsRef.current, getDefaultMCPAction(view)];
+      toolsRef.current = nextTools;
+      onToolsChange(nextTools);
     },
-    [onToolsChange, tools]
+    [onToolsChange]
   );
 
   const { suggestions, isSuggestionsLoading } = useSkillSuggestions({
@@ -290,9 +297,11 @@ export function SkillBuilderInstructionsEditor({
 
   const handleRemoveToolReference = useCallback(
     (toolId: string) => {
-      onToolsChange(
-        tools.filter((tool) => tool.configuration.mcpServerViewId !== toolId)
+      const nextTools = toolsRef.current.filter(
+        (tool) => tool.configuration.mcpServerViewId !== toolId
       );
+      toolsRef.current = nextTools;
+      onToolsChange(nextTools);
 
       if (!editor || editor.isDestroyed) {
         return;
@@ -320,7 +329,7 @@ export function SkillBuilderInstructionsEditor({
       editor.view.dispatch(transaction);
       syncInstructionsFromEditor(editor);
     },
-    [editor, onToolsChange, syncInstructionsFromEditor, tools]
+    [editor, onToolsChange, syncInstructionsFromEditor]
   );
 
   useEffect(() => {

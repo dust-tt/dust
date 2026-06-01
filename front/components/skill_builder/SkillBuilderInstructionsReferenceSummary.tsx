@@ -6,7 +6,7 @@ import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getSkillIcon } from "@app/lib/skill";
 import { extractSkillTags } from "@app/lib/skills/format";
 import { extractToolTags } from "@app/lib/tools/format";
-import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { AttachmentChip, Chip, cn, DocumentIcon } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
@@ -99,8 +99,7 @@ function renderReferenceSummaryItem({
         />
       );
     default:
-      assertNeverAndIgnore(item);
-      return null;
+      return assertNever(item);
   }
 }
 
