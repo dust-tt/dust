@@ -75,8 +75,10 @@ export type Step = {
 function renderEnabledSkillMessagesForAction(
   action: AgentMCPActionWithOutputType,
   {
+    agentSId,
     enabledSkillById,
   }: {
+    agentSId?: string;
     enabledSkillById: ReadonlyMap<string, EnabledSkill>;
   }
 ): UserMessageTypeModel[] {
@@ -95,6 +97,7 @@ function renderEnabledSkillMessagesForAction(
 
     enabledSkillMessages.push(
       renderEnabledSkillUserMessageFromInstructions({
+        agentSId,
         skill,
       })
     );
@@ -212,6 +215,7 @@ export async function getSteps(
   {
     model,
     message,
+    agentSId,
     workspaceId,
     conversationId,
     onMissingAction,
@@ -219,6 +223,7 @@ export async function getSteps(
   }: {
     model: ModelConfigurationType;
     message: AgentMessageType;
+    agentSId?: string;
     workspaceId: string;
     conversationId: string;
     onMissingAction: "inject-placeholder" | "skip";
@@ -249,6 +254,7 @@ export async function getSteps(
         conversationId,
       }),
       enabledSkillMessages: renderEnabledSkillMessagesForAction(action, {
+        agentSId,
         enabledSkillById,
       }),
     }),
