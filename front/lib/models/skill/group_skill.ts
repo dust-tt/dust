@@ -48,6 +48,11 @@ GroupSkillModel.init(
         fields: ["workspaceId", "skillConfigurationId"],
         concurrently: true,
       },
+      {
+        name: "group_skills_skill_configuration_id",
+        fields: ["skillConfigurationId"],
+        concurrently: true,
+      },
     ],
   }
 );
