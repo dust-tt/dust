@@ -4,6 +4,7 @@ import { verifySandboxExecToken } from "@app/lib/api/sandbox/access_tokens";
 import { createSandboxChildAction } from "@app/lib/api/sandbox/create_child_action";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { CallMCPToolRequestBodySchema } from "@dust-tt/client";
@@ -99,9 +100,24 @@ async function handler(
     });
   }
 
-  return res
-    .status(202)
-    .json({ status: "pending", actionId: result.value.actionId });
+  const { actionId, pauseSandbox } = result.value;
+
+  res.status(202).json({ status: "pending", actionId });
+
+  // Pause the sandbox only AFTER the response is handed to the runtime.
+  // `betaPause` freezes the in-sandbox `dsbx` client that issued this request,
+  // and `dsbx` must receive `actionId` to start polling for the result. We
+  // fire the pause without awaiting (the response is already sent) and it sits
+  // behind a lock + several DB round-trips before `provider.sleep`, so in
+  // practice the response is on the wire before the sandbox freezes.
+  if (pauseSandbox) {
+    void pauseSandbox().catch((err) =>
+      logger.error(
+        { err, actionId },
+        "Failed to pause sandbox for blocked sandbox-child"
+      )
+    );
+  }
 }
 
 export default withPublicAPIAuthentication(handler);

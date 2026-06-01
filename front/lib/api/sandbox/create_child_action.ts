@@ -33,7 +33,12 @@ import { Err, Ok } from "@app/types/shared/result";
 
 export type CreateSandboxChildActionResult = {
   actionId: string;
-  needsApproval: boolean;
+  // Present only when the child is blocked awaiting approval. Pausing the
+  // sandbox freezes the in-sandbox `dsbx` client that is still awaiting THIS
+  // `/call` request, so the caller MUST run this only after the response
+  // (carrying `actionId`) has been flushed — otherwise `dsbx` never receives
+  // `actionId` and can never poll for the result.
+  pauseSandbox?: () => Promise<void>;
 };
 
 /**
@@ -224,31 +229,43 @@ export async function createSandboxChildAction(
     });
 
     await ConversationResource.markAsActionRequired(auth, { conversation });
-    await pauseSandboxBashForBlockedChild(auth, action, conversation);
-  } else {
-    const userMessageInfo = await getUserMessageIdFromMessageId(auth, {
-      messageId: agentMessage.sId,
-    });
 
-    await launchSandboxChildToolWorkflow(auth, {
-      agentLoopArgs: {
-        agentMessageId: agentMessage.sId,
-        agentMessageVersion: agentMessage.version,
-        conversationId: conversation.sId,
-        conversationTitle: conversation.title,
-        conversationBranchId: agentMessage.branchId,
-        userMessageId: userMessageInfo.userMessageId,
-        userMessageVersion: userMessageInfo.userMessageVersion,
-        userMessageOrigin: userMessageInfo.userMessageOrigin,
-        initialStartTime: Date.now(),
-      },
-      action,
-      step: parentAction.stepContent.step,
+    // Hand the sandbox pause back to the caller instead of pausing here.
+    // `pauseSandboxBashForBlockedChild` freezes the whole sandbox via
+    // `betaPause` — including the `dsbx` client still blocked on this `/call`
+    // request. Pausing before the response is flushed would mean `dsbx` never
+    // receives `actionId`, so it could never poll for the result. The caller
+    // runs this after responding; the surviving `dsbx` process then resumes,
+    // finishes polling, and its output is collected via the bash `tee`/
+    // wait-and-collect wake-up flow.
+    return new Ok({
+      actionId: action.sId,
+      pauseSandbox: () =>
+        pauseSandboxBashForBlockedChild(auth, action, conversation),
     });
   }
 
+  const userMessageInfo = await getUserMessageIdFromMessageId(auth, {
+    messageId: agentMessage.sId,
+  });
+
+  await launchSandboxChildToolWorkflow(auth, {
+    agentLoopArgs: {
+      agentMessageId: agentMessage.sId,
+      agentMessageVersion: agentMessage.version,
+      conversationId: conversation.sId,
+      conversationTitle: conversation.title,
+      conversationBranchId: agentMessage.branchId,
+      userMessageId: userMessageInfo.userMessageId,
+      userMessageVersion: userMessageInfo.userMessageVersion,
+      userMessageOrigin: userMessageInfo.userMessageOrigin,
+      initialStartTime: Date.now(),
+    },
+    action,
+    step: parentAction.stepContent.step,
+  });
+
   return new Ok({
     actionId: action.sId,
-    needsApproval: status === "blocked_validation_required",
   });
 }

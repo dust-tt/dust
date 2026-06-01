@@ -1,6 +1,7 @@
 import { verifySandboxExecToken } from "@app/lib/api/sandbox/access_tokens";
 import { createSandboxChildAction } from "@app/lib/api/sandbox/create_child_action";
 import { getFeatureFlags } from "@app/lib/auth";
+import logger from "@app/logger/logger";
 import { CallMCPToolRequestBodySchema } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -86,10 +87,25 @@ app.post(
       });
     }
 
-    return ctx.json(
-      { status: "pending", actionId: result.value.actionId },
-      202
-    );
+    const { actionId, pauseSandbox } = result.value;
+
+    // Pause the sandbox only AFTER the response is handed to the runtime.
+    // `betaPause` freezes the in-sandbox `dsbx` client that issued this
+    // request, and `dsbx` must receive `actionId` to start polling for the
+    // result. node-server has no `executionCtx.waitUntil`, so we fire the
+    // pause without awaiting; it sits behind a lock + several DB round-trips
+    // before `provider.sleep`, so in practice the response is on the wire
+    // before the sandbox freezes.
+    if (pauseSandbox) {
+      void pauseSandbox().catch((err) =>
+        logger.error(
+          { err, actionId },
+          "Failed to pause sandbox for blocked sandbox-child"
+        )
+      );
+    }
+
+    return ctx.json({ status: "pending", actionId }, 202);
   }
 );
 
