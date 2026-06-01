@@ -21,8 +21,8 @@ function programmaticCapCriticalUniquenessKey(workspaceId: string): string {
 }
 
 // Warning thresholds: fire alerts this many credits before the cap.
-const LOW_BALANCE_OFFSET = 100;
-const CRITICAL_BALANCE_OFFSET = 10;
+export const LOW_BALANCE_OFFSET = 100;
+export const CRITICAL_BALANCE_OFFSET = 10;
 
 // Alert name prefixes used to identify which alert fired in webhook routing.
 export const PROGRAMMATIC_CAP_ALERT_NAME = "Programmatic cap";

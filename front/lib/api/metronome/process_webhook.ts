@@ -24,6 +24,8 @@ import {
   YEARLY_MULTIPLIER,
 } from "@app/lib/credits/free";
 import {
+  CRITICAL_BALANCE_OFFSET,
+  LOW_BALANCE_OFFSET,
   PROGRAMMATIC_CAP_ALERT_NAME,
   PROGRAMMATIC_CRITICAL_BALANCE_ALERT_NAME,
   PROGRAMMATIC_LOW_BALANCE_ALERT_NAME,
@@ -50,6 +52,7 @@ import {
   PLAN_CODE_CUSTOM_FIELD_KEY,
 } from "@app/lib/metronome/constants";
 import { invalidateContractCache } from "@app/lib/metronome/plan_type";
+import type { ProgrammaticCreditEvent } from "@app/lib/metronome/programmatic_credit_state_machine";
 import { isMetronomeFreeCredit } from "@app/lib/metronome/types";
 import type { MetronomeWebhookEvent } from "@app/lib/metronome/webhook_events";
 import { PlanModel } from "@app/lib/models/plan";
@@ -67,6 +70,31 @@ import type { Commit, Credit } from "@metronome/sdk/resources";
 import type { CustomerAlert } from "@metronome/sdk/resources/v1/customers";
 
 type MetronomeAlertState = CustomerAlert["customer_status"];
+
+// Map a programmatic cap alert name to the state-machine event it should
+// dispatch. Returns null when the alert name doesn't match any of the three
+// programmatic alerts (defensive — Metronome shouldn't fire anything else
+// under the AWU credit type on this code path).
+function programmaticEventFromAlertName(
+  alertName: string
+): ProgrammaticCreditEvent | null {
+  if (alertName.startsWith(PROGRAMMATIC_CAP_ALERT_NAME)) {
+    return { type: "programmatic_cap_reached" };
+  }
+  if (alertName.startsWith(PROGRAMMATIC_CRITICAL_BALANCE_ALERT_NAME)) {
+    return {
+      type: "programmatic_low_balance",
+      remainingCredits: CRITICAL_BALANCE_OFFSET,
+    };
+  }
+  if (alertName.startsWith(PROGRAMMATIC_LOW_BALANCE_ALERT_NAME)) {
+    return {
+      type: "programmatic_low_balance",
+      remainingCredits: LOW_BALANCE_OFFSET,
+    };
+  }
+  return null;
+}
 
 export class ProcessMetronomeWebhookError extends Error {
   constructor(
@@ -619,20 +647,23 @@ export async function processMetronomeWebhook({
         // Programmatic monthly cap alerts. Three alerts exist per workspace
         // with distinct names; route to the matching dispatcher.
         const alertName = event.properties.alert_name ?? "";
-        if (alertName.startsWith(PROGRAMMATIC_CAP_ALERT_NAME)) {
-          await dispatchProgrammaticCapReached({ workspace });
-        } else if (
-          alertName.startsWith(PROGRAMMATIC_CRITICAL_BALANCE_ALERT_NAME)
-        ) {
-          await dispatchProgrammaticLowBalance({
-            workspace,
-            remainingCredits: 10,
-          });
-        } else if (alertName.startsWith(PROGRAMMATIC_LOW_BALANCE_ALERT_NAME)) {
-          await dispatchProgrammaticLowBalance({
-            workspace,
-            remainingCredits: 100,
-          });
+        const programmaticEvent = programmaticEventFromAlertName(alertName);
+        if (programmaticEvent) {
+          switch (programmaticEvent.type) {
+            case "programmatic_cap_reached":
+              await dispatchProgrammaticCapReached({ workspace });
+              break;
+            case "programmatic_low_balance":
+              await dispatchProgrammaticLowBalance({
+                workspace,
+                remainingCredits: programmaticEvent.remainingCredits,
+              });
+              break;
+            case "programmatic_cap_reset":
+              break;
+            default:
+              assertNever(programmaticEvent);
+          }
         }
         logger.info(
           {

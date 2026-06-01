@@ -356,7 +356,7 @@ export async function isProgrammaticApiBlocked(
   const programmaticDepleted = workspace.programmaticCreditState === "depleted";
   await setFlag(
     buildWorkspaceProgrammaticDepletedKey(workspaceId),
-    programmaticDepleted ? "1" : "0"
+    programmaticDepleted ? BLOCKED_FLAG : NOT_BLOCKED_FLAG
   );
   return programmaticDepleted;
 }

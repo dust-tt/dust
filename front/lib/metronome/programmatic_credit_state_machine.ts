@@ -1,3 +1,4 @@
+import { CRITICAL_BALANCE_OFFSET } from "@app/lib/metronome/alerts/programmatic_cap";
 import {
   clearWorkspaceProgrammaticDepleted,
   setWorkspaceProgrammaticCreditStatus,
@@ -20,8 +21,6 @@ export type ProgrammaticCreditEvent =
   | { type: "programmatic_cap_reached" }
   /** Cap reset (new billing period or cap removed/raised). */
   | { type: "programmatic_cap_reset" };
-
-const CRITICAL_BALANCE_THRESHOLD = 10;
 
 type ProgrammaticCreditGuard = (event: ProgrammaticCreditEvent) => boolean;
 
@@ -98,7 +97,7 @@ const TRANSITIONS: ProgrammaticCreditTransition[] = [
   {
     from: ["active", "active_low_balance"],
     event: "programmatic_low_balance",
-    guard: remainingAtMost(CRITICAL_BALANCE_THRESHOLD),
+    guard: remainingAtMost(CRITICAL_BALANCE_OFFSET),
     to: "active_critical_balance",
   },
 
