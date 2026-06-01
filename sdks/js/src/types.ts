@@ -1199,6 +1199,71 @@ export type ConversationWithoutContentPublicType = z.infer<
 >;
 export type ConversationPublicType = z.infer<typeof ConversationSchema>;
 
+/**
+ * Subset of {@link ConversationSchema} used by connectors when syncing conversations
+ * to a data source (dust_project). `content` is the latest version of each message
+ * (no per-message version arrays). Matches fields read in sync_conversation and
+ * conversation_formatting.
+ */
+const ConversationForDataSourceSyncUserSchema = UserSchema.pick({
+  sId: true,
+  fullName: true,
+  username: true,
+  email: true,
+});
+
+const ConversationForDataSourceSyncContentFragmentSchema = z.object({
+  type: z.literal("content_fragment"),
+  created: z.number(),
+  visibility: VisibilitySchema,
+  contentFragmentId: z.string(),
+  contentType: SupportedContentFragmentTypeSchema,
+  title: z.string(),
+  version: z.number(),
+  sourceUrl: z.string().nullable(),
+});
+
+const ConversationForDataSourceSyncUserMessageSchema = z.object({
+  type: z.literal("user_message"),
+  created: z.number(),
+  visibility: VisibilitySchema,
+  user: ConversationForDataSourceSyncUserSchema.nullable(),
+  content: z.string(),
+  contentFragments: z.array(ConversationForDataSourceSyncContentFragmentSchema),
+});
+
+const ConversationForDataSourceSyncAgentMessageSchema = z.object({
+  type: z.literal("agent_message"),
+  created: z.number(),
+  visibility: VisibilitySchema,
+  configuration: z.object({
+    name: z.string(),
+  }),
+  content: z.string().nullable(),
+});
+
+const ConversationForDataSourceSyncMessageSchema = z.discriminatedUnion(
+  "type",
+  [
+    ConversationForDataSourceSyncUserMessageSchema,
+    ConversationForDataSourceSyncAgentMessageSchema,
+  ]
+);
+
+export const ConversationForDataSourceSyncSchema = z.object({
+  sId: z.string(),
+  created: z.number(),
+  updated: z.number().optional(),
+  title: z.string().nullable(),
+  visibility: ConversationVisibilitySchema,
+  url: z.string(),
+  content: z.array(ConversationForDataSourceSyncMessageSchema),
+});
+
+export type ConversationForDataSourceSyncType = z.infer<
+  typeof ConversationForDataSourceSyncSchema
+>;
+
 const ConversationMessageReactionsSchema = z.array(
   z.object({
     messageId: z.string(),
@@ -2627,7 +2692,7 @@ export type CheckUpsertQueueResponseType = z.infer<
 >;
 
 export const GetSpaceConversationsForDataSourceResponseSchema = z.object({
-  conversations: z.array(ConversationSchema),
+  conversations: z.array(ConversationForDataSourceSyncSchema),
 });
 export type GetSpaceConversationsForDataSourceResponseType = z.infer<
   typeof GetSpaceConversationsForDataSourceResponseSchema
