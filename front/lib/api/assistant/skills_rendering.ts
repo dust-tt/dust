@@ -4,10 +4,11 @@ import {
 } from "@app/lib/actions/constants";
 import { SKILL_MANAGEMENT_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import { INTERACTIVE_CONTENT_INSTRUCTIONS_OPENAI_V1 } from "@app/lib/api/actions/servers/interactive_content/instructions";
+import { getFramesVariantForAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
+import { framesSkill } from "@app/lib/resources/skill/code_defined/frames";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { stripSkillTagPresentationAttributes } from "@app/lib/skills/format";
 import { stripToolTagPresentationAttributes } from "@app/lib/tools/format";
-import type { AgentConfigurationFramesVariantContext } from "@app/types/assistant/agent";
 import type { UserMessageTypeModel } from "@app/types/assistant/generation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
@@ -17,22 +18,29 @@ export type EnabledSkill = SkillResource & {
 
 type SkillInstructionsSource = Pick<SkillResource, "sId" | "instructions">;
 
+// Frames is the only skill with a per-agent variant today. If a second skill
+// ever needs one, replace this with a per-skill variant registry.
 export function resolveSkillInstructions({
-  agentConfiguration,
+  agentSId,
   skill,
 }: {
-  agentConfiguration?: AgentConfigurationFramesVariantContext;
+  agentSId?: string;
   skill: SkillInstructionsSource;
 }): string {
-  if (skill.sId !== "frames" || !agentConfiguration?.framesVariant) {
+  if (skill.sId !== framesSkill.sId) {
     return skill.instructions;
   }
 
-  switch (agentConfiguration.framesVariant) {
+  const variant = getFramesVariantForAgent(agentSId);
+  if (!variant) {
+    return skill.instructions;
+  }
+
+  switch (variant) {
     case "openai-v1":
       return INTERACTIVE_CONTENT_INSTRUCTIONS_OPENAI_V1;
     default:
-      return assertNever(agentConfiguration.framesVariant);
+      return assertNever(variant);
   }
 }
 
@@ -55,14 +63,14 @@ export function getEnabledSkillInstructions(
     extendedSkill: SkillInstructionsSource | null;
   },
   {
-    agentConfiguration,
+    agentSId,
   }: {
-    agentConfiguration?: AgentConfigurationFramesVariantContext;
+    agentSId?: string;
   } = {}
 ): string {
   const { name, extendedSkill } = skill;
   const modelInstructions = stripInstructionPresentationAttributes(
-    resolveSkillInstructions({ agentConfiguration, skill })
+    resolveSkillInstructions({ agentSId, skill })
   );
 
   if (!extendedSkill) {
@@ -70,7 +78,7 @@ export function getEnabledSkillInstructions(
   }
 
   const extendedModelInstructions = stripInstructionPresentationAttributes(
-    resolveSkillInstructions({ agentConfiguration, skill: extendedSkill })
+    resolveSkillInstructions({ agentSId, skill: extendedSkill })
   );
 
   return [
@@ -105,14 +113,14 @@ export function renderEquippedSkillsUserMessage(
 }
 
 export function renderEnabledSkillUserMessageFromInstructions({
-  agentConfiguration,
+  agentSId,
   skill,
 }: {
-  agentConfiguration?: AgentConfigurationFramesVariantContext;
+  agentSId?: string;
   skill: EnabledSkill;
 }): UserMessageTypeModel {
   const skillInstructions = getEnabledSkillInstructions(skill, {
-    agentConfiguration,
+    agentSId,
   });
 
   return renderSystemSkillMessage(

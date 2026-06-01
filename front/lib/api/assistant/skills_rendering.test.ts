@@ -1,11 +1,11 @@
 import {
-  getEnabledSkillInstructions,
-  resolveSkillInstructions,
-} from "@app/lib/api/assistant/skills_rendering";
-import {
   INTERACTIVE_CONTENT_INSTRUCTIONS,
   INTERACTIVE_CONTENT_INSTRUCTIONS_OPENAI_V1,
 } from "@app/lib/api/actions/servers/interactive_content/instructions";
+import {
+  getEnabledSkillInstructions,
+  resolveSkillInstructions,
+} from "@app/lib/api/assistant/skills_rendering";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { describe, expect, it } from "vitest";
 
@@ -57,7 +57,7 @@ describe("getEnabledSkillInstructions", () => {
     );
   });
 
-  it("uses default frame instructions without a frames variant", () => {
+  it("uses default frame instructions when no agent sId is supplied", () => {
     expect(
       resolveSkillInstructions({
         skill: {
@@ -68,10 +68,22 @@ describe("getEnabledSkillInstructions", () => {
     ).toBe(INTERACTIVE_CONTENT_INSTRUCTIONS);
   });
 
-  it("uses OpenAI frame instructions when the agent has the OpenAI frames variant", () => {
+  it("uses default frame instructions for an agent not in the OpenAI variant map", () => {
     expect(
       resolveSkillInstructions({
-        agentConfiguration: { framesVariant: "openai-v1" },
+        agentSId: "dust",
+        skill: {
+          sId: "frames",
+          instructions: INTERACTIVE_CONTENT_INSTRUCTIONS,
+        },
+      })
+    ).toBe(INTERACTIVE_CONTENT_INSTRUCTIONS);
+  });
+
+  it("uses OpenAI frame instructions for an agent wired to the openai-v1 variant", () => {
+    expect(
+      resolveSkillInstructions({
+        agentSId: "dust-chawi-medium",
         skill: {
           sId: "frames",
           instructions: INTERACTIVE_CONTENT_INSTRUCTIONS,
@@ -88,19 +100,17 @@ describe("getEnabledSkillInstructions", () => {
     });
 
     const instructions = getEnabledSkillInstructions(skill, {
-      agentConfiguration: { framesVariant: "openai-v1" },
+      agentSId: "dust-chawi-medium",
     });
 
-    expect(instructions).toContain(
-      "### Frame Authoring Rules for OpenAI Models"
-    );
+    expect(instructions).toContain("### Frame Authoring Rules");
     expect(instructions).toContain("### Creating Files");
   });
 
-  it("does not change non-frame skill instructions for a frames variant agent", () => {
+  it("does not change non-frame skill instructions for an openai-v1 agent", () => {
     expect(
       resolveSkillInstructions({
-        agentConfiguration: { framesVariant: "openai-v1" },
+        agentSId: "dust-chawi-medium",
         skill: {
           sId: "research",
           instructions: "Use the research process.",

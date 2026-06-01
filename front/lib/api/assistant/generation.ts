@@ -203,11 +203,11 @@ function constructToolsSection({
 }
 
 function constructSkillsSection({
-  agentConfiguration,
+  agentSId,
   systemSkills,
   hasNestedSkills = false,
 }: {
-  agentConfiguration: AgentConfigurationType;
+  agentSId: string;
   systemSkills: SkillResource[];
   hasNestedSkills?: boolean;
 }): string {
@@ -246,7 +246,7 @@ function constructSkillsSection({
         .map(
           (skill) =>
             `<${skill.name}>\n${resolveSkillInstructions({
-              agentConfiguration,
+              agentSId,
               skill,
             })}\n</${skill.name}>`
         )
@@ -469,7 +469,7 @@ export function constructPromptMultiActions(
     serverToolsAndInstructions,
   });
   const skillsSection = constructSkillsSection({
-    agentConfiguration,
+    agentSId: agentConfiguration.sId,
     systemSkills,
     hasNestedSkills,
   });

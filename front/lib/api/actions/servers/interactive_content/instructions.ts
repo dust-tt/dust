@@ -10,6 +10,7 @@ import {
   VIZ_STYLING_GUIDELINES,
   VIZ_USE_FILE_EXAMPLES,
 } from "@app/lib/api/actions/servers/common/viz/instructions";
+import { INTERACTIVE_CONTENT_AUTHORING_PROSE_OPENAI_V1 } from "@app/lib/api/actions/servers/interactive_content/instructions_openai_v1";
 import {
   CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
@@ -17,7 +18,6 @@ import {
   RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   REVERT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
 } from "@app/lib/api/actions/servers/interactive_content/metadata";
-import { INTERACTIVE_CONTENT_AUTHORING_PROSE_OPENAI_V1 } from "@app/lib/api/actions/servers/interactive_content/instructions_openai_v1";
 
 export const INTERACTIVE_CONTENT_TOOLS_PROSE_BEFORE_AUTHORING = `\
 ## CREATING VISUALIZATIONS WITH INTERACTIVE CONTENT
@@ -255,7 +255,9 @@ function buildInteractiveContentInstructions(authoringProse: string): string {
 }
 
 export const INTERACTIVE_CONTENT_INSTRUCTIONS =
-  buildInteractiveContentInstructions(INTERACTIVE_CONTENT_AUTHORING_PROSE_DEFAULT);
+  buildInteractiveContentInstructions(
+    INTERACTIVE_CONTENT_AUTHORING_PROSE_DEFAULT
+  );
 
 export const INTERACTIVE_CONTENT_INSTRUCTIONS_OPENAI_V1 =
   buildInteractiveContentInstructions(

@@ -1,5 +1,5 @@
 export const INTERACTIVE_CONTENT_AUTHORING_PROSE_OPENAI_V1 = `\
-### Frame Authoring Rules for OpenAI Models
+### Frame Authoring Rules
 
 Frames render inside a resizable iframe in the conversation side panel. The default panel is often only 40% of the browser width, and inline frames are capped at 600px high before the user expands them. Design the top 600px to be useful.
 
