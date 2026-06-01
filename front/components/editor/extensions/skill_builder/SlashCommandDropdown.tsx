@@ -1,3 +1,4 @@
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {
   cn,
   DropdownMenu,
@@ -44,6 +45,12 @@ export interface SlashCommand {
       icon?: string | null;
       id: string;
       name: string;
+    };
+    tool?: {
+      icon: string | null;
+      id: string;
+      name: string;
+      view: MCPServerViewType;
     };
   };
   description?: string;

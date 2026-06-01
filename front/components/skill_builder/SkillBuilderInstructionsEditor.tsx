@@ -1,3 +1,4 @@
+import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import { editorVariants } from "@app/components/editor/editorStyles";
 import { KNOWLEDGE_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
@@ -11,6 +12,7 @@ import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBu
 import { SkillBuilderInstructionsReferenceSummary } from "@app/components/skill_builder/SkillBuilderInstructionsReferenceSummary";
 import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
 import { useSkillSuggestions } from "@app/hooks/useSkillSuggestions";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import {
   postProcessMarkdown,
@@ -97,7 +99,8 @@ export function SkillBuilderInstructionsEditor({
   onOpenCapabilities,
 }: SkillBuilderInstructionsEditorProps) {
   const { compareVersion, isDiffMode } = useSkillVersionComparisonContext();
-  const { control, resetField } = useFormContext<SkillBuilderFormData>();
+  const { control, getValues, resetField, setValue } =
+    useFormContext<SkillBuilderFormData>();
   const initializedAttachedKnowledgeEditorRef = useRef<Editor | null>(null);
   const { owner, skillId, selectedSuggestionId, setAcceptInstructionEdits } =
     useSkillBuilderContext();
@@ -199,6 +202,25 @@ export function SkillBuilderInstructionsEditor({
     [syncAttachedKnowledgeFromEditor]
   );
 
+  const handleSelectToolReference = useCallback(
+    (view: MCPServerViewType) => {
+      const currentTools = getValues("tools");
+      const alreadyAdded = currentTools.some(
+        (tool) => tool.configuration.mcpServerViewId === view.sId
+      );
+
+      if (alreadyAdded) {
+        return;
+      }
+
+      setValue("tools", [...currentTools, getDefaultMCPAction(view)], {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    },
+    [getValues, setValue]
+  );
+
   const { suggestions, isSuggestionsLoading } = useSkillSuggestions({
     skillId,
     states: ["pending"],
@@ -215,6 +237,7 @@ export function SkillBuilderInstructionsEditor({
     skillReferences: {
       currentSkillId: skillId,
       enableSkillReferences,
+      onSelectTool: handleSelectToolReference,
       owner,
     },
     onUpdate: handleUpdate,
