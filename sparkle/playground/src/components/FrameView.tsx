@@ -3,7 +3,7 @@ import "@dust-tt/sparkle/styles/allotment.css";
 import {
   ArrowCircleIcon,
   ArrowDownOnSquareIcon,
-  ArrowUpOnSquareIcon,
+  ArrowGoBackIcon,
   Button,
   ClipboardCheckIcon,
   ClipboardIcon,
@@ -15,7 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   FullscreenIcon,
-  HistoryIcon,
+  LinkIcon,
   MoreIcon,
   Sheet,
   SheetContent,
@@ -26,8 +26,6 @@ import {
   XMarkIcon,
   useCopyToClipboard,
   useSendNotification,
-  ArrowGoBackIcon,
-  LinkIcon,
 } from "@dust-tt/sparkle";
 import { Allotment } from "allotment";
 import { useMemo, useState } from "react";
@@ -37,7 +35,7 @@ import { mockSpaces } from "../data";
 export function FrameView() {
   const randomProjectName = useMemo(() => {
     const randomIndex = Math.floor(Math.random() * mockSpaces.length);
-    return mockSpaces[randomIndex]?.name ?? "Project";
+    return mockSpaces[randomIndex]?.name ?? "Pod";
   }, []);
   const [isAddedToProject, setIsAddedToProject] = useState(false);
   const [isCodeViewOpen, setIsCodeViewOpen] = useState(false);
@@ -127,7 +125,7 @@ export function FrameView() {
                       label={
                         isAddedToProject
                           ? `Saved to project ${randomProjectName}`
-                          : `Project: ${randomProjectName}`
+                          : `Pod: ${randomProjectName}`
                       }
                     />
                     {!isAddedToProject && (

@@ -119,7 +119,7 @@ export const NewConversationContainer = React.forwardRef<
     <div
       ref={ref}
       className={cn(
-        "s-flex s-h-full s-w-full s-flex-col s-items-center s-@container/conversation",
+        "s-flex s-w-full s-flex-col s-items-center s-@container/conversation",
         className
       )}
       {...props}
@@ -965,25 +965,38 @@ interface NewConversationMessageContentProps
 export const NewConversationMessageContent = React.forwardRef<
   HTMLDivElement,
   NewConversationMessageContentProps
->(({ children, citations, className, ...props }, ref) => {
-  return (
-    <div
-      ref={ref}
-      className={cn(
-        "s-flex s-min-w-0 s-flex-1 s-flex-col s-gap-1 s-py-3",
-        className
-      )}
-      {...props}
-    >
-      <div className="s-text-base s-text-foreground dark:s-text-foreground-night">
-        {children}
+>(
+  (
+    {
+      children,
+      citations,
+      className,
+      reactions: _reactions,
+      infoChip: _infoChip,
+      onReactionClick: _onReactionClick,
+      ...props
+    },
+    ref
+  ) => {
+    return (
+      <div
+        ref={ref}
+        className={cn(
+          "s-flex s-min-w-0 s-flex-1 s-flex-col s-gap-1 s-py-3",
+          className
+        )}
+        {...props}
+      >
+        <div className="s-text-base s-text-foreground dark:s-text-foreground-night">
+          {children}
+        </div>
+        {citations && citations.length > 0 && (
+          <NewCitationGrid>{citations}</NewCitationGrid>
+        )}
       </div>
-      {citations && citations.length > 0 && (
-        <NewCitationGrid>{citations}</NewCitationGrid>
-      )}
-    </div>
-  );
-});
+    );
+  }
+);
 
 NewConversationMessageContent.displayName = "NewConversationMessageContent";
 

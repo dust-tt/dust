@@ -1,16 +1,15 @@
 import {
   ActionCardBlock,
   ArrowDownOnSquareIcon,
-  ArrowLeftIcon,
+  ArrowRightIcon,
   AttachmentChip,
   AttachmentIcon,
   Avatar,
-  Bar,
   BoltIcon,
-  Breadcrumbs,
   Button,
   ButtonsSwitch,
   ButtonsSwitchList,
+  CheckIcon,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -71,6 +70,7 @@ import type {
 } from "../data/types";
 import { getUserById } from "../data/users";
 import { InputBar } from "./InputBar";
+import { SuggestionBox } from "./SuggestionBox";
 
 interface ConversationViewProps {
   conversation: Conversation;
@@ -78,10 +78,7 @@ interface ConversationViewProps {
   users: User[];
   agents: Agent[];
   conversationsWithMessages: Conversation[]; // Conversations that have messages to randomly select from
-  showBackButton?: boolean;
-  onBack?: () => void;
   conversationTitle?: string;
-  projectTitle?: string;
   onAcceptPendingValidation?: (blockId: string) => void;
   onCancelPendingValidation?: (blockId: string) => void;
   validationDisplayMode?: "inline" | "sheet";
@@ -89,6 +86,8 @@ interface ConversationViewProps {
   onSend?: () => void;
   /** When validationDisplayMode is "sheet", the validation content to show in the sheet (e.g. when user clicked Send). */
   pendingValidationForSheet?: ConversationPendingValidation | null;
+  /** When set, citation clicks call this instead of opening the internal sheet. */
+  onCitationOpen?: (citation: { title: string; icon?: string }) => void;
 }
 
 export function ConversationView({
@@ -97,15 +96,13 @@ export function ConversationView({
   users,
   agents,
   conversationsWithMessages,
-  showBackButton = false,
-  onBack,
   conversationTitle,
-  projectTitle,
   onAcceptPendingValidation,
   onCancelPendingValidation,
   validationDisplayMode = "inline",
   onSend,
   pendingValidationForSheet,
+  onCitationOpen,
 }: ConversationViewProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -343,10 +340,24 @@ export function ConversationView({
   const [actionCardStates, setActionCardStates] = useState<
     Map<string, ActionCardState>
   >(new Map());
+  const [taskSuggestionTextById, setTaskSuggestionTextById] = useState<
+    Record<string, string>
+  >({});
+  const [hiddenTaskSuggestionBoxIds, setHiddenTaskSuggestionBoxIds] = useState<
+    Set<string>
+  >(new Set());
+  const [hiddenTaskSuggestionItemIds, setHiddenTaskSuggestionItemIds] =
+    useState<Set<string>>(new Set());
 
   useEffect(() => {
     setActionCardStates(new Map(baseActionStates));
   }, [baseActionStates, conversation.id]);
+
+  useEffect(() => {
+    setTaskSuggestionTextById({});
+    setHiddenTaskSuggestionBoxIds(new Set());
+    setHiddenTaskSuggestionItemIds(new Set());
+  }, [conversation.id]);
 
   const toggleReaction = useCallback(
     (messageId: string, emoji: string) => {
@@ -410,6 +421,29 @@ export function ConversationView({
     []
   );
 
+  const setTaskSuggestionText = useCallback((id: string, text: string) => {
+    setTaskSuggestionTextById((previousTextById) => ({
+      ...previousTextById,
+      [id]: text,
+    }));
+  }, []);
+
+  const hideTaskSuggestionItem = useCallback((id: string) => {
+    setHiddenTaskSuggestionItemIds((previousIds) => {
+      const nextIds = new Set(previousIds);
+      nextIds.add(id);
+      return nextIds;
+    });
+  }, []);
+
+  const hideTaskSuggestionBox = useCallback((id: string) => {
+    setHiddenTaskSuggestionBoxIds((previousIds) => {
+      const nextIds = new Set(previousIds);
+      nextIds.add(id);
+      return nextIds;
+    });
+  }, []);
+
   // Auto-scroll to bottom on mount and when conversation changes
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -418,21 +452,6 @@ export function ConversationView({
   }, [conversation.id, itemsToDisplay.length]);
 
   const breadcrumbItems: BreadcrumbsItem[] = [];
-
-  if (showBackButton && projectTitle) {
-    if (onBack) {
-      breadcrumbItems.push({
-        label: projectTitle,
-        icon: ArrowLeftIcon,
-        onClick: onBack,
-      });
-    } else {
-      breadcrumbItems.push({
-        label: projectTitle,
-        icon: ArrowLeftIcon,
-      });
-    }
-  }
 
   breadcrumbItems.push({
     label: displayTitle,
@@ -530,6 +549,82 @@ export function ConversationView({
       );
     }
 
+    if (message.taskSuggestionBoxes && message.taskSuggestionBoxes.length > 0) {
+      const visibleBoxes = message.taskSuggestionBoxes.filter(
+        (box) => !hiddenTaskSuggestionBoxIds.has(box.id)
+      );
+
+      if (visibleBoxes.length > 0) {
+        blocks.push(
+          <div
+            key={`${message.id}-task-suggestion-boxes`}
+            className="s-flex s-flex-col s-gap-3"
+          >
+            {visibleBoxes.map((box) => {
+              const visibleItems = box.items.filter(
+                (item) => !hiddenTaskSuggestionItemIds.has(item.id)
+              );
+
+              if (visibleItems.length === 0) {
+                return null;
+              }
+
+              return (
+                <SuggestionBox
+                  key={box.id}
+                  status="ready"
+                  workingLabel="Creating tasks..."
+                  title={box.title}
+                  headerIcon={box.variant === "created" ? CheckIcon : undefined}
+                  items={visibleItems.map((item) => {
+                    const groupUser = item.groupUserId
+                      ? getUserByOwnerId(item.groupUserId)
+                      : undefined;
+
+                    return {
+                      id: item.id,
+                      groupTitle: item.groupTitle,
+                      groupVisual: groupUser ? (
+                        <Avatar
+                          name={groupUser.fullName}
+                          visual={groupUser.portrait}
+                          size="xs"
+                          isRounded
+                        />
+                      ) : undefined,
+                      text: item.text,
+                    };
+                  })}
+                  textById={taskSuggestionTextById}
+                  acceptItemLabel={
+                    box.variant === "created" ? "Open task" : "Add this task"
+                  }
+                  acceptAllLabel={
+                    box.variant === "created" ? "Go to tasks" : "Accept all"
+                  }
+                  acceptAllButtonVariant={
+                    box.variant === "created" ? "outline" : undefined
+                  }
+                  acceptAllIcon={
+                    box.variant === "created" ? ArrowRightIcon : undefined
+                  }
+                  rejectAllLabel={
+                    box.variant === "created" ? "Dismiss" : "Reject all"
+                  }
+                  showItemAcceptAction={box.variant !== "created"}
+                  showRejectAllAction={box.variant !== "created"}
+                  onTextChange={setTaskSuggestionText}
+                  onAcceptItem={hideTaskSuggestionItem}
+                  onAcceptAll={() => hideTaskSuggestionBox(box.id)}
+                  onRejectAll={() => hideTaskSuggestionBox(box.id)}
+                />
+              );
+            })}
+          </div>
+        );
+      }
+    }
+
     if (blocks.length === 0) {
       return null;
     }
@@ -597,11 +692,18 @@ export function ConversationView({
               label={citation.title}
               size="lg"
               onClick={() => {
-                setSelectedCitation(citation);
-                if (citation.imgSrc) {
-                  setIsImageZoomOpen(true);
+                if (onCitationOpen) {
+                  onCitationOpen({
+                    title: citation.title,
+                    icon: citation.icon,
+                  });
                 } else {
-                  setIsCitationSheetOpen(true);
+                  setSelectedCitation(citation);
+                  if (citation.imgSrc) {
+                    setIsImageZoomOpen(true);
+                  } else {
+                    setIsCitationSheetOpen(true);
+                  }
                 }
               }}
               {...(citation.imgSrc ? { imgSrc: citation.imgSrc } : {})}
@@ -793,21 +895,6 @@ export function ConversationView({
 
   return (
     <div className="s-flex s-h-full s-w-full s-flex-col s-overflow-hidden">
-      <Bar
-        title=" "
-        description={
-          <Breadcrumbs items={breadcrumbItems} size="sm" hasLighterFont />
-        }
-        size="sm"
-        rightActions={
-          <div className="s-flex s-gap-2">
-            <Button size="sm" variant="ghost" icon={AttachmentIcon} isSelect />
-            <Button size="sm" variant="ghost" icon={MoreIcon} />
-          </div>
-        }
-        position="top"
-        variant="default"
-      />
       <Dialog
         open={isRenameDialogOpen}
         onOpenChange={(open: boolean) => {
@@ -852,7 +939,7 @@ export function ConversationView({
       <div className="s-relative s-flex s-flex-1 s-flex-col s-overflow-hidden">
         <div
           ref={scrollContainerRef}
-          className="s-flex s-flex-1 s-flex-col s-overflow-y-auto"
+          className="s-flex s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto"
         >
           <NewConversationContainer>
             <div ref={messagesEndRef} className="s-h-12 s-shrink-0" />

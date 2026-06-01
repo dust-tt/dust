@@ -1,5 +1,7 @@
 import {
+  BracesIcon,
   CodeBlockIcon,
+  FolderIcon,
   GooglePdfLogo,
   MicrosoftExcelLogo,
   MicrosoftPowerpointLogo,
@@ -8,7 +10,7 @@ import {
 } from "@dust-tt/sparkle";
 import React from "react";
 
-import type { DataSource, User } from "./types";
+import type { DataSource, DataSourceFileType } from "./types";
 import { mockUsers } from "./users";
 
 // Seeded random function for deterministic randomness
@@ -100,7 +102,7 @@ const txtNames = [
   "Configuration",
   "Instructions",
   "Changelog",
-  "TODO_List",
+  "Task_List",
   "Quick_Reference",
   "Script_Output",
   "Error_Log",
@@ -137,9 +139,51 @@ const docNames = [
   "Backup_Doc",
 ];
 
+const csvNames = [
+  "Export_Data",
+  "Customer_Export",
+  "Sales_Export",
+  "Usage_Metrics",
+  "Event_Log",
+  "Survey_Export",
+  "Inventory_Export",
+  "Billing_Export",
+];
+
+const frameNames = [
+  "Dashboard_Frame",
+  "Onboarding_Frame",
+  "Settings_Frame",
+  "Analytics_Frame",
+  "Profile_Frame",
+  "Checkout_Frame",
+  "Landing_Frame",
+  "Admin_Frame",
+];
+
+const rootFolderNames = [
+  "Design",
+  "Reports",
+  "Research",
+  "Frames",
+  "Marketing",
+  "Engineering",
+];
+
+const nestedFolderNames = [
+  "Drafts",
+  "Archive",
+  "Shared",
+  "Q1",
+  "Q2",
+  "Final",
+  "Assets",
+  "References",
+];
+
 // Generate a file name based on type and index
 function generateFileName(
-  fileType: DataSource["fileType"],
+  fileType: DataSourceFileType,
   index: number,
   seed: string
 ): string {
@@ -168,28 +212,34 @@ function generateFileName(
     case "doc":
       nameList = docNames;
       break;
+    case "csv":
+      nameList = csvNames;
+      break;
+    case "frame":
+      nameList = frameNames;
+      break;
   }
 
   const baseName = nameList[Math.floor(random * nameList.length)];
   const suffix = index > nameList.length ? `_${index}` : "";
-  return `${baseName}${suffix}.${fileType}`;
+  const extension = fileType === "frame" ? "tsx" : fileType;
+  return `${baseName}${suffix}.${extension}`;
 }
 
-// Generate file type distribution: 30% PDF, 20% docx, 15% xlsx, 10% pptx, 10% txt, 10% md, 5% doc
-function getFileTypeForIndex(
-  index: number,
-  seed: string
-): DataSource["fileType"] {
+// Generate file type distribution: 25% PDF, 18% docx, 12% xlsx, 8% csv, 8% pptx, 8% txt, 8% md, 5% doc, 8% frame
+function getFileTypeForIndex(index: number, seed: string): DataSourceFileType {
   const random = seededRandom(seed, index * 2);
   const value = random * 100;
 
-  if (value < 30) return "pdf";
-  if (value < 50) return "docx";
-  if (value < 65) return "xlsx";
-  if (value < 75) return "pptx";
-  if (value < 85) return "txt";
-  if (value < 95) return "md";
-  return "doc";
+  if (value < 25) return "pdf";
+  if (value < 43) return "docx";
+  if (value < 55) return "xlsx";
+  if (value < 63) return "csv";
+  if (value < 71) return "pptx";
+  if (value < 79) return "txt";
+  if (value < 87) return "md";
+  if (value < 92) return "doc";
+  return "frame";
 }
 
 // Generate dates within the last year
@@ -226,7 +276,7 @@ function getRandomUserId(index: number, seed: string): string {
 
 // Map file type to logo/icon component
 function getIconForFileType(
-  fileType: DataSource["fileType"]
+  fileType: DataSourceFileType
 ): React.ComponentType<{ className?: string }> {
   switch (fileType) {
     case "pdf":
@@ -235,7 +285,10 @@ function getIconForFileType(
     case "docx":
       return MicrosoftWordLogo;
     case "xlsx":
+    case "csv":
       return MicrosoftExcelLogo;
+    case "frame":
+      return BracesIcon;
     case "pptx":
       return MicrosoftPowerpointLogo;
     case "txt":
@@ -247,22 +300,105 @@ function getIconForFileType(
   }
 }
 
-// Generate data sources for a space
+function pickFolderName(names: string[], index: number, seed: string): string {
+  const random = seededRandom(seed, index);
+  const baseName = names[Math.floor(random * names.length)];
+  const suffix = index >= names.length ? ` ${index + 1}` : "";
+  return `${baseName}${suffix}`;
+}
+
+function getSourceForIndex(index: number, seed: string): DataSource["source"] {
+  return seededRandom(seed, index * 5) < 0.3 ? "company" : "pod";
+}
+
+// Generate data sources for a space (folders + files in a tree)
 function generateDataSourcesForSpace(
   spaceId: string,
-  count: number
+  fileCount: number
 ): DataSource[] {
-  const dataSources: DataSource[] = [];
+  if (fileCount === 0) {
+    return [];
+  }
 
-  for (let i = 0; i < count; i++) {
+  const dataSources: DataSource[] = [];
+  let itemIndex = 0;
+
+  const rootFolderCount = Math.floor(seededRandom(spaceId, 100) * 3) + 2;
+  const rootFolderIds: string[] = [];
+  const allFolderIds: string[] = [];
+
+  for (let f = 0; f < rootFolderCount; f++) {
+    const id = `ds-${spaceId}-folder-${itemIndex++}`;
+    const { createdAt, updatedAt } = generateDates(itemIndex, spaceId);
+    rootFolderIds.push(id);
+    allFolderIds.push(id);
+    dataSources.push({
+      id,
+      kind: "folder",
+      fileName: pickFolderName(rootFolderNames, f, spaceId),
+      parentId: null,
+      source: "pod",
+      createdBy: getRandomUserId(itemIndex, spaceId),
+      createdAt,
+      updatedAt,
+    });
+  }
+
+  for (let f = 0; f < rootFolderIds.length; f++) {
+    if (seededRandom(spaceId, 200 + f) >= 0.3) {
+      continue;
+    }
+
+    const parentId = rootFolderIds[f];
+    const nestedId = `ds-${spaceId}-folder-${itemIndex++}`;
+    const { createdAt, updatedAt } = generateDates(itemIndex, spaceId);
+    allFolderIds.push(nestedId);
+    dataSources.push({
+      id: nestedId,
+      kind: "folder",
+      fileName: pickFolderName(nestedFolderNames, f, `${spaceId}-nested`),
+      parentId,
+      source: "pod",
+      createdBy: getRandomUserId(itemIndex, spaceId),
+      createdAt,
+      updatedAt,
+    });
+
+    if (seededRandom(spaceId, 300 + f) < 0.5) {
+      const deepId = `ds-${spaceId}-folder-${itemIndex++}`;
+      const deepDates = generateDates(itemIndex, spaceId);
+      allFolderIds.push(deepId);
+      dataSources.push({
+        id: deepId,
+        kind: "folder",
+        fileName: pickFolderName(nestedFolderNames, f + 10, `${spaceId}-deep`),
+        parentId: nestedId,
+        source: "pod",
+        createdBy: getRandomUserId(itemIndex, spaceId),
+        createdAt: deepDates.createdAt,
+        updatedAt: deepDates.updatedAt,
+      });
+    }
+  }
+
+  const parentTargets: Array<string | null> = [null, ...allFolderIds];
+
+  for (let i = 0; i < fileCount; i++) {
     const fileType = getFileTypeForIndex(i, spaceId);
     const fileName = generateFileName(fileType, i, spaceId);
-    const { createdAt, updatedAt } = generateDates(i, spaceId);
-    const createdBy = getRandomUserId(i, spaceId);
+    const { createdAt, updatedAt } = generateDates(i + itemIndex, spaceId);
+    const createdBy = getRandomUserId(i + itemIndex, spaceId);
+    const parentId =
+      parentTargets[
+        Math.floor(seededRandom(spaceId, 400 + i) * parentTargets.length)
+      ] ?? null;
 
     dataSources.push({
-      id: `ds-${spaceId}-${i}`,
+      id: `ds-${spaceId}-file-${i}`,
+      kind: "file",
       fileName,
+      parentId,
+      source: getSourceForIndex(i, spaceId),
       fileType,
       createdBy,
       createdAt,
@@ -272,6 +408,131 @@ function generateDataSourcesForSpace(
   }
 
   return dataSources;
+}
+
+export function isDataSourceFolder(item: DataSource): boolean {
+  return item.kind === "folder";
+}
+
+export function getDataSourceChildren(
+  items: DataSource[],
+  parentId: string | null
+): DataSource[] {
+  return items.filter((item) => item.parentId === parentId);
+}
+
+export function isInFolderTree(
+  items: DataSource[],
+  item: DataSource,
+  folderId: string
+): boolean {
+  let parentId = item.parentId;
+
+  while (parentId) {
+    if (parentId === folderId) {
+      return true;
+    }
+
+    const parent = items.find((entry) => entry.id === parentId);
+    parentId = parent?.parentId ?? null;
+  }
+
+  return false;
+}
+
+export function getDataSourcesInFolderTree(
+  items: DataSource[],
+  folderId: string
+): DataSource[] {
+  return items.filter((item) => isInFolderTree(items, item, folderId));
+}
+
+export function getFolderPath(
+  items: DataSource[],
+  folderId: string | null
+): DataSource[] {
+  if (!folderId) {
+    return [];
+  }
+
+  const itemsById = new Map(items.map((item) => [item.id, item]));
+  const path: DataSource[] = [];
+  let currentId: string | null = folderId;
+
+  while (currentId) {
+    const folder = itemsById.get(currentId);
+    if (!folder || folder.kind !== "folder") {
+      break;
+    }
+    path.unshift(folder);
+    currentId = folder.parentId;
+  }
+
+  return path;
+}
+
+export function getDataSourceIcon(
+  item: DataSource
+): React.ComponentType<{ className?: string }> | undefined {
+  if (isDataSourceFolder(item)) {
+    return FolderIcon;
+  }
+
+  return (
+    item.icon ?? (item.fileType ? getIconForFileType(item.fileType) : undefined)
+  );
+}
+
+export function getFileTypeLabel(fileType: DataSourceFileType): string {
+  if (fileType === "frame") {
+    return "Frame";
+  }
+
+  return fileType.toUpperCase();
+}
+
+export function getItemTypeLabel(item: DataSource): string {
+  if (isDataSourceFolder(item)) {
+    return "Folder";
+  }
+
+  return item.fileType ? getFileTypeLabel(item.fileType) : "File";
+}
+
+export function sortDataSourcesForDisplay(items: DataSource[]): DataSource[] {
+  return [...items].sort((a, b) => {
+    if (a.kind !== b.kind) {
+      return a.kind === "folder" ? -1 : 1;
+    }
+
+    return a.fileName.localeCompare(b.fileName);
+  });
+}
+
+export function moveDataSource(
+  items: DataSource[],
+  fileId: string,
+  targetParentId: string | null
+): DataSource[] {
+  const file = items.find((item) => item.id === fileId);
+  if (!file || file.kind !== "file") {
+    return items;
+  }
+
+  if (file.parentId === targetParentId) {
+    return items;
+  }
+
+  if (targetParentId !== null) {
+    const targetFolder = items.find((item) => item.id === targetParentId);
+    if (!targetFolder || targetFolder.kind !== "folder") {
+      return items;
+    }
+  }
+
+  return items.map((item) =>
+    item.id === fileId ? { ...item, parentId: targetParentId } : item
+  );
 }
 
 // Cache for generated data sources per space

@@ -60,6 +60,20 @@ export interface MessageActionCardData {
   };
 }
 
+export interface MessageTaskSuggestionItemData {
+  id: string;
+  text: string;
+  groupTitle?: string;
+  groupUserId?: string;
+}
+
+export interface MessageTaskSuggestionBoxData {
+  id: string;
+  title: string;
+  variant: "created" | "suggestions";
+  items: MessageTaskSuggestionItemData[];
+}
+
 export interface MessageInfoChipData {
   icon: "bolt";
 }
@@ -81,6 +95,7 @@ export interface ConversationMessage {
   markdown?: string;
   attachments?: MessageAttachmentData[];
   actionCards?: MessageActionCardData[];
+  taskSuggestionBoxes?: MessageTaskSuggestionBoxData[];
   citations?: MessageCitationData[];
   reactions?: MessageReactionData[];
   timestamp: Date;
@@ -139,10 +154,26 @@ export interface Space {
   isPublic?: boolean;
 }
 
+export type DataSourceFileType =
+  | "pdf"
+  | "doc"
+  | "docx"
+  | "xlsx"
+  | "csv"
+  | "pptx"
+  | "txt"
+  | "md"
+  | "frame";
+
+export type DataSourceSource = "pod" | "company";
+
 export interface DataSource {
   id: string;
+  kind: "file" | "folder";
   fileName: string;
-  fileType: "pdf" | "doc" | "docx" | "xlsx" | "pptx" | "txt" | "md";
+  parentId: string | null;
+  source: DataSourceSource;
+  fileType?: DataSourceFileType;
   createdBy: string; // user ID
   createdAt: Date;
   updatedAt: Date;
