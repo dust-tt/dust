@@ -13,7 +13,7 @@ import type {
   LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
-import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
+import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import {
   AgentMessageModel,
   MessageModel,
@@ -299,8 +299,7 @@ export async function sendBatchCallToLlm(
   const batchMap = new Map<string, LLMStreamParameters>();
 
   const modelConfig = llm.getModelConfig();
-  const featureFlags = await getFeatureFlags(auth);
-  const useFramesV2 = featureFlags.includes("frames_skill_v2");
+  const useFramesV2 = await hasFeatureFlag(auth, "frames_skill_v2");
 
   for (const input of conversations) {
     // Store new messages in DB.
