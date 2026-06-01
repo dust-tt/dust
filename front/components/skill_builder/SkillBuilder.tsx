@@ -82,6 +82,7 @@ export default function SkillBuilder({
 
   const hasSelfImprovingSkills =
     hasFeature("reinforced_agents") && hasFeature("reinforcement_ui");
+  const enableSkillReferences = hasFeature("nested_skills");
 
   const { suggestions } = useSkillSuggestions({
     skillId: skill?.sId ?? null,
@@ -213,7 +214,7 @@ export default function SkillBuilder({
               size="lg"
             >
               A customized version of {extendedSkill.name} with your own
-              guidelines and tools.
+              guidelines and {enableSkillReferences ? "capabilities" : "tools"}.
             </ContentMessage>
           )}
           {skill?.status === "suggested" && (
@@ -234,7 +235,9 @@ export default function SkillBuilder({
           <SkillBuilderAgentFacingDescriptionSection />
           <SkillBuilderInstructionsSection />
           {hasFeature("sandbox_tools") && <SkillBuilderFilesSection />}
-          <SkillBuilderToolsSection extendedSkill={extendedSkill} />
+          {!enableSkillReferences && (
+            <SkillBuilderToolsSection extendedSkill={extendedSkill} />
+          )}
           <SkillBuilderSettingsOrComparisonFooter
             skill={skill}
             hasSelfImprovingSkills={hasSelfImprovingSkills}
