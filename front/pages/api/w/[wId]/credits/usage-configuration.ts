@@ -1,9 +1,11 @@
 // @migration-status: MIGRATED_TO_HONO
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { syncMetronomeBalanceThresholdAlert } from "@app/lib/api/credits/balance_threshold_alert";
+import {
+  getWorkspaceBalanceThreshold,
+  syncMetronomeBalanceThresholdAlert,
+} from "@app/lib/api/credits/balance_threshold_alert";
 import type { Authenticator } from "@app/lib/auth";
-import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -11,7 +13,9 @@ import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
 export type CreditUsageConfigurationBody = {
-  disableCreditCapWarning: boolean;
+  // Credit balance (in AWU credits) below which workspace admins are emailed.
+  // `null` means no threshold is configured (the warning is off). Derived from
+  // the workspace's Metronome balance-threshold alert, not the database.
   balanceThresholdCredits: number | null;
 };
 
@@ -23,20 +27,10 @@ export type PatchCreditUsageConfigurationResponseBody = {
   configuration: CreditUsageConfigurationBody;
 };
 
-export const PatchCreditUsageConfigurationRequestBody = z
-  .object({
-    disableCreditCapWarning: z.boolean().optional(),
-    balanceThresholdCredits: z.number().int().min(0).nullable().optional(),
-  })
-  .refine((data) => Object.keys(data).length > 0, {
-    message: "At least one field must be provided",
-  });
-
-// Defaults returned when no row exists for the workspace.
-const DEFAULT_CONFIGURATION: CreditUsageConfigurationBody = {
-  disableCreditCapWarning: false,
-  balanceThresholdCredits: null,
-};
+export const PatchCreditUsageConfigurationRequestBody = z.object({
+  // 0 (or null) clears the threshold; a positive value enables the alert.
+  balanceThresholdCredits: z.number().int().min(0).nullable(),
+});
 
 async function handler(
   req: NextApiRequest,
@@ -83,16 +77,10 @@ async function handleGet(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const existing =
-    await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
+  const balanceThresholdCredits = await getWorkspaceBalanceThreshold(auth);
 
   return res.status(200).json({
-    configuration: existing
-      ? {
-          disableCreditCapWarning: existing.disableCreditCapWarning,
-          balanceThresholdCredits: existing.balanceThresholdCredits,
-        }
-      : DEFAULT_CONFIGURATION,
+    configuration: { balanceThresholdCredits },
   });
 }
 
@@ -117,52 +105,16 @@ async function handlePatch(
     });
   }
 
-  const patch = bodyValidation.data;
+  const { balanceThresholdCredits } = bodyValidation.data;
+  // Normalize 0 to null — both mean "no threshold / warning off".
+  const threshold =
+    balanceThresholdCredits && balanceThresholdCredits > 0
+      ? balanceThresholdCredits
+      : null;
 
-  const existing =
-    await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
-
-  let configuration: CreditUsageConfigurationResource;
-  if (existing) {
-    const updateResult = await existing.updateConfiguration(auth, patch);
-    if (updateResult.isErr()) {
-      return apiError(req, res, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: updateResult.error.message,
-        },
-      });
-    }
-    configuration = existing;
-  } else {
-    const createResult = await CreditUsageConfigurationResource.makeNew(auth, {
-      defaultDiscountPercent: 0,
-      paygEnabled: false,
-      usageCapCredits: null,
-      disableCreditCapWarning: false,
-      balanceThresholdCredits: null,
-      ...patch,
-    });
-    if (createResult.isErr()) {
-      return apiError(req, res, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: createResult.error.message,
-        },
-      });
-    }
-    configuration = createResult.value;
-  }
-
-  // Sync the Metronome balance-threshold alert with the persisted settings.
-  // Uses the final config state so it stays correct even when the patch only
-  // touched one of the two fields.
   const syncResult = await syncMetronomeBalanceThresholdAlert({
     auth,
-    disableCreditCapWarning: configuration.disableCreditCapWarning,
-    balanceThresholdCredits: configuration.balanceThresholdCredits,
+    balanceThresholdCredits: threshold,
   });
   if (syncResult.isErr()) {
     return apiError(req, res, {
@@ -175,10 +127,7 @@ async function handlePatch(
   }
 
   return res.status(200).json({
-    configuration: {
-      disableCreditCapWarning: configuration.disableCreditCapWarning,
-      balanceThresholdCredits: configuration.balanceThresholdCredits,
-    },
+    configuration: { balanceThresholdCredits: threshold },
   });
 }
 

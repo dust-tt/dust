@@ -1,8 +1,13 @@
 import {
   clearMetronomeAlert,
+  findMetronomeAlert,
   upsertMetronomeAlert,
 } from "@app/lib/metronome/alerts";
 import { getCreditTypeAwuId } from "@app/lib/metronome/constants";
+import {
+  bestEffortInvalidateCacheWithRedis,
+  cacheWithRedis,
+} from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -55,6 +60,10 @@ export async function upsertMetronomeBalanceThresholdAlert({
     },
     "[Metronome BalanceThreshold] Synced balance threshold alert"
   );
+  await invalidateCachedWorkspaceBalanceThreshold({
+    metronomeCustomerId,
+    workspaceId,
+  });
   return new Ok({ alertId: upsertResult.value.alertId });
 }
 
@@ -87,5 +96,54 @@ export async function clearMetronomeBalanceThresholdAlert({
       "[Metronome BalanceThreshold] Cleared balance threshold alert"
     );
   }
+  await invalidateCachedWorkspaceBalanceThreshold({
+    metronomeCustomerId,
+    workspaceId,
+  });
   return new Ok(undefined);
 }
+
+const BALANCE_THRESHOLD_CACHE_TTL_MS = 60 * 1000;
+
+const balanceThresholdCacheResolver = ({
+  metronomeCustomerId,
+  workspaceId,
+}: {
+  metronomeCustomerId: string;
+  workspaceId: string;
+}) => `${metronomeCustomerId}-${workspaceId}`;
+
+async function fetchWorkspaceBalanceThreshold({
+  metronomeCustomerId,
+  workspaceId,
+}: {
+  metronomeCustomerId: string;
+  workspaceId: string;
+}): Promise<{ threshold: number | null }> {
+  const result = await findMetronomeAlert({
+    metronomeCustomerId,
+    uniquenessKey: balanceThresholdAlertUniquenessKey(workspaceId),
+  });
+  if (result.isErr()) {
+    throw result.error;
+  }
+  return { threshold: result.value?.alert.threshold ?? null };
+}
+
+/**
+ * Read the workspace's configured balance threshold (in AWU credits) from its
+ * Metronome alert, cached in Redis. Returns `{ threshold: null }` when no alert
+ * is configured. Metronome is the source of truth — there is no DB copy.
+ */
+export const getCachedWorkspaceBalanceThreshold = cacheWithRedis(
+  fetchWorkspaceBalanceThreshold,
+  balanceThresholdCacheResolver,
+  { ttlMs: BALANCE_THRESHOLD_CACHE_TTL_MS }
+);
+
+const invalidateCachedWorkspaceBalanceThreshold =
+  bestEffortInvalidateCacheWithRedis(
+    fetchWorkspaceBalanceThreshold,
+    balanceThresholdCacheResolver,
+    "workspace balance threshold"
+  );

@@ -1,30 +1,47 @@
 import type { Authenticator } from "@app/lib/auth";
 import {
   clearMetronomeBalanceThresholdAlert,
+  getCachedWorkspaceBalanceThreshold,
   upsertMetronomeBalanceThresholdAlert,
 } from "@app/lib/metronome/alerts/balance_threshold";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
 /**
- * Apply the workspace's credit-balance-threshold notification settings to its
+ * Read the workspace's credit-balance-threshold notification setting.
+ *
+ * Metronome is the source of truth: the setting is the threshold of the
+ * workspace's balance-threshold alert (cached in Redis). Returns `null` when no
+ * threshold is configured, or when the workspace has no Metronome customer.
+ */
+export async function getWorkspaceBalanceThreshold(
+  auth: Authenticator
+): Promise<number | null> {
+  const workspace = auth.getNonNullableWorkspace();
+  if (!workspace.metronomeCustomerId) {
+    return null;
+  }
+
+  const { threshold } = await getCachedWorkspaceBalanceThreshold({
+    metronomeCustomerId: workspace.metronomeCustomerId,
+    workspaceId: workspace.sId,
+  });
+  return threshold;
+}
+
+/**
+ * Persist the workspace's credit-balance-threshold notification setting to its
  * Metronome customer.
  *
- * The `low_remaining_commit_balance_reached` alert is upserted only when the
- * warning is enabled (`disableCreditCapWarning === false`) and a strictly
- * positive `balanceThresholdCredits` is configured; otherwise it's cleared.
- * A threshold of 0 (the default when nothing is configured) means "no alert".
- *
- * No-op when the workspace has no Metronome customer. The underlying Metronome
- * calls are idempotent.
+ * A strictly positive `balanceThresholdCredits` upserts the balance-threshold
+ * alert; 0 or null clears it (the warning is "off"). No-op when the workspace
+ * has no Metronome customer. The underlying Metronome calls are idempotent.
  */
 export async function syncMetronomeBalanceThresholdAlert({
   auth,
-  disableCreditCapWarning,
   balanceThresholdCredits,
 }: {
   auth: Authenticator;
-  disableCreditCapWarning: boolean;
   balanceThresholdCredits: number | null;
 }): Promise<Result<undefined, Error>> {
   const workspace = auth.getNonNullableWorkspace();
@@ -33,9 +50,7 @@ export async function syncMetronomeBalanceThresholdAlert({
   }
 
   const shouldAlert =
-    !disableCreditCapWarning &&
-    balanceThresholdCredits !== null &&
-    balanceThresholdCredits > 0;
+    balanceThresholdCredits !== null && balanceThresholdCredits > 0;
 
   const alertResult = shouldAlert
     ? await upsertMetronomeBalanceThresholdAlert({

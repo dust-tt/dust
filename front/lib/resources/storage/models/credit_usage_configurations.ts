@@ -20,11 +20,11 @@ import { DataTypes } from "sequelize";
  *   Metronome `spend_threshold_reached` alert on the workspace's customer.
  *   Independent from `paygEnabled` — the cap can be set even when PAYG is
  *   disabled, and PAYG can be enabled without a cap.
- * - disableCreditCapWarning: When true, the credit cap warning email to
- *   workspace admins is suppressed. Default false (warning is sent).
- * - balanceThresholdCredits: Workspace-level credit-balance threshold, in AWU
- *   credits. NULL means no threshold is configured; any non-negative value is
- *   the balance below which workspace admins want to be alerted.
+ *
+ * The credit-cap-warning notification settings (whether to warn, and at which
+ * balance) are NOT stored here: they are derived from the workspace's Metronome
+ * balance-threshold alert (see `lib/metronome/alerts/balance_threshold.ts`),
+ * with reads cached in Redis.
  */
 export class CreditUsageConfigurationModel extends WorkspaceAwareModel<CreditUsageConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
@@ -32,8 +32,6 @@ export class CreditUsageConfigurationModel extends WorkspaceAwareModel<CreditUsa
   declare defaultDiscountPercent: number;
   declare paygEnabled: CreationOptional<boolean>;
   declare usageCapCredits: number | null;
-  declare disableCreditCapWarning: boolean;
-  declare balanceThresholdCredits: number | null;
 }
 
 CreditUsageConfigurationModel.init(
@@ -71,25 +69,6 @@ CreditUsageConfigurationModel.init(
           if (value !== null && value <= 0) {
             throw new Error(
               "usageCapCredits must be strictly positive when set"
-            );
-          }
-        },
-      },
-    },
-    disableCreditCapWarning: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false,
-    },
-    balanceThresholdCredits: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-      defaultValue: null,
-      validate: {
-        isNonNegative(value: number | null) {
-          if (value !== null && value < 0) {
-            throw new Error(
-              "balanceThresholdCredits must be greater than or equal to 0 when set"
             );
           }
         },

@@ -8,7 +8,6 @@ import {
   Input,
   Page,
   SettingsList,
-  SliderToggle,
 } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
@@ -25,37 +24,23 @@ export function UsageNotificationsCard({
     workspaceId,
   });
 
-  const [isSavingCreditCapWarning, setIsSavingCreditCapWarning] =
-    useState(false);
-
   const [balanceThresholdInput, setBalanceThresholdInput] =
     useState<string>("");
   const [isSavingBalanceThreshold, setIsSavingBalanceThreshold] =
     useState(false);
 
   useEffect(() => {
-    // Defaults to 0 when nothing is configured yet (null in the db).
+    // Defaults to 0 when no threshold is configured (warning off).
     setBalanceThresholdInput(
       String(usageNotifications.balanceThresholdCredits ?? 0)
     );
   }, [usageNotifications.balanceThresholdCredits]);
 
-  const handleToggleCreditCapWarning = async () => {
-    setIsSavingCreditCapWarning(true);
-    try {
-      await doUpdateUsageNotifications({
-        creditCapWarning: !usageNotifications.creditCapWarning,
-      });
-    } finally {
-      setIsSavingCreditCapWarning(false);
-    }
-  };
-
   const handleCommitBalanceThreshold = async () => {
     const current = usageNotifications.balanceThresholdCredits ?? 0;
     const trimmed = balanceThresholdInput.trim();
 
-    // An empty value falls back to the default of 0.
+    // An empty value falls back to 0 (warning off).
     const next = trimmed === "" ? 0 : Number(trimmed);
 
     if (!Number.isInteger(next) || next < 0) {
@@ -93,19 +78,8 @@ export function UsageNotificationsCard({
       </div>
       <SettingsList>
         <SettingsList.Row
-          title="Credit cap warning"
-          description="Email all workspace admins when your remaining credit balance falls below the threshold set below."
-          action={
-            <SliderToggle
-              selected={usageNotifications.creditCapWarning}
-              disabled={isSavingCreditCapWarning}
-              onClick={() => void handleToggleCreditCapWarning()}
-            />
-          }
-        />
-        <SettingsList.Row
           title="Credit balance threshold"
-          description="The remaining credit balance, in credits, at which the warning email is sent."
+          description="Email all workspace admins when your remaining credit balance drops below this amount (in credits). Set to 0 to disable."
           action={
             <div className="relative w-32">
               <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground dark:text-muted-foreground-night">
@@ -121,9 +95,7 @@ export function UsageNotificationsCard({
                 }
                 onBlur={() => void handleCommitBalanceThreshold()}
                 disabled={
-                  isSavingBalanceThreshold ||
-                  isUsageNotificationsLoading ||
-                  !usageNotifications.creditCapWarning
+                  isSavingBalanceThreshold || isUsageNotificationsLoading
                 }
                 className="pl-8 text-right"
               />
