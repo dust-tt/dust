@@ -88,6 +88,10 @@ function buildAndEncodeEmail(params: {
   let messageLines: string[] = [];
 
   if (params.attachment) {
+    const boundary = crypto.randomUUID().replace(/-/g, "");
+    const safeContentType = params.attachment.contentType
+      .replace(/[\r\n]/g, "")
+      .trim() || "application/octet-stream";
     // Create the email message with proper headers, content and attachment file
     messageLines = [
       `To: ${params.to.join(", ")}`,
@@ -95,22 +99,22 @@ function buildAndEncodeEmail(params: {
       params.cc?.length ? `Cc: ${params.cc.join(", ")}` : null,
       params.bcc?.length ? `Bcc: ${params.bcc.join(", ")}` : null,
       `Subject: ${encodedSubject}`,
-      `Content-Type: multipart/mixed; boundary="boundary123"`,
+      `Content-Type: multipart/mixed; boundary="${boundary}"`,
       "MIME-Version: 1.0",
       ...(params.threadingHeaders ?? []),
       "",
-      "--boundary123",
+      `--${boundary}`,
       `Content-Type: ${params.contentType}; charset=UTF-8`,
       "",
       params.body,
       "",
-      "--boundary123",
-      `Content-Type: ${params.attachment.contentType}; name="${params.attachment.filename}"`,
+      `--${boundary}`,
+      `Content-Type: ${safeContentType}; name="${params.attachment.filename}"`,
       `Content-Disposition: attachment; filename="${params.attachment.filename}"`,
       "Content-Transfer-Encoding: base64",
       "",
       params.attachment.buffer.toString("base64"),
-      "--boundary123--",
+      `--${boundary}--`,
     ].filter((line): line is string => line !== null);
   } else {
     // Create the email message with proper headers and content.
@@ -344,7 +348,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
         if (!aliasConfigured) {
           return new Err(
             new MCPError(
-              `"${from}" is not configured as a send-as alias in Gmail settings. The email was not sent.`
+              `"${from}" is not configured as a send-as alias in Gmail settings. The draft was not created.`
             )
           );
         }
@@ -472,10 +476,10 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
         to,
         cc: cc ?? null,
         bcc: bcc ?? null,
+        from,
         subject,
         contentType,
         body,
-        threadingHeaders: [],
         attachment: fileBuffer
           ? {
               buffer: fileBuffer,
@@ -1094,7 +1098,6 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
         subject,
         contentType,
         body,
-        threadingHeaders: [],
         attachment: fileBuffer
           ? {
               buffer: fileBuffer,
