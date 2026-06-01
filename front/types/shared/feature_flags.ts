@@ -158,7 +158,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   frames_skill_v2: {
     description:
-      "Use the merged Frames skill v2 prose for every agent in the workspace.",
+      "Use the merged Frames skill v2 prose for every agent in the workspace. Temporary, remove after global rollout.",
     stage: "dust_only",
   },
   slack_message_splitting: {

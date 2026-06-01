@@ -96,6 +96,17 @@ describe("getEnabledSkillInstructions", () => {
     expect(instructions).toContain("### Creating Files");
   });
 
+  it("v2 frame instructions do not contain v1-only markers", () => {
+    // Guards against regressions where v1 prose chunks leak into v2 (e.g. a
+    // missed `.replace()` target, or a stale import).
+    expect(INTERACTIVE_CONTENT_INSTRUCTIONS_V2).not.toContain(
+      "### Frame Authoring Rules"
+    );
+    expect(INTERACTIVE_CONTENT_INSTRUCTIONS_V2).not.toContain(
+      "Premium, Minimalist Aesthetic"
+    );
+  });
+
   it("does not change non-frame skill instructions when the v2 flag is on", () => {
     expect(
       resolveSkillInstructions({

@@ -37,9 +37,14 @@ BAD:
 GOOD:
 \`\`\`tsx
 <div className="min-h-screen bg-background">
-  <main className="mx-auto max-w-5xl px-4 py-6 space-y-6">{content}</main>
+  <main className="mx-auto max-w-5xl px-4 py-6 space-y-6">
+    <h1 className="text-3xl font-semibold text-indigo-700">{title}</h1>
+    {content}
+  </main>
 </div>
 \`\`\`
+
+The heading uses an explicit chroma accent (\`text-indigo-700\`). The structural neutral \`bg-background\` is the surface, not the palette.
 
 ### Color And Visual Identity
 

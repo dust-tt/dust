@@ -16,6 +16,10 @@ export type EnabledSkill = SkillResource & {
 
 type SkillInstructionsSource = Pick<SkillResource, "sId" | "instructions">;
 
+// `useFramesV2` is a workspace-level feature flag gate, not a per-agent
+// switch. When a third variant lands, replace the boolean with a
+// discriminated union + exhaustive `switch` so reviewers can't forget a
+// branch (the previous shape used `assertNever` on a `FramesVariant` union).
 export function resolveSkillInstructions({
   skill,
   useFramesV2,

@@ -255,16 +255,46 @@ Examples:
 ${VIZ_CHART_EXAMPLES}
 `;
 
-export const INTERACTIVE_CONTENT_TOOLS_PROSE_AFTER_AUTHORING_V2 =
-  INTERACTIVE_CONTENT_TOOLS_PROSE_AFTER_AUTHORING.replace(
+// Throws at module load if any v1 example block has been reworded upstream
+// and the v2 replacement silently becomes a no-op. Without this, drift in
+// `VIZ_USE_FILE_EXAMPLES`, `VIZ_FRAME_IMPORT_EXAMPLE`, or `VIZ_CHART_EXAMPLES`
+// would let v1-only example code slip into the v2 prose.
+function replaceV1Block(
+  haystack: string,
+  needle: string,
+  replacement: string,
+  label: string
+): string {
+  if (!haystack.includes(needle)) {
+    throw new Error(
+      `Frames v2 prose assembly: missing v1 block "${label}". The upstream ` +
+        `VIZ_* constant changed; update instructions_v2.ts to match.`
+    );
+  }
+  return haystack.replace(needle, () => replacement);
+}
+
+export const INTERACTIVE_CONTENT_TOOLS_PROSE_AFTER_AUTHORING_V2 = (() => {
+  let prose = replaceV1Block(
+    INTERACTIVE_CONTENT_TOOLS_PROSE_AFTER_AUTHORING,
     VIZ_USE_FILE_EXAMPLES,
-    () => INTERACTIVE_CONTENT_USE_FILE_EXAMPLES_V2
-  )
-    .replace(
-      VIZ_FRAME_IMPORT_EXAMPLE,
-      () => INTERACTIVE_CONTENT_FRAME_IMPORT_EXAMPLE_V2
-    )
-    .replace(VIZ_CHART_EXAMPLES, () => INTERACTIVE_CONTENT_CHART_EXAMPLES_V2);
+    INTERACTIVE_CONTENT_USE_FILE_EXAMPLES_V2,
+    "VIZ_USE_FILE_EXAMPLES"
+  );
+  prose = replaceV1Block(
+    prose,
+    VIZ_FRAME_IMPORT_EXAMPLE,
+    INTERACTIVE_CONTENT_FRAME_IMPORT_EXAMPLE_V2,
+    "VIZ_FRAME_IMPORT_EXAMPLE"
+  );
+  prose = replaceV1Block(
+    prose,
+    VIZ_CHART_EXAMPLES,
+    INTERACTIVE_CONTENT_CHART_EXAMPLES_V2,
+    "VIZ_CHART_EXAMPLES"
+  );
+  return prose;
+})();
 
 function buildInteractiveContentInstructions({
   afterAuthoringProse,
