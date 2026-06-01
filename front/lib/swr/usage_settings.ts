@@ -11,6 +11,10 @@ import type {
   GetDefaultUserSpendLimitResponseBody,
   PutDefaultUserSpendLimitResponseBody,
 } from "@app/pages/api/w/[wId]/usage_settings/default_user_spend_limit";
+import type {
+  GetProgrammaticUsageLimitResponseBody,
+  PutProgrammaticUsageLimitResponseBody,
+} from "@app/pages/api/w/[wId]/usage_settings/programmatic_usage_limit";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { useCallback, useSyncExternalStore } from "react";
 import type { Fetcher } from "swr";
@@ -296,4 +300,91 @@ export function useUpdateDefaultUserSpendLimit({
   );
 
   return { doUpdateDefaultUserSpendLimit };
+}
+
+// Programmatic usage limit
+
+const GetProgrammaticUsageLimitResponseSchema = z.object({
+  monthlyCapCredits: z.number().int().nullable(),
+});
+
+function programmaticUsageLimitUrl(workspaceId: string): string {
+  return `/api/w/${workspaceId}/usage_settings/programmatic_usage_limit`;
+}
+
+export function useProgrammaticUsageLimit({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const { fetcher } = useFetcher();
+  const limitFetcher: Fetcher<GetProgrammaticUsageLimitResponseBody> = async (
+    url: string
+  ) => {
+    const result = await fetcher(url);
+    return GetProgrammaticUsageLimitResponseSchema.parse(result);
+  };
+  const { data, error } = useSWRWithDefaults(
+    programmaticUsageLimitUrl(workspaceId),
+    limitFetcher
+  );
+
+  return {
+    programmaticUsageLimit: data,
+    isProgrammaticUsageLimitLoading: !error && !data,
+    isProgrammaticUsageLimitError: !!error,
+  };
+}
+
+export function useUpdateProgrammaticUsageLimit({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const sendNotification = useSendNotification();
+
+  const doUpdateProgrammaticUsageLimit = useCallback(
+    async (
+      monthlyCapCredits: number | null
+    ): Promise<PutProgrammaticUsageLimitResponseBody | null> => {
+      const res = await clientFetch(programmaticUsageLimitUrl(workspaceId), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ monthlyCapCredits }),
+      });
+
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+        sendNotification({
+          type: "error",
+          title: "Failed to update programmatic usage limit",
+          description: errorData.message,
+        });
+        return null;
+      }
+
+      const body = GetProgrammaticUsageLimitResponseSchema.parse(
+        await res.json()
+      );
+
+      if (monthlyCapCredits === null) {
+        sendNotification({
+          type: "success",
+          title: "Programmatic usage limit cleared",
+        });
+      } else {
+        sendNotification({
+          type: "success",
+          title: "Programmatic usage limit updated",
+          description: `The monthly programmatic usage limit has been set to ${monthlyCapCredits.toLocaleString("en-US")} credits.`,
+        });
+      }
+
+      await mutate(programmaticUsageLimitUrl(workspaceId));
+      return body;
+    },
+    [workspaceId, sendNotification]
+  );
+
+  return { doUpdateProgrammaticUsageLimit };
 }

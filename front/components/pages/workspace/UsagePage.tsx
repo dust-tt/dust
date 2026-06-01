@@ -6,6 +6,7 @@ import { ChangeSeatModal } from "@app/components/workspace/ChangeSeatModal";
 import { EditSpendLimitModal } from "@app/components/workspace/EditSpendLimitModal";
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
 import { UsageNotificationsCard } from "@app/components/workspace/usage/UsageNotificationsCard";
+import { UsageProgrammaticLimitCard } from "@app/components/workspace/usage/UsageProgrammaticLimitCard";
 import { UsageSettingsCard } from "@app/components/workspace/usage/UsageSettingsCard";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
@@ -325,6 +326,8 @@ export function UsagePage() {
         </Page.Vertical>
 
         <UsageSettingsCard workspaceId={owner.sId} />
+
+        <UsageProgrammaticLimitCard workspaceId={owner.sId} />
 
         <UsageNotificationsCard workspaceId={owner.sId} />
 
