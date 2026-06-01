@@ -1,9 +1,7 @@
-import { verifySandboxExecToken } from "@app/lib/api/sandbox/access_tokens";
 import { createSandboxChildAction } from "@app/lib/api/sandbox/create_child_action";
-import { getFeatureFlags } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { CallMCPToolRequestBodySchema } from "@dust-tt/client";
-import { publicApiApp } from "@front-api/middlewares/ctx";
+import { sandboxApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -13,9 +11,10 @@ type CallSandboxToolResponse = {
   actionId: string;
 };
 
-// Mounted at /api/v1/w/:wId/sandbox/actions/call. publicApiAuth is applied by
-// the parent v1 workspace sub-app, so ctx.get("auth") is always available here.
-const app = publicApiApp();
+// Mounted at /api/v1/w/:wId/sandbox/actions/call. sandboxAuth is applied by
+// the parent sandbox sub-app, so ctx.get("auth") and ctx.get("sandboxClaims")
+// are always available here.
+const app = sandboxApp();
 
 /**
  * @ignoreswagger
@@ -26,40 +25,7 @@ app.post(
   validate("json", CallMCPToolRequestBodySchema),
   async (ctx): HandlerResult<CallSandboxToolResponse> => {
     const auth = ctx.get("auth");
-
-    const token = ctx.req.header("authorization")?.replace("Bearer ", "");
-    if (!token) {
-      return apiError(ctx, {
-        status_code: 401,
-        api_error: {
-          type: "not_authenticated",
-          message:
-            "The request does not have valid authentication credentials.",
-        },
-      });
-    }
-
-    const claims = await verifySandboxExecToken(token);
-    if (!claims) {
-      return apiError(ctx, {
-        status_code: 401,
-        api_error: {
-          type: "invalid_sandbox_token_error",
-          message: "The sandbox token is invalid or expired.",
-        },
-      });
-    }
-
-    const featureFlags = await getFeatureFlags(auth);
-    if (!featureFlags.includes("sandbox_dsbx_tools")) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Sandbox dsbx tools are not enabled for this workspace.",
-        },
-      });
-    }
+    const claims = ctx.get("sandboxClaims");
 
     const {
       serverViewId,

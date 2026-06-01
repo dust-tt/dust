@@ -72,12 +72,20 @@ export type AuthMethodType =
   | "sandbox_token"
   | "internal";
 
-export const isSandboxTokenPrefix = (token: string): boolean =>
-  token.startsWith(SANDBOX_TOKEN_PREFIX);
+// Bearer tokens are identified by their prefix: API keys start with `sk-`,
+// sandbox exec tokens with `sbt-`. Anything else is treated as an OAuth
+// (WorkOS) token.
+export type AuthTokenKind = "api_key" | "sandbox_token" | "oauth";
 
-// Any token which does not start with sk- or sbt- is considered an OAuth token.
-export const isOAuthToken = (token: string): boolean =>
-  !token.startsWith(SECRET_KEY_PREFIX) && !isSandboxTokenPrefix(token);
+export function getAuthTokenKind(token: string): AuthTokenKind {
+  if (token.startsWith(SECRET_KEY_PREFIX)) {
+    return "api_key";
+  }
+  if (token.startsWith(SANDBOX_TOKEN_PREFIX)) {
+    return "sandbox_token";
+  }
+  return "oauth";
+}
 
 export interface AuthenticatorType {
   authMethod: AuthMethodType;
@@ -1329,7 +1337,7 @@ export async function getSessionFromBearerToken(
   }
 
   const bearerToken = bearerTokenRes.value;
-  if (!isOAuthToken(bearerToken)) {
+  if (getAuthTokenKind(bearerToken) !== "oauth") {
     return new Ok(null);
   }
 

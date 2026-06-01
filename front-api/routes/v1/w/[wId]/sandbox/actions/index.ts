@@ -6,10 +6,8 @@ import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { resolveSkillMCPServers } from "@app/lib/api/assistant/skill_actions";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { verifySandboxExecToken } from "@app/lib/api/sandbox/access_tokens";
-import { getFeatureFlags } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { publicApiApp } from "@front-api/middlewares/ctx";
+import { sandboxApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 
@@ -20,9 +18,10 @@ interface GetSandboxToolsResponseType {
   serverViews: MCPServerViewType[];
 }
 
-// Mounted at /api/v1/w/:wId/sandbox/actions. publicApiAuth is applied by the
-// parent v1 workspace sub-app, so ctx.get("auth") is always available here.
-const app = publicApiApp();
+// Mounted at /api/v1/w/:wId/sandbox/actions. sandboxAuth is applied by the
+// parent sandbox sub-app, so ctx.get("auth") and ctx.get("sandboxClaims") are
+// always available here.
+const app = sandboxApp();
 
 /**
  * @ignoreswagger
@@ -30,41 +29,7 @@ const app = publicApiApp();
  */
 app.get("/", async (ctx): HandlerResult<GetSandboxToolsResponseType> => {
   const auth = ctx.get("auth");
-
-  const token = ctx.req.header("authorization")?.replace("Bearer ", "");
-  if (!token) {
-    return apiError(ctx, {
-      status_code: 401,
-      api_error: {
-        type: "not_authenticated",
-        message: "The request does not have valid authentication credentials.",
-      },
-    });
-  }
-
-  const claims = await verifySandboxExecToken(token);
-  if (!claims) {
-    return apiError(ctx, {
-      status_code: 401,
-      api_error: {
-        type: "invalid_sandbox_token_error",
-        message: "The sandbox token is invalid or expired.",
-      },
-    });
-  }
-
-  const featureFlags = await getFeatureFlags(auth);
-  if (!featureFlags.includes("sandbox_dsbx_tools")) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Sandbox dsbx tools are not enabled for this workspace.",
-      },
-    });
-  }
-
-  const { aId: agentId, cId } = claims;
+  const { aId: agentId, cId } = ctx.get("sandboxClaims");
 
   // Fetch agent accessible servers.
   const agentConfig = await getAgentConfiguration(auth, {

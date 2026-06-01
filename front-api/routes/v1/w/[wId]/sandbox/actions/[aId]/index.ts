@@ -1,10 +1,9 @@
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import { isSandboxChildActionInfo } from "@app/lib/actions/types";
-import { verifySandboxExecToken } from "@app/lib/api/sandbox/access_tokens";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { publicApiApp } from "@front-api/middlewares/ctx";
+import { sandboxApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -33,9 +32,10 @@ export type FetchConversationMessageActionResponse =
   | CallToolPendingResponse
   | CallToolRejectedResponse;
 
-// Mounted at /api/v1/w/:wId/sandbox/actions/:aId. publicApiAuth is applied by
-// the parent v1 workspace sub-app, so ctx.get("auth") is always available here.
-const app = publicApiApp();
+// Mounted at /api/v1/w/:wId/sandbox/actions/:aId. sandboxAuth is applied by
+// the parent sandbox sub-app, so ctx.get("auth") and ctx.get("sandboxClaims")
+// are always available here.
+const app = sandboxApp();
 
 /**
  * @ignoreswagger
@@ -46,29 +46,7 @@ app.get(
   validate("param", ParamsSchema),
   async (ctx): HandlerResult<FetchConversationMessageActionResponse> => {
     const auth = ctx.get("auth");
-
-    const token = ctx.req.header("authorization")?.replace("Bearer ", "");
-    if (!token) {
-      return apiError(ctx, {
-        status_code: 401,
-        api_error: {
-          type: "not_authenticated",
-          message:
-            "The request does not have valid authentication credentials.",
-        },
-      });
-    }
-
-    const claims = await verifySandboxExecToken(token);
-    if (!claims) {
-      return apiError(ctx, {
-        status_code: 401,
-        api_error: {
-          type: "invalid_sandbox_token_error",
-          message: "The sandbox token is invalid or expired.",
-        },
-      });
-    }
+    const claims = ctx.get("sandboxClaims");
 
     const { aId } = ctx.req.valid("param");
 
