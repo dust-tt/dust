@@ -353,7 +353,7 @@ export const SlashCommandExtension =
         suggestion: {
           char: "/",
           pluginKey: slashCommandPluginKey,
-          allowSpaces: false,
+          allowSpaces: true,
           startOfLine: false,
           items: ({ query }: { query: string }) => filterSlashCommands(query),
         },
