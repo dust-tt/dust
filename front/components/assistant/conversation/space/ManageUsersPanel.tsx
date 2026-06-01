@@ -1,6 +1,6 @@
 import {
-  MemberSelectionTable,
   type MemberRowData,
+  MemberSelectionTable,
   type SearchMemberType,
 } from "@app/components/members/MemberSelectionTable";
 import { useSendNotification } from "@app/hooks/useNotification";

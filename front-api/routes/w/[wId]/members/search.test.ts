@@ -234,10 +234,7 @@ describe("GET /api/w/:wId/members/search", () => {
   it("allows non-admin users to search by term", async () => {
     const { workspace } = await setup("user");
 
-    const users = await Promise.all([
-      UserFactory.basic(),
-      UserFactory.basic(),
-    ]);
+    const users = await Promise.all([UserFactory.basic(), UserFactory.basic()]);
 
     await Promise.all(
       users.map((u) =>
