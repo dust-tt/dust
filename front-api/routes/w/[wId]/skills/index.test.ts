@@ -1,6 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
 import { SkillMCPServerConfigurationModel } from "@app/lib/models/skill";
-import { SkillReferenceModel } from "@app/lib/models/skill/skill_reference";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { discoverToolsSkill } from "@app/lib/resources/skill/code_defined/discover_tools";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -422,16 +421,13 @@ describe("GET /api/w/:wId/skills?withRelations=true", () => {
       workspace.sId
     );
 
-    const childSkill = await SkillFactory.create(auth, {
-      name: "Referenced Skill",
-    });
-    const parentSkill = await SkillFactory.create(auth, {
-      name: "Parent Skill",
-    });
-
-    await SkillFactory.linkSkillToSkill(auth, {
-      parentSkillId: parentSkill.id,
-      childSkillId: childSkill.id,
+    const { childSkill } = await SkillFactory.createWithNestedSkill(auth, {
+      childOverrides: {
+        name: "Referenced Skill",
+      },
+      parentOverrides: {
+        name: "Parent Skill",
+      },
     });
 
     const response = await getSkills(workspace, { withRelations: "true" });
@@ -455,17 +451,15 @@ describe("GET /api/w/:wId/skills?withRelations=true", () => {
     );
     await FeatureFlagFactory.basic(auth, "nested_skills");
 
-    const parentSkill = await SkillFactory.create(auth, {
-      name: "Parent Skill",
-    });
-    const childSkill = await SkillFactory.create(auth, {
-      name: "Child Skill",
-    });
-
-    await SkillFactory.linkSkillToSkill(auth, {
-      parentSkillId: parentSkill.id,
-      childSkillId: childSkill.id,
-    });
+    const { parentSkill, childSkill } =
+      await SkillFactory.createWithNestedSkill(auth, {
+        childOverrides: {
+          name: "Child Skill",
+        },
+        parentOverrides: {
+          name: "Parent Skill",
+        },
+      });
 
     const response = await getSkills(workspace, { withRelations: "true" });
 
@@ -500,17 +494,15 @@ describe("GET /api/w/:wId/skills?withRelations=true", () => {
     );
     await FeatureFlagFactory.basic(auth, "nested_skills");
 
-    const childSkill = await SkillFactory.create(auth, {
-      name: "Referenced Skill",
-    });
-    const parentSkill = await SkillFactory.create(auth, {
-      name: "Parent Skill",
-    });
-
-    await SkillFactory.linkSkillToSkill(auth, {
-      parentSkillId: parentSkill.id,
-      childSkillId: childSkill.id,
-    });
+    const { childSkill, parentSkill } =
+      await SkillFactory.createWithNestedSkill(auth, {
+        childOverrides: {
+          name: "Referenced Skill",
+        },
+        parentOverrides: {
+          name: "Parent Skill",
+        },
+      });
 
     const response = await getSkills(workspace, { withRelations: "true" });
 
@@ -658,11 +650,8 @@ describe("POST /api/w/:wId/skills", () => {
     const childSkill = await SkillFactory.create(auth, {
       name: "Referenced Skill",
     });
-    const skillReferenceTag = serializeSkillTag({
-      id: childSkill.sId,
-      icon: null,
-      name: childSkill.name,
-    });
+    const skillReferenceTag =
+      SkillFactory.serializeSkillReferenceTag(childSkill);
 
     const response = await postSkill(workspace, {
       name: "Parent Skill",
@@ -684,15 +673,11 @@ describe("POST /api/w/:wId/skills", () => {
     );
     expect(createdSkill).not.toBeNull();
 
-    await expect(
-      SkillReferenceModel.count({
-        where: {
-          workspaceId: workspace.id,
-          parentSkillId: createdSkill!.id,
-          childSkillId: childSkill.id,
-        },
-      })
-    ).resolves.toBe(1);
+    await expect(createdSkill!.fetchChildSkills(auth)).resolves.toEqual([
+      expect.objectContaining({
+        sId: childSkill.sId,
+      }),
+    ]);
   });
 
   it("returns 400 for invalid nested skill references", async () => {
