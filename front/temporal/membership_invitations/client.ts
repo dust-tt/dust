@@ -2,6 +2,7 @@ import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
+import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
 
 import { QUEUE_NAME } from "./config";
 import { invitationRemindersWorkflow } from "./workflows";
@@ -14,14 +15,23 @@ export async function launchInvitationRemindersWorkflow(): Promise<
 > {
   const client = await getTemporalClientForFrontNamespace();
 
-  await client.workflow.start(invitationRemindersWorkflow, {
-    args: [],
-    taskQueue: QUEUE_NAME,
-    workflowId: "invitation-reminders-workflow",
-    cronSchedule: CRON_SCHEDULE,
-  });
-
-  logger.info("[Invitation Reminders] Launched workflow.");
+  try {
+    await client.workflow.start(invitationRemindersWorkflow, {
+      args: [],
+      taskQueue: QUEUE_NAME,
+      workflowId: "invitation-reminders-workflow",
+      cronSchedule: CRON_SCHEDULE,
+    });
+    logger.info("[Invitation Reminders] Launched workflow.");
+  } catch (e) {
+    if (e instanceof WorkflowExecutionAlreadyStartedError) {
+      logger.info(
+        "[Invitation Reminders] Workflow already running (idempotency check passed)."
+      );
+    } else {
+      throw e;
+    }
+  }
 
   return new Ok(undefined);
 }

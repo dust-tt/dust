@@ -9,7 +9,10 @@ import {
   getWorkspaceAdministrationVersionLock,
 } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
-import { INVITATION_EXPIRATION_TIME_SEC } from "@app/lib/constants/invitation";
+import {
+  INVITATION_EXPIRATION_TIME_SEC,
+  invitationTokenValidityStartMs,
+} from "@app/lib/constants/invitation";
 import { MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY } from "@app/lib/invitations";
 import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -69,7 +72,12 @@ export async function getInvitation(
 export function getMembershipInvitationToken(
   invitation: MembershipInvitationType
 ) {
-  const iat = Math.floor(invitation.createdAt / 1000);
+  const iat = Math.floor(
+    invitationTokenValidityStartMs(
+      invitation.createdAt,
+      invitation.reminderSentAt
+    ) / 1000
+  );
   const exp = iat + INVITATION_EXPIRATION_TIME_SEC;
 
   return sign(

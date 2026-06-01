@@ -571,20 +571,6 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     );
   }
 
-  static async listActiveENTWorkspaceModelIds(): Promise<ModelId[]> {
-    const subscriptions = await this.model.findAll({
-      where: { status: "active" },
-      include: [PlanModel],
-      // WORKSPACE_ISOLATION_BYPASS: Scanning all active subscriptions to identify ENT workspaces.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
-      dangerouslyBypassWorkspaceIsolationSecurity: true,
-    });
-
-    return subscriptions
-      .filter((s) => isEntreprisePlanPrefix(s.plan.code))
-      .map((s) => s.workspaceId);
-  }
-
   static async fetchPendingByWorkspaceModelId(
     workspaceModelId: ModelId
   ): Promise<SubscriptionResource | null> {

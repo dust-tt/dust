@@ -5,18 +5,18 @@ import {
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
 import { getWorkflowConfig } from "@app/temporal/bundle_helper";
-import * as activities from "@app/temporal/invitation_reminders/activities";
+import * as activities from "@app/temporal/membership_invitations/activities";
 import type { Context } from "@temporalio/activity";
 import { Worker } from "@temporalio/worker";
 
 import { QUEUE_NAME } from "./config";
 
-export async function runInvitationRemindersWorker() {
+export async function runMembershipInvitationsWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();
 
   const worker = await Worker.create({
     ...getWorkflowConfig({
-      workerName: "invitation_reminders",
+      workerName: "membership_invitations",
       getWorkflowsPath: () => require.resolve("./workflows"),
     }),
     activities,

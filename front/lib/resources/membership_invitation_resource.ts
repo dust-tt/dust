@@ -1,6 +1,9 @@
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import { INVITATION_EXPIRATION_TIME_SEC } from "@app/lib/constants/invitation";
+import {
+  INVITATION_EXPIRATION_TIME_SEC,
+  invitationTokenValidityStartMs,
+} from "@app/lib/constants/invitation";
 import { AuthFlowError } from "@app/lib/iam/errors";
 import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -16,7 +19,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import type { ActiveRoleType, LightWorkspaceType } from "@app/types/user";
 import { verify } from "jsonwebtoken";
 import type { Attributes, CreationAttributes, Transaction } from "sequelize";
-import { col, fn, Op } from "sequelize";
+import { Op } from "sequelize";
 
 import { generateRandomModelSId } from "./string_ids_server";
 import type { WorkspaceResource } from "./workspace_resource";
@@ -83,32 +86,14 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
       : null;
   }
 
-  static async fetchByIds(
-    auth: Authenticator,
-    ids: string[]
-  ): Promise<Map<string, MembershipInvitationResource>> {
-    if (ids.length === 0) {
-      return new Map();
-    }
-    const invitations = await this.model.findAll({
-      where: {
-        sId: { [Op.in]: ids },
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-    });
-    return new Map(
-      invitations.map((inv) => [
-        inv.sId,
-        new MembershipInvitationResource(this.model, inv.get(), {
-          workspace: inv.workspace,
-        }),
-      ])
-    );
-  }
-
-  private static invitationExpired(createdAt: Date) {
+  private static invitationExpired(
+    createdAt: Date,
+    reminderSentAt: Date | null = null
+  ) {
+    const validityStart = reminderSentAt ?? createdAt;
     return (
-      createdAt.getTime() + INVITATION_EXPIRATION_TIME_SEC * 1000 < Date.now()
+      validityStart.getTime() + INVITATION_EXPIRATION_TIME_SEC * 1000 <
+      Date.now()
     );
   }
 
@@ -188,7 +173,11 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
     return invitations
       .filter(
         (invitation) =>
-          includeExpired || !this.invitationExpired(invitation.createdAt)
+          includeExpired ||
+          !this.invitationExpired(
+            invitation.createdAt,
+            invitation.reminderSentAt
+          )
       )
       .map(
         (invitation) =>
@@ -226,7 +215,11 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
     return invitations
       .filter(
         (invitation) =>
-          includeExpired || !this.invitationExpired(invitation.createdAt)
+          includeExpired ||
+          !this.invitationExpired(
+            invitation.createdAt,
+            invitation.reminderSentAt
+          )
       )
       .map(
         (invitation) =>
@@ -348,71 +341,36 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
     });
   }
 
-  static async listEligibleForReminder(
-    workspaceModelIds: ModelId[],
-    { limit }: { limit: number }
-  ): Promise<MembershipInvitationResource[]> {
-    if (workspaceModelIds.length === 0) {
-      return [];
-    }
-
+  static async listEligibleForReminder({
+    limit,
+  }: {
+    limit: number;
+  }): Promise<MembershipInvitationResource[]> {
     const sevenDaysAgo = new Date(
       Date.now() - INVITATION_EXPIRATION_TIME_SEC * 1000
     );
     const tenDaysAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
 
-    const pendingInvitations = await this.model.findAll({
+    const invitations = await this.model.findAll({
       where: {
-        workspaceId: { [Op.in]: workspaceModelIds },
         status: "pending",
         createdAt: { [Op.lt]: sevenDaysAgo, [Op.gt]: tenDaysAgo },
+        reminderSentAt: { [Op.is]: null },
       },
+      order: [
+        ["createdAt", "ASC"],
+        ["id", "ASC"],
+      ],
       limit,
       include: [WorkspaceModel],
-      // WORKSPACE_ISOLATION_BYPASS: Reminder job scans across all ENT workspaces.
+      // WORKSPACE_ISOLATION_BYPASS: Reminder job scans across all workspaces.
       // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
-    if (pendingInvitations.length === 0) {
-      return [];
-    }
-
-    // For each (inviteEmail, workspaceId) pair, count all invitations ever (any status).
-    // Skip pairs with more than one record: a reminder was already sent, or the admin manually
-    // resent the invitation (via poke or the members UI). In both cases the user already received
-    // a follow-up and is intentionally excluded from automated reminders going forward.
-    const emails = pendingInvitations.map((i) => i.inviteEmail);
-
-    const pairCounts = await this.model.findAll({
-      attributes: [
-        "inviteEmail",
-        "workspaceId",
-        [fn("COUNT", col("id")), "totalCount"],
-      ],
-      where: {
-        workspaceId: { [Op.in]: workspaceModelIds },
-        inviteEmail: { [Op.in]: emails },
-      },
-      group: ["inviteEmail", "workspaceId"],
-      // WORKSPACE_ISOLATION_BYPASS: Same as above.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
-      dangerouslyBypassWorkspaceIsolationSecurity: true,
-    });
-
-    const singleRecordPairs = new Set(
-      pairCounts
-        .filter((row) => Number(row.get("totalCount")) === 1)
-        .map((row) => `${row.inviteEmail}:${row.workspaceId}`)
+    return invitations.map(
+      (inv) => new this(this.model, inv.get(), { workspace: inv.workspace })
     );
-
-    return pendingInvitations
-      .filter((inv) =>
-        singleRecordPairs.has(`${inv.inviteEmail}:${inv.workspaceId}`)
-      )
-      .map(
-        (inv) => new this(this.model, inv.get(), { workspace: inv.workspace })
-      );
   }
 
   static async getPendingInvitations(
@@ -439,7 +397,11 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
     return invitations
       .filter(
         (invitation) =>
-          includeExpired || !this.invitationExpired(invitation.createdAt)
+          includeExpired ||
+          !this.invitationExpired(
+            invitation.createdAt,
+            invitation.reminderSentAt
+          )
       )
       .map(
         (i) =>
@@ -498,7 +460,12 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
         );
       }
 
-      if (this.invitationExpired(membershipInvite.createdAt)) {
+      if (
+        this.invitationExpired(
+          membershipInvite.createdAt,
+          membershipInvite.reminderSentAt
+        )
+      ) {
         return new Err(
           new AuthFlowError(
             "expired_invitation",
@@ -517,11 +484,43 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
     return new Ok(null);
   }
 
-  isExpired() {
-    return (
-      this.createdAt.getTime() + INVITATION_EXPIRATION_TIME_SEC * 1000 <
-      Date.now()
+  getTokenValidityStartDate(): Date {
+    return new Date(
+      invitationTokenValidityStartMs(
+        this.createdAt.getTime(),
+        this.reminderSentAt?.getTime() ?? null
+      )
     );
+  }
+
+  getTokenExpirationDate(): Date {
+    return new Date(
+      this.getTokenValidityStartDate().getTime() +
+        INVITATION_EXPIRATION_TIME_SEC * 1000
+    );
+  }
+
+  isExpired(): boolean {
+    return this.getTokenExpirationDate().getTime() < Date.now();
+  }
+
+  // Atomically claims the reminder slot by setting reminderSentAt (WHERE reminderSentAt IS NULL).
+  // Returns true if this worker claimed it, false if another worker already did (optimistic
+  // locking: prevents duplicate emails if two workflow instances race on the same batch).
+  // Updates this resource in-memory on success so toJSON() reflects the new reminderSentAt and
+  // getMembershipInvitationToken() anchors the token on the correct validity start date.
+  // Note: reminderSentAt being set does NOT mean the email was delivered — only that this worker
+  // has claimed responsibility for sending it.
+  async claimReminderSlot(): Promise<boolean> {
+    const [affectedCount, affectedRows] =
+      await MembershipInvitationModel.update(
+        { reminderSentAt: new Date() },
+        { where: { id: this.id, reminderSentAt: null }, returning: true }
+      );
+    if (affectedCount > 0 && affectedRows[0]) {
+      Object.assign(this, affectedRows[0].get());
+    }
+    return affectedCount > 0;
   }
 
   async markAsConsumed(user: UserResource) {
@@ -573,6 +572,8 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
   toJSON(): MembershipInvitationType {
     return {
       createdAt: this.createdAt.getTime(),
+      reminderSentAt: this.reminderSentAt?.getTime() ?? null,
+      expiresAt: this.getTokenExpirationDate().getTime(),
       id: this.id,
       initialRole: this.initialRole,
       inviteEmail: this.inviteEmail,

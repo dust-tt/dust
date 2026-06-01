@@ -1,10 +1,11 @@
-import type * as activities from "@app/temporal/invitation_reminders/activities";
+import type * as activities from "@app/temporal/membership_invitations/activities";
 import { proxyActivities } from "@temporalio/workflow";
 
 const { sendInvitationReminderBatchActivity } = proxyActivities<
   typeof activities
 >({
-  startToCloseTimeout: "10 minutes",
+  startToCloseTimeout: "5 minutes",
+  heartbeatTimeout: "1 minute",
 });
 
 export async function invitationRemindersWorkflow(): Promise<void> {

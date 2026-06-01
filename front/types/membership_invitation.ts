@@ -12,6 +12,8 @@ export type MembershipInvitationType = {
   inviteEmail: string;
   initialRole: ActiveRoleType;
   createdAt: number;
+  reminderSentAt: number | null;
+  expiresAt: number;
   isExpired: boolean;
 };
 

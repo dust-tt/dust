@@ -13,6 +13,7 @@ export class MembershipInvitationModel extends WorkspaceAwareModel<MembershipInv
   declare inviteEmail: string;
   declare status: "pending" | "consumed" | "revoked";
   declare initialRole: Exclude<RoleType, "none">;
+  declare reminderSentAt: Date | null;
 
   declare invitedUserId: ForeignKey<UserModel["id"]> | null;
 }
@@ -46,6 +47,11 @@ MembershipInvitationModel.init(
       allowNull: false,
       defaultValue: "user",
     },
+    reminderSentAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
+    },
   },
   {
     modelName: "membership_invitation",
@@ -54,7 +60,11 @@ MembershipInvitationModel.init(
       { fields: ["workspaceId", "status"] },
       { unique: true, fields: ["sId"] },
       { fields: ["inviteEmail", "status"] },
-      { fields: ["workspaceId", "inviteEmail"], concurrently: true },
+      {
+        fields: ["createdAt", "id"],
+        where: { status: "pending", reminderSentAt: null },
+        concurrently: true,
+      },
     ],
   }
 );

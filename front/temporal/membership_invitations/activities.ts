@@ -1,33 +1,26 @@
 import { sendWorkspaceInvitationReminderEmail } from "@app/lib/api/invitation";
 import { Authenticator } from "@app/lib/auth";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
-import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { Context } from "@temporalio/activity";
 
 const EMAIL_CONCURRENCY = 8;
 const BATCH_SIZE = 50;
 
 // Returns true if a full batch was processed, meaning there may be more to process.
 export async function sendInvitationReminderBatchActivity(): Promise<boolean> {
-  const entWorkspaceModelIds =
-    await SubscriptionResource.listActiveENTWorkspaceModelIds();
-
-  if (entWorkspaceModelIds.length === 0) {
-    return false;
-  }
-
   const invitations =
-    await MembershipInvitationResource.listEligibleForReminder(
-      entWorkspaceModelIds,
-      { limit: BATCH_SIZE }
-    );
+    await MembershipInvitationResource.listEligibleForReminder({
+      limit: BATCH_SIZE,
+    });
 
   if (invitations.length === 0) {
     return false;
   }
+
+  Context.current().heartbeat();
 
   // Group by workspaceId to create the Authenticator once per workspace.
   const byWorkspaceId = new Map<string, typeof invitations>();
@@ -38,8 +31,7 @@ export async function sendInvitationReminderBatchActivity(): Promise<boolean> {
     ]);
   }
 
-  let sent = 0;
-  let failed = 0;
+  let emailsFailed = 0;
 
   for (const [workspaceId, batch] of byWorkspaceId) {
     const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
@@ -47,41 +39,24 @@ export async function sendInvitationReminderBatchActivity(): Promise<boolean> {
     await concurrentExecutor(
       batch,
       async (invitation) => {
-        let newInvitation: MembershipInvitationResource | null = null;
-        try {
-          newInvitation = await withTransaction(async (t) => {
-            const created = await MembershipInvitationResource.makeNew(
-              auth,
-              {
-                inviteEmail: invitation.inviteEmail,
-                initialRole: invitation.initialRole,
-                status: "pending",
-              },
-              t
-            );
-            await invitation.revoke(t);
-            return created;
-          });
-        } catch (err) {
-          logger.error(
-            {
-              err: normalizeError(err),
-              inviteEmail: invitation.inviteEmail,
-              workspaceId,
-            },
-            "[Invitation Reminders] Failed to revoke/recreate invitation."
-          );
-          failed++;
+        // DB failure propagates → concurrentExecutor aborts → activity fails → Temporal retries.
+        // Safe to retry: claimReminderSlot uses a conditional UPDATE (WHERE reminderSentAt IS NULL)
+        // so already-claimed invitations are skipped on the next attempt.
+        const claimed = await invitation.claimReminderSlot();
+
+        if (!claimed) {
+          // Another worker already claimed this invitation; skip to avoid a duplicate email.
           return;
         }
 
         try {
           await sendWorkspaceInvitationReminderEmail(
             auth.getNonNullableWorkspace(),
-            newInvitation.toJSON()
+            invitation.toJSON()
           );
-          sent++;
         } catch (err) {
+          // Email failure is per-item and non-retryable at activity level.
+          // reminderSentAt is already set, so this invitation won't be retried automatically.
           logger.error(
             {
               err: normalizeError(err),
@@ -90,14 +65,21 @@ export async function sendInvitationReminderBatchActivity(): Promise<boolean> {
             },
             "[Invitation Reminders] Failed to send reminder email."
           );
-          failed++;
+          emailsFailed++;
         }
       },
       { concurrency: EMAIL_CONCURRENCY }
     );
+
+    Context.current().heartbeat();
   }
 
-  logger.info({ sent, failed }, "[Invitation Reminders] Batch complete.");
+  if (emailsFailed > 0) {
+    logger.warn(
+      { emailsFailed },
+      "[Invitation Reminders] Some reminder emails failed to send."
+    );
+  }
 
   return invitations.length === BATCH_SIZE;
 }
