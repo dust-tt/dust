@@ -217,7 +217,7 @@ describe("buildSkillAggregationPrompt", () => {
     expect(userMessage).not.toContain("Previously rejected suggestions");
   });
 
-  it("system prompt mentions the suggestion tool", () => {
+  it("system prompt mentions the suggestion tool and inline tool references", () => {
     const { systemPrompt } = buildSkillAggregationPrompt(
       makeSkill(),
       [makeInstructionSuggestion()],
@@ -225,6 +225,8 @@ describe("buildSkillAggregationPrompt", () => {
     );
 
     expect(systemPrompt).toContain("edit_skill");
+    expect(systemPrompt).toContain("inline <tool>");
+    expect(systemPrompt).toContain('Do NOT include "toolEdits"');
   });
 
   it("formats agent-facing description edits with the new content", () => {
@@ -286,7 +288,7 @@ describe("buildSkillAggregationPrompt", () => {
     expect(userMessage).not.toContain("<title>");
   });
 
-  it("includes skill configured tools in user message", () => {
+  it("does not include skill tools as a separate user message block", () => {
     const skill = makeSkill({
       tools: [
         {
@@ -301,8 +303,8 @@ describe("buildSkillAggregationPrompt", () => {
       { pending: [], rejected: [] }
     );
 
-    expect(userMessage).toContain("<tools>");
-    expect(userMessage).toContain('name="web_search"');
-    expect(userMessage).toContain('sId="tool-ws"');
+    expect(userMessage).not.toContain("<tools>");
+    expect(userMessage).not.toContain('name="web_search"');
+    expect(userMessage).not.toContain('sId="tool-ws"');
   });
 });

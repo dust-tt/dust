@@ -54,7 +54,13 @@ describe("buildReinforcedSkillsLLMParams", () => {
 describe("TOOL_SCHEMAS.edit_skill title validation", () => {
   const baseArgs = {
     skillId: "skl_abc",
-    toolEdits: [{ action: "add" as const, toolId: "tool_x" }],
+    instructionEdits: [
+      {
+        targetBlockId: "abc12345",
+        content: "<p>Updated.</p>",
+        type: "replace" as const,
+      },
+    ],
   };
 
   it("accepts a title of exactly 25 characters", () => {
@@ -76,7 +82,7 @@ describe("TOOL_SCHEMAS.edit_skill title validation", () => {
 });
 
 describe("TOOL_SCHEMAS.edit_skill agentFacingDescriptionEdit", () => {
-  it("accepts a description-only edit (no instruction or tool edits)", () => {
+  it("accepts a description-only edit (no instruction edits)", () => {
     const parsed = TOOL_SCHEMAS.edit_skill.safeParse({
       skillId: "skl_abc",
       agentFacingDescriptionEdit: {
@@ -86,7 +92,7 @@ describe("TOOL_SCHEMAS.edit_skill agentFacingDescriptionEdit", () => {
     expect(parsed.success).toBe(true);
   });
 
-  it("accepts a description edit alongside instruction/tool edits", () => {
+  it("accepts a description edit alongside instruction edits", () => {
     const parsed = TOOL_SCHEMAS.edit_skill.safeParse({
       skillId: "skl_abc",
       instructionEdits: [
@@ -96,7 +102,6 @@ describe("TOOL_SCHEMAS.edit_skill agentFacingDescriptionEdit", () => {
           type: "replace",
         },
       ],
-      toolEdits: [{ action: "add" as const, toolId: "tool_x" }],
       agentFacingDescriptionEdit: { content: "New description." },
     });
     expect(parsed.success).toBe(true);
@@ -139,6 +144,21 @@ describe("buildReinforcedSkillsLLMParams edit_skill spec", () => {
     expect(editSkillSpec).toBeDefined();
     expect(JSON.stringify(editSkillSpec?.inputSchema)).toContain(
       "agentFacingDescriptionEdit"
+    );
+  });
+
+  it("does not expose toolEdits on the edit_skill input schema", () => {
+    const params = buildReinforcedSkillsLLMParams(
+      { systemPrompt: "System.", userMessage: "User." },
+      "reinforcement_analyze_conversation"
+    );
+    const editSkillSpec = params.specifications?.find(
+      (s) => s.name === "edit_skill"
+    );
+
+    expect(editSkillSpec).toBeDefined();
+    expect(JSON.stringify(editSkillSpec?.inputSchema)).not.toContain(
+      "toolEdits"
     );
   });
 });
