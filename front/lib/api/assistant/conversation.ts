@@ -64,6 +64,7 @@ import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { extractFromString, serializeMention } from "@app/lib/mentions/format";
 import {
   getWorkspaceCreditPoolStatus,
+  getWorkspaceProgrammaticCreditStatus,
   isApiBlocked,
   isProgrammaticApiBlocked,
   isUserBlocked,
@@ -170,6 +171,18 @@ const PROGRAMMATIC_RATE_LIMIT_DOLLARS_PER_MESSAGE = 3;
 // Prevents close-to-0 attacks where many requests are sent simultaneously
 // before Metronome debits settle.
 const POOL_CREDIT_CONCURRENCY_LIMITS: Record<string, number> = {
+  active: 1000,
+  active_low_balance: 5,
+  active_critical_balance: 1,
+};
+
+// Concurrency limits for programmatic API calls based on the workspace
+// programmatic monthly cap state. Same shape and intent as the pool limits:
+// once the workspace is close to its monthly cap, tighten in-flight
+// programmatic requests so concurrent calls can't overshoot before
+// Metronome debits settle. `depleted` is handled upstream by
+// `isProgrammaticApiBlocked`.
+const PROGRAMMATIC_CREDIT_CONCURRENCY_LIMITS: Record<string, number> = {
   active: 1000,
   active_low_balance: 5,
   active_critical_balance: 1,
@@ -2466,6 +2479,24 @@ async function checkMessagesLimit(
           },
         });
       }
+
+      // Pre-emptive concurrency limit based on the programmatic monthly cap
+      // state. Same close-to-0 defense as the pool concurrency limit above,
+      // but scoped to programmatic API traffic.
+      const programmaticLimit =
+        await checkProgrammaticCreditConcurrencyLimit(auth);
+      if (programmaticLimit.isLimitReached && programmaticLimit.limitType) {
+        return new Err({
+          status_code: 429,
+          api_error: {
+            type: programmaticLimit.limitType,
+            message: getMessageLimitErrorMessage({
+              limitType: programmaticLimit.limitType,
+              message: programmaticLimit.message,
+            }),
+          },
+        });
+      }
     }
   } else if (isProgrammaticUsage(auth, { userMessageOrigin: context.origin })) {
     const limitsResult = await checkProgrammaticUsageLimits(auth);
@@ -2556,6 +2587,54 @@ async function checkPoolCreditConcurrencyLimit(
 
     getStatsDClient().increment(
       "assistant.rate_limiter.pool_credit.concurrency_limit_triggered",
+      1,
+      { workspace_id: owner.sId }
+    );
+
+    return {
+      isLimitReached: true,
+      limitType: "rate_limit_error",
+    };
+  }
+
+  return { isLimitReached: false, limitType: null };
+}
+
+// For programmatic API calls on pool-credit (Metronome) plans, apply
+// concurrency limiting based on the workspace programmatic credit state.
+// Same close-to-0 defense as the pool concurrency limit, but driven by the
+// programmatic monthly cap state machine.
+async function checkProgrammaticCreditConcurrencyLimit(
+  auth: Authenticator
+): Promise<MessageLimit> {
+  const owner = auth.getNonNullableWorkspace();
+  const status = await getWorkspaceProgrammaticCreditStatus(owner.sId);
+
+  const maxConcurrent = PROGRAMMATIC_CREDIT_CONCURRENCY_LIMITS[status];
+  if (maxConcurrent === undefined) {
+    // depleted — handled by isProgrammaticApiBlocked upstream.
+    return { isLimitReached: false, limitType: null };
+  }
+
+  const remaining = await rateLimiter({
+    key: `programmatic_credit_concurrency:${owner.sId}`,
+    maxPerTimeframe: maxConcurrent,
+    timeframeSeconds: 60,
+    logger,
+  });
+
+  if (remaining <= 0) {
+    logger.info(
+      {
+        workspaceId: owner.sId,
+        programmaticCreditStatus: status,
+        maxConcurrent,
+      },
+      "Programmatic credit concurrency limit triggered."
+    );
+
+    getStatsDClient().increment(
+      "assistant.rate_limiter.programmatic_credit.concurrency_limit_triggered",
       1,
       { workspace_id: owner.sId }
     );
