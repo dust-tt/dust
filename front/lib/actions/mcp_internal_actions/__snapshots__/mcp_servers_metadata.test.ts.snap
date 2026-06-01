@@ -455,6 +455,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "get_contacts": "never_ask",
     "get_drafts": "never_ask",
     "get_messages": "never_ask",
+    "list_folders": "never_ask",
     "move_messages": "medium",
     "send_mail": "high",
     "update_contact": "high",
