@@ -42,7 +42,7 @@ pub enum TableType {
 // Maximum number of pending (not-yet-processed) CSV files allowed for a single table.
 // Beyond this, the producer (API) rejects new upserts/deletes so files don't accumulate
 // into a merge the background worker cannot handle (which would OOM-crash the worker).
-const MAX_PENDING_UPSERT_FILES: usize = 50;
+const MAX_PENDING_UPSERT_FILES: usize = 100;
 
 // Errors from table upserts that callers (e.g. the HTTP API) may want to handle specially
 // rather than treating as a generic internal error.
