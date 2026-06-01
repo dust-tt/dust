@@ -6,6 +6,7 @@ import { runCreditAlertsWorker } from "@app/temporal/credit_alerts/worker";
 import { runDataRetentionWorker } from "@app/temporal/data_retention/worker";
 import { runESIndexationQueueWorker } from "@app/temporal/es_indexation/worker";
 import { runHardDeleteWorker } from "@app/temporal/hard_delete/worker";
+import { runInvitationsWorker } from "@app/temporal/invitations/worker";
 import { runLabsTranscriptsWorker } from "@app/temporal/labs/transcripts/worker";
 import { runMentionsCountWorker } from "@app/temporal/mentions_count_queue/worker";
 import { runMentionsQueueWorker } from "@app/temporal/mentions_queue/worker";
@@ -37,6 +38,7 @@ export type WorkerName =
   | "es_indexation_queue"
   | "hard_delete"
   | "labs"
+  | "invitations"
   | "mentions_count"
   | "mentions_queue"
   | "metronome_events_queue"
@@ -63,6 +65,7 @@ export const workerFunctions: Record<WorkerName, () => Promise<void>> = {
   data_retention: runDataRetentionWorker,
   hard_delete: runHardDeleteWorker,
   labs: runLabsTranscriptsWorker,
+  invitations: runInvitationsWorker,
   mentions_count: runMentionsCountWorker,
   mentions_queue: runMentionsQueueWorker,
   metronome_events_queue: runMetronomeEventsWorker,
