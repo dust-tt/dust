@@ -20,6 +20,7 @@ import { useNavigate } from "react-router-dom";
 interface ConversationLayoutProps {
   title: string;
   backHref?: string;
+  centerActions?: React.ReactNode;
   rightActions?: React.ReactNode;
   children: React.ReactNode;
 }
@@ -27,6 +28,7 @@ interface ConversationLayoutProps {
 export const ConversationLayout = ({
   title,
   backHref,
+  centerActions,
   rightActions,
   children,
 }: ConversationLayoutProps) => {
@@ -54,6 +56,7 @@ export const ConversationLayout = ({
         title={title}
         tooltip={title}
         className="justify-between"
+        size="sm"
         leftActions={
           <div className="flex flex-row">
             {backHref ? (
@@ -72,6 +75,7 @@ export const ConversationLayout = ({
             )}
           </div>
         }
+        centerActions={centerActions}
         rightActions={rightActions}
       />
       <div className="h-full w-full pt-16">{children}</div>

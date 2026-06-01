@@ -91,7 +91,7 @@ export function TaskOverflowMenu({ task }: TaskOverflowMenuProps) {
           )}
         />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
+      <DropdownMenuContent align="end" collisionPadding={8}>
         {allowAssigneeReassign && (
           <DropdownMenuSub
             onOpenChange={(subOpen) => {
@@ -106,7 +106,11 @@ export function TaskOverflowMenu({ task }: TaskOverflowMenuProps) {
               disabled={podMembers.length === 0 && task.user === null}
             />
             <DropdownMenuPortal>
-              <DropdownMenuSubContent alignOffset={-4} className="w-80">
+              <DropdownMenuSubContent
+                collisionPadding={8}
+                alignOffset={-4}
+                className="max-w-[var(--radix-dropdown-menu-content-available-width)]"
+              >
                 <DropdownMenuSearchbar
                   autoFocus
                   name={`reassign-task-${task.sId}`}
@@ -115,7 +119,7 @@ export function TaskOverflowMenu({ task }: TaskOverflowMenuProps) {
                   onChange={setReassignSearch}
                 />
                 <DropdownMenuSeparator />
-                <div className="max-h-64 overflow-auto">
+                <div className="max-h-64 overflow-y-auto">
                   {showNoAssigneeReassignOption ||
                   filteredReassignMembers.length > 0 ? (
                     <>
