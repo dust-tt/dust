@@ -71,6 +71,28 @@ import type { CustomerAlert } from "@metronome/sdk/resources/v1/customers";
 
 type MetronomeAlertState = CustomerAlert["customer_status"];
 
+// Programmatic cap alerts share the AWU credit type with PAYG cap alerts;
+// the `usage_type=programmatic` group filter is what distinguishes them.
+function isProgrammaticMonthlyCap(
+  event: Extract<
+    MetronomeWebhookEvent,
+    {
+      type:
+        | "alerts.spend_threshold_reached"
+        | "alerts.spend_threshold_resolved";
+    }
+  >
+): boolean {
+  if (event.properties.credit_type_id !== getCreditTypeAwuId()) {
+    return false;
+  }
+  return (
+    event.properties.group_values?.some(
+      (g) => g.key === "usage_type" && g.value === "programmatic"
+    ) ?? false
+  );
+}
+
 // Map a programmatic cap alert name to the state-machine event it should
 // dispatch. Returns null when the alert name doesn't match any of the three
 // programmatic alerts (defensive — Metronome shouldn't fire anything else
@@ -643,7 +665,7 @@ export async function processMetronomeWebhook({
         if (handleResult.isErr()) {
           return handleResult;
         }
-      } else if (event.properties.credit_type_id === getCreditTypeAwuId()) {
+      } else if (isProgrammaticMonthlyCap(event)) {
         // Programmatic monthly cap alerts. Three alerts exist per workspace
         // with distinct names; route to the matching dispatcher.
         const alertName = event.properties.alert_name ?? "";
@@ -660,6 +682,8 @@ export async function processMetronomeWebhook({
               });
               break;
             case "programmatic_cap_reset":
+              // never happens in spend_threshold_reached
+              // dispatch below by spend_threshold_resolved case
               break;
             default:
               assertNever(programmaticEvent);
@@ -718,7 +742,7 @@ export async function processMetronomeWebhook({
         if (handleResult.isErr()) {
           return handleResult;
         }
-      } else if (event.properties.credit_type_id === getCreditTypeAwuId()) {
+      } else if (isProgrammaticMonthlyCap(event)) {
         await dispatchProgrammaticCapReset({ workspace });
         logger.info(
           { eventId: event.id, workspaceId: workspace.sId },
