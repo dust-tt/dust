@@ -21,7 +21,10 @@ import {
 import { FILES_SERVER_NAME } from "@app/lib/api/actions/servers/files/metadata";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
 import { isDustLikeAgent } from "@app/lib/api/assistant/global_agents/global_agents";
-import type { EnabledSkill } from "@app/lib/api/assistant/skills_rendering";
+import {
+  type EnabledSkill,
+  resolveSkillInstructions,
+} from "@app/lib/api/assistant/skills_rendering";
 import {
   PASTED_CONTENT_MAX_CHARACTERS,
   TRUNCATED_SNIPPET_SIZE,
@@ -200,9 +203,11 @@ function constructToolsSection({
 }
 
 function constructSkillsSection({
+  agentConfiguration,
   systemSkills,
   hasNestedSkills = false,
 }: {
+  agentConfiguration: AgentConfigurationType;
   systemSkills: SkillResource[];
   hasNestedSkills?: boolean;
 }): string {
@@ -239,7 +244,11 @@ function constructSkillsSection({
       "The following baseline skills are always active for this agent:\n" +
       systemSkills
         .map(
-          (skill) => `<${skill.name}>\n${skill.instructions}\n</${skill.name}>`
+          (skill) =>
+            `<${skill.name}>\n${resolveSkillInstructions({
+              agentConfiguration,
+              skill,
+            })}\n</${skill.name}>`
         )
         .join("\n") +
       "\n";
@@ -460,6 +469,7 @@ export function constructPromptMultiActions(
     serverToolsAndInstructions,
   });
   const skillsSection = constructSkillsSection({
+    agentConfiguration,
     systemSkills,
     hasNestedSkills,
   });

@@ -190,6 +190,7 @@ export async function renderAllMessages(
           const steps = await getSteps(auth, {
             model,
             message: m,
+            agentConfiguration,
             workspaceId: conversation.owner.sId,
             conversationId: conversation.sId,
             onMissingAction,

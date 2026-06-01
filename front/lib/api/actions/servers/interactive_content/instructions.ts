@@ -17,8 +17,9 @@ import {
   RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   REVERT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
 } from "@app/lib/api/actions/servers/interactive_content/metadata";
+import { INTERACTIVE_CONTENT_AUTHORING_PROSE_OPENAI_V1 } from "@app/lib/api/actions/servers/interactive_content/instructions_openai_v1";
 
-export const INTERACTIVE_CONTENT_INSTRUCTIONS = `\
+export const INTERACTIVE_CONTENT_TOOLS_PROSE_BEFORE_AUTHORING = `\
 ## CREATING VISUALIZATIONS WITH INTERACTIVE CONTENT
 
 You have access to an Interactive Content system that allows you to create and update executable files. When creating visualizations, you should create files instead of using the :::visualization directive.
@@ -148,7 +149,9 @@ Fix syntax errors before the file can be created/edited.
 - Use \`${RENAME_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` to rename an existing Interactive Content file
 - The new file name must include a valid extension (e.g., .js, .jsx, .ts, .tsx)
 - Renaming only changes the file name; the content remains unchanged
+`;
 
+export const INTERACTIVE_CONTENT_AUTHORING_PROSE_DEFAULT = `\
 ${VIZ_REACT_COMPONENT_GUIDELINES}
 
 ${VIZ_STYLING_GUIDELINES}
@@ -158,7 +161,9 @@ ${VIZ_FILE_HANDLING_GUIDELINES}
 ${VIZ_LIBRARY_USAGE}
 
 ${VIZ_MISCELLANEOUS_GUIDELINES}
+`;
 
+export const INTERACTIVE_CONTENT_TOOLS_PROSE_AFTER_AUTHORING = `\
 - When to Create Files:
   - Create files for data visualizations such as graphs, charts, and plots
   - Create files for complex visualizations that require user interaction
@@ -244,3 +249,17 @@ Examples:
 
 ${VIZ_CHART_EXAMPLES}
 `;
+
+export const INTERACTIVE_CONTENT_TOOLS_PROSE = `${INTERACTIVE_CONTENT_TOOLS_PROSE_BEFORE_AUTHORING}\n\n${INTERACTIVE_CONTENT_TOOLS_PROSE_AFTER_AUTHORING}`;
+
+function buildInteractiveContentInstructions(authoringProse: string): string {
+  return `${INTERACTIVE_CONTENT_TOOLS_PROSE_BEFORE_AUTHORING}\n${authoringProse}\n${INTERACTIVE_CONTENT_TOOLS_PROSE_AFTER_AUTHORING}`;
+}
+
+export const INTERACTIVE_CONTENT_INSTRUCTIONS =
+  buildInteractiveContentInstructions(INTERACTIVE_CONTENT_AUTHORING_PROSE_DEFAULT);
+
+export const INTERACTIVE_CONTENT_INSTRUCTIONS_OPENAI_V1 =
+  buildInteractiveContentInstructions(
+    INTERACTIVE_CONTENT_AUTHORING_PROSE_OPENAI_V1
+  );

@@ -36,6 +36,7 @@ import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_r
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type {
   AgentConfigurationType,
+  FramesVariant,
   AgentModelConfigurationType,
   GlobalAgentContext,
 } from "@app/types/assistant/agent";
@@ -279,6 +280,7 @@ function _getDustLikeGlobalAgent(
     preferredModelConfiguration,
     preferredReasoningEffort,
     requiredPreferredModelConfiguration,
+    framesVariant,
     omittedThinking,
   }: {
     agentId: GLOBAL_AGENTS_SID;
@@ -286,6 +288,7 @@ function _getDustLikeGlobalAgent(
     preferredModelConfiguration?: ModelConfigurationType | null;
     preferredReasoningEffort?: ReasoningEffort;
     requiredPreferredModelConfiguration?: boolean;
+    framesVariant?: FramesVariant;
     omittedThinking?: boolean;
   }
 ): (AgentConfigurationType & { omittedThinking?: boolean }) | null {
@@ -381,6 +384,7 @@ function _getDustLikeGlobalAgent(
     tags: [],
     canRead: true,
     canEdit: false,
+    ...(framesVariant ? { framesVariant } : {}),
   };
 
   if (
@@ -822,6 +826,7 @@ export function _getDustOaiGlobalAgent(
     name: "dust-oai",
     preferredModelConfiguration: GPT_5_5_MODEL_CONFIG,
     preferredReasoningEffort: "light",
+    framesVariant: "openai-v1",
   });
 }
 
@@ -834,6 +839,7 @@ export function _getDustOaiMediumGlobalAgent(
     name: "dust-oai-medium",
     preferredModelConfiguration: GPT_5_5_MODEL_CONFIG,
     preferredReasoningEffort: "medium",
+    framesVariant: "openai-v1",
   });
 }
 
@@ -846,6 +852,7 @@ export function _getDustOaiHighGlobalAgent(
     name: "dust-oai-high",
     preferredModelConfiguration: GPT_5_5_MODEL_CONFIG,
     preferredReasoningEffort: "high",
+    framesVariant: "openai-v1",
   });
 }
 
@@ -958,6 +965,7 @@ type CustomModelDustGlobalAgentConfig = {
   name: string;
   customModelIndex: number;
   preferredReasoningEffort: ReasoningEffort;
+  framesVariant?: FramesVariant;
 };
 
 export const CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS = new Map<
@@ -994,6 +1002,7 @@ export const CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS = new Map<
       name: "dust-chawi",
       customModelIndex: 0,
       preferredReasoningEffort: "light",
+      framesVariant: "openai-v1",
     },
   ],
   [
@@ -1002,6 +1011,7 @@ export const CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS = new Map<
       name: "dust-chawi-medium",
       customModelIndex: 0,
       preferredReasoningEffort: "medium",
+      framesVariant: "openai-v1",
     },
   ],
   [
@@ -1010,6 +1020,7 @@ export const CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS = new Map<
       name: "dust-chawi-high",
       customModelIndex: 0,
       preferredReasoningEffort: "high",
+      framesVariant: "openai-v1",
     },
   ],
   [
@@ -1018,6 +1029,7 @@ export const CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS = new Map<
       name: "dust-soupinou",
       customModelIndex: 1,
       preferredReasoningEffort: "light",
+      framesVariant: "openai-v1",
     },
   ],
   [
@@ -1026,6 +1038,7 @@ export const CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS = new Map<
       name: "dust-soupinou-medium",
       customModelIndex: 1,
       preferredReasoningEffort: "medium",
+      framesVariant: "openai-v1",
     },
   ],
   [
@@ -1034,6 +1047,7 @@ export const CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS = new Map<
       name: "dust-soupinou-high",
       customModelIndex: 1,
       preferredReasoningEffort: "high",
+      framesVariant: "openai-v1",
     },
   ],
   [
@@ -1089,5 +1103,6 @@ export function _getCustomModelDustLikeGlobalAgent(
       CUSTOM_MODEL_CONFIGS[config.customModelIndex] ?? null,
     preferredReasoningEffort: config.preferredReasoningEffort,
     requiredPreferredModelConfiguration: true,
+    framesVariant: config.framesVariant,
   });
 }

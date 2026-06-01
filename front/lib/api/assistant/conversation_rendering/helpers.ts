@@ -25,6 +25,7 @@ import { renderLightContentFragmentForModel } from "@app/lib/resources/content_f
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
+import type { AgentConfigurationFramesVariantContext } from "@app/types/assistant/agent";
 import type {
   AgentContentItemType,
   AgentErrorContentType,
@@ -75,8 +76,10 @@ export type Step = {
 function renderEnabledSkillMessagesForAction(
   action: AgentMCPActionWithOutputType,
   {
+    agentConfiguration,
     enabledSkillById,
   }: {
+    agentConfiguration?: AgentConfigurationFramesVariantContext;
     enabledSkillById: ReadonlyMap<string, EnabledSkill>;
   }
 ): UserMessageTypeModel[] {
@@ -95,6 +98,7 @@ function renderEnabledSkillMessagesForAction(
 
     enabledSkillMessages.push(
       renderEnabledSkillUserMessageFromInstructions({
+        agentConfiguration,
         skill,
       })
     );
@@ -212,6 +216,7 @@ export async function getSteps(
   {
     model,
     message,
+    agentConfiguration,
     workspaceId,
     conversationId,
     onMissingAction,
@@ -219,6 +224,7 @@ export async function getSteps(
   }: {
     model: ModelConfigurationType;
     message: AgentMessageType;
+    agentConfiguration?: AgentConfigurationFramesVariantContext;
     workspaceId: string;
     conversationId: string;
     onMissingAction: "inject-placeholder" | "skip";
@@ -249,6 +255,7 @@ export async function getSteps(
         conversationId,
       }),
       enabledSkillMessages: renderEnabledSkillMessagesForAction(action, {
+        agentConfiguration,
         enabledSkillById,
       }),
     }),
