@@ -707,6 +707,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "dust_no_spa"
   | "dust_spa"
   | "fireworks_new_model_feature"
+  | "frames_skill_v2"
   | "gemini_3_1_pro_feature"
   | "clari_copilot_mcp"
   | "google_sheets_tool"
