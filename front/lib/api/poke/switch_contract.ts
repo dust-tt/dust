@@ -405,6 +405,32 @@ export async function switchContract({
     );
   }
 
+  // Persist the per-seat-type billing floors BEFORE provisioning. The
+  // provisioning sync (`syncContractQuantities` inside
+  // `provisionMetronomeContract`) clamps each seat's quantity up to its
+  // configured `minSeats`, so the floor must already be in
+  // `workspace_seat_limits` when that sync runs — otherwise the first sync
+  // bills the actual headcount and the floor only takes effect on a later sync.
+  // (The seat commitment + rate overrides run after provisioning, below, since
+  // they need the contract id.)
+  for (const seat of body.seats ?? []) {
+    if (!isMembershipSeatType(seat.seatType)) {
+      continue;
+    }
+    if (seat.minSeats > 0) {
+      await WorkspaceSeatLimitResource.upsert({
+        workspace: owner,
+        seatType: seat.seatType,
+        minSeats: seat.minSeats,
+      });
+    } else {
+      await WorkspaceSeatLimitResource.remove({
+        workspace: owner,
+        seatType: seat.seatType,
+      });
+    }
+  }
+
   const provisionResult = await provisionMetronomeContract({
     metronomeCustomerId,
     workspace: renderLightWorkspaceType({ workspace: owner }),
@@ -566,9 +592,10 @@ export async function switchContract({
     }
   }
 
-  // Per-seat-type settings: persist the billing floor (`minSeats`) to
-  // `workspace_seat_limits`, and create a prepaid commit when a commitment
-  // price is set.
+  // Per-seat-type settings: create a prepaid commit when a commitment price is
+  // set, and apply a rate override when the seat rate was changed. The billing
+  // floor (`minSeats`) was already persisted before provisioning (above) so the
+  // provisioning sync could clamp to it.
   if (body.seats && body.seats.length > 0) {
     // Seat product + default rate by seat type, from the package's entitlement
     // overrides — used to target rate overrides and detect rate changes.
@@ -593,23 +620,6 @@ export async function switchContract({
       const rateNative = resolvedCurrency
         ? metronomeAmount(Math.round(seat.rate * 100), resolvedCurrency)
         : seat.rate;
-
-      // Billing floor → workspace_seat_limits. A minimum of 0 means "no floor"
-      // → drop any existing row. A DB failure here throws (→ 500): the seat
-      // sync at contract start reconciles Metronome from these rows, so the
-      // operator must know the floor wasn't persisted.
-      if (seat.minSeats > 0) {
-        await WorkspaceSeatLimitResource.upsert({
-          workspace: owner,
-          seatType: seat.seatType,
-          minSeats: seat.minSeats,
-        });
-      } else {
-        await WorkspaceSeatLimitResource.remove({
-          workspace: owner,
-          seatType: seat.seatType,
-        });
-      }
 
       // One-off seat commitment: grant `minSeats * rate` of contract credit
       // (the list value of the committed seats), invoiced at the negotiated

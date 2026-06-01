@@ -4,6 +4,7 @@ import {
   reactivateMetronomeContract,
 } from "@app/lib/metronome/client";
 import { clearScheduledSubscriptionCancellation } from "@app/lib/plans/stripe";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
@@ -37,10 +38,11 @@ export type CancelPendingContractSuccess = {
  * Cancel a pending contract switch staged by `switchContract`, reverting the
  * workspace to its current contract.
  *
- * The switch flow leaves three artifacts behind that this undoes:
+ * The switch flow leaves these artifacts behind that this undoes:
  *   - a future-dated Metronome contract (the pending one) → archived;
  *   - a scheduled end on the current Metronome contract → end removed;
  *   - a scheduled cancellation on the current Stripe subscription → cleared;
+ *   - scheduled membership seat-type remaps at the pending start → cancelled;
  * plus the pending `created_backend_only` subscription row → deleted.
  *
  * The current contract/sub are restored FIRST so that a later failure can
@@ -68,6 +70,30 @@ export async function cancelPendingContract({
   }
 
   const currentSubscription = auth.subscriptionResource();
+
+  // 0. Undo the seat remap staged for this switch. `provisionMetronomeContract`
+  //    scheduled membership seat-type changes at the pending contract's start,
+  //    so cancel exactly those (scoped to that moment, leaving unrelated
+  //    scheduled changes intact). Reopens the memberships' current seat rows.
+  //    Done first: it's a local, idempotent operation, safe to re-run if a
+  //    later step fails and the operator retries.
+  if (pending.startDate) {
+    const cancelledRemapCount =
+      await MembershipResource.cancelScheduledSeatChangesForWorkspaceAt({
+        workspace: owner,
+        scheduledAt: pending.startDate,
+      });
+    if (cancelledRemapCount > 0) {
+      logger.info(
+        {
+          workspaceId: owner.sId,
+          scheduledAt: pending.startDate.toISOString(),
+          cancelledRemapCount,
+        },
+        "[cancel_pending_contract] Cancelled scheduled seat remap"
+      );
+    }
+  }
 
   // 1. Restore the current Metronome contract: remove the scheduled end that
   //    switch_contract set up so it no longer lapses at the swap time.

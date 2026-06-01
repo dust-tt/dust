@@ -28,6 +28,7 @@ import {
 } from "@app/lib/metronome/mau_sync";
 import {
   hasContractSeatSubscription,
+  remapMembershipSeatTypesForContract,
   syncSeatCount,
 } from "@app/lib/metronome/seats";
 import {
@@ -305,6 +306,22 @@ export async function provisionMetronomeContract({
         )
       );
     }
+  }
+
+  // Remap existing memberships to seat types billed by the new contract BEFORE
+  // syncing, so no member lands on a seat type the new contract doesn't bill
+  // (which would leave them unbilled). For future-dated switches this schedules
+  // the change at the contract start; the sync below then reconciles the new
+  // contract against the (current or scheduled) membership seat types.
+  const remapResult = await remapMembershipSeatTypesForContract({
+    metronomeCustomerId,
+    contractId: metronomeContractId,
+    workspace,
+    swapAt,
+    startingAt: alignedStart,
+  });
+  if (remapResult.isErr()) {
+    return new Err(remapResult.error);
   }
 
   const syncResult = await syncContractQuantities(
