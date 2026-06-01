@@ -1,6 +1,11 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
+import {
+  CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+  EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+  INTERACTIVE_CONTENT_SERVER_NAME,
+} from "@app/lib/api/actions/servers/interactive_content/metadata";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
@@ -230,6 +235,10 @@ const FILES_TOOLS_COMMON_METADATA = {
       "Accepts UTF-8 text content only. Binary files cannot be created via this tool. " +
       `Content is capped at ${CREATE_CONTENT_MAX_BYTES / 1024} KB. ` +
       "If the file already exists it is silently overwritten (shell \`>\` semantics). " +
+      "Does not support Frame files (`application/vnd.dust.frame`, " +
+      "`application/vnd.dust.frame.slideshow`); use " +
+      `\`${getPrefixedToolName(INTERACTIVE_CONTENT_SERVER_NAME, CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}\` to create or ` +
+      `\`${getPrefixedToolName(INTERACTIVE_CONTENT_SERVER_NAME, EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}\` to edit them. ` +
       "Returns whether the file was created or updated, along with its path and size.",
     schema: {
       path: z

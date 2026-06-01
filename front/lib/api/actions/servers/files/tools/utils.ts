@@ -1,4 +1,15 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
+import {
+  FILES_CREATE_ACTION_NAME,
+  FILES_LIST_ACTION_NAME,
+  FILES_SERVER_NAME,
+} from "@app/lib/api/actions/servers/files/metadata";
+import {
+  CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+  EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+  INTERACTIVE_CONTENT_SERVER_NAME,
+} from "@app/lib/api/actions/servers/interactive_content/metadata";
 import { getGCSPathFromScopedPath } from "@app/lib/api/files/gcs_mount/files";
 import {
   getConversationFilesBasePath,
@@ -132,6 +143,23 @@ export async function resolveFile(
       `File not found: \`${path}\`. Error: ${normalizeError(lastError).message}`,
       { tracked: false }
     )
+  );
+}
+
+export function frameFileCreateRejectedError(): MCPError {
+  return new MCPError(
+    `Frame files cannot be created with \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_CREATE_ACTION_NAME)}\`. ` +
+      `Use \`${getPrefixedToolName(INTERACTIVE_CONTENT_SERVER_NAME, CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}\` instead.`,
+    { tracked: false }
+  );
+}
+
+export function frameFileEditRejectedError(): MCPError {
+  return new MCPError(
+    `Frame files cannot be edited with \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_CREATE_ACTION_NAME)}\`. ` +
+      `Use \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_LIST_ACTION_NAME)}\` to get the file id, ` +
+      `then \`${getPrefixedToolName(INTERACTIVE_CONTENT_SERVER_NAME, EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}\` to update it.`,
+    { tracked: false }
   );
 }
 

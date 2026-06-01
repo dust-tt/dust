@@ -10,7 +10,15 @@ import {
   requireAgentLoopConversation,
   scopedPathsFromArgs,
 } from "@app/lib/api/actions/servers/files/tools/agent_loop_fs";
-import { isAllSupportedFileContentType } from "@app/types/files";
+import {
+  frameFileCreateRejectedError,
+  frameFileEditRejectedError,
+} from "@app/lib/api/actions/servers/files/tools/utils";
+import {
+  isAllSupportedFileContentType,
+  isInteractiveContentType,
+  stripMimeParameters,
+} from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
@@ -48,9 +56,21 @@ export async function createHandler(
 
   const dustFs = fsResult.value;
 
+  const incomingMimeType = stripMimeParameters(content_type);
+  if (isInteractiveContentType(incomingMimeType)) {
+    return new Err(frameFileCreateRejectedError());
+  }
+
   // Check existence before writing so we can report "Created" vs "Updated".
   const statResult = await dustFs.stat(path);
   const exists = statResult.isOk() && statResult.value !== null;
+
+  if (statResult.isOk() && statResult.value !== null) {
+    const existingMimeType = stripMimeParameters(statResult.value.contentType);
+    if (isInteractiveContentType(existingMimeType)) {
+      return new Err(frameFileEditRejectedError());
+    }
+  }
 
   const writeResult = await dustFs.write(path, contentBuffer, content_type);
   if (writeResult.isErr()) {
