@@ -1,5 +1,4 @@
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
-import { editorVariants } from "@app/components/editor/editorStyles";
 import { KNOWLEDGE_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import { TOOL_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/ToolNode";
@@ -106,6 +105,11 @@ function sanitizeSkillInstructionsHtml(
 
 const INSTRUCTIONS_EDITOR_SIZE = "min-h-60 max-h-[1024px]";
 const INSTRUCTIONS_EDITOR_REFERENCE_SUMMARY_SIZE = "min-h-80 pb-28";
+const INSTRUCTIONS_EDITOR_CONTENT_STYLES = cn(
+  "overflow-auto rounded-none border-0 px-3 pt-2 pb-8 resize-y",
+  "bg-transparent transition-all duration-200",
+  "focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
+);
 
 interface SkillBuilderInstructionsEditorProps {
   onAddKnowledge?: (addKnowledge: () => void) => void;
@@ -473,7 +477,9 @@ export function SkillBuilderInstructionsEditor({
     };
   }, [debouncedUpdate]);
 
-  // Set editor class based on error state (applies to ProseMirror element)
+  // Set editor class based on state (applies to ProseMirror element).
+  // The wrapper owns the border/focus styles so the reference summary can sit
+  // inside the same rounded frame without drawing over the focused edge.
   useEffect(() => {
     if (!editor) {
       return;
@@ -483,11 +489,9 @@ export function SkillBuilderInstructionsEditor({
       editorProps: {
         attributes: {
           class: cn(
-            editorVariants({
-              error: displayError,
-              disabled: isDiffMode,
-              readOnly: hasSuggestions,
-            }),
+            INSTRUCTIONS_EDITOR_CONTENT_STYLES,
+            isDiffMode && "cursor-not-allowed resize-none opacity-60",
+            hasSuggestions && "cursor-not-allowed",
             INSTRUCTIONS_EDITOR_SIZE,
             hasInstructionReferenceSummary &&
               INSTRUCTIONS_EDITOR_REFERENCE_SUMMARY_SIZE
@@ -495,13 +499,7 @@ export function SkillBuilderInstructionsEditor({
         },
       },
     });
-  }, [
-    editor,
-    displayError,
-    isDiffMode,
-    hasSuggestions,
-    hasInstructionReferenceSummary,
-  ]);
+  }, [editor, isDiffMode, hasSuggestions, hasInstructionReferenceSummary]);
 
   // Sync external changes to the editor content
   useEffect(() => {
@@ -601,7 +599,26 @@ export function SkillBuilderInstructionsEditor({
 
   return (
     <div className="space-y-1 p-px">
-      <div className="relative overflow-hidden rounded-xl">
+      <div
+        className={cn(
+          "relative overflow-hidden rounded-xl border transition-all duration-200",
+          "bg-muted-background dark:bg-muted-background-night",
+          displayError
+            ? [
+                "border-border-warning/30 dark:border-border-warning-night/60",
+                "focus-within:border-border-warning dark:focus-within:border-border-warning-night",
+                "focus-within:outline-none focus-within:ring-2",
+                "focus-within:ring-warning/10 dark:focus-within:ring-warning-night/30",
+              ]
+            : [
+                "border-border dark:border-border-night",
+                "focus-within:border-highlight-300 dark:focus-within:border-highlight-300-night",
+              ],
+          isDiffMode &&
+            "bg-muted-background/50 dark:bg-muted-background-night/50",
+          hasSuggestions && "cursor-not-allowed"
+        )}
+      >
         <SkillInstructionsEditorContent
           editor={editor}
           isReadOnly={hasSuggestions}

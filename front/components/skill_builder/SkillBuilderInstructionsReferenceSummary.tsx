@@ -203,7 +203,7 @@ export function SkillBuilderInstructionsReferenceSummary({
   return (
     <div
       className={cn(
-        "absolute inset-x-px bottom-px z-10 max-h-40 overflow-y-auto border-t px-3 pb-3 pt-3",
+        "absolute inset-x-0 bottom-0 z-10 max-h-40 overflow-y-auto border-t px-3 pb-3 pt-3",
         "border-border/70 bg-background",
         "dark:border-border-night/70 dark:bg-background-night"
       )}
