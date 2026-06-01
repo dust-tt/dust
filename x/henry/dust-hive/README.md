@@ -130,7 +130,7 @@ dust-hive up
 # Create a new environment
 dust-hive spawn myenv
 
-# Start all services (docker, front, core, connectors, etc.)
+# Start all services for one or more environments (docker, front, core, connectors, etc.)
 dust-hive warm myenv
 
 # Open the environment's terminal UI
@@ -164,10 +164,10 @@ dust-hive down
 | Command | Description |
 |---------|-------------|
 | `spawn [NAME] [--no-open] [--no-attach] [--warm] [--wait]` | Create new environment |
-| `warm [NAME] [--no-forward] [--force-ports]` | Start docker + all services |
-| `cool [NAME]` | Pause services + docker, keep SDK (fast restart) |
-| `start [NAME]` | Resume stopped environment (when NAME provided) |
-| `stop [NAME]` | Full stop + remove docker containers |
+| `warm [NAME...] [--no-forward] [--force-ports]` | Start docker + all services |
+| `cool [NAME...]` | Pause services + docker, keep SDK (fast restart) |
+| `start [NAME...]` | Resume stopped environments |
+| `stop [NAME] [SERVICE]` | Full stop + remove docker containers, or stop one service |
 | `destroy [NAME] [--force]` | Remove environment completely (multi-select if NAME omitted) |
 | `restart [NAME] SERVICE` | Restart a single service |
 | `open [NAME]` | Open zellij terminal session |

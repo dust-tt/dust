@@ -1,5 +1,5 @@
 import { setCacheSource } from "../lib/cache";
-import { withEnvironment } from "../lib/commands";
+import { withEnvironments } from "../lib/commands";
 import { startDocker } from "../lib/docker";
 import type { Environment } from "../lib/environment";
 import { isInitialized, markInitialized } from "../lib/environment";
@@ -122,7 +122,7 @@ async function ensureAllMCPServerViewsCreated(env: Environment): Promise<void> {
 }
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: orchestration function with necessary complexity
-export const warmCommand = withEnvironment("warm", async (env, options: WarmOptions) => {
+export const warmCommand = withEnvironments("warm", async (env, options: WarmOptions) => {
   const startTime = Date.now();
   const noForward = options.noForward ?? false;
   const forcePorts = options.forcePorts ?? false;
