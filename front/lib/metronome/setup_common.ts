@@ -23,6 +23,7 @@ import {
   PROD_CREDIT_TYPE_PROG_USD_ID,
   SEAT_PRODUCT_YEARLY_SUFFIX,
   SEAT_TYPE_CUSTOM_FIELD_KEY,
+  USAGE_TYPE_GROUP_KEY,
 } from "@app/lib/metronome/constants";
 import { EXCESS_CREDIT_NAME } from "@app/lib/metronome/types";
 import type { SupportedCurrency } from "@app/types/currency";
@@ -330,7 +331,7 @@ export const PRODUCTS: ProductDef[] = [
     name: "AI Usage",
     type: "USAGE",
     billable_metric_name: "LLM Provider Cost AWU",
-    pricing_group_key: ["usage_type"],
+    pricing_group_key: [USAGE_TYPE_GROUP_KEY],
     presentation_group_key: ["user_id"],
     tags: [USAGE_TAG],
   },
@@ -338,7 +339,7 @@ export const PRODUCTS: ProductDef[] = [
     name: "Tool Usage",
     type: "USAGE",
     billable_metric_name: "Tool Invocations",
-    pricing_group_key: ["usage_type", "tool_category"],
+    pricing_group_key: [USAGE_TYPE_GROUP_KEY, "tool_category"],
     presentation_group_key: ["user_id"],
     tags: [USAGE_TAG],
   },

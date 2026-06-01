@@ -97,6 +97,14 @@ export const CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY =
 export const CONTRACT_CREDIT_TYPE_EXCESS = "excess";
 export const CONTRACT_CREDIT_TYPE_POOL = "pool";
 
+// Pricing/billable-metric group key that splits AWU usage into "user",
+// "programmatic", and "free" slices. Emitted on every usage event and used
+// by pricing rules, per-user reporting, and spend-threshold alerts.
+export const USAGE_TYPE_GROUP_KEY = "usage_type";
+export const USAGE_TYPE_USER = "user";
+export const USAGE_TYPE_PROGRAMMATIC = "programmatic";
+export const USAGE_TYPE_FREE = "free";
+
 // Suffix appended to the annual variant of each seat product name in
 // Metronome (e.g. "Pro Seat (Yearly)"). Used by the setup script when
 // declaring products and by the UI to strip the suffix from displayed seat

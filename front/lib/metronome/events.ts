@@ -6,6 +6,11 @@ import type { RunUsageType } from "@app/lib/resources/run_resource";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { createHash } from "crypto";
 
+import {
+  USAGE_TYPE_GROUP_KEY,
+  USAGE_TYPE_PROGRAMMATIC,
+  USAGE_TYPE_USER,
+} from "./constants";
 import type { MetronomeEvent } from "./types";
 
 const MAX_TRANSACTION_ID_LENGTH = 128;
@@ -266,7 +271,9 @@ export function buildLlmUsageEvents({
       // TODO: Remove is_programmatic_usage & is_free_usage, this is replaced by single property "usage type"
       is_programmatic_usage: isProgrammaticUsage ? "true" : "false",
       is_free_usage: "false",
-      usage_type: isProgrammaticUsage ? "programmatic" : "user",
+      [USAGE_TYPE_GROUP_KEY]: isProgrammaticUsage
+        ? USAGE_TYPE_PROGRAMMATIC
+        : USAGE_TYPE_USER,
       auth_method: authMethod ?? "unknown",
       api_key_name: apiKeyName ?? "unknown",
       message_status: messageStatus,
@@ -379,7 +386,9 @@ export function buildToolUseEvents({
       total_execution_duration_ms: totalDurationMs,
       // TODO: Remove is_programmatic_usage, this is replaced by single property "usage type"
       is_programmatic_usage: isProgrammaticUsage ? "true" : "false",
-      usage_type: isProgrammaticUsage ? "programmatic" : "user",
+      [USAGE_TYPE_GROUP_KEY]: isProgrammaticUsage
+        ? USAGE_TYPE_PROGRAMMATIC
+        : USAGE_TYPE_USER,
       message_status: messageStatus,
       is_sub_agent_message: isSubAgentMessage ? "true" : "false",
       origin,
