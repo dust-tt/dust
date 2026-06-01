@@ -104,7 +104,7 @@ describe("GET /api/w/[wId]/assistant/agent_configurations/[aId]/editors", () => 
     expect(data.editors[0].id).toBe(agentOwner.id);
   });
 
-  it("should return 200 and the editor list for editor", async () => {
+  it("should return 200 and only light member fields for non-admin editor", async () => {
     const { req, res, agentOwner } = await setupTest({
       agentOwnerRole: "builder",
       requestUserRole: "builder",
@@ -114,7 +114,13 @@ describe("GET /api/w/[wId]/assistant/agent_configurations/[aId]/editors", () => 
     expect(res._getStatusCode()).toBe(200);
     const data = res._getJSONData();
     expect(data.editors).toHaveLength(1);
-    expect(data.editors[0].id).toBe(agentOwner.id);
+    expect(data.editors[0].sId).toBe(agentOwner.sId);
+
+    // Non-admin should not see sensitive fields.
+    expect(data.editors[0].email).toBeUndefined();
+    expect(data.editors[0].id).toBeUndefined();
+    expect(data.editors[0].provider).toBeUndefined();
+    expect(data.editors[0].username).toBeUndefined();
   });
 
   it("should return 404 for non-existent agent", async () => {
@@ -189,7 +195,7 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/editors", () =
     expect(data.editors[0].sId).toBe(editorToRemove.sId);
   });
 
-  it("editor should successfully add another editor", async () => {
+  it("editor should successfully add another editor and get light response", async () => {
     const { req, res, workspace, agentOwner } = await setupTest({
       agentOwnerRole: "builder", // Make agent owner a builder
       requestUserRole: "builder",
@@ -205,9 +211,11 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/editors", () =
     const data = res._getJSONData();
     expect(res._getStatusCode()).toBe(200);
     expect(data.editors).toHaveLength(2);
-    const editorIds = data.editors.map((e: UserType) => e.sId);
+    const editorIds = data.editors.map((e: { sId: string }) => e.sId);
     expect(editorIds).toContain(agentOwner.sId);
     expect(editorIds).toContain(newEditor.sId);
+    // Non-admin should not see email.
+    expect(data.editors[0].email).toBeUndefined();
   });
 
   it("editor should successfully remove another editor", async () => {

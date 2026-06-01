@@ -3,7 +3,7 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
-import type { UserType } from "@app/types/user";
+import type { LightMemberType, UserType } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -34,8 +34,16 @@ export interface GetSkillEditorsResponseBody {
   editors: UserType[];
 }
 
+interface GetSkillEditorsLightResponseBody {
+  editors: LightMemberType[];
+}
+
 export interface PatchSkillEditorsResponseBody {
   editors: UserType[];
+}
+
+interface PatchSkillEditorsLightResponseBody {
+  editors: LightMemberType[];
 }
 
 // Resolve :sId into a skill + its editor group. Returns either the loaded
@@ -97,7 +105,20 @@ app.get("/", async (ctx) => {
   const members = await editorGroup.getActiveMembers(auth);
   const memberUsers = members.map((m) => m.toJSON());
 
-  return ctx.json({ editors: memberUsers });
+  // biome-ignore lint/plugin/noDirectRoleCheck: conditional response — non-admins get a light response, not a 403
+  if (auth.isAdmin()) {
+    return ctx.json({ editors: memberUsers });
+  }
+
+  return ctx.json({
+    editors: memberUsers.map((m) => ({
+      sId: m.sId,
+      firstName: m.firstName,
+      lastName: m.lastName,
+      fullName: m.fullName,
+      image: m.image,
+    })),
+  });
 });
 
 app.patch(
@@ -263,9 +284,21 @@ app.patch(
     }
 
     const updatedMembers = await editorGroup.getActiveMembers(auth);
+    const updatedEditors = updatedMembers.map((m) => m.toJSON());
+
+    // biome-ignore lint/plugin/noDirectRoleCheck: conditional response — non-admins get a light response, not a 403
+    if (auth.isAdmin()) {
+      return ctx.json({ editors: updatedEditors });
+    }
 
     return ctx.json({
-      editors: updatedMembers.map((m) => m.toJSON()),
+      editors: updatedEditors.map((m) => ({
+        sId: m.sId,
+        firstName: m.firstName,
+        lastName: m.lastName,
+        fullName: m.fullName,
+        image: m.image,
+      })),
     });
   }
 );

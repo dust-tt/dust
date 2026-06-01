@@ -5,7 +5,7 @@ import {
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { UserType } from "@app/types/user";
+import type { LightMemberType, UserType } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -16,8 +16,16 @@ export type GetAgentEditorsResponseBody = {
   editors: UserType[];
 };
 
+type GetAgentEditorsLightResponseBody = {
+  editors: LightMemberType[];
+};
+
 export type PatchAgentEditorsResponseBody = {
   editors: UserType[];
+};
+
+type PatchAgentEditorsLightResponseBody = {
+  editors: LightMemberType[];
 };
 
 const PatchAgentEditorsRequestBodySchema = z
@@ -39,7 +47,13 @@ const PatchAgentEditorsRequestBodySchema = z
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/editors.
 const app = workspaceApp();
 
-app.get("/", async (ctx): HandlerResult<GetAgentEditorsResponseBody> => {
+app.get(
+  "/",
+  async (
+    ctx
+  ): HandlerResult<
+    GetAgentEditorsResponseBody | GetAgentEditorsLightResponseBody
+  > => {
   const auth = ctx.get("auth");
   const aId = ctx.req.param("aId") ?? "";
 
@@ -112,13 +126,32 @@ app.get("/", async (ctx): HandlerResult<GetAgentEditorsResponseBody> => {
   }
 
   const members = await editorGroup.getActiveMembers(auth);
-  return ctx.json({ editors: members.map((m) => m.toJSON()) });
+  const memberUsers = members.map((m) => m.toJSON());
+
+  // biome-ignore lint/plugin/noDirectRoleCheck: conditional response — non-admins get a light response, not a 403
+  if (auth.isAdmin()) {
+    return ctx.json({ editors: memberUsers });
+  }
+
+  return ctx.json({
+    editors: memberUsers.map((m) => ({
+      sId: m.sId,
+      firstName: m.firstName,
+      lastName: m.lastName,
+      fullName: m.fullName,
+      image: m.image,
+    })),
+  });
 });
 
 app.patch(
   "/",
   validate("json", PatchAgentEditorsRequestBodySchema),
-  async (ctx): HandlerResult<PatchAgentEditorsResponseBody> => {
+  async (
+    ctx
+  ): HandlerResult<
+    PatchAgentEditorsResponseBody | PatchAgentEditorsLightResponseBody
+  > => {
     const auth = ctx.get("auth");
     const aId = ctx.req.param("aId") ?? "";
 
@@ -307,7 +340,22 @@ app.patch(
     }
 
     const updatedMembers = await editorGroup.getActiveMembers(auth);
-    return ctx.json({ editors: updatedMembers.map((m) => m.toJSON()) });
+    const updatedEditors = updatedMembers.map((m) => m.toJSON());
+
+    // biome-ignore lint/plugin/noDirectRoleCheck: conditional response — non-admins get a light response, not a 403
+    if (auth.isAdmin()) {
+      return ctx.json({ editors: updatedEditors });
+    }
+
+    return ctx.json({
+      editors: updatedEditors.map((m) => ({
+        sId: m.sId,
+        firstName: m.firstName,
+        lastName: m.lastName,
+        fullName: m.fullName,
+        image: m.image,
+      })),
+    });
   }
 );
 

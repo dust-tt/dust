@@ -65,8 +65,7 @@ export function MemberSelectionTable({
     setPagination((prev) => ({ ...prev, pageIndex: 0 }));
   };
 
-  const { members, totalMembersCount, isLoading } =
-    useSearchMembers<SearchMemberType>({
+  const { members, totalMembersCount, isLoading } = useSearchMembers({
       workspaceId: owner.sId,
       searchTerm: searchText,
       pageIndex: pagination.pageIndex,
@@ -114,7 +113,7 @@ export function MemberSelectionTable({
         .map(([sId]) => sId)
     );
 
-    const users: LightMemberType[] = [];
+    const users: SearchMemberType[] = [];
     for (const sId of newIds) {
       const user = userMapRef.current.get(sId);
       if (user) {

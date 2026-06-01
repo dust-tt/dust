@@ -2,6 +2,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
+  GetAgentEditorsLightResponseBody,
   GetAgentEditorsResponseBody,
   PatchAgentEditorsRequestBody,
 } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/editors";
@@ -20,7 +21,9 @@ export function useEditors({
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
-  const editorsFetcher: Fetcher<GetAgentEditorsResponseBody> = fetcher;
+  const editorsFetcher: Fetcher<
+    GetAgentEditorsResponseBody | GetAgentEditorsLightResponseBody
+  > = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
     agentConfigurationId

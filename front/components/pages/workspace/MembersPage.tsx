@@ -3,6 +3,7 @@ import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { InvitationsList } from "@app/components/members/InvitationsList";
 import { InviteEmailButtonWithModal } from "@app/components/members/InviteEmailButtonWithModal";
 import { MembersList } from "@app/components/members/MembersList";
+import type { SearchMemberType } from "@app/components/members/MemberSelectionTable";
 import { ChangeMemberModal } from "@app/components/workspace/ChangeMemberModal";
 import WorkspaceAccessPanel from "@app/components/workspace/WorkspaceAccessPanel";
 import { WorkspaceSection } from "@app/components/workspace/WorkspaceSection";
@@ -122,7 +123,11 @@ function WorkspaceMembersList({
       <MembersList
         currentUser={currentUser}
         membersData={membersData}
-        onRowClick={setSelectedMember}
+        onRowClick={(user: SearchMemberType) => {
+          if ("email" in user) {
+            setSelectedMember(user);
+          }
+        }}
         showColumns={
           isProvisioningEnabled
             ? ["name", "email", "role", "status", "groups"]
