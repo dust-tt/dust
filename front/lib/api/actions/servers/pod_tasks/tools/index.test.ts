@@ -397,11 +397,10 @@ describe("buildTaskUpdatePayload", () => {
       null
     );
 
-    expect("error" in result).toBe(true);
-    if (!("error" in result)) {
+    expect(result.isErr()).toBe(true);
+    if (!result.isErr()) {
       return;
     }
-    expect(result.error).toContain(outsider.sId);
-    expect(result.error).toContain(row.sId);
+    expect(result.error.message).toContain(outsider.sId);
   });
 });

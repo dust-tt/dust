@@ -280,7 +280,7 @@ function TaskUpdateRow({
                 </span>
                 <span className="text-sm font-medium text-foreground dark:text-foreground-night">
                   {taskInput.markAsDoneByType === "user"
-                    ? "you"
+                    ? "You"
                     : `@${agentName}`}
                 </span>
               </div>
@@ -351,7 +351,7 @@ function TaskUpdateRow({
                 </span>
                 <span className="text-sm font-medium text-foreground dark:text-foreground-night">
                   {taskInput.markAsDoneByType === "user"
-                    ? "you"
+                    ? "You"
                     : `@${agentName}`}
                 </span>
               </div>

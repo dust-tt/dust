@@ -495,7 +495,6 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   "pod_tasks": {
     "create_tasks": "low",
     "list_tasks": "never_ask",
-    "mark_task_done": "low",
     "start_task_agent": "low",
     "update_tasks": "low",
   },
