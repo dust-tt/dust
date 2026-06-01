@@ -6,7 +6,7 @@ import {
   extractTextFromBuffer,
   processAttachment,
 } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
-import { sanitizeFilename } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
+import { sanitizeFilename, getFileFromConversationAttachment } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import type {
   GmailMessage,
   MessageDetail,
@@ -25,6 +25,7 @@ import {
   isGmailMessage,
   MESSAGES_MAX_RESULTS,
   MESSAGES_WITH_ATTACHMENTS_MAX_RESULTS,
+  MAX_ATTACHMENT_SIZE_BYTES
 } from "@app/lib/api/actions/servers/gmail/helpers";
 import { GMAIL_TOOLS_METADATA } from "@app/lib/api/actions/servers/gmail/metadata";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -62,7 +63,13 @@ function buildAndEncodeEmail(params: {
   contentType: string;
   body: string;
   threadingHeaders?: string[];
-}): Err<MCPError> | Ok<string> {
+  attachment? : {
+    buffer: Buffer
+    filename : string
+    contentType: string
+  };
+}
+): Err<MCPError> | Ok<string> {
   const encodedSubject = encodeSubject(params.subject);
 
   // Validate email addresses to prevent header injection
@@ -76,19 +83,51 @@ function buildAndEncodeEmail(params: {
     return validationError;
   }
 
-  // Create the email message with proper headers and content.
-  const messageLines = [
-    `To: ${params.to.join(", ")}`,
-    params.from ? `From: ${params.from}` : null,
-    params.cc?.length ? `Cc: ${params.cc.join(", ")}` : null,
-    params.bcc?.length ? `Bcc: ${params.bcc.join(", ")}` : null,
-    `Subject: ${encodedSubject}`,
-    `Content-Type: ${params.contentType}; charset=UTF-8`,
-    "MIME-Version: 1.0",
-    ...(params.threadingHeaders ?? []),
-    "",
-    params.body,
-  ].filter((line): line is string => line !== null);
+  let messageLines:  string[] = []
+
+  if (params.attachment) {
+    // Create the email message with proper headers, content and attachment file
+    messageLines = [
+
+      `To: ${params.to.join(", ")}`,
+      params.from ? `From: ${params.from}` : null,
+      params.cc?.length ? `Cc: ${params.cc.join(", ")}` : null,
+      params.bcc?.length ? `Bcc: ${params.bcc.join(", ")}` : null,
+      `Subject: ${encodedSubject}`,
+      `Content-Type: multipart/mixed; boundary="boundary123"`,
+      "MIME-Version: 1.0",
+      ...(params.threadingHeaders ?? []),
+      "",
+      "--boundary123",
+      `Content-Type: ${params.contentType}; charset=UTF-8`,
+      "",
+      params.body,
+      "",
+      "--boundary123",
+      `Content-Type: ${params.attachment.contentType}; name="${params.attachment.filename}"`,
+      `Content-Disposition: attachment; filename="${params.attachment.filename}"`,
+      "Content-Transfer-Encoding: base64",
+      "",
+      params.attachment.buffer.toString("base64"),
+      "--boundary123--",
+    ].filter((line): line is string => line !== null);
+  }
+
+  else {
+    // Create the email message with proper headers and content.
+    messageLines = [
+      `To: ${params.to.join(", ")}`,
+      params.from ? `From: ${params.from}` : null,
+      params.cc?.length ? `Cc: ${params.cc.join(", ")}` : null,
+      params.bcc?.length ? `Bcc: ${params.bcc.join(", ")}` : null,
+      `Subject: ${encodedSubject}`,
+      `Content-Type: ${params.contentType}; charset=UTF-8`,
+      "MIME-Version: 1.0",
+      ...(params.threadingHeaders ?? []),
+      "",
+      params.body,
+    ].filter((line): line is string => line !== null);
+    }
 
   const message = messageLines.join("\r\n");
   const encodedMessage = encodeMessageForGmail(message);
@@ -270,8 +309,8 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
   },
 
   create_draft: async (
-    { to, cc, bcc, from, subject, contentType, body, replyToMessageId },
-    { authInfo }
+    { to, cc, bcc, from, subject, contentType, body, replyToMessageId, attachmentFileId },
+    { authInfo, auth, agentLoopContext}
   ) => {
     const accessToken = authInfo?.token;
     if (!accessToken) {
@@ -303,6 +342,32 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
       }
     }
 
+    let fileBuffer: Buffer | undefined = undefined;
+    let filename: string | undefined = undefined;
+    let filetype: string | undefined = undefined;
+  
+    if (attachmentFileId) {
+
+      if (!agentLoopContext) {
+        return new Err(new MCPError("No agent context available"));
+      }
+
+      const fileResult = await getFileFromConversationAttachment(
+        auth,
+        attachmentFileId,
+        agentLoopContext
+      );
+  
+      if (fileResult.isErr()) {
+        return new Err(new MCPError(`File not found: ${attachmentFileId}`, { tracked: false }));
+      }
+      ({ buffer: fileBuffer, filename, contentType: filetype } = fileResult.value);
+      
+      if (fileBuffer.length > MAX_ATTACHMENT_SIZE_BYTES) {
+        return new Err(new MCPError(`Attachment file size exceeds the ${MAX_ATTACHMENT_SIZE_BYTES / (1024 * 1024)}MB limit.`))
+      }   
+    }
+
     let encodedMessage: string | undefined = undefined;
     let threadId: string | undefined = undefined;
 
@@ -314,7 +379,6 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
           )
         );
       }
-
       const replyContext = await buildReplyContext({
         replyToMessageId,
         accessToken,
@@ -349,12 +413,14 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
         contentType: "text/html",
         body: fullBody,
         threadingHeaders,
+        attachment: fileBuffer ? { buffer: fileBuffer, filename: filename ?? "", contentType: filetype ?? "" } : undefined,
       });
       if (encodedMessageResult.isErr()) {
         return encodedMessageResult;
       }
       encodedMessage = encodedMessageResult.value;
     } else {
+
       if (!contentType) {
         return new Err(
           new MCPError(
@@ -362,6 +428,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
           )
         );
       }
+
       if (!subject?.trim()) {
         return new Err(
           new MCPError("Subject is required when not replying to a message.")
@@ -383,6 +450,9 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
         subject,
         contentType,
         body,
+        threadingHeaders: [],
+        attachment: fileBuffer ? { buffer: fileBuffer, filename: filename ?? "", contentType: filetype ?? "" } : undefined,
+
       });
 
       if (encodedMessageResult.isErr()) {
@@ -828,8 +898,8 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
   },
 
   send_mail: async (
-    { to, cc, bcc, from, subject, contentType, body, replyToMessageId },
-    { authInfo }
+    { to, cc, bcc, from, subject, contentType, body, replyToMessageId, attachmentFileId },
+    { authInfo, auth, agentLoopContext }
   ) => {
     const accessToken = authInfo?.token;
     if (!accessToken) {
@@ -853,25 +923,48 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
         if (!aliasConfigured) {
           return new Err(
             new MCPError(
-              `"${from}" is not configured as a send-as alias in Gmail settings. The email was not sent.`
+              `"${from}" is not configured as a send-as alias in Gmail settings. 
+              The email was not sent.`
             )
           );
         }
       }
+    }
+    let fileBuffer: Buffer | undefined = undefined;
+    let filename: string | undefined = undefined;
+    let filetype: string | undefined = undefined;
+
+    if (attachmentFileId) {
+
+    if (!agentLoopContext) {
+      return new Err(new MCPError("No agent context available"));
+    }
+
+    const fileResult = await getFileFromConversationAttachment(
+      auth,
+      attachmentFileId,
+      agentLoopContext
+    );
+    if (fileResult.isErr()) {
+      return new Err(new MCPError(`File not found: ${attachmentFileId}`, { tracked: false }));
+    }
+    ({ buffer: fileBuffer, filename, contentType: filetype } = fileResult.value);
+    if (fileBuffer.length > MAX_ATTACHMENT_SIZE_BYTES) {
+      return new Err(new MCPError(`Attachment file size exceeds the ${MAX_ATTACHMENT_SIZE_BYTES / (1024 * 1024)}MB limit.`));
+    }
     }
 
     let encodedMessage: string | undefined = undefined;
     let threadId: string | undefined = undefined;
 
     if (replyToMessageId) {
+
       if (contentType) {
         return new Err(
           new MCPError(
-            "contentType must be omitted when replying to a message."
-          )
+            "contentType must be omitted when replying to a message.")
         );
       }
-
       const replyContext = await buildReplyContext({
         replyToMessageId,
         accessToken,
@@ -880,6 +973,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
         bcc: bcc ?? null,
         body,
         subject,
+        
       });
       if (replyContext.isErr()) {
         return replyContext;
@@ -907,6 +1001,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
         contentType: "text/html",
         body: fullBody,
         threadingHeaders,
+        attachment: fileBuffer ? { buffer: fileBuffer, filename: filename ?? "", contentType: filetype ?? "" } : undefined,
       });
 
       if (encodedMessageResult.isErr()) {
@@ -921,11 +1016,13 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
           )
         );
       }
+
       if (!subject?.trim()) {
         return new Err(
           new MCPError("Subject is required when not replying to a message.")
         );
       }
+
       if (!to?.length) {
         return new Err(
           new MCPError(
@@ -942,6 +1039,8 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
         subject,
         contentType,
         body,
+        threadingHeaders: [],
+        attachment: fileBuffer ? { buffer: fileBuffer, filename: filename ?? "", contentType: filetype ?? "" } : undefined,
       });
 
       if (encodedMessageResult.isErr()) {
