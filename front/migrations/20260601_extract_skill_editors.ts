@@ -48,6 +48,8 @@ interface EditorWithSkills {
 
 type SkillEditorCsvRecord = Record<string, string | number>;
 
+const DUST_APP_URL = "https://app.dust.tt";
+
 async function fetchWorkspaces(
   workspaceId: string | null
 ): Promise<WorkspaceInfo[]> {
@@ -77,6 +79,13 @@ function uniqueNumbers(values: number[]): number[] {
 
 function compareStrings(left: string, right: string): number {
   return left.localeCompare(right, undefined, { sensitivity: "base" });
+}
+
+function getSkillBuilderUrl(workspaceId: string, skillId: string): string {
+  return new URL(
+    getSkillBuilderRoute(workspaceId, skillId),
+    DUST_APP_URL
+  ).toString();
 }
 
 async function fetchSkillEditorsForWorkspace({
@@ -111,7 +120,7 @@ async function fetchSkillEditorsForWorkspace({
         {
           id: skillId,
           name: skill.name,
-          url: getSkillBuilderRoute(workspace.sId, skillId),
+          url: getSkillBuilderUrl(workspace.sId, skillId),
         },
       ];
     })
