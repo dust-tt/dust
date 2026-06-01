@@ -363,6 +363,16 @@ ENV NEXT_PUBLIC_DUST_API_URL=$NEXT_PUBLIC_DUST_API_URL
 ENV NEXT_PUBLIC_DUST_STATIC_WEBSITE_URL=$NEXT_PUBLIC_DUST_STATIC_WEBSITE_URL
 ENV NEXT_PUBLIC_DUST_APP_URL=$NEXT_PUBLIC_DUST_APP_URL
 
+# Unlike the Next.js standalone `front` image, this server is esbuild-bundled, so
+# `NEXT_PUBLIC_*` references are NOT inlined at build time — they remain runtime
+# `process.env` lookups and must be provided as runtime env (same as the workers image).
+ARG NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER
+ARG NEXT_PUBLIC_NOVU_API_URL
+ARG NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL
+ENV NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER=$NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER
+ENV NEXT_PUBLIC_NOVU_API_URL=$NEXT_PUBLIC_NOVU_API_URL
+ENV NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL=$NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL
+
 # Front's transitive runtime deps (e.g. hot-shots) may live in
 # /app/front/node_modules rather than the hoisted /app/node_modules, and node's
 # walk-up from /app/front-api/dist/server.js never visits them. Add it to
