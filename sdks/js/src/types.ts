@@ -760,6 +760,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "new_file_explorer"
   | "use_vertex_for_supported_models"
   | "metronome_billing_usage_page"
+  | "user_settings_v2"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
