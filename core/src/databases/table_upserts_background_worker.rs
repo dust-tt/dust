@@ -34,6 +34,11 @@ pub const REDIS_LOCK_TTL_SECONDS: u64 = 60;
 
 const UPSERT_DEBOUNCE_TIME_MS: u64 = 10_000;
 
+// Entries that have been stuck in the queue far past the debounce window are
+// poison items (consistently failing), which we'd otherwise retry forever.
+// Drop them once they exceed this age.
+const MAX_UPSERT_AGE_MS: u64 = 60 * 60 * 1_000; // 1 hour
+
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct TableUpsertActivityData {
     pub time: u64,
@@ -178,6 +183,25 @@ impl TableUpsertsBackgroundWorker {
             let time_since_last_upsert = utils::now() - table_data.time; // time is in milliseconds, so we can compare directly
             if time_since_last_upsert < UPSERT_DEBOUNCE_TIME_MS {
                 break;
+            }
+
+            // Drop entries that have been stuck far past the debounce window. These are
+            // poison items (consistently failing) that we'd otherwise retry forever.
+            // Note: this leaves the table's CSV files orphaned in GCS, which is an
+            // acceptable (small, separately cleanable) trade-off for not blocking the queue.
+            if time_since_last_upsert > MAX_UPSERT_AGE_MS {
+                error!(
+                    project_id = table_data.project_id,
+                    data_source_id = table_data.data_source_id,
+                    table_id = table_data.table_id,
+                    age_ms = time_since_last_upsert,
+                    "TableUpsertsBackgroundWorker: Entry exceeded max age, dropping"
+                );
+                let _: () = self
+                    .redis_conn
+                    .hdel(REDIS_TABLE_UPSERT_HASH_NAME, key)
+                    .await?;
+                continue;
             }
 
             let table = self
