@@ -105,7 +105,7 @@ function sanitizeSkillInstructionsHtml(
 }
 
 const INSTRUCTIONS_EDITOR_SIZE = "min-h-60 max-h-[1024px]";
-const INSTRUCTIONS_EDITOR_REFERENCE_SUMMARY_SIZE = "min-h-96 pb-40";
+const INSTRUCTIONS_EDITOR_REFERENCE_SUMMARY_SIZE = "min-h-80 pb-28";
 
 interface SkillBuilderInstructionsEditorProps {
   onAddKnowledge?: (addKnowledge: () => void) => void;
