@@ -3,7 +3,7 @@ import type {
   SkillUsageType,
   UsedBySkillType,
 } from "@app/types/assistant/skill_configuration";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import {
@@ -32,25 +32,21 @@ type UsedByDropdownItem =
       skill: UsedBySkillType;
     };
 
-function getUsedByDropdownItemName(item: UsedByDropdownItem) {
+function getUsedByDropdownItemName(item: UsedByDropdownItem): string {
   switch (item.kind) {
     case "agent":
       return item.agent.name;
     case "skill":
       return item.skill.name;
-    default:
-      return assertNever(item);
   }
 }
 
-function getUsedByDropdownItemId(item: UsedByDropdownItem) {
+function getUsedByDropdownItemId(item: UsedByDropdownItem): string {
   switch (item.kind) {
     case "agent":
       return item.agent.sId;
     case "skill":
       return item.skill.sId;
-    default:
-      return assertNever(item);
   }
 }
 
@@ -112,11 +108,11 @@ interface UsedByButtonProps {
   onSkillClick?: (skillId: string) => void;
 }
 
-export const UsedByButton = ({
+export function UsedByButton({
   usage,
   onItemClick,
   onSkillClick,
-}: UsedByButtonProps) => {
+}: UsedByButtonProps) {
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
 
@@ -198,7 +194,7 @@ export const UsedByButton = ({
         closeMenu();
         return;
       default:
-        assertNever(firstItem);
+        assertNeverAndIgnore(firstItem);
     }
   };
 
@@ -293,7 +289,8 @@ export const UsedByButton = ({
                 />
               );
             default:
-              return assertNever(item);
+              assertNeverAndIgnore(item);
+              return null;
           }
         })}
         {dropdownItems.length === 0 && (
@@ -304,4 +301,4 @@ export const UsedByButton = ({
       </DropdownMenuContent>
     </DropdownMenu>
   );
-};
+}
