@@ -29,14 +29,3 @@ export function getModel(
 
   return VERTEX_MODEL_ID_MAP[modelId] ?? modelId;
 }
-
-export function getModelForTokenCount(
-  useVertex: boolean,
-  { modelId }: { modelId: ModelIdType }
-): string {
-  if (!useVertex) {
-    return modelId;
-  }
-
-  return getModel(useVertex, { modelId }).split("@")[0];
-}
