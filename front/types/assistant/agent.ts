@@ -200,9 +200,6 @@ export type AgentConfigurationType = z.infer<typeof AgentConfigurationSchema>;
 // Internal prompt-assembly hint for code-defined global agents. It is not part
 // of the public agent configuration schema.
 export type FramesVariant = "openai-v1";
-export type AgentConfigurationWithFramesVariant = AgentConfigurationType & {
-  framesVariant?: FramesVariant;
-};
 export type AgentConfigurationFramesVariantContext = {
   sId?: string;
   framesVariant?: FramesVariant;
