@@ -1,7 +1,6 @@
 import { groupMessagesIntoInteractions } from "@app/lib/api/assistant/conversation/interactions";
 import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import config from "@app/lib/api/config";
-import { addBackwardCompatibleConversationFields } from "@app/lib/api/v1/backward_compatibility";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMessageModel,
@@ -38,7 +37,13 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { isArrayOf } from "@app/types/shared/typescipt_utils";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
+import {
+  ConversationForDataSourceSyncSchema,
+  type ConversationForDataSourceSyncType,
+  // biome-ignore lint/plugin/enforceClientTypesInPublicApi: useful to convert for sync
+} from "@dust-tt/client";
 import { Op, type WhereOptions } from "sequelize";
 
 // Helper type to map viewType to the correct message type
@@ -433,6 +438,77 @@ async function _getConversation<V extends "light" | "full">(
   }
 }
 
+export function toConversationForDataSourceSync(
+  conversation: LightConversationType
+): ConversationForDataSourceSyncType {
+  const content = removeNulls(
+    conversation.content.map((msg) => {
+      const type = msg.type;
+      switch (type) {
+        case "user_message": {
+          return {
+            type: "user_message" as const,
+            created: msg.created,
+            visibility: msg.visibility,
+            content: msg.content,
+            user: msg.user
+              ? {
+                  sId: msg.user.sId,
+                  fullName: msg.user.fullName,
+                  username: msg.user.username,
+                  email: msg.user.email,
+                }
+              : null,
+            contentFragments: msg.contentFragments.map((cf) => ({
+              type: "content_fragment" as const,
+              created: cf.created,
+              visibility: cf.visibility,
+              contentFragmentId: cf.contentFragmentId,
+              contentType: cf.contentType,
+              title: cf.title,
+              version: cf.version,
+              sourceUrl: cf.sourceUrl,
+            })),
+          };
+        }
+        case "agent_message": {
+          return {
+            type: "agent_message" as const,
+            created: msg.created,
+            visibility: msg.visibility,
+            configuration: { name: msg.configuration.name },
+            content: msg.content,
+          };
+        }
+
+        case "compaction_message": {
+          // Ignore compaction messages for sync, we want the full signal.
+          return null;
+        }
+
+        default: {
+          assertNever(type);
+        }
+      }
+      return null;
+    })
+  );
+  return ConversationForDataSourceSyncSchema.parse({
+    sId: conversation.sId,
+    created: conversation.created,
+    updated: conversation.updated,
+    title: conversation.title,
+    visibility: conversation.visibility,
+    url: getConversationRoute(
+      conversation.owner.sId,
+      conversation.sId,
+      undefined,
+      config.getAppUrl()
+    ),
+    content,
+  });
+}
+
 // Lists conversations in a space along with their full content, formatted for
 // the connectors-driven sync flow (each conversation is enriched with a public
 // URL and backward-compatible fields). Includes deleted conversations so sync
@@ -461,7 +537,7 @@ export async function listSpaceConversationsForSync(
 
   const conversationsFull = await concurrentExecutor(
     spaceConversations,
-    async (c) => getConversation(auth, c.sId, true),
+    async (c) => getLightConversation(auth, c.sId, true),
     { concurrency: 4 }
   );
 
@@ -479,5 +555,5 @@ export async function listSpaceConversationsForSync(
         config.getAppUrl()
       ),
     }))
-    .map(addBackwardCompatibleConversationFields);
+    .map(toConversationForDataSourceSync);
 }

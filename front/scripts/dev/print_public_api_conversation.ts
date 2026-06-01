@@ -9,12 +9,11 @@
  * Do not use top-level await — tsx often emits CJS, which does not support it.
  */
 
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
-import config from "@app/lib/api/config";
-import { addBackwardCompatibleConversationFields } from "@app/lib/api/v1/backward_compatibility";
+import {
+  getLightConversation,
+  toConversationForDataSourceSync,
+} from "@app/lib/api/assistant/conversation/fetch";
 import { Authenticator } from "@app/lib/auth";
-import { getConversationRoute } from "@app/lib/utils/router";
-import type { ConversationType } from "@app/types/assistant/conversation";
 import parseArgs from "minimist";
 
 async function main() {
@@ -34,21 +33,15 @@ async function main() {
     dangerouslyRequestAllGroups: true,
   });
 
-  const conversationRes = await getConversation(auth, cId, includeDeleted);
+  const conversationRes = await getLightConversation(auth, cId, includeDeleted);
   if (conversationRes.isErr()) {
     throw new Error(conversationRes.error.message);
   }
 
   const c = conversationRes.value;
 
-  // Same pipeline as spaces/[spaceId]/conversations/index.ts (list map + backward compat).
-  const responseConversation = {
-    ...c,
-    url: getConversationRoute(wId, c.sId, undefined, config.getAppUrl()),
-  };
-  const publicConversation = addBackwardCompatibleConversationFields(
-    responseConversation as ConversationType
-  );
+  // Same pipeline as spaces/[spaceId]/conversations/index.ts
+  const publicConversation = toConversationForDataSourceSync(c);
 
   console.log(JSON.stringify(publicConversation, null, 2));
 }
