@@ -80,7 +80,7 @@ async function userContentToParam(
       if (!isAcceptedMediaType(mediaType)) {
         return {
           type: "text",
-          text: "Attachment: an unsupported media type was provided.",
+          text: "Attachement: an unsupported media type was provided.",
         };
       }
 
