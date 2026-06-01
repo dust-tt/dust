@@ -9,7 +9,7 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { GROUP_KINDS } from "@app/types/groups";
 import type {
-  LightMemberTypeWithWorkspaceRole,
+  LightMemberType,
   UserTypeWithWorkspace,
 } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -31,7 +31,7 @@ const SearchMembersQuerySchema = z.object({
 });
 
 export type SearchMembersResponseBody = {
-  members: LightMemberTypeWithWorkspaceRole[];
+  members: LightMemberType[];
   total: number;
 };
 
@@ -97,7 +97,6 @@ async function handler(
           lastName: m.lastName,
           fullName: m.fullName,
           image: m.image,
-          workspace: { role: m.workspace.role },
         })),
         total,
       });

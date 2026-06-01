@@ -1,8 +1,5 @@
 import { z } from "zod";
 
-// Required fields match LightMemberType; extra UserType fields are optional so
-// that both full editors (from the editors API) and light members (from the
-// trimmed search endpoint) pass validation.
 export const editorUserSchema = z.object({
   sId: z.string(),
   fullName: z.string(),

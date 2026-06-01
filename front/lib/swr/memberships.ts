@@ -14,10 +14,7 @@ import type { GroupKind } from "@app/types/groups";
 import { isGroupKind } from "@app/types/groups";
 import type { MembershipSeatType } from "@app/types/memberships";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import type {
-  LightMemberTypeWithWorkspaceRole,
-  LightWorkspaceType,
-} from "@app/types/user";
+import type { LightMemberType, LightWorkspaceType } from "@app/types/user";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Fetcher } from "swr";
 import { mutate } from "swr";
@@ -121,7 +118,7 @@ export function useWorkspaceInvitations(
 }
 
 export function useSearchMembers<
-  T extends LightMemberTypeWithWorkspaceRole = LightMemberTypeWithWorkspaceRole,
+  T extends LightMemberType = LightMemberType,
 >({
   workspaceId,
   searchTerm,
