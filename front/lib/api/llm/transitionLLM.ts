@@ -35,6 +35,7 @@ import type {
 import type {
   BaseMessage,
   SystemTextMessage,
+  ToolCallResultPart,
 } from "@app/lib/model_constructors/types/messages";
 import type {
   AgentFunctionCallContentType,
@@ -88,24 +89,27 @@ function toBaseMessages(
             assertNever(c);
         }
       });
-    case "function":
+    case "function": {
+      const parts: ToolCallResultPart[] =
+        typeof message.content === "string"
+          ? [{ type: "text", text: message.content }]
+          : message.content.map((c) =>
+              c.type === "text"
+                ? { type: "text", text: c.text }
+                : { type: "image_url", url: c.image_url.url }
+            );
       return [
         {
           role: "user",
           type: "tool_call_result",
           content: {
             callId: message.function_call_id,
-            value:
-              typeof message.content === "string"
-                ? message.content
-                : message.content
-                    .map((c) => (c.type === "text" ? c.text : ""))
-                    .filter(Boolean)
-                    .join("\n"),
+            parts,
             isError: false,
           },
         },
       ];
+    }
     case "assistant":
       return message.contents.flatMap(
         (

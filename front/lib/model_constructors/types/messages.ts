@@ -10,12 +10,18 @@ export type BaseUserImageMessage = {
   content: { url: string };
   cache?: CacheOption;
 };
+export type ToolCallResultTextPart = { type: "text"; text: string };
+export type ToolCallResultImagePart = { type: "image_url"; url: string };
+export type ToolCallResultPart =
+  | ToolCallResultTextPart
+  | ToolCallResultImagePart;
+
 export type BaseToolCallResultMessage = {
   role: "user";
   type: "tool_call_result";
   content: {
     callId: string;
-    value: string;
+    parts: ToolCallResultPart[];
     isError: boolean;
   };
   cache?: CacheOption;

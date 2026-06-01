@@ -109,10 +109,20 @@ export function WithOpenAiResponsesConverter<
     toolCallResultMessageToFunctionCallOutput(
       toolCallResultMessage: BaseToolCallResultMessage
     ): ResponseInputItem.FunctionCallOutput {
+      // The OpenAI Responses API only accepts a string for function_call_output.
+      // Concatenate text parts; replace images with a placeholder so the model
+      // at least knows an attachment was present.
+      const output = toolCallResultMessage.content.parts
+        .map((part) =>
+          part.type === "text"
+            ? part.text
+            : "Attachment: image not supported in OpenAI tool results."
+        )
+        .join("\n");
       return {
         type: "function_call_output",
         call_id: toolCallResultMessage.content.callId,
-        output: toolCallResultMessage.content.value,
+        output,
       };
     }
 

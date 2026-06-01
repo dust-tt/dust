@@ -185,18 +185,60 @@ export function WithGoogleAiStudioConverter<
       return { inlineData: { mimeType: mediaType, data } };
     }
 
-    toolCallResultMessageToPart(
+    async toolCallResultMessageToParts(
       message: BaseToolCallResultMessage,
       callIdToName: Map<string, string>
-    ): Part {
+    ): Promise<Part[]> {
       const name = callIdToName.get(message.content.callId) ?? "";
-      return {
-        functionResponse: {
-          id: message.content.callId,
-          name,
-          response: { output: message.content.value },
-        },
-      };
+      const id = message.content.callId;
+
+      const parts: Part[] = [];
+      for (const part of message.content.parts) {
+        if (part.type === "text") {
+          parts.push({
+            functionResponse: { id, name, response: { output: part.text } },
+          });
+          continue;
+        }
+
+        let fetchResult: Awaited<ReturnType<typeof trustedFetchImageBase64>>;
+        try {
+          fetchResult = await trustedFetchImageBase64(part.url);
+        } catch {
+          // Same degradation as user-message images: don't kill the turn on
+          // a single failed image, surface a text placeholder instead.
+          parts.push({
+            functionResponse: {
+              id,
+              name,
+              response: { output: "Attachment: image could not be loaded." },
+            },
+          });
+          continue;
+        }
+
+        if (
+          !GOOGLE_AI_STUDIO_SUPPORTED_MIME_TYPES.includes(fetchResult.mediaType)
+        ) {
+          throw new UnsupportedImageMimeTypeError(fetchResult.mediaType);
+        }
+
+        parts.push({
+          functionResponse: {
+            id,
+            name,
+            parts: [
+              {
+                inlineData: {
+                  mimeType: fetchResult.mediaType,
+                  data: fetchResult.data,
+                },
+              },
+            ],
+          },
+        });
+      }
+      return parts;
     }
 
     assistantTextMessageToPart(message: BaseAssistantTextMessage): Part {
@@ -256,7 +298,10 @@ export function WithGoogleAiStudioConverter<
         case "tool_call_result":
           return {
             role: "user",
-            parts: [this.toolCallResultMessageToPart(message, callIdToName)],
+            parts: await this.toolCallResultMessageToParts(
+              message,
+              callIdToName
+            ),
           };
         default:
           assertNever(message);
