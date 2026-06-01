@@ -39,6 +39,19 @@ pub enum TableType {
     Remote(String),
 }
 
+// Maximum number of pending (not-yet-processed) CSV files allowed for a single table.
+// Beyond this, the producer (API) rejects new upserts/deletes so files don't accumulate
+// into a merge the background worker cannot handle (which would OOM-crash the worker).
+const MAX_PENDING_UPSERT_FILES: usize = 50;
+
+// Errors from table upserts that callers (e.g. the HTTP API) may want to handle specially
+// rather than treating as a generic internal error.
+#[derive(Debug, thiserror::Error)]
+pub enum TableUpsertError {
+    #[error("Too many pending upserts queued for this table (limit {max}); retry later")]
+    TooManyPendingUpserts { max: usize },
+}
+
 pub fn get_table_unique_id(project: &Project, data_source_id: &str, table_id: &str) -> String {
     format!("{}__{}__{}", project.project_id(), data_source_id, table_id)
 }
@@ -617,6 +630,23 @@ impl LocalTable {
     }
 
     async fn schedule_background_upsert_or_delete(&self, rows: Vec<Row>) -> Result<()> {
+        // Backpressure: if too many files are already pending for this table, the background
+        // worker has fallen behind (or is stuck). Reject the call rather than letting files
+        // accumulate into a merge large enough to OOM-crash the worker. Truncate upserts are
+        // not affected (they don't go through this path) and reset the pending files, so they
+        // remain a way to recover a wedged table.
+        let pending_files =
+            GoogleCloudStorageBackgroundProcessingStore::get_gcs_csv_file_names_for_table(
+                &self.table,
+            )
+            .await?;
+        if pending_files.len() >= MAX_PENDING_UPSERT_FILES {
+            return Err(TableUpsertError::TooManyPendingUpserts {
+                max: MAX_PENDING_UPSERT_FILES,
+            }
+            .into());
+        }
+
         let mut redis_conn = REDIS_CLIENT.get_async_connection().await?;
 
         let now = utils::now();
