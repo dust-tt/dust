@@ -49,6 +49,17 @@ function isGoogleAuthenticationErrorMessage(message: string): boolean {
   return message.toLowerCase().includes("api key not valid");
 }
 
+// Thrown by the converter when a user supplies an image whose mime type is
+// not in the Google AI Studio supported list. Surfaced as an
+// invalid_request_error so callers can distinguish "wrong file type" from a
+// generic unknown failure.
+export class UnsupportedImageMimeTypeError extends Error {
+  constructor(public readonly mediaType: string) {
+    super(`Image mime type ${mediaType} is not supported by Google AI Studio`);
+    this.name = "UnsupportedImageMimeTypeError";
+  }
+}
+
 export abstract class GoogleAiStudio extends LargeLanguageModel<
   GoogleAiStudioRequestPayload,
   GenerateContentResponse
@@ -70,6 +81,18 @@ export abstract class GoogleAiStudio extends LargeLanguageModel<
   ): Promise<Content[]>;
 
   streamErrorToEvent(error: unknown): ErrorEvent {
+    if (error instanceof UnsupportedImageMimeTypeError) {
+      return {
+        type: "error",
+        content: {
+          type: "invalid_request_error",
+          message: error.message,
+          originalError: error,
+        },
+        metadata: this.model,
+      };
+    }
+
     if (error instanceof ApiError) {
       const status = error.status;
 

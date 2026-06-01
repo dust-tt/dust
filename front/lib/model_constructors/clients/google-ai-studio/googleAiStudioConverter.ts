@@ -1,4 +1,7 @@
-import type { GoogleAiStudio } from "@app/lib/model_constructors/clients/google-ai-studio/googleAiStudioClient";
+import {
+  type GoogleAiStudio,
+  UnsupportedImageMimeTypeError,
+} from "@app/lib/model_constructors/clients/google-ai-studio/googleAiStudioClient";
 import type {
   OutputFormat,
   ToolSpecification,
@@ -164,14 +167,19 @@ export function WithGoogleAiStudioConverter<
     }
 
     async userImageMessageToPart(message: BaseUserImageMessage): Promise<Part> {
-      const { mediaType, data } = await trustedFetchImageBase64(
-        message.content.url
-      );
+      let fetchResult: Awaited<ReturnType<typeof trustedFetchImageBase64>>;
+      try {
+        fetchResult = await trustedFetchImageBase64(message.content.url);
+      } catch {
+        // Don't kill the whole turn when one image fails to load; degrade to
+        // a text placeholder so the rest of the conversation continues.
+        return { text: "Attachment: image could not be loaded." };
+      }
+
+      const { mediaType, data } = fetchResult;
 
       if (!GOOGLE_AI_STUDIO_SUPPORTED_MIME_TYPES.includes(mediaType)) {
-        throw new Error(
-          `Image mime type ${mediaType} is not supported by Google AI Studio`
-        );
+        throw new UnsupportedImageMimeTypeError(mediaType);
       }
 
       return { inlineData: { mimeType: mediaType, data } };
