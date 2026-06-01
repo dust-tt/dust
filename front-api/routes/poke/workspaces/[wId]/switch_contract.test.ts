@@ -630,7 +630,6 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
       defaultDiscountPercent: 0,
       paygEnabled: true,
       usageCapCredits: 100_000,
-      disableCreditCapWarning: false,
     });
 
     const response = await postSwitchContract(

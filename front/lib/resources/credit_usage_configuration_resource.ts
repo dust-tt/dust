@@ -107,7 +107,6 @@ export class CreditUsageConfigurationResource extends BaseResource<CreditUsageCo
       defaultDiscountPercent: number;
       paygEnabled: boolean;
       usageCapCredits: number | null;
-      disableCreditCapWarning: boolean;
     }>,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
@@ -167,7 +166,6 @@ export class CreditUsageConfigurationResource extends BaseResource<CreditUsageCo
       defaultDiscountPercent: this.defaultDiscountPercent,
       paygEnabled: this.paygEnabled,
       usageCapCredits: this.usageCapCredits,
-      disableCreditCapWarning: this.disableCreditCapWarning,
     };
   }
 
@@ -178,7 +176,6 @@ export class CreditUsageConfigurationResource extends BaseResource<CreditUsageCo
       defaultDiscountPercent: this.defaultDiscountPercent,
       paygEnabled: String(this.paygEnabled),
       usageCapCredits: this.usageCapCredits,
-      disableCreditCapWarning: String(this.disableCreditCapWarning),
     };
   }
 }

@@ -20,8 +20,11 @@ import { DataTypes } from "sequelize";
  *   Metronome `spend_threshold_reached` alert on the workspace's customer.
  *   Independent from `paygEnabled` — the cap can be set even when PAYG is
  *   disabled, and PAYG can be enabled without a cap.
- * - disableCreditCapWarning: When true, the credit cap warning email to
- *   workspace admins is suppressed. Default false (warning is sent).
+ *
+ * The credit-cap-warning notification settings (whether to warn, and at which
+ * balance) are NOT stored here: they are derived from the workspace's Metronome
+ * balance-threshold alert (see `lib/metronome/alerts/balance_threshold.ts`),
+ * with reads cached in Redis.
  */
 export class CreditUsageConfigurationModel extends WorkspaceAwareModel<CreditUsageConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
@@ -29,7 +32,6 @@ export class CreditUsageConfigurationModel extends WorkspaceAwareModel<CreditUsa
   declare defaultDiscountPercent: number;
   declare paygEnabled: CreationOptional<boolean>;
   declare usageCapCredits: number | null;
-  declare disableCreditCapWarning: boolean;
 }
 
 CreditUsageConfigurationModel.init(
@@ -71,11 +73,6 @@ CreditUsageConfigurationModel.init(
           }
         },
       },
-    },
-    disableCreditCapWarning: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false,
     },
   },
   {

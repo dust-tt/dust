@@ -733,7 +733,6 @@ export async function switchContract({
       defaultDiscountPercent: 0,
       paygEnabled: body.paygEnabled,
       usageCapCredits,
-      disableCreditCapWarning: false,
     });
     if (createResult.isErr()) {
       return new Err(
