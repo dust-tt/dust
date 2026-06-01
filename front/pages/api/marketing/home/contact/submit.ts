@@ -88,16 +88,23 @@ export default async function handler(
   // Check for personal email domains
   const isPersonalEmail = isPersonalEmailDomain(domain);
 
+  if (isPersonalEmail) {
+    return res.status(400).json({
+      success: false,
+      isQualified: false,
+      error:
+        "Please use a work email address. To try Dust for free, visit dust.tt/sign-up.",
+    });
+  }
+
   // Check MX records for work emails
-  if (!isPersonalEmail) {
-    const hasMx = await hasValidMxRecords(domain);
-    if (!hasMx) {
-      return res.status(400).json({
-        success: false,
-        isQualified: false,
-        error: "Please use a valid work email address",
-      });
-    }
+  const hasMx = await hasValidMxRecords(domain);
+  if (!hasMx) {
+    return res.status(400).json({
+      success: false,
+      isQualified: false,
+      error: "Please use a valid work email address",
+    });
   }
 
   // Determine if lead is qualified based on self-reported headcount (>100 employees)
