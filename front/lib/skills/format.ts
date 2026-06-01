@@ -9,6 +9,8 @@ export const SKILL_TAG_NAME = "skill";
 export const SKILL_TAG_REGEX = /<skill\s+([^>]*?)\s*\/>/g;
 export const SKILL_TAG_REGEX_BEGINNING = /^<skill\s+([^>]*?)\s*\/>/;
 
+const SKILL_ELEMENT_REGEX = /<skill\b([^>]*)>[\s\S]*?<\/skill>/g;
+
 function parseSkillTagAttributes(attributes: string): SkillReference | null {
   const id = attributes.match(/\bid="([^"]+)"/)?.[1];
   const name = attributes.match(/\bname="([^"]+)"/)?.[1];
@@ -49,4 +51,30 @@ export function serializeSkillTag({ id, name, icon }: SkillReference): string {
   const iconAttribute = icon ? ` icon="${icon}"` : "";
 
   return `<${SKILL_TAG_NAME} id="${id}" name="${name}"${iconAttribute} />`;
+}
+
+export function stripSkillTagPresentationAttributes(content: string): string {
+  return content
+    .replace(SKILL_ELEMENT_REGEX, (tag, attributes: string) => {
+      const skill = parseSkillTag(`<${SKILL_TAG_NAME}${attributes} />`);
+      if (!skill) {
+        return tag.replace(/(<skill\b[^>]*?)\s+icon="[^"]*"/, "$1");
+      }
+
+      return serializeSkillTag({
+        ...skill,
+        icon: null,
+      });
+    })
+    .replace(SKILL_TAG_REGEX, (tag) => {
+      const skill = parseSkillTag(tag);
+      if (!skill) {
+        return tag.replace(/\s+icon="[^"]*"/g, "");
+      }
+
+      return serializeSkillTag({
+        ...skill,
+        icon: null,
+      });
+    });
 }

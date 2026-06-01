@@ -83,6 +83,19 @@ describe("buildSkillAnalysisPrompt", () => {
     expect(userMessage).not.toContain('icon="GithubLogo"');
   });
 
+  it("strips skill icon attributes from instructionsHtml in the user message", () => {
+    const skill = makeSkill({
+      instructionsHtml:
+        '<p>Use <skill id="skill_123" name="Create memo" icon="book_open"></skill>.</p>',
+    });
+    const { userMessage } = buildSkillAnalysisPrompt("User: hello", [skill]);
+
+    expect(userMessage).toContain(
+      '<skill id="skill_123" name="Create memo" />'
+    );
+    expect(userMessage).not.toContain('icon="book_open"');
+  });
+
   it("omits instructions when null", () => {
     const skill = makeSkill({ instructions: null, instructionsHtml: null });
     const { userMessage } = buildSkillAnalysisPrompt("User: hello", [skill]);

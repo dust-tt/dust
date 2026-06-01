@@ -1,9 +1,10 @@
 import { getEnabledSkillInstructions } from "@app/lib/api/assistant/skills_rendering";
+import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { describe, expect, it } from "vitest";
 
-type SkillInstructionsSource = Parameters<
-  typeof getEnabledSkillInstructions
->[0];
+type SkillInstructionsSource = Pick<SkillResource, "name" | "instructions"> & {
+  extendedSkill: Pick<SkillResource, "instructions"> | null;
+};
 
 function makeEnabledSkill(
   overrides: Partial<SkillInstructionsSource>
@@ -28,6 +29,20 @@ describe("getEnabledSkillInstructions", () => {
     );
     expect(getEnabledSkillInstructions(skill)).not.toContain(
       'icon="GithubLogo"'
+    );
+  });
+
+  it("strips skill icon attributes from model-facing skill instructions", () => {
+    const skill = makeEnabledSkill({
+      instructions:
+        'Use <skill id="skill_123" name="Create memo" icon="book_open" />.',
+    });
+
+    expect(getEnabledSkillInstructions(skill)).toContain(
+      '<skill id="skill_123" name="Create memo" />'
+    );
+    expect(getEnabledSkillInstructions(skill)).not.toContain(
+      'icon="book_open"'
     );
   });
 });
