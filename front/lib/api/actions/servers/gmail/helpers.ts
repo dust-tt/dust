@@ -60,7 +60,7 @@ export interface MessageDetail {
 
 export const MESSAGES_MAX_RESULTS = 50;
 export const MESSAGES_WITH_ATTACHMENTS_MAX_RESULTS = 10;
-export const  MAX_ATTACHMENT_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
+export const MAX_ATTACHMENT_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
 
 /**
  * Typeguard for GmailMessage
