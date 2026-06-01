@@ -2,6 +2,7 @@ import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import { editorVariants } from "@app/components/editor/editorStyles";
 import { KNOWLEDGE_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
+import { TOOL_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/ToolNode";
 import {
   SkillInstructionsEditorContent,
   useSkillInstructionsEditor,
@@ -18,6 +19,7 @@ import {
   postProcessMarkdown,
   preprocessMarkdownForEditor,
 } from "@app/lib/editor/skill_instructions_preprocessing";
+import { isString } from "@app/types/shared/utils/general";
 import { cn } from "@dust-tt/sparkle";
 import type { Transaction } from "@tiptap/pm/state";
 import type { Editor } from "@tiptap/react";
@@ -62,6 +64,21 @@ function collectKnowledgeItems(editor: Editor): KnowledgeItem[] {
   return items;
 }
 
+function collectToolReferenceIds(editor: Editor): Set<string> {
+  const toolIds = new Set<string>();
+
+  editor.state.doc.descendants((node) => {
+    if (
+      node.type.name === TOOL_NODE_TYPE &&
+      isString(node.attrs?.mcpServerViewId)
+    ) {
+      toolIds.add(node.attrs.mcpServerViewId);
+    }
+  });
+
+  return toolIds;
+}
+
 function toAttachedKnowledge(
   items: readonly KnowledgeItem[]
 ): SkillBuilderFormData["attachedKnowledge"] {
@@ -101,6 +118,7 @@ export function SkillBuilderInstructionsEditor({
   const { compareVersion, isDiffMode } = useSkillVersionComparisonContext();
   const { resetField } = useFormContext<SkillBuilderFormData>();
   const initializedAttachedKnowledgeEditorRef = useRef<Editor | null>(null);
+  const previousInlineToolIdsRef = useRef<Set<string>>(new Set());
   const { owner, skillId, selectedSuggestionId, setAcceptInstructionEdits } =
     useSkillBuilderContext();
   const { hasFeature } = useFeatureFlags();
@@ -154,6 +172,27 @@ export function SkillBuilderInstructionsEditor({
     [attachedKnowledgeField.onChange]
   );
 
+  const syncToolReferencesFromEditor = useCallback(
+    (editor: Editor) => {
+      const currentInlineToolIds = collectToolReferenceIds(editor);
+      const removedToolIds = [...previousInlineToolIdsRef.current].filter(
+        (toolId) => !currentInlineToolIds.has(toolId)
+      );
+
+      if (removedToolIds.length > 0) {
+        const removedToolIdsSet = new Set(removedToolIds);
+        onToolsChange(
+          tools.filter(
+            (tool) => !removedToolIdsSet.has(tool.configuration.mcpServerViewId)
+          )
+        );
+      }
+
+      previousInlineToolIdsRef.current = currentInlineToolIds;
+    },
+    [onToolsChange, tools]
+  );
+
   const syncInstructionsFromEditor = useCallback(
     (editor: Editor) => {
       instructionsField.onChange(
@@ -165,12 +204,14 @@ export function SkillBuilderInstructionsEditor({
         })
       );
       syncAttachedKnowledgeFromEditor(editor);
+      syncToolReferencesFromEditor(editor);
     },
     [
       enableSkillReferences,
       instructionsField.onChange,
       instructionsHtmlField.onChange,
       syncAttachedKnowledgeFromEditor,
+      syncToolReferencesFromEditor,
     ]
   );
 
@@ -187,10 +228,11 @@ export function SkillBuilderInstructionsEditor({
   const handleUpdate = useCallback(
     ({ editor, transaction }: { editor: Editor; transaction: Transaction }) => {
       if (transaction.docChanged) {
+        syncToolReferencesFromEditor(editor);
         debouncedUpdate(editor);
       }
     },
-    [debouncedUpdate]
+    [debouncedUpdate, syncToolReferencesFromEditor]
   );
 
   const handleBlur = useCallback(() => {
@@ -202,8 +244,9 @@ export function SkillBuilderInstructionsEditor({
   const handleDelete = useCallback(
     (editorInstance: Editor) => {
       syncAttachedKnowledgeFromEditor(editorInstance);
+      syncToolReferencesFromEditor(editorInstance);
     },
-    [syncAttachedKnowledgeFromEditor]
+    [syncAttachedKnowledgeFromEditor, syncToolReferencesFromEditor]
   );
 
   const handleSelectToolReference = useCallback(
@@ -244,6 +287,41 @@ export function SkillBuilderInstructionsEditor({
     onBlur: handleBlur,
     onDelete: handleDelete,
   });
+
+  const handleRemoveToolReference = useCallback(
+    (toolId: string) => {
+      onToolsChange(
+        tools.filter((tool) => tool.configuration.mcpServerViewId !== toolId)
+      );
+
+      if (!editor || editor.isDestroyed) {
+        return;
+      }
+
+      const ranges: { from: number; to: number }[] = [];
+      editor.state.doc.descendants((node, position) => {
+        if (
+          node.type.name === TOOL_NODE_TYPE &&
+          node.attrs?.mcpServerViewId === toolId
+        ) {
+          ranges.push({ from: position, to: position + node.nodeSize });
+        }
+      });
+
+      if (ranges.length === 0) {
+        return;
+      }
+
+      const transaction = editor.state.tr;
+      for (const range of ranges.toReversed()) {
+        transaction.delete(range.from, range.to);
+      }
+
+      editor.view.dispatch(transaction);
+      syncInstructionsFromEditor(editor);
+    },
+    [editor, onToolsChange, syncInstructionsFromEditor, tools]
+  );
 
   useEffect(() => {
     if (!editor || editor.isDestroyed) {
@@ -359,6 +437,7 @@ export function SkillBuilderInstructionsEditor({
       keepError: true,
       keepTouched: true,
     });
+    previousInlineToolIdsRef.current = collectToolReferenceIds(editor);
   }, [editor, isContentReady, isDiffMode, resetField]);
 
   // Apply pending instruction suggestions as inline diff decorations.
@@ -557,6 +636,7 @@ export function SkillBuilderInstructionsEditor({
           <SkillBuilderInstructionsReferenceSummary
             attachedKnowledge={attachedKnowledgeField.value}
             instructions={instructionsField.value ?? ""}
+            onRemoveTool={isDiffMode ? undefined : handleRemoveToolReference}
             tools={tools}
           />
         )}

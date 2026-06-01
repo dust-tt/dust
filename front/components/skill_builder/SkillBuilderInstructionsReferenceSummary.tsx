@@ -6,13 +6,14 @@ import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getSkillIcon } from "@app/lib/skill";
 import { extractSkillTags } from "@app/lib/skills/format";
 import { extractToolTags } from "@app/lib/tools/format";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { AttachmentChip, Chip, cn, DocumentIcon } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
 interface SkillBuilderInstructionsReferenceSummaryProps {
   attachedKnowledge?: AttachedKnowledgeFormData[];
   instructions: string;
+  onRemoveTool?: (toolId: string) => void;
   tools: BuilderAction[];
 }
 
@@ -59,7 +60,13 @@ function compareReferenceSummaryItems(
   );
 }
 
-function renderReferenceSummaryItem(item: ReferenceSummaryItem) {
+function renderReferenceSummaryItem({
+  item,
+  onRemoveTool,
+}: {
+  item: ReferenceSummaryItem;
+  onRemoveTool?: (toolId: string) => void;
+}) {
   switch (item.kind) {
     case "knowledge":
       return (
@@ -87,17 +94,20 @@ function renderReferenceSummaryItem(item: ReferenceSummaryItem) {
           key={`${item.kind}:${item.id}`}
           title={item.title}
           toolIcon={item.icon}
+          onRemove={onRemoveTool ? () => onRemoveTool(item.id) : undefined}
           color="white"
         />
       );
     default:
-      return assertNever(item);
+      assertNeverAndIgnore(item);
+      return null;
   }
 }
 
 export function SkillBuilderInstructionsReferenceSummary({
   attachedKnowledge,
   instructions,
+  onRemoveTool,
   tools,
 }: SkillBuilderInstructionsReferenceSummaryProps) {
   const { mcpServerViews, isMCPServerViewsLoading } =
@@ -212,7 +222,9 @@ export function SkillBuilderInstructionsReferenceSummary({
         Capabilities and knowledge
       </div>
       <div className="flex flex-wrap gap-2">
-        {referenceItems.map(renderReferenceSummaryItem)}
+        {referenceItems.map((item) =>
+          renderReferenceSummaryItem({ item, onRemoveTool })
+        )}
       </div>
     </div>
   );
