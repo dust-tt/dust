@@ -81,11 +81,9 @@ pub async fn cmd_exec(
 /// Parse `--key value` pairs into a JSON object.
 /// Auto-detects numbers, booleans, JSON objects/arrays, and falls back to string.
 ///
-/// A value prefixed with `__file__:` is interpreted as a path reference:
-/// the file at that path is read (UTF-8, capped at 100 MB) and its contents
-/// are used as a string value for the key. This bypasses type coercion
-/// and lets agents pass values larger than the OS argv limit (ARG_MAX)
-/// by writing them to disk first.
+/// A value prefixed with `__file__:` reads the file at that path (UTF-8, capped
+/// at 100 MB), letting agents pass values larger than the OS argv limit
+/// (ARG_MAX). JSON object/array contents are parsed; other content is a string.
 fn parse_args(raw: &[String]) -> anyhow::Result<Option<serde_json::Value>> {
     if raw.is_empty() {
         return Ok(Some(serde_json::Value::Object(serde_json::Map::new())));
@@ -127,7 +125,16 @@ fn parse_args(raw: &[String]) -> anyhow::Result<Option<serde_json::Value>> {
 
 fn coerce_value_or_read_file(s: &str) -> anyhow::Result<serde_json::Value> {
     if let Some(path) = s.strip_prefix("__file__:") {
-        return Ok(serde_json::Value::String(read_file_arg(path)?));
+        let contents = read_file_arg(path)?;
+        // JSON object/array contents are parsed (like inline values); anything
+        // else is a string. Malformed JSON-shaped content errors rather than
+        // silently degrading, since the file isn't visible on the command line.
+        let trimmed = contents.trim();
+        if looks_like_json_object_or_array(trimmed) {
+            return serde_json::from_str::<serde_json::Value>(trimmed)
+                .with_context(|| format!("__file__:{path} looks like JSON but failed to parse"));
+        }
+        return Ok(serde_json::Value::String(contents));
     }
     Ok(coerce_value(s))
 }
@@ -165,14 +172,22 @@ fn coerce_value(s: &str) -> serde_json::Value {
             return serde_json::Value::Number(num);
         }
     }
-    // JSON object or array
-    if (s.starts_with('{') && s.ends_with('}')) || (s.starts_with('[') && s.ends_with(']')) {
-        if let Ok(v) = serde_json::from_str::<serde_json::Value>(s) {
+    // JSON object or array; shaped-but-invalid falls back to a string.
+    let trimmed = s.trim();
+    if looks_like_json_object_or_array(trimmed) {
+        if let Ok(v) = serde_json::from_str::<serde_json::Value>(trimmed) {
             return v;
         }
     }
     // Fallback: string
     serde_json::Value::String(s.to_string())
+}
+
+/// Shape check only (delimited by `{}`/`[]`); the content may still be invalid
+/// JSON. Expects an already-trimmed string.
+fn looks_like_json_object_or_array(trimmed: &str) -> bool {
+    (trimmed.starts_with('{') && trimmed.ends_with('}'))
+        || (trimmed.starts_with('[') && trimmed.ends_with(']'))
 }
 
 #[cfg(test)]
@@ -239,6 +254,16 @@ mod tests {
     }
 
     #[test]
+    fn parse_inline_malformed_json_falls_back_to_string() {
+        let args = vec!["--filter".to_string(), "[not valid json]".to_string()];
+        let result = parse_args(&args)
+            .expect("should parse")
+            .expect("should have value");
+        assert_eq!(result["filter"], "[not valid json]");
+        assert!(result["filter"].is_string());
+    }
+
+    #[test]
     fn parse_float_args() {
         let args = vec!["--ratio".to_string(), "3.125".to_string()];
         let result = parse_args(&args)
@@ -302,6 +327,72 @@ mod tests {
             .expect("should have value");
         assert_eq!(result["count"], "42");
         assert!(result["count"].is_string());
+    }
+
+    #[test]
+    fn parse_file_prefix_parses_json_array() {
+        let file = write_tempfile(br#"[{"path":"README.md","content":"hello"}]"#);
+        let args = vec![
+            "--files".to_string(),
+            format!("__file__:{}", file.path().to_string_lossy()),
+        ];
+        let result = parse_args(&args)
+            .expect("should parse")
+            .expect("should have value");
+        assert!(result["files"].is_array());
+        assert_eq!(result["files"][0]["path"], "README.md");
+        assert_eq!(result["files"][0]["content"], "hello");
+    }
+
+    #[test]
+    fn parse_file_prefix_parses_json_object() {
+        let file = write_tempfile(br#"{"status":"active"}"#);
+        let args = vec![
+            "--filter".to_string(),
+            format!("__file__:{}", file.path().to_string_lossy()),
+        ];
+        let result = parse_args(&args)
+            .expect("should parse")
+            .expect("should have value");
+        assert_eq!(result["filter"]["status"], "active");
+    }
+
+    #[test]
+    fn parse_file_prefix_parses_json_array_with_trailing_newline() {
+        let file = write_tempfile(b"[1, 2, 3]\n");
+        let args = vec![
+            "--values".to_string(),
+            format!("__file__:{}", file.path().to_string_lossy()),
+        ];
+        let result = parse_args(&args)
+            .expect("should parse")
+            .expect("should have value");
+        assert!(result["values"].is_array());
+        assert_eq!(result["values"][2], 3);
+    }
+
+    #[test]
+    fn parse_file_prefix_malformed_json_array_errors() {
+        let file = write_tempfile(b"[not valid json]");
+        let args = vec![
+            "--files".to_string(),
+            format!("__file__:{}", file.path().to_string_lossy()),
+        ];
+        assert!(parse_args(&args).is_err());
+    }
+
+    #[test]
+    fn parse_file_prefix_non_json_shaped_content_is_string() {
+        let file = write_tempfile(b"just some free-form text");
+        let args = vec![
+            "--query".to_string(),
+            format!("__file__:{}", file.path().to_string_lossy()),
+        ];
+        let result = parse_args(&args)
+            .expect("should parse")
+            .expect("should have value");
+        assert_eq!(result["query"], "just some free-form text");
+        assert!(result["query"].is_string());
     }
 
     #[test]
