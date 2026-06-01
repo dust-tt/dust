@@ -198,6 +198,7 @@ beforeEach(() => {
         aliases: ["enterprise"],
         tier: "enterprise",
         currency: "usd",
+        seats: [],
       },
       {
         id: PRO_PACKAGE_ID,
@@ -205,6 +206,7 @@ beforeEach(() => {
         aliases: ["legacy-pro-monthly"],
         tier: "pro",
         currency: "usd",
+        seats: [],
       },
       {
         id: BUSINESS_PACKAGE_ID,
@@ -212,6 +214,7 @@ beforeEach(() => {
         aliases: ["business"],
         tier: "business",
         currency: "usd",
+        seats: [],
       },
     ])
   );
@@ -280,7 +283,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — Enterprise", () =>
     );
   });
 
-  it("rejects when startingAt is less than 1h in the future", async () => {
+  it("accepts a startingAt in the past (backdated) and schedules at the next hour boundary", async () => {
     await ensureEnterprisePlan();
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "POST",
@@ -288,13 +291,19 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — Enterprise", () =>
     });
     await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
 
-    req.body = enterpriseBody({ startingAt: futureIso(0.5) });
+    req.body = enterpriseBody({ startingAt: futureIso(-48) });
     req.query.wId = workspace.sId;
 
     await handler(req, res);
 
-    expect(res._getStatusCode()).toBe(400);
-    expect(res._getJSONData().error.message).toContain("at least one hour");
+    expect(res._getStatusCode()).toBe(200);
+    expect(provisionMetronomeContract).toHaveBeenCalledWith(
+      expect.objectContaining({
+        packageAlias: "enterprise",
+        planCode: ENT_PLAN_CODE,
+        swapAt: "next-hour",
+      })
+    );
   });
 
   it("rejects when the package currency does not match the Stripe customer currency", async () => {
@@ -716,6 +725,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — initial credits", 
         invoiceUnitPrice: 500_000,
         invoiceQuantity: 1,
         priority: AWU_PRIORITY_PURCHASED_COMMIT,
+        applicableProductTags: ["usage"],
       })
     );
   });

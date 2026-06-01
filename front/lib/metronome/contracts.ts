@@ -1009,6 +1009,63 @@ export async function applyEnterpriseOverrides({
 }
 
 /**
+ * A per-seat FLAT rate override to apply on a contract: set `productId`'s rate
+ * to `priceNative` from `startingAt`. `priceNative` is in Metronome's fiat unit
+ * (cents for USD, whole units for EUR) — the same unit the rate card uses, so
+ * it is not labelled `Cents` (that would be wrong for EUR). `billingFrequency`
+ * disambiguates the seat product's subscription rate (monthly vs annual seats).
+ */
+export interface SeatRateOverride {
+  productId: string;
+  billingFrequency: "MONTHLY" | "ANNUAL";
+  priceNative: number;
+  creditTypeId: string;
+}
+
+/**
+ * Apply FLAT per-seat rate overrides on a provisioned contract. Seats are
+ * provisioned from the package at its default override rate; this overwrites
+ * those rates with operator-specified values (e.g. a negotiated seat price)
+ * effective at `startingAt`. No-op when `overrides` is empty.
+ */
+export async function applySeatRateOverrides({
+  metronomeCustomerId,
+  contractId,
+  startingAt,
+  overrides,
+}: {
+  metronomeCustomerId: string;
+  contractId: string;
+  startingAt: string;
+  overrides: SeatRateOverride[];
+}): Promise<Result<void, Error>> {
+  if (overrides.length === 0) {
+    return new Ok(undefined);
+  }
+  const editResult = await editMetronomeContract({
+    customer_id: metronomeCustomerId,
+    contract_id: contractId,
+    add_overrides: overrides.map((o) => ({
+      starting_at: startingAt,
+      type: "OVERWRITE" as const,
+      entitled: true,
+      override_specifiers: [
+        { product_id: o.productId, billing_frequency: o.billingFrequency },
+      ],
+      overwrite_rate: {
+        rate_type: "FLAT" as const,
+        price: o.priceNative,
+        credit_type_id: o.creditTypeId,
+      },
+    })),
+  });
+  if (editResult.isErr()) {
+    return new Err(editResult.error);
+  }
+  return new Ok(undefined);
+}
+
+/**
  * Provision a Metronome customer + contract for an enterprise workspace,
  * extract MAU pricing from the Stripe subscription, and apply overrides.
  *

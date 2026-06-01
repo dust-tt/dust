@@ -198,6 +198,7 @@ beforeEach(() => {
         aliases: ["enterprise"],
         tier: "enterprise",
         currency: "usd",
+        seats: [],
       },
       {
         id: PRO_PACKAGE_ID,
@@ -205,6 +206,7 @@ beforeEach(() => {
         aliases: ["legacy-pro-monthly"],
         tier: "pro",
         currency: "usd",
+        seats: [],
       },
       {
         id: BUSINESS_PACKAGE_ID,
@@ -212,6 +214,7 @@ beforeEach(() => {
         aliases: ["business"],
         tier: "business",
         currency: "usd",
+        seats: [],
       },
     ])
   );
@@ -271,7 +274,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — Enterprise", () =>
     );
   });
 
-  it("rejects when startingAt is less than 1h in the future", async () => {
+  it("accepts a startingAt in the past (backdated) and schedules at the next hour boundary", async () => {
     await ensureEnterprisePlan();
     const { workspace } = await createPrivateApiMockRequest({
       isSuperUser: true,
@@ -280,12 +283,17 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — Enterprise", () =>
 
     const response = await postSwitchContract(
       workspace.sId,
-      enterpriseBody({ startingAt: futureIso(0.5) })
+      enterpriseBody({ startingAt: futureIso(-48) })
     );
 
-    expect(response.status).toBe(400);
-    const data = await response.json();
-    expect(data.error.message).toContain("at least one hour");
+    expect(response.status).toBe(200);
+    expect(provisionMetronomeContract).toHaveBeenCalledWith(
+      expect.objectContaining({
+        packageAlias: "enterprise",
+        planCode: ENT_PLAN_CODE,
+        swapAt: "next-hour",
+      })
+    );
   });
 
   it("rejects when the package currency does not match the Stripe customer currency", async () => {
