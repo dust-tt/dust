@@ -4,10 +4,6 @@ FROM node:24.14.0-slim AS base-deps
 RUN apt-get update && \
   apt-get install -y libjemalloc2 libjemalloc-dev
 
-# Only non-Next.js build args needed for base deps
-ARG COMMIT_HASH
-ARG COMMIT_HASH_LONG
-
 RUN npm install -g npm@11.11.0
 
 WORKDIR /app
