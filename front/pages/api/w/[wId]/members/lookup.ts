@@ -7,6 +7,7 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { UserType } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
@@ -17,13 +18,30 @@ const MembersLookupQuerySchema = z.object({
   ids: z.union([z.coerce.number(), z.array(z.coerce.number())]),
 });
 
+export type LightLookupUserType = {
+  sId: string;
+  id: ModelId;
+  firstName: string;
+  lastName: string | null;
+  fullName: string;
+  image: string | null;
+};
+
 export type MembersLookupResponseBody = {
+  users: LightLookupUserType[];
+};
+
+export type MembersLookupAdminResponseBody = {
   users: UserType[];
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<MembersLookupResponseBody>>,
+  res: NextApiResponse<
+    WithAPIErrorResponse<
+      MembersLookupResponseBody | MembersLookupAdminResponseBody
+    >
+  >,
   auth: Authenticator
 ): Promise<void> {
   switch (req.method) {
@@ -73,8 +91,23 @@ async function handler(
       const validUserIds = new Set(memberships.map((m) => m.userId));
       const filteredUsers = users.filter((user) => validUserIds.has(user.id));
 
+      if (auth.isAdmin()) {
+        return res.status(200).json({
+          users: filteredUsers.map((user) => user.toJSON()),
+        });
+      }
+
       return res.status(200).json({
-        users: filteredUsers.map((user) => user.toJSON()),
+        users: filteredUsers.map((user) => {
+          return {
+            sId: user.sId,
+            id: user.id,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            fullName: user.fullName(),
+            image: user.imageUrl,
+          };
+        }),
       });
     }
 

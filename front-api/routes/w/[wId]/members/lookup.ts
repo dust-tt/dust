@@ -1,6 +1,6 @@
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import type { UserType } from "@app/types/user";
+import type { ModelId } from "@app/types/shared/model_id";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -17,9 +17,19 @@ const MembersLookupQuerySchema = z.object({
   ids: z.union([z.coerce.number(), z.array(z.coerce.number())]),
 });
 
-export type MembersLookupResponseBody = {
-  users: UserType[];
+export type LightLookupUserType = {
+  sId: string;
+  id: ModelId;
+  firstName: string;
+  lastName: string | null;
+  fullName: string;
+  image: string | null;
 };
+
+export type MembersLookupResponseBody = {
+  users: LightLookupUserType[];
+};
+
 
 // Mounted at /api/w/:wId/members/lookup.
 const app = workspaceApp();
@@ -62,8 +72,23 @@ app.get(
     const validUserIds = new Set(memberships.map((m) => m.userId));
     const filteredUsers = users.filter((user) => validUserIds.has(user.id));
 
+    if (auth.isAdmin()) {
+      return ctx.json({
+        users: filteredUsers.map((user) => user.toJSON()),
+      });
+    }
+
     return ctx.json({
-      users: filteredUsers.map((user) => user.toJSON()),
+      users: filteredUsers.map((user) => {
+        return {
+          sId: user.sId,
+          id: user.id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          fullName: user.fullName(),
+          image: user.imageUrl,
+        };
+      }),
     });
   }
 );

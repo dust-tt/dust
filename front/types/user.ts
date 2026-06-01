@@ -107,6 +107,18 @@ export type UserTypeWithWorkspace = UserType & {
 };
 
 /**
+ * Minimal member representation returned by `/members/search` for non-admin
+ * callers. Admin callers receive the full `UserTypeWithWorkspace`.
+ */
+export type LightMemberType = {
+  sId: string;
+  firstName: string;
+  lastName: string | null;
+  fullName: string;
+  image: string | null;
+};
+
+/**
  * @swaggerschema PrivateUser (swagger_private_schemas.ts)
  */
 export type UserTypeWithWorkspaces = UserType & {

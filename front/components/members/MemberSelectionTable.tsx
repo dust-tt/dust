@@ -1,5 +1,5 @@
 import { useSearchMembers } from "@app/lib/swr/memberships";
-import type { LightWorkspaceType, UserType } from "@app/types/user";
+import type { LightMemberType, LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
   createSelectionColumn,
@@ -17,18 +17,16 @@ import { useMemo, useRef, useState } from "react";
 export interface MemberRowData {
   sId: string;
   fullName: string;
-  email: string;
   image: string;
   onClick?: () => void;
 }
 
 function getMemberTableRows(
-  members: Pick<UserType, "sId" | "fullName" | "email" | "image">[]
+  members: Pick<LightMemberType, "sId" | "fullName" | "image">[]
 ): MemberRowData[] {
   return members.map((user) => ({
     sId: user.sId,
     fullName: user.fullName,
-    email: user.email ?? "",
     image: user.image ?? "",
   }));
 }
@@ -36,10 +34,10 @@ function getMemberTableRows(
 interface MemberSelectionTableProps {
   owner: LightWorkspaceType;
   selectedMemberIds: Set<string>;
-  onSelectionChange: (ids: Set<string>, users: UserType[]) => void;
+  onSelectionChange: (ids: Set<string>, users: LightMemberType[]) => void;
   extraColumns?: ColumnDef<MemberRowData>[];
   buildersOnly?: boolean;
-  initialMembers?: UserType[];
+  initialMembers?: LightMemberType[];
 }
 
 export function MemberSelectionTable({
@@ -70,10 +68,12 @@ export function MemberSelectionTable({
     disabled: !searchText,
   });
 
-  // Internal map to resolve sId -> UserType, seeded with initialMembers and
-  // updated as search results come in.
+  // Internal map to resolve sId -> LightMemberType, seeded with initialMembers
+  // and updated as search results come in.
   const userMapRef = useRef(
-    new Map<string, UserType>((initialMembers ?? []).map((m) => [m.sId, m]))
+    new Map<string, LightMemberType>(
+      (initialMembers ?? []).map((m) => [m.sId, m])
+    )
   );
 
   // Update the map synchronously so downstream memos read fresh data.
@@ -88,7 +88,7 @@ export function MemberSelectionTable({
     if (!searchText) {
       const selectedUsers = Array.from(selectedMemberIds)
         .map((sId) => userMapRef.current.get(sId))
-        .filter((u): u is UserType => !!u);
+        .filter((u): u is LightMemberType => !!u);
       return getMemberTableRows(selectedUsers);
     }
     return getMemberTableRows(members);
@@ -107,7 +107,7 @@ export function MemberSelectionTable({
         .map(([sId]) => sId)
     );
 
-    const users: UserType[] = [];
+    const users: LightMemberType[] = [];
     for (const sId of newIds) {
       const user = userMapRef.current.get(sId);
       if (user) {
@@ -132,9 +132,9 @@ export function MemberSelectionTable({
           className: "w-full",
         },
         cell: (info: CellContext<MemberRowData, unknown>) => {
-          const { fullName, image, email } = info.row.original;
+          const { fullName, image } = info.row.original;
           return (
-            <DataTable.CellContent description={email}>
+            <DataTable.CellContent>
               <div className="flex items-center gap-2">
                 <Avatar
                   name={fullName}

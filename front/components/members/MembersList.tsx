@@ -1,6 +1,6 @@
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
 import assert from "@app/lib/utils/assert";
-import type { SearchMembersResponseBody } from "@app/pages/api/w/[wId]/members/search";
+import type { SearchMembersAdminResponseBody } from "@app/pages/api/w/[wId]/members/search";
 import type { MembershipOriginType } from "@app/types/memberships";
 import type {
   RoleType,
@@ -67,7 +67,7 @@ type MembersData = {
   totalMembersCount: number;
   isLoading: boolean;
   mutateRegardlessOfQueryParams:
-    | KeyedMutator<SearchMembersResponseBody>
+    | KeyedMutator<SearchMembersAdminResponseBody>
     | (() => void);
 };
 

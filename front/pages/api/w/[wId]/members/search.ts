@@ -8,7 +8,10 @@ import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { GROUP_KINDS } from "@app/types/groups";
-import type { UserTypeWithWorkspace } from "@app/types/user";
+import type {
+  LightMemberType,
+  UserTypeWithWorkspace,
+} from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
@@ -28,13 +31,22 @@ const SearchMembersQuerySchema = z.object({
 });
 
 export type SearchMembersResponseBody = {
+  members: LightMemberType[];
+  total: number;
+};
+
+export type SearchMembersAdminResponseBody = {
   members: UserTypeWithWorkspace[];
   total: number;
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<SearchMembersResponseBody>>,
+  res: NextApiResponse<
+    WithAPIErrorResponse<
+      SearchMembersResponseBody | SearchMembersAdminResponseBody
+    >
+  >,
   auth: Authenticator
 ): Promise<void> {
   switch (req.method) {
@@ -74,8 +86,18 @@ async function handler(
         query
       );
 
+      if (auth.isAdmin()) {
+        return res.status(200).json({ members, total });
+      }
+
       return res.status(200).json({
-        members,
+        members: members.map((m) => ({
+          sId: m.sId,
+          firstName: m.firstName,
+          lastName: m.lastName,
+          fullName: m.fullName,
+          image: m.image,
+        })),
         total,
       });
 

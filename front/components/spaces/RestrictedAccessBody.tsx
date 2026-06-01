@@ -2,7 +2,10 @@ import { ConfirmContext } from "@app/components/Confirm";
 import { GroupSelectionTable } from "@app/components/groups/GroupSelectionTable";
 import { MemberSelectionTable } from "@app/components/members/MemberSelectionTable";
 import type { GroupType } from "@app/types/groups";
-import type { LightWorkspaceType, UserType } from "@app/types/user";
+import type {
+  LightMemberType,
+  LightWorkspaceType,
+} from "@app/types/user";
 import {
   Button,
   DropdownMenu,
@@ -25,12 +28,12 @@ interface RestrictedAccessBodyProps {
   planAllowsSCIM: boolean;
   managementType: MembersManagementType;
   owner: LightWorkspaceType;
-  selectedMembers: UserType[];
+  selectedMembers: LightMemberType[];
   selectedGroups: GroupType[];
   onManagementTypeChange: (managementType: MembersManagementType) => void;
-  onMembersUpdated: (members: UserType[]) => void;
+  onMembersUpdated: (members: LightMemberType[]) => void;
   onGroupsUpdated: (groups: GroupType[]) => void;
-  initialMembers?: UserType[];
+  initialMembers?: LightMemberType[];
 }
 
 export function RestrictedAccessBody({
@@ -59,7 +62,7 @@ export function RestrictedAccessBody({
 
   const handleMemberSelectionChange = (
     _ids: Set<string>,
-    users: UserType[]
+    users: LightMemberType[]
   ) => {
     onMembersUpdated(users);
   };
