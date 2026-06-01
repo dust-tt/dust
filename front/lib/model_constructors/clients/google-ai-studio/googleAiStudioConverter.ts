@@ -47,6 +47,7 @@ import {
   FunctionCallingConfigMode,
   ThinkingLevel,
 } from "@google/genai";
+import { randomUUID } from "crypto";
 import type { z } from "zod";
 
 type Constructor<T> = abstract new (...args: any[]) => T;
@@ -380,7 +381,9 @@ export function WithGoogleAiStudioConverter<
       return {
         type: "tool_call",
         content: {
-          id: fnCall.id ?? "",
+          // Google does not always return an id; generate a stable one so the
+          // call can be correlated with its functionResponse later.
+          id: fnCall.id ?? `fc_${randomUUID()}`,
           name: fnCall.name,
           arguments: fnCall.args ?? {},
         },
