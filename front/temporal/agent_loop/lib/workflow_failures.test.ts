@@ -8,18 +8,18 @@ import {
 } from "@temporalio/common";
 import { describe, expect, it } from "vitest";
 
-import { makeRunModelAndCreateActionsLLMError } from "./run_model_errors";
+import { makeRunModelLLMError } from "./run_model_errors";
 import {
-  isRunModelAndCreateActionsActivityLLMUnresponsive,
-  isTerminalRunModelAndCreateActionsTimeout,
-  RUN_MODEL_AND_CREATE_ACTIONS_ACTIVITY_NAME,
+  isRunModelLLMUnresponsiveError,
+  isTerminalRunModelTimeout,
+  RUN_MODEL_ACTIVITY_NAME,
 } from "./workflow_failures";
 
 const LLM_TIMEOUT_MESSAGE =
   "Anthropic is taking longer than expected. Please try again.";
 
 function makeActivityFailure({
-  activityType = RUN_MODEL_AND_CREATE_ACTIONS_ACTIVITY_NAME,
+  activityType = RUN_MODEL_ACTIVITY_NAME,
   llmErrorType = "llm_timeout_error",
   llmErrorMessage = LLM_TIMEOUT_MESSAGE,
   retryState = RetryState.MAXIMUM_ATTEMPTS_REACHED,
@@ -38,7 +38,7 @@ function makeActivityFailure({
   );
 
   if (llmErrorType && llmErrorMessage) {
-    const llmError = makeRunModelAndCreateActionsLLMError({
+    const llmError = makeRunModelLLMError({
       type: llmErrorType,
       message: llmErrorMessage,
     });
@@ -46,7 +46,7 @@ function makeActivityFailure({
     timeoutFailure.failure = {
       message: "activity timed out",
       cause: {
-        message: llmError.message,
+        message: "application failure",
         applicationFailureInfo: { type: llmError.type },
       },
     } satisfies ProtoFailure;
@@ -64,8 +64,7 @@ function makeActivityFailure({
 
 function shouldSwallowWorkflowFailure(error: unknown): boolean {
   return (
-    isTerminalRunModelAndCreateActionsTimeout(error) &&
-    isRunModelAndCreateActionsActivityLLMUnresponsive(error)
+    isTerminalRunModelTimeout(error) && isRunModelLLMUnresponsiveError(error)
   );
 }
 
@@ -73,10 +72,8 @@ describe("workflow failure predicates", () => {
   it("matches terminal heartbeat timeouts with an LLM timeout cause", () => {
     const failure = makeActivityFailure();
 
-    expect(isTerminalRunModelAndCreateActionsTimeout(failure)).toBe(true);
-    expect(isRunModelAndCreateActionsActivityLLMUnresponsive(failure)).toBe(
-      true
-    );
+    expect(isTerminalRunModelTimeout(failure)).toBe(true);
+    expect(isRunModelLLMUnresponsiveError(failure)).toBe(true);
     expect(shouldSwallowWorkflowFailure(failure)).toBe(true);
   });
 
@@ -97,10 +94,8 @@ describe("workflow failure predicates", () => {
       timeoutType: TimeoutType.START_TO_CLOSE,
     });
 
-    expect(isTerminalRunModelAndCreateActionsTimeout(failure)).toBe(true);
-    expect(isRunModelAndCreateActionsActivityLLMUnresponsive(failure)).toBe(
-      false
-    );
+    expect(isTerminalRunModelTimeout(failure)).toBe(true);
+    expect(isRunModelLLMUnresponsiveError(failure)).toBe(false);
     expect(shouldSwallowWorkflowFailure(failure)).toBe(false);
   });
 
@@ -110,10 +105,8 @@ describe("workflow failure predicates", () => {
       llmErrorMessage: "Too many requests.",
     });
 
-    expect(isTerminalRunModelAndCreateActionsTimeout(failure)).toBe(true);
-    expect(isRunModelAndCreateActionsActivityLLMUnresponsive(failure)).toBe(
-      false
-    );
+    expect(isTerminalRunModelTimeout(failure)).toBe(true);
+    expect(isRunModelLLMUnresponsiveError(failure)).toBe(false);
     expect(shouldSwallowWorkflowFailure(failure)).toBe(false);
   });
 
@@ -125,13 +118,9 @@ describe("workflow failure predicates", () => {
       activityType: "runToolActivity",
     });
 
-    expect(isTerminalRunModelAndCreateActionsTimeout(nonTerminalFailure)).toBe(
-      false
-    );
+    expect(isTerminalRunModelTimeout(nonTerminalFailure)).toBe(false);
     expect(shouldSwallowWorkflowFailure(nonTerminalFailure)).toBe(false);
-    expect(
-      isTerminalRunModelAndCreateActionsTimeout(unrelatedActivityFailure)
-    ).toBe(false);
+    expect(isTerminalRunModelTimeout(unrelatedActivityFailure)).toBe(false);
     expect(shouldSwallowWorkflowFailure(unrelatedActivityFailure)).toBe(false);
   });
 });
