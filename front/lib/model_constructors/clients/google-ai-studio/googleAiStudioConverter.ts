@@ -430,8 +430,8 @@ export function WithGoogleAiStudioConverter<
           return {
             type: "error",
             content: {
-              type: "stream_error",
-              message: `Stop reason: ${reason}`,
+              type: "stop_error",
+              message: "The maximum response length was reached.",
             },
             metadata: this.model,
           };
@@ -447,7 +447,7 @@ export function WithGoogleAiStudioConverter<
           return {
             type: "error",
             content: {
-              type: "stream_error",
+              type: "refusal_error",
               message:
                 "Google safety filters prevented this response. Try starting a new conversation or rephrasing your request.",
             },
@@ -458,7 +458,7 @@ export function WithGoogleAiStudioConverter<
           return {
             type: "error",
             content: {
-              type: "stream_error",
+              type: "server_error",
               message: `Tool call error from Google: ${reason}`,
             },
             metadata: this.model,

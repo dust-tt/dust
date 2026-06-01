@@ -223,6 +223,10 @@ function mapErrorType(errorType: ErrorType): {
   switch (errorType) {
     case "input_configuration_error":
       return { type: "invalid_request_error", isRetryable: false };
+    case "stop_error":
+      return { type: "stop_error", isRetryable: true };
+    case "refusal_error":
+      return { type: "refusal_error", isRetryable: false };
     case "rate_limit_error":
       return { type: "rate_limit_error", isRetryable: true };
     case "overloaded_error":

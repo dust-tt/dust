@@ -97,6 +97,9 @@ export interface SuccessEvent {
 
 export const ERROR_TYPES = [
   "input_configuration_error",
+  // LLM-level errors
+  "stop_error",
+  "refusal_error",
   // HTTP errors
   "rate_limit_error",
   "overloaded_error",
