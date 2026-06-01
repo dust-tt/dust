@@ -15,6 +15,7 @@ import {
   type SkillType,
   type SkillWithoutInstructionsAndToolsType,
   type SkillWithoutInstructionsAndToolsWithRelationsType,
+  type UsedBySkillType,
 } from "@app/types/assistant/skill_configuration";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -133,7 +134,7 @@ async function handler(
 
       if (withRelations === "true") {
         const featureFlags = await getFeatureFlags(auth);
-        const includeChildSkills = featureFlags.includes("nested_skills");
+        const includeNestedSkills = featureFlags.includes("nested_skills");
 
         const extendedSkills = await SkillResource.fetchByIds(
           auth,
@@ -146,12 +147,15 @@ async function handler(
           skills
         );
         let childSkillsMap = new Map<string, SkillResource[]>();
-        if (includeChildSkills) {
+        if (includeNestedSkills) {
           childSkillsMap = await SkillResource.batchFetchChildSkills(
             auth,
             skills
           );
         }
+        const usedBySkillsMap = includeNestedSkills
+          ? await SkillResource.batchFetchUsedBySkills(auth, skills)
+          : new Map<string, UsedBySkillType[]>();
 
         const extendedSkillsMap = new Map(
           extendedSkills.map((skill) => [skill.sId, skill])
@@ -168,18 +172,26 @@ async function handler(
           const usage = usageMap.get(sc.sId) ?? { count: 0, agents: [] };
           const editors = editorsMap.get(sc.sId) ?? null;
           const editedByUser = editedByUsersMap.get(sc.sId) ?? null;
+          const usedBySkills = usedBySkillsMap.get(sc.sId) ?? [];
+          const usageWithSkills = includeNestedSkills
+            ? {
+                ...usage,
+                count: usage.count + usedBySkills.length,
+                skills: usedBySkills,
+              }
+            : usage;
 
           return {
             ...skillWithoutInstructionsAndTools,
             relations: {
-              usage,
+              usage: usageWithSkills,
               editors: editors ? editors.map((e) => e.toJSON()) : null,
               editedByUser: editedByUser ? editedByUser.toJSON() : null,
               extendedSkill: sc.extendedSkillId
                 ? (extendedSkillsMap.get(sc.extendedSkillId)?.toJSON(auth) ??
                   null)
                 : null,
-              ...(includeChildSkills
+              ...(includeNestedSkills
                 ? {
                     childSkills: (childSkillsMap.get(sc.sId) ?? []).map(
                       (childSkill) => {

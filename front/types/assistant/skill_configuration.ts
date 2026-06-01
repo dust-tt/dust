@@ -70,8 +70,18 @@ export const SkillSchema = SkillWithoutInstructionsAndToolsSchema.extend({
 
 export type SkillType = z.infer<typeof SkillSchema>;
 
+export type UsedBySkillType = {
+  sId: string;
+  name: string;
+  icon: string | null;
+};
+
+export type SkillUsageType = AgentsUsageType & {
+  skills?: UsedBySkillType[];
+};
+
 export type SkillRelations = {
-  usage: AgentsUsageType;
+  usage: SkillUsageType;
   editors: UserType[] | null;
   editedByUser: UserType | null;
   extendedSkill: SkillType | null;
