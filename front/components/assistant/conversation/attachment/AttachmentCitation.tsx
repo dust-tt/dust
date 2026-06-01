@@ -81,7 +81,7 @@ export function AttachmentCitation({
       : undefined;
 
   const transcriptionProgress = useTranscribingProgress({
-    isActive: isTranscribingAudio,
+    isTranscriptingInProgress: isTranscribingAudio,
     sizeBytes: audioSizeBytes ?? 0,
   });
   const loadingLabel =
