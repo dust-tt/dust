@@ -75,4 +75,29 @@ Example:
 \`\`\`
 <p data-block-id="a1b2c3d4">When answering questions about onboarding, refer to <knowledge id="doc_abc123" title="Onboarding Guide" space="space_xyz" dsv="dsv_456" hasChildren="false"/>.</p>
 \`\`\`
-</knowledge_nodes>`;
+</knowledge_nodes>
+
+<tool_references>
+Instructions can reference MCP tools using inline \`<tool>\` tags.
+During runtime, tools referenced this way are attached to the skill and available to the agent using it.
+
+\`\`\`
+<tool id="MCP_SERVER_VIEW_ID" name="MCP_SERVER_DISPLAY_NAME"/>
+\`\`\`
+
+Attribute mapping from get_available_tools results:
+- tag \`id\` <= \`ID\`
+- tag \`name\` <= \`name\`
+
+To embed a tool reference:
+1. Call \`get_available_tools\` to find the candidate MCP server view.
+2. Call \`describe_mcp\` for that MCP server view before writing instructions about exact tool names, inputs, or workflows.
+3. Embed the self-closing tag inline inside the relevant instruction block.
+
+To remove a tool reference, remove the \`<tool>\` tag and any instructions that only make sense with that tool.
+
+Example:
+\`\`\`
+<p data-block-id="a1b2c3d4">When researching pull requests, use <tool id="mcp_server_view_123" name="GitHub"/> and summarize the files changed before commenting.</p>
+\`\`\`
+</tool_references>`;
