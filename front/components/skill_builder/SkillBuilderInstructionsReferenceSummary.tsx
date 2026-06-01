@@ -203,16 +203,17 @@ export function SkillBuilderInstructionsReferenceSummary({
   return (
     <div
       className={cn(
-        "absolute inset-x-0 bottom-0 z-10 max-h-40 overflow-y-auto border-t px-3 pb-3 pt-3",
-        "border-border/70 bg-background",
-        "dark:border-border-night/70 dark:bg-background-night"
+        "absolute inset-x-px bottom-px z-10 max-h-40 overflow-y-auto bg-background px-3 pb-3",
+        "dark:bg-background-night"
       )}
     >
-      <div className="mb-2 text-sm font-medium text-foreground dark:text-foreground-night">
-        Capabilities and knowledge
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {referenceItems.map(renderReferenceSummaryItem)}
+      <div className="border-t border-border/70 pt-3 dark:border-border-night/70">
+        <div className="mb-2 text-sm font-medium text-foreground dark:text-foreground-night">
+          Capabilities and knowledge
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {referenceItems.map(renderReferenceSummaryItem)}
+        </div>
       </div>
     </div>
   );
