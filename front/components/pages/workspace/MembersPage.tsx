@@ -157,17 +157,6 @@ export function MembersPage() {
     workspaceId: owner.sId,
   });
 
-  const hasVerifiedDomains = verifiedDomains.length > 0;
-  const isProvisioningEnabled =
-    plan.limits.users.isSCIMAllowed && hasVerifiedDomains;
-  const isManualInvitationsEnabled =
-    owner.metadata?.disableManualInvitations !== true;
-
-  const isLoading =
-    isVerifiedDomainsLoading ||
-    isSeatAvailabilityLoading ||
-    isPerSeatPricingLoading;
-
   const onInviteClick = useCallback(
     (event: React.MouseEvent<HTMLButtonElement>) => {
       if (!isUpgraded(plan)) {
@@ -183,6 +172,17 @@ export function MembersPage() {
     },
     [plan, subscription.paymentFailingSince, hasAvailableSeats]
   );
+
+  const hasVerifiedDomains = verifiedDomains.length > 0;
+  const isProvisioningEnabled =
+    plan.limits.users.isSCIMAllowed && hasVerifiedDomains;
+  const isManualInvitationsEnabled =
+    owner.metadata?.disableManualInvitations !== true;
+
+  const isLoading =
+    isVerifiedDomainsLoading ||
+    isSeatAvailabilityLoading ||
+    isPerSeatPricingLoading;
 
   if (isLoading) {
     return (

@@ -1,7 +1,10 @@
 import { searchMembers } from "@app/lib/api/workspace";
 import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
 import { GROUP_KINDS } from "@app/types/groups";
-import type { LightMemberType } from "@app/types/user";
+import type {
+  LightMemberTypeWithWorkspaceRole,
+  UserTypeWithWorkspace,
+} from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -23,7 +26,12 @@ const SearchMembersQuerySchema = z.object({
 });
 
 export type SearchMembersResponseBody = {
-  members: LightMemberType[];
+  members: LightMemberTypeWithWorkspaceRole[];
+  total: number;
+};
+
+type SearchMembersAdminResponseBody = {
+  members: UserTypeWithWorkspace[];
   total: number;
 };
 
@@ -33,7 +41,11 @@ const app = workspaceApp();
 app.get(
   "/",
   validate("query", SearchMembersQuerySchema),
-  async (ctx): HandlerResult<SearchMembersResponseBody> => {
+  async (
+    ctx
+  ): HandlerResult<
+    SearchMembersResponseBody | SearchMembersAdminResponseBody
+  > => {
     const auth = ctx.get("auth");
     const query = ctx.req.valid("query");
 
@@ -70,6 +82,7 @@ app.get(
         lastName: m.lastName,
         fullName: m.fullName,
         image: m.image,
+        workspace: { role: m.workspace.role },
       })),
       total,
     });

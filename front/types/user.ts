@@ -118,6 +118,12 @@ export type LightMemberType = {
   image: string | null;
 };
 
+export type LightMemberTypeWithWorkspaceRole = LightMemberType & {
+  workspace: {
+    role: RoleType;
+  };
+};
+
 /**
  * @swaggerschema PrivateUser (swagger_private_schemas.ts)
  */

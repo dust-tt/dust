@@ -14,7 +14,10 @@ import type { GroupKind } from "@app/types/groups";
 import { isGroupKind } from "@app/types/groups";
 import type { MembershipSeatType } from "@app/types/memberships";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import type { LightMemberType, LightWorkspaceType } from "@app/types/user";
+import type {
+  LightMemberTypeWithWorkspaceRole,
+  LightWorkspaceType,
+} from "@app/types/user";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Fetcher } from "swr";
 import { mutate } from "swr";
@@ -117,7 +120,9 @@ export function useWorkspaceInvitations(
   };
 }
 
-export function useSearchMembers({
+export function useSearchMembers<
+  T extends LightMemberTypeWithWorkspaceRole = LightMemberTypeWithWorkspaceRole,
+>({
   workspaceId,
   searchTerm,
   pageIndex,
@@ -136,7 +141,7 @@ export function useSearchMembers({
 }) {
   const { fetcher } = useFetcher();
   const searchMembersFetcher: Fetcher<{
-    members: LightMemberType[];
+    members: T[];
     total: number;
   }> = fetcher;
   const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
