@@ -819,7 +819,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   static async fetchByModelIds(
     auth: Authenticator,
-    ids: ModelId[]
+    ids: ModelId[],
+    { withTools = true }: { withTools?: boolean } = {}
   ): Promise<SkillResource[]> {
     return this.baseFetch(auth, {
       where: {
@@ -828,6 +829,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         },
       },
       onlyCustom: true,
+      withTools,
     });
   }
 
@@ -923,15 +925,23 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
 
     const skillReferences = await SkillReferenceModel.findAll({
+      attributes: ["childSkillId", "parentSkillId"],
       where: {
         workspaceId: workspace.id,
         parentSkillId: customParentSkills.map((skill) => skill.id),
       },
     });
 
+    if (skillReferences.length === 0) {
+      return new Map(
+        customParentSkills.map((parentSkill) => [parentSkill.sId, []])
+      );
+    }
+
     const childSkills = await this.fetchByModelIds(
       auth,
-      uniq(skillReferences.map((reference) => reference.childSkillId))
+      uniq(skillReferences.map((reference) => reference.childSkillId)),
+      { withTools: false }
     );
     const childSkillsByModelId = new Map(
       childSkills.map((skill) => [skill.id, skill])
@@ -2082,7 +2092,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     const parentSkills = await this.fetchByModelIds(
       auth,
-      uniq(skillReferences.map((reference) => reference.parentSkillId))
+      uniq(skillReferences.map((reference) => reference.parentSkillId)),
+      { withTools: false }
     );
 
     const parentSkillByModelId = new Map(

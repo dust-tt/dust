@@ -3,6 +3,7 @@ import { SkillDataSourceConfigurationModel } from "@app/lib/models/skill";
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { SkillAttachedKnowledge } from "@app/lib/resources/skill/skill_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
@@ -16,7 +17,7 @@ import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("SkillResource", () => {
   let testContext: Awaited<ReturnType<typeof createResourceTest>>;
@@ -27,6 +28,8 @@ describe("SkillResource", () => {
   });
 
   afterEach(async () => {
+    vi.restoreAllMocks();
+
     // Clean up created configurations
     for (const config of createdConfigurations) {
       await config.destroy();
@@ -944,6 +947,87 @@ describe("SkillResource", () => {
         []
       );
       expect(emptyArrayResult).toHaveLength(0);
+    });
+  });
+
+  describe("batchFetchChildSkills", () => {
+    it("should not hydrate MCP server views for returned child skills", async () => {
+      const server = await RemoteMCPServerFactory.create(testContext.workspace);
+      const serverView = await MCPServerViewFactory.create(
+        testContext.workspace,
+        server.sId,
+        testContext.globalSpace
+      );
+      const parentSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Parent Skill",
+      });
+      const childSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Child Skill",
+        mcpServerViews: [serverView],
+      });
+      await SkillFactory.linkSkillToSkill(testContext.authenticator, {
+        parentSkillId: parentSkill.id,
+        childSkillId: childSkill.id,
+      });
+
+      const fetchByModelIdsSpy = vi.spyOn(
+        MCPServerViewResource,
+        "fetchByModelIds"
+      );
+
+      const childSkillsByParent = await SkillResource.batchFetchChildSkills(
+        testContext.authenticator,
+        [parentSkill]
+      );
+
+      expect(childSkillsByParent.get(parentSkill.sId)).toEqual([
+        expect.objectContaining({
+          sId: childSkill.sId,
+          name: "Child Skill",
+        }),
+      ]);
+      expect(fetchByModelIdsSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("batchFetchUsedBySkills", () => {
+    it("should not hydrate MCP server views for returned parent skills", async () => {
+      const server = await RemoteMCPServerFactory.create(testContext.workspace);
+      const serverView = await MCPServerViewFactory.create(
+        testContext.workspace,
+        server.sId,
+        testContext.globalSpace
+      );
+      const parentSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Parent Skill",
+        mcpServerViews: [serverView],
+      });
+      const childSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Child Skill",
+      });
+      await SkillFactory.linkSkillToSkill(testContext.authenticator, {
+        parentSkillId: parentSkill.id,
+        childSkillId: childSkill.id,
+      });
+
+      const fetchByModelIdsSpy = vi.spyOn(
+        MCPServerViewResource,
+        "fetchByModelIds"
+      );
+
+      const usedBySkillsByChild = await SkillResource.batchFetchUsedBySkills(
+        testContext.authenticator,
+        [childSkill]
+      );
+
+      expect(usedBySkillsByChild.get(childSkill.sId)).toEqual([
+        {
+          sId: parentSkill.sId,
+          name: "Parent Skill",
+          icon: parentSkill.icon,
+        },
+      ]);
+      expect(fetchByModelIdsSpy).not.toHaveBeenCalled();
     });
   });
 
