@@ -221,20 +221,18 @@ cli
   });
 
 cli
-  .command("destroy [...names]", "Remove environments")
+  .command("destroy [name]", "Remove environment")
   .alias("rm")
   .option("-f, --force", "Force destroy even with uncommitted changes")
   .option("-k, --keep-branch", "Delete worktree but keep the git branch")
-  .action(
-    async (names: string[] | undefined, options: { force?: boolean; keepBranch?: boolean }) => {
-      await prepareAndRun(
-        destroyCommand(names, {
-          force: Boolean(options.force),
-          keepBranch: Boolean(options.keepBranch),
-        })
-      );
-    }
-  );
+  .action(async (name: string | undefined, options: { force?: boolean; keepBranch?: boolean }) => {
+    await prepareAndRun(
+      destroyCommand(name, {
+        force: Boolean(options.force),
+        keepBranch: Boolean(options.keepBranch),
+      })
+    );
+  });
 
 cli
   .command("list", "Show all environments")

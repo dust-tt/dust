@@ -168,7 +168,7 @@ dust-hive down
 | `cool [NAME...]` | Pause services + docker, keep SDK (fast restart) |
 | `start [NAME...]` | Resume stopped environments |
 | `stop [NAME] [SERVICE]` | Full stop + remove docker containers, or stop one service |
-| `destroy [NAME...] [--force]` | Remove environments completely (multi-select if NAME omitted) |
+| `destroy [NAME] [--force]` | Remove environment completely (multi-select if NAME omitted) |
 | `restart [NAME] SERVICE` | Restart a single service |
 | `open [NAME]` | Open zellij terminal session |
 | `reload [NAME]` | Kill and reopen zellij session |

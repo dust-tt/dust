@@ -313,7 +313,7 @@ _dust-hive() {
           ;;
         destroy|rm)
           _arguments \
-            '*::names:_dust_hive_envs' \
+            '1::name:_dust_hive_envs' \
             '-f[Force destroy even with uncommitted changes]' \
             '--force[Force destroy even with uncommitted changes]' \
             '-k[Keep the git branch]' \

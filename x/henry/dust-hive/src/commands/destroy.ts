@@ -1,8 +1,4 @@
-import {
-  type EnvironmentNameArg,
-  normalizeEnvironmentNames,
-  requireEnvironment,
-} from "../lib/commands";
+import { requireEnvironment } from "../lib/commands";
 import { removeDockerVolumes, stopDocker } from "../lib/docker";
 import { type Environment, deleteEnvironmentDir, getEnvironment } from "../lib/environment";
 import { directoryExists } from "../lib/fs";
@@ -12,7 +8,7 @@ import { getWorktreeDir } from "../lib/paths";
 import { getInstallInstructions } from "../lib/platform";
 import { cleanupServicePorts, formatBlockedPorts } from "../lib/ports";
 import { readPid, stopAllServices } from "../lib/process";
-import { confirm, restoreTerminal, selectMultipleEnvironments } from "../lib/prompt";
+import { restoreTerminal, selectMultipleEnvironments } from "../lib/prompt";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
 import type { ServiceName } from "../lib/services";
 import { type Settings, loadSettings } from "../lib/settings";
@@ -211,44 +207,24 @@ async function destroySingleEnvironment(
 }
 
 export async function destroyCommand(
-  namesArg: EnvironmentNameArg,
+  name: string | undefined,
   options?: Partial<DestroyOptions>
 ): Promise<Result<void>> {
   const resolvedOptions: DestroyOptions = { force: false, keepBranch: false, ...options };
-  const names = normalizeEnvironmentNames(namesArg);
 
   // Load settings for git-spice support
   const settings = await loadSettings();
 
-  const envsResult =
-    names.length > 0 ? await resolveExplicitDestroyEnvs(names) : await selectDestroyEnvs();
-  if (!envsResult.ok) return envsResult;
+  // If a name is provided, use single-environment flow with confirmation
+  if (name) {
+    const envResult = await requireEnvironment(name, "destroy", {
+      confirmMessage: "Destroy environment '{name}'?",
+    });
+    if (!envResult.ok) return envResult;
 
-  if (names.length > 0) {
-    const confirmResult = await confirmDestroyEnvs(envsResult.value);
-    if (!confirmResult.ok) return confirmResult;
+    return destroySingleEnvironment(envResult.value, resolvedOptions, settings);
   }
 
-  return destroyEnvironments(envsResult.value, resolvedOptions, settings);
-}
-
-async function confirmDestroyEnvs(envs: Environment[]): Promise<Result<void>> {
-  const message =
-    envs.length === 1
-      ? `Destroy environment '${envs[0]?.name}'?`
-      : `Destroy ${envs.length} environment(s): ${envs.map((env) => env.name).join(", ")}?`;
-
-  const confirmed = await confirm(message, false);
-  restoreTerminal();
-
-  if (!confirmed) {
-    return Err(new CommandError("Destroy cancelled"));
-  }
-
-  return Ok(undefined);
-}
-
-async function selectDestroyEnvs(): Promise<Result<Environment[]>> {
   // No name provided - use multi-select for batch destruction
   const selectedNames = await selectMultipleEnvironments({
     message: "Select environments to destroy (space to toggle, enter to confirm)",
@@ -262,21 +238,6 @@ async function selectDestroyEnvs(): Promise<Result<Environment[]>> {
     return Err(new CommandError("No environments selected"));
   }
 
-  return resolveSelectedDestroyEnvs(selectedNames);
-}
-
-async function resolveExplicitDestroyEnvs(names: string[]): Promise<Result<Environment[]>> {
-  const envs: Environment[] = [];
-  for (const name of names) {
-    const envResult = await requireEnvironment(name, "destroy");
-    if (!envResult.ok) return envResult;
-    envs.push(envResult.value);
-  }
-
-  return Ok(envs);
-}
-
-async function resolveSelectedDestroyEnvs(selectedNames: string[]): Promise<Result<Environment[]>> {
   // Resolve all environments first
   const envs: Environment[] = [];
   for (const envName of selectedNames) {
@@ -287,17 +248,9 @@ async function resolveSelectedDestroyEnvs(selectedNames: string[]): Promise<Resu
     envs.push(env);
   }
 
-  return Ok(envs);
-}
-
-async function destroyEnvironments(
-  envs: Environment[],
-  options: DestroyOptions,
-  settings: Settings
-): Promise<Result<void>> {
   // Destroy each environment sequentially
   for (const env of envs) {
-    const result = await destroySingleEnvironment(env, options, settings);
+    const result = await destroySingleEnvironment(env, resolvedOptions, settings);
     if (!result.ok) {
       return result;
     }
