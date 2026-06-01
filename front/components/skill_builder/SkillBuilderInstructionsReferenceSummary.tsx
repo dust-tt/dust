@@ -1,6 +1,5 @@
 import { ToolChip } from "@app/components/editor/extensions/skill_builder/ToolChip";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
-import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import type { AttachedKnowledgeFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getSkillIcon } from "@app/lib/skill";
@@ -8,33 +7,26 @@ import { extractSkillTags } from "@app/lib/skills/format";
 import { extractToolTags } from "@app/lib/tools/format";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { AttachmentChip, Chip, cn, DocumentIcon } from "@dust-tt/sparkle";
+import type { Ref } from "react";
 import { useMemo } from "react";
 
 interface SkillBuilderInstructionsReferenceSummaryProps {
   attachedKnowledge?: AttachedKnowledgeFormData[];
+  containerRef?: Ref<HTMLDivElement>;
   hasError: boolean;
   instructions: string;
-  tools: BuilderAction[];
+  onReferenceClick: (target: ReferenceSummaryTarget) => void;
 }
 
-type ReferenceSummaryItem =
-  | {
-      id: string;
-      kind: "knowledge";
-      title: string;
-    }
-  | {
-      icon: string | null;
-      id: string;
-      kind: "skill";
-      title: string;
-    }
-  | {
-      icon: string | null;
-      id: string;
-      kind: "tool";
-      title: string;
-    };
+export type ReferenceSummaryTarget =
+  | { id: string; kind: "knowledge" }
+  | { id: string; kind: "skill" }
+  | { id: string; kind: "tool" };
+
+type ReferenceSummaryItem = ReferenceSummaryTarget & {
+  icon?: string | null;
+  title: string;
+};
 
 function dedupeById<T extends { id: string }>(items: T[]): T[] {
   const seenIds = new Set<string>();
@@ -60,7 +52,15 @@ function compareReferenceSummaryItems(
   );
 }
 
-function renderReferenceSummaryItem(item: ReferenceSummaryItem) {
+function renderReferenceSummaryItem({
+  item,
+  onReferenceClick,
+}: {
+  item: ReferenceSummaryItem;
+  onReferenceClick: (target: ReferenceSummaryTarget) => void;
+}) {
+  const handleClick = () => onReferenceClick({ id: item.id, kind: item.kind });
+
   switch (item.kind) {
     case "knowledge":
       return (
@@ -70,6 +70,7 @@ function renderReferenceSummaryItem(item: ReferenceSummaryItem) {
           icon={{ visual: DocumentIcon }}
           color="white"
           size="xs"
+          onClick={handleClick}
         />
       );
     case "skill":
@@ -77,9 +78,10 @@ function renderReferenceSummaryItem(item: ReferenceSummaryItem) {
         <Chip
           key={`${item.kind}:${item.id}`}
           label={item.title}
-          icon={getSkillIcon(item.icon)}
+          icon={getSkillIcon(item.icon ?? null)}
           color="white"
           size="xs"
+          onClick={handleClick}
         />
       );
     case "tool":
@@ -87,8 +89,9 @@ function renderReferenceSummaryItem(item: ReferenceSummaryItem) {
         <ToolChip
           key={`${item.kind}:${item.id}`}
           title={item.title}
-          toolIcon={item.icon}
+          toolIcon={item.icon ?? null}
           color="white"
+          onClick={handleClick}
         />
       );
     default:
@@ -98,9 +101,10 @@ function renderReferenceSummaryItem(item: ReferenceSummaryItem) {
 
 export function SkillBuilderInstructionsReferenceSummary({
   attachedKnowledge,
+  containerRef,
   hasError,
   instructions,
-  tools,
+  onReferenceClick,
 }: SkillBuilderInstructionsReferenceSummaryProps) {
   const { mcpServerViews, isMCPServerViewsLoading } =
     useMCPServerViewsContext();
@@ -146,33 +150,6 @@ export function SkillBuilderInstructionsReferenceSummary({
     [instructions, isMCPServerViewsLoading, mcpServerViews]
   );
 
-  const selectedToolReferences = useMemo(() => {
-    if (isMCPServerViewsLoading) {
-      return tools.map((tool) => ({
-        icon: null,
-        id: tool.configuration.mcpServerViewId,
-        title: tool.name,
-      }));
-    }
-
-    return tools.map((tool) => {
-      const view = mcpServerViews.find(
-        (v) => v.sId === tool.configuration.mcpServerViewId
-      );
-
-      return {
-        icon: view?.server.icon ?? null,
-        id: tool.configuration.mcpServerViewId,
-        title: view ? getMcpServerViewDisplayName(view, tool) : tool.name,
-      };
-    });
-  }, [isMCPServerViewsLoading, mcpServerViews, tools]);
-
-  const toolReferences = dedupeById([
-    ...inlineToolReferences,
-    ...selectedToolReferences,
-  ]);
-
   const referenceItems = useMemo(
     () =>
       [
@@ -188,14 +165,14 @@ export function SkillBuilderInstructionsReferenceSummary({
             kind: "skill",
           })
         ),
-        ...toolReferences.map(
+        ...inlineToolReferences.map(
           (tool): ReferenceSummaryItem => ({
             ...tool,
             kind: "tool",
           })
         ),
       ].toSorted(compareReferenceSummaryItems),
-    [knowledgeReferences, skillReferences, toolReferences]
+    [knowledgeReferences, skillReferences, inlineToolReferences]
   );
 
   if (referenceItems.length === 0) {
@@ -204,6 +181,7 @@ export function SkillBuilderInstructionsReferenceSummary({
 
   return (
     <div
+      ref={containerRef}
       className={cn(
         "absolute inset-x-0 bottom-0 z-10 max-h-40 overflow-y-auto rounded-b-xl border-x border-b bg-background px-3 pb-3 pt-3",
         "dark:bg-background-night",
@@ -222,7 +200,9 @@ export function SkillBuilderInstructionsReferenceSummary({
         Capabilities and knowledge
       </div>
       <div className="flex flex-wrap gap-2">
-        {referenceItems.map(renderReferenceSummaryItem)}
+        {referenceItems.map((item) =>
+          renderReferenceSummaryItem({ item, onReferenceClick })
+        )}
       </div>
     </div>
   );

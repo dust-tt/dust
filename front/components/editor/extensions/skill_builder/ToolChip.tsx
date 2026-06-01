@@ -24,6 +24,7 @@ function getToolIcon(toolIcon: string | null) {
 
 interface ToolChipProps {
   color?: React.ComponentProps<typeof AttachmentChip>["color"];
+  onClick?: () => void;
   onRemove?: () => void;
   title: string;
   toolIcon: string | null;
@@ -31,6 +32,7 @@ interface ToolChipProps {
 
 export function ToolChip({
   color = "white",
+  onClick,
   onRemove,
   title,
   toolIcon,
@@ -40,6 +42,7 @@ export function ToolChip({
       label={title}
       icon={getToolIcon(toolIcon)}
       color={color}
+      onClick={onClick}
       onRemove={onRemove}
       size="xs"
     />
