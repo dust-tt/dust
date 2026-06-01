@@ -79,14 +79,18 @@ export const NEW_METRICS: MetricDef[] = [
     aggregation_key: "count",
     // 7 group keys — Metronome's default cap is 5; this metric needs an
     // explicit limit increase (granted by Metronome support).
+    // Each dimension is combined with `tool_category` so tool invocation
+    // counts can be weighted into AWU spend per dimension (basic ×1,
+    // advanced ×3). The bare per-dimension keys aren't needed: summing a
+    // combined key over `tool_category` recovers the per-dimension total.
     group_keys: [
       ["user_id", USAGE_TYPE_GROUP_KEY, "tool_category"],
       ["user_id"],
-      ["api_key_name"],
       ["tool_category"],
-      ["origin"],
-      ["agent_id"],
-      [USAGE_TYPE_GROUP_KEY],
+      ["api_key_name", "tool_category"],
+      ["origin", "tool_category"],
+      ["agent_id", "tool_category"],
+      [USAGE_TYPE_GROUP_KEY, "tool_category"],
     ],
   },
   // AWU-based AI cost metric — sums cost_awu directly (no unit conversion).
