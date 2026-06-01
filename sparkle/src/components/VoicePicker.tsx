@@ -81,7 +81,7 @@ export function VoicePicker({
   }, [isRecording, elapsedSeconds]);
 
   const transcribingProgress = useTranscribingProgress({
-    isActive: isTranscribing,
+    isTranscriptingInProgress: isTranscribing,
     recordingSeconds: lastRecordingSecondsRef.current,
   });
 

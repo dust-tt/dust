@@ -29,9 +29,9 @@ function estimateTranscriptionDurationMs(
 }
 
 export function useTranscribingProgress(
-  props: { isActive: boolean } & TranscriptionEstimateInput
+  props: { isTranscriptingInProgress: boolean } & TranscriptionEstimateInput
 ): number | null {
-  const { isActive } = props;
+  const { isTranscriptingInProgress: isActive } = props;
   const estimatedTotalMs = estimateTranscriptionDurationMs(props);
 
   const [progress, setProgress] = React.useState<number | null>(null);
