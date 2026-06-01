@@ -1,38 +1,46 @@
 import * as React from "react";
 
-const TRANSCRIPTION_BASE_DURATION_SECONDS = 3;
-const RECORDING_SECONDS_PER_TRANSCRIPTION_SECOND = 15;
 const MAX_FAKE_PROGRESS_PERCENT = 99;
-const PROGRESS_UPDATE_INTERVAL_MS = 100;
+const PROGRESS_UPDATE_INTERVAL_MS = 1000;
 
-export function useTranscribingProgress({
-  isRecording,
-  isTranscribing,
-  elapsedRecordingSeconds,
-}: {
-  isRecording: boolean;
-  isTranscribing: boolean;
-  elapsedRecordingSeconds: number;
-}): number | null {
-  const lastRecordingSecondsRef = React.useRef(0);
+const TRANSCRIPTION_BASE_DURATION_SECONDS = 3;
+const BYTES_PER_TRANSCRIPTION_SECOND = 100000;
+const RECORDING_SECONDS_PER_TRANSCRIPTION_SECOND = 15;
+
+type TranscriptionEstimateInput =
+  | { sizeBytes: number }
+  | { recordingSeconds: number };
+
+function estimateTranscriptionDurationMs(
+  input: TranscriptionEstimateInput
+): number {
+  const baseDurationMs = TRANSCRIPTION_BASE_DURATION_SECONDS * 1000;
+
+  if ("sizeBytes" in input) {
+    return (
+      baseDurationMs + (input.sizeBytes / BYTES_PER_TRANSCRIPTION_SECOND) * 1000
+    );
+  }
+
+  return (
+    baseDurationMs +
+    (input.recordingSeconds / RECORDING_SECONDS_PER_TRANSCRIPTION_SECOND) * 1000
+  );
+}
+
+export function useTranscribingProgress(
+  props: { isTranscriptingInProgress: boolean } & TranscriptionEstimateInput
+): number | null {
+  const { isTranscriptingInProgress: isActive } = props;
+  const estimatedTotalMs = estimateTranscriptionDurationMs(props);
+
   const [progress, setProgress] = React.useState<number | null>(null);
 
   React.useEffect(() => {
-    if (isRecording) {
-      lastRecordingSecondsRef.current = elapsedRecordingSeconds;
-    }
-  }, [isRecording, elapsedRecordingSeconds]);
-
-  React.useEffect(() => {
-    if (!isTranscribing) {
+    if (!isActive) {
       setProgress(null);
       return;
     }
-    const estimatedTotalMs =
-      (TRANSCRIPTION_BASE_DURATION_SECONDS +
-        lastRecordingSecondsRef.current /
-          RECORDING_SECONDS_PER_TRANSCRIPTION_SECOND) *
-      1000;
     const startedAt = Date.now();
     const update = (): void => {
       const elapsedMs = Date.now() - startedAt;
@@ -46,7 +54,7 @@ export function useTranscribingProgress({
     update();
     const interval = window.setInterval(update, PROGRESS_UPDATE_INTERVAL_MS);
     return () => window.clearInterval(interval);
-  }, [isTranscribing]);
+  }, [isActive, estimatedTotalMs]);
 
   return progress;
 }
