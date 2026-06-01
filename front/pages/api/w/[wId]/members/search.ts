@@ -8,10 +8,7 @@ import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { GROUP_KINDS } from "@app/types/groups";
-import type {
-  LightMemberType,
-  UserTypeWithWorkspace,
-} from "@app/types/user";
+import type { LightMemberType, UserTypeWithWorkspace } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";

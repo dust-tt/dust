@@ -117,9 +117,7 @@ export function useWorkspaceInvitations(
   };
 }
 
-export function useSearchMembers<
-  T extends LightMemberType = LightMemberType,
->({
+export function useSearchMembers<T extends LightMemberType = LightMemberType>({
   workspaceId,
   searchTerm,
   pageIndex,

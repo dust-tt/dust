@@ -71,6 +71,7 @@ app.get(
     const validUserIds = new Set(memberships.map((m) => m.userId));
     const filteredUsers = users.filter((user) => validUserIds.has(user.id));
 
+    // biome-ignore lint/plugin/noDirectRoleCheck: conditional response — non-admins get a light response, not a 403
     if (auth.isAdmin()) {
       return ctx.json({
         users: filteredUsers.map((user) => user.toJSON()),

@@ -124,10 +124,7 @@ describe("GET /api/w/[wId]/members/search", () => {
       role: "user",
     });
 
-    const users = await Promise.all([
-      UserFactory.basic(),
-      UserFactory.basic(),
-    ]);
+    const users = await Promise.all([UserFactory.basic(), UserFactory.basic()]);
 
     await Promise.all(
       users.map((user) =>

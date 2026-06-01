@@ -118,7 +118,6 @@ export type LightMemberType = {
   image: string | null;
 };
 
-
 /**
  * @swaggerschema PrivateUser (swagger_private_schemas.ts)
  */
