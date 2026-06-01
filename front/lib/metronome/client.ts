@@ -466,17 +466,22 @@ export interface MetronomePackageSummary {
 }
 
 /**
- * A seat type sold by a package, plus the default per-seat flat rate stamped by
- * the package's entitlement override (in the rate card's fiat unit, e.g. cents
- * for USD). `defaultRate` is null when the override only flips entitlement
+ * A seat type that can be sold on a package. `entitled` reflects whether the
+ * package flips this seat on by default (via an `entitled: true` override);
+ * non-entitled seats are still surfaced so an operator can opt into entitling
+ * them when switching the contract. `defaultRate` is the per-seat flat rate
+ * stamped by the package's entitlement override (in the rate card's fiat unit,
+ * e.g. cents for USD); it is null when the seat is not entitled, or entitled
  * without an explicit rate. `productId` is the Metronome seat product the
- * override targets — used to apply a rate override on the provisioned contract.
+ * override targets — used to apply a rate/entitlement override on the
+ * provisioned contract.
  */
 export interface PackageSeatConfig {
   seatType: MembershipSeatType;
   productId: string;
   productName: string;
   defaultRate: number | null;
+  entitled: boolean;
 }
 
 // Structural shape of the package list-response overrides we read — only the
@@ -489,10 +494,12 @@ type PackageEntitlementOverride = {
 };
 
 /**
- * Resolve the seats a package sells from its entitlement overrides. A package
- * flips `entitled: true` on the seat products it sells (and stamps their flat
- * rate via `overwrite_rate`); we map those product IDs to seat types via the
- * `productId → seatType` map and surface the override's default rate.
+ * Resolve every seat a package can sell, flagging which ones it entitles by
+ * default. A package flips `entitled: true` on the seat products it sells (and
+ * stamps their flat rate via `overwrite_rate`); those become `entitled` seats
+ * with their default rate. Every other known seat product is surfaced as a
+ * non-entitled seat (no default rate) so an operator can opt into entitling it
+ * when switching the contract.
  */
 // `productId → { seatType, name }` for all seat products.
 type SeatProductInfo = { seatType: MembershipSeatType; name: string };
@@ -502,6 +509,8 @@ function seatConfigsFromPackageOverrides(
   seatProducts: Map<string, SeatProductInfo>
 ): PackageSeatConfig[] {
   const bySeatType = new Map<MembershipSeatType, PackageSeatConfig>();
+
+  // First pass: the seats the package entitles, with their default rate.
   for (const override of overrides ?? []) {
     if (override.entitled !== true) {
       continue;
@@ -518,10 +527,26 @@ function seatConfigsFromPackageOverrides(
           productId,
           productName: info.name,
           defaultRate: override.overwrite_rate?.price ?? null,
+          entitled: true,
         });
       }
     }
   }
+
+  // Second pass: every remaining seat product, surfaced as not entitled so the
+  // operator can opt into it.
+  for (const [productId, info] of seatProducts) {
+    if (!bySeatType.has(info.seatType)) {
+      bySeatType.set(info.seatType, {
+        seatType: info.seatType,
+        productId,
+        productName: info.name,
+        defaultRate: null,
+        entitled: false,
+      });
+    }
+  }
+
   return [...bySeatType.values()].sort((a, b) =>
     a.seatType.localeCompare(b.seatType)
   );

@@ -25,7 +25,9 @@ import {
   ensureMetronomeCustomerForWorkspace,
   provisionMetronomeContract,
   type SeatRateOverride,
+  syncContractQuantities,
 } from "@app/lib/metronome/contracts";
+import { remapMembershipSeatTypesForContract } from "@app/lib/metronome/seats";
 import {
   isPaygEligibleTier,
   type MetronomePackageTier,
@@ -110,6 +112,11 @@ export const SwitchContractBodySchema = z.object({
     .array(
       z.object({
         seatType: z.string(),
+        // Whether the seat is entitled on the new contract. `true` (the default,
+        // for backward compatibility) entitles and configures the seat; `false`
+        // disables a seat the package would otherwise sell. The dialog submits
+        // every known seat so deselections can be turned into disable overrides.
+        selected: z.boolean().default(true),
         minSeats: z.number().int().min(0, "Min seats must be ≥ 0"),
         rate: z.number().min(0, "Rate must be ≥ 0"),
         commitmentPrice: z
@@ -369,6 +376,32 @@ export async function switchContract({
     );
   }
 
+  // A seat the package does not entitle by default can be entitled here, but
+  // only at an explicit non-zero rate — except the free seat, which is allowed
+  // at rate 0. This guards against accidentally entitling a paid seat for free.
+  const pkgSeatByType = new Map(pkg.seats.map((s) => [s.seatType, s]));
+  for (const seat of body.seats ?? []) {
+    if (!isMembershipSeatType(seat.seatType)) {
+      continue;
+    }
+    const pkgSeat = pkgSeatByType.get(seat.seatType);
+    if (
+      seat.selected &&
+      pkgSeat &&
+      !pkgSeat.entitled &&
+      seat.seatType !== "free" &&
+      seat.rate <= 0
+    ) {
+      return new Err(
+        new SwitchContractError(
+          "invalid_request",
+          `Seat "${seat.seatType}" is not entitled by the selected package and ` +
+            "requires a rate greater than 0 to entitle it."
+        )
+      );
+    }
+  }
+
   // Resolve when the swap happens.
   //  - startingAt provided: schedule at the requested moment, ceiled to the
   //    next hour boundary. Any moment is accepted, including the past — the
@@ -417,7 +450,8 @@ export async function switchContract({
     if (!isMembershipSeatType(seat.seatType)) {
       continue;
     }
-    if (seat.minSeats > 0) {
+    // A deselected seat carries no billing floor — clear any existing one.
+    if (seat.selected && seat.minSeats > 0) {
       await WorkspaceSeatLimitResource.upsert({
         workspace: owner,
         seatType: seat.seatType,
@@ -597,9 +631,9 @@ export async function switchContract({
   // floor (`minSeats`) was already persisted before provisioning (above) so the
   // provisioning sync could clamp to it.
   if (body.seats && body.seats.length > 0) {
-    // Seat product + default rate by seat type, from the package's entitlement
-    // overrides — used to target rate overrides and detect rate changes.
-    const pkgSeatByType = new Map(pkg.seats.map((s) => [s.seatType, s]));
+    // `pkgSeatByType` (built above) maps every seat type the package knows about
+    // to its config — used to target rate overrides, detect rate changes, and
+    // tell entitled seats apart from ones the operator is opting into.
     const seatRateOverrides: SeatRateOverride[] = [];
 
     for (const seat of body.seats) {
@@ -629,6 +663,7 @@ export async function switchContract({
       // 1st-of-month boundary. `rateNative`/`commitmentPriceNative` are already
       // in the contract's fiat unit (matching the fiat credit type).
       if (
+        seat.selected &&
         seat.commitmentPrice &&
         seat.commitmentPrice > 0 &&
         seat.minSeats > 0 &&
@@ -685,19 +720,39 @@ export async function switchContract({
         }
       }
 
-      // Seat rate override: when the operator changed the seat rate from the
-      // package default, overwrite the seat product's rate on the contract.
-      if (
-        resolvedCurrency &&
-        pkgSeat &&
+      // Seat override, applied as an OVERWRITE on the contract:
+      //  - selected + not entitled by the package → entitle it (the operator
+      //    opted in), or
+      //  - selected + entitled but the operator changed its rate from the
+      //    package default → set the new rate, or
+      //  - deselected but entitled by the package → disable it (`entitled:
+      //    false`, price 0) so the package's default seat is turned off.
+      // The free seat is allowed in at rate 0; paid seats are validated to a
+      // positive rate above before reaching this point.
+      const needsEntitle = seat.selected && pkgSeat ? !pkgSeat.entitled : false;
+      const rateChanged =
+        seat.selected &&
+        pkgSeat != null &&
+        pkgSeat.entitled &&
         seat.rate > 0 &&
-        rateNative !== pkgSeat.defaultRate
-      ) {
+        rateNative !== pkgSeat.defaultRate;
+      const needsDisable =
+        !seat.selected && pkgSeat != null && pkgSeat.entitled;
+      if (resolvedCurrency && pkgSeat && (needsEntitle || rateChanged)) {
         seatRateOverrides.push({
           productId: pkgSeat.productId,
           billingFrequency,
           priceNative: rateNative,
           creditTypeId: CURRENCY_TO_CREDIT_TYPE_ID[resolvedCurrency],
+          entitled: true,
+        });
+      } else if (resolvedCurrency && pkgSeat && needsDisable) {
+        seatRateOverrides.push({
+          productId: pkgSeat.productId,
+          billingFrequency,
+          priceNative: 0,
+          creditTypeId: CURRENCY_TO_CREDIT_TYPE_ID[resolvedCurrency],
+          entitled: false,
         });
       }
     }
@@ -717,6 +772,59 @@ export async function switchContract({
             "Manual cleanup may be required."
         )
       );
+    }
+
+    // Re-remap memberships and re-sync seat quantities now that entitlements
+    // have changed. Both ran inside `provisionMetronomeContract` BEFORE these
+    // overrides were applied, so they only saw the package's default-entitled
+    // seats. Without re-running:
+    //  - a membership on a seat the operator just DISABLED (e.g. pro_yearly,
+    //    swapped for pro) would stay on that now-unbilled seat type, and
+    //  - a seat the operator just ENTITLED would stay at quantity 0 (unbilled).
+    // The remap moves members off disabled seats onto an entitled one; the sync
+    // then reconciles quantities. Both re-fetch the contract fresh (no cache),
+    // so the new effective entitlements are visible. Skipped when no override
+    // changed entitlement.
+    if (seatRateOverrides.length > 0) {
+      const ownerLight = renderLightWorkspaceType({ workspace: owner });
+      const remapResult = await remapMembershipSeatTypesForContract({
+        metronomeCustomerId,
+        contractId: metronomeContractId,
+        workspace: ownerLight,
+        swapAt,
+        startingAt: alignedStart,
+      });
+      if (remapResult.isErr()) {
+        return new Err(
+          new SwitchContractError(
+            "provision_inconsistent",
+            `Provisioned Metronome contract ${metronomeContractId} and applied ` +
+              `seat entitlement overrides, but failed to re-map membership seat ` +
+              `types: ${remapResult.error.message}. Members may remain on a seat ` +
+              "type the new contract no longer bills. Manual reconciliation may " +
+              "be required."
+          )
+        );
+      }
+
+      const resyncResult = await syncContractQuantities(
+        metronomeCustomerId,
+        metronomeContractId,
+        ownerLight,
+        alignedStart.toISOString()
+      );
+      if (resyncResult.isErr()) {
+        return new Err(
+          new SwitchContractError(
+            "provision_inconsistent",
+            `Provisioned Metronome contract ${metronomeContractId} and applied ` +
+              `seat entitlement overrides, but failed to re-sync seat ` +
+              `quantities: ${resyncResult.error.message}. The newly entitled ` +
+              "seats may bill at quantity 0 until the next sync. Manual " +
+              "reconciliation may be required."
+          )
+        );
+      }
     }
   }
 
