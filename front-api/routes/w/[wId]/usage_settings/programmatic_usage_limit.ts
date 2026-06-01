@@ -1,5 +1,6 @@
 /** @ignoreswagger */
 
+import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
 import {
   getProgrammaticUsageLimit,
   syncProgrammaticUsageLimit,
@@ -52,9 +53,11 @@ app.put(
     const auth = ctx.get("auth");
     const { monthlyCapCredits } = ctx.req.valid("json");
 
+    const auditContext = getAuditLogContext(auth);
     const result = await syncProgrammaticUsageLimit({
       auth,
       monthlyCapCredits,
+      auditContext,
     });
     if (result.isErr()) {
       return apiError(ctx, {

@@ -1,0 +1,8 @@
+{
+  "action": "workspace.programmatic_usage_limit_updated",
+  "targets": [{ "type": "workspace" }],
+  "metadata": {
+    "previous_monthly_cap_credits": "string",
+    "new_monthly_cap_credits": "string"
+  }
+}
