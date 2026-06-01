@@ -1,23 +1,16 @@
 import type { Authenticator } from "@app/lib/auth";
-import {
-  type SkillInstructionsOverride,
-  SkillResource,
-} from "@app/lib/resources/skill/skill_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 
-function withInstructionsOverride(
+function withReplacedInstructions(
   skill: SkillResource,
   instructions: string
-): SkillResource & SkillInstructionsOverride {
-  if (instructions === skill.instructions) {
-    return skill;
-  }
-
+): SkillResource {
   return Object.assign(Object.create(skill), {
-    instructionsOverride: instructions,
+    instructions,
   });
 }
 
-async function getSkillReferenceInstructionsBySkill(
+async function getReplacedInstructionsBySkill(
   auth: Authenticator,
   skills: SkillResource[]
 ): Promise<Map<SkillResource, string>> {
@@ -40,12 +33,11 @@ export async function resolveEnabledSkillReferencesForAgentLoop<
   auth: Authenticator,
   skills: T[]
 ): Promise<
-  (SkillResource &
-    SkillInstructionsOverride & {
-      extendedSkill: (SkillResource & SkillInstructionsOverride) | null;
-    })[]
+  (SkillResource & {
+    extendedSkill: SkillResource | null;
+  })[]
 > {
-  const instructionsBySkill = await getSkillReferenceInstructionsBySkill(
+  const instructionsBySkill = await getReplacedInstructionsBySkill(
     auth,
     skills.flatMap((skill) =>
       skill.extendedSkill ? [skill, skill.extendedSkill] : [skill]
@@ -55,7 +47,7 @@ export async function resolveEnabledSkillReferencesForAgentLoop<
   return skills.map((skill) => {
     const instructions = instructionsBySkill.get(skill) ?? skill.instructions;
     const extendedSkill = skill.extendedSkill
-      ? withInstructionsOverride(
+      ? withReplacedInstructions(
           skill.extendedSkill,
           instructionsBySkill.get(skill.extendedSkill) ??
             skill.extendedSkill.instructions
@@ -64,9 +56,7 @@ export async function resolveEnabledSkillReferencesForAgentLoop<
 
     return Object.assign(Object.create(skill), {
       extendedSkill,
-      ...(instructions === skill.instructions
-        ? {}
-        : { instructionsOverride: instructions }),
+      instructions,
     });
   });
 }
@@ -74,14 +64,14 @@ export async function resolveEnabledSkillReferencesForAgentLoop<
 export async function resolveSkillReferencesForAgentLoop(
   auth: Authenticator,
   skills: SkillResource[]
-): Promise<(SkillResource & SkillInstructionsOverride)[]> {
-  const instructionsBySkill = await getSkillReferenceInstructionsBySkill(
+): Promise<SkillResource[]> {
+  const instructionsBySkill = await getReplacedInstructionsBySkill(
     auth,
     skills
   );
 
   return skills.map((skill) =>
-    withInstructionsOverride(
+    withReplacedInstructions(
       skill,
       instructionsBySkill.get(skill) ?? skill.instructions
     )
