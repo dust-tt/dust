@@ -5,22 +5,21 @@ import { projectAddedAsMemberWorkflow } from "@app/lib/notifications/workflows/p
 import { providerCredentialsHealthUpdatedWorkflow } from "@app/lib/notifications/workflows/provider-credential-updated";
 import { skillSuggestionsReadyWorkflow } from "@app/lib/notifications/workflows/skill-suggestions-ready";
 import { createHono } from "@front-api/lib/hono";
-import { serve } from "@novu/framework/next";
+import type { ServeHandlerOptions } from "@novu/framework";
+import { NovuRequestHandler } from "@novu/framework";
 
 // This endpoint exposes our code-based notification workflows to the Novu
 // platform. The Novu platform calls this endpoint to execute workflow steps.
 // See: https://docs.novu.co/framework/endpoint
 
-// `@novu/framework/next` types its handlers against `NextRequest`, but at
-// runtime they only touch the standard Fetch `Request` surface
-// (url/method/headers/body). We can't import `next/*` in `front-api` per
-// [API9], and there is no type guard that turns a `Request` into a
-// `NextRequest` (the extra fields don't exist at runtime — Novu doesn't read
-// them). We re-type the adapter once, at this boundary, against the actual
-// runtime contract so the call sites below stay clean.
-type FetchHandler = (req: Request, ctx?: unknown) => Promise<Response>;
+// We build the handler directly on `NovuRequestHandler` (Novu's documented
+// "custom serve" pattern) rather than `@novu/framework/next`: the Next adapter
+// imports `next/server` at module load, which would pull Next into the
+// standalone Hono server and violate [API9]. Novu only touches the standard
+// Fetch `Request` surface at runtime, which `ctx.req.raw` already provides.
+// https://docs.novu.co/framework/endpoint#writing-a-custom-serve-function
 
-const novu = serve({
+const options: ServeHandlerOptions = {
   workflows: [
     conversationUnreadWorkflow,
     agentMessageFeedbackWorkflow,
@@ -29,12 +28,29 @@ const novu = serve({
     projectAddedAsMemberWorkflow,
     providerCredentialsHealthUpdatedWorkflow,
   ],
-}) as unknown as Record<"GET" | "POST" | "OPTIONS", FetchHandler>;
+};
+
+// `Input` is the single standard Fetch `Request`; `Output` is a standard Fetch
+// `Response`. The handler maps that `Request` onto the accessor interface Novu
+// expects, and `transformResponse` builds the `Response` Novu hands back.
+const handler = new NovuRequestHandler<[Request], Response>({
+  frameworkName: "hono",
+  ...options,
+  handler: (request) => ({
+    body: () => request.json(),
+    headers: (key) => request.headers.get(key),
+    method: () => request.method,
+    queryString: (key, url) => url.searchParams.get(key),
+    url: () => new URL(request.url),
+    transformResponse: ({ body, status, headers }) =>
+      new Response(body, { status, headers }),
+  }),
+}).createHandler();
 
 const app = createHono();
 
-app.get("/", (ctx) => novu.GET(ctx.req.raw, ctx));
-app.post("/", (ctx) => novu.POST(ctx.req.raw, ctx));
-app.options("/", (ctx) => novu.OPTIONS(ctx.req.raw, ctx));
+app.get("/", (ctx) => handler(ctx.req.raw));
+app.post("/", (ctx) => handler(ctx.req.raw));
+app.options("/", (ctx) => handler(ctx.req.raw));
 
 export default app;
