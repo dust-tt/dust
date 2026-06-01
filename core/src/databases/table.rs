@@ -637,6 +637,7 @@ impl LocalTable {
             project_id: self.table.project().project_id(),
             data_source_id: self.table.data_source_id().to_string(),
             table_id: self.table.table_id().to_string(),
+            attempts: 0,
         };
         let _: () = redis_conn
             .hset(
