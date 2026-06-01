@@ -72,6 +72,7 @@ import type {
   SkillSourceType,
   SkillStatus,
   SkillType,
+  SkillWithoutInstructionsAndToolsType,
   UsedBySkillType,
 } from "@app/types/assistant/skill_configuration";
 import type { AgentsUsageType } from "@app/types/data_source";
@@ -141,6 +142,28 @@ type ConversationSkillCreationAttributes =
           agentConfigurationId: string;
         }
     );
+
+const SKILL_WITHOUT_INSTRUCTIONS_AND_TOOLS_MODEL_ATTRIBUTES = [
+  "id",
+  "workspaceId",
+  "createdAt",
+  "updatedAt",
+  "editedBy",
+  "status",
+  "name",
+  "agentFacingDescription",
+  "userFacingDescription",
+  "requestedSpaceIds",
+  "icon",
+  "extendedSkillId",
+  "source",
+  "sourceMetadata",
+  "isDefault",
+  "reinforcement",
+  "lastReinforcementAnalysisAt",
+  "selfImprovementCostsCapMicroUsd",
+  "selfImprovementLock",
+] as const;
 
 function isSkillResourceWithVersion(
   skill: SkillResource
@@ -565,30 +588,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       transaction,
     });
 
-    // Check if the user has access to skill requested spaces.
-    const uniqueRequestedSpaceIds = uniq(
-      customSkills.flatMap((c) => c.requestedSpaceIds)
-    );
-    const spaces =
-      uniqueRequestedSpaceIds.length > 0
-        ? await SpaceResource.fetchByModelIds(auth, uniqueRequestedSpaceIds, {
-            transaction,
-          })
-        : [];
-    const spaceIdToGroupsMap = createSpaceIdToGroupsMap(auth, spaces);
-    const foundSpaceIds = new Set(spaces.map((s) => s.id));
-
-    const validCustomSkills = customSkills.filter((skill) =>
-      skill.requestedSpaceIds.every((id) => foundSpaceIds.has(id))
-    );
-
-    const allowedCustomSkills = validCustomSkills.filter((skill) =>
-      auth.canRead(
-        createResourcePermissionsFromSpacesWithMap(
-          spaceIdToGroupsMap,
-          skill.requestedSpaceIds
-        )
-      )
+    const allowedCustomSkills = await this.filterReadableCustomSkillModels(
+      auth,
+      customSkills,
+      { transaction }
     );
     const allowedCustomSkillIds = allowedCustomSkills.map((skill) => skill.id);
 
@@ -798,6 +801,175 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return [...allowedCustomSkillsRes, ...globalSkills];
   }
 
+  private static async filterReadableCustomSkillModels(
+    auth: Authenticator,
+    customSkills: SkillConfigurationModel[],
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<SkillConfigurationModel[]> {
+    const uniqueRequestedSpaceIds = uniq(
+      customSkills.flatMap((c) => c.requestedSpaceIds)
+    );
+    const spaces =
+      uniqueRequestedSpaceIds.length > 0
+        ? await SpaceResource.fetchByModelIds(auth, uniqueRequestedSpaceIds, {
+            transaction,
+          })
+        : [];
+    const spaceIdToGroupsMap = createSpaceIdToGroupsMap(auth, spaces);
+    const foundSpaceIds = new Set(spaces.map((s) => s.id));
+
+    const validCustomSkills = customSkills.filter((skill) =>
+      skill.requestedSpaceIds.every((id) => foundSpaceIds.has(id))
+    );
+
+    return validCustomSkills.filter((skill) =>
+      auth.canRead(
+        createResourcePermissionsFromSpacesWithMap(
+          spaceIdToGroupsMap,
+          skill.requestedSpaceIds
+        )
+      )
+    );
+  }
+
+  private static async fetchReadableSkillModelsWithoutInstructionsAndToolsByIds(
+    auth: Authenticator,
+    ids: ModelId[]
+  ): Promise<SkillConfigurationModel[]> {
+    const uniqueIds = uniq(ids);
+    if (uniqueIds.length === 0) {
+      return [];
+    }
+
+    const workspace = auth.getNonNullableWorkspace();
+
+    const skillModels = await this.model.findAll({
+      attributes: [...SKILL_WITHOUT_INSTRUCTIONS_AND_TOOLS_MODEL_ATTRIBUTES],
+      where: {
+        id: {
+          [Op.in]: uniqueIds,
+        },
+        status: "active",
+        workspaceId: workspace.id,
+      },
+    });
+
+    return this.filterReadableCustomSkillModels(auth, skillModels);
+  }
+
+  private static async serializeSkillModelsWithoutInstructionsAndTools(
+    auth: Authenticator,
+    skillModels: SkillConfigurationModel[]
+  ): Promise<SkillWithoutInstructionsAndToolsType[]> {
+    if (skillModels.length === 0) {
+      return [];
+    }
+
+    const workspace = auth.getNonNullableWorkspace();
+    const skillIds = skillModels.map((skill) => skill.id);
+
+    const fileAttachmentModels = await SkillFileAttachmentModel.findAll({
+      attributes: ["skillConfigurationId", "fileId"],
+      where: {
+        workspaceId: workspace.id,
+        skillConfigurationId: {
+          [Op.in]: skillIds,
+        },
+      },
+    });
+    const allFileResources =
+      fileAttachmentModels.length > 0
+        ? await FileResource.fetchByModelIdsWithAuth(
+            auth,
+            fileAttachmentModels.map((attachment) => attachment.fileId)
+          )
+        : [];
+    const fileResourceById = new Map(
+      allFileResources.map((file) => [file.id, file])
+    );
+    const fileAttachmentsBySkillId = groupBy(
+      fileAttachmentModels,
+      "skillConfigurationId"
+    );
+
+    const skillEditorGroupsMap = new Map<number, GroupResource>();
+    const editorGroupSkills = await GroupSkillModel.findAll({
+      attributes: ["groupId", "skillConfigurationId"],
+      where: {
+        workspaceId: workspace.id,
+        skillConfigurationId: {
+          [Op.in]: skillIds,
+        },
+      },
+    });
+
+    if (editorGroupSkills.length > 0) {
+      const editorGroups = await GroupResource.fetchByModelIds(
+        auth,
+        uniq(
+          editorGroupSkills.map((editorGroupSkill) => editorGroupSkill.groupId)
+        )
+      );
+
+      const editorGroupById = new Map(
+        editorGroups.map((editorGroup) => [editorGroup.id, editorGroup])
+      );
+      for (const editorGroupSkill of editorGroupSkills) {
+        const group = editorGroupById.get(editorGroupSkill.groupId);
+        if (group) {
+          skillEditorGroupsMap.set(
+            editorGroupSkill.skillConfigurationId,
+            group
+          );
+        }
+      }
+    }
+
+    return skillModels.map((skill) => ({
+      id: skill.id,
+      sId: SkillResource.modelIdToSId({
+        id: skill.id,
+        workspaceId: skill.workspaceId,
+      }),
+      createdAt: skill.createdAt.getTime(),
+      updatedAt: skill.updatedAt.getTime(),
+      editedBy: skill.editedBy,
+      status: skill.status,
+      name: skill.name,
+      agentFacingDescription: skill.agentFacingDescription,
+      userFacingDescription: skill.userFacingDescription,
+      requestedSpaceIds: skill.requestedSpaceIds.map((spaceId) =>
+        SpaceResource.modelIdToSId({
+          id: spaceId,
+          workspaceId: skill.workspaceId,
+        })
+      ),
+      icon: skill.icon ?? null,
+      reinforcement: skill.reinforcement,
+      lastReinforcementAnalysisAt:
+        skill.lastReinforcementAnalysisAt?.toISOString() ?? null,
+      selfImprovementLock: skill.selfImprovementLock,
+      selfImprovementCostsCapMicroUsd: skill.selfImprovementCostsCapMicroUsd,
+      source: skill.source,
+      sourceMetadata: skill.sourceMetadata,
+      fileAttachments: removeNulls(
+        (fileAttachmentsBySkillId[skill.id] ?? []).map(
+          (attachment) => fileResourceById.get(attachment.fileId) ?? null
+        )
+      ).map((file) => ({
+        fileId: file.sId,
+        fileName: file.fileName,
+      })),
+      canWrite:
+        auth.isKey() && auth.isBuilder()
+          ? true
+          : (skillEditorGroupsMap.get(skill.id)?.canWrite(auth) ?? false),
+      isExtendable: false,
+      isDefault: skill.isDefault,
+      extendedSkillId: skill.extendedSkillId,
+    }));
+  }
+
   static async fetchByModelIdWithAuth(
     auth: Authenticator,
     id: ModelId
@@ -914,44 +1086,62 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   static async batchFetchChildSkills(
     auth: Authenticator,
     parentSkills: SkillResource[]
-  ): Promise<Map<string, SkillResource[]>> {
+  ): Promise<Map<string, SkillWithoutInstructionsAndToolsType[]>> {
+    const result = new Map<string, SkillWithoutInstructionsAndToolsType[]>(
+      parentSkills.map((skill) => [skill.sId, []])
+    );
     const workspace = auth.getNonNullableWorkspace();
     const customParentSkills = parentSkills.filter((skill) => !skill.globalSId);
 
     if (customParentSkills.length === 0) {
-      return new Map();
+      return result;
     }
 
     const skillReferences = await SkillReferenceModel.findAll({
+      attributes: ["childSkillId", "parentSkillId"],
       where: {
         workspaceId: workspace.id,
         parentSkillId: customParentSkills.map((skill) => skill.id),
       },
     });
 
-    const childSkills = await this.fetchByModelIds(
-      auth,
-      uniq(skillReferences.map((reference) => reference.childSkillId))
-    );
-    const childSkillsByModelId = new Map(
+    if (skillReferences.length === 0) {
+      return result;
+    }
+
+    const childSkillModels =
+      await this.fetchReadableSkillModelsWithoutInstructionsAndToolsByIds(
+        auth,
+        uniq(skillReferences.map((reference) => reference.childSkillId))
+      );
+    const childSkills =
+      await this.serializeSkillModelsWithoutInstructionsAndTools(
+        auth,
+        childSkillModels
+      );
+    const childSkillByModelId = new Map(
       childSkills.map((skill) => [skill.id, skill])
     );
     const referencesByParentSkillId = groupBy(skillReferences, "parentSkillId");
 
-    return new Map(
-      customParentSkills.map((parentSkill) => [
+    for (const parentSkill of customParentSkills) {
+      result.set(
         parentSkill.sId,
         removeNulls(
           (referencesByParentSkillId[parentSkill.id] ?? []).map(
             (reference) =>
-              childSkillsByModelId.get(reference.childSkillId) ?? null
+              childSkillByModelId.get(reference.childSkillId) ?? null
           )
-        ),
-      ])
-    );
+        )
+      );
+    }
+
+    return result;
   }
 
-  async fetchChildSkills(auth: Authenticator): Promise<SkillResource[]> {
+  async fetchChildSkills(
+    auth: Authenticator
+  ): Promise<SkillWithoutInstructionsAndToolsType[]> {
     const childSkillsMap = await SkillResource.batchFetchChildSkills(auth, [
       this,
     ]);
@@ -2080,13 +2270,24 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return result;
     }
 
-    const parentSkills = await this.fetchByModelIds(
-      auth,
-      uniq(skillReferences.map((reference) => reference.parentSkillId))
-    );
+    const parentSkills =
+      await this.fetchReadableSkillModelsWithoutInstructionsAndToolsByIds(
+        auth,
+        uniq(skillReferences.map((reference) => reference.parentSkillId))
+      );
 
     const parentSkillByModelId = new Map(
-      parentSkills.map((skill) => [skill.id, skill])
+      parentSkills.map((skill) => [
+        skill.id,
+        {
+          sId: SkillResource.modelIdToSId({
+            id: skill.id,
+            workspaceId: skill.workspaceId,
+          }),
+          name: skill.name,
+          icon: skill.icon,
+        } satisfies UsedBySkillType,
+      ])
     );
     const childSkillIdToSkillId = new Map(
       customSkills.map((skill) => [skill.id, skill.sId])

@@ -160,16 +160,7 @@ app.get(
           extendedSkill: extendedSkill ? extendedSkill.toJSON(auth) : null,
           ...(includeChildSkills
             ? {
-                childSkills: childSkills.map((childSkill) => {
-                  const {
-                    instructions,
-                    instructionsHtml,
-                    tools,
-                    ...childSkillWithoutInstructionsAndTools
-                  } = childSkill.toJSON(auth);
-
-                  return childSkillWithoutInstructionsAndTools;
-                }),
+                childSkills,
               }
             : {}),
         },

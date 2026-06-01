@@ -146,7 +146,10 @@ async function handler(
           auth,
           skills
         );
-        let childSkillsMap = new Map<string, SkillResource[]>();
+        let childSkillsMap = new Map<
+          string,
+          SkillWithoutInstructionsAndToolsType[]
+        >();
         if (includeNestedSkills) {
           childSkillsMap = await SkillResource.batchFetchChildSkills(
             auth,
@@ -193,18 +196,7 @@ async function handler(
                 : null,
               ...(includeNestedSkills
                 ? {
-                    childSkills: (childSkillsMap.get(sc.sId) ?? []).map(
-                      (childSkill) => {
-                        const {
-                          instructions,
-                          instructionsHtml,
-                          tools,
-                          ...childSkillWithoutInstructionsAndTools
-                        } = childSkill.toJSON(auth);
-
-                        return childSkillWithoutInstructionsAndTools;
-                      }
-                    ),
+                    childSkills: childSkillsMap.get(sc.sId) ?? [],
                   }
                 : {}),
             },
