@@ -108,7 +108,7 @@ describe("agent loop skill reference availability", () => {
       [systemSkill]
     );
 
-    expect(renderedSystemSkill.instructionsOverride).toContain(
+    expect(renderedSystemSkill.instructions).toContain(
       `<unavailable_skill id="${restrictedChildSkill.sId}" />`
     );
   });
