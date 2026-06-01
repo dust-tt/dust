@@ -101,6 +101,40 @@ vi.mock("@app/lib/api/analytics/messages_export", async () => ({
   ),
 }));
 
+vi.mock("@app/lib/api/analytics/feedback_export", async () => ({
+  FEEDBACK_EXPORT_HEADERS: [
+    "feedbackId",
+    "createdAt",
+    "assistantId",
+    "assistantName",
+    "conversationId",
+    "conversationUrl",
+    "userId",
+    "userEmail",
+    "thumb",
+    "content",
+    "dismissed",
+  ],
+  fetchFeedbackExportRows: vi.fn(
+    async () =>
+      new Ok([
+        {
+          feedbackId: "42",
+          createdAt: "2024-06-01 10:00:00",
+          assistantId: "agent-1",
+          assistantName: "TestAgent",
+          conversationId: "conv-1",
+          conversationUrl: "https://dust.tt/w/ws-1/conversation/conv-1",
+          userId: "user-1",
+          userEmail: "alice@example.com",
+          thumb: "up",
+          content: "great answer",
+          dismissed: "false",
+        },
+      ])
+  ),
+}));
+
 describe(
   "public api authentication tests",
   createPublicApiAuthenticationTests(handler)
@@ -317,6 +351,45 @@ describe("GET /api/v1/w/[wId]/analytics/export", () => {
     );
     expect(csv).toContain("msg-1");
     expect(csv).toContain("alice@example.com");
+  });
+
+  it("returns CSV for feedback table", async () => {
+    const { req, res } = await setupTest({ table: "feedback" });
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const csv = res._getData();
+    expect(csv).toContain(
+      "feedbackId,createdAt,assistantId,assistantName,conversationId,conversationUrl,userId,userEmail,thumb,content,dismissed"
+    );
+    expect(csv).toContain("great answer");
+    expect(csv).toContain("alice@example.com");
+  });
+
+  it("returns typed JSON for feedback", async () => {
+    const { req, res } = await setupTest({
+      table: "feedback",
+      format: "json",
+    });
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+    expect(data[0]).toEqual({
+      feedbackId: "42",
+      createdAt: "2024-06-01 10:00:00",
+      assistantId: "agent-1",
+      assistantName: "TestAgent",
+      conversationId: "conv-1",
+      conversationUrl: "https://dust.tt/w/ws-1/conversation/conv-1",
+      userId: "user-1",
+      userEmail: "alice@example.com",
+      thumb: "up",
+      content: "great answer",
+      dismissed: "false",
+    });
   });
 
   it("returns typed JSON when format=json for usage_metrics", async () => {

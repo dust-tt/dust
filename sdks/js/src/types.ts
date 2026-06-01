@@ -2977,6 +2977,7 @@ const AnalyticsExportTableSchema = z.enum([
   "skill_usage",
   "tool_usage",
   "messages",
+  "feedback",
 ]);
 
 const AnalyticsDateSchema = z

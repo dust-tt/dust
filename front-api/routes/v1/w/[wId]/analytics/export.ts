@@ -28,9 +28,10 @@
  *           - "skill_usage": Skill executions and unique users over time.
  *           - "tool_usage": Tool executions and unique users over time.
  *           - "messages": Detailed message-level logs.
+ *           - "feedback": Detailed message-level feedback (thumbs, content, conversation URL).
  *         schema:
  *           type: string
- *           enum: [usage_metrics, active_users, source, agents, users, skill_usage, tool_usage, messages]
+ *           enum: [usage_metrics, active_users, source, agents, users, skill_usage, tool_usage, messages, feedback]
  *       - in: query
  *         name: startDate
  *         required: true

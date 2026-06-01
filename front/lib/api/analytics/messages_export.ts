@@ -1,13 +1,14 @@
+import {
+  fetchAgentMetadata,
+  fetchUserEmails,
+} from "@app/lib/api/analytics/enrichment";
 import type { ElasticsearchBaseDocument } from "@app/lib/api/elasticsearch";
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
-import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
-import { UserResource } from "@app/lib/resources/user_resource";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { estypes } from "@elastic/elasticsearch";
 import moment from "moment-timezone";
-import { QueryTypes } from "sequelize";
 
 const PAGE_SIZE = 10000;
 
@@ -19,12 +20,6 @@ interface AgentMessageDocument extends ElasticsearchBaseDocument {
   user_id: string;
   context_origin: string;
   status: string;
-}
-
-interface AgentMetaRow {
-  sId: string;
-  name: string;
-  settings: string;
 }
 
 export interface MessageExportRow {
@@ -84,53 +79,6 @@ async function fetchAllMessageDocuments(
   }
 
   return new Ok(allDocs);
-}
-
-async function fetchAgentMetadata(
-  agentIds: string[],
-  workspaceModelId: ModelId
-): Promise<Map<string, { name: string; settings: string }>> {
-  if (agentIds.length === 0) {
-    return new Map();
-  }
-
-  const readReplica = getFrontReplicaDbConnection();
-  // biome-ignore lint/plugin/noRawSql: Matches existing Activity Report query pattern.
-  const agents = await readReplica.query<AgentMetaRow>(
-    `
-    SELECT ac."sId",
-           ac."name",
-           CASE
-             WHEN ac."status" = 'draft' THEN 'draft'
-             WHEN ac."scope" = 'visible' THEN 'published'
-             WHEN ac."scope" = 'hidden' THEN 'unpublished'
-             ELSE 'unknown'
-           END AS "settings"
-    FROM "agent_configurations" ac
-    WHERE ac."workspaceId" = :wId
-      AND ac."sId" IN (:agentIds)
-      AND ac."status" = 'active'
-    `,
-    {
-      type: QueryTypes.SELECT,
-      replacements: { wId: workspaceModelId, agentIds },
-    }
-  );
-
-  return new Map(
-    agents.map((a) => [a.sId, { name: a.name, settings: a.settings }])
-  );
-}
-
-async function fetchUserEmails(
-  userIds: string[]
-): Promise<Map<string, string>> {
-  if (userIds.length === 0) {
-    return new Map();
-  }
-
-  const users = await UserResource.fetchByIds(userIds);
-  return new Map(users.map((u) => [u.sId, u.email]));
 }
 
 export async function fetchMessageExportRows({
