@@ -104,7 +104,11 @@ export async function googleDriveFixParentsConsistencyWorkflow(
 }
 
 /**
- * Child workflow that syncs a single root folder and all its subfolders (subtree).
+ * Child workflow that syncs one selected root folder subtree.
+ *
+ * It explores the folder tree breadth-first: the workflow keeps a queue of folders to browse,
+ * syncs files from the current folder page by page, adds discovered subfolders to the queue, and
+ * stops once the queue is empty.
  */
 export async function googleDriveFolderSync({
   connectorId,
@@ -181,8 +185,16 @@ export function googleDriveFolderSyncWorkflowId(
 }
 
 /**
- * V2 Full Sync Coordinator Workflow - launches child workflows for each selected folder
- * to enable parallel processing using ConcurrentExecutor.
+ * The Google Drive full sync workflow first gets the selected folders to explore for
+ * synchronization, unless it was started for a specific folder subset.
+ *
+ * V2 is a coordinator: it populates sync tokens, upserts the shared-with-me folder, and launches
+ * one child workflow per selected root folder so subtrees can sync in parallel. Each child owns the
+ * breadth-first traversal of its subtree.
+ *
+ * If this workflow receives folder update signals while it is running, it tracks added folders for
+ * the next run and cancels running child workflows for removed folders. At the end, it starts the
+ * garbage collector to delete files that remain in our database but should not be synced anymore.
  *
  * @param foldersToBrowse - Pass `null` to sync all folders from DB, or specific folder IDs to sync only those.
  */
@@ -494,8 +506,14 @@ export function googleDriveIncrementalSyncPerDriveWorkflowId(
 }
 
 /**
- * V2 Incremental Sync Coordinator Workflow - launches one child workflow per drive for parallel processing.
- * Each child workflow handles its drive's incremental sync and new folder discovery.
+ * The Google Drive incremental sync workflow wakes up at a fixed interval and synchronizes delta
+ * changes. It asks `getDrivesToSync` for shared drives that are currently due, adds userspace, and
+ * launches one child workflow per drive so drives can sync in parallel.
+ *
+ * Each per-drive child uses the Drive changes API to get files that were created, deleted, or
+ * updated since the last sync token. It then syncs relevant files when they belong to selected
+ * folders and launches folder sync workflows for newly discovered folders. This incremental sync is
+ * not webhook-based.
  */
 export async function googleDriveIncrementalSyncV2(
   connectorId: ModelId,
