@@ -3,7 +3,10 @@ import { renderDocumentTitleAndContent } from "@connectors/lib/data_sources";
 import { formatDateForUpsert } from "@connectors/lib/formatting";
 import logger from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types";
-import type { ConversationForDataSourceSyncType } from "@dust-tt/client";
+import {
+  assertNever,
+  type ConversationForDataSourceSyncType,
+} from "@dust-tt/client";
 
 /** Max messages (user / agent / content_fragment) per Core document to avoid upsert size limits. */
 export const CONVERSATION_MESSAGES_PER_DOCUMENT = 256;
@@ -21,33 +24,41 @@ export function buildConversationMessageSections(
     let content: string | null = null;
     const dateStr: string = formatDateForUpsert(new Date(msg.created));
 
-    if (msg.type === "user_message") {
-      const userName = msg.user?.fullName || msg.user?.username || "User";
-      const userEmail = msg.user?.email || "Unknown";
-      const userId = msg.user?.sId || "Unknown";
-      prefix = `>> User (name: ${userName}, email: ${userEmail}, id: ${userId}) [${dateStr}]:\n`;
-      content = msg.content ? msg.content + "\n" : "\n";
+    const type = msg.type;
+    switch (type) {
+      case "user_message": {
+        const userName = msg.user?.fullName || msg.user?.username || "User";
+        const userEmail = msg.user?.email || "Unknown";
+        const userId = msg.user?.sId || "Unknown";
+        prefix = `>> User (name: ${userName}, email: ${userEmail}, id: ${userId}) [${dateStr}]:\n`;
+        content = msg.content ? msg.content + "\n" : "\n";
 
-      for (const cf of msg.contentFragments) {
-        content += `>> Content Fragment from the user message [${dateStr}]:\n`;
-        content += "ID: " + cf.contentFragmentId + "\n";
-        content += "Content-Type: " + cf.contentType + "\n";
-        content += "Title: " + cf.title + "\n";
-        content += "Version: " + cf.version + "\n";
-        content += "Source URL: " + cf.sourceUrl + "\n";
+        for (const cf of msg.contentFragments) {
+          content += `>> Content Fragment from the user message [${dateStr}]:\n`;
+          content += "ID: " + cf.contentFragmentId + "\n";
+          content += "Content-Type: " + cf.contentType + "\n";
+          content += "Title: " + cf.title + "\n";
+          content += "Version: " + cf.version + "\n";
+          content += "Source URL: " + cf.sourceUrl + "\n";
+        }
+        break;
       }
-    } else if (msg.type === "agent_message") {
-      const agentName = msg.configuration?.name || "Assistant";
-      prefix = `>> Assistant (${agentName}) [${dateStr}]:\n`;
+      case "agent_message":
+        {
+          const agentName = msg.configuration?.name || "Assistant";
+          prefix = `>> Assistant (${agentName}) [${dateStr}]:\n`;
 
-      if (msg.content) {
-        content = msg.content + "\n";
-      } else {
-        logger.warn({ msg }, "Agent message has no content");
-        content = "\n";
+          if (msg.content) {
+            content = msg.content + "\n";
+          } else {
+            logger.warn({ msg }, "Agent message has no content");
+            content = "\n";
+          }
+        }
+        break;
+      default: {
+        assertNever(type);
       }
-    } else {
-      assertNever(msg.type);
     }
 
     if (prefix !== null && content !== null) {
