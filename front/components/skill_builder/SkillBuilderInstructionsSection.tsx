@@ -1,12 +1,14 @@
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { SkillBuilderInstructionsEditor } from "@app/components/skill_builder/SkillBuilderInstructionsEditor";
 import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import {
   ArrowGoBackIcon,
   BookOpenIcon,
   Button,
   ContentMessage,
   InformationCircleIcon,
+  ToolsIcon,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 import { useFormContext } from "react-hook-form";
@@ -19,7 +21,13 @@ const INSTRUCTIONS_HTML_FIELD_NAME = "instructionsHtml";
 export function SkillBuilderInstructionsSection() {
   const { setValue, watch } = useFormContext<SkillBuilderFormData>();
   const { compareVersion, exitDiffMode } = useSkillVersionComparisonContext();
+  const { hasFeature } = useFeatureFlags();
   const [addKnowledge, setAddKnowledge] = useState<(() => void) | null>(null);
+  const [openCapabilities, setOpenCapabilities] = useState<(() => void) | null>(
+    null
+  );
+
+  const enableSkillReferences = hasFeature("nested_skills");
 
   const currentInstructions = watch(INSTRUCTIONS_FIELD_NAME);
   const instructionsDiffer =
@@ -60,11 +68,20 @@ export function SkillBuilderInstructionsSection() {
           )}
           {!compareVersion && (
             <Button
-              variant="primary"
+              variant={enableSkillReferences ? "outline" : "primary"}
               label="Attach knowledge"
               icon={BookOpenIcon}
               onClick={addKnowledge ?? undefined}
               disabled={!addKnowledge}
+            />
+          )}
+          {!compareVersion && enableSkillReferences && (
+            <Button
+              variant="primary"
+              label="Attach capabilities"
+              icon={ToolsIcon}
+              onClick={openCapabilities ?? undefined}
+              disabled={!openCapabilities}
             />
           )}
         </div>
@@ -83,6 +100,7 @@ export function SkillBuilderInstructionsSection() {
       )}
       <SkillBuilderInstructionsEditor
         onAddKnowledge={(fn) => setAddKnowledge(() => fn)}
+        onOpenCapabilities={(fn) => setOpenCapabilities(() => fn)}
       />
     </section>
   );

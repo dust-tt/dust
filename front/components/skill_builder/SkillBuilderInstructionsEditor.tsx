@@ -89,10 +89,12 @@ const INSTRUCTIONS_EDITOR_SIZE = "min-h-60 max-h-[1024px]";
 
 interface SkillBuilderInstructionsEditorProps {
   onAddKnowledge?: (addKnowledge: () => void) => void;
+  onOpenCapabilities?: (openCapabilities: () => void) => void;
 }
 
 export function SkillBuilderInstructionsEditor({
   onAddKnowledge,
+  onOpenCapabilities,
 }: SkillBuilderInstructionsEditorProps) {
   const { compareVersion, isDiffMode } = useSkillVersionComparisonContext();
   const { control, resetField } = useFormContext<SkillBuilderFormData>();
@@ -269,6 +271,25 @@ export function SkillBuilderInstructionsEditor({
       onAddKnowledge(handleAddKnowledge);
     }
   }, [editor, handleAddKnowledge, onAddKnowledge]);
+
+  const handleOpenCapabilities = useCallback(() => {
+    if (!editor || !enableSkillReferences) {
+      return;
+    }
+
+    editor.commands.openCapabilitiesSlashCommand();
+  }, [editor, enableSkillReferences]);
+
+  useEffect(() => {
+    if (editor && enableSkillReferences && onOpenCapabilities) {
+      onOpenCapabilities(handleOpenCapabilities);
+    }
+  }, [
+    editor,
+    enableSkillReferences,
+    handleOpenCapabilities,
+    onOpenCapabilities,
+  ]);
 
   // Register a callback that the suggestions panel can call to accept a
   // suggestion directly via the editor's ProseMirror commands.
