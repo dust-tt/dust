@@ -293,6 +293,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Unified GCS-backed file explorer with folder hierarchy, replacing the two-tab files panel.",
     stage: "dust_only",
   },
+  user_settings_v2: {
+    description: "Enable the new user settings v2 experience",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
