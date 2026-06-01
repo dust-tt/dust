@@ -119,7 +119,7 @@ async function fetchWorkspaceBalanceThreshold({
 }: {
   metronomeCustomerId: string;
   workspaceId: string;
-}): Promise<{ threshold: number | null }> {
+}): Promise<{ threshold: number | null; alertId: string | null }> {
   const result = await findMetronomeAlert({
     metronomeCustomerId,
     uniquenessKey: balanceThresholdAlertUniquenessKey(workspaceId),
@@ -127,13 +127,18 @@ async function fetchWorkspaceBalanceThreshold({
   if (result.isErr()) {
     throw result.error;
   }
-  return { threshold: result.value?.alert.threshold ?? null };
+  return {
+    threshold: result.value?.alert.threshold ?? null,
+    alertId: result.value?.alert.id ?? null,
+  };
 }
 
 /**
- * Read the workspace's configured balance threshold (in AWU credits) from its
- * Metronome alert, cached in Redis. Returns `{ threshold: null }` when no alert
- * is configured. Metronome is the source of truth — there is no DB copy.
+ * Read the workspace's configured balance threshold (in AWU credits) and the id
+ * of its Metronome alert, cached in Redis. Returns `null` fields when no alert
+ * is configured. Metronome is the source of truth — there is no DB copy. The
+ * `alertId` lets webhook handling confirm that an incoming alert event
+ * corresponds to this workspace-configured alert.
  */
 export const getCachedWorkspaceBalanceThreshold = cacheWithRedis(
   fetchWorkspaceBalanceThreshold,
