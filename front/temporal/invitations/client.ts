@@ -34,12 +34,16 @@ export async function launchInvitationRemindersWorkflow(): Promise<
       },
       spec: {
         cronExpressions: [CRON_EXPRESSION],
+        timezone: "UTC",
       },
     });
     logger.info("[Invitation Reminders] Schedule created.");
   } catch (err) {
     if (!(err instanceof ScheduleAlreadyRunning)) {
-      logger.error({}, "[Invitation Reminders] Failed to create schedule.");
+      logger.error(
+        { err },
+        "[Invitation Reminders] Failed to create schedule."
+      );
       return new Err(normalizeError(err));
     }
   }

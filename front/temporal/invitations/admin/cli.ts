@@ -1,4 +1,6 @@
+import logger from "@app/logger/logger";
 import { launchInvitationRemindersWorkflow } from "@app/temporal/invitations/client";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import parseArgs from "minimist";
 
 const main = async () => {
@@ -6,22 +8,28 @@ const main = async () => {
   const [command] = argv._;
 
   switch (command) {
-    case "start":
-      await launchInvitationRemindersWorkflow();
+    case "start": {
+      const result = await launchInvitationRemindersWorkflow();
+      if (result.isErr()) {
+        throw result.error;
+      }
       return;
+    }
     default:
-      console.error("\x1b[31m%s\x1b[0m", `Error: Unknown command`);
+      logger.error({ command }, "[Invitation Reminders] Unknown command.");
       return;
   }
 };
 
 main()
   .then(() => {
-    console.error("\x1b[32m%s\x1b[0m", `Done`);
+    logger.info("[Invitation Reminders] Done.");
     process.exit(0);
   })
   .catch((err) => {
-    console.error("\x1b[31m%s\x1b[0m", `Error: ${err.message}`);
-    console.log(err);
+    logger.error(
+      { err: normalizeError(err) },
+      "[Invitation Reminders] CLI error."
+    );
     process.exit(1);
   });
