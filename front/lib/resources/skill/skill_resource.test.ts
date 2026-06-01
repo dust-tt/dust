@@ -689,6 +689,37 @@ describe("SkillResource", () => {
           sId: childSkill.sId,
         }),
       ]);
+
+      await parentSkill.updateSkill(testContext.authenticator, {
+        name: parentSkill.name,
+        agentFacingDescription: "Updated agent description",
+        userFacingDescription: parentSkill.userFacingDescription,
+        instructions: parentSkill.instructions,
+        instructionsHtml: parentSkill.instructionsHtml,
+        icon: parentSkill.icon,
+        mcpServerViews: [],
+        attachedKnowledge: [],
+        requestedSpaceIds: parentSkill.requestedSpaceIds,
+        enableSkillReferences: true,
+      });
+
+      const updatedParentSkill = await SkillResource.fetchById(
+        testContext.authenticator,
+        parentSkill.sId
+      );
+      expect(updatedParentSkill?.instructions).toContain(
+        `<unavailable_skill id="${childSkill.sId}" />`
+      );
+      expect(updatedParentSkill?.instructionsHtml).toContain(
+        `<unavailable_skill id="${childSkill.sId}"></unavailable_skill>`
+      );
+      await expect(
+        updatedParentSkill!.fetchChildSkills(testContext.authenticator)
+      ).resolves.toEqual([
+        expect.objectContaining({
+          sId: childSkill.sId,
+        }),
+      ]);
     });
 
     it("normalizes nested skill references when parent requested spaces change", async () => {
