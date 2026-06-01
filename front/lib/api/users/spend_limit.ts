@@ -11,9 +11,11 @@ import type { AuditLogContext } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
 import {
   clearMetronomePerUserCapAlert,
+  clearMetronomePerUserWarningAlert,
   getMetronomeDefaultUserCapAlert,
   getMetronomePerUserCap,
   upsertMetronomePerUserCapAlert,
+  upsertMetronomePerUserWarningAlert,
 } from "@app/lib/metronome/alerts/spend_limits";
 import { fetchPerUserAwuUsage } from "@app/lib/metronome/per_user_usage";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -222,6 +224,23 @@ export async function setUserSpendLimit(
         );
       }
 
+      // Best-effort: also clear the companion 80% warning alert.
+      const clearWarningResult = await clearMetronomePerUserWarningAlert({
+        metronomeCustomerId: workspace.metronomeCustomerId,
+        workspaceId: workspace.sId,
+        userId: user.sId,
+      });
+      if (clearWarningResult.isErr()) {
+        logger.warn(
+          {
+            workspaceId: workspace.sId,
+            userId: user.sId,
+            err: clearWarningResult.error,
+          },
+          "[Metronome PerUserCap] Failed to clear warning alert; continuing"
+        );
+      }
+
       const defaultResult = await getMetronomeDefaultUserCapAlert({
         metronomeCustomerId: workspace.metronomeCustomerId,
         workspaceId: workspace.sId,
@@ -269,6 +288,26 @@ export async function setUserSpendLimit(
           new UserSpendLimitError("metronome_error", upsertResult.error.message)
         );
       }
+
+      // Best-effort: also upsert the companion 80% warning alert.
+      const upsertWarningResult = await upsertMetronomePerUserWarningAlert({
+        metronomeCustomerId: workspace.metronomeCustomerId,
+        workspaceId: workspace.sId,
+        userId: user.sId,
+        capAwuCredits: limit.awuCredits,
+      });
+      if (upsertWarningResult.isErr()) {
+        logger.warn(
+          {
+            workspaceId: workspace.sId,
+            userId: user.sId,
+            awuCredits: limit.awuCredits,
+            err: upsertWarningResult.error,
+          },
+          "[Metronome PerUserCap] Failed to upsert warning alert; continuing"
+        );
+      }
+
       transitionedTo = await resolveLocalCapState({
         metronomeCustomerId: workspace.metronomeCustomerId,
         metronomeContractId: auth.subscription()?.metronomeContractId ?? null,

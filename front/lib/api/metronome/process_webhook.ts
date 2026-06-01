@@ -34,7 +34,9 @@ import {
 } from "@app/lib/metronome/alerts/programmatic_cap";
 import {
   getMetronomeDefaultUserCapAlert,
+  getMetronomeDefaultUserWarningAlert,
   getMetronomePerUserCap,
+  getMetronomePerUserWarningAlert,
 } from "@app/lib/metronome/alerts/spend_limits";
 import { emitSubscriptionChangedAuditEvent } from "@app/lib/metronome/audit";
 import {
@@ -60,9 +62,11 @@ import type { ProgrammaticCreditEvent } from "@app/lib/metronome/programmatic_cr
 import { isMetronomeFreeCredit } from "@app/lib/metronome/types";
 import type { MetronomeWebhookEvent } from "@app/lib/metronome/webhook_events";
 import { PlanModel } from "@app/lib/models/plan";
+import { notifyUserAwuCapReached } from "@app/lib/notifications/workflows/user-awu-cap-reached";
 import { isFreePlan } from "@app/lib/plans/plan_codes";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -513,25 +517,49 @@ async function handlePerUserSpendThresholdEvent({
     return new Ok(undefined);
   }
 
-  const overrideResult = await getMetronomePerUserCap({
+  const userCapResult = await getMetronomePerUserCap({
     metronomeCustomerId,
     workspaceId: workspace.sId,
     userId,
   });
-  if (overrideResult.isErr()) {
+  if (userCapResult.isErr()) {
     return new Err(
       new ProcessMetronomeWebhookError(
         "processing_failed",
-        `Error reading per-user cap override: ${overrideResult.error.message}`
+        `Error reading per-user cap override: ${userCapResult.error.message}`
       )
     );
   }
 
-  let effectiveState: MetronomeAlertState;
+  let effectiveCapState: MetronomeAlertState;
+  let effectiveWarningState: MetronomeAlertState;
   let source: "override" | "default" | "none";
-  if (overrideResult.value) {
-    effectiveState = overrideResult.value.customer_status;
+  let capThreshold: number | null | undefined;
+
+  if (userCapResult.value) {
+    effectiveCapState = userCapResult.value.customer_status;
+    capThreshold = userCapResult.value.alert.threshold;
     source = "override";
+
+    const userWarningResult = await getMetronomePerUserWarningAlert({
+      metronomeCustomerId,
+      workspaceId: workspace.sId,
+      userId,
+    });
+    if (userWarningResult.isErr()) {
+      logger.warn(
+        {
+          eventId: event.id,
+          workspaceId: workspace.sId,
+          userId,
+          err: userWarningResult.error,
+        },
+        "[Metronome Webhook] per-user spend threshold: failed to read warning alert, skipping notification"
+      );
+      effectiveWarningState = "ok";
+    } else {
+      effectiveWarningState = userWarningResult.value?.customer_status ?? "ok";
+    }
   } else {
     const defaultResult = await getMetronomeDefaultUserCapAlert({
       metronomeCustomerId,
@@ -546,15 +574,36 @@ async function handlePerUserSpendThresholdEvent({
       );
     }
     if (defaultResult.value) {
-      effectiveState = defaultResult.value.customer_status;
+      effectiveCapState = defaultResult.value.customer_status;
+      capThreshold = defaultResult.value.alert.threshold;
       source = "default";
+
+      const warningResult = await getMetronomeDefaultUserWarningAlert({
+        metronomeCustomerId,
+        workspaceId: workspace.sId,
+      });
+      if (warningResult.isErr()) {
+        logger.warn(
+          {
+            eventId: event.id,
+            workspaceId: workspace.sId,
+            userId,
+            err: warningResult.error,
+          },
+          "[Metronome Webhook] per-user spend threshold: failed to read default warning alert, skipping notification"
+        );
+        effectiveWarningState = "ok";
+      } else {
+        effectiveWarningState = warningResult.value?.customer_status ?? "ok";
+      }
     } else {
-      effectiveState = "ok";
+      effectiveCapState = "ok";
+      effectiveWarningState = "ok";
       source = "none";
     }
   }
 
-  switch (effectiveState) {
+  switch (effectiveCapState) {
     case "in_alarm": {
       const dispatchResult = await dispatchPerUserCapReached({
         workspace,
@@ -578,6 +627,22 @@ async function handlePerUserSpendThresholdEvent({
             `Error dispatching per-user cap reached: ${dispatchResult.error.message}`
           )
         );
+      }
+      // Notify the user (email + in-app) that they are now hard-blocked.
+      const capAwuCreditsBlocked = capThreshold ?? 0;
+      const blockedUser = await UserResource.fetchById(userId);
+      if (blockedUser) {
+        const lightWorkspace = renderLightWorkspaceType({ workspace });
+        notifyUserAwuCapReached({
+          userSId: blockedUser.sId,
+          userEmail: blockedUser.email,
+          userFirstName: blockedUser.firstName,
+          userLastName: blockedUser.lastName,
+          workspaceId: workspace.sId,
+          workspaceName: lightWorkspace.name,
+          capAwuCredits: capAwuCreditsBlocked,
+          isBlocked: true,
+        });
       }
       break;
     }
@@ -614,7 +679,34 @@ async function handlePerUserSpendThresholdEvent({
       // already set the right state; a follow-up event will reconcile.
       break;
     default:
-      assertNever(effectiveState);
+      assertNever(effectiveCapState);
+  }
+
+  // Notify the user (email + in-app) when they've crossed 80% of their AWU cap
+  // but have not yet been hard-blocked. The cap alert fires at 100% and is
+  // handled above; the warning alert fires at 80% and triggers notifications only.
+  if (
+    effectiveWarningState === "in_alarm" &&
+    effectiveCapState !== "in_alarm"
+  ) {
+    logger.info(
+      "[Metronome Webhook] per-user spend threshold warning: handling..."
+    );
+    const capAwuCredits = capThreshold ?? 0;
+    const user = await UserResource.fetchById(userId);
+    if (user) {
+      const lightWorkspace = renderLightWorkspaceType({ workspace });
+      notifyUserAwuCapReached({
+        userSId: user.sId,
+        userEmail: user.email,
+        userFirstName: user.firstName,
+        userLastName: user.lastName,
+        workspaceId: workspace.sId,
+        workspaceName: lightWorkspace.name,
+        capAwuCredits,
+        isBlocked: false,
+      });
+    }
   }
 
   logger.info(
@@ -623,7 +715,8 @@ async function handlePerUserSpendThresholdEvent({
       eventType: event.type,
       workspaceId: workspace.sId,
       userId,
-      effectiveState,
+      effectiveCapState,
+      effectiveWarningState,
       source,
     },
     "[Metronome Webhook] per-user spend threshold: handled"
@@ -813,6 +906,11 @@ export async function processMetronomeWebhook({
       );
       break;
     }
+    // Handled by custom alerts above
+    case "alerts.low_remaining_seat_balance_reached":
+    case "alerts.low_remaining_seat_balance_resolved":
+      break;
+
     case "alerts.invoice_total_reached":
     case "alerts.invoice_total_resolved":
     case "alerts.low_remaining_commit_balance_reached":
@@ -821,8 +919,6 @@ export async function processMetronomeWebhook({
     case "alerts.low_remaining_contract_credit_balance_resolved":
     case "alerts.low_remaining_credit_balance_reached":
     case "alerts.low_remaining_credit_balance_resolved":
-    case "alerts.low_remaining_seat_balance_reached":
-    case "alerts.low_remaining_seat_balance_resolved":
     case "alerts.usage_threshold_reached":
     case "alerts.usage_threshold_resolved":
     case "commit.archive":
