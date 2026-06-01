@@ -48,7 +48,7 @@ const REINFORCED_SKILLS_TOOL_DEFINITIONS: Record<
 > = {
   get_available_tools: {
     description:
-      "Get the list of available tools (MCP servers) that can be added to skills.",
+      "Get the list of available tools (MCP servers) that can be referenced in skill instructions with inline <tool> tags.",
     schema: {},
   },
   [DESCRIBE_MCP_TOOL_NAME]: {
@@ -78,7 +78,7 @@ const REINFORCED_SKILLS_TOOL_DEFINITIONS: Record<
   },
   edit_skill: {
     description:
-      "Suggest edits to a skill's instructions and/or configured tools.",
+      "Suggest edits to a skill's instructions and/or agent-facing description.",
     schema: {
       skillId: z.string().describe("The sId of the skill to modify"),
       instructionEdits: z
@@ -99,21 +99,8 @@ const REINFORCED_SKILLS_TOOL_DEFINITIONS: Record<
         )
         .optional()
         .describe(
-          "Block-targeted edits to the skill instructions. Each item targets one block by its data-block-id."
+          "Block-targeted edits to the skill instructions. Each item targets one block by its data-block-id. Tool changes must be represented by adding or removing inline <tool> tags in these instruction edits."
         ),
-      toolEdits: z
-        .array(
-          z.object({
-            action: z
-              .enum(["add", "remove"])
-              .describe("Whether to add or remove the tool"),
-            toolId: z
-              .string()
-              .describe("The identifier of the tool to add or remove"),
-          })
-        )
-        .optional()
-        .describe("Tools to add or remove from the skill."),
       agentFacingDescriptionEdit: z
         .object({
           content: z
@@ -125,7 +112,7 @@ const REINFORCED_SKILLS_TOOL_DEFINITIONS: Record<
         })
         .optional()
         .describe(
-          "Replacement for the skill's agent-facing description. Should typically be its own suggestion, not bundled with instruction or tool edits."
+          "Replacement for the skill's agent-facing description. Should typically be its own suggestion, not bundled with instruction edits."
         ),
       analysis: z
         .string()
@@ -524,18 +511,13 @@ async function createSkillSuggestionsFromToolCall({
 
       const hasInstructionEdits =
         (parsed.data.instructionEdits?.length ?? 0) > 0;
-      const hasToolEdits = (parsed.data.toolEdits?.length ?? 0) > 0;
       const hasAgentFacingDescriptionEdit =
         parsed.data.agentFacingDescriptionEdit !== undefined;
-      if (
-        !hasInstructionEdits &&
-        !hasToolEdits &&
-        !hasAgentFacingDescriptionEdit
-      ) {
+      if (!hasInstructionEdits && !hasAgentFacingDescriptionEdit) {
         return {
           type: "error",
           errorMessage:
-            "edit_skill requires at least one instruction edit, tool edit, or description edit.",
+            "edit_skill requires at least one instruction edit or description edit.",
         };
       }
 
@@ -551,7 +533,6 @@ async function createSkillSuggestionsFromToolCall({
         hasSuggestionSelfConflict(
           {
             instructionEdits: parsed.data.instructionEdits,
-            toolEdits: parsed.data.toolEdits,
             agentFacingDescriptionEdit: parsed.data.agentFacingDescriptionEdit,
           },
           skill.instructionsHtml
@@ -560,7 +541,7 @@ async function createSkillSuggestionsFromToolCall({
         return {
           type: "error",
           errorMessage:
-            "Suggestion has conflicting edits (overlapping block targets or duplicate tool IDs).",
+            "Suggestion has conflicting edits (overlapping block targets).",
         };
       }
 
@@ -590,7 +571,6 @@ async function createSkillSuggestionsFromToolCall({
           kind: "edit",
           suggestion: {
             instructionEdits: parsed.data.instructionEdits,
-            toolEdits: parsed.data.toolEdits,
             agentFacingDescriptionEdit: parsed.data.agentFacingDescriptionEdit,
           },
           analysis: parsed.data.analysis ?? null,
