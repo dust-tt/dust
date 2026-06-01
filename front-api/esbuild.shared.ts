@@ -69,5 +69,6 @@ export function getBaseBuildOptions(target: BuildTarget): esbuild.BuildOptions {
     metafile: true,
     minifyIdentifiers: false,
     treeShaking: true,
+    jsx: "automatic",
   };
 }
