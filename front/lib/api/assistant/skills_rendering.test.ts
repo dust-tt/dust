@@ -1,6 +1,6 @@
 import {
   INTERACTIVE_CONTENT_INSTRUCTIONS,
-  INTERACTIVE_CONTENT_INSTRUCTIONS_OPENAI_V1,
+  INTERACTIVE_CONTENT_INSTRUCTIONS_V2,
 } from "@app/lib/api/actions/servers/interactive_content/instructions";
 import {
   getEnabledSkillInstructions,
@@ -57,42 +57,31 @@ describe("getEnabledSkillInstructions", () => {
     );
   });
 
-  it("uses default frame instructions when no agent sId is supplied", () => {
+  it("uses default frame instructions when the v2 flag is off", () => {
     expect(
       resolveSkillInstructions({
         skill: {
           sId: "frames",
           instructions: INTERACTIVE_CONTENT_INSTRUCTIONS,
         },
+        useFramesV2: false,
       })
     ).toBe(INTERACTIVE_CONTENT_INSTRUCTIONS);
   });
 
-  it("uses default frame instructions for an agent not in the OpenAI variant map", () => {
+  it("uses v2 frame instructions when the v2 flag is on", () => {
     expect(
       resolveSkillInstructions({
-        agentSId: "dust",
         skill: {
           sId: "frames",
           instructions: INTERACTIVE_CONTENT_INSTRUCTIONS,
         },
+        useFramesV2: true,
       })
-    ).toBe(INTERACTIVE_CONTENT_INSTRUCTIONS);
+    ).toBe(INTERACTIVE_CONTENT_INSTRUCTIONS_V2);
   });
 
-  it("uses OpenAI frame instructions for an agent wired to the openai-v1 variant", () => {
-    expect(
-      resolveSkillInstructions({
-        agentSId: "dust-chawi-medium",
-        skill: {
-          sId: "frames",
-          instructions: INTERACTIVE_CONTENT_INSTRUCTIONS,
-        },
-      })
-    ).toBe(INTERACTIVE_CONTENT_INSTRUCTIONS_OPENAI_V1);
-  });
-
-  it("renders enabled frame skill messages with the OpenAI variant", () => {
+  it("renders enabled frame skill messages with v2 authoring prose", () => {
     const skill = makeEnabledSkill({
       sId: "frames",
       name: "Create Frames",
@@ -100,21 +89,32 @@ describe("getEnabledSkillInstructions", () => {
     });
 
     const instructions = getEnabledSkillInstructions(skill, {
-      agentSId: "dust-chawi-medium",
+      useFramesV2: true,
     });
 
-    expect(instructions).toContain("### Frame Authoring Rules");
+    expect(instructions).toContain("### Rendering Context");
     expect(instructions).toContain("### Creating Files");
   });
 
-  it("does not change non-frame skill instructions for an openai-v1 agent", () => {
+  it("v2 frame instructions do not contain v1-only markers", () => {
+    // Guards against regressions where v1 prose chunks leak into v2 (e.g. a
+    // missed `.replace()` target, or a stale import).
+    expect(INTERACTIVE_CONTENT_INSTRUCTIONS_V2).not.toContain(
+      "### Frame Authoring Rules"
+    );
+    expect(INTERACTIVE_CONTENT_INSTRUCTIONS_V2).not.toContain(
+      "Premium, Minimalist Aesthetic"
+    );
+  });
+
+  it("does not change non-frame skill instructions when the v2 flag is on", () => {
     expect(
       resolveSkillInstructions({
-        agentSId: "dust-chawi-medium",
         skill: {
           sId: "research",
           instructions: "Use the research process.",
         },
+        useFramesV2: true,
       })
     ).toBe("Use the research process.");
   });

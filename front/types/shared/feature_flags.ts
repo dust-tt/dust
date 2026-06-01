@@ -156,6 +156,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Slideshow MCP tool",
     stage: "dust_only",
   },
+  frames_skill_v2: {
+    description:
+      "Use the merged Frames skill v2 prose for every agent in the workspace. Temporary, remove after global rollout.",
+    stage: "dust_only",
+  },
   slack_message_splitting: {
     description:
       "Enable splitting agent responses into multiple Slack messages for Slack (instead of truncation)",

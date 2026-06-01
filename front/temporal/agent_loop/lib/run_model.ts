@@ -378,6 +378,7 @@ export async function runModel(
   const featureFlags = await getFeatureFlags(auth);
   const hasSandboxTools = featureFlags.includes("sandbox_tools");
   const hasNestedSkills = featureFlags.includes("nested_skills");
+  const useFramesV2 = featureFlags.includes("frames_skill_v2");
 
   const prompt = constructPromptMultiActions(auth, {
     userMessage,
@@ -400,6 +401,7 @@ export async function runModel(
     isNewFileExplorer,
     hasSandboxTools,
     hasNestedSkills,
+    useFramesV2,
   });
   const leadingMessages = removeNulls([
     renderEquippedSkillsUserMessage(equippedSkills),
@@ -435,6 +437,7 @@ export async function runModel(
           agentConfiguration,
           leadingMessages,
           enabledSkills,
+          useFramesV2,
         })
       )
   );

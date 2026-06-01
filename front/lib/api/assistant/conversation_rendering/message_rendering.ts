@@ -147,6 +147,7 @@ export async function renderAllMessages(
     onMissingAction,
     agentConfiguration,
     enabledSkills,
+    useFramesV2 = false,
   }: {
     conversation: ConversationType;
     model: ModelConfigurationType;
@@ -155,6 +156,7 @@ export async function renderAllMessages(
     onMissingAction: "inject-placeholder" | "skip";
     agentConfiguration?: AgentConfigurationType;
     enabledSkills: EnabledSkill[];
+    useFramesV2?: boolean;
   }
 ): Promise<ModelMessageTypeMultiActions[]> {
   const messages: ModelMessageTypeMultiActions[] = [];
@@ -190,11 +192,11 @@ export async function renderAllMessages(
           const steps = await getSteps(auth, {
             model,
             message: m,
-            agentSId: agentConfiguration?.sId,
             workspaceId: conversation.owner.sId,
             conversationId: conversation.sId,
             onMissingAction,
             enabledSkillById,
+            useFramesV2,
           });
 
           const agentMessages = renderAgentSteps(

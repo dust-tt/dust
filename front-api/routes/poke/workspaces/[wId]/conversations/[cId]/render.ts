@@ -203,6 +203,7 @@ app.post(
 
     const isNewFileExplorer = conversation.metadata?.useFileSystem === true;
     const hasNestedSkills = await hasFeatureFlag(auth, "nested_skills");
+    const useFramesV2 = await hasFeatureFlag(auth, "frames_skill_v2");
 
     const promptSections = constructPromptMultiActions(auth, {
       userMessage,
@@ -220,6 +221,7 @@ app.post(
       projectContext,
       isNewFileExplorer,
       hasNestedSkills,
+      useFramesV2,
     });
     const prompt = systemPromptToText(promptSections);
     const leadingMessages = removeNulls([
@@ -258,6 +260,7 @@ app.post(
       agentConfiguration,
       leadingMessages,
       enabledSkills,
+      useFramesV2,
     });
 
     if (convoRes.isErr()) {
