@@ -196,4 +196,32 @@ export class SkillFactory {
 
     return agentSkill;
   }
+
+  static async linkSkillToSkill(
+    auth: Authenticator,
+    {
+      parentSkillId,
+      childSkillId,
+    }: {
+      parentSkillId: ModelId;
+      childSkillId: ModelId;
+    }
+  ): Promise<SkillResource> {
+    const parentSkill = await SkillResource.fetchByModelIdWithAuth(
+      auth,
+      parentSkillId
+    );
+    assert(parentSkill, "Parent skill is required");
+
+    const childSkill = await SkillResource.fetchByModelIdWithAuth(
+      auth,
+      childSkillId
+    );
+    assert(childSkill, "Child skill is required");
+
+    return this.updateNestedSkillReferences(auth, {
+      parentSkill,
+      childSkills: [childSkill],
+    });
+  }
 }
