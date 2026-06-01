@@ -8,6 +8,7 @@ import {
   dispatchProgrammaticCapReached,
   dispatchProgrammaticCapReset,
   dispatchProgrammaticLowBalance,
+  dispatchProgrammaticWarning,
   syncPoolCreditStateFromBalance,
 } from "@app/lib/api/metronome/credit_state_dispatcher";
 import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
@@ -29,6 +30,7 @@ import {
   PROGRAMMATIC_CAP_ALERT_NAME,
   PROGRAMMATIC_CRITICAL_BALANCE_ALERT_NAME,
   PROGRAMMATIC_LOW_BALANCE_ALERT_NAME,
+  PROGRAMMATIC_WARNING_BALANCE_ALERT_NAME,
 } from "@app/lib/metronome/alerts/programmatic_cap";
 import {
   getMetronomeDefaultUserCapAlert,
@@ -98,8 +100,8 @@ function isProgrammaticMonthlyCap(
 
 // Map a programmatic cap alert name to the state-machine event it should
 // dispatch. Returns null when the alert name doesn't match any of the three
-// programmatic alerts (defensive — Metronome shouldn't fire anything else
-// under the AWU credit type on this code path).
+// FSM-driving programmatic alerts (the warning alert is handled separately
+// since it does not drive the state machine).
 function programmaticEventFromAlertName(
   alertName: string
 ): ProgrammaticCreditEvent | null {
@@ -671,25 +673,33 @@ export async function processMetronomeWebhook({
       } else if (isProgrammaticMonthlyCap(event)) {
         // Programmatic monthly cap alerts. Three alerts exist per workspace
         // with distinct names; route to the matching dispatcher.
+        //
+        // The warning alert (80% of cap) is informational only — it does not
+        // drive the credit state machine, so it's handled separately from the
+        // three FSM-driving alerts (cap reached / low / critical).
         const alertName = event.properties.alert_name ?? "";
-        const programmaticEvent = programmaticEventFromAlertName(alertName);
-        if (programmaticEvent) {
-          switch (programmaticEvent.type) {
-            case "programmatic_cap_reached":
-              await dispatchProgrammaticCapReached({ workspace });
-              break;
-            case "programmatic_low_balance":
-              await dispatchProgrammaticLowBalance({
-                workspace,
-                remainingCredits: programmaticEvent.remainingCredits,
-              });
-              break;
-            case "programmatic_cap_reset":
-              // never happens in spend_threshold_reached
-              // dispatch below by spend_threshold_resolved case
-              break;
-            default:
-              assertNever(programmaticEvent);
+        if (alertName.startsWith(PROGRAMMATIC_WARNING_BALANCE_ALERT_NAME)) {
+          await dispatchProgrammaticWarning({ workspace });
+        } else {
+          const programmaticEvent = programmaticEventFromAlertName(alertName);
+          if (programmaticEvent) {
+            switch (programmaticEvent.type) {
+              case "programmatic_cap_reached":
+                await dispatchProgrammaticCapReached({ workspace });
+                break;
+              case "programmatic_low_balance":
+                await dispatchProgrammaticLowBalance({
+                  workspace,
+                  remainingCredits: programmaticEvent.remainingCredits,
+                });
+                break;
+              case "programmatic_cap_reset":
+                // never happens in spend_threshold_reached
+                // dispatch below by spend_threshold_resolved case
+                break;
+              default:
+                assertNever(programmaticEvent);
+            }
           }
         }
         logger.info(

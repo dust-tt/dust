@@ -209,6 +209,25 @@ export async function dispatchProgrammaticCapReset({
 }
 
 /**
+ * Notify admins that programmatic spend has crossed the early-warning
+ * threshold (80% of the monthly cap). Unlike the other programmatic
+ * dispatchers this does not transition the credit state machine — the
+ * workspace stays in its current balance state and no throttling kicks in.
+ * The signal is informational only.
+ */
+export async function dispatchProgrammaticWarning({
+  workspace,
+}: {
+  workspace: WorkspaceResource;
+}): Promise<void> {
+  // TODO: send notification to admin.
+  logger.info(
+    { workspaceId: workspace.sId },
+    "[ProgrammaticCreditDispatcher] Programmatic warning threshold reached"
+  );
+}
+
+/**
  * Reconcile the workspace pool credit state with the current Metronome AWU
  * balance. Used after a new contract is provisioned: the cached pool state
  * may be stale (e.g. `depleted` from the previous contract) and Metronome
