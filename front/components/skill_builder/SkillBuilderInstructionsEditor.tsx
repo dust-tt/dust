@@ -16,7 +16,7 @@ import type {
   SkillBuilderFormData,
 } from "@app/components/skill_builder/SkillBuilderFormContext";
 import {
-  type ReferenceSummaryTarget,
+  type ReferenceSummaryItem,
   SkillBuilderInstructionsReferenceSummary,
 } from "@app/components/skill_builder/SkillBuilderInstructionsReferenceSummary";
 import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
@@ -115,7 +115,7 @@ function getKnowledgeReferenceId(node: ProseMirrorNode): string | null {
 
 function matchesReferenceTarget(
   node: ProseMirrorNode,
-  target: ReferenceSummaryTarget
+  target: ReferenceSummaryItem
 ): boolean {
   switch (target.kind) {
     case "knowledge":
@@ -137,7 +137,7 @@ function matchesReferenceTarget(
 
 function getFirstReferencePosition(
   editor: Editor,
-  target: ReferenceSummaryTarget
+  target: ReferenceSummaryItem
 ): number | null {
   let referencePosition: number | null = null;
 
@@ -580,7 +580,7 @@ export function SkillBuilderInstructionsEditor({
   }, [editor, enableSkillReferences]);
 
   const handleReferenceClick = useCallback(
-    (target: ReferenceSummaryTarget) => {
+    (target: ReferenceSummaryItem) => {
       if (!editor || editor.isDestroyed) {
         return;
       }
