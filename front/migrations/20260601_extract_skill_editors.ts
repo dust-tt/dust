@@ -1,19 +1,13 @@
 import { writeFile } from "node:fs/promises";
 
 import { sanitizeCsvCell } from "@app/lib/api/analytics/csv_utils";
-import { SkillConfigurationModel } from "@app/lib/models/skill";
-import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
-import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
-import { GroupModel } from "@app/lib/resources/storage/models/groups";
-import { MembershipModel } from "@app/lib/resources/storage/models/membership";
-import { UserModel } from "@app/lib/resources/storage/models/user";
-import { makeSId } from "@app/lib/resources/string_ids";
+import { Authenticator } from "@app/lib/auth";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types/user";
 import { stringify } from "csv-stringify/sync";
-import { Op } from "sequelize";
 
 interface SkillInfo {
   id: string;
@@ -43,10 +37,6 @@ type SkillEditorCsvRecord = Record<string, string | number>;
 
 const DUST_APP_URL = "https://app.dust.tt";
 
-function uniqueNumbers(values: number[]): number[] {
-  return [...new Set(values)];
-}
-
 function compareStrings(left: string, right: string): number {
   return left.localeCompare(right, undefined, { sensitivity: "base" });
 }
@@ -59,152 +49,60 @@ function getSkillBuilderUrl(workspaceId: string, skillId: string): string {
 }
 
 async function fetchSkillEditorsForWorkspace({
-  now,
   workspace,
 }: {
-  now: Date;
   workspace: LightWorkspaceType;
 }): Promise<EditorWithSkills[]> {
-  const skills = await SkillConfigurationModel.findAll({
-    where: { workspaceId: workspace.id, status: "active" },
-    attributes: ["id", "name", "workspaceId"],
-    order: [
-      ["name", "ASC"],
-      ["id", "ASC"],
-    ],
+  // The export must include skills in restricted spaces.
+  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId, {
+    dangerouslyRequestAllGroups: true,
+  });
+  const skills = await SkillResource.listByWorkspace(auth, {
+    onlyCustom: true,
+    status: "active",
+    withInstructions: false,
+    withTools: false,
   });
 
   if (skills.length === 0) {
     return [];
   }
 
-  const skillByModelId = new Map<number, SkillInfo>(
-    skills.map((skill): [number, SkillInfo] => {
-      const skillId = makeSId("skill", {
-        id: skill.id,
-        workspaceId: workspace.id,
-      });
-
-      return [
-        skill.id,
-        {
-          id: skillId,
-          name: skill.name,
-          url: getSkillBuilderUrl(workspace.sId, skillId),
-        },
-      ];
-    })
-  );
-
-  const groupSkillLinks = await GroupSkillModel.findAll({
-    where: {
-      workspaceId: workspace.id,
-      skillConfigurationId: [...skillByModelId.keys()],
-    },
-    attributes: ["groupId", "skillConfigurationId"],
-  });
-
-  if (groupSkillLinks.length === 0) {
-    return [];
-  }
-
-  const groups = await GroupModel.findAll({
-    where: {
-      workspaceId: workspace.id,
-      id: uniqueNumbers(groupSkillLinks.map((link) => link.groupId)),
-      kind: "skill_editors",
-    },
-    attributes: ["id"],
-  });
-
-  const editorGroupIds = new Set(groups.map((group) => group.id));
-  if (editorGroupIds.size === 0) {
-    return [];
-  }
-
-  const skillModelIdsByGroupId = new Map<number, Set<number>>();
-  for (const link of groupSkillLinks) {
-    if (!editorGroupIds.has(link.groupId)) {
-      continue;
-    }
-
-    const skillModelIds = skillModelIdsByGroupId.get(link.groupId) ?? new Set();
-    skillModelIds.add(link.skillConfigurationId);
-    skillModelIdsByGroupId.set(link.groupId, skillModelIds);
-  }
-
-  const groupMemberships = await GroupMembershipModel.findAll({
-    where: {
-      workspaceId: workspace.id,
-      groupId: [...editorGroupIds],
-      status: "active",
-      startAt: { [Op.lte]: now },
-      [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: now } }],
-    },
-    attributes: ["groupId", "userId"],
-  });
-
-  if (groupMemberships.length === 0) {
-    return [];
-  }
-
-  const groupMemberUserIds = uniqueNumbers(
-    groupMemberships.map((membership) => membership.userId)
-  );
-
-  const activeWorkspaceMemberships = await MembershipModel.findAll({
-    where: {
-      workspaceId: workspace.id,
-      userId: groupMemberUserIds,
-      startAt: { [Op.lte]: now },
-      [Op.or]: [{ endAt: null }, { endAt: { [Op.gte]: now } }],
-    },
-    attributes: ["userId"],
-  });
-
-  const activeUserIds = new Set(
-    activeWorkspaceMemberships.map((membership) => membership.userId)
-  );
-  if (activeUserIds.size === 0) {
-    return [];
-  }
-
-  const users = await UserModel.findAll({
-    where: { id: [...activeUserIds] },
-    attributes: ["id", "sId", "email", "name"],
-  });
-  const userByModelId = new Map(users.map((user) => [user.id, user]));
+  const editorsBySkillId = await SkillResource.batchListEditors(auth, skills);
   const editorsByUserModelId = new Map<number, EditorAccumulator>();
 
-  for (const membership of groupMemberships) {
-    if (!activeUserIds.has(membership.userId)) {
+  for (const skill of [...skills].sort((left, right) => {
+    const nameComparison = compareStrings(left.name, right.name);
+    return nameComparison === 0
+      ? compareStrings(left.sId, right.sId)
+      : nameComparison;
+  })) {
+    const skillEditors = editorsBySkillId.get(skill.sId) ?? [];
+    if (skillEditors.length === 0) {
       continue;
     }
 
-    const user = userByModelId.get(membership.userId);
-    const skillModelIds = skillModelIdsByGroupId.get(membership.groupId);
-    if (!user || !skillModelIds) {
-      continue;
-    }
-
-    const editor = editorsByUserModelId.get(user.id) ?? {
-      workspaceId: workspace.sId,
-      workspaceName: workspace.name,
-      editorUserId: user.sId,
-      editorEmail: user.email,
-      editorName: user.name,
-      skillsById: new Map<string, SkillInfo>(),
+    const skillInfo = {
+      id: skill.sId,
+      name: skill.name,
+      url: getSkillBuilderUrl(workspace.sId, skill.sId),
     };
 
-    for (const skillModelId of skillModelIds) {
-      const skill = skillByModelId.get(skillModelId);
-      if (skill) {
-        editor.skillsById.set(skill.id, skill);
-      }
-    }
+    for (const user of skillEditors) {
+      const editor = editorsByUserModelId.get(user.id) ?? {
+        workspaceId: workspace.sId,
+        workspaceName: workspace.name,
+        editorUserId: user.sId,
+        editorEmail: user.email,
+        editorName: user.name,
+        skillsById: new Map<string, SkillInfo>(),
+      };
 
-    if (!editorsByUserModelId.has(user.id)) {
-      editorsByUserModelId.set(user.id, editor);
+      editor.skillsById.set(skillInfo.id, skillInfo);
+
+      if (!editorsByUserModelId.has(user.id)) {
+        editorsByUserModelId.set(user.id, editor);
+      }
     }
   }
 
@@ -264,13 +162,11 @@ makeScript(
     },
   },
   async ({ outputFile, workspaceId }) => {
-    const now = new Date();
     const editors: EditorWithSkills[] = [];
 
     await runOnAllWorkspaces(
       async (workspace) => {
         const workspaceEditors = await fetchSkillEditorsForWorkspace({
-          now,
           workspace,
         });
         editors.push(...workspaceEditors);
