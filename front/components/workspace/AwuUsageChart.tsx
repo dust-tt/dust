@@ -72,7 +72,7 @@ const GROUP_BY_OPTIONS: {
   { value: "api_key", label: "By API Key" },
   { value: "model", label: "By Model" },
   { value: "origin", label: "By Source" },
-  { value: "tool_category", label: "By tool category (tools only)" },
+  { value: "tool_category", label: "By category (LLM & tools)" },
 ];
 
 const TOP_K_OPTIONS = [
