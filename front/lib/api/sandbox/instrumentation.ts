@@ -38,10 +38,10 @@ export type SandboxStartupPhase =
   // provider.create split.
   | "provider.create_vm"
   | "provider.hardening"
-  // Egress forwarder bring-up sub-steps.
+  // Egress forwarder bring-up sub-steps. The token/secrets/manifest writes run
+  // concurrently (independent files), so their spans overlap under egress_prep.
   | "egress.resolve_proxy"
   | "egress.write_token"
-  | "egress.chmod_token"
   | "egress.write_secrets"
   | "egress.write_manifest"
   | "egress.kill_existing"
@@ -49,11 +49,10 @@ export type SandboxStartupPhase =
   | "egress.wait_healthy"
   | "egress.healthcheck"
   | "egress.install_trust_bundle"
-  // GCS FUSE mount sub-steps.
+  // GCS FUSE mount sub-steps. token_server brackets the single exec that writes
+  // the token, starts the token server, and polls it ready (was three execs).
   | "gcs.mint_token"
-  | "gcs.write_token"
-  | "gcs.start_token_server"
-  | "gcs.wait_token_server"
+  | "gcs.token_server"
   | "gcs.gcsfuse_mount";
 
 // Opens a parent APM span for a startup phase. The provider.* child spans nest

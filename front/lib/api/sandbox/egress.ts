@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { lookup } from "node:dns/promises";
 import config from "@app/lib/api/config";
 import { config as regionConfig } from "@app/lib/api/regions/config";
@@ -28,6 +29,7 @@ import { fromError } from "zod-validation-error";
 const EGRESS_FORWARDER_LISTEN_ADDR = "127.0.0.1:9990";
 const EGRESS_RESOLVER_LISTEN_ADDR = "127.0.0.1:1053";
 const EGRESS_PROXIED_UID = SANDBOX_AGENT_PROXIED_UID;
+const EGRESS_TOKEN_DIR = "/etc/dust";
 const EGRESS_TOKEN_PATH = "/etc/dust/egress-token";
 const EGRESS_DENY_LOG_PATH = "/tmp/dust-egress-denied.log";
 const EGRESS_DENY_LOG_OFFSET_PATH = "/tmp/.dust-egress-deny-offset";
@@ -424,6 +426,49 @@ export async function teardownInSandboxEgressRedirect(
   return runSuccessfulRootCommand(auth, sandbox, command);
 }
 
+// Writes the egress JWT to /etc/dust/egress-token as root, mode 600, in a
+// single round-trip (was a writeFile followed by a separate chmod). The token
+// is fed through stdin so it never lands in argv/journald, and goes via a tmp
+// file + mv so a reader (an old forwarder mid-restart) never sees a partial
+// write.
+async function writeEgressTokenFile(
+  auth: Authenticator,
+  sandbox: SandboxResource,
+  token: string
+): Promise<Result<void, Error>> {
+  const tmpPath = `${EGRESS_TOKEN_DIR}/.egress-token.${randomBytes(8).toString("hex")}.tmp`;
+  const command = rootCommand.and([
+    rootCommand.exec("/usr/bin/mkdir", ["-p", EGRESS_TOKEN_DIR]),
+    rootCommand.exec("/usr/bin/install", [
+      "-o",
+      "root",
+      "-g",
+      "root",
+      "-m",
+      "600",
+      "/dev/stdin",
+      tmpPath,
+    ]),
+    rootCommand.exec("/usr/bin/mv", [tmpPath, EGRESS_TOKEN_PATH]),
+  ]);
+
+  const result = await sandbox.execRoot(auth, command, { stdin: token });
+  if (result.isErr()) {
+    return result;
+  }
+  if (result.value.exitCode !== 0) {
+    return new Err(
+      new Error(
+        `Failed to write sandbox egress token file: ${
+          result.value.stderr || result.value.stdout || "unknown error"
+        }`
+      )
+    );
+  }
+
+  return new Ok(undefined);
+}
+
 export async function setupEgressForwarder(
   auth: Authenticator,
   sandbox: SandboxResource,
@@ -450,49 +495,35 @@ export async function setupEgressForwarder(
     sandbox.providerId,
     auth.getNonNullableWorkspace().sId
   );
-  const tokenWriteResult = await traceSandboxStartupPhase(
-    "egress.write_token",
-    () =>
-      sandbox.writeFile(
-        auth,
-        EGRESS_TOKEN_PATH,
-        new TextEncoder().encode(token).buffer
-      )
-  );
-  if (tokenWriteResult.isErr()) {
-    return tokenWriteResult;
-  }
 
-  const prepareTokenResult = await traceSandboxStartupPhase(
-    "egress.chmod_token",
-    () =>
-      runSuccessfulRootCommand(
-        auth,
-        sandbox,
-        rootCommand.exec("/usr/bin/chmod", ["600", EGRESS_TOKEN_PATH])
-      )
-  );
-  if (prepareTokenResult.isErr()) {
-    return prepareTokenResult;
-  }
-
-  // Write the secrets file before killing the old dsbx so a write failure
-  // leaves the existing forwarder running instead of taking it down with
-  // nothing to replace it.
-  const secretsWriteResult = await traceSandboxStartupPhase(
-    "egress.write_secrets",
-    () => writeEgressSecretsFile(auth, sandbox)
-  );
-  if (secretsWriteResult.isErr()) {
-    return secretsWriteResult;
-  }
-
-  const manifestWriteResult = await traceSandboxStartupPhase(
-    "egress.write_manifest",
-    () => writeSandboxEnvManifestFile(auth, sandbox)
-  );
-  if (manifestWriteResult.isErr()) {
-    return manifestWriteResult;
+  // The token, secrets, and manifest each land in a distinct file with no
+  // dependency on one another, so write them concurrently to collapse three
+  // sandbox round-trips into roughly one. The forwarder start below reads the
+  // token and secrets files, so it waits for all three writes to finish.
+  //
+  // Secrets are written here, before the kill on the restart path, so a write
+  // failure leaves any existing forwarder running rather than taking it down
+  // with nothing to replace it.
+  const [tokenWriteResult, secretsWriteResult, manifestWriteResult] =
+    await Promise.all([
+      traceSandboxStartupPhase("egress.write_token", () =>
+        writeEgressTokenFile(auth, sandbox, token)
+      ),
+      traceSandboxStartupPhase("egress.write_secrets", () =>
+        writeEgressSecretsFile(auth, sandbox)
+      ),
+      traceSandboxStartupPhase("egress.write_manifest", () =>
+        writeSandboxEnvManifestFile(auth, sandbox)
+      ),
+    ]);
+  for (const writeResult of [
+    tokenWriteResult,
+    secretsWriteResult,
+    manifestWriteResult,
+  ]) {
+    if (writeResult.isErr()) {
+      return writeResult;
+    }
   }
 
   if (restartExisting) {
