@@ -204,4 +204,27 @@ describe("ToolNode", () => {
     ]);
     expect(editor.getText()).toBe("/GitHub Search ");
   });
+
+  it("removes a tool node with backspace", () => {
+    editor.commands.insertToolNode(TOOL_ATTRS);
+
+    let toolNodeEnd: number | null = null;
+    editor.state.doc.descendants((node, position) => {
+      if (node.type.name === "toolNode") {
+        toolNodeEnd = position + node.nodeSize;
+        return false;
+      }
+
+      return true;
+    });
+
+    if (toolNodeEnd === null) {
+      throw new Error("Tool node not found");
+    }
+
+    editor.commands.setTextSelection(toolNodeEnd);
+    editor.commands.keyboardShortcut("Backspace");
+
+    expect(toolNodes(editor)).toEqual([]);
+  });
 });

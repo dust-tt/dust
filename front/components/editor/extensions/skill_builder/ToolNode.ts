@@ -1,3 +1,7 @@
+import {
+  deleteInlineNodeAfterCursor,
+  deleteInlineNodeBeforeCursor,
+} from "@app/components/editor/extensions/shared/deleteInlineNodeAroundCursor";
 import type { ToolNodeAttributes } from "@app/components/editor/extensions/skill_builder/ToolNodeTypes";
 import {
   parseToolTag,
@@ -105,6 +109,15 @@ export const ToolNode = Node.create({
             },
             { type: "text", text: " " },
           ]),
+    };
+  },
+
+  addKeyboardShortcuts() {
+    return {
+      Backspace: ({ editor }) =>
+        deleteInlineNodeBeforeCursor(editor, TOOL_NODE_TYPE),
+      Delete: ({ editor }) =>
+        deleteInlineNodeAfterCursor(editor, TOOL_NODE_TYPE),
     };
   },
 
