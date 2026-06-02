@@ -4,6 +4,7 @@ import {
 } from "@app/lib/api/files/mount_path";
 import { mintDownscopedGcsToken } from "@app/lib/api/sandbox/gcs/token";
 import type { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
+import { traceSandboxStartupPhase } from "@app/lib/api/sandbox/instrumentation";
 import {
   type RootCommand,
   rootCommand,
@@ -105,11 +106,14 @@ export async function mountConversationFiles(
     prefixes: targets.map((t) => t.prefix),
   });
 
-  // 1. Mint downscoped token covering every prefix.
-  const tokenResult = await mintDownscopedGcsToken({
-    bucket,
-    prefixes: targets.map((t) => t.prefix),
-  });
+  // 1. Mint downscoped token covering every prefix. This is a Node-side GCP
+  // call (no sandbox command, so no provider span) — a real timing blindspot.
+  const tokenResult = await traceSandboxStartupPhase("gcs.mint_token", () =>
+    mintDownscopedGcsToken({
+      bucket,
+      prefixes: targets.map((t) => t.prefix),
+    })
+  );
   if (tokenResult.isErr()) {
     childLogger.error(
       { err: tokenResult.error },
@@ -127,9 +131,11 @@ export async function mountConversationFiles(
   });
 
   // 2. Write token file into the sandbox.
-  const writeResult = await sandbox.exec(
-    auth,
-    `printf '%s' '${escapeSingleQuotes(tokenJson)}' > /tmp/token.json`
+  const writeResult = await traceSandboxStartupPhase("gcs.write_token", () =>
+    sandbox.exec(
+      auth,
+      `printf '%s' '${escapeSingleQuotes(tokenJson)}' > /tmp/token.json`
+    )
   );
   if (writeResult.isErr()) {
     childLogger.error(
@@ -142,9 +148,13 @@ export async function mountConversationFiles(
   // 3. Start token server and wait until it's listening.
   // The server script is a netcat loop baked into the template.
   // Start in background, then verify with a separate exec (matching PoC).
-  const startResult = await sandbox.exec(
-    auth,
-    "bash /home/agent/.bin/token-server.sh > /tmp/server.log 2>&1 &"
+  const startResult = await traceSandboxStartupPhase(
+    "gcs.start_token_server",
+    () =>
+      sandbox.exec(
+        auth,
+        "bash /home/agent/.bin/token-server.sh > /tmp/server.log 2>&1 &"
+      )
   );
   if (startResult.isErr()) {
     childLogger.error(
@@ -154,9 +164,15 @@ export async function mountConversationFiles(
     return startResult;
   }
 
-  const checkResult = await sandbox.exec(
-    auth,
-    "sleep 1 && curl -sf http://127.0.0.1:9876 > /dev/null 2>&1"
+  // wait_token_server brackets the hardcoded `sleep 1` + readiness probe, so
+  // that fixed cost is visible on its own.
+  const checkResult = await traceSandboxStartupPhase(
+    "gcs.wait_token_server",
+    () =>
+      sandbox.exec(
+        auth,
+        "sleep 1 && curl -sf http://127.0.0.1:9876 > /dev/null 2>&1"
+      )
   );
   if (checkResult.isErr() || checkResult.value.exitCode !== 0) {
     const msg = "Token server not ready after 1s";
@@ -169,9 +185,14 @@ export async function mountConversationFiles(
     targets,
     async (target) => {
       const mountCmd = buildMountCommand({ bucket, ...target });
-      const mountResult = await sandbox.execRoot(auth, mountCmd, {
-        timeoutMs: MOUNT_TIMEOUT_MS,
-      });
+      const mountResult = await traceSandboxStartupPhase(
+        "gcs.gcsfuse_mount",
+        () =>
+          sandbox.execRoot(auth, mountCmd, {
+            timeoutMs: MOUNT_TIMEOUT_MS,
+          }),
+        { target: target.label }
+      );
 
       if (mountResult.isErr()) {
         childLogger.error(
