@@ -13,7 +13,7 @@ const { recordUsageActivity } = proxyActivities<typeof activities>({
 const { trackProgrammaticUsageActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
   retry: {
-    maximumAttempts: 1,
+    maximumAttempts: 3,
   },
 });
 
