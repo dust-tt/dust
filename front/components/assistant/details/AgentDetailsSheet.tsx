@@ -244,7 +244,7 @@ export function AgentDetailsSheet({
 
         {/* Title and edit info */}
         <div className="flex flex-col items-center gap-1">
-          <h2 className="text-xl font-semibold text-foreground dark:text-foreground-night">
+          <h2 className="text-xl font-semibold text-foreground dark:text-foreground-night notranslate">
             {agentConfiguration?.name ?? ""}
           </h2>
           {editedDate && (

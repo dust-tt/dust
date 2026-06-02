@@ -117,7 +117,7 @@ export function AgentPicker({
               icon={() => <Avatar size="xs" visual={c.pictureUrl} />}
               label={c.name}
               truncateText
-              className="group py-1"
+              className="group py-1 notranslate"
               endComponent={
                 onAgentDetailsClick && clientType !== "extension" ? (
                   <Button

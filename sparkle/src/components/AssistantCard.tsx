@@ -72,7 +72,7 @@ export const AssistantCard = React.forwardRef<
             <h3>
               <TruncatedText
                 lineClamp={1}
-                className="s-heading-base s-overflow-hidden s-text-ellipsis s-break-all"
+                className="s-heading-base s-overflow-hidden s-text-ellipsis s-break-all notranslate"
               >
                 {title}
               </TruncatedText>
