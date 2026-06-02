@@ -13,6 +13,17 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 
 const TEST_SECRET = "test-invite-secret";
 
+function decodeToken(
+  token: string,
+  secret: string
+): { iat: number; exp: number } {
+  const decoded = verify(token, secret);
+  if (typeof decoded === "string" || !decoded) {
+    throw new Error("unexpected token shape");
+  }
+  return decoded as { iat: number; exp: number };
+}
+
 beforeAll(() => {
   vi.stubEnv("DUST_INVITE_TOKEN_SECRET", TEST_SECRET);
 });
@@ -66,7 +77,7 @@ describe("getMembershipInvitationToken", () => {
     const createdAt = Date.now() - 1000;
     const invitation = makeInvitation(createdAt);
     const token = getMembershipInvitationToken(invitation);
-    const decoded = verify(token, secret) as { iat: number; exp: number };
+    const decoded = decodeToken(token, secret);
 
     expect(decoded.iat).toBe(Math.floor(createdAt / 1000));
     expect(decoded.exp).toBe(
@@ -79,7 +90,7 @@ describe("getMembershipInvitationToken", () => {
     const reminderSentAt = Date.now() - 1000;
     const invitation = makeInvitation(createdAt, reminderSentAt);
     const token = getMembershipInvitationToken(invitation);
-    const decoded = verify(token, secret) as { iat: number; exp: number };
+    const decoded = decodeToken(token, secret);
 
     expect(decoded.iat).toBe(Math.floor(reminderSentAt / 1000));
     expect(decoded.exp).toBe(
@@ -105,7 +116,7 @@ describe("getMembershipInvitationToken", () => {
     const reminderSentAt = Date.now() - 1000;
     const invitation = makeInvitation(createdAt, reminderSentAt);
     const token = getMembershipInvitationToken(invitation);
-    const decoded = verify(token, secret) as { exp: number };
+    const decoded = decodeToken(token, secret);
 
     expect(decoded.exp).toBe(
       Math.floor(reminderSentAt / 1000) + INVITATION_EXPIRATION_TIME_SEC
@@ -149,7 +160,7 @@ describe("claimReminderSlot", () => {
     expect(resource.reminderSentAt).toEqual(new Date(now));
     expect(resource.toJSON().reminderSentAt).toBe(now);
     const token = getMembershipInvitationToken(resource.toJSON());
-    const decoded = verify(token, TEST_SECRET) as { iat: number };
+    const decoded = decodeToken(token, TEST_SECRET);
     expect(decoded.iat).toBe(Math.floor(now / 1000));
 
     vi.useRealTimers();

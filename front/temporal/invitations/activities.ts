@@ -30,10 +30,9 @@ export async function sendInvitationReminderBatchActivity(): Promise<boolean> {
   // Group by workspaceId to create the Authenticator once per workspace.
   const byWorkspaceId = new Map<string, typeof invitations>();
   for (const invitation of invitations) {
-    byWorkspaceId.set(invitation.workspace.sId, [
-      ...(byWorkspaceId.get(invitation.workspace.sId) ?? []),
-      invitation,
-    ]);
+    const group = byWorkspaceId.get(invitation.workspace.sId) ?? [];
+    group.push(invitation);
+    byWorkspaceId.set(invitation.workspace.sId, group);
   }
 
   let emailsFailed = 0;
