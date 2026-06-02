@@ -56,6 +56,7 @@ interface NewAPIKeyDialogProps {
     monthlyCapMicroUsd: number | null;
     role: KeyRole;
   }) => Promise<void>;
+  showLegacyUsdMonthlyCap: boolean;
 }
 
 export const NewAPIKeyDialog = ({
@@ -63,6 +64,7 @@ export const NewAPIKeyDialog = ({
   isGenerating,
   isRevoking,
   onCreate,
+  showLegacyUsdMonthlyCap,
 }: NewAPIKeyDialogProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [spaceSearch, setSpaceSearch] = useState("");
@@ -285,22 +287,24 @@ export const NewAPIKeyDialog = ({
                 </RadioGroup>
               </div>
 
-              <BaseFormFieldSection
-                title="Monthly cap (USD)"
-                fieldName="monthlyCapDollars"
-              >
-                {({ registerRef, registerProps, onChange, errorMessage }) => (
-                  <Input
-                    ref={registerRef}
-                    {...registerProps}
-                    onChange={onChange}
-                    placeholder="Leave empty for unlimited"
-                    isError={!!errorMessage}
-                    message={errorMessage}
-                    messageStatus="error"
-                  />
-                )}
-              </BaseFormFieldSection>
+              {showLegacyUsdMonthlyCap && (
+                <BaseFormFieldSection
+                  title="Monthly cap (USD)"
+                  fieldName="monthlyCapDollars"
+                >
+                  {({ registerRef, registerProps, onChange, errorMessage }) => (
+                    <Input
+                      ref={registerRef}
+                      {...registerProps}
+                      onChange={onChange}
+                      placeholder="Leave empty for unlimited"
+                      isError={!!errorMessage}
+                      message={errorMessage}
+                      messageStatus="error"
+                    />
+                  )}
+                </BaseFormFieldSection>
+              )}
             </div>
           </FormProvider>
         </SheetContainer>
