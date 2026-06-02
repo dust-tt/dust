@@ -113,11 +113,6 @@ type SkillReferenceTarget = {
   requestedSpaceIds: readonly ModelId[];
 };
 
-type ValidatedSkillReferenceIds = {
-  customSkillModelIds: ModelId[];
-  globalSkillIds: string[];
-};
-
 type SkillResourceConstructorOptions =
   | {
       // For global skills, there is no editor group.
@@ -2611,60 +2606,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     await this.update({ lastReinforcementAnalysisAt: new Date() });
   }
 
-  private static async getValidSkillReferenceIds(
-    auth: Authenticator,
-    {
-      referencedSkillIds,
-      parentSkillId,
-    }: {
-      referencedSkillIds: string[];
-      parentSkillId?: ModelId;
-    }
-  ): Promise<ValidatedSkillReferenceIds> {
-    const workspace = auth.getNonNullableWorkspace();
-    const customSkillModelIds = new Set<ModelId>();
-    const globalSkillIds = new Set<string>();
-
-    for (const skillId of referencedSkillIds) {
-      const parsed = getResourceNameAndIdFromSId(skillId);
-
-      if (!parsed) {
-        globalSkillIds.add(skillId);
-        continue;
-      }
-
-      if (parsed.resourceName !== "skill") {
-        continue;
-      }
-
-      if (parsed.workspaceModelId !== workspace.id) {
-        continue;
-      }
-
-      if (parsed.resourceModelId === parentSkillId) {
-        continue;
-      }
-
-      customSkillModelIds.add(parsed.resourceModelId);
-    }
-
-    const globalSkills =
-      globalSkillIds.size > 0
-        ? await this.fetchByIds(auth, [...globalSkillIds], {
-            withInstructions: false,
-            withTools: false,
-          })
-        : [];
-    const validGlobalSkillIds = new Set(globalSkills.map((skill) => skill.sId));
-
-    return {
-      customSkillModelIds: [...customSkillModelIds],
-      globalSkillIds: [...globalSkillIds].filter((globalSkillId) =>
-        validGlobalSkillIds.has(globalSkillId)
-      ),
-    };
-  }
-
   /**
    * Persist the skills referenced by the skill form.
    */
@@ -2679,17 +2620,31 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   ): Promise<void> {
     const workspace = auth.getNonNullableWorkspace();
     const parentSkillId = this.id;
-    const { customSkillModelIds, globalSkillIds } =
-      await SkillResource.getValidSkillReferenceIds(auth, {
-        referencedSkillIds,
-        parentSkillId,
-      });
+    const customSkillModelIds = new Set<ModelId>();
+    const globalSkillIds = new Set<string>();
+
+    for (const skillId of referencedSkillIds) {
+      const parsed = getResourceNameAndIdFromSId(skillId);
+
+      if (!parsed) {
+        globalSkillIds.add(skillId);
+        continue;
+      }
+
+      if (
+        parsed.resourceName === "skill" &&
+        parsed.workspaceModelId === workspace.id &&
+        parsed.resourceModelId !== parentSkillId
+      ) {
+        customSkillModelIds.add(parsed.resourceModelId);
+      }
+    }
 
     const referencedSkills =
-      customSkillModelIds.length > 0
+      customSkillModelIds.size > 0
         ? await this.model.findAll({
             where: {
-              id: { [Op.in]: customSkillModelIds },
+              id: { [Op.in]: [...customSkillModelIds] },
               workspaceId: workspace.id,
             },
             attributes: ["id"],
@@ -2708,7 +2663,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         childCustomSkillId: childSkillId,
         childGlobalSkillId: null,
       })),
-      ...globalSkillIds.map((globalSkillId) => ({
+      ...[...globalSkillIds].map((globalSkillId) => ({
         workspaceId: workspace.id,
         parentSkillId,
         childCustomSkillId: null,
