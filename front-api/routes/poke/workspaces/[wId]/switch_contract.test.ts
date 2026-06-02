@@ -1,5 +1,8 @@
 import { Authenticator } from "@app/lib/auth";
-import { listMetronomePackages } from "@app/lib/metronome/client";
+import {
+  getMetronomeContractById,
+  listMetronomePackages,
+} from "@app/lib/metronome/client";
 import {
   ensureMetronomeCustomerForWorkspace,
   provisionMetronomeContract,
@@ -31,6 +34,7 @@ vi.mock("@app/lib/metronome/client", async () => {
   return {
     ...actual,
     listMetronomePackages: vi.fn(),
+    getMetronomeContractById: vi.fn(),
   };
 });
 
@@ -221,6 +225,18 @@ beforeEach(() => {
   vi.mocked(provisionMetronomeContract).mockResolvedValue(
     new Ok({ metronomeContractId: NEW_CONTRACT_ID })
   );
+  // The active contract the backdating guard reads. Started 90 days ago, so
+  // future and recently-backdated switches are accepted; only a switch dated
+  // before this start is rejected.
+  vi.mocked(getMetronomeContractById).mockResolvedValue(
+    new Ok({
+      id: EXISTING_CONTRACT_ID,
+      customer_id: METRONOME_CUSTOMER_ID,
+      starting_at: new Date(
+        Date.now() - 90 * 24 * 60 * 60 * 1000
+      ).toISOString(),
+    } as never)
+  );
 });
 
 describe("POST /api/poke/workspaces/[wId]/switch_contract — Enterprise", () => {
@@ -294,6 +310,36 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — Enterprise", () =>
         swapAt: "next-hour",
       })
     );
+  });
+
+  it("rejects a startingAt earlier than the current active contract's start", async () => {
+    await ensureEnterprisePlan();
+    const { workspace } = await createPrivateApiMockRequest({
+      isSuperUser: true,
+    });
+    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
+
+    // Active contract started 1 hour ago; backdating 48h before it would
+    // create overlapping contracts the sunset pass can't resolve.
+    vi.mocked(getMetronomeContractById).mockResolvedValue(
+      new Ok({
+        id: EXISTING_CONTRACT_ID,
+        customer_id: METRONOME_CUSTOMER_ID,
+        starting_at: futureIso(-1),
+      } as never)
+    );
+
+    const response = await postSwitchContract(
+      workspace.sId,
+      enterpriseBody({ startingAt: futureIso(-48) })
+    );
+
+    expect(response.status).toBe(400);
+    const data = await response.json();
+    expect(data.error.message).toContain(
+      "before the current active contract's start"
+    );
+    expect(provisionMetronomeContract).not.toHaveBeenCalled();
   });
 
   it("rejects when the package currency does not match the Stripe customer currency", async () => {
