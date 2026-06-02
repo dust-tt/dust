@@ -2,6 +2,7 @@ import type { AppStatus } from "@app/lib/api/status";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import {
   FREE_BYOK_TRANSITIONING_PLAN_CODE,
+  isDustCompanyPlan,
   isEntreprisePlanPrefix,
 } from "@app/lib/plans/plan_codes";
 import { useAppStatus } from "@app/lib/swr/useAppStatus";
@@ -273,6 +274,7 @@ export function SidebarBanners() {
       {appStatus && <AppStatusBanner appStatus={appStatus} />}
       {subscription.paymentFailingSince &&
         isAdmin(owner) &&
+        !isDustCompanyPlan(subscription.plan.code) &&
         !isEntreprisePlanPrefix(subscription.plan.code) && (
           <SubscriptionPastDueBanner />
         )}
