@@ -75,6 +75,7 @@ function renderReferenceSummaryItem({
           icon={{ visual: DocumentIcon }}
           color="white"
           size="xs"
+          className="text-xs"
           onClick={handleClick}
         />
       );
