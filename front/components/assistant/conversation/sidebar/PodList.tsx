@@ -79,6 +79,10 @@ const PodListItem = memo(
     const [isDragOver, setIsDragOver] = useState(false);
     const dragCounterRef = useRef(0);
 
+    const handleDragStart = (e: React.DragEvent) => {
+      e.preventDefault();
+    };
+
     const handleDragEnter = (e: React.DragEvent) => {
       e.preventDefault();
       dragCounterRef.current++;
@@ -135,6 +139,7 @@ const PodListItem = memo(
     return (
       <NavigationListItem
         ref={dropZoneRef}
+        onDragStart={handleDragStart}
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
