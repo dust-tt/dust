@@ -370,7 +370,7 @@ export function useUpdateProgrammaticUsageLimit({
       if (monthlyCapCredits === null) {
         sendNotification({
           type: "success",
-          title: "Programmatic usage limit cleared",
+          title: "Programmatic usage limit has been removed",
         });
       } else {
         sendNotification({

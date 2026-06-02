@@ -4,7 +4,6 @@ import {
 } from "@app/lib/swr/usage_settings";
 import {
   ActionCreditCoinsIcon,
-  Button,
   Icon,
   Input,
   Page,
@@ -58,7 +57,7 @@ export function UsageProgrammaticLimitCard({
     }
 
     const parsed = Number(limitInput);
-    if (!Number.isInteger(parsed) || parsed <= 0 || parsed === current) {
+    if (!Number.isInteger(parsed) || parsed < 0 || parsed === current) {
       setLimitInput(current !== null ? String(current) : "");
       return;
     }
@@ -76,18 +75,6 @@ export function UsageProgrammaticLimitCard({
 
   const isInputDisabled = isSaving || isProgrammaticUsageLimitLoading;
 
-  const handleClear = async () => {
-    setIsSaving(true);
-    try {
-      const result = await doUpdateProgrammaticUsageLimit(null);
-      if (result) {
-        setLimitInput("");
-      }
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
   return (
     <Page.Vertical gap="sm" align="stretch">
       <div className="flex flex-col gap-0.5">
@@ -100,34 +87,23 @@ export function UsageProgrammaticLimitCard({
           title="Programmatic monthly limit"
           description="Maximum credits allowed for programmatic usage per month"
           action={
-            <div className="flex items-center gap-2">
-              <div className="relative w-32">
-                <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground dark:text-muted-foreground-night">
-                  <Icon visual={ActionCreditCoinsIcon} size="xs" />
-                </div>
-                <Input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  placeholder="No limit"
-                  value={limitInput}
-                  onChange={(e) =>
-                    setLimitInput(e.target.value.replace(/[^\d]/g, ""))
-                  }
-                  onBlur={() => void handleCommitLimit()}
-                  disabled={isInputDisabled}
-                  className="pl-8 text-right"
-                />
+            <div className="relative w-32">
+              <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground dark:text-muted-foreground-night">
+                <Icon visual={ActionCreditCoinsIcon} size="xs" />
               </div>
-              {programmaticUsageLimit?.monthlyCapCredits !== null && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  label="Clear"
-                  onClick={() => void handleClear()}
-                  disabled={isInputDisabled}
-                />
-              )}
+              <Input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                placeholder="No limit"
+                value={limitInput}
+                onChange={(e) =>
+                  setLimitInput(e.target.value.replace(/[^\d]/g, ""))
+                }
+                onBlur={() => void handleCommitLimit()}
+                disabled={isInputDisabled}
+                className="pl-8 text-right"
+              />
             </div>
           }
         />
