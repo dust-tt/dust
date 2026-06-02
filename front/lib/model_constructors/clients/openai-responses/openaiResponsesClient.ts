@@ -77,6 +77,20 @@ export abstract class OpenAiResponses extends LargeLanguageModel<
             metadata: this.modelEndpoint,
           };
         case 403:
+          // Transient errors from OpenAI blocking requests surface as a 403
+          // with an empty message; treat those as refusals rather than a
+          // permanent permission error.
+          if (!error.message) {
+            return {
+              type: "error",
+              content: {
+                type: "refusal_error",
+                message: `Request denied for OpenAI: ${error.message}`,
+                originalError: error,
+              },
+              metadata: this.modelEndpoint,
+            };
+          }
           return {
             type: "error",
             content: {

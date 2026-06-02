@@ -4,6 +4,7 @@ import type {
   ToolSpecification,
 } from "@app/lib/model_constructors/types/config";
 import type {
+  ErrorEvent,
   LargeLanguageModelResponseEvent,
   ReasoningDeltaEvent,
   ReasoningEvent,
@@ -12,7 +13,9 @@ import type {
   TextDeltaEvent,
   TextEvent,
   TokenUsageEvent,
+  ToolCallDeltaEvent,
   ToolCallEvent,
+  ToolCallStartedEvent,
 } from "@app/lib/model_constructors/types/events";
 import type {
   BaseAssistantMessage,
@@ -285,29 +288,44 @@ export function WithOpenAiResponsesConverter<
       };
     }
 
-    outputItemToTextEvents(outputMessage: ResponseOutputMessage): TextEvent[] {
-      return outputMessage.content.flatMap((content) => {
-        switch (content.type) {
-          case "output_text":
-            return [
-              {
-                type: "text",
-                content: { value: content.text },
-                metadata: {
-                  ...this.modelEndpoint,
-                  content: {
-                    itemId: outputMessage.id,
-                    phase: outputMessage.phase,
+    refusalToErrorEvent(refusal: string): ErrorEvent {
+      return {
+        type: "error",
+        content: {
+          type: "refusal_error",
+          message: refusal,
+        },
+        metadata: this.modelEndpoint,
+      };
+    }
+
+    outputItemToTextEvents(
+      outputMessage: ResponseOutputMessage
+    ): (TextEvent | ErrorEvent)[] {
+      return outputMessage.content.flatMap(
+        (content): (TextEvent | ErrorEvent)[] => {
+          switch (content.type) {
+            case "output_text":
+              return [
+                {
+                  type: "text",
+                  content: { value: content.text },
+                  metadata: {
+                    ...this.modelEndpoint,
+                    content: {
+                      itemId: outputMessage.id,
+                      phase: outputMessage.phase,
+                    },
                   },
                 },
-              },
-            ];
-          case "refusal":
-            return [];
-          default:
-            return assertNever(content);
+              ];
+            case "refusal":
+              return [this.refusalToErrorEvent(content.refusal)];
+            default:
+              return assertNever(content);
+          }
         }
-      });
+      );
     }
 
     reasoningItemToReasoningEvent(item: ResponseReasoningItem): ReasoningEvent {
@@ -324,6 +342,30 @@ export function WithOpenAiResponsesConverter<
             itemId: item.id,
           },
         },
+      };
+    }
+
+    functionCallToToolCallStartedEvent(
+      item: ResponseFunctionToolCall,
+      outputIndex: number
+    ): ToolCallStartedEvent {
+      return {
+        type: "tool_call_started",
+        content: {
+          id: item.call_id,
+          index: outputIndex,
+          name: item.name,
+        },
+        metadata: this.modelEndpoint,
+      };
+    }
+
+    // Tool call argument deltas are not streamed to the UI; they act as a
+    // heartbeat to know the LLM is still active.
+    toolCallArgumentsDeltaToToolCallDeltaEvent(): ToolCallDeltaEvent {
+      return {
+        type: "tool_call_delta",
+        metadata: this.modelEndpoint,
       };
     }
 
@@ -411,6 +453,18 @@ export function WithOpenAiResponsesConverter<
             return [];
           }
           return [this.reasoningDeltaToReasoningDeltaEvent("\n\n")];
+        case "response.output_item.added":
+          if (event.item.type !== "function_call") {
+            return [];
+          }
+          return [
+            this.functionCallToToolCallStartedEvent(
+              event.item,
+              event.output_index
+            ),
+          ];
+        case "response.function_call_arguments.delta":
+          return [this.toolCallArgumentsDeltaToToolCallDeltaEvent()];
         case "response.output_item.done":
           return this.outputItemToEvents(event.item);
         case "response.completed":
