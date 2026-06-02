@@ -590,18 +590,13 @@ export function SkillBuilderInstructionsEditor({
         return;
       }
 
-      const referenceNode = editor.state.doc.nodeAt(referencePosition);
-      if (!referenceNode) {
-        return;
-      }
-
-      const referenceDomNode = editor.view.nodeDOM(referencePosition);
-      editor.commands.focus(referencePosition + referenceNode.nodeSize);
+      const referenceNode = editor.view.nodeDOM(referencePosition);
+      editor.commands.focus(referencePosition);
 
       const referenceElement =
-        referenceDomNode instanceof HTMLElement
-          ? referenceDomNode
-          : referenceDomNode?.parentElement;
+        referenceNode instanceof HTMLElement
+          ? referenceNode
+          : referenceNode?.parentElement;
       if (!referenceElement) {
         return;
       }
