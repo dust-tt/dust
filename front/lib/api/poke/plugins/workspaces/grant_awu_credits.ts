@@ -34,11 +34,7 @@ const GrantAwuCreditsArgsSchema = z
       .finite("Amount must be a valid number"),
     isFreeCredit: z.boolean(),
     setPrice: z.boolean(),
-    price: z
-      .number()
-      .positive("Price must be greater than 0")
-      .finite("Price must be a valid number")
-      .optional(),
+    price: z.number().finite("Price must be a valid number").optional(),
     overrideDiscount: z.boolean(),
     discountPercent: z
       .number()
