@@ -836,7 +836,7 @@ describe("SkillResource", () => {
       );
     });
 
-    it("throws when syncing an invalid nested skill reference", async () => {
+    it("drops invalid nested skill references", async () => {
       const skill = await SkillFactory.create(testContext.authenticator, {
         name: "Skill With Invalid Reference",
       });
@@ -846,23 +846,25 @@ describe("SkillResource", () => {
         name: "Invalid Skill Reference",
       });
 
+      await skill.updateSkill(testContext.authenticator, {
+        name: skill.name,
+        agentFacingDescription: skill.agentFacingDescription,
+        userFacingDescription: skill.userFacingDescription,
+        instructions: `Use ${invalidSkillReferenceTag}.`,
+        icon: skill.icon,
+        mcpServerViews: [],
+        attachedKnowledge: [],
+        requestedSpaceIds: [],
+        enableSkillReferences: true,
+        referencedSkillIds: ["not-a-skill-reference"],
+      });
+
       await expect(
-        skill.updateSkill(testContext.authenticator, {
-          name: skill.name,
-          agentFacingDescription: skill.agentFacingDescription,
-          userFacingDescription: skill.userFacingDescription,
-          instructions: `Use ${invalidSkillReferenceTag}.`,
-          icon: skill.icon,
-          mcpServerViews: [],
-          attachedKnowledge: [],
-          requestedSpaceIds: [],
-          enableSkillReferences: true,
-          referencedSkillIds: ["not-a-skill-reference"],
-        })
-      ).rejects.toThrow("Invalid skill reference ID: not-a-skill-reference");
+        skill.fetchChildSkills(testContext.authenticator)
+      ).resolves.toHaveLength(0);
     });
 
-    it("throws when syncing an out-of-workspace nested skill reference", async () => {
+    it("drops out-of-workspace nested skill references", async () => {
       const skill = await SkillFactory.create(testContext.authenticator, {
         name: "Skill With Out Of Workspace Reference",
       });
@@ -876,22 +878,22 @@ describe("SkillResource", () => {
         name: "Out Of Workspace Skill Reference",
       });
 
+      await skill.updateSkill(testContext.authenticator, {
+        name: skill.name,
+        agentFacingDescription: skill.agentFacingDescription,
+        userFacingDescription: skill.userFacingDescription,
+        instructions: `Use ${outOfWorkspaceSkillReferenceTag}.`,
+        icon: skill.icon,
+        mcpServerViews: [],
+        attachedKnowledge: [],
+        requestedSpaceIds: [],
+        enableSkillReferences: true,
+        referencedSkillIds: [outOfWorkspaceSkillId],
+      });
+
       await expect(
-        skill.updateSkill(testContext.authenticator, {
-          name: skill.name,
-          agentFacingDescription: skill.agentFacingDescription,
-          userFacingDescription: skill.userFacingDescription,
-          instructions: `Use ${outOfWorkspaceSkillReferenceTag}.`,
-          icon: skill.icon,
-          mcpServerViews: [],
-          attachedKnowledge: [],
-          requestedSpaceIds: [],
-          enableSkillReferences: true,
-          referencedSkillIds: [outOfWorkspaceSkillId],
-        })
-      ).rejects.toThrow(
-        `Skill reference ID does not belong to this workspace: ${outOfWorkspaceSkillId}`
-      );
+        skill.fetchChildSkills(testContext.authenticator)
+      ).resolves.toHaveLength(0);
     });
 
     it("syncs global skill references", async () => {

@@ -2611,7 +2611,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     await this.update({ lastReinforcementAnalysisAt: new Date() });
   }
 
-  static async getValidatedSkillReferenceIds(
+  private static async getValidSkillReferenceIds(
     auth: Authenticator,
     {
       referencedSkillIds,
@@ -2620,7 +2620,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       referencedSkillIds: string[];
       parentSkillId?: ModelId;
     }
-  ): Promise<Result<ValidatedSkillReferenceIds, Error>> {
+  ): Promise<ValidatedSkillReferenceIds> {
     const workspace = auth.getNonNullableWorkspace();
     const customSkillModelIds = new Set<ModelId>();
     const globalSkillIds = new Set<string>();
@@ -2634,15 +2634,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       }
 
       if (parsed.resourceName !== "skill") {
-        return new Err(new Error(`Invalid skill reference ID: ${skillId}`));
+        continue;
       }
 
       if (parsed.workspaceModelId !== workspace.id) {
-        return new Err(
-          new Error(
-            `Skill reference ID does not belong to this workspace: ${skillId}`
-          )
-        );
+        continue;
       }
 
       if (parsed.resourceModelId === parentSkillId) {
@@ -2652,29 +2648,21 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       customSkillModelIds.add(parsed.resourceModelId);
     }
 
-    if (globalSkillIds.size > 0) {
-      const globalSkills = await this.fetchByIds(auth, [...globalSkillIds], {
-        withInstructions: false,
-        withTools: false,
-      });
-      const validGlobalSkillIds = new Set(
-        globalSkills.map((skill) => skill.sId)
-      );
-      const invalidGlobalSkillId = [...globalSkillIds].find(
-        (globalSkillId) => !validGlobalSkillIds.has(globalSkillId)
-      );
+    const globalSkills =
+      globalSkillIds.size > 0
+        ? await this.fetchByIds(auth, [...globalSkillIds], {
+            withInstructions: false,
+            withTools: false,
+          })
+        : [];
+    const validGlobalSkillIds = new Set(globalSkills.map((skill) => skill.sId));
 
-      if (invalidGlobalSkillId) {
-        return new Err(
-          new Error(`Invalid skill reference ID: ${invalidGlobalSkillId}`)
-        );
-      }
-    }
-
-    return new Ok({
+    return {
       customSkillModelIds: [...customSkillModelIds],
-      globalSkillIds: [...globalSkillIds],
-    });
+      globalSkillIds: [...globalSkillIds].filter((globalSkillId) =>
+        validGlobalSkillIds.has(globalSkillId)
+      ),
+    };
   }
 
   /**
@@ -2691,17 +2679,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   ): Promise<void> {
     const workspace = auth.getNonNullableWorkspace();
     const parentSkillId = this.id;
-    const skillReferenceIdsRes =
-      await SkillResource.getValidatedSkillReferenceIds(auth, {
+    const { customSkillModelIds, globalSkillIds } =
+      await SkillResource.getValidSkillReferenceIds(auth, {
         referencedSkillIds,
         parentSkillId,
       });
-
-    if (skillReferenceIdsRes.isErr()) {
-      throw skillReferenceIdsRes.error;
-    }
-
-    const { customSkillModelIds, globalSkillIds } = skillReferenceIdsRes.value;
 
     const referencedSkills =
       customSkillModelIds.length > 0
