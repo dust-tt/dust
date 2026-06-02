@@ -10,7 +10,7 @@ use crate::api::api_state::APIState;
 use crate::api::data_sources::DataSourcesDocumentsUpdateParentsPayload;
 use crate::{
     data_sources::node::ProviderVisibility,
-    databases::table::{LocalTable, Row},
+    databases::table::{LocalTable, Row, TableUpsertError},
     project,
     search_filter::{Filterable, SearchFilter},
     search_stores::search_store::NodeItem,
@@ -542,12 +542,20 @@ pub async fn tables_csv_upsert(
                     )
                     .await
                 {
-                    Err(e) => error_response(
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        "internal_server_error",
-                        "Failed to upsert rows",
-                        Some(e),
-                    ),
+                    Err(e) => match e.downcast_ref::<TableUpsertError>() {
+                        Some(TableUpsertError::TooManyPendingUpserts { .. }) => error_response(
+                            StatusCode::TOO_MANY_REQUESTS,
+                            "too_many_pending_upserts",
+                            "Too many pending upserts for this table, retry later",
+                            Some(e),
+                        ),
+                        None => error_response(
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            "internal_server_error",
+                            "Failed to upsert rows",
+                            Some(e),
+                        ),
+                    },
                     Ok(_) => (
                         StatusCode::OK,
                         Json(APIResponse {
@@ -610,12 +618,20 @@ pub async fn tables_rows_upsert(
                     )
                     .await
                 {
-                    Err(e) => error_response(
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        "internal_server_error",
-                        "Failed to upsert rows",
-                        Some(e),
-                    ),
+                    Err(e) => match e.downcast_ref::<TableUpsertError>() {
+                        Some(TableUpsertError::TooManyPendingUpserts { .. }) => error_response(
+                            StatusCode::TOO_MANY_REQUESTS,
+                            "too_many_pending_upserts",
+                            "Too many pending upserts for this table, retry later",
+                            Some(e),
+                        ),
+                        None => error_response(
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            "internal_server_error",
+                            "Failed to upsert rows",
+                            Some(e),
+                        ),
+                    },
                     Ok(_) => (
                         StatusCode::OK,
                         Json(APIResponse {
