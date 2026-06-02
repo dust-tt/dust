@@ -33,6 +33,11 @@ interface EditorWithSkills {
   skills: SkillInfo[];
 }
 
+interface WorkspaceSkillEditorExport {
+  activeSkillCount: number;
+  editors: EditorWithSkills[];
+}
+
 type SkillEditorCsvRecord = Record<string, string | number>;
 
 const DUST_APP_URL = "https://app.dust.tt";
@@ -52,7 +57,7 @@ async function fetchSkillEditorsForWorkspace({
   workspace,
 }: {
   workspace: LightWorkspaceType;
-}): Promise<EditorWithSkills[]> {
+}): Promise<WorkspaceSkillEditorExport> {
   // The export must include skills in restricted spaces.
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId, {
     dangerouslyRequestAllGroups: true,
@@ -65,7 +70,7 @@ async function fetchSkillEditorsForWorkspace({
   });
 
   if (skills.length === 0) {
-    return [];
+    return { activeSkillCount: 0, editors: [] };
   }
 
   const editorsBySkillId = await SkillResource.batchListEditors(auth, skills);
@@ -106,29 +111,32 @@ async function fetchSkillEditorsForWorkspace({
     }
   }
 
-  return [...editorsByUserModelId.values()]
-    .map((editor) => ({
-      workspaceId: editor.workspaceId,
-      workspaceName: editor.workspaceName,
-      editorUserId: editor.editorUserId,
-      editorEmail: editor.editorEmail,
-      editorName: editor.editorName,
-      skills: [...editor.skillsById.values()].sort((left, right) => {
-        const nameComparison = compareStrings(left.name, right.name);
-        return nameComparison === 0
-          ? compareStrings(left.id, right.id)
-          : nameComparison;
+  return {
+    activeSkillCount: skills.length,
+    editors: [...editorsByUserModelId.values()]
+      .map((editor) => ({
+        workspaceId: editor.workspaceId,
+        workspaceName: editor.workspaceName,
+        editorUserId: editor.editorUserId,
+        editorEmail: editor.editorEmail,
+        editorName: editor.editorName,
+        skills: [...editor.skillsById.values()].sort((left, right) => {
+          const nameComparison = compareStrings(left.name, right.name);
+          return nameComparison === 0
+            ? compareStrings(left.id, right.id)
+            : nameComparison;
+        }),
+      }))
+      .sort((left, right) => {
+        const emailComparison = compareStrings(
+          left.editorEmail,
+          right.editorEmail
+        );
+        return emailComparison === 0
+          ? compareStrings(left.editorUserId, right.editorUserId)
+          : emailComparison;
       }),
-    }))
-    .sort((left, right) => {
-      const emailComparison = compareStrings(
-        left.editorEmail,
-        right.editorEmail
-      );
-      return emailComparison === 0
-        ? compareStrings(left.editorUserId, right.editorUserId)
-        : emailComparison;
-    });
+  };
 }
 
 function buildCsvRecords(editors: EditorWithSkills[]): SkillEditorCsvRecord[] {
@@ -167,21 +175,19 @@ makeScript(
 
     await runOnAllWorkspaces(
       async (workspace) => {
-        const workspaceEditors = await fetchSkillEditorsForWorkspace({
-          workspace,
-        });
+        const { activeSkillCount, editors: workspaceEditors } =
+          await fetchSkillEditorsForWorkspace({
+            workspace,
+          });
         editors.push(...workspaceEditors);
         processedWorkspaces += 1;
 
         if (outputFile) {
           logger.info(
             {
-              exportedEditorRows: workspaceEditors.length,
+              activeSkillCount,
               processedWorkspaces,
-              totalExportedEditorRows: editors.length,
               workspaceId: workspace.sId,
-              workspaceModelId: workspace.id,
-              workspaceName: workspace.name,
             },
             "Processed workspace for skill editor export"
           );
