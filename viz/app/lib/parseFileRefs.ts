@@ -6,12 +6,21 @@ export type FileRef =
   | { type: "path"; scopedPath: string };
 
 function isScopedPath(value: string): boolean {
-  return (
-    value.startsWith("conversation/") ||
-    value.startsWith("pod/") ||
-    // Legacy prefix, still used by older frame code.
-    value.startsWith("project/")
-  );
+  const slashIdx = value.indexOf("/");
+  if (slashIdx <= 0) {
+    return false;
+  }
+  const prefix = value.slice(0, slashIdx);
+
+  // Canonical, portable scopes are what frame code is instructed to use, e.g.
+  // `conversation-{conversationId}/report.csv` or `pod-{podId}/notes.md`. This mirrors the
+  // server contract in front's `parseRawVizScope`: the id after the prefix must be non-empty.
+  if (prefix.startsWith("conversation-") || prefix.startsWith("pod-")) {
+    return !prefix.endsWith("-");
+  }
+
+  // Legacy bare prefixes, still used by older frame code.
+  return prefix === "conversation" || prefix === "pod" || prefix === "project";
 }
 
 export function extractFileRefs(code: string): FileRef[] {
