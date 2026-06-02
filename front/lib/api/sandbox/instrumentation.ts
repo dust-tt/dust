@@ -79,14 +79,19 @@ export function traceSandboxStartupPhase<T>(
 // time for one ensureSandboxReady, split cold (fresh create path) vs warm
 // (wake/reuse). This is NOT covered by sandbox.tools.duration, whose timer
 // starts only once setup is already done and times the user command alone.
+//
+// Intentionally NOT tagged by workspace_id: the cold/warm split per region is
+// what matters for latency, and workspace_id would multiply cardinality on a
+// per-ensureSandboxReady distribution. Per-workspace drill-down stays available
+// via APM traces.
 export function recordSandboxStartupTotal(
   durationMs: number,
-  ctx: MetricContext & { cold: boolean },
+  { region, cold }: { region?: string; cold: boolean },
   status: "success" | "error"
 ): void {
   getStatsDClient().distribution("sandbox.startup.total.duration", durationMs, [
-    ...buildTags(ctx),
-    `cold:${ctx.cold}`,
+    `region:${region ?? regionConfig.getCurrentRegion()}`,
+    `cold:${cold}`,
     `status:${status}`,
   ]);
 }

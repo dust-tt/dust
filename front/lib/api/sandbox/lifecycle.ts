@@ -30,7 +30,6 @@ export async function ensureSandboxReady(
   auth: Authenticator,
   conversation: ConversationType
 ): Promise<Result<EnsureSandboxReadyResult, Error>> {
-  const workspaceId = auth.getNonNullableWorkspace().sId;
   const startMs = performance.now();
   // cold is unknown until ensureActive returns; if it errors first (rare) we
   // record the failure as a warm attempt.
@@ -118,10 +117,6 @@ export async function ensureSandboxReady(
       return new Ok({ sandbox, freshlyCreated });
     });
   } finally {
-    recordSandboxStartupTotal(
-      performance.now() - startMs,
-      { workspaceId, cold },
-      status
-    );
+    recordSandboxStartupTotal(performance.now() - startMs, { cold }, status);
   }
 }
