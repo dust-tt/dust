@@ -225,6 +225,21 @@ describe("buildSkillAggregationPrompt", () => {
     );
 
     expect(systemPrompt).toContain("edit_skill");
+    expect(systemPrompt).not.toContain("inline <tool>");
+    expect(systemPrompt).not.toContain('Do NOT include "toolEdits"');
+  });
+
+  it("system prompt mentions inline tool references when inline tools are enabled", () => {
+    const { systemPrompt } = buildSkillAggregationPrompt(
+      makeSkill(),
+      [makeInstructionSuggestion()],
+      { pending: [], rejected: [] },
+      { useInlineTools: true }
+    );
+
+    expect(systemPrompt).toContain("edit_skill");
+    expect(systemPrompt).toContain("inline <tool>");
+    expect(systemPrompt).toContain('Do NOT include "toolEdits"');
   });
 
   it("formats agent-facing description edits with the new content", () => {
@@ -286,7 +301,7 @@ describe("buildSkillAggregationPrompt", () => {
     expect(userMessage).not.toContain("<title>");
   });
 
-  it("includes skill configured tools in user message", () => {
+  it("includes skill tools as a separate user message block by default", () => {
     const skill = makeSkill({
       tools: [
         {
@@ -304,5 +319,26 @@ describe("buildSkillAggregationPrompt", () => {
     expect(userMessage).toContain("<tools>");
     expect(userMessage).toContain('name="web_search"');
     expect(userMessage).toContain('sId="tool-ws"');
+  });
+
+  it("does not include skill tools as a separate user message block when inline tools are enabled", () => {
+    const skill = makeSkill({
+      tools: [
+        {
+          sId: "tool-ws",
+          name: "web_search",
+        } as SkillType["tools"][number],
+      ],
+    });
+    const { userMessage } = buildSkillAggregationPrompt(
+      skill,
+      [makeInstructionSuggestion()],
+      { pending: [], rejected: [] },
+      { useInlineTools: true }
+    );
+
+    expect(userMessage).not.toContain("<tools>");
+    expect(userMessage).not.toContain('name="web_search"');
+    expect(userMessage).not.toContain('sId="tool-ws"');
   });
 });

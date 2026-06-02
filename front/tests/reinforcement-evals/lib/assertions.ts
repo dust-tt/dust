@@ -87,6 +87,18 @@ function getToolEdits(args: Record<string, unknown>): ToolEditItem[] {
   return edits.filter(isToolEditItem);
 }
 
+function instructionEditsContainToolReference(
+  instructionEdits: InstructionEditItem[],
+  toolId: string
+): boolean {
+  const escapedToolId = toolId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const toolReferenceRegex = new RegExp(
+    `<tool\\b[^>]*\\bid=["']${escapedToolId}["']`,
+    "i"
+  );
+  return instructionEdits.some((e) => toolReferenceRegex.test(e.content));
+}
+
 function getAgentFacingDescriptionEditContent(
   args: Record<string, unknown>
 ): string | undefined {
@@ -152,6 +164,66 @@ export function validateToolCallAssertion(
         return {
           success: false,
           error: `Expected an edit_skill call with toolEdit toolId "${assertion.toolId}" for skillId "${assertion.skillId}", but no such call was made`,
+        };
+      }
+      if (assertion.sourceSuggestionIds) {
+        const sourceResult = validateSourceSuggestionIds(
+          call,
+          assertion.sourceSuggestionIds
+        );
+        if (sourceResult) {
+          return sourceResult;
+        }
+      }
+      return { success: true };
+    }
+    case "editSkillWithInlineToolReference": {
+      const call = findEditSkillCall(toolCalls, (c) => {
+        const instructionEdits = getInstructionEdits(c.arguments);
+        return (
+          getSkillId(c.arguments) === assertion.skillId &&
+          instructionEdits.length > 0 &&
+          getToolEdits(c.arguments).length === 0 &&
+          instructionEditsContainToolReference(
+            instructionEdits,
+            assertion.toolId
+          )
+        );
+      });
+      if (!call) {
+        return {
+          success: false,
+          error: `Expected an edit_skill call with instructionEdits referencing inline tool "${assertion.toolId}" for skillId "${assertion.skillId}", and no toolEdits, but no such call was made`,
+        };
+      }
+      if (assertion.sourceSuggestionIds) {
+        const sourceResult = validateSourceSuggestionIds(
+          call,
+          assertion.sourceSuggestionIds
+        );
+        if (sourceResult) {
+          return sourceResult;
+        }
+      }
+      return { success: true };
+    }
+    case "editSkillWithoutInlineToolReference": {
+      const call = findEditSkillCall(toolCalls, (c) => {
+        const instructionEdits = getInstructionEdits(c.arguments);
+        return (
+          getSkillId(c.arguments) === assertion.skillId &&
+          instructionEdits.length > 0 &&
+          getToolEdits(c.arguments).length === 0 &&
+          !instructionEditsContainToolReference(
+            instructionEdits,
+            assertion.toolId
+          )
+        );
+      });
+      if (!call) {
+        return {
+          success: false,
+          error: `Expected an edit_skill call with instructionEdits removing inline tool "${assertion.toolId}" for skillId "${assertion.skillId}", and no toolEdits, but no such call was made`,
         };
       }
       if (assertion.sourceSuggestionIds) {

@@ -1,5 +1,8 @@
 import { buildReinforcedSkillsLLMParams } from "@app/lib/reinforcement/run_reinforced_analysis";
-import { TOOL_SCHEMAS } from "@app/lib/reinforcement/types";
+import {
+  getEditSkillToolSchema,
+  TOOL_SCHEMAS,
+} from "@app/lib/reinforcement/types";
 import { describe, expect, it } from "vitest";
 
 describe("buildReinforcedSkillsLLMParams", () => {
@@ -54,7 +57,13 @@ describe("buildReinforcedSkillsLLMParams", () => {
 describe("TOOL_SCHEMAS.edit_skill title validation", () => {
   const baseArgs = {
     skillId: "skl_abc",
-    toolEdits: [{ action: "add" as const, toolId: "tool_x" }],
+    instructionEdits: [
+      {
+        targetBlockId: "abc12345",
+        content: "<p>Updated.</p>",
+        type: "replace" as const,
+      },
+    ],
   };
 
   it("accepts a title of exactly 25 characters", () => {
@@ -76,7 +85,7 @@ describe("TOOL_SCHEMAS.edit_skill title validation", () => {
 });
 
 describe("TOOL_SCHEMAS.edit_skill agentFacingDescriptionEdit", () => {
-  it("accepts a description-only edit (no instruction or tool edits)", () => {
+  it("accepts a description-only edit (no instruction edits)", () => {
     const parsed = TOOL_SCHEMAS.edit_skill.safeParse({
       skillId: "skl_abc",
       agentFacingDescriptionEdit: {
@@ -86,7 +95,7 @@ describe("TOOL_SCHEMAS.edit_skill agentFacingDescriptionEdit", () => {
     expect(parsed.success).toBe(true);
   });
 
-  it("accepts a description edit alongside instruction/tool edits", () => {
+  it("accepts a description edit alongside instruction edits", () => {
     const parsed = TOOL_SCHEMAS.edit_skill.safeParse({
       skillId: "skl_abc",
       instructionEdits: [
@@ -96,7 +105,6 @@ describe("TOOL_SCHEMAS.edit_skill agentFacingDescriptionEdit", () => {
           type: "replace",
         },
       ],
-      toolEdits: [{ action: "add" as const, toolId: "tool_x" }],
       agentFacingDescriptionEdit: { content: "New description." },
     });
     expect(parsed.success).toBe(true);
@@ -108,6 +116,19 @@ describe("TOOL_SCHEMAS.edit_skill agentFacingDescriptionEdit", () => {
       agentFacingDescriptionEdit: { content: "" },
     });
     expect(parsed.success).toBe(false);
+  });
+});
+
+describe("getEditSkillToolSchema", () => {
+  it("accepts legacy tool edits when inline tools are disabled", () => {
+    const parsed = getEditSkillToolSchema({
+      useInlineTools: false,
+    }).safeParse({
+      skillId: "skl_abc",
+      toolEdits: [{ action: "add", toolId: "tool_x" }],
+    });
+
+    expect(parsed.success).toBe(true);
   });
 });
 
@@ -139,6 +160,35 @@ describe("buildReinforcedSkillsLLMParams edit_skill spec", () => {
     expect(editSkillSpec).toBeDefined();
     expect(JSON.stringify(editSkillSpec?.inputSchema)).toContain(
       "agentFacingDescriptionEdit"
+    );
+  });
+
+  it("exposes toolEdits by default when inline tools are disabled", () => {
+    const params = buildReinforcedSkillsLLMParams(
+      { systemPrompt: "System.", userMessage: "User." },
+      "reinforcement_analyze_conversation"
+    );
+    const editSkillSpec = params.specifications?.find(
+      (s) => s.name === "edit_skill"
+    );
+
+    expect(editSkillSpec).toBeDefined();
+    expect(JSON.stringify(editSkillSpec?.inputSchema)).toContain("toolEdits");
+  });
+
+  it("does not expose toolEdits when inline tools are enabled", () => {
+    const params = buildReinforcedSkillsLLMParams(
+      { systemPrompt: "System.", userMessage: "User." },
+      "reinforcement_analyze_conversation",
+      { useInlineTools: true }
+    );
+    const editSkillSpec = params.specifications?.find(
+      (s) => s.name === "edit_skill"
+    );
+
+    expect(editSkillSpec).toBeDefined();
+    expect(JSON.stringify(editSkillSpec?.inputSchema)).not.toContain(
+      "toolEdits"
     );
   });
 });

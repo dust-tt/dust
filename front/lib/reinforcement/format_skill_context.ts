@@ -3,9 +3,12 @@ import { stripToolTagPresentationAttributes } from "@app/lib/tools/format";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import { escapeXml } from "@app/types/shared/utils/string_utils";
 
-export function formatSkillContext(skill: SkillType): string {
+export function formatSkillContext(
+  skill: SkillType,
+  { useInlineTools = false }: { useInlineTools?: boolean } = {}
+): string {
   const toolsBlock =
-    skill.tools.length > 0
+    !useInlineTools && skill.tools.length > 0
       ? `<tools>${skill.tools
           .map(
             (t) =>
