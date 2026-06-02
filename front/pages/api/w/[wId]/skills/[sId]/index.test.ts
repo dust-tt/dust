@@ -18,7 +18,8 @@ import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { createMocks, type RequestMethod } from "node-mocks-http";
+import type { RequestMethod } from "node-mocks-http";
+import { createMocks } from "node-mocks-http";
 import type { WhereOptions } from "sequelize";
 import { describe, expect, it } from "vitest";
 
