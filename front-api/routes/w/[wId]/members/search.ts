@@ -1,7 +1,7 @@
 import { searchMembers } from "@app/lib/api/workspace";
 import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
 import { GROUP_KINDS } from "@app/types/groups";
-import type { UserTypeWithWorkspace } from "@app/types/user";
+import type { LightUserType, UserTypeWithWorkspace } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -23,6 +23,11 @@ const SearchMembersQuerySchema = z.object({
 });
 
 export type SearchMembersResponseBody = {
+  members: LightUserType[];
+  total: number;
+};
+
+type SearchMembersAdminResponseBody = {
   members: UserTypeWithWorkspace[];
   total: number;
 };
@@ -33,7 +38,11 @@ const app = workspaceApp();
 app.get(
   "/",
   validate("query", SearchMembersQuerySchema),
-  async (ctx): HandlerResult<SearchMembersResponseBody> => {
+  async (
+    ctx
+  ): HandlerResult<
+    SearchMembersResponseBody | SearchMembersAdminResponseBody
+  > => {
     const auth = ctx.get("auth");
     const query = ctx.req.valid("query");
 
@@ -59,7 +68,21 @@ app.get(
       query
     );
 
-    return ctx.json({ members, total });
+    // biome-ignore lint/plugin/noDirectRoleCheck: conditional response — non-admins get a light response, not a 403
+    if (auth.isAdmin()) {
+      return ctx.json({ members, total });
+    }
+
+    return ctx.json({
+      members: members.map((m) => ({
+        sId: m.sId,
+        firstName: m.firstName,
+        lastName: m.lastName,
+        fullName: m.fullName,
+        image: m.image,
+      })),
+      total,
+    });
   }
 );
 

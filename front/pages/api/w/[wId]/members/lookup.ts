@@ -17,13 +17,26 @@ const MembersLookupQuerySchema = z.object({
   ids: z.union([z.coerce.number(), z.array(z.coerce.number())]),
 });
 
+export type LightLookupUserType = Pick<
+  UserType,
+  "sId" | "id" | "firstName" | "lastName" | "fullName" | "image"
+>;
+
 export type MembersLookupResponseBody = {
+  users: LightLookupUserType[];
+};
+
+export type MembersLookupAdminResponseBody = {
   users: UserType[];
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<MembersLookupResponseBody>>,
+  res: NextApiResponse<
+    WithAPIErrorResponse<
+      MembersLookupResponseBody | MembersLookupAdminResponseBody
+    >
+  >,
   auth: Authenticator
 ): Promise<void> {
   switch (req.method) {
@@ -73,8 +86,21 @@ async function handler(
       const validUserIds = new Set(memberships.map((m) => m.userId));
       const filteredUsers = users.filter((user) => validUserIds.has(user.id));
 
+      if (auth.isAdmin()) {
+        return res.status(200).json({
+          users: filteredUsers.map((user) => user.toJSON()),
+        });
+      }
+
       return res.status(200).json({
-        users: filteredUsers.map((user) => user.toJSON()),
+        users: filteredUsers.map((user) => ({
+          sId: user.sId,
+          id: user.id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          fullName: user.fullName(),
+          image: user.imageUrl,
+        })),
       });
     }
 

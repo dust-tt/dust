@@ -1,4 +1,5 @@
 import { ConfirmContext } from "@app/components/Confirm";
+import type { SearchMemberType } from "@app/components/members/MemberSelectionTable";
 import { ConfirmDeleteSpaceDialog } from "@app/components/spaces/ConfirmDeleteSpaceDialog";
 import { RestrictedAccessBody } from "@app/components/spaces/RestrictedAccessBody";
 import { RestrictedAccessHeader } from "@app/components/spaces/RestrictedAccessHeader";
@@ -55,7 +56,9 @@ export function CreateOrEditSpaceModal({
 }: CreateOrEditSpaceModalProps) {
   const confirm = React.useContext(ConfirmContext);
   const [spaceName, setSpaceName] = useState<string>(space?.name ?? "");
-  const [selectedMembers, setSelectedMembers] = useState<UserType[]>([]);
+  const [selectedMembers, setSelectedMembers] = useState<SearchMemberType[]>(
+    []
+  );
   const [selectedGroups, setSelectedGroups] = useState<GroupType[]>([]);
 
   const [isSaving, setIsSaving] = useState(false);

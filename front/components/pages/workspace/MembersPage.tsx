@@ -99,7 +99,7 @@ function WorkspaceMembersList({
   const [selectedMember, setSelectedMember] =
     useState<UserTypeWithWorkspace | null>(null);
 
-  const membersData = useSearchMembers({
+  const membersData = useSearchMembers<UserTypeWithWorkspace>({
     workspaceId: owner.sId,
     searchTerm,
     pageIndex: pagination.pageIndex,

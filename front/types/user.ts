@@ -107,6 +107,15 @@ export type UserTypeWithWorkspace = UserType & {
 };
 
 /**
+ * Minimal user representation returned by user-listing endpoints for non-admin
+ * callers. Admin callers receive the full `UserType` or `UserTypeWithWorkspace`.
+ */
+export type LightUserType = Pick<
+  UserType,
+  "sId" | "firstName" | "lastName" | "fullName" | "image"
+>;
+
+/**
  * @swaggerschema PrivateUser (swagger_private_schemas.ts)
  */
 export type UserTypeWithWorkspaces = UserType & {
