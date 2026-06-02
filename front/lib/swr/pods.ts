@@ -117,9 +117,9 @@ export function usePodFiles({
 
   const { data, error, mutate, mutateRegardlessOfQueryParams } =
     useSWRWithDefaults(
-      disabled || !podId ? null : `/api/w/${owner.sId}/spaces/${podId}/files`,
+      !podId ? null : `/api/w/${owner.sId}/spaces/${podId}/files`,
       podFilesFetcher,
-      { keepPreviousData: true }
+      { disabled, keepPreviousData: true }
     );
 
   const refreshPodFiles = useCallback(async () => {

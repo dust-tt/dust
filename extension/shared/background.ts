@@ -143,11 +143,14 @@ const shouldDisableContextMenuForDomain = async (
 };
 
 const toggleContextMenus = (isDisabled: boolean) => {
-  ["add_tab_content", "add_tab_screenshot", "add_selection"].forEach(
-    (menuId) => {
-      chrome.contextMenus.update(menuId, { enabled: !isDisabled });
-    }
-  );
+  [
+    "add_tab_content",
+    "add_tab_screenshot",
+    "add_selection",
+    "save_page_to_pod",
+  ].forEach((menuId) => {
+    chrome.contextMenus.update(menuId, { enabled: !isDisabled });
+  });
 };
 
 /**
@@ -229,6 +232,12 @@ export const getActionHandler = (menuItemId: string | number) => {
           includeContent: true,
           includeCapture: false,
           includeSelectionOnly: true,
+        });
+      };
+    case "save_page_to_pod":
+      return () => {
+        void chrome.runtime.sendMessage({
+          type: "EXT_SAVE_TO_POD",
         });
       };
   }
