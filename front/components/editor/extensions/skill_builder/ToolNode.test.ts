@@ -37,28 +37,6 @@ function toolNodes(editor: Editor) {
   return nodes;
 }
 
-function getToolNodePosition(editor: Editor) {
-  const toolNodePositions: { nodeSize: number; position: number }[] = [];
-  editor.state.doc.descendants((node, position) => {
-    if (node.type.name === "toolNode") {
-      toolNodePositions.push({
-        nodeSize: node.nodeSize,
-        position,
-      });
-      return false;
-    }
-
-    return true;
-  });
-
-  const toolNodePosition = toolNodePositions[0];
-  if (!toolNodePosition) {
-    throw new Error("Tool node not found");
-  }
-
-  return toolNodePosition;
-}
-
 describe("ToolNode tag helpers", () => {
   it("serializes and parses tool tags with XML escaping", () => {
     const attrs = {
@@ -225,27 +203,5 @@ describe("ToolNode", () => {
       },
     ]);
     expect(editor.getText()).toBe("/GitHub Search ");
-  });
-
-  it("removes a tool node with backspace", () => {
-    editor.commands.insertToolNode(TOOL_ATTRS);
-    const toolNodePosition = getToolNodePosition(editor);
-
-    editor.commands.setTextSelection(
-      toolNodePosition.position + toolNodePosition.nodeSize
-    );
-    editor.commands.keyboardShortcut("Backspace");
-
-    expect(toolNodes(editor)).toEqual([]);
-  });
-
-  it("removes a tool node with delete", () => {
-    editor.commands.insertToolNode(TOOL_ATTRS);
-    const toolNodePosition = getToolNodePosition(editor);
-
-    editor.commands.setTextSelection(toolNodePosition.position);
-    editor.commands.keyboardShortcut("Delete");
-
-    expect(toolNodes(editor)).toEqual([]);
   });
 });

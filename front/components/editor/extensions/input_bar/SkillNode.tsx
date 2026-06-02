@@ -1,7 +1,3 @@
-import {
-  deleteInlineNodeAfterCursor,
-  deleteInlineNodeBeforeCursor,
-} from "@app/components/editor/extensions/shared/deleteInlineNodeAroundCursor";
 import { SkillNodeComponent } from "@app/components/editor/input_bar/SkillNodeComponent";
 import {
   parseSkillReferenceTag,
@@ -109,15 +105,6 @@ export const SkillNode = Node.create({
             },
             { type: "text", text: " " },
           ]),
-    };
-  },
-
-  addKeyboardShortcuts() {
-    return {
-      Backspace: ({ editor }) =>
-        deleteInlineNodeBeforeCursor(editor, SKILL_NODE_TYPE),
-      Delete: ({ editor }) =>
-        deleteInlineNodeAfterCursor(editor, SKILL_NODE_TYPE),
     };
   },
 
