@@ -7,7 +7,7 @@ export const SELECT_SKILL_SLASH_COMMAND_ACTION = "select-skill";
 
 export type SlashCommandSkillSuggestion = Pick<
   SkillWithoutInstructionsAndToolsType,
-  "icon" | "name" | "sId" | "userFacingDescription"
+  "icon" | "name" | "requestedSpaceIds" | "sId" | "userFacingDescription"
 >;
 
 export function matchesSlashCommandQuery({
@@ -75,11 +75,7 @@ export function getSkillSlashCommandItem(
   return {
     action: SELECT_SKILL_SLASH_COMMAND_ACTION,
     data: {
-      skill: {
-        icon: skill.icon,
-        id: skill.sId,
-        name: skill.name,
-      },
+      skill,
     },
     description: skill.userFacingDescription,
     icon: getSkillAvatarIcon(skill.icon),

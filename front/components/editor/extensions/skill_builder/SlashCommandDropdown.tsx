@@ -1,3 +1,4 @@
+import type { SlashCommandSkillSuggestion } from "@app/components/editor/extensions/shared/SlashCommandSkillItems";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {
   cn,
@@ -41,11 +42,7 @@ const EMPTY_SCROLL_FADE_STATE: ScrollFadeState = {
 export interface SlashCommand {
   action: string;
   data?: {
-    skill?: {
-      icon?: string | null;
-      id: string;
-      name: string;
-    };
+    skill?: SlashCommandSkillSuggestion;
     tool?: {
       icon: string | null;
       id: string;
