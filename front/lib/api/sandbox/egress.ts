@@ -496,31 +496,32 @@ export async function setupEgressForwarder(
     auth.getNonNullableWorkspace().sId
   );
 
-  // The token, secrets, and manifest each land in a distinct file with no
-  // dependency on one another, so write them concurrently to collapse three
-  // sandbox round-trips into roughly one. The forwarder start below reads the
-  // token and secrets files, so it waits for all three writes to finish.
-  //
-  // Secrets are written here, before the kill on the restart path, so a write
-  // failure leaves any existing forwarder running rather than taking it down
-  // with nothing to replace it.
-  const [tokenWriteResult, secretsWriteResult, manifestWriteResult] =
-    await Promise.all([
-      traceSandboxStartupPhase("egress.write_token", () =>
-        writeEgressTokenFile(auth, sandbox, token)
-      ),
-      traceSandboxStartupPhase("egress.write_secrets", () =>
-        writeEgressSecretsFile(auth, sandbox)
-      ),
-      traceSandboxStartupPhase("egress.write_manifest", () =>
-        writeSandboxEnvManifestFile(auth, sandbox)
-      ),
-    ]);
-  for (const writeResult of [
-    tokenWriteResult,
-    secretsWriteResult,
-    manifestWriteResult,
-  ]) {
+  // The token write gates the rest: in the original sequential flow a token
+  // failure returned before any secrets/manifest hit disk, so we keep that
+  // contract by awaiting it first. This matters on the restart path, where a
+  // token failure must leave the existing forwarder's secrets/manifest files
+  // untouched rather than rewriting them under a still-running forwarder while
+  // setup returns Err.
+  const tokenWriteResult = await traceSandboxStartupPhase(
+    "egress.write_token",
+    () => writeEgressTokenFile(auth, sandbox, token)
+  );
+  if (tokenWriteResult.isErr()) {
+    return tokenWriteResult;
+  }
+
+  // Secrets and manifest are independent files with no ordering between them,
+  // so write them concurrently once the token is in place. The forwarder start
+  // below reads both, so it waits for these writes to finish.
+  const [secretsWriteResult, manifestWriteResult] = await Promise.all([
+    traceSandboxStartupPhase("egress.write_secrets", () =>
+      writeEgressSecretsFile(auth, sandbox)
+    ),
+    traceSandboxStartupPhase("egress.write_manifest", () =>
+      writeSandboxEnvManifestFile(auth, sandbox)
+    ),
+  ]);
+  for (const writeResult of [secretsWriteResult, manifestWriteResult]) {
     if (writeResult.isErr()) {
       return writeResult;
     }

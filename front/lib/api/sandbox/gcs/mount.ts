@@ -161,19 +161,28 @@ export async function mountConversationFiles(
         { timeoutMs: TOKEN_SERVER_EXEC_TIMEOUT_MS }
       )
   );
-  if (tokenServerResult.isErr() || tokenServerResult.value.exitCode !== 0) {
+  // A provider-level Err (sandbox-not-found, command transport failure,
+  // timeout) is a different failure class than "server didn't come up", so
+  // return it as-is to keep the concrete cause at the caller boundary rather
+  // than flattening it into the generic readiness error.
+  if (tokenServerResult.isErr()) {
+    childLogger.error(
+      { err: tokenServerResult.error },
+      "GCS mount: token server exec failed"
+    );
+    return tokenServerResult;
+  }
+  if (tokenServerResult.value.exitCode !== 0) {
     const msg = "Token server not ready in time";
     // Surface the poll-loop's own output (the nohup'd server logs to
     // /tmp/server.log inside the sandbox, but the exec's stdout/stderr is the
     // only signal we get back here) so a broken token-server.sh isn't an opaque
     // timeout.
     childLogger.error(
-      tokenServerResult.isErr()
-        ? { err: tokenServerResult.error }
-        : {
-            stdout: tokenServerResult.value.stdout,
-            stderr: tokenServerResult.value.stderr,
-          },
+      {
+        stdout: tokenServerResult.value.stdout,
+        stderr: tokenServerResult.value.stderr,
+      },
       msg
     );
     return new Err(new Error(msg));
