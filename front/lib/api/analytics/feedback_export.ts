@@ -30,7 +30,6 @@ export interface FeedbackExportRow {
   createdAt: string;
   assistantId: string;
   assistantName: string;
-  conversationId: string;
   conversationUrl: string;
   userId: string;
   userEmail: string;
@@ -44,7 +43,6 @@ export const FEEDBACK_EXPORT_HEADERS: (keyof FeedbackExportRow)[] = [
   "createdAt",
   "assistantId",
   "assistantName",
-  "conversationId",
   "conversationUrl",
   "userId",
   "userEmail",
@@ -142,9 +140,9 @@ export async function fetchFeedbackExportRows({
   ];
 
   const [agentMeta, userEmails, feedbackContents] = await Promise.all([
-    fetchAgentMetadata(uniqueAgentIds, owner.id),
+    fetchAgentMetadata(uniqueAgentIds, owner),
     fetchUserEmails(uniqueUserIds),
-    fetchFeedbackContents(uniqueFeedbackIds, owner.id),
+    fetchFeedbackContents(uniqueFeedbackIds, owner),
   ]);
 
   const rows: FeedbackExportRow[] = [];
@@ -167,7 +165,6 @@ export async function fetchFeedbackExportRows({
           .format("YYYY-MM-DD HH:mm:ss"),
         assistantId: doc.agent_id,
         assistantName: agent?.name ?? doc.agent_id,
-        conversationId: doc.conversation_id,
         conversationUrl: feedback.is_conversation_shared
           ? getConversationRoute(
               owner.sId,

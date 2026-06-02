@@ -1,6 +1,6 @@
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
 import { UserResource } from "@app/lib/resources/user_resource";
-import type { ModelId } from "@app/types/shared/model_id";
+import type { LightWorkspaceType } from "@app/types/user";
 import { QueryTypes } from "sequelize";
 
 interface AgentMetaRow {
@@ -11,7 +11,7 @@ interface AgentMetaRow {
 
 export async function fetchAgentMetadata(
   agentIds: string[],
-  workspaceModelId: ModelId
+  workspace: LightWorkspaceType
 ): Promise<Map<string, { name: string; settings: string }>> {
   if (agentIds.length === 0) {
     return new Map();
@@ -36,7 +36,7 @@ export async function fetchAgentMetadata(
     `,
     {
       type: QueryTypes.SELECT,
-      replacements: { wId: workspaceModelId, agentIds },
+      replacements: { wId: workspace.id, agentIds },
     }
   );
 
@@ -65,7 +65,7 @@ interface FeedbackContentRow {
 // index; we read it from the DB at export time, keyed by the feedback ModelId.
 export async function fetchFeedbackContents(
   feedbackModelIds: number[],
-  workspaceModelId: ModelId
+  workspace: LightWorkspaceType
 ): Promise<Map<number, string>> {
   if (feedbackModelIds.length === 0) {
     return new Map();
@@ -83,7 +83,7 @@ export async function fetchFeedbackContents(
     `,
     {
       type: QueryTypes.SELECT,
-      replacements: { wId: workspaceModelId, feedbackIds: feedbackModelIds },
+      replacements: { wId: workspace.id, feedbackIds: feedbackModelIds },
     }
   );
 

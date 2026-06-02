@@ -590,8 +590,7 @@ async function exportMessages({
   owner: WorkspaceType;
 }): Promise<Result<ExportTableData, Error>> {
   const result = await fetchMessageExportRows({
-    workspaceId: owner.sId,
-    workspaceModelId: owner.id,
+    owner,
     startDate,
     endDate,
     timezone,

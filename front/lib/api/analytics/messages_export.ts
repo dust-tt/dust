@@ -4,9 +4,9 @@ import {
 } from "@app/lib/api/analytics/enrichment";
 import type { ElasticsearchBaseDocument } from "@app/lib/api/elasticsearch";
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
-import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import type { WorkspaceType } from "@app/types/user";
 import type { estypes } from "@elastic/elasticsearch";
 import moment from "moment-timezone";
 
@@ -82,14 +82,12 @@ async function fetchAllMessageDocuments(
 }
 
 export async function fetchMessageExportRows({
-  workspaceId,
-  workspaceModelId,
+  owner,
   startDate,
   endDate,
   timezone,
 }: {
-  workspaceId: string;
-  workspaceModelId: ModelId;
+  owner: WorkspaceType;
   startDate: string;
   endDate: string;
   timezone: string;
@@ -97,7 +95,7 @@ export async function fetchMessageExportRows({
   const query: estypes.QueryDslQueryContainer = {
     bool: {
       filter: [
-        { term: { workspace_id: workspaceId } },
+        { term: { workspace_id: owner.sId } },
         { term: { status: "succeeded" } },
         { range: { timestamp: { gte: startDate, lte: endDate } } },
       ],
@@ -119,7 +117,7 @@ export async function fetchMessageExportRows({
   ];
 
   const [agentMeta, userEmails] = await Promise.all([
-    fetchAgentMetadata(uniqueAgentIds, workspaceModelId),
+    fetchAgentMetadata(uniqueAgentIds, owner),
     fetchUserEmails(uniqueUserIds),
   ]);
 

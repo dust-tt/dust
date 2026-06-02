@@ -107,7 +107,6 @@ vi.mock("@app/lib/api/analytics/feedback_export", async () => ({
     "createdAt",
     "assistantId",
     "assistantName",
-    "conversationId",
     "conversationUrl",
     "userId",
     "userEmail",
@@ -123,7 +122,6 @@ vi.mock("@app/lib/api/analytics/feedback_export", async () => ({
           createdAt: "2024-06-01 10:00:00",
           assistantId: "agent-1",
           assistantName: "TestAgent",
-          conversationId: "conv-1",
           conversationUrl: "https://dust.tt/w/ws-1/conversation/conv-1",
           userId: "user-1",
           userEmail: "alice@example.com",
@@ -361,7 +359,7 @@ describe("GET /api/v1/w/[wId]/analytics/export", () => {
     expect(res._getStatusCode()).toBe(200);
     const csv = res._getData();
     expect(csv).toContain(
-      "feedbackId,createdAt,assistantId,assistantName,conversationId,conversationUrl,userId,userEmail,thumb,content,dismissed"
+      "feedbackId,createdAt,assistantId,assistantName,conversationUrl,userId,userEmail,thumb,content,dismissed"
     );
     expect(csv).toContain("great answer");
     expect(csv).toContain("alice@example.com");
@@ -382,7 +380,6 @@ describe("GET /api/v1/w/[wId]/analytics/export", () => {
       createdAt: "2024-06-01 10:00:00",
       assistantId: "agent-1",
       assistantName: "TestAgent",
-      conversationId: "conv-1",
       conversationUrl: "https://dust.tt/w/ws-1/conversation/conv-1",
       userId: "user-1",
       userEmail: "alice@example.com",
