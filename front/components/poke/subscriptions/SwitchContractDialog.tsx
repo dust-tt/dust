@@ -25,6 +25,7 @@ import { isCreditPricedPlan } from "@app/types/plan";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
+  Checkbox,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -86,15 +87,18 @@ const SwitchContractFormSchema = z.object({
     .number()
     .min(0, "Invoice amount must be zero or more")
     .optional(),
-  // Per-seat-type settings, keyed by seat type. Only the seats of the selected
-  // package are shown/submitted. `minSeats` is the billing floor (0 = none);
-  // `rate` is the per-seat rate, prefilled from the package override default;
-  // `commitmentPrice` (optional) creates a prepaid commit of `minSeats * rate`
-  // invoiced at that price.
+  // Per-seat-type settings, keyed by seat type. Every seat type the selected
+  // package knows about is shown; only `selected` ones are submitted. `selected`
+  // is pre-checked for the seats the package entitles by default, and can be
+  // toggled to opt into entitling additional seats. `minSeats` is the billing
+  // floor (0 = none); `rate` is the per-seat rate, prefilled from the package
+  // override default; `commitmentPrice` (optional) creates a prepaid commit of
+  // `minSeats * rate` invoiced at that price.
   seats: z
     .record(
       z.string(),
       z.object({
+        selected: z.boolean().default(false),
         minSeats: z.number().int().min(0),
         rate: z.number().min(0),
         commitmentPrice: z.number().min(0).optional(),
@@ -241,19 +245,24 @@ export default function SwitchContractDialog({
     [selectedPackage]
   );
 
-  // Reset the seat settings to the seats of the newly selected package: min
-  // seats defaults to 0, the rate is prefilled from the package override
-  // default. The default is in Metronome's fiat unit (cents for USD, whole
-  // units for EUR); the dialog works in major units (dollars/euros), so convert
-  // for display. Avoids stale values leaking across package selections.
+  // Reset the seat settings to the seats of the newly selected package: seats
+  // the package entitles are pre-selected, the rest are shown unchecked for the
+  // operator to opt into. Min seats defaults to 0, the rate is prefilled from
+  // the package override default. The default is in Metronome's fiat unit (cents
+  // for USD, whole units for EUR); the dialog works in major units
+  // (dollars/euros), so convert for display. Avoids stale values leaking across
+  // package selections.
   useEffect(() => {
-    const next: Record<string, { minSeats: number; rate: number }> = {};
+    const next: Record<
+      string,
+      { selected: boolean; minSeats: number; rate: number }
+    > = {};
     for (const seat of selectedSeats) {
       const rate =
         seat.defaultRate != null && resolvedCurrency
           ? amountCents(seat.defaultRate, resolvedCurrency) / 100
           : (seat.defaultRate ?? 0);
-      next[seat.seatType] = { minSeats: 0, rate };
+      next[seat.seatType] = { selected: seat.entitled, minSeats: 0, rate };
     }
     form.setValue("seats", next);
   }, [selectedSeats, form, resolvedCurrency]);
@@ -356,6 +365,7 @@ export default function SwitchContractDialog({
 
   const showInitialCredits = form.watch("showInitialCredits");
   const stripeCollectionMethod = form.watch("stripeCollectionMethod");
+  const watchedSeats = form.watch("seats");
 
   const onSubmit = useCallback(
     (values: SwitchContractFormValues) => {
@@ -411,11 +421,15 @@ export default function SwitchContractDialog({
           cleaned.startingAt = new Date(values.startingAt).toISOString();
         }
       }
-      // Seats: only the selected package's seat types. Include a seat when it
-      // has a positive floor and/or a positive commitment price.
+      // Seats: every seat the package knows about, each carrying its `selected`
+      // state, so the server can entitle checked seats and disable unchecked
+      // ones the package would otherwise sell. Entitled-by-default seats are
+      // pre-checked. A checked seat the package does not entitle requires a
+      // positive rate (except the free seat, which may be entitled at rate 0).
       const seats: SwitchContractBodyInput["seats"] = [];
-      for (const { seatType, defaultRate } of selectedSeats) {
+      for (const { seatType, entitled } of selectedSeats) {
         const entry = values.seats?.[seatType];
+        const selected = entry?.selected ?? false;
         const minSeats = Number.isFinite(entry?.minSeats)
           ? (entry?.minSeats ?? 0)
           : 0;
@@ -426,17 +440,14 @@ export default function SwitchContractDialog({
           entry.commitmentPrice > 0
             ? entry.commitmentPrice
             : undefined;
-        // Include a seat when it has a floor, a commitment, or a changed rate
-        // (the rate override only fires when it differs from the default). The
-        // form rate is in major units; convert the native default to compare.
-        const defaultRateMajor =
-          defaultRate != null && resolvedCurrency
-            ? amountCents(defaultRate, resolvedCurrency) / 100
-            : (defaultRate ?? 0);
-        const rateChanged = rate > 0 && rate !== defaultRateMajor;
-        if (minSeats > 0 || commitmentPrice !== undefined || rateChanged) {
-          seats.push({ seatType, minSeats, rate, commitmentPrice });
+        if (selected && !entitled && seatType !== "free" && !(rate > 0)) {
+          setError(
+            `Seat "${seatType}" is not entitled by the selected package and ` +
+              "requires a rate greater than 0 to entitle it."
+          );
+          return;
         }
+        seats.push({ seatType, selected, minSeats, rate, commitmentPrice });
       }
       if (seats.length > 0) {
         cleaned.seats = seats;
@@ -478,7 +489,6 @@ export default function SwitchContractDialog({
       selectedTier,
       selectedSeats,
       retroactiveFirstOfMonthISO,
-      resolvedCurrency,
     ]
   );
 
@@ -650,48 +660,77 @@ export default function SwitchContractDialog({
                         ? `(rate & price in ${resolvedCurrency.toUpperCase()})`
                         : ""}
                     </Label>
-                    {selectedSeats.map(({ seatType }) => (
-                      <div key={seatType} className="flex items-end gap-3">
-                        <div className="w-24 shrink-0 pb-2 font-mono text-sm">
-                          {seatType}
+                    <div className="text-xs text-muted-foreground">
+                      Checked seats are entitled on the new contract. Seats the
+                      package does not entitle by default are unchecked — check
+                      one to entitle it (a non-zero rate is required, except for
+                      the free seat).
+                    </div>
+                    {selectedSeats.map(({ seatType, entitled }) => {
+                      const isSelected =
+                        watchedSeats?.[seatType]?.selected ?? false;
+                      return (
+                        <div key={seatType} className="flex items-end gap-3">
+                          <div className="flex w-32 shrink-0 items-center gap-2 pb-2">
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={(checked) =>
+                                form.setValue(
+                                  `seats.${seatType}.selected`,
+                                  checked === true
+                                )
+                              }
+                            />
+                            <span className="font-mono text-sm">
+                              {seatType}
+                              {!entitled && (
+                                <span className="ml-1 text-muted-foreground">
+                                  *
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                          <div className="flex-1">
+                            <InputField
+                              control={form.control}
+                              name={`seats.${seatType}.minSeats`}
+                              title="Min seats"
+                              type="number"
+                              placeholder="0"
+                              disabled={!isSelected}
+                            />
+                          </div>
+                          <div className="flex-1">
+                            <InputField
+                              control={form.control}
+                              name={`seats.${seatType}.rate`}
+                              title={
+                                resolvedCurrency
+                                  ? `Seat rate (${resolvedCurrency.toUpperCase()})`
+                                  : "Seat rate"
+                              }
+                              type="number"
+                              placeholder="0"
+                              disabled={!isSelected}
+                            />
+                          </div>
+                          <div className="flex-1">
+                            <InputField
+                              control={form.control}
+                              name={`seats.${seatType}.commitmentPrice`}
+                              title={
+                                resolvedCurrency
+                                  ? `Commitment price (${resolvedCurrency.toUpperCase()})`
+                                  : "Commitment price"
+                              }
+                              type="number"
+                              placeholder="optional"
+                              disabled={!isSelected}
+                            />
+                          </div>
                         </div>
-                        <div className="flex-1">
-                          <InputField
-                            control={form.control}
-                            name={`seats.${seatType}.minSeats`}
-                            title="Min seats"
-                            type="number"
-                            placeholder="0"
-                          />
-                        </div>
-                        <div className="flex-1">
-                          <InputField
-                            control={form.control}
-                            name={`seats.${seatType}.rate`}
-                            title={
-                              resolvedCurrency
-                                ? `Seat rate (${resolvedCurrency.toUpperCase()})`
-                                : "Seat rate"
-                            }
-                            type="number"
-                            placeholder="0"
-                          />
-                        </div>
-                        <div className="flex-1">
-                          <InputField
-                            control={form.control}
-                            name={`seats.${seatType}.commitmentPrice`}
-                            title={
-                              resolvedCurrency
-                                ? `Commitment price (${resolvedCurrency.toUpperCase()})`
-                                : "Commitment price"
-                            }
-                            type="number"
-                            placeholder="optional"
-                          />
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
                 {trimmedStripeCustomerId && resolvedCurrency && (

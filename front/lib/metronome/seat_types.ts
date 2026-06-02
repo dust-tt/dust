@@ -206,29 +206,58 @@ export function getDefaultSeatTypeForContract(
 }
 
 /**
- * Seat product IDs the contract actually *sells*, i.e. flipped on with an
- * `entitled: true` override. Non-legacy rate cards carry every seat product at
+ * Seat product IDs the contract actually *sells*, i.e. whose effective
+ * entitlement is `true`. Non-legacy rate cards carry every seat product at
  * `entitled: false`; each package/contract entitles only the seats it sells, so
  * a bare subscription does NOT mean the seat is billable — the entitlement
  * override does.
+ *
+ * A product can carry several overrides (e.g. the package entitles a seat, then
+ * an operator switching the contract disables it). We resolve the EFFECTIVE
+ * entitlement per product as the value of the override with the latest
+ * `starting_at`; on a tie, a disabling (`entitled: false`) override wins, so an
+ * operator's explicit opt-out beats a same-moment package entitlement.
+ * Overrides without a `starting_at` (e.g. baseline package entitlements) sort
+ * earliest, so any timestamped override supersedes them.
  */
 function getEntitledSeatProductIds(
   contract: CachedContract,
   productSeatTypes: Map<string, MembershipSeatType>
 ): Set<string> {
-  const ids = new Set<string>();
+  // productId → { startMs, entitled } of the currently-winning override.
+  const effective = new Map<string, { startMs: number; entitled: boolean }>();
   for (const override of contract.overrides ?? []) {
-    if (override.entitled !== true) {
+    if (typeof override.entitled !== "boolean") {
       continue;
     }
+    const entitled = override.entitled;
+    const startMs = override.starting_at
+      ? Date.parse(override.starting_at)
+      : Number.NEGATIVE_INFINITY;
     const productIds = [
       override.product?.id,
       ...(override.override_specifiers ?? []).map((s) => s.product_id),
     ];
     for (const productId of productIds) {
-      if (productId && productSeatTypes.has(productId)) {
-        ids.add(productId);
+      if (!productId || !productSeatTypes.has(productId)) {
+        continue;
       }
+      const current = effective.get(productId);
+      // Later override wins; on an equal timestamp a disable beats an entitle.
+      if (
+        !current ||
+        startMs > current.startMs ||
+        (startMs === current.startMs && current.entitled && !entitled)
+      ) {
+        effective.set(productId, { startMs, entitled });
+      }
+    }
+  }
+
+  const ids = new Set<string>();
+  for (const [productId, { entitled }] of effective) {
+    if (entitled) {
+      ids.add(productId);
     }
   }
   return ids;
