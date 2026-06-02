@@ -125,9 +125,6 @@ async function handler(
         const childSkills = includeChildSkills
           ? await skill.fetchChildSkills(auth)
           : [];
-        const serializedExtendedSkill = extendedSkill
-          ? extendedSkill.toJSON(auth)
-          : null;
 
         const skillWithRelations: SkillWithRelationsType = {
           ...serializedSkill,
@@ -135,7 +132,7 @@ async function handler(
             usage,
             editors: editors ? editors.map((e) => e.toJSON()) : null,
             editedByUser: editedByUser ? editedByUser.toJSON() : null,
-            extendedSkill: serializedExtendedSkill,
+            extendedSkill: extendedSkill ? extendedSkill.toJSON(auth) : null,
             ...(includeChildSkills
               ? {
                   childSkills: childSkills.map((childSkill) => {
@@ -414,10 +411,8 @@ async function handler(
 
       await pruneOutdatedSkillEditSuggestions(auth, skill);
 
-      const serializedSkill = skill.toJSON(auth);
-
       return res.status(200).json({
-        skill: serializedSkill,
+        skill: skill.toJSON(auth),
       });
     }
 

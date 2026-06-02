@@ -150,9 +150,6 @@ app.get(
       const childSkills = includeChildSkills
         ? await skill.fetchChildSkills(auth)
         : [];
-      const serializedExtendedSkill = extendedSkill
-        ? extendedSkill.toJSON(auth)
-        : null;
 
       const skillWithRelations: SkillWithRelationsType = {
         ...serializedSkill,
@@ -160,7 +157,7 @@ app.get(
           usage,
           editors: editors ? editors.map((e) => e.toJSON()) : null,
           editedByUser: editedByUser ? editedByUser.toJSON() : null,
-          extendedSkill: serializedExtendedSkill,
+          extendedSkill: extendedSkill ? extendedSkill.toJSON(auth) : null,
           ...(includeChildSkills
             ? {
                 childSkills: childSkills.map((childSkill) => {
@@ -436,9 +433,7 @@ app.patch(
 
     await pruneOutdatedSkillEditSuggestions(auth, skill);
 
-    return ctx.json({
-      skill: skill.toJSON(auth),
-    });
+    return ctx.json({ skill: skill.toJSON(auth) });
   }
 );
 
