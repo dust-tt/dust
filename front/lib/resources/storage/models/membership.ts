@@ -66,7 +66,7 @@ MembershipModel.init(
     creditState: {
       type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: "normal",
+      defaultValue: "on_pool",
     },
   },
   {

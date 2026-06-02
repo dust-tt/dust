@@ -1,6 +1,7 @@
 import {
   clearUserAwuWarned,
   clearUserCapBlocked,
+  setUserAwuWarned,
   setUserCapBlocked,
 } from "@app/lib/metronome/user_block";
 import type { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -44,12 +45,27 @@ function syncUserCapCacheForState(
   transaction: Transaction | undefined
 ): void {
   switch (state) {
-    case "normal":
+    // Spending normally (personal credits or workspace pool): not capped, no
+    // low-balance warning.
+    case "user_seat":
+    case "on_pool":
       invalidateCacheAfterCommit(transaction, () =>
         clearUserCapBlocked(ctx.workspaceId, ctx.userId)
       );
       invalidateCacheAfterCommit(transaction, () =>
         clearUserAwuWarned(ctx.workspaceId, ctx.userId)
+      );
+      return;
+
+    // Still spending, but ≥80% of the personal balance / per-user cap used:
+    // not capped, but the low-balance warning is active.
+    case "user_seat_low_balance":
+    case "on_pool_low_balance":
+      invalidateCacheAfterCommit(transaction, () =>
+        clearUserCapBlocked(ctx.workspaceId, ctx.userId)
+      );
+      invalidateCacheAfterCommit(transaction, () =>
+        setUserAwuWarned(ctx.workspaceId, ctx.userId)
       );
       return;
 
@@ -66,7 +82,7 @@ function syncUserCapCacheForState(
 
 const TRANSITIONS: UserCreditTransition[] = [
   {
-    from: "normal",
+    from: "on_pool",
     event: "per_user_cap_reached",
     to: "capped",
   },
@@ -78,22 +94,22 @@ const TRANSITIONS: UserCreditTransition[] = [
   {
     from: "capped",
     event: "admin_raised_user_cap",
-    to: "normal",
+    to: "on_pool",
   },
   {
-    from: "normal",
+    from: "on_pool",
     event: "admin_raised_user_cap",
-    to: "normal",
+    to: "on_pool",
   },
   {
     from: "capped",
     event: "per_user_cap_resolved",
-    to: "normal",
+    to: "on_pool",
   },
   {
-    from: "normal",
+    from: "on_pool",
     event: "per_user_cap_resolved",
-    to: "normal",
+    to: "on_pool",
   },
 ];
 
