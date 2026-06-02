@@ -452,7 +452,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
         contentType: "text/html",
         body: fullBody,
         threadingHeaders,
-        attachment, 
+        attachment,
       });
       if (encodedMessageResult.isErr()) {
         return encodedMessageResult;
