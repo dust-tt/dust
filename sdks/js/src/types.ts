@@ -1444,6 +1444,7 @@ const ToolExecutionMetadataSchema = z.object({
   }),
   argumentsRequiringApproval: z.array(z.string()).optional(),
   approvalArgsLabel: z.string().optional(),
+  editableArguments: z.array(z.string()).optional(),
 });
 
 const BlockedActionExecutionSchema = ToolExecutionMetadataSchema.extend({
