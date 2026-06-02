@@ -8,5 +8,3 @@ Check out our [user guides and developer platform](https://docs.dust.tt)
 
 - [About Us](https://dust.tt/home/about)
 - [Open Positions](https://jobs.ashbyhq.com/dust)
-
-<!-- sandbox test via __file__ syntax -->
