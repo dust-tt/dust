@@ -10,6 +10,7 @@ import { serializeSkillTag } from "@app/lib/skills/format";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
+import { FileFactory } from "@app/tests/utils/FileFactory";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
@@ -696,6 +697,60 @@ describe("SkillResource", () => {
       ).rejects.toThrow(
         `Skill reference ID does not belong to this workspace: ${outOfWorkspaceSkillId}`
       );
+    });
+  });
+
+  describe("updateFileAttachments", () => {
+    it("saves a version and replaces file attachments", async () => {
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Skill With File Attachments",
+      });
+      const firstFile = await FileFactory.create(
+        testContext.authenticator,
+        testContext.user,
+        {
+          contentType: "text/plain",
+          fileName: "first.txt",
+          fileSize: 100,
+          status: "ready",
+          useCase: "skill_attachment",
+        }
+      );
+      const secondFile = await FileFactory.create(
+        testContext.authenticator,
+        testContext.user,
+        {
+          contentType: "text/plain",
+          fileName: "second.txt",
+          fileSize: 100,
+          status: "ready",
+          useCase: "skill_attachment",
+        }
+      );
+
+      await skill.updateFileAttachments(testContext.authenticator, [firstFile]);
+      await skill.updateFileAttachments(testContext.authenticator, [
+        secondFile,
+      ]);
+
+      expect(skill.getFileAttachments().map((file) => file.id)).toEqual([
+        secondFile.id,
+      ]);
+
+      const freshSkill = await SkillResource.fetchByModelIdWithAuth(
+        testContext.authenticator,
+        skill.id
+      );
+      expect(freshSkill?.getFileAttachments().map((file) => file.id)).toEqual([
+        secondFile.id,
+      ]);
+
+      const versions = await skill.listVersions(testContext.authenticator);
+      expect(
+        versions.map((version) =>
+          version.getFileAttachments().map((file) => file.id)
+        )
+      ).toEqual([[firstFile.id], []]);
     });
   });
 
