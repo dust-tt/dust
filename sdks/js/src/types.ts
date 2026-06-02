@@ -703,6 +703,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "discord_bot"
   | "dummy_feature_for_flag_testing"
   | "dust_academy"
+  | "dust_agent_gpt_5_5_default"
   | "dust_internal_global_agents"
   | "dust_no_spa"
   | "dust_spa"
