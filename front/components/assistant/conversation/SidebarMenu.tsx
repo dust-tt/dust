@@ -283,7 +283,7 @@ function SearchResults({
                 size="xs"
                 icon={PlusIcon}
                 label="New"
-                variant="ghost"
+                variant="ghost-secondary"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -316,7 +316,7 @@ function SearchResults({
               {hasMorePods && (
                 <div className="flex justify-center py-2">
                   <Button
-                    variant="ghost"
+                    variant="ghost-secondary"
                     size="xs"
                     label={isLoadingMorePods ? "Loading..." : "Show more"}
                     onClick={handleShowMorePods}
@@ -338,9 +338,9 @@ function SearchResults({
               <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <Button
-                    size="xmini"
+                    size="icon-xs"
                     icon={MoreIcon}
-                    variant="ghost"
+                    variant="ghost-secondary"
                     aria-label="Conversations options"
                     onClick={(e) => {
                       e.preventDefault();
@@ -387,7 +387,7 @@ function SearchResults({
           {hasMorePrivateConversations && (
             <div className="flex justify-center py-2">
               <Button
-                variant="ghost"
+                variant="ghost-secondary"
                 size="xs"
                 label={
                   isLoadingMorePrivateConversations ? "Loading..." : "Show more"
@@ -767,7 +767,7 @@ export function AgentSidebarMenu({
                   size="xs"
                   icon={PlusIcon}
                   label="New"
-                  variant="ghost"
+                  variant="ghost-secondary"
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -893,13 +893,13 @@ export function AgentSidebarMenu({
                   onClick={() => setShowDeleteDialog("selection")}
                 />
                 <Button
-                  variant="ghost"
+                  variant="ghost-secondary"
                   icon={XMarkIcon}
                   onClick={toggleMultiSelect}
                 />
               </div>
             ) : (
-              <div className="z-50 flex justify-end gap-2 p-2">
+              <div className="z-50 flex justify-end gap-2 p-sidebar-side-spacing">
                 {hasPodConversations ? (
                   <div className="flex-1">
                     <SidebarSearch
@@ -930,7 +930,7 @@ export function AgentSidebarMenu({
                   {!hideActions && (
                     <DropdownMenu modal={false}>
                       <DropdownMenuTrigger asChild>
-                        <Button size="sm" icon={MoreIcon} variant="outline" />
+                        <Button size="icon-sm" icon={MoreIcon} variant="outline" />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
                         {!isRestrictedFromAgentCreation && (
@@ -1191,14 +1191,12 @@ function UnreadConversationsSection({
   return (
     <NavigationListCollapsibleSection
       label={`${label} (${totalCount})`}
-      className="border-b border-t border-border bg-background/50 px-2 pb-2 dark:border-border-night dark:bg-background-night/50"
-      defaultOpen
-      actionOnHover={false}
+      className="bg-background dark:bg-background-night rounded-xl border border-border dark:border-border-night px-1 py-2 mx-sidebar-side-spacing"
       action={
         shouldShowMarkAllAsReadButton ? (
           <Button
-            size="xmini"
-            variant="ghost"
+            size="icon-xs"
+            variant="ghost-secondary"
             icon={CheckDoubleIcon}
             tooltip="Mark all as read"
             onClick={() => onMarkAllAsRead(conversations.map((c) => c.sId))}
@@ -1257,7 +1255,6 @@ const ConversationList = ({
         <NavigationListLabel
           label={dateLabel}
           isSticky
-          className="bg-muted-background dark:bg-muted-background-night"
         />
       )}
 
@@ -1575,9 +1572,9 @@ function NavigationListWithInbox({
               <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <Button
-                    size="xmini"
+                    size="icon-sm"
                     icon={MoreIcon}
-                    variant="ghost"
+                    variant="ghost-secondary"
                     aria-label="Conversations options"
                     onClick={(e) => {
                       e.preventDefault();

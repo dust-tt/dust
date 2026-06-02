@@ -123,11 +123,6 @@ export const ScrollWithActiveState: Story = {
       <div className="s-flex s-flex-col s-gap-4">
         <ScrollArea
           className="s-h-[200px] s-w-[350px] s-rounded-xl s-border s-bg-white"
-          scrollStyles={{
-            active:
-              "s-shadow-md s-border-highlight-200 dark:s-border-highlight-200-night",
-            inactive: "s-border-border dark:s-border-border-night",
-          }}
         >
           <div>
             {Array.from({ length: 20 }).map((_, i) => (

@@ -3,7 +3,6 @@ import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideP
 import { SidebarBanners } from "@app/components/navigation/AppStatusBanner";
 import type { SidebarNavigation } from "@app/components/navigation/config";
 import { getTopNavigationTabs } from "@app/components/navigation/config";
-import { HelpDropdown } from "@app/components/navigation/HelpDropdown";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { UserMenu } from "@app/components/UserMenu";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
@@ -82,7 +81,7 @@ export const NavigationSidebar = React.forwardRef<
         </div>
         {navs.length > 1 && (
           <Tabs value={currentTab?.id ?? "conversations"}>
-            <div className="border-b border-separator px-2 dark:border-separator-night">
+            <div className="border-b border-separator px-sidebar-side-spacing dark:border-separator-night">
               <TabsList border={false}>
                 {navs.map((tab) => (
                   <div key={tab.id} ref={tab.ref ?? undefined}>
@@ -152,17 +151,7 @@ export const NavigationSidebar = React.forwardRef<
         </div>
       )}
       {user && (
-        <div
-          className={cn(
-            "flex items-center border-t px-2 py-2",
-            "border-border-dark dark:border-border-darker-night",
-            "text-foreground dark:text-foreground-night"
-          )}
-        >
           <UserMenu user={user} owner={owner} subscription={subscription} />
-          <div className="flex-1" />
-          <HelpDropdown owner={owner} user={user} />
-        </div>
       )}
     </div>
   );

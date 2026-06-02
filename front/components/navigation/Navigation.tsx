@@ -116,7 +116,7 @@ export function Navigation({
               isNavigationBarOpen ? "w-80" : "w-0"
             )}
           >
-            <div className="flex-1 bg-muted-background dark:bg-muted-background-night lg:inset-y-0 lg:z-0 lg:flex lg:w-80 lg:flex-col">
+            <div className="flex-1 bg-sidebar-background dark:bg-sidebar-background-night lg:inset-y-0 lg:z-0 lg:flex lg:w-80 lg:flex-col">
               <NavigationSidebar
                 owner={owner}
                 subscription={subscription}
