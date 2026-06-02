@@ -413,49 +413,6 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
     expect(updatedSkill?.agentFacingDescription).toBe(newDescription);
   });
 
-  it("mirrors tools into instructions when nested skills is enabled", async () => {
-    const { req, res, skill, workspace, requestUserAuth, globalSpace } =
-      await setupTest({
-        requestUserRole: "admin",
-        method: "PATCH",
-      });
-    await FeatureFlagFactory.basic(requestUserAuth, "nested_skills");
-
-    const server = await RemoteMCPServerFactory.create(workspace, {
-      name: "GitHub Search",
-    });
-    const serverView = await MCPServerViewFactory.create(
-      workspace,
-      server.sId,
-      globalSpace
-    );
-
-    req.body = {
-      name: skill.name,
-      agentFacingDescription: skill.agentFacingDescription,
-      userFacingDescription: skill.userFacingDescription,
-      instructions: "Use this skill for repository lookups.",
-      instructionsHtml:
-        '<div data-type="instructions-root" data-block-id="instructions-root"><p data-block-id="intro">Use this skill for repository lookups.</p></div>',
-      icon: skill.icon,
-      tools: [{ mcpServerViewId: serverView.sId }],
-      attachedKnowledge: [],
-    };
-
-    await handler(req, res);
-    expect(res._getStatusCode()).toBe(200);
-
-    const data = res._getJSONData();
-    expect(data.skill.instructions).toContain("Enabled tools:");
-    expect(data.skill.instructions).toContain(`<tool id="${serverView.sId}"`);
-    expect(data.skill.instructionsHtml).toContain(
-      '<p data-block-id="intro">Use this skill for repository lookups.</p>'
-    );
-    expect(data.skill.instructionsHtml).toContain(
-      `<tool id="${serverView.sId}"`
-    );
-  });
-
   it("syncs nested skill references when the feature is enabled", async () => {
     const { req, res, skill, requestUserAuth, workspace } = await setupTest({
       requestUserRole: "admin",

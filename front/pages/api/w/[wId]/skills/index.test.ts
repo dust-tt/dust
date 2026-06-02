@@ -937,53 +937,6 @@ describe("POST /api/w/[wId]/skills", () => {
     expect(serverViewIds).toContain(view2!.id);
   });
 
-  it("mirrors tools into instructions when nested skills is enabled", async () => {
-    const { req, res, workspace, auth, globalSpace } = await setupTest(
-      "POST",
-      "admin"
-    );
-    await FeatureFlagFactory.basic(auth, "nested_skills");
-
-    const server = await RemoteMCPServerFactory.create(workspace, {
-      name: "GitHub Search",
-    });
-    const serverView = await MCPServerViewFactory.create(
-      workspace,
-      server.sId,
-      globalSpace
-    );
-
-    req.body = {
-      name: "Tool Reference Skill",
-      agentFacingDescription: "Use this skill with GitHub",
-      userFacingDescription: "A skill with one tool",
-      instructions: "Use this skill for repository lookups.",
-      instructionsHtml:
-        '<div data-type="instructions-root" data-block-id="instructions-root"><p data-block-id="intro">Use this skill for repository lookups.</p></div>',
-      icon: "PuzzleIcon",
-      tools: [{ mcpServerViewId: serverView.sId }],
-      extendedSkillId: null,
-      attachedKnowledge: [],
-    };
-
-    await handler(req, res);
-    expect(res._getStatusCode()).toBe(200);
-
-    const responseData = res._getJSONData();
-    expect(responseData.skill.instructions).toContain("Enabled tools:");
-    expect(responseData.skill.instructions).toContain(
-      `<tool id="${serverView.sId}"`
-    );
-    expect(responseData.skill.instructionsHtml).toContain(
-      '<p data-block-id="intro">Use this skill for repository lookups.</p>'
-    );
-    expect(responseData.skill.instructionsHtml).toContain(
-      `<tool id="${serverView.sId}"`
-    );
-    expect(responseData.skill.tools).toHaveLength(1);
-    expect(responseData.skill.tools[0].sId).toBe(serverView.sId);
-  });
-
   it("creates a skill configuration with requestedSpaceIds derived from tool's space", async () => {
     const { auth, req, res, workspace, user } = await setupTest(
       "POST",

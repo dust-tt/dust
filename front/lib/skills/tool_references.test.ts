@@ -75,16 +75,33 @@ describe("appendMissingToolRefs", () => {
 
 describe("toolRefsFromMCPViews", () => {
   it("uses the view display name and server icon", () => {
+    const viewType: MCPServerViewType = {
+      createdAt: 0,
+      description: null,
+      editedByUser: null,
+      id: 123,
+      name: "github_search",
+      oAuthUseCase: null,
+      sId: "mcp_server_view_123",
+      server: {
+        allowMultipleInstances: true,
+        authorization: null,
+        availability: "manual",
+        description: "Search GitHub",
+        documentationUrl: null,
+        icon: "GithubLogo",
+        name: "github",
+        sId: "remote_mcp_server_123",
+        tools: [],
+        version: "1.0.0",
+      },
+      serverType: "remote",
+      spaceId: "space_123",
+      updatedAt: 0,
+    };
     const view = {
       sId: "mcp_server_view_123",
-      toJSON: () =>
-        ({
-          name: "github_search",
-          server: {
-            icon: "GithubLogo",
-            name: "github",
-          },
-        }) as MCPServerViewType,
+      toJSON: () => viewType,
     };
 
     expect(toolRefsFromMCPViews([view])).toEqual([
