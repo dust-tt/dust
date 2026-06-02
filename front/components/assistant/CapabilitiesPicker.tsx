@@ -488,10 +488,6 @@ export function CapabilitiesPicker({
 
     if (isSkillsDataReady && isToolsDataReady) {
       for (const skill of skills) {
-        if (skill.visibility === "unpublished" && !skill.canWrite) {
-          continue;
-        }
-
         const description = skill.userFacingDescription;
 
         if (

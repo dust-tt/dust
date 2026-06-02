@@ -16,11 +16,13 @@ const attachKnowledgeItem: SlashCommand = {
 const skillSuggestion = ({
   icon = null,
   userFacingDescription = "",
+  visibility = "published",
   ...skill
 }: Pick<SlashCommandSkillSuggestion, "name" | "sId"> &
   Partial<SlashCommandSkillSuggestion>): SlashCommandSkillSuggestion => ({
   icon,
   userFacingDescription,
+  visibility,
   ...skill,
 });
 
@@ -159,6 +161,31 @@ describe("buildSkillBuilderSlashCommandItems", () => {
         },
       },
     });
+  });
+
+  it("does not include unpublished skills", () => {
+    const result = buildSkillBuilderSlashCommandItems({
+      baseItems: [attachKnowledgeItem],
+      includeSkillSuggestions: true,
+      query: "",
+      skills: [
+        skillSuggestion({
+          name: "Published skill",
+          sId: "skill_published",
+          visibility: "published",
+        }),
+        skillSuggestion({
+          name: "Unpublished skill",
+          sId: "skill_unpublished",
+          visibility: "unpublished",
+        }),
+      ],
+    });
+
+    expect(result.map((item) => item.id)).toEqual([
+      "add-knowledge",
+      "skill_published",
+    ]);
   });
 
   it("labels the first tool section when there are no matching skills", () => {

@@ -114,6 +114,7 @@ function filterSkillBuilderSlashCommandCapabilities({
     normalizedQuery,
     items: [
       ...skills
+        .filter((skill) => skill.visibility !== "unpublished")
         .filter((skill) => skill.sId !== currentSkillId)
         .filter((skill) =>
           matchesSlashCommandQuery({
