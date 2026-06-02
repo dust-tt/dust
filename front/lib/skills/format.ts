@@ -169,3 +169,32 @@ export function renameSkillReferencesInContent(
     return tag;
   });
 }
+
+/**
+ * Rewrites inline references to `skillId` into unavailable placeholders. This
+ * is used when a referenced skill can no longer be used by parent skills.
+ */
+export function replaceSkillReferencesWithUnavailableInContent(
+  content: string,
+  { skillId }: { skillId: string }
+): string {
+  return content
+    .replace(SKILL_ELEMENT_REGEX, (tag, attributes: string) => {
+      const skill = parseSkillTag(`<${SKILL_TAG_NAME}${attributes} />`);
+
+      if (skill?.id !== skillId) {
+        return tag;
+      }
+
+      return serializeUnavailableSkillTag({ id: skillId }, { html: true });
+    })
+    .replace(SKILL_TAG_REGEX, (tag) => {
+      const skill = parseSkillTag(tag);
+
+      if (skill?.id !== skillId) {
+        return tag;
+      }
+
+      return serializeUnavailableSkillTag({ id: skillId });
+    });
+}

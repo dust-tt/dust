@@ -52,6 +52,7 @@ import {
   extractUniqueSkillReferenceIds,
   parseSkillReferenceTag,
   renameSkillReferencesInContent,
+  replaceSkillReferencesWithUnavailableInContent,
   SKILL_REFERENCE_TAG_REGEX,
   serializeSkillTag,
   serializeUnavailableSkillTag,
@@ -2349,8 +2350,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   ): Promise<void> {
     assert(this.canWrite(auth), "User is not authorized to update this skill");
 
-    // Snapshot the previous name before updating to detect a rename below.
+    // Snapshot previous values before updating to detect propagation work below.
     const previousName = this.name;
+    const previousVisibility = this.visibility;
 
     await withTransaction(async (transaction) => {
       // Save the current version before updating.
@@ -2413,6 +2415,15 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
             },
             { transaction }
           );
+        }
+
+        if (
+          previousVisibility !== "unpublished" &&
+          visibility === "unpublished"
+        ) {
+          await this.propagateUnavailableToReferencingSkills(auth, {
+            transaction,
+          });
         }
       }
 
@@ -2538,6 +2549,79 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         { transaction }
       );
     }
+  }
+
+  /**
+   * Rewrites inline `<skill ... />` references to this skill into
+   * `<unavailable_skill ... />` placeholders in every parent skill that
+   * references it, then removes those parent-child reference rows.
+   */
+  private async propagateUnavailableToReferencingSkills(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    const references = await SkillReferenceModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        childSkillId: this.id,
+      },
+      transaction,
+    });
+
+    const referencingSkillIds = uniq(
+      references
+        .map((reference) => reference.parentSkillId)
+        .filter((parentSkillId) => parentSkillId !== this.id)
+    );
+
+    if (referencingSkillIds.length === 0) {
+      return;
+    }
+
+    const referencingSkills = await this.model.findAll({
+      where: {
+        workspaceId: workspace.id,
+        id: referencingSkillIds,
+      },
+      transaction,
+    });
+
+    for (const referencingSkill of referencingSkills) {
+      const instructions = replaceSkillReferencesWithUnavailableInContent(
+        referencingSkill.instructions,
+        { skillId: this.sId }
+      );
+      const instructionsHtml =
+        referencingSkill.instructionsHtml != null
+          ? replaceSkillReferencesWithUnavailableInContent(
+              referencingSkill.instructionsHtml,
+              { skillId: this.sId }
+            )
+          : referencingSkill.instructionsHtml;
+
+      if (
+        instructions === referencingSkill.instructions &&
+        instructionsHtml === referencingSkill.instructionsHtml
+      ) {
+        continue;
+      }
+
+      await referencingSkill.update(
+        { instructions, instructionsHtml },
+        { transaction }
+      );
+    }
+
+    await SkillReferenceModel.destroy({
+      where: {
+        workspaceId: workspace.id,
+        parentSkillId: { [Op.in]: referencingSkillIds },
+        childSkillId: this.id,
+      },
+      transaction,
+    });
   }
 
   async updateReinforcement(

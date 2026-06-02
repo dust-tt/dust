@@ -883,6 +883,53 @@ describe("SkillResource", () => {
         `Skill reference ID does not belong to this workspace: ${outOfWorkspaceSkillId}`
       );
     });
+
+    it("replaces parent skill references with unavailable tags when unpublishing a child skill", async () => {
+      const childSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Child Skill",
+      });
+      const childSkillReferenceTag =
+        SkillFactory.serializeSkillReferenceTag(childSkill);
+      const parentSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Parent Skill",
+        instructions: `Use ${childSkillReferenceTag}.`,
+        instructionsHtml: `Use <skill id="${childSkill.sId}" name="${childSkill.name}"></skill>.`,
+        enableSkillReferences: true,
+      });
+
+      await childSkill.updateSkill(testContext.authenticator, {
+        name: childSkill.name,
+        agentFacingDescription: childSkill.agentFacingDescription,
+        userFacingDescription: childSkill.userFacingDescription,
+        instructions: childSkill.instructions,
+        instructionsHtml: childSkill.instructionsHtml,
+        icon: childSkill.icon,
+        mcpServerViews: childSkill.mcpServerViews,
+        attachedKnowledge: await childSkill.getAttachedKnowledge(
+          testContext.authenticator
+        ),
+        requestedSpaceIds: childSkill.requestedSpaceIds,
+        visibility: "unpublished",
+        enableSkillReferences: true,
+      });
+
+      const updatedParentSkill = await SkillResource.fetchById(
+        testContext.authenticator,
+        parentSkill.sId
+      );
+      expect(updatedParentSkill?.instructions).toBe(
+        `Use <unavailable_skill id="${childSkill.sId}" />.`
+      );
+      expect(updatedParentSkill?.instructionsHtml).toBe(
+        `Use <unavailable_skill id="${childSkill.sId}"></unavailable_skill>.`
+      );
+
+      const childSkillsByParent = await SkillResource.batchFetchChildSkills(
+        testContext.authenticator,
+        [parentSkill]
+      );
+      expect(childSkillsByParent.get(parentSkill.sId)).toEqual([]);
+    });
   });
 
   describe("archive and restore", () => {
