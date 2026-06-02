@@ -6,7 +6,3 @@ ALTER TABLE "public"."skill_references" ALTER COLUMN "childCustomSkillId" DROP N
 CREATE INDEX CONCURRENTLY "skill_references_child_global_skill_id_idx"
 ON "public"."skill_references" ("workspaceId", "childGlobalSkillId")
 WHERE "childGlobalSkillId" IS NOT NULL;
-
-CREATE UNIQUE INDEX CONCURRENTLY "skill_references_workspace_parent_child_global_idx"
-ON "public"."skill_references" ("workspaceId", "parentSkillId", "childGlobalSkillId")
-WHERE "childGlobalSkillId" IS NOT NULL;

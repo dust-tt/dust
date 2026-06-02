@@ -88,13 +88,6 @@ SkillReferenceModel.init(
         where: { childGlobalSkillId: { [Op.ne]: null } },
         concurrently: true,
       },
-      {
-        name: "skill_references_workspace_parent_child_global_idx",
-        fields: ["workspaceId", "parentSkillId", "childGlobalSkillId"],
-        where: { childGlobalSkillId: { [Op.ne]: null } },
-        unique: true,
-        concurrently: true,
-      },
     ],
     validate: {
       eitherGlobalOrCustomChildSkill: eitherGlobalOrCustomChildSkillValidation,
