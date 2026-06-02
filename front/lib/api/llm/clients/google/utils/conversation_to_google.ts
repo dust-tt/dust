@@ -19,7 +19,12 @@ import type {
 import type { ModelIdType } from "@app/types/assistant/models/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { trustedFetchImageBase64 } from "@app/types/shared/utils/image_utils";
-import type { Content, FunctionResponse, Part, Tool } from "@google/genai";
+import type {
+  Content,
+  FunctionDeclaration,
+  FunctionResponse,
+  Part,
+} from "@google/genai";
 import assert from "assert";
 
 const MESSAGE_CONVERSION_CONCURRENCY = 10;
@@ -183,15 +188,13 @@ async function assistantMessageToParts(
   };
 }
 
-export function toTool(specification: AgentActionSpecification): Tool {
+export function toFunctionDeclaration(
+  specification: AgentActionSpecification
+): FunctionDeclaration {
   return {
-    functionDeclarations: [
-      {
-        name: specification.name,
-        description: specification.description,
-        parametersJsonSchema: specification.inputSchema,
-      },
-    ],
+    name: specification.name,
+    description: specification.description,
+    parametersJsonSchema: specification.inputSchema,
   };
 }
 
