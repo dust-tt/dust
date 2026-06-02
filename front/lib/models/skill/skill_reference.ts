@@ -9,21 +9,23 @@ export class SkillReferenceModel extends WorkspaceAwareModel<SkillReferenceModel
   declare updatedAt: CreationOptional<Date>;
 
   declare parentSkillId: ForeignKey<SkillConfigurationModel["id"]>;
-  declare childSkillId: ForeignKey<SkillConfigurationModel["id"]> | null;
-  declare globalSkillId: string | null;
+  declare childCustomSkillId: ForeignKey<SkillConfigurationModel["id"]> | null;
+  declare childGlobalSkillId: string | null;
 }
 
 function eitherGlobalOrCustomChildSkillValidation(
   this: SkillReferenceModel
 ): void {
   const hasCustomChildSkill =
-    this.childSkillId !== null && this.childSkillId !== undefined;
+    this.childCustomSkillId !== null && this.childCustomSkillId !== undefined;
   const hasGlobalSkill =
-    this.globalSkillId !== null && this.globalSkillId !== undefined;
+    this.childGlobalSkillId !== null && this.childGlobalSkillId !== undefined;
   const hasExactlyOne = hasCustomChildSkill !== hasGlobalSkill;
 
   if (!hasExactlyOne) {
-    throw new Error("Exactly one of childSkillId or globalSkillId must be set");
+    throw new Error(
+      "Exactly one of childCustomSkillId or childGlobalSkillId must be set"
+    );
   }
 }
 
@@ -47,7 +49,7 @@ SkillReferenceModel.init(
         key: "id",
       },
     },
-    childSkillId: {
+    childCustomSkillId: {
       type: DataTypes.BIGINT,
       allowNull: true,
       references: {
@@ -55,7 +57,7 @@ SkillReferenceModel.init(
         key: "id",
       },
     },
-    globalSkillId: {
+    childGlobalSkillId: {
       type: DataTypes.STRING,
       allowNull: true,
     },
@@ -66,7 +68,7 @@ SkillReferenceModel.init(
     indexes: [
       {
         name: "skill_references_workspace_parent_child_idx",
-        fields: ["workspaceId", "parentSkillId", "childSkillId"],
+        fields: ["workspaceId", "parentSkillId", "childCustomSkillId"],
         unique: true,
         concurrently: true,
       },
@@ -77,19 +79,19 @@ SkillReferenceModel.init(
       },
       {
         name: "skill_references_child_skill_id_idx",
-        fields: ["childSkillId"],
+        fields: ["childCustomSkillId"],
         concurrently: true,
       },
       {
-        name: "skill_references_global_skill_id_idx",
-        fields: ["workspaceId", "globalSkillId"],
-        where: { globalSkillId: { [Op.ne]: null } },
+        name: "skill_references_child_global_skill_id_idx",
+        fields: ["workspaceId", "childGlobalSkillId"],
+        where: { childGlobalSkillId: { [Op.ne]: null } },
         concurrently: true,
       },
       {
-        name: "skill_references_workspace_parent_global_idx",
-        fields: ["workspaceId", "parentSkillId", "globalSkillId"],
-        where: { globalSkillId: { [Op.ne]: null } },
+        name: "skill_references_workspace_parent_child_global_idx",
+        fields: ["workspaceId", "parentSkillId", "childGlobalSkillId"],
+        where: { childGlobalSkillId: { [Op.ne]: null } },
         unique: true,
         concurrently: true,
       },
@@ -112,12 +114,12 @@ SkillConfigurationModel.hasMany(SkillReferenceModel, {
 });
 
 SkillReferenceModel.belongsTo(SkillConfigurationModel, {
-  foreignKey: { name: "childSkillId", allowNull: true },
+  foreignKey: { name: "childCustomSkillId", allowNull: true },
   as: "childSkill",
   onDelete: "RESTRICT",
 });
 SkillConfigurationModel.hasMany(SkillReferenceModel, {
-  foreignKey: { name: "childSkillId", allowNull: true },
+  foreignKey: { name: "childCustomSkillId", allowNull: true },
   as: "parentSkillReferences",
   onDelete: "RESTRICT",
 });
