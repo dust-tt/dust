@@ -456,7 +456,7 @@ const NavigationListCollapsibleSection = React.forwardRef<
 
     return (
       <Collapsible ref={ref} className={className} {...collapsibleProps}>
-        <div className="s-group/menu-item s-relative s-flex s-flex-1 s-items-center s-text-sm s-justify-start s-gap-2 s-pl-2 s-py-1.5">
+        <div className="s-group/menu-item s-relative s-flex s-flex-1 s-items-center s-text-sm s-justify-start s-gap-2 s-pl-2 s-py-1.5 s-text-muted-foreground dark:s-text-muted-foreground-night">
           <CollapsibleTrigger hideChevron>{label}</CollapsibleTrigger>
           {actionElement}
         </div>
