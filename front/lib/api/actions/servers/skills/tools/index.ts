@@ -21,6 +21,7 @@ import {
 } from "@app/types/files";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Err, Ok, type Result } from "@app/types/shared/result";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import * as path from "path";
 
 const DEFAULT_SKILL_ICON = "ActionListIcon";
@@ -487,9 +488,9 @@ const handlers: ToolHandlers<typeof SKILLS_TOOLS_METADATA> = {
     return new Ok([
       {
         type: "text" as const,
-        text: `Uploaded ${uploadedFilesRes.value.length} file${
-          uploadedFilesRes.value.length === 1 ? "" : "s"
-        } to skill "${skillResource.name}".`,
+        text: `Uploaded ${uploadedFilesRes.value.length} file${pluralize(
+          uploadedFilesRes.value.length
+        )} to skill "${skillResource.name}".`,
       },
     ]);
   },
