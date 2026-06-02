@@ -6,6 +6,7 @@ import { SpaceChips } from "@app/components/shared/SpaceChips";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type {
   AttachedKnowledgeFormData,
+  ReferencedSkillFormData,
   SkillBuilderFormData,
 } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { useSpaceProjectsLookup } from "@app/lib/swr/spaces";
@@ -30,6 +31,9 @@ export function SkillBuilderRequestedSpacesSection({
       name: "attachedKnowledge",
     }
   );
+  const referencedSkills = useWatch<SkillBuilderFormData, "referencedSkills">({
+    name: "referencedSkills",
+  });
 
   const {
     field: additionalSpacesField,
@@ -77,17 +81,28 @@ export function SkillBuilderRequestedSpacesSection({
     return new Set(attachedKnowledge?.map((k) => k.spaceId) ?? []);
   }, [attachedKnowledge]);
 
+  const spaceIdsFromNestedSkills = useMemo(() => {
+    return new Set(
+      (referencedSkills ?? []).flatMap((skill) => skill.requestedSpaceIds)
+    );
+  }, [referencedSkills]);
+
   const spaceIdsUsedBySkill = useMemo(() => {
     const actionRequestedSpaceIds = Object.keys(actionsBySpaceId).filter(
       (spaceId) => actionsBySpaceId[spaceId]?.length > 0
     );
 
-    return new Set([...actionRequestedSpaceIds, ...spaceIdsFromKnowledge]);
-  }, [actionsBySpaceId, spaceIdsFromKnowledge]);
+    return new Set([
+      ...actionRequestedSpaceIds,
+      ...spaceIdsFromKnowledge,
+      ...spaceIdsFromNestedSkills,
+    ]);
+  }, [actionsBySpaceId, spaceIdsFromKnowledge, spaceIdsFromNestedSkills]);
 
   const areSpaceRequirementsReady =
     !isMCPServerViewsLoading &&
-    (!initialRequestedSpaceIds || attachedKnowledge !== undefined);
+    (!initialRequestedSpaceIds ||
+      (attachedKnowledge !== undefined && referencedSkills !== undefined));
 
   const knowledgeBySpaceId = useMemo(() => {
     const knowledgeBySpace: Record<string, AttachedKnowledgeFormData[]> = {};
@@ -100,6 +115,18 @@ export function SkillBuilderRequestedSpacesSection({
 
     return knowledgeBySpace;
   }, [attachedKnowledge]);
+
+  const skillsBySpaceId = useMemo(() => {
+    const skillsBySpace: Record<string, ReferencedSkillFormData[]> = {};
+
+    for (const skill of referencedSkills ?? []) {
+      for (const spaceId of skill.requestedSpaceIds) {
+        skillsBySpace[spaceId] = (skillsBySpace[spaceId] ?? []).concat(skill);
+      }
+    }
+
+    return skillsBySpace;
+  }, [referencedSkills]);
 
   const initialAdditionalSpaces = useMemo(() => {
     if (!areSpaceRequirementsReady || !initialRequestedSpaceIds?.length) {
@@ -158,6 +185,11 @@ export function SkillBuilderRequestedSpacesSection({
         space,
         actions: actionsBySpaceId[space.sId] ?? [],
         knowledge: knowledgeBySpaceId[space.sId] ?? [],
+        skills: (skillsBySpaceId[space.sId] ?? []).map((skill) => ({
+          sId: skill.id,
+          name: skill.name,
+          icon: skill.icon,
+        })),
       });
       return;
     }
