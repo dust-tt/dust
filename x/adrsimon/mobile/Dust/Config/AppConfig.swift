@@ -87,10 +87,6 @@ enum AppConfig {
             "/api/w/\(workspaceId)/assistant/conversations/\(conversationId)/tools"
         }
 
-        static func conversationSkills(workspaceId: String, conversationId: String) -> String {
-            "/api/w/\(workspaceId)/assistant/conversations/\(conversationId)/skills"
-        }
-
         static func search(workspaceId: String) -> String {
             "/api/w/\(workspaceId)/search"
         }
