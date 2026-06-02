@@ -48,6 +48,7 @@ const AWU_USAGE_GROUP_BY_KEYS = [
   "api_key",
   "model",
   "origin",
+  "tool_category",
 ] as const;
 
 export type AwuUsageGroupByType = (typeof AWU_USAGE_GROUP_BY_KEYS)[number];
@@ -59,6 +60,12 @@ const USAGE_TYPE_LABELS: Record<string, string> = {
   free: "Free",
 };
 
+// Human-readable labels for the "tool_category" group key values.
+const TOOL_CATEGORY_LABELS: Record<string, string> = {
+  basic: "Basic tools",
+  advanced: "Advanced tools",
+};
+
 // Primary Metronome event property for each grouping (used for error
 // reporting). The full per-grouping query config lives in getLlmQueryConfig.
 const GROUP_BY_TO_EVENT_PROPERTY: Record<AwuUsageGroupByType, string> = {
@@ -68,6 +75,7 @@ const GROUP_BY_TO_EVENT_PROPERTY: Record<AwuUsageGroupByType, string> = {
   api_key: "api_key_name",
   model: "model_id",
   origin: "origin",
+  tool_category: "tool_category",
 };
 
 // Sentinel bucket key for missing dimension values (e.g. user_id="unknown").
@@ -192,14 +200,19 @@ export function calculateAwuCreditTotalsFromBalances(
 }
 
 // LLM (cost_awu) query config per grouping. cost_awu is already AWU credits.
+// Returns null when the grouping doesn't apply to LLM usage (e.g. tool_category,
+// which only exists on tool events) — that grouping is then tools-only.
 function getLlmQueryConfig(groupBy: AwuUsageGroupByType): {
   groupKey: string[];
   bucketProp: string;
   groupFilters?: Record<string, string[]>;
   // Bucket keys to drop after aggregation (e.g. user traffic has no api_key).
   dropKeys?: string[];
-} {
+} | null {
   switch (groupBy) {
+    case "tool_category":
+      // LLM events carry no tool_category; this grouping shows tools only.
+      return null;
     case "user":
       // Group by user, excluding programmatic traffic (not user-attributable).
       return {
@@ -268,6 +281,9 @@ function getToolQueryConfig(groupBy: AwuUsageGroupByType): {
       };
     case "origin":
       return { groupKey: ["origin", "tool_category"], bucketProp: "origin" };
+    case "tool_category":
+      // Tools-only view, split by category (basic / advanced).
+      return { groupKey: ["tool_category"], bucketProp: "tool_category" };
     case "model":
       return null;
     default:
@@ -339,6 +355,11 @@ async function resolveGroupLabels(
     case "usage_type":
       for (const key of groupKeys) {
         labelMap.set(key, USAGE_TYPE_LABELS[key] ?? key);
+      }
+      break;
+    case "tool_category":
+      for (const key of groupKeys) {
+        labelMap.set(key, TOOL_CATEGORY_LABELS[key] ?? key);
       }
       break;
     case "user": {
@@ -460,15 +481,17 @@ export async function getAwuUsage(
     const toolCfg = getToolQueryConfig(groupBy);
 
     const [llmResult, toolResult] = await Promise.all([
-      listMetronomeUsageWithGroups({
-        customerId: metronomeCustomerId,
-        billableMetricId: awuMetricId,
-        startingOn,
-        endingBefore,
-        windowSize: metronomeApiWindowSize,
-        groupKey: llmCfg.groupKey,
-        groupFilters: llmCfg.groupFilters,
-      }),
+      llmCfg
+        ? listMetronomeUsageWithGroups({
+            customerId: metronomeCustomerId,
+            billableMetricId: awuMetricId,
+            startingOn,
+            endingBefore,
+            windowSize: metronomeApiWindowSize,
+            groupKey: llmCfg.groupKey,
+            groupFilters: llmCfg.groupFilters,
+          })
+        : null,
       toolCfg
         ? listMetronomeUsageWithGroups({
             customerId: metronomeCustomerId,
@@ -482,7 +505,7 @@ export async function getAwuUsage(
         : null,
     ]);
 
-    if (llmResult.isErr()) {
+    if (llmResult && llmResult.isErr()) {
       const msg = llmResult.error.message;
       if (msg.includes("group") || msg.includes("not found")) {
         return new Err({
@@ -496,23 +519,41 @@ export async function getAwuUsage(
         message: `Failed to retrieve AWU grouped usage: ${msg}`,
       });
     }
-    // Tool usage is supplementary: if its query fails (e.g. the
-    // [dimension, tool_category] group key isn't present on this environment's
-    // metric yet), log and fall back to LLM-only rather than failing the chart.
     if (toolResult && toolResult.isErr()) {
+      // When tools are the only data source (tools-only grouping), a tool query
+      // failure is fatal; otherwise tool usage is supplementary, so log and fall
+      // back to LLM-only rather than failing the chart.
+      if (!llmCfg) {
+        const msg = toolResult.error.message;
+        if (msg.includes("group") || msg.includes("not found")) {
+          return new Err({
+            type: "invalid_group_key",
+            groupBy,
+            eventProperty: GROUP_BY_TO_EVENT_PROPERTY[groupBy],
+          });
+        }
+        return new Err({
+          type: "internal_error",
+          message: `Failed to retrieve tool usage: ${msg}`,
+        });
+      }
       logger.warn(
         { error: toolResult.error, groupBy, workspaceId: workspace.sId },
         "[Metronome] Tool usage query failed; falling back to LLM-only."
       );
     }
 
-    // LLM cost_awu is already AWU credits.
-    const mergedGroupMap = bucketGroupedEntries(
-      llmResult.value,
-      llmCfg.bucketProp,
-      (entry) => entry.value ?? 0,
-      needsFourHourAggregation
-    );
+    // LLM cost_awu is already AWU credits. Empty when the grouping is
+    // tools-only (llmCfg === null).
+    const mergedGroupMap =
+      llmCfg && llmResult && llmResult.isOk()
+        ? bucketGroupedEntries(
+            llmResult.value,
+            llmCfg.bucketProp,
+            (entry) => entry.value ?? 0,
+            needsFourHourAggregation
+          )
+        : new Map<string, Map<number, number>>();
 
     // Tool invocations are a count; weight per category into AWU credits and
     // merge into the same buckets.
@@ -532,7 +573,7 @@ export async function getAwuUsage(
       mergeBuckets(mergedGroupMap, toolMap);
     }
 
-    for (const key of llmCfg.dropKeys ?? []) {
+    for (const key of llmCfg?.dropKeys ?? []) {
       mergedGroupMap.delete(key);
     }
 
