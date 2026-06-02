@@ -1,4 +1,3 @@
-import { KnowledgeChip } from "@app/components/editor/extensions/skill_builder/KnowledgeChip";
 import { ToolChip } from "@app/components/editor/extensions/skill_builder/ToolChip";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
@@ -7,6 +6,9 @@ import type {
   ReferencedSkillFormData,
 } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
+import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
+import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
+import { isFolder, isWebsite } from "@app/lib/data_sources";
 import { getSkillIcon } from "@app/lib/skill";
 import { extractToolTags } from "@app/lib/tools/format";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -114,8 +116,35 @@ function KnowledgeReferenceSummaryItem({
   onClick: () => void;
 }) {
   if (item.node) {
+    if (
+      isWebsite(item.node.dataSourceView.dataSource) ||
+      isFolder(item.node.dataSourceView.dataSource)
+    ) {
+      return (
+        <AttachmentChip
+          label={item.title}
+          icon={{ visual: getVisualForDataSourceViewContentNode(item.node) }}
+          color="white"
+          size="xs"
+          onClick={onClick}
+        />
+      );
+    }
+
     return (
-      <KnowledgeChip node={item.node} title={item.title} onClick={onClick} />
+      <AttachmentChip
+        label={item.title}
+        doubleIcon={{
+          size: "sm",
+          mainIcon: getVisualForDataSourceViewContentNode(item.node),
+          secondaryIcon: getConnectorProviderLogoWithFallback({
+            provider: item.node.dataSourceView.dataSource.connectorProvider,
+          }),
+        }}
+        color="white"
+        size="xs"
+        onClick={onClick}
+      />
     );
   }
 

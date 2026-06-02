@@ -19,7 +19,6 @@ type KnowledgeNode = Omit<
 interface KnowledgeChipProps {
   color?: React.ComponentProps<typeof AttachmentChip>["color"];
   node: KnowledgeNode;
-  onClick?: () => void;
   onRemove?: () => void;
   title: string;
 }
@@ -28,7 +27,6 @@ export function KnowledgeChip({
   color = "white",
   node,
   title,
-  onClick,
   onRemove,
 }: KnowledgeChipProps) {
   const icon =
@@ -44,19 +42,6 @@ export function KnowledgeChip({
             })}
           />
         );
-
-  if (onClick) {
-    return (
-      <AttachmentChip
-        label={title}
-        icon={{ visual: icon }}
-        color={color}
-        onClick={onClick}
-        onRemove={onRemove}
-        size="xs"
-      />
-    );
-  }
 
   return (
     <AttachmentChip
