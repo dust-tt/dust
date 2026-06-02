@@ -8,7 +8,7 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
-import type { LightMemberType, UserType } from "@app/types/user";
+import type { LightUserType, UserType } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
@@ -38,7 +38,7 @@ export interface GetSkillEditorsResponseBody {
 }
 
 export interface GetSkillEditorsLightResponseBody {
-  editors: LightMemberType[];
+  editors: LightUserType[];
 }
 
 export interface PatchSkillEditorsResponseBody {
@@ -46,7 +46,7 @@ export interface PatchSkillEditorsResponseBody {
 }
 
 export interface PatchSkillEditorsLightResponseBody {
-  editors: LightMemberType[];
+  editors: LightUserType[];
 }
 
 async function handler(

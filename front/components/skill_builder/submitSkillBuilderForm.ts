@@ -5,7 +5,7 @@ import type { PatchSkillResponseBody } from "@app/pages/api/w/[wId]/skills/[sId]
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import type { LightMemberType, WorkspaceType } from "@app/types/user";
+import type { LightUserType, WorkspaceType } from "@app/types/user";
 
 export async function submitSkillBuilderForm({
   formData,
@@ -16,7 +16,7 @@ export async function submitSkillBuilderForm({
   formData: SkillBuilderFormData;
   owner: WorkspaceType;
   skillId?: string;
-  currentEditors?: LightMemberType[];
+  currentEditors?: LightUserType[];
 }): Promise<
   Result<
     PostSkillResponseBody["skill"] | PatchSkillResponseBody["skill"],

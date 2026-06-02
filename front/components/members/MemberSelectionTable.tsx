@@ -1,6 +1,6 @@
 import { useSearchMembers } from "@app/lib/swr/memberships";
 import type {
-  LightMemberType,
+  LightUserType,
   LightWorkspaceType,
   UserTypeWithWorkspace,
 } from "@app/types/user";
@@ -18,7 +18,7 @@ import type {
 } from "@tanstack/react-table";
 import { useMemo, useRef, useState } from "react";
 
-export type SearchMemberType = LightMemberType | UserTypeWithWorkspace;
+export type SearchMemberType = LightUserType | UserTypeWithWorkspace;
 
 export interface MemberRowData {
   sId: string;

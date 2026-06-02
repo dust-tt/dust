@@ -5,7 +5,7 @@ import {
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { LightMemberType, UserType } from "@app/types/user";
+import type { LightUserType, UserType } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -17,7 +17,7 @@ export type GetAgentEditorsResponseBody = {
 };
 
 type GetAgentEditorsLightResponseBody = {
-  editors: LightMemberType[];
+  editors: LightUserType[];
 };
 
 export type PatchAgentEditorsResponseBody = {
@@ -25,7 +25,7 @@ export type PatchAgentEditorsResponseBody = {
 };
 
 type PatchAgentEditorsLightResponseBody = {
-  editors: LightMemberType[];
+  editors: LightUserType[];
 };
 
 const PatchAgentEditorsRequestBodySchema = z

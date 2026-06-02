@@ -11,7 +11,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { LightMemberType } from "@app/types/user";
+import type { LightUserType } from "@app/types/user";
 import { UserSchema } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
@@ -43,7 +43,7 @@ export type GetAgentEditorsResponseBody = z.infer<
 >;
 
 export type GetAgentEditorsLightResponseBody = {
-  editors: LightMemberType[];
+  editors: LightUserType[];
 };
 
 export const PatchAgentEditorsResponseBodySchema = z.object({
@@ -54,7 +54,7 @@ export type PatchAgentEditorsResponseBody = z.infer<
 >;
 
 export type PatchAgentEditorsLightResponseBody = {
-  editors: LightMemberType[];
+  editors: LightUserType[];
 };
 
 async function handler(

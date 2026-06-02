@@ -110,7 +110,7 @@ export type UserTypeWithWorkspace = UserType & {
  * Minimal member representation returned by `/members/search` for non-admin
  * callers. Admin callers receive the full `UserTypeWithWorkspace`.
  */
-export type LightMemberType = Pick<
+export type LightUserType = Pick<
   UserType,
   "sId" | "firstName" | "lastName" | "fullName" | "image"
 >;
