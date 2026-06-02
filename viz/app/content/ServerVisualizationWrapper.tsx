@@ -25,11 +25,12 @@ async function fetchFileRefsRecursively(
       }
       visited.add(key);
 
-      // The files endpoint only accepts the "conversation/" and "pod/" prefixes.
-      // Older frame code may still reference the legacy "project/" prefix, which
-      // maps to the same Pod files. Rewrite only the request path; the prefetched
-      // file stays keyed by the original scopedPath (`key`) so the frame's
-      // useFile("project/...") lookup still resolves.
+      // The files endpoint accepts the "conversation/" and "pod/" prefixes (and
+      // their canonical "conversation-{id}/" / "pod-{id}/" forms), but not the
+      // legacy "project/" prefix, which older frame code may still reference and
+      // which maps to the same Pod files. Rewrite only the request path; the
+      // prefetched file stays keyed by the original scopedPath (`key`) so the
+      // frame's useFile("project/...") lookup still resolves.
       let requestPath: string;
       if (ref.type === "fileId") {
         requestPath = ref.fileId;
