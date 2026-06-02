@@ -352,6 +352,106 @@ describe("runSandboxBashTool", () => {
     expect(first.text).not.toContain(secretValue);
   });
 
+  it("surfaces only allowlist denials and drops harness deny reasons", async () => {
+    mockLoadEnv.mockResolvedValue(new Ok({}));
+    mockReadNewDenyLogEntries.mockResolvedValue(
+      new Ok([
+        JSON.stringify({
+          ts: "t",
+          reason: "proxy_denied",
+          domain: "example.com",
+          port: 443,
+          secret_name: "unknown",
+          sni: null,
+          host: null,
+        }),
+        JSON.stringify({
+          ts: "t",
+          reason: "placeholder_on_non_allowed",
+          domain: "api.openai.com",
+          port: 443,
+          secret_name: "OPENAI_API_KEY",
+          sni: "api.openai.com",
+          host: "api.openai.com",
+        }),
+      ])
+    );
+    const sandbox = {
+      providerId: "provider-id",
+      sId: "sandbox-id",
+      exec: vi
+        .fn()
+        .mockResolvedValue(new Ok({ exitCode: 0, stdout: "ok", stderr: "" })),
+    };
+
+    mockEnsureSandboxReady.mockResolvedValue(
+      new Ok({ sandbox, freshlyCreated: false })
+    );
+
+    const result = await runSandboxBashTool(
+      { command: "echo ok", description: "Run command" },
+      makeExtra()
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      throw result.error;
+    }
+    const first = result.value[0];
+    if (first.type !== "text") {
+      throw new Error(`expected text item, got ${first.type}`);
+    }
+    expect(first.text).toContain(
+      "<network_proxy_logs>\ndenied example.com:443 (blocked by egress allowlist)\n</network_proxy_logs>"
+    );
+    // Harness request-policy denials must not masquerade as domain blocks.
+    expect(first.text).not.toContain("placeholder_on_non_allowed");
+    expect(first.text).not.toContain("api.openai.com");
+  });
+
+  it("omits the network proxy logs block when only harness denials are present", async () => {
+    mockLoadEnv.mockResolvedValue(new Ok({}));
+    mockReadNewDenyLogEntries.mockResolvedValue(
+      new Ok([
+        JSON.stringify({
+          ts: "t",
+          reason: "host_sni_mismatch",
+          domain: "api.openai.com",
+          port: 443,
+          secret_name: "unknown",
+          sni: "api.openai.com",
+          host: "evil.example",
+        }),
+      ])
+    );
+    const sandbox = {
+      providerId: "provider-id",
+      sId: "sandbox-id",
+      exec: vi
+        .fn()
+        .mockResolvedValue(new Ok({ exitCode: 0, stdout: "ok", stderr: "" })),
+    };
+
+    mockEnsureSandboxReady.mockResolvedValue(
+      new Ok({ sandbox, freshlyCreated: false })
+    );
+
+    const result = await runSandboxBashTool(
+      { command: "echo ok", description: "Run command" },
+      makeExtra()
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      throw result.error;
+    }
+    const first = result.value[0];
+    if (first.type !== "text") {
+      throw new Error(`expected text item, got ${first.type}`);
+    }
+    expect(first.text).not.toContain("<network_proxy_logs>");
+  });
+
   it("does not redact short or low-entropy values", async () => {
     mockLoadEnv.mockResolvedValue(
       new Ok({

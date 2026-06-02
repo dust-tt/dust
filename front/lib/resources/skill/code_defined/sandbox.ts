@@ -156,10 +156,18 @@ Workspace allowlist:
 
 ${formatWorkspaceAllowlist(workspaceDomains)}
 
-If a request is blocked, the bash tool output will include a
-\`<network_proxy_logs>\` block listing the denied domain(s). Surface that
+If a domain is blocked by the allowlist, the bash tool output will include a
+\`<network_proxy_logs>\` block naming the denied domain(s). Surface that
 information to the user so they can decide whether to ask their admin to
-allowlist it; do not retry without changes.`;
+allowlist it; do not retry without changes.
+
+The block lists **only** domains rejected by the allowlist. A request that
+reaches an allowed domain and comes back with an HTTP \`401\`/\`403\` (or any
+other \`4xx\`) in \`<stdout>\` is an upstream authentication/authorization
+error, not a proxy block — do not treat it as a domain that needs
+allowlisting. If the block names a host you did not call directly, the request
+most likely followed a redirect to that host (for example an auth/login
+domain).`;
   }
 
   return `#### Sandbox Network Access
@@ -188,13 +196,21 @@ do NOT call \`add_egress_domain\`; just use the domain. Only call
 accepted) and a one-sentence reason the user will see in the approval prompt.
 This is preferable to running the command first and reacting to a denial.
 
-If a request does get blocked — for example because you missed a domain or
-a redirect chain hits an unexpected host — the bash tool output will
-include a \`<network_proxy_logs>\` block listing the denied domain(s).
+If a request is blocked by the allowlist — for example because you missed a
+domain or a redirect chain hits an unexpected host — the bash tool output
+will include a \`<network_proxy_logs>\` block naming the denied domain(s).
 Use that block to identify the missing domain and call
-\`add_egress_domain\` to unblock the next attempt. If a request mysteriously
-hangs or fails with TLS/DNS errors, check the \`<network_proxy_logs>\`
-block first; a denied egress is a possible cause.`;
+\`add_egress_domain\` to unblock the next attempt.
+
+The block lists **only** domains rejected by the allowlist. A request that
+reaches an allowed domain and returns an HTTP \`401\`/\`403\` (or any other
+\`4xx\`) in \`<stdout>\` is an upstream authentication/authorization error, not
+a proxy block — do **not** call \`add_egress_domain\` for it. If the block
+names a host you did not call directly, the request most likely followed a
+redirect to that host (such as an auth/login domain); allowlist that host only
+if you intend to follow the redirect. If a request mysteriously hangs or fails
+with TLS/DNS errors, check the \`<network_proxy_logs>\` block first; a denied
+egress is a possible cause.`;
 }
 
 function buildEnvironmentVariablesSection(): string {
