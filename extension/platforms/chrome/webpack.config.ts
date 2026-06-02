@@ -14,6 +14,7 @@ import WebpackBar from "webpackbar";
 import ZipPlugin from "zip-webpack-plugin";
 
 import type { Environment } from "../../config/env";
+import { getImportMetaEnv } from "../../config/webpack_env";
 
 const rootDir = path.resolve(__dirname);
 
@@ -171,6 +172,16 @@ export const getConfig = async ({
     plugins: [
       new webpack.DefinePlugin({
         global: "globalThis",
+        // Expose VITE_* vars on `import.meta.env` so the shared `front`
+        // RegionContext can resolve the regional API base URL in the webpack
+        // build (Vite only injects these in the SPA).
+        "import.meta.env": JSON.stringify(
+          getImportMetaEnv(
+            resolvePath(
+              isDevelopment ? "../../.env.development" : "../../.env.production"
+            )
+          )
+        ),
       }),
       new WebpackBar({
         name: `DustExt [${env}]`,
