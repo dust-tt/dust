@@ -57,7 +57,7 @@ function ToolNodeView({ node }: NodeViewProps) {
   const display = useToolNodeDisplay(attrs);
 
   return (
-    <NodeViewWrapper as="span" className="inline">
+    <NodeViewWrapper className="inline-flex align-middle">
       {display.kind === "error" ? (
         <ToolErrorChip title={display.title} />
       ) : (
