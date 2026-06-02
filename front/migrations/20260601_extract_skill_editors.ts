@@ -161,8 +161,9 @@ makeScript(
       demandOption: false,
     },
   },
-  async ({ outputFile, workspaceId }) => {
+  async ({ outputFile, workspaceId }, logger) => {
     const editors: EditorWithSkills[] = [];
+    let processedWorkspaces = 0;
 
     await runOnAllWorkspaces(
       async (workspace) => {
@@ -170,6 +171,21 @@ makeScript(
           workspace,
         });
         editors.push(...workspaceEditors);
+        processedWorkspaces += 1;
+
+        if (outputFile) {
+          logger.info(
+            {
+              exportedEditorRows: workspaceEditors.length,
+              processedWorkspaces,
+              totalExportedEditorRows: editors.length,
+              workspaceId: workspace.sId,
+              workspaceModelId: workspace.id,
+              workspaceName: workspace.name,
+            },
+            "Processed workspace for skill editor export"
+          );
+        }
       },
       { concurrency: 1, wId: workspaceId }
     );
