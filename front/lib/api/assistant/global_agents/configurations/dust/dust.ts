@@ -960,6 +960,9 @@ type CustomModelDustGlobalAgentConfig = {
   preferredReasoningEffort: ReasoningEffort;
 };
 
+// `customModelIndex` is a position into `CUSTOM_MODEL_CONFIGS`, which is generated
+// at build time from the infra custom-models config (GCS). It must stay in sync with
+// the ordering of models in that config: shifting the array silently rebinds agents.
 export const CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS = new Map<
   GLOBAL_AGENTS_SID,
   CustomModelDustGlobalAgentConfig
