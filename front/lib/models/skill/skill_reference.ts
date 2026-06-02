@@ -1,4 +1,7 @@
-import { SkillConfigurationModel } from "@app/lib/models/skill";
+import {
+  eitherGlobalOrCustomSkillValidation,
+  SkillConfigurationModel,
+} from "@app/lib/models/skill";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { CreationOptional, ForeignKey } from "sequelize";
@@ -11,22 +14,6 @@ export class SkillReferenceModel extends WorkspaceAwareModel<SkillReferenceModel
   declare parentSkillId: ForeignKey<SkillConfigurationModel["id"]>;
   declare childCustomSkillId: ForeignKey<SkillConfigurationModel["id"]> | null;
   declare childGlobalSkillId: string | null;
-}
-
-function eitherGlobalOrCustomChildSkillValidation(
-  this: SkillReferenceModel
-): void {
-  const hasCustomChildSkill =
-    this.childCustomSkillId !== null && this.childCustomSkillId !== undefined;
-  const hasGlobalSkill =
-    this.childGlobalSkillId !== null && this.childGlobalSkillId !== undefined;
-  const hasExactlyOne = hasCustomChildSkill !== hasGlobalSkill;
-
-  if (!hasExactlyOne) {
-    throw new Error(
-      "Exactly one of childCustomSkillId or childGlobalSkillId must be set"
-    );
-  }
 }
 
 SkillReferenceModel.init(
@@ -90,7 +77,12 @@ SkillReferenceModel.init(
       },
     ],
     validate: {
-      eitherGlobalOrCustomChildSkill: eitherGlobalOrCustomChildSkillValidation,
+      eitherGlobalOrCustomSkill(this: SkillReferenceModel): void {
+        eitherGlobalOrCustomSkillValidation.call({
+          customSkillId: this.childCustomSkillId,
+          globalSkillId: this.childGlobalSkillId,
+        });
+      },
     },
   }
 );
