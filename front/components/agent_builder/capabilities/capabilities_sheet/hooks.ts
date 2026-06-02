@@ -48,7 +48,9 @@ export const useSkillSelection = ({
 
   const filteredSkills = useMemo(() => {
     const notAlreadyAddedSkills = skills.filter(
-      (skill) => !alreadyAddedSkillIds.has(skill.sId)
+      (skill) =>
+        skill.visibility !== "unpublished" &&
+        !alreadyAddedSkillIds.has(skill.sId)
     );
 
     if (!searchQuery.trim()) {
@@ -85,6 +87,7 @@ export const useSkillSelection = ({
           name: skill.name,
           description: skill.userFacingDescription,
           icon: skill.icon,
+          visibility: skill.visibility,
         },
       ]);
     },

@@ -185,6 +185,7 @@ export default function AgentBuilder({
       name: skill.name,
       description: skill.userFacingDescription,
       icon: skill.icon,
+      visibility: skill.visibility,
     }));
   }, [skills]);
 

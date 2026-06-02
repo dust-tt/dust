@@ -52,6 +52,7 @@ export function filterInputBarSlashSuggestions({
     sortName: string;
   })[] = [
     ...skills
+      .filter((skill) => skill.visibility !== "unpublished" || skill.canWrite)
       .filter((skill) =>
         matchesSlashCommandQuery({
           label: skill.name,

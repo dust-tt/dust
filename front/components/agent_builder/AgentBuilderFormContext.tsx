@@ -4,6 +4,7 @@ import {
   generationSettingsSchema,
 } from "@app/components/shared/tools_picker/types";
 import type { ProjectConfiguration } from "@app/lib/api/assistant/configuration/types";
+import { SKILL_VISIBILITIES } from "@app/types/assistant/skill_configuration";
 import { TRIGGER_STATUSES } from "@app/types/assistant/triggers";
 import { editorUserSchema } from "@app/types/editors";
 import { WEBHOOK_PROVIDERS } from "@app/types/triggers/webhooks";
@@ -105,6 +106,7 @@ const skillsSchema = z.object({
   name: z.string(),
   description: z.string(),
   icon: z.string().nullable(),
+  visibility: z.enum(SKILL_VISIBILITIES),
 });
 
 // Additional space IDs selected by the user for global skills

@@ -136,6 +136,7 @@ export async function listAvailableSkills(
 ): Promise<AvailableSkill[]> {
   const skills = await SkillResource.listByWorkspace(auth, {
     status: "active",
+    visibility: ["published", "discoverable"],
   });
 
   return skills.map((skill) => ({

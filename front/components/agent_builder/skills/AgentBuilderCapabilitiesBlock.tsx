@@ -33,6 +33,7 @@ import {
   BookOpenIcon,
   Button,
   CardGrid,
+  Chip,
   EmptyCTA,
   Hoverable,
   Spinner,
@@ -48,6 +49,8 @@ interface SkillCardProps {
 }
 
 function SkillCard({ skill, onRemove, onClick }: SkillCardProps) {
+  const isUnpublished = skill.visibility === "unpublished";
+
   return (
     <ActionCard
       icon={getSkillIcon(skill.icon)}
@@ -56,6 +59,12 @@ function SkillCard({ skill, onRemove, onClick }: SkillCardProps) {
       label={skill.name}
       description={skill.description}
       canAdd={false}
+      disabled={isUnpublished}
+      footer={
+        isUnpublished
+          ? { label: <Chip color="warning" size="xs" label="Unpublished" /> }
+          : undefined
+      }
       onClick={onClick}
       onRemove={onRemove}
       cardContainerClassName="h-28"

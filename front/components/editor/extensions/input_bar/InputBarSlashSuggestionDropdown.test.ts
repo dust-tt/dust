@@ -61,4 +61,35 @@ describe("filterInputBarSlashSuggestions", () => {
       )
     ).toEqual(["Google Drive", "Generate Daily Report"]);
   });
+
+  it("only includes unpublished skills when the user can edit them", async () => {
+    const { auth } = await createPrivateApiMockRequest();
+    const unpublishedSkill = await SkillFactory.create(auth, {
+      name: "Draft Skill",
+      visibility: "unpublished",
+    });
+    const serializedSkill = unpublishedSkill.toJSON(auth);
+
+    const resultForNonEditor = filterInputBarSlashSuggestions({
+      query: "",
+      selectedMCPServerViewIds: new Set(),
+      serverViews: [],
+      skills: [{ ...serializedSkill, canWrite: false }],
+    });
+
+    expect(resultForNonEditor).toEqual([]);
+
+    const resultForEditor = filterInputBarSlashSuggestions({
+      query: "",
+      selectedMCPServerViewIds: new Set(),
+      serverViews: [],
+      skills: [{ ...serializedSkill, canWrite: true }],
+    });
+
+    expect(
+      resultForEditor.map((capability) =>
+        capability.kind === "skill" ? capability.skill.name : ""
+      )
+    ).toEqual(["Draft Skill"]);
+  });
 });
