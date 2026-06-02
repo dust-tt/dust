@@ -136,6 +136,10 @@ function getFirstReferencePosition(
   let referencePosition: number | null = null;
 
   editor.state.doc.descendants((node, position) => {
+    if (referencePosition !== null) {
+      return false;
+    }
+
     if (matchesReferenceTarget(node, target)) {
       referencePosition = position;
       return false;
