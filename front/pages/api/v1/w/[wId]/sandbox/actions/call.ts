@@ -1,9 +1,8 @@
 // @migration-status: MIGRATED_TO_HONO
-import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
-import { verifySandboxExecToken } from "@app/lib/api/sandbox/access_tokens";
+import { withSandboxAuthentication } from "@app/lib/api/auth_wrappers";
+import type { SandboxExecTokenPayload } from "@app/lib/api/sandbox/access_tokens";
 import { createSandboxChildAction } from "@app/lib/api/sandbox/create_child_action";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -22,7 +21,8 @@ type CallSandboxToolResponse = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<CallSandboxToolResponse>>,
-  auth: Authenticator
+  auth: Authenticator,
+  claims: SandboxExecTokenPayload
 ): Promise<void> {
   if (req.method !== "POST") {
     return apiError(req, res, {
@@ -30,39 +30,6 @@ async function handler(
       api_error: {
         type: "method_not_supported_error",
         message: "The method passed is not supported, POST is expected.",
-      },
-    });
-  }
-
-  const token = req.headers.authorization?.replace("Bearer ", "");
-  if (!token) {
-    return apiError(req, res, {
-      status_code: 401,
-      api_error: {
-        type: "not_authenticated",
-        message: "The request does not have valid authentication credentials.",
-      },
-    });
-  }
-
-  const claims = await verifySandboxExecToken(token);
-  if (!claims) {
-    return apiError(req, res, {
-      status_code: 401,
-      api_error: {
-        type: "invalid_sandbox_token_error",
-        message: "The sandbox token is invalid or expired.",
-      },
-    });
-  }
-
-  const featureFlags = await getFeatureFlags(auth);
-  if (!featureFlags.includes("sandbox_dsbx_tools")) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Sandbox dsbx tools are not enabled for this workspace.",
       },
     });
   }
@@ -120,4 +87,4 @@ async function handler(
   }
 }
 
-export default withPublicAPIAuthentication(handler);
+export default withSandboxAuthentication(handler);
