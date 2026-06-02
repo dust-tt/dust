@@ -1,6 +1,6 @@
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import type { ModelId } from "@app/types/shared/model_id";
+import type { UserType } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -17,17 +17,17 @@ const MembersLookupQuerySchema = z.object({
   ids: z.union([z.coerce.number(), z.array(z.coerce.number())]),
 });
 
-export type LightLookupUserType = {
-  sId: string;
-  id: ModelId;
-  firstName: string;
-  lastName: string | null;
-  fullName: string;
-  image: string | null;
-};
+export type LightLookupUserType = Pick<
+  UserType,
+  "sId" | "id" | "firstName" | "lastName" | "fullName" | "image"
+>;
 
 export type MembersLookupResponseBody = {
   users: LightLookupUserType[];
+};
+
+type MembersLookupAdminResponseBody = {
+  users: UserType[];
 };
 
 // Mounted at /api/w/:wId/members/lookup.
@@ -36,7 +36,11 @@ const app = workspaceApp();
 app.get(
   "/",
   validate("query", MembersLookupQuerySchema),
-  async (ctx): HandlerResult<MembersLookupResponseBody> => {
+  async (
+    ctx
+  ): HandlerResult<
+    MembersLookupResponseBody | MembersLookupAdminResponseBody
+  > => {
     const auth = ctx.get("auth");
     const { ids: rawIds } = ctx.req.valid("query");
     const ids = Array.isArray(rawIds) ? rawIds : [rawIds];
@@ -79,16 +83,14 @@ app.get(
     }
 
     return ctx.json({
-      users: filteredUsers.map((user) => {
-        return {
-          sId: user.sId,
-          id: user.id,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          fullName: user.fullName(),
-          image: user.imageUrl,
-        };
-      }),
+      users: filteredUsers.map((user) => ({
+        sId: user.sId,
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        fullName: user.fullName(),
+        image: user.imageUrl,
+      })),
     });
   }
 );
