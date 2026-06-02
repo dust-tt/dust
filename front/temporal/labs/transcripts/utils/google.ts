@@ -8,6 +8,104 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { drive_v3 } from "googleapis";
 import { google } from "googleapis";
+import { GaxiosError } from "googleapis-common";
+
+// Google API "reason" codes that indicate a transient rate limit, even when the
+// HTTP status is 403 rather than 429.
+const RATE_LIMIT_REASONS = new Set([
+  "rateLimitExceeded",
+  "userRateLimitExceeded",
+]);
+
+// HTTP statuses that are safe to retry: explicit rate limiting and transient
+// upstream errors.
+const RETRYABLE_HTTP_STATUSES = new Set([429, 500, 502, 503, 504]);
+
+// Node network errnos surfaced by Gaxios when the request never completed.
+const RETRYABLE_NETWORK_CODES = new Set([
+  "ECONNABORTED",
+  "ECONNREFUSED",
+  "ECONNRESET",
+  "EAI_AGAIN",
+  "ENOTFOUND",
+  "EPIPE",
+  "ETIMEDOUT",
+]);
+
+function isObjectWithError(
+  data: unknown
+): data is { error: { errors: unknown } } {
+  return (
+    typeof data === "object" &&
+    data !== null &&
+    "error" in data &&
+    typeof data.error === "object" &&
+    data.error !== null &&
+    "errors" in data.error
+  );
+}
+
+function isErrorWithReason(err: unknown): err is { reason: string } {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "reason" in err &&
+    typeof err.reason === "string"
+  );
+}
+
+function hasRateLimitReason(err: GaxiosError): boolean {
+  const data: unknown = err.response?.data;
+  if (!isObjectWithError(data)) {
+    return false;
+  }
+  const { errors } = data.error;
+  if (!Array.isArray(errors)) {
+    return false;
+  }
+  return errors.some(
+    (e) => isErrorWithReason(e) && RATE_LIMIT_REASONS.has(e.reason)
+  );
+}
+
+// Decides whether an error from the Google Drive API is transient and should be
+// retried (true), or permanent and should stop the transcripts schedule
+// (false). Transient: rate limits (429 or 403 with a rate-limit reason),
+// transient 5xx, and network blips. Everything else (revoked token, lost
+// access, unexpected errors) is treated as permanent so we don't retry forever.
+export function isRetryableGoogleError(error: unknown): boolean {
+  if (!(error instanceof GaxiosError)) {
+    return false;
+  }
+
+  if (
+    typeof error.code === "string" &&
+    RETRYABLE_NETWORK_CODES.has(error.code)
+  ) {
+    return true;
+  }
+
+  const status = error.response?.status;
+  if (status === undefined) {
+    return false;
+  }
+  if (RETRYABLE_HTTP_STATUSES.has(status)) {
+    return true;
+  }
+  return status === 403 && hasRateLimitReason(error);
+}
+
+// Error returned by `retrieveGoogleTranscripts`. `retryable` tells the caller
+// whether the failure is transient (retry) or permanent (stop the schedule).
+export class RetrieveGoogleTranscriptsError extends Error {
+  readonly retryable: boolean;
+
+  constructor(cause: Error, retryable: boolean) {
+    super(cause.message);
+    this.name = "RetrieveGoogleTranscriptsError";
+    this.retryable = retryable;
+  }
+}
 
 export async function retrieveRecentGoogleTranscripts(
   {
@@ -63,7 +161,7 @@ export async function retrieveGoogleTranscripts(
   auth: Authenticator,
   transcriptsConfiguration: LabsTranscriptsConfigurationResource,
   localLogger: Logger
-): Promise<Result<string[], Error>> {
+): Promise<Result<string[], RetrieveGoogleTranscriptsError>> {
   const fileIdsToProcess: string[] = [];
 
   let recentTranscriptFiles: drive_v3.Schema$File[] | null = null;
@@ -77,11 +175,14 @@ export async function retrieveGoogleTranscripts(
       localLogger
     );
   } catch (error) {
+    const retryable = isRetryableGoogleError(error);
     localLogger.error(
-      { error, transcriptsConfiguration },
+      { error, retryable, transcriptsConfiguration },
       "[retrieveGoogleTranscripts] Error retrieving recent Google transcripts."
     );
-    return new Err(normalizeError(error));
+    return new Err(
+      new RetrieveGoogleTranscriptsError(normalizeError(error), retryable)
+    );
   }
 
   for (const recentTranscriptFile of recentTranscriptFiles) {

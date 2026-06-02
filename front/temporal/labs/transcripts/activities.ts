@@ -122,9 +122,21 @@ export async function retrieveNewTranscriptsActivity(
         localLogger
       );
       if (googleTranscriptsRes.isErr()) {
+        const { error } = googleTranscriptsRes;
+        if (error.retryable) {
+          // Transient error (rate limit, 5xx, network blip): let Temporal retry
+          // the activity with backoff. Do NOT stop the schedule, otherwise a
+          // transient failure (e.g. "User rate limit exceeded.") would disable
+          // the user's sync permanently.
+          throw new Error(
+            `Error retrieving Google transcripts: ${error.message}`
+          );
+        }
+        // Permanent error (revoked token, lost access, ...): stop the schedule
+        // so we don't keep failing every 5 minutes, and don't retry this run.
         await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
         throw new TranscriptNonRetryableError(
-          `Error retrieving Google transcripts: ${googleTranscriptsRes.error.message}`
+          `Error retrieving Google transcripts: ${error.message}`
         );
       }
       return {
