@@ -1,130 +1,175 @@
-import { useCallback, useState } from "react";
+import { createPersistentArrayStore } from "@app/poke/swr/persistentArrayStore";
+import { useCallback } from "react";
 
 const POKE_FAVORITES_KEY = "poke-favorites";
+
+// Human-readable entity types a poke favorite can point at. Kept in sync with the route
+// shapes matched by `inferTypeFromUrl`.
+export type PokeFavoriteType =
+  | "Workspace"
+  | "Agent"
+  | "Space"
+  | "Data Source"
+  | "Data Source View"
+  | "MCP Server"
+  | "App"
+  | "Conversation"
+  | "Trigger"
+  | "Group"
+  | "Members"
+  | "Frame"
+  | "Skill"
+  | "Skill Suggestion"
+  | "Webhook Source"
+  | "LLM Trace"
+  | "Plugin"
+  | "Page";
 
 export interface PokeFavorite {
   url: string;
   data: {
-    type: string;
+    type: PokeFavoriteType;
     name: string;
+    // Secondary context line, typically the workspace name the entity belongs to.
+    subtitle?: string;
+    // The entity's own string identifier, shown as a small mono badge.
+    sId?: string;
   };
 }
 
-function inferTypeFromUrl(url: string): string {
-  if (url.includes("/assistants/")) {
-    return "Agent";
+// Top-level poke pages (single URL segment) that are not workspaces.
+const TOP_LEVEL_PAGES = new Set([
+  "plans",
+  "templates",
+  "plugins",
+  "kill",
+  "cache",
+  "pokefy",
+  "production-checks",
+  "global-agent-feedbacks",
+  "coupons",
+  "email-templates",
+]);
+
+/**
+ * Strips query/hash and the optional `/poke` prefix, returning the path segments of a poke
+ * URL. Poke workspace-scoped routes look like `/:wId/<section>/...`.
+ */
+function getPokeSegments(url: string): string[] {
+  const path = url.split(/[?#]/)[0];
+  const segments = path.split("/").filter(Boolean);
+  return segments[0] === "poke" ? segments.slice(1) : segments;
+}
+
+/**
+ * Infers a human-readable entity type from a poke URL by matching the known route shapes
+ * defined in `front-spa/src/poke/routes.tsx`.
+ */
+export function inferTypeFromUrl(url: string): PokeFavoriteType {
+  const segments = getPokeSegments(url);
+
+  // Workspace-scoped routes: `/:wId/<section>/...`.
+  if (segments.length >= 2) {
+    const sections = segments.slice(1);
+    if (sections.includes("triggers")) {
+      return "Trigger";
+    }
+    switch (sections[0]) {
+      case "assistants":
+        return "Agent";
+      case "spaces":
+        if (sections.includes("data_source_views")) {
+          return "Data Source View";
+        }
+        if (sections.includes("mcp_server_views")) {
+          return "MCP Server";
+        }
+        if (sections.includes("apps")) {
+          return "App";
+        }
+        return "Space";
+      case "data_sources":
+        return "Data Source";
+      case "conversation":
+        return "Conversation";
+      case "llm-traces":
+        return "LLM Trace";
+      case "groups":
+        return "Group";
+      case "files":
+        return "Frame";
+      case "skills":
+        return "Skill";
+      case "suggestions":
+        return "Skill Suggestion";
+      case "webhook-sources":
+        return "Webhook Source";
+      case "memberships":
+        return "Members";
+      default:
+        return "Page";
+    }
   }
-  if (url.includes("/data_source_views/")) {
-    return "Data Source View";
+
+  // Single segment: either a bare workspace page or a top-level poke page.
+  if (segments.length === 1) {
+    return TOP_LEVEL_PAGES.has(segments[0]) ? "Page" : "Workspace";
   }
-  if (url.includes("/data_sources/")) {
-    return "Data Source";
-  }
-  if (url.includes("/triggers/")) {
-    return "Trigger";
-  }
-  if (url.includes("/spaces/")) {
-    return "Space";
-  }
-  if (url.includes("/conversations/")) {
-    return "Conversation";
-  }
-  if (url.includes("/plugins/")) {
-    return "Plugin";
-  }
-  if (url.includes("/memberships")) {
-    return "Members";
-  }
-  if (url.includes("/groups/")) {
-    return "Group";
-  }
-  if (url.includes("/mcp_server_views/")) {
-    return "MCP Server";
-  }
-  if (url.includes("/apps/")) {
-    return "App";
-  }
-  if (url.match(/\/poke\/[^/]+$/)) {
-    return "Workspace";
-  }
+
   return "Page";
 }
 
-export function createFavorite(url: string, name: string): PokeFavorite {
+interface CreateFavoriteOptions {
+  // Defaults to `inferTypeFromUrl(url)` when omitted.
+  type?: PokeFavoriteType;
+  subtitle?: string;
+  sId?: string;
+}
+
+export function createFavorite(
+  url: string,
+  name: string,
+  options: CreateFavoriteOptions = {}
+): PokeFavorite {
   return {
     url,
     data: {
-      type: inferTypeFromUrl(url),
+      type: options.type ?? inferTypeFromUrl(url),
       name,
+      subtitle: options.subtitle,
+      sId: options.sId,
     },
   };
 }
 
-function getFavoritesFromStorage(): PokeFavorite[] {
-  if (typeof window === "undefined") {
-    return [];
-  }
-  try {
-    const stored = localStorage.getItem(POKE_FAVORITES_KEY);
-    return stored ? JSON.parse(stored) : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveFavoritesToStorage(favorites: PokeFavorite[]): void {
-  if (typeof window === "undefined") {
-    return;
-  }
-  try {
-    localStorage.setItem(POKE_FAVORITES_KEY, JSON.stringify(favorites));
-  } catch {
-    // Silently fail if localStorage is not available
-  }
-}
+const favoritesStore =
+  createPersistentArrayStore<PokeFavorite>(POKE_FAVORITES_KEY);
 
 export function usePokeFavorites() {
-  const [favorites, setFavorites] = useState<PokeFavorite[]>(
-    getFavoritesFromStorage
-  );
+  const favorites = favoritesStore.useItems();
 
   const addFavorite = useCallback((favorite: PokeFavorite) => {
-    setFavorites((prev) => {
-      // Don't add duplicates
-      if (prev.some((f) => f.url === favorite.url)) {
-        return prev;
-      }
-      const updated = [...prev, favorite];
-      saveFavoritesToStorage(updated);
-      return updated;
-    });
+    favoritesStore.setItems((prev) =>
+      prev.some((f) => f.url === favorite.url) ? prev : [...prev, favorite]
+    );
   }, []);
 
   const removeFavorite = useCallback((url: string) => {
-    setFavorites((prev) => {
-      const updated = prev.filter((f) => f.url !== url);
-      saveFavoritesToStorage(updated);
-      return updated;
-    });
+    favoritesStore.setItems((prev) => prev.filter((f) => f.url !== url));
   }, []);
 
   const isFavorite = useCallback(
-    (url: string) => {
-      return favorites.some((f) => f.url === url);
-    },
+    (url: string) => favorites.some((f) => f.url === url),
     [favorites]
   );
 
-  const toggleFavorite = useCallback(
-    (favorite: PokeFavorite) => {
-      if (isFavorite(favorite.url)) {
-        removeFavorite(favorite.url);
-      } else {
-        addFavorite(favorite);
-      }
-    },
-    [isFavorite, removeFavorite, addFavorite]
-  );
+  const toggleFavorite = useCallback((favorite: PokeFavorite) => {
+    favoritesStore.setItems((prev) =>
+      prev.some((f) => f.url === favorite.url)
+        ? prev.filter((f) => f.url !== favorite.url)
+        : [...prev, favorite]
+    );
+  }, []);
 
   return {
     favorites,

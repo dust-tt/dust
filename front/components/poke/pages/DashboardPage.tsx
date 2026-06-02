@@ -6,7 +6,6 @@ import {
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
 import { useDebounce } from "@app/hooks/useDebounce";
-import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import {
   isEntreprisePlanPrefix,
@@ -18,6 +17,7 @@ import {
 import { getRegionChipColor, getRegionDisplay } from "@app/lib/poke/regions";
 import { usePokeRegion } from "@app/lib/swr/poke";
 import { classNames } from "@app/lib/utils";
+import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import type { PokeWorkspaceWithRegion } from "@app/poke/swr/search";
 import { usePokeWorkspacesAllRegions } from "@app/poke/swr/search";
 import { pluralize } from "@app/types/shared/utils/string_utils";
@@ -137,7 +137,7 @@ export function DashboardPage() {
  * SPA mode: Search workspaces across all regions.
  */
 function DashboardPageSPA() {
-  useDocumentTitle("Poke - Home");
+  usePokePageMetadata({ name: "Home" });
 
   const { regionInfo, setRegionInfo } = useRegionContext();
   const { regionData } = usePokeRegion();

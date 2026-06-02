@@ -1,14 +1,13 @@
 import { ViewGroupTable } from "@app/components/poke/groups/view";
 import { MembersDataTable } from "@app/components/poke/members/table";
-import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
+import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeGroupDetails } from "@app/poke/swr/group_details";
 import { LinkWrapper, Spinner } from "@dust-tt/sparkle";
 
 export function GroupPage() {
   const owner = useWorkspace();
-  useDocumentTitle(`Poke - ${owner.name} - Group`);
 
   const groupId = useRequiredPathParam("groupId");
   const {
@@ -19,6 +18,12 @@ export function GroupPage() {
     owner,
     groupId,
     disabled: false,
+  });
+
+  usePokePageMetadata({
+    name: groupDetails?.group.name,
+    subtitle: owner.name,
+    sId: groupId,
   });
 
   if (isLoading) {

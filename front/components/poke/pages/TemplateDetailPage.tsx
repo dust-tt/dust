@@ -8,12 +8,12 @@ import {
   PokeFormMessage,
 } from "@app/components/poke/shadcn/ui/form";
 import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
-import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter, useRequiredPathParam } from "@app/lib/platform";
 import { usePokeAssistantTemplate } from "@app/poke/swr";
+import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { TAILWIND_BACKGROUND_COLORS } from "@app/types/assistant/avatar";
 import { CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 import type {
@@ -428,8 +428,6 @@ function PreviewDialog({ form }: { form: any }) {
 }
 
 export function TemplateDetailPage() {
-  useDocumentTitle("Poke - Template");
-
   const templateId = useRequiredPathParam("tId");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useAppRouter();
@@ -438,6 +436,12 @@ export function TemplateDetailPage() {
 
   const { assistantTemplate } = usePokeAssistantTemplate({
     templateId: templateId === "new" ? null : templateId,
+  });
+
+  usePokePageMetadata({
+    name: assistantTemplate?.handle,
+    type: "Page",
+    sId: templateId === "new" ? undefined : templateId,
   });
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`

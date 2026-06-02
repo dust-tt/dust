@@ -1,9 +1,9 @@
 import { DataSourceViewSelector } from "@app/components/data_source_view/DataSourceViewSelector";
 import { ViewDataSourceViewTable } from "@app/components/poke/data_source_views/view";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
-import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
+import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeDataSourceViewDetails } from "@app/poke/swr/data_source_view_details";
 import { usePokeInfiniteDataSourceViewContentNodes } from "@app/poke/swr/data_source_views";
 import { defaultSelectionConfiguration } from "@app/types/data_source_view";
@@ -11,7 +11,6 @@ import { LinkWrapper, Spinner } from "@dust-tt/sparkle";
 
 export function SpaceDataSourceViewPage() {
   const owner = useWorkspace();
-  useDocumentTitle(`Poke - ${owner.name} - Data Source View`);
 
   const dsvId = useRequiredPathParam("dsvId");
   const {
@@ -22,6 +21,12 @@ export function SpaceDataSourceViewPage() {
     owner,
     dataSourceViewId: dsvId,
     disabled: false,
+  });
+
+  usePokePageMetadata({
+    name: dataSourceViewDetails?.dataSourceView.name,
+    subtitle: owner.name,
+    sId: dsvId,
   });
 
   if (isLoading) {

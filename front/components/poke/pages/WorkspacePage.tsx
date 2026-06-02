@@ -24,13 +24,13 @@ import {
 import { TriggerDataTable } from "@app/components/poke/triggers/table";
 import { WebhookSourceDataTable } from "@app/components/poke/webhook_sources/table";
 import { WorkspaceInfoTable } from "@app/components/poke/workspace/table";
-import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
 import { getRegionChipColor, getRegionDisplay } from "@app/lib/poke/regions";
 import { usePokeRegion } from "@app/lib/swr/poke";
+import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeDataRetention } from "@app/poke/swr/data_retention";
 import { usePokeWorkspaceInfo } from "@app/poke/swr/workspace_info";
 import { isString } from "@app/types/shared/utils/general";
@@ -51,7 +51,7 @@ import {
 
 export function WorkspacePage() {
   const owner = useWorkspace();
-  useDocumentTitle(`Poke - ${owner.name ?? "Workspace"}`);
+  usePokePageMetadata({ name: owner.name ?? "Workspace", sId: owner.sId });
   const { regionData } = usePokeRegion();
 
   const router = useAppRouter();

@@ -1,8 +1,8 @@
-import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { usePokeTables } from "@app/poke/swr";
+import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeDataSourceDetails } from "@app/poke/swr/data_source_details";
 import type { DataSourceType } from "@app/types/data_source";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -248,9 +248,13 @@ function QueryContent({ owner, dataSource }: QueryContentProps) {
 
 export function DataSourceQueryPage() {
   const owner = useWorkspace();
-  useDocumentTitle(`Poke - ${owner.name} - Query`);
 
   const dsId = useRequiredPathParam("dsId");
+  usePokePageMetadata({
+    name: owner.name,
+    subtitle: "Data Source Query",
+    sId: dsId,
+  });
   const {
     data: dataSourceDetails,
     isLoading,

@@ -1,9 +1,9 @@
-import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { convertUrlToPoke } from "@app/lib/utils/url-to-poke";
+import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { useState } from "react";
 
 export function PokefyPage() {
-  useDocumentTitle("Poke - Pokefy");
+  usePokePageMetadata({ name: "Pokefy" });
 
   const [url, setUrl] = useState("");
   const [error, setError] = useState("");
