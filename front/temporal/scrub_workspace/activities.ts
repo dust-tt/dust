@@ -194,8 +194,12 @@ export async function deleteKeys(auth: Authenticator) {
 
 export async function deleteAllConversations(auth: Authenticator) {
   const workspace = auth.getNonNullableWorkspace();
+  // Full-workspace teardown: bypass access filtering so we destroy every conversation, including
+  // those referencing deleted spaces (filtered out by the default permission path), whose
+  // user_messages would otherwise survive and block deleteKeys via the FK on userContextApiKeyId.
   const conversations = await ConversationResource.listAll(auth, {
     includeDeleted: true,
+    dangerouslySkipPermissionFiltering: true,
   });
   logger.info(
     { workspaceId: workspace.sId, conversationsCount: conversations.length },
