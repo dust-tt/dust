@@ -5,10 +5,8 @@ import type { DustError } from "@app/lib/error";
 import { getWebhookRequestsBucket } from "@app/lib/file_storage";
 import { isGCSPreconditionFailedError } from "@app/lib/file_storage/types";
 import { matchPayload, parseMatcherExpression } from "@app/lib/matcher";
-import {
-  isApiBlocked,
-  isProgrammaticApiBlocked,
-} from "@app/lib/metronome/user_block";
+import { isProgrammaticApiBlocked } from "@app/lib/metronome/alerts/programmatic_cap";
+import { isApiBlocked } from "@app/lib/metronome/user_block";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import type { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";

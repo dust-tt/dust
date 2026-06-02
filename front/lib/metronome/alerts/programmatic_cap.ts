@@ -1,3 +1,4 @@
+import { runOnRedis } from "@app/lib/api/redis";
 import {
   clearMetronomeAlert,
   findMetronomeAlert,
@@ -8,7 +9,10 @@ import {
   USAGE_TYPE_GROUP_KEY,
   USAGE_TYPE_PROGRAMMATIC,
 } from "@app/lib/metronome/constants";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
+import type { WorkspaceProgrammaticCreditState } from "@app/types/credits";
+import { isWorkspaceProgrammaticCreditState } from "@app/types/credits";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -47,7 +51,7 @@ export const PROGRAMMATIC_CRITICAL_BALANCE_ALERT_NAME =
 
 /**
  * Read the current programmatic monthly cap from Metronome. Returns the cap
- * alert threshold (in Programmatic USD credits), or null if no cap is set.
+ * alert threshold (in AWU credits), or null if no cap is set.
  */
 export async function getMetronomeProgrammaticCap({
   metronomeCustomerId,
@@ -204,4 +208,157 @@ export async function clearMetronomeProgrammaticCapAlerts({
     "[Metronome ProgrammaticCap] Cleared programmatic cap alerts"
   );
   return new Ok(undefined);
+}
+
+// =============================================================================
+// Redis fast-path cache for programmatic credit state.
+//
+// Keys:
+//   metronome:programmatic_depleted:<ws>  — "1"/"0" block flag (fast path for
+//     API enforcement; backed by workspace.programmaticCreditState in DB).
+//   metronome:programmatic_credit_status:<ws> — fine-grained state string for
+//     UI/notifications; backed by workspace.programmaticCreditState in DB.
+//   metronome:programmatic_warning:<ws>  — "1"/"0" flag set by the 80%
+//     webhook; no DB backing (safe default: false on cold miss).
+// =============================================================================
+
+const REDIS_ORIGIN = "metronome_limit" as const;
+const BLOCKED_FLAG = "1";
+const NOT_BLOCKED_FLAG = "0";
+
+function buildWorkspaceProgrammaticDepletedKey(workspaceId: string): string {
+  return `metronome:programmatic_depleted:${workspaceId}`;
+}
+
+function buildWorkspaceProgrammaticCreditStatusKey(
+  workspaceId: string
+): string {
+  return `metronome:programmatic_credit_status:${workspaceId}`;
+}
+
+function buildWorkspaceProgrammaticWarningKey(workspaceId: string): string {
+  return `metronome:programmatic_warning:${workspaceId}`;
+}
+
+async function setFlag(key: string, value: string): Promise<void> {
+  await runOnRedis({ origin: REDIS_ORIGIN }, async (client) => {
+    await client.set(key, value);
+  });
+}
+
+export async function setWorkspaceProgrammaticDepleted(
+  workspaceId: string
+): Promise<void> {
+  await setFlag(
+    buildWorkspaceProgrammaticDepletedKey(workspaceId),
+    BLOCKED_FLAG
+  );
+}
+
+export async function clearWorkspaceProgrammaticDepleted(
+  workspaceId: string
+): Promise<void> {
+  await setFlag(
+    buildWorkspaceProgrammaticDepletedKey(workspaceId),
+    NOT_BLOCKED_FLAG
+  );
+}
+
+export async function setWorkspaceProgrammaticCreditStatus(
+  workspaceId: string,
+  status: WorkspaceProgrammaticCreditState
+): Promise<void> {
+  await setFlag(buildWorkspaceProgrammaticCreditStatusKey(workspaceId), status);
+}
+
+export async function getWorkspaceProgrammaticCreditStatus(
+  workspaceId: string
+): Promise<WorkspaceProgrammaticCreditState> {
+  const cached = await runOnRedis({ origin: REDIS_ORIGIN }, async (client) =>
+    client.get(buildWorkspaceProgrammaticCreditStatusKey(workspaceId))
+  );
+
+  if (cached && isWorkspaceProgrammaticCreditState(cached)) {
+    return cached;
+  }
+
+  logger.info(
+    { workspaceId },
+    "[ProgrammaticCap] Cache miss during programmatic credit status check, falling back to DB"
+  );
+
+  const workspace = await WorkspaceResource.fetchById(workspaceId);
+  if (!workspace) {
+    logger.warn(
+      { workspaceId },
+      "[ProgrammaticCap] Workspace not found during programmatic credit status cache read-through fallback"
+    );
+    return "active";
+  }
+
+  const status = workspace.programmaticCreditState;
+  await setFlag(buildWorkspaceProgrammaticCreditStatusKey(workspaceId), status);
+  return status;
+}
+
+export async function isProgrammaticApiBlocked(
+  workspaceId: string
+): Promise<boolean> {
+  const depleted = await runOnRedis({ origin: REDIS_ORIGIN }, async (client) =>
+    client.get(buildWorkspaceProgrammaticDepletedKey(workspaceId))
+  );
+
+  if (depleted === BLOCKED_FLAG || depleted === NOT_BLOCKED_FLAG) {
+    return depleted === BLOCKED_FLAG;
+  }
+
+  logger.info(
+    { workspaceId },
+    "[ProgrammaticCap] Cache miss during programmatic API blocked check, falling back to DB"
+  );
+
+  const workspace = await WorkspaceResource.fetchById(workspaceId);
+  if (!workspace) {
+    logger.warn(
+      { workspaceId },
+      "[ProgrammaticCap] Workspace not found during programmatic API blocked cache read-through fallback"
+    );
+    return false;
+  }
+
+  const programmaticDepleted = workspace.programmaticCreditState === "depleted";
+  await setFlag(
+    buildWorkspaceProgrammaticDepletedKey(workspaceId),
+    programmaticDepleted ? BLOCKED_FLAG : NOT_BLOCKED_FLAG
+  );
+  return programmaticDepleted;
+}
+
+// 80% warning flag — set by webhook, no DB backing.
+
+export async function setWorkspaceProgrammaticWarned(
+  workspaceId: string
+): Promise<void> {
+  await setFlag(
+    buildWorkspaceProgrammaticWarningKey(workspaceId),
+    BLOCKED_FLAG
+  );
+}
+
+export async function clearWorkspaceProgrammaticWarned(
+  workspaceId: string
+): Promise<void> {
+  await setFlag(
+    buildWorkspaceProgrammaticWarningKey(workspaceId),
+    NOT_BLOCKED_FLAG
+  );
+}
+
+export async function isWorkspaceProgrammaticWarned(
+  workspaceId: string
+): Promise<boolean> {
+  const val = await runOnRedis({ origin: REDIS_ORIGIN }, async (client) =>
+    client.get(buildWorkspaceProgrammaticWarningKey(workspaceId))
+  );
+  return val === BLOCKED_FLAG;
 }

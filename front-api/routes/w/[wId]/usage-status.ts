@@ -1,15 +1,24 @@
 import {
+  getWorkspaceProgrammaticCreditStatus,
+  isWorkspaceProgrammaticWarned,
+} from "@app/lib/metronome/alerts/programmatic_cap";
+import {
   getWorkspaceCreditPoolStatus,
   isUserAwuWarned,
   isUserBlocked,
 } from "@app/lib/metronome/user_block";
-import type { WorkspacePoolCreditState } from "@app/types/credits";
+import type {
+  WorkspacePoolCreditState,
+  WorkspaceProgrammaticCreditState,
+} from "@app/types/credits";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
 export type GetWorkspaceUsageStatusResponseBody = {
   awuStatus: "normal" | "warned" | "blocked";
   poolCreditState: WorkspacePoolCreditState;
+  programmaticCreditState: WorkspaceProgrammaticCreditState;
+  programmaticWarned: boolean;
 };
 
 // Mounted at /api/w/:wId/usage-status.
@@ -24,12 +33,24 @@ app.get(
 
     // Workspaces not on Metronome billing have no usage status to report.
     if (!workspace.metronomeCustomerId) {
-      return ctx.json({ awuStatus: "normal", poolCreditState: "active" });
+      return ctx.json({
+        awuStatus: "normal",
+        poolCreditState: "active",
+        programmaticCreditState: "active",
+        programmaticWarned: false,
+      });
     }
 
-    const [poolCreditState, blockedReason] = await Promise.all([
+    const [
+      poolCreditState,
+      programmaticCreditState,
+      blockedReason,
+      programmaticWarned,
+    ] = await Promise.all([
       getWorkspaceCreditPoolStatus(workspace.sId),
+      getWorkspaceProgrammaticCreditStatus(workspace.sId),
       isUserBlocked(workspace.sId, user.sId),
+      isWorkspaceProgrammaticWarned(workspace.sId),
     ]);
 
     let awuStatus: GetWorkspaceUsageStatusResponseBody["awuStatus"] = "normal";
@@ -39,7 +60,12 @@ app.get(
       awuStatus = "warned";
     }
 
-    return ctx.json({ awuStatus, poolCreditState });
+    return ctx.json({
+      awuStatus,
+      poolCreditState,
+      programmaticCreditState,
+      programmaticWarned,
+    });
   }
 );
 

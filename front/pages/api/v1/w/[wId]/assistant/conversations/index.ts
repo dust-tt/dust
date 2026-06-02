@@ -25,10 +25,8 @@ import {
   normalizeConversationVisibility,
 } from "@app/lib/api/v1/backward_compatibility";
 import type { Authenticator } from "@app/lib/auth";
-import {
-  isApiBlocked,
-  isProgrammaticApiBlocked,
-} from "@app/lib/metronome/user_block";
+import { isProgrammaticApiBlocked } from "@app/lib/metronome/alerts/programmatic_cap";
+import { isApiBlocked } from "@app/lib/metronome/user_block";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";

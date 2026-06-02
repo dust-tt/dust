@@ -13,10 +13,8 @@ import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import { getRemainingDailyCapMicroUsd } from "@app/lib/api/programmatic_usage/daily_cap";
 import { checkProgrammaticUsageLimits } from "@app/lib/api/programmatic_usage/tracking";
 import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
-import {
-  isApiBlocked,
-  isProgrammaticApiBlocked,
-} from "@app/lib/metronome/user_block";
+import { isProgrammaticApiBlocked } from "@app/lib/metronome/alerts/programmatic_cap";
+import { isApiBlocked } from "@app/lib/metronome/user_block";
 import {
   AgentMessageModel,
   MessageModel,

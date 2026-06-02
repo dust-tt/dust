@@ -1,13 +1,11 @@
 // Redis fast-path cache for credit-state-driven access control.
 //
-// Three keys back the credit state machines:
+// Keys:
 //   - `metronome:user_cap:<ws>:<user>`: caches the user's per-user cap state.
 //   - `metronome:user_awu_warning:<ws>:<user>`: caches the 80% AWU warning state.
 //   - `metronome:pool_depleted:<ws>`: caches the workspace pool state.
 //
-// Each key stores an explicit boolean flag:
-//   - `"1"`: blocked / warned / depleted
-//   - `"0"`: not blocked / not warned / not depleted
+// Each key stores an explicit boolean flag: "1" (blocked/warned) or "0" (ok).
 //
 // `isUserBlocked` is the unified read: a user is blocked iff either cached flag
 // is `"1"`, and it returns the reason ("credits_exhausted" for a depleted
@@ -19,8 +17,11 @@
 // `invalidateCacheAfterCommit`, and cache misses fall back to DB and
 // repopulate both flags.
 //
-// The warning flag (`metronome:user_awu_warning`) has no DB column backing it:
-// a cold-cache miss returns `false` (safe default until the next webhook re-sets the flag).
+// The AWU warning flag has no DB column backing it: a cold-cache miss returns
+// `false` (safe default until the next webhook re-sets the flag).
+//
+// Programmatic cap state (depleted, credit status, warning flag) lives in
+// front/lib/metronome/alerts/programmatic_cap.ts.
 //
 import { runOnRedis } from "@app/lib/api/redis";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -28,14 +29,8 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-import type {
-  WorkspacePoolCreditState,
-  WorkspaceProgrammaticCreditState,
-} from "@app/types/credits";
-import {
-  isWorkspacePoolCreditState,
-  isWorkspaceProgrammaticCreditState,
-} from "@app/types/credits";
+import type { WorkspacePoolCreditState } from "@app/types/credits";
+import { isWorkspacePoolCreditState } from "@app/types/credits";
 
 export type UserBlockedReason = "credits_exhausted" | "user_cap_reached";
 
@@ -57,16 +52,6 @@ function buildWorkspacePoolDepletedKey(workspaceId: string): string {
 
 function buildWorkspaceCreditPoolStatusKey(workspaceId: string): string {
   return `metronome:pool_credit_status:${workspaceId}`;
-}
-
-function buildWorkspaceProgrammaticDepletedKey(workspaceId: string): string {
-  return `metronome:programmatic_depleted:${workspaceId}`;
-}
-
-function buildWorkspaceProgrammaticCreditStatusKey(
-  workspaceId: string
-): string {
-  return `metronome:programmatic_credit_status:${workspaceId}`;
 }
 
 function isBlockFlag(value: string | null): value is "0" | "1" {
@@ -297,102 +282,6 @@ export async function getWorkspaceCreditPoolStatus(
   const status = workspace.poolCreditState;
   await setFlag(buildWorkspaceCreditPoolStatusKey(workspaceId), status);
   return status;
-}
-
-// Workspace programmatic credit state (monthly cap).
-
-export async function setWorkspaceProgrammaticDepleted(
-  workspaceId: string
-): Promise<void> {
-  await setFlag(
-    buildWorkspaceProgrammaticDepletedKey(workspaceId),
-    BLOCKED_FLAG
-  );
-}
-
-export async function clearWorkspaceProgrammaticDepleted(
-  workspaceId: string
-): Promise<void> {
-  await setFlag(
-    buildWorkspaceProgrammaticDepletedKey(workspaceId),
-    NOT_BLOCKED_FLAG
-  );
-}
-
-export async function setWorkspaceProgrammaticCreditStatus(
-  workspaceId: string,
-  status: WorkspaceProgrammaticCreditState
-): Promise<void> {
-  await setFlag(buildWorkspaceProgrammaticCreditStatusKey(workspaceId), status);
-}
-
-export async function getWorkspaceProgrammaticCreditStatus(
-  workspaceId: string
-): Promise<WorkspaceProgrammaticCreditState> {
-  const cached = await runOnRedis({ origin: REDIS_ORIGIN }, async (client) =>
-    client.get(buildWorkspaceProgrammaticCreditStatusKey(workspaceId))
-  );
-
-  if (cached && isWorkspaceProgrammaticCreditState(cached)) {
-    return cached;
-  }
-
-  logger.info(
-    {
-      workspaceId,
-      workspaceProgrammaticCreditStatusCacheHit: false,
-    },
-    "[MetronomeUserBlock] Cache miss during programmatic credit status check, falling back to DB"
-  );
-
-  const workspace = await WorkspaceResource.fetchById(workspaceId);
-  if (!workspace) {
-    logger.warn(
-      { workspaceId },
-      "[MetronomeUserBlock] Workspace not found during programmatic credit status cache read-through fallback"
-    );
-    return "active";
-  }
-
-  const status = workspace.programmaticCreditState;
-  await setFlag(buildWorkspaceProgrammaticCreditStatusKey(workspaceId), status);
-  return status;
-}
-
-export async function isProgrammaticApiBlocked(
-  workspaceId: string
-): Promise<boolean> {
-  const depleted = await runOnRedis({ origin: REDIS_ORIGIN }, async (client) =>
-    client.get(buildWorkspaceProgrammaticDepletedKey(workspaceId))
-  );
-
-  if (isBlockFlag(depleted)) {
-    return depleted === BLOCKED_FLAG;
-  }
-
-  logger.info(
-    {
-      workspaceId,
-      workspaceProgrammaticCacheHit: false,
-    },
-    "[MetronomeUserBlock] Cache miss during programmatic API blocked check, falling back to DB"
-  );
-
-  const workspace = await WorkspaceResource.fetchById(workspaceId);
-  if (!workspace) {
-    logger.warn(
-      { workspaceId },
-      "[MetronomeUserBlock] Workspace not found during programmatic API blocked cache read-through fallback"
-    );
-    return false;
-  }
-
-  const programmaticDepleted = workspace.programmaticCreditState === "depleted";
-  await setFlag(
-    buildWorkspaceProgrammaticDepletedKey(workspaceId),
-    programmaticDepleted ? BLOCKED_FLAG : NOT_BLOCKED_FLAG
-  );
-  return programmaticDepleted;
 }
 
 // Workspace-pool-only read for API calls (no per-user cap).

@@ -1,9 +1,9 @@
-import { CRITICAL_BALANCE_OFFSET } from "@app/lib/metronome/alerts/programmatic_cap";
 import {
+  CRITICAL_BALANCE_OFFSET,
   clearWorkspaceProgrammaticDepleted,
   setWorkspaceProgrammaticCreditStatus,
   setWorkspaceProgrammaticDepleted,
-} from "@app/lib/metronome/user_block";
+} from "@app/lib/metronome/alerts/programmatic_cap";
 import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { invalidateCacheAfterCommit } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";

@@ -9,6 +9,7 @@ import { projectAddedAsMemberWorkflow } from "@app/lib/notifications/workflows/p
 import { providerCredentialsHealthUpdatedWorkflow } from "@app/lib/notifications/workflows/provider-credential-updated";
 import { skillSuggestionsReadyWorkflow } from "@app/lib/notifications/workflows/skill-suggestions-ready";
 import { userAwuCapReachedWorkflow } from "@app/lib/notifications/workflows/user-awu-cap-reached";
+import { workspaceProgrammaticCapWarningWorkflow } from "@app/lib/notifications/workflows/workspace-programmatic-cap-warning";
 import { serve } from "@novu/framework/next";
 
 // This endpoint exposes our code-based notifications workflows to the Novu platform.
@@ -26,5 +27,6 @@ export default serve({
     providerCredentialsHealthUpdatedWorkflow,
     userAwuCapReachedWorkflow,
     balanceThresholdReachedWorkflow,
+    workspaceProgrammaticCapWarningWorkflow,
   ],
 });

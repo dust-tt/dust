@@ -272,6 +272,8 @@ export function useWorkspaceUsageStatus({
   return {
     awuStatus: data?.awuStatus ?? "normal",
     poolCreditState: data?.poolCreditState ?? "active",
+    programmaticCreditState: data?.programmaticCreditState ?? "active",
+    programmaticWarned: data?.programmaticWarned ?? false,
     isUsageStatusLoading: !error && !data && !disabled,
   };
 }

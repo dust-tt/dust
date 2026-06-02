@@ -63,10 +63,12 @@ import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { extractFromString, serializeMention } from "@app/lib/mentions/format";
 import {
-  getWorkspaceCreditPoolStatus,
   getWorkspaceProgrammaticCreditStatus,
-  isApiBlocked,
   isProgrammaticApiBlocked,
+} from "@app/lib/metronome/alerts/programmatic_cap";
+import {
+  getWorkspaceCreditPoolStatus,
+  isApiBlocked,
   isUserBlocked,
 } from "@app/lib/metronome/user_block";
 import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";

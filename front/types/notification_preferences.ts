@@ -114,6 +114,11 @@ export const BALANCE_THRESHOLD_REACHED_TRIGGER_ID =
 export const BALANCE_THRESHOLD_REACHED_TAG =
   "balance-threshold-reached" as const;
 
+export const WORKSPACE_PROGRAMMATIC_CAP_WARNING_TRIGGER_ID =
+  "workspace-programmatic-cap-warning" as const;
+export const WORKSPACE_PROGRAMMATIC_CAP_WARNING_TAG =
+  "workspace-programmatic-cap-warning" as const;
+
 export type WorkflowTriggerId =
   | typeof CONVERSATION_UNREAD_TRIGGER_ID
   | typeof PROJECT_ADDED_AS_MEMBER_TRIGGER_ID
@@ -121,4 +126,5 @@ export type WorkflowTriggerId =
   | typeof SKILL_SUGGESTIONS_READY_TRIGGER_ID
   | typeof PROVIDER_CREDENTIALS_HEALTH_UPDATED_TRIGGER_ID
   | typeof USER_AWU_CAP_REACHED_TRIGGER_ID
-  | typeof BALANCE_THRESHOLD_REACHED_TRIGGER_ID;
+  | typeof BALANCE_THRESHOLD_REACHED_TRIGGER_ID
+  | typeof WORKSPACE_PROGRAMMATIC_CAP_WARNING_TRIGGER_ID;

@@ -4,18 +4,27 @@
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import {
+  getWorkspaceProgrammaticCreditStatus,
+  isWorkspaceProgrammaticWarned,
+} from "@app/lib/metronome/alerts/programmatic_cap";
+import {
   getWorkspaceCreditPoolStatus,
   isUserAwuWarned,
   isUserBlocked,
 } from "@app/lib/metronome/user_block";
 import { apiError } from "@app/logger/withlogging";
-import type { WorkspacePoolCreditState } from "@app/types/credits";
+import type {
+  WorkspacePoolCreditState,
+  WorkspaceProgrammaticCreditState,
+} from "@app/types/credits";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetWorkspaceUsageStatusResponseBody = {
   awuStatus: "normal" | "warned" | "blocked";
   poolCreditState: WorkspacePoolCreditState;
+  programmaticCreditState: WorkspaceProgrammaticCreditState;
+  programmaticWarned: boolean;
 };
 
 async function handler(
@@ -40,14 +49,24 @@ async function handler(
 
   // Workspaces not on Metronome billing have no usage status to report.
   if (!workspace.metronomeCustomerId) {
-    return res
-      .status(200)
-      .json({ awuStatus: "normal", poolCreditState: "active" });
+    return res.status(200).json({
+      awuStatus: "normal",
+      poolCreditState: "active",
+      programmaticCreditState: "active",
+      programmaticWarned: false,
+    });
   }
 
-  const [poolCreditState, blockedReason] = await Promise.all([
+  const [
+    poolCreditState,
+    programmaticCreditState,
+    blockedReason,
+    programmaticWarned,
+  ] = await Promise.all([
     getWorkspaceCreditPoolStatus(workspace.sId),
+    getWorkspaceProgrammaticCreditStatus(workspace.sId),
     isUserBlocked(workspace.sId, user.sId),
+    isWorkspaceProgrammaticWarned(workspace.sId),
   ]);
 
   let awuStatus: GetWorkspaceUsageStatusResponseBody["awuStatus"] = "normal";
@@ -57,7 +76,12 @@ async function handler(
     awuStatus = "warned";
   }
 
-  return res.status(200).json({ awuStatus, poolCreditState });
+  return res.status(200).json({
+    awuStatus,
+    poolCreditState,
+    programmaticCreditState,
+    programmaticWarned,
+  });
 }
 
 export default withSessionAuthenticationForWorkspace(handler, {

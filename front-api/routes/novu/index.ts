@@ -6,6 +6,7 @@ import { projectAddedAsMemberWorkflow } from "@app/lib/notifications/workflows/p
 import { providerCredentialsHealthUpdatedWorkflow } from "@app/lib/notifications/workflows/provider-credential-updated";
 import { skillSuggestionsReadyWorkflow } from "@app/lib/notifications/workflows/skill-suggestions-ready";
 import { userAwuCapReachedWorkflow } from "@app/lib/notifications/workflows/user-awu-cap-reached";
+import { workspaceProgrammaticCapWarningWorkflow } from "@app/lib/notifications/workflows/workspace-programmatic-cap-warning";
 import { createHono } from "@front-api/lib/hono";
 import type { ServeHandlerOptions } from "@novu/framework";
 import { NovuRequestHandler } from "@novu/framework";
@@ -31,6 +32,7 @@ const options: ServeHandlerOptions = {
     providerCredentialsHealthUpdatedWorkflow,
     userAwuCapReachedWorkflow,
     balanceThresholdReachedWorkflow,
+    workspaceProgrammaticCapWarningWorkflow,
   ],
 };
 

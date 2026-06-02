@@ -204,22 +204,36 @@ interface UsageStatusBannerProps {
 }
 
 function UsageStatusBanner({ owner }: UsageStatusBannerProps) {
-  const { awuStatus, poolCreditState } = useWorkspaceUsageStatus({ owner });
+  const {
+    awuStatus,
+    poolCreditState,
+    programmaticCreditState,
+    programmaticWarned,
+  } = useWorkspaceUsageStatus({ owner });
 
-  // The pool balance banner is only shown to admins, who manage workspace
-  // credits. The AWU cap banner is shown to any user subject to a usage cap.
-  // Both can be displayed at the same time.
+  // The pool balance and programmatic cap banners are only shown to admins, who
+  // manage workspace credits. The AWU cap banner is shown to any user subject to
+  // a usage cap. All can be displayed at the same time.
   const showPoolBanner =
     isAdmin(owner) &&
     (poolCreditState === "active_low_balance" ||
       poolCreditState === "active_critical_balance");
   const showAwuBanner = awuStatus !== "normal";
+  const showProgrammaticBanner =
+    isAdmin(owner) &&
+    (programmaticCreditState !== "active" || programmaticWarned);
 
-  if (!showPoolBanner && !showAwuBanner) {
+  if (!showPoolBanner && !showAwuBanner && !showProgrammaticBanner) {
     return null;
   }
 
   const isPoolCritical = poolCreditState === "active_critical_balance";
+  const isProgrammaticDepleted = programmaticCreditState === "depleted";
+  const isProgrammaticCritical =
+    programmaticCreditState === "active_critical_balance";
+  // 80% warning: FSM still "active" but warning flag fired from webhook.
+  const isProgrammaticAtWarning =
+    programmaticWarned && programmaticCreditState === "active";
 
   return (
     <>
@@ -235,6 +249,38 @@ function UsageStatusBanner({ owner }: UsageStatusBannerProps) {
             isPoolCritical
               ? "Your workspace credits are almost depleted. Top up now to avoid interruptions to your agents."
               : "Your workspace credits are running low. Consider topping up to avoid interruptions to your agents."
+          }
+          footer={
+            <LinkWrapper href={`/w/${owner.sId}/usage`} className="underline">
+              Manage credits
+            </LinkWrapper>
+          }
+        />
+      )}
+      {showProgrammaticBanner && (
+        <StatusBanner
+          variant={
+            isProgrammaticDepleted || isProgrammaticCritical
+              ? "danger"
+              : "warning"
+          }
+          title={
+            isProgrammaticDepleted
+              ? "Your workspace's programmatic API has reached its monthly cap"
+              : isProgrammaticCritical
+                ? "Your workspace's programmatic API is critically close to its monthly cap"
+                : isProgrammaticAtWarning
+                  ? "Your workspace's programmatic API has reached 80% of its monthly cap"
+                  : "Your workspace's programmatic API is approaching its monthly cap"
+          }
+          description={
+            isProgrammaticDepleted
+              ? "Programmatic API calls are now blocked until the next billing cycle or the cap is increased."
+              : isProgrammaticCritical
+                ? "Programmatic API calls will be blocked very soon. Increase the cap to avoid interruptions."
+                : isProgrammaticAtWarning
+                  ? "Programmatic API calls will be blocked when the cap is reached. Consider increasing the cap."
+                  : "Programmatic API calls will be blocked when the cap is reached. Consider increasing the cap."
           }
           footer={
             <LinkWrapper href={`/w/${owner.sId}/usage`} className="underline">

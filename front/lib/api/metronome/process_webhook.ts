@@ -27,11 +27,14 @@ import {
 } from "@app/lib/credits/free";
 import {
   CRITICAL_BALANCE_OFFSET,
+  clearWorkspaceProgrammaticWarned,
   LOW_BALANCE_OFFSET,
   PROGRAMMATIC_CAP_ALERT_NAME,
   PROGRAMMATIC_CRITICAL_BALANCE_ALERT_NAME,
   PROGRAMMATIC_LOW_BALANCE_ALERT_NAME,
   PROGRAMMATIC_WARNING_BALANCE_ALERT_NAME,
+  setWorkspaceProgrammaticWarned,
+  WARNING_BALANCE_RATIO,
 } from "@app/lib/metronome/alerts/programmatic_cap";
 import {
   getMetronomeDefaultUserCapAlert,
@@ -779,7 +782,23 @@ export async function processMetronomeWebhook({
         // three FSM-driving alerts (cap reached / low / critical).
         const alertName = event.properties.alert_name ?? "";
         if (alertName.startsWith(PROGRAMMATIC_WARNING_BALANCE_ALERT_NAME)) {
-          await dispatchProgrammaticWarning({ workspace });
+          const warningThreshold = event.properties.threshold;
+          if (warningThreshold == null) {
+            logger.warn(
+              { eventId: event.id, workspaceId: workspace.sId },
+              "[Metronome Webhook] spend_threshold_reached: programmatic warning alert missing threshold, skipping notification"
+            );
+            break;
+          }
+          const monthlyCapCredits = Math.round(
+            warningThreshold / WARNING_BALANCE_RATIO
+          );
+          void setWorkspaceProgrammaticWarned(workspace.sId);
+          await dispatchProgrammaticWarning({
+            workspace,
+            monthlyCapCredits,
+            eventId: event.id,
+          });
         } else {
           const programmaticEvent = programmaticEventFromAlertName(alertName);
           if (programmaticEvent) {
@@ -856,6 +875,7 @@ export async function processMetronomeWebhook({
           return handleResult;
         }
       } else if (isProgrammaticMonthlyCap(event)) {
+        void clearWorkspaceProgrammaticWarned(workspace.sId);
         await dispatchProgrammaticCapReset({ workspace });
         logger.info(
           { eventId: event.id, workspaceId: workspace.sId },
