@@ -251,9 +251,9 @@ export async function editAndResumeAction(
         const newAugmentedInputs = isEditedAction
           ? { ...originalAction.augmentedInputs, ...restrictedInputs }
           : originalAction.augmentedInputs;
-        const newStatus = isEditedAction
-          ? ("ready_allowed_explicitly" as const)
-          : originalAction.status;
+        // Siblings (other actions at the same step) are auto-approved as-is:
+        // the user's "Edit & send" implicitly confirms the whole step.
+        const newStatus = "ready_allowed_explicitly" as const;
 
         await AgentMCPActionResource.makeNew(
           auth,

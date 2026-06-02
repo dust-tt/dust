@@ -1,5 +1,5 @@
 import { Input, TextArea } from "@dust-tt/sparkle";
-import { useState } from "react";
+import { useLayoutEffect, useState } from "react";
 
 interface GmailComposeEditorProps {
   editedFields: Record<string, string>;
@@ -13,8 +13,10 @@ function parseEmailArray(raw: string): string {
     if (Array.isArray(parsed)) {
       return parsed.join(", ");
     }
+    // JSON but not an array (e.g. '""' when the input was undefined) — treat as empty
+    return "";
   } catch {
-    // not JSON
+    // not JSON — treat as plain comma-separated text
   }
   return raw;
 }
@@ -38,6 +40,24 @@ export function GmailComposeEditor({
   const [showBcc, setShowBcc] = useState(
     () => !!parseEmailArray(editedFields["bcc"] ?? "[]")
   );
+
+  // Normalize email array fields on mount so they always hold valid JSON arrays.
+  // When blockedAction.inputs["cc"] is undefined, the parent initializes editedFields["cc"]
+  // as '""' (JSON-encoded empty string). Submitting that would send cc="" (string) instead
+  // of cc=[] (array), failing the MCP schema validation.
+  useLayoutEffect(() => {
+    setEditedFields((prev) => {
+      const updates: Record<string, string> = {};
+      for (const key of ["to", "cc", "bcc"]) {
+        const display = parseEmailArray(prev[key] ?? "");
+        const normalized = serializeEmailArray(display);
+        if (normalized !== prev[key]) {
+          updates[key] = normalized;
+        }
+      }
+      return Object.keys(updates).length > 0 ? { ...prev, ...updates } : prev;
+    });
+  }, [setEditedFields]);
 
   function handleEmailField(key: string, value: string) {
     setEditedFields((prev) => ({
