@@ -960,7 +960,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
 
     const childSkillIds = skillReferences.map((reference) =>
-      this.skillReferenceChildId(reference, workspace.id)
+      this.skillReferenceChildId(auth, reference)
     );
     const childSkills = await this.fetchByIds(
       auth,
@@ -977,10 +977,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         parentSkill.sId,
         removeNulls(
           (referencesByParentSkillId[parentSkill.id] ?? []).map((reference) => {
-            const childSkillId = this.skillReferenceChildId(
-              reference,
-              workspace.id
-            );
+            const childSkillId = this.skillReferenceChildId(auth, reference);
 
             return childSkillId
               ? (childSkillsById.get(childSkillId) ?? null)
@@ -992,20 +989,22 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   private static skillReferenceChildId(
+    auth: Authenticator,
     reference: Pick<
       SkillReferenceModel,
       "childCustomSkillId" | "childGlobalSkillId"
-    >,
-    workspaceId: ModelId
+    >
   ): string | null {
     if (reference.childGlobalSkillId !== null) {
       return reference.childGlobalSkillId;
     }
 
     if (reference.childCustomSkillId !== null) {
+      const workspace = auth.getNonNullableWorkspace();
+
       return this.modelIdToSId({
         id: reference.childCustomSkillId,
-        workspaceId,
+        workspaceId: workspace.id,
       });
     }
 
@@ -2168,7 +2167,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     const usedBySkillsByChildSkillId = new Map<string, UsedBySkillType[]>();
     for (const reference of skillReferences) {
-      const childSkillId = this.skillReferenceChildId(reference, workspace.id);
+      const childSkillId = this.skillReferenceChildId(auth, reference);
       const parentSkill = parentSkillByModelId.get(reference.parentSkillId);
       if (
         !childSkillId ||
