@@ -825,7 +825,7 @@ function PeoplePage({
           <div className="s-mt-4">
             <Page.Vertical gap="md">
               {/* Search + invite row */}
-              <div className="s-flex s-items-center s-gap-2">
+              <div className="s-flex s-w-full s-items-center s-gap-2">
                 <SearchInput
                   name="member-search"
                   placeholder="Search"
@@ -846,7 +846,7 @@ function PeoplePage({
                 )}
               </div>
               {/* Sub-filter row */}
-              <div className="s-flex s-items-center s-justify-between s-gap-4">
+              <div className="s-flex s-w-full s-items-center s-justify-between s-gap-4">
                 <ButtonsSwitchList size="sm" defaultValue="members">
                   <ButtonsSwitch value="members" label="Members" />
                   <ButtonsSwitch value="invitations" label="Invitations" />
@@ -888,7 +888,7 @@ function PeoplePage({
                   </button>
                 </Page.P>
               </div>
-              <div className="s-flex s-items-center s-gap-2">
+              <div className="s-flex s-w-full s-items-center s-gap-2">
                 <SearchInput
                   name="group-search"
                   placeholder="Search"
