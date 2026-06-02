@@ -1,6 +1,7 @@
 import { Authenticator } from "@app/lib/auth";
 import {
   addPrepaidCommitToContract,
+  getMetronomeContractById,
   listMetronomePackages,
 } from "@app/lib/metronome/client";
 import {
@@ -42,6 +43,7 @@ vi.mock("@app/lib/metronome/client", async () => {
     ...actual,
     listMetronomePackages: vi.fn(),
     addPrepaidCommitToContract: vi.fn(),
+    getMetronomeContractById: vi.fn(),
   };
 });
 
@@ -221,6 +223,18 @@ beforeEach(() => {
   vi.mocked(provisionMetronomeContract).mockResolvedValue(
     new Ok({ metronomeContractId: NEW_CONTRACT_ID })
   );
+  // The active contract the backdating guard reads. Started 90 days ago, so
+  // future and recently-backdated switches are accepted; only a switch dated
+  // before this start is rejected.
+  vi.mocked(getMetronomeContractById).mockResolvedValue(
+    new Ok({
+      id: EXISTING_CONTRACT_ID,
+      customer_id: METRONOME_CUSTOMER_ID,
+      starting_at: new Date(
+        Date.now() - 90 * 24 * 60 * 60 * 1000
+      ).toISOString(),
+    } as never)
+  );
   vi.mocked(scheduleSubscriptionCancellation).mockResolvedValue(true);
   vi.mocked(addPrepaidCommitToContract).mockResolvedValue(
     new Ok({ editId: "edit_xxx" })
@@ -304,6 +318,36 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — Enterprise", () =>
         swapAt: "next-hour",
       })
     );
+  });
+
+  it("rejects a startingAt earlier than the current active contract's start", async () => {
+    await ensureEnterprisePlan();
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      isSuperUser: true,
+    });
+    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
+
+    // Active contract started 1 hour ago; backdating 48h before it would
+    // create overlapping contracts the sunset pass can't resolve.
+    vi.mocked(getMetronomeContractById).mockResolvedValue(
+      new Ok({
+        id: EXISTING_CONTRACT_ID,
+        customer_id: METRONOME_CUSTOMER_ID,
+        starting_at: futureIso(-1),
+      } as never)
+    );
+
+    req.body = enterpriseBody({ startingAt: futureIso(-48) });
+    req.query.wId = workspace.sId;
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
+    expect(res._getJSONData().error.message).toContain(
+      "before the current active contract's start"
+    );
+    expect(provisionMetronomeContract).not.toHaveBeenCalled();
   });
 
   it("rejects when the package currency does not match the Stripe customer currency", async () => {

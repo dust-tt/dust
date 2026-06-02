@@ -1190,48 +1190,66 @@ export async function processMetronomeWebhook({
         break;
       }
 
-      // Preferred path: a pending (created_backend_only) subscription was
-      // staged when the contract was provisioned. Flip it to active and
-      // end whatever active sub the workspace currently holds.
-      const pendingSubscription =
+      // A subscription row was staged for this contract when it was
+      // provisioned. Its status tells us whether this contract.start is still
+      // relevant.
+      const subscriptionForContract =
         await SubscriptionResource.fetchByMetronomeContractId(
           workspace,
           contractId
         );
-      if (
-        pendingSubscription &&
-        pendingSubscription.status === "created_backend_only"
-      ) {
-        const previousPlanCode = activeSubscription.getPlan().code;
-        await pendingSubscription.activatePending();
-        await invalidateContractCache(workspace.sId);
-        const auth = await Authenticator.internalAdminForWorkspace(
-          workspace.sId
-        );
-        await restoreWorkspaceAfterSubscription(auth);
-        await ensureWorkOSOrganizationForPaidPlan({
-          workspace,
-          planCode: targetPlan.code,
-          contractId,
-        });
-        emitSubscriptionChangedAuditEvent({
-          auth,
-          planCode: targetPlanCode,
-          previousPlanCode,
-          metronomeContractId: contractId,
-        });
+      if (subscriptionForContract) {
+        // Preferred path: the pending (created_backend_only) subscription is
+        // still the workspace's target. Flip it to active and end whatever
+        // active sub the workspace currently holds.
+        if (subscriptionForContract.status === "created_backend_only") {
+          const previousPlanCode = activeSubscription.getPlan().code;
+          await subscriptionForContract.activatePending();
+          await invalidateContractCache(workspace.sId);
+          const auth = await Authenticator.internalAdminForWorkspace(
+            workspace.sId
+          );
+          await restoreWorkspaceAfterSubscription(auth);
+          await ensureWorkOSOrganizationForPaidPlan({
+            workspace,
+            planCode: targetPlan.code,
+            contractId,
+          });
+          emitSubscriptionChangedAuditEvent({
+            auth,
+            planCode: targetPlanCode,
+            previousPlanCode,
+            metronomeContractId: contractId,
+          });
+          logger.info(
+            {
+              contractId,
+              planCode: targetPlan.code,
+              workspaceId: workspace.sId,
+            },
+            "[Metronome Webhook] contract.start: pending subscription activated"
+          );
+          break;
+        }
+
+        // A row exists for this contract but it is no longer pending — a later
+        // switch_contract superseded this contract (its pending sub was ended
+        // and the Metronome contract sunset by the overlap-sunset pass). Its
+        // contract.start is stale: swapping onto it would point the workspace
+        // at an ended contract. Leave the subscription alone.
         logger.info(
           {
             contractId,
-            planCode: targetPlan.code,
+            status: subscriptionForContract.status,
             workspaceId: workspace.sId,
           },
-          "[Metronome Webhook] contract.start: pending subscription activated"
+          "[Metronome Webhook] contract.start: subscription for contract is no longer pending (superseded), leaving subscription alone"
         );
         break;
       }
 
-      // Legacy fallback: no pending row was staged. Only swap when the
+      // Legacy fallback: no row was ever staged for this contract. Only swap
+      // when the
       // workspace is Metronome-only billed, or not billed at all. Shadow
       // billed subscriptions (Stripe + Metronome) follow Stripe's signal,
       // and pure Stripe subs have no Metronome contract at all.
