@@ -21,7 +21,6 @@ import {
   DashIcon,
   SearchInput,
   Separator,
-  UserGroupIcon,
 } from "@dust-tt/sparkle";
 import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import { useRouter } from "next/router";
@@ -61,7 +60,6 @@ interface Plan {
   cta: string;
   ctaStyle: CtaStyle;
   featured: boolean;
-  aboveHighlightsNote?: { title: string; subtitle: string };
   highlightsHeader?: string;
   highlights: string[];
 }
@@ -233,10 +231,6 @@ const PLANS: Plan[] = [
     cta: "Talk to sales",
     ctaStyle: "dark",
     featured: false,
-    aboveHighlightsNote: {
-      title: "Company-wide credit pool",
-      subtitle: "Managed by admins",
-    },
     highlightsHeader: "Everything in Business plus:",
     highlights: [
       "Unlimited connectors & MCP servers",
@@ -642,27 +636,6 @@ function PlanCard({
 
       <Separator className="mb-5" />
 
-      {plan.aboveHighlightsNote && (
-        <>
-          <div className="mb-5 flex items-center gap-3">
-            <span
-              className="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-primary-800"
-              aria-hidden="true"
-            >
-              <UserGroupIcon className="h-5 w-5 text-primary-50" />
-            </span>
-            <div className="flex flex-1 flex-col gap-0.5">
-              <span className="heading-sm text-foreground">
-                {plan.aboveHighlightsNote.title}
-              </span>
-              <span className="copy-xs text-muted-foreground">
-                {plan.aboveHighlightsNote.subtitle}
-              </span>
-            </div>
-          </div>
-          <Separator className="mb-5" />
-        </>
-      )}
       {plan.highlightsHeader && (
         <p className="copy-base mb-3 font-semibold text-foreground">
           {plan.highlightsHeader}
