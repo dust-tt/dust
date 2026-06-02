@@ -127,6 +127,7 @@ export interface MockSkillConfig {
 
 interface BaseTestCase {
   scenarioId: string;
+  useInlineTools?: boolean;
   expectedToolCalls?: ToolCallAssertion[];
   judgeCriteria: string;
   workspaceContext: WorkspaceContext;
@@ -205,6 +206,18 @@ export type ToolCallAssertion =
       sourceSuggestionIds?: string[];
     }
   | {
+      type: "editSkillWithInlineToolReference";
+      skillId: string;
+      toolId: string;
+      sourceSuggestionIds?: string[];
+    }
+  | {
+      type: "editSkillWithoutInlineToolReference";
+      skillId: string;
+      toolId: string;
+      sourceSuggestionIds?: string[];
+    }
+  | {
       type: "editSkillWithAgentFacingDescription";
       skillId: string;
       sourceSuggestionIds?: string[];
@@ -234,6 +247,34 @@ export function editSkillWithTool(
   sourceSuggestionIds?: string[]
 ): ToolCallAssertion {
   return { type: "editSkillWithTool", skillId, toolId, sourceSuggestionIds };
+}
+
+/** Expects an edit_skill call that adds/references a tool via instructionEdits. */
+export function editSkillWithInlineToolReference(
+  skillId: string,
+  toolId: string,
+  sourceSuggestionIds?: string[]
+): ToolCallAssertion {
+  return {
+    type: "editSkillWithInlineToolReference",
+    skillId,
+    toolId,
+    sourceSuggestionIds,
+  };
+}
+
+/** Expects an edit_skill instruction edit that removes a tool reference. */
+export function editSkillWithoutInlineToolReference(
+  skillId: string,
+  toolId: string,
+  sourceSuggestionIds?: string[]
+): ToolCallAssertion {
+  return {
+    type: "editSkillWithoutInlineToolReference",
+    skillId,
+    toolId,
+    sourceSuggestionIds,
+  };
 }
 
 /** Expects an edit_skill call with an agentFacingDescriptionEdit for the given skill. */
