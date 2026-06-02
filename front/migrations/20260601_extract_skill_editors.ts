@@ -7,18 +7,13 @@ import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_me
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { UserModel } from "@app/lib/resources/storage/models/user";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { makeSId } from "@app/lib/resources/string_ids";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import { makeScript } from "@app/scripts/helpers";
+import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
+import type { LightWorkspaceType } from "@app/types/user";
 import { stringify } from "csv-stringify/sync";
 import { Op } from "sequelize";
-
-interface WorkspaceInfo {
-  id: number;
-  sId: string;
-  name: string;
-}
 
 interface SkillInfo {
   id: string;
@@ -48,29 +43,6 @@ type SkillEditorCsvRecord = Record<string, string | number>;
 
 const DUST_APP_URL = "https://app.dust.tt";
 
-async function fetchWorkspaces(
-  workspaceId: string | null
-): Promise<WorkspaceInfo[]> {
-  const workspaces = await WorkspaceModel.findAll({
-    where: workspaceId ? { sId: workspaceId } : undefined,
-    attributes: ["id", "sId", "name"],
-    order: [
-      ["name", "ASC"],
-      ["sId", "ASC"],
-    ],
-  });
-
-  if (workspaceId && workspaces.length === 0) {
-    throw new Error(`Workspace not found: ${workspaceId}.`);
-  }
-
-  return workspaces.map((workspace) => ({
-    id: workspace.id,
-    sId: workspace.sId,
-    name: workspace.name,
-  }));
-}
-
 function uniqueNumbers(values: number[]): number[] {
   return [...new Set(values)];
 }
@@ -91,7 +63,7 @@ async function fetchSkillEditorsForWorkspace({
   workspace,
 }: {
   now: Date;
-  workspace: WorkspaceInfo;
+  workspace: LightWorkspaceType;
 }): Promise<EditorWithSkills[]> {
   const skills = await SkillConfigurationModel.findAll({
     where: { workspaceId: workspace.id, status: "active" },
@@ -292,19 +264,19 @@ makeScript(
     },
   },
   async ({ outputFile, workspaceId }) => {
-    const workspaces = await fetchWorkspaces(workspaceId ?? null);
     const now = new Date();
     const editors: EditorWithSkills[] = [];
 
-    for (const workspace of workspaces) {
-      const workspaceEditors = await fetchSkillEditorsForWorkspace({
-        now,
-        workspace,
-      });
-      editors.push(
-        ...workspaceEditors
-      );
-    }
+    await runOnAllWorkspaces(
+      async (workspace) => {
+        const workspaceEditors = await fetchSkillEditorsForWorkspace({
+          now,
+          workspace,
+        });
+        editors.push(...workspaceEditors);
+      },
+      { concurrency: 1, wId: workspaceId }
+    );
 
     const records = buildCsvRecords(editors);
     const csv = stringify(records, {
