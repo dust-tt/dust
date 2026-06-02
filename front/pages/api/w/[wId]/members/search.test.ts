@@ -91,7 +91,7 @@ describe("GET /api/w/[wId]/members/search", () => {
     expect(data.members[0].workspace).toBeUndefined();
   });
 
-  it("returns only light member fields for non-admin users", async () => {
+  it("returns only light user fields for non-admin users", async () => {
     const { req, res, user } = await createPrivateApiMockRequest({
       method: "GET",
       role: "user",

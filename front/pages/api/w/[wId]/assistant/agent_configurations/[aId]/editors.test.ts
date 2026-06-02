@@ -104,7 +104,7 @@ describe("GET /api/w/[wId]/assistant/agent_configurations/[aId]/editors", () => 
     expect(data.editors[0].id).toBe(agentOwner.id);
   });
 
-  it("should return 200 and only light member fields for non-admin editor", async () => {
+  it("should return 200 and only light user fields for non-admin editor", async () => {
     const { req, res, agentOwner } = await setupTest({
       agentOwnerRole: "builder",
       requestUserRole: "builder",

@@ -207,7 +207,7 @@ describe("GET /api/w/:wId/members/search", () => {
     expect(data.members).toHaveLength(0);
   });
 
-  it("returns only light member fields for non-admin users", async () => {
+  it("returns only light user fields for non-admin users", async () => {
     const { workspace, user } = await setup("user");
 
     const response = await honoApp.request(searchUrl(workspace.sId));
