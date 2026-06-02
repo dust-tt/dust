@@ -1,4 +1,4 @@
-import type { PaletteActionConfig } from "@app/components/command_palette/types";
+import type { PaletteActionConfig } from "@app/components/command_palette/CommandPaletteContext";
 import type { AppRouter } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -9,7 +9,6 @@ interface DefaultPaletteActionsParams {
   router: AppRouter;
 }
 
-// Actions that are always available in the palette, regardless of the current page.
 export function getDefaultPaletteActions({
   owner,
   router,

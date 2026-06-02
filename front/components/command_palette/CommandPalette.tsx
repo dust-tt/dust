@@ -19,6 +19,7 @@ import {
   getSkillBuilderRoute,
 } from "@app/lib/utils/router";
 import { compareAgentsForSort } from "@app/types/assistant/assistant";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { Dialog, DialogContent } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -85,7 +86,6 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
   const MAX_DISPLAYED_AGENTS = 25;
   const MAX_DISPLAYED_SKILLS = 15;
 
-  // Default actions (always available) followed by page-registered actions.
   const allActions = useMemo(
     () => [
       ...getDefaultPaletteActions({ owner, router }),
@@ -172,19 +172,26 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
 
   const handleItemSelect = useCallback(
     (entry: CommandPaletteEntry) => {
-      // Top-level actions are terminal: run immediately and close.
-      if (entry.kind === "action") {
-        close();
-        entry.action.onSelect();
-        return;
-      }
-
-      // Skills without write access have only one action (view details).
-      if (entry.kind === "skill" && !entry.skill.canWrite) {
-        executeAction(entry, "view_details");
-      } else {
-        setSelectedItem(entry);
-        setPhase("action");
+      switch (entry.kind) {
+        case "action":
+          close();
+          entry.action.onSelect();
+          return;
+        case "skill":
+          // Without write access, the only action is viewing details.
+          if (!entry.skill.canWrite) {
+            executeAction(entry, "view_details");
+          } else {
+            setSelectedItem(entry);
+            setPhase("action");
+          }
+          return;
+        case "agent":
+          setSelectedItem(entry);
+          setPhase("action");
+          return;
+        default:
+          assertNeverAndIgnore(entry);
       }
     },
     [close, executeAction]

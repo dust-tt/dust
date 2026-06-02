@@ -1,10 +1,10 @@
+import type { PaletteActionConfig } from "@app/components/command_palette/CommandPaletteContext";
 import {
   ItemEmptyState,
   ItemRow,
   ItemTitle,
   KeyboardHints,
 } from "@app/components/command_palette/CommandPaletteItems";
-import type { PaletteActionConfig } from "@app/components/command_palette/types";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
@@ -15,8 +15,7 @@ export type CommandPaletteItem =
   | { kind: "agent"; agent: LightAgentConfigurationType }
   | { kind: "skill"; skill: SkillWithoutInstructionsAndToolsType };
 
-// Selectable entries in the search phase. Actions sit above agents and skills and run
-// immediately on select (they never enter the per-item action phase).
+// Actions run immediately on select; agents and skills go through the action phase.
 export type CommandPaletteEntry =
   | CommandPaletteItem
   | { kind: "action"; action: PaletteActionConfig };
@@ -164,7 +163,9 @@ export function CommandPaletteSearchPhase({
                 onClick={() => onItemSelect({ kind: "action", action })}
                 onMouseEnter={() => onSelectedIndexChange(i)}
               >
-                <Icon visual={action.icon} size="xs" />
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center">
+                  <Icon visual={action.icon} size="sm" />
+                </div>
                 <div className="flex min-w-0 items-center gap-1.5">
                   <span className="shrink-0 font-medium">{action.label}</span>
                   {action.description && (

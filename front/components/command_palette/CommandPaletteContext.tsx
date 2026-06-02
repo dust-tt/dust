@@ -1,5 +1,4 @@
-import type { PaletteActionConfig } from "@app/components/command_palette/types";
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
 import {
   createContext,
   useCallback,
@@ -7,6 +6,16 @@ import {
   useMemo,
   useState,
 } from "react";
+
+// A command registered into the palette. Selecting it runs `onSelect` and closes.
+export interface PaletteActionConfig {
+  id: string;
+  label: string;
+  description?: string;
+  // Sparkle icon, rendered via <Icon visual={icon} />.
+  icon: ComponentType<{ className?: string }>;
+  onSelect: () => void;
+}
 
 interface CommandPaletteContextType {
   isOpen: boolean;
@@ -94,9 +103,7 @@ export function useCommandPalette() {
   return context;
 }
 
-// Non-throwing accessor for components that may render outside a
-// CommandPaletteProvider (e.g. the input bar, which is shared with the
-// extension). Returns null when no provider is mounted.
+// Non-throwing variant for components that may render outside a provider.
 export function useCommandPaletteOptional() {
   return useContext(CommandPaletteContext);
 }

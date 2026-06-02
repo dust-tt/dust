@@ -1,3 +1,4 @@
+import { PaletteAction } from "@app/components/command_palette/usePaletteAction";
 import { clientFetch } from "@app/lib/egress/client";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -83,9 +84,16 @@ export function WorkspaceNameEditor({ owner }: { owner: WorkspaceType }) {
         <Page.P variant="secondary">{owner.name}</Page.P>
       </div>
       <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-        <SheetTrigger asChild>
-          <Button variant="outline" label="Edit" icon={PencilSquareIcon} />
-        </SheetTrigger>
+        <PaletteAction
+          id="edit-workspace-name"
+          label="Edit workspace name"
+          description="Rename this workspace"
+          icon={PencilSquareIcon}
+        >
+          <SheetTrigger asChild>
+            <Button variant="outline" label="Edit" icon={PencilSquareIcon} />
+          </SheetTrigger>
+        </PaletteAction>
         <SheetContent>
           <SheetHeader>
             <SheetTitle>Edit Workspace Name</SheetTitle>

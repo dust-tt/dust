@@ -12,7 +12,6 @@ import {
 } from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
 import { useInputBarOverlayTracker } from "@app/components/assistant/conversation/input_bar/useInputBarOverlayTracker";
-import { PaletteAction } from "@app/components/command_palette/usePaletteAction";
 import type { InputBarSlashSuggestionCapability } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import type { CustomEditorProps } from "@app/components/editor/input_bar/useCustomEditor";
 import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
@@ -64,7 +63,6 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
   GlobeAltIcon,
-  MicIcon,
   PlusIcon,
   TextIcon,
   Toolbar,
@@ -1050,13 +1048,6 @@ const InputBarContainer = ({
 
   const isRecording = voiceTranscriberService.status === "recording";
   const isVoiceActive = voiceTranscriberService.status !== "idle";
-
-  const isVoiceAvailable =
-    !subscription.plan.isByok &&
-    owner.metadata?.allowVoiceTranscription !== false &&
-    actions.includes("voice");
-  const isAttachmentAvailable =
-    actions.includes("attachment") && clientType !== "extension";
   const compactPreviewText = editorService.getTrimmedText();
   const compactDisplayPlaceholder =
     (disableInput ? submitBlockMessage : placeholder) ?? "Get work done";
@@ -1101,27 +1092,6 @@ const InputBarContainer = ({
 
   return (
     <>
-      {/* Headless: expose the new-conversation input bar's primary actions in the
-          command palette. The visible triggers live in the input bar below. */}
-      {!conversation && isAttachmentAvailable && (
-        <PaletteAction
-          id="conversation-attach-file"
-          label="Attach a file"
-          description="Upload a file to your message"
-          icon={AttachmentIcon}
-          onSelect={() => fileInputRef.current?.click()}
-        />
-      )}
-      {!conversation && isVoiceAvailable && (
-        <PaletteAction
-          id="conversation-voice-dictation"
-          label="Dictate a message"
-          description="Start voice transcription"
-          icon={MicIcon}
-          // startRecording catches its own errors and notifies, so void is safe here.
-          onSelect={() => void voiceTranscriberService.startRecording()}
-        />
-      )}
       {isCompact && (
         <div
           className={cn(
@@ -1143,27 +1113,29 @@ const InputBarContainer = ({
               {compactPreviewText || compactDisplayPlaceholder}
             </div>
           )}
-          {isVoiceAvailable && (
-            <div
-              className={cn(
-                "flex shrink-0 flex-row items-center",
-                isVoiceActive && "ml-auto"
-              )}
-              data-compact-voice
-            >
-              <VoicePicker
-                status={voiceTranscriberService.status}
-                level={voiceTranscriberService.level}
-                elapsedSeconds={voiceTranscriberService.elapsedSeconds}
-                onRecordStart={voiceTranscriberService.startRecording}
-                onRecordStop={voiceTranscriberService.stopRecording}
-                size="xs"
-                compact
-                showStopLabel={false}
-                disabled={disableInput}
-              />
-            </div>
-          )}
+          {!subscription.plan.isByok &&
+            owner.metadata?.allowVoiceTranscription !== false &&
+            actions.includes("voice") && (
+              <div
+                className={cn(
+                  "flex shrink-0 flex-row items-center",
+                  isVoiceActive && "ml-auto"
+                )}
+                data-compact-voice
+              >
+                <VoicePicker
+                  status={voiceTranscriberService.status}
+                  level={voiceTranscriberService.level}
+                  elapsedSeconds={voiceTranscriberService.elapsedSeconds}
+                  onRecordStart={voiceTranscriberService.startRecording}
+                  onRecordStop={voiceTranscriberService.stopRecording}
+                  size="xs"
+                  compact
+                  showStopLabel={false}
+                  disabled={disableInput}
+                />
+              </div>
+            )}
         </div>
       )}
       <div
@@ -1413,18 +1385,21 @@ const InputBarContainer = ({
                   conversationId={conversation?.sId}
                 />
               )}
-              {isVoiceAvailable && !isCompact && (
-                <VoicePicker
-                  status={voiceTranscriberService.status}
-                  level={voiceTranscriberService.level}
-                  elapsedSeconds={voiceTranscriberService.elapsedSeconds}
-                  onRecordStart={voiceTranscriberService.startRecording}
-                  onRecordStop={voiceTranscriberService.stopRecording}
-                  size={buttonSize}
-                  showStopLabel={!isMobile}
-                  disabled={disableInput}
-                />
-              )}
+              {!subscription.plan.isByok &&
+                owner.metadata?.allowVoiceTranscription !== false &&
+                actions.includes("voice") &&
+                !isCompact && (
+                  <VoicePicker
+                    status={voiceTranscriberService.status}
+                    level={voiceTranscriberService.level}
+                    elapsedSeconds={voiceTranscriberService.elapsedSeconds}
+                    onRecordStart={voiceTranscriberService.startRecording}
+                    onRecordStop={voiceTranscriberService.stopRecording}
+                    size={buttonSize}
+                    showStopLabel={!isMobile}
+                    disabled={disableInput}
+                  />
+                )}
             </div>
             <TooltipProvider>
               <TooltipRoot
