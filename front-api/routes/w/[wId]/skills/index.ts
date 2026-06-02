@@ -373,6 +373,22 @@ app.post(
     const featureFlags = await getFeatureFlags(auth);
     const enableSkillReferences = featureFlags.includes("nested_skills");
     const referencedSkillIds = uniq(body.referencedSkillIds ?? []);
+    if (enableSkillReferences) {
+      const skillReferenceValidation =
+        await SkillResource.getValidatedSkillReferenceIds(auth, {
+          referencedSkillIds,
+        });
+
+      if (skillReferenceValidation.isErr()) {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: skillReferenceValidation.error.message,
+          },
+        });
+      }
+    }
 
     // Validate file attachments if provided (gated behind sandbox_tools).
     let files: FileResource[] | undefined;

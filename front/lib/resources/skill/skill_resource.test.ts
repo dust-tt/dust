@@ -4,6 +4,7 @@ import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/global_registry";
 import type { SkillAttachedKnowledge } from "@app/lib/resources/skill/skill_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
@@ -833,6 +834,107 @@ describe("SkillResource", () => {
       expect(availableParentSkill?.instructions).toContain(
         SkillFactory.serializeSkillReferenceTag(childSkill)
       );
+    });
+
+    it("throws when syncing an invalid nested skill reference", async () => {
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Skill With Invalid Reference",
+      });
+      const invalidSkillReferenceTag = serializeSkillTag({
+        id: "not-a-skill-reference",
+        icon: null,
+        name: "Invalid Skill Reference",
+      });
+
+      await expect(
+        skill.updateSkill(testContext.authenticator, {
+          name: skill.name,
+          agentFacingDescription: skill.agentFacingDescription,
+          userFacingDescription: skill.userFacingDescription,
+          instructions: `Use ${invalidSkillReferenceTag}.`,
+          icon: skill.icon,
+          mcpServerViews: [],
+          attachedKnowledge: [],
+          requestedSpaceIds: [],
+          enableSkillReferences: true,
+          referencedSkillIds: ["not-a-skill-reference"],
+        })
+      ).rejects.toThrow("Invalid skill reference ID: not-a-skill-reference");
+    });
+
+    it("throws when syncing an out-of-workspace nested skill reference", async () => {
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Skill With Out Of Workspace Reference",
+      });
+      const outOfWorkspaceSkillId = SkillResource.modelIdToSId({
+        id: skill.id + 1,
+        workspaceId: testContext.workspace.id + 1,
+      });
+      const outOfWorkspaceSkillReferenceTag = serializeSkillTag({
+        id: outOfWorkspaceSkillId,
+        icon: null,
+        name: "Out Of Workspace Skill Reference",
+      });
+
+      await expect(
+        skill.updateSkill(testContext.authenticator, {
+          name: skill.name,
+          agentFacingDescription: skill.agentFacingDescription,
+          userFacingDescription: skill.userFacingDescription,
+          instructions: `Use ${outOfWorkspaceSkillReferenceTag}.`,
+          icon: skill.icon,
+          mcpServerViews: [],
+          attachedKnowledge: [],
+          requestedSpaceIds: [],
+          enableSkillReferences: true,
+          referencedSkillIds: [outOfWorkspaceSkillId],
+        })
+      ).rejects.toThrow(
+        `Skill reference ID does not belong to this workspace: ${outOfWorkspaceSkillId}`
+      );
+    });
+
+    it("syncs global skill references", async () => {
+      const globalSkillReferenceTag =
+        GlobalSkillsRegistry.serializeSkillTag("frames");
+      const parentSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Parent With Global Skill Reference",
+        instructions: `Use ${globalSkillReferenceTag}.`,
+        enableSkillReferences: true,
+        referencedSkillIds: ["frames"],
+      });
+
+      const childSkills = await parentSkill.fetchChildSkills(
+        testContext.authenticator
+      );
+
+      expect(childSkills).toEqual([
+        expect.objectContaining({
+          sId: "frames",
+          name: "Create Frames",
+        }),
+      ]);
+
+      const framesSkill = await SkillResource.fetchById(
+        testContext.authenticator,
+        "frames"
+      );
+      if (framesSkill === null) {
+        throw new Error("Expected frames global skill to exist.");
+      }
+
+      const usedBySkillsByChild = await SkillResource.batchFetchUsedBySkills(
+        testContext.authenticator,
+        [framesSkill]
+      );
+
+      expect(usedBySkillsByChild.get("frames")).toEqual([
+        {
+          sId: parentSkill.sId,
+          name: parentSkill.name,
+          icon: parentSkill.icon,
+        },
+      ]);
     });
   });
 
