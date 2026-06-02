@@ -54,7 +54,7 @@ async function processWorkspace(
 
   const skills = await SkillResource.listByWorkspace(auth, {
     onlyCustom: true,
-    status: ["active", "suggested"],
+    status: ["active", "archived", "suggested"],
   });
 
   const stats: WorkspaceStats = {
@@ -90,7 +90,7 @@ async function processWorkspace(
     const instructions =
       missingInInstructions.length === 0
         ? skill.instructions
-        : `${skill.instructions.trimEnd()}\n\n${ENABLED_TOOLS_LABEL} ${missingInInstructions.map((tool) => serializeToolTag(tool)).join(" ")}`;
+        : `${skill.instructions.trimEnd()}\n\n${ENABLED_TOOLS_LABEL} ${missingInInstructions.map((tool) => serializeToolTag(tool)).join(", ")}`;
 
     const instructionsHtmlToolIds = new Set(
       [
@@ -108,7 +108,12 @@ async function processWorkspace(
 
     let instructionsHtml = skill.instructionsHtml;
     if (instructionsHtml !== null && missingInInstructionsHtml.length > 0) {
-      const paragraph = `<p data-block-id="${generateShortBlockId()}">${ENABLED_TOOLS_LABEL} ${missingInInstructionsHtml.map((tool) => serializeToolTag(tool)).join(" ")}</p>`;
+      const renderedToolsHtml = missingInInstructionsHtml
+        .map((tool) =>
+          serializeToolTag(tool).replace(/\s*\/>$/, `></${TOOL_TAG_NAME}>`)
+        )
+        .join(", ");
+      const paragraph = `<p data-block-id="${generateShortBlockId()}">${ENABLED_TOOLS_LABEL} ${renderedToolsHtml}</p>`;
       const $ = cheerio.load(instructionsHtml, { xmlMode: false }, false);
       const root = $(
         `[data-block-id="${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}"]`
