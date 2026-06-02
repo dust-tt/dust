@@ -745,6 +745,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "slack_enhanced_default_agent"
   | "slack_message_splitting"
   | "slideshow"
+  | "skill_edition_tools"
   | "skills_as_user_messages"
   | "run_tools_from_prompt"
   | "usage_data_api"

@@ -571,6 +571,11 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   "skill_management": {
     "enable_skill": "never_ask",
   },
+  "skills": {
+    "create_skill": "medium",
+    "edit_skill": "medium",
+    "upload_skill_files": "medium",
+  },
   "slab": {
     "get_post_contents": "never_ask",
     "get_post_metadata": "never_ask",

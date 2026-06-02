@@ -63,6 +63,7 @@ import { default as sandboxServer } from "@app/lib/api/actions/servers/sandbox";
 import { default as schedulesManagementServer } from "@app/lib/api/actions/servers/schedules_management";
 import { default as searchServer } from "@app/lib/api/actions/servers/search";
 import { default as skillManagementServer } from "@app/lib/api/actions/servers/skill_management";
+import { default as skillsServer } from "@app/lib/api/actions/servers/skills";
 import { default as slabServer } from "@app/lib/api/actions/servers/slab";
 import { default as slackBotServer } from "@app/lib/api/actions/servers/slack_bot";
 import { default as slackServer } from "@app/lib/api/actions/servers/slack_personal";
@@ -246,6 +247,8 @@ export async function getInternalMCPServer(
       return zendeskServer(auth, agentLoopContext);
     case "skill_management":
       return skillManagementServer(auth, agentLoopContext);
+    case "skills":
+      return skillsServer(auth, agentLoopContext);
     case "schedules_management":
       return schedulesManagementServer(auth, agentLoopContext);
     case "productboard":

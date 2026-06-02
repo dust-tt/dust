@@ -169,6 +169,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable nested skills",
     stage: "dust_only",
   },
+  skill_edition_tools: {
+    description: "Enable tools for creating and editing workspace skills",
+    stage: "dust_only",
+  },
   power_bi_mcp: {
     description: "Power BI MCP tool for querying semantic models and DAX",
     stage: "on_demand",
