@@ -18,18 +18,27 @@ interface SkillBuilderInstructionsReferenceSummaryProps {
   containerRef?: Ref<HTMLDivElement>;
   hasError: boolean;
   instructions: string;
-  onReferenceClick: (target: ReferenceSummaryTarget) => void;
+  onReferenceClick: (target: ReferenceSummaryItem) => void;
   referencedSkills: ReferencedSkillFormData[];
   tools: BuilderAction[];
 }
 
-export type ReferenceSummaryTarget =
-  | { id: string; kind: "knowledge" }
-  | { id: string; kind: "skill" }
-  | { id: string; kind: "tool" };
-
-type ReferenceSummaryItem = ReferenceSummaryTarget & {
-  icon?: string | null;
+type ReferenceSummaryItem =
+  | {
+  id: string;
+  kind: "knowledge";
+  title: string;
+}
+  | {
+  icon: string | null;
+  id: string;
+  kind: "skill";
+  title: string;
+}
+  | {
+  icon: string | null;
+  id: string;
+  kind: "tool";
   title: string;
 };
 
@@ -62,10 +71,8 @@ function renderReferenceSummaryItem({
   onReferenceClick,
 }: {
   item: ReferenceSummaryItem;
-  onReferenceClick: (target: ReferenceSummaryTarget) => void;
+  onReferenceClick: (target: ReferenceSummaryItem) => void;
 }) {
-  const handleClick = () => onReferenceClick({ id: item.id, kind: item.kind });
-
   switch (item.kind) {
     case "knowledge":
       return (
@@ -76,7 +83,7 @@ function renderReferenceSummaryItem({
           color="white"
           size="xs"
           className="text-xs"
-          onClick={handleClick}
+          onClick={() => onReferenceClick(item)}
         />
       );
     case "skill":
@@ -84,10 +91,10 @@ function renderReferenceSummaryItem({
         <Chip
           key={`${item.kind}:${item.id}`}
           label={item.title}
-          icon={getSkillIcon(item.icon ?? null)}
+          icon={getSkillIcon(item.icon)}
           color="white"
           size="xs"
-          onClick={handleClick}
+          onClick={() => onReferenceClick(item)}
         />
       );
     case "tool":
@@ -95,9 +102,9 @@ function renderReferenceSummaryItem({
         <ToolChip
           key={`${item.kind}:${item.id}`}
           title={item.title}
-          toolIcon={item.icon ?? null}
+          toolIcon={item.icon}
           color="white"
-          onClick={handleClick}
+          onClick={() => onReferenceClick(item)}
         />
       );
     default:
