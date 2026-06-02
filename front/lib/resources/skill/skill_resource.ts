@@ -3367,19 +3367,19 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Map<string, SkillReferenceTarget>> {
     const workspace = auth.getNonNullableWorkspace();
-    const customSkillSIdByModelId = new Map<ModelId, string>();
+    const customSkillIdByModelId = new Map<ModelId, string>();
 
     for (const skillId of skillIds) {
       if (isResourceSId("skill", skillId)) {
         const modelId = getResourceIdFromSId(skillId);
         if (modelId !== null) {
-          customSkillSIdByModelId.set(modelId, skillId);
+          customSkillIdByModelId.set(modelId, skillId);
         }
       }
     }
 
     const targets = new Map<string, SkillReferenceTarget>();
-    const customSkillIds = [...customSkillSIdByModelId.keys()];
+    const customSkillIds = [...customSkillIdByModelId.keys()];
     if (customSkillIds.length > 0) {
       const customSkills = await SkillConfigurationModel.findAll({
         where: {
@@ -3392,7 +3392,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       });
 
       for (const skill of customSkills) {
-        const sId = customSkillSIdByModelId.get(skill.id);
+        const sId = customSkillIdByModelId.get(skill.id);
         if (sId) {
           targets.set(sId, {
             icon: skill.icon,
