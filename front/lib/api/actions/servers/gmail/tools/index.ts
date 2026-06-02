@@ -69,11 +69,11 @@ function buildAndEncodeEmail(params: {
   contentType: string;
   body: string;
   threadingHeaders?: string[];
-  attachment?: {
+  attachment: {
     buffer: Buffer;
     filename: string;
     contentType: string;
-  };
+  } | null;
 }): Err<MCPError> | Ok<string> {
   const encodedSubject = encodeSubject(params.subject);
 
@@ -258,11 +258,11 @@ async function fetchAttachment(
   attachmentFileId: string | undefined,
   agentLoopContext: ToolHandlerExtra["agentLoopContext"]
 ): Promise<
-  | Ok<{ buffer: Buffer; filename: string; contentType: string } | undefined>
+  | Ok<{ buffer: Buffer; filename: string; contentType: string } | null>
   | Err<MCPError>
 > {
   if (!attachmentFileId) {
-    return new Ok(undefined);
+    return new Ok(null);
   }
 
   if (!agentLoopContext) {
@@ -452,7 +452,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
         contentType: "text/html",
         body: fullBody,
         threadingHeaders,
-        attachment,
+        attachment, 
       });
       if (encodedMessageResult.isErr()) {
         return encodedMessageResult;
@@ -489,7 +489,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
         subject,
         contentType,
         body,
-        attachment: attachment,
+        attachment,
       });
 
       if (encodedMessageResult.isErr()) {
@@ -1032,7 +1032,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
         contentType: "text/html",
         body: fullBody,
         threadingHeaders,
-        attachment: attachment,
+        attachment,
       });
 
       if (encodedMessageResult.isErr()) {
@@ -1070,7 +1070,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
         subject,
         contentType,
         body,
-        attachment: attachment,
+        attachment,
       });
 
       if (encodedMessageResult.isErr()) {
