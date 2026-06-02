@@ -2,7 +2,10 @@ import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { InvitationsList } from "@app/components/members/InvitationsList";
 import { InviteEmailButtonWithModal } from "@app/components/members/InviteEmailButtonWithModal";
-import type { SearchMemberType } from "@app/components/members/MemberSelectionTable";
+import {
+  hasFullUserAccess,
+  type SearchMemberType,
+} from "@app/components/members/MemberSelectionTable";
 import { MembersList } from "@app/components/members/MembersList";
 import { ChangeMemberModal } from "@app/components/workspace/ChangeMemberModal";
 import WorkspaceAccessPanel from "@app/components/workspace/WorkspaceAccessPanel";
@@ -118,16 +121,18 @@ function WorkspaceMembersList({
     setSelectedMember(null);
   }, [setSelectedMember]);
 
+  const handleRowClick = useCallback((user: SearchMemberType) => {
+    if (hasFullUserAccess(user)) {
+      setSelectedMember(user);
+    }
+  }, []);
+
   return (
     <>
       <MembersList
         currentUser={currentUser}
         membersData={membersData}
-        onRowClick={(user: SearchMemberType) => {
-          if ("email" in user) {
-            setSelectedMember(user);
-          }
-        }}
+        onRowClick={handleRowClick}
         showColumns={
           isProvisioningEnabled
             ? ["name", "email", "role", "status", "groups"]
