@@ -1,7 +1,9 @@
 import { isMCPApproveExecutionEvent } from "@app/lib/actions/mcp";
 import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
+import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { getConversationRankVersionLock } from "@app/lib/api/assistant/conversation/lock";
 import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
+import { publishAgentMessagesEvents } from "@app/lib/api/assistant/streaming/events";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
@@ -16,7 +18,10 @@ import type { ConversationResource } from "@app/lib/resources/conversation_resou
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import {
+  type ConversationWithoutContentType,
+  isAgentMessageType,
+} from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -315,6 +320,24 @@ export async function editAndResumeAction(
     },
     startStep: blockedStep,
   });
+
+  // Notify the conversation stream about N+1 so the frontend subscribes to its SSE channel.
+  // Without this, the ConversationViewer never learns about the new message version and the
+  // agent's response never appears in the UI.
+  const freshConversation = await getConversation(auth, conversationId);
+  if (freshConversation.isOk()) {
+    const allMessages = freshConversation.value.content.flat();
+    const newAgentMessage = allMessages.find(
+      (m): m is (typeof allMessages)[number] & { sId: string } =>
+        isAgentMessageType(m) && m.sId === newMessageSId
+    );
+    if (newAgentMessage && isAgentMessageType(newAgentMessage)) {
+      await publishAgentMessagesEvents(
+        freshConversation.value as unknown as ConversationWithoutContentType,
+        [newAgentMessage]
+      );
+    }
+  }
 
   return new Ok(undefined);
 }
