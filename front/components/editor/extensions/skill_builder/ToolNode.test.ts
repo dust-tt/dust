@@ -38,20 +38,21 @@ function toolNodes(editor: Editor) {
 }
 
 function getToolNodePosition(editor: Editor) {
-  let toolNodePosition: { nodeSize: number; position: number } | null = null;
+  const toolNodePositions: { nodeSize: number; position: number }[] = [];
   editor.state.doc.descendants((node, position) => {
     if (node.type.name === "toolNode") {
-      toolNodePosition = {
+      toolNodePositions.push({
         nodeSize: node.nodeSize,
         position,
-      };
+      });
       return false;
     }
 
     return true;
   });
 
-  if (toolNodePosition === null) {
+  const toolNodePosition = toolNodePositions[0];
+  if (!toolNodePosition) {
     throw new Error("Tool node not found");
   }
 

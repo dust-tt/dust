@@ -31,20 +31,21 @@ function skillNodes(editor: Editor) {
 }
 
 function getSkillNodePosition(editor: Editor) {
-  let skillNodePosition: { nodeSize: number; position: number } | null = null;
+  const skillNodePositions: { nodeSize: number; position: number }[] = [];
   editor.state.doc.descendants((node, position) => {
     if (node.type.name === "skill") {
-      skillNodePosition = {
+      skillNodePositions.push({
         nodeSize: node.nodeSize,
         position,
-      };
+      });
       return false;
     }
 
     return true;
   });
 
-  if (skillNodePosition === null) {
+  const skillNodePosition = skillNodePositions[0];
+  if (!skillNodePosition) {
     throw new Error("Skill node not found");
   }
 
