@@ -203,7 +203,7 @@ export function SkillBuilderInstructionsReferenceSummary({
     <div
       ref={containerRef}
       className={cn(
-        "absolute inset-x-0 bottom-0 z-10 max-h-40 overflow-y-auto rounded-b-xl border-x border-b bg-background px-3 pb-3 pt-3",
+        "absolute inset-x-0 bottom-0 z-10 max-h-40 overflow-y-auto rounded-b-xl border bg-background px-3 pb-3 pt-3",
         "dark:bg-background-night",
         hasError
           ? [
