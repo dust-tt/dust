@@ -1,7 +1,10 @@
 import { getSkillIcon } from "@app/lib/skill";
 import { UNAVAILABLE_SKILL_LABEL } from "@app/lib/skills/format";
-import { Chip, ExclamationCircleIcon } from "@dust-tt/sparkle";
+import { Chip, ExclamationCircleIcon, Tooltip } from "@dust-tt/sparkle";
 import { NodeViewWrapper } from "@tiptap/react";
+
+const UNAVAILABLE_SKILL_TOOLTIP_LABEL =
+  "This referenced skill is unavailable because its visibility or permissions changed.";
 
 interface SkillNodeComponentProps {
   node: {
@@ -18,11 +21,20 @@ export function SkillNodeComponent({ node }: SkillNodeComponentProps) {
   if (node.attrs.skillUnavailable === true) {
     return (
       <NodeViewWrapper className="inline-flex align-middle">
-        <Chip
-          label={UNAVAILABLE_SKILL_LABEL}
-          icon={ExclamationCircleIcon}
-          color="warning"
-          size="xs"
+        <Tooltip
+          label={UNAVAILABLE_SKILL_TOOLTIP_LABEL}
+          side="top"
+          tooltipTriggerAsChild
+          trigger={
+            <span className="inline-flex">
+              <Chip
+                label={UNAVAILABLE_SKILL_LABEL}
+                icon={ExclamationCircleIcon}
+                color="warning"
+                size="xs"
+              />
+            </span>
+          }
         />
       </NodeViewWrapper>
     );
