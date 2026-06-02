@@ -611,6 +611,8 @@ function PeoplePage({
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
   const [selectedGroup, setSelectedGroup] = useState<GroupRow | null>(null);
+  const [selectedMember, setSelectedMember] = useState<MemberRow | null>(null);
+  const [memberPlan, setMemberPlan] = useState<MemberRow["plan"]>("member");
   const canEdit = role === "super_admin" || role === "admin";
 
   const memberColumns = useMemo<ColumnDef<MemberRow>[]>(
@@ -732,12 +734,20 @@ function PeoplePage({
 
   const filteredMembers = useMemo(
     () =>
-      members.filter(
-        (m) =>
-          !search ||
-          m.name.toLowerCase().includes(search.toLowerCase()) ||
-          m.email.toLowerCase().includes(search.toLowerCase())
-      ),
+      members
+        .filter(
+          (m) =>
+            !search ||
+            m.name.toLowerCase().includes(search.toLowerCase()) ||
+            m.email.toLowerCase().includes(search.toLowerCase())
+        )
+        .map((m) => ({
+          ...m,
+          onClick: () => {
+            setSelectedMember(m);
+            setMemberPlan(m.plan);
+          },
+        })),
     [search, members]
   );
 
@@ -1021,6 +1031,102 @@ function PeoplePage({
         onPrimary={handleSaveGroup}
         preSelected={["s1", "s2", "s3"]}
       />
+
+      {/* Member detail sheet */}
+      {selectedMember && (
+        <Sheet
+          open={!!selectedMember}
+          onOpenChange={() => setSelectedMember(null)}
+        >
+          <SheetContent side="right" size="lg">
+            <SheetHeader>
+              <SheetTitle>Members</SheetTitle>
+            </SheetHeader>
+            <div className="s-flex s-flex-col s-gap-6 s-flex-1 s-overflow-auto s-px-6 s-py-4">
+              {/* Member identity */}
+              <div className="s-flex s-items-center s-gap-3">
+                <Avatar size="lg" name={selectedMember.name} isRounded />
+                <div>
+                  <div className="s-text-base s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                    {selectedMember.name}
+                  </div>
+                  <div className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                    {selectedMember.email}
+                  </div>
+                </div>
+              </div>
+
+              {/* Role picker */}
+              <div className="s-flex s-flex-col s-gap-2">
+                <Label>Role</Label>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      label={PLAN_LABELS[memberPlan]}
+                      isSelect
+                      size="sm"
+                    />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    {(["owner", "admin", "member"] as MemberRow["plan"][]).map(
+                      (p) => (
+                        <DropdownMenuItem
+                          key={p}
+                          label={PLAN_LABELS[p]}
+                          onClick={() => setMemberPlan(p)}
+                        />
+                      )
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <Page.P variant="secondary" size="sm">
+                  {memberPlan === "owner" &&
+                    "Can use and create agents, manage settings, members, spaces, connections, and tools."}
+                  {memberPlan === "admin" &&
+                    "Can use and create agents, manage settings, members, spaces, connections, and tools."}
+                  {memberPlan === "member" &&
+                    "Can use and create agents in the workspace."}
+                </Page.P>
+              </div>
+
+              {/* Danger zone */}
+              <div className="s-flex s-flex-col s-gap-2">
+                <Button
+                  variant="warning"
+                  label="Remove member access"
+                  size="sm"
+                />
+                <Page.P variant="secondary" size="sm">
+                  This will permanently remove {selectedMember.name}'s access to
+                  the company workspace.
+                </Page.P>
+              </div>
+            </div>
+            <SheetFooter
+              leftButtonProps={{
+                label: "Cancel",
+                onClick: () => setSelectedMember(null),
+                variant: "outline",
+              }}
+              rightButtonProps={{
+                label: "Update role",
+                variant: "primary",
+                onClick: () => {
+                  setMembers(
+                    members.map((m) =>
+                      m.id === selectedMember.id
+                        ? { ...m, plan: memberPlan }
+                        : m
+                    )
+                  );
+                  setSelectedMember(null);
+                },
+              }}
+            />
+          </SheetContent>
+        </Sheet>
+      )}
     </Page>
   );
 }
