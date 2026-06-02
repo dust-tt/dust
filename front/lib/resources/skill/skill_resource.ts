@@ -3464,7 +3464,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     instructions: string;
     instructionsHtml: string | null;
   }> {
-    const skillIds = SkillResource.getCustomSkillReferenceIds(
+    const skillIds = this.getCustomSkillReferenceIds(
       [instructions, instructionsHtml],
       { parentSkillId }
     );
@@ -3473,21 +3473,19 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return { instructions, instructionsHtml };
     }
 
-    const targets = await SkillResource.fetchSkillReferenceTargets(
-      auth,
-      skillIds,
-      { transaction }
-    );
+    const targets = await this.fetchSkillReferenceTargets(auth, skillIds, {
+      transaction,
+    });
 
     return {
-      instructions: SkillResource.replaceSkillReferenceTags(
+      instructions: this.replaceSkillReferenceTags(
         instructions,
         targets,
         requestedSpaceIds
       ),
       instructionsHtml:
         instructionsHtml !== null
-          ? SkillResource.replaceSkillReferenceTags(
+          ? this.replaceSkillReferenceTags(
               instructionsHtml,
               targets,
               requestedSpaceIds,
