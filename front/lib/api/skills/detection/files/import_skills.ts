@@ -70,6 +70,7 @@ export async function importSkillsFromFiles(
   const allSkills: ZipDetectedSkill[] = [];
   const featureFlags = await getFeatureFlags(auth);
   const allowFileAttachments = featureFlags.includes("sandbox_tools");
+  const enableSkillReferences = featureFlags.includes("nested_skills");
 
   // Readers are keyed by skill to avoid re-opening the same zip for each
   // attachment. Each zip buffer produces one reader shared across its skills.
@@ -194,6 +195,7 @@ export async function importSkillsFromFiles(
         attachedKnowledge,
         requestedSpaceIds: existing.requestedSpaceIds,
         ...(allowFileAttachments ? { fileAttachments } : {}),
+        enableSkillReferences,
         source,
         sourceMetadata: { filePath: skill.skillMdPath },
       });
@@ -247,6 +249,7 @@ export async function importSkillsFromFiles(
           mcpServerViews: suggestedMCPServerViews,
           ...(allowFileAttachments ? { fileAttachments } : {}),
           addCurrentUserAsEditor: auth.user() !== null,
+          enableSkillReferences,
         }
       );
 

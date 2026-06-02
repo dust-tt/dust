@@ -53,6 +53,7 @@ export async function importSkillsFromGitHub(
 ): Promise<Result<ImportSkillsResult, GitHubSkillDetectionError>> {
   const featureFlags = await getFeatureFlags(auth);
   const allowFileAttachments = featureFlags.includes("sandbox_tools");
+  const enableSkillReferences = featureFlags.includes("nested_skills");
   const accessToken = await getWorkspaceLevelGitHubAccessToken(auth);
   const clientResult = initGitHubRepoClient({ repoUrl, accessToken });
   if (clientResult.isErr()) {
@@ -148,6 +149,7 @@ export async function importSkillsFromGitHub(
         attachedKnowledge,
         requestedSpaceIds: existing.requestedSpaceIds,
         ...(allowFileAttachments ? { fileAttachments } : {}),
+        enableSkillReferences,
         source: "github",
         sourceMetadata: {
           repoUrl,
@@ -206,6 +208,7 @@ export async function importSkillsFromGitHub(
         {
           mcpServerViews: detectedMCPServerViews,
           ...(allowFileAttachments ? { fileAttachments } : {}),
+          enableSkillReferences,
         }
       );
 

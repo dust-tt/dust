@@ -11,6 +11,8 @@ export const TOOL_TAG_NAME = "tool";
 
 export const TOOL_TAG_REGEX = /<tool\s+([^>]*?)\s*\/>/g;
 export const TOOL_TAG_REGEX_BEGINNING = /^<tool\s+([^>]*?)\s*\/>/;
+export const TOOL_REFERENCE_TAG_REGEX =
+  /<tool\b([^>]*)\s*(?:\/>|>[\s\S]*?<\/tool>)/g;
 
 const TOOL_ELEMENT_REGEX = /<tool\b([^>]*)>[\s\S]*?<\/tool>/g;
 
@@ -49,17 +51,26 @@ export function parseToolTag(tag: string): ToolReference | null {
 }
 
 export function extractToolTags(content: string): ToolReference[] {
-  return [...content.matchAll(TOOL_TAG_REGEX)]
-    .map((match) => parseToolTag(match[0]))
+  return [...content.matchAll(TOOL_REFERENCE_TAG_REGEX)]
+    .map((match) => parseToolTag(`<${TOOL_TAG_NAME}${match[1].trimEnd()} />`))
     .filter((tool): tool is ToolReference => tool !== null);
 }
 
-export function serializeToolTag({ icon, id, name }: ToolReference): string {
-  return `<${TOOL_TAG_NAME} ${serializeToolTagAttributes({
+export function serializeToolTag(
+  { icon, id, name }: ToolReference,
+  { html = false }: { html?: boolean } = {}
+): string {
+  const attributes = serializeToolTagAttributes({
     icon,
     id,
     name,
-  })} />`;
+  });
+
+  if (html) {
+    return `<${TOOL_TAG_NAME} ${attributes}></${TOOL_TAG_NAME}>`;
+  }
+
+  return `<${TOOL_TAG_NAME} ${attributes} />`;
 }
 
 function serializeToolTagAttributes({ icon, id, name }: ToolReference): string {

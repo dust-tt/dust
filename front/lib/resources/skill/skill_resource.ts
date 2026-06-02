@@ -56,6 +56,10 @@ import {
   serializeSkillTag,
   serializeUnavailableSkillTag,
 } from "@app/lib/skills/format";
+import {
+  appendMissingToolRefs,
+  toolRefsFromMCPViews,
+} from "@app/lib/skills/tool_references";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
@@ -391,10 +395,22 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     // Use a transaction to ensure all creations succeed or all are rolled back.
     return withTransaction(async (transaction) => {
+      const content = enableSkillReferences
+        ? appendMissingToolRefs({
+            instructions: blob.instructions,
+            instructionsHtml: blob.instructionsHtml ?? null,
+            tools: toolRefsFromMCPViews(mcpServerViews),
+          })
+        : {
+            instructions: blob.instructions,
+            instructionsHtml: blob.instructionsHtml ?? null,
+          };
+
       const skill = await this.model.create(
         {
           ...blob,
-          instructionsHtml: blob.instructionsHtml ?? null,
+          instructions: content.instructions,
+          instructionsHtml: content.instructionsHtml,
           workspaceId: owner.id,
         },
         {
@@ -2356,18 +2372,31 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       const editedBy = auth.user()?.id;
       const shouldUpdateInstructionsHtml =
         instructionsHtml !== undefined || enableSkillReferences;
+      const content = enableSkillReferences
+        ? appendMissingToolRefs({
+            instructions,
+            instructionsHtml: shouldUpdateInstructionsHtml
+              ? instructionsHtml !== undefined
+                ? instructionsHtml
+                : this.instructionsHtml
+              : null,
+            tools: toolRefsFromMCPViews(mcpServerViews),
+          })
+        : {
+            instructions,
+            instructionsHtml:
+              instructionsHtml !== undefined ? instructionsHtml : null,
+          };
+
       await this.update(
         {
           name,
           agentFacingDescription,
           userFacingDescription,
-          instructions,
+          instructions: content.instructions,
           ...(shouldUpdateInstructionsHtml
             ? {
-                instructionsHtml:
-                  instructionsHtml !== undefined
-                    ? instructionsHtml
-                    : this.instructionsHtml,
+                instructionsHtml: content.instructionsHtml,
               }
             : {}),
           icon,
