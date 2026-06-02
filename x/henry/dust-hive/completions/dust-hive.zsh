@@ -63,8 +63,29 @@ _dust_hive_envs() {
   _dust_hive_describe_envs "${envs[@]}"
 }
 
+_dust_hive_env_already_selected() {
+  local candidate="${1:?usage: _dust_hive_env_already_selected <name>}"
+  local i word
+
+  for (( i = 1; i < CURRENT; i++ )); do
+    word="${words[i]}"
+    [[ "$word" == -* ]] && continue
+    [[ "$word" == "$candidate" ]] && return 0
+  done
+
+  return 1
+}
+
 _dust_hive_describe_envs() {
   local -a envs=("$@")
+  (( $#envs )) || return
+
+  local env
+  local -a filtered_envs=()
+  for env in "${envs[@]}"; do
+    _dust_hive_env_already_selected "$env" || filtered_envs+=("$env")
+  done
+  envs=("${filtered_envs[@]}")
   (( $#envs )) || return
 
   local current
