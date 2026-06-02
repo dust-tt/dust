@@ -3,10 +3,7 @@ import { editorVariants } from "@app/components/editor/editorStyles";
 import { SKILL_NODE_TYPE } from "@app/components/editor/extensions/input_bar/SkillNode";
 import type { SlashCommandSkillSuggestion } from "@app/components/editor/extensions/shared/SlashCommandSkillItems";
 import { KNOWLEDGE_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
-import {
-  isFullKnowledgeItem,
-  type KnowledgeItem,
-} from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
+import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import { TOOL_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/ToolNode";
 import {
   SkillInstructionsEditorContent,
@@ -214,7 +211,6 @@ function toAttachedKnowledge(
 ): SkillBuilderFormData["attachedKnowledge"] {
   return items.map((item) => ({
     dataSourceViewId: item.dataSourceViewId,
-    ...(isFullKnowledgeItem(item) ? { node: item.node } : {}),
     nodeId: item.nodeId,
     spaceId: item.spaceId,
     title: item.label,

@@ -6,9 +6,6 @@ import type {
   ReferencedSkillFormData,
 } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
-import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
-import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
-import { isFolder, isWebsite } from "@app/lib/data_sources";
 import { getSkillIcon } from "@app/lib/skill";
 import { extractToolTags } from "@app/lib/tools/format";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -32,11 +29,7 @@ export type ReferenceSummaryTarget =
   | { id: string; kind: "tool" };
 
 type ReferenceSummaryItem = ReferenceSummaryTarget & {
-  dataSourceViewId?: string;
   icon?: string | null;
-  node?: AttachedKnowledgeFormData["node"];
-  nodeId?: string;
-  spaceId?: string;
   title: string;
 };
 
@@ -76,9 +69,12 @@ function renderReferenceSummaryItem({
   switch (item.kind) {
     case "knowledge":
       return (
-        <KnowledgeReferenceSummaryItem
+        <AttachmentChip
           key={`${item.kind}:${item.id}`}
-          item={item}
+          label={item.title}
+          icon={{ visual: DocumentIcon }}
+          color="white"
+          size="xs"
           onClick={handleClick}
         />
       );
@@ -108,57 +104,6 @@ function renderReferenceSummaryItem({
   }
 }
 
-function KnowledgeReferenceSummaryItem({
-  item,
-  onClick,
-}: {
-  item: ReferenceSummaryItem & { kind: "knowledge" };
-  onClick: () => void;
-}) {
-  if (item.node) {
-    if (
-      isWebsite(item.node.dataSourceView.dataSource) ||
-      isFolder(item.node.dataSourceView.dataSource)
-    ) {
-      return (
-        <AttachmentChip
-          label={item.title}
-          icon={{ visual: getVisualForDataSourceViewContentNode(item.node) }}
-          color="white"
-          size="xs"
-          onClick={onClick}
-        />
-      );
-    }
-
-    return (
-      <AttachmentChip
-        label={item.title}
-        doubleIcon={{
-          size: "sm",
-          mainIcon: getVisualForDataSourceViewContentNode(item.node),
-          secondaryIcon: getConnectorProviderLogoWithFallback({
-            provider: item.node.dataSourceView.dataSource.connectorProvider,
-          }),
-        }}
-        color="white"
-        size="xs"
-        onClick={onClick}
-      />
-    );
-  }
-
-  return (
-    <AttachmentChip
-      label={item.title}
-      icon={{ visual: DocumentIcon }}
-      color="white"
-      size="xs"
-      onClick={onClick}
-    />
-  );
-}
-
 export function SkillBuilderInstructionsReferenceSummary({
   attachedKnowledge,
   containerRef,
@@ -175,11 +120,7 @@ export function SkillBuilderInstructionsReferenceSummary({
     () =>
       dedupeById(
         (attachedKnowledge ?? []).map((item) => ({
-          dataSourceViewId: item.dataSourceViewId,
           id: `${item.dataSourceViewId}:${item.nodeId}`,
-          node: item.node,
-          nodeId: item.nodeId,
-          spaceId: item.spaceId,
           title: item.title,
         }))
       ),

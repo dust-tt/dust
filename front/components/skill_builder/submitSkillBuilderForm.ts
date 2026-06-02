@@ -54,14 +54,7 @@ export async function submitSkillBuilderForm({
         fileAttachments: formData.fileAttachments.map((f) => ({
           fileId: f.fileId,
         })),
-        attachedKnowledge: (formData.attachedKnowledge ?? []).map(
-          ({ dataSourceViewId, nodeId, spaceId, title }) => ({
-            dataSourceViewId,
-            nodeId,
-            spaceId,
-            title,
-          })
-        ),
+        attachedKnowledge: formData.attachedKnowledge ?? [],
         additionalRequestedSpaceIds: formData.additionalSpaces,
         referencedSkillIds: formData.referencedSkillIds,
       }),

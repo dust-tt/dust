@@ -3,7 +3,6 @@ import {
   SKILL_REINFORCEMENT_MODES,
   SkillWithoutInstructionsAndToolsSchema,
 } from "@app/types/assistant/skill_configuration";
-import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { editorUserSchema } from "@app/types/editors";
 import { createContext } from "react";
 import type { UseFormReturn } from "react-hook-form";
@@ -13,7 +12,6 @@ const AGENT_FACING_DESCRIPTION_MAX_LENGTH = 750;
 
 export const attachedKnowledgeSchema = z.object({
   dataSourceViewId: z.string(),
-  node: z.custom<DataSourceViewContentNode>().optional(),
   nodeId: z.string(),
   spaceId: z.string(),
   title: z.string(),
