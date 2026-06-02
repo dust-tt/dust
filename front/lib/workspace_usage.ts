@@ -810,14 +810,21 @@ export async function fetchUsageData({
         feedback: await getFeedbackUsageData(start, end, workspace),
       };
     case "all":
-      const [users, assistant_messages, builders, assistants, feedback] =
-        await Promise.all([
-          getUserUsageData(start, end, workspace, { includeInactive }),
-          getMessageUsageData(start, end, workspace),
-          getBuildersUsageData(start, end, workspace),
-          getAssistantsUsageData(start, end, workspace, { includeInactive }),
-          getFeedbackUsageData(start, end, workspace),
-        ]);
+      // Sequential on purpose: each query is heavy, running them in parallel
+      // spikes load on the read replica.
+      const users = await getUserUsageData(start, end, workspace, {
+        includeInactive,
+      });
+      const assistant_messages = await getMessageUsageData(
+        start,
+        end,
+        workspace
+      );
+      const builders = await getBuildersUsageData(start, end, workspace);
+      const assistants = await getAssistantsUsageData(start, end, workspace, {
+        includeInactive,
+      });
+      const feedback = await getFeedbackUsageData(start, end, workspace);
       return { users, assistant_messages, builders, assistants, feedback };
     default:
       assertNever(table);
