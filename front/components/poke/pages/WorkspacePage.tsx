@@ -271,7 +271,7 @@ export function WorkspacePage() {
 
               <TabsTrigger value="triggers" label="Triggers" />
               <TabsTrigger value="webhooksources" label="Webhook Sources" />
-              <TabsTrigger value="credits" label="Credits" />
+              <TabsTrigger value="credits" label="API Usage" />
               <TabsTrigger value="analytics" label="Analytics" />
             </TabsList>
 

@@ -92,7 +92,7 @@ export function CreditsDataTable({
   return (
     <>
       <PokeDataTableConditionalFetch<PokeCreditsData, PokeCreditsData>
-        header="Credits"
+        header="API Usage"
         owner={owner}
         loadOnInit={loadOnInit}
         useSWRHook={usePokeCredits}
