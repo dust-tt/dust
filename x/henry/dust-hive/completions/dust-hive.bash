@@ -69,7 +69,34 @@ _dust_hive_envs() {
     result=("${envs[@]}")
   fi
 
-  printf '%s\n' "${result[@]}"
+  _dust_hive_filter_selected_envs "${result[@]}"
+}
+
+_dust_hive_env_already_selected() {
+  local candidate="${1:?usage: _dust_hive_env_already_selected <name>}"
+  local start=1
+  local comp_cword="${COMP_CWORD:-0}"
+  local i word
+
+  if [[ -n "${cmd_index:-}" ]] && (( cmd_index > 0 )); then
+    start=$(( cmd_index + 1 ))
+  fi
+
+  for (( i=start; i<comp_cword; i++ )); do
+    word="${COMP_WORDS[$i]}"
+    [[ "$word" == -* ]] && continue
+    [[ "$word" == "$candidate" ]] && return 0
+  done
+
+  return 1
+}
+
+_dust_hive_filter_selected_envs() {
+  local env
+
+  for env in "$@"; do
+    _dust_hive_env_already_selected "$env" || printf '%s\n' "$env"
+  done
 }
 
 _dust_hive_pid_is_running() {
@@ -174,7 +201,7 @@ _dust_hive_envs_by_states() {
     result=("${envs[@]}")
   fi
 
-  printf '%s\n' "${result[@]}"
+  _dust_hive_filter_selected_envs "${result[@]}"
 }
 
 _dust_hive_warmable_envs() {
