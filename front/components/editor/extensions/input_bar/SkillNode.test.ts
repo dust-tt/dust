@@ -30,6 +30,27 @@ function skillNodes(editor: Editor) {
   return nodes;
 }
 
+function getSkillNodePosition(editor: Editor) {
+  let skillNodePosition: { nodeSize: number; position: number } | null = null;
+  editor.state.doc.descendants((node, position) => {
+    if (node.type.name === "skill") {
+      skillNodePosition = {
+        nodeSize: node.nodeSize,
+        position,
+      };
+      return false;
+    }
+
+    return true;
+  });
+
+  if (skillNodePosition === null) {
+    throw new Error("Skill node not found");
+  }
+
+  return skillNodePosition;
+}
+
 describe("SkillNode", () => {
   let editor: Editor;
 
@@ -43,23 +64,22 @@ describe("SkillNode", () => {
 
   it("removes a skill node with backspace", () => {
     editor.commands.insertSkillNode(SKILL_ATTRS);
+    const skillNodePosition = getSkillNodePosition(editor);
 
-    let skillNodeEnd: number | null = null;
-    editor.state.doc.descendants((node, position) => {
-      if (node.type.name === "skill") {
-        skillNodeEnd = position + node.nodeSize;
-        return false;
-      }
-
-      return true;
-    });
-
-    if (skillNodeEnd === null) {
-      throw new Error("Skill node not found");
-    }
-
-    editor.commands.setTextSelection(skillNodeEnd);
+    editor.commands.setTextSelection(
+      skillNodePosition.position + skillNodePosition.nodeSize
+    );
     editor.commands.keyboardShortcut("Backspace");
+
+    expect(skillNodes(editor)).toEqual([]);
+  });
+
+  it("removes a skill node with delete", () => {
+    editor.commands.insertSkillNode(SKILL_ATTRS);
+    const skillNodePosition = getSkillNodePosition(editor);
+
+    editor.commands.setTextSelection(skillNodePosition.position);
+    editor.commands.keyboardShortcut("Delete");
 
     expect(skillNodes(editor)).toEqual([]);
   });
