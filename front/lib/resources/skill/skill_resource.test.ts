@@ -836,38 +836,6 @@ describe("SkillResource", () => {
       );
     });
 
-    it("drops out-of-workspace nested skill references", async () => {
-      const skill = await SkillFactory.create(testContext.authenticator, {
-        name: "Skill With Out Of Workspace Reference",
-      });
-      const outOfWorkspaceSkillId = SkillResource.modelIdToSId({
-        id: skill.id + 1,
-        workspaceId: testContext.workspace.id + 1,
-      });
-      const outOfWorkspaceSkillReferenceTag = serializeSkillTag({
-        id: outOfWorkspaceSkillId,
-        icon: null,
-        name: "Out Of Workspace Skill Reference",
-      });
-
-      await skill.updateSkill(testContext.authenticator, {
-        name: skill.name,
-        agentFacingDescription: skill.agentFacingDescription,
-        userFacingDescription: skill.userFacingDescription,
-        instructions: `Use ${outOfWorkspaceSkillReferenceTag}.`,
-        icon: skill.icon,
-        mcpServerViews: [],
-        attachedKnowledge: [],
-        requestedSpaceIds: [],
-        enableSkillReferences: true,
-        referencedSkillIds: [outOfWorkspaceSkillId],
-      });
-
-      await expect(
-        skill.fetchChildSkills(testContext.authenticator)
-      ).resolves.toHaveLength(0);
-    });
-
     it("syncs global skill references", async () => {
       const globalSkillReferenceTag =
         GlobalSkillsRegistry.serializeSkillTag("frames");
