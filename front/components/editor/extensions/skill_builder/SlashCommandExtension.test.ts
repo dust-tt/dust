@@ -15,11 +15,13 @@ const attachKnowledgeItem: SlashCommand = {
 
 const skillSuggestion = ({
   icon = null,
+  requestedSpaceIds = [],
   userFacingDescription = "",
   ...skill
 }: Pick<SlashCommandSkillSuggestion, "name" | "sId"> &
   Partial<SlashCommandSkillSuggestion>): SlashCommandSkillSuggestion => ({
   icon,
+  requestedSpaceIds,
   userFacingDescription,
   ...skill,
 });
@@ -113,8 +115,9 @@ describe("buildSkillBuilderSlashCommandItems", () => {
       data: {
         skill: {
           icon: null,
-          id: "skill_create_memo",
           name: "Create memo",
+          requestedSpaceIds: [],
+          sId: "skill_create_memo",
         },
       },
       description: "Draft structured memos.",

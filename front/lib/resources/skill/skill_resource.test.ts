@@ -674,6 +674,7 @@ describe("SkillResource", () => {
         instructions: `Use ${skillReferenceTag}.`,
         instructionsHtml: `<p>Use ${skillReferenceHtmlTag}.</p>`,
         enableSkillReferences: true,
+        referencedSkillIds: [childSkill.sId],
       });
 
       expect(parentSkill.instructions).toContain(
@@ -701,6 +702,7 @@ describe("SkillResource", () => {
         attachedKnowledge: [],
         requestedSpaceIds: parentSkill.requestedSpaceIds,
         enableSkillReferences: true,
+        referencedSkillIds: [childSkill.sId],
       });
 
       const updatedParentSkill = await SkillResource.fetchById(
@@ -739,6 +741,7 @@ describe("SkillResource", () => {
         name: "Parent Skill",
         instructions: `Use ${SkillFactory.serializeSkillReferenceTag(childSkill)}.`,
         enableSkillReferences: true,
+        referencedSkillIds: [childSkill.sId],
       });
 
       expect(parentSkill.instructions).toContain(
@@ -756,6 +759,7 @@ describe("SkillResource", () => {
         attachedKnowledge: [],
         requestedSpaceIds: [restrictedSpace.id],
         enableSkillReferences: true,
+        referencedSkillIds: [childSkill.sId],
       });
 
       const updatedParentSkill = await SkillResource.fetchById(
@@ -777,6 +781,7 @@ describe("SkillResource", () => {
         name: "Parent Skill",
         instructions: `Use ${SkillFactory.serializeSkillReferenceTag(childSkill)}.`,
         enableSkillReferences: true,
+        referencedSkillIds: [childSkill.sId],
       });
 
       expect(parentSkill.instructions).toContain(
@@ -794,6 +799,7 @@ describe("SkillResource", () => {
         attachedKnowledge: [],
         requestedSpaceIds: [restrictedSpace.id],
         enableSkillReferences: true,
+        referencedSkillIds: [],
       });
 
       const unavailableParentSkill = await SkillResource.fetchById(
@@ -816,6 +822,7 @@ describe("SkillResource", () => {
         attachedKnowledge: [],
         requestedSpaceIds: [],
         enableSkillReferences: true,
+        referencedSkillIds: [],
       });
 
       const availableParentSkill = await SkillResource.fetchById(
@@ -825,62 +832,6 @@ describe("SkillResource", () => {
 
       expect(availableParentSkill?.instructions).toContain(
         SkillFactory.serializeSkillReferenceTag(childSkill)
-      );
-    });
-
-    it("throws when syncing an invalid nested skill reference", async () => {
-      const skill = await SkillFactory.create(testContext.authenticator, {
-        name: "Skill With Invalid Reference",
-      });
-      const invalidSkillReferenceTag = serializeSkillTag({
-        id: "not-a-skill-reference",
-        icon: null,
-        name: "Invalid Skill Reference",
-      });
-
-      await expect(
-        skill.updateSkill(testContext.authenticator, {
-          name: skill.name,
-          agentFacingDescription: skill.agentFacingDescription,
-          userFacingDescription: skill.userFacingDescription,
-          instructions: `Use ${invalidSkillReferenceTag}.`,
-          icon: skill.icon,
-          mcpServerViews: [],
-          attachedKnowledge: [],
-          requestedSpaceIds: [],
-          enableSkillReferences: true,
-        })
-      ).rejects.toThrow("Invalid skill reference ID: not-a-skill-reference");
-    });
-
-    it("throws when syncing an out-of-workspace nested skill reference", async () => {
-      const skill = await SkillFactory.create(testContext.authenticator, {
-        name: "Skill With Out Of Workspace Reference",
-      });
-      const outOfWorkspaceSkillId = SkillResource.modelIdToSId({
-        id: skill.id + 1,
-        workspaceId: testContext.workspace.id + 1,
-      });
-      const outOfWorkspaceSkillReferenceTag = serializeSkillTag({
-        id: outOfWorkspaceSkillId,
-        icon: null,
-        name: "Out Of Workspace Skill Reference",
-      });
-
-      await expect(
-        skill.updateSkill(testContext.authenticator, {
-          name: skill.name,
-          agentFacingDescription: skill.agentFacingDescription,
-          userFacingDescription: skill.userFacingDescription,
-          instructions: `Use ${outOfWorkspaceSkillReferenceTag}.`,
-          icon: skill.icon,
-          mcpServerViews: [],
-          attachedKnowledge: [],
-          requestedSpaceIds: [],
-          enableSkillReferences: true,
-        })
-      ).rejects.toThrow(
-        `Skill reference ID does not belong to this workspace: ${outOfWorkspaceSkillId}`
       );
     });
   });

@@ -1,9 +1,12 @@
 import { ToolChip } from "@app/components/editor/extensions/skill_builder/ToolChip";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
-import type { AttachedKnowledgeFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
+import type { BuilderAction } from "@app/components/shared/tools_picker/types";
+import type {
+  AttachedKnowledgeFormData,
+  ReferencedSkillFormData,
+} from "@app/components/skill_builder/SkillBuilderFormContext";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getSkillIcon } from "@app/lib/skill";
-import { extractSkillTags } from "@app/lib/skills/format";
 import { extractToolTags } from "@app/lib/tools/format";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { AttachmentChip, Chip, cn, DocumentIcon } from "@dust-tt/sparkle";
@@ -16,6 +19,8 @@ interface SkillBuilderInstructionsReferenceSummaryProps {
   hasError: boolean;
   instructions: string;
   onReferenceClick: (target: ReferenceSummaryTarget) => void;
+  referencedSkills: ReferencedSkillFormData[];
+  tools: BuilderAction[];
 }
 
 export type ReferenceSummaryTarget =
@@ -105,6 +110,8 @@ export function SkillBuilderInstructionsReferenceSummary({
   hasError,
   instructions,
   onReferenceClick,
+  referencedSkills,
+  tools,
 }: SkillBuilderInstructionsReferenceSummaryProps) {
   const { mcpServerViews, isMCPServerViewsLoading } =
     useMCPServerViewsContext();
@@ -123,13 +130,13 @@ export function SkillBuilderInstructionsReferenceSummary({
   const skillReferences = useMemo(
     () =>
       dedupeById(
-        extractSkillTags(instructions).map((skill) => ({
+        referencedSkills.map((skill) => ({
           icon: skill.icon,
           id: skill.id,
           title: skill.name,
         }))
       ),
-    [instructions]
+    [referencedSkills]
   );
 
   const inlineToolReferences = useMemo(
@@ -150,6 +157,19 @@ export function SkillBuilderInstructionsReferenceSummary({
     [instructions, isMCPServerViewsLoading, mcpServerViews]
   );
 
+  const selectedToolReferences = useMemo(() => {
+    return tools.map((tool) => ({
+      icon: null,
+      id: tool.configuration.mcpServerViewId,
+      title: tool.name,
+    }));
+  }, [tools]);
+
+  const toolReferences = useMemo(
+    () => dedupeById([...selectedToolReferences, ...inlineToolReferences]),
+    [inlineToolReferences, selectedToolReferences]
+  );
+
   const referenceItems = useMemo(
     () =>
       [
@@ -165,14 +185,14 @@ export function SkillBuilderInstructionsReferenceSummary({
             kind: "skill",
           })
         ),
-        ...inlineToolReferences.map(
+        ...toolReferences.map(
           (tool): ReferenceSummaryItem => ({
             ...tool,
             kind: "tool",
           })
         ),
       ].toSorted(compareReferenceSummaryItems),
-    [knowledgeReferences, skillReferences, inlineToolReferences]
+    [knowledgeReferences, skillReferences, toolReferences]
   );
 
   if (referenceItems.length === 0) {
