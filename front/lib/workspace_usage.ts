@@ -688,6 +688,7 @@ async function getAssistantsUsageData(
              LEFT JOIN "users" aut ON ac."authorId" = aut."id"
              LEFT JOIN "agent_messages" a
                       ON a."agentConfigurationId" = ac."sId"
+                      AND a."workspaceId" = :wId
                       AND a."status" = 'succeeded'
                       AND a."createdAt" BETWEEN :startDate AND :endDate
              LEFT JOIN "messages" m ON a."id" = m."agentMessageId"
