@@ -12,6 +12,7 @@ import { useMemo } from "react";
 
 interface SkillBuilderInstructionsReferenceSummaryProps {
   attachedKnowledge?: AttachedKnowledgeFormData[];
+  hasError: boolean;
   instructions: string;
   tools: BuilderAction[];
 }
@@ -97,6 +98,7 @@ function renderReferenceSummaryItem(item: ReferenceSummaryItem) {
 
 export function SkillBuilderInstructionsReferenceSummary({
   attachedKnowledge,
+  hasError,
   instructions,
   tools,
 }: SkillBuilderInstructionsReferenceSummaryProps) {
@@ -203,9 +205,17 @@ export function SkillBuilderInstructionsReferenceSummary({
   return (
     <div
       className={cn(
-        "absolute inset-x-px bottom-px z-10 max-h-40 overflow-y-auto rounded-b-xl border-t px-3 pb-3 pt-3",
-        "border-border/70 bg-background/75 shadow-[0_-12px_24px_rgba(0,0,0,0.08)] backdrop-blur-sm",
-        "dark:border-border-night/70 dark:bg-background-night/75"
+        "absolute inset-x-0 bottom-0 z-10 max-h-40 overflow-y-auto rounded-b-xl border-x border-b bg-background px-3 pb-3 pt-3",
+        "dark:bg-background-night",
+        hasError
+          ? [
+              "border-border-warning/30 group-focus-within:border-border-warning",
+              "dark:border-border-warning-night/60 dark:group-focus-within:border-border-warning-night",
+            ]
+          : [
+              "border-border group-focus-within:border-highlight-300",
+              "dark:border-border-night dark:group-focus-within:border-highlight-300-night",
+            ]
       )}
     >
       <div className="mb-2 text-sm font-medium text-foreground dark:text-foreground-night">

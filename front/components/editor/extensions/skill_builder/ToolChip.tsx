@@ -5,6 +5,7 @@ import {
 } from "@app/components/resources/resources_icons";
 import {
   AttachmentChip,
+  Chip,
   ExclamationCircleIcon,
   ToolsIcon,
 } from "@dust-tt/sparkle";
@@ -35,9 +36,9 @@ export function ToolChip({
   toolIcon,
 }: ToolChipProps) {
   return (
-    <AttachmentChip
+    <Chip
       label={title}
-      icon={{ visual: getToolIcon(toolIcon) }}
+      icon={getToolIcon(toolIcon)}
       color={color}
       onRemove={onRemove}
       size="xs"

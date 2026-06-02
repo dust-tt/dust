@@ -114,6 +114,8 @@ function sanitizeSkillInstructionsHtml(
 }
 
 const INSTRUCTIONS_EDITOR_SIZE = "min-h-60 max-h-[1024px]";
+const INSTRUCTIONS_EDITOR_REFERENCE_SUMMARY_SIZE =
+  "min-h-80 rounded-b-none border-b-0 pb-28";
 
 interface SkillBuilderInstructionsEditorProps {
   onAddKnowledge?: (addKnowledge: () => void) => void;
@@ -497,7 +499,8 @@ export function SkillBuilderInstructionsEditor({
               readOnly: hasSuggestions,
             }),
             INSTRUCTIONS_EDITOR_SIZE,
-            hasInstructionReferenceSummary && "pb-36"
+            hasInstructionReferenceSummary &&
+              INSTRUCTIONS_EDITOR_REFERENCE_SUMMARY_SIZE
           ),
         },
       },
@@ -608,7 +611,7 @@ export function SkillBuilderInstructionsEditor({
 
   return (
     <div className="space-y-1 p-px">
-      <div className="relative overflow-hidden rounded-xl">
+      <div className="group relative overflow-hidden rounded-xl">
         <SkillInstructionsEditorContent
           editor={editor}
           isReadOnly={hasSuggestions}
@@ -616,6 +619,7 @@ export function SkillBuilderInstructionsEditor({
         {enableSkillReferences && (
           <SkillBuilderInstructionsReferenceSummary
             attachedKnowledge={attachedKnowledgeField.value}
+            hasError={displayError}
             instructions={instructionsField.value ?? ""}
             tools={tools}
           />
