@@ -1,11 +1,11 @@
 import { CreateCouponForm } from "@app/components/poke/coupons/CreateCouponForm";
-import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import {
   usePokeArchiveCoupon,
   usePokeCouponRedemptions,
   usePokeCoupons,
 } from "@app/lib/swr/poke";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import type {
   CouponDiscountType,
   CouponRedemptionStatus,
@@ -276,7 +276,7 @@ function CouponRedemptionsPanel({ coupon }: CouponRedemptionsPanelProps) {
 }
 
 export function CouponsPage() {
-  useDocumentTitle("Poke - Coupons");
+  usePokePageMetadata({ name: "Coupons" });
 
   const { coupons, isCouponsLoading, mutate } = usePokeCoupons();
   const archiveCoupon = usePokeArchiveCoupon();

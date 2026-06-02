@@ -1,4 +1,7 @@
-import { PokeFavoriteButton } from "@app/components/poke/PokeFavorites";
+import {
+  PokeFavoriteButton,
+  PokeFavoritesCommandGroups,
+} from "@app/components/poke/PokeFavorites";
 import { PokeRegionDropdown } from "@app/components/poke/PokeRegionDropdown";
 import {
   PokeCommandDialog,
@@ -199,6 +202,11 @@ function PokeSearchCommandUI({
               <div className="p-4 text-sm">No results found.</div>
             )}
           {isError && <div className="p-4 text-sm">Something went wrong.</div>}
+          {searchTerm.length < MIN_SEARCH_CHARACTERS && (
+            <PokeFavoritesCommandGroups
+              onNavigate={() => onOpenChange(false)}
+            />
+          )}
           {searchTerm.length < MIN_SEARCH_CHARACTERS && (
             <div className="p-4 text-sm">
               <div className="mb-3 text-muted-foreground dark:text-muted-foreground-night">

@@ -1,15 +1,14 @@
 import { ViewMCPServerViewTable } from "@app/components/poke/mcp_server_views/view";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
-import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
+import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeMCPServerViewDetails } from "@app/poke/swr/mcp_server_view_details";
 import { LinkWrapper, Spinner } from "@dust-tt/sparkle";
 
 export function MCPServerViewPage() {
   const owner = useWorkspace();
-  useDocumentTitle(`Poke - ${owner.name} - MCP Server View`);
 
   const svId = useRequiredPathParam("svId");
   const {
@@ -20,6 +19,14 @@ export function MCPServerViewPage() {
     owner,
     mcpServerViewId: svId,
     disabled: false,
+  });
+
+  usePokePageMetadata({
+    name:
+      mcpServerViewDetails &&
+      getMcpServerViewDisplayName(mcpServerViewDetails.mcpServerView),
+    subtitle: owner.name,
+    sId: svId,
   });
 
   if (isLoading) {

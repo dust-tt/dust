@@ -7,7 +7,6 @@ import {
   PokeAlertDescription,
 } from "@app/components/poke/shadcn/ui/alert";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
@@ -16,6 +15,7 @@ import { useAppRouter, useRequiredPathParam } from "@app/lib/platform";
 import { decodeSqids, timeAgoFrom } from "@app/lib/utils";
 import type { FeaturesType } from "@app/pages/api/poke/workspaces/[wId]/data_sources/[dsId]/details";
 import { usePokeDocuments, usePokeTables } from "@app/poke/swr";
+import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeDataSourceDetails } from "@app/poke/swr/data_source_details";
 import type {
   NotionCheckUrlResponseType,
@@ -885,7 +885,6 @@ const ConfigToggle = ({
 
 export function DataSourcePage() {
   const owner = useWorkspace();
-  useDocumentTitle(`Poke - ${owner.name} - Data Source`);
 
   const dsId = useRequiredPathParam("dsId");
   const router = useAppRouter();
@@ -898,6 +897,12 @@ export function DataSourcePage() {
     owner,
     dsId,
     disabled: false,
+  });
+
+  usePokePageMetadata({
+    name: dataSourceDetails?.dataSource.name,
+    subtitle: owner.name,
+    sId: dsId,
   });
 
   const onDisplayDocumentSource = (

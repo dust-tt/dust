@@ -1,9 +1,9 @@
-import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { clientFetch } from "@app/lib/egress/client";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
+import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeDataSourceDetails } from "@app/poke/swr/data_source_details";
 import type { DocumentType } from "@app/types/document";
 import { Input, Spinner } from "@dust-tt/sparkle";
@@ -11,9 +11,13 @@ import { useEffect, useState } from "react";
 
 export function DataSourceSearchPage() {
   const owner = useWorkspace();
-  useDocumentTitle(`Poke - ${owner.name} - Search`);
 
   const dsId = useRequiredPathParam("dsId");
+  usePokePageMetadata({
+    name: owner.name,
+    subtitle: "Data Source Search",
+    sId: dsId,
+  });
   const [searchQuery, setSearchQuery] = useState("");
   const [tagsIn, setTagsIn] = useState("");
   const [tagsNotIn, setTagsNotIn] = useState("");

@@ -5,7 +5,6 @@ import { ProjectConnectorKnowledgeDataTable } from "@app/components/poke/project
 import { ProjectTasksDataTable } from "@app/components/poke/projects/tasks/table";
 import { ViewProjectWorkflowTable } from "@app/components/poke/projects/workflow/view";
 import { ViewSpaceViewTable } from "@app/components/poke/spaces/view";
-import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import type { PokeGetSpaceDetails } from "@app/pages/api/poke/workspaces/[wId]/spaces/[spaceId]/details";
 import { LinkWrapper } from "@dust-tt/sparkle";
@@ -16,7 +15,6 @@ interface ProjectPageProps {
 
 export function ProjectPage({ details }: ProjectPageProps) {
   const owner = useWorkspace();
-  useDocumentTitle(`Poke - ${owner.name} - Pod`);
 
   const { members, metadata, space } = details;
 
