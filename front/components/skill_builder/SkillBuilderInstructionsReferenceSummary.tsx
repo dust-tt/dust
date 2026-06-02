@@ -234,7 +234,9 @@ export function SkillBuilderInstructionsReferenceSummary({
       ref={containerRef}
       className={cn(
         "absolute inset-x-0 bottom-0 z-10 max-h-40 overflow-y-auto rounded-b-xl border-x border-b border-t bg-background px-3 pb-3 pt-3",
+        "after:pointer-events-none after:absolute after:inset-x-0 after:top-0 after:h-px after:bg-border after:content-['']",
         "dark:bg-background-night",
+        "dark:after:bg-border-night",
         hasError
           ? [
               "border-border-warning/30 group-focus-within:border-border-warning",
