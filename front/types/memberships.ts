@@ -63,9 +63,16 @@ export function isMembershipSeatType(
 //                          spending from the workspace pool. (Formerly "normal".)
 //   on_pool_low_balance:   same, but ≥80% of the per-user cap already used.
 //   capped:                per-user spend cap hit; can no longer spend.
+//
+// MIGRATION (transitional): "normal" is the legacy name for "on_pool" and is
+// kept as an accepted alias so the deployed code reads existing rows without
+// breaking. It is treated as equivalent to "on_pool" everywhere (see the state
+// machine). Remove it once migration 665 has renamed all rows and the
+// follow-up PR lands.
 export const USER_CREDIT_STATES = [
   "user_seat",
   "user_seat_low_balance",
+  "normal",
   "on_pool",
   "on_pool_low_balance",
   "capped",
