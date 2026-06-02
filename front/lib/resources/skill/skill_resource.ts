@@ -2498,14 +2498,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
               newName: name,
             })
           : referencingSkill.instructionsHtml;
-      const instructions = this.replaceSkillReferenceTags(
+      const instructions = SkillResource.replaceSkillReferenceTags(
         renamedInstructions,
         target,
         referencingSkill.requestedSpaceIds
       );
       const instructionsHtml =
         renamedInstructionsHtml !== null
-          ? this.replaceSkillReferenceTags(
+          ? SkillResource.replaceSkillReferenceTags(
               renamedInstructionsHtml,
               target,
               referencingSkill.requestedSpaceIds,
@@ -3313,7 +3313,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
   }
 
-  private replaceSkillReferenceTags(
+  private static replaceSkillReferenceTags(
     content: string,
     targets: ReadonlyMap<string, SkillReferenceTarget>,
     parentRequestedSpaceIds: readonly ModelId[],
@@ -3407,14 +3407,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       )
     );
 
-    const instructions = this.replaceSkillReferenceTags(
+    const instructions = SkillResource.replaceSkillReferenceTags(
       this.instructions,
       targets,
       this.requestedSpaceIds
     );
     const instructionsHtml =
       this.instructionsHtml !== null
-        ? this.replaceSkillReferenceTags(
+        ? SkillResource.replaceSkillReferenceTags(
             this.instructionsHtml,
             targets,
             this.requestedSpaceIds,
