@@ -391,26 +391,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     // Use a transaction to ensure all creations succeed or all are rolled back.
     return withTransaction(async (transaction) => {
-      const normalizedReferences = enableSkillReferences
-        ? await this.normalizeSkillReferenceTags(
-            auth,
-            {
-              instructions: blob.instructions,
-              instructionsHtml: blob.instructionsHtml ?? null,
-              requestedSpaceIds: blob.requestedSpaceIds,
-            },
-            { transaction }
-          )
-        : {
-            instructions: blob.instructions,
-            instructionsHtml: blob.instructionsHtml ?? null,
-          };
-
       const skill = await this.model.create(
         {
           ...blob,
-          instructions: normalizedReferences.instructions,
-          instructionsHtml: normalizedReferences.instructionsHtml,
+          instructionsHtml: blob.instructionsHtml ?? null,
           workspaceId: owner.id,
         },
         {
@@ -466,9 +450,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       });
 
       if (enableSkillReferences) {
+        await skillResource.normalizeSkillReferenceTags(auth, { transaction });
         await skillResource.syncSkillReferences(
           auth,
-          { instructions: normalizedReferences.instructions },
+          { instructions: skillResource.instructions },
           { transaction }
         );
       }
@@ -2371,33 +2356,19 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       const editedBy = auth.user()?.id;
       const shouldUpdateInstructionsHtml =
         instructionsHtml !== undefined || enableSkillReferences;
-      const normalizedReferences = enableSkillReferences
-        ? await SkillResource.normalizeSkillReferenceTags(
-            auth,
-            {
-              instructions,
-              instructionsHtml:
-                instructionsHtml !== undefined
-                  ? instructionsHtml
-                  : this.instructionsHtml,
-              parentSkillId: this.id,
-              requestedSpaceIds,
-            },
-            { transaction }
-          )
-        : {
-            instructions,
-            instructionsHtml: instructionsHtml ?? null,
-          };
-
       await this.update(
         {
           name,
           agentFacingDescription,
           userFacingDescription,
-          instructions: normalizedReferences.instructions,
+          instructions,
           ...(shouldUpdateInstructionsHtml
-            ? { instructionsHtml: normalizedReferences.instructionsHtml }
+            ? {
+                instructionsHtml:
+                  instructionsHtml !== undefined
+                    ? instructionsHtml
+                    : this.instructionsHtml,
+              }
             : {}),
           icon,
           requestedSpaceIds,
@@ -2412,9 +2383,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       );
 
       if (enableSkillReferences) {
+        await this.normalizeSkillReferenceTags(auth, { transaction });
         await this.syncSkillReferences(
           auth,
-          { instructions: normalizedReferences.instructions },
+          { instructions: this.instructions },
           { transaction }
         );
 
@@ -2526,14 +2498,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
               newName: name,
             })
           : referencingSkill.instructionsHtml;
-      const instructions = SkillResource.replaceSkillReferenceTags(
+      const instructions = this.replaceSkillReferenceTags(
         renamedInstructions,
         target,
         referencingSkill.requestedSpaceIds
       );
       const instructionsHtml =
         renamedInstructionsHtml !== null
-          ? SkillResource.replaceSkillReferenceTags(
+          ? this.replaceSkillReferenceTags(
               renamedInstructionsHtml,
               target,
               referencingSkill.requestedSpaceIds,
@@ -3341,7 +3313,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
   }
 
-  private static replaceSkillReferenceTags(
+  private replaceSkillReferenceTags(
     content: string,
     targets: ReadonlyMap<string, SkillReferenceTarget>,
     parentRequestedSpaceIds: readonly ModelId[],
@@ -3380,29 +3352,15 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
   }
 
-  private static async normalizeSkillReferenceTags(
+  private async normalizeSkillReferenceTags(
     auth: Authenticator,
-    {
-      instructions,
-      instructionsHtml,
-      parentSkillId,
-      requestedSpaceIds,
-    }: {
-      instructions: string;
-      instructionsHtml: string | null;
-      parentSkillId?: ModelId;
-      requestedSpaceIds: readonly ModelId[];
-    },
     { transaction }: { transaction?: Transaction } = {}
-  ): Promise<{
-    instructions: string;
-    instructionsHtml: string | null;
-  }> {
+  ): Promise<void> {
     const workspace = auth.getNonNullableWorkspace();
     const customSkillIdByModelId = new Map<ModelId, string>(
       [
         ...new Set(
-          [instructions, instructionsHtml].flatMap((content) =>
+          [this.instructions, this.instructionsHtml].flatMap((content) =>
             extractUniqueSkillReferenceIds(content ?? "")
           )
         ),
@@ -3411,14 +3369,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           ? getResourceIdFromSId(skillId)
           : null;
 
-        return modelId !== null && modelId !== parentSkillId
+        return modelId !== null && modelId !== this.id
           ? ([[modelId, skillId]] satisfies [ModelId, string][])
           : [];
       })
     );
 
     if (customSkillIdByModelId.size === 0) {
-      return { instructions, instructionsHtml };
+      return;
     }
 
     const customSkills = await SkillConfigurationModel.findAll({
@@ -3449,22 +3407,27 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       )
     );
 
-    return {
-      instructions: this.replaceSkillReferenceTags(
-        instructions,
-        targets,
-        requestedSpaceIds
-      ),
-      instructionsHtml:
-        instructionsHtml !== null
-          ? this.replaceSkillReferenceTags(
-              instructionsHtml,
-              targets,
-              requestedSpaceIds,
-              { html: true }
-            )
-          : null,
-    };
+    const instructions = this.replaceSkillReferenceTags(
+      this.instructions,
+      targets,
+      this.requestedSpaceIds
+    );
+    const instructionsHtml =
+      this.instructionsHtml !== null
+        ? this.replaceSkillReferenceTags(
+            this.instructionsHtml,
+            targets,
+            this.requestedSpaceIds,
+            { html: true }
+          )
+        : null;
+
+    if (
+      instructions !== this.instructions ||
+      instructionsHtml !== this.instructionsHtml
+    ) {
+      await this.update({ instructions, instructionsHtml }, transaction);
+    }
   }
 
   toJSON(auth: Authenticator): SkillType {
