@@ -108,9 +108,9 @@ export type SkillMCPServerConfiguration = {
 
 type SkillReferenceTarget = {
   icon: string | null;
+  id: string;
   name: string;
   requestedSpaceIds: readonly ModelId[];
-  sId: string;
 };
 
 type SkillResourceConstructorOptions =
@@ -2469,9 +2469,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         this.sId,
         {
           icon,
+          id: this.sId,
           name,
           requestedSpaceIds,
-          sId: this.sId,
         },
       ],
     ]);
@@ -3338,13 +3338,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       );
 
       if (!isAvailable) {
-        return serializeUnavailableSkillTag({ id: target.sId }, { html });
+        return serializeUnavailableSkillTag({ id: target.id }, { html });
       }
 
       return serializeSkillTag(
         {
           icon: target.icon,
-          id: target.sId,
+          id: target.id,
           name: target.name,
         },
         { html }
@@ -3397,9 +3397,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
                 sId,
                 {
                   icon: skill.icon,
+                  id: sId,
                   name: skill.name,
                   requestedSpaceIds: skill.requestedSpaceIds,
-                  sId,
                 },
               ]
             : null;
