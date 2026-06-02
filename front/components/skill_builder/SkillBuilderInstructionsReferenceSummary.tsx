@@ -25,22 +25,22 @@ interface SkillBuilderInstructionsReferenceSummaryProps {
 
 export type ReferenceSummaryItem =
   | {
-  id: string;
-  kind: "knowledge";
-  title: string;
-}
+      id: string;
+      kind: "knowledge";
+      title: string;
+    }
   | {
-  icon: string | null;
-  id: string;
-  kind: "skill";
-  title: string;
-}
+      icon: string | null;
+      id: string;
+      kind: "skill";
+      title: string;
+    }
   | {
-  icon: string | null;
-  id: string;
-  kind: "tool";
-  title: string;
-};
+      icon: string | null;
+      id: string;
+      kind: "tool";
+      title: string;
+    };
 
 function dedupeById<T extends { id: string }>(items: T[]): T[] {
   const seenIds = new Set<string>();
