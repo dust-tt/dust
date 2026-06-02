@@ -21,7 +21,7 @@ export function transformSkillTypeToFormData(
     fileAttachments: skill.fileAttachments,
     icon: skill.icon ?? null,
     extendedSkillId: skill.extendedSkillId,
-    isDefault: skill.isDefault,
+    visibility: skill.visibility,
     reinforcement: skill.reinforcement,
     additionalSpaces: [],
   };
@@ -48,7 +48,7 @@ export function getDefaultSkillFormData({
     fileAttachments: [],
     icon: null,
     extendedSkillId,
-    isDefault: false,
+    visibility: "published",
     reinforcement: "on",
     additionalSpaces: [],
   };

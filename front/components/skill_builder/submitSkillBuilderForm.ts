@@ -46,7 +46,8 @@ export async function submitSkillBuilderForm({
             : formData.instructionsHtml,
         icon: formData.icon,
         extendedSkillId: formData.extendedSkillId,
-        isDefault: formData.isDefault,
+        isDefault: formData.visibility === "discoverable",
+        visibility: formData.visibility,
         reinforcement: formData.reinforcement,
         tools: formData.tools.map((tool) => ({
           mcpServerViewId: tool.configuration.mcpServerViewId,

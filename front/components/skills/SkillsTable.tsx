@@ -8,6 +8,7 @@ import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import type {
   SkillUsageType,
+  SkillVisibility,
   SkillWithoutInstructionsAndToolsWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
@@ -28,11 +29,23 @@ type RowData = {
   description: string;
   editors: UserType[] | null;
   usage: SkillUsageType;
+  visibility: SkillVisibility;
   updatedAt: number | null;
   createdAt: number | null;
   onClick: () => void;
   menuItems: MenuItem[];
 };
+
+function getSkillVisibilityLabel(visibility: SkillVisibility): string {
+  switch (visibility) {
+    case "unpublished":
+      return "Unpublished";
+    case "published":
+      return "Published";
+    case "discoverable":
+      return "Discoverable";
+  }
+}
 
 const nameColumn = {
   header: "Name",
@@ -125,6 +138,19 @@ const lastEditedColumn = {
   meta: { className: "hidden @sm:w-32 @sm:table-cell" },
 };
 
+const visibilityColumn = {
+  header: "Visibility",
+  accessorKey: "visibility",
+  cell: (info: CellContext<RowData, SkillVisibility>) => {
+    return (
+      <DataTable.BasicCellContent
+        label={getSkillVisibilityLabel(info.getValue())}
+      />
+    );
+  },
+  meta: { className: "hidden @sm:w-32 @sm:table-cell" },
+};
+
 const menuColumn = {
   header: "",
   accessorKey: "menuItems",
@@ -145,6 +171,7 @@ const getTableColumns = (
    * - Name (always)
    * - Editors (hidden on mobile)
    * - Used by (hidden on mobile)
+   * - Visibility (hidden on mobile)
    * - Last Edited (hidden on mobile)
    * - Actions (always)
    */
@@ -153,6 +180,7 @@ const getTableColumns = (
     nameColumn,
     usedByColumn(onAgentClick, onUsedBySkillClick),
     editorsColumn,
+    visibilityColumn,
     lastEditedColumn,
     menuColumn,
   ];
@@ -189,6 +217,7 @@ export function SkillsTable({
         description: skill.userFacingDescription,
         editors: skill.relations.editors,
         usage: skill.relations.usage,
+        visibility: skill.visibility,
         updatedAt: skill.updatedAt,
         createdAt: skill.createdAt,
         onClick: () => {

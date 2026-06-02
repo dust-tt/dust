@@ -1,5 +1,8 @@
 import { actionSchema } from "@app/components/shared/tools_picker/types";
-import { SKILL_REINFORCEMENT_MODES } from "@app/types/assistant/skill_configuration";
+import {
+  SKILL_REINFORCEMENT_MODES,
+  SKILL_VISIBILITIES,
+} from "@app/types/assistant/skill_configuration";
 import { editorUserSchema } from "@app/types/editors";
 import { createContext } from "react";
 import type { UseFormReturn } from "react-hook-form";
@@ -39,7 +42,7 @@ export const skillBuilderFormSchema = z.object({
   tools: z.array(actionSchema),
   icon: z.string().nullable(),
   extendedSkillId: z.string().nullable(),
-  isDefault: z.boolean(),
+  visibility: z.enum(SKILL_VISIBILITIES),
   reinforcement: z.enum(SKILL_REINFORCEMENT_MODES),
   fileAttachments: z.array(fileAttachmentSchema),
   attachedKnowledge: z.array(attachedKnowledgeSchema).optional(),

@@ -1,17 +1,11 @@
 import { SkillBuilderEnableSuggestionsSection } from "@app/components/skill_builder/SkillBuilderEnableSuggestionsSection";
 import { SkillBuilderIconSection } from "@app/components/skill_builder/SkillBuilderIconSection";
-import { SkillBuilderIsDefaultSection } from "@app/components/skill_builder/SkillBuilderIsDefaultSection";
 import { SkillBuilderNameSection } from "@app/components/skill_builder/SkillBuilderNameSection";
 import { SkillBuilderUserFacingDescriptionSection } from "@app/components/skill_builder/SkillBuilderUserFacingDescriptionSection";
+import { SkillBuilderVisibilitySection } from "@app/components/skill_builder/SkillBuilderVisibilitySection";
 import { SkillEditorsSheet } from "@app/components/skill_builder/SkillEditorsSheet";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
-import {
-  Chip,
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-  Label,
-} from "@dust-tt/sparkle";
+import { Chip, Label } from "@dust-tt/sparkle";
 
 interface SkillBuilderSettingsSectionProps {
   skill?: SkillType;
@@ -34,6 +28,7 @@ export function SkillBuilderSettingsSection({
         <SkillBuilderIconSection />
       </div>
       <SkillBuilderUserFacingDescriptionSection />
+      <SkillBuilderVisibilitySection />
       <div className="flex flex-col space-y-3">
         <Label className="text-base font-semibold text-foreground dark:text-foreground-night">
           Editors
@@ -54,20 +49,6 @@ export function SkillBuilderSettingsSection({
             selfImprovementLock={skill?.selfImprovementLock ?? false}
           />
         </div>
-      )}
-      {skill && (
-        <>
-          <Collapsible defaultOpen>
-            <CollapsibleTrigger variant="secondary">
-              Advanced
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <div className="space-y-3 pt-3">
-                <SkillBuilderIsDefaultSection />
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-        </>
       )}
     </div>
   );
