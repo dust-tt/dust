@@ -5,7 +5,7 @@ import {
 import { useAppRouter } from "@app/lib/platform";
 import { useCurrentPage } from "@app/poke/swr/currentPage";
 import type { PokeFavorite, PokeFavoriteType } from "@app/poke/swr/favorites";
-import { usePokeFavorites } from "@app/poke/swr/favorites";
+import { POKE_FAVORITE_TYPES, usePokeFavorites } from "@app/poke/swr/favorites";
 import {
   Chip,
   Collapsible,
@@ -20,28 +20,6 @@ import {
 } from "@dust-tt/sparkle";
 import type { ComponentProps } from "react";
 import { useCallback, useEffect, useState } from "react";
-
-// Display order for favorite type groups; unknown types are appended last.
-const TYPE_ORDER: PokeFavoriteType[] = [
-  "Workspace",
-  "Agent",
-  "Space",
-  "Data Source",
-  "Data Source View",
-  "MCP Server",
-  "App",
-  "Conversation",
-  "Trigger",
-  "Group",
-  "Members",
-  "Frame",
-  "Skill",
-  "Skill Suggestion",
-  "Webhook Source",
-  "LLM Trace",
-  "Plugin",
-  "Page",
-];
 
 export function getFavoriteChipColor(
   type: PokeFavoriteType
@@ -71,8 +49,8 @@ function groupByType(
     byType.set(item.data.type, [...existing, item]);
   }
   const rank = (type: PokeFavoriteType) => {
-    const index = TYPE_ORDER.indexOf(type);
-    return index === -1 ? TYPE_ORDER.length : index;
+    const index = POKE_FAVORITE_TYPES.indexOf(type);
+    return index === -1 ? POKE_FAVORITE_TYPES.length : index;
   };
   return [...byType.keys()]
     .sort((a, b) => rank(a) - rank(b))
@@ -85,8 +63,6 @@ export function PokeFavoriteButton() {
   const { isFavorite, toggleFavorite } = usePokeFavorites();
   const [hasMounted, setHasMounted] = useState(false);
 
-  // Only enable favoriting once the current page has published metadata for THIS url, so we
-  // never capture a half-loaded page (or a placeholder name).
   const currentForPath = current?.url === router.asPath ? current : null;
   const isCurrentlyFavorite =
     currentForPath !== null && isFavorite(currentForPath.url);
@@ -101,7 +77,6 @@ export function PokeFavoriteButton() {
     setHasMounted(true);
   }, []);
 
-  // Keyboard shortcut: Cmd+D (Mac) or Ctrl+D (Windows/Linux).
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "d" && (e.metaKey || e.ctrlKey)) {
@@ -294,10 +269,6 @@ interface PokeFavoritesCommandGroupsProps {
   onNavigate: () => void;
 }
 
-/**
- * Renders Favorites as a command-palette group. Shown in the ⌘K dialog when the search query
- * is empty.
- */
 export function PokeFavoritesCommandGroups({
   onNavigate,
 }: PokeFavoritesCommandGroupsProps) {

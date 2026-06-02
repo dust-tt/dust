@@ -3,18 +3,10 @@ import {
   useExternalStore,
 } from "@app/poke/swr/externalStore";
 
-/**
- * A tiny localStorage-backed array store shared across all React consumers via
- * `useSyncExternalStore`. Every component that reads from the same store sees a single
- * source of truth (no per-instance copies), and changes propagate across browser tabs
- * through the `storage` event.
- *
- * Used by poke favorites, which are intentionally client-only.
- */
+// localStorage-backed array store shared across React consumers, synced across tabs via the
+// `storage` event. Client-only (poke favorites).
 export interface PersistentArrayStore<T> {
-  /** React hook returning the current items, kept in sync with storage and other tabs. */
   useItems: () => T[];
-  /** Immutably update the items, persist them, and notify all consumers. */
   setItems: (updater: (prev: T[]) => T[]) => void;
 }
 

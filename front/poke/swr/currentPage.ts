@@ -7,39 +7,25 @@ import type { PokeFavorite, PokeFavoriteType } from "@app/poke/swr/favorites";
 import { createFavorite } from "@app/poke/swr/favorites";
 import { useEffect } from "react";
 
-/**
- * In-memory, single-value store describing the poke page currently shown. It is
- * intentionally NOT persisted: it only reflects the live page so the navbar favorite button
- * can capture rich metadata (real entity name, sId, workspace) instead of parsing
- * `document.title`.
- */
+// Metadata for the poke page currently shown. Not persisted — it only feeds the navbar
+// favorite button so it can capture rich data instead of parsing `document.title`.
 const store = createExternalStore<PokeFavorite | null>(null);
 
-/** Reads the metadata published by the page currently shown, or `null` if none/loading. */
 export function useCurrentPage(): PokeFavorite | null {
   return useExternalStore(store, () => null);
 }
 
 interface PokePageMetadataInput {
-  // The entity display name. `null`/`undefined` means "still loading" — nothing is published
-  // until a real name is available, so favorites never capture a placeholder.
+  // null/undefined while the entity is still loading; nothing is published until set.
   name: string | null | undefined;
-  // Entity type for the favorite chip; defaults to `inferTypeFromUrl(url)`.
   type?: PokeFavoriteType;
-  // Secondary context line, typically the workspace name.
   subtitle?: string;
-  // The entity's own string identifier.
   sId?: string;
-  // Optional `document.title` override; defaults to `Poke - <name> · <subtitle>`.
   title?: string;
 }
 
-/**
- * Publishes structured metadata about the current poke page. Replaces `useDocumentTitle`:
- * it sets `document.title` AND records the page in the in-memory store so the favorite
- * button can read it. Runs on every render so it reacts to entity data arriving via SWR;
- * it self-gates on `name` and publishes nothing while the page is still loading.
- */
+// Replaces `useDocumentTitle` in poke: sets the tab title and publishes page metadata to the
+// store. Self-gates on `name`, so it stays silent until the page's data has loaded.
 export function usePokePageMetadata({
   name,
   type,

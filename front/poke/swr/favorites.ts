@@ -3,36 +3,36 @@ import { useCallback } from "react";
 
 const POKE_FAVORITES_KEY = "poke-favorites";
 
-// Human-readable entity types a poke favorite can point at. Kept in sync with the route
-// shapes matched by `inferTypeFromUrl`.
-export type PokeFavoriteType =
-  | "Workspace"
-  | "Agent"
-  | "Space"
-  | "Data Source"
-  | "Data Source View"
-  | "MCP Server"
-  | "App"
-  | "Conversation"
-  | "Trigger"
-  | "Group"
-  | "Members"
-  | "Frame"
-  | "Skill"
-  | "Skill Suggestion"
-  | "Webhook Source"
-  | "LLM Trace"
-  | "Plugin"
-  | "Page";
+// Favorite entity types in display order; also the source of the PokeFavoriteType union.
+export const POKE_FAVORITE_TYPES = [
+  "Workspace",
+  "Agent",
+  "Space",
+  "Data Source",
+  "Data Source View",
+  "MCP Server",
+  "App",
+  "Conversation",
+  "Trigger",
+  "Group",
+  "Members",
+  "Frame",
+  "Skill",
+  "Skill Suggestion",
+  "Webhook Source",
+  "LLM Trace",
+  "Plugin",
+  "Page",
+] as const;
+
+export type PokeFavoriteType = (typeof POKE_FAVORITE_TYPES)[number];
 
 export interface PokeFavorite {
   url: string;
   data: {
     type: PokeFavoriteType;
     name: string;
-    // Secondary context line, typically the workspace name the entity belongs to.
     subtitle?: string;
-    // The entity's own string identifier, shown as a small mono badge.
     sId?: string;
   };
 }
@@ -120,7 +120,6 @@ export function inferTypeFromUrl(url: string): PokeFavoriteType {
 }
 
 interface CreateFavoriteOptions {
-  // Defaults to `inferTypeFromUrl(url)` when omitted.
   type?: PokeFavoriteType;
   subtitle?: string;
   sId?: string;

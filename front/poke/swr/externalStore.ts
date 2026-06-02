@@ -1,11 +1,7 @@
 import { useSyncExternalStore } from "react";
 
-/**
- * Minimal pub/sub value container shared by the poke client-side stores: the persisted
- * favorites array (`persistentArrayStore`) and the in-memory current-page metadata
- * (`currentPage`). It only holds a single snapshot and notifies subscribers on change;
- * persistence and cross-tab sync are layered on top by callers.
- */
+// Minimal pub/sub value container shared by the poke client-side stores; persistence and
+// cross-tab sync are layered on top by callers.
 export interface ExternalStore<T> {
   getSnapshot: () => T;
   setSnapshot: (value: T) => void;
@@ -36,7 +32,6 @@ export function createExternalStore<T>(initial: T): ExternalStore<T> {
   };
 }
 
-/** React binding for an `ExternalStore`, kept in sync via `useSyncExternalStore`. */
 export function useExternalStore<T>(
   store: ExternalStore<T>,
   getServerSnapshot: () => T
