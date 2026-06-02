@@ -175,6 +175,7 @@ final class ConversationDetailViewModel: ObservableObject {
             startMessageStream(for: newEvent.message.sId)
 
         case let .userMessageNew(newEvent):
+            removeOptimisticUserMessage()
             insertMessageIfNew(.user(newEvent.message))
 
         case let .userMessagePromoted(event):
@@ -191,6 +192,37 @@ final class ConversationDetailViewModel: ObservableObject {
         guard !messages.contains(where: { $0.id == msg.id }) else { return }
         messages.append(msg)
         messages.sort(by: ConversationMessage.byRank)
+    }
+
+    // MARK: - Optimistic User Message
+
+    private var optimisticUserMessageId: String?
+
+    func addOptimisticUserMessage(content: String, userEmail: String) {
+        removeOptimisticUserMessage()
+        let sId = "pending-\(UUID().uuidString)"
+        let nextRank = (messages.map(\.rank).max() ?? 0) + 1
+        let message = UserMessage(
+            id: 0,
+            sId: sId,
+            type: .userMessage,
+            created: Date().timeIntervalSince1970 * 1000,
+            visibility: "visible",
+            version: 0,
+            rank: nextRank,
+            content: content,
+            context: UserMessageContext(username: nil, fullName: nil, email: userEmail, profilePictureUrl: nil),
+            contentFragments: nil
+        )
+        optimisticUserMessageId = sId
+        messages.append(.user(message))
+        messages.sort(by: ConversationMessage.byRank)
+    }
+
+    func removeOptimisticUserMessage() {
+        guard let id = optimisticUserMessageId else { return }
+        messages.removeAll { $0.id == id }
+        optimisticUserMessageId = nil
     }
 
     // MARK: - Message Streaming (tokens, thinking, actions)
@@ -314,8 +346,8 @@ final class ConversationDetailViewModel: ObservableObject {
             lastError = ErrorInfo(from: event.error, messageId: messageId)
             finalizeMessage(messageId: messageId, status: .failed)
 
-        case .agentGenerationCancelled:
-            finalizeMessage(messageId: messageId, status: .cancelled)
+        case let .agentGenerationCancelled(event):
+            finalizeMessage(messageId: messageId, status: event.status == "interrupted" ? .interrupted : .cancelled)
 
         case let .toolPersonalAuthRequired(event):
             streamingPhase = .personalAuthRequired(

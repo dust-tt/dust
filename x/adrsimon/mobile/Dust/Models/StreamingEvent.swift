@@ -206,6 +206,7 @@ struct AgentGenerationCancelledEvent: Decodable {
     let created: Double
     let configurationId: String
     let messageId: String
+    let status: String?
 }
 
 struct AgentMessageGracefullyStoppedEvent: Decodable {
