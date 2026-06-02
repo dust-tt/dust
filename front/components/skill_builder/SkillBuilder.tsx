@@ -156,13 +156,21 @@ export default function SkillBuilder({
       type: "success",
     });
 
+    for (const warning of result.value.warnings) {
+      sendNotification({
+        title: "Skill editors not updated",
+        description: warning.message,
+        type: "info",
+      });
+    }
+
     onSaved();
 
-    if (isCreatingNew && result.value.sId) {
-      const newUrl = `/w/${owner.sId}/builder/skills/${result.value.sId}`;
+    if (isCreatingNew && result.value.skill.sId) {
+      const newUrl = `/w/${owner.sId}/builder/skills/${result.value.skill.sId}`;
       await router.replace(newUrl, undefined, { shallow: true });
     } else {
-      form.reset(form.getValues(), { keepValues: true });
+      form.reset(result.value.formData);
     }
 
     setIsSaving(false);

@@ -1,8 +1,19 @@
-import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
-import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
+import type {
+  PendingSkillBuilderFileAttachment,
+  SkillBuilderFormData,
+} from "@app/components/skill_builder/SkillBuilderFormContext";
 import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
-import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  contentTypeFromFileName,
+  DEFAULT_FILE_CONTENT_TYPE,
+  type FileFormatCategory,
+  fileSizeToHumanReadable,
+  getFileFormatCategory,
+  isSupportedFileContentType,
+  resolveFileContentType,
+  resolveMaxFileSizes,
+} from "@app/types/files";
 import {
   ArrowGoBackIcon,
   Button,
@@ -11,14 +22,50 @@ import {
   DocumentIcon,
   EmptyCTA,
   PlusIcon,
-  Spinner,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
+const SKILL_ATTACHMENT_FILE_UPLOAD_OPTIONS = {
+  hasSandboxTools: false,
+  useCase: "skill_attachment",
+} as const;
+
+const SKILL_ATTACHMENT_MAX_FILE_SIZES = resolveMaxFileSizes(
+  SKILL_ATTACHMENT_FILE_UPLOAD_OPTIONS
+);
+
+function resolveSkillAttachmentContentType(file: File): string {
+  const resolvedContentType = resolveFileContentType(file.type, file.name);
+  if (isSupportedFileContentType(resolvedContentType)) {
+    return resolvedContentType;
+  }
+
+  return (
+    contentTypeFromFileName(file.name) ??
+    (resolvedContentType || DEFAULT_FILE_CONTENT_TYPE)
+  );
+}
+
+function getSkillAttachmentSizeLimitError({
+  contentType,
+  file,
+}: {
+  contentType: string;
+  file: File;
+}): { category: FileFormatCategory; maxFileSize: number } | null {
+  const category = getFileFormatCategory(contentType) ?? "data";
+  const maxFileSize = SKILL_ATTACHMENT_MAX_FILE_SIZES[category];
+
+  if (file.size <= maxFileSize) {
+    return null;
+  }
+
+  return { category, maxFileSize };
+}
+
 export function SkillBuilderFilesSection() {
-  const { owner, skillId } = useSkillBuilderContext();
   const sendNotification = useSendNotification();
   const { setValue } = useFormContext<SkillBuilderFormData>();
   const { compareVersion, isDiffMode } = useSkillVersionComparisonContext();
@@ -36,13 +83,6 @@ export function SkillBuilderFilesSection() {
   const fileListRef = useRef<HTMLDivElement>(null);
   const fileListBottomSentinelRef = useRef<HTMLDivElement>(null);
 
-  const { handleFilesUpload, isProcessingFiles } = useFileUploaderService({
-    hasSandboxTools: false,
-    owner,
-    useCase: "skill_attachment",
-    useCaseMetadata: skillId ? { skillId } : undefined,
-  });
-
   const existingFileNames = useMemo(
     () => new Set(fields.map((f) => f.fileName)),
     [fields]
@@ -57,15 +97,17 @@ export function SkillBuilderFilesSection() {
   );
 
   const currentFileIds = useMemo(
-    () => new Set(fields.map((f) => f.fileId)),
+    () => new Set<string | null>(fields.map((f) => f.fileId)),
     [fields]
   );
 
   const compareFileIds = useMemo(
     () =>
       compareVersion
-        ? new Set(compareVersion.fileAttachments.map((f) => f.fileId))
-        : new Set<string>(),
+        ? new Set<string | null>(
+            compareVersion.fileAttachments.map((f) => f.fileId)
+          )
+        : new Set<string | null>(),
     [compareVersion]
   );
 
@@ -112,15 +154,55 @@ export function SkillBuilderFilesSection() {
   };
 
   const onFileInputChange = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
+    (e: React.ChangeEvent<HTMLInputElement>) => {
       const files = e.target.files;
       if (!files || files.length === 0) {
         return;
       }
 
       const allFiles = Array.from(files);
-      const newFiles = allFiles.filter((f) => !existingFileNames.has(f.name));
-      const duplicates = allFiles.filter((f) => existingFileNames.has(f.name));
+      const seenFileNames = new Set(existingFileNames);
+      const duplicates: File[] = [];
+      const newAttachments: PendingSkillBuilderFileAttachment[] = [];
+
+      for (const file of allFiles) {
+        if (seenFileNames.has(file.name)) {
+          duplicates.push(file);
+          continue;
+        }
+
+        seenFileNames.add(file.name);
+
+        const contentType = resolveSkillAttachmentContentType(file);
+        if (!isSupportedFileContentType(contentType)) {
+          sendNotification({
+            type: "error",
+            title: "Unsupported file skipped.",
+            description: `File "${file.name}" is not supported (${contentType}).`,
+          });
+          continue;
+        }
+
+        const sizeLimitError = getSkillAttachmentSizeLimitError({
+          file,
+          contentType,
+        });
+        if (sizeLimitError) {
+          sendNotification({
+            type: "error",
+            title: "File too large.",
+            description: `File "${file.name}" (${fileSizeToHumanReadable(file.size)}) exceeds the ${sizeLimitError.category} limit of ${fileSizeToHumanReadable(sizeLimitError.maxFileSize)}. Please upload a smaller file.`,
+          });
+          continue;
+        }
+
+        newAttachments.push({
+          fileId: null,
+          fileName: file.name,
+          file,
+          contentType,
+        });
+      }
 
       if (duplicates.length > 0) {
         sendNotification({
@@ -130,21 +212,14 @@ export function SkillBuilderFilesSection() {
         });
       }
 
-      if (newFiles.length > 0) {
-        const uploaded = await handleFilesUpload(newFiles);
-        if (uploaded) {
-          for (const blob of uploaded) {
-            if (blob.fileId) {
-              append({ fileId: blob.fileId, fileName: blob.filename });
-            }
-          }
-        }
+      if (newAttachments.length > 0) {
+        append(newAttachments);
       }
 
       // Reset input so re-uploading the same file triggers onChange.
       e.target.value = "";
     },
-    [handleFilesUpload, append, existingFileNames, sendNotification]
+    [append, existingFileNames, sendNotification]
   );
 
   const headerActions = !isDiffMode && hasFileAttachments && (
@@ -152,9 +227,8 @@ export function SkillBuilderFilesSection() {
       type="button"
       onClick={onUploadClick}
       label="Upload files"
-      icon={isProcessingFiles ? Spinner : PlusIcon}
+      icon={PlusIcon}
       variant="outline"
-      disabled={isProcessingFiles}
     />
   );
 
@@ -195,11 +269,7 @@ export function SkillBuilderFilesSection() {
       )}
 
       {!hasFileAttachments ? (
-        isDiffMode ? null : isProcessingFiles ? (
-          <div className="flex h-40 w-full items-center justify-center">
-            <Spinner />
-          </div>
-        ) : (
+        isDiffMode ? null : (
           <EmptyCTA
             action={
               <Button
@@ -208,7 +278,6 @@ export function SkillBuilderFilesSection() {
                 label="Upload files"
                 icon={PlusIcon}
                 variant="outline"
-                disabled={isProcessingFiles}
               />
             }
             className="py-8"
@@ -222,7 +291,9 @@ export function SkillBuilderFilesSection() {
           >
             <ContextItem.List>
               {sortedFields.map(({ field, originalIndex }) => {
-                const isAdded = isDiffMode && !compareFileIds.has(field.fileId);
+                const isAdded =
+                  isDiffMode &&
+                  (field.fileId === null || !compareFileIds.has(field.fileId));
                 return (
                   <ContextItem
                     key={field.id}
