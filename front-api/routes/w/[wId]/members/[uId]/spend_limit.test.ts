@@ -1,6 +1,8 @@
 import * as creditStateDispatcher from "@app/lib/api/metronome/credit_state_dispatcher";
 import * as spendLimits from "@app/lib/metronome/alerts/spend_limits";
 import * as perUserUsage from "@app/lib/metronome/per_user_usage";
+import * as planType from "@app/lib/metronome/plan_type";
+import * as seatTypes from "@app/lib/metronome/seat_types";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -19,7 +21,25 @@ vi.mock("@app/lib/metronome/alerts/spend_limits", async () => {
     upsertMetronomePerUserCapAlert: vi.fn(),
     clearMetronomePerUserCapAlert: vi.fn(),
     getMetronomePerUserCap: vi.fn(),
-    getMetronomeDefaultUserCapAlert: vi.fn(),
+    getMetronomeDefaultUserCapAlertForSeatType: vi.fn(),
+  };
+});
+
+vi.mock("@app/lib/metronome/plan_type", async () => {
+  const actual = await vi.importActual<typeof planType>(
+    "@app/lib/metronome/plan_type"
+  );
+  return { ...actual, getActiveContract: vi.fn() };
+});
+
+vi.mock("@app/lib/metronome/seat_types", async () => {
+  const actual = await vi.importActual<typeof seatTypes>(
+    "@app/lib/metronome/seat_types"
+  );
+  return {
+    ...actual,
+    getProductSeatTypes: vi.fn(),
+    getAwuAllocationForSeatType: vi.fn(),
   };
 });
 
@@ -65,11 +85,11 @@ beforeEach(() => {
     new Ok(undefined)
   );
   vi.mocked(spendLimits.getMetronomePerUserCap).mockResolvedValue(new Ok(null));
+  vi.mocked(
+    spendLimits.getMetronomeDefaultUserCapAlertForSeatType
+  ).mockResolvedValue(new Ok(null));
   vi.mocked(perUserUsage.fetchPerUserAwuUsage).mockResolvedValue(
     new Ok(new Map())
-  );
-  vi.mocked(spendLimits.getMetronomeDefaultUserCapAlert).mockResolvedValue(
-    new Ok(null)
   );
   vi.mocked(creditStateDispatcher.dispatchPerUserCapReached).mockResolvedValue(
     new Ok(undefined)
@@ -77,6 +97,11 @@ beforeEach(() => {
   vi.mocked(creditStateDispatcher.dispatchPerUserCapResolved).mockResolvedValue(
     new Ok(undefined)
   );
+
+  // Seat allowance resolution mocks (resolveUserSeatAllowance).
+  vi.mocked(planType.getActiveContract).mockResolvedValue(null);
+  vi.mocked(seatTypes.getProductSeatTypes).mockResolvedValue(new Map());
+  vi.mocked(seatTypes.getAwuAllocationForSeatType).mockReturnValue(0);
 });
 
 describe("/api/w/[wId]/members/[uId]/spend_limit", () => {

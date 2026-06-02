@@ -12,15 +12,23 @@ import type { Authenticator } from "@app/lib/auth";
 import {
   clearMetronomePerUserCapAlert,
   clearMetronomePerUserWarningAlert,
-  getMetronomeDefaultUserCapAlert,
+  getMetronomeDefaultUserCapAlertForSeatType,
   getMetronomePerUserCap,
   upsertMetronomePerUserCapAlert,
   upsertMetronomePerUserWarningAlert,
 } from "@app/lib/metronome/alerts/spend_limits";
 import { fetchPerUserAwuUsage } from "@app/lib/metronome/per_user_usage";
+import { getActiveContract } from "@app/lib/metronome/plan_type";
+import {
+  getAwuAllocationForSeatType,
+  getProductSeatTypes,
+} from "@app/lib/metronome/seat_types";
 import { clearUserAwuWarned } from "@app/lib/metronome/user_block";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
+import type { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
+import { normalizeToPoolLimitSeatType } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -55,6 +63,37 @@ export class UserSpendLimitError extends Error {
   ) {
     super(message);
   }
+}
+
+/**
+ * Resolve the seat AWU allowance for a user based on their membership seat
+ * type and the active contract. Returns 0 when the contract or seat type
+ * can't be resolved (e.g. free seats, no contract).
+ */
+async function resolveUserSeatAllowance(
+  auth: Authenticator,
+  user: UserResource
+): Promise<number> {
+  const workspace = auth.getNonNullableWorkspace();
+  const membership =
+    await MembershipResource.getActiveMembershipOfUserInWorkspace({
+      user,
+      workspace,
+    });
+  const normalizedSeatType = normalizeToPoolLimitSeatType(membership?.seatType);
+  if (!normalizedSeatType) {
+    return 0;
+  }
+  const contract = await getActiveContract(workspace.sId);
+  if (!contract) {
+    return 0;
+  }
+  const productSeatTypes = await getProductSeatTypes();
+  return getAwuAllocationForSeatType(
+    contract,
+    normalizedSeatType,
+    productSeatTypes
+  );
 }
 
 export async function getUserSpendLimit(
@@ -95,7 +134,12 @@ export async function getUserSpendLimit(
   if (!result.value) {
     return new Ok({ kind: "unlimited" });
   }
-  return new Ok({ kind: "limited", awuCredits: result.value.alert.threshold });
+
+  // The Metronome threshold includes the seat allowance. Subtract it to
+  // return the pool-only portion (what the admin entered).
+  const seatAllowance = await resolveUserSeatAllowance(auth, user);
+  const poolAwuCredits = result.value.alert.threshold - seatAllowance;
+  return new Ok({ kind: "limited", awuCredits: poolAwuCredits });
 }
 
 /**
@@ -243,19 +287,33 @@ export async function setUserSpendLimit(
       }
       void clearUserAwuWarned(workspace.sId, user.sId);
 
-      const defaultResult = await getMetronomeDefaultUserCapAlert({
-        metronomeCustomerId: workspace.metronomeCustomerId,
-        workspaceId: workspace.sId,
-      });
-      if (defaultResult.isErr()) {
-        return new Err(
-          new UserSpendLimitError(
-            "metronome_error",
-            defaultResult.error.message
-          )
-        );
+      // Look up the user's seat type to find the matching default cap.
+      const membership =
+        await MembershipResource.getActiveMembershipOfUserInWorkspace({
+          user,
+          workspace,
+        });
+      const normalizedSeatType = normalizeToPoolLimitSeatType(
+        membership?.seatType
+      );
+
+      let defaultAlert = null;
+      if (normalizedSeatType) {
+        const defaultResult = await getMetronomeDefaultUserCapAlertForSeatType({
+          metronomeCustomerId: workspace.metronomeCustomerId,
+          workspaceId: workspace.sId,
+          seatType: normalizedSeatType,
+        });
+        if (defaultResult.isErr()) {
+          return new Err(
+            new UserSpendLimitError(
+              "metronome_error",
+              defaultResult.error.message
+            )
+          );
+        }
+        defaultAlert = defaultResult.value;
       }
-      const defaultAlert = defaultResult.value;
 
       if (defaultAlert) {
         transitionedTo = await resolveLocalCapState({
@@ -279,11 +337,16 @@ export async function setUserSpendLimit(
       break;
     }
     case "limited": {
+      // The admin enters pool credits. Add the seat allowance to get the
+      // total Metronome threshold.
+      const seatAllowance = await resolveUserSeatAllowance(auth, user);
+      const totalAwuCredits = limit.awuCredits + seatAllowance;
+
       const upsertResult = await upsertMetronomePerUserCapAlert({
         metronomeCustomerId: workspace.metronomeCustomerId,
         workspaceId: workspace.sId,
         userId: user.sId,
-        awuCredits: limit.awuCredits,
+        awuCredits: totalAwuCredits,
       });
       if (upsertResult.isErr()) {
         return new Err(
@@ -296,14 +359,14 @@ export async function setUserSpendLimit(
         metronomeCustomerId: workspace.metronomeCustomerId,
         workspaceId: workspace.sId,
         userId: user.sId,
-        capAwuCredits: limit.awuCredits,
+        capAwuCredits: totalAwuCredits,
       });
       if (upsertWarningResult.isErr()) {
         logger.warn(
           {
             workspaceId: workspace.sId,
             userId: user.sId,
-            awuCredits: limit.awuCredits,
+            awuCredits: totalAwuCredits,
             err: upsertWarningResult.error,
           },
           "[Metronome PerUserCap] Failed to upsert warning alert; continuing"
@@ -314,7 +377,7 @@ export async function setUserSpendLimit(
         metronomeCustomerId: workspace.metronomeCustomerId,
         metronomeContractId: auth.subscription()?.metronomeContractId ?? null,
         userId: user.sId,
-        awuCapCredits: limit.awuCredits,
+        awuCapCredits: totalAwuCredits,
       });
       if (transitionedTo !== null) {
         await dispatchTransition({
