@@ -3341,72 +3341,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
   }
 
-  private static getCustomSkillReferenceIds(
-    contents: readonly (string | null | undefined)[],
-    { parentSkillId }: { parentSkillId?: ModelId } = {}
-  ): string[] {
-    return [
-      ...new Set(
-        contents.flatMap((content) =>
-          extractUniqueSkillReferenceIds(content ?? "")
-        )
-      ),
-    ].filter((skillId) => {
-      const parsed = getResourceNameAndIdFromSId(skillId);
-
-      return (
-        parsed?.resourceName === "skill" &&
-        parsed.resourceModelId !== parentSkillId
-      );
-    });
-  }
-
-  private static async fetchSkillReferenceTargets(
-    auth: Authenticator,
-    skillIds: readonly string[],
-    { transaction }: { transaction?: Transaction } = {}
-  ): Promise<Map<string, SkillReferenceTarget>> {
-    const workspace = auth.getNonNullableWorkspace();
-    const customSkillIdByModelId = new Map<ModelId, string>();
-
-    for (const skillId of skillIds) {
-      if (isResourceSId("skill", skillId)) {
-        const modelId = getResourceIdFromSId(skillId);
-        if (modelId !== null) {
-          customSkillIdByModelId.set(modelId, skillId);
-        }
-      }
-    }
-
-    const targets = new Map<string, SkillReferenceTarget>();
-    const customSkillIds = [...customSkillIdByModelId.keys()];
-    if (customSkillIds.length > 0) {
-      const customSkills = await SkillConfigurationModel.findAll({
-        where: {
-          id: customSkillIds,
-          status: ["active", "archived", "suggested"],
-          workspaceId: workspace.id,
-        },
-        attributes: ["id", "icon", "name", "requestedSpaceIds"],
-        transaction,
-      });
-
-      for (const skill of customSkills) {
-        const sId = customSkillIdByModelId.get(skill.id);
-        if (sId) {
-          targets.set(sId, {
-            icon: skill.icon,
-            name: skill.name,
-            requestedSpaceIds: skill.requestedSpaceIds,
-            sId,
-          });
-        }
-      }
-    }
-
-    return targets;
-  }
-
   private static replaceSkillReferenceTags(
     content: string,
     targets: ReadonlyMap<string, SkillReferenceTarget>,
@@ -3464,18 +3398,56 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     instructions: string;
     instructionsHtml: string | null;
   }> {
-    const skillIds = this.getCustomSkillReferenceIds(
-      [instructions, instructionsHtml],
-      { parentSkillId }
+    const workspace = auth.getNonNullableWorkspace();
+    const customSkillIdByModelId = new Map<ModelId, string>(
+      [
+        ...new Set(
+          [instructions, instructionsHtml].flatMap((content) =>
+            extractUniqueSkillReferenceIds(content ?? "")
+          )
+        ),
+      ].flatMap((skillId) => {
+        const modelId = isResourceSId("skill", skillId)
+          ? getResourceIdFromSId(skillId)
+          : null;
+
+        return modelId !== null && modelId !== parentSkillId
+          ? ([[modelId, skillId]] satisfies [ModelId, string][])
+          : [];
+      })
     );
 
-    if (skillIds.length === 0) {
+    if (customSkillIdByModelId.size === 0) {
       return { instructions, instructionsHtml };
     }
 
-    const targets = await this.fetchSkillReferenceTargets(auth, skillIds, {
+    const customSkills = await SkillConfigurationModel.findAll({
+      where: {
+        id: [...customSkillIdByModelId.keys()],
+        workspaceId: workspace.id,
+      },
+      attributes: ["id", "icon", "name", "requestedSpaceIds"],
       transaction,
     });
+    const targets = new Map<string, SkillReferenceTarget>(
+      removeNulls(
+        customSkills.map((skill) => {
+          const sId = customSkillIdByModelId.get(skill.id);
+
+          return sId
+            ? [
+                sId,
+                {
+                  icon: skill.icon,
+                  name: skill.name,
+                  requestedSpaceIds: skill.requestedSpaceIds,
+                  sId,
+                },
+              ]
+            : null;
+        })
+      )
+    );
 
     return {
       instructions: this.replaceSkillReferenceTags(
