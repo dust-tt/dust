@@ -336,8 +336,11 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       return new Err(new Error("Sandbox provider not configured."));
     }
 
-    return executeWithLock(`sandbox:lifecycle:${conversationId}`, () =>
-      fn(provider)
+    return executeWithLock(
+      `sandbox:lifecycle:${conversationId}`,
+      () => fn(provider),
+      undefined,
+      { traceAcquireResource: "sandbox:lifecycle" }
     );
   }
 

@@ -1,3 +1,5 @@
+import tracer from "@app/logger/tracer";
+
 import { getRedisStreamClient, type RedisClientType } from "./api/redis";
 
 // Distributed lock implementation using Redis
@@ -52,21 +54,37 @@ const WAIT_BETWEEN_RETRIES = 100;
 export const executeWithLock = async <T>(
   lockName: string,
   callback: () => Promise<T>,
-  timeoutMs: number = 30_000
+  timeoutMs: number = 30_000,
+  // Opt-in: when set, the acquisition wait (only) is wrapped in a
+  // `lock.acquire` APM span with this resource, so contention/wait time is
+  // visible separately from the time spent holding the lock. Off by default so
+  // existing callers are unchanged and we don't span every lock app-wide.
+  { traceAcquireResource }: { traceAcquireResource?: string } = {}
 ): Promise<T> => {
   const client = await getRedisStreamClient({ origin: "lock" });
 
-  const start = Date.now();
-  let lockValue: string | undefined;
-  while (Date.now() - start < timeoutMs) {
-    // Try to acquire the lock
-    lockValue = await distributedLock(client, lockName);
-    if (lockValue) {
-      break;
+  const acquire = async (): Promise<string | undefined> => {
+    const start = Date.now();
+    let acquired: string | undefined;
+    while (Date.now() - start < timeoutMs) {
+      // Try to acquire the lock
+      acquired = await distributedLock(client, lockName);
+      if (acquired) {
+        break;
+      }
+      // Wait a bit before retrying
+      await new Promise((resolve) => setTimeout(resolve, WAIT_BETWEEN_RETRIES));
     }
-    // Wait a bit before retrying
-    await new Promise((resolve) => setTimeout(resolve, WAIT_BETWEEN_RETRIES));
-  }
+    return acquired;
+  };
+
+  const lockValue = traceAcquireResource
+    ? await tracer.trace(
+        "lock.acquire",
+        { resource: traceAcquireResource },
+        acquire
+      )
+    : await acquire();
 
   if (!lockValue) {
     throw new Error(`Lock acquisition timed out for ${lockName}`);

@@ -7,6 +7,10 @@ import {
   refreshGcsToken,
 } from "@app/lib/api/sandbox/gcs/mount";
 import { getSandboxImage } from "@app/lib/api/sandbox/image";
+import {
+  recordSandboxStartupTotal,
+  traceSandboxStartupPhase,
+} from "@app/lib/api/sandbox/instrumentation";
 import { startTelemetry } from "@app/lib/api/sandbox/telemetry";
 import type { Authenticator } from "@app/lib/auth";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
@@ -26,71 +30,105 @@ export async function ensureSandboxReady(
   auth: Authenticator,
   conversation: ConversationType
 ): Promise<Result<EnsureSandboxReadyResult, Error>> {
-  const ensureResult = await SandboxResource.ensureActive(auth, conversation);
-  if (ensureResult.isErr()) {
-    return ensureResult;
-  }
+  const workspaceId = auth.getNonNullableWorkspace().sId;
+  const startMs = performance.now();
+  // cold is only known once ensureActive returns; default to a cold-leaning
+  // false only matters if ensureActive itself errors (rare), where the total
+  // is recorded as a failed warm attempt.
+  let cold = false;
+  let status: "success" | "error" = "success";
 
-  const { sandbox, freshlyCreated, wokeFromSleep } = ensureResult.value;
+  try {
+    return await traceSandboxStartupPhase(
+      "total",
+      async () => {
+        const ensureResult = await traceSandboxStartupPhase(
+          "provider_ensure",
+          () => SandboxResource.ensureActive(auth, conversation),
+          { workspace_id: workspaceId }
+        );
+        if (ensureResult.isErr()) {
+          status = "error";
+          return ensureResult;
+        }
 
-  // Egress prep must run BEFORE GCS mounts. sandbox_resource.buildSandboxEnvVars
-  // exports replace-style trust env vars pointing at /etc/dust/ca-bundle.pem.
-  // The image seeds that path with system roots; forwarder setup later merges
-  // in the dsbx CA. Mounting (gcsfuse and friends) can make HTTPS calls that
-  // read the trust bundle, so the path has to be valid first.
-  if (freshlyCreated) {
-    const prepResult = await prepareSandboxEgressBeforeMount(auth, sandbox);
-    if (prepResult.isErr()) {
-      return prepResult;
-    }
-  }
+        const { sandbox, freshlyCreated, wokeFromSleep } = ensureResult.value;
+        cold = freshlyCreated;
 
-  const imageResult = getSandboxImage(auth);
-  if (imageResult.isErr()) {
-    logger.error(
-      { err: imageResult.error },
-      "Failed to get sandbox image for GCS mount"
+        // Egress prep must run BEFORE GCS mounts.
+        // sandbox_resource.buildSandboxEnvVars exports replace-style trust env
+        // vars pointing at /etc/dust/ca-bundle.pem. The image seeds that path
+        // with system roots; forwarder setup later merges in the dsbx CA.
+        // Mounting (gcsfuse and friends) can make HTTPS calls that read the
+        // trust bundle, so the path has to be valid first.
+        if (freshlyCreated) {
+          const prepResult = await traceSandboxStartupPhase("egress_prep", () =>
+            prepareSandboxEgressBeforeMount(auth, sandbox)
+          );
+          if (prepResult.isErr()) {
+            status = "error";
+            return prepResult;
+          }
+        }
+
+        const imageResult = await traceSandboxStartupPhase("image_fetch", () =>
+          Promise.resolve(getSandboxImage(auth))
+        );
+        if (imageResult.isErr()) {
+          logger.error(
+            { err: imageResult.error },
+            "Failed to get sandbox image for GCS mount"
+          );
+          status = "error";
+          return imageResult;
+        }
+        const image = imageResult.value;
+
+        void startTelemetry(auth, sandbox, conversation).catch((err) =>
+          logger.error({ err }, "Telemetry start failed (fire-and-forget)")
+        );
+
+        // Only mount on first creation. e2b preserves the FUSE mount and the
+        // token server across betaPause + connect (verified empirically), so on
+        // wake we just need a fresh GCS access token in /tmp/token.json (the
+        // running token server will hand it to gcsfuse on the next request).
+        if (freshlyCreated) {
+          const mountResult = await traceSandboxStartupPhase("gcs_mount", () =>
+            mountConversationFiles(auth, sandbox, conversation, image)
+          );
+          if (mountResult.isErr()) {
+            status = "error";
+            return mountResult;
+          }
+        } else {
+          const refreshResult = await traceSandboxStartupPhase(
+            "gcs_refresh",
+            () => refreshGcsToken(auth, sandbox, conversation, image)
+          );
+          if (refreshResult.isErr()) {
+            status = "error";
+            return refreshResult;
+          }
+        }
+
+        const ensureEgressResult = await traceSandboxStartupPhase(
+          "egress_on_exec",
+          () => ensureSandboxEgressOnExec(auth, sandbox, { wokeFromSleep })
+        );
+        if (ensureEgressResult.isErr()) {
+          status = "error";
+          return ensureEgressResult;
+        }
+
+        return new Ok({ sandbox, freshlyCreated });
+      },
+      { workspace_id: workspaceId }
     );
-    return imageResult;
-  }
-  const image = imageResult.value;
-
-  void startTelemetry(auth, sandbox, conversation).catch((err) =>
-    logger.error({ err }, "Telemetry start failed (fire-and-forget)")
-  );
-
-  // Only mount on first creation. e2b preserves the FUSE mount and the
-  // token server across betaPause + connect (verified empirically), so on
-  // wake we just need a fresh GCS access token in /tmp/token.json (the
-  // running token server will hand it to gcsfuse on the next request).
-  if (freshlyCreated) {
-    const mountResult = await mountConversationFiles(
-      auth,
-      sandbox,
-      conversation,
-      image
+  } finally {
+    recordSandboxStartupTotal(
+      performance.now() - startMs,
+      { workspaceId, cold },
+      status
     );
-    if (mountResult.isErr()) {
-      return mountResult;
-    }
-  } else {
-    const refreshResult = await refreshGcsToken(
-      auth,
-      sandbox,
-      conversation,
-      image
-    );
-    if (refreshResult.isErr()) {
-      return refreshResult;
-    }
   }
-
-  const ensureEgressResult = await ensureSandboxEgressOnExec(auth, sandbox, {
-    wokeFromSleep,
-  });
-  if (ensureEgressResult.isErr()) {
-    return ensureEgressResult;
-  }
-
-  return new Ok({ sandbox, freshlyCreated });
 }
