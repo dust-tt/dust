@@ -18,7 +18,8 @@ import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_
 import * as cheerio from "cheerio";
 import type { Logger } from "pino";
 
-const ENABLED_TOOLS_LABEL = "Enabled tools:";
+const ASSOCIATED_TOOLS_LABEL = "Tools associated with this skill:";
+const TOOLS_SECTION_SEPARATOR = "----";
 const TOOL_ELEMENT_REGEX = /<tool\b([^>]*)>[\s\S]*?<\/tool>/g;
 
 type WorkspaceStats = {
@@ -87,10 +88,13 @@ async function processWorkspace(
     const missingInInstructions = tools.filter(
       (tool) => !instructionsToolIds.has(tool.id)
     );
+    const renderedToolsMarkdown = tools
+      .map((tool) => serializeToolTag(tool))
+      .join(", ");
     const instructions =
       missingInInstructions.length === 0
         ? skill.instructions
-        : `${skill.instructions.trimEnd()}\n\n${ENABLED_TOOLS_LABEL} ${missingInInstructions.map((tool) => serializeToolTag(tool)).join(", ")}`;
+        : `${ASSOCIATED_TOOLS_LABEL} ${renderedToolsMarkdown}\n${TOOLS_SECTION_SEPARATOR}\n${skill.instructions}`;
 
     const instructionsHtmlToolIds = new Set(
       [
@@ -108,22 +112,23 @@ async function processWorkspace(
 
     let instructionsHtml = skill.instructionsHtml;
     if (instructionsHtml !== null && missingInInstructionsHtml.length > 0) {
-      const renderedToolsHtml = missingInInstructionsHtml
+      const renderedToolsHtml = tools
         .map((tool) =>
           serializeToolTag(tool).replace(/\s*\/>$/, `></${TOOL_TAG_NAME}>`)
         )
         .join(", ");
-      const paragraph = `<p data-block-id="${generateShortBlockId()}">${ENABLED_TOOLS_LABEL} ${renderedToolsHtml}</p>`;
+      const paragraph = `<p data-block-id="${generateShortBlockId()}">${ASSOCIATED_TOOLS_LABEL} ${renderedToolsHtml}</p>`;
+      const separator = `<p data-block-id="${generateShortBlockId()}">${TOOLS_SECTION_SEPARATOR}</p>`;
       const $ = cheerio.load(instructionsHtml, { xmlMode: false }, false);
       const root = $(
         `[data-block-id="${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}"]`
       ).first();
 
       if (root.length > 0) {
-        root.append(paragraph);
+        root.prepend(`${paragraph}${separator}`);
         instructionsHtml = $.html();
       } else {
-        instructionsHtml = `${instructionsHtml.trimEnd()}\n${paragraph}`;
+        instructionsHtml = `${paragraph}\n${separator}\n${instructionsHtml}`;
       }
     }
 
