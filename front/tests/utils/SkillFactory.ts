@@ -7,7 +7,10 @@ import type { SkillAttachedKnowledge } from "@app/lib/resources/skill/skill_reso
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SKILL_ICON } from "@app/lib/skill";
 import { serializeSkillTag } from "@app/lib/skills/format";
-import type { SkillStatus } from "@app/types/assistant/skill_configuration";
+import type {
+  SkillStatus,
+  SkillVisibility,
+} from "@app/types/assistant/skill_configuration";
 import type { ModelId } from "@app/types/shared/model_id";
 import assert from "assert";
 
@@ -18,6 +21,7 @@ type CreateSkillOverrides = Partial<{
   instructions: string;
   instructionsHtml: string | null;
   status: SkillStatus;
+  visibility: SkillVisibility;
   version: number;
   requestedSpaceIds: ModelId[];
   addCurrentUserAsEditor: boolean;
@@ -48,6 +52,7 @@ export class SkillFactory {
       overrides.userFacingDescription ?? "Test skill user facing description";
     const instructions = overrides.instructions ?? "Test skill instructions";
     const status = overrides.status ?? "active";
+    const visibility = overrides.visibility ?? "published";
     const editedBy = overrides.status === "suggested" ? null : user.id;
     const requestedSpaceIds = overrides.requestedSpaceIds ?? [];
     const attachedKnowledge = overrides.attachedKnowledge ?? [];
@@ -64,8 +69,9 @@ export class SkillFactory {
         name,
         requestedSpaceIds,
         status,
+        visibility,
         icon: SKILL_ICON.name,
-        isDefault: false,
+        isDefault: visibility === "discoverable",
       },
       {
         mcpServerViews,

@@ -76,6 +76,7 @@ import type {
   SkillSourceType,
   SkillStatus,
   SkillType,
+  SkillVisibility,
   UsedBySkillType,
 } from "@app/types/assistant/skill_configuration";
 import type { AgentsUsageType } from "@app/types/data_source";
@@ -1177,6 +1178,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     auth: Authenticator,
     {
       status = "active",
+      visibility,
       limit,
       globalSpaceOnly,
       onlyCustom,
@@ -1187,6 +1189,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       withTools = true,
     }: {
       status?: SkillStatus | SkillStatus[];
+      visibility?: SkillVisibility | SkillVisibility[];
       limit?: number;
       globalSpaceOnly?: boolean;
       onlyCustom?: boolean;
@@ -1200,6 +1203,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const skills = await this.baseFetch(auth, {
       where: {
         status,
+        ...(visibility !== undefined ? { visibility } : {}),
         ...(isDefault !== undefined ? { isDefault } : {}),
         ...(updatedAfter ? { updatedAt: { [Op.gte]: updatedAfter } } : {}),
         ...(reinforcementNotOff ? { reinforcement: { [Op.ne]: "off" } } : {}),
@@ -1227,7 +1231,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return this.baseFetch(auth, {
       where: {
         status: "active",
-        isDefault: true,
+        visibility: "discoverable",
       },
     });
   }
@@ -1431,7 +1435,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     // Compute the equipped skills: all non-system agent skills plus
     // discoverable skills that are not already equipped. Keep this list stable
     // even after a skill is enabled.
-    const agentEquippedSkills = allAgentSkills.filter((s) => !s.isSystemSkill);
+    const agentEquippedSkills = allAgentSkills.filter(
+      (s) => !s.isSystemSkill && s.visibility !== "unpublished"
+    );
 
     const agentEquippedSkillIds = new Set(
       agentEquippedSkills.map((s) => s.sId)
@@ -1636,6 +1642,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         name: def.name,
         requestedSpaceIds: requestedSpaceModelIds,
         status: "active",
+        visibility: SystemSkillsRegistry.isSystemSkill(def.sId)
+          ? "published"
+          : "discoverable",
         updatedAt: new Date(),
         workspaceId,
         icon: def.icon,
@@ -1893,6 +1902,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           createdAt: versionModel.createdAt,
           updatedAt: versionModel.updatedAt,
           status: versionModel.status,
+          visibility: versionModel.visibility,
           name: versionModel.name,
           agentFacingDescription: versionModel.agentFacingDescription,
           userFacingDescription: versionModel.userFacingDescription,
@@ -2314,6 +2324,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       source,
       sourceMetadata,
       status,
+      visibility,
       enableSkillReferences = false,
       userFacingDescription,
     }: {
@@ -2331,6 +2342,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       source?: SkillSourceType;
       sourceMetadata?: SkillSourceMetadata;
       status?: SkillStatus;
+      visibility?: SkillVisibility;
       enableSkillReferences?: boolean;
       userFacingDescription: string;
     }
@@ -2374,6 +2386,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           requestedSpaceIds,
           editedBy,
           ...(status ? { status } : {}),
+          ...(visibility ? { visibility } : {}),
           ...(source ? { source } : {}),
           ...(sourceMetadata ? { sourceMetadata } : {}),
           ...(isDefault !== undefined ? { isDefault } : {}),
@@ -3445,6 +3458,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       updatedAt: this.globalSId ? null : this.updatedAt.getTime(),
       editedBy: this.globalSId ? null : this.editedBy,
       status: this.status,
+      visibility: this.visibility,
       name: this.name,
       agentFacingDescription: this.agentFacingDescription,
       userFacingDescription: this.userFacingDescription,
@@ -3538,6 +3552,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       skillConfigurationId: this.id,
       version: versionNumber,
       status: this.status,
+      visibility: this.visibility,
       name: this.name,
       agentFacingDescription: this.agentFacingDescription,
       userFacingDescription: this.userFacingDescription,

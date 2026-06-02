@@ -55,6 +55,7 @@ export class GlobalSkillsRegistry {
   ): Promise<GlobalSkillDefinition[]> {
     return filterSkillDefinitions(auth, GLOBAL_SKILLS_ARRAY, where, {
       isDefault: true,
+      visibility: "discoverable",
     });
   }
 

@@ -7,7 +7,9 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
 import {
+  getSkillVisibilityFromIsDefault,
   SKILL_REINFORCEMENT_MODES,
+  SKILL_VISIBILITIES,
   type SkillType,
   type SkillWithoutInstructionsAndToolsType,
   type SkillWithoutInstructionsAndToolsWithRelationsType,
@@ -71,6 +73,7 @@ const PostSkillRequestBodySchema = z.intersection(
     additionalRequestedSpaceIds: z.array(z.string()).optional(),
     fileAttachments: z.array(z.object({ fileId: z.string() })).optional(),
     isDefault: z.boolean().optional(),
+    visibility: z.enum(SKILL_VISIBILITIES).optional(),
     reinforcement: z.enum(SKILL_REINFORCEMENT_MODES).optional(),
   }),
   z.union([
@@ -256,6 +259,9 @@ app.post(
 
     const body = ctx.req.valid("json");
     const name = body.name.trim();
+    const visibility =
+      body.visibility ??
+      getSkillVisibilityFromIsDefault(body.isDefault ?? false);
 
     if (!name) {
       return apiError(ctx, {
@@ -463,7 +469,8 @@ app.post(
         icon,
         source: body.source ?? "web_app",
         sourceMetadata: body.sourceMetadata ?? null,
-        isDefault: body.isDefault ?? false,
+        isDefault: visibility === "discoverable",
+        visibility,
         reinforcement: body.reinforcement ?? "on",
       },
       {

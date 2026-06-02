@@ -1028,6 +1028,55 @@ describe("SkillResource", () => {
     });
   });
 
+  describe("listForAgentLoop", () => {
+    it("filters unpublished skills from equipped agent skills", async () => {
+      const publishedSkill = await SkillFactory.create(
+        testContext.authenticator,
+        {
+          name: "Published Skill",
+          visibility: "published",
+        }
+      );
+      const unpublishedSkill = await SkillFactory.create(
+        testContext.authenticator,
+        {
+          name: "Unpublished Skill",
+          visibility: "unpublished",
+        }
+      );
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "Agent With Unpublished Skill" }
+      );
+
+      await SkillFactory.linkToAgent(testContext.authenticator, {
+        skillId: publishedSkill.id,
+        agentConfigurationId: agent.id,
+      });
+      await SkillFactory.linkToAgent(testContext.authenticator, {
+        skillId: unpublishedSkill.id,
+        agentConfigurationId: agent.id,
+      });
+
+      const conversation = await ConversationFactory.create(
+        testContext.authenticator,
+        { agentConfigurationId: agent.sId, messagesCreatedAt: [] }
+      );
+
+      const { equippedSkills } = await SkillResource.listForAgentLoop(
+        testContext.authenticator,
+        {
+          agentConfiguration: agent,
+          conversation,
+        }
+      );
+
+      expect(equippedSkills.map((skill) => skill.sId)).toEqual([
+        publishedSkill.sId,
+      ]);
+    });
+  });
+
   describe("listByMCPServerViewIds", () => {
     it("should return skills that use any of the given MCP server view IDs", async () => {
       const space = await SpaceFactory.regular(testContext.workspace);

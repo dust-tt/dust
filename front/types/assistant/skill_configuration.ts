@@ -6,6 +6,30 @@ import { z } from "zod";
 export const SKILL_STATUSES = ["active", "archived", "suggested"] as const;
 export type SkillStatus = (typeof SKILL_STATUSES)[number];
 
+export const SKILL_VISIBILITIES = [
+  "unpublished",
+  "published",
+  "discoverable",
+] as const;
+export type SkillVisibility = (typeof SKILL_VISIBILITIES)[number];
+
+export function isSkillVisibility(value: string): value is SkillVisibility {
+  switch (value) {
+    case "unpublished":
+    case "published":
+    case "discoverable":
+      return true;
+    default:
+      return false;
+  }
+}
+
+export function getSkillVisibilityFromIsDefault(
+  isDefault: boolean
+): SkillVisibility {
+  return isDefault ? "discoverable" : "published";
+}
+
 export const SKILL_REINFORCEMENT_MODES = ["auto", "on", "off"] as const;
 export type SkillReinforcementMode = (typeof SKILL_REINFORCEMENT_MODES)[number];
 
@@ -35,6 +59,7 @@ export const SkillWithoutInstructionsAndToolsSchema = z.object({
   updatedAt: z.number().nullable(),
   editedBy: z.number().nullable(),
   status: z.enum(SKILL_STATUSES),
+  visibility: z.enum(SKILL_VISIBILITIES),
   name: z.string(),
   agentFacingDescription: z.string(),
   userFacingDescription: z.string(),

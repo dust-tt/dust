@@ -48,6 +48,7 @@ function makeSkillType(config: MockSkillConfig): SkillType {
     updatedAt: null,
     editedBy: null,
     status: "active",
+    visibility: "published",
     name: config.name,
     agentFacingDescription: config.description ?? "",
     userFacingDescription: config.description ?? "",

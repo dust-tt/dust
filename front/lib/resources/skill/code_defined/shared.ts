@@ -4,6 +4,7 @@ import type { AllSkillConfigurationFindOptions } from "@app/lib/resources/skill/
 import type { ResourceSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
+import type { SkillVisibility } from "@app/types/assistant/skill_configuration";
 import { removeNulls } from "@app/types/shared/utils/general";
 
 export type MCPServerDefinition = {
@@ -86,7 +87,7 @@ export async function filterSkillDefinitions<T extends SkillDefinition>(
   auth: Authenticator,
   skills: readonly T[],
   where: AllSkillConfigurationFindOptions["where"] = {},
-  { isDefault }: { isDefault: boolean }
+  { isDefault, visibility }: { isDefault: boolean; visibility: SkillVisibility }
 ): Promise<T[]> {
   const filteredSkills = skills.filter((skill) => {
     if (where.sId && !matchesFilter(skill.sId, where.sId)) {
@@ -102,6 +103,10 @@ export async function filterSkillDefinitions<T extends SkillDefinition>(
     }
 
     if (where.isDefault !== undefined && where.isDefault !== isDefault) {
+      return false;
+    }
+
+    if (where.visibility && !matchesFilter(visibility, where.visibility)) {
       return false;
     }
 

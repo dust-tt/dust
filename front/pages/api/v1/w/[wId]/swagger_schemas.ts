@@ -620,6 +620,11 @@
  *           enum: [active, archived, suggested]
  *           description: Current status of the skill
  *           example: "active"
+ *         visibility:
+ *           type: string
+ *           enum: [unpublished, published, discoverable]
+ *           description: Visibility of the skill in builders and discovery surfaces
+ *           example: "published"
  *         name:
  *           type: string
  *           description: Name of the skill

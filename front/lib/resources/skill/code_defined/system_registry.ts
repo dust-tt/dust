@@ -52,6 +52,7 @@ export class SystemSkillsRegistry {
   ): Promise<SystemSkillDefinition[]> {
     return filterSkillDefinitions(auth, SYSTEM_SKILLS_ARRAY, where, {
       isDefault: false,
+      visibility: "published",
     });
   }
 

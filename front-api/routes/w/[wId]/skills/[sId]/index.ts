@@ -8,9 +8,12 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import { AttachedKnowledgeSchema } from "@app/pages/api/w/[wId]/skills";
-import type {
-  SkillType,
-  SkillWithRelationsType,
+import {
+  getSkillVisibilityFromIsDefault,
+  SKILL_VISIBILITIES,
+  type SkillType,
+  type SkillVisibility,
+  type SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 import type { APIErrorResponse } from "@app/types/error";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -70,6 +73,7 @@ const PatchSkillRequestBodySchema = z.object({
   additionalRequestedSpaceIds: z.array(z.string()).optional(),
   fileAttachments: z.array(z.object({ fileId: z.string() })).optional(),
   isDefault: z.boolean().optional(),
+  visibility: z.enum(SKILL_VISIBILITIES).optional(),
   reinforcement: z.enum(["auto", "on", "off"]).optional(),
 });
 
@@ -196,6 +200,11 @@ app.patch(
 
     const body = ctx.req.valid("json");
     const name = body.name.trim();
+    const visibility: SkillVisibility | undefined =
+      body.visibility ??
+      (body.isDefault !== undefined
+        ? getSkillVisibilityFromIsDefault(body.isDefault)
+        : undefined);
 
     if (!name) {
       return apiError(ctx, {
@@ -421,12 +430,16 @@ app.patch(
       icon: body.icon,
       instructions: body.instructions,
       instructionsHtml: body.instructionsHtml,
-      isDefault: body.isDefault,
+      isDefault:
+        visibility !== undefined
+          ? visibility === "discoverable"
+          : body.isDefault,
       mcpServerViews,
       name,
       reinforcement: body.reinforcement,
       requestedSpaceIds,
       enableSkillReferences,
+      visibility,
       userFacingDescription: body.userFacingDescription,
       ...(shouldActivate ? { status: "active" as const } : {}),
     });

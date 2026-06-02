@@ -10,6 +10,7 @@ function makeSkill(overrides: Partial<SkillType> = {}): SkillType {
     updatedAt: Date.now(),
     editedBy: null,
     status: "active",
+    visibility: "published",
     name: "TestSkill",
     agentFacingDescription: "A test skill",
     userFacingDescription: "A test skill for users",

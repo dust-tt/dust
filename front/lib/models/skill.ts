@@ -10,6 +10,7 @@ import type {
   SkillSourceMetadata,
   SkillSourceType,
   SkillStatus,
+  SkillVisibility,
 } from "@app/types/assistant/skill_configuration";
 import isNil from "lodash/isNil";
 import type { CreationOptional, ForeignKey, ModelAttributes } from "sequelize";
@@ -29,6 +30,11 @@ const SKILL_MODEL_ATTRIBUTES = {
   status: {
     type: DataTypes.STRING,
     allowNull: false,
+  },
+  visibility: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    defaultValue: "published",
   },
   name: {
     type: DataTypes.TEXT,
@@ -100,6 +106,7 @@ export class SkillConfigurationModel extends WorkspaceAwareModel<SkillConfigurat
   declare updatedAt: CreationOptional<Date>;
 
   declare status: SkillStatus;
+  declare visibility: CreationOptional<SkillVisibility>;
 
   declare name: string;
   declare agentFacingDescription: string;
