@@ -233,14 +233,17 @@ export function SkillBuilderInstructionsReferenceSummary({
     <div
       ref={containerRef}
       className={cn(
-        "absolute inset-x-0 bottom-0 z-10 max-h-40 overflow-y-auto rounded-b-xl border bg-background px-3 pb-3 pt-3",
+        "absolute inset-x-0 bottom-0 z-10 max-h-40 overflow-y-auto rounded-b-xl border-x border-b border-t bg-background px-3 pb-3 pt-3",
         "dark:bg-background-night",
         hasError
           ? [
               "border-border-warning/30 group-focus-within:border-border-warning",
               "dark:border-border-warning-night/60 dark:group-focus-within:border-border-warning-night",
             ]
-          : ["border-border", "dark:border-border-night"]
+          : [
+              "border-border group-focus-within:border-highlight-300",
+              "dark:border-border-night dark:group-focus-within:border-highlight-300-night",
+            ]
       )}
     >
       <div className="mb-2 text-sm font-medium text-foreground dark:text-foreground-night">
