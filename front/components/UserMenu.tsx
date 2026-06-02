@@ -52,12 +52,12 @@ import {
   Icon,
   LightbulbIcon,
   LogoutIcon,
+  Separator,
   ShapesIcon,
   SlackLogo,
   StarIcon,
   TestTubeIcon,
   UserIcon,
-  Separator,
 } from "@dust-tt/sparkle";
 import { useCallback, useContext, useMemo } from "react";
 
@@ -221,34 +221,37 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
   }, [user]);
 
   return (
-    <DropdownMenu >
+    <DropdownMenu>
       <DropdownMenuTrigger className="hover:bg-sidebar-hover data-[state=open]:bg-sidebar-hover dark:hover:bg-sidebar-hover-night dark:data-[state=open]:bg-sidebar-hover-night rounded-xl p-2 m-2">
         <div className="group flex cursor-pointer  items-center justify-between gap-2">
           <span className="sr-only">Open user menu</span>
-          <div className="flex gap-2 items-center">          <Avatar
-            size="sm"
-            visual={
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-              user.image
-                ? user.image
-                : "https://gravatar.com/avatar/anonymous?d=mp"
-            }
-            clickable
-            isRounded
-          />
-          <div className="flex min-w-0 flex-1 flex-col items-start text-left">
-            <span
-              className={cn(
-                "heading-sm w-full truncate transition-colors",
-                "text-foreground dark:text-foreground-night  "
-              )}
-            >
-              {user.firstName}
-            </span>
-            <span className="-mt-0.5 w-full truncate text-sm text-muted-foreground dark:text-muted-foreground-night">
-              {owner.name}
-            </span>
-          </div></div>
+          <div className="flex gap-2 items-center">
+            {" "}
+            <Avatar
+              size="sm"
+              visual={
+                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+                user.image
+                  ? user.image
+                  : "https://gravatar.com/avatar/anonymous?d=mp"
+              }
+              clickable
+              isRounded
+            />
+            <div className="flex min-w-0 flex-1 flex-col items-start text-left">
+              <span
+                className={cn(
+                  "heading-sm w-full truncate transition-colors",
+                  "text-foreground dark:text-foreground-night  "
+                )}
+              >
+                {user.firstName}
+              </span>
+              <span className="-mt-0.5 w-full truncate text-sm text-muted-foreground dark:text-muted-foreground-night">
+                {owner.name}
+              </span>
+            </div>
+          </div>
           <div className="flex-shrink-0">
             <Icon
               visual={ChevronDownIcon}
@@ -267,10 +270,9 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
           </>
         )}
 
-
         <DropdownMenuSub>
           <DropdownMenuSubTrigger label="Help" icon={HeartIcon} />
-          <DropdownMenuPortal >
+          <DropdownMenuPortal>
             <DropdownMenuSubContent>
               <DropdownMenuLabel label="Learn about Dust" />
               <DropdownMenuItem
@@ -339,9 +341,9 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
           </DropdownMenuPortal>
         </DropdownMenuSub>
 
-       {/* <Separator className="my-1" /> */}
+        {/* <Separator className="my-1" /> */}
 
-               {isFirefox ? (
+        {isFirefox ? (
           <DropdownMenuItem
             label="Firefox extension"
             icon={FirefoxLogo}
@@ -357,7 +359,6 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
           />
         )}
 
-
         {subscription?.plan.limits.canUseProduct && (
           <>
             <DropdownMenuItem
@@ -367,8 +368,7 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
             />
             <Separator className="my-1" />
           </>
-        )}        
-
+        )}
 
         <DropdownMenuLabel label="Account" />
         {subscription?.plan.limits.canUseProduct && (
@@ -393,11 +393,10 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
             window.location.href = `${config.getApiBaseUrl()}/api/workos/logout`;
           }}
         />
-        
 
         {showDebugTools(featureFlags) && (
           <>
-           <Separator className="my-1" />
+            <Separator className="my-1" />
             <DropdownMenuSub>
               <DropdownMenuSubTrigger label="Dev Tools" icon={ShapesIcon} />
               <DropdownMenuPortal>

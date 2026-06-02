@@ -121,9 +121,7 @@ export const ScrollWithActiveState: Story = {
   render: () => {
     return (
       <div className="s-flex s-flex-col s-gap-4">
-        <ScrollArea
-          className="s-h-[200px] s-w-[350px] s-rounded-xl s-border s-bg-white"
-        >
+        <ScrollArea className="s-h-[200px] s-w-[350px] s-rounded-xl s-border s-bg-white">
           <div>
             {Array.from({ length: 20 }).map((_, i) => (
               <div key={i} className="s-px-4 s-py-2 s-text-sm">

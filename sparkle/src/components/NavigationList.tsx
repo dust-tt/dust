@@ -19,7 +19,6 @@ import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
 import * as React from "react";
 
-
 interface NavigationListProps {
   viewportRef?: React.RefObject<HTMLDivElement>;
 }
@@ -88,14 +87,6 @@ const NavigationListItem = React.forwardRef<
     },
     ref
   ) => {
-    const [isPressed, setIsPressed] = React.useState(false);
-
-    const handleMouseDown = (event: React.MouseEvent) => {
-      if (!(event.target as HTMLElement).closest(".button-class")) {
-        setIsPressed(true);
-      }
-    };
-
     const getStatusDotColor = () => {
       switch (status) {
         case "unread":
@@ -131,28 +122,15 @@ const NavigationListItem = React.forwardRef<
           <div
             className={cn(
               "s-peer/menu-button",
-              
-    "s-text-primary dark:s-text-primary-night",
-    "s-box-border s-flex s-items-center s-w-full s-gap-1.5 s-cursor-pointer s-select-none",
-    "s-items-center s-outline-none s-rounded-lg s-text-sm s-p-2 s-transition-colors",
-    "data-[disabled]:s-pointer-events-none",
-    "hover:s-bg-stone-100 dark:hover:s-bg-primary-200-night"
-  )
-            
-            }
-            onMouseLeave={() => {
-              setIsPressed(false);
-            }}
-            onMouseDown={handleMouseDown}
-            onMouseUp={() => setIsPressed(false)}
-          >
-            {icon && (
-              <Icon
-                visual={icon}
-                size="xs"
-                className="s-m-0.5"
-              />
+
+              "s-text-primary dark:s-text-primary-night",
+              "s-box-border s-flex s-items-center s-w-full s-gap-1.5 s-cursor-pointer s-select-none",
+              "s-items-center s-outline-none s-rounded-lg s-text-sm s-p-2 s-transition-colors",
+              "data-[disabled]:s-pointer-events-none",
+              "hover:s-bg-stone-100 dark:hover:s-bg-primary-200-night"
             )}
+          >
+            {icon && <Icon visual={icon} size="xs" className="s-m-0.5" />}
             {avatar}
             {label && (
               <span
@@ -479,9 +457,7 @@ const NavigationListCollapsibleSection = React.forwardRef<
     return (
       <Collapsible ref={ref} className={className} {...collapsibleProps}>
         <div className="s-group/menu-item s-relative s-flex s-flex-1 s-items-center s-text-sm s-justify-start s-gap-2 s-pl-2 s-py-1.5">
-          <CollapsibleTrigger hideChevron>
-            {label}
-          </CollapsibleTrigger>
+          <CollapsibleTrigger hideChevron>{label}</CollapsibleTrigger>
           {actionElement}
         </div>
         <CollapsibleContent>{renderedContent}</CollapsibleContent>

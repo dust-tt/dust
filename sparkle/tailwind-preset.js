@@ -1,6 +1,5 @@
 /** @type {import('tailwindcss').Config} */
 const colors = require("tailwindcss/colors");
-const { hover } = require('@testing-library/user-event/dist/cjs/convenience/index.js');
 const plugin = require("tailwindcss/plugin");
 
 // Remove unused deprecated colors that just generate noise
@@ -715,12 +714,12 @@ module.exports = {
           },
           hover: {
             DEFAULT: customColors.stone[100],
-            night: colors.gray[800] // to be updated,
+            night: colors.gray[800], // to be updated,
           },
           background: {
             DEFAULT: customColors.stone[50],
             night: colors.gray[900], // to be updated
-          }
+          },
         },
         info: {
           DEFAULT: customColors.golden[500],

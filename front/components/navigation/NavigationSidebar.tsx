@@ -113,11 +113,7 @@ export const NavigationSidebar = React.forwardRef<
                     tab.isCurrent(activePath) &&
                     subNavigation.map((nav) => (
                       <React.Fragment key={`nav-${nav.label}`}>
-                        {nav.label && (
-                          <NavigationListLabel
-                            label={nav.label}
-                          />
-                        )}
+                        {nav.label && <NavigationListLabel label={nav.label} />}
                         {nav.menus
                           .filter(
                             (menu) =>
@@ -150,7 +146,7 @@ export const NavigationSidebar = React.forwardRef<
         </div>
       )}
       {user && (
-          <UserMenu user={user} owner={owner} subscription={subscription} />
+        <UserMenu user={user} owner={owner} subscription={subscription} />
       )}
     </div>
   );

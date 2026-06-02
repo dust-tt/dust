@@ -983,7 +983,11 @@ export function AgentSidebarMenu({
                   {!hideActions && (
                     <DropdownMenu modal={false}>
                       <DropdownMenuTrigger asChild>
-                        <Button size="icon-sm" icon={MoreIcon} variant="outline" />
+                        <Button
+                          size="icon-sm"
+                          icon={MoreIcon}
+                          variant="outline"
+                        />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
                         {!isRestrictedFromAgentCreation && (
@@ -1305,10 +1309,7 @@ const ConversationList = ({
   return (
     <ConversationListContainer>
       {dateLabel !== "Today" && (
-        <NavigationListLabel
-          label={dateLabel}
-          isSticky
-        />
+        <NavigationListLabel label={dateLabel} isSticky />
       )}
 
       {conversations.map((conversation) => (
@@ -1625,7 +1626,7 @@ function NavigationListWithInbox({
               <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <Button
-                    size="icon-sm"
+                    size="icon-xs"
                     icon={MoreIcon}
                     variant="ghost-secondary"
                     aria-label="Conversations options"
