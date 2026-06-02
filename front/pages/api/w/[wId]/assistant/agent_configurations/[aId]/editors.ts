@@ -11,6 +11,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { LightUserType } from "@app/types/user";
 import { UserSchema } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
@@ -41,6 +42,10 @@ export type GetAgentEditorsResponseBody = z.infer<
   typeof GetAgentEditorsResponseBodySchema
 >;
 
+export type GetAgentEditorsLightResponseBody = {
+  editors: LightUserType[];
+};
+
 export const PatchAgentEditorsResponseBodySchema = z.object({
   editors: z.array(UserSchema),
 });
@@ -48,11 +53,18 @@ export type PatchAgentEditorsResponseBody = z.infer<
   typeof PatchAgentEditorsResponseBodySchema
 >;
 
+export type PatchAgentEditorsLightResponseBody = {
+  editors: LightUserType[];
+};
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorResponse<
-      GetAgentEditorsResponseBody | PatchAgentEditorsResponseBody
+      | GetAgentEditorsResponseBody
+      | GetAgentEditorsLightResponseBody
+      | PatchAgentEditorsResponseBody
+      | PatchAgentEditorsLightResponseBody
     >
   >,
   auth: Authenticator
@@ -132,7 +144,19 @@ async function handler(
       const members = await editorGroup.getActiveMembers(auth);
       const memberUsers = members.map((m) => m.toJSON());
 
-      return res.status(200).json({ editors: memberUsers });
+      if (auth.isAdmin()) {
+        return res.status(200).json({ editors: memberUsers });
+      }
+
+      return res.status(200).json({
+        editors: memberUsers.map((m) => ({
+          sId: m.sId,
+          firstName: m.firstName,
+          lastName: m.lastName,
+          fullName: m.fullName,
+          image: m.image,
+        })),
+      });
     }
 
     case "PATCH": {
@@ -279,9 +303,20 @@ async function handler(
 
       // Refetch members to return the updated list
       const updatedMembers = await editorGroup.getActiveMembers(auth);
+      const updatedEditors = updatedMembers.map((m) => m.toJSON());
+
+      if (auth.isAdmin()) {
+        return res.status(200).json({ editors: updatedEditors });
+      }
 
       return res.status(200).json({
-        editors: updatedMembers.map((m) => m.toJSON()),
+        editors: updatedEditors.map((m) => ({
+          sId: m.sId,
+          firstName: m.firstName,
+          lastName: m.lastName,
+          fullName: m.fullName,
+          image: m.image,
+        })),
       });
     }
 

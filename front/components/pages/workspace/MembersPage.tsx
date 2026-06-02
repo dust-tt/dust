@@ -2,6 +2,7 @@ import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { InvitationsList } from "@app/components/members/InvitationsList";
 import { InviteEmailButtonWithModal } from "@app/components/members/InviteEmailButtonWithModal";
+import type { SearchMemberType } from "@app/components/members/MemberSelectionTable";
 import { MembersList } from "@app/components/members/MembersList";
 import { ChangeMemberModal } from "@app/components/workspace/ChangeMemberModal";
 import WorkspaceAccessPanel from "@app/components/workspace/WorkspaceAccessPanel";
@@ -122,7 +123,11 @@ function WorkspaceMembersList({
       <MembersList
         currentUser={currentUser}
         membersData={membersData}
-        onRowClick={setSelectedMember}
+        onRowClick={(user: SearchMemberType) => {
+          if ("email" in user) {
+            setSelectedMember(user);
+          }
+        }}
         showColumns={
           isProvisioningEnabled
             ? ["name", "email", "role", "status", "groups"]
@@ -157,17 +162,6 @@ export function MembersPage() {
     workspaceId: owner.sId,
   });
 
-  const hasVerifiedDomains = verifiedDomains.length > 0;
-  const isProvisioningEnabled =
-    plan.limits.users.isSCIMAllowed && hasVerifiedDomains;
-  const isManualInvitationsEnabled =
-    owner.metadata?.disableManualInvitations !== true;
-
-  const isLoading =
-    isVerifiedDomainsLoading ||
-    isSeatAvailabilityLoading ||
-    isPerSeatPricingLoading;
-
   const onInviteClick = useCallback(
     (event: React.MouseEvent<HTMLButtonElement>) => {
       if (!isUpgraded(plan)) {
@@ -183,6 +177,17 @@ export function MembersPage() {
     },
     [plan, subscription.paymentFailingSince, hasAvailableSeats]
   );
+
+  const hasVerifiedDomains = verifiedDomains.length > 0;
+  const isProvisioningEnabled =
+    plan.limits.users.isSCIMAllowed && hasVerifiedDomains;
+  const isManualInvitationsEnabled =
+    owner.metadata?.disableManualInvitations !== true;
+
+  const isLoading =
+    isVerifiedDomainsLoading ||
+    isSeatAvailabilityLoading ||
+    isPerSeatPricingLoading;
 
   if (isLoading) {
     return (

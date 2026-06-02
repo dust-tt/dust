@@ -5,7 +5,7 @@ import {
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { UserType } from "@app/types/user";
+import type { LightUserType, UserType } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -16,8 +16,16 @@ export type GetAgentEditorsResponseBody = {
   editors: UserType[];
 };
 
+type GetAgentEditorsLightResponseBody = {
+  editors: LightUserType[];
+};
+
 export type PatchAgentEditorsResponseBody = {
   editors: UserType[];
+};
+
+type PatchAgentEditorsLightResponseBody = {
+  editors: LightUserType[];
 };
 
 const PatchAgentEditorsRequestBodySchema = z
@@ -39,86 +47,112 @@ const PatchAgentEditorsRequestBodySchema = z
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/editors.
 const app = workspaceApp();
 
-app.get("/", async (ctx): HandlerResult<GetAgentEditorsResponseBody> => {
-  const auth = ctx.get("auth");
-  const aId = ctx.req.param("aId") ?? "";
+app.get(
+  "/",
+  async (
+    ctx
+  ): HandlerResult<
+    GetAgentEditorsResponseBody | GetAgentEditorsLightResponseBody
+  > => {
+    const auth = ctx.get("auth");
+    const aId = ctx.req.param("aId") ?? "";
 
-  const agent = await getAgentConfiguration(auth, {
-    agentId: aId,
-    variant: "light",
-  });
-  if (!agent) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "agent_configuration_not_found",
-        message: "The agent configuration was not found.",
-      },
+    const agent = await getAgentConfiguration(auth, {
+      agentId: aId,
+      variant: "light",
     });
-  }
-
-  const editorGroupRes = await GroupResource.findEditorGroupForAgent(
-    auth,
-    agent
-  );
-  if (editorGroupRes.isErr()) {
-    switch (editorGroupRes.error.code) {
-      case "unauthorized":
-        return apiError(ctx, {
-          status_code: 401,
-          api_error: {
-            type: "workspace_auth_error",
-            message: "You are not authorized to update the agent editors.",
-          },
-        });
-      case "invalid_id":
-        return apiError(ctx, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Some of the passed ids are invalid.",
-          },
-        });
-      case "group_not_found":
-        return apiError(ctx, {
-          status_code: 404,
-          api_error: {
-            type: "group_not_found",
-            message: "Unable to find the editor group for the agent.",
-          },
-        });
-      case "internal_error":
-        return apiError(ctx, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: editorGroupRes.error.message,
-          },
-        });
-      default:
-        assertNever(editorGroupRes.error.code);
+    if (!agent) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "agent_configuration_not_found",
+          message: "The agent configuration was not found.",
+        },
+      });
     }
-  }
 
-  const editorGroup = editorGroupRes.value;
-  if (!editorGroup.canRead(auth)) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "agent_group_permission_error",
-        message: "User is not authorized to read the agent editors.",
-      },
+    const editorGroupRes = await GroupResource.findEditorGroupForAgent(
+      auth,
+      agent
+    );
+    if (editorGroupRes.isErr()) {
+      switch (editorGroupRes.error.code) {
+        case "unauthorized":
+          return apiError(ctx, {
+            status_code: 401,
+            api_error: {
+              type: "workspace_auth_error",
+              message: "You are not authorized to update the agent editors.",
+            },
+          });
+        case "invalid_id":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Some of the passed ids are invalid.",
+            },
+          });
+        case "group_not_found":
+          return apiError(ctx, {
+            status_code: 404,
+            api_error: {
+              type: "group_not_found",
+              message: "Unable to find the editor group for the agent.",
+            },
+          });
+        case "internal_error":
+          return apiError(ctx, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: editorGroupRes.error.message,
+            },
+          });
+        default:
+          assertNever(editorGroupRes.error.code);
+      }
+    }
+
+    const editorGroup = editorGroupRes.value;
+    if (!editorGroup.canRead(auth)) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "agent_group_permission_error",
+          message: "User is not authorized to read the agent editors.",
+        },
+      });
+    }
+
+    const members = await editorGroup.getActiveMembers(auth);
+    const memberUsers = members.map((m) => m.toJSON());
+
+    // biome-ignore lint/plugin/noDirectRoleCheck: conditional response — non-admins get a light response, not a 403
+    if (auth.isAdmin()) {
+      return ctx.json({ editors: memberUsers });
+    }
+
+    return ctx.json({
+      editors: memberUsers.map((m) => ({
+        sId: m.sId,
+        firstName: m.firstName,
+        lastName: m.lastName,
+        fullName: m.fullName,
+        image: m.image,
+      })),
     });
   }
-
-  const members = await editorGroup.getActiveMembers(auth);
-  return ctx.json({ editors: members.map((m) => m.toJSON()) });
-});
+);
 
 app.patch(
   "/",
   validate("json", PatchAgentEditorsRequestBodySchema),
-  async (ctx): HandlerResult<PatchAgentEditorsResponseBody> => {
+  async (
+    ctx
+  ): HandlerResult<
+    PatchAgentEditorsResponseBody | PatchAgentEditorsLightResponseBody
+  > => {
     const auth = ctx.get("auth");
     const aId = ctx.req.param("aId") ?? "";
 
@@ -307,7 +341,22 @@ app.patch(
     }
 
     const updatedMembers = await editorGroup.getActiveMembers(auth);
-    return ctx.json({ editors: updatedMembers.map((m) => m.toJSON()) });
+    const updatedEditors = updatedMembers.map((m) => m.toJSON());
+
+    // biome-ignore lint/plugin/noDirectRoleCheck: conditional response — non-admins get a light response, not a 403
+    if (auth.isAdmin()) {
+      return ctx.json({ editors: updatedEditors });
+    }
+
+    return ctx.json({
+      editors: updatedEditors.map((m) => ({
+        sId: m.sId,
+        firstName: m.firstName,
+        lastName: m.lastName,
+        fullName: m.fullName,
+        image: m.image,
+      })),
+    });
   }
 );
 

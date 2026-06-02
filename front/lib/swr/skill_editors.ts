@@ -2,6 +2,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
+  GetSkillEditorsLightResponseBody,
   GetSkillEditorsResponseBody,
   PatchSkillEditorsRequestBody,
 } from "@app/pages/api/w/[wId]/skills/[sId]/editors";
@@ -20,7 +21,9 @@ export function useSkillEditors({
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
-  const editorsFetcher: Fetcher<GetSkillEditorsResponseBody> = fetcher;
+  const editorsFetcher: Fetcher<
+    GetSkillEditorsResponseBody | GetSkillEditorsLightResponseBody
+  > = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
     skillId ? `/api/w/${owner.sId}/skills/${skillId}/editors` : null,

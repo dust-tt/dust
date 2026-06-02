@@ -1,14 +1,11 @@
+import type { SearchMemberType } from "@app/components/members/MemberSelectionTable";
 import { MembersList } from "@app/components/members/MembersList";
 import {
   useSkillEditors,
   useUpdateSkillEditors,
 } from "@app/lib/swr/skill_editors";
 import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
-import type {
-  UserType,
-  UserTypeWithWorkspace,
-  WorkspaceType,
-} from "@app/types/user";
+import type { UserType, WorkspaceType } from "@app/types/user";
 
 type AgentEditorsTabProps = {
   owner: WorkspaceType;
@@ -29,7 +26,7 @@ export function SkillEditorsTab({ owner, user, skill }: AgentEditorsTabProps) {
   const isCurrentUserEditor =
     editors.findIndex((u) => u.sId === user.sId) !== -1;
 
-  const onRemoveMember = async (user: UserTypeWithWorkspace) => {
+  const onRemoveMember = async (user: SearchMemberType) => {
     if (isCurrentUserEditor) {
       await updateEditors({ removeEditorIds: [user.sId], addEditorIds: [] });
     }
@@ -40,10 +37,7 @@ export function SkillEditorsTab({ owner, user, skill }: AgentEditorsTabProps) {
       <MembersList
         currentUser={user}
         membersData={{
-          members: editors.map((user) => ({
-            ...user,
-            workspace: owner,
-          })),
+          members: editors,
           isLoading: isEditorsLoading,
           totalMembersCount: editors.length,
           mutateRegardlessOfQueryParams: () => Promise.resolve(undefined),
