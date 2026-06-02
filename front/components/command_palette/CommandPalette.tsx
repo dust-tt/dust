@@ -2,8 +2,12 @@ import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetail
 import type { CommandPaletteAction } from "@app/components/command_palette/CommandPaletteActionPhase";
 import { CommandPaletteActionPhase } from "@app/components/command_palette/CommandPaletteActionPhase";
 import { useCommandPalette } from "@app/components/command_palette/CommandPaletteContext";
-import type { CommandPaletteItem } from "@app/components/command_palette/CommandPaletteSearchPhase";
+import type {
+  CommandPaletteEntry,
+  CommandPaletteItem,
+} from "@app/components/command_palette/CommandPaletteSearchPhase";
 import { CommandPaletteSearchPhase } from "@app/components/command_palette/CommandPaletteSearchPhase";
+import { getDefaultPaletteActions } from "@app/components/command_palette/defaultActions";
 import { SkillDetailsSheetById } from "@app/components/command_palette/SkillDetailsSheetById";
 import { useAppRouter } from "@app/lib/platform";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
@@ -25,7 +29,7 @@ interface CommandPaletteProps {
 }
 
 export function CommandPalette({ owner, user }: CommandPaletteProps) {
-  const { isOpen, close } = useCommandPalette();
+  const { isOpen, close, actions: registeredActions } = useCommandPalette();
   const router = useAppRouter();
 
   // Dialog state.
@@ -80,6 +84,25 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
   // proper list virtualization (@tanstack/react-virtual).
   const MAX_DISPLAYED_AGENTS = 25;
   const MAX_DISPLAYED_SKILLS = 15;
+
+  // Default actions (always available) followed by page-registered actions.
+  const allActions = useMemo(
+    () => [
+      ...getDefaultPaletteActions({ owner, router }),
+      ...registeredActions,
+    ],
+    [owner, router, registeredActions]
+  );
+
+  const filteredActions = useMemo(() => {
+    if (!debouncedQuery) {
+      return allActions;
+    }
+    const lowerQuery = debouncedQuery.toLowerCase();
+    return allActions.filter((a) =>
+      subFilter(lowerQuery, a.label.toLowerCase())
+    );
+  }, [allActions, debouncedQuery]);
 
   const allFilteredAgents = useMemo(
     () =>
@@ -148,16 +171,23 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
   );
 
   const handleItemSelect = useCallback(
-    (item: CommandPaletteItem) => {
+    (entry: CommandPaletteEntry) => {
+      // Top-level actions are terminal: run immediately and close.
+      if (entry.kind === "action") {
+        close();
+        entry.action.onSelect();
+        return;
+      }
+
       // Skills without write access have only one action (view details).
-      if (item.kind === "skill" && !item.skill.canWrite) {
-        executeAction(item, "view_details");
+      if (entry.kind === "skill" && !entry.skill.canWrite) {
+        executeAction(entry, "view_details");
       } else {
-        setSelectedItem(item);
+        setSelectedItem(entry);
         setPhase("action");
       }
     },
-    [executeAction]
+    [close, executeAction]
   );
 
   const handleBack = useCallback(() => {
@@ -191,6 +221,7 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
             <CommandPaletteSearchPhase
               searchQuery={searchQuery}
               onSearchQueryChange={setSearchQuery}
+              actions={filteredActions}
               agents={filteredAgents}
               skills={filteredSkills}
               hasMoreAgents={hasMoreAgents}

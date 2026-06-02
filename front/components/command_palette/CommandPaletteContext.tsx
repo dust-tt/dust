@@ -1,3 +1,4 @@
+import type { PaletteActionConfig } from "@app/components/command_palette/types";
 import type { ReactNode } from "react";
 import {
   createContext,
@@ -11,6 +12,9 @@ interface CommandPaletteContextType {
   isOpen: boolean;
   open: () => void;
   close: () => void;
+  actions: PaletteActionConfig[];
+  registerAction: (action: PaletteActionConfig) => void;
+  unregisterAction: (id: string) => void;
 }
 
 const CommandPaletteContext = createContext<CommandPaletteContextType | null>(
@@ -25,6 +29,9 @@ export function CommandPaletteProvider({
   children,
 }: CommandPaletteProviderProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [actionsById, setActionsById] = useState<
+    Map<string, PaletteActionConfig>
+  >(() => new Map());
 
   const open = useCallback(() => {
     setIsOpen(true);
@@ -34,13 +41,40 @@ export function CommandPaletteProvider({
     setIsOpen(false);
   }, []);
 
+  const registerAction = useCallback((action: PaletteActionConfig) => {
+    setActionsById((prev) => {
+      const next = new Map(prev);
+      next.set(action.id, action);
+      return next;
+    });
+  }, []);
+
+  const unregisterAction = useCallback((id: string) => {
+    setActionsById((prev) => {
+      if (!prev.has(id)) {
+        return prev;
+      }
+      const next = new Map(prev);
+      next.delete(id);
+      return next;
+    });
+  }, []);
+
+  const actions = useMemo(
+    () => Array.from(actionsById.values()),
+    [actionsById]
+  );
+
   const value = useMemo(
     () => ({
       isOpen,
       open,
       close,
+      actions,
+      registerAction,
+      unregisterAction,
     }),
-    [isOpen, open, close]
+    [isOpen, open, close, actions, registerAction, unregisterAction]
   );
 
   return (
@@ -58,4 +92,11 @@ export function useCommandPalette() {
     );
   }
   return context;
+}
+
+// Non-throwing accessor for components that may render outside a
+// CommandPaletteProvider (e.g. the input bar, which is shared with the
+// extension). Returns null when no provider is mounted.
+export function useCommandPaletteOptional() {
+  return useContext(CommandPaletteContext);
 }
