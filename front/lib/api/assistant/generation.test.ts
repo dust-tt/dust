@@ -490,6 +490,37 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     expect(text).not.toContain("## AVAILABLE SKILLS");
   });
 
+  it("should explain unavailable skill references only when nested skills are enabled", () => {
+    const params = {
+      userMessage: userMessage1,
+      agentConfiguration: agentConfig1,
+      model: modelConfig,
+      hasAvailableActions: true,
+      agentsList: null,
+      systemSkills: [],
+      enabledSkills: [],
+      equippedSkills: [],
+    };
+
+    const defaultSections = constructPromptMultiActions(authenticator1, params);
+    const nestedSections = constructPromptMultiActions(authenticator1, {
+      ...params,
+      hasNestedSkills: true,
+    });
+
+    const defaultText = systemPromptToText(defaultSections);
+    const nestedText = systemPromptToText(nestedSections);
+
+    expect(defaultText).not.toContain("<unavailable_skill");
+    expect(nestedText).toContain(
+      'Enabled skill instructions can also contain `<unavailable_skill id="..." />` tags.'
+    );
+    expect(nestedText).toContain(
+      "the referenced skill is no longer available in the current scope"
+    );
+    expect(nestedText).toContain("do not try to enable them from the tag");
+  });
+
   it("should keep system skill instructions in the system prompt", async () => {
     const discoverSkills = await SkillResource.fetchById(
       authenticator1,

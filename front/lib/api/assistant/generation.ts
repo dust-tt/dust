@@ -227,7 +227,10 @@ function constructSkillsSection({
         "These tags are strong hints that the referenced skill is relevant, including when a skill author nested one skill inside another. " +
         `If the referenced skill would help and is not already enabled, call \`${toolDisplayName}\` with \`skillName\` set to the tag's \`name\` value.\n` +
         "Referenced skills may not appear in the available-skills list; a tag is enough to enable the skill by name. " +
-        "Only enable skills you actually need, because enabling a skill loads its full instructions into context.\n"
+        "Only enable skills you actually need, because enabling a skill loads its full instructions into context.\n" +
+        `Enabled skill instructions can also contain \`<unavailable_skill id=\"...\" />\` tags. ` +
+        "These are former nested skill references that cannot currently be resolved because the referenced skill is no longer available in the current scope, for example because skill scope or permissions changed. " +
+        "Treat them as context explaining that an unavailable skill used to be referenced; do not try to enable them from the tag.\n"
       : `If a user message contains a \`<skill id=\"...\" name=\"...\" />\` tag, treat it as a strong hint that the ` +
         "referenced skill is relevant: it means the user specifically mentioned this skill. If the skill is not already " +
         `enabled, and it would help, enable it with \`${toolDisplayName}\`.\n` +
