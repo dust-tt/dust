@@ -622,7 +622,7 @@ function PeoplePage({
           return (
             <DataTable.CellContent>
               <div className="s-flex s-items-center s-gap-3">
-                <Avatar size="md" name={row.name} isRounded />
+                <Avatar size="sm" name={row.name} isRounded />
                 <div className="s-flex s-flex-col">
                   <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night leading-snug">
                     {row.name}
