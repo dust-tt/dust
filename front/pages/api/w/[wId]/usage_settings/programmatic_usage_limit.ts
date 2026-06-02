@@ -1,6 +1,7 @@
 // @migration-status: MIGRATED_TO_HONO
 /** @ignoreswagger */
 
+import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import {
   getProgrammaticUsageLimit,
@@ -77,9 +78,11 @@ async function handler(
 
       const { monthlyCapCredits } = bodyValidation.data;
 
+      const auditContext = getAuditLogContext(auth, req);
       const result = await syncProgrammaticUsageLimit({
         auth,
         monthlyCapCredits,
+        auditContext,
       });
       if (result.isErr()) {
         return apiError(req, res, {
