@@ -1060,6 +1060,54 @@ export const CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS = new Map<
       preferredReasoningEffort: "high",
     },
   ],
+  [
+    GLOBAL_AGENTS_SID.DUST_PISTACHE,
+    {
+      name: "dust-pistache",
+      customModelIndex: 3,
+      preferredReasoningEffort: "light",
+    },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_PISTACHE_MEDIUM,
+    {
+      name: "dust-pistache-medium",
+      customModelIndex: 3,
+      preferredReasoningEffort: "medium",
+    },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_PISTACHE_HIGH,
+    {
+      name: "dust-pistache-high",
+      customModelIndex: 3,
+      preferredReasoningEffort: "high",
+    },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_CHALOM,
+    {
+      name: "dust-chalom",
+      customModelIndex: 4,
+      preferredReasoningEffort: "light",
+    },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_CHALOM_MEDIUM,
+    {
+      name: "dust-chalom-medium",
+      customModelIndex: 4,
+      preferredReasoningEffort: "medium",
+    },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_CHALOM_HIGH,
+    {
+      name: "dust-chalom-high",
+      customModelIndex: 4,
+      preferredReasoningEffort: "high",
+    },
+  ],
 ]);
 
 export function getCustomModelDustGlobalAgentIndex(
