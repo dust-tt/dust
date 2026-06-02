@@ -14,7 +14,7 @@ import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
 const UpdateProgrammaticUsageLimitBodySchema = z.object({
-  monthlyCapCredits: z.number().int().positive().nullable(),
+  monthlyCapCredits: z.number().int().nonnegative().nullable(),
 });
 
 export type GetProgrammaticUsageLimitResponseBody = {

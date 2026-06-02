@@ -11,7 +11,7 @@ import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 const UpdateProgrammaticUsageLimitBodySchema = z.object({
-  monthlyCapCredits: z.number().int().positive().nullable(),
+  monthlyCapCredits: z.number().int().nonnegative().nullable(),
 });
 
 export type GetProgrammaticUsageLimitResponseBody = {
