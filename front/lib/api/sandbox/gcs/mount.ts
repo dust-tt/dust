@@ -24,6 +24,18 @@ const MOUNT_TIMEOUT_MS = 30_000;
 const MOUNT_POINT_CONVERSATION = "/files/conversation";
 const MOUNT_POINT_POD = "/files/pod";
 
+// The token HTTP server (netcat loop baked into the image) that hands gcsfuse a
+// fresh GCS access token. gcsfuse fetches from it on every request.
+const TOKEN_SERVER_URL = "http://127.0.0.1:9876";
+
+// Readiness poll after starting the token server: up to
+// POLL_ATTEMPTS * POLL_INTERVAL_SECONDS = 5s of polling, well under the 10s
+// exec hard timeout. The loop exits the instant curl succeeds (typically
+// <100ms), so the 5s ceiling only bites on a genuinely stuck server.
+const TOKEN_SERVER_POLL_ATTEMPTS = 100;
+const TOKEN_SERVER_POLL_INTERVAL_SECONDS = 0.05;
+const TOKEN_SERVER_EXEC_TIMEOUT_MS = 10_000;
+
 interface MountTarget {
   label: "conversation" | "pod";
   mountPoint: string;
@@ -142,17 +154,26 @@ export async function mountConversationFiles(
         auth,
         `printf '%s' '${escapeSingleQuotes(tokenJson)}' > /tmp/token.json; ` +
           "nohup bash /home/agent/.bin/token-server.sh > /tmp/server.log 2>&1 & " +
-          "i=0; while [ $i -lt 100 ]; do " +
-          "curl -sf http://127.0.0.1:9876 > /dev/null 2>&1 && exit 0; " +
-          "sleep 0.05; i=$((i+1)); " +
+          `i=0; while [ $i -lt ${TOKEN_SERVER_POLL_ATTEMPTS} ]; do ` +
+          `curl -sf ${TOKEN_SERVER_URL} > /dev/null 2>&1 && exit 0; ` +
+          `sleep ${TOKEN_SERVER_POLL_INTERVAL_SECONDS}; i=$((i+1)); ` +
           "done; exit 1",
-        { timeoutMs: 10_000 }
+        { timeoutMs: TOKEN_SERVER_EXEC_TIMEOUT_MS }
       )
   );
   if (tokenServerResult.isErr() || tokenServerResult.value.exitCode !== 0) {
     const msg = "Token server not ready in time";
+    // Surface the poll-loop's own output (the nohup'd server logs to
+    // /tmp/server.log inside the sandbox, but the exec's stdout/stderr is the
+    // only signal we get back here) so a broken token-server.sh isn't an opaque
+    // timeout.
     childLogger.error(
-      tokenServerResult.isErr() ? { err: tokenServerResult.error } : {},
+      tokenServerResult.isErr()
+        ? { err: tokenServerResult.error }
+        : {
+            stdout: tokenServerResult.value.stdout,
+            stderr: tokenServerResult.value.stderr,
+          },
       msg
     );
     return new Err(new Error(msg));
@@ -287,7 +308,7 @@ export function buildMountCommand({
     rootCommand.timeout(
       rootCommand.exec("/usr/bin/gcsfuse", [
         "--token-url",
-        "http://127.0.0.1:9876",
+        TOKEN_SERVER_URL,
         "--reuse-token-from-url=false",
         "--only-dir",
         prefix,

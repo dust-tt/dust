@@ -169,7 +169,6 @@ describe("sandbox egress helpers", () => {
     const sandbox = {
       providerId: "provider-sandbox-id",
       sId: "sandbox-id",
-      writeFile: vi.fn().mockResolvedValue(new Ok(undefined)),
       execRoot: vi
         .fn()
         .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
@@ -294,7 +293,6 @@ describe("sandbox egress helpers", () => {
     const sandbox = {
       providerId: "provider-sandbox-id",
       sId: "sandbox-id",
-      writeFile: vi.fn().mockResolvedValue(new Ok(undefined)),
       execRoot: vi
         .fn()
         // First call: health probe with empty stdout.
@@ -390,7 +388,6 @@ describe("sandbox egress helpers", () => {
     const sandbox = {
       providerId: "provider-sandbox-id",
       sId: "sandbox-id",
-      writeFile: vi.fn().mockResolvedValue(new Ok(undefined)),
       execRoot: vi
         .fn()
         .mockResolvedValue(new Err(new Error("sandbox command failed"))),
@@ -412,7 +409,6 @@ describe("sandbox egress helpers", () => {
     const sandbox = {
       providerId: "provider-sandbox-id",
       sId: "sandbox-id",
-      writeFile: vi.fn().mockResolvedValue(new Ok(undefined)),
       execRoot: vi
         .fn()
         .mockResolvedValue(new Ok({ exitCode: 0, stdout: "", stderr: "" })),
@@ -435,7 +431,6 @@ describe("sandbox egress helpers", () => {
     const sandbox = {
       providerId: "provider-sandbox-id",
       sId: "sandbox-id",
-      writeFile: vi.fn().mockResolvedValue(new Ok(undefined)),
       execRoot: vi
         .fn()
         .mockResolvedValue(new Ok({ exitCode: 0, stdout: "", stderr: "" })),
@@ -454,7 +449,6 @@ describe("sandbox egress helpers", () => {
     const sandbox = {
       providerId: "provider-sandbox-id",
       sId: "sandbox-id",
-      writeFile: vi.fn().mockResolvedValue(new Ok(undefined)),
       execRoot: vi
         .fn()
         .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
@@ -483,7 +477,6 @@ describe("sandbox egress helpers", () => {
     const sandbox = {
       providerId: "provider-sandbox-id",
       sId: "sandbox-id",
-      writeFile: vi.fn().mockResolvedValue(new Ok(undefined)),
       execRoot: vi
         .fn()
         .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
@@ -631,7 +624,6 @@ describe("sandbox egress helpers", () => {
     const sandbox = {
       providerId: "provider-sandbox-id",
       sId: "sandbox-id",
-      writeFile: vi.fn().mockResolvedValue(new Ok(undefined)),
       execRoot: vi
         .fn()
         .mockResolvedValueOnce(
