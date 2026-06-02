@@ -940,7 +940,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
 
     const skillReferences = await SkillReferenceModel.findAll({
-      attributes: ["childSkillId", "parentSkillId"],
+      attributes: ["childCustomSkillId", "childGlobalSkillId", "parentSkillId"],
       where: {
         workspaceId: workspace.id,
         parentSkillId: customParentSkills.map((skill) => skill.id),
@@ -953,13 +953,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       );
     }
 
-    const childSkills = await this.fetchByModelIds(
+    const childSkills = await this.fetchBySkillReferences(
       auth,
-      uniq(skillReferences.map((reference) => reference.childSkillId)),
-      { withTools: false }
+      skillReferences.map((reference) => ({
+        customSkillId: reference.childCustomSkillId,
+        globalSkillId: reference.childGlobalSkillId,
+      })),
+      { withInstructions: false, withTools: false }
     );
-    const childSkillsByModelId = new Map(
-      childSkills.map((skill) => [skill.id, skill])
+    const childSkillsById = new Map(
+      childSkills.map((skill) => [skill.sId, skill])
     );
     const referencesByParentSkillId = groupBy(skillReferences, "parentSkillId");
 
@@ -967,13 +970,39 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       customParentSkills.map((parentSkill) => [
         parentSkill.sId,
         removeNulls(
-          (referencesByParentSkillId[parentSkill.id] ?? []).map(
-            (reference) =>
-              childSkillsByModelId.get(reference.childSkillId) ?? null
-          )
+          (referencesByParentSkillId[parentSkill.id] ?? []).map((reference) => {
+            const childSkillId = this.skillReferenceChildId(auth, reference);
+
+            return childSkillId
+              ? (childSkillsById.get(childSkillId) ?? null)
+              : null;
+          })
         ),
       ])
     );
+  }
+
+  private static skillReferenceChildId(
+    auth: Authenticator,
+    reference: Pick<
+      SkillReferenceModel,
+      "childCustomSkillId" | "childGlobalSkillId"
+    >
+  ): string | null {
+    if (reference.childGlobalSkillId !== null) {
+      return reference.childGlobalSkillId;
+    }
+
+    if (reference.childCustomSkillId !== null) {
+      const workspace = auth.getNonNullableWorkspace();
+
+      return this.modelIdToSId({
+        id: reference.childCustomSkillId,
+        workspaceId: workspace.id,
+      });
+    }
+
+    return null;
   }
 
   async fetchChildSkills(auth: Authenticator): Promise<SkillResource[]> {
@@ -997,10 +1026,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       agentLoopData,
       status,
       transaction,
+      withInstructions,
+      withTools,
     }: {
       agentLoopData?: AgentLoopExecutionData;
       status?: SkillStatus | SkillStatus[];
       transaction?: Transaction;
+      withInstructions?: boolean;
+      withTools?: boolean;
     } = {}
   ): Promise<SkillResource[]> {
     const customSkillModelIds = removeNulls(refs.map((r) => r.customSkillId));
@@ -1014,6 +1047,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           sId: globalSkillIds,
           ...(status ? { status } : {}),
         },
+        withInstructions,
+        withTools,
       },
       { agentLoopData, transaction }
     );
@@ -2084,20 +2119,28 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
 
     const customSkills = skills.filter((skill) => !skill.globalSId);
-    if (customSkills.length === 0) {
+    const globalSkills = skills.filter((skill) => skill.globalSId);
+    if (customSkills.length === 0 && globalSkills.length === 0) {
       return result;
     }
 
     const workspace = auth.getNonNullableWorkspace();
-    const childSkillModelIds = customSkills.map((skill) => skill.id);
-
     const skillReferences = await SkillReferenceModel.findAll({
-      attributes: ["childSkillId", "parentSkillId"],
+      attributes: ["childCustomSkillId", "childGlobalSkillId", "parentSkillId"],
       where: {
         workspaceId: workspace.id,
-        childSkillId: {
-          [Op.in]: childSkillModelIds,
-        },
+        [Op.or]: [
+          {
+            childCustomSkillId: {
+              [Op.in]: customSkills.map((skill) => skill.id),
+            },
+          },
+          {
+            childGlobalSkillId: {
+              [Op.in]: globalSkills.map((skill) => skill.sId),
+            },
+          },
+        ],
       },
     });
 
@@ -2114,13 +2157,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const parentSkillByModelId = new Map(
       parentSkills.map((skill) => [skill.id, skill])
     );
-    const childSkillIdToSkillId = new Map(
-      customSkills.map((skill) => [skill.id, skill.sId])
-    );
-
     const usedBySkillsByChildSkillId = new Map<string, UsedBySkillType[]>();
     for (const reference of skillReferences) {
-      const childSkillId = childSkillIdToSkillId.get(reference.childSkillId);
+      const childSkillId = this.skillReferenceChildId(auth, reference);
       const parentSkill = parentSkillByModelId.get(reference.parentSkillId);
       if (!childSkillId || !parentSkill) {
         continue;
@@ -2453,7 +2492,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const references = await SkillReferenceModel.findAll({
       where: {
         workspaceId: workspace.id,
-        childSkillId: this.id,
+        childCustomSkillId: this.id,
       },
       transaction,
     });
@@ -2552,7 +2591,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
-   * Persist the custom skills referenced by the skill form.
+   * Persist the skills referenced by the skill form.
    */
   private async syncSkillReferences(
     auth: Authenticator,
@@ -2579,6 +2618,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         })
       )
     );
+    const referencedGlobalSkillIds = uniq(
+      referencedSkillIds.filter((sId) => !getResourceNameAndIdFromSId(sId))
+    );
 
     const existingReferences = await SkillReferenceModel.findAll({
       where: {
@@ -2588,20 +2630,18 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       transaction,
     });
 
-    const childSkills =
-      referencedCustomSkillIds.length > 0
-        ? await this.model.findAll({
-            attributes: ["id"],
-            where: {
-              id: { [Op.in]: referencedCustomSkillIds },
-              workspaceId: workspace.id,
-            },
-            transaction,
-          })
-        : [];
-    const childSkillIds = new Set(childSkills.map((skill) => skill.id));
+    const childSkills = await this.model.findAll({
+      attributes: ["id"],
+      where: {
+        id: { [Op.in]: referencedCustomSkillIds },
+        workspaceId: workspace.id,
+      },
+      transaction,
+    });
+    const desiredChildSkillIds = new Set(childSkills.map((skill) => skill.id));
+    const desiredGlobalSkillIds = new Set(referencedGlobalSkillIds);
 
-    if (childSkillIds.size === 0) {
+    if (desiredChildSkillIds.size === 0 && desiredGlobalSkillIds.size === 0) {
       if (existingReferences.length > 0) {
         await SkillReferenceModel.destroy({
           where: {
@@ -2615,14 +2655,24 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return;
     }
 
-    const desiredChildSkillIds = childSkillIds;
     const existingChildSkillIds = new Set(
-      existingReferences.map((ref) => ref.childSkillId)
+      removeNulls(existingReferences.map((ref) => ref.childCustomSkillId))
+    );
+    const existingGlobalSkillIds = new Set(
+      removeNulls(existingReferences.map((ref) => ref.childGlobalSkillId))
     );
 
-    const referencesToDelete = existingReferences.filter(
-      (ref) => !desiredChildSkillIds.has(ref.childSkillId)
-    );
+    const referencesToDelete = existingReferences.filter((ref) => {
+      if (ref.childCustomSkillId !== null) {
+        return !desiredChildSkillIds.has(ref.childCustomSkillId);
+      }
+
+      if (ref.childGlobalSkillId !== null) {
+        return !desiredGlobalSkillIds.has(ref.childGlobalSkillId);
+      }
+
+      return true;
+    });
     if (referencesToDelete.length > 0) {
       await SkillReferenceModel.destroy({
         where: {
@@ -2633,18 +2683,26 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       });
     }
 
-    const childSkillIdsToCreate = [...desiredChildSkillIds].filter(
-      (childSkillId) => !existingChildSkillIds.has(childSkillId)
-    );
-    if (childSkillIdsToCreate.length > 0) {
-      await SkillReferenceModel.bulkCreate(
-        childSkillIdsToCreate.map((childSkillId) => ({
+    const referencesToCreate = [
+      ...[...desiredChildSkillIds]
+        .filter((childSkillId) => !existingChildSkillIds.has(childSkillId))
+        .map((childSkillId) => ({
           workspaceId: workspace.id,
           parentSkillId,
-          childSkillId,
+          childCustomSkillId: childSkillId,
+          childGlobalSkillId: null,
         })),
-        { transaction }
-      );
+      ...[...desiredGlobalSkillIds]
+        .filter((globalSkillId) => !existingGlobalSkillIds.has(globalSkillId))
+        .map((globalSkillId) => ({
+          workspaceId: workspace.id,
+          parentSkillId,
+          childCustomSkillId: null,
+          childGlobalSkillId: globalSkillId,
+        })),
+    ];
+    if (referencesToCreate.length > 0) {
+      await SkillReferenceModel.bulkCreate(referencesToCreate, { transaction });
     }
   }
 
@@ -2979,7 +3037,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         await SkillReferenceModel.destroy({
           where: {
             workspaceId: workspace.id,
-            childSkillId: this.id,
+            childCustomSkillId: this.id,
           },
           transaction,
         });

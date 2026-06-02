@@ -4,6 +4,7 @@ import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/global_registry";
 import type { SkillAttachedKnowledge } from "@app/lib/resources/skill/skill_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
@@ -833,6 +834,49 @@ describe("SkillResource", () => {
       expect(availableParentSkill?.instructions).toContain(
         SkillFactory.serializeSkillReferenceTag(childSkill)
       );
+    });
+
+    it("syncs global skill references", async () => {
+      const globalSkillReferenceTag =
+        GlobalSkillsRegistry.serializeSkillTag("frames");
+      const parentSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Parent With Global Skill Reference",
+        instructions: `Use ${globalSkillReferenceTag}.`,
+        enableSkillReferences: true,
+        referencedSkillIds: ["frames"],
+      });
+
+      const childSkills = await parentSkill.fetchChildSkills(
+        testContext.authenticator
+      );
+
+      expect(childSkills).toEqual([
+        expect.objectContaining({
+          sId: "frames",
+          name: "Create Frames",
+        }),
+      ]);
+
+      const framesSkill = await SkillResource.fetchById(
+        testContext.authenticator,
+        "frames"
+      );
+      if (framesSkill === null) {
+        throw new Error("Expected frames global skill to exist.");
+      }
+
+      const usedBySkillsByChild = await SkillResource.batchFetchUsedBySkills(
+        testContext.authenticator,
+        [framesSkill]
+      );
+
+      expect(usedBySkillsByChild.get("frames")).toEqual([
+        {
+          sId: parentSkill.sId,
+          name: parentSkill.name,
+          icon: parentSkill.icon,
+        },
+      ]);
     });
   });
 
