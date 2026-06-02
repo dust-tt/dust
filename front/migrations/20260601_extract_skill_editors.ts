@@ -3,7 +3,6 @@ import { writeFile } from "node:fs/promises";
 import { sanitizeCsvCell } from "@app/lib/api/analytics/csv_utils";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
-import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
@@ -12,7 +11,6 @@ import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { makeSId } from "@app/lib/resources/string_ids";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import { makeScript } from "@app/scripts/helpers";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { stringify } from "csv-stringify/sync";
 import { Op } from "sequelize";
 
@@ -293,17 +291,18 @@ makeScript(
       demandOption: false,
     },
   },
-  async ({ outputFile, workspaceId }, logger) => {
+  async ({ outputFile, workspaceId }) => {
     const workspaces = await fetchWorkspaces(workspaceId ?? null);
     const now = new Date();
     const editors: EditorWithSkills[] = [];
 
     for (const workspace of workspaces) {
+      const workspaceEditors = await fetchSkillEditorsForWorkspace({
+        now,
+        workspace,
+      });
       editors.push(
-        ...(await fetchSkillEditorsForWorkspace({
-          now,
-          workspace,
-        }))
+        ...workspaceEditors
       );
     }
 
