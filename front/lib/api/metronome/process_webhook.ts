@@ -1,3 +1,4 @@
+import { maybeNotifyAdminsBalanceThresholdReached } from "@app/lib/api/credits/balance_threshold_alert";
 import {
   dispatchCreditsAdded,
   dispatchLowBalance,
@@ -889,6 +890,16 @@ export async function processMetronomeWebhook({
           "[Metronome Webhook] low_remaining_contract_credit_and_commit_balance_reached: low balance dispatched"
         );
       }
+
+      // If this is the workspace's own configured balance-threshold alert,
+      // email its admins.
+      await maybeNotifyAdminsBalanceThresholdReached({
+        metronomeCustomerId: workspace.metronomeCustomerId,
+        workspaceId: workspace.sId,
+        eventId: event.id,
+        alertId: event.properties.alert_id ?? null,
+        remainingBalanceCredits: remaining ?? null,
+      });
       break;
     }
     case "alerts.low_remaining_contract_credit_and_commit_balance_resolved": {
