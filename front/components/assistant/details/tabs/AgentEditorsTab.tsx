@@ -1,5 +1,5 @@
-import { MembersList } from "@app/components/members/MembersList";
 import type { SearchMemberType } from "@app/components/members/MemberSelectionTable";
+import { MembersList } from "@app/components/members/MembersList";
 import { useEditors, useUpdateEditors } from "@app/lib/swr/agent_editors";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { UserType, WorkspaceType } from "@app/types/user";

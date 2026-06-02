@@ -1,5 +1,5 @@
-import { MembersList } from "@app/components/members/MembersList";
 import type { SearchMemberType } from "@app/components/members/MemberSelectionTable";
+import { MembersList } from "@app/components/members/MembersList";
 import {
   useSkillEditors,
   useUpdateSkillEditors,

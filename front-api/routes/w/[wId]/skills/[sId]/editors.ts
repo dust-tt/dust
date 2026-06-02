@@ -3,7 +3,7 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
-import type { LightMemberType, UserType } from "@app/types/user";
+import type { UserType } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -34,16 +34,8 @@ export interface GetSkillEditorsResponseBody {
   editors: UserType[];
 }
 
-interface GetSkillEditorsLightResponseBody {
-  editors: LightMemberType[];
-}
-
 export interface PatchSkillEditorsResponseBody {
   editors: UserType[];
-}
-
-interface PatchSkillEditorsLightResponseBody {
-  editors: LightMemberType[];
 }
 
 // Resolve :sId into a skill + its editor group. Returns either the loaded

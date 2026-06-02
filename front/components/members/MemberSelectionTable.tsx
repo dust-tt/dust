@@ -66,13 +66,13 @@ export function MemberSelectionTable({
   };
 
   const { members, totalMembersCount, isLoading } = useSearchMembers({
-      workspaceId: owner.sId,
-      searchTerm: searchText,
-      pageIndex: pagination.pageIndex,
-      pageSize: pagination.pageSize,
-      buildersOnly,
-      disabled: !searchText,
-    });
+    workspaceId: owner.sId,
+    searchTerm: searchText,
+    pageIndex: pagination.pageIndex,
+    pageSize: pagination.pageSize,
+    buildersOnly,
+    disabled: !searchText,
+  });
 
   // Internal map to resolve sId -> SearchMemberType, seeded with initialMembers
   // and updated as search results come in.
