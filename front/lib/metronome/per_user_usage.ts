@@ -1,5 +1,6 @@
 import {
   ceilToMidnightUTC,
+  floorToMidnightUTC,
   listMetronomeUsageWithGroups,
 } from "@app/lib/metronome/client";
 import {
@@ -69,10 +70,7 @@ export async function fetchPerUserAwuUsage({
   const { cycleStart, cycleEnd } = periodResult.value;
   const cycleEndMs = cycleEnd.getTime();
 
-  // Period bounds are already UTC midnight (1st of month), so we query them
-  // directly. The request end is capped at the next midnight after `now` so we
-  // don't fetch the period's future days.
-  const startingOn = cycleStart.toISOString();
+  const startingOn = floorToMidnightUTC(cycleStart).toISOString();
   const requestEnd = new Date(Math.min(cycleEndMs, Date.now()));
   const endingBefore = ceilToMidnightUTC(requestEnd).toISOString();
 
