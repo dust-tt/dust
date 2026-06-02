@@ -41,6 +41,7 @@ interface WorkspaceSkillEditorExport {
 type SkillEditorCsvRecord = Record<string, string | number>;
 
 const DUST_APP_URL = "https://app.dust.tt";
+const SKILL_LIST_DELIMITER = "\n";
 
 function compareStrings(left: string, right: string): number {
   return left.localeCompare(right, undefined, { sensitivity: "base" });
@@ -148,10 +149,10 @@ function buildCsvRecords(editors: EditorWithSkills[]): SkillEditorCsvRecord[] {
     editor_name: sanitizeCsvCell(editor.editorName),
     skill_count: editor.skills.length,
     skill_urls: sanitizeCsvCell(
-      editor.skills.map((skill) => skill.url).join("|")
+      editor.skills.map((skill) => skill.url).join(SKILL_LIST_DELIMITER)
     ),
     skill_names: sanitizeCsvCell(
-      editor.skills.map((skill) => skill.name).join("|")
+      editor.skills.map((skill) => skill.name).join(SKILL_LIST_DELIMITER)
     ),
   }));
 }
