@@ -50,6 +50,8 @@ export type DustErrorCode =
   | "name_conflict"
   | "action_not_found"
   | "action_not_blocked"
+  | "tool_not_editable"
+  | "invalid_edited_inputs"
   | "mcp_access_token_error"
   // Triggers errors
   | "webhook_source_not_found"

@@ -1376,6 +1376,13 @@ export function getInternalMCPServerToolStakes(
   return server.metadata.tools_stakes;
 }
 
+export function getInternalMCPServerEditableArguments(
+  name: InternalMCPServerNameType
+): Record<string, string[]> | undefined {
+  const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
+  return server.tools_editable_arguments;
+}
+
 export function getInternalMCPServerToolDisplayLabels<
   N extends InternalMCPServerNameType,
 >(name: N): Record<string, ToolDisplayLabels> | null {

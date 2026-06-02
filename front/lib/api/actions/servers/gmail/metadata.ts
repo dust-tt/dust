@@ -5,6 +5,7 @@ import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const GMAIL_TOOL_NAME = "gmail" as const;
+export const SEND_MAIL_TOOL_NAME = "send_mail" as const;
 
 export const GMAIL_TOOLS_METADATA = createToolsRecord({
   get_drafts: {

@@ -1,10 +1,15 @@
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
+import { GmailComposeEditor } from "@app/components/assistant/conversation/GmailComposeEditor";
 import { ToolValidationDetails } from "@app/components/assistant/conversation/ToolValidationDetails";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { useEditAndSendAction } from "@app/hooks/useEditAndSendAction";
 import { useValidateAction } from "@app/hooks/useValidateAction";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
+import {
+  GMAIL_TOOL_NAME,
+  SEND_MAIL_TOOL_NAME,
+} from "@app/lib/api/actions/servers/gmail/metadata";
 import {
   POD_MANAGER_SERVER_NAME,
   UPDATE_MEMBERS_TOOL_NAME,
@@ -158,19 +163,17 @@ export function MCPToolValidationRequired({
   // For editable-stake tools: track per-field edits
   const editableArguments =
     blockedAction.stake === "editable"
-      ? (blockedAction.editableArguments ??
-        Object.keys(blockedAction.inputs))
+      ? (blockedAction.editableArguments ?? Object.keys(blockedAction.inputs))
       : [];
-  const [editedFields, setEditedFields] = useState<Record<string, string>>(
-    () =>
-      Object.fromEntries(
-        editableArguments.map((key) => [
-          key,
-          typeof blockedAction.inputs[key] === "string"
-            ? (blockedAction.inputs[key] as string)
-            : JSON.stringify(blockedAction.inputs[key] ?? ""),
-        ])
-      )
+  const [editedFields, setEditedFields] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      editableArguments.map((key) => [
+        key,
+        typeof blockedAction.inputs[key] === "string"
+          ? (blockedAction.inputs[key] as string)
+          : JSON.stringify(blockedAction.inputs[key] ?? ""),
+      ])
+    )
   );
 
   const {
@@ -344,26 +347,38 @@ export function MCPToolValidationRequired({
             defaultExpanded={toolOverride?.detailsExpanded}
           />
           {/* Provisional editable fields for editable-stake tools */}
-          {blockedAction.stake === "editable" && editableArguments.length > 0 && (
-            <div className="flex flex-col gap-2">
-              {editableArguments.map((key) => (
-                <div key={key} className="flex flex-col gap-1">
-                  <Label className="text-xs font-medium">{key}</Label>
-                  <TextArea
-                    value={editedFields[key] ?? ""}
-                    onChange={(e) =>
-                      setEditedFields((prev) => ({
-                        ...prev,
-                        [key]: e.target.value,
-                      }))
-                    }
+          {blockedAction.stake === "editable" &&
+            editableArguments.length > 0 && (
+              <>
+                {blockedAction.metadata.mcpServerName === GMAIL_TOOL_NAME &&
+                blockedAction.metadata.toolName === SEND_MAIL_TOOL_NAME ? (
+                  <GmailComposeEditor
+                    editedFields={editedFields}
+                    setEditedFields={setEditedFields}
                     disabled={isEditing || isValidating}
-                    minRows={3}
                   />
-                </div>
-              ))}
-            </div>
-          )}
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {editableArguments.map((key) => (
+                      <div key={key} className="flex flex-col gap-1">
+                        <Label className="text-xs font-medium">{key}</Label>
+                        <TextArea
+                          value={editedFields[key] ?? ""}
+                          onChange={(e) =>
+                            setEditedFields((prev) => ({
+                              ...prev,
+                              [key]: e.target.value,
+                            }))
+                          }
+                          disabled={isEditing || isValidating}
+                          minRows={3}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
           {errorMessage && (
             <div className="mt-2 text-sm font-medium text-warning-800 dark:text-warning-800-night">
               {errorMessage}

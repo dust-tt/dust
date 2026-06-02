@@ -13,7 +13,7 @@ vi.mock("@app/lib/api/redis-hybrid-manager", () => ({
 import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { editAndResumeAction } from "@app/lib/api/assistant/conversation/edit_and_resume_action";
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
@@ -215,8 +215,12 @@ describe("editAndResumeAction", () => {
     expect(functionCallContent).toBeDefined();
 
     const args = JSON.parse(
-      (functionCallContent!.value as { type: string; value: { arguments: string } })
-        .value.arguments
+      (
+        functionCallContent!.value as {
+          type: string;
+          value: { arguments: string };
+        }
+      ).value.arguments
     );
     expect(args.body).toBe("edited body");
     expect(args.subject).toBe("edited subject");
@@ -345,7 +349,10 @@ describe("editAndResumeAction", () => {
     const newAgentMessageModelId = messages[1].agentMessageId!;
 
     const newAction = await AgentMCPActionModel.findOne({
-      where: { workspaceId: workspace.id, agentMessageId: newAgentMessageModelId },
+      where: {
+        workspaceId: workspace.id,
+        agentMessageId: newAgentMessageModelId,
+      },
     });
     expect(newAction).toBeDefined();
     const inputs = newAction!.augmentedInputs as Record<string, unknown>;

@@ -35,15 +35,9 @@ export async function editAndResumeAction(
 ): Promise<Result<void, DustError>> {
   const user = auth.user();
   const owner = auth.getNonNullableWorkspace();
-  const {
-    sId: conversationId,
-    title: conversationTitle,
-    branchId: conversationBranchId,
-  } = conversation;
+  const { sId: conversationId, title: conversationTitle } = conversation;
 
   const {
-    agentMessageId: messageSId,
-    agentMessageVersion,
     userMessageId,
     userMessageVersion,
     userMessageUserId,
@@ -139,10 +133,11 @@ export async function editAndResumeAction(
   }
 
   // Fetch step-k function_call step contents and the actions linked to them
-  const allStepContentsForMessage = await AgentStepContentResource.fetchByAgentMessages(
-    auth,
-    { agentMessageIds: [agentMessageModelId], latestVersionsOnly: true }
-  );
+  const allStepContentsForMessage =
+    await AgentStepContentResource.fetchByAgentMessages(auth, {
+      agentMessageIds: [agentMessageModelId],
+      latestVersionsOnly: true,
+    });
   const stepKContents = allStepContentsForMessage.filter(
     (c) => c.step === blockedStep && c.type === "function_call"
   );
@@ -221,9 +216,8 @@ export async function editAndResumeAction(
 
       // Copy step contents 0..blockedStep onto the new agent message,
       // overriding the edited action's function_call arguments
-      const newStepContents = await AgentStepContentResource.copyForAgentMessage(
-        auth,
-        {
+      const newStepContents =
+        await AgentStepContentResource.copyForAgentMessage(auth, {
           fromAgentMessageId: agentMessageModelId,
           toAgentMessageId: newAgentMessageRow.id,
           throughStep: blockedStep,
@@ -235,8 +229,7 @@ export async function editAndResumeAction(
             },
           ],
           transaction: t,
-        }
-      );
+        });
 
       // Map new step contents by (step, index) for quick lookup
       const newStepContentMap = new Map(
@@ -300,7 +293,10 @@ export async function editAndResumeAction(
 
   if (!newMessageSId || newMessageVersion === null) {
     return new Err(
-      new DustError("internal_error", "Failed to create new agent message version")
+      new DustError(
+        "internal_error",
+        "Failed to create new agent message version"
+      )
     );
   }
 

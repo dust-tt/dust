@@ -33,6 +33,7 @@ import {
 } from "@app/lib/actions/mcp_helper";
 import {
   getAvailabilityOfInternalMCPServerById,
+  getInternalMCPServerEditableArguments,
   getInternalMCPServerNameAndWorkspaceId,
   getInternalMCPServerToolStakes,
   INTERNAL_MCP_SERVERS,
@@ -174,8 +175,7 @@ export function getToolExtraFields(
     serverTimeoutMs = INTERNAL_MCP_SERVERS[serverName]?.timeoutMs;
     toolsArgumentsRequiringApproval =
       INTERNAL_MCP_SERVERS[serverName].tools_arguments_requiring_approval;
-    toolsEditableArguments =
-      INTERNAL_MCP_SERVERS[serverName].tools_editable_arguments;
+    toolsEditableArguments = getInternalMCPServerEditableArguments(serverName);
 
     metadata.forEach(
       ({ toolName, permission }) => (toolsStakes[toolName] = permission)

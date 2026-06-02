@@ -1288,7 +1288,7 @@ export type ConversationMessageReactionsType = z.infer<
 >;
 
 const MCPStakeLevelSchema = z
-  .enum(["low", "medium", "high", "never_ask"])
+  .enum(["low", "medium", "high", "never_ask", "editable"])
   .optional();
 
 const MCPValidationMetadataSchema = z.object({
