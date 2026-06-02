@@ -12,6 +12,7 @@ import { useMemo } from "react";
 
 interface SkillBuilderInstructionsReferenceSummaryProps {
   attachedKnowledge?: AttachedKnowledgeFormData[];
+  hasError: boolean;
   instructions: string;
   tools: BuilderAction[];
 }
@@ -97,6 +98,7 @@ function renderReferenceSummaryItem(item: ReferenceSummaryItem) {
 
 export function SkillBuilderInstructionsReferenceSummary({
   attachedKnowledge,
+  hasError,
   instructions,
   tools,
 }: SkillBuilderInstructionsReferenceSummaryProps) {
@@ -203,17 +205,24 @@ export function SkillBuilderInstructionsReferenceSummary({
   return (
     <div
       className={cn(
-        "absolute inset-x-px bottom-px z-10 max-h-40 overflow-y-auto bg-background px-3 pb-3",
-        "dark:bg-background-night"
+        "absolute inset-x-0 bottom-0 z-10 max-h-40 overflow-y-auto rounded-b-xl border-x border-b bg-background px-3 pb-3 pt-3",
+        "dark:bg-background-night",
+        hasError
+          ? [
+              "border-border-warning/30 group-focus-within:border-border-warning",
+              "dark:border-border-warning-night/60 dark:group-focus-within:border-border-warning-night",
+            ]
+          : [
+              "border-border group-focus-within:border-highlight-300",
+              "dark:border-border-night dark:group-focus-within:border-highlight-300-night",
+            ]
       )}
     >
-      <div className="border-t border-border/70 pt-3 dark:border-border-night/70">
-        <div className="mb-2 text-sm font-medium text-foreground dark:text-foreground-night">
-          Capabilities and knowledge
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {referenceItems.map(renderReferenceSummaryItem)}
-        </div>
+      <div className="mb-2 text-sm font-medium text-foreground dark:text-foreground-night">
+        Capabilities and knowledge
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {referenceItems.map(renderReferenceSummaryItem)}
       </div>
     </div>
   );
