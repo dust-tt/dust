@@ -33,9 +33,9 @@ import {
   ScrollBar,
   SearchInput,
   Server01V2,
-  Settings01V2,
   SliderToggle,
-  Settings02V2,
+  Toggle01LeftV2,
+  Tool01V2,
   Sheet,
   SheetContent,
   SheetFooter,
@@ -595,6 +595,8 @@ function PeoplePage({
   groups,
   setGroups,
   onNavigate,
+  defaultTab,
+  onTabChange,
 }: {
   role: Role;
   members: MemberRow[];
@@ -602,8 +604,10 @@ function PeoplePage({
   groups: GroupRow[];
   setGroups: (g: GroupRow[]) => void;
   onNavigate: (page: AdminPage) => void;
+  defaultTab?: "members" | "groups";
+  onTabChange?: (tab: "members" | "groups") => void;
 }) {
-  const [sub, setSub] = useState<"members" | "groups">("members");
+  const [sub, setSub] = useState<"members" | "groups">(defaultTab ?? "members");
   const [search, setSearch] = useState("");
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmails, setInviteEmails] = useState("");
@@ -651,7 +655,7 @@ function PeoplePage({
               <Chip
                 color={plan === "member" ? "blue" : "green"}
                 label={PLAN_LABELS[plan]}
-                size="sm"
+                size="xs"
               />
             </DataTable.CellContent>
           );
@@ -743,12 +747,14 @@ function PeoplePage({
         )
         .map((m) => ({
           ...m,
-          onClick: () => {
-            setSelectedMember(m);
-            setMemberPlan(m.plan);
-          },
+          onClick: canEdit
+            ? () => {
+                setSelectedMember(m);
+                setMemberPlan(m.plan);
+              }
+            : undefined,
         })),
-    [search, members]
+    [search, members, canEdit]
   );
 
   const filteredGroups = useMemo(
@@ -826,7 +832,10 @@ function PeoplePage({
       />
       <Tabs
         value={sub}
-        onValueChange={(v) => setSub(v as "members" | "groups")}
+        onValueChange={(v) => {
+          setSub(v as "members" | "groups");
+          onTabChange?.(v as "members" | "groups");
+        }}
       >
         <TabsList>
           <TabsTrigger value="members" label="Members" />
@@ -889,7 +898,7 @@ function PeoplePage({
         <TabsContent value="groups">
           <div className="s-mt-4">
             <Page.Vertical gap="md">
-              <div className="s-rounded-xl s-bg-muted-background dark:s-bg-muted-background-night s-px-4 s-py-3">
+              <div className="s-w-full s-rounded-xl s-bg-muted-background dark:s-bg-muted-background-night s-px-4 s-py-3">
                 <Page.P variant="secondary" size="sm">
                   User provisioning is configured in{" "}
                   <button
@@ -1066,6 +1075,7 @@ function PeoplePage({
                       label={PLAN_LABELS[memberPlan]}
                       isSelect
                       size="sm"
+                      className="s-self-start"
                     />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
@@ -1096,6 +1106,7 @@ function PeoplePage({
                   variant="warning"
                   label="Remove member access"
                   size="sm"
+                  className="s-self-start"
                 />
                 <Page.P variant="secondary" size="sm">
                   This will permanently remove {selectedMember.name}'s access to
@@ -1379,11 +1390,13 @@ function GovernancePage({
   settings,
   setSettings,
   groups,
+  onNavigateToGroups,
 }: {
   role: Role;
   settings: GovernanceSetting[];
   setSettings: (s: GovernanceSetting[]) => void;
   groups: GroupRow[];
+  onNavigateToGroups: () => void;
 }) {
   const canEdit = role === "super_admin" || role === "admin";
   const update = (updated: GovernanceSetting) =>
@@ -1399,12 +1412,13 @@ function GovernancePage({
         description="Control what members can create and publish. Use groups to grant exceptions."
         icon={Cog6ToothIcon}
       />
-      <div className="s-rounded-xl s-bg-muted-background dark:s-bg-muted-background-night s-px-4 s-py-3">
+      <div className="s-w-full s-rounded-xl s-bg-muted-background dark:s-bg-muted-background-night s-px-4 s-py-3">
         <Page.P variant="secondary" size="sm">
           Groups assigned here are managed in{" "}
           <button
             type="button"
             className="s-underline s-font-medium s-text-foreground dark:s-text-foreground-night"
+            onClick={onNavigateToGroups}
           >
             People → Groups
           </button>
@@ -2627,8 +2641,8 @@ const NAV_SECTIONS: { title: string; items: NavSpec[] }[] = [
         label: "Identity & provisioning",
         icon: Fingerprint04V2,
       },
-      { id: "governance", label: "Governance", icon: Settings01V2 },
-      { id: "workspace", label: "Workspace Settings", icon: Settings02V2 },
+      { id: "governance", label: "Governance", icon: Toggle01LeftV2 },
+      { id: "workspace", label: "Workspace Settings", icon: Tool01V2 },
       { id: "models", label: "Model Providers", icon: Server01V2 },
       { id: "analytics", label: "Analytics", icon: BarChart01V2 },
       { id: "billing", label: "Billing", icon: CreditCard01V2 },
@@ -2657,6 +2671,9 @@ export default function AdminGovernance() {
   const sidebarRef = useRef<SidebarLayoutRef>(null);
   const [role, setRole] = useState<Role>("super_admin");
   const [activePage, setActivePage] = useState<AdminPage>("people");
+  const [peopleDefaultTab, setPeopleDefaultTab] = useState<
+    "members" | "groups"
+  >("members");
   const [members, setMembers] = useState<MemberRow[]>(INITIAL_MEMBERS);
   const [groups, setGroups] = useState<GroupRow[]>(GROUPS);
   const [governance, setGovernance] =
@@ -2775,6 +2792,8 @@ export default function AdminGovernance() {
             groups={groups}
             setGroups={setGroups}
             onNavigate={setActivePage}
+            defaultTab={peopleDefaultTab}
+            onTabChange={setPeopleDefaultTab}
           />
         ) : effectivePage === "identity" ? (
           <IdentityPage role={role} />
@@ -2784,6 +2803,10 @@ export default function AdminGovernance() {
             settings={governance}
             setSettings={setGovernance}
             groups={groups}
+            onNavigateToGroups={() => {
+              setPeopleDefaultTab("groups");
+              setActivePage("people");
+            }}
           />
         ) : effectivePage === "billing" ? (
           <BillingPage />
