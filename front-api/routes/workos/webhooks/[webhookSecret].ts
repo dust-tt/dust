@@ -8,20 +8,17 @@ import logger from "@app/logger/logger";
 import { launchWorkOSEventsWorkflow } from "@app/temporal/workos_events_queue/client";
 import { createHono } from "@front-api/lib/hono";
 import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  webhookSecret: z.string(),
+});
 
 const app = createHono();
 
-app.post("/", async (ctx) => {
-  const webhookSecret = ctx.req.param("webhookSecret");
-  if (typeof webhookSecret !== "string") {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "The webhookSecret query parameter is required.",
-      },
-    });
-  }
+app.post("/", validate("param", ParamsSchema), async (ctx) => {
+  const { webhookSecret } = ctx.req.valid("param");
 
   if (webhookSecret !== config.getWorkOSWebhookSecret()) {
     return apiError(ctx, {

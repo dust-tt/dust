@@ -33,17 +33,22 @@ export type PatchMCPServerViewResponseBody = {
   serverView: MCPServerViewType;
 };
 
+const ParamsSchema = z.object({
+  viewId: z.string(),
+});
+
 // Mounted at /api/w/:wId/mcp/views/:viewId.
 const app = workspaceApp();
 
 app.patch(
   "/",
+  validate("param", ParamsSchema),
   ensureIsUser(),
   validate("json", PatchMCPServerViewBodySchema),
   async (ctx): HandlerResult<PatchMCPServerViewResponseBody> => {
     const auth = ctx.get("auth");
 
-    const viewId = ctx.req.param("viewId") ?? "";
+    const { viewId } = ctx.req.valid("param");
     const body = ctx.req.valid("json");
 
     // Get the system view to validate that viewId refers to a system view.

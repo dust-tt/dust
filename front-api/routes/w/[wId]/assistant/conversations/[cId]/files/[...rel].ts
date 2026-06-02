@@ -14,6 +14,12 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  cId: z.string(),
+  rel: z.string().optional(),
+});
 
 export type ConversationFileRelResponseBody = Record<string, never>;
 
@@ -21,10 +27,9 @@ export type ConversationFileRelResponseBody = Record<string, never>;
 // Mounted from files/index.ts at the root path.
 const app = workspaceApp();
 
-app.get("/:rel{.+}", async (ctx) => {
+app.get("/:rel{.+}", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
-  const cId = ctx.req.param("cId") ?? "";
-  const rel = ctx.req.param("rel");
+  const { cId, rel } = ctx.req.valid("param");
 
   if (!isString(rel) || rel.length === 0) {
     return apiError(ctx, {
@@ -114,11 +119,11 @@ app.get("/:rel{.+}", async (ctx) => {
 
 app.post(
   "/:rel{.+}",
+  validate("param", ParamsSchema),
   validate("json", MoveMountFileRequestBodySchema),
   async (ctx): HandlerResult<ConversationFileRelResponseBody> => {
     const auth = ctx.get("auth");
-    const cId = ctx.req.param("cId") ?? "";
-    const rel = ctx.req.param("rel");
+    const { cId, rel } = ctx.req.valid("param");
 
     if (!isString(rel) || rel.length === 0) {
       return apiError(ctx, {

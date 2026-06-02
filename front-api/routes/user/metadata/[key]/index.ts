@@ -22,6 +22,10 @@ const PostUserMetadataBodySchema = z.object({
   value: z.string(),
 });
 
+const ParamsSchema = z.object({
+  key: z.string(),
+});
+
 // Mounted at /api/user/metadata/:key. sessionAuth is applied by the parent
 // `/api/user` sub-app.
 const app = sessionApp();
@@ -73,19 +77,24 @@ async function loadUserAndWorkspace(
   return { u, workspaceModelId };
 }
 
-app.get("/", async (ctx): HandlerResult<GetUserMetadataResponseBody> => {
-  const r = await loadUserAndWorkspace(ctx);
-  if ("err" in r) {
-    return r.err;
-  }
+app.get(
+  "/",
+  validate("param", ParamsSchema),
+  async (ctx): HandlerResult<GetUserMetadataResponseBody> => {
+    const r = await loadUserAndWorkspace(ctx);
+    if ("err" in r) {
+      return r.err;
+    }
 
-  const key = ctx.req.param("key") ?? "";
-  const metadata = await r.u.getMetadata(key, r.workspaceModelId);
-  return ctx.json({ metadata });
-});
+    const { key } = ctx.req.valid("param");
+    const metadata = await r.u.getMetadata(key, r.workspaceModelId);
+    return ctx.json({ metadata });
+  }
+);
 
 app.post(
   "/",
+  validate("param", ParamsSchema),
   validate("json", PostUserMetadataBodySchema),
   async (ctx): HandlerResult<PostUserMetadataResponseBody> => {
     const r = await loadUserAndWorkspace(ctx);
@@ -93,20 +102,20 @@ app.post(
       return r.err;
     }
 
-    const key = ctx.req.param("key") ?? "";
+    const { key } = ctx.req.valid("param");
     const { value } = ctx.req.valid("json");
     await r.u.setMetadata(key, value, r.workspaceModelId);
     return ctx.json({ metadata: { key, value } });
   }
 );
 
-app.delete("/", async (ctx) => {
+app.delete("/", validate("param", ParamsSchema), async (ctx) => {
   const r = await loadUserAndWorkspace(ctx);
   if ("err" in r) {
     return r.err;
   }
 
-  const key = ctx.req.param("key") ?? "";
+  const { key } = ctx.req.valid("param");
   await r.u.deleteMetadata({
     key: {
       [Op.like]: `${key}%`,

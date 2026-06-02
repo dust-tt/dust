@@ -4,6 +4,8 @@ import type { SubscriptionType } from "@app/types/plan";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { sessionApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
 
 export type GetPokeWorkspaceAuthContextResponseType = {
   user: UserType;
@@ -13,6 +15,10 @@ export type GetPokeWorkspaceAuthContextResponseType = {
   isBuilder: true;
   isSuperUser: true;
 };
+
+const ParamsSchema = z.object({
+  wId: z.string(),
+});
 
 // Mounted at /api/poke/workspaces/:wId/auth-context.
 //
@@ -25,8 +31,9 @@ const app = sessionApp();
 
 app.get(
   "/",
+  validate("param", ParamsSchema),
   async (ctx): HandlerResult<GetPokeWorkspaceAuthContextResponseType> => {
-    const wId = ctx.req.param("wId") ?? "";
+    const { wId } = ctx.req.valid("param");
     const session = ctx.get("session");
 
     const auth = await Authenticator.fromSuperUserSession(session, wId);

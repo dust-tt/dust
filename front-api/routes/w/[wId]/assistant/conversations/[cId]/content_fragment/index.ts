@@ -7,6 +7,11 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  cId: z.string(),
+});
 
 export type PostContentFragmentResponseBody = {
   contentFragment: ContentFragmentType;
@@ -17,11 +22,12 @@ const app = workspaceApp();
 
 app.post(
   "/",
+  validate("param", ParamsSchema),
   validate("json", InternalPostContentFragmentRequestBodySchema),
   async (ctx): HandlerResult<PostContentFragmentResponseBody> => {
     const auth = ctx.get("auth");
     const user = auth.getNonNullableUser();
-    const cId = ctx.req.param("cId") ?? "";
+    const { cId } = ctx.req.valid("param");
 
     const conversationRes =
       await ConversationResource.fetchConversationWithoutContent(auth, cId);

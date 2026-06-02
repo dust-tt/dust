@@ -28,6 +28,10 @@ export interface PatchProjectTaskResponseBody {
   };
 }
 
+const ParamsSchema = z.object({
+  taskId: z.string(),
+});
+
 const PatchProjectTaskBodySchema = z
   .object({
     text: z
@@ -54,12 +58,13 @@ const app = workspaceApp();
 
 app.patch(
   "/",
+  validate("param", ParamsSchema),
   withSpace({ requireCanRead: true }),
   validate("json", PatchProjectTaskBodySchema),
   async (ctx): HandlerResult<PatchProjectTaskResponseBody> => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");
-    const taskId = ctx.req.param("taskId") ?? "";
+    const { taskId } = ctx.req.valid("param");
 
     if (!space.isProject()) {
       return apiError(ctx, {
@@ -154,36 +159,41 @@ app.patch(
   }
 );
 
-app.delete("/", withSpace({ requireCanRead: true }), async (ctx) => {
-  const auth = ctx.get("auth");
-  const space = ctx.get("space");
-  const taskId = ctx.req.param("taskId") ?? "";
+app.delete(
+  "/",
+  validate("param", ParamsSchema),
+  withSpace({ requireCanRead: true }),
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
+    const { taskId } = ctx.req.valid("param");
 
-  if (!space.isProject()) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Tasks are only available for project spaces.",
-      },
-    });
+    if (!space.isProject()) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Tasks are only available for project spaces.",
+        },
+      });
+    }
+
+    const task = await ProjectTaskResource.fetchBySId(auth, taskId);
+    if (!task || task.spaceId !== space.id) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "project_task_not_found",
+          message: "Task not found.",
+        },
+      });
+    }
+
+    await task.softDelete(auth);
+
+    return ctx.body(null, 204);
   }
-
-  const task = await ProjectTaskResource.fetchBySId(auth, taskId);
-  if (!task || task.spaceId !== space.id) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "project_task_not_found",
-        message: "Task not found.",
-      },
-    });
-  }
-
-  await task.softDelete(auth);
-
-  return ctx.body(null, 204);
-});
+);
 
 app.route("/start", start);
 

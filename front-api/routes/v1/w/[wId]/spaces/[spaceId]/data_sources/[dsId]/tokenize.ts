@@ -20,6 +20,7 @@ const PostDatasourceTokenizeBodySchema = z.object({
 
 const ParamsSchema = z.object({
   dsId: z.string(),
+  spaceId: z.string().optional(),
 });
 
 /**
@@ -38,7 +39,7 @@ app.post(
   validate("json", PostDatasourceTokenizeBodySchema),
   async (ctx): HandlerResult<TokenizeResponseType> => {
     const auth = ctx.get("auth");
-    const { dsId } = ctx.req.valid("param");
+    const { dsId, spaceId: spaceIdParam } = ctx.req.valid("param");
 
     const dataSource = await DataSourceResource.fetchByNameOrId(
       auth,
@@ -49,7 +50,7 @@ app.post(
 
     const spaceId = await resolveLegacyDataSourceSpaceId(
       auth,
-      ctx.req.param("spaceId"),
+      spaceIdParam,
       dataSource
     );
 

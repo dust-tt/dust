@@ -16,6 +16,11 @@ const PostManagedDataSourceConfigRequestBodySchema = z.object({
   configValue: z.string(),
 });
 
+const ParamsSchema = z.object({
+  dsId: z.string(),
+  key: z.string(),
+});
+
 const ALLOWED_CONFIG_KEYS = new Set<string>([
   "botEnabled",
   "pdfEnabled",
@@ -46,10 +51,10 @@ const app = workspaceApp();
 
 app.get(
   "/",
+  validate("param", ParamsSchema),
   async (ctx): HandlerResult<GetOrPostManagedDataSourceConfigResponseBody> => {
     const auth = ctx.get("auth");
-    const dsId = ctx.req.param("dsId") ?? "";
-    const configKey = ctx.req.param("key") ?? "";
+    const { dsId, key: configKey } = ctx.req.valid("param");
 
     const dataSource = await DataSourceResource.fetchById(auth, dsId);
     if (!dataSource) {
@@ -106,11 +111,11 @@ app.get(
 
 app.post(
   "/",
+  validate("param", ParamsSchema),
   validate("json", PostManagedDataSourceConfigRequestBodySchema),
   async (ctx): HandlerResult<GetOrPostManagedDataSourceConfigResponseBody> => {
     const auth = ctx.get("auth");
-    const dsId = ctx.req.param("dsId") ?? "";
-    const configKey = ctx.req.param("key") ?? "";
+    const { dsId, key: configKey } = ctx.req.valid("param");
 
     const dataSource = await DataSourceResource.fetchById(auth, dsId);
     if (!dataSource) {

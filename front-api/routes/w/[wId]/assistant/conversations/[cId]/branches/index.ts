@@ -2,15 +2,21 @@ import { getMostRecentOpenBranchForConversation } from "@app/lib/api/assistant/c
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
 
 import branch from "./[bId]";
+
+const ParamsSchema = z.object({
+  cId: z.string(),
+});
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/branches.
 const app = workspaceApp();
 
-app.get("/", async (ctx) => {
+app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
-  const cId = ctx.req.param("cId") ?? "";
+  const { cId } = ctx.req.valid("param");
 
   const branchRes = await getMostRecentOpenBranchForConversation(auth, {
     conversationId: cId,

@@ -13,6 +13,10 @@ export type PatchAgentTagsResponseBody = {
   tags: TagType[];
 };
 
+const ParamsSchema = z.object({
+  aId: z.string(),
+});
+
 const PatchAgentTagsRequestBodySchema = z
   .object({
     addTagIds: z.array(z.string()).optional(),
@@ -32,10 +36,11 @@ const app = workspaceApp();
 
 app.patch(
   "/",
+  validate("param", ParamsSchema),
   validate("json", PatchAgentTagsRequestBodySchema),
   async (ctx): HandlerResult<PatchAgentTagsResponseBody> => {
     const auth = ctx.get("auth");
-    const aId = ctx.req.param("aId") ?? "";
+    const { aId } = ctx.req.valid("param");
 
     const agent = await getAgentConfiguration(auth, {
       agentId: aId,

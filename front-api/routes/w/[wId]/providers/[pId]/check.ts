@@ -15,15 +15,20 @@ const PostCheckBodySchema = z.object({
   }),
 });
 
+const ParamsSchema = z.object({
+  pId: z.string(),
+});
+
 // Mounted at /api/w/:wId/providers/:pId/check.
 const app = workspaceApp();
 
 app.post(
   "/",
+  validate("param", ParamsSchema),
   ensureIsBuilder(),
   validate("json", PostCheckBodySchema),
   async (ctx): HandlerResult<GetProvidersCheckResponseBody> => {
-    const pId = ctx.req.param("pId") ?? "";
+    const { pId } = ctx.req.valid("param");
     const { config } = ctx.req.valid("json");
 
     switch (pId) {

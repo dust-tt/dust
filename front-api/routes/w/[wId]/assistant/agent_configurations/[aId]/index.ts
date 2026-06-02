@@ -11,6 +11,7 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
 
 import editors from "./editors";
 import exportRoutes from "./export";
@@ -28,6 +29,10 @@ import tags from "./tags";
 import triggers from "./triggers";
 import usage from "./usage";
 
+const ParamsSchema = z.object({
+  aId: z.string(),
+});
+
 export type GetAgentConfigurationResponseBody = {
   agentConfiguration: AgentConfigurationType;
 };
@@ -40,38 +45,43 @@ export type DeleteAgentConfigurationResponseBody = {
 // `/` handles GET, PATCH, and DELETE on the agent itself.
 const app = workspaceApp();
 
-app.get("/", async (ctx): HandlerResult<GetAgentConfigurationResponseBody> => {
-  const auth = ctx.get("auth");
-  const aId = ctx.req.param("aId") ?? "";
+app.get(
+  "/",
+  validate("param", ParamsSchema),
+  async (ctx): HandlerResult<GetAgentConfigurationResponseBody> => {
+    const auth = ctx.get("auth");
+    const { aId } = ctx.req.valid("param");
 
-  const agent = await getAgentConfiguration(auth, {
-    agentId: aId,
-    variant: "full",
-  });
-  if (!agent || (!agent.canRead && !auth.isAdmin())) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "agent_configuration_not_found",
-        message: "The Agent you're trying to access was not found.",
+    const agent = await getAgentConfiguration(auth, {
+      agentId: aId,
+      variant: "full",
+    });
+    if (!agent || (!agent.canRead && !auth.isAdmin())) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "agent_configuration_not_found",
+          message: "The Agent you're trying to access was not found.",
+        },
+      });
+    }
+
+    return ctx.json({
+      agentConfiguration: {
+        ...agent,
+        lastAuthors: await getAgentRecentAuthors({ agent, auth }),
       },
     });
   }
-
-  return ctx.json({
-    agentConfiguration: {
-      ...agent,
-      lastAuthors: await getAgentRecentAuthors({ agent, auth }),
-    },
-  });
-});
+);
 
 app.patch(
   "/",
+  validate("param", ParamsSchema),
   validate("json", PostOrPatchAgentConfigurationRequestBodySchema),
   async (ctx): HandlerResult<GetAgentConfigurationResponseBody> => {
     const auth = ctx.get("auth");
-    const aId = ctx.req.param("aId") ?? "";
+    const { aId } = ctx.req.valid("param");
     const body = ctx.req.valid("json");
 
     const agent = await getAgentConfiguration(auth, {
@@ -137,9 +147,10 @@ app.patch(
 
 app.delete(
   "/",
+  validate("param", ParamsSchema),
   async (ctx): HandlerResult<DeleteAgentConfigurationResponseBody> => {
     const auth = ctx.get("auth");
-    const aId = ctx.req.param("aId") ?? "";
+    const { aId } = ctx.req.valid("param");
 
     const agent = await getAgentConfiguration(auth, {
       agentId: aId,

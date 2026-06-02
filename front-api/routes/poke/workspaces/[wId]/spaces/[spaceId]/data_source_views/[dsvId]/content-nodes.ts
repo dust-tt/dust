@@ -27,6 +27,11 @@ const ContentNodesBodySchema = z
     message: "Cannot fetch with parentId and internalIds at the same time.",
   });
 
+const ParamsSchema = z.object({
+  dsvId: z.string(),
+  spaceId: z.string(),
+});
+
 export type PokeGetDataSourceViewContentNodes = {
   nodes: DataSourceViewContentNode[];
   total: number;
@@ -39,11 +44,11 @@ const app = pokeApp();
 
 app.post(
   "/",
+  validate("param", ParamsSchema),
   validate("json", ContentNodesBodySchema),
   async (ctx): HandlerResult<PokeGetDataSourceViewContentNodes> => {
     const auth = ctx.get("auth");
-    const dsvId = ctx.req.param("dsvId") ?? "";
-    const spaceId = ctx.req.param("spaceId") ?? "";
+    const { dsvId, spaceId } = ctx.req.valid("param");
 
     const dataSourceView = await DataSourceViewResource.fetchById(auth, dsvId);
     if (

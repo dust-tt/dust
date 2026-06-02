@@ -11,6 +11,12 @@ import {
 } from "@app/types/assistant/models/togetherai";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  pId: z.string(),
+});
 
 export type GetProviderModelsResponseBody = {
   models: Array<{ id: string }>;
@@ -24,6 +30,7 @@ const app = workspaceApp();
 
 app.get(
   "/",
+  validate("param", ParamsSchema),
   async (
     ctx
   ): HandlerResult<
@@ -31,7 +38,7 @@ app.get(
   > => {
     const auth = ctx.get("auth");
     const owner = auth.getNonNullableWorkspace();
-    const pId = ctx.req.param("pId") ?? "";
+    const { pId } = ctx.req.valid("param");
 
     const provider = await ProviderModel.findOne({
       where: {

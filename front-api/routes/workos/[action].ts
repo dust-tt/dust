@@ -33,10 +33,16 @@ import { isString } from "@app/types/shared/utils/general";
 import { validateRelativePath } from "@app/types/shared/utils/url_utils";
 import { createHono } from "@front-api/lib/hono";
 import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import { OauthException } from "@workos-inc/node";
 import type { Context } from "hono";
 import { getCookie } from "hono/cookie";
 import { sealData } from "iron-session";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  action: z.string(),
+});
 
 function isValidScreenHint(
   screenHint: string | undefined
@@ -62,8 +68,8 @@ function redirectTo(ctx: Context, sanitizedReturnTo: string) {
 
 const app = createHono();
 
-app.all("/", async (ctx) => {
-  const action = ctx.req.param("action");
+app.all("/", validate("param", ParamsSchema), async (ctx) => {
+  const { action } = ctx.req.valid("param");
   switch (action) {
     case "login":
       return handleLogin(ctx);
