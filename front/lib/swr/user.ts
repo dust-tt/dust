@@ -14,6 +14,7 @@ import type { GetUserApprovalsResponseBody } from "@app/pages/api/w/[wId]/me/app
 import type { GetUserAwuStatusResponseBody } from "@app/pages/api/w/[wId]/me/awu-status";
 import type { GetPendingInvitationsResponseBody } from "@app/pages/api/w/[wId]/me/pending-invitations";
 import type { GetSlackNotificationResponseBody } from "@app/pages/api/w/[wId]/me/slack-notifications";
+import type { GetWorkspacePoolCreditStatusResponseBody } from "@app/pages/api/w/[wId]/pool-credit-status";
 import type { FavoritePlatform } from "@app/types/favorite_platforms";
 import type { JobType } from "@app/types/job_type";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -271,5 +272,27 @@ export function useUserAwuStatus({
   return {
     awuStatus: data?.status ?? "normal",
     isAwuStatusLoading: !error && !data && !disabled,
+  };
+}
+
+export function useWorkspacePoolCreditStatus({
+  owner,
+  disabled,
+}: {
+  owner: LightWorkspaceType;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const poolCreditStatusFetcher: Fetcher<GetWorkspacePoolCreditStatusResponseBody> =
+    fetcher;
+  const { data, error } = useSWRWithDefaults(
+    `/api/w/${owner.sId}/pool-credit-status`,
+    poolCreditStatusFetcher,
+    { disabled }
+  );
+
+  return {
+    poolCreditState: data?.poolCreditState ?? "active",
+    isPoolCreditStatusLoading: !error && !data && !disabled,
   };
 }

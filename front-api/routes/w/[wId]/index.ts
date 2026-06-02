@@ -48,6 +48,7 @@ import metronome from "./metronome";
 import models from "./models";
 import oauthSetup from "./oauth/[provider]/setup";
 import pods from "./pods";
+import poolCreditStatus from "./pool-credit-status";
 import projectTasks from "./project_tasks";
 import providerCredentials from "./provider_credentials";
 import providerCredential from "./provider_credentials/[providerId]";
@@ -244,6 +245,10 @@ app.use(
 );
 app.use(
   "/verification/*",
+  workspaceAuth({ doesNotRequireCanUseProduct: true })
+);
+app.use(
+  "/pool-credit-status/*",
   workspaceAuth({ doesNotRequireCanUseProduct: true })
 );
 app.use("/seats/count", workspaceAuth({ doesNotRequireCanUseProduct: true }));
@@ -594,6 +599,7 @@ app.route("/metronome", metronome);
 app.route("/models", models);
 app.route("/oauth/:provider/setup", oauthSetup);
 app.route("/pods", pods);
+app.route("/pool-credit-status", poolCreditStatus);
 app.route("/project_tasks", projectTasks);
 app.route("/provider_credentials/:providerId", providerCredential);
 app.route("/provider_credentials", providerCredentials);
