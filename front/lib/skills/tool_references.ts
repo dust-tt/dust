@@ -3,16 +3,13 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { generateShortBlockId } from "@app/lib/generate_short_block_id";
 import {
   extractToolTags,
-  parseToolTag,
   serializeToolTag,
-  TOOL_TAG_NAME,
   type ToolReference,
 } from "@app/lib/tools/format";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import * as cheerio from "cheerio";
 
 const ENABLED_TOOLS_LABEL = "Enabled tools:";
-const TOOL_ELEMENT_REGEX = /<tool\b([^>]*)>[\s\S]*?<\/tool>/g;
 
 export function toolRefsFromMCPViews(
   views: { sId: string; toJSON(): MCPServerViewType }[]
@@ -33,18 +30,12 @@ function getMissingToolRefs(
   tools: ToolReference[]
 ): ToolReference[] {
   const referencedToolIds = new Set(
-    extractToolRefs(content ?? "").map((tool) => tool.id)
+    extractToolTags(content ?? "", { includeHtmlElements: true }).map(
+      (tool) => tool.id
+    )
   );
 
   return tools.filter((tool) => !referencedToolIds.has(tool.id));
-}
-
-function extractToolRefs(content: string): ToolReference[] {
-  const htmlToolRefs = [...content.matchAll(TOOL_ELEMENT_REGEX)]
-    .map((match) => parseToolTag(`<${TOOL_TAG_NAME}${match[1].trimEnd()} />`))
-    .filter((tool): tool is ToolReference => tool !== null);
-
-  return [...extractToolTags(content), ...htmlToolRefs];
 }
 
 function renderMarkdownTools(tools: ToolReference[]): string {
@@ -52,11 +43,7 @@ function renderMarkdownTools(tools: ToolReference[]): string {
 }
 
 function renderHtmlTools(tools: ToolReference[]): string {
-  return tools.map(renderHtmlTool).join(" ");
-}
-
-function renderHtmlTool(tool: ToolReference): string {
-  return serializeToolTag(tool).replace(/\s\/>$/, `></${TOOL_TAG_NAME}>`);
+  return tools.map((tool) => serializeToolTag(tool, { html: true })).join(" ");
 }
 
 function appendToolsToMarkdown(
