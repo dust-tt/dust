@@ -496,12 +496,18 @@ export async function setupEgressForwarder(
     auth.getNonNullableWorkspace().sId
   );
 
-  // The token write gates the rest: in the original sequential flow a token
-  // failure returned before any secrets/manifest hit disk, so we keep that
-  // contract by awaiting it first. This matters on the restart path, where a
-  // token failure must leave the existing forwarder's secrets/manifest files
-  // untouched rather than rewriting them under a still-running forwarder while
-  // setup returns Err.
+  // Token, secrets, and manifest are written in order, each gated on the
+  // previous succeeding, mirroring the original sequential flow exactly: any
+  // write failure returns before the next file is touched. This keeps the
+  // restart path safe — a failed write leaves the remaining files (and the
+  // still-running forwarder reading them) untouched rather than rewriting some
+  // of them under a forwarder that setup then declines to replace.
+  //
+  // These stay sequential on purpose: parallelizing them would let a later
+  // file (e.g. the manifest) land even when an earlier write fails, diverging
+  // the sandbox-visible state from what the forwarder actually loaded. The big
+  // round-trip wins in this path come from the merged token install and the
+  // GCS changes, not from overlapping these three.
   const tokenWriteResult = await traceSandboxStartupPhase(
     "egress.write_token",
     () => writeEgressTokenFile(auth, sandbox, token)
@@ -510,21 +516,20 @@ export async function setupEgressForwarder(
     return tokenWriteResult;
   }
 
-  // Secrets and manifest are independent files with no ordering between them,
-  // so write them concurrently once the token is in place. The forwarder start
-  // below reads both, so it waits for these writes to finish.
-  const [secretsWriteResult, manifestWriteResult] = await Promise.all([
-    traceSandboxStartupPhase("egress.write_secrets", () =>
-      writeEgressSecretsFile(auth, sandbox)
-    ),
-    traceSandboxStartupPhase("egress.write_manifest", () =>
-      writeSandboxEnvManifestFile(auth, sandbox)
-    ),
-  ]);
-  for (const writeResult of [secretsWriteResult, manifestWriteResult]) {
-    if (writeResult.isErr()) {
-      return writeResult;
-    }
+  const secretsWriteResult = await traceSandboxStartupPhase(
+    "egress.write_secrets",
+    () => writeEgressSecretsFile(auth, sandbox)
+  );
+  if (secretsWriteResult.isErr()) {
+    return secretsWriteResult;
+  }
+
+  const manifestWriteResult = await traceSandboxStartupPhase(
+    "egress.write_manifest",
+    () => writeSandboxEnvManifestFile(auth, sandbox)
+  );
+  if (manifestWriteResult.isErr()) {
+    return manifestWriteResult;
   }
 
   if (restartExisting) {

@@ -421,6 +421,10 @@ describe("sandbox egress helpers", () => {
       expect(result.error.message).toContain("secrets write failed");
     }
     expect(sandbox.execRoot).toHaveBeenCalledTimes(1);
+    // The writes are sequentially gated: a secrets failure must short-circuit
+    // before the manifest is touched, so the sandbox-visible manifest never
+    // diverges from what the forwarder loaded on the restart path.
+    expect(mockWriteSandboxEnvManifestFile).not.toHaveBeenCalled();
   });
 
   it("surfaces failures from writing the environment manifest file", async () => {
