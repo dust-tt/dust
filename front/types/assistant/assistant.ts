@@ -79,6 +79,12 @@ export enum GLOBAL_AGENTS_SID {
   DUST_SUNDAE = "dust-sundae",
   DUST_SUNDAE_MEDIUM = "dust-sundae-medium",
   DUST_SUNDAE_HIGH = "dust-sundae-high",
+  DUST_PISTACHE = "dust-pistache",
+  DUST_PISTACHE_MEDIUM = "dust-pistache-medium",
+  DUST_PISTACHE_HIGH = "dust-pistache-high",
+  DUST_CHALOM = "dust-chalom",
+  DUST_CHALOM_MEDIUM = "dust-chalom-medium",
+  DUST_CHALOM_HIGH = "dust-chalom-high",
   DUST_ANT = "dust-ant",
   DUST_ANT_MEDIUM = "dust-ant-medium",
   DUST_ANT_HIGH = "dust-ant-high",
@@ -215,6 +221,12 @@ const GLOBAL_AGENTS_SORT_ORDER: string[] = [
   GLOBAL_AGENTS_SID.DUST_SUNDAE,
   GLOBAL_AGENTS_SID.DUST_SUNDAE_MEDIUM,
   GLOBAL_AGENTS_SID.DUST_SUNDAE_HIGH,
+  GLOBAL_AGENTS_SID.DUST_PISTACHE,
+  GLOBAL_AGENTS_SID.DUST_PISTACHE_MEDIUM,
+  GLOBAL_AGENTS_SID.DUST_PISTACHE_HIGH,
+  GLOBAL_AGENTS_SID.DUST_CHALOM,
+  GLOBAL_AGENTS_SID.DUST_CHALOM_MEDIUM,
+  GLOBAL_AGENTS_SID.DUST_CHALOM_HIGH,
 ];
 const globalAgentIndexMap = new Map(
   GLOBAL_AGENTS_SORT_ORDER.map((id, index) => [id, index])

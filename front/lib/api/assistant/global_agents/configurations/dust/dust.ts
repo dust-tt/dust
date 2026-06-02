@@ -960,6 +960,9 @@ type CustomModelDustGlobalAgentConfig = {
   preferredReasoningEffort: ReasoningEffort;
 };
 
+// `customModelIndex` is a position into `CUSTOM_MODEL_CONFIGS`, which is generated
+// at build time from the infra custom-models config (GCS). It must stay in sync with
+// the ordering of models in that config: shifting the array silently rebinds agents.
 export const CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS = new Map<
   GLOBAL_AGENTS_SID,
   CustomModelDustGlobalAgentConfig
@@ -1057,6 +1060,54 @@ export const CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS = new Map<
     {
       name: "dust-sundae-high",
       customModelIndex: 2,
+      preferredReasoningEffort: "high",
+    },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_PISTACHE,
+    {
+      name: "dust-pistache",
+      customModelIndex: 3,
+      preferredReasoningEffort: "light",
+    },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_PISTACHE_MEDIUM,
+    {
+      name: "dust-pistache-medium",
+      customModelIndex: 3,
+      preferredReasoningEffort: "medium",
+    },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_PISTACHE_HIGH,
+    {
+      name: "dust-pistache-high",
+      customModelIndex: 3,
+      preferredReasoningEffort: "high",
+    },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_CHALOM,
+    {
+      name: "dust-chalom",
+      customModelIndex: 4,
+      preferredReasoningEffort: "light",
+    },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_CHALOM_MEDIUM,
+    {
+      name: "dust-chalom-medium",
+      customModelIndex: 4,
+      preferredReasoningEffort: "medium",
+    },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_CHALOM_HIGH,
+    {
+      name: "dust-chalom-high",
+      customModelIndex: 4,
       preferredReasoningEffort: "high",
     },
   ],
