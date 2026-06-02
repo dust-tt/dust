@@ -294,49 +294,38 @@ makeScript(
     },
   },
   async ({ outputFile, workspaceId }, logger) => {
-    try {
-      const workspaces = await fetchWorkspaces(workspaceId ?? null);
-      const now = new Date();
-      const editors: EditorWithSkills[] = [];
+    const workspaces = await fetchWorkspaces(workspaceId ?? null);
+    const now = new Date();
+    const editors: EditorWithSkills[] = [];
 
-      for (const workspace of workspaces) {
-        editors.push(
-          ...(await fetchSkillEditorsForWorkspace({
-            now,
-            workspace,
-          }))
-        );
-      }
-
-      const records = buildCsvRecords(editors);
-      const csv = stringify(records, {
-        columns: [
-          { key: "workspace_id", header: "workspace_id" },
-          { key: "workspace_name", header: "workspace_name" },
-          { key: "editor_user_id", header: "editor_user_id" },
-          { key: "editor_email", header: "editor_email" },
-          { key: "editor_name", header: "editor_name" },
-          { key: "skill_count", header: "skill_count" },
-          { key: "skill_urls", header: "skill_urls" },
-          { key: "skill_names", header: "skill_names" },
-        ],
-        header: true,
-      });
-
-      if (outputFile) {
-        await writeFile(outputFile, csv, "utf-8");
-      } else {
-        process.stdout.write(csv);
-      }
-    } catch (error) {
-      const normalizedError = normalizeError(error);
-      logger.error(
-        { err: normalizedError, workspaceId },
-        "Failed to extract skill editors"
+    for (const workspace of workspaces) {
+      editors.push(
+        ...(await fetchSkillEditorsForWorkspace({
+          now,
+          workspace,
+        }))
       );
-      throw normalizedError;
-    } finally {
-      await frontSequelize.close();
+    }
+
+    const records = buildCsvRecords(editors);
+    const csv = stringify(records, {
+      columns: [
+        { key: "workspace_id", header: "workspace_id" },
+        { key: "workspace_name", header: "workspace_name" },
+        { key: "editor_user_id", header: "editor_user_id" },
+        { key: "editor_email", header: "editor_email" },
+        { key: "editor_name", header: "editor_name" },
+        { key: "skill_count", header: "skill_count" },
+        { key: "skill_urls", header: "skill_urls" },
+        { key: "skill_names", header: "skill_names" },
+      ],
+      header: true,
+    });
+
+    if (outputFile) {
+      await writeFile(outputFile, csv, "utf-8");
+    } else {
+      process.stdout.write(csv);
     }
   }
 );
