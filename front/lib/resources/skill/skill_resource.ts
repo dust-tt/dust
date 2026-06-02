@@ -254,7 +254,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return this.globalSId;
     }
 
-    return SkillResource.modelIdToSId({
+    return makeSId("skill", {
       id: this.id,
       workspaceId: this.workspaceId,
     });
@@ -960,7 +960,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
 
     const childSkillIds = skillReferences.map((reference) =>
-      SkillResource.skillReferenceChildId(reference, workspace.id)
+      this.skillReferenceChildId(reference, workspace.id)
     );
     const childSkills = await this.fetchByIds(
       auth,
@@ -977,7 +977,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         parentSkill.sId,
         removeNulls(
           (referencesByParentSkillId[parentSkill.id] ?? []).map((reference) => {
-            const childSkillId = SkillResource.skillReferenceChildId(
+            const childSkillId = this.skillReferenceChildId(
               reference,
               workspace.id
             );
@@ -1003,7 +1003,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
 
     if (reference.childCustomSkillId !== null) {
-      return SkillResource.modelIdToSId({
+      return this.modelIdToSId({
         id: reference.childCustomSkillId,
         workspaceId,
       });
@@ -1448,7 +1448,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       isPodConversation(conversation) &&
       !systemSkills.some((s) => s.globalSId === "projects") &&
       !conversationEnabledSkills.some((s) => s.globalSId === "projects")
-        ? await SkillResource.fetchBySkillReferences(
+        ? await this.fetchBySkillReferences(
             auth,
             [{ globalSkillId: "projects", customSkillId: null }],
             { agentLoopData }
@@ -2168,10 +2168,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     const usedBySkillsByChildSkillId = new Map<string, UsedBySkillType[]>();
     for (const reference of skillReferences) {
-      const childSkillId = SkillResource.skillReferenceChildId(
-        reference,
-        workspace.id
-      );
+      const childSkillId = this.skillReferenceChildId(reference, workspace.id);
       const parentSkill = parentSkillByModelId.get(reference.parentSkillId);
       if (
         !childSkillId ||
@@ -2557,14 +2554,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
               newName: name,
             })
           : referencingSkill.instructionsHtml;
-      const instructions = SkillResource.replaceSkillReferenceTags(
+      const instructions = this.replaceSkillReferenceTags(
         renamedInstructions,
         target,
         referencingSkill.requestedSpaceIds
       );
       const instructionsHtml =
         renamedInstructionsHtml !== null
-          ? SkillResource.replaceSkillReferenceTags(
+          ? this.replaceSkillReferenceTags(
               renamedInstructionsHtml,
               target,
               referencingSkill.requestedSpaceIds,
@@ -3317,7 +3314,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
   }
 
-  private static replaceSkillReferenceTags(
+  private replaceSkillReferenceTags(
     content: string,
     targets: ReadonlyMap<string, SkillReferenceTarget>,
     parentRequestedSpaceIds: readonly ModelId[],
@@ -3383,7 +3380,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return;
     }
 
-    const customSkills = await SkillConfigurationModel.findAll({
+    const customSkills = await this.model.findAll({
       where: {
         id: [...customSkillIdByModelId.keys()],
         workspaceId: workspace.id,
@@ -3411,14 +3408,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       ),
     ]);
 
-    const instructions = SkillResource.replaceSkillReferenceTags(
+    const instructions = this.replaceSkillReferenceTags(
       this.instructions,
       targets,
       this.requestedSpaceIds
     );
     const instructionsHtml =
       this.instructionsHtml !== null
-        ? SkillResource.replaceSkillReferenceTags(
+        ? this.replaceSkillReferenceTags(
             this.instructionsHtml,
             targets,
             this.requestedSpaceIds,
