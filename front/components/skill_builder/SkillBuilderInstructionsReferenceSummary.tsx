@@ -23,7 +23,7 @@ interface SkillBuilderInstructionsReferenceSummaryProps {
   tools: BuilderAction[];
 }
 
-type ReferenceSummaryItem =
+export type ReferenceSummaryItem =
   | {
   id: string;
   kind: "knowledge";
