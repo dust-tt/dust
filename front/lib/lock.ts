@@ -63,9 +63,9 @@ export const executeWithLock = async <T>(
   const client = await getRedisStreamClient({ origin: "lock" });
 
   const acquire = async (): Promise<string | undefined> => {
-    const start = Date.now();
+    const startMs = Date.now();
     let acquired: string | undefined;
-    while (Date.now() - start < timeoutMs) {
+    while (Date.now() - startMs < timeoutMs) {
       // Try to acquire the lock
       acquired = await distributedLock(client, lockName);
       if (acquired) {
