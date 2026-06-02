@@ -594,12 +594,14 @@ function PeoplePage({
   setMembers,
   groups,
   setGroups,
+  onNavigate,
 }: {
   role: Role;
   members: MemberRow[];
   setMembers: (m: MemberRow[]) => void;
   groups: GroupRow[];
   setGroups: (g: GroupRow[]) => void;
+  onNavigate: (page: AdminPage) => void;
 }) {
   const [sub, setSub] = useState<"members" | "groups">("members");
   const [search, setSearch] = useState("");
@@ -883,6 +885,7 @@ function PeoplePage({
                   <button
                     type="button"
                     className="s-underline s-font-medium s-text-foreground dark:s-text-foreground-night"
+                    onClick={() => onNavigate("identity")}
                   >
                     Identity &amp; Provisioning → User provisioning
                   </button>
@@ -2665,6 +2668,7 @@ export default function AdminGovernance() {
             setMembers={setMembers}
             groups={groups}
             setGroups={setGroups}
+            onNavigate={setActivePage}
           />
         ) : effectivePage === "identity" ? (
           <IdentityPage role={role} />
