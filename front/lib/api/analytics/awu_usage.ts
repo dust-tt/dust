@@ -60,11 +60,17 @@ const USAGE_TYPE_LABELS: Record<string, string> = {
   free: "Free",
 };
 
-// Human-readable labels for the "tool_category" group key values.
+// Human-readable labels for the "tool_category" grouping. Besides the real
+// tool_category values, it carries a synthetic "llm" bucket for all LLM usage,
+// so the breakdown reads LLM / Basic tools / Advanced tools.
 const TOOL_CATEGORY_LABELS: Record<string, string> = {
+  llm: "LLM",
   basic: "Basic tools",
   advanced: "Advanced tools",
 };
+
+// Synthetic bucket key for the LLM slice of the tool_category grouping.
+const LLM_BUCKET_KEY = "llm";
 
 // Primary Metronome event property for each grouping (used for error
 // reporting). The full per-grouping query config lives in getLlmQueryConfig.
@@ -200,19 +206,27 @@ export function calculateAwuCreditTotalsFromBalances(
 }
 
 // LLM (cost_awu) query config per grouping. cost_awu is already AWU credits.
-// Returns null when the grouping doesn't apply to LLM usage (e.g. tool_category,
-// which only exists on tool events) — that grouping is then tools-only.
 function getLlmQueryConfig(groupBy: AwuUsageGroupByType): {
   groupKey: string[];
   bucketProp: string;
   groupFilters?: Record<string, string[]>;
   // Bucket keys to drop after aggregation (e.g. user traffic has no api_key).
   dropKeys?: string[];
-} | null {
+  // When set, all LLM entries collapse into this single bucket key regardless
+  // of their group value. Used by tool_category to surface one "LLM" slice
+  // alongside the per-category tool slices.
+  bucketKeyOverride?: string;
+} {
   switch (groupBy) {
     case "tool_category":
-      // LLM events carry no tool_category; this grouping shows tools only.
-      return null;
+      // LLM events carry no tool_category, so the whole LLM total is shown as a
+      // single "LLM" slice next to the Basic/Advanced tool slices. Query by a
+      // low-cardinality registered key and collapse it into one bucket.
+      return {
+        groupKey: [USAGE_TYPE_GROUP_KEY],
+        bucketProp: USAGE_TYPE_GROUP_KEY,
+        bucketKeyOverride: LLM_BUCKET_KEY,
+      };
     case "user":
       // Group by user, excluding programmatic traffic (not user-attributable).
       return {
@@ -298,12 +312,14 @@ interface GroupedUsageEntry {
 }
 
 // Accumulate grouped Metronome entries into bucketKey → (timestamp → value).
-// `weight` returns the value to add, or null to skip the entry.
+// `weight` returns the value to add, or null to skip the entry. When
+// `bucketKeyOverride` is set, every entry is collapsed into that single bucket.
 function bucketGroupedEntries(
   entries: GroupedUsageEntry[],
   bucketProp: string,
   weight: (entry: GroupedUsageEntry) => number | null,
-  needsFourHourAggregation: boolean
+  needsFourHourAggregation: boolean,
+  bucketKeyOverride?: string
 ): Map<string, Map<number, number>> {
   const map = new Map<string, Map<number, number>>();
   for (const entry of entries) {
@@ -311,7 +327,7 @@ function bucketGroupedEntries(
     if (w === null) {
       continue;
     }
-    const key = entry.group?.[bucketProp] ?? UNKNOWN_KEY;
+    const key = bucketKeyOverride ?? entry.group?.[bucketProp] ?? UNKNOWN_KEY;
     const ts = new Date(entry.startingOn).getTime();
     let tsMap = map.get(key);
     if (!tsMap) {
@@ -481,17 +497,15 @@ export async function getAwuUsage(
     const toolCfg = getToolQueryConfig(groupBy);
 
     const [llmResult, toolResult] = await Promise.all([
-      llmCfg
-        ? listMetronomeUsageWithGroups({
-            customerId: metronomeCustomerId,
-            billableMetricId: awuMetricId,
-            startingOn,
-            endingBefore,
-            windowSize: metronomeApiWindowSize,
-            groupKey: llmCfg.groupKey,
-            groupFilters: llmCfg.groupFilters,
-          })
-        : null,
+      listMetronomeUsageWithGroups({
+        customerId: metronomeCustomerId,
+        billableMetricId: awuMetricId,
+        startingOn,
+        endingBefore,
+        windowSize: metronomeApiWindowSize,
+        groupKey: llmCfg.groupKey,
+        groupFilters: llmCfg.groupFilters,
+      }),
       toolCfg
         ? listMetronomeUsageWithGroups({
             customerId: metronomeCustomerId,
@@ -505,7 +519,7 @@ export async function getAwuUsage(
         : null,
     ]);
 
-    if (llmResult && llmResult.isErr()) {
+    if (llmResult.isErr()) {
       const msg = llmResult.error.message;
       if (msg.includes("group") || msg.includes("not found")) {
         return new Err({
@@ -519,41 +533,24 @@ export async function getAwuUsage(
         message: `Failed to retrieve AWU grouped usage: ${msg}`,
       });
     }
+    // Tool usage is supplementary: if its query fails (e.g. the
+    // [dimension, tool_category] group key isn't present on this environment's
+    // metric yet), log and fall back to LLM-only rather than failing the chart.
     if (toolResult && toolResult.isErr()) {
-      // When tools are the only data source (tools-only grouping), a tool query
-      // failure is fatal; otherwise tool usage is supplementary, so log and fall
-      // back to LLM-only rather than failing the chart.
-      if (!llmCfg) {
-        const msg = toolResult.error.message;
-        if (msg.includes("group") || msg.includes("not found")) {
-          return new Err({
-            type: "invalid_group_key",
-            groupBy,
-            eventProperty: GROUP_BY_TO_EVENT_PROPERTY[groupBy],
-          });
-        }
-        return new Err({
-          type: "internal_error",
-          message: `Failed to retrieve tool usage: ${msg}`,
-        });
-      }
       logger.warn(
         { error: toolResult.error, groupBy, workspaceId: workspace.sId },
         "[Metronome] Tool usage query failed; falling back to LLM-only."
       );
     }
 
-    // LLM cost_awu is already AWU credits. Empty when the grouping is
-    // tools-only (llmCfg === null).
-    const mergedGroupMap =
-      llmCfg && llmResult && llmResult.isOk()
-        ? bucketGroupedEntries(
-            llmResult.value,
-            llmCfg.bucketProp,
-            (entry) => entry.value ?? 0,
-            needsFourHourAggregation
-          )
-        : new Map<string, Map<number, number>>();
+    // LLM cost_awu is already AWU credits.
+    const mergedGroupMap = bucketGroupedEntries(
+      llmResult.value,
+      llmCfg.bucketProp,
+      (entry) => entry.value ?? 0,
+      needsFourHourAggregation,
+      llmCfg.bucketKeyOverride
+    );
 
     // Tool invocations are a count; weight per category into AWU credits and
     // merge into the same buckets.
@@ -573,7 +570,7 @@ export async function getAwuUsage(
       mergeBuckets(mergedGroupMap, toolMap);
     }
 
-    for (const key of llmCfg?.dropKeys ?? []) {
+    for (const key of llmCfg.dropKeys ?? []) {
       mergedGroupMap.delete(key);
     }
 
