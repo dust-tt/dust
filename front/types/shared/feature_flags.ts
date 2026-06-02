@@ -167,10 +167,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Access to legacy Dust Apps (editor and associated tools)",
     stage: "on_demand",
   },
-  nested_skills: {
-    description: "Enable nested skills",
-    stage: "dust_only",
-  },
   power_bi_mcp: {
     description: "Power BI MCP tool for querying semantic models and DAX",
     stage: "on_demand",

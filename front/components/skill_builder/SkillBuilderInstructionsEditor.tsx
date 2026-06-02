@@ -284,7 +284,6 @@ export function SkillBuilderInstructionsEditor({
   const { hasFeature } = useFeatureFlags();
   const hasReinforcementFeature =
     hasFeature("reinforced_agents") && hasFeature("reinforcement_ui");
-  const enableSkillReferences = hasFeature("nested_skills");
 
   const { field: instructionsField, fieldState: instructionsFieldState } =
     useController<SkillBuilderFormData, typeof INSTRUCTIONS_FIELD_NAME>({
@@ -343,12 +342,11 @@ export function SkillBuilderInstructionsEditor({
   const displayError =
     !!instructionsFieldState.error || !!attachedKnowledgeFieldState.error;
   const hasInstructionReferenceSummary =
-    enableSkillReferences &&
-    ((attachedKnowledgeField.value?.length ?? 0) > 0 ||
-      referencedSkills.length > 0 ||
-      tools.length > 0 ||
-      (instructionsField.value?.includes("<knowledge ") ?? false) ||
-      (instructionsField.value?.includes("<tool ") ?? false));
+    (attachedKnowledgeField.value?.length ?? 0) > 0 ||
+    referencedSkills.length > 0 ||
+    tools.length > 0 ||
+    (instructionsField.value?.includes("<knowledge ") ?? false) ||
+    (instructionsField.value?.includes("<tool ") ?? false);
 
   const syncAttachedKnowledgeFromEditor = useCallback(
     (editor: Editor) => {
@@ -414,14 +412,13 @@ export function SkillBuilderInstructionsEditor({
       );
       instructionsHtmlField.onChange(
         sanitizeSkillInstructionsHtml(editor.getHTML(), {
-          enableSkillReferences,
+          enableSkillReferences: true,
         })
       );
       syncAttachedKnowledgeFromEditor(editor);
       syncInlineReferencesFromEditor(editor);
     },
     [
-      enableSkillReferences,
       instructionsField.onChange,
       instructionsHtmlField.onChange,
       syncAttachedKnowledgeFromEditor,
@@ -533,7 +530,7 @@ export function SkillBuilderInstructionsEditor({
     isReadOnly: hasSuggestions,
     skillReferences: {
       currentSkillId: skillId,
-      enableSkillReferences,
+      enableSkillReferences: true,
       onSkillDetails: handleSkillDetails,
       onSkillNodeDetails: setSelectedSkillIdForDetails,
       onSelectSkill: handleSelectSkillReference,
@@ -597,12 +594,12 @@ export function SkillBuilderInstructionsEditor({
   }, [editor, handleAddKnowledge, onAddKnowledge]);
 
   const handleOpenCapabilities = useCallback(() => {
-    if (!editor || !enableSkillReferences) {
+    if (!editor) {
       return;
     }
 
     editor.commands.openCapabilitiesSlashCommand();
-  }, [editor, enableSkillReferences]);
+  }, [editor]);
 
   const handleReferenceClick = useCallback(
     (target: ReferenceSummaryItem) => {
@@ -649,15 +646,10 @@ export function SkillBuilderInstructionsEditor({
   );
 
   useEffect(() => {
-    if (editor && enableSkillReferences && onOpenCapabilities) {
+    if (editor && onOpenCapabilities) {
       onOpenCapabilities(handleOpenCapabilities);
     }
-  }, [
-    editor,
-    enableSkillReferences,
-    handleOpenCapabilities,
-    onOpenCapabilities,
-  ]);
+  }, [editor, handleOpenCapabilities, onOpenCapabilities]);
 
   // Register a callback that the suggestions panel can call to accept a
   // suggestion directly via the editor's ProseMirror commands.
@@ -824,12 +816,12 @@ export function SkillBuilderInstructionsEditor({
 
     const incomingHtml = instructionsHtmlField.value;
     const currentHtml = sanitizeSkillInstructionsHtml(editor.getHTML(), {
-      enableSkillReferences,
+      enableSkillReferences: true,
     });
     if (currentHtml !== incomingHtml) {
       editor.commands.setContent(incomingHtml, { emitUpdate: false });
     }
-  }, [editor, enableSkillReferences, isDiffMode, instructionsHtmlField.value]);
+  }, [editor, isDiffMode, instructionsHtmlField.value]);
 
   useEffect(() => {
     if (!editor || editor.isDestroyed) {
@@ -851,7 +843,7 @@ export function SkillBuilderInstructionsEditor({
 
         editor.commands.setContent(
           preprocessMarkdownForEditor(currentText, {
-            enableSkillReferences,
+            enableSkillReferences: true,
           }),
           {
             emitUpdate: false,
@@ -860,10 +852,10 @@ export function SkillBuilderInstructionsEditor({
         );
         editor.commands.applyDiff(
           preprocessMarkdownForEditor(compareText, {
-            enableSkillReferences,
+            enableSkillReferences: true,
           }),
           preprocessMarkdownForEditor(currentText, {
-            enableSkillReferences,
+            enableSkillReferences: true,
           })
         );
         editor.setEditable(false);
@@ -878,7 +870,7 @@ export function SkillBuilderInstructionsEditor({
         } else {
           editor.commands.setContent(
             preprocessMarkdownForEditor(instructionsField.value ?? "", {
-              enableSkillReferences,
+              enableSkillReferences: true,
             }),
             {
               emitUpdate: false,
@@ -897,7 +889,6 @@ export function SkillBuilderInstructionsEditor({
   }, [
     compareVersion,
     editor,
-    enableSkillReferences,
     instructionsField.value,
     instructionsHtmlField.value,
   ]);
@@ -910,17 +901,15 @@ export function SkillBuilderInstructionsEditor({
             editor={editor}
             isReadOnly={hasSuggestions}
           />
-          {enableSkillReferences && (
-            <SkillBuilderInstructionsReferenceSummary
-              attachedKnowledge={attachedKnowledgeField.value}
-              containerRef={instructionReferenceSummaryRef}
-              hasError={displayError}
-              instructions={instructionsField.value ?? ""}
-              onReferenceClick={handleReferenceClick}
-              referencedSkills={referencedSkills}
-              tools={tools}
-            />
-          )}
+          <SkillBuilderInstructionsReferenceSummary
+            attachedKnowledge={attachedKnowledgeField.value}
+            containerRef={instructionReferenceSummaryRef}
+            hasError={displayError}
+            instructions={instructionsField.value ?? ""}
+            onReferenceClick={handleReferenceClick}
+            referencedSkills={referencedSkills}
+            tools={tools}
+          />
         </div>
 
         {instructionsFieldState.error && (

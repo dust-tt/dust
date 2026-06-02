@@ -6,7 +6,7 @@ import {
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
-import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { formatSkillContext } from "@app/lib/reinforcement/format_skill_context";
 import { buildReinforcedSkillsLLMParams } from "@app/lib/reinforcement/run_reinforced_analysis";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -103,7 +103,7 @@ For "sourceSuggestionIds": You MUST include the sIds of ALL the source suggestio
 }
 
 export function buildSkillAggregationSystemPrompt({
-  useInlineTools = false,
+  useInlineTools = true,
 }: {
   useInlineTools?: boolean;
 } = {}): string {
@@ -154,7 +154,7 @@ export function buildSkillAggregationPrompt(
     pending: SkillSuggestionType[];
     rejected: SkillSuggestionType[];
   },
-  { useInlineTools = false }: { useInlineTools?: boolean } = {}
+  { useInlineTools = true }: { useInlineTools?: boolean } = {}
 ): { systemPrompt: string; userMessage: string } {
   const systemPrompt = buildSkillAggregationSystemPrompt({ useInlineTools });
 
@@ -238,8 +238,7 @@ export async function loadSkillAggregationContext(
   );
 
   const skillType = skill.toJSON(auth);
-  const resolvedUseInlineTools =
-    useInlineTools ?? (await getFeatureFlags(auth)).includes("nested_skills");
+  const resolvedUseInlineTools = useInlineTools ?? true;
 
   const prompt = buildSkillAggregationPrompt(
     skillType,

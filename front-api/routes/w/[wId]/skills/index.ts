@@ -15,7 +15,6 @@ import logger from "@app/logger/logger";
 import {
   SKILL_REINFORCEMENT_MODES,
   type SkillWithoutInstructionsAndToolsWithRelationsType,
-  type UsedBySkillType,
 } from "@app/types/assistant/skill_configuration";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { isBuilder } from "@app/types/user";
@@ -127,9 +126,6 @@ app.get(
     });
 
     if (withRelations === "true") {
-      const featureFlags = await getFeatureFlags(auth);
-      const includeNestedSkills = featureFlags.includes("nested_skills");
-
       const extendedSkills = await SkillResource.fetchByIds(
         auth,
         removeNulls(uniq(skills.map((s) => s.extendedSkillId)))
@@ -140,16 +136,14 @@ app.get(
         auth,
         skills
       );
-      let childSkillsMap = new Map<string, SkillResource[]>();
-      if (includeNestedSkills) {
-        childSkillsMap = await SkillResource.batchFetchChildSkills(
-          auth,
-          skills
-        );
-      }
-      const usedBySkillsMap = includeNestedSkills
-        ? await SkillResource.batchFetchUsedBySkills(auth, skills)
-        : new Map<string, UsedBySkillType[]>();
+      const childSkillsMap = await SkillResource.batchFetchChildSkills(
+        auth,
+        skills
+      );
+      const usedBySkillsMap = await SkillResource.batchFetchUsedBySkills(
+        auth,
+        skills
+      );
 
       const extendedSkillsMap = new Map(extendedSkills.map((s) => [s.sId, s]));
 
@@ -165,13 +159,11 @@ app.get(
         const editors = editorsMap.get(sc.sId) ?? null;
         const editedByUser = editedByUsersMap.get(sc.sId) ?? null;
         const usedBySkills = usedBySkillsMap.get(sc.sId) ?? [];
-        const usageWithSkills = includeNestedSkills
-          ? {
-              ...usage,
-              count: usage.count + usedBySkills.length,
-              skills: usedBySkills,
-            }
-          : usage;
+        const usageWithSkills = {
+          ...usage,
+          count: usage.count + usedBySkills.length,
+          skills: usedBySkills,
+        };
 
         return {
           ...skillWithoutInstructionsAndTools,
@@ -183,22 +175,18 @@ app.get(
               ? (extendedSkillsMap.get(sc.extendedSkillId)?.toJSON(auth) ??
                 null)
               : null,
-            ...(includeNestedSkills
-              ? {
-                  childSkills: (childSkillsMap.get(sc.sId) ?? []).map(
-                    (childSkill) => {
-                      const {
-                        instructions,
-                        instructionsHtml,
-                        tools,
-                        ...childSkillWithoutInstructionsAndTools
-                      } = childSkill.toJSON(auth);
+            childSkills: (childSkillsMap.get(sc.sId) ?? []).map(
+              (childSkill) => {
+                const {
+                  instructions,
+                  instructionsHtml,
+                  tools,
+                  ...childSkillWithoutInstructionsAndTools
+                } = childSkill.toJSON(auth);
 
-                      return childSkillWithoutInstructionsAndTools;
-                    }
-                  ),
-                }
-              : {}),
+                return childSkillWithoutInstructionsAndTools;
+              }
+            ),
           },
         } satisfies SkillWithoutInstructionsAndToolsWithRelationsType;
       });
@@ -355,9 +343,8 @@ app.post(
       });
     }
 
-    const featureFlags = await getFeatureFlags(auth);
-    const enableSkillReferences = featureFlags.includes("nested_skills");
     const referencedSkillIds = uniq(body.referencedSkillIds ?? []);
+    const featureFlags = await getFeatureFlags(auth);
 
     // Validate file attachments if provided (gated behind sandbox_tools).
     let files: FileResource[] | undefined;
@@ -441,7 +428,6 @@ app.post(
         mcpServerViews,
         attachedKnowledge: attachedKnowledgeWithDataSourceViews,
         fileAttachments: files,
-        enableSkillReferences,
         referencedSkillIds,
       }
     );

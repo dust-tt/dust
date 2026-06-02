@@ -1,5 +1,5 @@
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
-import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { generateShortBlockId } from "@app/lib/generate_short_block_id";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -26,7 +26,6 @@ type WorkspaceStats = {
   changed: number;
   errors: number;
   processed: number;
-  skippedWithoutFlag: number;
   skippedWithoutTools: number;
 };
 
@@ -34,24 +33,12 @@ async function processWorkspace(
   workspace: LightWorkspaceType,
   {
     execute,
-    includeUnflagged,
   }: {
     execute: boolean;
-    includeUnflagged: boolean;
   },
   logger: Logger
 ): Promise<WorkspaceStats> {
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-  const hasNestedSkills = await hasFeatureFlag(auth, "nested_skills");
-  if (!hasNestedSkills && !includeUnflagged) {
-    return {
-      changed: 0,
-      errors: 0,
-      processed: 0,
-      skippedWithoutFlag: 1,
-      skippedWithoutTools: 0,
-    };
-  }
 
   const skills = await SkillResource.listByWorkspace(auth, {
     onlyCustom: true,
@@ -62,7 +49,6 @@ async function processWorkspace(
     changed: 0,
     errors: 0,
     processed: skills.length,
-    skippedWithoutFlag: 0,
     skippedWithoutTools: 0,
   };
 
@@ -204,28 +190,18 @@ makeScript(
       describe: "Resume from this numeric workspace id.",
       type: "number",
     },
-    includeUnflagged: {
-      default: false,
-      describe:
-        "Also process workspaces without the nested_skills feature flag.",
-      type: "boolean",
-    },
     wId: {
       describe:
         "Process skills for a single workspace (sId). Omit to run on all workspaces.",
       type: "string",
     },
   },
-  async (
-    { concurrency, execute, fromWorkspaceId, includeUnflagged, wId },
-    logger
-  ) => {
+  async ({ concurrency, execute, fromWorkspaceId, wId }, logger) => {
     logger.info(
       {
         concurrency,
         execute,
         fromWorkspaceId,
-        includeUnflagged,
         workspaceId: wId ?? "all",
       },
       execute
@@ -237,21 +213,15 @@ makeScript(
       changed: 0,
       errors: 0,
       processed: 0,
-      skippedWithoutFlag: 0,
       skippedWithoutTools: 0,
     };
 
     await runOnAllWorkspaces(
       async (workspace) => {
-        const stats = await processWorkspace(
-          workspace,
-          { execute, includeUnflagged },
-          logger
-        );
+        const stats = await processWorkspace(workspace, { execute }, logger);
         totals.changed += stats.changed;
         totals.errors += stats.errors;
         totals.processed += stats.processed;
-        totals.skippedWithoutFlag += stats.skippedWithoutFlag;
         totals.skippedWithoutTools += stats.skippedWithoutTools;
       },
       {
