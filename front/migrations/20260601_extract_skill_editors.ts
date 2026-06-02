@@ -182,7 +182,7 @@ makeScript(
         editors.push(...workspaceEditors);
         processedWorkspaces += 1;
 
-        if (outputFile) {
+        if (outputFile && activeSkillCount > 0) {
           logger.info(
             {
               activeSkillCount,
