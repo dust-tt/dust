@@ -8,6 +8,9 @@ import type { PokeFavorite, PokeFavoriteType } from "@app/poke/swr/favorites";
 import { usePokeFavorites } from "@app/poke/swr/favorites";
 import {
   Chip,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
   Icon,
   IconButton,
   LinkWrapper,
@@ -211,30 +214,38 @@ export function PokeFavoritesList() {
 
   return (
     <div className="mb-6 rounded-xl border bg-white p-4 dark:border-border-night dark:bg-background-night">
-      <div className="mb-3 flex items-center gap-2">
-        <Icon
-          visual={StarIcon}
-          size="sm"
-          className="text-muted-foreground dark:text-muted-foreground-night"
-        />
-        <h2 className="text-lg font-semibold">Favorites</h2>
-        {favorites.length > 0 && (
-          <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            {favorites.length}
-          </span>
-        )}
-      </div>
-      {favorites.length === 0 ? (
-        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          No favorites yet. Press{" "}
-          <kbd className="rounded border px-1.5 py-0.5 font-mono text-xs">
-            ⌘D
-          </kbd>{" "}
-          on any page (or use the star in the top bar) to add it here.
-        </p>
-      ) : (
-        <PokeNavItemGroups items={favorites} onRemove={removeFavorite} />
-      )}
+      <Collapsible defaultOpen={false}>
+        <CollapsibleTrigger>
+          <div className="flex items-center gap-2">
+            <Icon
+              visual={StarIcon}
+              size="sm"
+              className="text-muted-foreground dark:text-muted-foreground-night"
+            />
+            <h2 className="text-lg font-semibold">Favorites</h2>
+            {favorites.length > 0 && (
+              <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                {favorites.length}
+              </span>
+            )}
+          </div>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="mt-3">
+            {favorites.length === 0 ? (
+              <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                No favorites yet. Press{" "}
+                <kbd className="rounded border px-1.5 py-0.5 font-mono text-xs">
+                  ⌘D
+                </kbd>{" "}
+                on any page (or use the star in the top bar) to add it here.
+              </p>
+            ) : (
+              <PokeNavItemGroups items={favorites} onRemove={removeFavorite} />
+            )}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   );
 }
