@@ -47,6 +47,7 @@ import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import { isDevelopment } from "@app/types/shared/env";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import { z } from "zod";
 
 const DEFAULT_WORKING_DIRECTORY = "/home/agent";
 const DEFAULT_EXEC_TIMEOUT_MS = 24 * 60 * 60 * 1000; // 24h
@@ -85,6 +86,53 @@ function formatExecOutput(
   }
 
   return sections.join("\n") || "(no output)";
+}
+
+// The egress proxy's domain-allowlist gate writes this reason. It is the only
+// deny reason that means "this domain was blocked" and is actionable by the
+// agent (ask an admin / add_egress_domain).
+const PROXY_ALLOWLIST_DENY_REASON = "proxy_denied";
+
+const DenyLogLineSchema = z.object({
+  reason: z.string(),
+  domain: z.string().nullish(),
+  port: z.number().nullish(),
+});
+
+function safeJsonParse(value: string): unknown {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return undefined;
+  }
+}
+
+// The sandbox deny log is written by two distinct layers into one file: the
+// egress proxy's domain-allowlist gate (`proxy_denied`) and the in-sandbox
+// request-rewrite harness (malformed headers, secret-to-host scoping, SNI
+// checks, ...). Only the allowlist denials mean "this domain was blocked".
+// Surfacing the harness reasons under the same `<network_proxy_logs>` block
+// makes agents misread auth/4xx failures on *allowed* domains as proxy blocks,
+// so we keep only allowlist denials for the agent and present them as a clean,
+// unambiguous line. Unrecognized lines are kept verbatim (fail open) so we
+// never silently swallow a real denial we don't understand.
+function filterAgentFacingDenyLogEntries(rawLines: string[]): string[] {
+  return rawLines.flatMap((line) => {
+    const parsed = DenyLogLineSchema.safeParse(safeJsonParse(line));
+    if (!parsed.success) {
+      return [line];
+    }
+    if (parsed.data.reason !== PROXY_ALLOWLIST_DENY_REASON) {
+      return [];
+    }
+    const { domain, port } = parsed.data;
+    if (!domain) {
+      return [line];
+    }
+    return [
+      `denied ${domain}${port ? `:${port}` : ""} (blocked by egress allowlist)`,
+    ];
+  });
 }
 
 // Shannon entropy in bits/char. Uniform random characters approach
@@ -399,7 +447,10 @@ export async function runSandboxBashTool(
       "Failed to read egress deny log"
     );
   } else if (denyResult.value.length > 0) {
-    denyLogEntries = denyResult.value;
+    const filtered = filterAgentFacingDenyLogEntries(denyResult.value);
+    if (filtered.length > 0) {
+      denyLogEntries = filtered;
+    }
   }
 
   const output = formatExecOutput(execResult.value, { denyLogEntries });
