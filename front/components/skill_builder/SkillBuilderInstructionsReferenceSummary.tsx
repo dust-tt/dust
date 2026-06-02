@@ -2,18 +2,14 @@ import { KnowledgeChip } from "@app/components/editor/extensions/skill_builder/K
 import { ToolChip } from "@app/components/editor/extensions/skill_builder/ToolChip";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
-import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import type {
   AttachedKnowledgeFormData,
   ReferencedSkillFormData,
 } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getSkillIcon } from "@app/lib/skill";
-import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
-import { useSpaceDataSourceView } from "@app/lib/swr/spaces";
 import { extractToolTags } from "@app/lib/tools/format";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { LightWorkspaceType } from "@app/types/user";
 import { AttachmentChip, Chip, cn, DocumentIcon } from "@dust-tt/sparkle";
 import type { Ref } from "react";
 import { useMemo } from "react";
@@ -36,6 +32,7 @@ export type ReferenceSummaryTarget =
 type ReferenceSummaryItem = ReferenceSummaryTarget & {
   dataSourceViewId?: string;
   icon?: string | null;
+  node?: AttachedKnowledgeFormData["node"];
   nodeId?: string;
   spaceId?: string;
   title: string;
@@ -68,11 +65,9 @@ function compareReferenceSummaryItems(
 function renderReferenceSummaryItem({
   item,
   onReferenceClick,
-  owner,
 }: {
   item: ReferenceSummaryItem;
   onReferenceClick: (target: ReferenceSummaryTarget) => void;
-  owner: LightWorkspaceType;
 }) {
   const handleClick = () => onReferenceClick({ id: item.id, kind: item.kind });
 
@@ -83,7 +78,6 @@ function renderReferenceSummaryItem({
           key={`${item.kind}:${item.id}`}
           item={item}
           onClick={handleClick}
-          owner={owner}
         />
       );
     case "skill":
@@ -115,30 +109,14 @@ function renderReferenceSummaryItem({
 function KnowledgeReferenceSummaryItem({
   item,
   onClick,
-  owner,
 }: {
   item: ReferenceSummaryItem & { kind: "knowledge" };
   onClick: () => void;
-  owner: LightWorkspaceType;
 }) {
-  const { dataSourceView, isDataSourceViewError } = useSpaceDataSourceView({
-    dataSourceViewId: item.dataSourceViewId ?? null,
-    disabled: !item.dataSourceViewId || !item.spaceId,
-    owner,
-    spaceId: item.spaceId ?? null,
-  });
-
-  const { nodes } = useDataSourceViewContentNodes({
-    owner,
-    dataSourceView,
-    internalIds: item.nodeId ? [item.nodeId] : undefined,
-    viewType: "all",
-    disabled: !dataSourceView || !item.nodeId || !!isDataSourceViewError,
-  });
-
-  const node = nodes[0];
-  if (node) {
-    return <KnowledgeChip node={node} title={item.title} onClick={onClick} />;
+  if (item.node) {
+    return (
+      <KnowledgeChip node={item.node} title={item.title} onClick={onClick} />
+    );
   }
 
   return (
@@ -161,7 +139,6 @@ export function SkillBuilderInstructionsReferenceSummary({
   referencedSkills,
   tools,
 }: SkillBuilderInstructionsReferenceSummaryProps) {
-  const { owner } = useSkillBuilderContext();
   const { mcpServerViews, isMCPServerViewsLoading } =
     useMCPServerViewsContext();
 
@@ -171,6 +148,7 @@ export function SkillBuilderInstructionsReferenceSummary({
         (attachedKnowledge ?? []).map((item) => ({
           dataSourceViewId: item.dataSourceViewId,
           id: `${item.dataSourceViewId}:${item.nodeId}`,
+          node: item.node,
           nodeId: item.nodeId,
           spaceId: item.spaceId,
           title: item.title,
@@ -270,7 +248,7 @@ export function SkillBuilderInstructionsReferenceSummary({
       </div>
       <div className="flex flex-wrap gap-2">
         {referenceItems.map((item) =>
-          renderReferenceSummaryItem({ item, onReferenceClick, owner })
+          renderReferenceSummaryItem({ item, onReferenceClick })
         )}
       </div>
     </div>
