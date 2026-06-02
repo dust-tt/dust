@@ -41,6 +41,7 @@ export const MCP_TOOL_STAKE_LEVELS = [
   "medium",
   "low",
   "never_ask",
+  "editable",
 ] as const;
 export type MCPToolStakeLevelType = (typeof MCP_TOOL_STAKE_LEVELS)[number];
 

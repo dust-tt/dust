@@ -464,6 +464,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         },
         argumentsRequiringApproval:
           action.toolConfiguration.argumentsRequiringApproval,
+        editableArguments: action.toolConfiguration.editableArguments,
         approvalArgsLabel: await getApprovalArgsLabel({
           auth,
           internalMCPServerName: action.toolConfiguration.toolServerId

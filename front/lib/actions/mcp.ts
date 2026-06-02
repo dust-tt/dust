@@ -65,6 +65,8 @@ export type ServerSideMCPToolType = Omit<
   // For "medium" stake tools: defines which arguments require per-agent approval.
   // When present, the user must approve the specific (agent, tool, argument values) combination.
   argumentsRequiringApproval?: string[];
+  // For "editable" stake tools: which input fields the user may edit before sending.
+  editableArguments?: string[];
   displayLabels?: ToolDisplayLabels;
 };
 
@@ -80,6 +82,8 @@ export type ClientSideMCPToolType = Omit<
   // For "medium" stake tools: defines which arguments require per-agent approval.
   // When present, the user must approve the specific (agent, tool, argument values) combination.
   argumentsRequiringApproval?: string[];
+  // For "editable" stake tools: which input fields the user may edit before sending.
+  editableArguments?: string[];
   displayLabels?: ToolDisplayLabels;
 };
 

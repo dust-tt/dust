@@ -74,6 +74,7 @@ function ToolItem({
     medium: "Medium (allows per-agent confirmation save)",
     low: "Low (allows user-global confirmation save)",
     never_ask: "Never ask (automatic execution)",
+    editable: "Editable (user can modify inputs before sending)",
   };
 
   return (

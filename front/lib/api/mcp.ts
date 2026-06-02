@@ -121,6 +121,7 @@ export type ServerSideMCPToolTypeWithStakeAndRetryPolicy =
 export type ClientSideMCPToolTypeWithStakeLevel =
   WithStakeLevelType<MCPToolWithAvailabilityType> & {
     argumentsRequiringApproval?: string[];
+    editableArguments?: string[];
     timeoutMs?: number;
   };
 

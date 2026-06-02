@@ -275,6 +275,7 @@ async function createActionForTool(
               inputs: rawInputs,
               argumentsRequiringApproval,
             }),
+            editableArguments: actionConfiguration.editableArguments,
           }
         : undefined,
   };

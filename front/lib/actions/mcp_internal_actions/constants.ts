@@ -388,6 +388,9 @@ export const INTERNAL_MCP_SERVERS = {
       create_draft: ["to"],
       send_mail: ["to", "from"],
     },
+    tools_editable_arguments: {
+      send_mail: ["to", "cc", "bcc", "subject", "body"],
+    },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: GMAIL_SERVER,
@@ -1157,6 +1160,8 @@ type InternalMCPServerEntryCommon = {
   // When a tool has "medium" stake, the user must approve the specific combination
   // of (agent, tool, argument values) before the tool can execute.
   tools_arguments_requiring_approval: Record<string, string[]> | undefined;
+  // Defines which input fields may be edited by the user for "editable" stake tools.
+  tools_editable_arguments?: Record<string, string[]>;
   tools_retry_policies: Record<string, MCPToolRetryPolicyType> | undefined;
   timeoutMs: number | undefined;
   requiresBearerToken?: boolean;

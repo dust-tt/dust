@@ -1,6 +1,7 @@
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { ToolValidationDetails } from "@app/components/assistant/conversation/ToolValidationDetails";
 import { getIcon } from "@app/components/resources/resources_icons";
+import { useEditAndSendAction } from "@app/hooks/useEditAndSendAction";
 import { useValidateAction } from "@app/hooks/useValidateAction";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
@@ -29,6 +30,7 @@ import {
   CheckIcon,
   ContentMessage,
   Label,
+  TextArea,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
@@ -153,6 +155,24 @@ export function MCPToolValidationRequired({
   const [neverAskAgain, setNeverAskAgain] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // For editable-stake tools: track per-field edits
+  const editableArguments =
+    blockedAction.stake === "editable"
+      ? (blockedAction.editableArguments ??
+        Object.keys(blockedAction.inputs))
+      : [];
+  const [editedFields, setEditedFields] = useState<Record<string, string>>(
+    () =>
+      Object.fromEntries(
+        editableArguments.map((key) => [
+          key,
+          typeof blockedAction.inputs[key] === "string"
+            ? (blockedAction.inputs[key] as string)
+            : JSON.stringify(blockedAction.inputs[key] ?? ""),
+        ])
+      )
+  );
+
   const {
     getBlockedActions,
     removeCompletedAction,
@@ -160,6 +180,10 @@ export function MCPToolValidationRequired({
     stopPulsingAction,
   } = useBlockedActionsContext();
   const { validateAction, isValidating } = useValidateAction({
+    owner,
+    onError: setErrorMessage,
+  });
+  const { editAndSendAction, isEditing } = useEditAndSendAction({
     owner,
     onError: setErrorMessage,
   });
@@ -219,6 +243,32 @@ export function MCPToolValidationRequired({
         }
       }
     }
+  };
+
+  const handleEditAndSend = async () => {
+    stopPulsingAction(blockedAction.actionId);
+    setErrorMessage(null);
+
+    const editedInputs: Record<string, unknown> = {};
+    for (const key of editableArguments) {
+      const rawValue = editedFields[key] ?? "";
+      try {
+        editedInputs[key] = JSON.parse(rawValue);
+      } catch {
+        editedInputs[key] = rawValue;
+      }
+    }
+
+    const result = await editAndSendAction({
+      validationRequest: blockedAction,
+      editedInputs,
+    });
+
+    if (!result.success) {
+      setErrorMessage("Failed to edit and send action. Please try again.");
+      return;
+    }
+    removeCompletedAction(blockedAction.actionId);
   };
 
   const toolOverride =
@@ -293,6 +343,27 @@ export function MCPToolValidationRequired({
             conversationId={conversationId}
             defaultExpanded={toolOverride?.detailsExpanded}
           />
+          {/* Provisional editable fields for editable-stake tools */}
+          {blockedAction.stake === "editable" && editableArguments.length > 0 && (
+            <div className="flex flex-col gap-2">
+              {editableArguments.map((key) => (
+                <div key={key} className="flex flex-col gap-1">
+                  <Label className="text-xs font-medium">{key}</Label>
+                  <TextArea
+                    value={editedFields[key] ?? ""}
+                    onChange={(e) =>
+                      setEditedFields((prev) => ({
+                        ...prev,
+                        [key]: e.target.value,
+                      }))
+                    }
+                    disabled={isEditing || isValidating}
+                    minRows={3}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
           {errorMessage && (
             <div className="mt-2 text-sm font-medium text-warning-800 dark:text-warning-800-night">
               {errorMessage}
@@ -324,19 +395,42 @@ export function MCPToolValidationRequired({
                 variant="outline"
                 size="xs"
                 icon={XMarkIcon}
-                disabled={isValidating}
+                disabled={isValidating || isEditing}
                 isPulsing={isPulsing}
                 onClick={() => void handleValidation("rejected")}
               />
-              <Button
-                label="Allow"
-                variant="highlight"
-                size="xs"
-                icon={CheckIcon}
-                disabled={isValidating}
-                isPulsing={isPulsing}
-                onClick={() => void handleValidation("approved")}
-              />
+              {blockedAction.stake === "editable" ? (
+                <>
+                  <Button
+                    label="Send as-is"
+                    variant="outline"
+                    size="xs"
+                    icon={CheckIcon}
+                    disabled={isValidating || isEditing}
+                    isPulsing={isPulsing}
+                    onClick={() => void handleValidation("approved")}
+                  />
+                  <Button
+                    label="Edit & send"
+                    variant="highlight"
+                    size="xs"
+                    icon={CheckIcon}
+                    disabled={isEditing || isValidating}
+                    isPulsing={isPulsing}
+                    onClick={() => void handleEditAndSend()}
+                  />
+                </>
+              ) : (
+                <Button
+                  label="Allow"
+                  variant="highlight"
+                  size="xs"
+                  icon={CheckIcon}
+                  disabled={isValidating}
+                  isPulsing={isPulsing}
+                  onClick={() => void handleValidation("approved")}
+                />
+              )}
             </div>
           </div>
         </>

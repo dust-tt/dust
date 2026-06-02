@@ -791,6 +791,7 @@ export type DustToolMeta = {
   stake?: MCPToolStakeLevelType;
   displayLabels?: ToolDisplayLabels;
   argumentsRequiringApproval?: string[];
+  editableArguments?: string[];
   timeoutMs?: number;
 };
 
@@ -838,6 +839,9 @@ export function getDustToolMeta(
   }
   if (isStringArray(dust.argumentsRequiringApproval)) {
     result.argumentsRequiringApproval = dust.argumentsRequiringApproval;
+  }
+  if (isStringArray(dust.editableArguments)) {
+    result.editableArguments = dust.editableArguments;
   }
   if (isValidTimeout(dust.timeoutMs)) {
     result.timeoutMs = dust.timeoutMs;

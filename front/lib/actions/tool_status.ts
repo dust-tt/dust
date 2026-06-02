@@ -91,6 +91,8 @@ export async function getExecutionStatusFromConfig(
     }
     case "high":
       return { status: "blocked_validation_required" };
+    case "editable":
+      return { status: "blocked_validation_required" };
     default:
       assertNever(actionConfiguration.permission);
   }

@@ -159,6 +159,7 @@ export function getToolExtraFields(
   let serverTimeoutMs: number | undefined;
   let toolsRetryPolicies: Record<string, MCPToolRetryPolicyType> | undefined;
   let toolsArgumentsRequiringApproval: Record<string, string[]> | undefined;
+  let toolsEditableArguments: Record<string, string[]> | undefined;
 
   const { serverType } = getServerTypeAndIdFromSId(mcpServerId);
   if (serverType === "internal") {
@@ -173,6 +174,8 @@ export function getToolExtraFields(
     serverTimeoutMs = INTERNAL_MCP_SERVERS[serverName]?.timeoutMs;
     toolsArgumentsRequiringApproval =
       INTERNAL_MCP_SERVERS[serverName].tools_arguments_requiring_approval;
+    toolsEditableArguments =
+      INTERNAL_MCP_SERVERS[serverName].tools_editable_arguments;
 
     metadata.forEach(
       ({ toolName, permission }) => (toolsStakes[toolName] = permission)
@@ -198,13 +201,15 @@ export function getToolExtraFields(
     toolsRetryPolicies,
     serverTimeoutMs,
     toolsArgumentsRequiringApproval,
+    toolsEditableArguments,
   });
 }
 
 export function makeServerSideMCPToolConfigurations(
   config: ServerSideMCPServerConfigurationType,
   tools: ServerSideMCPToolTypeWithStakeAndRetryPolicy[],
-  toolsArgumentsRequiringApproval?: Record<string, string[]>
+  toolsArgumentsRequiringApproval?: Record<string, string[]>,
+  toolsEditableArguments?: Record<string, string[]>
 ): ServerSideMCPToolConfigurationType[] {
   return tools.map((tool) => ({
     sId: generateRandomModelSId(),
@@ -238,6 +243,7 @@ export function makeServerSideMCPToolConfigurations(
     ...(tool.timeoutMs && { timeoutMs: tool.timeoutMs }),
     ...(tool.displayLabels && { displayLabels: tool.displayLabels }),
     argumentsRequiringApproval: toolsArgumentsRequiringApproval?.[tool.name],
+    editableArguments: toolsEditableArguments?.[tool.name],
   }));
 }
 
@@ -267,6 +273,7 @@ function makeClientSideMCPToolConfigurations(
     toolServerId,
     icon: config.icon,
     argumentsRequiringApproval: tool.argumentsRequiringApproval,
+    editableArguments: tool.editableArguments,
     displayLabels: tool.displayLabels,
     ...(tool.timeoutMs && { timeoutMs: tool.timeoutMs }),
   }));
@@ -1257,6 +1264,7 @@ async function buildToolConfigurationsFromRawTools(
     serverTimeoutMs,
     toolsRetryPolicies,
     toolsArgumentsRequiringApproval,
+    toolsEditableArguments,
   } = r.value;
 
   const availability = getAvailabilityOfInternalMCPServerById(mcpServerId);
@@ -1284,7 +1292,8 @@ async function buildToolConfigurationsFromRawTools(
   const serverSideToolConfigs = makeServerSideMCPToolConfigurations(
     config,
     toolsWithStakesRetryPoliciesAndTimeout,
-    toolsArgumentsRequiringApproval
+    toolsArgumentsRequiringApproval,
+    toolsEditableArguments
   );
   return new Ok(serverSideToolConfigs);
 }

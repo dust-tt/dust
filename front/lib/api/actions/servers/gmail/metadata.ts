@@ -243,7 +243,8 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
           "Optional. The ID of the message to reply to. If provided, the email will be sent as a reply in the existing thread, with proper threading headers and the original message quoted."
         ),
     },
-    stake: "high",
+    stake: "editable",
+    editableArguments: ["to", "cc", "bcc", "subject", "body"],
     displayLabels: {
       running: "Sending Gmail email",
       done: "Send Gmail email",

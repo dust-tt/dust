@@ -109,6 +109,8 @@ export async function validateAction(
           functionCallName: action.functionCallName,
         });
         break;
+      case "editable":
+        break;
       case "medium":
         const agentMessage = await AgentMessageModel.findOne({
           where: {

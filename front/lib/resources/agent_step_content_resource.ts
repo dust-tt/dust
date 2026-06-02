@@ -426,6 +426,94 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     };
   }
 
+  /**
+   * Copies step contents from one agent message to another through a given step,
+   * optionally overriding the arguments of specific function_call rows.
+   * Used by the edit-and-resume flow to fork a paused agent message.
+   */
+  static async copyForAgentMessage(
+    auth: Authenticator,
+    {
+      fromAgentMessageId,
+      toAgentMessageId,
+      throughStep,
+      argumentOverrides,
+      transaction,
+    }: {
+      fromAgentMessageId: ModelId;
+      toAgentMessageId: ModelId;
+      throughStep: number;
+      argumentOverrides: Array<{
+        step: number;
+        index: number;
+        arguments: string;
+      }>;
+      transaction: Transaction;
+    }
+  ): Promise<AgentStepContentResource[]> {
+    const owner = auth.getNonNullableWorkspace();
+
+    const sourceContents = await this.model.findAll({
+      where: {
+        workspaceId: owner.id,
+        agentMessageId: fromAgentMessageId,
+        step: { [Op.lte]: throughStep },
+      },
+      order: [
+        ["step", "ASC"],
+        ["index", "ASC"],
+        ["version", "DESC"],
+      ],
+      transaction,
+    });
+
+    const latestContents = this.filterLatestVersions(sourceContents, [
+      "step",
+      "index",
+    ]);
+
+    const overrideMap = new Map(
+      argumentOverrides.map((o) => [`${o.step}:${o.index}`, o.arguments])
+    );
+
+    const created: AgentStepContentResource[] = [];
+    for (const source of latestContents) {
+      let value = source.value;
+
+      const overrideKey = `${source.step}:${source.index}`;
+      if (
+        source.type === "function_call" &&
+        overrideMap.has(overrideKey) &&
+        isAgentFunctionCallContent(value)
+      ) {
+        value = {
+          ...value,
+          value: {
+            ...value.value,
+            arguments: overrideMap.get(overrideKey)!,
+          },
+        };
+      }
+
+      const newContent = await this.model.create(
+        {
+          workspaceId: owner.id,
+          agentMessageId: toAgentMessageId,
+          step: source.step,
+          index: source.index,
+          version: 0,
+          type: source.type,
+          value,
+        },
+        { transaction }
+      );
+
+      created.push(new AgentStepContentResource(this.model, newContent.get()));
+    }
+
+    return created;
+  }
+
   static async createNewVersion({
     agentMessageId,
     workspaceId,

@@ -26,6 +26,8 @@ export interface ToolExecution<
   argumentsRequiringApproval?: string[];
   // Human-readable label for the "always allow" approval checkbox.
   approvalArgsLabel?: string;
+  // For editable-stake tools: which input fields the user may edit before sending.
+  editableArguments?: string[];
 }
 
 type ToolPersonalAuthError = {

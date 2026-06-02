@@ -20,6 +20,7 @@ import { apiError } from "@front-api/middlewares/utils";
 import actions from "./actions";
 import answerQuestion from "./answer-question";
 import edit from "./edit";
+import editAndSendAction from "./edit-and-send-action";
 import events from "./events";
 import feedbacks from "./feedbacks";
 import mentions from "./mentions";
@@ -213,6 +214,7 @@ app.delete("/", async (ctx) => {
 app.route("/actions", actions);
 app.route("/answer-question", answerQuestion);
 app.route("/edit", edit);
+app.route("/edit-and-send-action", editAndSendAction);
 app.route("/events", events);
 app.route("/feedbacks", feedbacks);
 app.route("/mentions", mentions);

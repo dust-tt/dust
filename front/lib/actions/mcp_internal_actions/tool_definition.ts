@@ -51,6 +51,9 @@ export interface ToolDefinition<
   schema: TSchema;
   stake: MCPToolStakeLevelType;
   displayLabels: ToolDisplayLabels;
+  editableArguments?: Array<
+    Extract<keyof z.infer<z.ZodObject<TSchema>>, string>
+  >;
   handler: (
     params: z.infer<z.ZodObject<TSchema>>,
     extra: ToolHandlerExtra
@@ -68,6 +71,9 @@ interface ClientToolDefinition<
   stake: MCPToolStakeLevelType;
   displayLabels: ToolDisplayLabels;
   argumentsRequiringApproval?: Array<
+    Extract<keyof z.infer<z.ZodObject<TSchema>>, string>
+  >;
+  editableArguments?: Array<
     Extract<keyof z.infer<z.ZodObject<TSchema>>, string>
   >;
   handler: (
