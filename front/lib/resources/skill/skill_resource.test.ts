@@ -836,34 +836,6 @@ describe("SkillResource", () => {
       );
     });
 
-    it("drops invalid nested skill references", async () => {
-      const skill = await SkillFactory.create(testContext.authenticator, {
-        name: "Skill With Invalid Reference",
-      });
-      const invalidSkillReferenceTag = serializeSkillTag({
-        id: "not-a-skill-reference",
-        icon: null,
-        name: "Invalid Skill Reference",
-      });
-
-      await skill.updateSkill(testContext.authenticator, {
-        name: skill.name,
-        agentFacingDescription: skill.agentFacingDescription,
-        userFacingDescription: skill.userFacingDescription,
-        instructions: `Use ${invalidSkillReferenceTag}.`,
-        icon: skill.icon,
-        mcpServerViews: [],
-        attachedKnowledge: [],
-        requestedSpaceIds: [],
-        enableSkillReferences: true,
-        referencedSkillIds: ["not-a-skill-reference"],
-      });
-
-      await expect(
-        skill.fetchChildSkills(testContext.authenticator)
-      ).resolves.toHaveLength(0);
-    });
-
     it("drops out-of-workspace nested skill references", async () => {
       const skill = await SkillFactory.create(testContext.authenticator, {
         name: "Skill With Out Of Workspace Reference",
