@@ -594,8 +594,13 @@ export function SkillBuilderInstructionsEditor({
         return;
       }
 
+      const referenceDocNode = editor.state.doc.nodeAt(referencePosition);
+      if (!referenceDocNode) {
+        return;
+      }
+
       const referenceNode = editor.view.nodeDOM(referencePosition);
-      editor.commands.focus(referencePosition);
+      editor.commands.focus(referencePosition + referenceDocNode.nodeSize);
 
       const referenceElement =
         referenceNode instanceof HTMLElement
