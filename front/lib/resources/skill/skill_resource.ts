@@ -2640,17 +2640,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       }
     }
 
-    const referencedSkills =
-      customSkillModelIds.size > 0
-        ? await this.model.findAll({
-            where: {
-              id: { [Op.in]: [...customSkillModelIds] },
-              workspaceId: workspace.id,
-            },
-            attributes: ["id"],
-            transaction,
-          })
-        : [];
+    const referencedSkills = await this.model.findAll({
+      where: {
+        id: { [Op.in]: [...customSkillModelIds] },
+        workspaceId: workspace.id,
+      },
+      attributes: ["id"],
+      transaction,
+    });
 
     const desiredCustomSkillIds = new Set(
       referencedSkills.map((skill) => skill.id)
