@@ -4,7 +4,7 @@ import { syncMetronomeSeatCountSignal } from "@app/temporal/usage_queue/signals"
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import { proxyActivities, setHandler, sleep } from "@temporalio/workflow";
 
-const METRONOME_SEAT_COUNT_DEBOUNCE_MS = 15 * 60 * 1000;
+const METRONOME_SEAT_COUNT_DEBOUNCE_MS = 15 * 1000;
 
 const { recordUsageActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minutes",
