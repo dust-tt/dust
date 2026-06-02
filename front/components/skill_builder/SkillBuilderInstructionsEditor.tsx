@@ -1,5 +1,6 @@
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import { editorVariants } from "@app/components/editor/editorStyles";
+import { SKILL_NODE_TYPE } from "@app/components/editor/extensions/input_bar/SkillNode";
 import { KNOWLEDGE_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import { TOOL_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/ToolNode";
@@ -10,7 +11,10 @@ import {
 import { SKILL_BUILDER_INSTRUCTIONS_BLUR_EVENT } from "@app/components/skill_builder/events";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
-import { SkillBuilderInstructionsReferenceSummary } from "@app/components/skill_builder/SkillBuilderInstructionsReferenceSummary";
+import {
+  type ReferenceSummaryTarget,
+  SkillBuilderInstructionsReferenceSummary,
+} from "@app/components/skill_builder/SkillBuilderInstructionsReferenceSummary";
 import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
 import { useSkillSuggestions } from "@app/hooks/useSkillSuggestions";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -26,6 +30,7 @@ import {
 import { TOOL_TAG_NAME } from "@app/lib/tools/format";
 import { isString } from "@app/types/shared/utils/general";
 import { cn } from "@dust-tt/sparkle";
+import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import type { Transaction } from "@tiptap/pm/state";
 import type { Editor } from "@tiptap/react";
 import type { Config } from "dompurify";
@@ -88,6 +93,87 @@ function collectToolReferenceIds(editor: Editor): Set<string> {
   return toolIds;
 }
 
+function getKnowledgeReferenceId(node: ProseMirrorNode): string | null {
+  const selectedItems = node.attrs.selectedItems;
+  if (!Array.isArray(selectedItems)) {
+    return null;
+  }
+
+  const item = selectedItems[0];
+  if (!item) {
+    return null;
+  }
+
+  return `${item.dataSourceViewId}:${item.nodeId}`;
+}
+
+function matchesReferenceTarget(
+  node: ProseMirrorNode,
+  target: ReferenceSummaryTarget
+): boolean {
+  switch (target.kind) {
+    case "knowledge":
+      return (
+        node.type.name === KNOWLEDGE_NODE_TYPE &&
+        getKnowledgeReferenceId(node) === target.id
+      );
+    case "skill":
+      return (
+        node.type.name === SKILL_NODE_TYPE && node.attrs.skillId === target.id
+      );
+    case "tool":
+      return (
+        node.type.name === TOOL_NODE_TYPE &&
+        node.attrs.mcpServerViewId === target.id
+      );
+  }
+}
+
+function getFirstReferencePosition(
+  editor: Editor,
+  target: ReferenceSummaryTarget
+): number | null {
+  let referencePosition: number | null = null;
+
+  editor.state.doc.descendants((node, position) => {
+    if (matchesReferenceTarget(node, target)) {
+      referencePosition = position;
+      return false;
+    }
+
+    return true;
+  });
+
+  return referencePosition;
+}
+
+function scrollReferenceIntoView({
+  overlayHeight,
+  referenceElement,
+  scrollContainer,
+}: {
+  overlayHeight: number;
+  referenceElement: HTMLElement;
+  scrollContainer: HTMLElement;
+}) {
+  const containerRect = scrollContainer.getBoundingClientRect();
+  const referenceRect = referenceElement.getBoundingClientRect();
+  const visibleHeight = Math.max(
+    0,
+    scrollContainer.clientHeight - overlayHeight
+  );
+  const referenceTop =
+    referenceRect.top - containerRect.top + scrollContainer.scrollTop;
+
+  scrollContainer.scrollTo({
+    behavior: "smooth",
+    top: Math.max(
+      0,
+      referenceTop + referenceRect.height / 2 - visibleHeight / 2
+    ),
+  });
+}
+
 function toAttachedKnowledge(
   items: readonly KnowledgeItem[]
 ): SkillBuilderFormData["attachedKnowledge"] {
@@ -115,7 +201,7 @@ function sanitizeSkillInstructionsHtml(
 
 const INSTRUCTIONS_EDITOR_SIZE = "min-h-60 max-h-[1024px]";
 const INSTRUCTIONS_EDITOR_REFERENCE_SUMMARY_SIZE =
-  "min-h-80 rounded-b-none border-b-0 pb-28";
+  "min-h-80 rounded-b-none border-b-0 pb-44";
 
 interface SkillBuilderInstructionsEditorProps {
   onAddKnowledge?: (addKnowledge: () => void) => void;
@@ -129,6 +215,7 @@ export function SkillBuilderInstructionsEditor({
   const { compareVersion, isDiffMode } = useSkillVersionComparisonContext();
   const { resetField } = useFormContext<SkillBuilderFormData>();
   const initializedAttachedKnowledgeEditorRef = useRef<Editor | null>(null);
+  const instructionReferenceSummaryRef = useRef<HTMLDivElement | null>(null);
   const previousInlineToolIdsRef = useRef<Set<string>>(new Set());
   const toolsRef = useRef<SkillBuilderFormData["tools"]>([]);
   const { owner, skillId, selectedSuggestionId, setAcceptInstructionEdits } =
@@ -174,7 +261,6 @@ export function SkillBuilderInstructionsEditor({
   const hasInstructionReferenceSummary =
     enableSkillReferences &&
     ((attachedKnowledgeField.value?.length ?? 0) > 0 ||
-      tools.length > 0 ||
       (instructionsField.value?.includes("<knowledge ") ?? false) ||
       (instructionsField.value?.includes("<skill ") ?? false) ||
       (instructionsField.value?.includes("<tool ") ?? false));
@@ -363,6 +449,45 @@ export function SkillBuilderInstructionsEditor({
 
     editor.commands.openCapabilitiesSlashCommand();
   }, [editor, enableSkillReferences]);
+
+  const handleReferenceClick = useCallback(
+    (target: ReferenceSummaryTarget) => {
+      if (!editor || editor.isDestroyed) {
+        return;
+      }
+
+      const referencePosition = getFirstReferencePosition(editor, target);
+      if (referencePosition === null) {
+        return;
+      }
+
+      const referenceNode = editor.view.nodeDOM(referencePosition);
+      editor.commands.focus(referencePosition);
+
+      const referenceElement =
+        referenceNode instanceof HTMLElement
+          ? referenceNode
+          : referenceNode?.parentElement;
+      if (!referenceElement) {
+        return;
+      }
+
+      requestAnimationFrame(() => {
+        if (editor.isDestroyed) {
+          return;
+        }
+
+        scrollReferenceIntoView({
+          overlayHeight:
+            instructionReferenceSummaryRef.current?.getBoundingClientRect()
+              .height ?? 0,
+          referenceElement,
+          scrollContainer: editor.view.dom,
+        });
+      });
+    },
+    [editor]
+  );
 
   useEffect(() => {
     if (editor && enableSkillReferences && onOpenCapabilities) {
@@ -619,9 +744,10 @@ export function SkillBuilderInstructionsEditor({
         {enableSkillReferences && (
           <SkillBuilderInstructionsReferenceSummary
             attachedKnowledge={attachedKnowledgeField.value}
+            containerRef={instructionReferenceSummaryRef}
             hasError={displayError}
             instructions={instructionsField.value ?? ""}
-            tools={tools}
+            onReferenceClick={handleReferenceClick}
           />
         )}
       </div>
