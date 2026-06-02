@@ -159,7 +159,6 @@ export type SidebarNavigation = {
     | "help"
     | "api";
   label: string | null;
-  variant: "primary" | "secondary";
   menus: AppLayoutNavigation[];
 };
 
@@ -249,7 +248,6 @@ export const subNavigationAdmin = ({
     nav.push({
       id: "workspace",
       label: "Workspace",
-      variant: "primary",
       menus: [
         {
           id: "members",
@@ -311,7 +309,6 @@ export const subNavigationAdmin = ({
     nav.push({
       id: "api",
       label: "API & Programmatic",
-      variant: "primary",
       menus: [
         {
           id: "api_keys",
@@ -337,7 +334,6 @@ export const subNavigationAdmin = ({
     nav.push({
       id: "developers",
       label: "Builder Tools",
-      variant: "primary",
       menus: [
         {
           id: "providers",

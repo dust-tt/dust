@@ -116,7 +116,6 @@ export const NavigationSidebar = React.forwardRef<
                         {nav.label && (
                           <NavigationListLabel
                             label={nav.label}
-                            variant={nav.variant}
                           />
                         )}
                         {nav.menus
