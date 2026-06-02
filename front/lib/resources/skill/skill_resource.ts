@@ -391,26 +391,18 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     // Use a transaction to ensure all creations succeed or all are rolled back.
     return withTransaction(async (transaction) => {
-      const instructions = blob.instructions;
-      const requestedSpaceIds = blob.requestedSpaceIds;
-      assert(typeof instructions === "string", "Skill instructions required");
-      assert(
-        Array.isArray(requestedSpaceIds),
-        "Skill requested spaces required"
-      );
-
       const normalizedReferences = enableSkillReferences
         ? await this.normalizeSkillReferenceTags(
             auth,
             {
-              instructions,
+              instructions: blob.instructions,
               instructionsHtml: blob.instructionsHtml ?? null,
-              requestedSpaceIds,
+              requestedSpaceIds: blob.requestedSpaceIds,
             },
             { transaction }
           )
         : {
-            instructions,
+            instructions: blob.instructions,
             instructionsHtml: blob.instructionsHtml ?? null,
           };
 
