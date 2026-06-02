@@ -1,7 +1,6 @@
 import { workspaceApp } from "@front-api/middlewares/ctx";
 
 import approvals from "./approvals";
-import awuStatus from "./awu-status";
 import pendingInvitations from "./pending-invitations";
 import slackNotifications from "./slack-notifications";
 import triggers from "./triggers";
@@ -10,7 +9,6 @@ import triggers from "./triggers";
 const app = workspaceApp();
 
 app.route("/approvals", approvals);
-app.route("/awu-status", awuStatus);
 app.route("/pending-invitations", pendingInvitations);
 app.route("/slack-notifications", slackNotifications);
 app.route("/triggers", triggers);

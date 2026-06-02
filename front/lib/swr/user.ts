@@ -11,9 +11,9 @@ import type { EmailProviderType } from "@app/lib/utils/email_provider_detection"
 import type { GetUserResponseBody } from "@app/pages/api/user";
 import type { GetUserMetadataResponseBody } from "@app/pages/api/user/metadata/[key]";
 import type { GetUserApprovalsResponseBody } from "@app/pages/api/w/[wId]/me/approvals";
-import type { GetUserAwuStatusResponseBody } from "@app/pages/api/w/[wId]/me/awu-status";
 import type { GetPendingInvitationsResponseBody } from "@app/pages/api/w/[wId]/me/pending-invitations";
 import type { GetSlackNotificationResponseBody } from "@app/pages/api/w/[wId]/me/slack-notifications";
+import type { GetWorkspaceUsageStatusResponseBody } from "@app/pages/api/w/[wId]/usage-status";
 import type { FavoritePlatform } from "@app/types/favorite_platforms";
 import type { JobType } from "@app/types/job_type";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -253,7 +253,7 @@ export function useSlackNotifications(
   };
 }
 
-export function useUserAwuStatus({
+export function useWorkspaceUsageStatus({
   owner,
   disabled,
 }: {
@@ -261,15 +261,17 @@ export function useUserAwuStatus({
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
-  const awuStatusFetcher: Fetcher<GetUserAwuStatusResponseBody> = fetcher;
+  const usageStatusFetcher: Fetcher<GetWorkspaceUsageStatusResponseBody> =
+    fetcher;
   const { data, error } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/me/awu-status`,
-    awuStatusFetcher,
+    `/api/w/${owner.sId}/usage-status`,
+    usageStatusFetcher,
     { disabled }
   );
 
   return {
-    awuStatus: data?.status ?? "normal",
-    isAwuStatusLoading: !error && !data && !disabled,
+    awuStatus: data?.awuStatus ?? "normal",
+    poolCreditState: data?.poolCreditState ?? "active",
+    isUsageStatusLoading: !error && !data && !disabled,
   };
 }
