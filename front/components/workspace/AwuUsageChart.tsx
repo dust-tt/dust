@@ -238,7 +238,7 @@ interface BaseAwuUsageChartProps {
   setDisplayMode: (v: DisplayMode) => void;
 }
 
-function BaseAwuUsageChart({
+export function BaseAwuUsageChart({
   awuUsageData,
   isLoading,
   isError,

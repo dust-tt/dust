@@ -1,6 +1,7 @@
 import { PokeWorkspaceUsageChart } from "@app/components/poke/analytics/PokeWorkspaceUsageChart";
 import { AppDataTable } from "@app/components/poke/apps/table";
 import { AssistantsDataTable } from "@app/components/poke/assistants/table";
+import { PokeUsageTab } from "@app/components/poke/credits/PokeUsageTab";
 import { CreditsDataTable } from "@app/components/poke/credits/table";
 import { DataSourceViewsDataTable } from "@app/components/poke/data_source_views/table";
 import { DataSourceDataTable } from "@app/components/poke/data_sources/table";
@@ -33,6 +34,7 @@ import { usePokeRegion } from "@app/lib/swr/poke";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeDataRetention } from "@app/poke/swr/data_retention";
 import { usePokeWorkspaceInfo } from "@app/poke/swr/workspace_info";
+import { isCreditPricedPlan } from "@app/types/plan";
 import { isString } from "@app/types/shared/utils/general";
 import type { WorkspaceSegmentationType } from "@app/types/user";
 import {
@@ -144,6 +146,10 @@ export function WorkspacePage() {
     workosEnvironmentId,
     temporalFrontNamespace,
   } = workspaceInfo;
+
+  // The Usage tab (AWU usage chart + credit pool) only applies to credit-based
+  // (CP_) pricing workspaces.
+  const isCreditPriced = isCreditPricedPlan(activeSubscription.plan);
 
   return (
     <div className="ml-8 p-6">
@@ -272,6 +278,7 @@ export function WorkspacePage() {
               <TabsTrigger value="triggers" label="Triggers" />
               <TabsTrigger value="webhooksources" label="Webhook Sources" />
               <TabsTrigger value="credits" label="API Usage" />
+              {isCreditPriced && <TabsTrigger value="usage" label="Usage" />}
               <TabsTrigger value="analytics" label="Analytics" />
             </TabsList>
 
@@ -328,6 +335,15 @@ export function WorkspacePage() {
                 loadOnInit
               />
             </TabsContent>
+            {isCreditPriced && (
+              <TabsContent value="usage">
+                <PokeUsageTab
+                  owner={owner}
+                  subscription={activeSubscription}
+                  stripeSubscription={stripeSubscription}
+                />
+              </TabsContent>
+            )}
             <TabsContent value="analytics">
               <div className="flex flex-col gap-6">
                 <PokeWorkspaceUsageChart workspaceId={owner.sId} period={30} />

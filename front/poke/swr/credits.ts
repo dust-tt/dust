@@ -1,4 +1,8 @@
 import type {
+  AwuUsageGroupByType,
+  GetAwuUsageResponse,
+} from "@app/lib/api/analytics/awu_usage";
+import type {
   GetMetronomeUsageResponse,
   MetronomeUsageGroupByType,
 } from "@app/lib/api/analytics/metronome_usage";
@@ -7,6 +11,7 @@ import type {
   GroupByType,
 } from "@app/lib/api/analytics/programmatic_cost";
 import type { WindowSize } from "@app/lib/api/analytics/time_utils";
+import type { AwuPoolSummaryResponseBody } from "@app/lib/api/credits/awu_pool_summary";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeListCreditsResponseBody } from "@app/pages/api/poke/workspaces/[wId]/credits";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
@@ -135,5 +140,76 @@ export function usePokeMetronomeUsage({
     isMetronomeUsageLoading: !error && !data && !disabled,
     isMetronomeUsageError: error,
     isMetronomeUsageValidating: isValidating,
+  };
+}
+
+export function usePokeAwuUsage({
+  owner,
+  groupBy,
+  groupByCount,
+  selectedPeriod,
+  billingCycleStartDay,
+  windowSize,
+  disabled,
+}: PokeConditionalFetchProps & {
+  groupBy?: AwuUsageGroupByType;
+  groupByCount?: number;
+  selectedPeriod?: string;
+  billingCycleStartDay: number;
+  windowSize?: WindowSize;
+}) {
+  const { fetcher } = useFetcher();
+  const fetcherFn: Fetcher<GetAwuUsageResponse> = fetcher;
+
+  const queryParams = new URLSearchParams();
+  queryParams.set("billingCycleStartDay", billingCycleStartDay.toString());
+  if (selectedPeriod) {
+    queryParams.set("selectedPeriod", selectedPeriod);
+  }
+  if (groupBy) {
+    queryParams.set("groupBy", groupBy);
+  }
+  if (groupByCount !== undefined) {
+    queryParams.set("groupByCount", groupByCount.toString());
+  }
+  if (windowSize) {
+    queryParams.set("windowSize", windowSize);
+  }
+  const queryString = queryParams.toString();
+  const key = `/api/poke/workspaces/${owner.sId}/analytics/awu-usage?${queryString}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    awuUsageData: data,
+    isAwuUsageLoading: !error && !data && !disabled,
+    isAwuUsageError: error,
+    isAwuUsageValidating: isValidating,
+  };
+}
+
+export function usePokeAwuPoolSummary({
+  owner,
+  disabled,
+}: PokeConditionalFetchProps) {
+  const { fetcher } = useFetcher();
+  const fetcherFn: Fetcher<AwuPoolSummaryResponseBody> = fetcher;
+
+  const { data, error, isValidating, mutate } = useSWRWithDefaults(
+    disabled
+      ? null
+      : `/api/poke/workspaces/${owner.sId}/credits/awu-pool-summary`,
+    fetcherFn
+  );
+
+  return {
+    awuPoolSummary: data ?? null,
+    isAwuPoolSummaryLoading: !error && !data && !disabled,
+    isAwuPoolSummaryError: error,
+    isAwuPoolSummaryValidating: isValidating,
+    mutateAwuPoolSummary: mutate,
   };
 }
