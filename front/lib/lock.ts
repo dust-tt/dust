@@ -1,6 +1,5 @@
+import { getRedisStreamClient, type RedisClientType } from "@app/lib/api/redis";
 import tracer from "@app/logger/tracer";
-
-import { getRedisStreamClient, type RedisClientType } from "./api/redis";
 
 // Distributed lock implementation using Redis
 // Returns the lock value if the lock is acquired, that can be used to unlock, otherwise undefined.

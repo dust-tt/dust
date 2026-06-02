@@ -276,19 +276,16 @@ export class E2BSandboxProvider implements SandboxProvider {
           // Split out from create so the raw E2B VM-create latency is visible
           // separately from the hardening command that follows it (the two
           // share the parent sandbox.provider.create span otherwise).
-          sandbox = await traceSandboxStartupPhase(
-            "provider.create_vm",
-            () =>
-              Sandbox.create(templateId, {
-                ...this.connectionOpts(),
-                envs: hasEnvVars ? envVars : undefined,
-                timeoutMs: SANDBOX_LIFETIME_MS,
-                requestTimeoutMs: REQUEST_TIMEOUT_MS,
-                network: config.network
-                  ? toE2BNetworkOpts(config.network)
-                  : { allowPublicTraffic: false },
-              }),
-            { workspace_id: tracingOpts.workspaceId }
+          sandbox = await traceSandboxStartupPhase("provider.create_vm", () =>
+            Sandbox.create(templateId, {
+              ...this.connectionOpts(),
+              envs: hasEnvVars ? envVars : undefined,
+              timeoutMs: SANDBOX_LIFETIME_MS,
+              requestTimeoutMs: REQUEST_TIMEOUT_MS,
+              network: config.network
+                ? toE2BNetworkOpts(config.network)
+                : { allowPublicTraffic: false },
+            })
           );
         } catch (err) {
           return new Err(normalizeError(err));
@@ -310,8 +307,7 @@ export class E2BSandboxProvider implements SandboxProvider {
                   timeoutMs: LOCAL_ACCOUNT_HARDENING_TIMEOUT_MS,
                   user: "root",
                 }
-              ),
-            { workspace_id: tracingOpts.workspaceId }
+              )
           );
           hardeningResult = {
             exitCode: result.exitCode,

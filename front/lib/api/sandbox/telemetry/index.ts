@@ -50,8 +50,7 @@ export async function startTelemetry(
             WORKSPACE_ID: workspaceId,
           },
         }
-      ),
-    { workspace_id: workspaceId }
+      )
   );
 
   if (result.isErr()) {

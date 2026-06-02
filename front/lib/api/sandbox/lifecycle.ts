@@ -32,9 +32,8 @@ export async function ensureSandboxReady(
 ): Promise<Result<EnsureSandboxReadyResult, Error>> {
   const workspaceId = auth.getNonNullableWorkspace().sId;
   const startMs = performance.now();
-  // cold is only known once ensureActive returns; default to a cold-leaning
-  // false only matters if ensureActive itself errors (rare), where the total
-  // is recorded as a failed warm attempt.
+  // cold is unknown until ensureActive returns; if it errors first (rare) we
+  // record the failure as a warm attempt.
   let cold = false;
   let status: "success" | "error" = "success";
 
@@ -44,8 +43,7 @@ export async function ensureSandboxReady(
       async () => {
         const ensureResult = await traceSandboxStartupPhase(
           "provider_ensure",
-          () => SandboxResource.ensureActive(auth, conversation),
-          { workspace_id: workspaceId }
+          () => SandboxResource.ensureActive(auth, conversation)
         );
         if (ensureResult.isErr()) {
           status = "error";
@@ -71,9 +69,8 @@ export async function ensureSandboxReady(
           }
         }
 
-        const imageResult = await traceSandboxStartupPhase("image_fetch", () =>
-          Promise.resolve(getSandboxImage(auth))
-        );
+        // Synchronous and cheap: not worth a span (it would always read ~0ms).
+        const imageResult = getSandboxImage(auth);
         if (imageResult.isErr()) {
           logger.error(
             { err: imageResult.error },
@@ -121,8 +118,7 @@ export async function ensureSandboxReady(
         }
 
         return new Ok({ sandbox, freshlyCreated });
-      },
-      { workspace_id: workspaceId }
+      }
     );
   } finally {
     recordSandboxStartupTotal(

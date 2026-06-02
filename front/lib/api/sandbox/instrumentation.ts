@@ -20,14 +20,16 @@ function buildTags(ctx: MetricContext): string[] {
 // and GROUP the per-command spans that traceSandboxOperation already emits
 // (trace.sandbox.provider.exec / .writeFile / .create / .wake): without a
 // parent span every setup command is an undifferentiated `provider.exec`.
-// The few entries that never become a sandbox command — resolve_proxy (DNS),
-// gcs.mint_token (GCP token mint) — are the real timing blindspots a parent
-// span alone would not cover.
+// The few entries that never become a sandbox command (resolve_proxy DNS,
+// gcs.mint_token GCP token mint) are the real timing blindspots a parent span
+// alone would not cover.
+//
+// Naming: coarse phases are snake_case (`provider_ensure`, `gcs_mount`);
+// sub-steps are `<area>.step` (`gcs.gcsfuse_mount`) so they group by prefix.
 export type SandboxStartupPhase =
   // Coarse phases (one per ensureSandboxReady step).
   | "total"
   | "provider_ensure"
-  | "image_fetch"
   | "egress_prep"
   | "gcs_mount"
   | "gcs_refresh"
