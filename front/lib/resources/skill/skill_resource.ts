@@ -2369,10 +2369,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
       // Snapshot the previous requested space IDs before updating.
       const previousRequestedSpaceIds = [...this.requestedSpaceIds];
-      const requestedSpaceIdsChanged = !SkillResource.haveSameRequestedSpaceIds(
-        previousRequestedSpaceIds,
-        requestedSpaceIds
-      );
+      const previousRequestedSpaceIdsSet = new Set(previousRequestedSpaceIds);
+      const requestedSpaceIdsChanged =
+        previousRequestedSpaceIds.length !== requestedSpaceIds.length ||
+        requestedSpaceIds.some(
+          (spaceId) => !previousRequestedSpaceIdsSet.has(spaceId)
+        );
 
       const editedBy = auth.user()?.id;
       const shouldUpdateInstructionsHtml =
@@ -3345,19 +3347,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     await this.model.destroy({
       where: { workspaceId },
     });
-  }
-
-  private static haveSameRequestedSpaceIds(
-    left: readonly ModelId[],
-    right: readonly ModelId[]
-  ): boolean {
-    if (left.length !== right.length) {
-      return false;
-    }
-
-    const leftSet = new Set(left);
-
-    return right.every((spaceId) => leftSet.has(spaceId));
   }
 
   private static getCustomSkillReferenceIds(
