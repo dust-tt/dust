@@ -144,6 +144,7 @@ export async function importSkillsFromGitHub(
         agentFacingDescription: skill.description,
         userFacingDescription: skill.description,
         instructions: skill.instructions,
+        instructionsHtml: convertMarkdownToBlockHtml(skill.instructions),
         icon: existing.icon,
         mcpServerViews: existing.mcpServerViews,
         attachedKnowledge,
