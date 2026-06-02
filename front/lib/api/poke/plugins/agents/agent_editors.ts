@@ -142,10 +142,10 @@ export const updateEditorsPlugin = createPlugin({
       value: message,
     });
   },
-  isApplicableTo: (auth, resource) => {
+  isApplicableTo: (_auth, resource) => {
     if (!resource) {
       return false;
     }
-    return resource.status === "active";
+    return resource.status === "active" || resource.status === "archived";
   },
 });
