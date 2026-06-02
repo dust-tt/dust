@@ -48,40 +48,18 @@ export function parseToolTag(tag: string): ToolReference | null {
   return parseToolTagAttributes(attributes);
 }
 
-export function extractToolTags(
-  content: string,
-  { includeHtmlElements = false }: { includeHtmlElements?: boolean } = {}
-): ToolReference[] {
-  const selfClosingToolTags = [...content.matchAll(TOOL_TAG_REGEX)]
+export function extractToolTags(content: string): ToolReference[] {
+  return [...content.matchAll(TOOL_TAG_REGEX)]
     .map((match) => parseToolTag(match[0]))
     .filter((tool): tool is ToolReference => tool !== null);
-
-  if (!includeHtmlElements) {
-    return selfClosingToolTags;
-  }
-
-  const htmlToolElements = [...content.matchAll(TOOL_ELEMENT_REGEX)]
-    .map((match) => parseToolTagAttributes(match[1].trimEnd()))
-    .filter((tool): tool is ToolReference => tool !== null);
-
-  return [...selfClosingToolTags, ...htmlToolElements];
 }
 
-export function serializeToolTag(
-  { icon, id, name }: ToolReference,
-  { html = false }: { html?: boolean } = {}
-): string {
-  const attributes = serializeToolTagAttributes({
+export function serializeToolTag({ icon, id, name }: ToolReference): string {
+  return `<${TOOL_TAG_NAME} ${serializeToolTagAttributes({
     icon,
     id,
     name,
-  });
-
-  if (html) {
-    return `<${TOOL_TAG_NAME} ${attributes}></${TOOL_TAG_NAME}>`;
-  }
-
-  return `<${TOOL_TAG_NAME} ${attributes} />`;
+  })} />`;
 }
 
 function serializeToolTagAttributes({ icon, id, name }: ToolReference): string {

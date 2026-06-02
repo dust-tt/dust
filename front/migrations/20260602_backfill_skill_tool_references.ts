@@ -1,13 +1,25 @@
+import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
+import { generateShortBlockId } from "@app/lib/generate_short_block_id";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import {
-  appendMissingToolRefs,
-  toolRefsFromMCPViews,
-} from "@app/lib/skills/tool_references";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
+import {
+  extractToolTags,
+  parseToolTag,
+  serializeToolTag,
+  TOOL_TAG_NAME,
+  type ToolReference,
+} from "@app/lib/tools/format";
+import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
+import * as cheerio from "cheerio";
+import type { Logger } from "pino";
+
+const ENABLED_TOOLS_LABEL = "Enabled tools:";
+const TOOL_ELEMENT_REGEX = /<tool\b([^>]*)>[\s\S]*?<\/tool>/g;
 
 type WorkspaceStats = {
   changed: number;
@@ -26,10 +38,7 @@ async function processWorkspace(
     execute: boolean;
     includeUnflagged: boolean;
   },
-  logger: {
-    info: (obj: object, msg: string) => void;
-    error: (obj: object, msg: string) => void;
-  }
+  logger: Logger
 ): Promise<WorkspaceStats> {
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
   const hasNestedSkills = await hasFeatureFlag(auth, "nested_skills");
@@ -62,14 +71,60 @@ async function processWorkspace(
       continue;
     }
 
-    const nextContent = appendMissingToolRefs({
-      instructions: skill.instructions,
-      instructionsHtml: skill.instructionsHtml,
-      tools: toolRefsFromMCPViews(skill.mcpServerViews),
+    const tools = skill.mcpServerViews.map((view): ToolReference => {
+      const viewType = view.toJSON();
+
+      return {
+        icon: viewType.server.icon ?? null,
+        id: view.sId,
+        name: getMcpServerViewDisplayName(viewType),
+      };
     });
+
+    const instructionsToolIds = new Set(
+      extractToolTags(skill.instructions).map((tool) => tool.id)
+    );
+    const missingInInstructions = tools.filter(
+      (tool) => !instructionsToolIds.has(tool.id)
+    );
+    const instructions =
+      missingInInstructions.length === 0
+        ? skill.instructions
+        : `${skill.instructions.trimEnd()}\n\n${ENABLED_TOOLS_LABEL} ${missingInInstructions.map((tool) => serializeToolTag(tool)).join(" ")}`;
+
+    const instructionsHtmlToolIds = new Set(
+      [
+        ...extractToolTags(skill.instructionsHtml ?? ""),
+        ...removeNulls(
+          [...(skill.instructionsHtml ?? "").matchAll(TOOL_ELEMENT_REGEX)].map(
+            (match) => parseToolTag(`<${TOOL_TAG_NAME}${match[1].trimEnd()} />`)
+          )
+        ),
+      ].map((tool) => tool.id)
+    );
+    const missingInInstructionsHtml = tools.filter(
+      (tool) => !instructionsHtmlToolIds.has(tool.id)
+    );
+
+    let instructionsHtml = skill.instructionsHtml;
+    if (instructionsHtml !== null && missingInInstructionsHtml.length > 0) {
+      const paragraph = `<p data-block-id="${generateShortBlockId()}">${ENABLED_TOOLS_LABEL} ${missingInInstructionsHtml.map((tool) => serializeToolTag(tool)).join(" ")}</p>`;
+      const $ = cheerio.load(instructionsHtml, { xmlMode: false }, false);
+      const root = $(
+        `[data-block-id="${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}"]`
+      ).first();
+
+      if (root.length > 0) {
+        root.append(paragraph);
+        instructionsHtml = $.html();
+      } else {
+        instructionsHtml = `${instructionsHtml.trimEnd()}\n${paragraph}`;
+      }
+    }
+
     const changed =
-      nextContent.instructions !== skill.instructions ||
-      nextContent.instructionsHtml !== skill.instructionsHtml;
+      instructions !== skill.instructions ||
+      instructionsHtml !== skill.instructionsHtml;
 
     if (!changed) {
       continue;
@@ -96,8 +151,8 @@ async function processWorkspace(
     try {
       await SkillConfigurationModel.update(
         {
-          instructions: nextContent.instructions,
-          instructionsHtml: nextContent.instructionsHtml,
+          instructions,
+          instructionsHtml,
         },
         {
           hooks: false,
@@ -141,14 +196,14 @@ makeScript(
         "Also process workspaces without the nested_skills feature flag.",
       type: "boolean",
     },
-    workspaceId: {
+    wId: {
       describe:
         "Process skills for a single workspace (sId). Omit to run on all workspaces.",
       type: "string",
     },
   },
   async (
-    { concurrency, execute, fromWorkspaceId, includeUnflagged, workspaceId },
+    { concurrency, execute, fromWorkspaceId, includeUnflagged, wId },
     logger
   ) => {
     logger.info(
@@ -157,7 +212,7 @@ makeScript(
         execute,
         fromWorkspaceId,
         includeUnflagged,
-        workspaceId: workspaceId ?? "all",
+        workspaceId: wId ?? "all",
       },
       execute
         ? "Starting skill tool references backfill"
@@ -188,7 +243,7 @@ makeScript(
       {
         concurrency,
         fromWorkspaceId,
-        wId: workspaceId,
+        wId,
       }
     );
 
@@ -196,7 +251,7 @@ makeScript(
       {
         execute,
         ...totals,
-        workspaceId: workspaceId ?? "all",
+        workspaceId: wId ?? "all",
       },
       execute
         ? "Skill tool references backfill complete"
