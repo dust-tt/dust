@@ -1,5 +1,8 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type {
+  ToolHandlerExtra,
+  ToolHandlers,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { jsonToMarkdown } from "@app/lib/actions/mcp_internal_actions/utils";
 import {
@@ -85,7 +88,15 @@ function buildAndEncodeEmail(params: {
     return validationError;
   }
 
-  let messageLines: string[] = [];
+  let messageLines: string[];
+
+  const commonLines = [
+    `To: ${params.to.join(", ")}`,
+    params.from ? `From: ${params.from}` : null,
+    params.cc?.length ? `Cc: ${params.cc.join(", ")}` : null,
+    params.bcc?.length ? `Bcc: ${params.bcc.join(", ")}` : null,
+    `Subject: ${encodedSubject}`,
+  ].filter((line): line is string => line !== null);
 
   if (params.attachment) {
     const boundary = crypto.randomUUID().replace(/-/g, "");
@@ -94,11 +105,7 @@ function buildAndEncodeEmail(params: {
       "application/octet-stream";
     // Create the email message with proper headers, content and attachment file
     messageLines = [
-      `To: ${params.to.join(", ")}`,
-      params.from ? `From: ${params.from}` : null,
-      params.cc?.length ? `Cc: ${params.cc.join(", ")}` : null,
-      params.bcc?.length ? `Bcc: ${params.bcc.join(", ")}` : null,
-      `Subject: ${encodedSubject}`,
+      ...commonLines,
       `Content-Type: multipart/mixed; boundary="${boundary}"`,
       "MIME-Version: 1.0",
       ...(params.threadingHeaders ?? []),
@@ -115,21 +122,17 @@ function buildAndEncodeEmail(params: {
       "",
       params.attachment.buffer.toString("base64"),
       `--${boundary}--`,
-    ].filter((line): line is string => line !== null);
+    ];
   } else {
     // Create the email message with proper headers and content.
     messageLines = [
-      `To: ${params.to.join(", ")}`,
-      params.from ? `From: ${params.from}` : null,
-      params.cc?.length ? `Cc: ${params.cc.join(", ")}` : null,
-      params.bcc?.length ? `Bcc: ${params.bcc.join(", ")}` : null,
-      `Subject: ${encodedSubject}`,
+      ...commonLines,
       `Content-Type: ${params.contentType}; charset=UTF-8`,
       "MIME-Version: 1.0",
       ...(params.threadingHeaders ?? []),
       "",
       params.body,
-    ].filter((line): line is string => line !== null);
+    ];
   }
 
   const message = messageLines.join("\r\n");
@@ -250,6 +253,46 @@ async function buildReplyContext(params: {
   });
 }
 
+async function fetchAttachment(
+  auth: ToolHandlerExtra["auth"],
+  attachmentFileId: string | undefined,
+  agentLoopContext: ToolHandlerExtra["agentLoopContext"]
+): Promise<
+  | Ok<{ buffer: Buffer; filename: string; contentType: string } | undefined>
+  | Err<MCPError>
+> {
+  if (!attachmentFileId) {
+    return new Ok(undefined);
+  }
+
+  if (!agentLoopContext) {
+    return new Err(new MCPError("No agent context available"));
+  }
+
+  const fileResult = await getFileFromConversationAttachment(
+    auth,
+    attachmentFileId,
+    agentLoopContext
+  );
+
+  if (fileResult.isErr()) {
+    return new Err(
+      new MCPError(`File not found: ${attachmentFileId}`, { tracked: false })
+    );
+  }
+
+  const { buffer, filename, contentType } = fileResult.value;
+
+  if (buffer.length > MAX_ATTACHMENT_SIZE_BYTES) {
+    return new Err(
+      new MCPError(
+        `Attachment file size exceeds the ${MAX_ATTACHMENT_SIZE_BYTES / (1024 * 1024)}MB limit.`
+      )
+    );
+  }
+  return new Ok({ buffer, filename, contentType });
+}
+
 const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
   get_drafts: async ({ q, pageToken }, { authInfo }) => {
     const accessToken = authInfo?.token;
@@ -354,43 +397,15 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
         }
       }
     }
-
-    let fileBuffer: Buffer | undefined = undefined;
-    let filename: string | undefined = undefined;
-    let filetype: string | undefined = undefined;
-
-    if (attachmentFileId) {
-      if (!agentLoopContext) {
-        return new Err(new MCPError("No agent context available"));
-      }
-
-      const fileResult = await getFileFromConversationAttachment(
-        auth,
-        attachmentFileId,
-        agentLoopContext
-      );
-
-      if (fileResult.isErr()) {
-        return new Err(
-          new MCPError(`File not found: ${attachmentFileId}`, {
-            tracked: false,
-          })
-        );
-      }
-      ({
-        buffer: fileBuffer,
-        filename,
-        contentType: filetype,
-      } = fileResult.value);
-
-      if (fileBuffer.length > MAX_ATTACHMENT_SIZE_BYTES) {
-        return new Err(
-          new MCPError(
-            `Attachment file size exceeds the ${MAX_ATTACHMENT_SIZE_BYTES / (1024 * 1024)}MB limit.`
-          )
-        );
-      }
+    const attachmentResult = await fetchAttachment(
+      auth,
+      attachmentFileId,
+      agentLoopContext
+    );
+    if (attachmentResult.isErr()) {
+      return attachmentResult;
     }
+    const attachment = attachmentResult.value;
 
     let encodedMessage: string | undefined = undefined;
     let threadId: string | undefined = undefined;
@@ -437,13 +452,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
         contentType: "text/html",
         body: fullBody,
         threadingHeaders,
-        attachment: fileBuffer
-          ? {
-              buffer: fileBuffer,
-              filename: filename ?? "",
-              contentType: filetype ?? "",
-            }
-          : undefined,
+        attachment,
       });
       if (encodedMessageResult.isErr()) {
         return encodedMessageResult;
@@ -480,13 +489,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
         subject,
         contentType,
         body,
-        attachment: fileBuffer
-          ? {
-              buffer: fileBuffer,
-              filename: filename ?? "",
-              contentType: filetype ?? "",
-            }
-          : undefined,
+        attachment: attachment,
       });
 
       if (encodedMessageResult.isErr()) {
@@ -973,40 +976,15 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
         }
       }
     }
-    let fileBuffer: Buffer | undefined = undefined;
-    let filename: string | undefined = undefined;
-    let filetype: string | undefined = undefined;
-
-    if (attachmentFileId) {
-      if (!agentLoopContext) {
-        return new Err(new MCPError("No agent context available"));
-      }
-
-      const fileResult = await getFileFromConversationAttachment(
-        auth,
-        attachmentFileId,
-        agentLoopContext
-      );
-      if (fileResult.isErr()) {
-        return new Err(
-          new MCPError(`File not found: ${attachmentFileId}`, {
-            tracked: false,
-          })
-        );
-      }
-      ({
-        buffer: fileBuffer,
-        filename,
-        contentType: filetype,
-      } = fileResult.value);
-      if (fileBuffer.length > MAX_ATTACHMENT_SIZE_BYTES) {
-        return new Err(
-          new MCPError(
-            `Attachment file size exceeds the ${MAX_ATTACHMENT_SIZE_BYTES / (1024 * 1024)}MB limit.`
-          )
-        );
-      }
+    const attachmentResult = await fetchAttachment(
+      auth,
+      attachmentFileId,
+      agentLoopContext
+    );
+    if (attachmentResult.isErr()) {
+      return attachmentResult;
     }
+    const attachment = attachmentResult.value;
 
     let encodedMessage: string | undefined = undefined;
     let threadId: string | undefined = undefined;
@@ -1054,13 +1032,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
         contentType: "text/html",
         body: fullBody,
         threadingHeaders,
-        attachment: fileBuffer
-          ? {
-              buffer: fileBuffer,
-              filename: filename ?? "",
-              contentType: filetype ?? "",
-            }
-          : undefined,
+        attachment: attachment,
       });
 
       if (encodedMessageResult.isErr()) {
@@ -1098,13 +1070,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
         subject,
         contentType,
         body,
-        attachment: fileBuffer
-          ? {
-              buffer: fileBuffer,
-              filename: filename ?? "",
-              contentType: filetype ?? "",
-            }
-          : undefined,
+        attachment: attachment,
       });
 
       if (encodedMessageResult.isErr()) {
