@@ -496,8 +496,9 @@ export async function setupEgressForwarder(
   }
 
   if (restartExisting) {
-    const killResult = await traceSandboxStartupPhase("egress.kill_existing", () =>
-      killEgressForwarder(auth, sandbox)
+    const killResult = await traceSandboxStartupPhase(
+      "egress.kill_existing",
+      () => killEgressForwarder(auth, sandbox)
     );
     if (killResult.isErr()) {
       return killResult;
@@ -571,7 +572,9 @@ export async function setupEgressForwarder(
         await sleep(EGRESS_SETUP_WAIT_MS);
       }
 
-      return new Err(new Error("Sandbox egress did not become healthy in time"));
+      return new Err(
+        new Error("Sandbox egress did not become healthy in time")
+      );
     }
   );
   if (waitResult.isErr()) {

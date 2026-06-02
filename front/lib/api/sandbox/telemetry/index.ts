@@ -32,25 +32,23 @@ export async function startTelemetry(
 
   // /!\ DD_API_KEY must never appear literally in the command string;
   // journalctl logs argv. Always interpolate from the envVars below.
-  const result = await traceSandboxStartupPhase(
-    "telemetry_start",
-    () =>
-      sandbox.execRoot(
-        auth,
-        rootCommand.unsafeShell(
-          `/usr/bin/systemctl set-environment DD_HOST="$DD_HOST" DD_API_KEY="$DD_API_KEY" E2B_SANDBOX_ID="$E2B_SANDBOX_ID" CONVERSATION_ID="$CONVERSATION_ID" WORKSPACE_ID="$WORKSPACE_ID" && /usr/bin/systemctl start fluent-bit`,
-          "systemctl environment command expands sandbox env vars without embedding secrets in the TypeScript command string"
-        ),
-        {
-          envVars: {
-            DD_HOST: "http-intake.logs.datadoghq.eu",
-            DD_API_KEY: config.getDatadogApiKey() ?? "",
-            E2B_SANDBOX_ID: sandbox.providerId,
-            CONVERSATION_ID: conversation.sId,
-            WORKSPACE_ID: workspaceId,
-          },
-        }
-      )
+  const result = await traceSandboxStartupPhase("telemetry_start", () =>
+    sandbox.execRoot(
+      auth,
+      rootCommand.unsafeShell(
+        `/usr/bin/systemctl set-environment DD_HOST="$DD_HOST" DD_API_KEY="$DD_API_KEY" E2B_SANDBOX_ID="$E2B_SANDBOX_ID" CONVERSATION_ID="$CONVERSATION_ID" WORKSPACE_ID="$WORKSPACE_ID" && /usr/bin/systemctl start fluent-bit`,
+        "systemctl environment command expands sandbox env vars without embedding secrets in the TypeScript command string"
+      ),
+      {
+        envVars: {
+          DD_HOST: "http-intake.logs.datadoghq.eu",
+          DD_API_KEY: config.getDatadogApiKey() ?? "",
+          E2B_SANDBOX_ID: sandbox.providerId,
+          CONVERSATION_ID: conversation.sId,
+          WORKSPACE_ID: workspaceId,
+        },
+      }
+    )
   );
 
   if (result.isErr()) {
