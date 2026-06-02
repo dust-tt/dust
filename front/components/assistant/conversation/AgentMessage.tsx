@@ -330,6 +330,7 @@ export function AgentMessage({
                 argumentsRequiringApproval:
                   eventPayload.data.argumentsRequiringApproval,
                 approvalArgsLabel: eventPayload.data.approvalArgsLabel,
+                editableArguments: eventPayload.data.editableArguments,
               },
             });
             break;
