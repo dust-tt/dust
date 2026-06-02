@@ -1567,6 +1567,54 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     );
   }
 
+  /**
+   * Cancel scheduled seat changes for a whole workspace that were staged for a
+   * specific `scheduledAt` moment (e.g. a pending contract switch's start). For
+   * each future row at that exact moment, drops it and reopens the current row
+   * it superseded (clears its `endAt`). Scoped to `scheduledAt` so unrelated
+   * scheduled changes (e.g. an admin-deferred downgrade at period end) are left
+   * untouched. Returns the number of memberships whose change was cancelled.
+   */
+  static async cancelScheduledSeatChangesForWorkspaceAt({
+    workspace,
+    scheduledAt,
+  }: {
+    workspace: LightWorkspaceType;
+    scheduledAt: Date;
+  }): Promise<number> {
+    // A backdated/immediate remap updates the row in place (no future row), so
+    // only a genuinely future `scheduledAt` can have rows to cancel.
+    if (scheduledAt.getTime() <= Date.now()) {
+      return 0;
+    }
+    return frontSequelize.transaction(async (transaction) => {
+      const futureRows = await MembershipModel.findAll({
+        where: {
+          workspaceId: workspace.id,
+          startAt: scheduledAt,
+        },
+        transaction,
+      });
+      for (const future of futureRows) {
+        // Drop the future row first to preserve the `WHERE endAt IS NULL`
+        // unique invariant, then reopen the current row it superseded.
+        await future.destroy({ transaction });
+        await MembershipModel.update(
+          { endAt: null },
+          {
+            where: {
+              userId: future.userId,
+              workspaceId: workspace.id,
+              endAt: scheduledAt,
+            },
+            transaction,
+          }
+        );
+      }
+      return futureRows.length;
+    });
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction }

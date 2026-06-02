@@ -86,6 +86,10 @@ export function decodeMessageBody(
     const base64 = payload.body.data.replace(/-/g, "+").replace(/_/g, "/");
     return Buffer.from(base64, "base64").toString("utf-8");
   }
+  if (payload.mimeType == "text/html" && payload.body?.data) {
+    const base64 = payload.body.data.replace(/-/g, "+").replace(/_/g, "/");
+    return Buffer.from(base64, "base64").toString("utf-8");
+  }
 
   if (payload.parts) {
     for (const part of payload.parts) {
@@ -238,7 +242,7 @@ export function createThreadingHeaders(
     headers.push(`In-Reply-To: ${originalMessageId}`);
 
     if (originalReferences) {
-      headers.push(`References: ${originalReferences}`);
+      headers.push(`References: ${originalReferences} ${originalMessageId}`);
     } else {
       headers.push(`References: ${originalMessageId}`);
     }

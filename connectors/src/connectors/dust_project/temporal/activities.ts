@@ -117,7 +117,7 @@ export async function dustProjectConversationsFullSyncActivity({
     }
 
     // Sync each conversation (including deleted ones - syncConversation handles deletion)
-    // conversations is an array of ConversationSchema objects (full ConversationType)
+    // conversations is an array of ConversationForDataSourceSyncSchema objects
     await concurrentExecutor(
       conversations,
       async (conversation) => {
@@ -227,7 +227,7 @@ export async function dustProjectConversationsIncrementalSyncActivity({
     );
 
     // Sync each conversation (including deleted ones - syncConversation handles deletion)
-    // conversations is an array of ConversationSchema objects (full ConversationType)
+    // conversations is an array of ConversationForDataSourceSyncSchema objects
     await concurrentExecutor(
       conversations,
       async (conversation) => {

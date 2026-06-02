@@ -55,6 +55,7 @@ export async function renderConversationForModel(
     onMissingAction = "inject-placeholder",
     agentConfiguration,
     enabledSkills,
+    useFramesV2 = false,
   }: {
     leadingMessages?: ModelMessageTypeMultiActionsWithoutContentFragment[];
     conversation: ConversationType;
@@ -68,6 +69,7 @@ export async function renderConversationForModel(
     enablePreviousInteractionsPruning?: boolean;
     agentConfiguration?: AgentConfigurationType;
     enabledSkills: EnabledSkill[];
+    useFramesV2?: boolean;
   }
 ): Promise<
   Result<
@@ -90,6 +92,7 @@ export async function renderConversationForModel(
     onMissingAction,
     agentConfiguration,
     enabledSkills,
+    useFramesV2,
   });
   const messages = [...leadingMessages, ...renderedMessages];
   const renderAllMessagesMs = Date.now() - stepStart;

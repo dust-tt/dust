@@ -134,7 +134,7 @@ export async function streamThumbnail(
  * A single batch DB query covers all entries; pod files probe the legacy projects/ path too.
  *
  * Intended for endpoints that expose file listings to the client (conversation files,
- * pod files) where the fileId is needed to open previews or interactive content.
+ * pod files) where the fileId is needed to open frames.
  */
 export async function enrichListWithFileResourceIds(
   auth: Authenticator,

@@ -4,7 +4,7 @@ import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { getSkillAvatarIcon } from "@app/lib/skill";
+import { getSkillAvatarIcon, getSkillIcon } from "@app/lib/skill";
 import { getSpaceName } from "@app/lib/spaces";
 import type { SpaceType } from "@app/types/space";
 import { Chip, DocumentIcon, Icon, ToolsIcon } from "@dust-tt/sparkle";
@@ -50,7 +50,7 @@ function getActionChipIcon(
   return getIcon(mcpServerView.server.icon);
 }
 
-function getSkillIcon(skill: SkillToRemove): React.ReactNode {
+function getSkillInlineIcon(skill: SkillToRemove): React.ReactNode {
   return React.createElement(getSkillAvatarIcon(skill.icon));
 }
 
@@ -87,6 +87,7 @@ interface ConfirmBlockedSkillSpaceRemovalParams {
   space: SpaceType;
   actions: BuilderAction[];
   knowledge: KnowledgeToRemove[];
+  skills?: SkillToRemove[];
 }
 
 export function useRemoveSpaceConfirm({
@@ -110,7 +111,7 @@ export function useRemoveSpaceConfirm({
       ...skills.map((skill) => ({
         id: skill.sId,
         name: skill.name,
-        icon: getSkillIcon(skill),
+        icon: getSkillInlineIcon(skill),
       })),
       ...actions.map((action) => ({
         id: action.id,
@@ -171,6 +172,7 @@ export function useBlockedSkillSpaceRemovalConfirm({
     space,
     actions,
     knowledge,
+    skills = [],
   }: ConfirmBlockedSkillSpaceRemovalParams): Promise<boolean> => {
     return confirm({
       title: `${getSpaceName(space)} can't be removed`,
@@ -178,7 +180,7 @@ export function useBlockedSkillSpaceRemovalConfirm({
         <div className="space-y-3">
           <p className="text-sm">
             This space can't be removed from the skill because the skill uses
-            knowledge or tools that belong to it.
+            knowledge or capabilities that belong to it.
           </p>
           <div className="flex flex-wrap gap-2">
             {knowledge.map((knowledgeItem) => (
@@ -188,6 +190,15 @@ export function useBlockedSkillSpaceRemovalConfirm({
                 color="primary"
                 icon={DocumentIcon}
                 label={knowledgeItem.title}
+              />
+            ))}
+            {skills.map((skill) => (
+              <Chip
+                key={`skill-${skill.sId}`}
+                size="xs"
+                color="primary"
+                icon={getSkillIcon(skill.icon)}
+                label={skill.name}
               />
             ))}
             {actions.map((action) => (

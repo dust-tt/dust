@@ -10,6 +10,11 @@ import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 
+export type ProjectMetadataBlob = Omit<
+  CreationAttributes<ProjectMetadataModel>,
+  "workspaceId" | "spaceId"
+>;
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface ProjectMetadataResource
   extends ReadonlyAttributesType<ProjectMetadataModel> {}
@@ -88,10 +93,7 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
   static async makeNew(
     auth: Authenticator,
     space: SpaceResource,
-    blob: Omit<
-      CreationAttributes<ProjectMetadataModel>,
-      "workspaceId" | "spaceId"
-    >,
+    blob: ProjectMetadataBlob,
     transaction?: Transaction
   ): Promise<ProjectMetadataResource> {
     const model = await ProjectMetadataModel.create(
@@ -119,6 +121,13 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
     transaction?: Transaction
   ) {
     await this.update({ description }, transaction);
+  }
+
+  updateDescriptionAndPinnedFramePath(blob: {
+    description?: string | null;
+    pinnedFramePath?: string | null;
+  }) {
+    return this.update(blob);
   }
 
   async updateLastTodoAnalysisAt(

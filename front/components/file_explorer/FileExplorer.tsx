@@ -22,21 +22,17 @@ import {
   buildFolderTree,
   countFoldersInTree,
   getFolderBreadcrumbSegments,
-  getParentFolderRelativePath,
   getScopedRelativePath,
   isFileExplorerMovableFile,
 } from "@app/components/file_explorer/utils";
-import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import type { FileSystemEntry } from "@app/lib/api/file_system/types";
 import { isInteractiveContentType } from "@app/types/files";
 import { Err, type Result } from "@app/types/shared/result";
 import {
-  Button,
   cn,
   FolderOpenIcon,
   PencilSquareIcon,
   TrashIcon,
-  XMarkIcon,
 } from "@dust-tt/sparkle";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -46,13 +42,12 @@ interface FileExplorerProps {
   contentNodes?: ContentNodeEntry[];
   defaultViewMode?: ViewMode;
   emptyState?: React.ReactNode;
-  hideTitleBorder?: boolean;
+  hideBreadcrumbAtRoot?: boolean;
   files: FileSystemEntry[];
   getFileUrl: (path: string) => string;
   toolbarExtraActions?: React.ReactNode;
   isLoading: boolean;
   navigationResetKey?: number;
-  onClose?: () => void;
   onCurrentFolderChange?: (relativePath: string) => void;
   onDelete?: (entry: FileExplorerEntry) => Promise<void>;
   onFileDownload: (entry: FileEntry) => Promise<void>;
@@ -75,10 +70,9 @@ export function FileExplorer({
   files,
   getFileUrl,
   toolbarExtraActions,
-  hideTitleBorder = false,
+  hideBreadcrumbAtRoot = false,
   isLoading,
   navigationResetKey,
-  onClose,
   onCurrentFolderChange,
   onDelete,
   onFileDownload,
@@ -217,10 +211,6 @@ export function FileExplorer({
     setCurrentFolderPath(node.path);
   };
 
-  const handleGoUp = () => {
-    setCurrentFolderPath(getParentFolderRelativePath(currentFolderPath));
-  };
-
   const fileDragEnabled = Boolean(onMoveFile && totalFolderCount > 0);
 
   const handleMoveFileDrop = useCallback(
@@ -278,54 +268,31 @@ export function FileExplorer({
       ? () => setPreviewFile(fileEntriesAtLevel[previewIndex + 1] ?? null)
       : undefined;
 
-  const inPanel = !!onClose;
+  const showBreadcrumb = !(hideBreadcrumbAtRoot && currentFolderPath === "");
 
   return (
     <>
       <div className="flex h-full w-full min-h-0 flex-1 flex-col">
-        {inPanel && (
-          <AppLayoutTitle
-            className={hideTitleBorder ? "border-b-0" : undefined}
-          >
-            <div
-              className={cn(
-                "flex h-full items-center justify-between gap-2",
-                contentClassName
-              )}
-            >
+        <div
+          className={cn("flex flex-1 min-h-0 flex-col gap-5", contentClassName)}
+        >
+          {showBreadcrumb && (
+            <div className={cn("px-4", hideBreadcrumbAtRoot && "pt-5")}>
               <FileExplorerBreadcrumb
                 currentFolderPath={currentFolderPath}
-                onGoUp={handleGoUp}
                 onNavigate={handleBreadcrumbNavigate}
                 onMoveFileDrop={
                   fileDragEnabled ? handleMoveFileDrop : undefined
                 }
               />
-              <Button
-                variant="ghost"
-                size="sm"
-                icon={XMarkIcon}
-                onClick={onClose}
-              />
             </div>
-          </AppLayoutTitle>
-        )}
-        <div
-          className={cn(
-            "flex flex-1 min-h-0 flex-col gap-5",
-            contentClassName,
-            inPanel ? "pt-5" : undefined
           )}
-        >
-          {!inPanel && (
-            <FileExplorerBreadcrumb
-              currentFolderPath={currentFolderPath}
-              onGoUp={handleGoUp}
-              onNavigate={handleBreadcrumbNavigate}
-              onMoveFileDrop={fileDragEnabled ? handleMoveFileDrop : undefined}
-            />
-          )}
-          <div className={inPanel ? "px-4" : undefined}>
+          <div
+            className={cn(
+              "px-4",
+              hideBreadcrumbAtRoot && !showBreadcrumb && "pt-5"
+            )}
+          >
             <FileExplorerToolbar
               searchQuery={searchQuery}
               onSearchQueryChange={setSearchQuery}
@@ -337,7 +304,7 @@ export function FileExplorer({
             />
           </div>
           {Object.keys(filterCounts).length > 1 && (
-            <div className={inPanel ? "px-4" : undefined}>
+            <div className="px-4">
               <FileExplorerFilters
                 active={activeFilter}
                 onActiveChange={setActiveFilter}

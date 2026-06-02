@@ -1,9 +1,19 @@
 import { Authenticator } from "@app/lib/auth";
-import { listMetronomePackages } from "@app/lib/metronome/client";
 import {
+  addPrepaidCommitToContract,
+  listMetronomePackages,
+} from "@app/lib/metronome/client";
+import {
+  AWU_PRIORITY_PURCHASED_COMMIT,
+  getProductPrepaidCommitId,
+} from "@app/lib/metronome/constants";
+import {
+  applySeatRateOverrides,
   ensureMetronomeCustomerForWorkspace,
   provisionMetronomeContract,
+  syncContractQuantities,
 } from "@app/lib/metronome/contracts";
+import { remapMembershipSeatTypesForContract } from "@app/lib/metronome/seats";
 import { PlanModel } from "@app/lib/models/plan";
 import {
   CREDIT_PRICED_BUSINESS_PLAN_CODE,
@@ -34,6 +44,7 @@ vi.mock("@app/lib/metronome/client", async () => {
   return {
     ...actual,
     listMetronomePackages: vi.fn(),
+    addPrepaidCommitToContract: vi.fn(),
   };
 });
 
@@ -45,6 +56,18 @@ vi.mock("@app/lib/metronome/contracts", async () => {
     ...actual,
     ensureMetronomeCustomerForWorkspace: vi.fn(),
     provisionMetronomeContract: vi.fn(),
+    applySeatRateOverrides: vi.fn(),
+    syncContractQuantities: vi.fn(),
+  };
+});
+
+vi.mock("@app/lib/metronome/seats", async () => {
+  const actual = await vi.importActual<
+    typeof import("@app/lib/metronome/seats")
+  >("@app/lib/metronome/seats");
+  return {
+    ...actual,
+    remapMembershipSeatTypesForContract: vi.fn(),
   };
 });
 
@@ -190,6 +213,7 @@ beforeEach(() => {
         aliases: ["enterprise"],
         tier: "enterprise",
         currency: "usd",
+        seats: [],
       },
       {
         id: PRO_PACKAGE_ID,
@@ -197,6 +221,7 @@ beforeEach(() => {
         aliases: ["legacy-pro-monthly"],
         tier: "pro",
         currency: "usd",
+        seats: [],
       },
       {
         id: BUSINESS_PACKAGE_ID,
@@ -204,6 +229,29 @@ beforeEach(() => {
         aliases: ["business"],
         tier: "business",
         currency: "usd",
+        seats: [
+          {
+            seatType: "workspace",
+            productId: "prod_workspace",
+            productName: "Workspace seat",
+            defaultRate: 4000,
+            entitled: true,
+          },
+          {
+            seatType: "max",
+            productId: "prod_max",
+            productName: "Max seat",
+            defaultRate: null,
+            entitled: false,
+          },
+          {
+            seatType: "free",
+            productId: "prod_free",
+            productName: "Free seat",
+            defaultRate: null,
+            entitled: false,
+          },
+        ],
       },
     ])
   );
@@ -211,6 +259,14 @@ beforeEach(() => {
     new Ok({ metronomeContractId: NEW_CONTRACT_ID })
   );
   vi.mocked(scheduleSubscriptionCancellation).mockResolvedValue(true);
+  vi.mocked(addPrepaidCommitToContract).mockResolvedValue(
+    new Ok({ editId: "edit_xxx" })
+  );
+  vi.mocked(applySeatRateOverrides).mockResolvedValue(new Ok(undefined));
+  vi.mocked(syncContractQuantities).mockResolvedValue(new Ok(undefined));
+  vi.mocked(remapMembershipSeatTypesForContract).mockResolvedValue(
+    new Ok(undefined)
+  );
 });
 
 describe("POST /api/poke/workspaces/[wId]/switch_contract — Enterprise", () => {
@@ -269,7 +325,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — Enterprise", () =>
     );
   });
 
-  it("rejects when startingAt is less than 1h in the future", async () => {
+  it("accepts a startingAt in the past (backdated) and schedules at the next hour boundary", async () => {
     await ensureEnterprisePlan();
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "POST",
@@ -277,13 +333,19 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — Enterprise", () =>
     });
     await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
 
-    req.body = enterpriseBody({ startingAt: futureIso(0.5) });
+    req.body = enterpriseBody({ startingAt: futureIso(-48) });
     req.query.wId = workspace.sId;
 
     await handler(req, res);
 
-    expect(res._getStatusCode()).toBe(400);
-    expect(res._getJSONData().error.message).toContain("at least one hour");
+    expect(res._getStatusCode()).toBe(200);
+    expect(provisionMetronomeContract).toHaveBeenCalledWith(
+      expect.objectContaining({
+        packageAlias: "enterprise",
+        planCode: ENT_PLAN_CODE,
+        swapAt: "next-hour",
+      })
+    );
   });
 
   it("rejects when the package currency does not match the Stripe customer currency", async () => {
@@ -485,6 +547,116 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — Pro / Business", (
   });
 });
 
+describe("POST /api/poke/workspaces/[wId]/switch_contract — seats entitlement", () => {
+  it("entitles a seat the package does not entitle by default via a rate override", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      isSuperUser: true,
+    });
+    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
+
+    req.body = businessBody({
+      seats: [{ seatType: "max", minSeats: 0, rate: 50 }],
+    });
+    req.query.wId = workspace.sId;
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(applySeatRateOverrides).toHaveBeenCalledWith(
+      expect.objectContaining({
+        contractId: NEW_CONTRACT_ID,
+        overrides: [
+          expect.objectContaining({ productId: "prod_max", entitled: true }),
+        ],
+      })
+    );
+    // Memberships are re-mapped and seat quantities re-synced after entitlement
+    // changes, so members land on a billed seat and the new seat is billed.
+    expect(remapMembershipSeatTypesForContract).toHaveBeenCalledWith(
+      expect.objectContaining({
+        contractId: NEW_CONTRACT_ID,
+        workspace: expect.objectContaining({ sId: workspace.sId }),
+      })
+    );
+    expect(syncContractQuantities).toHaveBeenCalledWith(
+      METRONOME_CUSTOMER_ID,
+      NEW_CONTRACT_ID,
+      expect.objectContaining({ sId: workspace.sId }),
+      expect.any(String)
+    );
+  });
+
+  it("disables a package-entitled seat the operator unchecks", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      isSuperUser: true,
+    });
+    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
+
+    req.body = businessBody({
+      seats: [{ seatType: "workspace", selected: false, minSeats: 0, rate: 0 }],
+    });
+    req.query.wId = workspace.sId;
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(applySeatRateOverrides).toHaveBeenCalledWith(
+      expect.objectContaining({
+        overrides: [
+          expect.objectContaining({
+            productId: "prod_workspace",
+            entitled: false,
+          }),
+        ],
+      })
+    );
+  });
+
+  it("rejects entitling a non-free seat at rate 0", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      isSuperUser: true,
+    });
+    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
+
+    req.body = businessBody({
+      seats: [{ seatType: "max", minSeats: 0, rate: 0 }],
+    });
+    req.query.wId = workspace.sId;
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
+    expect(res._getJSONData().error.message).toContain(
+      "requires a rate greater than 0"
+    );
+  });
+
+  it("allows entitling the free seat at rate 0", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      isSuperUser: true,
+    });
+    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
+
+    req.body = businessBody({
+      seats: [{ seatType: "free", minSeats: 0, rate: 0 }],
+    });
+    req.query.wId = workspace.sId;
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(applySeatRateOverrides).toHaveBeenCalledWith(
+      expect.objectContaining({
+        overrides: [expect.objectContaining({ productId: "prod_free" })],
+      })
+    );
+  });
+});
+
 describe("POST /api/poke/workspaces/[wId]/switch_contract — guards", () => {
   it("rejects when plan tier doesn't match package tier", async () => {
     const { req, res, workspace } = await createPrivateApiMockRequest({
@@ -561,7 +733,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — guards", () => {
 });
 
 describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
-  it("persists paygCapCredits and syncs the Metronome alert when switching to enterprise with PAYG enabled", async () => {
+  it("persists usageCapCredits and syncs the Metronome alert when switching to enterprise with PAYG enabled", async () => {
     await ensureEnterprisePlan();
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "POST",
@@ -569,7 +741,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
     });
     await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
 
-    req.body = enterpriseBody({ paygEnabled: true, paygCapCredits: 50_000 });
+    req.body = enterpriseBody({ paygEnabled: true, usageCapCredits: 50_000 });
     req.query.wId = workspace.sId;
 
     await handler(req, res);
@@ -581,17 +753,17 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
     );
     const config =
       await CreditUsageConfigurationResource.fetchByWorkspaceId(adminAuth);
-    expect(config?.paygCapCredits).toBe(50_000);
+    expect(config?.usageCapCredits).toBe(50_000);
   });
 
-  it("persists paygCapCredits when switching to business with PAYG enabled", async () => {
+  it("persists usageCapCredits when switching to business with PAYG enabled", async () => {
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "POST",
       isSuperUser: true,
     });
     await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
 
-    req.body = businessBody({ paygEnabled: true, paygCapCredits: 25_000 });
+    req.body = businessBody({ paygEnabled: true, usageCapCredits: 25_000 });
     req.query.wId = workspace.sId;
 
     await handler(req, res);
@@ -603,7 +775,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
     );
     const config =
       await CreditUsageConfigurationResource.fetchByWorkspaceId(adminAuth);
-    expect(config?.paygCapCredits).toBe(25_000);
+    expect(config?.usageCapCredits).toBe(25_000);
   });
 
   it("rejects PAYG on a pro contract", async () => {
@@ -613,7 +785,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
     });
     await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
 
-    req.body = proBody({ paygEnabled: true, paygCapCredits: 10_000 });
+    req.body = proBody({ paygEnabled: true, usageCapCredits: 10_000 });
     req.query.wId = workspace.sId;
 
     await handler(req, res);
@@ -625,7 +797,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
     expect(provisionMetronomeContract).not.toHaveBeenCalled();
   });
 
-  it("rejects when paygEnabled is true but paygCapCredits is missing", async () => {
+  it("accepts paygEnabled without a usage cap (no alert)", async () => {
     await ensureEnterprisePlan();
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "POST",
@@ -638,11 +810,18 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
 
     await handler(req, res);
 
-    expect(res._getStatusCode()).toBe(400);
-    expect(res._getJSONData().error.message).toContain("PAYG cap");
+    expect(res._getStatusCode()).toBe(200);
+
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const config =
+      await CreditUsageConfigurationResource.fetchByWorkspaceId(adminAuth);
+    expect(config?.paygEnabled).toBe(true);
+    expect(config?.usageCapCredits).toBeNull();
   });
 
-  it("clears paygCapCredits when paygEnabled is false", async () => {
+  it("preserves usageCapCredits when paygEnabled is toggled off", async () => {
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "POST",
       isSuperUser: true,
@@ -654,11 +833,11 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
     );
     await CreditUsageConfigurationResource.makeNew(adminAuth, {
       defaultDiscountPercent: 0,
-      paygCapCredits: 100_000,
-      disableCreditCapWarning: false,
+      paygEnabled: true,
+      usageCapCredits: 100_000,
     });
 
-    req.body = proBody();
+    req.body = proBody({ usageCapCredits: 100_000 });
     req.query.wId = workspace.sId;
 
     await handler(req, res);
@@ -667,6 +846,76 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
 
     const config =
       await CreditUsageConfigurationResource.fetchByWorkspaceId(adminAuth);
-    expect(config?.paygCapCredits).toBeNull();
+    expect(config?.paygEnabled).toBe(false);
+    expect(config?.usageCapCredits).toBe(100_000);
+  });
+});
+
+describe("POST /api/poke/workspaces/[wId]/switch_contract — initial credits", () => {
+  it("adds a contract-level prepaid commit with the converted invoice amount", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      isSuperUser: true,
+    });
+    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
+
+    // USD: $5000 invoice → 500000 cents → 500000 Metronome units (USD is cents).
+    req.body = businessBody({
+      initialCredits: { amountCredits: 100_000, invoiceAmount: 5000 },
+    });
+    req.query.wId = workspace.sId;
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(addPrepaidCommitToContract).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metronomeContractId: NEW_CONTRACT_ID,
+        productId: getProductPrepaidCommitId(),
+        accessAmount: 100_000,
+        invoiceUnitPrice: 500_000,
+        invoiceQuantity: 1,
+        priority: AWU_PRIORITY_PURCHASED_COMMIT,
+        applicableProductTags: ["usage"],
+      })
+    );
+  });
+
+  it("does not add a commit when initial credits are omitted", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      isSuperUser: true,
+    });
+    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
+
+    req.body = businessBody();
+    req.query.wId = workspace.sId;
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(addPrepaidCommitToContract).not.toHaveBeenCalled();
+  });
+
+  it("rejects initial credits when no Stripe customer is provided", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      isSuperUser: true,
+    });
+    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
+
+    req.body = businessBody({
+      stripeCustomerId: undefined,
+      initialCredits: { amountCredits: 100_000, invoiceAmount: 5000 },
+    });
+    req.query.wId = workspace.sId;
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
+    expect(res._getJSONData().error.message).toContain(
+      "Initial credits require a Stripe customer"
+    );
+    expect(addPrepaidCommitToContract).not.toHaveBeenCalled();
   });
 });

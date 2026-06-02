@@ -113,6 +113,7 @@ export function PodConversationListItem({
       <ConversationListItem
         className="border-t-0 border-b-0"
         key={conversation.sId}
+        textAnimation={conversation.isRunningAgentLoop ? "streaming" : "none"}
         conversation={{
           id: conversation.sId,
           title: conversationLabel,

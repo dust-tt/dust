@@ -6,9 +6,12 @@
  * Legacy paths (`conversation/...`, `project/...`) are accepted for backward compat.
  *
  * Factories:
- *   DustFileSystem.forConversation(auth, conversation)  conversation mount (+pod if project space)
- *   DustFileSystem.forPod(auth, space)                  pod (project-space) mount only
+ *   DustFileSystem.forConversation(auth, conversation)   single conversation mount (+pod if project space)
+ *   DustFileSystem.forConversations(auth, conversations) multiple conversation mounts (+pod if project space)
  *   DustFileSystem.fromScopedPath(auth, scopedPath)     infers context from the path prefix
+ *   DustFileSystem.forAgentLoop(auth, { conversation, scopedPaths })
+ *       defaults to the agent loop conversation (+ its pod when applicable), plus any
+ *       conversation/pod mounts referenced in scopedPaths that the user can access
  */
 
 import config from "@app/lib/api/config";
@@ -75,6 +78,92 @@ function parseScopedPrefix(scopedPath: string): ParsedScopedPrefix | null {
   return null;
 }
 
+function createConversationMount(
+  conversation: ConversationWithoutContentType,
+  { includeLegacy }: { includeLegacy: boolean }
+): FileSystemMount {
+  return {
+    kind: "conversation",
+    id: conversation.sId,
+    scopedPrefix: `${SCOPED_PREFIX_CONVERSATION}${conversation.sId}`,
+    sandboxMountPoint: `/files/${SCOPED_PREFIX_CONVERSATION}${conversation.sId}`,
+    legacyPrefix: includeLegacy ? LEGACY_PREFIX_CONVERSATION : null,
+    legacySandboxMountPoint: includeLegacy
+      ? `/files/${LEGACY_PREFIX_CONVERSATION}`
+      : null,
+    // Conversation access is always read+write when fetchById returned the resource.
+    permissions: { canRead: true, canWrite: true },
+  };
+}
+
+function createPodMount(
+  auth: Authenticator,
+  space: SpaceResource
+): FileSystemMount {
+  return {
+    kind: "pod",
+    id: space.sId,
+    scopedPrefix: `${SCOPED_PREFIX_POD}${space.sId}`,
+    sandboxMountPoint: `/files/${SCOPED_PREFIX_POD}${space.sId}`,
+    legacyPrefix: LEGACY_PREFIX_PROJECT,
+    legacySandboxMountPoint: `/files/${LEGACY_PREFIX_PROJECT}`,
+    permissions: {
+      canRead: space.canRead(auth),
+      canWrite: space.canWrite(auth),
+    },
+  };
+}
+
+function collectScopedPrefixesFromPaths(scopedPaths: string[]): {
+  conversationIds: Set<string>;
+  podIds: Set<string>;
+} {
+  const conversationIds = new Set<string>();
+  const podIds = new Set<string>();
+
+  for (const scopedPath of scopedPaths) {
+    const parsed = parseScopedPrefix(scopedPath);
+    if (!parsed) {
+      continue;
+    }
+    switch (parsed.kind) {
+      case "conversation":
+        conversationIds.add(parsed.id);
+        break;
+      case "pod":
+        podIds.add(parsed.id);
+        break;
+      default:
+        assertNever(parsed);
+    }
+  }
+
+  return { conversationIds, podIds };
+}
+
+function hasMount(mounts: FileSystemMount[], scopedPrefix: string): boolean {
+  return mounts.some((m) => m.scopedPrefix === scopedPrefix);
+}
+
+function assertAllMountsReadable(
+  mounts: FileSystemMount[]
+): Result<void, DustFileSystemError> {
+  for (const mount of mounts) {
+    if (!mount.permissions.canRead) {
+      return new Err(
+        new DustFileSystemError(
+          "unauthorized",
+          mount.kind === "pod"
+            ? "You do not have read access to this pod."
+            : `Read access denied for mount: ${mount.scopedPrefix}`
+        )
+      );
+    }
+  }
+
+  return new Ok(undefined);
+}
+
 // ---------------------------------------------------------------------------
 // DustFileSystem
 // ---------------------------------------------------------------------------
@@ -91,47 +180,43 @@ export class DustFileSystem {
   // --------------------------------------------------------------------------
 
   /**
-   * Build a DustFileSystem scoped to a conversation.
+   * Build a DustFileSystem scoped to one or more conversations.
    *
-   * Always includes the conversation mount. When the conversation belongs to a project space,
-   * the pod mount is added with permissions derived from the space's canRead/canWrite checks.
+   * Each conversation gets its own read+write mount. When a conversation belongs to a project
+   * space, the pod mount is added (deduplicated when multiple conversations share the same space).
+   *
+   * The first conversation in the list receives the legacy sandbox mount point for backward
+   * compatibility. Additional conversations get null legacy paths (they are only used when
+   * mounting a sandbox, which is always a single-conversation context).
    */
-  static async forConversation(
+  static async forConversations(
     auth: Authenticator,
-    // TODO(FILE SYSTEM MIGRATION): Ideally, we accept a ConversationResource directly.
-    conversation: ConversationWithoutContentType
+    // TODO(FILE SYSTEM MIGRATION): Ideally, we accept ConversationResource directly.
+    conversations: ConversationWithoutContentType[]
   ): Promise<Result<DustFileSystem, DustFileSystemError>> {
     const owner = auth.getNonNullableWorkspace();
+    const mounts: FileSystemMount[] = [];
 
-    const convMount: FileSystemMount = {
-      kind: "conversation",
-      id: conversation.sId,
-      scopedPrefix: `${SCOPED_PREFIX_CONVERSATION}${conversation.sId}`,
-      sandboxMountPoint: `/files/${SCOPED_PREFIX_CONVERSATION}${conversation.sId}`,
-      legacyPrefix: LEGACY_PREFIX_CONVERSATION,
-      legacySandboxMountPoint: `/files/${LEGACY_PREFIX_CONVERSATION}`,
-      // Conversation access is always read+write when the caller holds a valid auth for it.
-      // The handler is responsible for verifying conversation access before calling this factory.
-      permissions: { canRead: true, canWrite: true },
-    };
+    // Legacy mount points are only meaningful for sandbox use, which is always single-conversation.
+    const includeLegacy = conversations.length === 1;
 
-    const mounts: FileSystemMount[] = [convMount];
+    for (const conversation of conversations) {
+      mounts.push(createConversationMount(conversation, { includeLegacy }));
+    }
 
-    if (isPodConversation(conversation)) {
-      const space = await SpaceResource.fetchById(auth, conversation.spaceId);
-      if (space) {
-        mounts.push({
-          kind: "pod",
-          id: space.sId,
-          scopedPrefix: `${SCOPED_PREFIX_POD}${space.sId}`,
-          sandboxMountPoint: `/files/${SCOPED_PREFIX_POD}${space.sId}`,
-          legacyPrefix: LEGACY_PREFIX_PROJECT,
-          legacySandboxMountPoint: `/files/${LEGACY_PREFIX_PROJECT}`,
-          permissions: {
-            canRead: space.canRead(auth),
-            canWrite: space.canWrite(auth),
-          },
-        });
+    // Collect unique pod space IDs, then batch-fetch to avoid N+1 queries.
+    const podConversations = conversations.filter(isPodConversation);
+    const uniqueSpaceIds = [...new Set(podConversations.map((c) => c.spaceId))];
+
+    if (uniqueSpaceIds.length > 0) {
+      const spaces = await SpaceResource.fetchByIds(auth, uniqueSpaceIds);
+      const spaceById = new Map(spaces.map((s) => [s.sId, s]));
+
+      for (const spaceId of uniqueSpaceIds) {
+        const space = spaceById.get(spaceId);
+        if (space) {
+          mounts.push(createPodMount(auth, space));
+        }
       }
     }
 
@@ -141,6 +226,19 @@ export class DustFileSystem {
     );
 
     return new Ok(new DustFileSystem(auth, mounts, backend));
+  }
+
+  /**
+   * Build a DustFileSystem scoped to a single conversation.
+   *
+   * Always includes the conversation mount. When the conversation belongs to a project space,
+   * the pod mount is added with permissions derived from the space's canRead/canWrite checks.
+   */
+  static async forConversation(
+    auth: Authenticator,
+    conversation: ConversationWithoutContentType
+  ): Promise<Result<DustFileSystem, DustFileSystemError>> {
+    return DustFileSystem.forConversations(auth, [conversation]);
   }
 
   /**
@@ -161,18 +259,7 @@ export class DustFileSystem {
     }
 
     const owner = auth.getNonNullableWorkspace();
-    const mount: FileSystemMount = {
-      kind: "pod",
-      id: space.sId,
-      scopedPrefix: `${SCOPED_PREFIX_POD}${space.sId}`,
-      sandboxMountPoint: `/files/${SCOPED_PREFIX_POD}${space.sId}`,
-      legacyPrefix: LEGACY_PREFIX_PROJECT,
-      legacySandboxMountPoint: `/files/${LEGACY_PREFIX_PROJECT}`,
-      permissions: {
-        canRead: true,
-        canWrite: space.canWrite(auth),
-      },
-    };
+    const mount = createPodMount(auth, space);
 
     const backend = new GCSFileSystemBackend(
       owner.sId,
@@ -180,6 +267,104 @@ export class DustFileSystem {
     );
 
     return new Ok(new DustFileSystem(auth, [mount], backend));
+  }
+
+  /**
+   * Build a DustFileSystem for an agent loop.
+   *
+   * Always includes the agent loop conversation mount and, when applicable, its Pod mount
+   * (same as {@link forConversation}). Additionally mounts any conversation or Pod referenced
+   * in `scopedPaths` that the caller can access, so cross-scope operations (e.g. copy between
+   * two conversations) can resolve both endpoints in a single filesystem instance.
+   */
+  static async forAgentLoop(
+    auth: Authenticator,
+    {
+      conversation,
+      scopedPaths = [],
+    }: {
+      conversation: ConversationWithoutContentType;
+      scopedPaths?: string[];
+    }
+  ): Promise<Result<DustFileSystem, DustFileSystemError>> {
+    const { conversationIds, podIds } =
+      collectScopedPrefixesFromPaths(scopedPaths);
+
+    const additionalConversationIds = [...conversationIds].filter(
+      (conversationId) => conversationId !== conversation.sId
+    );
+
+    const additionalConversations: ConversationWithoutContentType[] = [];
+    if (additionalConversationIds.length > 0) {
+      const fetchedConversations = await ConversationResource.fetchByIds(
+        auth,
+        additionalConversationIds
+      );
+      const conversationById = new Map(
+        fetchedConversations.map((c) => [c.sId, c])
+      );
+
+      for (const conversationId of additionalConversationIds) {
+        const fetchedConversation = conversationById.get(conversationId);
+        if (!fetchedConversation) {
+          return new Err(
+            new DustFileSystemError(
+              "not_found",
+              `Conversation not found: ${conversationId}`
+            )
+          );
+        }
+
+        additionalConversations.push(fetchedConversation.toJSON());
+      }
+    }
+
+    const fsResult = await DustFileSystem.forConversations(auth, [
+      conversation,
+      ...additionalConversations,
+    ]);
+    if (fsResult.isErr()) {
+      return fsResult;
+    }
+
+    const mounts = [...fsResult.value.getMounts()];
+
+    const podIdsToFetch = [...podIds].filter(
+      (podId) => !hasMount(mounts, `${SCOPED_PREFIX_POD}${podId}`)
+    );
+
+    if (podIdsToFetch.length > 0) {
+      const spaces = await SpaceResource.fetchByIds(auth, podIdsToFetch);
+      const spaceById = new Map(spaces.map((s) => [s.sId, s]));
+
+      for (const podId of podIdsToFetch) {
+        const space = spaceById.get(podId);
+        if (!space) {
+          return new Err(
+            new DustFileSystemError("not_found", `Space not found: ${podId}`)
+          );
+        }
+
+        mounts.push(createPodMount(auth, space));
+      }
+    }
+
+    const readableResult = assertAllMountsReadable(mounts);
+    if (readableResult.isErr()) {
+      return readableResult;
+    }
+
+    if (podIdsToFetch.length === 0) {
+      return fsResult;
+    }
+
+    const owner = auth.getNonNullableWorkspace();
+    const backend = new GCSFileSystemBackend(
+      owner.sId,
+      fileStorageConfig.getGcsPrivateUploadsBucket()
+    );
+
+    return new Ok(new DustFileSystem(auth, mounts, backend));
   }
 
   /**

@@ -1,8 +1,8 @@
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
-import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { usePokeGlobalAgentFeedbacks } from "@app/hooks/usePokeGlobalAgentFeedbacks";
 import type { GlobalAgentFeedbackItem } from "@app/lib/api/poke/global_agent_feedbacks";
+import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { Button, Chip, LinkWrapper, Spinner } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
@@ -116,7 +116,7 @@ function makeColumns(): ColumnDef<GlobalAgentFeedbackItem>[] {
 }
 
 export function GlobalAgentFeedbacksPage() {
-  useDocumentTitle("Poke - Global Agent Feedbacks");
+  usePokePageMetadata({ name: "Global Agent Feedbacks" });
 
   const [includeEmpty, setIncludeEmpty] = useState(false);
   const [pages, setPages] = useState<number[]>([]);

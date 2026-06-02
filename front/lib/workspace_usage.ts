@@ -688,6 +688,7 @@ async function getAssistantsUsageData(
              LEFT JOIN "users" aut ON ac."authorId" = aut."id"
              LEFT JOIN "agent_messages" a
                       ON a."agentConfigurationId" = ac."sId"
+                      AND a."workspaceId" = :wId
                       AND a."status" = 'succeeded'
                       AND a."createdAt" BETWEEN :startDate AND :endDate
              LEFT JOIN "messages" m ON a."id" = m."agentMessageId"
@@ -809,14 +810,21 @@ export async function fetchUsageData({
         feedback: await getFeedbackUsageData(start, end, workspace),
       };
     case "all":
-      const [users, assistant_messages, builders, assistants, feedback] =
-        await Promise.all([
-          getUserUsageData(start, end, workspace, { includeInactive }),
-          getMessageUsageData(start, end, workspace),
-          getBuildersUsageData(start, end, workspace),
-          getAssistantsUsageData(start, end, workspace, { includeInactive }),
-          getFeedbackUsageData(start, end, workspace),
-        ]);
+      // Sequential on purpose: each query is heavy, running them in parallel
+      // spikes load on the read replica.
+      const users = await getUserUsageData(start, end, workspace, {
+        includeInactive,
+      });
+      const assistant_messages = await getMessageUsageData(
+        start,
+        end,
+        workspace
+      );
+      const builders = await getBuildersUsageData(start, end, workspace);
+      const assistants = await getAssistantsUsageData(start, end, workspace, {
+        includeInactive,
+      });
+      const feedback = await getFeedbackUsageData(start, end, workspace);
       return { users, assistant_messages, builders, assistants, feedback };
     default:
       assertNever(table);

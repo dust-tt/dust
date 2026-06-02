@@ -5,6 +5,12 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  serverId: z.string(),
+});
 
 export type SyncMCPServerResponseBody = {
   success: boolean;
@@ -17,10 +23,11 @@ const app = workspaceApp();
 
 app.post(
   "/",
+  validate("param", ParamsSchema),
   ensureIsAdmin(),
   async (ctx): HandlerResult<SyncMCPServerResponseBody> => {
     const auth = ctx.get("auth");
-    const serverId = ctx.req.param("serverId") ?? "";
+    const { serverId } = ctx.req.valid("param");
 
     const server = await RemoteMCPServerResource.fetchById(auth, serverId);
     if (!server) {

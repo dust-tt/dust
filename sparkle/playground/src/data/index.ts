@@ -5,6 +5,7 @@ export * from "./types";
 export * from "./agentBuilder";
 export * from "./agents";
 export * from "./conversations";
+export * from "./myPod";
 export * from "./spaces";
 export * from "./spaceMembers";
 export * from "./users";

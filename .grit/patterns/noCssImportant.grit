@@ -7,16 +7,18 @@ language js
 // Narrow exceptions for third-party library overrides and dev tooling are
 // scoped via biome.json overrides.
 //
-// One regex per quote style; each covers all three flagged forms:
+// One regex with an internal 3-way alternation (one branch per quote style).
+// Each branch matches a full string/template literal and excludes only its own
+// delimiter, so inner quotes of a different kind are handled (e.g. an apostrophe
+// inside a double-quoted string). Combining the branches into a single regex
+// rather than a Grit `or { r"...", r"...", r"..." }` roughly halves this rule's
+// runtime: Biome attempts one node match / one compiled automaton per node
+// instead of three. Each branch covers all three flagged forms:
 //   - `!important` keyword (CSS-in-JS, template literals, inline styles)
 //   - Tailwind modifier-prefixed important: `:!<utility>` (e.g. `focus:!ring-0`)
-//   - Tailwind leading important: `"!<utility>"` (e.g. `!mt-0`)
+//   - Tailwind leading important: `!<utility>` right after the opening quote
 pattern css_important_string() {
-    or {
-        r"\"(?:![a-z]|[^\"]*(?:!important|:![a-z]))[^\"]*\"",
-        r"'(?:![a-z]|[^']*(?:!important|:![a-z]))[^']*'",
-        r"`(?:![a-z]|[^`]*(?:!important|:![a-z]))[^`]*`"
-    }
+    r"(?:\"(?:![a-z]|[^\"]*(?:!important|:![a-z]))[^\"]*\"|'(?:![a-z]|[^']*(?:!important|:![a-z]))[^']*'|`(?:![a-z]|[^`]*(?:!important|:![a-z]))[^`]*`)"
 }
 
 css_important_string() as $val where {

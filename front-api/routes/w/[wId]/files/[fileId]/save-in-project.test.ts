@@ -1,5 +1,4 @@
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -22,12 +21,10 @@ function postSave(workspace: { sId: string }, fileId: string, body: unknown) {
 
 describe("POST /api/w/:wId/files/:fileId/save-in-project", () => {
   it("should return 404 when file does not exist", async () => {
-    const { auth, workspace } = await createPrivateApiMockRequest({
+    const { workspace } = await createPrivateApiMockRequest({
       method: "POST",
       role: "user",
     });
-
-    await FeatureFlagFactory.basic(auth, "projects");
 
     const response = await postSave(workspace, "non-existent-file", {
       projectId: "some-project-id",
@@ -42,46 +39,11 @@ describe("POST /api/w/:wId/files/:fileId/save-in-project", () => {
     });
   });
 
-  it("should return 403 when projects feature flag is not enabled", async () => {
-    const { auth, user, workspace } = await createPrivateApiMockRequest({
-      method: "POST",
-      role: "user",
-    });
-
-    const conversation = await ConversationFactory.create(auth, {
-      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
-      messagesCreatedAt: [new Date()],
-    });
-
-    const file = await FileFactory.create(auth, user, {
-      contentType: frameContentType,
-      fileName: "test.frame",
-      fileSize: 1024,
-      status: "ready",
-      useCase: "tool_output",
-      useCaseMetadata: { conversationId: conversation.sId },
-    });
-
-    const response = await postSave(workspace, file.sId, {
-      projectId: "some-project-id",
-    });
-
-    expect(response.status).toBe(403);
-    expect(await response.json()).toEqual({
-      error: {
-        type: "invalid_request_error",
-        message: "Projects feature is not enabled for this workspace.",
-      },
-    });
-  });
-
   it("should return 400 when file is not a frame", async () => {
     const { auth, user, workspace } = await createPrivateApiMockRequest({
       method: "POST",
       role: "user",
     });
-
-    await FeatureFlagFactory.basic(auth, "projects");
 
     const conversation = await ConversationFactory.create(auth, {
       agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
@@ -116,8 +78,6 @@ describe("POST /api/w/:wId/files/:fileId/save-in-project", () => {
       role: "user",
     });
 
-    await FeatureFlagFactory.basic(auth, "projects");
-
     const project = await SpaceFactory.project(workspace, user.id);
 
     const file = await FileFactory.create(auth, user, {
@@ -149,8 +109,6 @@ describe("POST /api/w/:wId/files/:fileId/save-in-project", () => {
       role: "user",
     });
 
-    await FeatureFlagFactory.basic(auth, "projects");
-
     const conversation = await ConversationFactory.create(auth, {
       agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
       messagesCreatedAt: [new Date()],
@@ -178,8 +136,6 @@ describe("POST /api/w/:wId/files/:fileId/save-in-project", () => {
       method: "POST",
       role: "user",
     });
-
-    await FeatureFlagFactory.basic(auth, "projects");
 
     const conversation = await ConversationFactory.create(auth, {
       agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
@@ -213,8 +169,6 @@ describe("POST /api/w/:wId/files/:fileId/save-in-project", () => {
       method: "POST",
       role: "user",
     });
-
-    await FeatureFlagFactory.basic(auth, "projects");
 
     const regularSpace = await SpaceFactory.regular(workspace);
     const conversation = await ConversationFactory.create(auth, {
@@ -250,8 +204,6 @@ describe("POST /api/w/:wId/files/:fileId/save-in-project", () => {
       role: "user",
     });
 
-    await FeatureFlagFactory.basic(auth, "projects");
-
     const project = await SpaceFactory.project(workspace);
 
     const conversation = await ConversationFactory.create(auth, {
@@ -286,8 +238,6 @@ describe("POST /api/w/:wId/files/:fileId/save-in-project", () => {
       method: "POST",
       role: "user",
     });
-
-    await FeatureFlagFactory.basic(auth, "projects");
 
     const project = await SpaceFactory.project(workspace, user.id);
 

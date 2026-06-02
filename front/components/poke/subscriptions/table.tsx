@@ -21,7 +21,7 @@ import {
   isProPlanPrefix,
 } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
-import { usePokePlans } from "@app/lib/swr/poke";
+import { usePokeCancelPendingContract, usePokePlans } from "@app/lib/swr/poke";
 import type { PlanType, SubscriptionType } from "@app/types/plan";
 import { isSubscriptionMetronomeBilled } from "@app/types/plan";
 import type { ProgrammaticUsageConfigurationType } from "@app/types/programmatic_usage";
@@ -270,6 +270,42 @@ function SubscriptionDetailsTable({
   );
 }
 
+interface CancelPendingSubscriptionButtonProps {
+  owner: WorkspaceType;
+}
+
+function CancelPendingSubscriptionButton({
+  owner,
+}: CancelPendingSubscriptionButtonProps) {
+  const router = useAppRouter();
+  const cancelPendingContract = usePokeCancelPendingContract();
+
+  const { submit: onCancel, isSubmitting } = useSubmitFunction(async () => {
+    if (
+      !window.confirm(
+        `Cancel the pending subscription for ${owner.name} (${owner.sId})? ` +
+          "This archives the pending Metronome contract, deletes the pending " +
+          "subscription, and restores the current contract/subscription."
+      )
+    ) {
+      return;
+    }
+    const ok = await cancelPendingContract(owner);
+    if (ok) {
+      router.reload();
+    }
+  });
+
+  return (
+    <Button
+      variant="warning"
+      label="🗑️ Cancel pending"
+      onClick={onCancel}
+      disabled={isSubmitting}
+    />
+  );
+}
+
 interface ActiveSubscriptionTableProps {
   owner: WorkspaceType;
   metronomeCustomerId: string | null;
@@ -350,9 +386,12 @@ export function ActiveSubscriptionTable({
       {pendingSubscription && (
         <div className="flex justify-between gap-3">
           <div className="flex flex-grow flex-col rounded-lg border border-blue-200 bg-blue-50 p-4 pb-2 dark:border-blue-200-night dark:bg-blue-50-night">
-            <div className="flex items-center gap-2 pb-4">
-              <h2 className="text-md font-bold">Pending Subscription</h2>
-              <Chip color="blue" label="Pending activation" size="xs" />
+            <div className="flex items-center justify-between gap-2 pb-4">
+              <div className="flex items-center gap-2">
+                <h2 className="text-md font-bold">Pending Subscription</h2>
+                <Chip color="blue" label="Pending activation" size="xs" />
+              </div>
+              <CancelPendingSubscriptionButton owner={owner} />
             </div>
             <p className="pb-2 text-xs text-muted-foreground">
               Provisioned in DB. The `contract.start` Metronome webhook will

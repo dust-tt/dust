@@ -1,6 +1,11 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
+import {
+  CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+  EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+  INTERACTIVE_CONTENT_SERVER_NAME,
+} from "@app/lib/api/actions/servers/interactive_content/metadata";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
@@ -34,31 +39,41 @@ const LIST_DESCRIPTION_PREFIX =
   "a transcript for audio, or extracted text for PDFs and other documents. " +
   `Read the sibling with \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_CAT_ACTION_NAME)}\` to access the content of binary sources.`;
 
-// `list` tool variants. The conversation-only build takes no parameter and always lists
-// conversation files. The pod-aware build accepts `scope: "conversation" | "pod"` and is
-// only registered when the conversation belongs to a pod.
-const LIST_CONVERSATION_ONLY_TOOL = {
-  description: `${LIST_DESCRIPTION_PREFIX} Lists the conversation's files.`,
-  schema: {},
-  stake: "never_ask" as const,
-  displayLabels: {
-    running: "Listing available files",
-    done: "Listed available files",
-  },
-};
+const SCOPED_PATH_HINT =
+  "Paths use `conversation-<id>/...` or `pod-<id>/...` for any conversation or Pod you can access; " +
+  "defaults target the current conversation and its Pod when applicable.";
 
-const LIST_POD_AWARE_TOOL = {
-  description:
-    `${LIST_DESCRIPTION_PREFIX} ` +
-    "Defaults to the conversation's files. Pass `scope: \"pod\"` to list the Pod's " +
-    "shared files (visible to every conversation in the same Pod) instead.",
-  schema: {
-    scope: z
-      .enum(["conversation", "pod"])
+const LIST_SCOPE_SCHEMA = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("conversation"),
+    conversation_id: z
+      .string()
       .optional()
       .describe(
-        "Which file system to list. Defaults to `conversation`. Pass `pod` to list the Pod's shared files."
+        "Conversation id to list. Defaults to the current conversation."
       ),
+  }),
+  z.object({
+    type: z.literal("pod"),
+    pod_id: z
+      .string()
+      .optional()
+      .describe(
+        "Pod id to list. Defaults to the current conversation's Pod when it has one."
+      ),
+  }),
+]);
+
+const LIST_TOOL = {
+  description:
+    `${LIST_DESCRIPTION_PREFIX} ` +
+    'Defaults to the current conversation\'s files. Omit `scope` or pass `{ type: "conversation" }`. ' +
+    'Pass `{ type: "pod" }` to list a Pod\'s shared files. ' +
+    "Optional `conversation_id` or `pod_id` on the matching variant list another accessible scope.",
+  schema: {
+    scope: LIST_SCOPE_SCHEMA.optional().describe(
+      "Which file system to list. Omit to list the current conversation."
+    ),
   },
   stake: "never_ask" as const,
   displayLabels: {
@@ -83,33 +98,10 @@ const MOVE_DESCRIPTION_BASE =
   "Move a file from one scoped path to another, removing the source after a successful transfer. " +
   "Frame files (`application/vnd.dust.frame`) must be moved rather than copied.";
 
-const COPY_CONVERSATION_ONLY_TOOL = {
-  description: COPY_DESCRIPTION_BASE,
-  schema: {
-    source: z
-      .string()
-      .describe(
-        "Scoped path of the file to copy from (e.g. `conversation-<id>/report.pdf`)."
-      ),
-    dest: z
-      .string()
-      .describe(
-        "Scoped path of the destination (e.g. `conversation-<id>/archive/report.pdf`)."
-      ),
-  },
-  stake: "never_ask" as const,
-  displayLabels: {
-    running: "Copying file",
-    done: "Copied file",
-  },
-};
-
-const COPY_POD_AWARE_TOOL = {
+const COPY_TOOL = {
   description:
-    `${COPY_DESCRIPTION_BASE} ` +
-    "Since this conversation belongs to a Pod, you can also copy between scopes, " +
-    "e.g. `conversation-<id>/report.pdf` -> `pod-<id>/report.pdf` to promote a file into the Pod, " +
-    "or `pod-<id>/spec.md` -> `conversation-<id>/spec.md` to pull it into the conversation.",
+    `${COPY_DESCRIPTION_BASE} ${SCOPED_PATH_HINT} ` +
+    "You can copy across scopes, e.g. `conversation-<id>/report.pdf` -> `pod-<id>/report.pdf` to promote a file into a Pod.",
   schema: {
     source: z
       .string()
@@ -129,34 +121,8 @@ const COPY_POD_AWARE_TOOL = {
   },
 };
 
-const MOVE_SCHEMA = {
-  source: z
-    .string()
-    .describe(
-      "Scoped path of the file to move (e.g. `conversation-<id>/report.pdf`)."
-    ),
-  dest: z
-    .string()
-    .describe(
-      "Scoped path of the destination (e.g. `conversation-<id>/archive/report.pdf`)."
-    ),
-};
-
-const MOVE_CONVERSATION_ONLY_TOOL = {
-  description: MOVE_DESCRIPTION_BASE,
-  schema: MOVE_SCHEMA,
-  stake: "never_ask" as const,
-  displayLabels: {
-    running: "Moving file",
-    done: "Moved file",
-  },
-};
-
-const MOVE_POD_AWARE_TOOL = {
-  description:
-    `${MOVE_DESCRIPTION_BASE} ` +
-    "Since this conversation belongs to a Pod, you can also move between scopes, " +
-    "e.g. `conversation-<id>/frame.html` -> `pod-<id>/frame.html` to promote a frame into the Pod.",
+const MOVE_TOOL = {
+  description: `${MOVE_DESCRIPTION_BASE} ${SCOPED_PATH_HINT}`,
   schema: {
     source: z
       .string()
@@ -265,10 +231,14 @@ const FILES_TOOLS_COMMON_METADATA = {
   },
   [FILES_CREATE_ACTION_NAME]: {
     description:
-      "Create or overwrite a file in the conversation file system. " +
+      "Create or overwrite a file in a conversation or Pod file system. " +
       "Accepts UTF-8 text content only. Binary files cannot be created via this tool. " +
       `Content is capped at ${CREATE_CONTENT_MAX_BYTES / 1024} KB. ` +
       "If the file already exists it is silently overwritten (shell \`>\` semantics). " +
+      "Does not support Frame files (`application/vnd.dust.frame`, " +
+      "`application/vnd.dust.frame.slideshow`); use " +
+      `\`${getPrefixedToolName(INTERACTIVE_CONTENT_SERVER_NAME, CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}\` to create or ` +
+      `\`${getPrefixedToolName(INTERACTIVE_CONTENT_SERVER_NAME, EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}\` to edit them. ` +
       "Returns whether the file was created or updated, along with its path and size.",
     schema: {
       path: z
@@ -291,7 +261,7 @@ const FILES_TOOLS_COMMON_METADATA = {
   },
   [FILES_DELETE_ACTION_NAME]: {
     description:
-      "Delete a file from the conversation file system. " +
+      "Delete a file from a conversation or Pod file system. " +
       "Returns an error if the file does not exist. Deletion is permanent.",
     schema: {
       path: z
@@ -309,17 +279,10 @@ const FILES_TOOLS_COMMON_METADATA = {
 };
 
 export const FILES_TOOLS_METADATA = createToolsRecord({
-  [FILES_LIST_ACTION_NAME]: LIST_CONVERSATION_ONLY_TOOL,
+  [FILES_LIST_ACTION_NAME]: LIST_TOOL,
   ...FILES_TOOLS_COMMON_METADATA,
-  [FILES_COPY_ACTION_NAME]: COPY_CONVERSATION_ONLY_TOOL,
-  [FILES_MOVE_ACTION_NAME]: MOVE_CONVERSATION_ONLY_TOOL,
-});
-
-export const FILES_TOOLS_METADATA_WITH_POD = createToolsRecord({
-  [FILES_LIST_ACTION_NAME]: LIST_POD_AWARE_TOOL,
-  ...FILES_TOOLS_COMMON_METADATA,
-  [FILES_COPY_ACTION_NAME]: COPY_POD_AWARE_TOOL,
-  [FILES_MOVE_ACTION_NAME]: MOVE_POD_AWARE_TOOL,
+  [FILES_COPY_ACTION_NAME]: COPY_TOOL,
+  [FILES_MOVE_ACTION_NAME]: MOVE_TOOL,
 });
 
 export const FILES_SERVER = {
@@ -327,13 +290,11 @@ export const FILES_SERVER = {
     name: FILES_SERVER_NAME,
     version: "1.0.0",
     description:
-      "File system interface scoped to the current conversation. " +
-      "Gives the agent visibility into all files present in the conversation: " +
-      "files uploaded by the user, files generated during execution (e.g. charts, " +
-      "exports, processed data produced by code run in the sandbox), and files produced " +
-      "as results of tool use. " +
-      "Files are identified by scoped paths such as `conversation-<id>/chart.png` that can " +
-      "be used to reference, display, or link files in agent responses. " +
+      "File system interface for the agent loop conversation and any accessible conversation or Pod. " +
+      "Defaults to the current conversation (and its Pod when applicable). " +
+      "Files include user uploads, sandbox outputs, and tool results. " +
+      "Scoped paths such as `conversation-<id>/chart.png` or `pod-<id>/spec.md` identify files " +
+      "and can be used to reference, display, or link them in responses. " +
       "Files whose name follows the `*.processed.<ext>` pattern are auto-generated " +
       "model-friendly representations of their source (resized image, audio transcript, " +
       "or text extracted from a document). Read those siblings to access the content " +

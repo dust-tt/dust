@@ -1,37 +1,22 @@
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { isString } from "@app/types/shared/utils/general";
 import { readableToReadableStream } from "@app/types/shared/utils/streams";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  sId: z.string(),
+  fileId: z.string(),
+});
 
 // Mounted at /api/w/:wId/skills/:sId/files/:fileId/content.
 const app = workspaceApp();
 
-app.get("/", async (ctx) => {
+app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
-  const sId = ctx.req.param("sId");
-  const fileId = ctx.req.param("fileId");
-
-  if (!isString(sId)) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid skill ID.",
-      },
-    });
-  }
-
-  if (!isString(fileId)) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid file ID.",
-      },
-    });
-  }
+  const { sId, fileId } = ctx.req.valid("param");
 
   const skill = await SkillResource.fetchById(auth, sId);
   if (!skill) {

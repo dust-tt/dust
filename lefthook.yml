@@ -127,8 +127,73 @@ pre-commit:
       run: cargo fmt -- {staged_files}
       stage_fixed: true
 
+    # Guard against adding files to frozen migrations/db/ directories
+    no-legacy-db-migration-connectors:
+      glob: "connectors/migrations/db/*.sql"
+      run: |
+        echo ""
+        echo "ERROR: connectors/migrations/db/ is frozen. Do not add files here."
+        echo ""
+        echo "Use the new phased migration system instead:"
+        echo "  npm run -w connectors migration:generate:pre-deploy <description>"
+        echo "  npm run -w connectors migration:generate:post-deploy <description>"
+        echo ""
+        echo "See: https://app.notion.com/p/dust-tt/Runbook-Deploy-Run-migrations-5669e328475d489ba16298a77f2aa45c?source=copy_link#36728599d94180898358cf59a8725740"
+        exit 1
+      priority: 1
+
     # Biome checks (all JS/TS files in monorepo)
     biome:
       glob: "*.{js,jsx,ts,tsx,css,scss}"
       run: npm run format:lefthook -- {staged_files}
+      stage_fixed: true
+
+    # Optional: lossless image optimization (skip with e.g. LEFTHOOK_EXCLUDE=optimize-png,optimize-jpeg,optimize-svg,optimize-gif)
+    # Install: brew install oxipng jpegoptim gifsicle svgo
+    optimize-png:
+      glob: "*.{png,apng}"
+      run: |
+        if command -v oxipng >/dev/null 2>&1; then
+          oxipng -o 4 --strip safe {staged_files}
+        else
+          echo "Warning: oxipng is not installed. Skipping PNG optimization."
+          echo "Install with: brew install oxipng"
+          exit 0
+        fi
+      stage_fixed: true
+
+    optimize-jpeg:
+      glob: "*.{jpg,jpeg}"
+      run: |
+        if command -v jpegoptim >/dev/null 2>&1; then
+          jpegoptim --strip-all --all-progressive {staged_files}
+        else
+          echo "Warning: jpegoptim is not installed. Skipping JPEG optimization."
+          echo "Install with: brew install jpegoptim"
+          exit 0
+        fi
+      stage_fixed: true
+
+    optimize-svg:
+      glob: "*.svg"
+      run: |
+        if command -v svgo >/dev/null 2>&1; then
+          svgo --multipass {staged_files}
+        else
+          echo "Warning: svgo is not installed. Skipping SVG optimization."
+          echo "Install with: brew install svgo"
+          exit 0
+        fi
+      stage_fixed: true
+
+    optimize-gif:
+      glob: "*.gif"
+      run: |
+        if command -v gifsicle >/dev/null 2>&1; then
+          gifsicle -b -O3 {staged_files}
+        else
+          echo "Warning: gifsicle is not installed. Skipping GIF optimization."
+          echo "Install with: brew install gifsicle"
+          exit 0
+        fi
       stage_fixed: true

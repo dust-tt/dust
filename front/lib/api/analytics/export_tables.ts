@@ -4,6 +4,11 @@ import {
   fetchAgentExportRows,
 } from "@app/lib/api/analytics/agents_export";
 import { sanitizeCsvCell } from "@app/lib/api/analytics/csv_utils";
+import type { FeedbackExportRow } from "@app/lib/api/analytics/feedback_export";
+import {
+  FEEDBACK_EXPORT_HEADERS,
+  fetchFeedbackExportRows,
+} from "@app/lib/api/analytics/feedback_export";
 import type { MessageExportRow } from "@app/lib/api/analytics/messages_export";
 import {
   fetchMessageExportRows,
@@ -43,7 +48,8 @@ type AnalyticsExportTable =
   | "users"
   | "skill_usage"
   | "tool_usage"
-  | "messages";
+  | "messages"
+  | "feedback";
 
 interface UsageMetricsRow {
   date: string;
@@ -153,6 +159,11 @@ export type ExportTableData =
       table: "messages";
       headers: typeof MESSAGE_EXPORT_HEADERS;
       rows: MessageExportRow[];
+    }
+  | {
+      table: "feedback";
+      headers: typeof FEEDBACK_EXPORT_HEADERS;
+      rows: FeedbackExportRow[];
     };
 
 export async function exportTable({
@@ -195,6 +206,8 @@ export async function exportTable({
       return exportToolUsage({ startDate, endDate, timezone, owner });
     case "messages":
       return exportMessages({ startDate, endDate, timezone, owner });
+    case "feedback":
+      return exportFeedback({ startDate, endDate, timezone, owner });
     default:
       assertNever(table);
   }
@@ -217,6 +230,8 @@ export function stringifyExportTableAsCsv(data: ExportTableData): string {
     case "tool_usage":
       return stringifyRowsAsCsv(data.headers, data.rows);
     case "messages":
+      return stringifyRowsAsCsv(data.headers, data.rows);
+    case "feedback":
       return stringifyRowsAsCsv(data.headers, data.rows);
     default:
       assertNever(data);
@@ -575,8 +590,7 @@ async function exportMessages({
   owner: WorkspaceType;
 }): Promise<Result<ExportTableData, Error>> {
   const result = await fetchMessageExportRows({
-    workspaceId: owner.sId,
-    workspaceModelId: owner.id,
+    owner,
     startDate,
     endDate,
     timezone,
@@ -591,6 +605,37 @@ async function exportMessages({
   return new Ok({
     table: "messages",
     headers: MESSAGE_EXPORT_HEADERS,
+    rows: result.value,
+  });
+}
+
+async function exportFeedback({
+  startDate,
+  endDate,
+  timezone,
+  owner,
+}: {
+  startDate: string;
+  endDate: string;
+  timezone: string;
+  owner: WorkspaceType;
+}): Promise<Result<ExportTableData, Error>> {
+  const result = await fetchFeedbackExportRows({
+    owner,
+    startDate,
+    endDate,
+    timezone,
+  });
+
+  if (result.isErr()) {
+    return new Err(
+      new Error(`Failed to retrieve feedback export: ${result.error.message}`)
+    );
+  }
+
+  return new Ok({
+    table: "feedback",
+    headers: FEEDBACK_EXPORT_HEADERS,
     rows: result.value,
   });
 }

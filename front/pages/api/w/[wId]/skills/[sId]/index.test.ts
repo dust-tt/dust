@@ -16,7 +16,9 @@ import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory"
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import type { NextApiRequest, NextApiResponse } from "next";
 import type { RequestMethod } from "node-mocks-http";
+import { createMocks } from "node-mocks-http";
 import type { WhereOptions } from "sequelize";
 import { describe, expect, it } from "vitest";
 
@@ -127,6 +129,43 @@ async function setupTest(
   };
 }
 
+function makePatchSkillBody(
+  skill: SkillResource,
+  overrides: Partial<{
+    instructions: string;
+    instructionsHtml: string | null;
+    referencedSkillIds: string[];
+  }> = {}
+) {
+  return {
+    name: skill.name,
+    agentFacingDescription: skill.agentFacingDescription,
+    userFacingDescription: skill.userFacingDescription,
+    instructions: skill.instructions,
+    icon: skill.icon,
+    tools: [],
+    attachedKnowledge: [],
+    instructionsHtml: skill.instructionsHtml,
+    ...overrides,
+  };
+}
+
+function createPatchSkillRequest({
+  body,
+  skillId,
+  workspaceId,
+}: {
+  body: ReturnType<typeof makePatchSkillBody>;
+  skillId: string;
+  workspaceId: string;
+}) {
+  return createMocks<NextApiRequest, NextApiResponse>({
+    method: "PATCH",
+    query: { wId: workspaceId, sId: skillId },
+    body,
+  });
+}
+
 describe("GET /api/w/[wId]/skills/[sId]", () => {
   it("should return 200 and the skill configuration for admin", async () => {
     const { req, res, skill } = await setupTest({
@@ -139,6 +178,62 @@ describe("GET /api/w/[wId]/skills/[sId]", () => {
     expect(data).toHaveProperty("skill");
     expect(data.skill.sId).toBe(skill.sId);
     expect(data.skill.name).toBe("Test Skill");
+  });
+
+  it("should return child skills when nested_skills is enabled", async () => {
+    const { req, res, skill, skillOwnerAuth } = await setupTest({
+      requestUserRole: "admin",
+    });
+
+    await FeatureFlagFactory.basic(skillOwnerAuth, "nested_skills");
+
+    const childSkill = await SkillFactory.create(skillOwnerAuth, {
+      name: "Child Skill",
+    });
+    await SkillFactory.updateNestedSkillReferences(skillOwnerAuth, {
+      parentSkill: skill,
+      childSkills: [childSkill],
+    });
+
+    req.query = { ...req.query, withRelations: "true" };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+
+    expect(data.skill.relations.childSkills).toEqual([
+      expect.objectContaining({
+        sId: childSkill.sId,
+        name: "Child Skill",
+      }),
+    ]);
+    expect(data.skill.relations.childSkills[0]).not.toHaveProperty(
+      "instructions"
+    );
+  });
+
+  it("should not return child skills when nested_skills is disabled", async () => {
+    const { req, res, skill, skillOwnerAuth } = await setupTest({
+      requestUserRole: "admin",
+    });
+
+    const childSkill = await SkillFactory.create(skillOwnerAuth, {
+      name: "Hidden Child Skill",
+    });
+    await SkillFactory.updateNestedSkillReferences(skillOwnerAuth, {
+      parentSkill: skill,
+      childSkills: [childSkill],
+    });
+
+    req.query = { ...req.query, withRelations: "true" };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData().skill.relations).not.toHaveProperty(
+      "childSkills"
+    );
   });
 
   it("should return 404 for non-existent skill", async () => {
@@ -316,6 +411,146 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
     );
     expect(updatedSkill).not.toBeNull();
     expect(updatedSkill?.agentFacingDescription).toBe(newDescription);
+  });
+
+  it("syncs nested skill references when the feature is enabled", async () => {
+    const { req, res, skill, requestUserAuth, workspace } = await setupTest({
+      requestUserRole: "admin",
+      method: "PATCH",
+    });
+
+    const childSkill = await SkillFactory.create(requestUserAuth, {
+      name: "Referenced Skill",
+    });
+    const instructionsWithReference =
+      "Use the referenced skill for deeper analysis.";
+
+    req.body = makePatchSkillBody(skill, {
+      instructions: instructionsWithReference,
+      referencedSkillIds: [childSkill.sId],
+    });
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(200);
+    const skillWithoutFeatureFlag = await SkillResource.fetchById(
+      requestUserAuth,
+      skill.sId
+    );
+    expect(skillWithoutFeatureFlag).not.toBeNull();
+    await expect(
+      skillWithoutFeatureFlag!.fetchChildSkills(requestUserAuth)
+    ).resolves.toHaveLength(0);
+
+    await FeatureFlagFactory.basic(requestUserAuth, "nested_skills");
+
+    const { req: enabledReq, res: enabledRes } = createPatchSkillRequest({
+      workspaceId: workspace.sId,
+      skillId: skill.sId,
+      body: makePatchSkillBody(skill, {
+        instructions: instructionsWithReference,
+        referencedSkillIds: [childSkill.sId],
+      }),
+    });
+
+    await handler(enabledReq, enabledRes);
+    expect(enabledRes._getStatusCode()).toBe(200);
+    const skillWithReference = await SkillResource.fetchById(
+      requestUserAuth,
+      skill.sId
+    );
+    expect(skillWithReference).not.toBeNull();
+    await expect(
+      skillWithReference!.fetchChildSkills(requestUserAuth)
+    ).resolves.toEqual([
+      expect.objectContaining({
+        sId: childSkill.sId,
+      }),
+    ]);
+
+    const { req: removeReq, res: removeRes } = createPatchSkillRequest({
+      workspaceId: workspace.sId,
+      skillId: skill.sId,
+      body: makePatchSkillBody(skill, {
+        instructions: "No nested skill references here.",
+        referencedSkillIds: [],
+      }),
+    });
+
+    await handler(removeReq, removeRes);
+    expect(removeRes._getStatusCode()).toBe(200);
+    const skillWithoutReference = await SkillResource.fetchById(
+      requestUserAuth,
+      skill.sId
+    );
+    expect(skillWithoutReference).not.toBeNull();
+    await expect(
+      skillWithoutReference!.fetchChildSkills(requestUserAuth)
+    ).resolves.toHaveLength(0);
+  });
+
+  it("drops missing nested skill references", async () => {
+    const { req, res, skill, requestUserAuth, workspace } = await setupTest({
+      requestUserRole: "admin",
+      method: "PATCH",
+    });
+
+    await FeatureFlagFactory.basic(requestUserAuth, "nested_skills");
+    const outOfWorkspaceSkillId = SkillResource.modelIdToSId({
+      id: skill.id + 1,
+      workspaceId: workspace.id + 1,
+    });
+
+    req.body = makePatchSkillBody(skill, {
+      instructions: "Use the other workspace skill.",
+      referencedSkillIds: [outOfWorkspaceSkillId],
+    });
+
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(200);
+
+    const updatedSkill = await SkillResource.fetchById(
+      requestUserAuth,
+      skill.sId
+    );
+    expect(updatedSkill).not.toBeNull();
+
+    await expect(
+      updatedSkill!.fetchChildSkills(requestUserAuth)
+    ).resolves.toHaveLength(0);
+  });
+
+  it("keeps unavailable nested skill references when child spaces are not readable", async () => {
+    const { req, res, skill, requestUserAuth, workspace } = await setupTest({
+      requestUserRole: "admin",
+      method: "PATCH",
+    });
+
+    await FeatureFlagFactory.basic(requestUserAuth, "nested_skills");
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    const childSkill = await SkillFactory.create(requestUserAuth, {
+      name: "Restricted Child Skill",
+      requestedSpaceIds: [restrictedSpace.id],
+    });
+
+    await expect(
+      SkillResource.fetchById(requestUserAuth, childSkill.sId)
+    ).resolves.toBeNull();
+
+    req.body = makePatchSkillBody(skill, {
+      instructions: `Use ${SkillFactory.serializeSkillReferenceTag(childSkill)}.`,
+      referencedSkillIds: [childSkill.sId],
+    });
+
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(200);
+
+    const updatedSkill = await SkillResource.fetchById(
+      requestUserAuth,
+      skill.sId
+    );
+    expect(updatedSkill).not.toBeNull();
+    expect(updatedSkill!.instructions).toContain(
+      `<unavailable_skill id="${childSkill.sId}" />`
+    );
   });
 
   it("should update requestedSpaceIds when adding a tool from a new space", async () => {

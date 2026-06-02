@@ -1,3 +1,4 @@
+import { CreatePodModal } from "@app/components/assistant/conversation/CreatePodModal";
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
 import { EditConversationTitleDialog } from "@app/components/assistant/conversation/EditConversationTitleDialog";
 import { LeaveConversationDialog } from "@app/components/assistant/conversation/LeaveConversationDialog";
@@ -60,6 +61,7 @@ import {
   LinkIcon,
   PencilSquareIcon,
   PlusCircleIcon,
+  PlusIcon,
   SidekickIcon,
   TrashIcon,
   XMarkIcon,
@@ -164,7 +166,7 @@ export function ConversationMenu({
   openDetailsInNewTab,
 }: ConversationMenuProps) {
   const { user, providersHealth } = useAuth();
-  const { hasFeature, featureFlags } = useFeatureFlags();
+  const { featureFlags } = useFeatureFlags();
   const confirm = useContext(ConfirmContext);
 
   const clientType = useClientType();
@@ -239,7 +241,7 @@ export function ConversationMenu({
 
   const { summary } = usePodConversationsSummary({
     workspaceId: owner.sId,
-    options: { disabled: shouldWaitBeforeFetching || !hasFeature("projects") },
+    options: { disabled: shouldWaitBeforeFetching },
   });
 
   const filteredPods = summary
@@ -272,6 +274,8 @@ export function ConversationMenu({
   const [showDeleteDialog, setShowDeleteDialog] = useState<boolean>(false);
   const [showLeaveDialog, setShowLeaveDialog] = useState<boolean>(false);
   const [showRenameDialog, setShowRenameDialog] = useState<boolean>(false);
+  const [isCreatePodModalOpen, setIsCreatePodModalOpen] =
+    useState<boolean>(false);
   const handleConversationBranched = useCallback(() => {
     if (isConversationDisplayed) {
       void mutateConversation();
@@ -380,6 +384,17 @@ export function ConversationMenu({
           conversation ? getConversationDisplayTitle(conversation) : ""
         }
       />
+      <CreatePodModal
+        isOpen={isCreatePodModalOpen}
+        onClose={() => setIsCreatePodModalOpen(false)}
+        onCreated={async (pod) => {
+          if (conversation) {
+            await moveConversationToPod(conversation, pod);
+          }
+          void router.push(getPodRoute(owner.sId, pod.sId));
+        }}
+        owner={owner}
+      />
       <DropdownMenu modal={false} open={isOpen} onOpenChange={onOpenChange}>
         {triggerPosition ? (
           <>
@@ -415,48 +430,55 @@ export function ConversationMenu({
             disabled={isBranching}
           />
           <DropdownMenuSeparator />
-          {hasFeature("projects") && (
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger
-                icon={ArrowRightIcon}
-                label={canMoveOutOfPod ? "Move to..." : "Move to Pod"}
-                disabled={canMoveOutOfPod ? false : !filteredPods.length}
-              />
-              <DropdownMenuPortal>
-                <DropdownMenuSubContent
-                  collisionPadding={16}
-                  className="max-w-60"
-                >
-                  {canMoveOutOfPod && (
-                    <>
-                      <DropdownMenuItem
-                        icon={ChatBubbleBottomCenterTextIcon}
-                        label="Personal conversations"
-                        onClick={async () =>
-                          moveConversationOutOfPod(conversation)
-                        }
-                      />
-                      <DropdownMenuSeparator />
-                      <DropdownMenuLabel label="Pods" />
-                    </>
-                  )}
-                  {filteredPods.map((pod) => (
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger
+              icon={ArrowRightIcon}
+              label={canMoveOutOfPod ? "Move to..." : "Move to Pod"}
+            />
+            <DropdownMenuPortal>
+              <DropdownMenuSubContent
+                collisionPadding={16}
+                className="max-w-60"
+              >
+                <DropdownMenuItem
+                  icon={PlusIcon}
+                  label="New Pod"
+                  onClick={() => setIsCreatePodModalOpen(true)}
+                />
+                {canMoveOutOfPod && (
+                  <>
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem
-                      key={pod.sId}
-                      icon={getSpaceIcon(pod)}
-                      label={pod.name}
-                      truncateText
+                      icon={ChatBubbleBottomCenterTextIcon}
+                      label="Personal conversations"
                       onClick={async () =>
-                        conversation
-                          ? moveConversationToPod(conversation, pod)
-                          : Promise.resolve(false)
+                        moveConversationOutOfPod(conversation)
                       }
                     />
-                  ))}
-                </DropdownMenuSubContent>
-              </DropdownMenuPortal>
-            </DropdownMenuSub>
-          )}
+                  </>
+                )}
+                {filteredPods.length > 0 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    {canMoveOutOfPod && <DropdownMenuLabel label="Pods" />}
+                    {filteredPods.map((pod) => (
+                      <DropdownMenuItem
+                        key={pod.sId}
+                        icon={getSpaceIcon(pod)}
+                        label={pod.name}
+                        truncateText
+                        onClick={async () =>
+                          conversation
+                            ? moveConversationToPod(conversation, pod)
+                            : Promise.resolve(false)
+                        }
+                      />
+                    ))}
+                  </>
+                )}
+              </DropdownMenuSubContent>
+            </DropdownMenuPortal>
+          </DropdownMenuSub>
           <DropdownMenuSub>
             <DropdownMenuSubTrigger
               icon={ContactsUserIcon}

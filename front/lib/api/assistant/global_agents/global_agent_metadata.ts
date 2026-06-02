@@ -386,6 +386,50 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         description: "Same as dust-sundae but with high reasoning effort.",
         pictureUrl: DUST_AVATAR_URL,
       };
+    case GLOBAL_AGENTS_SID.DUST_PISTACHE:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_PISTACHE,
+        name: "dust-pistache",
+        description:
+          "Same as dust but running a custom model for internal testing.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_PISTACHE_MEDIUM:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_PISTACHE_MEDIUM,
+        name: "dust-pistache-medium",
+        description: "Same as dust-pistache but with medium reasoning effort.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_PISTACHE_HIGH:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_PISTACHE_HIGH,
+        name: "dust-pistache-high",
+        description: "Same as dust-pistache but with high reasoning effort.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_CHALOM:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_CHALOM,
+        name: "dust-chalom",
+        description:
+          "Same as dust but running a custom model for internal testing.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_CHALOM_MEDIUM:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_CHALOM_MEDIUM,
+        name: "dust-chalom-medium",
+        description: "Same as dust-chalom but with medium reasoning effort.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_CHALOM_HIGH:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_CHALOM_HIGH,
+        name: "dust-chalom-high",
+        description: "Same as dust-chalom but with high reasoning effort.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
     case GLOBAL_AGENTS_SID.DUST_GOOG:
       return {
         sId: GLOBAL_AGENTS_SID.DUST_GOOG,

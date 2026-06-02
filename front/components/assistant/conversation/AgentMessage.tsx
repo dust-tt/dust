@@ -181,27 +181,26 @@ function buildMountFilePreviewHref({
   spaceId: string | null;
   filePath: string;
 }): string | undefined {
+  // Canonical paths go straight to the global file-path endpoint.
+  if (filePath.startsWith("conversation-") || filePath.startsWith("pod-")) {
+    return `${apiBaseUrl}/api/w/${ownerId}/files/path/${filePath}`;
+  }
+
+  // Normalize legacy "conversation/<rel>" to canonical before routing.
   if (filePath.startsWith("conversation/")) {
-    return `${apiBaseUrl}/api/w/${ownerId}/assistant/conversations/${conversationId}/files/${filePath}`;
+    const rel = filePath.slice("conversation/".length);
+    return `${apiBaseUrl}/api/w/${ownerId}/files/path/conversation-${conversationId}/${rel}`;
   }
 
-  if (filePath.startsWith("pod/")) {
+  // Normalize legacy "pod/<rel>" and "project/<rel>" to canonical before routing.
+  if (filePath.startsWith("pod/") || filePath.startsWith("project/")) {
     if (!spaceId) {
       return undefined;
     }
-
-    return `${apiBaseUrl}/api/w/${ownerId}/spaces/${spaceId}/files/${filePath}`;
-  }
-
-  // Legacy "project/" scope maps to the same Pod files endpoint; rewrite the prefix.
-  if (filePath.startsWith("project/")) {
-    if (!spaceId) {
-      return undefined;
-    }
-
-    const podFilePath = `pod/${filePath.slice("project/".length)}`;
-
-    return `${apiBaseUrl}/api/w/${ownerId}/spaces/${spaceId}/files/${podFilePath}`;
+    const rel = filePath.startsWith("pod/")
+      ? filePath.slice("pod/".length)
+      : filePath.slice("project/".length);
+    return `${apiBaseUrl}/api/w/${ownerId}/files/path/pod-${spaceId}/${rel}`;
   }
 
   return undefined;

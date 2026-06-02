@@ -89,9 +89,7 @@ export function getSeatTypeForSubscription(
  * contract creation); seat contracts never have it. Use this gate before any
  * seat-related work on a contract.
  */
-export function isMauContract(
-  contract: Pick<CachedContract, "custom_fields">
-): boolean {
+export function isMauContract(contract: CachedContract): boolean {
   return Boolean(contract.custom_fields?.MAU_THRESHOLD);
 }
 
@@ -151,7 +149,7 @@ export type FreeSeatCounts = {
  * creation).
  */
 export function getDefaultSeatTypeForContract(
-  contract: Pick<CachedContract, "subscriptions" | "recurring_credits">,
+  contract: CachedContract,
   productSeatTypes: Map<string, MembershipSeatType>,
   {
     isReturningMember = false,
@@ -208,19 +206,96 @@ export function getDefaultSeatTypeForContract(
 }
 
 /**
+ * Seat product IDs the contract actually *sells*, i.e. whose effective
+ * entitlement is `true`. Non-legacy rate cards carry every seat product at
+ * `entitled: false`; each package/contract entitles only the seats it sells, so
+ * a bare subscription does NOT mean the seat is billable — the entitlement
+ * override does.
+ *
+ * A product can carry several overrides (e.g. the package entitles a seat, then
+ * an operator switching the contract disables it). We resolve the EFFECTIVE
+ * entitlement per product as the value of the override with the latest
+ * `starting_at`; on a tie, a disabling (`entitled: false`) override wins, so an
+ * operator's explicit opt-out beats a same-moment package entitlement.
+ * Overrides without a `starting_at` (e.g. baseline package entitlements) sort
+ * earliest, so any timestamped override supersedes them.
+ */
+function getEntitledSeatProductIds(
+  contract: CachedContract,
+  productSeatTypes: Map<string, MembershipSeatType>
+): Set<string> {
+  // productId → { startMs, entitled } of the currently-winning override.
+  const effective = new Map<string, { startMs: number; entitled: boolean }>();
+  for (const override of contract.overrides ?? []) {
+    if (typeof override.entitled !== "boolean") {
+      continue;
+    }
+    const entitled = override.entitled;
+    const startMs = override.starting_at
+      ? Date.parse(override.starting_at)
+      : Number.NEGATIVE_INFINITY;
+    const productIds = [
+      override.product?.id,
+      ...(override.override_specifiers ?? []).map((s) => s.product_id),
+    ];
+    for (const productId of productIds) {
+      if (!productId || !productSeatTypes.has(productId)) {
+        continue;
+      }
+      const current = effective.get(productId);
+      // Later override wins; on an equal timestamp a disable beats an entitle.
+      if (
+        !current ||
+        startMs > current.startMs ||
+        (startMs === current.startMs && current.entitled && !entitled)
+      ) {
+        effective.set(productId, { startMs, entitled });
+      }
+    }
+  }
+
+  const ids = new Set<string>();
+  for (const [productId, { entitled }] of effective) {
+    if (entitled) {
+      ids.add(productId);
+    }
+  }
+  return ids;
+}
+
+/**
  * Walk a contract's subscriptions and build a `seatType → subscription`
  * index using the cached product seat-type map.
+ *
+ * Only seats the contract actually *sells* are included: a seat must be
+ * entitled (`entitled: true` override) — a bare subscription is not enough,
+ * since every package carries all seat subscriptions with the unsold ones at
+ * `entitled: false`. Contracts that don't express seat entitlement at all
+ * (legacy) fall back to including every seat subscription.
  */
 export function getSeatSubscriptionsFromContract(
-  contract: Pick<CachedContract, "subscriptions">,
+  contract: CachedContract,
   productSeatTypes: Map<string, MembershipSeatType>
 ): Map<MembershipSeatType, Subscription> {
+  const entitledSeatProductIds = getEntitledSeatProductIds(
+    contract,
+    productSeatTypes
+  );
   const result = new Map<MembershipSeatType, Subscription>();
   for (const sub of contract.subscriptions ?? []) {
     const seatType = getSeatTypeForSubscription(sub, productSeatTypes);
-    if (seatType) {
-      result.set(seatType, sub);
+    if (!seatType) {
+      continue;
     }
+    // When the contract expresses seat entitlement, keep only entitled seats;
+    // otherwise (no seat entitlement overrides → legacy) keep all.
+    if (
+      entitledSeatProductIds.size > 0 &&
+      !entitledSeatProductIds.has(sub.subscription_rate.product.id)
+    ) {
+      continue;
+    }
+    result.set(seatType, sub);
   }
   return result;
 }
@@ -231,7 +306,7 @@ export function getSeatSubscriptionsFromContract(
  * that exposes only product IDs.
  */
 export function getSeatTypesByProductIdFromContract(
-  contract: Pick<CachedContract, "subscriptions">,
+  contract: CachedContract,
   productSeatTypes: Map<string, MembershipSeatType>
 ): Map<string, MembershipSeatType> {
   const result = new Map<string, MembershipSeatType>();
@@ -286,7 +361,7 @@ function getSeatAwuCreditsPeriod(
  * seats on legacy plans).
  */
 export function getAwuAllocationInfoForSeatType(
-  contract: Pick<CachedContract, "subscriptions" | "recurring_credits">,
+  contract: CachedContract,
   seatType: MembershipSeatType,
   productSeatTypes: Map<string, MembershipSeatType>
 ): SeatAwuAllocationInfo {
@@ -312,7 +387,7 @@ export function getAwuAllocationInfoForSeatType(
 }
 
 export function getAwuAllocationForSeatType(
-  contract: Pick<CachedContract, "subscriptions" | "recurring_credits">,
+  contract: CachedContract,
   seatType: MembershipSeatType,
   productSeatTypes: Map<string, MembershipSeatType>
 ): number {

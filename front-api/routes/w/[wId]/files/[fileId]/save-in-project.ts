@@ -1,5 +1,4 @@
 import { addFileToProject } from "@app/lib/api/projects/context";
-import { getFeatureFlags } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -19,26 +18,20 @@ const SaveInProjectRequestBodySchema = z.object({
   projectId: z.string().min(1, "projectId is required"),
 });
 
+const ParamsSchema = z.object({
+  fileId: z.string(),
+});
+
 // Mounted at /api/w/:wId/files/:fileId/save-in-project.
 const app = workspaceApp();
 
 app.post(
   "/",
+  validate("param", ParamsSchema),
   validate("json", SaveInProjectRequestBodySchema),
   async (ctx): HandlerResult<SaveInProjectResponseBody> => {
     const auth = ctx.get("auth");
-    const fileId = ctx.req.param("fileId") ?? "";
-
-    const featureFlags = await getFeatureFlags(auth);
-    if (!featureFlags.includes("projects")) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Projects feature is not enabled for this workspace.",
-        },
-      });
-    }
+    const { fileId } = ctx.req.valid("param");
 
     const file = await FileResource.fetchById(auth, fileId);
     if (!file) {

@@ -1,4 +1,4 @@
-import type { ConversationPublicType } from "@dust-tt/client";
+import type { ConversationForDataSourceSyncType } from "@dust-tt/client";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -8,14 +8,10 @@ import {
 } from "./conversation_formatting";
 
 function minimalConversation(
-  overrides: Partial<ConversationPublicType>
-): ConversationPublicType {
+  overrides: Partial<ConversationForDataSourceSyncType>
+): ConversationForDataSourceSyncType {
   return {
-    id: 1,
     created: 0,
-    unread: false,
-    actionRequired: false,
-    owner: {} as ConversationPublicType["owner"],
     sId: "conv-1",
     title: "T",
     visibility: "workspace",

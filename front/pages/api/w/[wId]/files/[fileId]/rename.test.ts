@@ -1,4 +1,3 @@
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -178,9 +177,6 @@ describe("PATCH /api/w/[wId]/files/[fileId]/rename", () => {
         role: "user",
       });
 
-      // Enable the projects feature flag
-      await FeatureFlagFactory.basic(auth, "projects");
-
       // Create a project space where the user is an editor (has write access)
       const projectSpace = await SpaceFactory.project(workspace, user.id);
 
@@ -218,9 +214,6 @@ describe("PATCH /api/w/[wId]/files/[fileId]/rename", () => {
         method: "PATCH",
         role: "user",
       });
-
-      // Enable the projects feature flag
-      await FeatureFlagFactory.basic(auth, "projects");
 
       // Create a regular space (user has no access)
       const space = await SpaceFactory.regular(workspace);

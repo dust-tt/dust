@@ -7,7 +7,6 @@
 // carries the /projects/ prefix, rewrite it to /pods/.
 
 import { toPodMountFilePath } from "@app/lib/api/files/mount_path";
-import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -50,20 +49,9 @@ makeScript(
       if (!workspace) {
         throw new Error(`Workspace not found: ${wId}`);
       }
-      const hasProjectsFlag = await FeatureFlagResource.isEnabledForWorkspace(
-        workspace,
-        "projects"
-      );
-      if (!hasProjectsFlag) {
-        logger.info(
-          { workspaceId: workspace.sId },
-          "[migrate_project_mount_paths_to_pods] Workspace does not have `projects` FF enabled, nothing to do"
-        );
-        return;
-      }
       workspaces = [{ id: workspace.id, sId: workspace.sId }];
     } else {
-      const resources = await WorkspaceResource.listWithFeatureFlag("projects");
+      const resources = await WorkspaceResource.listAll();
       workspaces = resources.map((w) => ({ id: w.id, sId: w.sId }));
     }
 

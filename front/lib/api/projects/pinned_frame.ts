@@ -1,13 +1,17 @@
-import { getGCSPathFromScopedPath } from "@app/lib/api/files/gcs_mount/files";
-import { getPodFilesBasePath } from "@app/lib/api/files/mount_path";
+import {
+  DustFileSystem,
+  LEGACY_PREFIX_PROJECT,
+  SCOPED_PREFIX_POD,
+} from "@app/lib/api/file_system";
 import type { Authenticator } from "@app/lib/auth";
-import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 
 /**
- * Validate a pinned frame path for a project space.
- * Path must be scoped under `pod/` and resolve to an existing GCS object.
+ * Validate a pinned frame path for a project space and return the canonical scoped path.
+ *
+ * Accepts the canonical `pod-{spaceId}/...` format and silently normalizes the legacy
+ * `project/...` and `pod/...` formats that may still exist in the DB.
  */
 export async function validatePinnedFramePath(
   auth: Authenticator,
@@ -18,34 +22,24 @@ export async function validatePinnedFramePath(
     return new Ok(null);
   }
 
-  const owner = auth.getNonNullableWorkspace();
-  const prefix = getPodFilesBasePath({
-    workspaceId: owner.sId,
-    podId: space.sId,
-  });
-
-  // Some DB rows still carry the legacy `project/` scope prefix; as they have not been
-  // migrated to the new `pod/` scope, treat them as `pod/`
-  const normalizedScopedPath = pinnedFramePath.startsWith("project/")
-    ? `pod/${pinnedFramePath.slice("project/".length)}`
-    : pinnedFramePath;
-
-  const gcsPath = getGCSPathFromScopedPath({
-    prefix,
-    scopedPath: normalizedScopedPath,
-    useCase: "pod",
-  });
-  if (!gcsPath) {
-    return new Err(
-      new Error("Path must start with pod/ and be a valid file path.")
-    );
+  // Normalize legacy path formats to the canonical pod-{spaceId}/... format.
+  let normalizedPath = pinnedFramePath;
+  if (pinnedFramePath.startsWith(`${LEGACY_PREFIX_PROJECT}/`)) {
+    normalizedPath = `${SCOPED_PREFIX_POD}${space.sId}/${pinnedFramePath.slice(`${LEGACY_PREFIX_PROJECT}/`.length)}`;
+  } else if (pinnedFramePath.startsWith("pod/")) {
+    normalizedPath = `${SCOPED_PREFIX_POD}${space.sId}/${pinnedFramePath.slice("pod/".length)}`;
   }
 
-  const bucket = getPrivateUploadBucket();
-  const contentTypeResult = await bucket.getFileContentType(gcsPath);
-  if (contentTypeResult.isErr()) {
+  const fsResult = await DustFileSystem.forPod(auth, space);
+  if (fsResult.isErr()) {
+    return new Err(new Error("Failed to initialize file system."));
+  }
+  const fs = fsResult.value;
+
+  const statResult = await fs.stat(normalizedPath);
+  if (statResult.isErr() || !statResult.value) {
     return new Err(new Error("Pinned frame file not found."));
   }
 
-  return new Ok(pinnedFramePath);
+  return new Ok(normalizedPath);
 }

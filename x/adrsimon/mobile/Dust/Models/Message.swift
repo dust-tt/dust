@@ -10,6 +10,7 @@ enum AgentMessageStatus: String, Codable {
     case succeeded
     case failed
     case cancelled
+    case interrupted
     case gracefullyStopped = "gracefully_stopped"
 }
 

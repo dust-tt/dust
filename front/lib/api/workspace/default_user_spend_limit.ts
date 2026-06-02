@@ -7,7 +7,9 @@ import type { Authenticator } from "@app/lib/auth";
 import {
   getMetronomeDefaultUserCapAlert,
   upsertMetronomeDefaultUserCapAlert,
+  upsertMetronomeDefaultUserWarningAlert,
 } from "@app/lib/metronome/alerts/spend_limits";
+import logger from "@app/logger/logger";
 import {
   MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
   MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
@@ -132,6 +134,25 @@ export async function setDefaultUserSpendLimit(
         "metronome_error",
         upsertResult.error.message
       )
+    );
+  }
+
+  // Upsert a companion 80% warning alert so users get advance notice before
+  // the hard block fires. Errors are logged but don't fail the whole operation.
+  const warningResult = await upsertMetronomeDefaultUserWarningAlert({
+    metronomeCustomerId,
+    workspaceId: workspace.sId,
+    capAwuCredits: awuCredits,
+  });
+  if (warningResult.isErr()) {
+    logger.warn(
+      {
+        workspaceId: workspace.sId,
+        metronomeCustomerId,
+        awuCredits,
+        err: warningResult.error,
+      },
+      "[DefaultUserSpendLimit] Failed to upsert warning alert; continuing"
     );
   }
 

@@ -13,7 +13,14 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 import { unauthedApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import path from "path";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  scope: z.string(),
+  rel: z.string(),
+});
 
 // Mounted at /api/v1/viz/files; serves multi-segment scoped paths only.
 const app = unauthedApp();
@@ -28,9 +35,8 @@ const app = unauthedApp();
  * Single-segment requests (fil_xxx) are routed to [fileId].ts.
  * This catch-all handles multi-segment scoped paths only.
  */
-app.get("/:scope/:rel{.+}", async (ctx) => {
-  const rawScope = ctx.req.param("scope");
-  const rel = ctx.req.param("rel");
+app.get("/:scope/:rel{.+}", validate("param", ParamsSchema), async (ctx) => {
+  const { scope: rawScope, rel } = ctx.req.valid("param");
 
   const scope = parseRawVizScope(rawScope);
   if (!scope) {

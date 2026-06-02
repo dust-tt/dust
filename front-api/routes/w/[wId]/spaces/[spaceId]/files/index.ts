@@ -1,10 +1,9 @@
+import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
+import type { FileSystemEntry } from "@app/lib/api/file_system/types";
+import { SCOPED_PREFIX_POD } from "@app/lib/api/file_system/types";
+import { enrichListWithFileResourceIds } from "@app/lib/api/files/file_system_ops";
 import { isGCSMountDirectoryAlreadyExistsError } from "@app/lib/api/files/gcs_mount/errors";
-import {
-  type GCSMountDirectoryEntry,
-  type GCSMountEntry,
-  type GCSMountFileEntry,
-  listGCSMountFiles,
-} from "@app/lib/api/files/gcs_mount/files";
+import type { GCSMountDirectoryEntry } from "@app/lib/api/files/gcs_mount/files";
 import { createProjectFolder } from "@app/lib/api/projects/context";
 import { PostPodFolderRequestBodySchema } from "@app/lib/api/projects/pod_mount_schemas";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -15,10 +14,10 @@ import { withSpace } from "@front-api/middlewares/with_space";
 
 import rel from "./[...rel]";
 
-export type { GCSMountDirectoryEntry, GCSMountEntry, GCSMountFileEntry };
+export type { FileSystemEntry, GCSMountDirectoryEntry };
 
 export type GetSpaceFilesResponseBody = {
-  files: GCSMountEntry[];
+  files: FileSystemEntry[];
 };
 
 export type PostSpaceFolderResponseBody = {
@@ -45,10 +44,23 @@ app.get(
       });
     }
 
-    const files = await listGCSMountFiles(auth, {
-      useCase: "pod",
-      podId: space.sId,
-    });
+    const fsResult = await DustFileSystem.forPod(auth, space);
+    if (fsResult.isErr()) {
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "Failed to initialise file system.",
+        },
+      });
+    }
+
+    const dustFs = fsResult.value;
+    const files = await enrichListWithFileResourceIds(
+      auth,
+      dustFs,
+      await dustFs.list(`${SCOPED_PREFIX_POD}${space.sId}`)
+    );
 
     return ctx.json({ files });
   }

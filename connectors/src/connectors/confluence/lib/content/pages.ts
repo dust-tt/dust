@@ -162,6 +162,14 @@ export async function upsertConfluencePageInDb(
   page: ConfluencePageWithBodyType,
   visitedAtMs: number
 ) {
+  if (page.parentType === "database") {
+    logger.info(
+      { connectorId, pageId: page.id, parentId: page.parentId },
+      "Skipping Confluence page database upsert with database parent."
+    );
+    return;
+  }
+
   await ConfluencePageModel.upsert({
     connectorId,
     externalUrl: page._links.tinyui,
@@ -266,6 +274,14 @@ export async function confluenceCheckAndUpsertSinglePage({
   if (!page) {
     localLogger.info("Confluence page not found.");
     // Return false to skip the child pages.
+    return false;
+  }
+
+  if (page.parentType === "database") {
+    localLogger.info(
+      { parentId: page.parentId },
+      "Skipping Confluence page with database parent."
+    );
     return false;
   }
 

@@ -3,6 +3,7 @@ import { isPAYGEnabled } from "@app/lib/credits/credit_payg";
 import { listMetronomeBalances } from "@app/lib/metronome/client";
 import { getCreditTypeAwuId } from "@app/lib/metronome/constants";
 import { invalidateWorkspacePoolCredits } from "@app/lib/metronome/credit_balance";
+import { transitionProgrammaticCreditState } from "@app/lib/metronome/programmatic_credit_state_machine";
 import { clearUserCapBlocked } from "@app/lib/metronome/user_block";
 import { transitionUserCreditState } from "@app/lib/metronome/user_credit_state_machine";
 import type { WorkspaceCreditEvent } from "@app/lib/metronome/workspace_credit_state_machine";
@@ -168,6 +169,62 @@ async function transitionWorkspacePool(
     workspaceId: workspace.sId,
     paygEnabled,
   });
+}
+
+// ---------------------------------------------------------------------------
+// Programmatic credit state dispatchers
+// ---------------------------------------------------------------------------
+
+export async function dispatchProgrammaticLowBalance({
+  workspace,
+  remainingCredits,
+}: {
+  workspace: WorkspaceResource;
+  remainingCredits: number;
+}): Promise<void> {
+  await transitionProgrammaticCreditState(workspace, {
+    type: "programmatic_low_balance",
+    remainingCredits,
+  });
+}
+
+export async function dispatchProgrammaticCapReached({
+  workspace,
+}: {
+  workspace: WorkspaceResource;
+}): Promise<void> {
+  await transitionProgrammaticCreditState(workspace, {
+    type: "programmatic_cap_reached",
+  });
+}
+
+export async function dispatchProgrammaticCapReset({
+  workspace,
+}: {
+  workspace: WorkspaceResource;
+}): Promise<void> {
+  await transitionProgrammaticCreditState(workspace, {
+    type: "programmatic_cap_reset",
+  });
+}
+
+/**
+ * Notify admins that programmatic spend has crossed the early-warning
+ * threshold (80% of the monthly cap). Unlike the other programmatic
+ * dispatchers this does not transition the credit state machine — the
+ * workspace stays in its current balance state and no throttling kicks in.
+ * The signal is informational only.
+ */
+export async function dispatchProgrammaticWarning({
+  workspace,
+}: {
+  workspace: WorkspaceResource;
+}): Promise<void> {
+  // TODO: send notification to admin.
+  logger.info(
+    { workspaceId: workspace.sId },
+    "[ProgrammaticCreditDispatcher] Programmatic warning threshold reached"
+  );
 }
 
 /**

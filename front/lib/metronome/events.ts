@@ -6,6 +6,11 @@ import type { RunUsageType } from "@app/lib/resources/run_resource";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { createHash } from "crypto";
 
+import {
+  USAGE_TYPE_GROUP_KEY,
+  USAGE_TYPE_PROGRAMMATIC,
+  USAGE_TYPE_USER,
+} from "./constants";
 import type { MetronomeEvent } from "./types";
 
 const MAX_TRANSACTION_ID_LENGTH = 128;
@@ -46,7 +51,20 @@ function truncatePropertyValue(value: string): string {
 // Advanced: 3 AWU
 export const TOOL_CATEGORIES = ["basic", "advanced"] as const;
 
-type ToolCategory = (typeof TOOL_CATEGORIES)[number];
+export type ToolCategory = (typeof TOOL_CATEGORIES)[number];
+
+// AWU price per tool invocation by category (1 AWU = $0.01). Canonical source
+// for both the Tool Usage rate-card prices (scripts/metronome_setup.ts) and the
+// runtime per-user AWU spend computation (per_user_usage.ts) — keep both in
+// sync by importing from here rather than redefining.
+export const TOOL_CATEGORY_AWU_WEIGHTS: Record<ToolCategory, number> = {
+  basic: 1,
+  advanced: 3,
+};
+
+export function isToolCategory(value: string): value is ToolCategory {
+  return value in TOOL_CATEGORY_AWU_WEIGHTS;
+}
 
 // Exhaustive map — TypeScript will error if a new internal MCP server is added
 // without being categorized here.
@@ -253,7 +271,9 @@ export function buildLlmUsageEvents({
       // TODO: Remove is_programmatic_usage & is_free_usage, this is replaced by single property "usage type"
       is_programmatic_usage: isProgrammaticUsage ? "true" : "false",
       is_free_usage: "false",
-      usage_type: isProgrammaticUsage ? "programmatic" : "user",
+      [USAGE_TYPE_GROUP_KEY]: isProgrammaticUsage
+        ? USAGE_TYPE_PROGRAMMATIC
+        : USAGE_TYPE_USER,
       auth_method: authMethod ?? "unknown",
       api_key_name: apiKeyName ?? "unknown",
       message_status: messageStatus,
@@ -366,7 +386,9 @@ export function buildToolUseEvents({
       total_execution_duration_ms: totalDurationMs,
       // TODO: Remove is_programmatic_usage, this is replaced by single property "usage type"
       is_programmatic_usage: isProgrammaticUsage ? "true" : "false",
-      usage_type: isProgrammaticUsage ? "programmatic" : "user",
+      [USAGE_TYPE_GROUP_KEY]: isProgrammaticUsage
+        ? USAGE_TYPE_PROGRAMMATIC
+        : USAGE_TYPE_USER,
       message_status: messageStatus,
       is_sub_agent_message: isSubAgentMessage ? "true" : "false",
       origin,

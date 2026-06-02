@@ -101,8 +101,6 @@ export const NotificationPreferences = forwardRef<
 
   const displaySlackOption = hasSlackNotificationsFeature && canConfigureSlack;
 
-  const isProjectsFeatureEnabled = hasFeature("projects");
-
   // Novu workflow-specific channel preferences for conversation-unread
   const [conversationPreferences, setConversationPreferences] = useState<
     Preference | undefined
@@ -422,28 +420,20 @@ export const NotificationPreferences = forwardRef<
                 <DropdownMenuItem
                   label={NOTIFICATION_CONDITION_LABELS["all_messages"]}
                   description={
-                    isProjectsFeatureEnabled
-                      ? NOTIFICATION_CONDITION_DESCRIPTIONS["all_messages"]
-                      : undefined
+                    NOTIFICATION_CONDITION_DESCRIPTIONS["all_messages"]
                   }
                   onClick={() => setNotifyCondition("all_messages")}
                 />
                 <DropdownMenuItem
                   label={NOTIFICATION_CONDITION_LABELS["only_mentions"]}
                   description={
-                    isProjectsFeatureEnabled
-                      ? NOTIFICATION_CONDITION_DESCRIPTIONS["only_mentions"]
-                      : undefined
+                    NOTIFICATION_CONDITION_DESCRIPTIONS["only_mentions"]
                   }
                   onClick={() => setNotifyCondition("only_mentions")}
                 />
                 <DropdownMenuItem
                   label={NOTIFICATION_CONDITION_LABELS["never"]}
-                  description={
-                    isProjectsFeatureEnabled
-                      ? NOTIFICATION_CONDITION_DESCRIPTIONS["never"]
-                      : undefined
-                  }
+                  description={NOTIFICATION_CONDITION_DESCRIPTIONS["never"]}
                   onClick={() => setNotifyCondition("never")}
                 />
               </DropdownMenuContent>

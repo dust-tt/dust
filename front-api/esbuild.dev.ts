@@ -15,9 +15,7 @@ import {
   getBaseBuildOptions,
 } from "./esbuild.shared";
 
-// The watch loop only follows the default entry. The strangler shim is
-// opt-in (autostart: false in mprocs) and rarely the focus of inner-loop
-// dev — keeping a single child process here avoids racing two ports.
+// There is a single runtime target; the watch loop follows it.
 const WATCH_TARGET = BUILD_TARGETS[0];
 
 const SHUTDOWN_GRACE_MS = 2000;
@@ -267,7 +265,20 @@ async function watchAndServe() {
 
   const ctx = await esbuild.context(getDevBuildOptions(WATCH_TARGET));
 
+  let shuttingDown = false;
   const shutdown = async () => {
+    // Repeated SIGINT (mashing Ctrl+C) would otherwise re-enter and stack a new
+    // close listener on the proxy server each time, eventually tripping Node's
+    // MaxListenersExceededWarning.
+    if (shuttingDown) {
+      return;
+    }
+    shuttingDown = true;
+
+    // Backstop: if anything below wedges, never leave the dev process hanging
+    // on Ctrl+C. unref so this timer alone can't keep the loop alive.
+    setTimeout(() => process.exit(0), SHUTDOWN_GRACE_MS).unref();
+
     const running = child;
     child = null;
     upstreamPort = null;
@@ -276,6 +287,10 @@ async function watchAndServe() {
       await waitForExit(running, SHUTDOWN_GRACE_MS);
     }
     if (proxyServer) {
+      // close() alone waits for existing connections to drain, but SSE streams
+      // and keep-alive sockets never close on their own — force them shut so
+      // the callback actually fires.
+      proxyServer.closeAllConnections();
       await new Promise<void>((resolve) => proxyServer?.close(() => resolve()));
       proxyServer = null;
     }

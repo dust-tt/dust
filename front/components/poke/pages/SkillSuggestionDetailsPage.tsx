@@ -1,9 +1,9 @@
 import { MCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { SkillSuggestionCard } from "@app/components/skill_builder/SkillSuggestionCard";
-import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeMCPServerViews } from "@app/poke/swr/mcp_server_views";
 import { usePokeSkillSuggestionDetails } from "@app/poke/swr/skill_suggestion_details";
 import type { SkillSuggestionState } from "@app/types/suggestions/skill_suggestion";
@@ -12,13 +12,18 @@ import { useCallback, useMemo } from "react";
 
 export function SkillSuggestionDetailsPage() {
   const owner = useWorkspace();
-  useDocumentTitle(`Poke - ${owner.name} - Suggestion`);
 
   const suggestionId = useRequiredPathParam("suggestionId");
 
   const { data, isLoading, isError } = usePokeSkillSuggestionDetails({
     owner,
     suggestionId,
+  });
+
+  usePokePageMetadata({
+    name: data?.suggestion.title,
+    subtitle: owner.name,
+    sId: suggestionId,
   });
 
   const { data: mcpServerViews, isLoading: isMCPServerViewsLoading } =

@@ -6,11 +6,11 @@ import {
   toPlanType,
   useEditingPlan,
 } from "@app/components/poke/plans/form";
-import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { usePokePlans } from "@app/lib/swr/poke";
 import type { PlanTypeSchema } from "@app/pages/api/poke/plans";
+import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import type { PlanType } from "@app/types/plan";
 import {
   Button,
@@ -26,7 +26,7 @@ import { useSWRConfig } from "swr";
 import type { z } from "zod";
 
 export function PlansPage() {
-  useDocumentTitle("Poke - Plans");
+  usePokePageMetadata({ name: "Plans" });
 
   const { mutate } = useSWRConfig();
 

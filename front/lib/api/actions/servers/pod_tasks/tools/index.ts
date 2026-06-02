@@ -6,68 +6,182 @@ import type {
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
-  getProjectSpace,
+  getPod,
   withErrorHandling,
 } from "@app/lib/api/actions/servers/pod_manager/helpers";
-import { POD_TASKS_TOOLS_METADATA } from "@app/lib/api/actions/servers/pod_tasks/metadata";
+import {
+  CREATE_TASKS_TOOL_NAME,
+  POD_TASKS_TOOLS_METADATA,
+  START_TASK_AGENT_TOOL_NAME,
+  UPDATE_TASKS_TOOL_NAME,
+} from "@app/lib/api/actions/servers/pod_tasks/metadata";
 import { inferProjectTaskSourceFromUrl } from "@app/lib/api/actions/servers/pod_tasks/source_utils";
 import { resolveAgentConfigurationIdByName } from "@app/lib/api/assistant/configuration/agent";
 import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
+import { DustError } from "@app/lib/error";
 import { startAgentForProjectTask } from "@app/lib/project_task/start_agent";
-import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
+import {
+  ProjectTaskResource,
+  type UpdateBlob,
+} from "@app/lib/resources/project_task_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type { PodTaskStatus } from "@app/types/project_task";
+import type { PodTaskActorType, PodTaskStatus } from "@app/types/project_task";
 import { POD_TASK_NO_ASSIGNEE_LABEL } from "@app/types/project_task";
 import type { ModelId } from "@app/types/shared/model_id";
-import { Err, Ok } from "@app/types/shared/result";
+import { Err, Ok, type Result } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
-type PodTaskUpdateItem = {
+export type PodTaskUpdateItem = {
   taskId: string;
   text?: string;
-  userId?: string | null;
+  assigneeUserId?: string | null;
   doneRationale?: string;
   status?: PodTaskStatus;
+  markAsDoneByType?: PodTaskActorType;
 };
 
-async function buildTaskUpdatePayload(
+type DoneAttribution = Pick<
+  UpdateBlob,
+  | "markedAsDoneByType"
+  | "markedAsDoneByUserId"
+  | "markedAsDoneByAgentConfigurationId"
+>;
+
+export function doneAttribution(
+  actorType: PodTaskActorType,
+  actorUserId: ModelId | null,
+  agentConfigId: string | null
+): DoneAttribution {
+  switch (actorType) {
+    case "user":
+      return {
+        markedAsDoneByType: "user",
+        markedAsDoneByUserId: actorUserId,
+        markedAsDoneByAgentConfigurationId: null,
+      };
+    case "agent":
+      return {
+        markedAsDoneByType: "agent",
+        markedAsDoneByUserId: null,
+        markedAsDoneByAgentConfigurationId: agentConfigId,
+      };
+    default:
+      return assertNever(actorType);
+  }
+}
+
+export function statusTransitionUpdates(
+  nextStatus: PodTaskStatus,
+  actorType: PodTaskActorType,
+  actorUserId: ModelId | null,
+  agentConfigId: string | null
+): UpdateBlob {
+  switch (nextStatus) {
+    case "done":
+      return {
+        status: "done",
+        doneAt: new Date(),
+        ...doneAttribution(actorType, actorUserId, agentConfigId),
+      };
+    case "todo":
+    case "in_progress":
+      return {
+        status: nextStatus,
+        doneAt: null,
+        markedAsDoneByType: null,
+        markedAsDoneByUserId: null,
+        markedAsDoneByAgentConfigurationId: null,
+      };
+    default:
+      return assertNever(nextStatus);
+  }
+}
+
+async function resolveAssigneeUpdate(
   space: SpaceResource,
-  workspaceSId: string,
+  workspaceId: string,
+  itemUserId: string | null | undefined
+): Promise<Result<{ userId?: number | null }, DustError<"user_not_member">>> {
+  if (itemUserId === undefined) {
+    return new Ok({ userId: undefined });
+  }
+  if (itemUserId === null) {
+    return new Ok({ userId: null });
+  }
+  const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+    itemUserId,
+    workspaceId
+  );
+  if (!space.isMember(userAuth)) {
+    return new Err(
+      new DustError(
+        "user_not_member",
+        `User ${itemUserId} is not a member of the Pod.`
+      )
+    );
+  }
+  return new Ok({ userId: userAuth.getNonNullableUser().id });
+}
+
+export function rationaleUpdate(
+  item: PodTaskUpdateItem,
+  prevStatus: PodTaskStatus,
+  nextStatus: PodTaskStatus
+): Pick<UpdateBlob, "actorRationale"> {
+  if (item.doneRationale !== undefined) {
+    return { actorRationale: item.doneRationale };
+  }
+  if (nextStatus !== "done" && prevStatus === "done") {
+    return { actorRationale: null };
+  }
+  return {};
+}
+
+export async function buildTaskUpdatePayload(
+  auth: Authenticator,
+  space: SpaceResource,
   row: ProjectTaskResource,
-  item: PodTaskUpdateItem
-): Promise<
-  | { updates: Parameters<ProjectTaskResource["updateWithVersion"]>[1] }
-  | { error: string }
-> {
-  const updates: Parameters<ProjectTaskResource["updateWithVersion"]>[1] = {
-    status: item.doneRationale ? "done" : (item.status ?? row.status),
-    doneAt: item.doneRationale ? new Date() : null,
-    actorRationale: item.doneRationale ?? row.actorRationale,
+  item: PodTaskUpdateItem,
+  agentConfigId: string | null
+): Promise<Result<{ taskUpdates: UpdateBlob }, DustError<"user_not_member">>> {
+  const actorUserId = auth.user()?.id ?? null;
+  const workspaceSId = auth.getNonNullableWorkspace().sId;
+
+  const nextStatus: PodTaskStatus = item.doneRationale
+    ? "done"
+    : (item.status ?? row.status);
+
+  const updates: UpdateBlob = {
+    ...(nextStatus !== row.status
+      ? statusTransitionUpdates(
+          nextStatus,
+          item.markAsDoneByType ?? "agent",
+          actorUserId,
+          agentConfigId
+        )
+      : {}),
+    ...rationaleUpdate(item, row.status, nextStatus),
+    ...(item.text !== undefined ? { text: item.text } : {}),
   };
 
-  if (item.text !== undefined) {
-    updates.text = item.text;
+  const assignee = await resolveAssigneeUpdate(
+    space,
+    workspaceSId,
+    item.assigneeUserId
+  );
+  if (assignee.isErr()) {
+    return assignee;
   }
 
-  if (item.userId === null) {
-    updates.userId = null;
-  } else if (typeof item.userId === "string") {
-    const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
-      item.userId,
-      workspaceSId
-    );
-    if (!space.isMember(userAuth)) {
-      return {
-        error: `User ${item.userId} is not a member of the Pod for task ${item.taskId}.`,
-      };
-    }
-    updates.userId = userAuth.getNonNullableUser().id;
+  if (assignee.value.userId !== undefined) {
+    updates.userId = assignee.value.userId;
   }
 
-  return { updates };
+  return new Ok({ taskUpdates: updates });
 }
 
 function formatTaskListingLine(row: ProjectTaskResource): string {
@@ -98,24 +212,24 @@ export function createProjectTasksTools(
       dustPod,
     }) => {
       return withErrorHandling(async () => {
-        const contextRes = await getProjectSpace(auth, {
+        const contextRes = await getPod(auth, {
           agentLoopContext,
           dustPod,
         });
         if (contextRes.isErr()) {
           return contextRes;
         }
-        const { space } = contextRes.value;
+        const { pod } = contextRes.value;
 
         let rows: ProjectTaskResource[] = [];
 
         if (assigneeFilter === "mine") {
           rows = await ProjectTaskResource.fetchLatestBySpace(auth, {
-            spaceId: space.id,
+            spaceId: pod.id,
           });
         } else if (assigneeFilter === "all") {
           rows = await ProjectTaskResource.fetchBySpace(auth, {
-            spaceId: space.id,
+            spaceId: pod.id,
             timeScope: "all",
           });
         }
@@ -168,19 +282,19 @@ export function createProjectTasksTools(
       }, "Failed to list tasks");
     },
 
-    create_tasks: async ({ creatorType, tasks, dustPod }) => {
+    [CREATE_TASKS_TOOL_NAME]: async ({ creatorType, tasks, dustPod }) => {
       return withErrorHandling(async () => {
-        const contextRes = await getProjectSpace(auth, {
+        const contextRes = await getPod(auth, {
           agentLoopContext,
           dustPod,
         });
         if (contextRes.isErr()) {
           return contextRes;
         }
-        const { space } = contextRes.value;
+        const { pod } = contextRes.value;
 
         const assignmentPool =
-          await space.fetchDistinctActiveManualGroupMembers(auth);
+          await pod.fetchDistinctActiveManualGroupMembers(auth);
         const soleAssigneeModelId =
           assignmentPool.length === 1 ? assignmentPool[0]!.id : null;
 
@@ -197,7 +311,7 @@ export function createProjectTasksTools(
               item.userId,
               owner.sId
             );
-            if (!contextRes.value.space.isMember(userAuth)) {
+            if (!contextRes.value.pod.isMember(userAuth)) {
               errors.push(
                 `Could not create task ${item.text} for user ${item.userId} because they are not a member of the Pod.`
               );
@@ -212,7 +326,7 @@ export function createProjectTasksTools(
           }
 
           const row = await ProjectTaskResource.makeNew(auth, {
-            spaceId: space.id,
+            spaceId: pod.id,
             userId: newUserId,
             createdByType: creatorType,
             createdByAgentConfigurationId:
@@ -268,84 +382,19 @@ export function createProjectTasksTools(
       }, "Failed to create tasks");
     },
 
-    mark_task_done: async ({ actorType, taskIds, dustPod }) => {
+    [UPDATE_TASKS_TOOL_NAME]: async ({ tasks, dustPod }) => {
       return withErrorHandling(async () => {
-        const contextRes = await getProjectSpace(auth, {
+        const contextRes = await getPod(auth, {
           agentLoopContext,
           dustPod,
         });
         if (contextRes.isErr()) {
           return contextRes;
         }
+        const { pod } = contextRes.value;
 
-        const marked: string[] = [];
-        const alreadyDone: string[] = [];
-        const notFound: string[] = [];
-
-        for (const taskId of taskIds) {
-          const row = await ProjectTaskResource.fetchBySId(auth, taskId);
-          if (!row) {
-            notFound.push(taskId);
-            continue;
-          }
-
-          if (row.status === "done") {
-            alreadyDone.push(taskId);
-            continue;
-          }
-
-          await row.updateWithVersion(auth, {
-            status: "done",
-            doneAt: new Date(),
-            markedAsDoneByType: actorType,
-            markedAsDoneByUserId: actorType === "user" ? row.userId : null,
-            markedAsDoneByAgentConfigurationId:
-              actorType === "agent"
-                ? (agentLoopContext?.runContext?.agentConfiguration?.sId ??
-                  null)
-                : null,
-          });
-          marked.push(`${taskId} ("${row.text}")`);
-        }
-
-        const lines: string[] = [];
-        if (marked.length > 0) {
-          lines.push(`Marked ${marked.length} task(s) as done:`);
-          for (const item of marked) {
-            lines.push(`- ${item}`);
-          }
-        }
-        if (alreadyDone.length > 0) {
-          lines.push(
-            `Already done (${alreadyDone.length}): ${alreadyDone.join(", ")}`
-          );
-        }
-        if (notFound.length > 0) {
-          lines.push(`Not found (${notFound.length}): ${notFound.join(", ")}`);
-        }
-        if (lines.length === 0) {
-          lines.push("No tasks were updated.");
-        }
-
-        return new Ok([
-          {
-            type: "text" as const,
-            text: lines.join("\n"),
-          },
-        ]);
-      }, "Failed to mark task as done");
-    },
-
-    update_tasks: async ({ tasks, dustPod }) => {
-      return withErrorHandling(async () => {
-        const contextRes = await getProjectSpace(auth, {
-          agentLoopContext,
-          dustPod,
-        });
-        if (contextRes.isErr()) {
-          return contextRes;
-        }
-        const { space } = contextRes.value;
+        const agentConfigId =
+          agentLoopContext?.runContext?.agentConfiguration?.sId ?? null;
 
         const updated: string[] = [];
         const errors: string[] = [];
@@ -359,20 +408,25 @@ export function createProjectTasksTools(
           }
 
           const payloadRes = await buildTaskUpdatePayload(
-            space,
-            owner.sId,
+            auth,
+            pod,
             row,
-            item
+            item,
+            agentConfigId
           );
-          if ("error" in payloadRes) {
-            errors.push(payloadRes.error);
+          if (payloadRes.isErr()) {
+            errors.push(payloadRes.error.message);
             continue;
           }
 
-          const updatedRow = await row.updateWithVersion(
-            auth,
-            payloadRes.updates
-          );
+          const { taskUpdates } = payloadRes.value;
+
+          if (Object.keys(taskUpdates).length === 0) {
+            updated.push(formatTaskListingLine(row));
+            continue;
+          }
+
+          const updatedRow = await row.updateWithVersion(auth, taskUpdates);
           updated.push(formatTaskListingLine(updatedRow));
         }
 
@@ -389,9 +443,14 @@ export function createProjectTasksTools(
       }, "Failed to update tasks");
     },
 
-    start_task_agent: async ({ taskId, agentName, customMessage, dustPod }) => {
+    [START_TASK_AGENT_TOOL_NAME]: async ({
+      taskId,
+      agentName,
+      customMessage,
+      dustPod,
+    }) => {
       return withErrorHandling(async () => {
-        const contextRes = await getProjectSpace(auth, {
+        const contextRes = await getPod(auth, {
           agentLoopContext,
           dustPod,
         });
@@ -399,7 +458,7 @@ export function createProjectTasksTools(
           return contextRes;
         }
 
-        const { space } = contextRes.value;
+        const { pod } = contextRes.value;
         let agentConfigurationId: string | undefined;
         if (agentName) {
           const matchedAgentId = await resolveAgentConfigurationIdByName(
@@ -417,7 +476,7 @@ export function createProjectTasksTools(
         }
 
         const startRes = await startAgentForProjectTask(auth, {
-          space,
+          space: pod,
           taskId,
           agentConfigurationId,
           customMessage,

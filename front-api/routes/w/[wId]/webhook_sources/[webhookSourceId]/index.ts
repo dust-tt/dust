@@ -18,16 +18,21 @@ const PatchWebhookSourceBodySchema = z.object({
   oauthConnectionId: z.unknown().optional(),
 });
 
+const ParamsSchema = z.object({
+  webhookSourceId: z.string(),
+});
+
 // Mounted at /api/w/:wId/webhook_sources/:webhookSourceId.
 const app = workspaceApp();
 
 app.patch(
   "/",
+  validate("param", ParamsSchema),
   ensureIsAdmin(),
   validate("json", PatchWebhookSourceBodySchema),
   async (ctx): HandlerResult<SuccessResponseBody> => {
     const auth = ctx.get("auth");
-    const webhookSourceId = ctx.req.param("webhookSourceId") ?? "";
+    const { webhookSourceId } = ctx.req.valid("param");
 
     const { remoteMetadata, oauthConnectionId } = ctx.req.valid("json");
 
@@ -70,10 +75,11 @@ app.patch(
 
 app.delete(
   "/",
+  validate("param", ParamsSchema),
   ensureIsAdmin(),
   async (ctx): HandlerResult<SuccessResponseBody> => {
     const auth = ctx.get("auth");
-    const webhookSourceId = ctx.req.param("webhookSourceId") ?? "";
+    const { webhookSourceId } = ctx.req.valid("param");
 
     const webhookSourceResource = await WebhookSourceResource.fetchById(
       auth,

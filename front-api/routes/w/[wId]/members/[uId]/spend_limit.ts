@@ -28,6 +28,10 @@ const UpdateUserSpendLimitBodySchema = z.discriminatedUnion("kind", [
   }),
 ]);
 
+const ParamsSchema = z.object({
+  uId: z.string(),
+});
+
 export type GetUserSpendLimitResponseBody = GetUserSpendLimitResponse;
 
 export type PutUserSpendLimitResponseBody = SetUserSpendLimitResponse;
@@ -70,6 +74,7 @@ const app = workspaceApp();
 
 app.get(
   "/",
+  validate("param", ParamsSchema),
   ensureIsAdmin(),
   async (ctx): HandlerResult<GetUserSpendLimitResponseBody> => {
     const auth = ctx.get("auth");
@@ -85,16 +90,7 @@ app.get(
       });
     }
 
-    const uId = ctx.req.param("uId") ?? "";
-    if (!uId) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid query parameters, `uId` (string) is required.",
-        },
-      });
-    }
+    const { uId } = ctx.req.valid("param");
 
     const result = await getUserSpendLimit(auth, { userId: uId });
     if (result.isErr()) {
@@ -106,6 +102,7 @@ app.get(
 
 app.put(
   "/",
+  validate("param", ParamsSchema),
   ensureIsAdmin(),
   validate("json", UpdateUserSpendLimitBodySchema),
   async (ctx): HandlerResult<PutUserSpendLimitResponseBody> => {
@@ -122,16 +119,7 @@ app.put(
       });
     }
 
-    const uId = ctx.req.param("uId") ?? "";
-    if (!uId) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid query parameters, `uId` (string) is required.",
-        },
-      });
-    }
+    const { uId } = ctx.req.valid("param");
 
     const auditContext = getAuditLogContext(auth);
     const result = await setUserSpendLimit(auth, {

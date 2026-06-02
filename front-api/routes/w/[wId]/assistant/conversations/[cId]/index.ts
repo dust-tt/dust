@@ -35,6 +35,7 @@ import cancel from "./cancel";
 import compactions from "./compactions";
 import contentFragment from "./content_fragment";
 import contextUsage from "./context-usage";
+import events from "./events";
 import feedbacks from "./feedbacks";
 import files from "./files";
 import forks from "./forks";
@@ -48,6 +49,10 @@ import skills from "./skills";
 import suggest from "./suggest";
 import tools from "./tools";
 import wakeups from "./wakeups";
+
+const ParamsSchema = z.object({
+  cId: z.string(),
+});
 
 const PatchConversationsRequestBodySchema = z.union([
   z.object({ title: z.string() }),
@@ -63,49 +68,53 @@ const PatchConversationsRequestBodySchema = z.union([
 // handles GET, DELETE, and PATCH on the conversation resource itself.
 const app = workspaceApp();
 
-app.get("/", async (ctx): HandlerResult<GetConversationResponseBody> => {
-  const auth = ctx.get("auth");
-  const cId = ctx.req.param("cId") ?? "";
+app.get(
+  "/",
+  validate("param", ParamsSchema),
+  async (ctx): HandlerResult<GetConversationResponseBody> => {
+    const auth = ctx.get("auth");
+    const { cId } = ctx.req.valid("param");
 
-  const conversationRes =
-    await ConversationResource.fetchConversationWithoutContent(auth, cId, {
-      includeForkingData: true,
+    const conversationRes =
+      await ConversationResource.fetchConversationWithoutContent(auth, cId, {
+        includeForkingData: true,
+      });
+
+    if (conversationRes.isErr()) {
+      // Distinguish between "not found" and "access restricted" for the UI.
+      const canAccess = await ConversationResource.canAccess(auth, cId);
+      const error =
+        canAccess === "conversation_access_restricted"
+          ? new ConversationError("conversation_access_restricted")
+          : conversationRes.error;
+      return apiErrorForConversation(ctx, error);
+    }
+
+    const conversation = conversationRes.value;
+
+    void emitAuditLogEvent({
+      auth,
+      action: "conversation.accessed",
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        buildAuditLogTarget("conversation", {
+          sId: conversation.sId,
+          name: conversation.title ?? "",
+        }),
+      ],
+      context: getAuditLogContext(auth),
+      metadata: {
+        conversation_id: conversation.sId,
+      },
     });
 
-  if (conversationRes.isErr()) {
-    // Distinguish between "not found" and "access restricted" for the UI.
-    const canAccess = await ConversationResource.canAccess(auth, cId);
-    const error =
-      canAccess === "conversation_access_restricted"
-        ? new ConversationError("conversation_access_restricted")
-        : conversationRes.error;
-    return apiErrorForConversation(ctx, error);
+    return ctx.json({ conversation });
   }
+);
 
-  const conversation = conversationRes.value;
-
-  void emitAuditLogEvent({
-    auth,
-    action: "conversation.accessed",
-    targets: [
-      buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
-      buildAuditLogTarget("conversation", {
-        sId: conversation.sId,
-        name: conversation.title ?? "",
-      }),
-    ],
-    context: getAuditLogContext(auth),
-    metadata: {
-      conversation_id: conversation.sId,
-    },
-  });
-
-  return ctx.json({ conversation });
-});
-
-app.delete("/", async (ctx) => {
+app.delete("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
-  const cId = ctx.req.param("cId") ?? "";
+  const { cId } = ctx.req.valid("param");
   const forceDelete = ctx.req.query("forceDelete") === "true";
 
   const result = await deleteOrLeaveConversation(auth, {
@@ -121,10 +130,11 @@ app.delete("/", async (ctx) => {
 
 app.patch(
   "/",
+  validate("param", ParamsSchema),
   validate("json", PatchConversationsRequestBodySchema),
   async (ctx): HandlerResult<PatchConversationResponseBody> => {
     const auth = ctx.get("auth");
-    const cId = ctx.req.param("cId") ?? "";
+    const { cId } = ctx.req.valid("param");
 
     const conversationRes =
       await ConversationResource.fetchConversationWithoutContent(auth, cId);
@@ -275,6 +285,7 @@ app.route("/cancel", cancel);
 app.route("/compactions", compactions);
 app.route("/content_fragment", contentFragment);
 app.route("/context-usage", contextUsage);
+app.route("/events", events);
 app.route("/feedbacks", feedbacks);
 app.route("/files", files);
 app.route("/forks", forks);

@@ -144,12 +144,17 @@ describe("reinforcement seed script integration test", () => {
     );
     expect(allReinforcement).toBe(true);
 
-    // First suggestion has both instruction edits and tool edits
-    const withToolEdits = skillSuggestions.find((s) => {
+    // First suggestion includes an inline tool reference in its instruction edit
+    // so the nested_skills path can be exercised manually from seed data.
+    const withInlineToolReference = skillSuggestions.find((s) => {
       const json = s.toJSON();
-      return json.suggestion.toolEdits && json.suggestion.toolEdits.length > 0;
+      return json.suggestion.instructionEdits?.some(
+        (edit) =>
+          edit.content.includes("<tool") &&
+          edit.content.includes('name="Web Search"')
+      );
     });
-    expect(withToolEdits).toBeDefined();
+    expect(withInlineToolReference).toBeDefined();
 
     // Second suggestion has 2 instruction edits and no tool edits
     const withOnlyInstructionEdits = skillSuggestions.find((s) => {

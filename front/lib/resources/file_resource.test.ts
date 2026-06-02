@@ -819,6 +819,93 @@ describe("FileResource", () => {
     });
   });
 
+  describe("toScopedPath", () => {
+    it("returns null when mountFilePath is not set", async () => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+
+      const file = await FileFactory.create(auth, null, {
+        contentType: "text/plain",
+        fileName: "orphan.txt",
+        fileSize: 100,
+        status: "ready",
+        useCase: "conversation",
+        // no conversationId → no mountFilePath
+      });
+
+      expect(file.toScopedPath(auth)).toBeNull();
+    });
+
+    it("returns the canonical conversation-{cId}/filename path for a conversation file", async () => {
+      const { authenticator: auth, workspace } = await createResourceTest({
+        role: "admin",
+      });
+
+      const file = await FileFactory.create(auth, null, {
+        contentType: "text/plain",
+        fileName: "notes.txt",
+        fileSize: 100,
+        status: "created",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: "conv-scoped-1" },
+      });
+      await file.markAsReady(auth);
+
+      const ready = await FileResource.fetchById(auth, file.sId);
+      assert(ready, "File should exist after markAsReady");
+
+      expect(ready.toScopedPath(auth)).toBe(
+        `conversation-conv-scoped-1/notes.txt`
+      );
+      // Verify the GCS mount path that backs it.
+      expect(ready.mountFilePath).toBe(
+        `w/${workspace.sId}/conversations/conv-scoped-1/files/notes.txt`
+      );
+    });
+
+    it("returns the canonical pod-{spaceId}/filename path for a project_context file", async () => {
+      const { authenticator: auth, workspace } = await createResourceTest({
+        role: "admin",
+      });
+
+      const file = await FileFactory.create(auth, null, {
+        contentType: "text/markdown",
+        fileName: "spec.md",
+        fileSize: 200,
+        status: "created",
+        useCase: "project_context",
+        useCaseMetadata: { spaceId: "spc-scoped-1" },
+      });
+      await file.markAsReady(auth);
+
+      const ready = await FileResource.fetchById(auth, file.sId);
+      assert(ready, "File should exist after markAsReady");
+
+      expect(ready.toScopedPath(auth)).toBe(`pod-spc-scoped-1/spec.md`);
+      // Verify the GCS mount path that backs it.
+      expect(ready.mountFilePath).toBe(
+        `w/${workspace.sId}/pods/spc-scoped-1/files/spec.md`
+      );
+    });
+
+    it("returns null for a use case that does not produce a scoped path", async () => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+
+      const file = await FileFactory.create(auth, null, {
+        contentType: "image/png",
+        fileName: "avatar.png",
+        fileSize: 500,
+        status: "ready",
+        useCase: "avatar",
+      });
+
+      expect(file.toScopedPath(auth)).toBeNull();
+    });
+  });
+
   describe("getContentBucketAndPath", () => {
     it("should resolve to 'original' version for plain text files", async () => {
       const { authenticator: auth } = await createResourceTest({

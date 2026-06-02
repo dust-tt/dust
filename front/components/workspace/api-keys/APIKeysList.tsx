@@ -18,6 +18,7 @@ type APIKeysListProps = {
   isGenerating: boolean;
   onRevoke: (key: KeyType) => Promise<void>;
   onEditCap: (key: KeyType) => void;
+  showLegacyUsdMonthlyCap: boolean;
 };
 
 const getKeySpaces = (
@@ -53,6 +54,7 @@ export const APIKeysList = ({
   isGenerating,
   onRevoke,
   onEditCap,
+  showLegacyUsdMonthlyCap,
 }: APIKeysListProps) => {
   return (
     <div className="space-y-4 divide-y divide-gray-200 dark:divide-gray-200-night">
@@ -111,19 +113,21 @@ export const APIKeysList = ({
                       >
                         Scope: <strong>{formatKeyScope(key.role)}</strong>
                       </p>
-                      <p
-                        className={cn(
-                          "truncate font-mono text-sm",
-                          "text-muted-foreground dark:text-muted-foreground-night"
-                        )}
-                      >
-                        Monthly cap:{" "}
-                        <strong>
-                          {key.monthlyCapMicroUsd !== null
-                            ? `$${(key.monthlyCapMicroUsd / 1_000_000).toFixed(2)}`
-                            : "Unlimited"}
-                        </strong>
-                      </p>
+                      {showLegacyUsdMonthlyCap && (
+                        <p
+                          className={cn(
+                            "truncate font-mono text-sm",
+                            "text-muted-foreground dark:text-muted-foreground-night"
+                          )}
+                        >
+                          Monthly cap:{" "}
+                          <strong>
+                            {key.monthlyCapMicroUsd !== null
+                              ? `$${(key.monthlyCapMicroUsd / 1_000_000).toFixed(2)}`
+                              : "Unlimited"}
+                          </strong>
+                        </p>
+                      )}
                       <pre className="text-sm">{key.secret}</pre>
                       <p
                         className={cn(
@@ -161,12 +165,14 @@ export const APIKeysList = ({
               </div>
               {key.status === "active" ? (
                 <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    disabled={isRevoking || isGenerating}
-                    onClick={() => onEditCap(key)}
-                    label="Edit cap"
-                  />
+                  {showLegacyUsdMonthlyCap && (
+                    <Button
+                      variant="outline"
+                      disabled={isRevoking || isGenerating}
+                      onClick={() => onEditCap(key)}
+                      label="Edit cap"
+                    />
+                  )}
                   <Button
                     variant="warning"
                     disabled={isRevoking || isGenerating}

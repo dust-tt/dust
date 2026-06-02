@@ -71,6 +71,35 @@ export const ASHBY_TOOLS_METADATA = createToolsRecord({
       done: "Retrieve candidate notes from Ashby",
     },
   },
+  list_openings: {
+    description:
+      "List openings in Ashby. Returns a paginated page of openings with " +
+      "their state, archive status, latest version details, linked jobs, " +
+      "hiring team, and custom fields.",
+    schema: {
+      cursor: z
+        .string()
+        .optional()
+        .describe(
+          "Opaque cursor returned by a previous list_openings call. " +
+            "Use this to retrieve the next page."
+        ),
+      limit: z
+        .number()
+        .int()
+        .min(1)
+        .max(100)
+        .optional()
+        .describe(
+          "Maximum number of openings to return. Defaults to 100, which is also Ashby's maximum."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing openings from Ashby",
+      done: "List openings from Ashby",
+    },
+  },
   create_candidate_note: {
     description:
       "Create a note on a candidate's profile in Ashby. " +

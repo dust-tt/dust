@@ -14,7 +14,6 @@ import {
 import {
   classifySeatChange,
   hasContractSeatSubscription,
-  syncSeatCount,
 } from "@app/lib/metronome/seats";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
@@ -25,7 +24,10 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
+import {
+  launchMetronomeSeatCountSyncWorkflow,
+  launchUpdateUsageWorkflow,
+} from "@app/temporal/usage_queue/client";
 import type {
   MembershipOriginType,
   MembershipRoleType,
@@ -39,40 +41,6 @@ import type {
   UserType,
 } from "@app/types/user";
 import type { Transaction } from "sequelize";
-
-async function syncSeatCountForWorkspace(
-  workspace: LightWorkspaceType
-): Promise<Result<void, Error>> {
-  if (!workspace.metronomeCustomerId) {
-    return new Ok(undefined);
-  }
-  const subscription = await SubscriptionResource.fetchActiveByWorkspaceModelId(
-    workspace.id
-  );
-  if (!subscription?.metronomeContractId) {
-    return new Ok(undefined);
-  }
-
-  const contract = await getActiveContract(workspace.sId);
-  if (!contract) {
-    return new Ok(undefined);
-  }
-
-  const hasSeatSubscription = await hasContractSeatSubscription(contract);
-  // Gate on seat subscription presence — contracts without a seat product (e.g. enterprise)
-  // should not trigger a seat sync.
-  if (!hasSeatSubscription) {
-    return new Ok(undefined);
-  }
-
-  const result = await syncSeatCount({
-    metronomeCustomerId: workspace.metronomeCustomerId,
-    contractId: subscription.metronomeContractId,
-    workspace,
-    contract,
-  });
-  return result.isErr() ? new Err(result.error) : new Ok(undefined);
-}
 
 /**
  * Resolve the seat type for a brand-new membership. For seat-billed
@@ -235,7 +203,9 @@ export async function createAndTrackMembership({
   await launchUpdateUsageWorkflow({ workspaceId: workspace.sId });
 
   // Add seat in Metronome if workspace is Metronome-billed.
-  const addSeatResult = await syncSeatCountForWorkspace(w);
+  const addSeatResult = await launchMetronomeSeatCountSyncWorkflow({
+    workspaceId: w.sId,
+  });
   if (addSeatResult.isErr()) {
     logger.error(
       {
@@ -338,7 +308,9 @@ export async function revokeAndTrackMembership(
     }
 
     // Remove seat in Metronome if workspace is Metronome-billed.
-    const removeSeatResult = await syncSeatCountForWorkspace(workspace);
+    const removeSeatResult = await launchMetronomeSeatCountSyncWorkflow({
+      workspaceId: workspace.sId,
+    });
     if (removeSeatResult.isErr()) {
       logger.error(
         {
@@ -415,7 +387,9 @@ export async function updateMembershipRoleAndTrack({
 
     // If a revoked membership was re-activated, add a Metronome seat and update usage.
     if (wasRevoked) {
-      const addSeatResult = await syncSeatCountForWorkspace(workspace);
+      const addSeatResult = await launchMetronomeSeatCountSyncWorkflow({
+        workspaceId: workspace.sId,
+      });
       if (addSeatResult.isErr()) {
         logger.error(
           {
@@ -597,11 +571,8 @@ export async function updateMembershipSeatAndTrack({
       return assertNever(outcome);
   }
 
-  const syncResult = await syncSeatCount({
-    metronomeCustomerId: workspace.metronomeCustomerId,
-    contractId: contract.id,
-    workspace,
-    contract,
+  const syncResult = await launchMetronomeSeatCountSyncWorkflow({
+    workspaceId: workspace.sId,
   });
   if (syncResult.isErr()) {
     logger.error(

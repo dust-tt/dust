@@ -12,18 +12,26 @@ import { DataTypes } from "sequelize";
  *
  * Fields:
  * - defaultDiscountPercent: Discount applied to AWU credit purchases (0-100%)
- * - paygCapCredits: PAYG cap on AWU consumption, in AWU credits. NULL means
- *   PAYG is disabled; any strictly-positive value enables it and drives the
+ * - paygEnabled: Whether PAYG mode is enabled for the workspace. Drives the
+ *   AWU contract excess-credits recurring credit (zeroed when enabled, restored
+ *   to the default amount when disabled).
+ * - usageCapCredits: Workspace-level usage cap on AWU consumption, in AWU
+ *   credits. NULL means no cap; any strictly-positive value drives the
  *   Metronome `spend_threshold_reached` alert on the workspace's customer.
- * - disableCreditCapWarning: When true, the credit cap warning email to
- *   workspace admins is suppressed. Default false (warning is sent).
+ *   Independent from `paygEnabled` — the cap can be set even when PAYG is
+ *   disabled, and PAYG can be enabled without a cap.
+ *
+ * The credit-cap-warning notification settings (whether to warn, and at which
+ * balance) are NOT stored here: they are derived from the workspace's Metronome
+ * balance-threshold alert (see `lib/metronome/alerts/balance_threshold.ts`),
+ * with reads cached in Redis.
  */
 export class CreditUsageConfigurationModel extends WorkspaceAwareModel<CreditUsageConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare defaultDiscountPercent: number;
-  declare paygCapCredits: number | null;
-  declare disableCreditCapWarning: boolean;
+  declare paygEnabled: CreationOptional<boolean>;
+  declare usageCapCredits: number | null;
 }
 
 CreditUsageConfigurationModel.init(
@@ -47,7 +55,12 @@ CreditUsageConfigurationModel.init(
         max: 100,
       },
     },
-    paygCapCredits: {
+    paygEnabled: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    usageCapCredits: {
       type: DataTypes.INTEGER,
       allowNull: true,
       defaultValue: null,
@@ -55,16 +68,11 @@ CreditUsageConfigurationModel.init(
         isPositive(value: number | null) {
           if (value !== null && value <= 0) {
             throw new Error(
-              "paygCapCredits must be strictly positive when set"
+              "usageCapCredits must be strictly positive when set"
             );
           }
         },
       },
-    },
-    disableCreditCapWarning: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false,
     },
   },
   {

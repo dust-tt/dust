@@ -6,7 +6,6 @@ import { useRemoveSpaceConfirm } from "@app/components/shared/RemoveSpaceDialog"
 import { SpaceChips } from "@app/components/shared/SpaceChips";
 import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useSpaceProjectsLookup } from "@app/lib/swr/spaces";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
@@ -46,10 +45,6 @@ export function AgentBuilderSpacesBlock({
   const allSpaces = useMemo(() => {
     return [...spaces, ...missingSpaces];
   }, [spaces, missingSpaces]);
-
-  const { hasFeature } = useFeatureFlags();
-
-  const isProjectsEnabled = hasFeature("projects");
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [draftSelectedSpaces, setDraftSelectedSpaces] = useState<string[]>([]);
@@ -177,7 +172,7 @@ export function AgentBuilderSpacesBlock({
       <div className="flex items-start justify-between">
         <div>
           <h2 className="heading-lg text-foreground dark:text-foreground-night">
-            {isProjectsEnabled ? "Spaces and Pods" : "Spaces"}
+            Spaces and Pods
           </h2>
           <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
             Set what knowledge and capabilities the agent can access.

@@ -111,9 +111,15 @@ async function handler(
   }
 
   const { metronomeContractId } = result.value;
-  const paygStatus = body.paygEnabled
-    ? ` PAYG enabled with a ${body.paygCapCredits} credit cap.`
+  const paygSummary = body.paygEnabled ? " PAYG enabled." : "";
+  const capSummary =
+    body.usageCapCredits !== undefined
+      ? ` Usage cap: ${body.usageCapCredits} credits.`
+      : "";
+  const initialCreditsSummary = body.initialCredits
+    ? ` Initial credits: ${body.initialCredits.amountCredits} credits invoiced ${body.initialCredits.invoiceAmount}.`
     : "";
+  const paygStatus = `${paygSummary}${capSummary}${initialCreditsSummary}`;
   await pluginRun.recordResult({
     display: "text",
     value:

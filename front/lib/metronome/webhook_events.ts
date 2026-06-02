@@ -176,17 +176,19 @@ const InvoiceTotalResolvedSchema = z.object({
 });
 
 // alerts.low_remaining_seat_balance_*
-// Undocumented in the public webhook docs but emitted today. Assume the same
-// base alert envelope (other alerts.* all share `baseAlertPropertiesSchema`).
+// Undocumented in the public webhook docs but emitted today.
+const lowRemainingSeatBalanceProps = baseAlertPropertiesSchema.extend({
+  remaining_balance: z.number().nullish(),
+});
 const LowRemainingSeatBalanceReachedSchema = z.object({
   id: z.string(),
   type: z.literal("alerts.low_remaining_seat_balance_reached"),
-  properties: baseAlertPropertiesSchema,
+  properties: lowRemainingSeatBalanceProps,
 });
 const LowRemainingSeatBalanceResolvedSchema = z.object({
   id: z.string(),
   type: z.literal("alerts.low_remaining_seat_balance_resolved"),
-  properties: baseAlertPropertiesSchema,
+  properties: lowRemainingSeatBalanceProps,
 });
 
 // ============================================================================

@@ -1,5 +1,27 @@
-import { isReadableAsText } from "@app/lib/api/actions/servers/files/tools/utils";
+import {
+  frameFileCreateRejectedError,
+  frameFileEditRejectedError,
+  isReadableAsText,
+} from "@app/lib/api/actions/servers/files/tools/utils";
 import { describe, expect, it } from "vitest";
+
+describe("frameFileCreateRejectedError", () => {
+  it("names the files create and interactive_content create tools", () => {
+    expect(frameFileCreateRejectedError().message).toContain("files__create");
+    expect(frameFileCreateRejectedError().message).toContain(
+      "interactive_content__create_interactive_content_file"
+    );
+  });
+});
+
+describe("frameFileEditRejectedError", () => {
+  it("names the files list and interactive_content edit tools", () => {
+    expect(frameFileEditRejectedError().message).toContain("files__list");
+    expect(frameFileEditRejectedError().message).toContain(
+      "interactive_content__edit_interactive_content_file"
+    );
+  });
+});
 
 describe("isReadableAsText", () => {
   it("returns true for text/* mime types", () => {

@@ -42,17 +42,9 @@ export interface BuildTarget {
   outfile: string;
 }
 
-// Both entries are runtime targets:
-// - server.ts is the Hono-only default (`npm start` in this workspace).
-// - server-strangler.ts is the SSE-fallback shim that forwards /api/sse/* to
-//   Next.js while everything else goes straight to Hono (see tools/mprocs.yaml).
+// server.ts is the Hono-only runtime target (`npm start` in this workspace).
 export const BUILD_TARGETS: BuildTarget[] = [
   { name: "server", entry: "server.ts", outfile: "dist/server.js" },
-  {
-    name: "server-strangler",
-    entry: "server-strangler.ts",
-    outfile: "dist/server-strangler.js",
-  },
 ];
 
 // Options shared by dev and production builds. Mode-specific options
@@ -77,5 +69,6 @@ export function getBaseBuildOptions(target: BuildTarget): esbuild.BuildOptions {
     metafile: true,
     minifyIdentifiers: false,
     treeShaking: true,
+    jsx: "automatic",
   };
 }

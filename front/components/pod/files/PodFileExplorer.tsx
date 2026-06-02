@@ -12,10 +12,7 @@ import type {
   FolderEntry,
 } from "@app/components/file_explorer/types";
 import { useFileDownload } from "@app/components/file_explorer/useFileDownload";
-import {
-  getScopedRelativePath,
-  joinMountRelativePath,
-} from "@app/components/file_explorer/utils";
+import { joinMountRelativePath } from "@app/components/file_explorer/utils";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { CreateFolderDialog } from "@app/components/pod/files/CreateFolderDialog";
 import { PodFrameSheet } from "@app/components/pod/files/PodFrameSheet";
@@ -27,11 +24,11 @@ import type { ContentNodeAttachmentType } from "@app/lib/api/assistant/conversat
 import { isContentNodeAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import config from "@app/lib/api/config";
 import { useAppRouter } from "@app/lib/platform";
-import { downloadPodFile } from "@app/lib/swr/files";
-import { useMoveMountFile } from "@app/lib/swr/mount_files";
+import { downloadFile } from "@app/lib/swr/files";
 import {
   useAddPodContextContentNodes,
   useDeletePodFile,
+  useMovePodFile,
   usePodContextAttachments,
   usePodFiles,
   useRemovePodContextContentNodes,
@@ -386,9 +383,7 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
     },
   });
 
-  const moveMountFile = useMoveMountFile({
-    filesApiBasePath: `/api/w/${owner.sId}/spaces/${pod.sId}/files`,
-  });
+  const movePodFile = useMovePodFile({ owner });
 
   const uploadFilesToPod = useCallback(
     async (files: File[]) => {
@@ -411,12 +406,10 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
             continue;
           }
           const fileName = blob.path.split("/").pop() ?? blob.filename;
-          const moveResult = await moveMountFile({
-            relativeFilePath: getScopedRelativePath(blob.path),
-            destRelativeFilePath: joinMountRelativePath(
-              podMountParentRelativePath,
-              fileName
-            ),
+          const destCanonicalPath = `pod-${pod.sId}/${joinMountRelativePath(podMountParentRelativePath, fileName)}`;
+          const moveResult = await movePodFile({
+            srcCanonicalPath: blob.path,
+            destCanonicalPath,
           });
           if (moveResult.isErr()) {
             console.error(
@@ -431,7 +424,13 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
 
       await refreshPodFiles();
     },
-    [moveMountFile, podMountParentRelativePath, podFileUpload, refreshPodFiles]
+    [
+      movePodFile,
+      pod.sId,
+      podMountParentRelativePath,
+      podFileUpload,
+      refreshPodFiles,
+    ]
   );
 
   const handleFileChange = useCallback(
@@ -484,7 +483,8 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
           validateVariant: "warning",
         });
         if (confirmed) {
-          const result = await deletePodFile(entry.path);
+          // TODO: once FileSystemTreeNode carries the canonical scoped path, use entry.path directly.
+          const result = await deletePodFile(`pod-${pod.sId}/${entry.path}`);
           if (result.isOk()) {
             await refreshPodFiles();
           }
@@ -507,55 +507,62 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
     [
       confirm,
       deletePodFile,
+      pod.sId,
       refreshPodContextAttachments,
       refreshPodFiles,
       removePodContextContentNodes,
     ]
   );
 
-  const onRename = useCallback((entry: FileEntry | FolderEntry) => {
-    if (entry.kind === "file") {
-      setItemToRename({
-        kind: "file",
-        path: entry.path,
-        name: entry.fileName,
-      });
-    } else {
-      setItemToRename({
-        kind: "folder",
-        path: entry.path,
-        name: entry.name,
-      });
-    }
-    setShowRenameDialog(true);
-  }, []);
+  const onRename = useCallback(
+    (entry: FileEntry | FolderEntry) => {
+      if (entry.kind === "file") {
+        setItemToRename({
+          kind: "file",
+          path: entry.path,
+          name: entry.fileName,
+        });
+      } else {
+        // TODO: once FileSystemTreeNode carries the canonical scoped path, use entry.path directly.
+        setItemToRename({
+          kind: "folder",
+          path: `pod-${pod.sId}/${entry.path}`,
+          name: entry.name,
+        });
+      }
+      setShowRenameDialog(true);
+    },
+    [pod.sId]
+  );
 
   const onMoveFile = useCallback(
     async (entry: FileEntry, parentRelativePath: string) => {
-      const result = await moveMountFile({
-        relativeFilePath: getScopedRelativePath(entry.path),
-        destRelativeFilePath: joinMountRelativePath(
-          parentRelativePath,
-          entry.fileName
-        ),
+      // entry.path is the canonical scoped path, e.g. "pod-{sId}/subdir/file.txt".
+      const destCanonicalPath = `pod-${pod.sId}/${joinMountRelativePath(parentRelativePath, entry.fileName)}`;
+      const result = await movePodFile({
+        srcCanonicalPath: entry.path,
+        destCanonicalPath,
       });
       if (result.isOk()) {
         await refreshPodFiles();
       }
       return result;
     },
-    [moveMountFile, refreshPodFiles]
+    [movePodFile, pod.sId, refreshPodFiles]
   );
 
   const getFileUrl = useCallback(
-    (path: string) =>
-      `${config.getApiBaseUrl()}/api/w/${owner.sId}/spaces/${pod.sId}/files/${path}`,
-    [owner.sId, pod.sId]
+    (path: string) => {
+      // path is the canonical scoped path, e.g. "pod-{sId}/subdir/file.txt".
+      const encoded = path.split("/").map(encodeURIComponent).join("/");
+      return `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/path/${encoded}`;
+    },
+    [owner.sId]
   );
 
   const getFileResponse = useCallback(
-    (path: string) => downloadPodFile(owner, pod.sId, path),
-    [owner, pod.sId]
+    (path: string) => downloadFile(owner, path),
+    [owner]
   );
 
   const onFileDownload = useFileDownload({ getFileResponse });
@@ -769,7 +776,6 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
         emptyState={hasFiles ? undefined : emptyState}
         files={podGCSFiles}
         getFileUrl={getFileUrl}
-        hideTitleBorder
         navigationResetKey={navigationResetKey}
         onCurrentFolderChange={setCurrentFolderPath}
         onFileDownload={onFileDownload}

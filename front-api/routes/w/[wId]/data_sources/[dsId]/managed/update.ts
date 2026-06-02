@@ -22,6 +22,11 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  dsId: z.string(),
+});
 
 export type GetDataSourceUpdateResponseBody = {
   connectorId: string;
@@ -32,12 +37,13 @@ const app = workspaceApp();
 
 app.post(
   "/",
+  validate("param", ParamsSchema),
   validate("json", UpdateConnectorRequestBodySchema),
   async (ctx): HandlerResult<GetDataSourceUpdateResponseBody> => {
     const auth = ctx.get("auth");
     const owner = auth.getNonNullableWorkspace();
     const user = auth.getNonNullableUser();
-    const dsId = ctx.req.param("dsId") ?? "";
+    const { dsId } = ctx.req.valid("param");
 
     const dataSource = await DataSourceResource.fetchById(auth, dsId);
     if (!dataSource) {

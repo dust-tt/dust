@@ -1,3 +1,8 @@
+import {
+  getSkillSlashCommandItem,
+  matchesSlashCommandQuery,
+  sortSlashCommandMatches,
+} from "@app/components/editor/extensions/shared/SlashCommandSkillItems";
 import type {
   SlashCommand,
   SlashCommandDropdownRef,
@@ -10,11 +15,9 @@ import {
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useMCPServerViewsFromSpaces } from "@app/lib/swr/mcp_servers";
 import { useSkills } from "@app/lib/swr/skill_configurations";
 import { useSpaces } from "@app/lib/swr/spaces";
-import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -26,26 +29,11 @@ import {
   useMemo,
   useRef,
 } from "react";
-
 import type { InputBarSlashSuggestionCapability } from "./InputBarSlashSuggestionTypes";
 
 // Rare case where we need a Tailwind arbitrary value: after the fixed search bar, the scrollable list should fit
 // exactly seven 3.25rem rows without showing a partial row or leaving extra bottom space.
 const LIST_MAX_HEIGHT_CLASS_NAME = "max-h-[22.75rem]";
-
-function matchesCapabilityQuery({
-  label,
-  query,
-}: {
-  label: string;
-  query: string;
-}) {
-  if (query.length === 0) {
-    return true;
-  }
-
-  return subFilter(query, label.toLowerCase());
-}
 
 export function filterInputBarSlashSuggestions({
   query,
@@ -65,7 +53,7 @@ export function filterInputBarSlashSuggestions({
   })[] = [
     ...skills
       .filter((skill) =>
-        matchesCapabilityQuery({
+        matchesSlashCommandQuery({
           label: skill.name,
           query: normalizedQuery,
         })
@@ -79,7 +67,7 @@ export function filterInputBarSlashSuggestions({
       .filter((serverView) => isJITMCPServerView(serverView))
       .filter((serverView) => !selectedMCPServerViewIds.has(serverView.sId))
       .filter((serverView) =>
-        matchesCapabilityQuery({
+        matchesSlashCommandQuery({
           label: getMcpServerViewDisplayName(serverView),
           query: normalizedQuery,
         })
@@ -91,18 +79,10 @@ export function filterInputBarSlashSuggestions({
       })),
   ];
 
-  return capabilities
-    .toSorted((a, b) => {
-      if (normalizedQuery.length > 0) {
-        return (
-          compareForFuzzySort(normalizedQuery, a.sortName, b.sortName) ||
-          a.sortName.localeCompare(b.sortName)
-        );
-      }
-
-      return a.sortName.localeCompare(b.sortName);
-    })
-    .map(({ sortName: _sortName, ...capability }) => capability);
+  return sortSlashCommandMatches({
+    items: capabilities,
+    normalizedQuery,
+  }).map(({ sortName: _sortName, ...capability }) => capability);
 }
 
 export const InputBarSlashSuggestionDropdown = forwardRef<
@@ -153,20 +133,7 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
         filteredCapabilities.flatMap((capability) => {
           switch (capability.kind) {
             case "skill":
-              return [
-                {
-                  action: "select-skill",
-                  description: capability.skill.userFacingDescription,
-                  icon: getSkillAvatarIcon(capability.skill.icon),
-                  id: capability.skill.sId,
-                  label: capability.skill.name,
-                  tooltip: capability.skill.userFacingDescription
-                    ? {
-                        description: capability.skill.userFacingDescription,
-                      }
-                    : undefined,
-                },
-              ];
+              return [getSkillSlashCommandItem(capability.skill)];
             case "tool": {
               const description = getMcpServerViewDescription(
                 capability.serverView

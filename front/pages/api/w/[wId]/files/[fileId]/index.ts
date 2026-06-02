@@ -122,11 +122,6 @@
  */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
-import { getScopedPathFromGCSPath } from "@app/lib/api/files/gcs_mount/files";
-import {
-  getConversationFilesBasePath,
-  getPodFilesBasePath,
-} from "@app/lib/api/files/mount_path";
 import { processAndStoreFile } from "@app/lib/api/files/processing";
 import { isSandboxRawDelimitedConversationFile } from "@app/lib/api/files/sandbox_raw";
 import {
@@ -135,7 +130,6 @@ import {
 } from "@app/lib/api/files/upsert";
 import { addFileToProject } from "@app/lib/api/projects/context";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { FileVersion } from "@app/lib/resources/file_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -152,44 +146,6 @@ export interface FileUploadedRequestResponseBody {
     /** Scoped mount path when the file is on GCS (same shape as `GCSMountEntryBase.path`). */
     path: string | null;
   };
-}
-
-function resolveUploadMountScopedPath(
-  auth: Authenticator,
-  file: FileResource
-): string | null {
-  if (!file.mountFilePath) {
-    return null;
-  }
-
-  const owner = auth.getNonNullableWorkspace();
-
-  if (file.useCase === "project_context" && file.useCaseMetadata?.spaceId) {
-    return getScopedPathFromGCSPath({
-      prefix: getPodFilesBasePath({
-        workspaceId: owner.sId,
-        podId: file.useCaseMetadata.spaceId,
-      }),
-      gcsPath: file.mountFilePath,
-      useCase: "pod",
-    });
-  }
-
-  if (
-    isConversationFileUseCase(file.useCase) &&
-    file.useCaseMetadata?.conversationId
-  ) {
-    return getScopedPathFromGCSPath({
-      prefix: getConversationFilesBasePath({
-        workspaceId: owner.sId,
-        conversationId: file.useCaseMetadata.conversationId,
-      }),
-      gcsPath: file.mountFilePath,
-      useCase: "conversation",
-    });
-  }
-
-  return null;
 }
 
 export const config = {
@@ -276,19 +232,6 @@ async function handler(
 
   let space: SpaceResource | null = null;
   if (file.useCaseMetadata?.spaceId) {
-    if (file.useCase === "project_context") {
-      const featureFlags = await getFeatureFlags(auth);
-      if (!featureFlags.includes("projects")) {
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "Feature not supported",
-          },
-        });
-      }
-    }
-
     space = await SpaceResource.fetchById(auth, file.useCaseMetadata.spaceId);
   }
   if (
@@ -556,7 +499,7 @@ async function handler(
       return res.status(200).json({
         file: {
           ...file.toJSON(auth),
-          path: resolveUploadMountScopedPath(auth, file),
+          path: file.toScopedPath(auth),
         },
       });
     }

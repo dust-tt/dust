@@ -32,6 +32,17 @@ export const FREE_PACKAGE_ALIAS = "free-plan";
 
 export type MetronomePackageTier = "free" | "pro" | "business" | "enterprise";
 
+// Stripe collection method for a Metronome customer's Stripe billing
+// configuration. `charge_automatically` charges the card on file when an
+// invoice is finalized; `send_invoice` emails the invoice for the customer to
+// pay manually (used for enterprise N30-style billing).
+export type MetronomeStripeCollectionMethod =
+  | "charge_automatically"
+  | "send_invoice";
+
+export const DEFAULT_METRONOME_STRIPE_COLLECTION_METHOD: MetronomeStripeCollectionMethod =
+  "charge_automatically";
+
 export const PAYG_ELIGIBLE_TIERS: readonly MetronomePackageTier[] = [
   "enterprise",
   "business",

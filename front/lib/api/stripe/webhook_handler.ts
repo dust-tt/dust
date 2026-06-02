@@ -32,7 +32,10 @@ import {
   resolveCurrencyFromStripe,
   resolvePackageAliasForCurrency,
 } from "@app/lib/plans/billing_currency";
-import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
+import {
+  isDustCompanyPlan,
+  isEntreprisePlanPrefix,
+} from "@app/lib/plans/plan_codes";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import {
   assertStripeSubscriptionIsValid,
@@ -427,6 +430,70 @@ async function forceChargeMetronomeFinalizedInvoice(
   }
 }
 
+// ---------------------------------------------------------------------------
+// Enterprise SEPA enablement
+// Metronome-pushed invoices carry no `payment_settings.payment_method_types`,
+// so Stripe falls back to the account-level invoice default (card only here).
+// We don't want SEPA Direct Debit enabled account-wide — only for enterprise
+// contracts — so we add it per-invoice once the invoice is finalized. SEPA is
+// EUR-only and only meaningful for manually-paid (`send_invoice`) invoices.
+// Cheap invoice fields are checked first so we only hit the DB (to resolve the
+// enterprise flag) for candidate invoices.
+// ---------------------------------------------------------------------------
+
+async function enableSepaOnFinalizedEnterpriseInvoice(
+  invoice: Stripe.Invoice,
+  stripe: Stripe
+): Promise<void> {
+  if (
+    invoice.status !== "open" ||
+    invoice.amount_due <= 0 ||
+    invoice.collection_method !== "send_invoice" ||
+    invoice.currency !== "eur" ||
+    !invoice.id
+  ) {
+    return;
+  }
+  // Only Metronome-pushed invoices: those carry `metronome_customer_id` in
+  // metadata (Stripe-subscription / credit-purchase invoices don't and manage
+  // their own payment methods).
+  if (!invoice.metadata?.metronome_customer_id) {
+    return;
+  }
+  // Idempotency: a re-delivered webhook lands here with SEPA already added.
+  if (invoice.payment_settings?.payment_method_types?.includes("sepa_debit")) {
+    return;
+  }
+  // Enterprise only — resolve the workspace + plan from the invoice.
+  const ctx = await resolveInvoiceCtx(invoice);
+  if (!ctx?.isEnterprise) {
+    return;
+  }
+  // Set an explicit list (card + SEPA) rather than appending to the existing
+  // one: the live default is card-only, and pinning the pair keeps card
+  // available alongside SEPA on the hosted invoice page.
+  const paymentMethodTypes: Stripe.InvoiceUpdateParams.PaymentSettings.PaymentMethodType[] =
+    ["card", "sepa_debit"];
+  try {
+    await stripe.invoices.update(invoice.id, {
+      payment_settings: { payment_method_types: paymentMethodTypes },
+    });
+    logger.info(
+      { invoiceId: invoice.id, customer: invoice.customer },
+      "[Stripe Webhook] Enabled SEPA on enterprise invoice"
+    );
+  } catch (err) {
+    logger.warn(
+      {
+        error: normalizeError(err),
+        invoiceId: invoice.id,
+        customer: invoice.customer,
+      },
+      "[Stripe Webhook] Failed to enable SEPA on enterprise invoice"
+    );
+  }
+}
+
 /**
  * Shared payment-failure handling for a workspace subscription. Skips
  * enterprise plans (paid by wire on 30-day terms), flags the subscription as
@@ -451,7 +518,10 @@ async function notifyAdminsOfPaymentFailure({
       "notifyAdminsOfPaymentFailure: missing owner or subscription on auth"
     );
   }
-  if (isEntreprisePlanPrefix(subscriptionType.plan.code)) {
+  if (
+    isEntreprisePlanPrefix(subscriptionType.plan.code) ||
+    isDustCompanyPlan(subscriptionType.plan.code)
+  ) {
     logger.info(
       {
         workspaceId: owner.sId,
@@ -789,6 +859,11 @@ export async function processStripeWebhookEvent({
       ) {
         await forceChargeMetronomeFinalizedInvoice(invoice, stripe);
       }
+
+      // Enterprise EUR invoices paid by send-invoice should offer SEPA Direct
+      // Debit on the hosted invoice page. Self-gated (enterprise + EUR +
+      // send_invoice); no-op otherwise.
+      await enableSepaOnFinalizedEnterpriseInvoice(invoice, stripe);
       break;
     }
 

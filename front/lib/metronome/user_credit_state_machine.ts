@@ -1,4 +1,5 @@
 import {
+  clearUserAwuWarned,
   clearUserCapBlocked,
   setUserCapBlocked,
 } from "@app/lib/metronome/user_block";
@@ -46,6 +47,9 @@ function syncUserCapCacheForState(
     case "normal":
       invalidateCacheAfterCommit(transaction, () =>
         clearUserCapBlocked(ctx.workspaceId, ctx.userId)
+      );
+      invalidateCacheAfterCommit(transaction, () =>
+        clearUserAwuWarned(ctx.workspaceId, ctx.userId)
       );
       return;
 

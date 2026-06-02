@@ -1,4 +1,7 @@
-import { PokeFavoriteButton } from "@app/components/poke/PokeFavorites";
+import {
+  PokeFavoriteButton,
+  PokeFavoritesCommandGroups,
+} from "@app/components/poke/PokeFavorites";
 import { PokeRegionDropdown } from "@app/components/poke/PokeRegionDropdown";
 import {
   PokeCommandDialog,
@@ -200,6 +203,11 @@ function PokeSearchCommandUI({
             )}
           {isError && <div className="p-4 text-sm">Something went wrong.</div>}
           {searchTerm.length < MIN_SEARCH_CHARACTERS && (
+            <PokeFavoritesCommandGroups
+              onNavigate={() => onOpenChange(false)}
+            />
+          )}
+          {searchTerm.length < MIN_SEARCH_CHARACTERS && (
             <div className="p-4 text-sm">
               <div className="mb-3 text-muted-foreground dark:text-muted-foreground-night">
                 Search for resources by:
@@ -220,6 +228,10 @@ function PokeSearchCommandUI({
                 <div>
                   <span className="font-medium">Data source:</span>{" "}
                   <span className="font-mono">dts_abc123</span>
+                </div>
+                <div>
+                  <span className="font-medium">Dust API project ID:</span>{" "}
+                  <span className="font-mono">123456</span>
                 </div>
                 <div>
                   <span className="font-medium">Connector ID:</span>{" "}

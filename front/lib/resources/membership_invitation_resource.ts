@@ -483,6 +483,7 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
   toJSON(): MembershipInvitationType {
     return {
       createdAt: this.createdAt.getTime(),
+      reminderSentAt: this.reminderSentAt?.getTime() ?? null,
       id: this.id,
       initialRole: this.initialRole,
       inviteEmail: this.inviteEmail,

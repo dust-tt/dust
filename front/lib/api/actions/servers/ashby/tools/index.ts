@@ -25,6 +25,7 @@ import {
   renderHireData,
   renderInterviewFeedbackRecap,
   renderJobPostingList,
+  renderOpeningList,
   renderReferralForm,
   renderReport,
 } from "@app/lib/api/actions/servers/ashby/rendering";
@@ -311,6 +312,59 @@ const handlers: ToolHandlers<typeof ASHBY_TOOLS_METADATA> = {
       {
         type: "text" as const,
         text: notesText,
+      },
+    ]);
+  },
+
+  list_openings: async ({ cursor, limit }, extra) => {
+    const clientResult = getAshbyClient(extra);
+    if (clientResult.isErr()) {
+      return clientResult;
+    }
+
+    const client = clientResult.value;
+
+    const result = await client.listOpenings({
+      cursor,
+      limit,
+    });
+
+    if (result.isErr()) {
+      return new Err(
+        new MCPError(`Failed to list openings: ${result.error.message}`)
+      );
+    }
+
+    const { results: openings, moreDataAvailable, nextCursor } = result.value;
+
+    if (openings.length === 0) {
+      return new Ok([
+        {
+          type: "text" as const,
+          text: "No openings found.",
+        },
+      ]);
+    }
+
+    const lines = [
+      `Found ${openings.length} opening(s):`,
+      "",
+      renderOpeningList(openings),
+    ];
+
+    if (moreDataAvailable) {
+      lines.push(
+        "",
+        nextCursor
+          ? `More openings are available. Call list_openings with cursor: ${nextCursor}`
+          : "More openings are available, but Ashby did not return a next cursor."
+      );
+    }
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text: lines.join("\n"),
       },
     ]);
   },

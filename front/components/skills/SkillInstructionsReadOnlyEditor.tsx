@@ -4,12 +4,14 @@ import {
   SkillInstructionsEditorContent,
   useSkillInstructionsEditor,
 } from "@app/components/editor/SkillInstructionsEditor";
+import { MCPServerViewsProvider } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useEffect } from "react";
 
 interface SkillInstructionsReadOnlyEditorProps {
   content: string;
   htmlContent?: string;
+  enableSkillReferences?: boolean;
   owner: LightWorkspaceType;
   onKnowledgeItemsChange?: (items: KnowledgeItem[]) => void;
   className?: string;
@@ -18,6 +20,7 @@ interface SkillInstructionsReadOnlyEditorProps {
 export function SkillInstructionsReadOnlyEditor({
   content,
   htmlContent,
+  enableSkillReferences = false,
   owner,
   onKnowledgeItemsChange,
   className,
@@ -29,6 +32,9 @@ export function SkillInstructionsReadOnlyEditor({
     content,
     htmlContent: htmlForEditor,
     isReadOnly: true,
+    skillReferences: {
+      enableSkillReferences,
+    },
   });
 
   useEffect(() => {
@@ -51,11 +57,13 @@ export function SkillInstructionsReadOnlyEditor({
 
   return (
     <SpacesProvider owner={owner}>
-      <SkillInstructionsEditorContent
-        editor={editor}
-        isReadOnly
-        className={className}
-      />
+      <MCPServerViewsProvider owner={owner}>
+        <SkillInstructionsEditorContent
+          editor={editor}
+          isReadOnly
+          className={className}
+        />
+      </MCPServerViewsProvider>
     </SpacesProvider>
   );
 }

@@ -28,7 +28,10 @@ import { useActivePodId } from "@app/hooks/useActivePodId";
 import { useDeleteConversation } from "@app/hooks/useDeleteConversation";
 import { useHideTriggeredConversations } from "@app/hooks/useHideTriggeredConversations";
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
-import { useMoveConversationToPod } from "@app/hooks/useMoveConversationToPod";
+import {
+  useBulkMoveConversationsToPod,
+  useMoveConversationToPod,
+} from "@app/hooks/useMoveConversationToPod";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { usePodsSectionCollapsed } from "@app/hooks/usePodsSectionCollapsed";
 import { useSearchPods } from "@app/hooks/useSearchPods";
@@ -55,11 +58,12 @@ import {
   type ConversationListItemType,
   getConversationDisplayTitle,
 } from "@app/types/assistant/conversation";
-import type { PodType } from "@app/types/space";
+import type { PodType, SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
 import {
   ActionTimeIcon,
+  ArrowRightIcon,
   Avatar,
   BoltIcon,
   BoltOffIcon,
@@ -77,6 +81,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuPortal,
   DropdownMenuSearchbar,
+  DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
@@ -95,7 +100,6 @@ import {
   PencilSquareIcon,
   PlusIcon,
   RobotIcon,
-  SearchInput,
   Spinner,
   StarIcon,
   TrashIcon,
@@ -418,12 +422,12 @@ export function AgentSidebarMenu({
   const activePodId = useActivePodId();
   const { hasFeature } = useFeatureFlags();
   const moveConversationToPod = useMoveConversationToPod(owner);
+  const bulkMoveConversationsToPod = useBulkMoveConversationsToPod(owner);
 
   const { providersHealth } = useAuth();
   const noHealthyProviders = !hasHealthyProviders(providersHealth);
 
   const agentsSearchInputRef = useRef<HTMLInputElement>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
   const [searchText, setSearchText] = useState("");
   const { agentConfigurations } = useUnifiedAgentConfigurations({
     workspaceId: owner.sId,
@@ -453,23 +457,18 @@ export function AgentSidebarMenu({
     isLoadingMore,
   } = useConversations({ workspaceId: owner.sId });
 
-  const hasPodConversations = hasFeature("projects");
-
   const {
     summary,
     isLoading: isSummaryLoading,
     mutate: mutatePodConversationSummary,
   } = usePodConversationsSummary({
     workspaceId: owner.sId,
-    options: { disabled: !hasPodConversations },
   });
 
   useEffect(() => {
     const handleConversationsUpdated = () => {
       void mutateConversations();
-      if (hasPodConversations) {
-        void mutatePodConversationSummary();
-      }
+      void mutatePodConversationSummary();
     };
     window.addEventListener(
       CONVERSATIONS_UPDATED_EVENT,
@@ -481,7 +480,7 @@ export function AgentSidebarMenu({
         handleConversationsUpdated
       );
     };
-  }, [hasPodConversations, mutateConversations, mutatePodConversationSummary]);
+  }, [mutateConversations, mutatePodConversationSummary]);
 
   const [isMultiSelect, setIsMultiSelect] = useState(false);
   const [selectedConversations, setSelectedConversations] = useState<
@@ -505,8 +504,10 @@ export function AgentSidebarMenu({
     "all" | "selection" | null
   >(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isMoving, setIsMoving] = useState(false);
   const [titleFilter, setTitleFilter] = useState<string>("");
   const [isCreatePodModalOpen, setIsCreatePodModalOpen] = useState(false);
+  const [pendingMoveToNewPod, setPendingMoveToNewPod] = useState(false);
   const [isImportSkillDialogOpen, setIsImportSkillDialogOpen] = useState(false);
 
   const {
@@ -518,7 +519,7 @@ export function AgentSidebarMenu({
   } = useSearchPods({
     workspaceId: owner.sId,
     query: titleFilter,
-    enabled: hasPodConversations && titleFilter.trim().length > 0,
+    enabled: titleFilter.trim().length > 0,
   });
 
   const {
@@ -527,7 +528,7 @@ export function AgentSidebarMenu({
   } = useSearchPodConversations({
     workspaceId: owner.sId,
     query: titleFilter,
-    enabled: hasPodConversations && titleFilter.trim().length > 0,
+    enabled: titleFilter.trim().length > 0,
   });
 
   const {
@@ -539,7 +540,7 @@ export function AgentSidebarMenu({
   } = useSearchPrivateConversations({
     workspaceId: owner.sId,
     query: titleFilter,
-    enabled: hasPodConversations && titleFilter.trim().length > 0,
+    enabled: titleFilter.trim().length > 0,
   });
 
   const { isUploading: isUploadingYAML, triggerYAMLUpload } = useYAMLUpload({
@@ -603,6 +604,27 @@ export function AgentSidebarMenu({
       });
     }
   }, [doDelete, selectedConversations, sendNotification, toggleMultiSelect]);
+
+  const availablePods = useMemo(
+    () => summary.map(({ space }) => space),
+    [summary]
+  );
+
+  const moveSelectionToPod = useCallback(
+    async (pod: PodType | SpaceType) => {
+      setIsMoving(true);
+      const successCount = await bulkMoveConversationsToPod(
+        selectedConversations,
+        pod
+      );
+      setIsMoving(false);
+      if (successCount > 0) {
+        toggleMultiSelect();
+      }
+      return successCount;
+    },
+    [bulkMoveConversationsToPod, selectedConversations, toggleMultiSelect]
+  );
 
   const deleteAll = useCallback(async () => {
     setIsDeleting(true);
@@ -668,14 +690,11 @@ export function AgentSidebarMenu({
     );
   }, [conversations, hideTriggeredConversations]);
 
-  const isSearchActive = hasPodConversations && titleFilter.trim().length > 0;
+  const isSearchActive = titleFilter.trim().length > 0;
 
-  const sidebarTitleFilter = hasPodConversations ? "" : titleFilter;
+  const sidebarTitleFilter = titleFilter;
 
   const starredSection = useMemo(() => {
-    if (!hasPodConversations) {
-      return null;
-    }
     const starredSummary = summary.filter(({ space }) => space.isStarred);
     const starredCountInSummary = starredSummary.length;
 
@@ -720,7 +739,6 @@ export function AgentSidebarMenu({
       </NavigationList>
     );
   }, [
-    hasPodConversations,
     summary,
     owner,
     sidebarTitleFilter,
@@ -731,9 +749,6 @@ export function AgentSidebarMenu({
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const podsSection = useMemo(() => {
-    if (!hasPodConversations) {
-      return null;
-    }
     const nonStarredSummary = summary.filter((pod) => !pod.space.isStarred);
     const podCountInSummary = nonStarredSummary.length;
     const showCount = isPodsSectionCollapsed && podCountInSummary > 0;
@@ -801,7 +816,6 @@ export function AgentSidebarMenu({
       </NavigationList>
     );
   }, [
-    hasPodConversations,
     owner,
     summary,
     setIsCreatePodModalOpen,
@@ -869,8 +883,18 @@ export function AgentSidebarMenu({
       />
       <CreatePodModal
         isOpen={isCreatePodModalOpen}
-        onClose={() => setIsCreatePodModalOpen(false)}
-        onCreated={() => setSidebarOpen(false)}
+        onClose={() => {
+          setIsCreatePodModalOpen(false);
+          setPendingMoveToNewPod(false);
+        }}
+        onCreated={async (pod) => {
+          setSidebarOpen(false);
+          if (pendingMoveToNewPod) {
+            setPendingMoveToNewPod(false);
+            await moveSelectionToPod(pod);
+          }
+          void router.push(getPodRoute(owner.sId, pod.sId));
+        }}
         owner={owner}
       />
       {isImportSkillDialogOpen && (
@@ -884,14 +908,55 @@ export function AgentSidebarMenu({
           <div className="flex w-full flex-col">
             {isMultiSelect ? (
               <div className="z-50 flex justify-between gap-2 border-b border-border-dark/60 p-2 dark:border-border-dark/60">
-                <Button
-                  variant={
-                    selectedConversations.length === 0 ? "outline" : "warning"
-                  }
-                  label="Delete"
-                  disabled={selectedConversations.length === 0}
-                  onClick={() => setShowDeleteDialog("selection")}
-                />
+                <div className="flex gap-2">
+                  <DropdownMenu modal={false}>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        label="Move to Pod"
+                        icon={ArrowRightIcon}
+                        disabled={selectedConversations.length === 0}
+                        isLoading={isMoving}
+                      />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      className="max-w-60"
+                      onFocusOutside={(e) => e.preventDefault()}
+                    >
+                      <DropdownMenuItem
+                        icon={PlusIcon}
+                        label="New Pod"
+                        onClick={() => {
+                          setPendingMoveToNewPod(true);
+                          setIsCreatePodModalOpen(true);
+                        }}
+                      />
+                      {availablePods.length > 0 && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuLabel label="Pods" />
+                          {availablePods.map((pod) => (
+                            <DropdownMenuItem
+                              key={pod.sId}
+                              icon={getSpaceIcon(pod)}
+                              label={pod.name}
+                              truncateText
+                              onClick={() => moveSelectionToPod(pod)}
+                            />
+                          ))}
+                        </>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <Button
+                    variant={
+                      selectedConversations.length === 0 ? "outline" : "warning"
+                    }
+                    label="Delete"
+                    disabled={selectedConversations.length === 0}
+                    onClick={() => setShowDeleteDialog("selection")}
+                  />
+                </div>
                 <Button
                   variant="ghost-secondary"
                   icon={XMarkIcon}
@@ -900,24 +965,12 @@ export function AgentSidebarMenu({
               </div>
             ) : (
               <div className="z-50 flex justify-end gap-2 p-sidebar-side-spacing">
-                {hasPodConversations ? (
-                  <div className="flex-1">
-                    <SidebarSearch
-                      titleFilter={titleFilter}
-                      onTitleFilterChange={setTitleFilter}
-                    />
-                  </div>
-                ) : (
-                  <div className="flex-1">
-                    <SearchInput
-                      ref={searchInputRef}
-                      name="search"
-                      placeholder="Search"
-                      value={titleFilter}
-                      onChange={setTitleFilter}
-                    />
-                  </div>
-                )}
+                <div className="flex-1">
+                  <SidebarSearch
+                    titleFilter={titleFilter}
+                    onTitleFilterChange={setTitleFilter}
+                  />
+                </div>
                 <div className="flex gap-2">
                   <Button
                     label="New"

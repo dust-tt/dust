@@ -11,10 +11,15 @@ import { readableToReadableStream } from "@app/types/shared/utils/streams";
 import type { WorkspaceAwareCtx } from "@front-api/middlewares/ctx";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import type { Context } from "hono";
 import path from "path";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
+
+const ParamsSchema = z.object({
+  canonicalPath: z.string(),
+});
 
 /**
  * Unified file system API by canonical scoped path.
@@ -76,9 +81,9 @@ async function resolveFs(
   return { fs: fsResult.value, err: null };
 }
 
-app.get("/:canonicalPath{.+}", async (ctx) => {
+app.get("/:canonicalPath{.+}", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
-  const canonicalPath = ctx.req.param("canonicalPath");
+  const { canonicalPath } = ctx.req.valid("param");
   const { fs: dustFs, err } = await resolveFs(ctx, canonicalPath);
   if (err) {
     return err;
@@ -175,118 +180,131 @@ app.get("/:canonicalPath{.+}", async (ctx) => {
   return new Response(webStream, { status: 200, headers });
 });
 
-app.on("HEAD", "/:canonicalPath{.+}", async (ctx) => {
-  const canonicalPath = ctx.req.param("canonicalPath");
-  const { fs: dustFs, err } = await resolveFs(ctx, canonicalPath);
-  if (err) {
-    return err;
-  }
+app.on(
+  "HEAD",
+  "/:canonicalPath{.+}",
+  validate("param", ParamsSchema),
+  async (ctx) => {
+    const { canonicalPath } = ctx.req.valid("param");
+    const { fs: dustFs, err } = await resolveFs(ctx, canonicalPath);
+    if (err) {
+      return err;
+    }
 
-  const statResult = await dustFs.stat(canonicalPath);
-  if (statResult.isErr()) {
-    return apiError(ctx, mapDustFsError(statResult.error));
-  }
-  if (!statResult.value) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: { type: "file_not_found", message: "File not found." },
-    });
-  }
+    const statResult = await dustFs.stat(canonicalPath);
+    if (statResult.isErr()) {
+      return apiError(ctx, mapDustFsError(statResult.error));
+    }
+    if (!statResult.value) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: { type: "file_not_found", message: "File not found." },
+      });
+    }
 
-  return new Response(null, {
-    status: 200,
-    headers: {
-      "Content-Type": statResult.value.contentType,
-      "Content-Length": String(statResult.value.sizeBytes),
-    },
-  });
-});
-
-app.patch("/:canonicalPath{.+}", async (ctx) => {
-  const auth = ctx.get("auth");
-  const canonicalPath = ctx.req.param("canonicalPath");
-  const { fs: dustFs, err } = await resolveFs(ctx, canonicalPath);
-  if (err) {
-    return err;
-  }
-
-  let body: unknown;
-  try {
-    body = await ctx.req.json();
-  } catch {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid JSON body.",
+    return new Response(null, {
+      status: 200,
+      headers: {
+        "Content-Type": statResult.value.contentType,
+        "Content-Length": String(statResult.value.sizeBytes),
       },
     });
   }
+);
 
-  const parsed = PatchBodySchema.safeParse(body);
-  if (!parsed.success) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: fromError(parsed.error).toString(),
-      },
-    });
-  }
-
-  const data = parsed.data;
-
-  switch (data.action) {
-    case "rename": {
-      const renameResult = await renameCanonicalFile(
-        auth,
-        dustFs,
-        canonicalPath,
-        data.fileName
-      );
-      if (renameResult.isErr()) {
-        return apiError(ctx, mapDustFsError(renameResult.error));
-      }
-      break;
+app.patch(
+  "/:canonicalPath{.+}",
+  validate("param", ParamsSchema),
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const { canonicalPath } = ctx.req.valid("param");
+    const { fs: dustFs, err } = await resolveFs(ctx, canonicalPath);
+    if (err) {
+      return err;
     }
 
-    case "move": {
-      if (data.dest === canonicalPath) {
-        return new Response(null, { status: 200 });
-      }
-      const moveResult = await moveCanonicalFile(
-        auth,
-        dustFs,
-        canonicalPath,
-        data.dest
-      );
-      if (moveResult.isErr()) {
-        return apiError(ctx, mapDustFsError(moveResult.error));
-      }
-      break;
+    let body: unknown;
+    try {
+      body = await ctx.req.json();
+    } catch {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Invalid JSON body.",
+        },
+      });
     }
 
-    default:
-      assertNever(data);
+    const parsed = PatchBodySchema.safeParse(body);
+    if (!parsed.success) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: fromError(parsed.error).toString(),
+        },
+      });
+    }
+
+    const data = parsed.data;
+
+    switch (data.action) {
+      case "rename": {
+        const renameResult = await renameCanonicalFile(
+          auth,
+          dustFs,
+          canonicalPath,
+          data.fileName
+        );
+        if (renameResult.isErr()) {
+          return apiError(ctx, mapDustFsError(renameResult.error));
+        }
+        break;
+      }
+
+      case "move": {
+        if (data.dest === canonicalPath) {
+          return new Response(null, { status: 200 });
+        }
+        const moveResult = await moveCanonicalFile(
+          auth,
+          dustFs,
+          canonicalPath,
+          data.dest
+        );
+        if (moveResult.isErr()) {
+          return apiError(ctx, mapDustFsError(moveResult.error));
+        }
+        break;
+      }
+
+      default:
+        assertNever(data);
+    }
+
+    return new Response(null, { status: 200 });
   }
+);
 
-  return new Response(null, { status: 200 });
-});
+app.delete(
+  "/:canonicalPath{.+}",
+  validate("param", ParamsSchema),
+  async (ctx) => {
+    const { canonicalPath } = ctx.req.valid("param");
+    const { fs: dustFs, err } = await resolveFs(ctx, canonicalPath);
+    if (err) {
+      return err;
+    }
 
-app.delete("/:canonicalPath{.+}", async (ctx) => {
-  const canonicalPath = ctx.req.param("canonicalPath");
-  const { fs: dustFs, err } = await resolveFs(ctx, canonicalPath);
-  if (err) {
-    return err;
+    const deleteResult = await dustFs.delete(canonicalPath);
+    if (deleteResult.isErr()) {
+      return apiError(ctx, mapDustFsError(deleteResult.error));
+    }
+
+    return new Response(null, { status: 204 });
   }
-
-  const deleteResult = await dustFs.delete(canonicalPath);
-  if (deleteResult.isErr()) {
-    return apiError(ctx, mapDustFsError(deleteResult.error));
-  }
-
-  return new Response(null, { status: 204 });
-});
+);
 
 function mapDustFsError(err: DustFileSystemError) {
   switch (err.code) {

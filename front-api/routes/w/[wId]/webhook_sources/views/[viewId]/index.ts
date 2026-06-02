@@ -21,6 +21,10 @@ const PatchWebhookSourceViewBodySchema = z.object({
   icon: z.string().optional(),
 });
 
+const ParamsSchema = z.object({
+  viewId: z.string(),
+});
+
 export type GetWebhookSourceViewResponseBody = {
   webhookSourceView: WebhookSourceViewType;
 };
@@ -32,44 +36,49 @@ export type PatchWebhookSourceViewResponseBody = {
 // Mounted at /api/w/:wId/webhook_sources/views/:viewId.
 const app = workspaceApp();
 
-app.get("/", async (ctx): HandlerResult<GetWebhookSourceViewResponseBody> => {
-  const auth = ctx.get("auth");
-  const viewId = ctx.req.param("viewId") ?? "";
+app.get(
+  "/",
+  validate("param", ParamsSchema),
+  async (ctx): HandlerResult<GetWebhookSourceViewResponseBody> => {
+    const auth = ctx.get("auth");
+    const { viewId } = ctx.req.valid("param");
 
-  const webhookSourceView = await WebhookSourcesViewResource.fetchById(
-    auth,
-    viewId
-  );
+    const webhookSourceView = await WebhookSourcesViewResource.fetchById(
+      auth,
+      viewId
+    );
 
-  if (webhookSourceView === null) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "webhook_source_view_not_found",
-        message: "Webhook source view not found",
-      },
+    if (webhookSourceView === null) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "webhook_source_view_not_found",
+          message: "Webhook source view not found",
+        },
+      });
+    }
+    if (!webhookSourceView.canRead(auth)) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: `Cannot read view with id ${viewId}.`,
+        },
+      });
+    }
+    return ctx.json({
+      webhookSourceView: webhookSourceView.toJSON(),
     });
   }
-  if (!webhookSourceView.canRead(auth)) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "workspace_auth_error",
-        message: `Cannot read view with id ${viewId}.`,
-      },
-    });
-  }
-  return ctx.json({
-    webhookSourceView: webhookSourceView.toJSON(),
-  });
-});
+);
 
 app.patch(
   "/",
+  validate("param", ParamsSchema),
   validate("json", PatchWebhookSourceViewBodySchema),
   async (ctx): HandlerResult<PatchWebhookSourceViewResponseBody> => {
     const auth = ctx.get("auth");
-    const viewId = ctx.req.param("viewId") ?? "";
+    const { viewId } = ctx.req.valid("param");
 
     const isAdmin = await SpaceResource.canAdministrateSystemSpace(auth);
     if (!isAdmin) {

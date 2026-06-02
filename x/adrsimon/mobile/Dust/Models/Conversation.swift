@@ -8,13 +8,14 @@ extension Double {
 }
 
 struct Conversation: Codable, Identifiable, Hashable {
-    let id: Int
     let sId: String
     let created: Double
     let updated: Double
     let title: String?
     var unread: Bool
     var actionRequired: Bool
+
+    var id: String { sId }
 
     var updatedDate: Date {
         updated.dateFromEpochMs

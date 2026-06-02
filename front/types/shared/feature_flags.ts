@@ -26,6 +26,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Access to internal global agents (dust-edge, dust-quick, dust-oai, dust-goog, custom model agents and their variants)",
     stage: "dust_only",
   },
+  dust_agent_gpt_5_5_default: {
+    description:
+      "Use GPT 5.5 (medium reasoning) as the default model for the @dust agent",
+    stage: "dust_only",
+  },
   notion_private_integration: {
     description: "Setup Notion private integration tokens",
     stage: "on_demand",
@@ -156,6 +161,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Slideshow MCP tool",
     stage: "dust_only",
   },
+  frames_skill_v2: {
+    description:
+      "Use the merged Frames skill v2 prose for every agent in the workspace. Temporary, remove after global rollout.",
+    stage: "dust_only",
+  },
   slack_message_splitting: {
     description:
       "Enable splitting agent responses into multiple Slack messages for Slack (instead of truncation)",
@@ -164,6 +174,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   legacy_dust_apps: {
     description: "Access to legacy Dust Apps (editor and associated tools)",
     stage: "on_demand",
+  },
+  nested_skills: {
+    description: "Enable nested skills",
+    stage: "dust_only",
   },
   power_bi_mcp: {
     description: "Power BI MCP tool for querying semantic models and DAX",
@@ -178,10 +192,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description:
       "Discord bot integration for workspace-level Discord integration",
     stage: "dust_only",
-  },
-  projects: {
-    description: "Enable the Projects feature",
-    stage: "on_demand",
   },
   databricks_tool: {
     description: "Databricks MCP tool",
@@ -291,6 +301,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   new_file_explorer: {
     description:
       "Unified GCS-backed file explorer with folder hierarchy, replacing the two-tab files panel.",
+    stage: "dust_only",
+  },
+  user_settings_v2: {
+    description: "Enable the new user settings v2 experience",
     stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;

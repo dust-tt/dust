@@ -9,8 +9,12 @@ import {
   FILES_SERVER_NAME,
   GREP_MATCHES_MAX,
 } from "@app/lib/api/actions/servers/files/metadata";
+import {
+  getDustFileSystemForAgentLoop,
+  requireAgentLoopConversation,
+  scopedPathsFromArgs,
+} from "@app/lib/api/actions/servers/files/tools/agent_loop_fs";
 import { isReadableAsText } from "@app/lib/api/actions/servers/files/tools/utils";
-import { DustFileSystem } from "@app/lib/api/file_system";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import * as readline from "readline";
@@ -19,16 +23,18 @@ export async function grepHandler(
   { path, pattern }: { path: string; pattern: string },
   { auth, agentLoopContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const conversation = agentLoopContext?.runContext?.conversation;
-  if (!conversation) {
-    return new Err(
-      new MCPError("No conversation context available.", { tracked: false })
-    );
+  const conversationRes = requireAgentLoopConversation({ agentLoopContext });
+  if (conversationRes.isErr()) {
+    return conversationRes;
   }
 
-  const fsResult = await DustFileSystem.forConversation(auth, conversation);
+  const fsResult = await getDustFileSystemForAgentLoop(
+    auth,
+    conversationRes.value,
+    scopedPathsFromArgs(path)
+  );
   if (fsResult.isErr()) {
-    return new Err(new MCPError(fsResult.error.message, { tracked: false }));
+    return fsResult;
   }
   const dustFs = fsResult.value;
 

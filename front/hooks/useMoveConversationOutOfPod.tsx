@@ -77,7 +77,19 @@ export function useMoveConversationOutOfPod(
         return false;
       }
 
-      void mutateConversations();
+      void mutateConversations(
+        (prev) => {
+          if (!prev) {
+            return prev;
+          }
+          const personalConversation = { ...conversation, spaceId: null };
+          return [
+            personalConversation,
+            ...prev.filter((c) => c.sId !== conversation.sId),
+          ];
+        },
+        { revalidate: false }
+      );
       void mutatePodConversationsSummary();
       void mutateConversation();
       void sendNotification({

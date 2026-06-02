@@ -5,11 +5,11 @@ import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { SuggestionDataTable } from "@app/components/poke/suggestions/table";
 import { TriggerDataTable } from "@app/components/poke/triggers/table";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { decodeSqids } from "@app/lib/utils";
 import { usePokeAgentDetails } from "@app/poke/swr/agent_details";
+import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 import {
   Button,
@@ -34,7 +34,6 @@ import { JsonViewer } from "@textea/json-viewer";
 
 export function AssistantDetailsPage() {
   const owner = useWorkspace();
-  useDocumentTitle(`Poke - ${owner.name} - Assistants`);
 
   const aId = useRequiredPathParam("aId");
   const { isDark } = useTheme();
@@ -47,6 +46,12 @@ export function AssistantDetailsPage() {
     owner,
     aId,
     disabled: false,
+  });
+
+  usePokePageMetadata({
+    name: agentDetails?.agentConfigurations[0]?.name,
+    subtitle: owner.name,
+    sId: aId,
   });
 
   if (isLoading) {

@@ -1,13 +1,13 @@
 import { InvitationsDataTable } from "@app/components/poke/invitations/table";
 import { MembersDataTable } from "@app/components/poke/members/table";
-import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
+import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeMemberships } from "@app/poke/swr/memberships";
 import { LinkWrapper, Spinner } from "@dust-tt/sparkle";
 
 export function MembershipsPage() {
   const owner = useWorkspace();
-  useDocumentTitle(`Poke - ${owner.name} - Memberships`);
+  usePokePageMetadata({ name: owner.name, subtitle: "Memberships" });
 
   const {
     data: membershipsData,

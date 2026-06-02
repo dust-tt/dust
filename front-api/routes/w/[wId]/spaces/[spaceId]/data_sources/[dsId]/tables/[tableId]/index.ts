@@ -8,6 +8,11 @@ import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { withDataSource } from "@front-api/middlewares/with_data_source";
 import { withSpace } from "@front-api/middlewares/with_space";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  tableId: z.string(),
+});
 
 export type PatchTableResponseBody = {
   table?: { table_id: string };
@@ -18,13 +23,14 @@ const app = workspaceApp();
 
 app.patch(
   "/",
+  validate("param", ParamsSchema),
   withSpace({ requireCanRead: true }),
   withDataSource({ requireCanRead: true }),
   validate("json", PatchDataSourceTableRequestBodySchema),
   async (ctx): HandlerResult<PatchTableResponseBody> => {
     const auth = ctx.get("auth");
     const dataSource = ctx.get("dataSource");
-    const tableId = ctx.req.param("tableId") ?? "";
+    const { tableId } = ctx.req.valid("param");
 
     if (!dataSource.canWrite(auth)) {
       return apiError(ctx, {
@@ -72,12 +78,13 @@ app.patch(
 
 app.delete(
   "/",
+  validate("param", ParamsSchema),
   withSpace({ requireCanRead: true }),
   withDataSource({ requireCanRead: true }),
   async (ctx) => {
     const auth = ctx.get("auth");
     const dataSource = ctx.get("dataSource");
-    const tableId = ctx.req.param("tableId") ?? "";
+    const { tableId } = ctx.req.valid("param");
 
     if (!dataSource.canWrite(auth)) {
       return apiError(ctx, {

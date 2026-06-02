@@ -13,6 +13,11 @@ export type PostMentionActionResponseBody = {
   success: boolean;
 };
 
+const ParamsSchema = z.object({
+  cId: z.string(),
+  mId: z.string(),
+});
+
 const PostMentionActionRequestBodySchema = z.object({
   type: z.enum(["agent", "user"]),
   id: z.string(),
@@ -24,11 +29,11 @@ const app = workspaceApp();
 
 app.post(
   "/",
+  validate("param", ParamsSchema),
   validate("json", PostMentionActionRequestBodySchema),
   async (ctx): HandlerResult<PostMentionActionResponseBody> => {
     const auth = ctx.get("auth");
-    const cId = ctx.req.param("cId") ?? "";
-    const mId = ctx.req.param("mId") ?? "";
+    const { cId, mId } = ctx.req.valid("param");
 
     const conversation = await ConversationResource.fetchById(auth, cId);
     if (!conversation) {

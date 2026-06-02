@@ -2,7 +2,7 @@ import { ProtectedRoute } from "@extension/ui/components/auth/ProtectedRoute";
 import { ErrorFallback } from "@extension/ui/components/ErrorFallback";
 import { LoginPage } from "@extension/ui/pages/LoginPage";
 import { MainPage } from "@extension/ui/pages/MainPage";
-import { ProjectMainPage } from "@extension/ui/pages/ProjectMainPage";
+import { PodMainPage } from "@extension/ui/pages/PodMainPage";
 import { RunPage } from "@extension/ui/pages/RunPage";
 import { SubscribePage } from "@extension/ui/pages/SubscribePage";
 
@@ -26,7 +26,7 @@ export const routes = [
       },
       {
         path: "/w/:wId/pods/:podId",
-        element: <ProjectMainPage />,
+        element: <PodMainPage />,
       },
       {
         path: "/w/:wId/conversation/:cId",

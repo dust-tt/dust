@@ -2,7 +2,6 @@ import * as projectsApi from "@app/lib/api/projects/context";
 import { Authenticator } from "@app/lib/auth";
 import type { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { ProjectFileFactory } from "@app/tests/utils/ProjectFileFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -192,14 +191,10 @@ describe("/api/w/[wId]/spaces/[spaceId]/project_context", () => {
 
   describe("POST (content node)", () => {
     it("returns 400 when space is not a project", async () => {
-      const { req, res, globalSpace, auth } = await createPrivateApiMockRequest(
-        {
-          method: "POST",
-          role: "user",
-        }
-      );
-
-      await FeatureFlagFactory.basic(auth, "projects");
+      const { req, res, globalSpace } = await createPrivateApiMockRequest({
+        method: "POST",
+        role: "user",
+      });
 
       req.query.spaceId = globalSpace.sId;
       req.body = {
@@ -219,13 +214,12 @@ describe("/api/w/[wId]/spaces/[spaceId]/project_context", () => {
         .mockReturnValue(false);
 
       try {
-        const { req, res, workspace, user, auth } =
-          await createPrivateApiMockRequest({
+        const { req, res, workspace, user } = await createPrivateApiMockRequest(
+          {
             method: "POST",
             role: "user",
-          });
-
-        await FeatureFlagFactory.basic(auth, "projects");
+          }
+        );
 
         const project = await SpaceFactory.project(workspace, user.id);
         req.query.spaceId = project.sId;
@@ -244,13 +238,10 @@ describe("/api/w/[wId]/spaces/[spaceId]/project_context", () => {
     });
 
     it("returns 201 and content fragment payload when add succeeds", async () => {
-      const { req, res, workspace, user, auth } =
-        await createPrivateApiMockRequest({
-          method: "POST",
-          role: "user",
-        });
-
-      await FeatureFlagFactory.basic(auth, "projects");
+      const { req, res, workspace, user } = await createPrivateApiMockRequest({
+        method: "POST",
+        role: "user",
+      });
 
       const project = await SpaceFactory.project(workspace, user.id);
 
@@ -301,13 +292,10 @@ describe("/api/w/[wId]/spaces/[spaceId]/project_context", () => {
     });
 
     it("returns 400 for invalid JSON body", async () => {
-      const { req, res, workspace, user, auth } =
-        await createPrivateApiMockRequest({
-          method: "POST",
-          role: "user",
-        });
-
-      await FeatureFlagFactory.basic(auth, "projects");
+      const { req, res, workspace, user } = await createPrivateApiMockRequest({
+        method: "POST",
+        role: "user",
+      });
 
       const project = await SpaceFactory.project(workspace, user.id);
       req.query.spaceId = project.sId;

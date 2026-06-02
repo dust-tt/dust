@@ -35,7 +35,7 @@ interface ImportSkillsDialogProps {
 
 const TAB_DESCRIPTION: Record<ImportType, string> = {
   repository: "Enter a GitHub repository URL to detect skills.",
-  files: "Upload a .zip file with your skills.",
+  files: "Upload a .zip or .skill file with your skills.",
 };
 
 export function ImportSkillsDialog({

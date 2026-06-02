@@ -1,4 +1,3 @@
-import { getFeatureFlags } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { FileType } from "@app/types/files";
@@ -16,15 +15,20 @@ const RenameRequestBodySchema = z.object({
   fileName: z.string().trim().min(1, "fileName must be a non-empty string"),
 });
 
+const ParamsSchema = z.object({
+  fileId: z.string(),
+});
+
 // Mounted at /api/w/:wId/files/:fileId/rename.
 const app = workspaceApp();
 
 app.patch(
   "/",
+  validate("param", ParamsSchema),
   validate("json", RenameRequestBodySchema),
   async (ctx): HandlerResult<RenameFileResponseBody> => {
     const auth = ctx.get("auth");
-    const fileId = ctx.req.param("fileId") ?? "";
+    const { fileId } = ctx.req.valid("param");
 
     const file = await FileResource.fetchById(auth, fileId);
     if (!file) {
@@ -32,19 +36,6 @@ app.patch(
         status_code: 404,
         api_error: { type: "file_not_found", message: "File not found." },
       });
-    }
-
-    if (file.useCase === "project_context") {
-      const featureFlags = await getFeatureFlags(auth);
-      if (!featureFlags.includes("projects")) {
-        return apiError(ctx, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "Feature not supported",
-          },
-        });
-      }
     }
 
     // Plan-mode files are agent-owned; users cannot rename them.

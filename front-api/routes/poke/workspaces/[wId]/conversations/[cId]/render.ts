@@ -12,6 +12,7 @@ import { getSkillServers } from "@app/lib/api/assistant/skill_actions";
 import { renderEquippedSkillsUserMessage } from "@app/lib/api/assistant/skills_rendering";
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
+import { hasFeatureFlag } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { constructProjectContext } from "@app/lib/resources/skill/code_defined/projects";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -37,6 +38,10 @@ const RenderConversationBodySchema = z.object({
   onMissingAction: z.enum(["inject-placeholder", "skip"]).optional(),
 });
 
+const ParamsSchema = z.object({
+  cId: z.string(),
+});
+
 export type PostRenderConversationResponseBody = {
   tokensUsed: number;
   modelConversation: unknown;
@@ -50,10 +55,11 @@ const app = pokeApp();
 
 app.post(
   "/",
+  validate("param", ParamsSchema),
   validate("json", RenderConversationBodySchema),
   async (ctx): HandlerResult<PostRenderConversationResponseBody> => {
     const auth = ctx.get("auth");
-    const cId = ctx.req.param("cId") ?? "";
+    const { cId } = ctx.req.valid("param");
     const {
       agentId,
       contextSizeOverride,
@@ -201,6 +207,8 @@ app.post(
     });
 
     const isNewFileExplorer = conversation.metadata?.useFileSystem === true;
+    const hasNestedSkills = await hasFeatureFlag(auth, "nested_skills");
+    const useFramesV2 = await hasFeatureFlag(auth, "frames_skill_v2");
 
     const promptSections = constructPromptMultiActions(auth, {
       userMessage,
@@ -217,6 +225,8 @@ app.post(
       equippedSkills,
       projectContext,
       isNewFileExplorer,
+      hasNestedSkills,
+      useFramesV2,
     });
     const prompt = systemPromptToText(promptSections);
     const leadingMessages = removeNulls([
@@ -255,6 +265,7 @@ app.post(
       agentConfiguration,
       leadingMessages,
       enabledSkills,
+      useFramesV2,
     });
 
     if (convoRes.isErr()) {

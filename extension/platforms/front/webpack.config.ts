@@ -1,4 +1,5 @@
 import type { Environment } from "@extension/config/env";
+import { getImportMetaEnv } from "@extension/config/webpack_env";
 import { execSync } from "child_process";
 import Dotenv from "dotenv-webpack";
 import fs from "fs";
@@ -120,6 +121,19 @@ export const getConfig = ({ env }: { env: Environment }) => {
       }),
       new webpack.ProvidePlugin({
         Buffer: ["buffer", "Buffer"],
+      }),
+      new webpack.DefinePlugin({
+        // Expose VITE_* vars on `import.meta.env` so the shared `front`
+        // RegionContext can resolve the regional API base URL in the webpack
+        // build (Vite only injects these in the SPA).
+        "import.meta.env": JSON.stringify(
+          getImportMetaEnv(
+            path.resolve(
+              __dirname,
+              isDevelopment ? "../../.env.development" : "../../.env.production"
+            )
+          )
+        ),
       }),
 
       new webpack.EnvironmentPlugin({

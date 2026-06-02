@@ -16,10 +16,13 @@ import {
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
 
 import actions from "./actions";
 import answerQuestion from "./answer-question";
 import edit from "./edit";
+import events from "./events";
 import feedbacks from "./feedbacks";
 import mentions from "./mentions";
 import rawContentFragment from "./raw_content_fragment";
@@ -30,13 +33,17 @@ import retry from "./retry";
 import skills from "./skills";
 import validateAction from "./validate-action";
 
+const ParamsSchema = z.object({
+  cId: z.string(),
+  mId: z.string(),
+});
+
 // Mounted under /api/w/:wId/assistant/conversations/:cId/messages/:mId.
 const app = workspaceApp();
 
-app.get("/", async (ctx) => {
+app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
-  const cId = ctx.req.param("cId") ?? "";
-  const mId = ctx.req.param("mId") ?? "";
+  const { cId, mId } = ctx.req.valid("param");
 
   const conversation = await ConversationResource.fetchById(auth, cId);
   if (!conversation) {
@@ -91,10 +98,9 @@ app.get("/", async (ctx) => {
   }
 });
 
-app.delete("/", async (ctx) => {
+app.delete("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
-  const cId = ctx.req.param("cId") ?? "";
-  const mId = ctx.req.param("mId") ?? "";
+  const { cId, mId } = ctx.req.valid("param");
 
   const conversation = await ConversationResource.fetchById(auth, cId);
   if (!conversation) {
@@ -212,6 +218,7 @@ app.delete("/", async (ctx) => {
 app.route("/actions", actions);
 app.route("/answer-question", answerQuestion);
 app.route("/edit", edit);
+app.route("/events", events);
 app.route("/feedbacks", feedbacks);
 app.route("/mentions", mentions);
 app.route("/raw_content_fragment", rawContentFragment);

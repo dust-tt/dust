@@ -7,7 +7,7 @@ import {
   getProcessedContentType,
   hasProcessedVersion,
 } from "@app/lib/api/files/processing";
-import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FileModel } from "@app/lib/resources/storage/models/files";
@@ -57,11 +57,6 @@ makeScript(
 
         const auth =
           await Authenticator.internalBuilderForWorkspace(workspaceId);
-
-        const hasProjectEnabled = await hasFeatureFlag(auth, "projects");
-        if (!hasProjectEnabled) {
-          return;
-        }
 
         logger.info(
           { workspaceId, execute },

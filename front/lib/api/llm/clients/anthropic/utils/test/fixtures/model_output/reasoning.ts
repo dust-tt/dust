@@ -23,6 +23,7 @@ export const reasoningModelEvents: BetaRawMessageStreamEvent[] = [
           ephemeral_1h_input_tokens: 0,
         },
         output_tokens: 0,
+        output_tokens_details: null,
         service_tier: "standard",
         server_tool_use: null,
         inference_geo: null,
@@ -31,6 +32,7 @@ export const reasoningModelEvents: BetaRawMessageStreamEvent[] = [
       },
       container: null,
       context_management: null,
+      diagnostics: null,
     },
   },
   {
@@ -48,6 +50,7 @@ export const reasoningModelEvents: BetaRawMessageStreamEvent[] = [
     delta: {
       type: "thinking_delta",
       thinking: "**Solving the Equation**\n\nI need to ",
+      estimated_tokens: null,
     },
   },
   {
@@ -56,6 +59,7 @@ export const reasoningModelEvents: BetaRawMessageStreamEvent[] = [
     delta: {
       type: "thinking_delta",
       thinking: "solve x^2 + 2x + 1 = 0.\n\n",
+      estimated_tokens: null,
     },
   },
   {
@@ -105,6 +109,9 @@ export const reasoningModelEvents: BetaRawMessageStreamEvent[] = [
       cache_creation_input_tokens: 0,
       cache_read_input_tokens: 0,
       output_tokens: 180,
+      output_tokens_details: {
+        thinking_tokens: 50,
+      },
       server_tool_use: null,
       iterations: null,
     },

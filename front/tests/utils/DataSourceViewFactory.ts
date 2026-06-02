@@ -9,13 +9,16 @@ export class DataSourceViewFactory {
   static async folder(
     workspace: WorkspaceType,
     space: SpaceResource,
-    editedByUser?: UserResource | null
+    editedByUser?: UserResource | null,
+    overrides?: { dustAPIProjectId?: string }
   ) {
     return DataSourceViewResource.createDataSourceAndDefaultView(
       {
         name: "datasource " + faker.string.alphanumeric(8),
         assistantDefaultSelected: false,
-        dustAPIProjectId: "dust-project-id" + faker.string.alphanumeric(8),
+        dustAPIProjectId:
+          overrides?.dustAPIProjectId ??
+          "dust-project-id" + faker.string.alphanumeric(8),
         dustAPIDataSourceId:
           "dust-datasource-id" + faker.string.alphanumeric(8),
         workspaceId: workspace.id,

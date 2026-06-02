@@ -9,7 +9,7 @@ import { resumeAncestorConversations as resumeAncestorConversationsHelper } from
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
-import { resumeSandboxChildAction } from "@app/lib/api/sandbox/resume_child_action";
+import { resolveSandboxChildBlock } from "@app/lib/api/sandbox/sandbox_child_block";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
@@ -151,20 +151,26 @@ export async function resolveAuthentication(
     );
   }, getMessageChannelId(messageId));
 
-  if (isSandboxChildActionInfo(action.stepContext.sandboxChildActionInfo)) {
-    if (outcome === "completed") {
-      await resumeSandboxChildAction(auth, {
-        action,
-        conversationId,
-        conversationTitle,
+  const { sandboxChildActionInfo } = action.stepContext;
+  if (isSandboxChildActionInfo(sandboxChildActionInfo)) {
+    // Sandbox-child resolution always relaunches the parent bash (the
+    // frozen sandbox must be thawed regardless of auth outcome — the
+    // relaunched bash sees the failure in its tool-call response).
+    // See validateAction for the full rationale.
+    await resolveSandboxChildBlock(auth, {
+      action,
+      sandboxChildActionInfo,
+      agentLoopArgs: {
         agentMessageId,
         agentMessageVersion,
-        branchId,
+        conversationBranchId: branchId,
+        conversationId,
+        conversationTitle,
         userMessageId,
         userMessageVersion,
         userMessageOrigin,
-      });
-    }
+      },
+    });
     return new Ok(undefined);
   }
 

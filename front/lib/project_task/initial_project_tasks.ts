@@ -1,10 +1,17 @@
-/** Seeded via POST /pods/:podId/tasks/seed (editors only). */
-export const PROJECT_MANAGER_AGENT_SID = "project_manager" as const;
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
+import {
+  LIST_MEMBERS_TOOL_NAME,
+  POD_MANAGER_SERVER_NAME,
+  UPDATE_MEMBERS_TOOL_NAME,
+} from "@app/lib/api/actions/servers/pod_manager/metadata";
+import {
+  POD_TASKS_SERVER_NAME,
+  START_TASK_AGENT_TOOL_NAME,
+} from "@app/lib/api/actions/servers/pod_tasks/metadata";
 
-const NEXT_TASK_PROMPT =
-  "After the user agrees to mark this task done, check what other tasks are still open in the project. Propose tackling the most relevant next open one to the user. If they agree, use start_task_agent to kick off a conversation for it and share the conversation link in your reply.";
+const NEXT_TASK_PROMPT = `After the user agrees to mark this task done, check what other tasks are still open in the Pod. Propose tackling the most relevant next open one to the user. If they agree, use \`${getPrefixedToolName(POD_TASKS_SERVER_NAME, START_TASK_AGENT_TOOL_NAME)}\` to kick off a conversation for it and share the conversation link in your reply.`;
 
-export const INITIAL_PROJECT_TASKS: {
+export const INITIAL_POD_TASKS: {
   text: string;
   agentInstructions: string;
 }[] = [
@@ -23,7 +30,7 @@ export const INITIAL_PROJECT_TASKS: {
   {
     text: "👥 Search for and add Pod members",
     agentInstructions:
-      "Help the user identify the right collaborators for this Pod. Use people search or directory tools to find candidates by name, role, team, or expertise. Once you have good candidates, mention them by name in the conversation using @mention — this will show the user a dialog to add them to the Pod directly from the conversation. If the user needs an alternative, link them to the Pod settings page by appending `#settings` to the Pod URL.\n\n" +
+      `Help the user identify the right collaborators for this Pod. Use people search or directory tools to find candidates by name, role, team, or expertise. Present the shortlist to the user and, once they confirm, add the selected people to the Pod using the Pod \`${getPrefixedToolName(POD_MANAGER_SERVER_NAME, UPDATE_MEMBERS_TOOL_NAME)}\` tool. Use \`${getPrefixedToolName(POD_MANAGER_SERVER_NAME, LIST_MEMBERS_TOOL_NAME)}\` first if you need to check who is already on the Pod.\n\n` +
       NEXT_TASK_PROMPT,
   },
   {

@@ -84,10 +84,11 @@ export type FileShareScope = z.infer<typeof fileShareScopeSchema>;
 export interface SharingGrantType {
   id: number;
   email: string;
-  grantedAt: Date;
+  grantedAt: number;
   grantedBy: UserType | null;
-  expiresAt: Date | null;
-  lastViewedAt: Date | null;
+  expiresAt: number | null;
+  revokedAt: number | null;
+  lastViewedAt: number | null;
   // True when the workspace policy prevents this grant from granting access.
   blockedByPolicy?: boolean;
 }

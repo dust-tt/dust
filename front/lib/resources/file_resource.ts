@@ -2,10 +2,15 @@
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
 import config from "@app/lib/api/config";
+import {
+  SCOPED_PREFIX_CONVERSATION,
+  SCOPED_PREFIX_POD,
+} from "@app/lib/api/file_system";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import {
   disambiguateFileName,
   getConversationFilePath,
+  getConversationFilesBasePath,
   getPodFilesBasePath,
   makeProcessedMountFileName,
   toProjectMountFilePath,
@@ -1088,6 +1093,54 @@ export class FileResource extends BaseResource<FileModel> {
   }
 
   /**
+   * Returns the canonical scoped path for this file (e.g. `pod-{spaceId}/report.pdf` or
+   * `conversation-{cId}/file.txt`), or `null` when the file has no mount path or its use
+   * case does not produce a scoped path.
+   *
+   * This is the shape that gcsfuse consumers (agents, file explorer) expect, and what the
+   * file upload API returns in the `path` field.
+   */
+  // TODO(FILE SYSTEM MIGRATION): Temporary until file is not tighted for file system anymore.
+  toScopedPath(auth: Authenticator): string | null {
+    if (!this.mountFilePath) {
+      return null;
+    }
+
+    const owner = auth.getNonNullableWorkspace();
+
+    if (this.useCase === "project_context" && this.useCaseMetadata?.spaceId) {
+      const spaceId = this.useCaseMetadata.spaceId;
+      const prefix = getPodFilesBasePath({
+        workspaceId: owner.sId,
+        podId: spaceId,
+      });
+      if (!this.mountFilePath.startsWith(prefix)) {
+        return null;
+      }
+
+      return `${SCOPED_PREFIX_POD}${spaceId}/${this.mountFilePath.slice(prefix.length)}`;
+    }
+
+    if (
+      isConversationFileUseCase(this.useCase) &&
+      this.useCaseMetadata?.conversationId
+    ) {
+      const conversationId = this.useCaseMetadata.conversationId;
+      const prefix = getConversationFilesBasePath({
+        workspaceId: owner.sId,
+        conversationId,
+      });
+      if (!this.mountFilePath.startsWith(prefix)) {
+        return null;
+      }
+
+      return `${SCOPED_PREFIX_CONVERSATION}${conversationId}/${this.mountFilePath.slice(prefix.length)}`;
+    }
+
+    return null;
+  }
+
+  /**
    * Translate rows that still point to `projects/`. The gcs migration guaranteed the `pods/`
    * copy exists for all such files. This translation can be removed once the DB
    * migration is complete.
@@ -1325,7 +1378,7 @@ export class FileResource extends BaseResource<FileModel> {
 
   async getShareInfo(): Promise<{
     scope: FileShareScope;
-    sharedAt: Date;
+    sharedAt: number;
     shareUrl: string;
   } | null> {
     if (!this.isInteractiveContent) {
@@ -1339,7 +1392,7 @@ export class FileResource extends BaseResource<FileModel> {
     if (shareableFile) {
       return {
         scope: shareableFile.shareScope,
-        sharedAt: shareableFile.sharedAt,
+        sharedAt: shareableFile.sharedAt.getTime(),
         shareUrl: this.getShareUrlForShareableFile({
           shareableFileToken: shareableFile.token,
         }),
@@ -1527,6 +1580,28 @@ export class FileResource extends BaseResource<FileModel> {
         workspaceId: this.workspaceId,
         shareableFileId,
         revokedAt: null,
+      },
+      order: [["grantedAt", "DESC"]],
+    });
+
+    const userIds = removeNulls(grants.map((g) => g.grantedBy));
+    const users = await UserResource.fetchByModelIds(userIds);
+    const usersById = new Map(users.map((u) => [u.id, u]));
+
+    return grants.map((grant) => renderSharingGrant(grant, usersById));
+  }
+
+  async listAllSharingGrants(): Promise<SharingGrantType[]> {
+    assert(
+      this.isInteractiveContent,
+      "listAllSharingGrants requires interactive content file"
+    );
+    const shareableFileId = await this.getShareableFileId();
+
+    const grants = await SharingGrantModel.findAll({
+      where: {
+        workspaceId: this.workspaceId,
+        shareableFileId,
       },
       order: [["grantedAt", "DESC"]],
     });
@@ -1897,9 +1972,10 @@ function renderSharingGrant(
   return {
     id: grant.id,
     email: grant.email,
-    grantedAt: grant.grantedAt,
+    grantedAt: grant.grantedAt.getTime(),
     grantedBy: user?.toJSON() ?? null,
-    expiresAt: grant.expiresAt,
-    lastViewedAt: grant.lastViewedAt,
+    expiresAt: grant.expiresAt ? grant.expiresAt.getTime() : null,
+    revokedAt: grant.revokedAt ? grant.revokedAt.getTime() : null,
+    lastViewedAt: grant.lastViewedAt ? grant.lastViewedAt.getTime() : null,
   };
 }

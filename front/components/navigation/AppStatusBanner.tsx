@@ -2,14 +2,16 @@ import type { AppStatus } from "@app/lib/api/status";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import {
   FREE_BYOK_TRANSITIONING_PLAN_CODE,
+  isDustCompanyPlan,
   isEntreprisePlanPrefix,
 } from "@app/lib/plans/plan_codes";
 import { useAppStatus } from "@app/lib/swr/useAppStatus";
+import { useWorkspaceUsageStatus } from "@app/lib/swr/user";
 import { DEFAULT_EMBEDDING_PROVIDER_ID } from "@app/types/assistant/models/embedding";
 import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
 import type { SubscriptionType } from "@app/types/plan";
 import { PRETTIFIED_PROVIDER_NAMES } from "@app/types/provider_selection";
-import type { WorkspaceType } from "@app/types/user";
+import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import { cn, LinkWrapper } from "@dust-tt/sparkle";
 import { cva, type VariantProps } from "class-variance-authority";
@@ -198,16 +200,81 @@ function SubscriptionPastDueBanner() {
   );
 }
 
+interface UsageStatusBannerProps {
+  owner: LightWorkspaceType;
+}
+
+function UsageStatusBanner({ owner }: UsageStatusBannerProps) {
+  const { awuStatus, poolCreditState } = useWorkspaceUsageStatus({ owner });
+
+  // The pool balance banner is only shown to admins, who manage workspace
+  // credits. The AWU cap banner is shown to any user subject to a usage cap.
+  // Both can be displayed at the same time.
+  const showPoolBanner =
+    isAdmin(owner) &&
+    (poolCreditState === "active_low_balance" ||
+      poolCreditState === "active_critical_balance");
+  const showAwuBanner = awuStatus !== "normal";
+
+  if (!showPoolBanner && !showAwuBanner) {
+    return null;
+  }
+
+  const isPoolCritical = poolCreditState === "active_critical_balance";
+
+  return (
+    <>
+      {showPoolBanner && (
+        <StatusBanner
+          variant={isPoolCritical ? "danger" : "warning"}
+          title={
+            isPoolCritical
+              ? "Your workspace is critically low on credits"
+              : "Your workspace is running low on credits"
+          }
+          description={
+            isPoolCritical
+              ? "Your workspace credits are almost depleted. Top up now to avoid interruptions to your agents."
+              : "Your workspace credits are running low. Consider topping up to avoid interruptions to your agents."
+          }
+          footer={
+            <LinkWrapper href={`/w/${owner.sId}/usage`} className="underline">
+              Manage credits
+            </LinkWrapper>
+          }
+        />
+      )}
+      {showAwuBanner && (
+        <StatusBanner
+          variant={awuStatus === "blocked" ? "danger" : "warning"}
+          title={
+            awuStatus === "blocked"
+              ? "You've reached your usage limit"
+              : "You've used 80% of your usage limit"
+          }
+          description={
+            awuStatus === "blocked"
+              ? "You can no longer run agents. Contact your admin to increase your limit."
+              : "Contact your admin to increase your limit before you are blocked."
+          }
+        />
+      )}
+    </>
+  );
+}
+
 export function SidebarBanners() {
   const { workspace: owner, subscription } = useAuth();
   const { appStatus } = useAppStatus();
 
   return (
     <>
+      <UsageStatusBanner owner={owner} />
       <UnhealthyCredentialsBanner owner={owner} subscription={subscription} />
       {appStatus && <AppStatusBanner appStatus={appStatus} />}
       {subscription.paymentFailingSince &&
         isAdmin(owner) &&
+        !isDustCompanyPlan(subscription.plan.code) &&
         !isEntreprisePlanPrefix(subscription.plan.code) && (
           <SubscriptionPastDueBanner />
         )}

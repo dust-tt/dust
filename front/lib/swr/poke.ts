@@ -150,6 +150,34 @@ export function usePokeArchiveCoupon() {
   };
 }
 
+export function usePokeCancelPendingContract() {
+  const sendNotification = useSendNotification();
+
+  return async (owner: LightWorkspaceType): Promise<boolean> => {
+    const r = await clientFetch(
+      `/api/poke/workspaces/${owner.sId}/cancel_pending_contract`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      }
+    );
+    if (!r.ok) {
+      sendNotification({
+        title: "Error cancelling pending subscription",
+        type: "error",
+        description: `Something went wrong: ${r.status} ${await r.text()}`,
+      });
+      return false;
+    }
+    sendNotification({
+      title: "Pending subscription cancelled",
+      type: "success",
+    });
+    return true;
+  };
+}
+
 export function usePokeMetronomePackages({
   disabled,
 }: {

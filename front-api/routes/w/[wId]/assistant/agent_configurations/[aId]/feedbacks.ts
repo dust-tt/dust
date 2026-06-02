@@ -4,15 +4,21 @@ import { getPaginationParams } from "@app/lib/api/pagination";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
 
 import fId from "./feedbacks/[fId]";
+
+const ParamsSchema = z.object({
+  aId: z.string(),
+});
 
 // Mounted under /api/w/:wId/assistant/agent_configurations/:aId/feedbacks.
 const app = workspaceApp();
 
-app.get("/", async (ctx) => {
+app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
-  const aId = ctx.req.param("aId") ?? "";
+  const { aId } = ctx.req.valid("param");
 
   // IMPORTANT: make sure the agent configuration is accessible by the user.
   const agentConfiguration = await getAgentConfiguration(auth, {

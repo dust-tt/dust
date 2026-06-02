@@ -63,6 +63,7 @@ const PatchSkillRequestBodySchema = z.object({
   attachedKnowledge: z.array(AttachedKnowledgeSchema),
   instructionsHtml: z.string().nullable(),
   additionalRequestedSpaceIds: z.array(z.string()).optional(),
+  referencedSkillIds: z.array(z.string()).optional(),
   fileAttachments: z.array(z.object({ fileId: z.string() })).optional(),
   isDefault: z.boolean().optional(),
   reinforcement: z.enum(["auto", "on", "off"]).optional(),
@@ -113,12 +114,18 @@ async function handler(
       const serializedSkill = skill.toJSON(auth);
 
       if (withRelations === "true") {
+        const featureFlags = await getFeatureFlags(auth);
+        const includeChildSkills = featureFlags.includes("nested_skills");
+
         const usage = await skill.fetchUsage(auth);
         const editors = await skill.listEditors(auth);
         const editedByUser = await skill.fetchEditedByUser(auth);
         const extendedSkill = serializedSkill.extendedSkillId
           ? await SkillResource.fetchById(auth, serializedSkill.extendedSkillId)
           : null;
+        const childSkills = includeChildSkills
+          ? await skill.fetchChildSkills(auth)
+          : [];
 
         const skillWithRelations: SkillWithRelationsType = {
           ...serializedSkill,
@@ -127,6 +134,20 @@ async function handler(
             editors: editors ? editors.map((e) => e.toJSON()) : null,
             editedByUser: editedByUser ? editedByUser.toJSON() : null,
             extendedSkill: extendedSkill ? extendedSkill.toJSON(auth) : null,
+            ...(includeChildSkills
+              ? {
+                  childSkills: childSkills.map((childSkill) => {
+                    const {
+                      instructions,
+                      instructionsHtml,
+                      tools,
+                      ...childSkillWithoutInstructionsAndTools
+                    } = childSkill.toJSON(auth);
+
+                    return childSkillWithoutInstructionsAndTools;
+                  }),
+                }
+              : {}),
           },
         };
 
@@ -298,10 +319,17 @@ async function handler(
         ...additionalRequestedSpaceIds,
       ]);
 
+      const featureFlags = await getFeatureFlags(auth);
+      const enableSkillReferences = featureFlags.includes("nested_skills");
+      const referencedSkillIds = uniq(
+        (body.referencedSkillIds ?? []).filter(
+          (referencedSkillId) => referencedSkillId !== skill.sId
+        )
+      );
+
       // Validate file attachments if provided (gated behind sandbox_tools).
       let files: FileResource[] | undefined;
       if (fileAttachments) {
-        const featureFlags = await getFeatureFlags(auth);
         if (
           !featureFlags.includes("sandbox_tools") &&
           fileAttachments.length > 0
@@ -365,6 +393,8 @@ async function handler(
         name,
         reinforcement: body.reinforcement,
         requestedSpaceIds,
+        enableSkillReferences,
+        referencedSkillIds,
         userFacingDescription: body.userFacingDescription,
         ...(shouldActivate ? { status: "active" as const } : {}),
       });

@@ -11,6 +11,7 @@ import type {
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { Context, ErrorHandler, TypedResponse } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { routePath } from "hono/route";
 
 /**
  * Return type for a Hono JSON handler. Wraps the success body type with the
@@ -93,8 +94,8 @@ export const unhandledErrorHandler: ErrorHandler = (err, ctx) => {
     logger.info(
       {
         method: ctx.req.method,
-        route: ctx.req.routePath ?? ctx.req.path,
-        url: ctx.req.url,
+        route: routePath(ctx) ?? ctx.req.path,
+        url: ctx.req.path,
         statusCode: err.status,
         error: { name: err.name, message: err.message },
       },
@@ -122,8 +123,8 @@ export const unhandledErrorHandler: ErrorHandler = (err, ctx) => {
     {
       clientIp: getClientIp({ headers }),
       method: ctx.req.method,
-      route: ctx.req.routePath ?? ctx.req.path,
-      url: ctx.req.url,
+      route: routePath(ctx) ?? ctx.req.path,
+      url: ctx.req.path,
       error: {
         name: error.name,
         message: error.message || "unknown",

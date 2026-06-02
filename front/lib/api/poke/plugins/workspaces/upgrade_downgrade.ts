@@ -107,6 +107,23 @@ export const downgradeNoPlan = createPlugin({
   },
 });
 
+export const cancelPendingContract = createPlugin({
+  manifest: {
+    id: "cancel-pending-contract",
+    name: "Cancel Pending Metronome Contract",
+    description:
+      "Cancel a pending contract switch: archive the pending Metronome " +
+      "contract, delete the pending subscription, and restore the current " +
+      "contract/subscription",
+    resourceTypes: ["workspaces"],
+    isHidden: true,
+    args: {},
+  },
+  execute: async () => {
+    return new Err(new Error("NO_OP"));
+  },
+});
+
 export const switchContract = createPlugin({
   manifest: {
     id: "switch-contract",

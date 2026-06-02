@@ -1,5 +1,4 @@
 import { useProjectKnowledgePolicy } from "@app/hooks/useProjectKnowledgePolicy";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { WorkspaceType } from "@app/types/user";
 import {
   BookOpenIcon,
@@ -31,16 +30,11 @@ const PROJECT_KNOWLEDGE_POLICIES = [
 ] as const;
 
 export function ProjectKnowledgePolicy({ owner }: { owner: WorkspaceType }) {
-  const { featureFlags } = useFeatureFlags();
   const {
     allowManualProjectKnowledgeManagement,
     isChanging,
     doUpdateProjectKnowledgePolicy,
   } = useProjectKnowledgePolicy({ owner });
-
-  if (!featureFlags.includes("projects")) {
-    return null;
-  }
 
   const selectedPolicy = PROJECT_KNOWLEDGE_POLICIES.find(
     (policy) =>

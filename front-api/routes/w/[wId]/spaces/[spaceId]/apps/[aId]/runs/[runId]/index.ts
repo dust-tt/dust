@@ -4,7 +4,14 @@ import type { RunType } from "@app/types/run";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import { withSpace } from "@front-api/middlewares/with_space";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  aId: z.string(),
+  runId: z.string(),
+});
 
 import blocks from "./blocks";
 import cancel from "./cancel";
@@ -21,6 +28,7 @@ const app = workspaceApp();
 // GET / — get a run.
 app.get(
   "/",
+  validate("param", ParamsSchema),
   withSpace({ requireCanRead: true }),
   async (ctx): HandlerResult<GetRunResponseBody> => {
     // Keep the dynamic import: `@app/lib/api/run` is loaded lazily to avoid
@@ -28,8 +36,7 @@ app.get(
     const { getRun } = await import("@app/lib/api/run");
     const auth = ctx.get("auth");
     const space = ctx.get("space");
-    const aId = ctx.req.param("aId") ?? "";
-    const runId = ctx.req.param("runId") ?? "";
+    const { aId, runId } = ctx.req.valid("param");
 
     const found = await AppResource.fetchById(auth, aId);
     if (!found || !found.canRead(auth) || found.space.sId !== space.sId) {

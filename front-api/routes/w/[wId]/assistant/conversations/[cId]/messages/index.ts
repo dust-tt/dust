@@ -24,8 +24,13 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
 
 import message from "./[mId]";
+
+const ParamsSchema = z.object({
+  cId: z.string(),
+});
 
 export type PostMessagesResponseBody = {
   message: UserMessageType;
@@ -51,13 +56,14 @@ const app = workspaceApp();
 
 app.get(
   "/",
+  validate("param", ParamsSchema),
   async (
     ctx
   ): HandlerResult<
     LegacyFetchConversationMessagesResponse | FetchConversationMessagesResponse
   > => {
     const auth = ctx.get("auth");
-    const conversationId = ctx.req.param("cId") ?? "";
+    const { cId: conversationId } = ctx.req.valid("param");
 
     const messageStartTime = performance.now();
 
@@ -120,11 +126,12 @@ app.get(
 
 app.post(
   "/",
+  validate("param", ParamsSchema),
   validate("json", InternalPostMessagesRequestBodySchema),
   async (ctx): HandlerResult<PostMessagesResponseBody> => {
     const auth = ctx.get("auth");
     const user = auth.getNonNullableUser();
-    const conversationId = ctx.req.param("cId") ?? "";
+    const { cId: conversationId } = ctx.req.valid("param");
 
     const { content, context, mentions, skipToolsValidation } =
       ctx.req.valid("json");

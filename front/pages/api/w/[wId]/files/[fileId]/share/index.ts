@@ -22,7 +22,7 @@ const ShareFileRequestBodySchema = z.object({
 
 export type ShareFileResponseBody = {
   scope: FileShareScope;
-  sharedAt: Date;
+  sharedAt: number;
   shareUrl: string;
 };
 

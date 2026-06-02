@@ -1,3 +1,4 @@
+// @migration-status: MIGRATED_TO_HONO
 // This endpoint is redirected (307) to /api/sse/v1/w/[wId]/assistant/conversations/[cId]/messages/[mId]/events
 // via middleware. The /api/sse/ prefix allows the ingress to route SSE traffic to front-sse pods.
 

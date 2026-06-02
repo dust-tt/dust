@@ -29,6 +29,16 @@ async function handler(
     });
   }
 
+  if (!auth.isAdmin()) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message: "Only workspace admins can access workspace analytics.",
+      },
+    });
+  }
+
   const q = ProgrammaticCostQuerySchema.safeParse(req.query);
   if (!q.success) {
     return apiError(req, res, {

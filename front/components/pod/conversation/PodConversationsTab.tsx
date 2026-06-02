@@ -67,7 +67,6 @@ interface PodConversationsTabProps {
     contentFragments: ContentFragmentsType,
     selectedMCPServerViewIds?: string[]
   ) => Promise<Result<undefined, any>>;
-  onOpenMembersPanel: () => void;
   onNavigateToTasks: () => void;
 }
 
@@ -84,7 +83,6 @@ export function PodConversationsTab({
   conversationFilter,
   onConversationFilterChange,
   onSubmit,
-  onOpenMembersPanel,
   onNavigateToTasks,
 }: PodConversationsTabProps) {
   const { isEditor } = podInfo;

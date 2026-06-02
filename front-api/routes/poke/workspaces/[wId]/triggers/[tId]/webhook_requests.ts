@@ -24,24 +24,20 @@ const WebhookRequestsQuerySchema = z.object({
   status: z.enum(WEBHOOK_REQUEST_TRIGGER_STATUSES).optional(),
 });
 
+const ParamsSchema = z.object({
+  tId: z.string(),
+});
+
 // Mounted at /api/poke/workspaces/:wId/triggers/:tId/webhook_requests.
 const app = pokeApp();
 
 app.get(
   "/",
+  validate("param", ParamsSchema),
   validate("query", WebhookRequestsQuerySchema),
   async (ctx): HandlerResult<PokeGetWebhookRequestsResponseBody> => {
     const auth = ctx.get("auth");
-    const tId = ctx.req.param("tId");
-    if (!tId) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid trigger ID.",
-        },
-      });
-    }
+    const { tId } = ctx.req.valid("param");
 
     const trigger = await TriggerResource.fetchById(auth, tId);
     if (!trigger) {

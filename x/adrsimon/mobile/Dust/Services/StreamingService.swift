@@ -27,6 +27,12 @@ final private class AuthPreservingDelegate: NSObject, URLSessionTaskDelegate {
     }
 }
 
+private enum SSEConfig {
+    // High because the server sends no heartbeat; idle streams must not time out.
+    static let requestTimeoutSeconds: TimeInterval = 3600
+    static let resourceTimeoutSeconds: TimeInterval = 86400
+}
+
 /// Lightweight SSE client using URLSession async bytes.
 enum StreamingService {
     /// Connects to a Server-Sent Events endpoint and yields parsed `data:` payloads.
@@ -96,7 +102,10 @@ enum StreamingService {
             lastEventId: lastEventId
         )
         let delegate = AuthPreservingDelegate(accessToken: accessToken)
-        let session = URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
+        let configuration = URLSessionConfiguration.default
+        configuration.timeoutIntervalForRequest = SSEConfig.requestTimeoutSeconds
+        configuration.timeoutIntervalForResource = SSEConfig.resourceTimeoutSeconds
+        let session = URLSession(configuration: configuration, delegate: delegate, delegateQueue: nil)
 
         logger.info("SSE connecting: \(endpoint)")
         let (bytes, response) = try await session.bytes(for: request)

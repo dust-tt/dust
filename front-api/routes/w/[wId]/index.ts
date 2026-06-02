@@ -17,6 +17,7 @@ import { validate } from "@front-api/middlewares/validator";
 import { workspaceAuth } from "@front-api/middlewares/workspace_auth";
 import { escape } from "html-escaper";
 import { z } from "zod";
+import analytics from "./analytics";
 import assistant from "./assistant";
 import auditLogs from "./audit-logs";
 import authContext from "./auth-context";
@@ -64,6 +65,8 @@ import subscriptions from "./subscriptions";
 import tags from "./tags";
 import trial from "./trial";
 import trialMessageUsage from "./trial-message-usage";
+import usageSettings from "./usage_settings";
+import usageStatus from "./usage-status";
 import verification from "./verification";
 import verifiedDomains from "./verified-domains";
 import verify from "./verify";
@@ -242,6 +245,10 @@ app.use(
 );
 app.use(
   "/verification/*",
+  workspaceAuth({ doesNotRequireCanUseProduct: true })
+);
+app.use(
+  "/usage-status/*",
   workspaceAuth({ doesNotRequireCanUseProduct: true })
 );
 app.use("/seats/count", workspaceAuth({ doesNotRequireCanUseProduct: true }));
@@ -561,6 +568,7 @@ app.post(
 
 // Sub-apps using the catch-all default + the partial-subtree exception
 // targets declared above.
+app.route("/analytics", analytics);
 app.route("/assistant", assistant);
 app.route("/audit-logs", auditLogs);
 app.route("/billing", billing);
@@ -591,6 +599,7 @@ app.route("/metronome", metronome);
 app.route("/models", models);
 app.route("/oauth/:provider/setup", oauthSetup);
 app.route("/pods", pods);
+app.route("/usage-status", usageStatus);
 app.route("/project_tasks", projectTasks);
 app.route("/provider_credentials/:providerId", providerCredential);
 app.route("/provider_credentials", providerCredentials);
@@ -606,6 +615,7 @@ app.route("/sso", sso);
 app.route("/spaces", spaces);
 app.route("/subscriptions", subscriptions);
 app.route("/tags", tags);
+app.route("/usage_settings", usageSettings);
 app.route("/verification", verification);
 app.route("/verified-domains", verifiedDomains);
 app.route("/webhook_sources", webhookSources);

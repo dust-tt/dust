@@ -5,12 +5,34 @@ export type FileRef =
   | { type: "fileId"; fileId: string }
   | { type: "path"; scopedPath: string };
 
+// Mirrors front's `parseRawVizScope` contract. Canonical scopes are `${PREFIX}-{id}/...`;
+// the bare prefixes are legacy forms still emitted by older frame code.
+const SCOPED_PREFIX_CONVERSATION = "conversation";
+const SCOPED_PREFIX_POD = "pod";
+const SCOPED_PREFIX_PROJECT = "project";
+
 function isScopedPath(value: string): boolean {
+  const slashIdx = value.indexOf("/");
+  if (slashIdx <= 0) {
+    return false;
+  }
+  const prefix = value.slice(0, slashIdx);
+
+  // Canonical, portable scopes are what frame code is instructed to use, e.g.
+  // `conversation-{conversationId}/report.csv` or `pod-{podId}/notes.md`. This mirrors the
+  // server contract in front's `parseRawVizScope`: the id after the prefix must be non-empty.
+  if (
+    prefix.startsWith(`${SCOPED_PREFIX_CONVERSATION}-`) ||
+    prefix.startsWith(`${SCOPED_PREFIX_POD}-`)
+  ) {
+    return !prefix.endsWith("-");
+  }
+
+  // Legacy bare prefixes, still used by older frame code.
   return (
-    value.startsWith("conversation/") ||
-    value.startsWith("pod/") ||
-    // Legacy prefix, still used by older frame code.
-    value.startsWith("project/")
+    prefix === SCOPED_PREFIX_CONVERSATION ||
+    prefix === SCOPED_PREFIX_POD ||
+    prefix === SCOPED_PREFIX_PROJECT
   );
 }
 

@@ -34,15 +34,20 @@ const SetConnectorPermissionsRequestBodySchema = z.object({
   ),
 });
 
+const ParamsSchema = z.object({
+  dsId: z.string(),
+});
+
 // Mounted at /api/w/:wId/data_sources/:dsId/managed/permissions.
 const app = workspaceApp();
 
 app.get(
   "/",
+  validate("param", ParamsSchema),
   validate("query", ManagedPermissionsQuerySchema),
   async (ctx): HandlerResult<GetDataSourcePermissionsResponseBody> => {
     const auth = ctx.get("auth");
-    const dsId = ctx.req.param("dsId") ?? "";
+    const { dsId } = ctx.req.valid("param");
 
     const dataSource = await DataSourceResource.fetchById(auth, dsId);
     if (!dataSource) {
@@ -157,10 +162,11 @@ app.get(
 
 app.post(
   "/",
+  validate("param", ParamsSchema),
   validate("json", SetConnectorPermissionsRequestBodySchema),
   async (ctx): HandlerResult<SuccessResponseBody> => {
     const auth = ctx.get("auth");
-    const dsId = ctx.req.param("dsId") ?? "";
+    const { dsId } = ctx.req.valid("param");
 
     const dataSource = await DataSourceResource.fetchById(auth, dsId);
     if (!dataSource) {

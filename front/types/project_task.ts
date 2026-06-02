@@ -67,6 +67,9 @@ export const POD_TASK_UNASSIGNED_GROUP_KEY = "__unassigned__";
 /** Header and menu copy for tasks with no assignee. */
 export const POD_TASK_NO_ASSIGNEE_LABEL = "No assignee";
 
+/** Seeded via POST /pods/:podId/tasks/seed (editors only). */
+export const POD_MANAGER_AGENT_SID = "pod_manager" as const;
+
 export type PodTaskType = {
   id: ModelId;
   sId: string;

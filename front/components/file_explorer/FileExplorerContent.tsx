@@ -54,9 +54,13 @@ export function FileExplorerContent({
 }: FileExplorerContentProps) {
   const items = sortedNodes.map((node) => {
     if (node.isDirectory) {
+      // TODO: FolderEntry.path is currently the relative path (scope prefix stripped).
+      // Refactor FileSystemTreeNode to carry the canonical scoped path so that callers
+      // (e.g. PodFileExplorer) can use entry.path directly for API calls without having
+      // to re-prepend the scope prefix.
       const folderEntry: FolderEntry = {
         kind: "folder",
-        path: `pod/${node.path}`,
+        path: node.path,
         name: node.name,
       };
       return (

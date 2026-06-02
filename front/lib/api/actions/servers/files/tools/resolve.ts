@@ -4,7 +4,11 @@ import type {
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
-  DustFileSystem,
+  getDustFileSystemForAgentLoop,
+  requireAgentLoopConversation,
+  scopedPathsFromArgs,
+} from "@app/lib/api/actions/servers/files/tools/agent_loop_fs";
+import {
   SCOPED_PREFIX_CONVERSATION,
   SCOPED_PREFIX_POD,
 } from "@app/lib/api/file_system";
@@ -49,11 +53,9 @@ export async function resolveHandler(
   { file_id }: { file_id: string },
   extra: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const conversation = extra.agentLoopContext?.runContext?.conversation;
-  if (!conversation) {
-    return new Err(
-      new MCPError("No conversation context available.", { tracked: false })
-    );
+  const conversationRes = requireAgentLoopConversation(extra);
+  if (conversationRes.isErr()) {
+    return conversationRes;
   }
 
   const file = await FileResource.fetchById(extra.auth, file_id);
@@ -83,16 +85,13 @@ export async function resolveHandler(
     );
   }
 
-  // Verify the caller actually has access to the resolved path. DustFileSystem.forConversation
-  // only mounts the pod scope when the conversation belongs to that pod and the caller has read
-  // access, so stat() implicitly enforces the same ownership + permission checks the old
-  // hand-rolled code did (conversationId match, spaceId match, space.canRead).
-  const fsResult = await DustFileSystem.forConversation(
+  const fsResult = await getDustFileSystemForAgentLoop(
     extra.auth,
-    conversation
+    conversationRes.value,
+    scopedPathsFromArgs(canonicalPath)
   );
   if (fsResult.isErr()) {
-    return new Err(new MCPError(fsResult.error.message, { tracked: false }));
+    return fsResult;
   }
   const dustFs = fsResult.value;
 

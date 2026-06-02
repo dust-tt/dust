@@ -1,3 +1,4 @@
+import { ImageWrapper } from "@sparkle/components/ImageWrapper";
 import { Tooltip } from "@sparkle/components/Tooltip";
 import { UserIcon } from "@sparkle/icons/app";
 import { getEmojiAndBackgroundFromUrl } from "@sparkle/lib/avatar/utils";
@@ -232,7 +233,7 @@ export function Avatar({
     >
       {size === "auto" && <div style={{ paddingBottom: "100%" }} />}
       {typeof visualToUse === "string" ? (
-        <img
+        <ImageWrapper
           src={visualToUse}
           alt={name}
           className={cn(

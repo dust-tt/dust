@@ -198,6 +198,7 @@ beforeEach(() => {
         aliases: ["enterprise"],
         tier: "enterprise",
         currency: "usd",
+        seats: [],
       },
       {
         id: PRO_PACKAGE_ID,
@@ -205,6 +206,7 @@ beforeEach(() => {
         aliases: ["legacy-pro-monthly"],
         tier: "pro",
         currency: "usd",
+        seats: [],
       },
       {
         id: BUSINESS_PACKAGE_ID,
@@ -212,6 +214,7 @@ beforeEach(() => {
         aliases: ["business"],
         tier: "business",
         currency: "usd",
+        seats: [],
       },
     ])
   );
@@ -271,7 +274,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — Enterprise", () =>
     );
   });
 
-  it("rejects when startingAt is less than 1h in the future", async () => {
+  it("accepts a startingAt in the past (backdated) and schedules at the next hour boundary", async () => {
     await ensureEnterprisePlan();
     const { workspace } = await createPrivateApiMockRequest({
       isSuperUser: true,
@@ -280,12 +283,17 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — Enterprise", () =>
 
     const response = await postSwitchContract(
       workspace.sId,
-      enterpriseBody({ startingAt: futureIso(0.5) })
+      enterpriseBody({ startingAt: futureIso(-48) })
     );
 
-    expect(response.status).toBe(400);
-    const data = await response.json();
-    expect(data.error.message).toContain("at least one hour");
+    expect(response.status).toBe(200);
+    expect(provisionMetronomeContract).toHaveBeenCalledWith(
+      expect.objectContaining({
+        packageAlias: "enterprise",
+        planCode: ENT_PLAN_CODE,
+        swapAt: "next-hour",
+      })
+    );
   });
 
   it("rejects when the package currency does not match the Stripe customer currency", async () => {
@@ -526,7 +534,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — guards", () => {
 });
 
 describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
-  it("persists paygCapCredits and syncs the Metronome alert when switching to enterprise with PAYG enabled", async () => {
+  it("persists usageCapCredits and syncs the Metronome alert when switching to enterprise with PAYG enabled", async () => {
     await ensureEnterprisePlan();
     const { workspace } = await createPrivateApiMockRequest({
       isSuperUser: true,
@@ -535,7 +543,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
 
     const response = await postSwitchContract(
       workspace.sId,
-      enterpriseBody({ paygEnabled: true, paygCapCredits: 50_000 })
+      enterpriseBody({ paygEnabled: true, usageCapCredits: 50_000 })
     );
 
     expect(response.status).toBe(200);
@@ -545,10 +553,10 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
     );
     const config =
       await CreditUsageConfigurationResource.fetchByWorkspaceId(adminAuth);
-    expect(config?.paygCapCredits).toBe(50_000);
+    expect(config?.usageCapCredits).toBe(50_000);
   });
 
-  it("persists paygCapCredits when switching to business with PAYG enabled", async () => {
+  it("persists usageCapCredits when switching to business with PAYG enabled", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       isSuperUser: true,
     });
@@ -556,7 +564,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
 
     const response = await postSwitchContract(
       workspace.sId,
-      businessBody({ paygEnabled: true, paygCapCredits: 25_000 })
+      businessBody({ paygEnabled: true, usageCapCredits: 25_000 })
     );
 
     expect(response.status).toBe(200);
@@ -566,7 +574,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
     );
     const config =
       await CreditUsageConfigurationResource.fetchByWorkspaceId(adminAuth);
-    expect(config?.paygCapCredits).toBe(25_000);
+    expect(config?.usageCapCredits).toBe(25_000);
   });
 
   it("rejects PAYG on a pro contract", async () => {
@@ -577,7 +585,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
 
     const response = await postSwitchContract(
       workspace.sId,
-      proBody({ paygEnabled: true, paygCapCredits: 10_000 })
+      proBody({ paygEnabled: true, usageCapCredits: 10_000 })
     );
 
     expect(response.status).toBe(400);
@@ -586,7 +594,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
     expect(provisionMetronomeContract).not.toHaveBeenCalled();
   });
 
-  it("rejects when paygEnabled is true but paygCapCredits is missing", async () => {
+  it("accepts paygEnabled without a usage cap (no alert)", async () => {
     await ensureEnterprisePlan();
     const { workspace } = await createPrivateApiMockRequest({
       isSuperUser: true,
@@ -598,12 +606,18 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
       enterpriseBody({ paygEnabled: true })
     );
 
-    expect(response.status).toBe(400);
-    const data = await response.json();
-    expect(data.error.message).toContain("PAYG cap");
+    expect(response.status).toBe(200);
+
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const config =
+      await CreditUsageConfigurationResource.fetchByWorkspaceId(adminAuth);
+    expect(config?.paygEnabled).toBe(true);
+    expect(config?.usageCapCredits).toBeNull();
   });
 
-  it("clears paygCapCredits when paygEnabled is false", async () => {
+  it("preserves usageCapCredits when paygEnabled is toggled off", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       isSuperUser: true,
     });
@@ -614,16 +628,20 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
     );
     await CreditUsageConfigurationResource.makeNew(adminAuth, {
       defaultDiscountPercent: 0,
-      paygCapCredits: 100_000,
-      disableCreditCapWarning: false,
+      paygEnabled: true,
+      usageCapCredits: 100_000,
     });
 
-    const response = await postSwitchContract(workspace.sId, proBody());
+    const response = await postSwitchContract(
+      workspace.sId,
+      proBody({ usageCapCredits: 100_000 })
+    );
 
     expect(response.status).toBe(200);
 
     const config =
       await CreditUsageConfigurationResource.fetchByWorkspaceId(adminAuth);
-    expect(config?.paygCapCredits).toBeNull();
+    expect(config?.paygEnabled).toBe(false);
+    expect(config?.usageCapCredits).toBe(100_000);
   });
 });

@@ -45,7 +45,7 @@ import {
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
-import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
+import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import type { DurationRecorder } from "@app/lib/duration_recorder";
 import {
   AgentMessageContentParser,
@@ -71,6 +71,7 @@ import { METRICS } from "@app/temporal/agent_loop/activities/instrumentation";
 import { RUN_MODEL_MAX_RETRIES } from "@app/temporal/agent_loop/config";
 import { getOutputFromLLMStream } from "@app/temporal/agent_loop/lib/get_output_from_llm";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
+import { makeRunModelLLMError } from "@app/temporal/agent_loop/lib/run_model_errors";
 import type { AgentActionsEvent } from "@app/types/assistant/agent";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import type {
@@ -375,7 +376,10 @@ export async function runModel(
   });
 
   const isNewFileExplorer = conversation.metadata?.useFileSystem === true;
-  const hasSandboxTools = await hasFeatureFlag(auth, "sandbox_tools");
+  const featureFlags = await getFeatureFlags(auth);
+  const hasSandboxTools = featureFlags.includes("sandbox_tools");
+  const hasNestedSkills = featureFlags.includes("nested_skills");
+  const useFramesV2 = featureFlags.includes("frames_skill_v2");
 
   const prompt = constructPromptMultiActions(auth, {
     userMessage,
@@ -397,6 +401,8 @@ export async function runModel(
     projectContext,
     isNewFileExplorer,
     hasSandboxTools,
+    hasNestedSkills,
+    useFramesV2,
   });
   const leadingMessages = removeNulls([
     renderEquippedSkillsUserMessage(equippedSkills),
@@ -432,6 +438,7 @@ export async function runModel(
           agentConfiguration,
           leadingMessages,
           enabledSkills,
+          useFramesV2,
         })
       )
   );
@@ -688,7 +695,10 @@ export async function runModel(
         }
 
         // Throw to let Temporal handle the retry via its retry policy.
-        throw new Error(`LLM error (${type}): ${errorMessage}`);
+        throw makeRunModelLLMError({
+          type,
+          message: errorMessage,
+        });
       }
       case "shouldReturnNull":
         return null;

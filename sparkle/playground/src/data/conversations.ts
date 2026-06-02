@@ -1277,50 +1277,72 @@ Each beat ~30 seconds. Ready for your review.`,
       },
     },
     {
-      kind: "pendingValidation",
-      id: "pending-validation-product-review",
-      userMessage: {
-        kind: "message",
-        id: "pending-user-product-review",
-        content:
-          "Can you share the task breakdown in the shared doc? I want the team to review it before sprint planning.",
-        timestamp: new Date(conv2Start.getTime() + 50 * 60 * 1000),
-        ownerId: locutorId,
-        ownerType: "user",
-        type: "user",
-        group: {
-          id: "group-locutor-pending",
-          type: "locutor",
-          timestamp: "11:08",
-        },
-      } as ConversationMessage,
-      agentMessage: {
-        kind: "message",
-        id: "pending-agent-product-review",
-        markdown: `**Task breakdown (summary)**
-
-- **Search UX**: Move to top nav, add inline suggestions — 2–3 days
-- **Empty state**: Guided experience with example queries — 1 day
-- **Analytics**: Success metrics and suggestion ranking — 1–2 days
-
-Total estimate: ~5 days. Ready for sprint planning review.`,
-        timestamp: new Date(conv2Start.getTime() + 51 * 60 * 1000),
-        ownerId: agent2.id,
-        ownerType: "agent",
+      kind: "message",
+      id: "agent-created-task-suggestions",
+      content:
+        "I created the first tasks from the breakdown. I also found a few related tasks you may want to add.",
+      timestamp: new Date(conv2Start.getTime() + 51 * 60 * 1000),
+      ownerId: agent2.id,
+      ownerType: "agent",
+      type: "agent",
+      group: {
+        id: "group-agent-task-suggestions",
         type: "agent",
-        group: {
-          id: "group-agent-pending",
-          type: "agent",
-          name: agent2.name,
-          timestamp: "11:08",
-          completionStatus: "Completed in 8 sec",
-          avatar: {
-            emoji: agent2.emoji,
-            backgroundColor: agent2.backgroundColor,
-          },
+        name: agent2.name,
+        timestamp: "11:08",
+        completionStatus: "Completed in 8 sec",
+        avatar: {
+          emoji: agent2.emoji,
+          backgroundColor: agent2.backgroundColor,
         },
-      } as ConversationMessage,
-    } as ConversationPendingValidation,
+      },
+      taskSuggestionBoxes: [
+        {
+          id: "product-review-created-tasks",
+          title: "Tasks created",
+          variant: "created",
+          items: [
+            {
+              id: "created-search-ux",
+              groupTitle: "Santiago Martínez",
+              groupUserId: user3.id,
+              text: "Move search to the top navigation and add inline suggestions.",
+            },
+            {
+              id: "created-empty-state",
+              groupTitle: "Mia Jensen",
+              groupUserId: locutorId,
+              text: "Build the guided empty state with example queries.",
+            },
+            {
+              id: "created-analytics",
+              groupTitle: "Santiago Martínez",
+              groupUserId: user3.id,
+              text: "Define success metrics for suggestion ranking.",
+            },
+          ],
+        },
+        {
+          id: "product-review-suggested-tasks",
+          title: "Suggestions",
+          variant: "suggestions",
+          items: [
+            {
+              id: "suggested-copy-review",
+              groupTitle: "Mia Jensen",
+              groupUserId: locutorId,
+              text: "Review the empty-state copy with Support before implementation.",
+            },
+            {
+              id: "suggested-instrumentation",
+              groupTitle: "Santiago Martínez",
+              groupUserId: user3.id,
+              text: "Add tracking for accepted and dismissed inline suggestions.",
+            },
+          ],
+        },
+      ],
+    } as ConversationMessage,
   ];
 
   const conversation2: Conversation = {

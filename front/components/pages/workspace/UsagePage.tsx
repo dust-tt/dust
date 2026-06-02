@@ -1,20 +1,22 @@
 import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { InviteEmailButtonWithModal } from "@app/components/members/InviteEmailButtonWithModal";
+import { AwuUsageChart } from "@app/components/workspace/AwuUsageChart";
 import { BuyAwuCreditsDialog } from "@app/components/workspace/BuyAwuCreditsDialog";
 import { ChangeSeatModal } from "@app/components/workspace/ChangeSeatModal";
 import { EditSpendLimitModal } from "@app/components/workspace/EditSpendLimitModal";
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
 import { UsageNotificationsCard } from "@app/components/workspace/usage/UsageNotificationsCard";
+import { UsageProgrammaticLimitCard } from "@app/components/workspace/usage/UsageProgrammaticLimitCard";
 import { UsageSettingsCard } from "@app/components/workspace/usage/UsageSettingsCard";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
-import { getPriceAsString } from "@app/lib/client/subscription";
-import { isUpgraded } from "@app/lib/plans/plan_codes";
+import { isEntreprisePlanPrefix, isUpgraded } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
 import {
   useAwuPoolSummary,
   useAwuPurchaseInfo,
+  useCreditPurchaseInfo,
   useSeatPlan,
 } from "@app/lib/swr/credits";
 import { useMembersUsage } from "@app/lib/swr/memberships";
@@ -47,36 +49,6 @@ import { useCallback, useEffect, useState } from "react";
 
 function formatCredits(credits: number): string {
   return Math.round(credits).toLocaleString("en-US");
-}
-
-function getOrdinalSuffix(day: number): string {
-  if (day >= 11 && day <= 13) {
-    return "th";
-  }
-  switch (day % 10) {
-    case 1:
-      return "st";
-    case 2:
-      return "nd";
-    case 3:
-      return "rd";
-    default:
-      return "th";
-  }
-}
-
-function getResetDateLabel(resetDate: string): string {
-  if (!resetDate) {
-    return "";
-  }
-  const date = new Date(resetDate);
-  const resetDay = date.getUTCDate();
-  const suffix = getOrdinalSuffix(resetDay);
-  const resetMonth = date.toLocaleDateString("en-US", {
-    month: "long",
-    timeZone: "UTC",
-  });
-  return `Resets on the ${resetDay}${suffix} of each month. Next reset: ${resetMonth} ${resetDay}${suffix}.`;
 }
 
 const DEFAULT_PAGE_SIZE = 25;
@@ -150,10 +122,7 @@ export function UsagePage() {
   const {
     totalRemainingCredits,
     totalActiveCredits,
-    resetDate,
     overageCredits,
-    overageAmountCents,
-    overageCurrency,
     isAwuPoolSummaryLoading,
     isAwuPoolSummaryError,
   } = useAwuPoolSummary({
@@ -164,6 +133,11 @@ export function UsagePage() {
     useAwuPurchaseInfo({
       workspaceId: owner.sId,
       disabled: !showBuyCreditDialog,
+    });
+
+  const { billingCycleStartDay, isCreditPurchaseInfoLoading } =
+    useCreditPurchaseInfo({
+      workspaceId: owner.sId,
     });
 
   const { membersUsage, isMembersUsageLoading, totalMembersUsage } =
@@ -189,6 +163,7 @@ export function UsagePage() {
   const isSeatBased = Object.keys(seatPlans).length > 1;
 
   const plan = subscription.plan;
+  const isEnterprise = isEntreprisePlanPrefix(plan.code);
   const isManualInvitationsEnabled =
     owner.metadata?.disableManualInvitations !== true;
 
@@ -213,8 +188,6 @@ export function UsagePage() {
     totalActiveCredits - totalRemainingCredits
   );
   const initialTotalCredits = totalActiveCredits;
-
-  const resetDateLabel = getResetDateLabel(resetDate);
 
   if (!isCreditPriced) {
     return null;
@@ -261,13 +234,36 @@ export function UsagePage() {
                   {formatCredits(totalConsumedCredits)} /{" "}
                   {formatCredits(initialTotalCredits)}
                 </span>
-                <button
-                  className="flex cursor-pointer items-center gap-1 text-xs font-medium text-highlight-500 dark:text-highlight-500-night"
-                  onClick={() => setShowBuyCreditDialog(true)}
-                >
-                  <Icon visual={ArrowUpIcon} size="xs" />
-                  Top up
-                </button>
+                <div className="flex items-center gap-2">
+                  {overageCredits !== null && overageCredits > 0 && (
+                    <span className="text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
+                      {formatCredits(overageCredits)} overage credits.
+                    </span>
+                  )}
+                  {isEnterprise ? (
+                    <Tooltip
+                      tooltipTriggerAsChild
+                      label="Contact your Dust sales representative to top up."
+                      trigger={
+                        <button
+                          className="flex items-center gap-1 text-xs font-medium text-highlight-500 opacity-50 dark:text-highlight-500-night"
+                          disabled
+                        >
+                          <Icon visual={ArrowUpIcon} size="xs" />
+                          Top up
+                        </button>
+                      }
+                    />
+                  ) : (
+                    <button
+                      className="flex cursor-pointer items-center gap-1 text-xs font-medium text-highlight-500 dark:text-highlight-500-night"
+                      onClick={() => setShowBuyCreditDialog(true)}
+                    >
+                      <Icon visual={ArrowUpIcon} size="xs" />
+                      Top up
+                    </button>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -283,38 +279,12 @@ export function UsagePage() {
             </ContentMessage>
           )}
 
-          {resetDateLabel &&
-            !isAwuPoolSummaryLoading &&
-            !isAwuPoolSummaryError && (
-              <Page.P variant="secondary">{resetDateLabel}</Page.P>
-            )}
-
           {!isAwuPoolSummaryLoading && !isAwuPoolSummaryError && (
             <CreditPoolUsageBar
               totalCredits={initialTotalCredits}
               consumedCredits={totalConsumedCredits}
             />
           )}
-
-          {!isAwuPoolSummaryLoading &&
-            !isAwuPoolSummaryError &&
-            overageCredits !== null &&
-            overageCredits > 0 &&
-            overageAmountCents !== null &&
-            overageCurrency !== null && (
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground dark:text-muted-foreground-night">
-                  Overage this period
-                </span>
-                <span className="font-medium text-foreground dark:text-foreground-night">
-                  {formatCredits(overageCredits)} credits ·{" "}
-                  {getPriceAsString({
-                    currency: overageCurrency,
-                    priceInCents: overageAmountCents,
-                  })}
-                </span>
-              </div>
-            )}
 
           {isAwuPoolSummaryLoading && (
             <div className="flex justify-center py-8">
@@ -323,7 +293,18 @@ export function UsagePage() {
           )}
         </Page.Vertical>
 
+        {isCreditPurchaseInfoLoading ? (
+          <div className="h-64 animate-pulse rounded bg-muted-foreground/20" />
+        ) : (
+          <AwuUsageChart
+            workspaceId={owner.sId}
+            billingCycleStartDay={billingCycleStartDay ?? 1}
+          />
+        )}
+
         <UsageSettingsCard workspaceId={owner.sId} />
+
+        <UsageProgrammaticLimitCard workspaceId={owner.sId} />
 
         <UsageNotificationsCard workspaceId={owner.sId} />
 

@@ -1,16 +1,20 @@
-import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam, useSearchParam } from "@app/lib/platform";
 import { classNames } from "@app/lib/utils";
+import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeDocument } from "@app/poke/swr/document";
 import { Input, Page, Spinner, TextArea } from "@dust-tt/sparkle";
 
 export function DataSourceViewPage() {
   const owner = useWorkspace();
-  useDocumentTitle(`Poke - ${owner.name} - View Document`);
 
   const dsId = useRequiredPathParam("dsId");
   const documentId = useSearchParam("documentId");
+  usePokePageMetadata({
+    name: owner.name,
+    subtitle: "Document",
+    sId: dsId,
+  });
   const {
     data: documentData,
     isLoading,

@@ -7,7 +7,10 @@ import logger from "@connectors/logger/logger";
 import { DustProjectConversationResource } from "@connectors/resources/dust_project_conversation_resource";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types/shared/internal_mime_types";
-import { type ConversationPublicType, removeNulls } from "@dust-tt/client";
+import {
+  type ConversationForDataSourceSyncType,
+  removeNulls,
+} from "@dust-tt/client";
 
 import {
   buildConversationMessageSections,
@@ -126,7 +129,7 @@ export async function syncConversation({
   connectorId: ModelId;
   dataSourceConfig: DataSourceConfig;
   projectId: string;
-  conversation: ConversationPublicType;
+  conversation: ConversationForDataSourceSyncType;
   syncType: "batch" | "incremental";
 }): Promise<void> {
   const localLogger = logger.child({
@@ -153,11 +156,9 @@ export async function syncConversation({
   const isGroupConversation =
     new Set(
       removeNulls(
-        conversation.content
-          .map((versions) => versions[-1])
-          .map((m) =>
-            m?.type === "user_message" && m.user ? m.user.sId : null
-          )
+        conversation.content.map((m) =>
+          m.type === "user_message" && m.user ? m.user.sId : null
+        )
       )
     ).size > 1;
 

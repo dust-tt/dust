@@ -33,15 +33,20 @@ const GetSuggestionsQuerySchema = z.object({
   limit: z.string().optional(),
 });
 
+const ParamsSchema = z.object({
+  aId: z.string(),
+});
+
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/suggestions.
 const app = workspaceApp();
 
 app.get(
   "/",
+  validate("param", ParamsSchema),
   validate("query", GetSuggestionsQuerySchema),
   async (ctx): HandlerResult<GetSuggestionsResponseBody> => {
     const auth = ctx.get("auth");
-    const aId = ctx.req.param("aId") ?? "";
+    const { aId } = ctx.req.valid("param");
 
     const agent = await getAgentConfiguration(auth, {
       agentId: aId,
@@ -93,10 +98,11 @@ app.get(
 
 app.patch(
   "/",
+  validate("param", ParamsSchema),
   validate("json", PatchSuggestionRequestBodySchema),
   async (ctx): HandlerResult<PatchSuggestionResponseBody> => {
     const auth = ctx.get("auth");
-    const aId = ctx.req.param("aId") ?? "";
+    const { aId } = ctx.req.valid("param");
 
     const agent = await getAgentConfiguration(auth, {
       agentId: aId,

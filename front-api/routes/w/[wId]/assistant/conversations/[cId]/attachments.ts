@@ -4,6 +4,12 @@ import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  cId: z.string(),
+});
 
 export type GetConversationAttachmentsResponseBody = {
   attachments: ConversationAttachmentType[];
@@ -14,9 +20,10 @@ const app = workspaceApp();
 
 app.get(
   "/",
+  validate("param", ParamsSchema),
   async (ctx): HandlerResult<GetConversationAttachmentsResponseBody> => {
     const auth = ctx.get("auth");
-    const conversationId = ctx.req.param("cId") ?? "";
+    const { cId: conversationId } = ctx.req.valid("param");
 
     const conversationRes = await getConversation(auth, conversationId);
     if (conversationRes.isErr()) {

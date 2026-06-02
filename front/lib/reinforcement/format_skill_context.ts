@@ -1,9 +1,14 @@
+import { stripSkillTagPresentationAttributes } from "@app/lib/skills/format";
+import { stripToolTagPresentationAttributes } from "@app/lib/tools/format";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import { escapeXml } from "@app/types/shared/utils/string_utils";
 
-export function formatSkillContext(skill: SkillType): string {
+export function formatSkillContext(
+  skill: SkillType,
+  { useInlineTools = false }: { useInlineTools?: boolean } = {}
+): string {
   const toolsBlock =
-    skill.tools.length > 0
+    !useInlineTools && skill.tools.length > 0
       ? `<tools>${skill.tools
           .map(
             (t) =>
@@ -17,7 +22,9 @@ export function formatSkillContext(skill: SkillType): string {
     : "";
 
   const instructionsBlock = skill.instructionsHtml
-    ? `<instructions format="html">${skill.instructionsHtml}</instructions>`
+    ? `<instructions format="html">${stripSkillTagPresentationAttributes(
+        stripToolTagPresentationAttributes(skill.instructionsHtml)
+      )}</instructions>`
     : "";
 
   return `<skill ID="${escapeXml(skill.sId)}" name="${escapeXml(skill.name)}">${toolsBlock}${descBlock}${instructionsBlock}</skill>`;

@@ -92,6 +92,7 @@ export function InputBarAttachments({
         sourceUrl: blob.sourceUrl,
         contentType: blob.contentType,
         isUploading: blob.isUploading,
+        size: blob.size,
         description: uploadDate,
         iconName: blob.iconName,
         provider: blob.provider,

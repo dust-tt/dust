@@ -13,7 +13,10 @@ import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import { getRemainingDailyCapMicroUsd } from "@app/lib/api/programmatic_usage/daily_cap";
 import { checkProgrammaticUsageLimits } from "@app/lib/api/programmatic_usage/tracking";
 import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
-import { isApiBlocked } from "@app/lib/metronome/user_block";
+import {
+  isApiBlocked,
+  isProgrammaticApiBlocked,
+} from "@app/lib/metronome/user_block";
 import {
   AgentMessageModel,
   MessageModel,
@@ -164,6 +167,7 @@ async function runReinforcedSkillsStep({
   source,
   conversation,
   eligibleSkillIds,
+  useInlineTools,
 }: {
   auth: Authenticator;
   reinforcementConversationId: string;
@@ -173,6 +177,7 @@ async function runReinforcedSkillsStep({
   source: "synthetic" | "reinforcement";
   conversation?: ConversationResource;
   eligibleSkillIds: string[];
+  useInlineTools: boolean;
 }): Promise<{
   isTerminal: boolean;
   suggestionsCreated: number;
@@ -202,7 +207,9 @@ async function runReinforcedSkillsStep({
     throw conversationRes.error;
   }
 
-  const specifications = buildReinforcedSkillsSpecifications(operationType);
+  const specifications = buildReinforcedSkillsSpecifications(operationType, {
+    useInlineTools,
+  });
   const modelConfig = llm.getModelConfig();
   const toolsJson = JSON.stringify(
     specifications.map((s) => ({
@@ -286,6 +293,7 @@ async function runReinforcedSkillsStep({
       contextId,
       conversation,
       eligibleSkillIds,
+      useInlineTools,
     });
 
     // Store results for all terminal tool calls so the conversation is complete.
@@ -582,13 +590,20 @@ export async function getReinforcementSettingsActivity({
     );
   const globalCapMicroUsd = getReinforcementMonthlyCapMicroUsd(workspace);
 
+  // Credit-priced plans check pool + programmatic cap via Metronome state;
+  // legacy plans check programmatic credits via CreditResource.
   const plan = auth.subscription()?.plan;
-  const programmaticUsageLimitReached =
-    !!plan && isCreditPricedPlan(plan) && !!workspace.metronomeCustomerId
-      ? // If the workspace pool is depleted, no downstream message can be posted.
-        await isApiBlocked(workspace.sId)
-      : // Legacy check
-        (await checkProgrammaticUsageLimits(auth)).isErr();
+  let programmaticUsageLimitReached: boolean;
+  if (plan && isCreditPricedPlan(plan) && workspace.metronomeCustomerId) {
+    programmaticUsageLimitReached =
+      (await isApiBlocked(workspace.sId)) ||
+      (await isProgrammaticApiBlocked(workspace.sId));
+  } else {
+    // Legacy check for not metronome workspaces
+    programmaticUsageLimitReached = (
+      await checkProgrammaticUsageLimits(auth)
+    ).isErr();
+  }
 
   // Compute remaining programmatic budget: total remaining credits capped by
   // the daily usage allowance.
@@ -683,6 +698,7 @@ export async function analyzeConversationStepActivity({
   toolActionInfo?: ReinforcedToolActionInfo;
 }> {
   const auth = await getAuthForWorkspace(workspaceId);
+  const useInlineTools = await hasFeatureFlag(auth, "nested_skills");
 
   // On first step, build the analysis prompt and create a reinforcement conversation.
   if (!reinforcementConversationId) {
@@ -721,7 +737,8 @@ export async function analyzeConversationStepActivity({
 
     const prompt = buildSkillAnalysisPrompt(
       conversationRes.value.text,
-      skillTypes
+      skillTypes,
+      { useInlineTools }
     );
     reinforcementConversationId = await createReinforcedSkillsConversation(
       auth,
@@ -730,6 +747,7 @@ export async function analyzeConversationStepActivity({
         operationType: "reinforcement_analyze_conversation",
         contextId: conversationId,
         skillIds: skillIds,
+        useInlineTools,
       }
     );
   }
@@ -742,11 +760,12 @@ export async function analyzeConversationStepActivity({
     auth,
     reinforcementConversationId,
     operationType: "reinforcement_analyze_conversation",
-    systemPrompt: buildSkillAnalysisSystemPrompt(),
+    systemPrompt: buildSkillAnalysisSystemPrompt({ useInlineTools }),
     contextId: conversationId,
     source: "synthetic",
     conversation,
     eligibleSkillIds: skillIds,
+    useInlineTools,
   });
   return { ...result, reinforcementConversationId };
 }
@@ -816,10 +835,13 @@ export async function aggregateSuggestionsForSkillStepActivity({
   toolActionInfo?: ReinforcedToolActionInfo;
 }> {
   const auth = await getAuthForWorkspace(workspaceId);
+  const useInlineTools = await hasFeatureFlag(auth, "nested_skills");
 
   // On first step, load aggregation context and create a reinforcement conversation.
   if (!reinforcementConversationId) {
-    const ctx = await loadSkillAggregationContext(auth, skillId);
+    const ctx = await loadSkillAggregationContext(auth, skillId, {
+      useInlineTools,
+    });
     if (!ctx) {
       return {
         isTerminal: true,
@@ -835,6 +857,7 @@ export async function aggregateSuggestionsForSkillStepActivity({
         operationType: "reinforcement_aggregate_suggestions",
         contextId: skillId,
         skillIds: [skillId],
+        useInlineTools,
       }
     );
   }
@@ -843,10 +866,11 @@ export async function aggregateSuggestionsForSkillStepActivity({
     auth,
     reinforcementConversationId,
     operationType: "reinforcement_aggregate_suggestions",
-    systemPrompt: buildSkillAggregationSystemPrompt(),
+    systemPrompt: buildSkillAggregationSystemPrompt({ useInlineTools }),
     contextId: skillId,
     source: "reinforcement",
     eligibleSkillIds: [skillId],
+    useInlineTools,
   });
   return { ...result, reinforcementConversationId };
 }
@@ -968,6 +992,7 @@ export async function startSkillConversationAnalysisBatchActivity({
   reinforcementConversationMap: Record<string, string>;
 } | null> {
   const auth = await getAuthForWorkspace(workspaceId);
+  const useInlineTools = await hasFeatureFlag(auth, "nested_skills");
 
   const llm = await getReinforcedSkillsLLM(
     auth,
@@ -991,13 +1016,15 @@ export async function startSkillConversationAnalysisBatchActivity({
   if (firstTimeConversations.length > 0) {
     batchMap = await buildSkillConversationAnalysisBatchMap(
       auth,
-      firstTimeConversations
+      firstTimeConversations,
+      { useInlineTools }
     );
   }
 
-  const systemPrompt = buildSkillAnalysisSystemPrompt();
+  const systemPrompt = buildSkillAnalysisSystemPrompt({ useInlineTools });
   const specifications = buildReinforcedSkillsSpecifications(
-    "reinforcement_analyze_conversation"
+    "reinforcement_analyze_conversation",
+    { useInlineTools }
   );
 
   const batchConversations: LlmConversationOptions[] = [];
@@ -1101,6 +1128,7 @@ export async function processSkillConversationAnalysisBatchResultActivity({
   conversationSkillMap: Record<string, string[]>;
 }): Promise<ConversationContinuationInfo[]> {
   const auth = await getAuthForWorkspace(workspaceId);
+  const useInlineTools = await hasFeatureFlag(auth, "nested_skills");
 
   const llm = await getReinforcedSkillsLLM(
     auth,
@@ -1192,6 +1220,7 @@ export async function processSkillConversationAnalysisBatchResultActivity({
         contextId: analysedConvId,
         conversation: conversationById.get(analysedConvId),
         eligibleSkillIds: conversationSkillMap[analysedConvId] ?? [],
+        useInlineTools,
       });
       totalCreated += result.suggestionsCreated;
 
@@ -1265,6 +1294,7 @@ export async function startSkillAggregationBatchActivity({
   reinforcementConversationIds: string[];
 } | null> {
   const auth = await getAuthForWorkspace(workspaceId);
+  const useInlineTools = await hasFeatureFlag(auth, "nested_skills");
 
   const llm = await getReinforcedSkillsLLM(
     auth,
@@ -1279,9 +1309,10 @@ export async function startSkillAggregationBatchActivity({
     return null;
   }
 
-  const systemPrompt = buildSkillAggregationSystemPrompt();
+  const systemPrompt = buildSkillAggregationSystemPrompt({ useInlineTools });
   const specifications = buildReinforcedSkillsSpecifications(
-    "reinforcement_aggregate_suggestions"
+    "reinforcement_aggregate_suggestions",
+    { useInlineTools }
   );
 
   let batchConversations: LlmConversationOptions[];
@@ -1376,6 +1407,7 @@ export async function processSkillAggregationBatchResultActivity({
   toolActionInfo?: ReinforcedToolActionInfo;
 }> {
   const auth = await getAuthForWorkspace(workspaceId);
+  const useInlineTools = await hasFeatureFlag(auth, "nested_skills");
 
   const llm = await getReinforcedSkillsLLM(
     auth,
@@ -1448,6 +1480,7 @@ export async function processSkillAggregationBatchResultActivity({
       operationType: "reinforcement_aggregate_suggestions",
       contextId: skillId,
       eligibleSkillIds: [skillId],
+      useInlineTools,
     });
 
     // Store results for all terminal tool calls.

@@ -86,17 +86,20 @@ export async function checkProgrammaticUsageLimits(
     );
   }
 
-  // Then check per-key cap.
-  const keyCapReached = await hasKeyReachedUsageCap(auth);
-  if (keyCapReached) {
-    const message = isAdmin
-      ? "This API key has reached its monthly usage cap. " +
-        "Please increase the cap in the Developers > API Keys section of the Dust dashboard."
-      : "This API key has reached its monthly usage cap. " +
-        "Please ask a Dust workspace admin to increase the cap.";
-    return new Err(
-      new ProgrammaticUsageLimitError("rate_limit_error", message)
-    );
+  // Then check per-key cap (not applicable to credit-priced/Metronome plans).
+  const plan = auth.subscription()?.plan;
+  if (!plan || !isCreditPricedPlan(plan)) {
+    const keyCapReached = await hasKeyReachedUsageCap(auth);
+    if (keyCapReached) {
+      const message = isAdmin
+        ? "This API key has reached its monthly usage cap. " +
+          "Please increase the cap in the Developers > API Keys section of the Dust dashboard."
+        : "This API key has reached its monthly usage cap. " +
+          "Please ask a Dust workspace admin to increase the cap.";
+      return new Err(
+        new ProgrammaticUsageLimitError("rate_limit_error", message)
+      );
+    }
   }
 
   // Finally check daily cap.

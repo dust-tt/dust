@@ -2,7 +2,6 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
@@ -40,20 +39,6 @@ async function handler(
         message: "File not found.",
       },
     });
-  }
-
-  // Check feature flag for project_context files
-  if (file.useCase === "project_context") {
-    const featureFlags = await getFeatureFlags(auth);
-    if (!featureFlags.includes("projects")) {
-      return apiError(req, res, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: "Feature not supported",
-        },
-      });
-    }
   }
 
   // Get space for permission checks

@@ -1,9 +1,8 @@
 import { usePodConversationsSummary } from "@app/hooks/conversations";
-import { useAppRouter } from "@app/lib/platform";
 import { useCheckPodName } from "@app/lib/swr/pods";
 import { useCreateSpace } from "@app/lib/swr/spaces";
-import { getPodRoute } from "@app/lib/utils/router";
 import { areOpenPodsAllowed } from "@app/lib/workspace_policies";
+import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -26,7 +25,7 @@ import { useCallback, useEffect, useState } from "react";
 interface CreatePodModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreated: () => void;
+  onCreated: (pod: SpaceType) => void;
   owner: LightWorkspaceType;
 }
 
@@ -45,7 +44,6 @@ export function CreatePodModal({
   const [isPodOpen, setIsPodOpen] = useState(false);
 
   const doCreate = useCreateSpace({ owner });
-  const router = useAppRouter();
 
   const { mutate: mutateSpaceSummary } = usePodConversationsSummary({
     workspaceId: owner.sId,
@@ -110,9 +108,8 @@ export function CreatePodModal({
 
     if (createdSpace) {
       void mutateSpaceSummary();
-      onCreated();
+      onCreated(createdSpace);
       handleClose();
-      void router.push(getPodRoute(owner.sId, createdSpace.sId));
     }
   }, [
     podName,
@@ -122,8 +119,6 @@ export function CreatePodModal({
     onCreated,
     handleClose,
     mutateSpaceSummary,
-    router,
-    owner.sId,
   ]);
 
   const handleKeyPress = useCallback(

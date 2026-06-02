@@ -1,4 +1,5 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import type { TablesConfigurationToolType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { GET_DATABASE_SCHEMA_MARKER } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
@@ -10,6 +11,7 @@ import {
 import {
   EXECUTE_DATABASE_QUERY_TOOL_NAME,
   GET_DATABASE_SCHEMA_TOOL_NAME,
+  LIST_TABLES_TOOL_NAME,
   QUERY_TABLES_V2_TOOLS_METADATA,
 } from "@app/lib/api/actions/servers/query_tables_v2/metadata";
 import {
@@ -18,27 +20,71 @@ import {
   getSchemaContent,
 } from "@app/lib/api/actions/servers/tables_query/schema";
 import config from "@app/lib/api/config";
+import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
 import { Err, Ok } from "@app/types/shared/result";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
-const handlers: ToolHandlers<typeof QUERY_TABLES_V2_TOOLS_METADATA> = {
-  [GET_DATABASE_SCHEMA_TOOL_NAME]: async ({ tables }, { auth }) => {
-    // Fetch table configurations
-    const tableConfigurationsRes = await fetchTableDataSourceConfigurations(
-      auth,
-      tables
+function tablesFromUris(tableUris: string[]): TablesConfigurationToolType {
+  return tableUris.map((uri) => ({
+    uri,
+    mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE,
+  }));
+}
+
+async function resolveTableConfigurations(
+  auth: Authenticator,
+  tables: TablesConfigurationToolType
+) {
+  const tableConfigurationsRes = await fetchTableDataSourceConfigurations(
+    auth,
+    tables
+  );
+  if (tableConfigurationsRes.isErr()) {
+    return new Err(
+      new MCPError(
+        `Error fetching table configurations: ${tableConfigurationsRes.error.message}`
+      )
     );
-    if (tableConfigurationsRes.isErr()) {
-      return new Err(
-        new MCPError(
-          `Error fetching table configurations: ${tableConfigurationsRes.error.message}`
-        )
-      );
+  }
+
+  const tableConfigurations = tableConfigurationsRes.value;
+  if (tableConfigurations.length === 0) {
+    return new Ok({
+      tableConfigurations: [],
+      dataSourceViewsMap: new Map<
+        string,
+        Awaited<ReturnType<typeof DataSourceViewResource.fetchByIds>>[number]
+      >(),
+    });
+  }
+
+  const dataSourceViews = await DataSourceViewResource.fetchByIds(auth, [
+    ...new Set(tableConfigurations.map((t) => t.dataSourceViewId)),
+  ]);
+
+  const accessError = verifyDataSourceViewReadAccess(auth, dataSourceViews);
+  if (accessError) {
+    return new Err(accessError);
+  }
+
+  return new Ok({
+    tableConfigurations,
+    dataSourceViewsMap: new Map(dataSourceViews.map((dsv) => [dsv.sId, dsv])),
+  });
+}
+
+const handlers: ToolHandlers<typeof QUERY_TABLES_V2_TOOLS_METADATA> = {
+  [LIST_TABLES_TOOL_NAME]: async ({ tables }, { auth }) => {
+    const resolvedRes = await resolveTableConfigurations(auth, tables);
+    if (resolvedRes.isErr()) {
+      return resolvedRes;
     }
-    const tableConfigurations = tableConfigurationsRes.value;
+
+    const { tableConfigurations, dataSourceViewsMap } = resolvedRes.value;
     if (tableConfigurations.length === 0) {
       return new Ok([
         {
@@ -47,19 +93,76 @@ const handlers: ToolHandlers<typeof QUERY_TABLES_V2_TOOLS_METADATA> = {
         },
       ]);
     }
-    const dataSourceViews = await DataSourceViewResource.fetchByIds(auth, [
-      ...new Set(tableConfigurations.map((t) => t.dataSourceViewId)),
-    ]);
 
-    // Security check: Verify user has canRead access to all data source views
-    const accessError = verifyDataSourceViewReadAccess(auth, dataSourceViews);
-    if (accessError) {
-      return new Err(accessError);
+    const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+    const listedTables = await concurrentExecutor(
+      tables.map((tableInput, index) => ({
+        uri: tableInput.uri,
+        tableConfiguration: tableConfigurations[index],
+      })),
+      async ({ uri, tableConfiguration }) => {
+        const dataSourceView = dataSourceViewsMap.get(
+          tableConfiguration.dataSourceViewId
+        );
+        if (!dataSourceView || !dataSourceView.dataSource.dustAPIDataSourceId) {
+          return {
+            uri,
+            tableId: tableConfiguration.tableId,
+            error: "Table configuration is outdated or inaccessible.",
+          };
+        }
+
+        const tableResult = await coreAPI.getTable({
+          projectId: dataSourceView.dataSource.dustAPIProjectId,
+          dataSourceId: dataSourceView.dataSource.dustAPIDataSourceId,
+          tableId: tableConfiguration.tableId,
+          viewFilter: dataSourceView.toViewFilter(),
+        });
+
+        if (tableResult.isErr()) {
+          return {
+            uri,
+            tableId: tableConfiguration.tableId,
+            error: tableResult.error.message,
+          };
+        }
+
+        const { table } = tableResult.value;
+        return {
+          uri,
+          tableId: table.table_id,
+          name: table.name,
+          title: table.title,
+          description: table.description,
+        };
+      },
+      { concurrency: 10 }
+    );
+
+    return new Ok([
+      {
+        type: "text",
+        text: JSON.stringify({ tables: listedTables }, null, 2),
+      },
+    ]);
+  },
+
+  [GET_DATABASE_SCHEMA_TOOL_NAME]: async ({ tableUris }, { auth }) => {
+    const tables = tablesFromUris(tableUris);
+    const resolvedRes = await resolveTableConfigurations(auth, tables);
+    if (resolvedRes.isErr()) {
+      return resolvedRes;
     }
 
-    const dataSourceViewsMap = new Map(
-      dataSourceViews.map((dsv) => [dsv.sId, dsv])
-    );
+    const { tableConfigurations, dataSourceViewsMap } = resolvedRes.value;
+    if (tableConfigurations.length === 0) {
+      return new Ok([
+        {
+          type: "text",
+          text: "The agent does not have access to any tables. Please edit the agent's Query Tables tool to add tables, or remove the tool.",
+        },
+      ]);
+    }
 
     // Build table list, filtering out invalid configurations
     const validTables: Array<{
@@ -142,19 +245,12 @@ const handlers: ToolHandlers<typeof QUERY_TABLES_V2_TOOLS_METADATA> = {
 
     const agentLoopRunContext = agentLoopContext.runContext;
 
-    // Fetch table configurations
-    const tableConfigurationsRes = await fetchTableDataSourceConfigurations(
-      auth,
-      tables
-    );
-    if (tableConfigurationsRes.isErr()) {
-      return new Err(
-        new MCPError(
-          `Error fetching table configurations: ${tableConfigurationsRes.error.message}`
-        )
-      );
+    const resolvedRes = await resolveTableConfigurations(auth, tables);
+    if (resolvedRes.isErr()) {
+      return resolvedRes;
     }
-    const tableConfigurations = tableConfigurationsRes.value;
+
+    const { tableConfigurations, dataSourceViewsMap } = resolvedRes.value;
     if (tableConfigurations.length === 0) {
       return new Err(
         new MCPError(
@@ -163,19 +259,7 @@ const handlers: ToolHandlers<typeof QUERY_TABLES_V2_TOOLS_METADATA> = {
         )
       );
     }
-    const dataSourceViews = await DataSourceViewResource.fetchByIds(auth, [
-      ...new Set(tableConfigurations.map((t) => t.dataSourceViewId)),
-    ]);
 
-    // Security check: Verify user has canRead access to all data source views
-    const accessError = verifyDataSourceViewReadAccess(auth, dataSourceViews);
-    if (accessError) {
-      return new Err(accessError);
-    }
-
-    const dataSourceViewsMap = new Map(
-      dataSourceViews.map((dsv) => [dsv.sId, dsv])
-    );
     const dataSourceView = await DataSourceViewResource.fetchById(
       auth,
       tableConfigurations[0].dataSourceViewId

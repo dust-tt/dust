@@ -10,6 +10,11 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  iId: z.string(),
+});
 
 // Mounted under /api/w/:wId/invitations/:iId.
 const app = workspaceApp();
@@ -18,20 +23,11 @@ app.use("*", ensureIsAdmin());
 
 app.post(
   "/",
+  validate("param", ParamsSchema),
   validate("json", PostMemberInvitationBodySchema),
   async (ctx): HandlerResult<PostMemberInvitationsResponseBody> => {
     const auth = ctx.get("auth");
-    const invitationId = ctx.req.param("iId");
-
-    if (!invitationId) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid query parameters, `iId` (string) is required.",
-        },
-      });
-    }
+    const { iId: invitationId } = ctx.req.valid("param");
 
     const invitation = await MembershipInvitationResource.fetchById(
       auth,

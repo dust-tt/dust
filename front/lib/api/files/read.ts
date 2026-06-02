@@ -1,6 +1,10 @@
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
-import type { FileTypeWithMetadata } from "@app/types/files";
+import type {
+  FileShareScope,
+  FileTypeWithMetadata,
+  SharingGrantType,
+} from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -11,6 +15,12 @@ export type ReadInteractiveContentFileError =
 export type InteractiveContentFile = {
   file: FileTypeWithMetadata;
   content: string;
+  shareInfo: {
+    scope: FileShareScope;
+    sharedAt: number;
+    shareUrl: string;
+  } | null;
+  sharingGrants: SharingGrantType[];
 };
 
 /**
@@ -39,5 +49,15 @@ export async function readInteractiveContentFile(
   }
   const content = Buffer.concat(chunks).toString("utf-8");
 
-  return new Ok({ file: file.toJSONWithMetadata(auth), content });
+  const [shareInfo, sharingGrants] = await Promise.all([
+    file.getShareInfo(),
+    file.listAllSharingGrants(),
+  ]);
+
+  return new Ok({
+    file: file.toJSONWithMetadata(auth),
+    content,
+    shareInfo,
+    sharingGrants,
+  });
 }

@@ -1,8 +1,6 @@
 import {
   useDefaultUserSpendLimit,
   useUpdateDefaultUserSpendLimit,
-  useUpdateUsageSettings,
-  useUsageSettings,
 } from "@app/lib/swr/usage_settings";
 import {
   MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
@@ -14,7 +12,6 @@ import {
   Input,
   Page,
   SettingsList,
-  SliderToggle,
 } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
@@ -23,9 +20,6 @@ interface UsageSettingsCardProps {
 }
 
 export function UsageSettingsCard({ workspaceId }: UsageSettingsCardProps) {
-  const { usageSettings } = useUsageSettings({ workspaceId });
-  const { doUpdateUsageSettings } = useUpdateUsageSettings({ workspaceId });
-
   const { defaultUserSpendLimit, isDefaultUserSpendLimitLoading } =
     useDefaultUserSpendLimit({ workspaceId });
   const { doUpdateDefaultUserSpendLimit } = useUpdateDefaultUserSpendLimit({
@@ -44,19 +38,6 @@ export function UsageSettingsCard({ workspaceId }: UsageSettingsCardProps) {
       );
     }
   }, [defaultUserSpendLimit]);
-
-  const [isSavingAutoUpgrade, setIsSavingAutoUpgrade] = useState(false);
-
-  const handleToggleAutoUpgradeFreeToPro = async () => {
-    setIsSavingAutoUpgrade(true);
-    try {
-      await doUpdateUsageSettings({
-        autoUpgradeFreeToPro: !usageSettings.autoUpgradeFreeToPro,
-      });
-    } finally {
-      setIsSavingAutoUpgrade(false);
-    }
-  };
 
   const handleCommitDefaultLimit = async () => {
     const parsed = Number(defaultLimitInput);
@@ -90,17 +71,6 @@ export function UsageSettingsCard({ workspaceId }: UsageSettingsCardProps) {
         Settings
       </span>
       <SettingsList>
-        <SettingsList.Row
-          title="Auto upgrade Free to Pro"
-          description="Automatically upgrade free users to pro plan when they reach their limit"
-          action={
-            <SliderToggle
-              selected={usageSettings.autoUpgradeFreeToPro}
-              disabled={isSavingAutoUpgrade}
-              onClick={() => void handleToggleAutoUpgradeFreeToPro()}
-            />
-          }
-        />
         <SettingsList.Row
           title="Default usage limit"
           description="Define the default usage limit for all the users in your workspace"

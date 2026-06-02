@@ -4,10 +4,6 @@ FROM node:24.14.0-slim AS base-deps
 RUN apt-get update && \
   apt-get install -y libjemalloc2 libjemalloc-dev
 
-# Only non-Next.js build args needed for base deps
-ARG COMMIT_HASH
-ARG COMMIT_HASH_LONG
-
 RUN npm install -g npm@11.11.0
 
 WORKDIR /app
@@ -46,6 +42,9 @@ RUN npx tsx scripts/fetch-custom-models.ts
 # Remove test files (shared optimization)
 RUN find . -name "*.test.ts" -delete
 RUN find . -name "*.test.tsx" -delete
+
+# Compile migration script so all runtime images have dist/migrate.js without needing TypeScript sources
+RUN npx esbuild scripts/migrate.ts --bundle --platform=node --target=node22 --alias:@app=. --packages=external --outfile=dist/migrate.js --sourcemap
 
 # Copy front-api source (server.ts, app.ts, routes/, middleware/)
 WORKDIR /app/front-api
@@ -184,6 +183,12 @@ COPY --from=front-nextjs-build /app/front/public ./public
 COPY --from=base-deps /app/front/admin ./admin
 # Copy scripts directory
 COPY --from=base-deps /app/front/scripts ./scripts
+# Copy compiled migration script (built in base-deps, works without TypeScript sources)
+COPY --from=base-deps /app/front/dist/migrate.js ./dist/migrate.js
+COPY --from=base-deps /app/front/dist/migrate.js.map ./dist/migrate.js.map
+# Copy migration scripts
+COPY --from=base-deps /app/front/migrations/pre-deploy ./migrations/pre-deploy
+COPY --from=base-deps /app/front/migrations/post-deploy ./migrations/post-deploy
 
 # Re-declare build args needed at runtime
 ARG NEXT_PUBLIC_DUST_API_URL
@@ -353,6 +358,16 @@ ARG NEXT_PUBLIC_DUST_APP_URL
 ENV NEXT_PUBLIC_DUST_API_URL=$NEXT_PUBLIC_DUST_API_URL
 ENV NEXT_PUBLIC_DUST_STATIC_WEBSITE_URL=$NEXT_PUBLIC_DUST_STATIC_WEBSITE_URL
 ENV NEXT_PUBLIC_DUST_APP_URL=$NEXT_PUBLIC_DUST_APP_URL
+
+# Unlike the Next.js standalone `front` image, this server is esbuild-bundled, so
+# `NEXT_PUBLIC_*` references are NOT inlined at build time — they remain runtime
+# `process.env` lookups and must be provided as runtime env (same as the workers image).
+ARG NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER
+ARG NEXT_PUBLIC_NOVU_API_URL
+ARG NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL
+ENV NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER=$NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER
+ENV NEXT_PUBLIC_NOVU_API_URL=$NEXT_PUBLIC_NOVU_API_URL
+ENV NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL=$NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL
 
 # Front's transitive runtime deps (e.g. hot-shots) may live in
 # /app/front/node_modules rather than the hoisted /app/node_modules, and node's

@@ -694,7 +694,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "claude_4_5_opus_feature"
   | "claude_4_opus_feature"
   | "sessions_branching"
-  | "projects"
   | "databricks_tool"
   | "deepseek_feature"
   | "deepseek_r1_global_agent_feature"
@@ -704,10 +703,12 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "discord_bot"
   | "dummy_feature_for_flag_testing"
   | "dust_academy"
+  | "dust_agent_gpt_5_5_default"
   | "dust_internal_global_agents"
   | "dust_no_spa"
   | "dust_spa"
   | "fireworks_new_model_feature"
+  | "frames_skill_v2"
   | "gemini_3_1_pro_feature"
   | "clari_copilot_mcp"
   | "google_sheets_tool"
@@ -719,6 +720,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "labs_transcripts"
   | "legacy_dust_apps"
   | "netsuite_mcp"
+  | "nested_skills"
   | "noop_model_feature"
   | "notion_private_integration"
   | "allow_old_notion_mcp"
@@ -760,6 +762,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "new_file_explorer"
   | "use_vertex_for_supported_models"
   | "metronome_billing_usage_page"
+  | "user_settings_v2"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -1197,6 +1200,71 @@ export type ConversationWithoutContentPublicType = z.infer<
   typeof ConversationWithoutContentSchema
 >;
 export type ConversationPublicType = z.infer<typeof ConversationSchema>;
+
+/**
+ * Subset of {@link ConversationSchema} used by connectors when syncing conversations
+ * to a data source (dust_project). `content` is the latest version of each message
+ * (no per-message version arrays). Matches fields read in sync_conversation and
+ * conversation_formatting.
+ */
+const ConversationForDataSourceSyncUserSchema = UserSchema.pick({
+  sId: true,
+  fullName: true,
+  username: true,
+  email: true,
+});
+
+const ConversationForDataSourceSyncContentFragmentSchema = z.object({
+  type: z.literal("content_fragment"),
+  created: z.number(),
+  visibility: VisibilitySchema,
+  contentFragmentId: z.string(),
+  contentType: SupportedContentFragmentTypeSchema,
+  title: z.string(),
+  version: z.number(),
+  sourceUrl: z.string().nullable(),
+});
+
+const ConversationForDataSourceSyncUserMessageSchema = z.object({
+  type: z.literal("user_message"),
+  created: z.number(),
+  visibility: VisibilitySchema,
+  user: ConversationForDataSourceSyncUserSchema.nullable(),
+  content: z.string(),
+  contentFragments: z.array(ConversationForDataSourceSyncContentFragmentSchema),
+});
+
+const ConversationForDataSourceSyncAgentMessageSchema = z.object({
+  type: z.literal("agent_message"),
+  created: z.number(),
+  visibility: VisibilitySchema,
+  configuration: z.object({
+    name: z.string(),
+  }),
+  content: z.string().nullable(),
+});
+
+const ConversationForDataSourceSyncMessageSchema = z.discriminatedUnion(
+  "type",
+  [
+    ConversationForDataSourceSyncUserMessageSchema,
+    ConversationForDataSourceSyncAgentMessageSchema,
+  ]
+);
+
+export const ConversationForDataSourceSyncSchema = z.object({
+  sId: z.string(),
+  created: z.number(),
+  updated: z.number().optional(),
+  title: z.string().nullable(),
+  visibility: ConversationVisibilitySchema,
+  url: z.string(),
+  content: z.array(ConversationForDataSourceSyncMessageSchema),
+});
+
+export type ConversationForDataSourceSyncType = z.infer<
+  typeof ConversationForDataSourceSyncSchema
+>;
 
 const ConversationMessageReactionsSchema = z.array(
   z.object({
@@ -2626,7 +2694,7 @@ export type CheckUpsertQueueResponseType = z.infer<
 >;
 
 export const GetSpaceConversationsForDataSourceResponseSchema = z.object({
-  conversations: z.array(ConversationSchema),
+  conversations: z.array(ConversationForDataSourceSyncSchema),
 });
 export type GetSpaceConversationsForDataSourceResponseType = z.infer<
   typeof GetSpaceConversationsForDataSourceResponseSchema
@@ -2977,6 +3045,7 @@ const AnalyticsExportTableSchema = z.enum([
   "skill_usage",
   "tool_usage",
   "messages",
+  "feedback",
 ]);
 
 const AnalyticsDateSchema = z

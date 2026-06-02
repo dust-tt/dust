@@ -144,6 +144,7 @@ export function ToolValidationDetails({
         input={blockedAction.inputs}
         owner={owner}
         user={user}
+        agentName={blockedAction.metadata.agentName}
         conversationId={conversationId}
       />
     );

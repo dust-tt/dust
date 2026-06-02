@@ -1,7 +1,8 @@
-import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
+import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeFileDetails } from "@app/poke/swr/frame_details";
+import { dateToHumanReadable } from "@app/types/shared/utils/date_utils";
 import {
   Button,
   Chip,
@@ -16,16 +17,29 @@ import {
 
 export function FramePage() {
   const owner = useWorkspace();
-  useDocumentTitle(`Poke - ${owner.name} - File`);
 
   const sId = useRequiredPathParam("sId");
-  const { file, content, isFileLoading, isFileError } = usePokeFileDetails({
+  const {
+    file,
+    content,
+    shareInfo,
+    sharingGrants,
+    isFileLoading,
+    isFileError,
+  } = usePokeFileDetails({
     owner,
+    sId,
+  });
+
+  usePokePageMetadata({
+    name: file?.fileName,
+    subtitle: owner.name,
     sId,
   });
 
   const [isCopiedContent, copyContent] = useCopyToClipboard();
   const [isCopiedMetadata, copyMetadata] = useCopyToClipboard();
+  const [isCopiedShareUrl, copyShareUrl] = useCopyToClipboard();
 
   if (isFileLoading) {
     return (
@@ -88,7 +102,7 @@ export function FramePage() {
 
         {/* Metadata Card */}
         <div className="rounded-lg border">
-          <div className="rounded-t-lg border-b bg-muted px-4 py-2">
+          <div className="rounded-t-lg border-b bg-muted px-4 py-2 dark:bg-muted-background-night">
             <h3 className="font-medium">File Metadata</h3>
           </div>
           <div className="grid grid-cols-2 gap-4 p-4">
@@ -134,7 +148,7 @@ export function FramePage() {
         {file.useCaseMetadata &&
           Object.keys(file.useCaseMetadata).length > 0 && (
             <div className="rounded-lg border">
-              <div className="flex items-center justify-between rounded-t-lg border-b bg-muted px-4 py-2">
+              <div className="flex items-center justify-between rounded-t-lg border-b bg-muted px-4 py-2 dark:bg-muted-background-night">
                 <h3 className="font-medium">Use Case Metadata</h3>
                 <Button
                   label={isCopiedMetadata ? "Copied!" : "Copy"}
@@ -157,10 +171,158 @@ export function FramePage() {
             </div>
           )}
 
+        {/* Sharing Settings Card */}
+        <div className="rounded-lg border">
+          <div className="rounded-t-lg border-b bg-muted px-4 py-2 dark:bg-muted-background-night">
+            <h3 className="font-medium">Sharing Settings</h3>
+          </div>
+          <div className="p-4">
+            {shareInfo ? (
+              <div className="flex flex-col gap-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <div className="text-sm text-muted-foreground">
+                      Share Scope
+                    </div>
+                    <div className="font-mono text-sm">{shareInfo.scope}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-muted-foreground">
+                      Shared At
+                    </div>
+                    <div className="font-mono text-sm">
+                      {dateToHumanReadable(new Date(shareInfo.sharedAt))}
+                    </div>
+                  </div>
+                  <div className="col-span-2">
+                    <div className="text-sm text-muted-foreground">
+                      Share URL
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="truncate font-mono text-xs">
+                        {shareInfo.shareUrl}
+                      </span>
+                      <Button
+                        label={isCopiedShareUrl ? "Copied!" : "Copy"}
+                        variant="ghost"
+                        size="xs"
+                        icon={
+                          isCopiedShareUrl ? ClipboardCheckIcon : ClipboardIcon
+                        }
+                        onClick={() => copyShareUrl(shareInfo.shareUrl)}
+                      />
+                    </div>
+                  </div>
+                </div>
+                {(() => {
+                  const activeGrants = sharingGrants.filter(
+                    (g) => !g.revokedAt
+                  );
+                  const revokedGrants = sharingGrants.filter(
+                    (g) => g.revokedAt
+                  );
+                  return (
+                    <>
+                      <div>
+                        <div className="mb-2 text-sm text-muted-foreground">
+                          Active Grants ({activeGrants.length})
+                        </div>
+                        {activeGrants.length > 0 ? (
+                          <div className="flex flex-col gap-2">
+                            {activeGrants.map((grant) => (
+                              <div
+                                key={grant.id}
+                                className="flex items-center justify-between rounded border px-3 py-2 text-sm"
+                              >
+                                <span className="font-mono">{grant.email}</span>
+                                <div className="flex items-center gap-3 text-muted-foreground">
+                                  {grant.blockedByPolicy && (
+                                    <Chip
+                                      color="warning"
+                                      label="Blocked by policy"
+                                      size="xs"
+                                    />
+                                  )}
+                                  <span className="text-xs">
+                                    Granted{" "}
+                                    {dateToHumanReadable(
+                                      new Date(grant.grantedAt)
+                                    )}
+                                  </span>
+                                  {grant.grantedBy && (
+                                    <span className="text-xs">
+                                      by {grant.grantedBy.fullName}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-sm text-muted-foreground">
+                            No active grants.
+                          </div>
+                        )}
+                      </div>
+                      {revokedGrants.length > 0 && (
+                        <div>
+                          <div className="mb-2 text-sm text-muted-foreground">
+                            Revoked Grants ({revokedGrants.length})
+                          </div>
+                          <div className="flex flex-col gap-2">
+                            {revokedGrants.map((grant) => (
+                              <div
+                                key={grant.id}
+                                className="flex items-center justify-between rounded border px-3 py-2 text-sm opacity-60"
+                              >
+                                <span className="font-mono line-through">
+                                  {grant.email}
+                                </span>
+                                <div className="flex items-center gap-3 text-muted-foreground">
+                                  <Chip
+                                    color="primary"
+                                    label="Revoked"
+                                    size="xs"
+                                  />
+                                  <span className="text-xs">
+                                    Revoked{" "}
+                                    {dateToHumanReadable(
+                                      new Date(grant.revokedAt!)
+                                    )}
+                                  </span>
+                                  <span className="text-xs">
+                                    Granted{" "}
+                                    {dateToHumanReadable(
+                                      new Date(grant.grantedAt)
+                                    )}
+                                  </span>
+                                  {grant.grantedBy && (
+                                    <span className="text-xs">
+                                      by {grant.grantedBy.fullName}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+            ) : (
+              <div className="text-sm text-muted-foreground">
+                No sharing configured.
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Content Card */}
         {content && (
           <div className="rounded-lg border">
-            <div className="flex items-center justify-between rounded-t-lg border-b bg-muted px-4 py-2">
+            <div className="flex items-center justify-between rounded-t-lg border-b bg-muted px-4 py-2 dark:bg-muted-background-night">
               <h3 className="font-medium">File Content</h3>
               <Button
                 label={isCopiedContent ? "Copied!" : "Copy Content"}

@@ -28,9 +28,13 @@ import {
 } from "@app/lib/metronome/mau_sync";
 import {
   hasContractSeatSubscription,
+  remapMembershipSeatTypesForContract,
   syncSeatCount,
 } from "@app/lib/metronome/seats";
-import { LEGACY_ENTERPRISE_PACKAGE_ALIAS } from "@app/lib/metronome/types";
+import {
+  LEGACY_ENTERPRISE_PACKAGE_ALIAS,
+  type MetronomeStripeCollectionMethod,
+} from "@app/lib/metronome/types";
 import {
   resolveCurrencyFromStripe,
   resolvePackageAliasForCurrency,
@@ -73,9 +77,11 @@ import { metronomeAmount } from "./amounts";
 export async function ensureMetronomeCustomerForWorkspace({
   workspace,
   stripeCustomerId,
+  stripeCollectionMethod,
 }: {
   workspace: LightWorkspaceType;
   stripeCustomerId?: string;
+  stripeCollectionMethod?: MetronomeStripeCollectionMethod;
 }): Promise<Result<{ metronomeCustomerId: string }, Error>> {
   let metronomeCustomerId: string | null = workspace.metronomeCustomerId;
 
@@ -91,6 +97,7 @@ export async function ensureMetronomeCustomerForWorkspace({
       workspaceId: workspace.sId,
       workspaceName: workspace.name,
       stripeCustomerId,
+      stripeCollectionMethod,
     });
     if (createResult.isErr()) {
       return new Err(createResult.error);
@@ -117,6 +124,7 @@ export async function ensureMetronomeCustomerForWorkspace({
     const billingResult = await ensureMetronomeStripeBillingConfig({
       metronomeCustomerId,
       stripeCustomerId,
+      stripeCollectionMethod,
     });
     if (billingResult.isErr()) {
       return new Err(billingResult.error);
@@ -298,6 +306,22 @@ export async function provisionMetronomeContract({
         )
       );
     }
+  }
+
+  // Remap existing memberships to seat types billed by the new contract BEFORE
+  // syncing, so no member lands on a seat type the new contract doesn't bill
+  // (which would leave them unbilled). For future-dated switches this schedules
+  // the change at the contract start; the sync below then reconciles the new
+  // contract against the (current or scheduled) membership seat types.
+  const remapResult = await remapMembershipSeatTypesForContract({
+    metronomeCustomerId,
+    contractId: metronomeContractId,
+    workspace,
+    swapAt,
+    startingAt: alignedStart,
+  });
+  if (remapResult.isErr()) {
+    return new Err(remapResult.error);
   }
 
   const syncResult = await syncContractQuantities(
@@ -999,6 +1023,68 @@ export async function applyEnterpriseOverrides({
     { workspaceId, contractId, billingMode: pricing.billingMode },
     "Enterprise overrides applied"
   );
+}
+
+/**
+ * A per-seat FLAT override to apply on a contract. When `entitled` is true (the
+ * default) it sets `productId`'s rate to `priceNative` from `startingAt`; when
+ * `entitled` is false it disables the seat product (de-entitles it) — used when
+ * an operator unchecks a seat the package would otherwise sell. `priceNative` is
+ * in Metronome's fiat unit (cents for USD, whole units for EUR) — the same unit
+ * the rate card uses, so it is not labelled `Cents` (that would be wrong for
+ * EUR); pass 0 when disabling. `billingFrequency` disambiguates the seat
+ * product's subscription rate (monthly vs annual seats).
+ */
+export interface SeatRateOverride {
+  productId: string;
+  billingFrequency: "MONTHLY" | "ANNUAL";
+  priceNative: number;
+  creditTypeId: string;
+  entitled: boolean;
+}
+
+/**
+ * Apply FLAT per-seat overrides on a provisioned contract. Seats are provisioned
+ * from the package at its default override rate; this overwrites those rates
+ * with operator-specified values (e.g. a negotiated seat price), entitles seats
+ * the package does not sell by default, or disables seats the operator opted
+ * out of — all effective at `startingAt`. No-op when `overrides` is empty.
+ */
+export async function applySeatRateOverrides({
+  metronomeCustomerId,
+  contractId,
+  startingAt,
+  overrides,
+}: {
+  metronomeCustomerId: string;
+  contractId: string;
+  startingAt: string;
+  overrides: SeatRateOverride[];
+}): Promise<Result<void, Error>> {
+  if (overrides.length === 0) {
+    return new Ok(undefined);
+  }
+  const editResult = await editMetronomeContract({
+    customer_id: metronomeCustomerId,
+    contract_id: contractId,
+    add_overrides: overrides.map((o) => ({
+      starting_at: startingAt,
+      type: "OVERWRITE" as const,
+      entitled: o.entitled,
+      override_specifiers: [
+        { product_id: o.productId, billing_frequency: o.billingFrequency },
+      ],
+      overwrite_rate: {
+        rate_type: "FLAT" as const,
+        price: o.priceNative,
+        credit_type_id: o.creditTypeId,
+      },
+    })),
+  });
+  if (editResult.isErr()) {
+    return new Err(editResult.error);
+  }
+  return new Ok(undefined);
 }
 
 /**

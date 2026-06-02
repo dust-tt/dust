@@ -30,6 +30,7 @@ import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_res
 import { AppResource } from "@app/lib/resources/app_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { CreditResource } from "@app/lib/resources/credit_resource";
+import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
@@ -75,6 +76,7 @@ import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { WorkspaceSeatLimitResource } from "@app/lib/resources/workspace_seat_limit_resource";
 import { WorkspaceVerificationAttemptResource } from "@app/lib/resources/workspace_verification_attempt_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -772,9 +774,11 @@ export async function deleteWorkspaceActivity({
     where: { workspaceId: workspace.id },
   });
   await CreditResource.deleteAllForWorkspace(auth);
+  await CreditUsageConfigurationResource.deleteAllForWorkspace(auth);
   await ProgrammaticUsageConfigurationResource.deleteAllForWorkspace(auth);
   await SelfImprovingSkillsUsageResource.deleteAllForWorkspace(auth);
   await WorkspaceVerificationAttemptResource.deleteAllForWorkspace(auth);
+  await WorkspaceSeatLimitResource.deleteAllForWorkspace(auth);
 
   hardDeleteLogger.info({ workspaceId }, "Deleting Workspace");
 

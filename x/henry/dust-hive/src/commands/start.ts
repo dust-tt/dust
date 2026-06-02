@@ -1,4 +1,4 @@
-import { withEnvironment } from "../lib/commands";
+import { withEnvironments } from "../lib/commands";
 import { logger } from "../lib/logger";
 import { isServiceRunning } from "../lib/process";
 import { startService, waitForServiceReady } from "../lib/registry";
@@ -6,7 +6,7 @@ import { Ok } from "../lib/result";
 import { COLD_STATE_SERVICES } from "../lib/services";
 import { getStateInfo } from "../lib/state";
 
-export const startCommand = withEnvironment("start", async (env) => {
+export const startCommand = withEnvironments("start", async (env) => {
   const stateInfo = await getStateInfo(env);
   if (stateInfo.state !== "stopped") {
     if (stateInfo.state === "cold") {

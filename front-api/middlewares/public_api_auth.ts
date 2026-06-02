@@ -1,10 +1,8 @@
-import { verifySandboxExecToken } from "@app/lib/api/sandbox/access_tokens";
 import {
   Authenticator,
   getAPIKey,
   getApiKeyNameFromHeaders,
   getSessionFromBearerToken,
-  isSandboxTokenPrefix,
 } from "@app/lib/auth";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getClientIp } from "@app/lib/utils/request";
@@ -127,31 +125,7 @@ export const publicApiAuth = createMiddleware<PublicApiCtx>(
 
     const headers = readHeaders(ctx);
 
-    // 1) Sandbox token.
-    const token = authHeader.replace("Bearer ", "");
-    if (token && isSandboxTokenPrefix(token)) {
-      const payload = await verifySandboxExecToken(token);
-      if (!payload) {
-        return apiError(ctx, {
-          status_code: 401,
-          api_error: {
-            type: "invalid_sandbox_token_error",
-            message: "The sandbox token is invalid or expired.",
-          },
-        });
-      }
-      const authRes = await Authenticator.fromSandboxToken(payload, wId);
-      if (authRes.isErr()) {
-        return apiError(ctx, authRes.error);
-      }
-      const auth = authRes.value;
-      applyClientIp(auth, headers);
-      ctx.set("auth", auth);
-      await next();
-      return;
-    }
-
-    // 2) OAuth bearer token (resolves to a workspace user session).
+    // 1) OAuth bearer token (resolves to a workspace user session).
     const bearerRes = await getSessionFromBearerToken(authHeader);
     if (bearerRes.isErr()) {
       return apiError(ctx, {
@@ -196,7 +170,7 @@ export const publicApiAuth = createMiddleware<PublicApiCtx>(
       return;
     }
 
-    // 3) API key.
+    // 2) API key.
     const keyRes = await getAPIKey(authHeader);
     if (keyRes.isErr()) {
       return apiError(ctx, keyRes.error);

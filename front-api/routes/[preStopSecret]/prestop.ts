@@ -1,11 +1,17 @@
 import { runPreStop } from "@app/lib/api/prestop";
 import logger from "@app/logger/logger";
 import { createHono } from "@front-api/lib/hono";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  preStopSecret: z.string(),
+});
 
 const app = createHono();
 
-app.post("/", async (ctx) => {
-  const preStopSecret = ctx.req.param("preStopSecret");
+app.post("/", validate("param", ParamsSchema), async (ctx) => {
+  const { preStopSecret } = ctx.req.valid("param");
   const { PRESTOP_SECRET } = process.env;
   if (!PRESTOP_SECRET) {
     logger.error("PRESTOP_SECRET is not defined");

@@ -1,74 +1,97 @@
 import {
+  AnimatedText,
   ArchiveIcon,
   ArrowDownOnSquareIcon,
+  ArrowRightIcon,
   ArrowUpOnSquareIcon,
   Avatar,
-  BookOpenIcon,
   Button,
   ButtonsSwitch,
   ButtonsSwitchList,
-  Card,
-  CardGrid,
   ChatBubbleLeftRightIcon,
+  CheckDoubleIcon,
   CheckIcon,
-  Checkbox,
   Chip,
-  CircleIcon,
-  Cog6ToothIcon,
+  CloudArrowLeftRightIcon,
+  CloudArrowUpIcon,
   ContentMessage,
   ConversationListItem,
-  DataTable,
   Dialog,
   DialogContainer,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DocumentIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSearchbar,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   EmptyCTA,
   EmptyCTAButton,
-  ExternalLinkIcon,
+  FolderIcon,
   Icon,
-  InformationCircleIcon,
   Input,
+  ListCheckIcon,
   ListGroup,
+  ListIcon,
   ListItemSection,
-  LogoutIcon,
-  MagicIcon,
   MoreIcon,
   ReplySection,
   SearchInput,
   SearchInputWithPopover,
+  Separator,
   Sheet,
   SheetContainer,
   SheetContent,
   SheetHeader,
   SheetTitle,
   SliderToggle,
-  SquareIcon,
+  SparklesIcon,
   Tabs,
   TabsContent,
-  TabsList,
-  TabsTrigger,
-  ToolsIcon,
-  Tooltip,
   TrashIcon,
-  TriangleIcon,
   TypingAnimation,
   UserGroupIcon,
-  WindIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { UniversalSearchItem } from "@dust-tt/sparkle/components/UniversalSearchItem";
 import { cn } from "@sparkle/lib/utils";
 import type { ColumnDef } from "@tanstack/react-table";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type DragEvent,
+  type ReactNode,
+} from "react";
 
 import { getAgentById } from "../data/agents";
-import { getDataSourcesBySpaceId } from "../data/dataSources";
+import {
+  getDataSourceChildren,
+  getDataSourceIcon,
+  getDataSourcesBySpaceId,
+  getDataSourcesInFolderTree,
+  getFolderPath,
+  getItemTypeLabel,
+  isDataSourceFolder,
+  moveDataSource,
+  sortDataSourcesForDisplay,
+} from "../data/dataSources";
+import {
+  enrichMyPodConversationParticipants,
+  matchesMyPodConversationFilter,
+  type MyPodConversationFilter,
+} from "../data/myPod";
 import type {
   Agent,
   Conversation,
@@ -76,9 +99,19 @@ import type {
   Space,
   User,
 } from "../data/types";
+import { getRandomGreetingForName } from "../data/greetings";
 import { getUserById } from "../data/users";
-import { InputBar } from "./InputBar";
-import { WhatsNewDeltaList } from "./WhatsNewDeltaList";
+import {
+  DATA_SOURCE_FILE_DRAG_MIME,
+  DATA_SOURCE_FILE_NAME_DRAG_MIME,
+} from "./FreeButtonSwitch";
+import { Breadcrumbs, type BreadcrumbsItem } from "./BreadcrumbsDnd";
+import { DataTable } from "./DataTableDnd";
+import { FilePreviewPanel } from "./FilePreviewPanel";
+import { InputBar, type InputBarTaskCommand } from "./InputBar";
+import { SuggestionBox } from "./SuggestionBox";
+import { TaskItem } from "./TaskItem";
+import { TodoInputBar } from "./TodoInputBar";
 
 interface GroupConversationViewProps {
   space: Space;
@@ -96,6 +129,16 @@ interface GroupConversationViewProps {
   isProjectJoined?: boolean;
   onJoinProject?: () => void;
   onLeaveProject?: () => void;
+  selectedConversationId?: string | null;
+  activeTab?: string;
+  onTabChange?: (tab: string) => void;
+  dynamicFileTabIds?: string[];
+  onAddFileToTopbar?: (fileId: string) => void;
+  onFileDragChange?: (fileId: string | null, fileName?: string | null) => void;
+  fileToRevealInKnowledge?: string | null;
+  onFileToRevealInKnowledgeHandled?: () => void;
+  podVariant?: "shared" | "personal";
+  currentUserId?: string;
 }
 
 interface Member {
@@ -120,6 +163,15 @@ type UniversalSearchItem =
       description: string;
       score: number;
     };
+
+function getParticipantSeedId(participant: {
+  type: "user" | "agent";
+  data: User | Agent;
+}) {
+  return participant.type === "user"
+    ? (participant.data as User).id
+    : (participant.data as Agent).id;
+}
 
 // Helper function to get random participants for a conversation
 function getRandomParticipants(
@@ -146,10 +198,14 @@ function getRandomParticipants(
     }
   });
 
-  // Shuffle and select 1-6 participants
-  const shuffled = [...allParticipants].sort(() => Math.random() - 0.5);
+  // Shuffle and select 1-6 participants deterministically per row.
+  const shuffled = [...allParticipants].sort(
+    (a, b) =>
+      seededRandom(`${conversation.id}-${getParticipantSeedId(a)}`, 0) -
+      seededRandom(`${conversation.id}-${getParticipantSeedId(b)}`, 0)
+  );
   const count = Math.min(
-    Math.max(1, Math.floor(Math.random() * 6) + 1),
+    Math.max(1, Math.floor(seededRandom(conversation.id, 1) * 6) + 1),
     shuffled.length
   );
   return shuffled.slice(0, count);
@@ -165,9 +221,70 @@ function getRandomCreator(
   }
   const creatorId =
     conversation.userParticipants[
-      Math.floor(Math.random() * conversation.userParticipants.length)
+      Math.floor(
+        seededRandom(`${conversation.id}-creator`, 0) *
+          conversation.userParticipants.length
+      )
     ];
   return getUserById(creatorId) || null;
+}
+
+type ConversationInitiator = {
+  name: string;
+  portrait?: string;
+  emoji?: string;
+  backgroundColor?: string;
+  isRounded?: boolean;
+};
+
+function getConversationInitiator(
+  conversation: Conversation,
+  _users: User[],
+  _agents: Agent[]
+): ConversationInitiator | null {
+  const preferUser = seededRandom(`${conversation.id}-initiator`, 0) < 0.5;
+
+  const pickUser = (): ConversationInitiator | null => {
+    if (conversation.userParticipants.length === 0) return null;
+    const userId =
+      conversation.userParticipants[
+        Math.floor(
+          seededRandom(`${conversation.id}-initiator-user`, 0) *
+            conversation.userParticipants.length
+        )
+      ];
+    const user = getUserById(userId);
+    if (!user) return null;
+    return {
+      name: user.fullName,
+      portrait: user.portrait,
+      isRounded: true,
+    };
+  };
+
+  const pickAgent = (): ConversationInitiator | null => {
+    if (conversation.agentParticipants.length === 0) return null;
+    const agentId =
+      conversation.agentParticipants[
+        Math.floor(
+          seededRandom(`${conversation.id}-initiator-agent`, 0) *
+            conversation.agentParticipants.length
+        )
+      ];
+    const agent = getAgentById(agentId);
+    if (!agent) return null;
+    return {
+      name: agent.name,
+      emoji: agent.emoji,
+      backgroundColor: agent.backgroundColor,
+      isRounded: false,
+    };
+  };
+
+  if (preferUser) {
+    return pickUser() ?? pickAgent();
+  }
+  return pickAgent() ?? pickUser();
 }
 
 // Convert participants to Avatar props format for Avatar.Stack
@@ -224,10 +341,42 @@ function getDateBucket(
   }
 }
 
+const GENERATED_CONVERSATION_TITLES = [
+  "Scope alignment notes",
+  "Budget trade-off review",
+  "Launch checklist sync",
+  "Customer feedback triage",
+  "Milestone planning thread",
+  "Design direction review",
+  "Open blockers roundup",
+  "Rollout readiness check",
+  "Data quality investigation",
+  "Stakeholder update draft",
+  "Implementation plan review",
+  "Risk register cleanup",
+  "Experiment results debrief",
+  "Dependency mapping session",
+  "Support handoff notes",
+  "Roadmap decision recap",
+  "Integration follow-up",
+  "QA findings review",
+  "Weekly progress pulse",
+  "Next steps planning",
+];
+
+const GENERATED_CONVERSATION_DESCRIPTION_TEMPLATES = [
+  "Project discussion covering {title}, owners, open questions, and the next decisions needed to keep work moving.",
+  "Follow-up thread for {title}, including context from recent conversations and proposed action items.",
+  "Working notes about {title}, with blockers, assumptions, and coordination details for the project team.",
+  "Planning conversation focused on {title}, timelines, dependencies, and expected outcomes.",
+  "Review thread for {title}, summarizing what changed, what remains unclear, and who should follow up.",
+];
+
 // Helper function to generate more conversations with varied dates
 function generateConversationsWithDates(
   conversations: Conversation[],
-  count: number
+  count: number,
+  seed: string
 ): Conversation[] {
   const now = new Date();
   const generated: Conversation[] = [];
@@ -235,9 +384,23 @@ function generateConversationsWithDates(
   // Duplicate and vary existing conversations
   for (let i = 0; i < count; i++) {
     const baseConversation = conversations[i % conversations.length];
-    const daysAgo = Math.floor(Math.random() * 35); // Up to 35 days ago
-    const hoursAgo = Math.floor(Math.random() * 24);
-    const minutesAgo = Math.floor(Math.random() * 60);
+    const rowSeed = `${seed}-${baseConversation.id}-${i}`;
+    const daysAgo = Math.floor(seededRandom(rowSeed, 0) * 35); // Up to 35 days ago
+    const hoursAgo = Math.floor(seededRandom(rowSeed, 1) * 24);
+    const minutesAgo = Math.floor(seededRandom(rowSeed, 2) * 60);
+    const title =
+      GENERATED_CONVERSATION_TITLES[
+        Math.floor(
+          seededRandom(rowSeed, 3) * GENERATED_CONVERSATION_TITLES.length
+        )
+      ];
+    const descriptionTemplate =
+      GENERATED_CONVERSATION_DESCRIPTION_TEMPLATES[
+        Math.floor(
+          seededRandom(rowSeed, 4) *
+            GENERATED_CONVERSATION_DESCRIPTION_TEMPLATES.length
+        )
+      ];
 
     const updatedAt = new Date(now);
     updatedAt.setDate(updatedAt.getDate() - daysAgo);
@@ -245,14 +408,17 @@ function generateConversationsWithDates(
     updatedAt.setMinutes(updatedAt.getMinutes() - minutesAgo);
 
     const createdAt = new Date(updatedAt);
-    createdAt.setDate(createdAt.getDate() - Math.floor(Math.random() * 5));
+    createdAt.setDate(
+      createdAt.getDate() - Math.floor(seededRandom(rowSeed, 5) * 5)
+    );
 
     generated.push({
       ...baseConversation,
       id: `${baseConversation.id}-${i}`,
       updatedAt,
       createdAt,
-      title: baseConversation.title,
+      title,
+      description: descriptionTemplate.replace("{title}", title.toLowerCase()),
     });
   }
 
@@ -266,6 +432,233 @@ function seededRandom(seed: string, index: number): number {
     .reduce((acc, char) => acc + char.charCodeAt(0), 0);
   const x = Math.sin((hash + index) * 12.9898) * 43758.5453;
   return x - Math.floor(x);
+}
+
+const FAKE_PROJECT_TODO_ITEMS: ChecklistItem[] = [
+  {
+    id: "fake-todo-design-copy",
+    text: "Tighten the onboarding copy for a sharper first-run flow.",
+  },
+  {
+    id: "fake-todo-risk-log",
+    text: "Add the latest mitigation notes to the weekly risk log.",
+  },
+  {
+    id: "fake-todo-customer-brief",
+    text: "Prepare the customer brief for the roadmap sync.",
+  },
+  {
+    id: "fake-todo-data-check",
+    text: "Validate the dashboard numbers against the source export.",
+  },
+  {
+    id: "fake-todo-launch-owner",
+    text: "Document who owns each beta rollout checklist item.",
+  },
+  {
+    id: "fake-todo-budget-follow-up",
+    text: "Resolve the budget question before planning closes.",
+  },
+  {
+    id: "fake-todo-doc-update",
+    text: "Update the implementation notes with the latest constraints.",
+  },
+  {
+    id: "fake-todo-support-plan",
+    text: "Draft the first-week support plan.",
+  },
+  {
+    id: "fake-todo-qa-scope",
+    text: "Split the QA scope into smoke tests and regression checks.",
+  },
+  {
+    id: "fake-todo-api-contract",
+    text: "Write down the API contract changes for the integrations team.",
+  },
+  {
+    id: "fake-todo-migration-window",
+    text: "Propose a migration window that avoids customer peak hours.",
+  },
+  {
+    id: "fake-todo-analytics-event",
+    text: "Add the missing analytics event to the release tracker.",
+  },
+];
+
+const TODO_SUGGESTION_TEXTS = [
+  "Summarize the open decisions from the latest project thread.",
+  "Prepare the follow-up notes for the next sync.",
+  "Update the project tracker with the latest owner and deadline.",
+  "Draft the customer-facing summary for review.",
+  "Check the release checklist for missing blockers.",
+  "Add the latest constraints to the implementation notes.",
+  "Validate the current numbers against the source export.",
+  "Write the rollout risk notes before the planning review.",
+];
+
+const PROJECT_SETUP_TODO_SUGGESTION_TEXTS = [
+  "Set up the project description and goals",
+  "Bring in knowledge from company data",
+  "Search for and add project members",
+  "Build a list of initial tasks",
+];
+
+const PARTICIPANT_TODO_SUGGESTION_TEXTS = [
+  "Turn the latest customer feedback into follow-up tasks.",
+  "Add the missing rollout note to the project tracker.",
+  "Prepare a short update before the next project sync.",
+  "Check whether the open blocker still needs escalation.",
+  "Summarize the action items from the last discussion.",
+  "Update the implementation note with the latest decision.",
+];
+
+const TODO_HISTORY_FILTER_LABELS: Record<TodoHistoryFilter, string> = {
+  ongoing: "Open",
+  today: "Done today",
+  last7: "Done in the last 7 days",
+  last30: "Done in the last 30 days",
+};
+
+const TODO_HISTORY_FILTER_OPTIONS: TodoHistoryFilter[] = [
+  "ongoing",
+  "today",
+  "last7",
+  "last30",
+];
+
+const FAKE_CLOSED_PROJECT_TODO_ITEMS: Record<
+  TodoHistoryFilter,
+  ChecklistItem[]
+> = {
+  ongoing: [],
+  today: [
+    {
+      id: "closed-today-launch-notes",
+      text: "Finalized the launch notes before the morning review.",
+    },
+    {
+      id: "closed-today-budget-answer",
+      text: "Resolved the open budget question in the planning doc.",
+    },
+    {
+      id: "closed-today-dashboard-check",
+      text: "Checked the dashboard totals against the source export.",
+    },
+    {
+      id: "closed-today-customer-brief",
+      text: "Shared the customer brief for the roadmap sync.",
+    },
+    {
+      id: "closed-today-api-thread",
+      text: "Wrote the final API contract note for integrations.",
+    },
+  ],
+  last7: [
+    {
+      id: "closed-last7-onboarding-copy",
+      text: "Shipped the onboarding copy update.",
+    },
+    {
+      id: "closed-last7-risk-log",
+      text: "Added mitigation notes to the weekly risk log.",
+    },
+    {
+      id: "closed-last7-qa-scope",
+      text: "Split QA scope into smoke and regression checks.",
+    },
+    {
+      id: "closed-last7-support-plan",
+      text: "Drafted the first-week support plan.",
+    },
+    {
+      id: "closed-last7-migration-window",
+      text: "Proposed the preferred migration window.",
+    },
+    {
+      id: "closed-last7-analytics-event",
+      text: "Added the missing analytics event to the release tracker.",
+    },
+    {
+      id: "closed-last7-legal-review",
+      text: "Completed the legal review follow-up for launch messaging.",
+    },
+    {
+      id: "closed-last7-doc-constraints",
+      text: "Updated implementation notes with the latest constraints.",
+    },
+  ],
+  last30: [
+    {
+      id: "closed-last30-beta-owner",
+      text: "Documented the beta rollout owner list.",
+    },
+    {
+      id: "closed-last30-data-cleanup",
+      text: "Completed the data cleanup pass for archived projects.",
+    },
+    {
+      id: "closed-last30-sales-enablement",
+      text: "Published the sales enablement one-pager.",
+    },
+    {
+      id: "closed-last30-design-review",
+      text: "Closed the design review notes from the kickoff.",
+    },
+    {
+      id: "closed-last30-billing-sync",
+      text: "Wrote the billing assumptions summary for the finance team.",
+    },
+    {
+      id: "closed-last30-qa-owners",
+      text: "Listed the QA owners for the release train.",
+    },
+    {
+      id: "closed-last30-customer-list",
+      text: "Cleaned up the early-access customer list.",
+    },
+    {
+      id: "closed-last30-doc-index",
+      text: "Organized the project docs index for new contributors.",
+    },
+    {
+      id: "closed-last30-demo-script",
+      text: "Recorded the demo script changes requested by support.",
+    },
+    {
+      id: "closed-last30-roadmap-sync",
+      text: "Captured the decisions from the monthly roadmap sync.",
+    },
+    {
+      id: "closed-last30-security-check",
+      text: "Resolved the security checklist items for the integration.",
+    },
+    {
+      id: "closed-last30-rollout-plan",
+      text: "Archived the completed rollout plan follow-ups.",
+    },
+  ],
+};
+
+function getFakeClosedTodoItemsForFilter(
+  filter: TodoHistoryFilter
+): ChecklistItem[] {
+  switch (filter) {
+    case "today":
+      return FAKE_CLOSED_PROJECT_TODO_ITEMS.today;
+    case "last7":
+      return [
+        ...FAKE_CLOSED_PROJECT_TODO_ITEMS.today,
+        ...FAKE_CLOSED_PROJECT_TODO_ITEMS.last7,
+      ];
+    case "last30":
+      return [
+        ...FAKE_CLOSED_PROJECT_TODO_ITEMS.today,
+        ...FAKE_CLOSED_PROJECT_TODO_ITEMS.last7,
+        ...FAKE_CLOSED_PROJECT_TODO_ITEMS.last30,
+      ];
+    case "ongoing":
+      return FAKE_CLOSED_PROJECT_TODO_ITEMS.ongoing;
+  }
 }
 
 // Generate joinedAt date for a member (deterministic based on space and member ID)
@@ -355,6 +748,20 @@ interface OngoingSummary {
   keyDecisions: ChecklistItem[];
   projectPulse: ProjectPulseItem[];
   updatedAt: Date;
+}
+
+interface ParticipantTodoList {
+  user: User;
+  items: ChecklistItem[];
+}
+
+type TodoHistoryFilter = "ongoing" | "today" | "last7" | "last30";
+type TodoSuggestionStatus = "idle" | "working" | "ready";
+
+interface TodoSuggestionItem {
+  id: string;
+  userId: string;
+  text: string;
 }
 
 type SummaryRelatedConversations = Record<string, string[]>;
@@ -857,6 +1264,65 @@ function computeSummaryDiffByKey(
   return diffs;
 }
 
+function GroupConversationTabContent({
+  value,
+  contentClassName,
+  fullBleed = false,
+  children,
+}: {
+  value: string;
+  contentClassName?: string;
+  fullBleed?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <TabsContent value={value}>
+      <div
+        className={cn(
+          "s-flex s-h-full s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto",
+          !fullBleed && "s-px-4"
+        )}
+      >
+        <div
+          className={cn(
+            "s-mx-auto s-flex s-h-full s-w-full s-flex-col",
+            fullBleed ? "s-min-h-0" : "s-max-w-4xl s-gap-3 s-py-6",
+            contentClassName
+          )}
+        >
+          {children}
+        </div>
+      </div>
+    </TabsContent>
+  );
+}
+
+function ProjectSetupEmptyState({
+  onSetupProject,
+}: {
+  onSetupProject: () => void;
+}) {
+  return (
+    <div className="s-flex s-h-full s-w-full s-flex-col s-items-center s-justify-center s-gap-0 s-text-center">
+      <h3 className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
+        It's quiet in here.
+      </h3>
+      <p className="s-text-muted-foreground s-textbase s-mb-3">
+        Your Pod is ready but empty! Let us help you invite people, add key
+        data, and more.
+      </p>
+      <Button
+        label="Let's go"
+        icon={SparklesIcon}
+        size="md"
+        variant="highlight"
+        onClick={onSetupProject}
+        isPulsing
+      />
+    </div>
+  );
+}
+
 export function GroupConversationView({
   space,
   conversations,
@@ -873,15 +1339,77 @@ export function GroupConversationView({
   isProjectJoined = false,
   onJoinProject = () => {},
   onLeaveProject = () => {},
+  selectedConversationId,
+  activeTab: controlledActiveTab,
+  onTabChange,
+  dynamicFileTabIds = [],
+  onAddFileToTopbar,
+  onFileDragChange,
+  fileToRevealInKnowledge = null,
+  onFileToRevealInKnowledgeHandled,
+  podVariant = "shared",
+  currentUserId,
 }: GroupConversationViewProps) {
   const [searchText, setSearchText] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const currentUserFirstName = currentUserId
+    ? (getUserById(currentUserId)?.firstName ?? "there")
+    : "there";
+  const [greeting, setGreeting] = useState<string>("");
+  useEffect(() => {
+    setGreeting(getRandomGreetingForName(currentUserFirstName));
+  }, [currentUserFirstName]);
+  const [personalConversationFilter, setPersonalConversationFilter] =
+    useState<MyPodConversationFilter>("all");
+  const [selectedConversationRow, setSelectedConversationRow] = useState<{
+    rowId: string;
+    conversationId: string;
+  } | null>(null);
+  const [goodToKnowFilter, setGoodToKnowFilter] = useState<
+    "all" | "shared" | "mine"
+  >("all");
+  const [todoSearchText, setTodoSearchText] = useState("");
+  const [todoReassignSearchText, setTodoReassignSearchText] = useState("");
+  const [todoSuggestionStatus, setTodoSuggestionStatus] =
+    useState<TodoSuggestionStatus>("idle");
+  const [todoSuggestions, setTodoSuggestions] = useState<TodoSuggestionItem[]>(
+    []
+  );
+  const [todoSuggestionTextById, setTodoSuggestionTextById] = useState<
+    Record<string, string>
+  >({});
+  const [
+    participantTodoSuggestionsByUserId,
+    setParticipantTodoSuggestionsByUserId,
+  ] = useState<Record<string, TodoSuggestionItem[]>>({});
+  const [
+    participantTodoSuggestionTextById,
+    setParticipantTodoSuggestionTextById,
+  ] = useState<Record<string, string>>({});
+  const [todoItemTextByKey, setTodoItemTextByKey] = useState<
+    Record<string, string>
+  >({});
+  const [todoDraftItemsByUserId, setTodoDraftItemsByUserId] = useState<
+    Record<string, ChecklistItem[]>
+  >({});
+  const [editingTodoItemKey, setEditingTodoItemKey] = useState<string | null>(
+    null
+  );
+  const [deletedTodoItemKeys, setDeletedTodoItemKeys] = useState<Set<string>>(
+    new Set()
+  );
+  const [todoScopeFilter, setTodoScopeFilter] = useState<"all" | "mine">("all");
+  const [todoHistoryFilter, setTodoHistoryFilter] =
+    useState<TodoHistoryFilter>("ongoing");
+  const [hiddenFakeTodoItemKeys, setHiddenFakeTodoItemKeys] = useState<
+    Set<string>
+  >(new Set());
+  const [activeTaskCommand, setActiveTaskCommand] =
+    useState<InputBarTaskCommand | null>(null);
   const [ongoingSummary, setOngoingSummary] = useState<OngoingSummary | null>(
     null
   );
   const [isSummaryUpdating, setIsSummaryUpdating] = useState(false);
-  const [isOngoingSummaryExpanded, setIsOngoingSummaryExpanded] =
-    useState(false);
   const [checkedSummaryItems, setCheckedSummaryItems] = useState<
     Record<string, boolean>
   >({});
@@ -902,6 +1430,13 @@ export function GroupConversationView({
   const deltaTransitionTimeoutRef = useRef<number | null>(null);
   const deltaTransitionStartTimeoutRef = useRef<number | null>(null);
   const cleanTransitionTimeoutRef = useRef<number | null>(null);
+  const autoCleanTimeoutRef = useRef<number | null>(null);
+  const todoSuggestionTimeoutRef = useRef<number | null>(null);
+  const todoSuggestionCounterRef = useRef(0);
+  const hasSeededParticipantTodoSuggestionsRef = useRef(false);
+  const todoDraftItemCounterRef = useRef(0);
+  const pendingFocusTodoItemKeyRef = useRef<string | null>(null);
+  const todoItemEditorRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   // Settings state
   const [roomName, setRoomName] = useState(space.name);
@@ -926,10 +1461,18 @@ export function GroupConversationView({
   const [showDeleteProjectDialog, setShowDeleteProjectDialog] = useState(false);
   const [deleteConfirmDraft, setDeleteConfirmDraft] = useState("");
 
-  // Active tab (for switching from suggestion cards)
-  const [activeTab, setActiveTab] = useState("conversations");
+  // Active tab — controlled externally if activeTab/onTabChange props are provided
+  const [internalActiveTab, setInternalActiveTab] = useState("conversations");
+  const activeTab = controlledActiveTab ?? internalActiveTab;
+  const setActiveTab = useCallback(
+    (tab: string) => {
+      setInternalActiveTab(tab);
+      onTabChange?.(tab);
+    },
+    [onTabChange]
+  );
 
-  // Knowledge tab state
+  // Files tab state
   const [dataSources, setDataSources] = useState<DataSource[]>(() =>
     getDataSourcesBySpaceId(space.id)
   );
@@ -938,12 +1481,21 @@ export function GroupConversationView({
     string | null
   >(null);
   const [knowledgeSearchText, setKnowledgeSearchText] = useState("");
+  const [filesViewMode, setFilesViewMode] = useState<"list" | "grid">("list");
+  const [filesSearchScope, setFilesSearchScope] = useState<"folder" | "all">(
+    "folder"
+  );
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const [revealedFileIdInKnowledge, setRevealedFileIdInKnowledge] = useState<
+    string | null
+  >(null);
+  const [draggingFileId, setDraggingFileId] = useState<string | null>(null);
+  const [dropHoverTargetId, setDropHoverTargetId] = useState<string | null>(
+    null
+  );
   const [selectedDataSource, setSelectedDataSource] =
     useState<DataSource | null>(null);
   const [isDocumentSheetOpen, setIsDocumentSheetOpen] = useState(false);
-  const [documentView, setDocumentView] = useState<"preview" | "extracted">(
-    "preview"
-  );
 
   // Members tab state
   const [membersSearchText, setMembersSearchText] = useState("");
@@ -972,8 +1524,45 @@ export function GroupConversationView({
 
     // Generate at least 20 conversations, more if we have fewer originals
     const targetCount = Math.max(20, conversations.length * 4);
-    return generateConversationsWithDates(conversations, targetCount);
+    return generateConversationsWithDates(conversations, targetCount, space.id);
   }, [conversations, space.id]);
+
+  const myPodEnrichedConversations = useMemo(() => {
+    if (podVariant !== "personal" || !currentUserId) {
+      return expandedConversations;
+    }
+    return expandedConversations.map((conversation) =>
+      enrichMyPodConversationParticipants(
+        conversation,
+        currentUserId,
+        users,
+        agents
+      )
+    );
+  }, [agents, currentUserId, expandedConversations, podVariant, users]);
+
+  const searchableConversations =
+    podVariant === "personal"
+      ? myPodEnrichedConversations
+      : expandedConversations;
+
+  const visibleConversations = useMemo(() => {
+    if (podVariant !== "personal") return expandedConversations;
+    if (!currentUserId) return myPodEnrichedConversations;
+    return myPodEnrichedConversations.filter((conversation) =>
+      matchesMyPodConversationFilter(
+        conversation,
+        personalConversationFilter,
+        currentUserId
+      )
+    );
+  }, [
+    currentUserId,
+    expandedConversations,
+    myPodEnrichedConversations,
+    personalConversationFilter,
+    podVariant,
+  ]);
 
   const searchResults = useMemo((): UniversalSearchItem[] => {
     const trimmed = searchText.trim();
@@ -1005,7 +1594,7 @@ export function GroupConversationView({
       []
     );
 
-    const conversationResults = expandedConversations.reduce<
+    const conversationResults = searchableConversations.reduce<
       UniversalSearchItem[]
     >((acc, conversation) => {
       const creator = getRandomCreator(conversation, users);
@@ -1033,12 +1622,19 @@ export function GroupConversationView({
       }
       return a.title.localeCompare(b.title);
     });
-  }, [dataSources, expandedConversations, searchText, users]);
+  }, [dataSources, searchText, searchableConversations, users]);
 
   const handleSearchItemSelect = (item: UniversalSearchItem) => {
     if (item.type === "document") {
-      setSelectedDataSource(item.dataSource);
-      setIsDocumentSheetOpen(true);
+      if (isDataSourceFolder(item.dataSource)) {
+        setActiveTab("knowledge");
+        setCurrentFolderId(item.dataSource.id);
+        setKnowledgeSearchText("");
+        setRevealedFileIdInKnowledge(null);
+      } else {
+        setSelectedDataSource(item.dataSource);
+        setIsDocumentSheetOpen(true);
+      }
       setIsSearchOpen(false);
       return;
     }
@@ -1120,7 +1716,7 @@ export function GroupConversationView({
       "Last Month": [],
     };
 
-    expandedConversations.forEach((conversation) => {
+    visibleConversations.forEach((conversation) => {
       const bucket = getDateBucket(conversation.updatedAt);
       buckets[bucket].push(conversation);
     });
@@ -1134,7 +1730,7 @@ export function GroupConversationView({
     });
 
     return buckets;
-  }, [expandedConversations]);
+  }, [visibleConversations]);
 
   // Determine if space is new (no conversations and no members)
   const isNew = useMemo(() => {
@@ -1191,7 +1787,11 @@ export function GroupConversationView({
   }, [space.id, isNew, spaceMemberIds, users, avatarCount]);
 
   const hasHistory = expandedConversations.length > 0;
-  const SUMMARY_COLLAPSED_MAX_HEIGHT_PX = 260;
+  const projectPageTitlePrefix = space.name.endsWith("s")
+    ? `${space.name}'`
+    : `${space.name}'s`;
+  const getProjectPageTitle = (pageTitle: string) =>
+    `${projectPageTitlePrefix} ${pageTitle}`;
 
   const conversationTitleById = useMemo(() => {
     const titleMap = new Map<string, string>();
@@ -1200,6 +1800,56 @@ export function GroupConversationView({
     });
     return titleMap;
   }, [expandedConversations]);
+
+  const conversationListItemsById = useMemo(() => {
+    const itemMap = new Map<
+      string,
+      {
+        avatarProps: ReturnType<typeof participantsToAvatarProps>;
+        creator: User | null;
+        initiator: ConversationInitiator | null;
+        mentionCount: number;
+        messageCount: number;
+        replyCount: number;
+        time: string;
+      }
+    >();
+
+    visibleConversations.forEach((conversation) => {
+      const rowSeed = `${space.id}-${conversation.id}-list-item`;
+      const participants = getRandomParticipants(conversation, users, agents);
+      const replyCount = Math.floor(seededRandom(rowSeed, 0) * 8) + 1;
+      const messageCount =
+        Math.floor(seededRandom(rowSeed, 1) * replyCount) + 1;
+      const mentionCount = Math.floor(
+        seededRandom(rowSeed, 2) * (messageCount + 1)
+      );
+
+      itemMap.set(conversation.id, {
+        avatarProps: participantsToAvatarProps(participants),
+        creator:
+          podVariant === "personal"
+            ? null
+            : getRandomCreator(conversation, users),
+        initiator:
+          podVariant === "personal"
+            ? getConversationInitiator(conversation, users, agents)
+            : null,
+        mentionCount,
+        messageCount,
+        replyCount,
+        time: conversation.updatedAt
+          .toLocaleTimeString("en-US", {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+          })
+          .replace("24:", "00:"),
+      });
+    });
+
+    return itemMap;
+  }, [agents, podVariant, space.id, users, visibleConversations]);
 
   const getAutoCheckRationales = (
     summary: OngoingSummary,
@@ -1329,6 +1979,36 @@ export function GroupConversationView({
   };
 
   useEffect(() => {
+    const itemKeyToFocus = pendingFocusTodoItemKeyRef.current;
+    if (!itemKeyToFocus) {
+      return;
+    }
+
+    const editor = todoItemEditorRefs.current.get(itemKeyToFocus);
+    if (!editor) {
+      return;
+    }
+
+    editor.focus();
+    const selection = window.getSelection();
+    const range = document.createRange();
+    range.selectNodeContents(editor);
+    range.collapse(false);
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+    pendingFocusTodoItemKeyRef.current = null;
+  });
+
+  useEffect(() => {
+    if (
+      selectedConversationRow &&
+      selectedConversationRow.conversationId !== selectedConversationId
+    ) {
+      setSelectedConversationRow(null);
+    }
+  }, [selectedConversationId, selectedConversationRow]);
+
+  useEffect(() => {
     return () => {
       if (showFocusTimeoutRef.current !== null) {
         window.clearTimeout(showFocusTimeoutRef.current);
@@ -1341,6 +2021,12 @@ export function GroupConversationView({
       }
       if (cleanTransitionTimeoutRef.current !== null) {
         window.clearTimeout(cleanTransitionTimeoutRef.current);
+      }
+      if (autoCleanTimeoutRef.current !== null) {
+        window.clearTimeout(autoCleanTimeoutRef.current);
+      }
+      if (todoSuggestionTimeoutRef.current !== null) {
+        window.clearTimeout(todoSuggestionTimeoutRef.current);
       }
     };
   }, []);
@@ -1397,7 +2083,6 @@ export function GroupConversationView({
     if (!hasHistory) {
       setOngoingSummary(null);
       setIsSummaryUpdating(false);
-      setIsOngoingSummaryExpanded(false);
       setSummaryRelatedConversations({});
       setSummaryItemDiffByKey({});
       setAutoCheckRationaleByKey({});
@@ -1434,7 +2119,6 @@ export function GroupConversationView({
 
     setOngoingSummary(initialSummary);
     setIsSummaryUpdating(true);
-    setIsOngoingSummaryExpanded(false);
     setSummaryRelatedConversations(
       buildRandomSummaryRelatedConversations(
         initialSummary,
@@ -1447,6 +2131,7 @@ export function GroupConversationView({
     setTypingItemKeys(new Set());
     setEnteringItemKeys(new Set());
     setExitingItemKeys(new Set());
+    setHiddenFakeTodoItemKeys(new Set());
 
     const generationDelayMs = (8 + Math.floor(Math.random() * 13)) * 1000;
 
@@ -1564,18 +2249,287 @@ export function GroupConversationView({
   // Reset data sources when space changes
   useEffect(() => {
     setDataSources(getDataSourcesBySpaceId(space.id));
+    setCurrentFolderId(null);
+    setRevealedFileIdInKnowledge(null);
+    setDraggingFileId(null);
+    setDropHoverTargetId(null);
+    setFilesSearchScope("folder");
   }, [space.id]);
 
-  // Transform data sources to include onClick handlers
-  const dataSourcesWithClick = useMemo(() => {
-    return dataSources.map((ds) => ({
-      ...ds,
-      onClick: () => {
-        setSelectedDataSource(ds);
-        setIsDocumentSheetOpen(true);
+  useEffect(() => {
+    if (!fileToRevealInKnowledge) {
+      return;
+    }
+
+    const file = dataSources.find(
+      (item) => item.id === fileToRevealInKnowledge
+    );
+    if (!file || isDataSourceFolder(file)) {
+      onFileToRevealInKnowledgeHandled?.();
+      return;
+    }
+
+    setActiveTab("knowledge");
+    setCurrentFolderId(file.parentId);
+    setKnowledgeSearchText("");
+    setFilesSearchScope("folder");
+    setRevealedFileIdInKnowledge(file.id);
+    onFileToRevealInKnowledgeHandled?.();
+  }, [
+    dataSources,
+    fileToRevealInKnowledge,
+    onFileToRevealInKnowledgeHandled,
+    setActiveTab,
+  ]);
+
+  useEffect(() => {
+    setFilesSearchScope("folder");
+  }, [currentFolderId]);
+
+  const isKnowledgeSearchActive = knowledgeSearchText.trim().length > 0;
+
+  const currentFolder = useMemo(
+    () =>
+      currentFolderId
+        ? dataSources.find((item) => item.id === currentFolderId)
+        : undefined,
+    [currentFolderId, dataSources]
+  );
+
+  const handleFileDragEnd = useCallback(() => {
+    setDraggingFileId(null);
+    setDropHoverTargetId(null);
+    onFileDragChange?.(null, null);
+  }, [onFileDragChange]);
+
+  const handleMoveFile = useCallback(
+    (fileId: string, targetParentId: string | null) => {
+      setDataSources((prev) => moveDataSource(prev, fileId, targetParentId));
+      setDraggingFileId(null);
+      setDropHoverTargetId(null);
+      onFileDragChange?.(null, null);
+    },
+    [onFileDragChange]
+  );
+
+  const handleFileDragStart = useCallback(
+    (
+      fileId: string,
+      fileName: string,
+      event: DragEvent<HTMLTableRowElement>
+    ) => {
+      event.dataTransfer.setData("text/plain", fileId);
+      event.dataTransfer.setData(DATA_SOURCE_FILE_DRAG_MIME, "file");
+      event.dataTransfer.setData(DATA_SOURCE_FILE_NAME_DRAG_MIME, fileName);
+      event.dataTransfer.effectAllowed = "copyMove";
+      setDraggingFileId(fileId);
+      onFileDragChange?.(fileId, fileName);
+    },
+    [onFileDragChange]
+  );
+
+  useEffect(() => {
+    if (draggingFileId === null) {
+      return;
+    }
+
+    const endFileDrag = () => {
+      setDraggingFileId(null);
+      setDropHoverTargetId(null);
+      onFileDragChange?.(null, null);
+    };
+
+    document.addEventListener("dragend", endFileDrag);
+    document.addEventListener("drop", endFileDrag);
+
+    return () => {
+      document.removeEventListener("dragend", endFileDrag);
+      document.removeEventListener("drop", endFileDrag);
+    };
+  }, [draggingFileId, onFileDragChange]);
+
+  const handleDragOverTarget = useCallback(
+    (targetId: string, event: DragEvent<HTMLElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      event.dataTransfer.dropEffect = "move";
+      setDropHoverTargetId(targetId);
+    },
+    []
+  );
+
+  const handleDropOnTarget = useCallback(
+    (
+      targetId: string,
+      targetParentId: string | null,
+      event: DragEvent<HTMLElement>
+    ) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const fileId = event.dataTransfer.getData("text/plain") || draggingFileId;
+      if (!fileId) {
+        return;
+      }
+
+      const file = dataSources.find((item) => item.id === fileId);
+      if (!file || file.parentId === targetParentId) {
+        handleFileDragEnd();
+        return;
+      }
+
+      handleMoveFile(fileId, targetParentId);
+    },
+    [dataSources, draggingFileId, handleFileDragEnd, handleMoveFile]
+  );
+
+  const visibleItems = useMemo(
+    () =>
+      sortDataSourcesForDisplay(
+        getDataSourceChildren(dataSources, currentFolderId)
+      ),
+    [dataSources, currentFolderId]
+  );
+
+  const folderBreadcrumbItems = useMemo((): BreadcrumbsItem[] => {
+    const path = getFolderPath(dataSources, currentFolderId);
+    const isDragActive = draggingFileId !== null;
+
+    const getDropProps = (
+      targetId: string,
+      targetParentId: string | null
+    ): Pick<
+      BreadcrumbsItem,
+      "isPulsing" | "isDropHighlight" | "onDragOver" | "onDragLeave" | "onDrop"
+    > => ({
+      isPulsing: isDragActive,
+      isDropHighlight: dropHoverTargetId === targetId,
+      onDragOver: (event) => handleDragOverTarget(targetId, event),
+      onDragLeave: (event) => {
+        event.preventDefault();
       },
-    }));
-  }, [dataSources]);
+      onDrop: (event) => handleDropOnTarget(targetId, targetParentId, event),
+    });
+
+    const items: BreadcrumbsItem[] = [
+      currentFolderId === null
+        ? { label: "Files", icon: FolderIcon }
+        : {
+            label: "Files",
+            icon: FolderIcon,
+            onClick: () => {
+              setCurrentFolderId(null);
+              setKnowledgeSearchText("");
+              setRevealedFileIdInKnowledge(null);
+            },
+            ...getDropProps("root", null),
+          },
+    ];
+
+    path.forEach((folder, index) => {
+      const isLast = index === path.length - 1;
+      if (isLast) {
+        items.push({ label: folder.fileName, icon: FolderIcon });
+        return;
+      }
+
+      items.push({
+        label: folder.fileName,
+        icon: FolderIcon,
+        onClick: () => {
+          setCurrentFolderId(folder.id);
+          setRevealedFileIdInKnowledge(null);
+        },
+        ...getDropProps(folder.id, folder.id),
+      });
+    });
+
+    return items;
+  }, [
+    currentFolderId,
+    dataSources,
+    draggingFileId,
+    dropHoverTargetId,
+    handleDragOverTarget,
+    handleDropOnTarget,
+  ]);
+
+  const tableItems = useMemo(() => {
+    const searchLower = knowledgeSearchText.trim().toLowerCase();
+    const searchSource =
+      searchLower && filesSearchScope === "folder" && currentFolderId
+        ? getDataSourcesInFolderTree(dataSources, currentFolderId)
+        : dataSources;
+
+    const base = searchLower
+      ? sortDataSourcesForDisplay(
+          searchSource.filter((dataSource) =>
+            dataSource.fileName.toLowerCase().includes(searchLower)
+          )
+        )
+      : visibleItems;
+
+    return base.map((dataSource) => {
+      const item = {
+        ...dataSource,
+        onClick: () => {
+          if (isDataSourceFolder(dataSource)) {
+            setCurrentFolderId(dataSource.id);
+            setKnowledgeSearchText("");
+            setRevealedFileIdInKnowledge(null);
+            return;
+          }
+
+          setSelectedDataSource(dataSource);
+          setIsDocumentSheetOpen(true);
+          setRevealedFileIdInKnowledge(null);
+        },
+      };
+
+      if (isKnowledgeSearchActive) {
+        return item;
+      }
+
+      if (isDataSourceFolder(dataSource)) {
+        return {
+          ...item,
+          onDragOver: (event: DragEvent<HTMLTableRowElement>) =>
+            handleDragOverTarget(dataSource.id, event),
+          onDragLeave: (event: DragEvent<HTMLTableRowElement>) => {
+            event.preventDefault();
+          },
+          onDrop: (event: DragEvent<HTMLTableRowElement>) =>
+            handleDropOnTarget(dataSource.id, dataSource.id, event),
+          isDropHighlight: dropHoverTargetId === dataSource.id,
+        };
+      }
+
+      return {
+        ...item,
+        draggable: true,
+        onDragStart: (event: DragEvent<HTMLTableRowElement>) =>
+          handleFileDragStart(dataSource.id, dataSource.fileName, event),
+        onDragEnd: handleFileDragEnd,
+        isDragging: draggingFileId === dataSource.id,
+        isDropHighlight:
+          dropHoverTargetId === dataSource.id ||
+          revealedFileIdInKnowledge === dataSource.id,
+      };
+    });
+  }, [
+    dataSources,
+    draggingFileId,
+    dropHoverTargetId,
+    handleDragOverTarget,
+    handleDropOnTarget,
+    handleFileDragEnd,
+    handleFileDragStart,
+    isKnowledgeSearchActive,
+    knowledgeSearchText,
+    filesSearchScope,
+    currentFolderId,
+    visibleItems,
+    revealedFileIdInKnowledge,
+  ]);
 
   // Transform spaceMemberIds into Member objects with joinedAt dates
   const members: Member[] = useMemo(() => {
@@ -1598,6 +2552,685 @@ export function GroupConversationView({
     });
     return memberList;
   }, [spaceMemberIds, space.id]);
+
+  const todoParticipants = useMemo((): User[] => {
+    const participantById = new Map<string, User>();
+
+    spaceMemberIds.forEach((userId) => {
+      const user = getUserById(userId);
+      if (user) {
+        participantById.set(userId, user);
+      }
+    });
+
+    if (participantById.size === 0) {
+      expandedConversations.forEach((conversation) => {
+        conversation.userParticipants.forEach((userId) => {
+          const user = getUserById(userId);
+          if (user) {
+            participantById.set(userId, user);
+          }
+        });
+      });
+    }
+
+    const mockCurrentUser = users[0];
+    if (mockCurrentUser) {
+      participantById.set(mockCurrentUser.id, mockCurrentUser);
+    }
+
+    [...users]
+      .sort(
+        (a, b) =>
+          seededRandom(`${space.id}-${a.id}-todo-participant`, 0) -
+          seededRandom(`${space.id}-${b.id}-todo-participant`, 0)
+      )
+      .forEach((user) => participantById.set(user.id, user));
+
+    return Array.from(participantById.values()).slice(0, 8);
+  }, [expandedConversations, space.id, spaceMemberIds, users]);
+
+  const reassignTodoParticipants = useMemo(() => {
+    const normalizedSearch = todoReassignSearchText.trim().toLowerCase();
+    if (normalizedSearch.length === 0) {
+      return todoParticipants;
+    }
+
+    return todoParticipants.filter((user) =>
+      user.fullName.toLowerCase().includes(normalizedSearch)
+    );
+  }, [todoParticipants, todoReassignSearchText]);
+
+  useEffect(() => {
+    if (
+      hasSeededParticipantTodoSuggestionsRef.current ||
+      todoParticipants.length === 0
+    ) {
+      return;
+    }
+
+    hasSeededParticipantTodoSuggestionsRef.current = true;
+    const suggestionsByUserId: Record<string, TodoSuggestionItem[]> = {};
+
+    todoParticipants.slice(0, 2).forEach((participant, participantIndex) => {
+      suggestionsByUserId[participant.id] = [0, 1].map((offset) => {
+        const suggestionIndex =
+          (participantIndex * 2 + offset) %
+          PARTICIPANT_TODO_SUGGESTION_TEXTS.length;
+        return {
+          id: `participant-suggestion-${participant.id}-${offset}`,
+          userId: participant.id,
+          text: PARTICIPANT_TODO_SUGGESTION_TEXTS[suggestionIndex],
+        };
+      });
+    });
+
+    setParticipantTodoSuggestionsByUserId(suggestionsByUserId);
+  }, [todoParticipants]);
+
+  const generateTodoSuggestions = useCallback(
+    (prompt: string): TodoSuggestionItem[] => {
+      if (todoParticipants.length === 0) {
+        return [];
+      }
+
+      const normalizedPrompt = prompt.trim();
+      const suggestionCount = Math.min(4, Math.max(2, todoParticipants.length));
+      const promptSuggestion: ChecklistItem = {
+        id: "prompt-suggestion",
+        text: normalizedPrompt.endsWith(".")
+          ? normalizedPrompt
+          : `${normalizedPrompt}.`,
+      };
+      const suggestionPool = [
+        promptSuggestion,
+        ...TODO_SUGGESTION_TEXTS.map((text, index) => ({
+          id: `template-${index}`,
+          text,
+        })),
+      ];
+
+      return suggestionPool.slice(0, suggestionCount).map((item, index) => {
+        const participant =
+          todoParticipants[
+            Math.floor(
+              seededRandom(`${space.id}-${normalizedPrompt}-${index}`, 0) *
+                todoParticipants.length
+            )
+          ] ?? todoParticipants[index % todoParticipants.length];
+
+        return {
+          id: `todo-suggestion-${todoSuggestionCounterRef.current + index}`,
+          userId: participant.id,
+          text: item.text,
+        };
+      });
+    },
+    [space.id, todoParticipants]
+  );
+
+  const generateProjectSetupTodoSuggestions =
+    useCallback((): TodoSuggestionItem[] => {
+      const participant = todoParticipants[0];
+      if (!participant) {
+        return [];
+      }
+
+      return PROJECT_SETUP_TODO_SUGGESTION_TEXTS.map((text, index) => {
+        return {
+          id: `todo-suggestion-${todoSuggestionCounterRef.current + index}`,
+          userId: participant.id,
+          text,
+        };
+      });
+    }, [todoParticipants]);
+
+  const participantTodoLists = useMemo((): ParticipantTodoList[] => {
+    const mockCurrentUser = users[0];
+    if (podVariant === "personal") {
+      if (!mockCurrentUser) {
+        return [];
+      }
+
+      const list: ParticipantTodoList = { user: mockCurrentUser, items: [] };
+
+      if (ongoingSummary) {
+        const fakeTodoItems = [...FAKE_PROJECT_TODO_ITEMS]
+          .sort(
+            (a, b) =>
+              seededRandom(`${space.id}-${a.id}-fake-todo`, 0) -
+              seededRandom(`${space.id}-${b.id}-fake-todo`, 0)
+          )
+          .slice(0, 8)
+          .filter(
+            (item) =>
+              !hiddenFakeTodoItemKeys.has(
+                getSummaryItemKey("needAttention", item)
+              )
+          );
+        list.items.push(...ongoingSummary.needAttention, ...fakeTodoItems);
+      }
+
+      list.items.push(...(todoDraftItemsByUserId[mockCurrentUser.id] ?? []));
+
+      return [list];
+    }
+
+    if (todoParticipants.length === 0) {
+      return [];
+    }
+
+    const lists: ParticipantTodoList[] = todoParticipants.map((user) => ({
+      user,
+      items: [],
+    }));
+
+    if (ongoingSummary) {
+      const fakeTodoItems = [...FAKE_PROJECT_TODO_ITEMS]
+        .sort(
+          (a, b) =>
+            seededRandom(`${space.id}-${a.id}-fake-todo`, 0) -
+            seededRandom(`${space.id}-${b.id}-fake-todo`, 0)
+        )
+        .slice(0, Math.max(8, todoParticipants.length * 2))
+        .filter(
+          (item) =>
+            !hiddenFakeTodoItemKeys.has(
+              getSummaryItemKey("needAttention", item)
+            )
+        );
+      const todoItems = [...ongoingSummary.needAttention, ...fakeTodoItems];
+
+      todoItems.forEach((item, index) => {
+        lists[index % lists.length].items.push(item);
+      });
+    }
+
+    lists.forEach((list) => {
+      list.items.push(...(todoDraftItemsByUserId[list.user.id] ?? []));
+    });
+
+    return lists;
+  }, [
+    hiddenFakeTodoItemKeys,
+    ongoingSummary,
+    podVariant,
+    space.id,
+    todoDraftItemsByUserId,
+    todoParticipants,
+    users,
+  ]);
+
+  const closedParticipantTodoLists = useMemo((): ParticipantTodoList[] => {
+    const mockCurrentUser = users[0];
+    if (podVariant === "personal") {
+      if (!mockCurrentUser) {
+        return [];
+      }
+
+      return [
+        {
+          user: mockCurrentUser,
+          items: getFakeClosedTodoItemsForFilter(todoHistoryFilter).sort(
+            (a, b) =>
+              seededRandom(`${space.id}-${todoHistoryFilter}-${a.id}`, 0) -
+              seededRandom(`${space.id}-${todoHistoryFilter}-${b.id}`, 0)
+          ),
+        },
+      ];
+    }
+
+    if (todoParticipants.length === 0) {
+      return [];
+    }
+
+    const todoItems = getFakeClosedTodoItemsForFilter(todoHistoryFilter).sort(
+      (a, b) =>
+        seededRandom(`${space.id}-${todoHistoryFilter}-${a.id}`, 0) -
+        seededRandom(`${space.id}-${todoHistoryFilter}-${b.id}`, 0)
+    );
+
+    const lists: ParticipantTodoList[] = todoParticipants.map((user) => ({
+      user,
+      items: [],
+    }));
+    todoItems.forEach((item, index) => {
+      lists[index % lists.length].items.push(item);
+    });
+
+    return lists;
+  }, [podVariant, space.id, todoHistoryFilter, todoParticipants, users]);
+
+  const closedTodoItemKeys = useMemo(
+    () =>
+      new Set(
+        getFakeClosedTodoItemsForFilter(todoHistoryFilter).map((item) =>
+          getSummaryItemKey("needAttention", item)
+        )
+      ),
+    [todoHistoryFilter]
+  );
+
+  const displayedParticipantTodoLists =
+    todoHistoryFilter === "ongoing"
+      ? participantTodoLists
+      : closedParticipantTodoLists;
+
+  const visibleParticipantTodoLists = useMemo((): ParticipantTodoList[] => {
+    const normalizedSearch = todoSearchText.trim().toLowerCase();
+    const mockCurrentUserId = users[0]?.id;
+
+    return displayedParticipantTodoLists
+      .filter((list) =>
+        podVariant === "personal"
+          ? list.user.id === mockCurrentUserId
+          : todoScopeFilter === "all" || list.user.id === mockCurrentUserId
+      )
+      .map((list) => ({
+        ...list,
+        items:
+          normalizedSearch.length === 0 ||
+          list.user.fullName.toLowerCase().includes(normalizedSearch)
+            ? list.items.filter(
+                (item) =>
+                  !deletedTodoItemKeys.has(
+                    getSummaryItemKey("needAttention", item)
+                  )
+              )
+            : list.items.filter((item) => {
+                const itemKey = getSummaryItemKey("needAttention", item);
+                const itemText = todoItemTextByKey[itemKey] ?? item.text;
+                return (
+                  !deletedTodoItemKeys.has(itemKey) &&
+                  itemText.toLowerCase().includes(normalizedSearch)
+                );
+              }),
+      }));
+  }, [
+    deletedTodoItemKeys,
+    displayedParticipantTodoLists,
+    todoItemTextByKey,
+    todoScopeFilter,
+    todoSearchText,
+    users,
+    podVariant,
+  ]);
+  const hasDisplayedTodoItems = displayedParticipantTodoLists.some(
+    (list) => list.items.length > 0
+  );
+  const hasVisibleTodoItems = visibleParticipantTodoLists.some(
+    (list) => list.items.length > 0
+  );
+  const shouldShowTodoLists =
+    (hasHistory && ongoingSummary !== null) || hasDisplayedTodoItems;
+
+  const handleCleanTodoItems = useCallback(() => {
+    const checkedKeys = new Set(
+      Object.entries(checkedSummaryItems)
+        .filter(
+          ([key, checked]) => checked && key.startsWith("needAttention::")
+        )
+        .map(([key]) => key)
+    );
+
+    if (checkedKeys.size === 0) {
+      return;
+    }
+
+    const checkedKeysArray = Array.from(checkedKeys);
+    const fakeTodoItemKeys = new Set(
+      FAKE_PROJECT_TODO_ITEMS.map((item) =>
+        getSummaryItemKey("needAttention", item)
+      )
+    );
+    const checkedFakeTodoKeys = checkedKeysArray.filter((key) =>
+      fakeTodoItemKeys.has(key)
+    );
+
+    setExitingItemKeys(
+      (previousExiting) => new Set([...previousExiting, ...checkedKeysArray])
+    );
+
+    if (cleanTransitionTimeoutRef.current !== null) {
+      window.clearTimeout(cleanTransitionTimeoutRef.current);
+    }
+
+    cleanTransitionTimeoutRef.current = window.setTimeout(() => {
+      setOngoingSummary((previousSummary) => {
+        if (!previousSummary) {
+          return previousSummary;
+        }
+        const updatedSummary = {
+          ...previousSummary,
+          needAttention: previousSummary.needAttention.filter(
+            (item) => !checkedKeys.has(getSummaryItemKey("needAttention", item))
+          ),
+        };
+        setSummaryRelatedConversations((previousLinks) => {
+          const validKeys = new Set(getSummaryItemKeys(updatedSummary));
+          return Object.fromEntries(
+            Object.entries(previousLinks).filter(([key]) => validKeys.has(key))
+          );
+        });
+        return updatedSummary;
+      });
+
+      setCheckedSummaryItems((previousChecked) =>
+        Object.fromEntries(
+          Object.entries(previousChecked).filter(
+            ([key]) => !checkedKeys.has(key)
+          )
+        )
+      );
+      setSummaryItemDiffByKey((previousDiffByKey) =>
+        Object.fromEntries(
+          Object.entries(previousDiffByKey).filter(
+            ([key]) => !checkedKeys.has(key)
+          )
+        )
+      );
+      setAutoCheckRationaleByKey((previousAutoCheckRationaleByKey) =>
+        Object.fromEntries(
+          Object.entries(previousAutoCheckRationaleByKey).filter(
+            ([key]) => !checkedKeys.has(key)
+          )
+        )
+      );
+      setHiddenFakeTodoItemKeys(
+        (previousHiddenFakeTodoItemKeys) =>
+          new Set([...previousHiddenFakeTodoItemKeys, ...checkedFakeTodoKeys])
+      );
+      setTodoDraftItemsByUserId((previousDraftItemsByUserId) => {
+        const nextDraftItemsByUserId = Object.fromEntries(
+          Object.entries(previousDraftItemsByUserId)
+            .map(([userId, draftItems]) => [
+              userId,
+              draftItems.filter(
+                (item) =>
+                  !checkedKeys.has(getSummaryItemKey("needAttention", item))
+              ),
+            ])
+            .filter(([, draftItems]) => draftItems.length > 0)
+        );
+        return nextDraftItemsByUserId;
+      });
+      setTypingItemKeys((previousTypingItemKeys) => {
+        const nextTypingItemKeys = new Set(previousTypingItemKeys);
+        checkedKeysArray.forEach((key) => nextTypingItemKeys.delete(key));
+        return nextTypingItemKeys;
+      });
+      setExitingItemKeys((previousExiting) => {
+        const nextExiting = new Set(previousExiting);
+        checkedKeysArray.forEach((key) => nextExiting.delete(key));
+        return nextExiting;
+      });
+      cleanTransitionTimeoutRef.current = null;
+    }, SUMMARY_ITEM_TRANSITION_MS);
+  }, [checkedSummaryItems]);
+
+  const saveTodoItemText = useCallback(
+    (itemKey: string, originalText: string, nextText: string) => {
+      setTodoItemTextByKey((previousTextByKey) => {
+        const updatedTextByKey = { ...previousTextByKey };
+        if (nextText === originalText) {
+          delete updatedTextByKey[itemKey];
+        } else {
+          updatedTextByKey[itemKey] = nextText;
+        }
+        return updatedTextByKey;
+      });
+    },
+    []
+  );
+
+  const removeTodoItem = useCallback((itemKey: string) => {
+    setDeletedTodoItemKeys(
+      (previousDeletedTodoItemKeys) =>
+        new Set([...previousDeletedTodoItemKeys, itemKey])
+    );
+    setCheckedSummaryItems((previousChecked) => {
+      const nextChecked = { ...previousChecked };
+      delete nextChecked[itemKey];
+      return nextChecked;
+    });
+    setTodoItemTextByKey((previousTextByKey) => {
+      const nextTextByKey = { ...previousTextByKey };
+      delete nextTextByKey[itemKey];
+      return nextTextByKey;
+    });
+    setTodoDraftItemsByUserId((previousDraftItemsByUserId) => {
+      const nextDraftItemsByUserId = Object.fromEntries(
+        Object.entries(previousDraftItemsByUserId)
+          .map(([userId, draftItems]) => [
+            userId,
+            draftItems.filter(
+              (item) => getSummaryItemKey("needAttention", item) !== itemKey
+            ),
+          ])
+          .filter(([, draftItems]) => draftItems.length > 0)
+      );
+      return nextDraftItemsByUserId;
+    });
+  }, []);
+
+  const addDraftTodoItemAfter = useCallback(
+    (userId: string, previousItemKey: string) => {
+      const draftItem: ChecklistItem = {
+        id: `draft-todo-${todoDraftItemCounterRef.current}`,
+        text: "",
+      };
+      todoDraftItemCounterRef.current += 1;
+
+      const draftItemKey = getSummaryItemKey("needAttention", draftItem);
+      pendingFocusTodoItemKeyRef.current = draftItemKey;
+
+      setTodoDraftItemsByUserId((previousDraftItemsByUserId) => {
+        const previousDraftItems = previousDraftItemsByUserId[userId] ?? [];
+        const previousDraftItemIndex = previousDraftItems.findIndex(
+          (item) => getSummaryItemKey("needAttention", item) === previousItemKey
+        );
+        const nextDraftItems = [...previousDraftItems];
+
+        if (previousDraftItemIndex === -1) {
+          nextDraftItems.push(draftItem);
+        } else {
+          nextDraftItems.splice(previousDraftItemIndex + 1, 0, draftItem);
+        }
+
+        return {
+          ...previousDraftItemsByUserId,
+          [userId]: nextDraftItems,
+        };
+      });
+    },
+    []
+  );
+
+  const acceptTodoSuggestions = useCallback(
+    (suggestionsToAccept: TodoSuggestionItem[]) => {
+      const nonEmptySuggestions = suggestionsToAccept
+        .map((suggestion) => ({
+          ...suggestion,
+          text: (
+            todoSuggestionTextById[suggestion.id] ?? suggestion.text
+          ).trim(),
+        }))
+        .filter((suggestion) => suggestion.text.length > 0);
+
+      if (nonEmptySuggestions.length === 0) {
+        return;
+      }
+
+      setTodoDraftItemsByUserId((previousDraftItemsByUserId) => {
+        const nextDraftItemsByUserId = { ...previousDraftItemsByUserId };
+
+        nonEmptySuggestions.forEach((suggestion) => {
+          const draftItem: ChecklistItem = {
+            id: `suggested-todo-${suggestion.id}`,
+            text: suggestion.text,
+          };
+          nextDraftItemsByUserId[suggestion.userId] = [
+            ...(nextDraftItemsByUserId[suggestion.userId] ?? []),
+            draftItem,
+          ];
+        });
+
+        return nextDraftItemsByUserId;
+      });
+
+      const acceptedSuggestionIds = new Set(
+        nonEmptySuggestions.map((suggestion) => suggestion.id)
+      );
+      const remainingSuggestions = todoSuggestions.filter(
+        (suggestion) => !acceptedSuggestionIds.has(suggestion.id)
+      );
+
+      setTodoSuggestions(remainingSuggestions);
+      if (remainingSuggestions.length === 0) {
+        setTodoSuggestionStatus("idle");
+      }
+      setTodoSuggestionTextById((previousTextById) => {
+        const nextTextById = { ...previousTextById };
+        nonEmptySuggestions.forEach((suggestion) => {
+          delete nextTextById[suggestion.id];
+        });
+        return nextTextById;
+      });
+    },
+    [todoSuggestionTextById, todoSuggestions]
+  );
+
+  const rejectTodoSuggestions = useCallback(() => {
+    if (todoSuggestionTimeoutRef.current !== null) {
+      window.clearTimeout(todoSuggestionTimeoutRef.current);
+      todoSuggestionTimeoutRef.current = null;
+    }
+
+    setTodoSuggestionStatus("idle");
+    setTodoSuggestions([]);
+    setTodoSuggestionTextById({});
+  }, []);
+
+  const acceptParticipantTodoSuggestion = useCallback(
+    (suggestion: TodoSuggestionItem) => {
+      const text = (
+        participantTodoSuggestionTextById[suggestion.id] ?? suggestion.text
+      ).trim();
+
+      if (text.length > 0) {
+        const draftItem: ChecklistItem = {
+          id: `participant-suggested-todo-${suggestion.id}`,
+          text,
+        };
+        setTodoDraftItemsByUserId((previousDraftItemsByUserId) => ({
+          ...previousDraftItemsByUserId,
+          [suggestion.userId]: [
+            ...(previousDraftItemsByUserId[suggestion.userId] ?? []),
+            draftItem,
+          ],
+        }));
+      }
+
+      setParticipantTodoSuggestionsByUserId((previousSuggestionsByUserId) => ({
+        ...previousSuggestionsByUserId,
+        [suggestion.userId]: (
+          previousSuggestionsByUserId[suggestion.userId] ?? []
+        ).filter((item) => item.id !== suggestion.id),
+      }));
+      setParticipantTodoSuggestionTextById((previousTextById) => {
+        const nextTextById = { ...previousTextById };
+        delete nextTextById[suggestion.id];
+        return nextTextById;
+      });
+    },
+    [participantTodoSuggestionTextById]
+  );
+
+  const rejectParticipantTodoSuggestion = useCallback(
+    (suggestion: TodoSuggestionItem) => {
+      setParticipantTodoSuggestionsByUserId((previousSuggestionsByUserId) => ({
+        ...previousSuggestionsByUserId,
+        [suggestion.userId]: (
+          previousSuggestionsByUserId[suggestion.userId] ?? []
+        ).filter((item) => item.id !== suggestion.id),
+      }));
+      setParticipantTodoSuggestionTextById((previousTextById) => {
+        const nextTextById = { ...previousTextById };
+        delete nextTextById[suggestion.id];
+        return nextTextById;
+      });
+    },
+    []
+  );
+
+  const startTodoSuggestions = useCallback(
+    (createSuggestions: () => TodoSuggestionItem[]) => {
+      if (todoSuggestionTimeoutRef.current !== null) {
+        window.clearTimeout(todoSuggestionTimeoutRef.current);
+      }
+
+      setTodoSuggestionStatus("working");
+      setTodoSuggestions([]);
+      setTodoSuggestionTextById({});
+
+      const delayMs = 500 + Math.floor(Math.random() * 1000);
+      todoSuggestionTimeoutRef.current = window.setTimeout(() => {
+        const suggestions = createSuggestions();
+        todoSuggestionCounterRef.current += suggestions.length;
+        setTodoSuggestions(suggestions);
+        setTodoSuggestionStatus("ready");
+        todoSuggestionTimeoutRef.current = null;
+      }, delayMs);
+    },
+    []
+  );
+
+  const handleCreateTodoSuggestions = useCallback(
+    (prompt: string) => {
+      const normalizedPrompt = prompt.trim();
+      if (normalizedPrompt.length === 0) {
+        return;
+      }
+
+      startTodoSuggestions(() => generateTodoSuggestions(normalizedPrompt));
+    },
+    [generateTodoSuggestions, startTodoSuggestions]
+  );
+
+  const handleSetupProject = useCallback(() => {
+    setActiveTab("todos");
+    startTodoSuggestions(generateProjectSetupTodoSuggestions);
+  }, [generateProjectSetupTodoSuggestions, setActiveTab, startTodoSuggestions]);
+
+  useEffect(() => {
+    const hasCheckedTodoItems = Object.entries(checkedSummaryItems).some(
+      ([key, checked]) => checked && key.startsWith("needAttention::")
+    );
+
+    if (!hasCheckedTodoItems) {
+      if (autoCleanTimeoutRef.current !== null) {
+        window.clearTimeout(autoCleanTimeoutRef.current);
+        autoCleanTimeoutRef.current = null;
+      }
+      return;
+    }
+
+    if (autoCleanTimeoutRef.current !== null) {
+      window.clearTimeout(autoCleanTimeoutRef.current);
+    }
+
+    autoCleanTimeoutRef.current = window.setTimeout(() => {
+      handleCleanTodoItems();
+      autoCleanTimeoutRef.current = null;
+    }, 5000);
+
+    return () => {
+      if (autoCleanTimeoutRef.current !== null) {
+        window.clearTimeout(autoCleanTimeoutRef.current);
+        autoCleanTimeoutRef.current = null;
+      }
+    };
+  }, [checkedSummaryItems, handleCleanTodoItems]);
 
   // Handle delete confirmation
   const handleDeleteConfirm = () => {
@@ -1645,19 +3278,68 @@ export function GroupConversationView({
         accessorKey: "fileName",
         header: "File name",
         id: "fileName",
-        sortingFn: "text",
+        sortingFn: (rowA, rowB) => {
+          const a = rowA.original;
+          const b = rowB.original;
+          if (a.kind !== b.kind) {
+            return a.kind === "folder" ? -1 : 1;
+          }
+          return a.fileName.localeCompare(b.fileName);
+        },
         meta: {
           className: "s-w-full",
         },
+        cell: (info) => {
+          const icon = getDataSourceIcon(info.row.original);
+          return (
+            <DataTable.CellContent>
+              <div className="s-flex s-items-center s-gap-2">
+                {icon && <Icon visual={icon} size="sm" />}
+                <span>{info.getValue() as string}</span>
+              </div>
+            </DataTable.CellContent>
+          );
+        },
+      },
+      {
+        accessorKey: "source",
+        header: "Source",
+        id: "source",
+        meta: {
+          className: "s-w-[84px]",
+        },
+        cell: (info) => {
+          const source = info.getValue() as DataSource["source"];
+          if (source !== "company") {
+            return <DataTable.BasicCellContent label="" />;
+          }
+
+          return (
+            <DataTable.CellContent>
+              <Icon
+                visual={CloudArrowLeftRightIcon}
+                size="sm"
+                className="s-text-muted-foreground dark:s-text-muted-foreground-night"
+              />
+            </DataTable.CellContent>
+          );
+        },
+      },
+      {
+        accessorKey: "fileType",
+        header: "Type",
+        id: "fileType",
+        sortingFn: (rowA, rowB) =>
+          getItemTypeLabel(rowA.original).localeCompare(
+            getItemTypeLabel(rowB.original)
+          ),
+        meta: {
+          className: "s-w-[84px]",
+        },
         cell: (info) => (
-          <DataTable.CellContent>
-            <div className="s-flex s-items-center s-gap-2">
-              {info.row.original.icon && (
-                <Icon visual={info.row.original.icon} size="sm" />
-              )}
-              <span>{info.getValue() as string}</span>
-            </div>
-          </DataTable.CellContent>
+          <DataTable.BasicCellContent
+            label={getItemTypeLabel(info.row.original)}
+          />
         ),
       },
       {
@@ -1665,7 +3347,7 @@ export function GroupConversationView({
         header: "Created by",
         id: "createdBy",
         meta: {
-          className: "s-w-[180px]",
+          className: "s-w-[140px]",
         },
         cell: (info) => {
           const userId = info.getValue() as string;
@@ -1691,7 +3373,7 @@ export function GroupConversationView({
         header: "Last Updated",
         id: "lastUpdated",
         meta: {
-          className: "s-w-[140px]",
+          className: "s-w-[100px]",
         },
         cell: (info) => {
           const date = info.getValue() as Date;
@@ -1704,25 +3386,36 @@ export function GroupConversationView({
         meta: {
           className: "s-w-12",
         },
-        cell: (info) => (
-          <DataTable.MoreButton
-            menuItems={[
-              {
-                kind: "item",
-                label: "Delete",
-                icon: TrashIcon,
-                variant: "warning",
-                onClick: () => {
-                  setSelectedDataSourceId(info.row.original.id);
-                  setDeleteDialogOpen(true);
-                },
+        cell: (info) => {
+          const dataSource = info.row.original;
+          const menuItems = [
+            ...(onAddFileToTopbar && dataSource.kind === "file"
+              ? [
+                  {
+                    kind: "item" as const,
+                    label: "Add to Topbar",
+                    icon: DocumentIcon,
+                    onClick: () => onAddFileToTopbar(dataSource.id),
+                  },
+                ]
+              : []),
+            {
+              kind: "item" as const,
+              label: "Delete",
+              icon: TrashIcon,
+              variant: "warning" as const,
+              onClick: () => {
+                setSelectedDataSourceId(dataSource.id);
+                setDeleteDialogOpen(true);
               },
-            ]}
-          />
-        ),
+            },
+          ];
+
+          return <DataTable.MoreButton menuItems={menuItems} />;
+        },
       },
     ],
-    []
+    [onAddFileToTopbar]
   );
 
   // Create member table columns
@@ -1822,7 +3515,7 @@ export function GroupConversationView({
               },
               {
                 kind: "item",
-                label: "Remove from Room",
+                label: "Remove from the Pod",
                 icon: TrashIcon,
                 variant: "warning",
                 onClick: () => {
@@ -1853,1054 +3546,1207 @@ export function GroupConversationView({
       );
     });
   }, [members, membersSearchText]);
+  const isShowingTodoSuggestions = todoSuggestionStatus !== "idle";
 
   return (
-    <div className="s-flex s-h-full s-w-full s-flex-col s-bg-background dark:s-bg-background-night">
+    <div className="s-flex s-h-full s-w-full s-h-full s-flex-col s-bg-background dark:s-bg-background-night">
       {/* Tabs */}
       <Tabs
         value={activeTab}
         onValueChange={setActiveTab}
         className="s-flex s-min-h-0 s-flex-1 s-flex-col"
       >
-        <div className="s-flex s-h-14 s-w-full s-items-center s-gap-2 s-border-b s-border-border dark:s-border-border-night s-px-6">
-          <div className="s-flex s-h-full s-flex-1 s-items-end">
-            <TabsList border={false}>
-              <TabsTrigger
-                value="conversations"
-                label="Conversations"
-                icon={ChatBubbleLeftRightIcon}
-              />
-              <TabsTrigger
-                value="knowledge"
-                label="Knowledge"
-                icon={BookOpenIcon}
-              />
-              {showToolsAndAboutTabs && (
-                <>
-                  <TabsTrigger value="Tools" label="Tools" icon={ToolsIcon} />
-                  <TabsTrigger
-                    value="about"
-                    label="About"
-                    icon={InformationCircleIcon}
-                  />
-                </>
-              )}
-              <TabsTrigger
-                value="settings"
-                icon={Cog6ToothIcon}
-                tooltip={"Room settings"}
-              />
-            </TabsList>
-          </div>
-          <div className="s-flex-1" />
-          {spaceAvatars.length > 0 && (
-            <div className="s-flex s-h-8 s-items-center">
-              <Avatar.Stack
-                avatars={spaceAvatars}
-                nbVisibleItems={spaceAvatars.length}
-                orientation="horizontal"
-                hasMagnifier={false}
-                size="sm"
-              />
-            </div>
-          )}
-          {isProjectJoined ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  icon={MoreIcon}
-                  tooltip="Project options"
-                />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem
-                  label="Leave the project"
-                  icon={LogoutIcon}
-                  onClick={onLeaveProject}
-                />
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <Button
-              size="sm"
-              variant="primary"
-              label="Join the project"
-              tooltip="Join the project to be notified of new conversations"
-              onClick={onJoinProject}
-            />
-          )}
-        </div>
-
         {/* Conversations Tab */}
-        <TabsContent value="conversations">
-          <div className="s-flex s-h-full s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto s-px-6">
-            <div
-              className={`s-mx-auto s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6 ${
-                !hasHistory ? "s-h-full s-justify-center s-py-8" : "s-py-8"
-              }`}
-            >
-              {/* New conversation section */}
-              <div className="s-flex s-flex-col s-gap-3">
-                <h2 className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
-                  {space.name}
-                </h2>
+        <GroupConversationTabContent value="conversations">
+          {/* New conversation section */}
+          {greeting && (
+            <h2 className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
+              {greeting}
+            </h2>
+          )}
+          <InputBar placeholder={`Start a conversation in ${space.name}`} />
 
-                {/* Suggestions for empty rooms */}
-                {!hasHistory && (
-                  <div className="s-flex s-flex-col s-gap-5">
-                    <h3 className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
-                      Start a first conversation!
-                    </h3>
-                  </div>
-                )}
-                <InputBar placeholder={`Get work done in ${space.name}`} />
-                {hasHistory && (
-                  <div className="s-flex s-w-full s-gap-2 s-px-4">
-                    <SearchInputWithPopover
-                      name="conversation-search"
-                      value={searchText}
-                      onChange={(value) => {
-                        setSearchText(value);
-                        if (!value.trim()) {
-                          setIsSearchOpen(false);
+          {!hasHistory && (
+            <ProjectSetupEmptyState onSetupProject={handleSetupProject} />
+          )}
+          {/* Conversations list */}
+          {hasHistory &&
+            podVariant !== "personal" &&
+            ongoingSummary &&
+            ongoingSummary.projectPulse.length > 0 && (
+              <>
+                <h3 className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
+                  {isSummaryUpdating ? (
+                    <AnimatedText
+                      variant="primary"
+                      className="s-text-muted-foreground"
+                    >
+                      Catching-up
+                    </AnimatedText>
+                  ) : (
+                    "Catching-up"
+                  )}
+                </h3>
+                <div className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                  {ongoingSummary.projectPulse.map((item, index) => {
+                    const itemKey = getSummaryItemKey("projectPulse", item);
+                    const relatedConversationIds =
+                      summaryRelatedConversations[itemKey] ?? [];
+                    const shouldTypePulseItem =
+                      typingItemKeys.has(itemKey) &&
+                      (summaryItemDiffByKey[itemKey] === "modified" ||
+                        summaryItemDiffByKey[itemKey] === "added");
+
+                    return (
+                      <span key={itemKey}>
+                        {shouldTypePulseItem ? (
+                          <TypingAnimation
+                            key={`${itemKey}-${typingVersion}`}
+                            text={item.segments
+                              .map((segment) => segment.text)
+                              .join("")}
+                            duration={16}
+                          />
+                        ) : (
+                          renderProjectPulseItemWithInlineLinks(
+                            item,
+                            relatedConversationIds,
+                            false
+                          )
+                        )}
+                        {index < ongoingSummary.projectPulse.length - 1
+                          ? " "
+                          : null}
+                      </span>
+                    );
+                  })}
+                </div>
+                <div className="s-@container s-w-full">
+                  <div className="s-flex s-w-full s-flex-row s-items-center s-gap-2">
+                    <ButtonsSwitchList
+                      defaultValue={goodToKnowFilter}
+                      onValueChange={(value) => {
+                        if (
+                          value === "all" ||
+                          value === "shared" ||
+                          value === "mine"
+                        ) {
+                          setGoodToKnowFilter(value);
                         }
-                      }}
-                      open={isSearchOpen}
-                      onOpenChange={setIsSearchOpen}
-                      placeholder={`Search in ${space.name}`}
-                      className="s-w-full"
-                      items={searchResults}
-                      availableHeight
-                      noResults={
-                        searchText.trim()
-                          ? "No results found"
-                          : "Start typing to search"
-                      }
-                      onItemSelect={handleSearchItemSelect}
-                      renderItem={(item, selected) => (
-                        <SearchResultItem item={item} selected={selected} />
-                      )}
-                    />
-                  </div>
-                )}
-
-                {!hasHistory && (
-                  <div className="s-flex s-flex-col s-gap-3">
-                    <h3 className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
-                      New Project? Let us help you setup.
-                    </h3>
-                    <CardGrid>
-                      {[
-                        {
-                          id: "add-knowledge",
-                          label: "Add knowledge",
-                          variant: "primary" as const,
-                          icon: BookOpenIcon,
-                          description:
-                            "Add files, links, or data sources relevant to this project.",
-                          onClick: () => setActiveTab("knowledge"),
-                          isPulsing: false,
-                        },
-                        {
-                          id: "invite-members",
-                          label: "Manage members",
-                          variant: "primary" as const,
-                          icon: UserGroupIcon,
-                          description:
-                            "Invite people to this project as members or editors.",
-                          onClick: () => onInviteMembers?.(),
-                          isPulsing: false,
-                        },
-                      ].map((suggestion) => (
-                        <Card
-                          key={suggestion.id}
-                          variant={suggestion.variant}
-                          size="lg"
-                          onClick={suggestion.onClick}
-                          className="s-cursor-pointer"
-                        >
-                          <div className="s-flex s-w-full s-flex-col s-gap-2 s-text-sm">
-                            <div
-                              className={`s-flex s-w-full s-items-center s-gap-2 s-font-semibold ${
-                                suggestion.variant === "highlight"
-                                  ? "s-text-highlight-600 dark:s-text-highlight-400"
-                                  : "s-text-foreground dark:s-text-foreground-night"
-                              }`}
-                            >
-                              <Icon visual={suggestion.icon} size="sm" />
-                              <div className="s-w-full">{suggestion.label}</div>
-                            </div>
-                            {suggestion.description && (
-                              <div className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-                                {suggestion.description}
-                              </div>
-                            )}
-                          </div>
-                        </Card>
-                      ))}
-                    </CardGrid>
-                  </div>
-                )}
-              </div>
-              {hasHistory && ongoingSummary && (
-                <div className="s-flex s-flex-col s-gap-3">
-                  <div className="s-inline-flex s-items-center s-gap-2 s-flex-wrap">
-                    <h3 className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
-                      What's new?
-                    </h3>
-                    <Tooltip
-                      label={`Last updated ${formatSummaryUpdatedAt(ongoingSummary.updatedAt)}`}
-                      trigger={
-                        <Chip
-                          size="xs"
-                          color={isSummaryUpdating ? "highlight" : "primary"}
-                          label={isSummaryUpdating ? "Updating" : "Just now"}
-                          isBusy={isSummaryUpdating}
-                        />
-                      }
-                    />
-                    <div className="s-flex-1" />
-                    <Button
-                      size="xs"
-                      variant="outline"
-                      icon={WindIcon}
-                      tooltip="Remove checked items"
-                      label="Clean"
-                      onClick={() => {
-                        const checkedKeys = new Set(
-                          Object.entries(checkedSummaryItems)
-                            .filter(([, checked]) => checked)
-                            .map(([key]) => key)
-                        );
-
-                        if (checkedKeys.size === 0) {
-                          return;
-                        }
-
-                        const checkedKeysArray = Array.from(checkedKeys);
-                        const exitingChecklistKeys = checkedKeysArray.filter(
-                          (key) =>
-                            key.startsWith("needAttention::") ||
-                            key.startsWith("keyDecisions::")
-                        );
-
-                        setExitingItemKeys(
-                          (previousExiting) =>
-                            new Set([
-                              ...previousExiting,
-                              ...exitingChecklistKeys,
-                            ])
-                        );
-
-                        if (cleanTransitionTimeoutRef.current !== null) {
-                          window.clearTimeout(
-                            cleanTransitionTimeoutRef.current
-                          );
-                        }
-
-                        cleanTransitionTimeoutRef.current = window.setTimeout(
-                          () => {
-                            setOngoingSummary((previousSummary) => {
-                              if (!previousSummary) {
-                                return previousSummary;
-                              }
-                              const updatedSummary = {
-                                ...previousSummary,
-                                needAttention:
-                                  previousSummary.needAttention.filter(
-                                    (item) =>
-                                      !checkedKeys.has(
-                                        getSummaryItemKey("needAttention", item)
-                                      )
-                                  ),
-                                keyDecisions:
-                                  previousSummary.keyDecisions.filter(
-                                    (item) =>
-                                      !checkedKeys.has(
-                                        getSummaryItemKey("keyDecisions", item)
-                                      )
-                                  ),
-                                projectPulse:
-                                  previousSummary.projectPulse.filter(
-                                    (item) =>
-                                      !checkedKeys.has(
-                                        getSummaryItemKey("projectPulse", item)
-                                      )
-                                  ),
-                              };
-                              setSummaryRelatedConversations(
-                                (previousLinks) => {
-                                  const validKeys = new Set(
-                                    getSummaryItemKeys(updatedSummary)
-                                  );
-                                  return Object.fromEntries(
-                                    Object.entries(previousLinks).filter(
-                                      ([key]) => validKeys.has(key)
-                                    )
-                                  );
-                                }
-                              );
-                              return updatedSummary;
-                            });
-
-                            setCheckedSummaryItems((previousChecked) =>
-                              Object.fromEntries(
-                                Object.entries(previousChecked).filter(
-                                  ([key]) => !checkedKeys.has(key)
-                                )
-                              )
-                            );
-                            setSummaryItemDiffByKey((previousDiffByKey) =>
-                              Object.fromEntries(
-                                Object.entries(previousDiffByKey).filter(
-                                  ([key]) => !checkedKeys.has(key)
-                                )
-                              )
-                            );
-                            setAutoCheckRationaleByKey(
-                              (previousAutoCheckRationaleByKey) =>
-                                Object.fromEntries(
-                                  Object.entries(
-                                    previousAutoCheckRationaleByKey
-                                  ).filter(([key]) => !checkedKeys.has(key))
-                                )
-                            );
-                            setTypingItemKeys((previousTypingItemKeys) => {
-                              const nextTypingItemKeys = new Set(
-                                previousTypingItemKeys
-                              );
-                              checkedKeysArray.forEach((key) =>
-                                nextTypingItemKeys.delete(key)
-                              );
-                              return nextTypingItemKeys;
-                            });
-                            setExitingItemKeys((previousExiting) => {
-                              const nextExiting = new Set(previousExiting);
-                              exitingChecklistKeys.forEach((key) =>
-                                nextExiting.delete(key)
-                              );
-                              return nextExiting;
-                            });
-                            cleanTransitionTimeoutRef.current = null;
-                          },
-                          SUMMARY_ITEM_TRANSITION_MS
-                        );
-                      }}
-                    />
-                  </div>
-
-                  <div className="s-relative">
-                    <div
-                      className="s-flex s-flex-col s-gap-4"
-                      style={{
-                        maxHeight: isOngoingSummaryExpanded
-                          ? 2000
-                          : SUMMARY_COLLAPSED_MAX_HEIGHT_PX,
-                        overflow: "hidden",
-                        transition: "max-height 200ms ease",
                       }}
                     >
-                      {ongoingSummary.needAttention.length +
-                        ongoingSummary.keyDecisions.length +
-                        ongoingSummary.projectPulse.length >
-                      0 ? (
-                        <>
-                          {[
-                            {
-                              key: "needAttention",
-                              summaryCategory: "needAttention" as const,
-                              icon: TriangleIcon,
-                              iconClassName:
-                                "s-text-warning-300 dark:s-text-warning-300-night",
-                              label: "Need to do",
-                              items: ongoingSummary.needAttention,
-                            },
-                            {
-                              key: "needKnow",
-                              summaryCategory: "keyDecisions" as const,
-                              icon: SquareIcon,
-                              iconClassName:
-                                "s-text-golden-300 dark:s-text-golden-300-night",
-                              label: "Need to know",
-                              items: ongoingSummary.keyDecisions,
-                            },
-                          ]
-                            .filter((section) => section.items.length > 0)
-                            .map((section) => (
-                              <WhatsNewDeltaList
-                                key={section.key}
-                                label={section.label}
-                                summaryCategory={section.summaryCategory}
-                                icon={section.icon}
-                                iconClassName={section.iconClassName}
-                                items={section.items}
-                                checkedSummaryItems={checkedSummaryItems}
-                                summaryRelatedConversations={
-                                  summaryRelatedConversations
-                                }
-                                summaryItemDiffByKey={summaryItemDiffByKey}
-                                typingItemKeys={typingItemKeys}
-                                enteringItemKeys={enteringItemKeys}
-                                exitingItemKeys={exitingItemKeys}
-                                typingVersion={typingVersion}
-                                getSummaryItemKey={getSummaryItemKey}
-                                renderSummaryItemText={
-                                  renderSummaryItemWithEmphasizedNames
-                                }
-                                onCheckItem={(itemKey, nextChecked) => {
-                                  setCheckedSummaryItems((previous) => ({
-                                    ...previous,
-                                    [itemKey]: nextChecked,
-                                  }));
-                                }}
-                                onCheckSection={(sectionItemKeys) => {
-                                  setCheckedSummaryItems((previous) => ({
-                                    ...previous,
-                                    ...Object.fromEntries(
-                                      sectionItemKeys.map((key) => [key, true])
-                                    ),
-                                  }));
-                                }}
-                                onConversationClick={scrollToConversationRow}
-                                conversationTitleById={conversationTitleById}
-                                autoCheckRationaleByKey={
-                                  autoCheckRationaleByKey
-                                }
-                              />
-                            ))}
-
-                          {ongoingSummary.projectPulse.length > 0 && (
-                            <div className="s-flex s-flex-col s-gap-2">
-                              <div className="s-group/summary-title s-flex s-items-center s-gap-3 s-pt-2">
-                                <div className="s-flex s-items-center s-h-4 s-w-4">
-                                  {(() => {
-                                    const sectionItemKeys =
-                                      ongoingSummary.projectPulse.map((item) =>
-                                        getSummaryItemKey("projectPulse", item)
-                                      );
-                                    const areAllSectionItemsChecked =
-                                      sectionItemKeys.length > 0 &&
-                                      sectionItemKeys.every(
-                                        (itemKey) =>
-                                          checkedSummaryItems[itemKey]
-                                      );
-
-                                    return (
-                                      <>
-                                        <Icon
-                                          visual={CircleIcon}
-                                          size="xs"
-                                          className={cn(
-                                            "group-hover/summary-title:s-hidden",
-                                            "s-text-green-300 dark:s-text-green-300-night"
-                                          )}
-                                        />
-                                        <Checkbox
-                                          size="xs"
-                                          className="s-hidden group-hover/summary-title:s-inline-block"
-                                          checked={areAllSectionItemsChecked}
-                                          onCheckedChange={(checked) => {
-                                            if (checked !== true) {
-                                              return;
-                                            }
-
-                                            setCheckedSummaryItems(
-                                              (previous) => ({
-                                                ...previous,
-                                                ...Object.fromEntries(
-                                                  sectionItemKeys.map((key) => [
-                                                    key,
-                                                    true,
-                                                  ])
-                                                ),
-                                              })
-                                            );
-                                          }}
-                                        />
-                                      </>
-                                    );
-                                  })()}
-                                </div>
-                                <h4 className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
-                                  Good to know
-                                </h4>
-                              </div>
-                              <div
-                                className={cn(
-                                  "s-text-sm s-pl-7",
-                                  ongoingSummary.projectPulse.every(
-                                    (item) =>
-                                      checkedSummaryItems[
-                                        getSummaryItemKey("projectPulse", item)
-                                      ]
-                                  )
-                                    ? "s-text-faint s-line-through dark:s-text-faint-night"
-                                    : "s-text-muted-foreground dark:s-text-muted-foreground-night"
-                                )}
-                              >
-                                {ongoingSummary.projectPulse.map(
-                                  (item, index) => {
-                                    const itemKey = getSummaryItemKey(
-                                      "projectPulse",
-                                      item
-                                    );
-                                    const relatedConversationIds =
-                                      summaryRelatedConversations[itemKey] ??
-                                      [];
-                                    const isChecked =
-                                      checkedSummaryItems[itemKey] ?? false;
-                                    const shouldTypePulseItem =
-                                      typingItemKeys.has(itemKey) &&
-                                      (summaryItemDiffByKey[itemKey] ===
-                                        "modified" ||
-                                        summaryItemDiffByKey[itemKey] ===
-                                          "added");
-
-                                    return (
-                                      <span key={itemKey}>
-                                        {shouldTypePulseItem ? (
-                                          <TypingAnimation
-                                            key={`${itemKey}-${typingVersion}`}
-                                            text={item.segments
-                                              .map((segment) => segment.text)
-                                              .join("")}
-                                            duration={16}
-                                          />
-                                        ) : (
-                                          renderProjectPulseItemWithInlineLinks(
-                                            item,
-                                            relatedConversationIds,
-                                            isChecked
-                                          )
-                                        )}
-                                        {index <
-                                        ongoingSummary.projectPulse.length - 1
-                                          ? " "
-                                          : null}
-                                      </span>
-                                    );
-                                  }
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </>
-                      ) : (
-                        <div className="s-text-base s-text-faint s-italic dark:s-text-faint-night">
-                          You're all caught up!
-                        </div>
-                      )}
-                    </div>
-                    {!isOngoingSummaryExpanded &&
-                      ongoingSummary.needAttention.length +
-                        ongoingSummary.keyDecisions.length +
-                        ongoingSummary.projectPulse.length >
-                        0 && (
-                        <div className="s-pointer-events-none s-absolute s-bottom-0 s-left-0 s-right-0 s-h-10 s-bg-gradient-to-b s-from-transparent s-to-background dark:s-to-background-night" />
-                      )}
-                  </div>
-                  {ongoingSummary.needAttention.length +
-                    ongoingSummary.keyDecisions.length +
-                    ongoingSummary.projectPulse.length >
-                    0 && (
-                    <div>
-                      <Button
-                        size="xs"
-                        variant="outline"
-                        label={
-                          isOngoingSummaryExpanded ? "Show less" : "Show more"
-                        }
-                        onClick={() =>
-                          setIsOngoingSummaryExpanded((previous) => !previous)
-                        }
-                        aria-expanded={isOngoingSummaryExpanded}
+                      <ButtonsSwitch
+                        value="mine"
+                        label="Mine"
+                        tooltip="Conversations you started"
                       />
-                    </div>
-                  )}
+                      <ButtonsSwitch
+                        value="shared"
+                        label="Group"
+                        tooltip="Conversations with more than one person"
+                      />
+                      <ButtonsSwitch
+                        value="all"
+                        label="All"
+                        tooltip="Every conversation in this project"
+                      />
+                    </ButtonsSwitchList>
+                    {hasHistory && (
+                      <div className="s-min-w-0 s-flex-1">
+                        <SearchInputWithPopover
+                          name="conversation-search"
+                          value={searchText}
+                          onChange={(value) => {
+                            setSearchText(value);
+                            if (!value.trim()) {
+                              setIsSearchOpen(false);
+                            }
+                          }}
+                          open={isSearchOpen}
+                          onOpenChange={setIsSearchOpen}
+                          placeholder={`Search in ${space.name}`}
+                          className="s-w-full"
+                          items={searchResults}
+                          availableHeight
+                          noResults={
+                            searchText.trim()
+                              ? "No results found"
+                              : "Start typing to search"
+                          }
+                          onItemSelect={handleSearchItemSelect}
+                          renderItem={(item, selected) => (
+                            <SearchResultItem item={item} selected={selected} />
+                          )}
+                        />
+                      </div>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      icon={CheckDoubleIcon}
+                      className="@sm:s-hidden"
+                      tooltip="Mark all as read"
+                      onClick={() => {
+                        setCheckedSummaryItems((previous) => ({
+                          ...previous,
+                          ...Object.fromEntries(
+                            ongoingSummary.projectPulse.map((item) => [
+                              getSummaryItemKey("projectPulse", item),
+                              true,
+                            ])
+                          ),
+                        }));
+                      }}
+                    />
+                    <Button
+                      size="sm"
+                      className="s-hidden @sm:s-inline-flex"
+                      variant="outline"
+                      icon={CheckDoubleIcon}
+                      label="Mark all as read"
+                      onClick={() => {
+                        setCheckedSummaryItems((previous) => ({
+                          ...previous,
+                          ...Object.fromEntries(
+                            ongoingSummary.projectPulse.map((item) => [
+                              getSummaryItemKey("projectPulse", item),
+                              true,
+                            ])
+                          ),
+                        }));
+                      }}
+                    />
+                  </div>
                 </div>
-              )}
-              {/* Conversations list */}
-              <div className="s-flex s-flex-col s-gap-3">
-                {expandedConversations.length > 0 && (
-                  <>
-                    <div className="s-flex s-flex-col">
-                      {(
-                        [
-                          "Today",
-                          "Yesterday",
-                          "Last Week",
-                          "Last Month",
-                        ] as const
-                      ).map((bucketKey) => {
-                        const bucketConversations =
-                          conversationsByBucket[bucketKey];
-                        if (bucketConversations.length === 0) return null;
+              </>
+            )}
+          {hasHistory && podVariant === "personal" && (
+            <div className="s-@container s-w-full">
+              <div className="s-flex s-w-full s-flex-row s-items-center s-gap-2">
+                <ButtonsSwitchList
+                  defaultValue={personalConversationFilter}
+                  onValueChange={(value) => {
+                    if (
+                      value === "all" ||
+                      value === "mine" ||
+                      value === "group" ||
+                      value === "triggered"
+                    ) {
+                      setPersonalConversationFilter(value);
+                    }
+                  }}
+                >
+                  <ButtonsSwitch
+                    value="all"
+                    label="All"
+                    tooltip="All conversations"
+                  />
+                  <ButtonsSwitch
+                    value="mine"
+                    label="Mine"
+                    tooltip="Conversations with just you and an agent"
+                  />
+                  <ButtonsSwitch
+                    value="group"
+                    label="Group"
+                    tooltip="Conversations with multiple people"
+                  />
+                  <Separator orientation="vertical" />
+                  <ButtonsSwitch
+                    value="triggered"
+                    label="Triggered"
+                    tooltip="Agent-owned conversations"
+                  />
+                </ButtonsSwitchList>
+                <div className="s-min-w-0 s-flex-1">
+                  <SearchInputWithPopover
+                    name="conversation-search"
+                    value={searchText}
+                    onChange={(value) => {
+                      setSearchText(value);
+                      if (!value.trim()) {
+                        setIsSearchOpen(false);
+                      }
+                    }}
+                    open={isSearchOpen}
+                    onOpenChange={setIsSearchOpen}
+                    placeholder={`Search in ${space.name}`}
+                    className="s-w-full"
+                    items={searchResults}
+                    availableHeight
+                    noResults={
+                      searchText.trim()
+                        ? "No results found"
+                        : "Start typing to search"
+                    }
+                    onItemSelect={handleSearchItemSelect}
+                    renderItem={(item, selected) => (
+                      <SearchResultItem item={item} selected={selected} />
+                    )}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+          {visibleConversations.length > 0 && (
+            <>
+              <div className="s-flex s-flex-col">
+                {(
+                  ["Today", "Yesterday", "Last Week", "Last Month"] as const
+                ).map((bucketKey) => {
+                  const bucketConversations = conversationsByBucket[bucketKey];
+                  if (bucketConversations.length === 0) return null;
 
-                        return (
-                          <>
-                            <ListItemSection>{bucketKey}</ListItemSection>
-                            <ListGroup className="!s-border-transparent">
-                              {bucketConversations.map((conversation) => {
-                                const participants = getRandomParticipants(
-                                  conversation,
-                                  users,
-                                  agents
-                                );
-                                const creator = getRandomCreator(
-                                  conversation,
-                                  users
-                                );
-                                const avatarProps =
-                                  participantsToAvatarProps(participants);
+                  return (
+                    <Fragment key={bucketKey}>
+                      <ListItemSection className="s-pl-4">
+                        {bucketKey}
+                      </ListItemSection>
+                      <ListGroup className="!s-border-transparent s-gap-0.5">
+                        {bucketConversations.map((conversation) => {
+                          const listItem = conversationListItemsById.get(
+                            conversation.id
+                          );
+                          if (!listItem) {
+                            return null;
+                          }
 
-                                // Format time from updatedAt
-                                const time = conversation.updatedAt
-                                  .toLocaleTimeString("en-US", {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                    hour12: false,
+                          const baseConversationId = getBaseConversationId(
+                            conversation,
+                            conversations
+                          );
+
+                          const conversationForLookup = {
+                            ...conversation,
+                            id: baseConversationId,
+                          };
+                          const isSelectedConversation =
+                            selectedConversationRow?.rowId === conversation.id;
+
+                          return (
+                            <div
+                              id={getConversationRowDomId(conversation.id)}
+                              key={conversation.id}
+                            >
+                              <ConversationListItem
+                                conversation={conversation}
+                                avatar={
+                                  podVariant === "personal" &&
+                                  listItem.initiator
+                                    ? {
+                                        name: listItem.initiator.name,
+                                        visual: listItem.initiator.portrait,
+                                        emoji: listItem.initiator.emoji,
+                                        backgroundColor:
+                                          listItem.initiator.backgroundColor,
+                                        isRounded:
+                                          listItem.initiator.isRounded ?? true,
+                                      }
+                                    : undefined
+                                }
+                                creator={
+                                  podVariant === "personal"
+                                    ? undefined
+                                    : listItem.creator || undefined
+                                }
+                                className={cn(
+                                  "s-px-3 s-rounded-2xl",
+                                  isSelectedConversation &&
+                                    "s-bg-highlight-50 dark:s-bg-highlight-50-night"
+                                )}
+                                time={listItem.time}
+                                showFocus={
+                                  conversationIdToShowFocus === conversation.id
+                                }
+                                replySection={
+                                  <ReplySection
+                                    replyCount={listItem.replyCount}
+                                    unreadCount={
+                                      bucketKey === "Today"
+                                        ? listItem.messageCount
+                                        : 0
+                                    }
+                                    mentionCount={
+                                      bucketKey === "Today"
+                                        ? listItem.mentionCount
+                                        : 0
+                                    }
+                                    avatars={listItem.avatarProps}
+                                    lastMessageBy={
+                                      listItem.avatarProps[0]?.name || "Unknown"
+                                    }
+                                  />
+                                }
+                                onClick={() => {
+                                  setSelectedConversationRow({
+                                    rowId: conversation.id,
+                                    conversationId: conversationForLookup.id,
+                                  });
+                                  onConversationClick?.(conversationForLookup);
+                                }}
+                              />
+                            </div>
+                          );
+                        })}
+                      </ListGroup>
+                    </Fragment>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </GroupConversationTabContent>
+
+        {/* Tasks Tab */}
+        <GroupConversationTabContent value="todos" contentClassName="s-gap-4">
+          <div className="s-flex s-flex-col s-gap-3">
+            <TodoInputBar
+              placeholder="Describe the tasks to create"
+              onCreateTasks={handleCreateTodoSuggestions}
+            />
+          </div>
+
+          {isShowingTodoSuggestions && (
+            <SuggestionBox
+              status={todoSuggestionStatus}
+              workingLabel="Creating suggested tasks..."
+              items={todoSuggestions.map((suggestion) => {
+                const participant = todoParticipants.find(
+                  (user) => user.id === suggestion.userId
+                );
+
+                return {
+                  id: suggestion.id,
+                  groupTitle: participant?.fullName ?? "Participant",
+                  groupVisual: (
+                    <Avatar
+                      name={participant?.fullName ?? "Participant"}
+                      visual={participant?.portrait}
+                      size="xs"
+                      isRounded
+                    />
+                  ),
+                  text: suggestion.text,
+                };
+              })}
+              textById={todoSuggestionTextById}
+              acceptItemLabel="Add this task"
+              acceptAllLabel="Accept all"
+              rejectAllLabel="Cancel"
+              onTextChange={(id, text) => {
+                setTodoSuggestionTextById((previousTextById) => ({
+                  ...previousTextById,
+                  [id]: text,
+                }));
+              }}
+              onAcceptItem={(id) => {
+                const suggestion = todoSuggestions.find(
+                  (item) => item.id === id
+                );
+                if (suggestion) {
+                  acceptTodoSuggestions([suggestion]);
+                }
+              }}
+              onAcceptAll={() => acceptTodoSuggestions(todoSuggestions)}
+              onRejectAll={rejectTodoSuggestions}
+            />
+          )}
+
+          {shouldShowTodoLists ? (
+            <div className="s-flex s-flex-col s-gap-6">
+              <div className="s-flex s-w-full s-items-center s-justify-between s-gap-2">
+                <div className="s-flex s-items-center s-gap-2">
+                  {podVariant !== "personal" && (
+                    <ButtonsSwitchList
+                      defaultValue={todoScopeFilter}
+                      size="sm"
+                      onValueChange={(value) => {
+                        if (value === "all" || value === "mine") {
+                          setTodoScopeFilter(value);
+                        }
+                      }}
+                    >
+                      <ButtonsSwitch value="mine" label="Mine" />
+                      <ButtonsSwitch value="all" label="Everyone" />
+                    </ButtonsSwitchList>
+                  )}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        label={`Status: ${TODO_HISTORY_FILTER_LABELS[todoHistoryFilter]}`}
+                        isSelect
+                      />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      <div className="s-px-2 s-py-1.5 s-text-xs s-font-medium s-text-muted-foreground dark:s-text-muted-foreground-night">
+                        Status
+                      </div>
+                      <DropdownMenuRadioGroup
+                        value={todoHistoryFilter}
+                        onValueChange={(value) => {
+                          if (
+                            value === "ongoing" ||
+                            value === "today" ||
+                            value === "last7" ||
+                            value === "last30"
+                          ) {
+                            setTodoHistoryFilter(value);
+                          }
+                        }}
+                      >
+                        {TODO_HISTORY_FILTER_OPTIONS.map((option) => (
+                          <DropdownMenuRadioItem
+                            key={option}
+                            value={option}
+                            label={TODO_HISTORY_FILTER_LABELS[option]}
+                          />
+                        ))}
+                      </DropdownMenuRadioGroup>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+                <SearchInput
+                  name="todo-search"
+                  value={todoSearchText}
+                  onChange={setTodoSearchText}
+                  placeholder="Search tasks..."
+                  className="s-w-full"
+                />
+              </div>
+              {hasDisplayedTodoItems ? (
+                hasVisibleTodoItems ? (
+                  visibleParticipantTodoLists.map((list) => {
+                    const visibleItems = list.items;
+                    if (visibleItems.length === 0) {
+                      return null;
+                    }
+                    const visibleItemsToRender = visibleItems.filter(
+                      (item) =>
+                        !deletedTodoItemKeys.has(
+                          getSummaryItemKey("needAttention", item)
+                        )
+                    );
+                    const participantTodoSuggestions =
+                      participantTodoSuggestionsByUserId[list.user.id] ?? [];
+
+                    return (
+                      <div
+                        key={list.user.id}
+                        className="s-flex s-flex-col s-gap-3"
+                      >
+                        {podVariant !== "personal" && (
+                          <div className="s-flex s-items-center s-gap-3">
+                            <Avatar
+                              name={list.user.fullName}
+                              visual={list.user.portrait}
+                              size="xs"
+                              isRounded={true}
+                            />
+                            <div className="s-flex s-flex-col">
+                              <h4 className="s-heading-base s-text-muted-foreground dark:s-text-foreground-night">
+                                {list.user.fullName}
+                              </h4>
+                            </div>
+                          </div>
+                        )}
+                        {participantTodoSuggestions.length > 0 && (
+                          <SuggestionBox
+                            status="ready"
+                            workingLabel="Creating suggested tasks..."
+                            title="Suggestions"
+                            items={participantTodoSuggestions.map(
+                              (suggestion) => ({
+                                id: suggestion.id,
+                                text: suggestion.text,
+                              })
+                            )}
+                            textById={participantTodoSuggestionTextById}
+                            acceptItemLabel="Add this task"
+                            onTextChange={(id, text) => {
+                              setParticipantTodoSuggestionTextById(
+                                (previousTextById) => ({
+                                  ...previousTextById,
+                                  [id]: text,
+                                })
+                              );
+                            }}
+                            onAcceptItem={(id) => {
+                              const suggestion =
+                                participantTodoSuggestions.find(
+                                  (item) => item.id === id
+                                );
+                              if (suggestion) {
+                                acceptParticipantTodoSuggestion(suggestion);
+                              }
+                            }}
+                            onAcceptAll={() => {
+                              participantTodoSuggestions.forEach(
+                                acceptParticipantTodoSuggestion
+                              );
+                            }}
+                            onRejectAll={() => {
+                              participantTodoSuggestions.forEach(
+                                rejectParticipantTodoSuggestion
+                              );
+                            }}
+                          />
+                        )}
+                        <div
+                          className={cn(
+                            "s-flex s-flex-col s-gap-2",
+                            podVariant !== "personal" && "s-pl-4"
+                          )}
+                        >
+                          {visibleItemsToRender.map((item) => {
+                            const itemKey = getSummaryItemKey(
+                              "needAttention",
+                              item
+                            );
+                            const todoItemText =
+                              todoItemTextByKey[itemKey] ?? item.text;
+                            const itemDiff = summaryItemDiffByKey[itemKey];
+                            const isClosedHistoryItem =
+                              closedTodoItemKeys.has(itemKey);
+                            const isChecked =
+                              isClosedHistoryItem ||
+                              (checkedSummaryItems[itemKey] ?? false);
+                            const relatedConversationIds =
+                              summaryRelatedConversations[itemKey] ?? [];
+                            const isAdded = itemDiff === "added";
+                            const hasEntered = enteringItemKeys.has(itemKey);
+                            const isExiting = exitingItemKeys.has(itemKey);
+                            const shouldTypeChecklistItem =
+                              typingItemKeys.has(itemKey) &&
+                              itemDiff === "modified";
+                            const autoCheckRationale =
+                              autoCheckRationaleByKey[itemKey];
+                            const isEditingTodoItem =
+                              editingTodoItemKey === itemKey;
+
+                            return (
+                              <TaskItem
+                                key={itemKey}
+                                id={itemKey}
+                                text={todoItemText}
+                                isEditable={!isClosedHistoryItem}
+                                isChecked={isChecked}
+                                isDisabled={isClosedHistoryItem}
+                                isEditing={isEditingTodoItem}
+                                isMutedAfterCheck
+                                className={cn(
+                                  "s-w-full s-overflow-hidden s-pl-6 s-py-1",
+                                  "s-transition-all s-duration-200",
+                                  isExiting
+                                    ? "s-max-h-0 s-opacity-0"
+                                    : isAdded && !hasEntered
+                                      ? "s-max-h-0 s-opacity-0"
+                                      : "s-max-h-32 s-opacity-100"
+                                )}
+                                renderText={
+                                  shouldTypeChecklistItem ? (
+                                    <TypingAnimation
+                                      key={`${itemKey}-${typingVersion}`}
+                                      text={todoItemText}
+                                      duration={16}
+                                    />
+                                  ) : undefined
+                                }
+                                autoCheckRationale={autoCheckRationale}
+                                relatedConversations={relatedConversationIds.map(
+                                  (conversationId) => ({
+                                    id: conversationId,
+                                    label:
+                                      conversationTitleById.get(
+                                        conversationId
+                                      ) ?? conversationId,
                                   })
-                                  .replace("24:", "00:");
-
-                                // Generate random counts respecting mentionCount <= unreadCount <= replyCount
-                                const replyCount = Math.floor(
-                                  Math.random() * 8 + 1
-                                );
-                                const messageCount = Math.floor(
-                                  Math.random() * replyCount + 1
-                                );
-                                const mentionCount = Math.floor(
-                                  Math.random() * (messageCount + 1)
-                                );
-
-                                const baseConversationId =
-                                  getBaseConversationId(
-                                    conversation,
-                                    conversations
+                                )}
+                                editorRef={(node) => {
+                                  if (node) {
+                                    todoItemEditorRefs.current.set(
+                                      itemKey,
+                                      node
+                                    );
+                                  } else {
+                                    todoItemEditorRefs.current.delete(itemKey);
+                                  }
+                                }}
+                                onCheckedChange={(checked) => {
+                                  if (isClosedHistoryItem) {
+                                    return;
+                                  }
+                                  setCheckedSummaryItems((previous) => ({
+                                    ...previous,
+                                    [itemKey]: checked,
+                                  }));
+                                }}
+                                onEditingChange={(isEditing) => {
+                                  setEditingTodoItemKey((previousKey) => {
+                                    if (isEditing) {
+                                      return itemKey;
+                                    }
+                                    return previousKey === itemKey
+                                      ? null
+                                      : previousKey;
+                                  });
+                                }}
+                                onCommit={(nextText) => {
+                                  saveTodoItemText(
+                                    itemKey,
+                                    item.text,
+                                    nextText
                                   );
-
-                                const conversationForLookup = {
-                                  ...conversation,
-                                  id: baseConversationId,
-                                };
-
-                                return (
-                                  <div
-                                    id={getConversationRowDomId(
-                                      conversation.id
-                                    )}
-                                    key={conversation.id}
-                                  >
-                                    <ConversationListItem
-                                      conversation={conversation}
-                                      creator={creator || undefined}
-                                      time={time}
-                                      showFocus={
-                                        conversationIdToShowFocus ===
-                                        conversation.id
-                                      }
-                                      replySection={
-                                        <ReplySection
-                                          replyCount={replyCount}
-                                          unreadCount={
-                                            bucketKey === "Today"
-                                              ? messageCount
-                                              : 0
-                                          }
-                                          mentionCount={
-                                            bucketKey === "Today"
-                                              ? mentionCount
-                                              : 0
-                                          }
-                                          avatars={avatarProps}
-                                          lastMessageBy={
-                                            avatarProps[0]?.name || "Unknown"
-                                          }
+                                }}
+                                onRemove={() => removeTodoItem(itemKey)}
+                                onAddAfter={() =>
+                                  addDraftTodoItemAfter(list.user.id, itemKey)
+                                }
+                                onRelatedConversationClick={
+                                  scrollToConversationRow
+                                }
+                                actions={
+                                  <>
+                                    <DropdownMenu
+                                      onOpenChange={(open) => {
+                                        if (!open) {
+                                          setTodoReassignSearchText("");
+                                        }
+                                      }}
+                                    >
+                                      <DropdownMenuTrigger asChild>
+                                        <Button
+                                          icon={MoreIcon}
+                                          size="xs"
+                                          variant="ghost"
+                                          tooltip="More actions"
+                                          aria-label="More actions"
                                         />
-                                      }
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end">
+                                        <DropdownMenuItem
+                                          label="Delete"
+                                          icon={TrashIcon}
+                                          variant="warning"
+                                        />
+                                        <DropdownMenuSub>
+                                          <DropdownMenuSubTrigger label="Re-assign to" />
+                                          <DropdownMenuSubContent
+                                            className="s-w-64"
+                                            dropdownHeaders={
+                                              <DropdownMenuSearchbar
+                                                placeholder="Search participants"
+                                                name="todo-reassign-search"
+                                                value={todoReassignSearchText}
+                                                onChange={
+                                                  setTodoReassignSearchText
+                                                }
+                                                autoFocus
+                                              />
+                                            }
+                                          >
+                                            {reassignTodoParticipants.length >
+                                            0 ? (
+                                              reassignTodoParticipants.map(
+                                                (participant) => (
+                                                  <DropdownMenuItem
+                                                    key={participant.id}
+                                                    label={participant.fullName}
+                                                    icon={
+                                                      <Avatar
+                                                        name={
+                                                          participant.fullName
+                                                        }
+                                                        visual={
+                                                          participant.portrait
+                                                        }
+                                                        size="xs"
+                                                        isRounded={true}
+                                                      />
+                                                    }
+                                                  />
+                                                )
+                                              )
+                                            ) : (
+                                              <DropdownMenuItem
+                                                label="No participants found"
+                                                disabled
+                                              />
+                                            )}
+                                          </DropdownMenuSubContent>
+                                        </DropdownMenuSub>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                    <Button
+                                      icon={ArrowRightIcon}
+                                      size="xs"
+                                      variant="highlight"
+                                      tooltip="Start working on task"
+                                      aria-label="Start task"
                                       onClick={() => {
-                                        onConversationClick?.(
-                                          conversationForLookup
-                                        );
+                                        setActiveTaskCommand({
+                                          id: itemKey,
+                                          label: todoItemText,
+                                          contextAttachments:
+                                            relatedConversationIds.map(
+                                              (conversationId) => ({
+                                                id: conversationId,
+                                                label:
+                                                  conversationTitleById.get(
+                                                    conversationId
+                                                  ) ?? conversationId,
+                                                tooltip: "Conversation context",
+                                                visual: ChatBubbleLeftRightIcon,
+                                              })
+                                            ),
+                                        });
                                       }}
                                     />
-                                  </div>
-                                );
-                              })}
-                            </ListGroup>
-                          </>
-                        );
-                      })}
-                    </div>
-                    <div className="s-flex s-flex-col s-gap-3 s-py-8">
-                      <h3 className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
-                        Do more with your project!
-                      </h3>
-                      <CardGrid>
-                        {[
-                          {
-                            id: "kickoff",
-                            label: "Get your project running",
-                            icon: MagicIcon,
-                            variant: "highlight" as const,
-                            description:
-                              "Answer a few questions and an agent will fill in your project details.",
-                            onClick: () => {},
-                            isPulsing: true,
-                          },
-                          {
-                            id: "add-knowledge",
-                            label: "Add knowledge",
-                            variant: "primary" as const,
-                            icon: BookOpenIcon,
-                            description:
-                              "Add files, links, or data sources relevant to this project.",
-                            onClick: () => setActiveTab("knowledge"),
-                            isPulsing: false,
-                          },
-                          {
-                            id: "invite-members",
-                            label: "Manage members",
-                            variant: "primary" as const,
-                            icon: UserGroupIcon,
-                            description:
-                              "Invite people to this project as members or editors.",
-                            onClick: () => onInviteMembers?.(),
-                            isPulsing: false,
-                          },
-                        ].map((suggestion) => (
-                          <Card
-                            key={suggestion.id}
-                            variant={suggestion.variant}
-                            size="lg"
-                            onClick={suggestion.onClick}
-                            className="s-cursor-pointer"
-                          >
-                            <div className="s-flex s-w-full s-flex-col s-gap-2 s-text-base">
-                              <div
-                                className={`s-flex s-w-full s-items-center s-gap-2 s-font-semibold ${
-                                  suggestion.variant === "highlight"
-                                    ? "s-text-highlight-600 dark:s-text-highlight-400"
-                                    : "s-text-foreground dark:s-text-foreground-night"
-                                }`}
-                              >
-                                <Icon visual={suggestion.icon} size="sm" />
-                                <div className="s-w-full">
-                                  {suggestion.label}
-                                </div>
-                              </div>
-                              {suggestion.description && (
-                                <div className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-                                  {suggestion.description}
-                                </div>
-                              )}
-                            </div>
-                          </Card>
-                        ))}
-                      </CardGrid>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        </TabsContent>
-
-        {/* Knowledge Tools Tab */}
-        <TabsContent value="knowledge">
-          <div className="s-flex s-h-full s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto s-px-6">
-            <div className="s-mx-auto s-flex s-w-full s-flex-col s-gap-4 s-py-8">
-              <div className="s-flex s-gap-2">
-                <h3 className="s-heading-2xl s-flex-1 s-items-center">
-                  Knowledge
-                </h3>
-                <Button
-                  variant="outline"
-                  icon={ArrowUpOnSquareIcon}
-                  label="Add knowledge"
-                />
-              </div>
-              {dataSources.length === 0 ? (
-                <EmptyCTA
-                  message="No knowledge files in this room yet."
-                  action={
-                    <EmptyCTAButton
-                      icon={ArrowUpOnSquareIcon}
-                      label="Add knowledge"
-                    />
-                  }
-                />
-              ) : (
-                <>
-                  <SearchInput
-                    name="knowledge-search"
-                    value={knowledgeSearchText}
-                    onChange={setKnowledgeSearchText}
-                    placeholder="Search files..."
-                    className="s-w-full"
-                  />
-                  <DataTable
-                    columns={columns}
-                    data={dataSourcesWithClick}
-                    filter={knowledgeSearchText}
-                    filterColumn="fileName"
-                    sorting={[{ id: "fileName", desc: false }]}
-                  />
-                </>
+                                  </>
+                                }
+                              />
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="s-text-base s-text-faint s-italic dark:s-text-faint-night">
+                    No tasks match your filters.
+                  </div>
+                )
+              ) : isShowingTodoSuggestions ? null : (
+                <div className="s-flex s-flex-col s-items-center s-gap-0 s-text-center">
+                  <h3 className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
+                    No pending Tasks
+                  </h3>
+                  <p className="s-text-muted-foreground s-textbase">
+                    You're all good.
+                  </p>
+                </div>
               )}
             </div>
-          </div>
-        </TabsContent>
+          ) : isShowingTodoSuggestions ? null : (
+            <ProjectSetupEmptyState onSetupProject={handleSetupProject} />
+          )}
+        </GroupConversationTabContent>
 
-        {/* About Tab */}
-        {showToolsAndAboutTabs && (
-          <TabsContent value="about">
-            <div className="s-flex s-h-full s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto s-px-6">
-              <div className="s-mx-auto s-flex s-w-full s-max-w-4xl s-flex-col s-gap-4 s-py-8">
-                <h2 className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
-                  About {space.name}
-                </h2>
-                <p className="s-text-foreground dark:s-text-foreground-night">
-                  {space.description}
-                </p>
-              </div>
-            </div>
-          </TabsContent>
-        )}
-
-        {/* Settings Tab */}
-        <TabsContent value="settings">
-          <div className="s-flex s-h-full s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto s-px-6">
-            <div className="s-mx-auto s-flex s-w-full s-max-w-4xl s-flex-col s-gap-8 s-px-6 s-py-8">
-              {/* Room Name Section */}
+        {/* Files Tab */}
+        <GroupConversationTabContent
+          value="knowledge"
+          contentClassName="s-gap-3"
+        >
+          {dataSources.length === 0 ? (
+            <EmptyCTA
+              message="No files in this room yet."
+              action={
+                <EmptyCTAButton
+                  icon={ArrowDownOnSquareIcon}
+                  label="Add files"
+                />
+              }
+            />
+          ) : (
+            <>
               <div className="s-flex s-gap-2">
-                <h3 className="s-heading-2xl s-flex-1">Settings</h3>
-                <DropdownMenu>
+                <SearchInput
+                  name="knowledge-search"
+                  value={knowledgeSearchText}
+                  onChange={setKnowledgeSearchText}
+                  placeholder="Search files..."
+                  className="s-flex-1"
+                />
+                <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" icon={MoreIcon} />
+                    <Button
+                      variant="outline"
+                      icon={filesViewMode === "list" ? ListCheckIcon : ListIcon}
+                      isSelect
+                    />
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    {isProjectArchived ? (
-                      <DropdownMenuItem
-                        icon={ArrowUpOnSquareIcon}
-                        label="Unarchive project"
-                        onClick={handleUnarchiveProject}
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuRadioGroup
+                      value={filesViewMode}
+                      onValueChange={(value) => {
+                        if (value === "list" || value === "grid") {
+                          setFilesViewMode(value);
+                        }
+                      }}
+                    >
+                      <DropdownMenuRadioItem
+                        value="list"
+                        label="List"
+                        icon={ListCheckIcon}
                       />
-                    ) : (
-                      <DropdownMenuItem
-                        icon={ArchiveIcon}
-                        label="Archive project"
-                        variant="warning"
-                        onClick={handleArchiveProject}
+                      <DropdownMenuRadioItem
+                        value="grid"
+                        label="Grid"
+                        icon={ListIcon}
                       />
-                    )}
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <DropdownMenu modal={false}>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      icon={ArrowDownOnSquareIcon}
+                      label="Add files"
+                      isSelect
+                    />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      icon={CloudArrowLeftRightIcon}
+                      label="From Company Data"
+                      onClick={() => {}}
+                    />
+                    <DropdownMenuItem
+                      icon={FolderIcon}
+                      label="New folder"
+                      onClick={() => {}}
+                    />
+                    <DropdownMenuItem
+                      icon={CloudArrowUpIcon}
+                      label="Upload file"
+                      onClick={() => {}}
+                    />
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
-              {isProjectArchived && (
-                <ContentMessage variant="info" size="lg">
-                  This project has been archived.
-                </ContentMessage>
-              )}
-              <div className="s-flex s-w-full s-flex-col s-gap-2">
-                <h3 className="s-heading-lg">Name</h3>
-                <div className="s-flex s-w-full s-min-w-0 s-gap-2">
-                  <Input
-                    value={roomName}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                      setRoomName(e.target.value);
-                      setIsEditingName(e.target.value !== space.name);
-                    }}
-                    placeholder="Enter room name"
-                    containerClassName="s-flex-1"
-                  />
-                  {isEditingName && (
-                    <>
-                      <Button
-                        label="Save"
-                        variant="highlight"
-                        onClick={() => setShowNameSaveDialog(true)}
-                      />
-                      <Button
-                        label="Cancel"
-                        variant="outline"
-                        onClick={() => {
-                          setRoomName(space.name);
-                          setIsEditingName(false);
-                        }}
-                      />
-                    </>
-                  )}
-                </div>
-              </div>
-              <div className="s-flex s-w-full s-flex-col s-gap-2">
-                <h3 className="s-heading-lg">Description</h3>
-                <div className="s-flex s-w-full s-min-w-0 s-gap-2">
-                  <Input
-                    value={roomDescription}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                      setRoomDescription(e.target.value);
-                      setIsEditingDescription(
-                        e.target.value !== (space.description ?? "")
-                      );
-                    }}
-                    placeholder="Enter room description"
-                    containerClassName="s-flex-1"
-                  />
-                  {isEditingDescription && (
-                    <>
-                      <Button
-                        label="Save"
-                        variant="highlight"
-                        onClick={() => {
-                          setIsEditingDescription(false);
-                        }}
-                      />
-                      <Button
-                        label="Cancel"
-                        variant="outline"
-                        onClick={() => {
-                          setRoomDescription(space.description ?? "");
-                          setIsEditingDescription(false);
-                        }}
-                      />
-                    </>
-                  )}
-                </div>
-              </div>
-              {/* Open to Everyone Section */}
-
-              <div className="s-flex s-w-full s-flex-col s-gap-2">
-                <h3 className="s-heading-lg">Visibility</h3>
-                <div className="s-flex s-items-start s-items-center s-justify-between s-gap-4 s-border-y s-border-border dark:s-border-border-night s-py-4">
-                  <div className="s-flex s-flex-col">
-                    <div className="s-heading-sm s-text-foreground dark:s-text-foreground-night">
-                      Opened to everyone
-                    </div>
-                    <div className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-                      Anyone in the workspace can find and join the room.
-                    </div>
-                  </div>
-                  <SliderToggle
-                    size="xs"
-                    selected={isPublic}
-                    onClick={() => {
-                      const nextValue = !isPublic;
-                      setShowPublicToggleDialog(true);
-                      // Store the intended new value temporarily
-                      setPendingPublicValue(nextValue);
-                    }}
-                  />
-                </div>
-              </div>
-              {/* Members Section */}
-              <div className="s-flex s-flex-col s-gap-3">
+              {!isKnowledgeSearchActive && currentFolderId !== null && (
                 <div className="s-flex s-items-center s-gap-2">
-                  <h3 className="s-heading-lg s-flex-1">Members & Editors</h3>
-                  <Button
-                    label="Manage"
-                    variant="outline"
-                    icon={UserGroupIcon}
-                    onClick={() => onInviteMembers?.()}
+                  {draggingFileId !== null && (
+                    <AnimatedText
+                      variant="muted"
+                      className="s-text-sm s-italic"
+                    >
+                      Move to
+                    </AnimatedText>
+                  )}
+                  <Breadcrumbs
+                    items={folderBreadcrumbItems}
+                    size="sm"
+                    hasLighterFont
                   />
                 </div>
-                {members.length === 0 ? (
-                  <EmptyCTA
-                    message="Feeling lonely? Invite participants!."
-                    action={
-                      <EmptyCTAButton
-                        icon={UserGroupIcon}
-                        label="Invite"
-                        onClick={() => onInviteMembers?.()}
-                      />
+              )}
+              {isKnowledgeSearchActive && currentFolderId !== null && (
+                <ButtonsSwitchList
+                  key={currentFolderId}
+                  defaultValue={filesSearchScope}
+                  size="xs"
+                  className="s-w-fit s-self-start"
+                  onValueChange={(value) => {
+                    if (value === "folder" || value === "all") {
+                      setFilesSearchScope(value);
                     }
+                  }}
+                >
+                  <ButtonsSwitch
+                    value="folder"
+                    label={`In ${currentFolder?.fileName ?? "folder"}`}
+                  />
+                  <ButtonsSwitch value="all" label="All files" />
+                </ButtonsSwitchList>
+              )}
+              {tableItems.length === 0 && !isKnowledgeSearchActive ? (
+                <div className="s-flex s-w-full s-flex-col s-items-center s-justify-center s-gap-2 s-rounded-xl s-border s-border-border s-bg-muted-background s-p-12 dark:s-border-border-night dark:s-bg-muted-background-night">
+                  <p className="s-text-center s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                    This folder is empty.
+                  </p>
+                </div>
+              ) : (
+                <DataTable
+                  columns={columns}
+                  data={tableItems}
+                  sorting={[{ id: "fileName", desc: false }]}
+                />
+              )}
+            </>
+          )}
+        </GroupConversationTabContent>
+
+        {dynamicFileTabIds.map((dataSourceId) => {
+          const dataSource = dataSources.find(
+            (item) => item.id === dataSourceId
+          );
+          if (!dataSource) {
+            return null;
+          }
+
+          return (
+            <GroupConversationTabContent
+              key={dataSourceId}
+              value={`file-${dataSourceId}`}
+              fullBleed
+            >
+              <FilePreviewPanel dataSource={dataSource} variant="document" />
+            </GroupConversationTabContent>
+          );
+        })}
+
+        {/* About Tab */}
+        {showToolsAndAboutTabs && (
+          <GroupConversationTabContent value="about" contentClassName="s-gap-4">
+            <p className="s-text-foreground dark:s-text-foreground-night">
+              {space.description}
+            </p>
+          </GroupConversationTabContent>
+        )}
+
+        {/* Settings Tab */}
+        <GroupConversationTabContent
+          value="settings"
+          contentClassName="s-gap-8"
+        >
+          {/* pod Name Section */}
+          <div className="s-flex s-gap-2">
+            <h3 className="s-heading-lg s-flex-1">
+              {getProjectPageTitle("settings")}
+            </h3>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" icon={MoreIcon} />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                {isProjectArchived ? (
+                  <DropdownMenuItem
+                    icon={ArrowUpOnSquareIcon}
+                    label="Unarchive project"
+                    onClick={handleUnarchiveProject}
                   />
                 ) : (
-                  <>
-                    <SearchInput
-                      name="members-search"
-                      value={membersSearchText}
-                      onChange={setMembersSearchText}
-                      placeholder="Search members..."
-                      className="s-w-full"
-                    />
-                    <DataTable
-                      columns={memberColumns}
-                      data={filteredMembers}
-                      sorting={[{ id: "name", desc: false }]}
-                    />
-                  </>
+                  <DropdownMenuItem
+                    icon={ArchiveIcon}
+                    label="Archive project"
+                    variant="warning"
+                    onClick={handleArchiveProject}
+                  />
                 )}
-              </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+          {isProjectArchived && (
+            <ContentMessage variant="info" size="lg">
+              This project has been archived.
+            </ContentMessage>
+          )}
+          <div className="s-flex s-w-full s-flex-col s-gap-2">
+            <h3 className="s-heading-lg">Name</h3>
+            <div className="s-flex s-w-full s-min-w-0 s-gap-2">
+              <Input
+                value={roomName}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  setRoomName(e.target.value);
+                  setIsEditingName(e.target.value !== space.name);
+                }}
+                placeholder="Enter room name"
+                containerClassName="s-flex-1"
+              />
+              {isEditingName && (
+                <>
+                  <Button
+                    label="Save"
+                    variant="highlight"
+                    onClick={() => setShowNameSaveDialog(true)}
+                  />
+                  <Button
+                    label="Cancel"
+                    variant="outline"
+                    onClick={() => {
+                      setRoomName(space.name);
+                      setIsEditingName(false);
+                    }}
+                  />
+                </>
+              )}
+            </div>
+          </div>
+          <div className="s-flex s-w-full s-flex-col s-gap-2">
+            <h3 className="s-heading-lg">Description</h3>
+            <div className="s-flex s-w-full s-min-w-0 s-gap-2">
+              <Input
+                value={roomDescription}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  setRoomDescription(e.target.value);
+                  setIsEditingDescription(
+                    e.target.value !== (space.description ?? "")
+                  );
+                }}
+                placeholder="Enter room description"
+                containerClassName="s-flex-1"
+              />
+              {isEditingDescription && (
+                <>
+                  <Button
+                    label="Save"
+                    variant="highlight"
+                    onClick={() => {
+                      setIsEditingDescription(false);
+                    }}
+                  />
+                  <Button
+                    label="Cancel"
+                    variant="outline"
+                    onClick={() => {
+                      setRoomDescription(space.description ?? "");
+                      setIsEditingDescription(false);
+                    }}
+                  />
+                </>
+              )}
+            </div>
+          </div>
+          {/* Open to Everyone Section */}
 
-              <div className="s-flex s-w-full s-flex-col s-gap-8 s-border-t s-border-border dark:s-border-border-night s-pt-8">
-                <div className="s-flex s-w-full s-flex-col s-gap-3">
-                  <h3 className="s-heading-lg">Danger Zone</h3>
-                  <h4 className="s-heading-base">Archive</h4>
-                  {!isProjectArchived && (
-                    <p className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-                      This project will be removed from the sidebar. Its data
-                      stays intact and can still be used as a data source.
+          <div className="s-flex s-w-full s-flex-col s-gap-2">
+            <h3 className="s-heading-lg">Visibility</h3>
+            <div className="s-flex s-items-start s-items-center s-justify-between s-gap-4 s-border-y s-border-border dark:s-border-border-night s-py-4">
+              <div className="s-flex s-flex-col">
+                <div className="s-heading-sm s-text-foreground dark:s-text-foreground-night">
+                  Opened to everyone
+                </div>
+                <div className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                  Anyone in the workspace can find and join the room.
+                </div>
+              </div>
+              <SliderToggle
+                size="xs"
+                selected={isPublic}
+                onClick={() => {
+                  const nextValue = !isPublic;
+                  setShowPublicToggleDialog(true);
+                  // Store the intended new value temporarily
+                  setPendingPublicValue(nextValue);
+                }}
+              />
+            </div>
+          </div>
+          {/* Members Section */}
+          <div className="s-flex s-flex-col s-gap-3">
+            <div className="s-flex s-items-center s-gap-2">
+              <h3 className="s-heading-lg s-flex-1">Members & Editors</h3>
+              <Button
+                label="Manage"
+                variant="outline"
+                icon={UserGroupIcon}
+                onClick={() => onInviteMembers?.()}
+              />
+            </div>
+            {members.length === 0 ? (
+              <EmptyCTA
+                message="Feeling lonely? Invite participants!."
+                action={
+                  <EmptyCTAButton
+                    icon={UserGroupIcon}
+                    label="Invite"
+                    onClick={() => onInviteMembers?.()}
+                  />
+                }
+              />
+            ) : (
+              <>
+                <SearchInput
+                  name="members-search"
+                  value={membersSearchText}
+                  onChange={setMembersSearchText}
+                  placeholder="Search members..."
+                  className="s-w-full"
+                />
+                <DataTable
+                  columns={memberColumns}
+                  data={filteredMembers}
+                  sorting={[{ id: "name", desc: false }]}
+                />
+              </>
+            )}
+          </div>
+
+          <div className="s-flex s-w-full s-flex-col s-gap-8 s-border-t s-border-border dark:s-border-border-night s-pt-8">
+            <div className="s-flex s-w-full s-flex-col s-gap-3">
+              <h3 className="s-heading-lg">Danger Zone</h3>
+              <h4 className="s-heading-base">Archive</h4>
+              {!isProjectArchived && (
+                <p className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                  This project will be removed from the sidebar. Its data stays
+                  intact and can still be used as a data source.
+                </p>
+              )}
+              {isProjectArchived ? (
+                <div className="s-flex s-flex-col s-gap-3">
+                  {archivedAt && archivedByName && (
+                    <p className="s-text-sm s-text-foreground dark:s-text-foreground-night">
+                      Archived on{" "}
+                      <span className="s-font-medium">
+                        {formatDate(archivedAt)} ·{" "}
+                        {archivedAt.toLocaleTimeString("en-US", {
+                          hour: "numeric",
+                          minute: "2-digit",
+                        })}
+                      </span>{" "}
+                      by <span className="s-font-medium">{archivedByName}</span>
+                      .
                     </p>
                   )}
-                  {isProjectArchived ? (
-                    <div className="s-flex s-flex-col s-gap-3">
-                      {archivedAt && archivedByName && (
-                        <p className="s-text-sm s-text-foreground dark:s-text-foreground-night">
-                          Archived on{" "}
-                          <span className="s-font-medium">
-                            {formatDate(archivedAt)} ·{" "}
-                            {archivedAt.toLocaleTimeString("en-US", {
-                              hour: "numeric",
-                              minute: "2-digit",
-                            })}
-                          </span>{" "}
-                          by{" "}
-                          <span className="s-font-medium">
-                            {archivedByName}
-                          </span>
-                          .
-                        </p>
-                      )}
-                      <div className="s-flex s-w-full s-flex-col s-items-start">
-                        <Button
-                          icon={ArrowUpOnSquareIcon}
-                          variant="outline"
-                          label="Unarchive"
-                          onClick={handleUnarchiveProject}
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="s-flex s-w-full s-flex-col s-items-start">
-                      <Button
-                        icon={ArchiveIcon}
-                        variant="warning-secondary"
-                        label="Archive"
-                        onClick={handleArchiveProject}
-                      />
-                    </div>
-                  )}
-                  <h4 className="s-heading-base">Delete</h4>
-                  <p className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-                    {`This permanently removes all content—conversations, folders, websites, and data sources. Assistants using this project's tools will be impacted. This cannot be undone.`}
-                  </p>
                   <div className="s-flex s-w-full s-flex-col s-items-start">
                     <Button
-                      icon={TrashIcon}
-                      variant="warning"
-                      label="Delete project"
-                      onClick={() => setShowDeleteProjectDialog(true)}
+                      icon={ArrowUpOnSquareIcon}
+                      variant="outline"
+                      label="Unarchive"
+                      onClick={handleUnarchiveProject}
                     />
                   </div>
                 </div>
+              ) : (
+                <div className="s-flex s-w-full s-flex-col s-items-start">
+                  <Button
+                    icon={ArchiveIcon}
+                    variant="warning-secondary"
+                    label="Archive"
+                    onClick={handleArchiveProject}
+                  />
+                </div>
+              )}
+              <h4 className="s-heading-base">Delete</h4>
+              <p className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                {`This permanently removes all content—conversations, folders, websites, and data sources. Assistants using this project's tools will be impacted. This cannot be undone.`}
+              </p>
+              <div className="s-flex s-w-full s-flex-col s-items-start">
+                <Button
+                  icon={TrashIcon}
+                  variant="warning"
+                  label="Delete project"
+                  onClick={() => setShowDeleteProjectDialog(true)}
+                />
               </div>
             </div>
           </div>
-        </TabsContent>
+        </GroupConversationTabContent>
       </Tabs>
+
+      {activeTaskCommand && (
+        <div
+          className="s-fixed s-inset-0 s-z-50 s-flex s-items-center s-justify-center s-bg-black/40 s-p-4"
+          onClick={() => setActiveTaskCommand(null)}
+        >
+          <div
+            className="s-w-full s-max-w-xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <InputBar
+              placeholder="Ask Dust to work on this task"
+              variant="embedded"
+              taskCommand={activeTaskCommand}
+              className="s-rounded-2xl s-shadow-lg"
+              onClose={() => setActiveTaskCommand(null)}
+              onSend={() => setActiveTaskCommand(null)}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Confirmation Dialogs */}
       {/* Name Save Dialog */}
@@ -3122,63 +4968,14 @@ export function GroupConversationView({
           setIsDocumentSheetOpen(open);
           if (!open) {
             setSelectedDataSource(null);
-            setDocumentView("preview");
           }
         }}
       >
         <SheetContent size="3xl" side="right">
-          <SheetHeader>
-            <SheetTitle>
-              <div className="s-flex s-flex-1 s-flex-col s-w-full s-items-start s-gap-4">
-                <div className="s-flex s-items-center s-gap-2">
-                  {selectedDataSource?.icon && (
-                    <Icon visual={selectedDataSource.icon} size="md" />
-                  )}
-                  <span>{selectedDataSource?.fileName || "Document View"}</span>
-                </div>
-                <div className="s-flex s-w-full s-items-center s-gap-2">
-                  <ButtonsSwitchList
-                    defaultValue="preview"
-                    size="xs"
-                    onValueChange={(value) => {
-                      if (value === "preview" || value === "extracted") {
-                        setDocumentView(value);
-                      }
-                    }}
-                  >
-                    <ButtonsSwitch value="preview" label="Preview" />
-                    <ButtonsSwitch
-                      value="extracted"
-                      label="Extracted information"
-                    />
-                  </ButtonsSwitchList>
-                  <div className="s-flex-1" />
-                  <div className="s-flex s-items-center s-gap-2">
-                    <Button
-                      variant="outline"
-                      size="icon-xs"
-                      icon={ArrowDownOnSquareIcon}
-                      tooltip="Download"
-                    />
-                    <Button
-                      variant="outline"
-                      size="icon-xs"
-                      icon={ExternalLinkIcon}
-                      tooltip="Open in tab"
-                    />
-                  </div>
-                </div>
-              </div>
-            </SheetTitle>
-          </SheetHeader>
           <SheetContainer>
-            <div className="s-flex s-flex-col s-items-center s-justify-center s-py-16">
-              <p className="s-text-foreground dark:s-text-foreground-night">
-                {documentView === "preview"
-                  ? "Document Preview"
-                  : "Extracted information"}
-              </p>
-            </div>
+            {selectedDataSource ? (
+              <FilePreviewPanel dataSource={selectedDataSource} />
+            ) : null}
           </SheetContainer>
         </SheetContent>
       </Sheet>

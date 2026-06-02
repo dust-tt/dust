@@ -3,53 +3,62 @@ import { renderDocumentTitleAndContent } from "@connectors/lib/data_sources";
 import { formatDateForUpsert } from "@connectors/lib/formatting";
 import logger from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types";
-import type { ConversationPublicType } from "@dust-tt/client";
+import {
+  assertNever,
+  type ConversationForDataSourceSyncType,
+} from "@dust-tt/client";
 
 /** Max messages (user / agent / content_fragment) per Core document to avoid upsert size limits. */
 export const CONVERSATION_MESSAGES_PER_DOCUMENT = 256;
 
 /**
- * Builds one document section per message (last version per rank) for indexing.
+ * Builds one document section per message for indexing.
  */
 export function buildConversationMessageSections(
-  conversation: ConversationPublicType
+  conversation: ConversationForDataSourceSyncType
 ): CoreAPIDataSourceDocumentSection[] {
   const messageSections: CoreAPIDataSourceDocumentSection[] = [];
 
-  for (const versions of conversation.content) {
-    const msg = versions[versions.length - 1];
-
-    if (!msg) {
-      continue;
-    }
-
+  for (const msg of conversation.content) {
     let prefix: string | null = null;
     let content: string | null = null;
     const dateStr: string = formatDateForUpsert(new Date(msg.created));
 
-    if (msg.type === "user_message") {
-      const userName = msg.user?.fullName || msg.user?.username || "User";
-      const userEmail = msg.user?.email || "Unknown";
-      const userId = msg.user?.sId || "Unknown";
-      prefix = `>> User (name: ${userName}, email: ${userEmail}, id: ${userId}) [${dateStr}]:\n`;
-      content = msg.content ? msg.content + "\n" : "\n";
-    } else if (msg.type === "agent_message") {
-      const agentName = msg.configuration?.name || "Assistant";
-      prefix = `>> Assistant (${agentName}) [${dateStr}]:\n`;
+    const type = msg.type;
+    switch (type) {
+      case "user_message": {
+        const userName = msg.user?.fullName || msg.user?.username || "User";
+        const userEmail = msg.user?.email || "Unknown";
+        const userId = msg.user?.sId || "Unknown";
+        prefix = `>> User (name: ${userName}, email: ${userEmail}, id: ${userId}) [${dateStr}]:\n`;
+        content = msg.content ? msg.content + "\n" : "\n";
 
-      if (msg.content) {
-        content = msg.content + "\n";
-      } else {
-        logger.warn({ msg }, "Agent message has no content");
-        content = "\n";
+        for (const cf of msg.contentFragments) {
+          content += `>> Content Fragment from the user message [${dateStr}]:\n`;
+          content += "ID: " + cf.contentFragmentId + "\n";
+          content += "Content-Type: " + cf.contentType + "\n";
+          content += "Title: " + cf.title + "\n";
+          content += "Version: " + cf.version + "\n";
+          content += "Source URL: " + cf.sourceUrl + "\n";
+        }
+        break;
       }
-    } else if (msg.type === "content_fragment") {
-      prefix = `>> Content Fragment [${dateStr}]:\n`;
-      content = "ID: " + msg.contentFragmentId + "\n";
-      content += "Content-Type: " + msg.contentType + "\n";
-      content += "Title: " + msg.title + "\n";
-      content += "Version: " + msg.version + "\n";
-      content += "Source URL: " + msg.sourceUrl + "\n";
+      case "agent_message":
+        {
+          const agentName = msg.configuration?.name || "Assistant";
+          prefix = `>> Assistant (${agentName}) [${dateStr}]:\n`;
+
+          if (msg.content) {
+            content = msg.content + "\n";
+          } else {
+            logger.warn({ msg }, "Agent message has no content");
+            content = "\n";
+          }
+        }
+        break;
+      default: {
+        assertNever(type);
+      }
     }
 
     if (prefix !== null && content !== null) {
@@ -87,7 +96,7 @@ export function chunkMessageSectionsForDocuments(
  * Title for a Core document: base conversation title, with ` (part i of n)` when split across multiple documents.
  */
 export function getConversationDocumentUpsertTitle(
-  conversation: ConversationPublicType,
+  conversation: ConversationForDataSourceSyncType,
   partIndex: number,
   totalParts: number
 ): string {
@@ -109,7 +118,7 @@ export async function formatConversationSectionsForUpsert({
   totalParts,
 }: {
   dataSourceConfig: DataSourceConfig;
-  conversation: ConversationPublicType;
+  conversation: ConversationForDataSourceSyncType;
   sections: CoreAPIDataSourceDocumentSection[];
   partIndex: number;
   totalParts: number;
@@ -144,7 +153,7 @@ export async function formatConversationForUpsert({
   conversation,
 }: {
   dataSourceConfig: DataSourceConfig;
-  conversation: ConversationPublicType;
+  conversation: ConversationForDataSourceSyncType;
 }): Promise<CoreAPIDataSourceDocumentSection> {
   const sections = buildConversationMessageSections(conversation);
   return formatConversationSectionsForUpsert({

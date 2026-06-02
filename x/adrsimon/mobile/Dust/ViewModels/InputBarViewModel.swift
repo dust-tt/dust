@@ -95,22 +95,27 @@ final class InputBarViewModel: ObservableObject {
         guard !selectedCapabilities.contains(where: { $0.id == capability.id }) else { return }
         selectedCapabilities.append(capability)
         showCapabilitiesPicker = false
-
-        if let conversationId {
-            Task {
-                do { try await syncCapability(capability, action: .add, conversationId: conversationId) }
-                catch { logger.error("Failed to sync capability: \(error)") }
-            }
-        }
+        syncTool(capability, action: .add, conversationId: conversationId)
     }
 
     func deselectCapability(_ capability: Capability, conversationId: String? = nil) {
         selectedCapabilities.removeAll { $0.id == capability.id }
+        syncTool(capability, action: .delete, conversationId: conversationId)
+    }
 
-        if let conversationId {
-            Task {
-                do { try await syncCapability(capability, action: .delete, conversationId: conversationId) }
-                catch { logger.error("Failed to sync capability: \(error)") }
+    private func syncTool(_ capability: Capability, action: ConversationAction, conversationId: String?) {
+        guard let conversationId, case let .tool(serverView) = capability else { return }
+        Task {
+            do {
+                try await CapabilityService.updateTool(
+                    action: action,
+                    workspaceId: workspaceId,
+                    conversationId: conversationId,
+                    mcpServerViewId: serverView.sId,
+                    tokenProvider: tokenProvider
+                )
+            } catch {
+                logger.error("Failed to sync tool: \(error)")
             }
         }
     }
@@ -319,25 +324,30 @@ final class InputBarViewModel: ObservableObject {
     // MARK: - Private
 
     private var messageContext: MessageContext {
-        var toolIds: [String] = []
-        var skillIds: [String] = []
-        for capability in selectedCapabilities {
-            switch capability {
-            case let .tool(serverView): toolIds.append(serverView.sId)
-            case let .skill(skill): skillIds.append(skill.sId)
-            }
+        let toolIds = selectedCapabilities.compactMap { capability -> String? in
+            if case let .tool(serverView) = capability { return serverView.sId }
+            return nil
         }
         return MessageContext(
             timezone: TimeZone.current.identifier,
             profilePictureUrl: user.profilePictureUrl,
-            selectedMCPServerViewIds: toolIds.isEmpty ? nil : toolIds,
-            selectedSkillIds: skillIds.isEmpty ? nil : skillIds
+            selectedMCPServerViewIds: toolIds.isEmpty ? nil : toolIds
         )
+    }
+
+    private func contentWithSkillTags(_ content: String) -> String {
+        let tags = selectedCapabilities.compactMap { capability -> String? in
+            guard case let .skill(skill) = capability else { return nil }
+            let iconAttribute = skill.icon.map { " icon=\"\($0)\"" } ?? ""
+            return "<skill id=\"\(skill.sId)\" name=\"\(skill.name)\"\(iconAttribute) />"
+        }
+        guard !tags.isEmpty else { return content }
+        return ([content] + tags).joined(separator: "\n")
     }
 
     private func prepareSend() -> (text: String, context: MessageContext) {
         let text = messageText.trimmingCharacters(in: .whitespacesAndNewlines)
-        return (text, messageContext)
+        return (contentWithSkillTags(text), messageContext)
     }
 
     private func resolveMentions() -> [MentionPayload] {
@@ -363,29 +373,6 @@ final class InputBarViewModel: ObservableObject {
             self.error = error.localizedDescription
             isSending = false
             return nil
-        }
-    }
-
-    // MARK: - Capabilities
-
-    private func syncCapability(_ capability: Capability, action: ConversationAction, conversationId: String) async throws {
-        switch capability {
-        case let .tool(serverView):
-            try await CapabilityService.updateTool(
-                action: action,
-                workspaceId: workspaceId,
-                conversationId: conversationId,
-                mcpServerViewId: serverView.sId,
-                tokenProvider: tokenProvider
-            )
-        case let .skill(skill):
-            try await CapabilityService.updateSkill(
-                action: action,
-                workspaceId: workspaceId,
-                conversationId: conversationId,
-                skillId: skill.sId,
-                tokenProvider: tokenProvider
-            )
         }
     }
 

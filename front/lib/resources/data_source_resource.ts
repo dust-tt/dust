@@ -355,6 +355,24 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
     });
   }
 
+  static async unsafeFetchByDustAPIProjectId(
+    auth: Authenticator,
+    dustAPIProjectId: string,
+    options?: FetchDataSourceOptions
+  ): Promise<DataSourceResource | null> {
+    const [dataSource] = await this.baseFetch(auth, options, {
+      where: {
+        dustAPIProjectId,
+      },
+      // WORKSPACE_ISOLATION_BYPASS: `dustAPIProjectId` is globally unique, so this lookup is
+      // intentionally cross-workspace. Permissions are still enforced by `canFetch` after fetch.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+    });
+
+    return dataSource ?? null;
+  }
+
   static async listByWorkspace(
     auth: Authenticator,
     options?: FetchDataSourceOptions,
