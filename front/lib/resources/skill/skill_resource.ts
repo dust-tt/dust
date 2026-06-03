@@ -2629,7 +2629,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       referencedSkillIds.filter((sId) => !getResourceNameAndIdFromSId(sId))
     );
 
-    const desiredCustomSkillIds = new Set(referencedCustomSkillIds);
+    const childSkills = await this.model.findAll({
+      attributes: ["id"],
+      where: {
+        id: { [Op.in]: referencedCustomSkillIds },
+        workspaceId: workspace.id,
+      },
+      transaction,
+    });
+
+    const desiredCustomSkillIds = new Set(childSkills.map((skill) => skill.id));
     const desiredGlobalSkillIds = new Set(referencedGlobalSkillIds);
 
     // Retrieve the current state.
