@@ -46,8 +46,10 @@ const MCPMetadataSchema = BaseMCPMetadataSchema.extend({
   code_verifier: z.string(),
   token_endpoint_auth_method: z.string().optional(),
   // Stamped authoritatively in `getUpdatedExtraConfig` from the final persisted token endpoint;
-  // never caller-supplied. Required here so a new MCP connection can't be created without it.
-  use_static_ip_proxy: z.enum(["true", "false"]),
+  // never caller-supplied. Optional because absence fails safe: `core` (and the freshness sync)
+  // treat a missing flag as `"false"` (untrusted egress), so a forgotten stamp can never escalate
+  // to static IP.
+  use_static_ip_proxy: z.enum(["true", "false"]).optional(),
 });
 
 export type MCPOAuthConnectionMetadataType = z.infer<
