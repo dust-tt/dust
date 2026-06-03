@@ -1240,16 +1240,18 @@ describe("DustFileSystem.move", () => {
   let auth: Authenticator;
   let conversationId: string;
   let copyFileMock: ReturnType<typeof vi.fn>;
-  let existsMock: ReturnType<typeof vi.fn>;
+  let fileExists: (filePath: string) => boolean;
   let deleteMock: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     copyFileMock = vi.fn().mockResolvedValue(undefined);
-    existsMock = vi.fn().mockResolvedValue([true]);
+    fileExists = (filePath: string) => filePath.endsWith("/src.txt");
     deleteMock = vi.fn().mockResolvedValue(undefined);
     vi.mocked(getPrivateUploadBucket).mockReturnValue({
       copyFile: copyFileMock,
-      file: vi.fn(() => ({ exists: existsMock })),
+      file: vi.fn((filePath: string) => ({
+        exists: () => Promise.resolve([fileExists(filePath)]),
+      })),
       delete: deleteMock,
     } as unknown as ReturnType<typeof getPrivateUploadBucket>);
 
@@ -1283,6 +1285,28 @@ describe("DustFileSystem.move", () => {
     expect(result.value.sourceDeletionFailed).toBe(false);
     expect(copyFileMock).toHaveBeenCalledOnce();
     expect(deleteMock).toHaveBeenCalledOnce();
+  });
+
+  it("returns Err(already_exists) when the destination file already exists", async () => {
+    fileExists = (filePath: string) =>
+      filePath.endsWith("/src.txt") || filePath.endsWith("/dest.txt");
+
+    const convRes = await ConversationResource.fetchById(auth, conversationId);
+    assert(convRes !== null);
+    const fs = await DustFileSystem.forConversation(auth, convRes.toJSON());
+    assert(fs.isOk());
+
+    const result = await fs.value.move({
+      src: `conversation-${conversationId}/src.txt`,
+      dest: `conversation-${conversationId}/dest.txt`,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("already_exists");
+    }
+    expect(copyFileMock).not.toHaveBeenCalled();
+    expect(deleteMock).not.toHaveBeenCalled();
   });
 
   it("returns Ok with sourceDeletionFailed true when delete fails after a successful copy", async () => {
@@ -1353,7 +1377,9 @@ describe("DustFileSystem.rename", () => {
     deleteMock = vi.fn().mockResolvedValue(undefined);
     vi.mocked(getPrivateUploadBucket).mockReturnValue({
       copyFile: copyFileMock,
-      file: vi.fn(() => ({ exists: vi.fn().mockResolvedValue([true]) })),
+      file: vi.fn((filePath: string) => ({
+        exists: vi.fn().mockResolvedValue([filePath.endsWith("/report.pdf")]),
+      })),
       delete: deleteMock,
     } as unknown as ReturnType<typeof getPrivateUploadBucket>);
 

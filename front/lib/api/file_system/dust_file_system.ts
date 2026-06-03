@@ -815,6 +815,17 @@ export class DustFileSystem {
     return new Ok({ dest, ...moveResult.value });
   }
 
+  private async destinationFileExists(
+    scopedPath: string
+  ): Promise<Result<boolean, DustFileSystemError>> {
+    const fileStat = await this.backend.stat(scopedPath);
+    if (fileStat.isErr()) {
+      return fileStat;
+    }
+
+    return new Ok(fileStat.value !== null);
+  }
+
   /**
    * Move `src` to `dest` (copy then delete source).
    *
@@ -836,6 +847,21 @@ export class DustFileSystem {
     const resolvedDest = this.requireWriteMount(dest);
     if (resolvedDest.isErr()) {
       return resolvedDest;
+    }
+
+    const destExists = await this.destinationFileExists(
+      resolvedDest.value.path
+    );
+    if (destExists.isErr()) {
+      return destExists;
+    }
+    if (destExists.value) {
+      return new Err(
+        new DustFileSystemError(
+          "already_exists",
+          `Destination path already exists: ${dest}`
+        )
+      );
     }
 
     const copyResult = await this.backend.copy({
