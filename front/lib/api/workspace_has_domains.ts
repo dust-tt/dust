@@ -29,3 +29,25 @@ export async function isHostUnderVerifiedDomain(
 
   return verifiedDomains.some((d) => isHostUnderDomain(host, d.domain));
 }
+
+export async function computeUseStaticIpProxy(
+  auth: Authenticator,
+  tokenEndpoint: string | undefined
+): Promise<boolean> {
+  if (!tokenEndpoint) {
+    return false;
+  }
+
+  let url: URL;
+  try {
+    url = new URL(tokenEndpoint);
+  } catch {
+    return false;
+  }
+
+  if (url.protocol !== "https:") {
+    return false;
+  }
+
+  return isHostUnderVerifiedDomain(auth, url.hostname);
+}

@@ -9,6 +9,7 @@ import {
   finalizeUriForProvider,
   getStringFromQuery,
 } from "@app/lib/api/oauth/utils";
+import { computeUseStaticIpProxy } from "@app/lib/api/workspace_has_domains";
 import type { Authenticator } from "@app/lib/auth";
 import { getPKCEConfig } from "@app/lib/utils/pkce";
 import logger from "@app/logger/logger";
@@ -44,6 +45,7 @@ const MCPMetadataSchema = BaseMCPMetadataSchema.extend({
   code_challenge: z.string(),
   code_verifier: z.string(),
   token_endpoint_auth_method: z.string().optional(),
+  use_static_ip_proxy: z.enum(["true", "false"]),
 });
 
 export type MCPOAuthConnectionMetadataType = z.infer<
@@ -224,7 +226,12 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
     if (useCase === "personal_actions") {
       // For personal actions we reuse the existing connection credential id from the existing
       // workspace connection (setup by admin) if we have it.
-      const { mcp_server_id, ...restConfig } = extraConfig;
+      const {
+        mcp_server_id,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars -- caller-controlled proxy routing is ignored.
+        use_static_ip_proxy: _ignoredUseStaticIpProxy,
+        ...restConfig
+      } = extraConfig;
 
       if (mcp_server_id) {
         const oauthConnectionIdRes =
@@ -245,10 +252,12 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
         const connection = connectionRes.value.connection;
 
         const { code_verifier, code_challenge } = await getPKCEConfig();
+        const tokenEndpoint = connection.metadata.token_endpoint;
 
         return {
+          ...restConfig,
           client_id: connection.metadata.client_id,
-          token_endpoint: connection.metadata.token_endpoint,
+          token_endpoint: tokenEndpoint,
           authorization_endpoint: connection.metadata.authorization_endpoint,
           scope: connection.metadata.scope,
           resource: connection.metadata.resource,
@@ -256,19 +265,32 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
             connection.metadata.token_endpoint_auth_method,
           code_verifier,
           code_challenge,
-          ...restConfig,
+          use_static_ip_proxy: String(
+            await computeUseStaticIpProxy(auth, tokenEndpoint)
+          ),
         };
       }
     } else if (useCase === "platform_actions") {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars -- we filter out the client_secret from the extraConfig
-      const { client_secret, ...restConfig } = extraConfig;
+      const {
+        client_secret,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars -- caller-controlled proxy routing is ignored.
+        use_static_ip_proxy: _ignoredUseStaticIpProxy,
+        ...restConfig
+      } = extraConfig;
 
       const { code_verifier, code_challenge } = await getPKCEConfig();
-
-      return {
+      const finalConfig: ExtraConfigType = {
         ...restConfig,
         code_challenge,
         code_verifier,
+      };
+
+      return {
+        ...finalConfig,
+        use_static_ip_proxy: String(
+          await computeUseStaticIpProxy(auth, finalConfig.token_endpoint)
+        ),
       };
     }
     throw new Error("MCP oauth provider does not support use case: " + useCase);
