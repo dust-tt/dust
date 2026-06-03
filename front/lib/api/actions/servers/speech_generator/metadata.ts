@@ -48,6 +48,51 @@ export type VoiceUseCase = (typeof VOICE_USE_CASES)[number];
 
 export const SPEECH_GENERATOR_SERVER_NAME = "speech_generator" as const;
 
+const ALLOWED_AUDIO_URL_DOMAINS = [
+  // Video platforms
+  "youtube.com",
+  "youtu.be",
+  "googlevideo.com",
+  "vimeo.com",
+  "vimeocdn.com",
+  "dailymotion.com",
+  // Async video / screen recording
+  "loom.com",
+  "tella.tv",
+  "wistia.com",
+  "wistia.net",
+  "vidyard.com",
+  // Meeting recordings
+  "zoom.us",
+  "webex.com",
+  "grain.com",
+  "riverside.fm",
+  // Cloud storage
+  "drive.google.com",
+  "googleusercontent.com",
+  "sharepoint.com",
+  "onedrive.live.com",
+  "onedrive.com",
+  "1drv.ms",
+  "dropbox.com",
+  "dropboxusercontent.com",
+  // Collaboration / comms
+  "slack.com",
+  // Audio
+  "soundcloud.com",
+] as const;
+
+function isAllowedAudioUrl(url: string): boolean {
+  try {
+    const { hostname } = new URL(url);
+    return ALLOWED_AUDIO_URL_DOMAINS.some(
+      (domain) => hostname === domain || hostname.endsWith(`.${domain}`)
+    );
+  } catch {
+    return false;
+  }
+}
+
 export const SPEECH_GENERATOR_TOOLS_METADATA = createToolsRecord({
   speech_to_text: {
     description:
@@ -58,10 +103,13 @@ export const SPEECH_GENERATOR_TOOLS_METADATA = createToolsRecord({
       audio_url: z
         .string()
         .url()
+        .refine(isAllowedAudioUrl, {
+          message: `URL must be from an allowed domain: ${ALLOWED_AUDIO_URL_DOMAINS.join(", ")}.`,
+        })
         .optional()
         .describe(
           "HTTPS URL of the audio or video file to transcribe. " +
-            "Any valid HTTPS URL is accepted, including pre-signed URLs from cloud storage providers. " +
+            "Only URLs from the allowlist of known video/audio platforms are accepted. " +
             "Mutually exclusive with audio_blob."
         ),
       audio_blob: z
