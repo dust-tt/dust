@@ -193,7 +193,7 @@ export async function enrichListWithFileResourceIds(
 // FileResource lookup helpers
 // ---------------------------------------------------------------------------
 
-async function fetchLinkedFile(
+async function fetchLinkedFileResource(
   auth: Authenticator,
   dustFs: DustFileSystem,
   scopedPath: string
@@ -267,20 +267,24 @@ export async function renameCanonicalFile(
 ): Promise<
   Result<{ dest: string; sourceDeletionFailed: boolean }, DustFileSystemError>
 > {
-  const linkedFile = await fetchLinkedFile(auth, dustFs, scopedPath);
+  const linkedFileResource = await fetchLinkedFileResource(
+    auth,
+    dustFs,
+    scopedPath
+  );
 
   const renameResult = await dustFs.rename(scopedPath, newFileName);
   if (renameResult.isErr()) {
     return renameResult;
   }
 
-  if (linkedFile) {
+  if (linkedFileResource) {
     const { dest } = renameResult.value;
     const destGcsPath = dustFs.toMountFilePath(dest);
     const destInfo = inferDestMountInfo(dest);
 
     if (destGcsPath && destInfo) {
-      await linkedFile.updateMount({
+      await linkedFileResource.updateMount({
         destFileName: newFileName,
         destMountFilePath: destGcsPath,
         destUseCase: destInfo.useCase,
@@ -305,7 +309,7 @@ export async function moveCanonicalFile(
   dest: string
 ): Promise<Result<{ sourceDeletionFailed: boolean }, DustFileSystemError>> {
   // Look up the linked FileResource before the bytes move.
-  const linkedFile = await fetchLinkedFile(auth, dustFs, src);
+  const linkedFileResource = await fetchLinkedFileResource(auth, dustFs, src);
 
   const moveResult = await dustFs.move({ src, dest });
   if (moveResult.isErr()) {
@@ -313,13 +317,13 @@ export async function moveCanonicalFile(
   }
 
   // Update the FileResource to point to the new location.
-  if (linkedFile) {
+  if (linkedFileResource) {
     const destGcsPath = dustFs.toMountFilePath(dest);
     const destInfo = inferDestMountInfo(dest);
 
     if (destGcsPath && destInfo) {
       const destFileName = dest.split("/").pop() ?? dest;
-      await linkedFile.updateMount({
+      await linkedFileResource.updateMount({
         destFileName,
         destMountFilePath: destGcsPath,
         destUseCase: destInfo.useCase,
@@ -341,12 +345,16 @@ export async function deleteCanonicalFile(
   dustFs: DustFileSystem,
   scopedPath: string
 ): Promise<Result<void, DustFileSystemError>> {
-  const linkedFile = await fetchLinkedFile(auth, dustFs, scopedPath);
-  if (!linkedFile) {
+  const linkedFileResource = await fetchLinkedFileResource(
+    auth,
+    dustFs,
+    scopedPath
+  );
+  if (!linkedFileResource) {
     return dustFs.delete(scopedPath);
   }
 
-  const deleteResult = await linkedFile.delete(auth);
+  const deleteResult = await linkedFileResource.delete(auth);
   if (deleteResult.isErr()) {
     return new Err(
       new DustFileSystemError("internal", deleteResult.error.message)
