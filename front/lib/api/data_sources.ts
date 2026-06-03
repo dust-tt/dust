@@ -269,13 +269,22 @@ export async function hardDeleteDataSource(
   assert(auth.isBuilder(), "Only builders can delete data sources.");
 
   // Delete all files in the data source's bucket.
+  //
+  // The GCS object key for a data source document is
+  // `{dustAPIProjectId}/{dataSourceInternalId}/{documentIdHash}/{version}.json`. The trailing
+  // slash on the prefix is REQUIRED: GCS matches `prefix` as a raw byte string, not by path
+  // segment, so a bare `dustAPIProjectId` (e.g. "1134") also matches every sibling project whose
+  // id merely starts with the same digits (e.g. "11340", "1134276"), deleting unrelated data
+  // sources' files across other workspaces. Projects map 1-1 to data sources, so scoping the
+  // prefix to `{dustAPIProjectId}/` deletes exactly this data source's files and nothing else.
   const { dustAPIProjectId } = dataSource;
+  const prefix = `${dustAPIProjectId}/`;
 
   let files;
 
   do {
     files = await getDustDataSourcesBucket().getFiles({
-      prefix: dustAPIProjectId,
+      prefix,
       maxResults: FILE_BATCH_SIZE,
     });
 
