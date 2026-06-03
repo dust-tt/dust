@@ -146,13 +146,28 @@ async function syncMetrics(): Promise<void> {
     const eventTypeMatch =
       JSON.stringify(ex?.event_type_filter?.in_values?.sort() ?? []) ===
       JSON.stringify([...desired.event_type_filter.in_values].sort());
+    // Sort filters by name AND normalize each filter to a canonical key order.
+    // The JSON.stringify comparison below is key-order-sensitive, and Metronome
+    // returns filter object keys in a different order than our literals
+    // (e.g. `not_in_values` before `exists`). Mapping every filter through a
+    // fixed key order — and letting JSON.stringify drop the `undefined` keys —
+    // makes the comparison depend only on content, not key order.
     const sortFilters = (
       filters: Array<{
         name: string;
         exists?: boolean;
         in_values?: string[];
+        not_in_values?: string[];
       }>
-    ) => [...filters].sort((a, b) => a.name.localeCompare(b.name));
+    ) =>
+      [...filters]
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((f) => ({
+          name: f.name,
+          exists: f.exists,
+          in_values: f.in_values,
+          not_in_values: f.not_in_values,
+        }));
     const propertyFiltersMatch =
       JSON.stringify(sortFilters(ex?.property_filters ?? [])) ===
       JSON.stringify(sortFilters(desired.property_filters ?? []));
