@@ -15,7 +15,20 @@ import { useSpaces } from "@app/lib/swr/spaces";
 import { useDeleteToolApproval, useUserApprovals } from "@app/lib/swr/user";
 import { classNames } from "@app/lib/utils";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Chip, DataTable, SearchInput, Spinner } from "@dust-tt/sparkle";
+import {
+  Button,
+  Chip,
+  DataTable,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuPortal,
+  DropdownMenuTrigger,
+  MoreIcon,
+  SearchInput,
+  Spinner,
+} from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import keyBy from "lodash/keyBy";
 import { useCallback, useMemo, useState } from "react";
@@ -160,29 +173,41 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
         header: "",
         accessorKey: "actions",
         cell: ({ row }) => (
-          <DataTable.MoreButton
-            menuItems={[
-              {
-                label: "Clear confirmation preferences",
-                onClick: () =>
-                  handleDeleteToolMetadata(row.original.serverView.server.sId),
-                kind: "item",
-              },
-              ...(row.original.connection
-                ? [
-                    {
-                      label: "Disconnect",
-                      onClick: () =>
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger asChild>
+              <Button
+                icon={MoreIcon}
+                size="icon"
+                variant="ghost-secondary"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuPortal>
+              <DropdownMenuContent align="end">
+                <DropdownMenuGroup>
+                  <DropdownMenuItem
+                    label="Clear confirmation preferences"
+                    onClick={() =>
+                      handleDeleteToolMetadata(
+                        row.original.serverView.server.sId
+                      )
+                    }
+                  />
+                  {row.original.connection && (
+                    <DropdownMenuItem
+                      label="Disconnect"
+                      onClick={() =>
                         deleteMCPServerConnection({
                           connection: row.original.connection!,
                           mcpServer: row.original.serverView.server,
-                        }),
-                      kind: "item" as const,
-                    },
-                  ]
-                : []),
-            ]}
-          />
+                        })
+                      }
+                    />
+                  )}
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenuPortal>
+          </DropdownMenu>
         ),
         meta: {
           className: "w-12",
