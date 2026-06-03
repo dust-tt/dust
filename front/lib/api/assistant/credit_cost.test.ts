@@ -106,4 +106,23 @@ describe("computeAgentMessageCredits", () => {
       computeAgentMessageCredits({ runUsages: [], actions: [] })
     ).toBeNull();
   });
+
+  it("costs 0 for free-origin usage (e.g. agent_sidekick), LLM and tools alike", () => {
+    const credits = computeAgentMessageCredits({
+      runUsages: [usage({ costMicroUsd: 8500 })], // would be 1 intelligence credit
+      actions: [{ internalMCPServerName: "search", status: "succeeded" }], // would be 3 tool credits
+      isFreeUsage: true,
+    });
+    expect(credits).toBe(0);
+  });
+
+  it("still returns null for free-origin usage when there is nothing to track", () => {
+    expect(
+      computeAgentMessageCredits({
+        runUsages: [],
+        actions: [],
+        isFreeUsage: true,
+      })
+    ).toBeNull();
+  });
 });

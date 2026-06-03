@@ -3,18 +3,23 @@ import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import type { Authenticator } from "@app/lib/auth";
 import {
   intelligenceAwuFromRunUsages,
+  isFreeOrigin,
   toolAwuFromActions,
 } from "@app/lib/metronome/events";
 import {
   AgentMessageModel,
   MessageModel,
+  UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import logger from "@app/logger/logger";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type {
+  ConversationWithoutContentType,
+  UserMessageOrigin,
+} from "@app/types/assistant/conversation";
 import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 
@@ -31,9 +36,11 @@ interface CreditAgentMessageMinimalInput {
 export function computeAgentMessageCredits({
   runUsages,
   actions,
+  isFreeUsage = false,
 }: {
   runUsages: RunUsageType[];
   actions: CreditActionMinimalInput[];
+  isFreeUsage?: boolean;
 }): number | null {
   const finalActions = actions.filter((a) =>
     isToolExecutionStatusFinal(a.status)
@@ -41,6 +48,10 @@ export function computeAgentMessageCredits({
 
   if (runUsages.length === 0 && finalActions.length === 0) {
     return null;
+  }
+
+  if (isFreeUsage) {
+    return 0;
   }
 
   return (
@@ -82,12 +93,14 @@ export async function computeAndStoreAgentMessageCredits(
     return null;
   }
 
-  const [runUsagesByAgentMessageId, actions] = await Promise.all([
-    fetchRunUsagesByAgentMessageId(auth, [
-      { id: agentMessage.id, runIds: agentMessage.runIds },
-    ]),
-    AgentMCPActionResource.listByAgentMessageIds(auth, [agentMessage.id]),
-  ]);
+  const [runUsagesByAgentMessageId, actions, userMessageOrigin] =
+    await Promise.all([
+      fetchRunUsagesByAgentMessageId(auth, [
+        { id: agentMessage.id, runIds: agentMessage.runIds },
+      ]),
+      AgentMCPActionResource.listByAgentMessageIds(auth, [agentMessage.id]),
+      fetchTriggeringUserMessageOrigin(auth, messageRow.parentId),
+    ]);
 
   const costCredits = computeAgentMessageCredits({
     runUsages: runUsagesByAgentMessageId.get(agentMessage.id) ?? [],
@@ -95,6 +108,7 @@ export async function computeAndStoreAgentMessageCredits(
       internalMCPServerName: action.metadata.internalMCPServerName,
       status: action.status,
     })),
+    isFreeUsage: userMessageOrigin !== null && isFreeOrigin(userMessageOrigin),
   });
 
   await AgentMessageModel.update(
@@ -103,6 +117,25 @@ export async function computeAndStoreAgentMessageCredits(
   );
 
   return costCredits;
+}
+
+async function fetchTriggeringUserMessageOrigin(
+  auth: Authenticator,
+  parentMessageModelId: ModelId | null
+): Promise<UserMessageOrigin | null> {
+  if (parentMessageModelId === null) {
+    return null;
+  }
+
+  const parentRow = await MessageModel.findOne({
+    where: {
+      id: parentMessageModelId,
+      workspaceId: auth.getNonNullableWorkspace().id,
+    },
+    include: [{ model: UserMessageModel, as: "userMessage", required: false }],
+  });
+
+  return parentRow?.userMessage?.userContextOrigin ?? null;
 }
 
 async function fetchRunUsagesByAgentMessageId(

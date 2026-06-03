@@ -180,11 +180,15 @@ const FREE_TOOL_SERVERS: ReadonlySet<string> = new Set<string>([
   "agent_memory",
 ]);
 
+export function isFreeOrigin(origin: string): boolean {
+  return FREE_ORIGINS.has(origin);
+}
+
 export function getUsageType(
   isProgrammaticUsage: boolean,
   origin: string
 ): UsageType {
-  if (FREE_ORIGINS.has(origin)) {
+  if (isFreeOrigin(origin)) {
     return USAGE_TYPE_FREE;
   }
   return isProgrammaticUsage ? USAGE_TYPE_PROGRAMMATIC : USAGE_TYPE_USER;
