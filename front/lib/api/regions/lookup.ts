@@ -1,10 +1,10 @@
-import { getMembershipInvitationToken } from "@app/lib/api/invitation";
 import { config } from "@app/lib/api/regions/config";
 import { isWorkspaceRelocationDone } from "@app/lib/api/workspace";
 import { findWorkspaceWithVerifiedDomain } from "@app/lib/iam/workspaces";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
+import { getMembershipInvitationToken } from "@app/lib/utils/invitation_token";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type {
   InvitationsLookupRequestBodyType,

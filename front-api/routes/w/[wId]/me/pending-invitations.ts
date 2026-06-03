@@ -1,5 +1,5 @@
-import { getMembershipInvitationToken } from "@app/lib/api/invitation";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
+import { getMembershipInvitationToken } from "@app/lib/utils/invitation_token";
 import type { PendingInvitationOption } from "@app/types/membership_invitation";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";

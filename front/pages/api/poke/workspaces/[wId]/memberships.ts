@@ -1,11 +1,11 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
-import { getMembershipInvitationUrl } from "@app/lib/api/invitation";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
+import { getMembershipInvitationUrl } from "@app/lib/utils/invitation_token";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { MembershipInvitationTypeWithLink } from "@app/types/membership_invitation";

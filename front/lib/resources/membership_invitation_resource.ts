@@ -1,6 +1,9 @@
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import { INVITATION_EXPIRATION_TIME_SEC } from "@app/lib/constants/invitation";
+import {
+  INVITATION_EXPIRATION_TIME_MS,
+  INVITATION_REMINDER_WINDOW_MS,
+} from "@app/lib/constants/invitation";
 import { AuthFlowError } from "@app/lib/iam/errors";
 import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -8,6 +11,7 @@ import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { getInvitationTokenStartMs } from "@app/lib/utils/invitation_token";
 import logger from "@app/logger/logger";
 import type { MembershipInvitationType } from "@app/types/membership_invitation";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -81,12 +85,6 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
           workspace: invitation.workspace,
         })
       : null;
-  }
-
-  private static invitationExpired(createdAt: Date) {
-    return (
-      createdAt.getTime() + INVITATION_EXPIRATION_TIME_SEC * 1000 < Date.now()
-    );
   }
 
   static async listRecentPendingAndRevokedInvitations(
@@ -163,16 +161,13 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
     });
 
     return invitations
-      .filter(
-        (invitation) =>
-          includeExpired || !this.invitationExpired(invitation.createdAt)
-      )
       .map(
         (invitation) =>
           new MembershipInvitationResource(this.model, invitation.get(), {
             workspace: invitation.workspace,
           })
-      );
+      )
+      .filter((r) => includeExpired || !r.isExpired());
   }
 
   static async listPendingForEmailsAndWorkspace({
@@ -201,16 +196,13 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
     });
 
     return invitations
-      .filter(
-        (invitation) =>
-          includeExpired || !this.invitationExpired(invitation.createdAt)
-      )
       .map(
         (invitation) =>
           new MembershipInvitationResource(this.model, invitation.get(), {
             workspace: invitation.workspace,
           })
-      );
+      )
+      .filter((r) => includeExpired || !r.isExpired());
   }
 
   static async getPendingForEmailAndWorkspace({
@@ -306,25 +298,6 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
     });
   }
 
-  static async bulkUpdateInitialRoleByModelIds(
-    auth: Authenticator,
-    {
-      modelIds,
-      role,
-      transaction,
-    }: {
-      modelIds: ModelId[];
-      role: ActiveRoleType;
-      transaction?: Transaction;
-    }
-  ): Promise<void> {
-    await this.bulkUpdateByModelIds(auth, {
-      modelIds,
-      values: { initialRole: role },
-      transaction,
-    });
-  }
-
   static async getPendingInvitations(
     auth: Authenticator,
     { includeExpired = false }: { includeExpired?: boolean } = {}
@@ -347,16 +320,13 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
     });
 
     return invitations
-      .filter(
-        (invitation) =>
-          includeExpired || !this.invitationExpired(invitation.createdAt)
-      )
       .map(
         (i) =>
           new MembershipInvitationResource(this.model, i.get(), {
             workspace: i.workspace,
           })
-      );
+      )
+      .filter((r) => includeExpired || !r.isExpired());
   }
 
   static async getPendingForToken(
@@ -408,7 +378,13 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
         );
       }
 
-      if (this.invitationExpired(membershipInvite.createdAt)) {
+      const resource = new MembershipInvitationResource(
+        this.model,
+        membershipInvite.get(),
+        { workspace: membershipInvite.workspace }
+      );
+
+      if (resource.isExpired()) {
         return new Err(
           new AuthFlowError(
             "expired_invitation",
@@ -417,20 +393,67 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
         );
       }
 
-      return new Ok(
-        new MembershipInvitationResource(this.model, membershipInvite.get(), {
-          workspace: membershipInvite.workspace,
-        })
-      );
+      return new Ok(resource);
     }
 
     return new Ok(null);
   }
 
-  isExpired() {
-    return (
-      this.createdAt.getTime() + INVITATION_EXPIRATION_TIME_SEC * 1000 <
-      Date.now()
+  getTokenExpirationDate(): Date {
+    const startDateMs = getInvitationTokenStartMs({
+      createdAt: this.createdAt,
+      reminderSentAt: this.reminderSentAt,
+    });
+    return new Date(startDateMs + INVITATION_EXPIRATION_TIME_MS);
+  }
+
+  isExpired(): boolean {
+    return this.getTokenExpirationDate().getTime() < Date.now();
+  }
+
+  // Atomically claims the reminder slot. Returns true if claimed, false if another worker already did.
+  // Updates this resource in-memory on success so toJSON() and token generation use the new reminderSentAt.
+  async claimReminderSlot(): Promise<boolean> {
+    const reminderSentAt = new Date();
+    const [affectedCount] = await MembershipInvitationModel.update(
+      { reminderSentAt },
+      { where: { id: this.id, reminderSentAt: null } }
+    );
+    if (affectedCount > 0) {
+      Object.assign(this, { reminderSentAt });
+    }
+    return affectedCount > 0;
+  }
+
+  static async listEligibleForReminder({
+    limit,
+  }: {
+    limit: number;
+  }): Promise<MembershipInvitationResource[]> {
+    const expirationCutoff = new Date(
+      Date.now() - INVITATION_EXPIRATION_TIME_MS
+    );
+    const reminderCutoff = new Date(Date.now() - INVITATION_REMINDER_WINDOW_MS);
+
+    const invitations = await this.model.findAll({
+      where: {
+        status: "pending",
+        createdAt: { [Op.lt]: expirationCutoff, [Op.gt]: reminderCutoff },
+        reminderSentAt: { [Op.is]: null },
+      },
+      order: [
+        ["createdAt", "ASC"],
+        ["id", "ASC"],
+      ],
+      limit,
+      include: [WorkspaceModel],
+      // WORKSPACE_ISOLATION_BYPASS: Reminder job scans across all workspaces.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+    });
+
+    return invitations.map(
+      (inv) => new this(this.model, inv.get(), { workspace: inv.workspace })
     );
   }
 
@@ -484,6 +507,7 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
     return {
       createdAt: this.createdAt.getTime(),
       reminderSentAt: this.reminderSentAt?.getTime() ?? null,
+      expiresAt: this.getTokenExpirationDate().getTime(),
       id: this.id,
       initialRole: this.initialRole,
       inviteEmail: this.inviteEmail,

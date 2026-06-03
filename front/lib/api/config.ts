@@ -113,6 +113,11 @@ const config = {
       "SENDGRID_INVITATION_EMAIL_TEMPLATE_ID"
     );
   },
+  getInvitationReminderEmailTemplate: (): string => {
+    return EnvironmentConfig.getEnvVariable(
+      "SENDGRID_INVITATION_REMINDER_EMAIL_TEMPLATE_ID"
+    );
+  },
   getGenericEmailTemplate: (): string => {
     return EnvironmentConfig.getEnvVariable(
       "SENDGRID_GENERIC_EMAIL_TEMPLATE_ID"
