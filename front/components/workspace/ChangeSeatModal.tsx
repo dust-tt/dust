@@ -346,6 +346,9 @@ export function ChangeSeatModal({
         memberName: displayedMember.name,
         seatType: selectedSeat,
         isCancellingScheduledChange,
+        // The target seat is backed by a pool only when it carries an AWU
+        // allocation in the seat plan.
+        hasSeatPool: (seatPlans[selectedSeat]?.awuCredits ?? 0) > 0,
       });
       if (ok) {
         onClose();
