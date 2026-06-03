@@ -1,4 +1,5 @@
 import config from "@app/lib/api/config";
+import { EnvironmentConfig } from "@app/types/shared/utils/config";
 
 /**
  * AuthKit Connect domain for MCP OAuth (e.g. `your-env.authkit.app`).
@@ -26,7 +27,13 @@ export function normalizeOAuthUrl(url: string): string {
 }
 
 export function getMcpResourceServerUrl(): string {
-  return normalizeOAuthUrl(config.getDustAPIConfig().url.trim() + "/mcp");
+  return normalizeOAuthUrl(
+    (
+      EnvironmentConfig.getOptionalEnvVariable("DUST_API_URL") ??
+      EnvironmentConfig.getOptionalEnvVariable("DUST_INTERNAL_API_URL") ??
+      "https://us-api.dust.tt"
+    ).trim() + "/mcp"
+  );
 }
 
 export function getMcpResourceMetadataUrl(resourceServerUrl: string): URL {
