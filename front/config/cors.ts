@@ -44,6 +44,8 @@ export function isAllowedOrigin(origin: string): boolean {
 export const ALLOWED_HEADERS = [
   "authorization",
   "content-type",
+  "mcp-protocol-version",
+  "mcp-session-id",
   "x-commit-hash",
   "x-dust-extension-version",
   "x-build-date",

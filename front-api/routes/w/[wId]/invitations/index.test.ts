@@ -10,23 +10,6 @@ const sgSendMock = vi
   .spyOn(sgMail, "send")
   .mockResolvedValue([{ statusCode: 202, headers: {}, body: {} }, {}] as never);
 
-vi.mock(import("@app/lib/api/config"), async (importOriginal) => {
-  const mod = await importOriginal();
-  return {
-    ...mod,
-    default: {
-      ...mod.default,
-      getSendgridApiKey: vi.fn().mockReturnValue("SG.test"),
-      getInvitationEmailTemplate: vi.fn().mockReturnValue("d-test"),
-      getSupportEmailAddress: vi.fn().mockReturnValue("test@dust.tt"),
-      getAppUrl: vi.fn().mockReturnValue("http://localhost:3000"),
-      getDustInviteTokenSecret: vi
-        .fn()
-        .mockReturnValue("test-invite-secret-32chars!!!!!"),
-    },
-  };
-});
-
 import { honoApp } from "@front-api/app";
 
 beforeEach(() => {

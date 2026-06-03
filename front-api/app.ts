@@ -18,6 +18,8 @@ import { invitationsApp } from "./routes/invitations";
 import { killApp } from "./routes/kill";
 import privateLoginApp from "./routes/login";
 import lookupApp from "./routes/lookup";
+import { mcpApp } from "./routes/mcp/index";
+import { mcpWellKnownApp } from "./routes/mcp/well-known";
 import metronomeApp from "./routes/metronome";
 import novuApp from "./routes/novu";
 import oauthApp from "./routes/oauth";
@@ -83,5 +85,11 @@ apiApp.route("/:preStopSecret", preStopApp);
 export const honoApp = createHono();
 honoApp.use("*", requestLogger);
 honoApp.use("*", cors);
+
+// Dust as MCP Server — inbound from remote clients (Inspector, Cursor, etc.).
+// Mounted at root level so /.well-known/* and /mcp are not under /api/.
+honoApp.route("/mcp", mcpApp);
+honoApp.route("/", mcpWellKnownApp);
+
 honoApp.route("/api", apiApp);
 honoApp.onError(unhandledErrorHandler);

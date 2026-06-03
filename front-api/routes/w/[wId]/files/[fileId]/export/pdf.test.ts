@@ -20,16 +20,6 @@ vi.mock("@app/types/shared/document_renderer", async (importOriginal) => {
   };
 });
 
-vi.mock("@app/lib/api/config", () => ({
-  default: {
-    getDocumentRendererUrl: vi.fn().mockReturnValue("http://localhost:3100"),
-    getVizPublicUrl: vi.fn().mockReturnValue("https://viz.dust.tt"),
-    getAppUrl: vi.fn().mockReturnValue("http://localhost:3000"),
-    getVizJwtSecret: vi.fn().mockReturnValue("test-secret"),
-    getWorkOSClientId: vi.fn(() => "test-workos-client-id"),
-  },
-}));
-
 function url(workspace: { sId: string }, fileId: string) {
   return `/api/w/${workspace.sId}/files/${fileId}/export/pdf`;
 }
