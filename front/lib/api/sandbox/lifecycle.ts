@@ -50,22 +50,6 @@ export async function ensureSandboxReady(
       const { sandbox, freshlyCreated, wokeFromSleep } = ensureResult.value;
       cold = freshlyCreated;
 
-      // Egress prep must run BEFORE GCS mounts.
-      // sandbox_resource.buildSandboxEnvVars exports replace-style trust env
-      // vars pointing at /etc/dust/ca-bundle.pem. The image seeds that path
-      // with system roots; forwarder setup later merges in the dsbx CA.
-      // Mounting (gcsfuse and friends) can make HTTPS calls that read the
-      // trust bundle, so the path has to be valid first.
-      if (freshlyCreated) {
-        const prepResult = await traceSandboxStartupPhase("egress_prep", () =>
-          prepareSandboxEgressBeforeMount(auth, sandbox)
-        );
-        if (prepResult.isErr()) {
-          status = "error";
-          return prepResult;
-        }
-      }
-
       // Synchronous and cheap: not worth a span (it would always read ~0ms).
       const imageResult = getSandboxImage(auth);
       if (imageResult.isErr()) {
@@ -87,9 +71,22 @@ export async function ensureSandboxReady(
       // wake we just need a fresh GCS access token in /tmp/token.json (the
       // running token server will hand it to gcsfuse on the next request).
       if (freshlyCreated) {
-        const mountResult = await traceSandboxStartupPhase("gcs_mount", () =>
-          mountConversationFiles(auth, sandbox, conversation, image)
-        );
+        // The image seeds /etc/dust/ca-bundle.pem with system roots, and
+        // gcsfuse runs as root to storage.googleapis.com, which bypasses the
+        // uid-1003 nftables proxy rules. Egress prep can therefore overlap with
+        // the GCS mount while still keeping egress errors first.
+        const [prepResult, mountResult] = await Promise.all([
+          traceSandboxStartupPhase("egress_prep", () =>
+            prepareSandboxEgressBeforeMount(auth, sandbox)
+          ),
+          traceSandboxStartupPhase("gcs_mount", () =>
+            mountConversationFiles(auth, sandbox, conversation, image)
+          ),
+        ]);
+        if (prepResult.isErr()) {
+          status = "error";
+          return prepResult;
+        }
         if (mountResult.isErr()) {
           status = "error";
           return mountResult;

@@ -1,4 +1,4 @@
-import { Err, Ok } from "@app/types/shared/result";
+import { Err, Ok, type Result } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -59,6 +59,19 @@ vi.mock("@app/logger/logger", () => ({
 
 import { ensureSandboxReady } from "./lifecycle";
 
+function createDeferred<T>() {
+  let resolvePromise: ((value: T | PromiseLike<T>) => void) | undefined;
+  const promise = new Promise<T>((resolve) => {
+    resolvePromise = resolve;
+  });
+
+  if (!resolvePromise) {
+    throw new Error("Deferred promise resolver was not initialized.");
+  }
+
+  return { promise, resolve: resolvePromise };
+}
+
 describe("ensureSandboxReady", () => {
   const auth = { getNonNullableWorkspace: () => ({ sId: "workspace-id" }) };
   const conversation = { sId: "conversation-id" };
@@ -117,12 +130,42 @@ describe("ensureSandboxReady", () => {
       wokeFromSleep: false,
     });
 
-    expect(
-      mockPrepareSandboxEgressBeforeMount.mock.invocationCallOrder[0]
-    ).toBeLessThan(mockMountConversationFiles.mock.invocationCallOrder[0]);
     expect(mockMountConversationFiles.mock.invocationCallOrder[0]).toBeLessThan(
       mockEnsureSandboxEgressOnExec.mock.invocationCallOrder[0]
     );
+  });
+
+  it("starts GCS mount before initial egress prep resolves", async () => {
+    const prepStarted = createDeferred<void>();
+    const prepResult = createDeferred<Result<void, Error>>();
+    mockEnsureActive.mockResolvedValue(
+      new Ok({
+        freshlyCreated: true,
+        sandbox,
+        wokeFromSleep: false,
+      })
+    );
+    mockPrepareSandboxEgressBeforeMount.mockImplementation(() => {
+      prepStarted.resolve(undefined);
+      return prepResult.promise;
+    });
+
+    const resultPromise = ensureSandboxReady(
+      auth as never,
+      conversation as never
+    );
+
+    await prepStarted.promise;
+    await Promise.resolve();
+
+    expect(mockMountConversationFiles).toHaveBeenCalledTimes(1);
+    expect(mockEnsureSandboxEgressOnExec).not.toHaveBeenCalled();
+
+    prepResult.resolve(new Ok(undefined));
+    const result = await resultPromise;
+
+    expect(result.isOk()).toBe(true);
+    expect(mockEnsureSandboxEgressOnExec).toHaveBeenCalledTimes(1);
   });
 
   it("only refreshes the token (no remount) when the sandbox woke from sleep", async () => {
@@ -208,7 +251,8 @@ describe("ensureSandboxReady", () => {
     expect(mockGetSandboxImage).not.toHaveBeenCalled();
   });
 
-  it("short-circuits when initial egress prep fails", async () => {
+  it("returns the initial egress prep error after also running the GCS mount", async () => {
+    const setupError = new Error("setup failed");
     mockEnsureActive.mockResolvedValue(
       new Ok({
         freshlyCreated: true,
@@ -216,8 +260,33 @@ describe("ensureSandboxReady", () => {
         wokeFromSleep: false,
       })
     );
-    mockPrepareSandboxEgressBeforeMount.mockResolvedValue(
-      new Err(new Error("setup failed"))
+    mockPrepareSandboxEgressBeforeMount.mockResolvedValue(new Err(setupError));
+
+    const result = await ensureSandboxReady(
+      auth as never,
+      conversation as never
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).toBe(setupError);
+    }
+    expect(mockMountConversationFiles).toHaveBeenCalledTimes(1);
+    expect(mockEnsureSandboxEgressOnExec).not.toHaveBeenCalled();
+  });
+
+  it("returns the initial egress prep error when both initial phases fail", async () => {
+    const setupError = new Error("setup failed");
+    mockEnsureActive.mockResolvedValue(
+      new Ok({
+        freshlyCreated: true,
+        sandbox,
+        wokeFromSleep: false,
+      })
+    );
+    mockPrepareSandboxEgressBeforeMount.mockResolvedValue(new Err(setupError));
+    mockMountConversationFiles.mockResolvedValue(
+      new Err(new Error("mount failed"))
     );
 
     const result = await ensureSandboxReady(
@@ -226,8 +295,11 @@ describe("ensureSandboxReady", () => {
     );
 
     expect(result.isErr()).toBe(true);
-    expect(mockGetSandboxImage).not.toHaveBeenCalled();
-    expect(mockMountConversationFiles).not.toHaveBeenCalled();
+    if (result.isErr()) {
+      expect(result.error).toBe(setupError);
+    }
+    expect(mockMountConversationFiles).toHaveBeenCalledTimes(1);
+    expect(mockEnsureSandboxEgressOnExec).not.toHaveBeenCalled();
   });
 
   it("short-circuits when mounting conversation files fails", async () => {
