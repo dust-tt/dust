@@ -1,5 +1,7 @@
 use crate::{
-    http::proxy_client::{try_build_static_ip_client, try_build_untrusted_egress_client},
+    http::proxy_client::{
+        try_build_direct_client, try_build_static_ip_client, try_build_untrusted_egress_client,
+    },
     oauth::{
         connection::{
             Connection, ConnectionProvider, FinalizeResult, Provider, ProviderError, RefreshResult,
@@ -13,7 +15,7 @@ use crate::{
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use serde::Deserialize;
-use tracing::{error, info, warn};
+use tracing::{info, warn};
 
 use super::utils::ProviderHttpRequestError;
 
@@ -167,6 +169,7 @@ impl MCPConnectionProvider {
         use_static_ip: bool,
         build_static_ip_client: impl FnOnce() -> Option<reqwest::Client>,
         build_untrusted_egress_client: impl FnOnce() -> Option<reqwest::Client>,
+        build_direct_client: impl FnOnce() -> Option<reqwest::Client>,
     ) -> Result<reqwest::Client, ProviderError> {
         if use_static_ip {
             if let Some(client) = build_static_ip_client() {
@@ -180,8 +183,15 @@ impl MCPConnectionProvider {
             return Ok(client);
         }
 
+        // No egress proxy configured (e.g. local development): fall back to a direct connection so
+        // MCP OAuth flows keep working. In production both proxies are configured, so this only
+        // triggers locally.
+        if let Some(client) = build_direct_client() {
+            return Ok(client);
+        }
+
         Err(ProviderError::from(anyhow!(
-            "no egress proxy available for MCP OAuth token request"
+            "failed to build a client for MCP OAuth token request"
         )))
     }
 
@@ -190,6 +200,7 @@ impl MCPConnectionProvider {
             use_static_ip,
             try_build_static_ip_client,
             try_build_untrusted_egress_client,
+            try_build_direct_client,
         )
     }
 }
@@ -201,13 +212,12 @@ impl Provider for MCPConnectionProvider {
     }
 
     fn reqwest_client(&self) -> reqwest::Client {
-        match try_build_untrusted_egress_client() {
-            Some(client) => client,
-            None => {
-                error!("No untrusted egress proxy available for MCP OAuth token request");
-                panic!("no egress proxy available for MCP OAuth token request")
-            }
-        }
+        // Prefer the untrusted egress proxy, fall back to a direct connection when no proxy is
+        // configured (e.g. local development). MCP token activity uses `client_for` instead; this
+        // remains for the default `Provider` trait surface.
+        try_build_untrusted_egress_client()
+            .or_else(try_build_direct_client)
+            .unwrap_or_else(reqwest::Client::new)
     }
 
     async fn finalize(
@@ -552,21 +562,31 @@ mod tests {
 
     #[test]
     fn client_for_falls_back_to_untrusted_egress_when_static_ip_is_unavailable() {
-        let client = MCPConnectionProvider::client_for_builders(true, || None, test_client);
+        let client =
+            MCPConnectionProvider::client_for_builders(true, || None, test_client, || None);
 
         assert!(client.is_ok());
     }
 
     #[test]
     fn client_for_uses_untrusted_egress_without_static_ip() {
-        let client = MCPConnectionProvider::client_for_builders(false, || None, test_client);
+        let client =
+            MCPConnectionProvider::client_for_builders(false, || None, test_client, || None);
 
         assert!(client.is_ok());
     }
 
     #[test]
-    fn client_for_errors_when_no_proxy_client_is_available() {
-        let client = MCPConnectionProvider::client_for_builders(false, || None, || None);
+    fn client_for_falls_back_to_direct_when_no_proxy_is_available() {
+        let client =
+            MCPConnectionProvider::client_for_builders(false, || None, || None, test_client);
+
+        assert!(client.is_ok());
+    }
+
+    #[test]
+    fn client_for_errors_only_when_no_client_can_be_built() {
+        let client = MCPConnectionProvider::client_for_builders(false, || None, || None, || None);
 
         assert!(client.is_err());
     }

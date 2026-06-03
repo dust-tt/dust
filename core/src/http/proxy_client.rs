@@ -89,6 +89,18 @@ pub fn try_build_untrusted_egress_client() -> Option<reqwest::Client> {
     build_proxied_no_redirect(untrusted_egress_proxy_url()?)
 }
 
+/// Builds a direct (un-proxied) client with redirects disabled. Used as a last-resort fallback when
+/// no egress proxy is configured (e.g. local development) so MCP OAuth flows keep working.
+pub fn try_build_direct_client() -> Option<reqwest::Client> {
+    reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .build()
+        .map_err(|e| {
+            error!(error = ?e, "Failed to create direct client");
+        })
+        .ok()
+}
+
 #[cfg(test)]
 mod tests {
     use super::build_proxied_no_redirect;
