@@ -205,18 +205,21 @@ interface UsageStatusBannerProps {
 }
 
 function UsageStatusBanner({ owner }: UsageStatusBannerProps) {
-  const { awuStatus, poolCreditState } = useWorkspaceUsageStatus({ owner });
+  const { awuStatus, poolCreditState, programmaticCreditStatus } =
+    useWorkspaceUsageStatus({ owner });
 
-  // The pool balance banner is only shown to admins, who manage workspace
-  // credits. The AWU cap banner is shown to any user subject to a usage cap.
-  // Both can be displayed at the same time.
+  // Pool balance and programmatic cap banners are only shown to admins who
+  // manage workspace credits. The AWU cap banner is shown to any user subject
+  // to a per-user usage cap. All can be displayed at the same time.
   const showPoolBanner =
     isAdmin(owner) &&
     (poolCreditState === "active_low_balance" ||
       poolCreditState === "active_critical_balance");
   const showAwuBanner = awuStatus !== "normal";
+  const showProgrammaticBanner =
+    isAdmin(owner) && programmaticCreditStatus !== "active";
 
-  if (!showPoolBanner && !showAwuBanner) {
+  if (!showPoolBanner && !showAwuBanner && !showProgrammaticBanner) {
     return null;
   }
 
@@ -256,6 +259,28 @@ function UsageStatusBanner({ owner }: UsageStatusBannerProps) {
             awuStatus === "blocked"
               ? "You can no longer run agents. Contact your admin to increase your limit."
               : "Contact your admin to increase your limit before you are blocked."
+          }
+        />
+      )}
+      {showProgrammaticBanner && (
+        <StatusBanner
+          variant={
+            programmaticCreditStatus === "depleted" ? "danger" : "warning"
+          }
+          title={
+            programmaticCreditStatus === "depleted"
+              ? "Programmatic API cap reached"
+              : "Programmatic API cap at 80%"
+          }
+          description={
+            programmaticCreditStatus === "depleted"
+              ? "Your workspace has exhausted its monthly programmatic API credit cap. Programmatic API calls are blocked until the billing cycle resets or the cap is raised."
+              : "Your workspace has used 80% of its monthly programmatic API credit cap. Consider raising the cap to avoid interruptions."
+          }
+          footer={
+            <LinkWrapper href={`/w/${owner.sId}/usage`} className="underline">
+              Manage usage
+            </LinkWrapper>
           }
         />
       )}
