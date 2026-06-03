@@ -15,10 +15,7 @@
  *   npx tsx scripts/backfill_metronome_seat_balance_alerts.ts [--execute] [--workspaceId <sId>]
  */
 
-import {
-  syncMetronomeSeatLowBalanceAlerts,
-  upsertMetronomeSeatExhaustedAlert,
-} from "@app/lib/metronome/alerts/seat_balance";
+import { syncMetronomeSeatLowBalanceAlerts } from "@app/lib/metronome/alerts/seat_balance";
 import { getMetronomeContractById } from "@app/lib/metronome/client";
 import { hasContractSeatSubscription } from "@app/lib/metronome/seats";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
@@ -73,22 +70,6 @@ async function backfillSeatBalanceAlertForWorkspace(
     logger.info(
       { workspaceId: workspace.sId, metronomeCustomerId },
       "[SeatBalanceAlertBackfill] [DRY RUN] Would upsert seat-balance alerts"
-    );
-    return;
-  }
-
-  const exhaustedResult = await upsertMetronomeSeatExhaustedAlert({
-    metronomeCustomerId,
-    workspaceId: workspace.sId,
-  });
-  if (exhaustedResult.isErr()) {
-    logger.error(
-      {
-        workspaceId: workspace.sId,
-        metronomeCustomerId,
-        error: exhaustedResult.error.message,
-      },
-      "[SeatBalanceAlertBackfill] Failed to upsert seat-exhaustion alert"
     );
     return;
   }
