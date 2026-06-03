@@ -119,8 +119,8 @@ struct ConversationDetailView: View {
 
     private func isSteeredAgentMessage(at index: Int) -> Bool {
         guard case let .agent(agentMsg) = viewModel.messages[index] else { return false }
-        for i in stride(from: index - 1, through: 0, by: -1) {
-            if case let .agent(prevAgent) = viewModel.messages[i] {
+        for priorIndex in stride(from: index - 1, through: 0, by: -1) {
+            if case let .agent(prevAgent) = viewModel.messages[priorIndex] {
                 return (prevAgent.status == .gracefullyStopped || prevAgent.status == .interrupted)
                     && prevAgent.configuration.sId == agentMsg.configuration.sId
             }

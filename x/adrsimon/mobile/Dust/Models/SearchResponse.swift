@@ -10,7 +10,9 @@ struct SearchNode: Decodable, Identifiable {
     let dataSource: SearchDataSource?
     let dataSourceViews: [SearchDataSourceView]?
 
-    var id: String { internalId }
+    var id: String {
+        internalId
+    }
 
     func toKnowledgeItem() -> KnowledgeItem? {
         guard let dsvId = dataSourceViews?.first?.sId else { return nil }

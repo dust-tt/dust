@@ -15,7 +15,9 @@ struct Conversation: Codable, Identifiable, Hashable {
     var unread: Bool
     var actionRequired: Bool
 
-    var id: String { sId }
+    var id: String {
+        sId
+    }
 
     var updatedDate: Date {
         updated.dateFromEpochMs

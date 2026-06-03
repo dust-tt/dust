@@ -40,7 +40,7 @@ func processCiteDirectives(_ markdown: String) -> (text: String, mapping: [CiteE
               let refsRange = Range(match.range(at: 1), in: markdown)
         else { continue }
 
-        result += markdown[lastEnd..<matchRange.lowerBound]
+        result += markdown[lastEnd ..< matchRange.lowerBound]
 
         let markers = markdown[refsRange].split(separator: ",").compactMap { part -> String? in
             let ref = part.trimmingCharacters(in: .whitespaces)
@@ -61,8 +61,8 @@ func processCiteDirectives(_ markdown: String) -> (text: String, mapping: [CiteE
 
 private let superscriptDigits: [Character] = ["⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹"]
 
-private func superscript(_ n: Int) -> String {
-    String(String(n).map { superscriptDigits[Int(String($0))!] })
+private func superscript(_ number: Int) -> String {
+    String(String(number).map { superscriptDigits[Int(String($0))!] })
 }
 
 struct CiteEntry {

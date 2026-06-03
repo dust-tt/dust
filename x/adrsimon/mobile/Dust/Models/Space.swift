@@ -5,9 +5,10 @@ struct Space: Codable, Identifiable, Hashable {
     let name: String
     let kind: String
     let description: String?
-    let isMember: Bool?
 
-    var id: String { sId }
+    var id: String {
+        sId
+    }
 }
 
 struct SpaceSummaryEntry: Codable {

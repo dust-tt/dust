@@ -8,36 +8,36 @@ enum Capability: Identifiable {
     var id: String {
         switch self {
         case let .tool(serverView):
-            return "tool:\(serverView.sId)"
+            "tool:\(serverView.sId)"
         case let .skill(skill):
-            return "skill:\(skill.sId)"
+            "skill:\(skill.sId)"
         }
     }
 
     var displayName: String {
         switch self {
         case let .tool(serverView):
-            return serverView.displayName
+            serverView.displayName
         case let .skill(skill):
-            return skill.name
+            skill.name
         }
     }
 
     var displayDescription: String {
         switch self {
         case let .tool(serverView):
-            return serverView.displayDescription
+            serverView.displayDescription
         case let .skill(skill):
-            return skill.displayDescription
+            skill.displayDescription
         }
     }
 
     var icon: SparkleIcon {
         switch self {
         case let .tool(serverView):
-            return MCPServerIcon.icon(for: serverView.server.name) ?? .bolt
+            MCPServerIcon.icon(for: serverView.server.name) ?? .bolt
         case .skill:
-            return .puzzle
+            .puzzle
         }
     }
 
@@ -46,5 +46,7 @@ enum Capability: Identifiable {
         return false
     }
 
-    var sortKey: String { displayName.lowercased() }
+    var sortKey: String {
+        displayName.lowercased()
+    }
 }
