@@ -38,6 +38,7 @@ import logger from "@app/logger/logger";
 import { launchIndexConversationEsWorkflow } from "@app/temporal/es_indexation/client";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
+  AgentMessageStatus,
   ConversationForkedChildType,
   ConversationForkedFromType,
   ConversationForkingDataType,
@@ -48,6 +49,7 @@ import type {
   ConversationVisibility,
   ConversationWithoutContentType,
   ParticipantActionType,
+  UserMessageOrigin,
 } from "@app/types/assistant/conversation";
 import {
   ConversationError,
@@ -695,6 +697,74 @@ export class ConversationResource extends BaseResource<ConversationModel> {
             }
           : null
       )
+    );
+  }
+
+  /**
+   * Fetches everything needed to compute an agent message's credit cost: the
+   * agent message model id (used to look up its runs and actions), its tracking
+   * status, its runIds, and the origin of the user message that triggered it
+   * (used to detect free-origin usage). Returns null when the agent message
+   * cannot be found.
+   */
+  static async fetchAgentMessageCreditContext(
+    auth: Authenticator,
+    { agentMessageId }: { agentMessageId: string }
+  ): Promise<{
+    agentMessageModelId: ModelId;
+    status: AgentMessageStatus;
+    runIds: string[] | null;
+    triggeringUserMessageOrigin: UserMessageOrigin | null;
+  } | null> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    const messageRow = await MessageModel.findOne({
+      where: { sId: agentMessageId, workspaceId },
+      include: [
+        { model: AgentMessageModel, as: "agentMessage", required: true },
+      ],
+    });
+
+    const agentMessage = messageRow?.agentMessage;
+    if (!agentMessage) {
+      return null;
+    }
+
+    let triggeringUserMessageOrigin: UserMessageOrigin | null = null;
+    if (messageRow.parentId !== null) {
+      const parentRow = await MessageModel.findOne({
+        where: { id: messageRow.parentId, workspaceId },
+        include: [
+          { model: UserMessageModel, as: "userMessage", required: false },
+        ],
+      });
+      triggeringUserMessageOrigin =
+        parentRow?.userMessage?.userContextOrigin ?? null;
+    }
+
+    return {
+      agentMessageModelId: agentMessage.id,
+      status: agentMessage.status,
+      runIds: agentMessage.runIds,
+      triggeringUserMessageOrigin,
+    };
+  }
+
+  static async updateAgentMessageCostCredits(
+    auth: Authenticator,
+    {
+      agentMessageModelId,
+      costCredits,
+    }: { agentMessageModelId: ModelId; costCredits: number | null }
+  ): Promise<void> {
+    await AgentMessageModel.update(
+      { costCredits },
+      {
+        where: {
+          id: agentMessageModelId,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+      }
     );
   }
 

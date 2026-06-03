@@ -6,31 +6,17 @@ import {
   isFreeOrigin,
   toolAwuFromActions,
 } from "@app/lib/metronome/events";
-import {
-  AgentMessageModel,
-  MessageModel,
-  UserMessageModel,
-} from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import logger from "@app/logger/logger";
-import type {
-  ConversationWithoutContentType,
-  UserMessageOrigin,
-} from "@app/types/assistant/conversation";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
-import type { ModelId } from "@app/types/shared/model_id";
 
 interface CreditActionMinimalInput {
   internalMCPServerName: string | null;
   status: ToolExecutionStatus;
-}
-
-interface CreditAgentMessageMinimalInput {
-  id: ModelId;
-  runIds: string[] | null;
 }
 
 export function computeAgentMessageCredits({
@@ -73,110 +59,63 @@ export async function computeAndStoreAgentMessageCredits(
   auth: Authenticator,
   { agentMessageId }: { agentMessageId: string }
 ): Promise<number | null> {
-  const workspace = auth.getNonNullableWorkspace();
+  const creditContext =
+    await ConversationResource.fetchAgentMessageCreditContext(auth, {
+      agentMessageId,
+    });
 
-  const messageRow = await MessageModel.findOne({
-    where: { sId: agentMessageId, workspaceId: workspace.id },
-    include: [{ model: AgentMessageModel, as: "agentMessage", required: true }],
-  });
-
-  const agentMessage = messageRow?.agentMessage;
-  if (!agentMessage) {
+  if (!creditContext) {
     logger.warn(
-      { workspaceId: workspace.sId, agentMessageId },
+      { workspaceId: auth.getNonNullableWorkspace().sId, agentMessageId },
       "[Credits] Agent message not found while computing costCredits."
     );
     return null;
   }
 
-  if (!AGENT_MESSAGE_STATUSES_TO_TRACK.includes(agentMessage.status)) {
+  const { agentMessageModelId, status, runIds, triggeringUserMessageOrigin } =
+    creditContext;
+
+  if (!AGENT_MESSAGE_STATUSES_TO_TRACK.includes(status)) {
     return null;
   }
 
-  const [runUsagesByAgentMessageId, actions, userMessageOrigin] =
-    await Promise.all([
-      fetchRunUsagesByAgentMessageId(auth, [
-        { id: agentMessage.id, runIds: agentMessage.runIds },
-      ]),
-      AgentMCPActionResource.listByAgentMessageIds(auth, [agentMessage.id]),
-      fetchTriggeringUserMessageOrigin(auth, messageRow.parentId),
-    ]);
+  const [runUsages, actions] = await Promise.all([
+    fetchRunUsagesForAgentMessage(auth, runIds),
+    AgentMCPActionResource.listByAgentMessageIds(auth, [agentMessageModelId]),
+  ]);
 
   const costCredits = computeAgentMessageCredits({
-    runUsages: runUsagesByAgentMessageId.get(agentMessage.id) ?? [],
+    runUsages,
     actions: actions.map((action) => ({
       internalMCPServerName: action.metadata.internalMCPServerName,
       status: action.status,
     })),
-    isFreeUsage: userMessageOrigin !== null && isFreeOrigin(userMessageOrigin),
+    isFreeUsage:
+      triggeringUserMessageOrigin !== null &&
+      isFreeOrigin(triggeringUserMessageOrigin),
   });
 
-  await AgentMessageModel.update(
-    { costCredits },
-    { where: { id: agentMessage.id, workspaceId: workspace.id } }
-  );
+  await ConversationResource.updateAgentMessageCostCredits(auth, {
+    agentMessageModelId,
+    costCredits,
+  });
 
   return costCredits;
 }
 
-async function fetchTriggeringUserMessageOrigin(
+async function fetchRunUsagesForAgentMessage(
   auth: Authenticator,
-  parentMessageModelId: ModelId | null
-): Promise<UserMessageOrigin | null> {
-  if (parentMessageModelId === null) {
-    return null;
-  }
-
-  const parentRow = await MessageModel.findOne({
-    where: {
-      id: parentMessageModelId,
-      workspaceId: auth.getNonNullableWorkspace().id,
-    },
-    include: [{ model: UserMessageModel, as: "userMessage", required: false }],
-  });
-
-  return parentRow?.userMessage?.userContextOrigin ?? null;
-}
-
-async function fetchRunUsagesByAgentMessageId(
-  auth: Authenticator,
-  agentMessages: CreditAgentMessageMinimalInput[]
-): Promise<Map<ModelId, RunUsageType[]>> {
-  const result = new Map<ModelId, RunUsageType[]>();
-
-  const dustRunIds = [...new Set(agentMessages.flatMap((m) => m.runIds ?? []))];
+  runIds: string[] | null
+): Promise<RunUsageType[]> {
+  const dustRunIds = [...new Set(runIds ?? [])];
   if (dustRunIds.length === 0) {
-    return result;
+    return [];
   }
 
+  // All runs are fetched from this message's own runIds, so every usage they
+  // produce belongs to this message.
   const runs = await RunResource.listByDustRunIds(auth, { dustRunIds });
-  const usages = await RunResource.listRunUsagesForRuns(auth, { runs });
-
-  const dustRunIdByRunModelId = new Map(runs.map((r) => [r.id, r.dustRunId]));
-  const usagesByDustRunId = new Map<string, RunUsageType[]>();
-  for (const usage of usages) {
-    const dustRunId = dustRunIdByRunModelId.get(usage.runModelId);
-    if (!dustRunId) {
-      continue;
-    }
-    const existing = usagesByDustRunId.get(dustRunId);
-    if (existing) {
-      existing.push(usage);
-    } else {
-      usagesByDustRunId.set(dustRunId, [usage]);
-    }
-  }
-
-  for (const message of agentMessages) {
-    result.set(
-      message.id,
-      (message.runIds ?? []).flatMap(
-        (runId) => usagesByDustRunId.get(runId) ?? []
-      )
-    );
-  }
-
-  return result;
+  return RunResource.listRunUsagesForRuns(auth, { runs });
 }
 
 export async function computeConversationCreditCost(
