@@ -312,6 +312,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable the new user settings v2 experience",
     stage: "dust_only",
   },
+  force_us_api_url: {
+    description:
+      "Force the SPA to use the regional API subdomain (us-api/eu-api.dust.tt) " +
+      "as its backend for this workspace",
+    stage: "on_demand",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
