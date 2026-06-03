@@ -121,7 +121,9 @@ export const InputBarButtons = React.memo(function InputBarButtons({
             )}
           >
             <Avatar size="xxs" visual={selectedAgent.pictureUrl} />
-            <span className="grow truncate">{selectedAgent.label}</span>
+            <span className="grow truncate notranslate">
+              {selectedAgent.label}
+            </span>
             <button
               type="button"
               aria-label="Remove agent"
