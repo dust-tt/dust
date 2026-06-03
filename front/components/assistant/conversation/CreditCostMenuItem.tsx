@@ -17,7 +17,7 @@ const CREDIT_COST_COPY = {
   message: {
     label: "Message credit cost",
     tooltip:
-      "Credits used for this message: intelligence, tools, and retries. Sub-agent costs are tracked separately.",
+      "Credits used for this message: intelligence, tools. Sub-agent costs are tracked separately. Retries are surfaced only in the total conversation cost.",
   },
 };
 
