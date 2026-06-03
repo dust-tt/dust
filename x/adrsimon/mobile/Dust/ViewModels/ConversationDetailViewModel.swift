@@ -124,15 +124,14 @@ final class ConversationDetailViewModel: ObservableObject {
 
     private func startConversationEvents() {
         conversationEventsTask?.cancel()
-        conversationEventsTask = Task { [weak self] in
-            guard let self else { return }
+        conversationEventsTask = Task { [weak self, workspaceId, conversationId = conversation.sId, tokenProvider] in
             var retryDelay: UInt64 = 1_000_000_000 // 1s
             let maxDelay: UInt64 = 30_000_000_000 // 30s
 
             while !Task.isCancelled {
                 let endpoint = AppConfig.Endpoints.conversationEvents(
                     workspaceId: workspaceId,
-                    conversationId: conversation.sId
+                    conversationId: conversationId
                 )
 
                 let stream = StreamingService.eventStream(
@@ -150,7 +149,7 @@ final class ConversationDetailViewModel: ObservableObject {
 
                         do {
                             let envelope = try decoder.decode(ConversationEventEnvelope.self, from: data)
-                            await handleConversationEvent(envelope.data)
+                            await self?.handleConversationEvent(envelope.data)
                         } catch {
                             logger.debug("Skipping unhandled conversation event: \(error)")
                         }
@@ -252,11 +251,10 @@ final class ConversationDetailViewModel: ObservableObject {
         currentThinkingBuffer = ""
         stepCounter = 0
 
-        messageStreamTask = Task { [weak self] in
-            guard let self else { return }
+        messageStreamTask = Task { [weak self, workspaceId, conversationId = conversation.sId, tokenProvider] in
             let endpoint = AppConfig.Endpoints.messageEvents(
                 workspaceId: workspaceId,
-                conversationId: conversation.sId,
+                conversationId: conversationId,
                 messageId: messageId
             )
 
@@ -274,7 +272,7 @@ final class ConversationDetailViewModel: ObservableObject {
 
                     do {
                         let envelope = try decoder.decode(SSEEnvelope.self, from: data)
-                        await handleMessageEvent(envelope.data, messageId: messageId)
+                        await self?.handleMessageEvent(envelope.data, messageId: messageId)
                     } catch {
                         logger.debug("Skipping unhandled message event: \(error)")
                     }
@@ -287,6 +285,7 @@ final class ConversationDetailViewModel: ObservableObject {
 
             // Stream ended — only clean up if we're still the active generation
             // and not in a blocking state (approval/auth persist until resolved)
+            guard let self else { return }
             if streamGeneration == currentGeneration {
                 switch streamingPhase {
                 case .approvalRequired, .personalAuthRequired, .fileAuthRequired:

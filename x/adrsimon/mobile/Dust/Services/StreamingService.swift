@@ -52,6 +52,7 @@ enum StreamingService {
                     )
                     defer { session.invalidateAndCancel() }
                     try await readLines(from: bytes, into: continuation)
+                    logger.info("SSE disconnected: \(endpoint)")
                     continuation.finish()
                 } catch {
                     if !Task.isCancelled {
@@ -62,6 +63,7 @@ enum StreamingService {
             }
 
             continuation.onTermination = { _ in
+                logger.info("SSE cancelled: \(endpoint)")
                 task.cancel()
             }
         }
