@@ -158,6 +158,56 @@ describe("UserCreditStateMachine — transitions", () => {
     expect(mockClearUserCapBlocked).toHaveBeenCalledWith("ws_test", "u_test");
     expect(mockSetUserCapBlocked).not.toHaveBeenCalled();
   });
+
+  it("user_seat + seat_balance_exhausted → on_pool (falls back to the pool)", async () => {
+    const membership = makeMembership("user_seat");
+    const result = await transitionUserCreditState(
+      membership,
+      { type: "seat_balance_exhausted" },
+      baseCtx
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("on_pool");
+    }
+    expect(membership.updateCreditState).toHaveBeenCalledWith(
+      "on_pool",
+      undefined
+    );
+    expect(mockClearUserCapBlocked).toHaveBeenCalledWith("ws_test", "u_test");
+    expect(mockSetUserCapBlocked).not.toHaveBeenCalled();
+  });
+
+  it("user_seat_low_balance + seat_balance_exhausted → on_pool", async () => {
+    const membership = makeMembership("user_seat_low_balance");
+    const result = await transitionUserCreditState(
+      membership,
+      { type: "seat_balance_exhausted" },
+      baseCtx
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("on_pool");
+    }
+    expect(membership.updateCreditState).toHaveBeenCalledWith(
+      "on_pool",
+      undefined
+    );
+  });
+
+  it("on_pool + seat_balance_exhausted is idempotent (already on the pool)", async () => {
+    const membership = makeMembership("on_pool");
+    const result = await transitionUserCreditState(
+      membership,
+      { type: "seat_balance_exhausted" },
+      baseCtx
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("on_pool");
+    }
+    expect(membership.updateCreditState).not.toHaveBeenCalled();
+  });
 });
 
 // ---------------------------------------------------------------------------

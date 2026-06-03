@@ -6,8 +6,8 @@ import { getWebhookRequestsBucket } from "@app/lib/file_storage";
 import { isGCSPreconditionFailedError } from "@app/lib/file_storage/types";
 import { matchPayload, parseMatcherExpression } from "@app/lib/matcher";
 import {
-  isApiBlocked,
   isProgrammaticApiBlocked,
+  isWorkspacePoolDepleted,
 } from "@app/lib/metronome/user_block";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
@@ -269,7 +269,10 @@ async function checkWorkspaceRateLimit({
   // depleted, no downstream message can be posted, so reject early instead of
   // spinning up the trigger workflow only to fail in `checkMessagesLimit`.
   if (plan && isCreditPricedPlan(plan)) {
-    if (owner.metronomeCustomerId && (await isApiBlocked(owner.sId))) {
+    if (
+      owner.metronomeCustomerId &&
+      (await isWorkspacePoolDepleted(owner.sId))
+    ) {
       errorMessage =
         "Your workspace has run out of credits. Please purchase more credits to continue.";
     }

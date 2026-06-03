@@ -4,17 +4,78 @@ import { listMetronomeBalances } from "@app/lib/metronome/client";
 import { getCreditTypeAwuId } from "@app/lib/metronome/constants";
 import { invalidateWorkspacePoolCredits } from "@app/lib/metronome/credit_balance";
 import { transitionProgrammaticCreditState } from "@app/lib/metronome/programmatic_credit_state_machine";
-import { clearUserCapBlocked } from "@app/lib/metronome/user_block";
-import { transitionUserCreditState } from "@app/lib/metronome/user_credit_state_machine";
+import { buildSeatDataByUserId } from "@app/lib/metronome/seats";
+import { clearUserCreditStatus } from "@app/lib/metronome/user_block";
+import type { UserCreditEvent } from "@app/lib/metronome/user_credit_state_machine";
+import {
+  resetUserCreditState,
+  transitionUserCreditState,
+} from "@app/lib/metronome/user_credit_state_machine";
 import type { WorkspaceCreditEvent } from "@app/lib/metronome/workspace_credit_state_machine";
 import { transitionWorkspaceCreditState } from "@app/lib/metronome/workspace_credit_state_machine";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import type { UserCreditState } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
+
+/**
+ * Resolve the user's active membership and feed `event` to the user credit
+ * state machine. Shared by the per-user-cap and seat-balance dispatchers.
+ *
+ * A no-op (returns `Ok`) when the user or their active membership can't be
+ * resolved; `onMissing` lets callers run a side effect in that case (e.g.
+ * clearing the legacy Redis block on cap resolution).
+ */
+async function transitionUserCredit({
+  workspace,
+  userId,
+  event,
+  onMissing,
+}: {
+  workspace: WorkspaceResource;
+  userId: string;
+  event: UserCreditEvent;
+  onMissing?: () => Promise<void>;
+}): Promise<Result<void, Error>> {
+  const user = await UserResource.fetchById(userId);
+  if (!user) {
+    logger.warn(
+      { workspaceId: workspace.sId, userId, event: event.type },
+      "[CreditStateDispatcher] user not found, skipping transition"
+    );
+    await onMissing?.();
+    return new Ok(undefined);
+  }
+
+  const membership =
+    await MembershipResource.getActiveMembershipOfUserInWorkspace({
+      user,
+      workspace: renderLightWorkspaceType({ workspace }),
+    });
+  if (!membership) {
+    logger.warn(
+      { workspaceId: workspace.sId, userId, event: event.type },
+      "[CreditStateDispatcher] no active membership, skipping transition"
+    );
+    await onMissing?.();
+    return new Ok(undefined);
+  }
+
+  const result = await transitionUserCreditState(membership, event, {
+    workspaceId: workspace.sId,
+    userId,
+  });
+  if (result.isErr()) {
+    return result;
+  }
+  return new Ok(undefined);
+}
 
 export async function dispatchPerUserCapReached({
   workspace,
@@ -23,38 +84,11 @@ export async function dispatchPerUserCapReached({
   workspace: WorkspaceResource;
   userId: string;
 }): Promise<Result<void, Error>> {
-  const user = await UserResource.fetchById(userId);
-  if (!user) {
-    logger.warn(
-      { workspaceId: workspace.sId, userId },
-      "[CreditStateDispatcher] per_user_cap_reached: user not found, skipping"
-    );
-    return new Ok(undefined);
-  }
-
-  const lightWorkspace = renderLightWorkspaceType({ workspace });
-  const membership =
-    await MembershipResource.getActiveMembershipOfUserInWorkspace({
-      user,
-      workspace: lightWorkspace,
-    });
-  if (!membership) {
-    logger.warn(
-      { workspaceId: workspace.sId, userId },
-      "[CreditStateDispatcher] per_user_cap_reached: no active membership, skipping"
-    );
-    return new Ok(undefined);
-  }
-
-  const result = await transitionUserCreditState(
-    membership,
-    { type: "per_user_cap_reached" },
-    { workspaceId: workspace.sId, userId }
-  );
-  if (result.isErr()) {
-    return result;
-  }
-  return new Ok(undefined);
+  return transitionUserCredit({
+    workspace,
+    userId,
+    event: { type: "per_user_cap_reached" },
+  });
 }
 
 export async function dispatchPerUserCapResolved({
@@ -64,41 +98,116 @@ export async function dispatchPerUserCapResolved({
   workspace: WorkspaceResource;
   userId: string;
 }): Promise<Result<void, Error>> {
-  const user = await UserResource.fetchById(userId);
-  if (!user) {
-    logger.warn(
-      { workspaceId: workspace.sId, userId },
-      "[CreditStateDispatcher] per_user_cap_resolved: user not found, clearing legacy block"
-    );
-    await clearUserCapBlocked(workspace.sId, userId);
-    return new Ok(undefined);
-  }
+  return transitionUserCredit({
+    workspace,
+    userId,
+    event: { type: "per_user_cap_resolved" },
+    // Drop the cached credit status when the user / membership is gone, so a
+    // departed user doesn't stay blocked in the cache.
+    onMissing: () => clearUserCreditStatus(workspace.sId, userId),
+  });
+}
 
+/**
+ * A user's personal (seat) credit balance reached 0. Move them from the
+ * `user_seat*` states to `on_pool` so they spend from the workspace pool.
+ */
+export async function dispatchSeatBalanceExhausted({
+  workspace,
+  userId,
+}: {
+  workspace: WorkspaceResource;
+  userId: string;
+}): Promise<Result<void, Error>> {
+  return transitionUserCredit({
+    workspace,
+    userId,
+    event: { type: "seat_balance_exhausted" },
+  });
+}
+
+/**
+ * A user's personal (seat) credit balance is running low (still > 0). Surface
+ * the low-balance warning by moving `user_seat` → `user_seat_low_balance`.
+ */
+export async function dispatchSeatBalanceLow({
+  workspace,
+  userId,
+}: {
+  workspace: WorkspaceResource;
+  userId: string;
+}): Promise<Result<void, Error>> {
+  return transitionUserCredit({
+    workspace,
+    userId,
+    event: { type: "seat_balance_low" },
+  });
+}
+
+const CREDIT_STATE_RESET_CONCURRENCY = 8;
+
+/**
+ * Reset every active member's per-user credit state to their billing-cycle
+ * baseline: `user_seat` for users holding a seat with an allocation, `on_pool`
+ * for everyone else (including all members of pool-only workspaces). Called
+ * when AWU credits refill at a new billing period — seat and pool credits both
+ * reset, so users return to spending personal credits first (seat-based) or the
+ * pool (pooled), regardless of where they ended the prior period.
+ *
+ * Idempotent and derived from live Metronome seat data, so it also corrects any
+ * drift from missed or duplicated webhooks. On a seat-data fetch error the map
+ * is empty, degrading safely to "everyone on_pool".
+ */
+export async function resetWorkspaceUserCreditStates({
+  workspace,
+  metronomeCustomerId,
+}: {
+  workspace: WorkspaceResource;
+  metronomeCustomerId: string;
+}): Promise<void> {
   const lightWorkspace = renderLightWorkspaceType({ workspace });
-  const membership =
-    await MembershipResource.getActiveMembershipOfUserInWorkspace({
-      user,
-      workspace: lightWorkspace,
-    });
 
-  if (!membership) {
-    logger.warn(
-      { workspaceId: workspace.sId, userId },
-      "[CreditStateDispatcher] per_user_cap_resolved: no active membership, clearing legacy block"
-    );
-    await clearUserCapBlocked(workspace.sId, userId);
-    return new Ok(undefined);
-  }
-
-  const result = await transitionUserCreditState(
-    membership,
-    { type: "per_user_cap_resolved" },
-    { workspaceId: workspace.sId, userId }
+  const subscription = await SubscriptionResource.fetchActiveByWorkspaceModelId(
+    workspace.id
   );
-  if (result.isErr()) {
-    return result;
-  }
-  return new Ok(undefined);
+  const contractId = subscription?.metronomeContractId;
+
+  // Per-user seat allocations; empty for pool-only workspaces.
+  const seatDataByUserId = contractId
+    ? await buildSeatDataByUserId({ metronomeCustomerId, contractId })
+    : new Map<string, unknown>();
+
+  const { memberships } = await MembershipResource.getActiveMemberships({
+    workspace: lightWorkspace,
+  });
+
+  await concurrentExecutor(
+    memberships,
+    async (membership) => {
+      const userId = membership.user?.sId;
+      if (!userId) {
+        return;
+      }
+      const target: UserCreditState = seatDataByUserId.has(userId)
+        ? "user_seat"
+        : "on_pool";
+      await resetUserCreditState(membership, target, {
+        workspaceId: workspace.sId,
+        userId,
+      });
+    },
+    { concurrency: CREDIT_STATE_RESET_CONCURRENCY }
+  );
+
+  logger.info(
+    {
+      workspaceId: workspace.sId,
+      metronomeCustomerId,
+      memberCount: memberships.length,
+      seatUserCount: seatDataByUserId.size,
+    },
+    "[CreditStateDispatcher] Reset user credit states for new billing cycle"
+  );
 }
 
 export async function dispatchPoolExhausted({
