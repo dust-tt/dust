@@ -5,21 +5,26 @@ import {
   KeyboardHints,
 } from "@app/components/command_palette/CommandPaletteItems";
 import { getSkillAvatarIcon } from "@app/lib/skill";
+import { getSpaceIcon } from "@app/lib/spaces";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
-import { Avatar, SearchInput } from "@dust-tt/sparkle";
+import type { PodType } from "@app/types/space";
+import { Avatar, Icon, SearchInput } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef } from "react";
 
 export type CommandPaletteItem =
   | { kind: "agent"; agent: LightAgentConfigurationType }
+  | { kind: "pod"; pod: PodType }
   | { kind: "skill"; skill: SkillWithoutInstructionsAndToolsType };
 
 interface CommandPaletteSearchPhaseProps {
   searchQuery: string;
   onSearchQueryChange: (query: string) => void;
   agents: LightAgentConfigurationType[];
+  pods: PodType[];
   skills: SkillWithoutInstructionsAndToolsType[];
   hasMoreAgents: boolean;
+  hasMorePods: boolean;
   hasMoreSkills: boolean;
   isLoading: boolean;
   selectedIndex: number;
@@ -30,10 +35,12 @@ interface CommandPaletteSearchPhaseProps {
 
 function getFlatItems(
   agents: LightAgentConfigurationType[],
+  pods: PodType[],
   skills: SkillWithoutInstructionsAndToolsType[]
 ): CommandPaletteItem[] {
   return [
     ...agents.map((agent): CommandPaletteItem => ({ kind: "agent", agent })),
+    ...pods.map((pod): CommandPaletteItem => ({ kind: "pod", pod })),
     ...skills.map((skill): CommandPaletteItem => ({ kind: "skill", skill })),
   ];
 }
@@ -42,8 +49,10 @@ export function CommandPaletteSearchPhase({
   searchQuery,
   onSearchQueryChange,
   agents,
+  pods,
   skills,
   hasMoreAgents,
+  hasMorePods,
   hasMoreSkills,
   isLoading,
   selectedIndex,
@@ -52,8 +61,8 @@ export function CommandPaletteSearchPhase({
   onClose,
 }: CommandPaletteSearchPhaseProps) {
   const flatItems = useMemo(
-    () => getFlatItems(agents, skills),
-    [agents, skills]
+    () => getFlatItems(agents, pods, skills),
+    [agents, pods, skills]
   );
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -73,10 +82,10 @@ export function CommandPaletteSearchPhase({
   }, [selectedIndex]);
 
   // Reset selection when the number of results changes (e.g., after typing).
-  // biome-ignore lint/correctness/useExhaustiveDependencies: agents.length and skills.length are intentional triggers
+  // biome-ignore lint/correctness/useExhaustiveDependencies: agents.length, pods.length and skills.length are intentional triggers
   useEffect(() => {
     onSelectedIndexChange(0);
-  }, [agents.length, skills.length, onSelectedIndexChange]);
+  }, [agents.length, pods.length, skills.length, onSelectedIndexChange]);
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     const totalItems = flatItems.length;
@@ -113,7 +122,7 @@ export function CommandPaletteSearchPhase({
         <SearchInput
           ref={searchInputRef}
           name="command-palette-search"
-          placeholder="Search agents and skills…"
+          placeholder="Search agents, pods and skills…"
           value={searchQuery}
           onChange={onSearchQueryChange}
           onKeyDown={handleKeyDown}
@@ -138,7 +147,9 @@ export function CommandPaletteSearchPhase({
           <ItemEmptyState>No results found.</ItemEmptyState>
         )}
         {!isLoading && flatItems.length === 0 && searchQuery.length === 0 && (
-          <ItemEmptyState>Type to search agents and skills.</ItemEmptyState>
+          <ItemEmptyState>
+            Type to search agents, pods and skills.
+          </ItemEmptyState>
         )}
 
         {agents.length > 0 && (
@@ -174,11 +185,51 @@ export function CommandPaletteSearchPhase({
           </div>
         )}
 
+        {pods.length > 0 && (
+          <div>
+            <ItemTitle>Pods</ItemTitle>
+            {pods.map((pod, i) => {
+              const globalIndex = agents.length + i;
+              return (
+                <ItemRow
+                  key={pod.sId}
+                  ref={(el) => {
+                    itemRefs.current[globalIndex] = el;
+                  }}
+                  isSelected={selectedIndex === globalIndex}
+                  onClick={() => onItemSelect({ kind: "pod", pod })}
+                  onMouseEnter={() => onSelectedIndexChange(globalIndex)}
+                >
+                  <Icon visual={getSpaceIcon(pod)} size="xs" />
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <span className="shrink-0 font-medium">{pod.name}</span>
+                    {pod.description && (
+                      <>
+                        <span className="shrink-0 text-muted-foreground dark:text-muted-foreground-night">
+                          -
+                        </span>
+                        <span className="min-w-0 truncate text-muted-foreground dark:text-muted-foreground-night">
+                          {pod.description}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </ItemRow>
+              );
+            })}
+            {hasMorePods && (
+              <div className="px-3 py-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
+                More pods available. Type to filter.
+              </div>
+            )}
+          </div>
+        )}
+
         {skills.length > 0 && (
           <div>
             <ItemTitle>Skills</ItemTitle>
             {skills.map((skill, i) => {
-              const globalIndex = agents.length + i;
+              const globalIndex = agents.length + pods.length + i;
               const SkillAvatar = getSkillAvatarIcon(skill.icon);
               return (
                 <ItemRow
