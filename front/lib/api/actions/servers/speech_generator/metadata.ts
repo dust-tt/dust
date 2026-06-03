@@ -49,6 +49,42 @@ export type VoiceUseCase = (typeof VOICE_USE_CASES)[number];
 export const SPEECH_GENERATOR_SERVER_NAME = "speech_generator" as const;
 
 export const SPEECH_GENERATOR_TOOLS_METADATA = createToolsRecord({
+  speech_to_text: {
+    description:
+      "Transcribe speech from an audio or video file into text. " +
+      "Supported formats: MP3, WAV, OGG, FLAC, AAC, MP4, MOV, WEBM, MKV, and most " +
+      "common audio/video formats.",
+    schema: {
+      audio_url: z
+        .string()
+        .url()
+        .optional()
+        .describe(
+          "HTTPS URL of the audio or video file to transcribe (up to 2GB). " +
+            "Any valid HTTPS URL is accepted, including pre-signed URLs from cloud storage providers. " +
+            "Mutually exclusive with audio_blob."
+        ),
+      audio_blob: z
+        .string()
+        .optional()
+        .describe(
+          "Base64-encoded content of an audio or video file. " +
+            "Mutually exclusive with audio_url."
+        ),
+      language_code: z
+        .string()
+        .optional()
+        .describe(
+          "ISO-639-1 or ISO-639-3 language code of the audio (e.g. 'en', 'fr'). " +
+            "Auto-detected if omitted."
+        ),
+    },
+    stake: "low",
+    displayLabels: {
+      running: "Transcribing audio",
+      done: "Transcribe audio",
+    },
+  },
   text_to_speech: {
     description: "Generate speech audio from a text prompt with desired voice.",
     schema: {

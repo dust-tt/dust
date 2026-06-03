@@ -11,6 +11,37 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const handlers: ToolHandlers<typeof SPEECH_GENERATOR_TOOLS_METADATA> = {
+  speech_to_text: async ({ audio_url, audio_blob, language_code }) => {
+    if (!audio_url && !audio_blob) {
+      return new Err(
+        new MCPError("Either audio_url or audio_blob must be provided.")
+      );
+    }
+
+    try {
+      const client = getElevenLabsClient();
+
+      const result = await client.speechToText.convert({
+        ...(audio_url
+          ? { cloudStorageUrl: audio_url }
+          : { file: Buffer.from(audio_blob!, "base64") }),
+        modelId: "scribe_v2",
+        enableLogging: false,
+        ...(language_code ? { languageCode: language_code } : {}),
+      });
+
+      return new Ok([{ type: "text" as const, text: result.text }]);
+    } catch (e) {
+      const cause = normalizeError(e);
+      return new Err(
+        new MCPError(
+          `Error transcribing audio with ElevenLabs: ${cause.message}`,
+          { cause }
+        )
+      );
+    }
+  },
+
   text_to_speech: async ({
     text,
     gender = "female",
