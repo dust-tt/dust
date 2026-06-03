@@ -857,10 +857,7 @@ export class DustFileSystem {
     }
     if (destExists.value) {
       return new Err(
-        new DustFileSystemError(
-          "already_exists",
-          `Destination path already exists: ${dest}`
-        )
+        new DustFileSystemError("already_exists", `File name already exists`)
       );
     }
 
