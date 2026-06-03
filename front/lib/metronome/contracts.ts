@@ -1,9 +1,5 @@
 import type { BillingCycle } from "@app/lib/client/subscription";
 import {
-  syncMetronomeSeatLowBalanceAlerts,
-  upsertMetronomeSeatExhaustedAlert,
-} from "@app/lib/metronome/alerts/seat_balance";
-import {
   ceilToHourISO,
   createMetronomeContract,
   createMetronomeCustomer,
@@ -107,21 +103,6 @@ export async function ensureMetronomeCustomerForWorkspace({
       return new Err(createResult.error);
     }
     metronomeCustomerId = createResult.value.metronomeCustomerId;
-
-    // Provision the seat-exhaustion alert up front, when the Metronome customer
-    // is first created. It fans out per seat (seat_filter "user_id"), driving
-    // the credit state machine to move each user to `on_pool` when their
-    // personal balance hits 0.
-    const seatAlertResult = await upsertMetronomeSeatExhaustedAlert({
-      metronomeCustomerId,
-      workspaceId: workspace.sId,
-    });
-    if (seatAlertResult.isErr()) {
-      logger.warn(
-        { workspaceId: workspace.sId, error: seatAlertResult.error.message },
-        "[Metronome] Failed to upsert seat-exhaustion alert at customer creation (non-fatal)"
-      );
-    }
   }
 
   if (workspace.metronomeCustomerId !== metronomeCustomerId) {
@@ -446,27 +427,6 @@ export async function syncContractQuantities(
   for (const result of results) {
     if (result.isErr()) {
       return new Err(result.error);
-    }
-  }
-
-  // Sync the per-user seat low-balance alerts (fire at 80% of each seat's
-  // allocation spent) now that seats are reconciled and per-user allocations
-  // are known.
-  if (shouldSyncSeats) {
-    const lowBalanceAlertResult = await syncMetronomeSeatLowBalanceAlerts({
-      metronomeCustomerId,
-      contractId: metronomeContractId,
-      workspaceId: workspace.sId,
-    });
-    if (lowBalanceAlertResult.isErr()) {
-      logger.warn(
-        {
-          workspaceId: workspace.sId,
-          metronomeContractId,
-          error: lowBalanceAlertResult.error.message,
-        },
-        "[Metronome] Failed to sync seat low-balance alerts (non-fatal)"
-      );
     }
   }
 
