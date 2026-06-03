@@ -44,7 +44,7 @@ const getProjectDetails = async ({
   subscriberId?: string | null;
   payload: ProjectAddedAsMemberPayloadType;
 }): Promise<ProjectDetailsType> => {
-  let projectName: string = "A project";
+  let projectName: string = "A Pod";
   let userThatAddedYouFullname: string = "Someone";
   let workspaceName: string = "A workspace";
 
@@ -120,7 +120,7 @@ export const projectAddedAsMemberWorkflow = workflow(
       async () => {
         return {
           subject: details.projectName,
-          body: `${details.userThatAddedYouFullname} added you to project "${details.projectName}".`,
+          body: `${details.userThatAddedYouFullname} added you to Pod "${details.projectName}".`,
           primaryAction: {
             label: "View",
             redirect: {
@@ -145,9 +145,9 @@ export const projectAddedAsMemberWorkflow = workflow(
           config.getAppUrl() +
           getPodRoute(payload.workspaceId, payload.projectId);
 
-        const baseMessage = `${details.userThatAddedYouFullname} added you to project "${details.projectName}"`;
+        const baseMessage = `${details.userThatAddedYouFullname} added you to Pod "${details.projectName}"`;
 
-        const message = `${baseMessage}\n<${projectUrl}|View project>`;
+        const message = `${baseMessage}\n<${projectUrl}|View Pod>`;
 
         return {
           body: message,
@@ -180,16 +180,16 @@ export const projectAddedAsMemberWorkflow = workflow(
             id: payload.workspaceId,
             name: details.workspaceName,
           },
-          content: `${details.userThatAddedYouFullname} added you to project "${details.projectName}".`,
+          content: `${details.userThatAddedYouFullname} added you to Pod "${details.projectName}".`,
           action: {
-            label: "View project",
+            label: "View Pod",
             url:
               config.getAppUrl() +
               getPodRoute(payload.workspaceId, payload.projectId),
           },
         });
         return {
-          subject: `[Dust] You were added to project '${details.projectName}'`,
+          subject: `[Dust] You were added to Pod '${details.projectName}'`,
           body,
         };
       },

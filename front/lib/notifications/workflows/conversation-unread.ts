@@ -737,7 +737,7 @@ const getEmailSubject = (
     if (uniqueProjectNames.length === 1) {
       return `[Dust] New conversation${pluralize(conversations.length)} in '${uniqueProjectNames[0]}'`;
     }
-    return `[Dust] New conversations in your projects`;
+    return `[Dust] New conversations in your Pods`;
   }
   if (conversations.length === 1) {
     return `[Dust] ${conversations[0]?.title ?? "New unread message(s) in conversation"}`;
