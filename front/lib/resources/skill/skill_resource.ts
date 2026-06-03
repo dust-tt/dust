@@ -2356,7 +2356,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       sourceMetadata,
       status,
       enableSkillReferences = false,
-      referencedSkillIds = [],
+      referencedSkillIds,
       userFacingDescription,
     }: {
       agentFacingDescription: string;
@@ -2427,11 +2427,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
       if (enableSkillReferences) {
         await this.normalizeSkillReferenceTags(auth, { transaction });
-        await this.syncSkillReferences(
-          auth,
-          { referencedSkillIds },
-          { transaction }
-        );
+        if (referencedSkillIds) {
+          await this.syncSkillReferences(
+            auth,
+            { referencedSkillIds },
+            { transaction }
+          );
+        }
 
         if (name !== previousName || requestedSpaceIdsChanged) {
           await this.propagateReferenceUpdatesToParentSkills(

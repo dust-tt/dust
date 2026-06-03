@@ -773,6 +773,63 @@ describe("SkillResource", () => {
       );
     });
 
+    it("preserves nested skill references when referencedSkillIds is omitted", async () => {
+      const { childSkill, parentSkill, skillReferenceTag } =
+        await SkillFactory.createWithNestedSkill(testContext.authenticator, {
+          childOverrides: { name: "Omitted References Child Skill" },
+          parentOverrides: { name: "Omitted References Parent Skill" },
+        });
+
+      await parentSkill.updateSkill(testContext.authenticator, {
+        name: parentSkill.name,
+        agentFacingDescription: "Updated agent description",
+        userFacingDescription: parentSkill.userFacingDescription,
+        instructions: `Use ${skillReferenceTag}.`,
+        instructionsHtml: parentSkill.instructionsHtml,
+        icon: parentSkill.icon,
+        mcpServerViews: [],
+        attachedKnowledge: [],
+        requestedSpaceIds: parentSkill.requestedSpaceIds,
+        enableSkillReferences: true,
+      });
+
+      const updatedParentSkill = await SkillResource.fetchById(
+        testContext.authenticator,
+        parentSkill.sId
+      );
+      expect(updatedParentSkill).not.toBeNull();
+      await expect(
+        updatedParentSkill!.fetchChildSkills(testContext.authenticator)
+      ).resolves.toEqual([
+        expect.objectContaining({
+          sId: childSkill.sId,
+        }),
+      ]);
+
+      await updatedParentSkill!.updateSkill(testContext.authenticator, {
+        name: updatedParentSkill!.name,
+        agentFacingDescription: updatedParentSkill!.agentFacingDescription,
+        userFacingDescription: updatedParentSkill!.userFacingDescription,
+        instructions: "No nested skill references.",
+        instructionsHtml: updatedParentSkill!.instructionsHtml,
+        icon: updatedParentSkill!.icon,
+        mcpServerViews: [],
+        attachedKnowledge: [],
+        requestedSpaceIds: updatedParentSkill!.requestedSpaceIds,
+        enableSkillReferences: true,
+        referencedSkillIds: [],
+      });
+
+      const clearedParentSkill = await SkillResource.fetchById(
+        testContext.authenticator,
+        parentSkill.sId
+      );
+      expect(clearedParentSkill).not.toBeNull();
+      await expect(
+        clearedParentSkill!.fetchChildSkills(testContext.authenticator)
+      ).resolves.toHaveLength(0);
+    });
+
     it("updates parent skill references when child requested spaces change", async () => {
       const restrictedSpace = await SpaceFactory.regular(testContext.workspace);
       const childSkill = await SkillFactory.create(testContext.authenticator, {
