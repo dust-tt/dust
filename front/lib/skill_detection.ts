@@ -17,6 +17,22 @@ export function isImportableSkillStatus(status: DetectedSkillStatus): boolean {
   return status === "ready" || status === "skill_already_exists";
 }
 
+export function getDuplicateDetectedSkillNames(
+  detectedSkills: Pick<DetectedSkillSummary, "name">[]
+): Set<string> {
+  const seenNames = new Set<string>();
+  const duplicateNames = new Set<string>();
+
+  for (const skill of detectedSkills) {
+    if (seenNames.has(skill.name)) {
+      duplicateNames.add(skill.name);
+    }
+    seenNames.add(skill.name);
+  }
+
+  return duplicateNames;
+}
+
 export type SkillUrlParseError = { type: "invalid_url"; message: string };
 
 /**

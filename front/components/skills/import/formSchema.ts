@@ -10,7 +10,10 @@ export function isImportType(value: string): value is ImportType {
 
 const selectedSkillNames = z
   .array(z.string())
-  .min(1, "Select at least one skill to import");
+  .min(1, "Select at least one skill to import")
+  .refine((names) => new Set(names).size === names.length, {
+    message: "You can't select multiple skills with the same name.",
+  });
 
 const repositoryImportSchema = z.object({
   importType: z.literal("repository"),

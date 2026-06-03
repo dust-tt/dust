@@ -20,15 +20,38 @@ export function validateSkillsForImport<T extends DetectedSkill>({
   isConflicting: (existing: SkillResource) => boolean;
 }): Result<T[], Error> {
   const messages: string[] = [];
+  const requestedDuplicateNames = new Set<string>();
+  const requestedNamesSet = new Set<string>();
+  const selectedNames = new Set<string>();
+  const duplicateNames = new Set<string>();
 
   if (selectedSkills.length === 0) {
     return new Err(new Error("No matching importable skills found."));
   }
 
+  if (requestedNames) {
+    for (const name of requestedNames) {
+      if (requestedNamesSet.has(name)) {
+        requestedDuplicateNames.add(name);
+      }
+      requestedNamesSet.add(name);
+    }
+  }
+
+  for (const skill of selectedSkills) {
+    if (selectedNames.has(skill.name)) {
+      duplicateNames.add(skill.name);
+    }
+    selectedNames.add(skill.name);
+  }
+
   // Check for requested names not found among detected skills.
   if (requestedNames) {
-    const selectedNames = new Set(selectedSkills.map((s) => s.name));
-    for (const name of requestedNames) {
+    for (const name of requestedDuplicateNames) {
+      messages.push(`Skill "${name}" was selected more than once.`);
+    }
+
+    for (const name of requestedNamesSet) {
       if (!selectedNames.has(name)) {
         messages.push(`Skill "${name}" not found in the archive.`);
       }
@@ -36,14 +59,6 @@ export function validateSkillsForImport<T extends DetectedSkill>({
   }
 
   // Check for duplicate names within the selection.
-  const seenNames = new Set<string>();
-  const duplicateNames = new Set<string>();
-  for (const skill of selectedSkills) {
-    if (seenNames.has(skill.name)) {
-      duplicateNames.add(skill.name);
-    }
-    seenNames.add(skill.name);
-  }
   for (const name of duplicateNames) {
     messages.push(`Duplicate skill "${name}" in the archive.`);
   }

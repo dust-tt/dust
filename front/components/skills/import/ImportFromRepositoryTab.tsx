@@ -1,6 +1,7 @@
 import { DetectedSkillsList } from "@app/components/skills/import/DetectedSkillsList";
 import type { RepositoryImportFormValues } from "@app/components/skills/import/formSchema";
 import {
+  getDuplicateDetectedSkillNames,
   isImportableSkillStatus,
   parseGitHubRepoUrl,
 } from "@app/lib/skill_detection";
@@ -37,10 +38,12 @@ export function ImportFromRepositoryTab({
     if (!isActive) {
       return;
     }
+    const duplicateNames = getDuplicateDetectedSkillNames(detectedSkills);
     setValue(
       "selectedSkillNames",
       detectedSkills
         .filter((skill) => isImportableSkillStatus(skill.status))
+        .filter((skill) => !duplicateNames.has(skill.name))
         .map((skill) => skill.name)
     );
   }, [isActive, detectedSkills, setValue]);

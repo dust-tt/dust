@@ -2,6 +2,7 @@ import type { ImportFormValues } from "@app/components/skills/import/formSchema"
 import type { DetectedSkillSummary } from "@app/lib/skill_detection";
 import {
   type DetectedSkillStatus,
+  getDuplicateDetectedSkillNames,
   isImportableSkillStatus,
 } from "@app/lib/skill_detection";
 import {
@@ -15,21 +16,24 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
 const STATUS_CHIP_LABEL: Record<
-  Exclude<DetectedSkillStatus, "ready">,
+  Exclude<DetectedSkillStatus | "duplicate_name", "ready">,
   string
 > = {
+  duplicate_name: "Duplicate skill name",
   name_conflict: "Skill name already in use",
   skill_already_exists: "Override existing skill",
   invalid: "Invalid skill format",
 };
 
 interface SkillRowData {
+  id: string;
   name: string;
-  status: DetectedSkillStatus;
+  status: DetectedSkillStatus | "duplicate_name";
+  isSelectable: boolean;
   onClick?: () => void;
   onDoubleClick?: () => void;
 }
@@ -88,18 +92,27 @@ export function DetectedSkillsList({
   detectError,
 }: DetectedSkillsListProps) {
   const { control, setValue } = useFormContext<ImportFormValues>();
-  const { field: selectedField } = useController({
-    name: "selectedSkillNames",
-    control,
-  });
+  const { field: selectedField, fieldState: selectedFieldState } =
+    useController({
+      name: "selectedSkillNames",
+      control,
+    });
+
+  const duplicateNames = useMemo(
+    () => getDuplicateDetectedSkillNames(detectedSkills),
+    [detectedSkills]
+  );
 
   const rows = useMemo<SkillRowData[]>(
     () =>
-      detectedSkills.map((s) => ({
+      detectedSkills.map((s, index) => ({
+        id: `${s.name}:${index}`,
         name: s.name,
-        status: s.status,
+        status: duplicateNames.has(s.name) ? "duplicate_name" : s.status,
+        isSelectable:
+          !duplicateNames.has(s.name) && isImportableSkillStatus(s.status),
       })),
-    [detectedSkills]
+    [detectedSkills, duplicateNames]
   );
 
   const columns = useMemo(() => getColumns(), []);
@@ -107,27 +120,24 @@ export function DetectedSkillsList({
   // Build rowSelection state from selectedSkillNames form field.
   const rowSelection = useMemo(() => {
     const selection: Record<string, boolean> = {};
-    for (const name of selectedField.value) {
-      selection[name] = true;
+    const selectedNames = new Set(selectedField.value);
+
+    for (const row of rows) {
+      if (row.isSelectable && selectedNames.has(row.name)) {
+        selection[row.id] = true;
+      }
     }
+
     return selection;
-  }, [selectedField.value]);
+  }, [rows, selectedField.value]);
 
   // Sync rowSelection changes back to the form field.
   const setRowSelection = (newSelection: Record<string, boolean>) => {
-    const names = Object.keys(newSelection).filter((k) => newSelection[k]);
+    const names = rows
+      .filter((row) => row.isSelectable && newSelection[row.id])
+      .map((row) => row.name);
     setValue("selectedSkillNames", names, { shouldValidate: true });
   };
-
-  // Auto-select all importable skills when detected skills change.
-  useEffect(() => {
-    if (detectedSkills.length > 0) {
-      const importableNames = detectedSkills
-        .filter((s) => isImportableSkillStatus(s.status))
-        .map((s) => s.name);
-      setValue("selectedSkillNames", importableNames, { shouldValidate: true });
-    }
-  }, [detectedSkills, setValue]);
 
   return (
     <>
@@ -146,17 +156,35 @@ export function DetectedSkillsList({
           <Spinner size="md" />
         </div>
       )}
+      {duplicateNames.size > 0 && (
+        <ContentMessage
+          title="Duplicate skill names detected"
+          icon={InformationCircleIcon}
+          variant="warning"
+          size="lg"
+        >
+          Skills with the same name can't be selected for import together.
+        </ContentMessage>
+      )}
+      {selectedFieldState.error && (
+        <ContentMessage
+          title="Invalid selection"
+          icon={InformationCircleIcon}
+          variant="warning"
+          size="lg"
+        >
+          {selectedFieldState.error.message}
+        </ContentMessage>
+      )}
       {rows.length > 0 && (
         <ScrollableDataTable<SkillRowData>
           data={rows}
           columns={columns}
           maxHeight="max-h-64"
-          enableRowSelection={(row) =>
-            isImportableSkillStatus(row.original.status)
-          }
+          enableRowSelection={(row) => row.original.isSelectable}
           rowSelection={rowSelection}
           setRowSelection={setRowSelection}
-          getRowId={(row) => row.name}
+          getRowId={(row) => row.id}
         />
       )}
     </>
