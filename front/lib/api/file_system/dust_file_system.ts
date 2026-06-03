@@ -815,7 +815,7 @@ export class DustFileSystem {
     return new Ok({ dest, ...moveResult.value });
   }
 
-  private async destinationFileExists(
+  private async fileExists(
     scopedPath: string
   ): Promise<Result<boolean, DustFileSystemError>> {
     const fileStat = await this.backend.stat(scopedPath);
@@ -849,9 +849,7 @@ export class DustFileSystem {
       return resolvedDest;
     }
 
-    const destExists = await this.destinationFileExists(
-      resolvedDest.value.path
-    );
+    const destExists = await this.fileExists(resolvedDest.value.path);
     if (destExists.isErr()) {
       return destExists;
     }
