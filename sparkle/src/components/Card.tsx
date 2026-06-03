@@ -6,7 +6,7 @@ import {
   SparkleContext,
   type SparkleContextLinkType,
 } from "@sparkle/context";
-import { XMarkIcon } from "@sparkle/icons/app";
+import { XCloseV2 } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
 import React from "react";
@@ -276,7 +276,7 @@ CardActions.displayName = "CardActions";
 export const CardActionButton = React.forwardRef<
   HTMLButtonElement,
   IconOnlyButtonProps
->(({ className, variant = "outline", icon = XMarkIcon, ...props }, ref) => {
+>(({ className, variant = "outline", icon = XCloseV2, ...props }, ref) => {
   return (
     <Button
       ref={ref}

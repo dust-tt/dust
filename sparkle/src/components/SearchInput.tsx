@@ -10,11 +10,7 @@ import {
 } from "@sparkle/components/Popover";
 import { ScrollArea, ScrollBar } from "@sparkle/components/ScrollArea";
 import { Spinner } from "@sparkle/components/Spinner";
-import {
-  ListCheckIcon,
-  MagnifyingGlassIcon,
-  XMarkIcon,
-} from "@sparkle/icons/app";
+import { CheckDone01V2, SearchMdV2, XCloseV2 } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import React, {
   forwardRef,
@@ -81,7 +77,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
             </div>
           ) : value ? (
             <Button
-              icon={XMarkIcon}
+              icon={XCloseV2}
               variant="ghost"
               size="xs"
               onClick={clearInputField}
@@ -96,7 +92,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
               )}
             >
               <Icon
-                visual={MagnifyingGlassIcon}
+                visual={SearchMdV2}
                 size="xs"
                 className="s-text-muted-foreground dark:s-text-muted-foreground-night"
               />
@@ -282,7 +278,7 @@ function BaseSearchInputWithPopover<T>(
                   size="xs"
                   onClick={onSelectAll}
                   label="Select all"
-                  icon={ListCheckIcon}
+                  icon={CheckDone01V2}
                 />
               )}
             </div>

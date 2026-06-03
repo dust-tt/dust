@@ -4,7 +4,7 @@ import { Button } from "@sparkle/components/Button";
 import { Icon } from "@sparkle/components/Icon";
 import { ScrollArea } from "@sparkle/components/ScrollArea";
 import { SheetViewportProvider } from "@sparkle/components/SheetViewportContext";
-import { XMarkIcon } from "@sparkle/icons/app";
+import { XCloseV2 } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
 import * as React from "react";
@@ -195,7 +195,7 @@ const SheetHeader = ({
   >
     {children}
     <SheetClose asChild className="s-absolute s-right-3 s-top-4">
-      {!hideButton && <Button icon={XMarkIcon} variant="ghost" size="sm" />}
+      {!hideButton && <Button icon={XCloseV2} variant="ghost" size="sm" />}
     </SheetClose>
   </div>
 );

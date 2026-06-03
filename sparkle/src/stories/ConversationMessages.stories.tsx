@@ -5,18 +5,18 @@ import {
   ActionCardBlock,
   AttachmentChip,
   Avatar,
-  BoltIcon,
+  ZapV2,
   Citation,
   CitationIcons,
   CitationTitle,
-  DocumentIcon,
+  File02V2,
   DriveLogo,
-  FolderIcon,
+  FolderV2,
   Icon,
   Markdown,
   NotionLogo,
   SlackLogo,
-  TableIcon,
+  TableV2,
 } from "../index_with_tw_base";
 import {
   ConversationMessageAvatar,
@@ -47,7 +47,7 @@ export const Example: Story = {
             name="Edouard"
             timestamp="14:30"
             renderName={(name) => <span>{name}</span>}
-            infoChip={<Icon size="xs" visual={BoltIcon} />}
+            infoChip={<Icon size="xs" visual={ZapV2} />}
           />
           <ConversationMessageContent type="user">
             Can you summarize the customer feedback from this week?
@@ -85,12 +85,12 @@ export const Example: Story = {
               <div className="s-flex s-flex-wrap s-gap-2">
                 <AttachmentChip
                   label="Q1_feedback_summary.pdf"
-                  icon={{ visual: DocumentIcon }}
+                  icon={{ visual: File02V2 }}
                 />
                 <AttachmentChip
                   label="Customer interviews"
                   doubleIcon={{
-                    mainIcon: FolderIcon,
+                    mainIcon: FolderV2,
                     secondaryIcon: DriveLogo,
                     size: "sm",
                   }}
@@ -117,7 +117,7 @@ export const Example: Story = {
                 <AttachmentChip
                   label="Notes — Interviews"
                   doubleIcon={{
-                    mainIcon: DocumentIcon,
+                    mainIcon: File02V2,
                     secondaryIcon: NotionLogo,
                     size: "sm",
                   }}
@@ -150,7 +150,7 @@ export const Example: Story = {
             citations={[
               <Citation key="table">
                 <CitationIcons>
-                  <Icon visual={TableIcon} size="sm" />
+                  <Icon visual={TableV2} size="sm" />
                 </CitationIcons>
                 <CitationTitle>Weekly support report</CitationTitle>
               </Citation>,
@@ -218,7 +218,7 @@ export const Example: Story = {
             citations={[
               <Citation key="long-table">
                 <CitationIcons>
-                  <Icon visual={TableIcon} size="sm" />
+                  <Icon visual={TableV2} size="sm" />
                 </CitationIcons>
                 <CitationTitle>Support queue trends</CitationTitle>
               </Citation>,

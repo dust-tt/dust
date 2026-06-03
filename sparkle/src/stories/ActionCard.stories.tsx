@@ -2,12 +2,8 @@ import type { Meta } from "@storybook/react";
 import React from "react";
 
 import { ActionCard, Hoverable } from "@sparkle/components";
-import {
-  BookOpenIcon,
-  CommandLineIcon,
-  MagnifyingGlassIcon,
-  PlanetIcon,
-} from "@sparkle/icons/app";
+import { PlanetIcon } from "@sparkle/icons/app";
+import { BookOpen01V2, SearchMdV2, TerminalV2 } from "@sparkle/icons/v2-stroke";
 
 const meta: Meta<typeof ActionCard> = {
   title: "Modules/ActionCard",
@@ -21,7 +17,7 @@ export const Examples = () => (
     {/* Not added - default md size */}
     <div className="s-w-80">
       <ActionCard
-        icon={BookOpenIcon}
+        icon={BookOpen01V2}
         cardContainerClassName="s-h-36"
         label="Image Generation"
         description="Agent can generate images (GPT Image 1)."
@@ -39,7 +35,7 @@ export const Examples = () => (
     <div className="s-w-80">
       <ActionCard
         cardContainerClassName="s-h-36"
-        icon={CommandLineIcon}
+        icon={TerminalV2}
         label="Reasoning"
         description={
           <>
@@ -74,7 +70,7 @@ export const DiffStatus = () => (
   <div className="s-flex s-gap-3">
     <div className="s-w-80">
       <ActionCard
-        icon={MagnifyingGlassIcon}
+        icon={SearchMdV2}
         cardContainerClassName="s-h-36"
         label="Web Search"
         description="Search & browse the web for up-to-date information."

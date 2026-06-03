@@ -7,10 +7,10 @@ import {
   Avatar,
   Button,
   DiffBlock,
-  EyeIcon,
+  EyeV2,
   GmailLogo,
   Markdown,
-  PencilSquareIcon,
+  Edit04V2,
   SlackLogo,
 } from "../index_with_tw_base";
 

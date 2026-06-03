@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
-import { ChatBubbleBottomCenterTextIcon, RobotIcon } from "@sparkle/icons/app";
+import { ChatBubbleBottomCenterTextIcon } from "@sparkle/icons/app";
 
 import {
   Bar,
@@ -13,6 +13,7 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "../index_with_tw_base";
+import { RobotV2 } from "@sparkle/icons/v2-stroke";
 
 const meta = {
   title: "Modules/Bar",
@@ -39,7 +40,7 @@ export const BarHeaderWithDescription = () => {
           <p className="s-text-muted-foreground dark:s-text-muted-foreground-night">
             Based on
           </p>
-          <Icon visual={RobotIcon} size="xs" />
+          <Icon visual={RobotV2} size="xs" />
           <p className="s-text-foreground dark:s-text-foreground-night">
             Research Assistant
           </p>

@@ -6,8 +6,8 @@ import {
   ContentMessage,
   ContentMessageAction,
   ContentMessageInline,
-  HeartIcon,
-  InformationCircleIcon,
+  HeartV2,
+  InfoCircleV2,
 } from "../index_with_tw_base";
 
 type ContentMessageStoryProps = React.ComponentProps<typeof ContentMessage> & {
@@ -16,9 +16,9 @@ type ContentMessageStoryProps = React.ComponentProps<typeof ContentMessage> & {
 
 const ICONS = {
   none: null,
-  InformationCircleIcon: InformationCircleIcon,
+  InfoCircleV2: InfoCircleV2,
   ChatBubbleBottomCenterTextIcon: ChatBubbleBottomCenterTextIcon,
-  HeartIcon: HeartIcon,
+  HeartV2: HeartV2,
 } as const;
 
 const meta: Meta<ContentMessageStoryProps> = {
@@ -92,7 +92,7 @@ export const Basic: Story = {
 export const WithIcon: Story = {
   args: {
     title: "This is a title",
-    icon: InformationCircleIcon,
+    icon: InfoCircleV2,
     children: "This is a message. It can be multiple lines long.",
     size: "md",
   },
@@ -179,7 +179,7 @@ export const ColorVariants: Story = {
 
 export const InlineBasic: Story = {
   render: () => (
-    <ContentMessageInline icon={InformationCircleIcon} variant="info">
+    <ContentMessageInline icon={InfoCircleV2} variant="info">
       This is an inline message. It can be used to display a short message.
     </ContentMessageInline>
   ),
@@ -187,7 +187,7 @@ export const InlineBasic: Story = {
 
 export const InlineWithAction: Story = {
   render: () => (
-    <ContentMessageInline icon={InformationCircleIcon} variant="info">
+    <ContentMessageInline icon={InfoCircleV2} variant="info">
       This is an inline message. It can be used to display a short message.
       <ContentMessageAction variant="primary" label="Button" />
     </ContentMessageInline>
@@ -196,7 +196,7 @@ export const InlineWithAction: Story = {
 
 export const InlineWithTwoActions: Story = {
   render: () => (
-    <ContentMessageInline icon={InformationCircleIcon} variant="info">
+    <ContentMessageInline icon={InfoCircleV2} variant="info">
       This is an inline message. It can be used to display a short message.
       <ContentMessageAction variant="primary" label="Button" />
       <ContentMessageAction variant="highlight" label="Button" />
@@ -207,17 +207,13 @@ export const InlineWithTwoActions: Story = {
 export const InlineWithTitle: Story = {
   render: () => (
     <div className="s-flex s-flex-col s-gap-4">
-      <ContentMessageInline
-        title="Status"
-        icon={InformationCircleIcon}
-        variant="info"
-      >
+      <ContentMessageInline title="Status" icon={InfoCircleV2} variant="info">
         This is an inline message.
         <ContentMessageAction variant="primary" label="Button" />
       </ContentMessageInline>
       <ContentMessageInline
         title="Alert"
-        icon={InformationCircleIcon}
+        icon={InfoCircleV2}
         variant="warning"
       />
     </div>
@@ -230,7 +226,7 @@ export const InlineVariants: Story = {
       {["primary", "warning", "success", "highlight", "info"].map((variant) => (
         <ContentMessageInline
           key={variant}
-          icon={InformationCircleIcon}
+          icon={InfoCircleV2}
           variant={
             variant as
               | "primary"

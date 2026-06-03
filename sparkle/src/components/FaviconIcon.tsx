@@ -1,4 +1,4 @@
-import { GlobeAltIcon } from "@sparkle/icons";
+import { Globe01V2 } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
 import React, { useCallback, useState } from "react";
@@ -24,9 +24,9 @@ interface FaviconIconProps {
 }
 
 /**
- * Component that displays a website favicon with fallback to GlobeAltIcon
+ * Component that displays a website favicon with fallback to Globe01V2
  * If faviconUrl is provided, uses that. If websiteUrl is provided, generates favicon URL.
- * Falls back to GlobeAltIcon if favicon fails to load.
+ * Falls back to Globe01V2 if favicon fails to load.
  */
 export function FaviconIcon({
   faviconUrl,
@@ -59,7 +59,7 @@ export function FaviconIcon({
 
   // If no favicon URL or it failed to load, show fallback icon
   if (!finalFaviconUrl || hasError) {
-    return <GlobeAltIcon className={className} />;
+    return <Globe01V2 className={className} />;
   }
 
   return (
@@ -82,7 +82,7 @@ export function FaviconIcon({
         }}
       />
       {(isLoading || hasError) && (
-        <GlobeAltIcon
+        <Globe01V2
           className={cn(
             faviconVariants({ size }),
             isLoading ? "s-absolute s-inset-0" : "s-hidden"

@@ -3,13 +3,13 @@ import React from "react";
 
 import {
   ArrowPathIcon,
-  BoltIcon,
+  ZapV2,
   Button,
-  ChevronRightIcon,
+  ChevronRightV2,
   Citation,
   CitationIcons,
   CitationTitle,
-  ClipboardIcon,
+  ClipboardV2,
   ConversationContainer,
   ConversationMessage,
   GithubIcon,
@@ -17,10 +17,10 @@ import {
   HandThumbUpIcon,
   Icon,
   Markdown,
-  PencilSquareIcon,
+  Edit04V2,
   SlackLogo,
-  TableIcon,
-  TrashIcon,
+  TableV2,
+  Trash01V2,
 } from "../index_with_tw_base";
 
 const meta = {
@@ -50,14 +50,14 @@ export const ConversationExample = () => {
             citations={[
               <Citation href="https://www.google.com">
                 <CitationIcons>
-                  <Icon visual={TableIcon} size="sm" />
+                  <Icon visual={TableV2} size="sm" />
                 </CitationIcons>
                 <CitationTitle>Title</CitationTitle>
               </Citation>,
             ]}
             infoChip={
               <span className="s-translate-y-1 s-text-muted-foreground dark:s-text-muted-foreground-night">
-                <Icon size="xs" visual={BoltIcon} />
+                <Icon size="xs" visual={ZapV2} />
               </span>
             }
           >
@@ -217,7 +217,7 @@ export const ConversationHandoffExample = () => {
             pictureUrl="https://avatars.githubusercontent.com/u/138893015?&v=4"
             buttons={[
               <Button
-                icon={ClipboardIcon}
+                icon={ClipboardV2}
                 onClick={() => {}}
                 size="xs"
                 variant={"outline"}
@@ -242,7 +242,7 @@ export const ConversationHandoffExample = () => {
             completionStatus={
               <span className="s-flex s-cursor-pointer s-items-center s-gap-1 s-text-xs">
                 <span>Completed in 9 min 30 sec</span>
-                <Icon visual={ChevronRightIcon} size="xs" />
+                <Icon visual={ChevronRightV2} size="xs" />
               </span>
             }
             citations={[
@@ -304,14 +304,14 @@ export const ConversationWithActions = () => {
           timestamp="14:30"
           actions={[
             {
-              icon: PencilSquareIcon,
+              icon: Edit04V2,
               label: "Edit",
               onClick: () => {
                 console.log("Edit clicked");
               },
             },
             {
-              icon: TrashIcon,
+              icon: Trash01V2,
               label: "Delete",
               onClick: () => {
                 console.log("Delete clicked");

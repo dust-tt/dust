@@ -10,7 +10,7 @@ import {
   type MultiPageSheetPage,
   MultiPageSheetTrigger,
 } from "@sparkle/components/MultiPageSheet";
-import { Cog6ToothIcon, DocumentTextIcon, UserIcon } from "@sparkle/icons/app";
+import { File04V2, Settings01V2, User01V2 } from "@sparkle/icons/v2-stroke";
 
 const meta: Meta<typeof MultiPageSheetContent> = {
   title: "Modules/MultiPageSheet",
@@ -25,7 +25,7 @@ const samplePages: MultiPageSheetPage[] = [
     id: "profile",
     title: "User Profile",
     description: "Manage your personal information",
-    icon: UserIcon,
+    icon: User01V2,
     content: (
       <div className="s-space-y-4">
         <div>
@@ -61,7 +61,7 @@ const samplePages: MultiPageSheetPage[] = [
     id: "documents",
     title: "Documents",
     description: "Manage your uploaded files",
-    icon: DocumentTextIcon,
+    icon: File04V2,
     content: (
       <div className="s-space-y-4">
         <div>
@@ -87,7 +87,7 @@ const samplePages: MultiPageSheetPage[] = [
     id: "settings",
     title: "Settings",
     description: "Configure your preferences",
-    icon: Cog6ToothIcon,
+    icon: Settings01V2,
     content: (
       <div className="s-space-y-4">
         <div>
@@ -163,7 +163,7 @@ export const InteractiveContent: Story = {
         id: "step1",
         title: "Personal Info",
         description: "Enter your basic information",
-        icon: UserIcon,
+        icon: User01V2,
         content: (
           <div className="s-space-y-4">
             <div>
@@ -216,7 +216,7 @@ export const InteractiveContent: Story = {
         id: "step2",
         title: "File Selection",
         description: "Choose your files",
-        icon: DocumentTextIcon,
+        icon: File04V2,
         content: (
           <div className="s-space-y-4">
             <div>
@@ -273,7 +273,7 @@ export const InteractiveContent: Story = {
         id: "step3",
         title: "Final Settings",
         description: "Configure your preferences",
-        icon: Cog6ToothIcon,
+        icon: Settings01V2,
         content: (
           <div className="s-space-y-4">
             <div>
@@ -349,7 +349,7 @@ export const WithConditionalNavigation: Story = {
         id: "data-selection",
         title: "Select Data Sources",
         description: "Choose which data sources to include",
-        icon: DocumentTextIcon,
+        icon: File04V2,
         content: (
           <div className="s-space-y-4">
             <div>
@@ -407,7 +407,7 @@ export const WithConditionalNavigation: Story = {
         id: "description",
         title: "Add Description",
         description: "Describe your configuration",
-        icon: Cog6ToothIcon,
+        icon: Settings01V2,
         content: (
           <div className="s-space-y-4">
             <div>
@@ -632,7 +632,7 @@ export const WithScrollableDataTable: Story = {
         id: "users",
         title: "User Management",
         description: "Manage users with infinite scroll",
-        icon: UserIcon,
+        icon: User01V2,
         noScroll: true,
         content: (
           <div className="s-flex s-h-full s-flex-col s-space-y-4">

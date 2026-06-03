@@ -1,6 +1,6 @@
 import { ImageWrapper } from "@sparkle/components/ImageWrapper";
 import { Tooltip } from "@sparkle/components/Tooltip";
-import { UserIcon } from "@sparkle/icons/app";
+import { User01V2 } from "@sparkle/icons/v2-stroke";
 import { getEmojiAndBackgroundFromUrl } from "@sparkle/lib/avatar/utils";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
@@ -254,7 +254,7 @@ export function Avatar({
           {/\+/.test(name) ? name : name[0].toUpperCase()}
         </span>
       ) : (
-        <UserIcon className="s-h-1/2 s-w-1/2 s-text-foreground s-opacity-20" />
+        <User01V2 className="s-h-1/2 s-w-1/2 s-text-foreground s-opacity-20" />
       )}
     </div>
   );

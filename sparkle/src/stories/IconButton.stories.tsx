@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 
-import { Cog6ToothIcon, IconButton } from "../index_with_tw_base";
+import { Settings01V2, IconButton } from "../index_with_tw_base";
 
 const meta = {
   title: "Primitives/IconButton",
@@ -14,7 +14,7 @@ export const IconButtonPrimary: Story = {
   args: {
     variant: "primary",
     size: "md",
-    icon: Cog6ToothIcon,
+    icon: Settings01V2,
   },
 };
 
@@ -22,7 +22,7 @@ export const IconButtonWithTooltip: Story = {
   args: {
     variant: "primary",
     tooltip: "Your settings",
-    icon: Cog6ToothIcon,
+    icon: Settings01V2,
   },
 };
 
@@ -30,7 +30,7 @@ export const IconButtonSecondary: Story = {
   args: {
     variant: "highlight",
     tooltip: "This a highlight IconButton",
-    icon: Cog6ToothIcon,
+    icon: Settings01V2,
   },
 };
 
@@ -38,6 +38,6 @@ export const IconButtonTertiary: Story = {
   args: {
     variant: "ghost",
     tooltip: "This a ghost IconButton",
-    icon: Cog6ToothIcon,
+    icon: Settings01V2,
   },
 };

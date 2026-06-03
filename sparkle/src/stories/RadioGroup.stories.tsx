@@ -4,10 +4,10 @@ import React from "react";
 import {
   Button,
   CloudArrowDownIcon,
-  FolderIcon,
+  FolderV2,
   Icon,
   Label,
-  LockIcon,
+  Lock01V2,
   RadioGroup,
   RadioGroupCustomItem,
   RadioGroupItem,
@@ -98,13 +98,13 @@ export const RadioGroupWithChildrenExample = () => {
             iconPosition="start"
             customItem={
               <div className="s-flex s-items-center s-gap-2">
-                <Icon visual={LockIcon} />
+                <Icon visual={Lock01V2} />
                 <Label>{choice.label}</Label>
               </div>
             }
           >
             <div className="s-flex s-items-center s-gap-2 s-border s-border-red-500 s-p-2">
-              <Icon visual={FolderIcon} />
+              <Icon visual={FolderV2} />
               <Label>{choice.label}</Label>
               <Button label="Click me" />
             </div>

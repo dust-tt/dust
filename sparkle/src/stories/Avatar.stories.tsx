@@ -5,7 +5,6 @@ import { AVATAR_SIZES } from "@sparkle/components/Avatar";
 import {
   ActionBeerIcon,
   ActionFlagIcon,
-  ActionImageIcon,
   ActionMagnifyingGlassIcon,
   ActionScanIcon,
   ActionShirtIcon,
@@ -13,7 +12,7 @@ import {
   ActionUmbrellaIcon,
 } from "@sparkle/icons/actions";
 import SvgHome from "@sparkle/icons/actions/Home";
-import { SidekickIcon, StarStrokeIcon } from "@sparkle/icons/app";
+import { StarStrokeIcon } from "@sparkle/icons/app";
 
 import {
   Avatar,
@@ -21,6 +20,7 @@ import {
   NotionLogo,
   SlackLogo,
 } from "../index_with_tw_base";
+import { Image01V2, SidekickV2 } from "@sparkle/icons/v2-stroke";
 
 const ICONS = {
   none: null,
@@ -229,7 +229,7 @@ export const AvatarExample: Story = {
         />
         <Avatar
           size="md"
-          icon={ActionImageIcon}
+          icon={Image01V2}
           backgroundColor="s-bg-gray-700"
           iconColor="s-text-gray-50"
         />
@@ -244,7 +244,7 @@ export const AvatarExample: Story = {
       <div className="s-flex s-gap-4">
         <Avatar
           size="md"
-          icon={SidekickIcon}
+          icon={SidekickV2}
           backgroundColor="s-bg-warning-200"
           iconColor="s-text-warning-800"
         />

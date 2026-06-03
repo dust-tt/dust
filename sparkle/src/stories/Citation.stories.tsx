@@ -11,15 +11,15 @@ import {
   CitationImage,
   CitationIndex,
   CitationTitle,
-  DocumentIcon,
-  ExternalLinkIcon,
+  File02V2,
+  LinkExternal01V2,
   FaviconIcon,
-  GlobeAltIcon,
+  Globe01V2,
   Icon,
   NotionLogo,
   Popover,
   SlackLogo,
-  TableIcon,
+  TableV2,
 } from "../index_with_tw_base";
 
 const meta = {
@@ -63,7 +63,7 @@ export const CitationsExample = () => (
       </Citation>
       <Citation onClick={() => alert("Card clicked")} className="s-w-48">
         <CitationIcons>
-          <Icon visual={TableIcon} size="sm" />
+          <Icon visual={TableV2} size="sm" />
         </CitationIcons>
         <CitationTitle>extract_financa.csv</CitationTitle>
       </Citation>
@@ -118,7 +118,7 @@ export const CitationsExample = () => (
         action={<CitationClose onClick={() => alert("Close clicked")} />}
       >
         <CitationIcons>
-          <Icon visual={TableIcon} size="sm" />
+          <Icon visual={TableV2} size="sm" />
         </CitationIcons>
         <CitationTitle>extract_financa.csv</CitationTitle>
       </Citation>
@@ -128,7 +128,7 @@ export const CitationsExample = () => (
         action={<CitationClose onClick={() => alert("Close clicked")} />}
       >
         <CitationIcons>
-          <Icon visual={GlobeAltIcon} size="sm" />
+          <Icon visual={Globe01V2} size="sm" />
         </CitationIcons>
         <CitationTitle>Linkedin, Edouard Wautier</CitationTitle>
       </Citation>
@@ -154,7 +154,7 @@ export const CitationsExample = () => (
             <CitationTitle>Hello</CitationTitle>
             <Button
               variant={"ghost"}
-              icon={ExternalLinkIcon}
+              icon={LinkExternal01V2}
               className="s-absolute s-right-2 s-top-2"
             />
           </>
@@ -180,7 +180,7 @@ export const CitationsExample = () => (
       <Citation onClick={() => alert("Close action clicked")}>
         <CitationIcons>
           <CitationIndex>3</CitationIndex>
-          <Icon visual={DocumentIcon} size="sm" />
+          <Icon visual={File02V2} size="sm" />
         </CitationIcons>
         <CitationTitle>Hello</CitationTitle>
       </Citation>

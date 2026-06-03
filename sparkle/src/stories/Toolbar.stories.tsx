@@ -4,11 +4,11 @@ import React, { useState } from "react";
 import type { ToolbarProps } from "../index_with_tw_base";
 import {
   BoldIcon,
-  CodeBlockIcon,
-  CodeSlashIcon,
-  HeadingIcon,
+  CodeSquare01V2,
+  Code01V2,
+  Heading01V2,
   ItalicIcon,
-  ListCheckIcon,
+  CheckDone01V2,
   ListOrdered2Icon,
   QuoteTextIcon,
   Toolbar,
@@ -57,7 +57,7 @@ function ToolbarPreview({ variant, scroll, onClose }: ToolbarPreviewProps) {
       items: [
         <ToolbarIcon
           key="heading"
-          icon={HeadingIcon}
+          icon={Heading01V2}
           onClick={handleToolbarAction}
           active
           tooltip="Heading"
@@ -104,7 +104,7 @@ function ToolbarPreview({ variant, scroll, onClose }: ToolbarPreviewProps) {
       items: [
         <ToolbarIcon
           key="bulleted-list"
-          icon={ListCheckIcon}
+          icon={CheckDone01V2}
           onClick={handleToolbarAction}
           tooltip="Bulleted list"
           size={buttonSize}
@@ -130,14 +130,14 @@ function ToolbarPreview({ variant, scroll, onClose }: ToolbarPreviewProps) {
       items: [
         <ToolbarIcon
           key="inline-code"
-          icon={CodeSlashIcon}
+          icon={Code01V2}
           onClick={handleToolbarAction}
           tooltip="Inline code"
           size={buttonSize}
         />,
         <ToolbarIcon
           key="code-block"
-          icon={CodeBlockIcon}
+          icon={CodeSquare01V2}
           onClick={handleToolbarAction}
           tooltip="Code block"
           size={buttonSize}

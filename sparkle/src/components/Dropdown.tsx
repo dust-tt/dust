@@ -21,7 +21,7 @@ import {
   type SearchInputProps,
 } from "@sparkle/components/SearchInput";
 import { useSheetContainer } from "@sparkle/hooks/useSheetContainer";
-import { CheckIcon, ChevronRightIcon } from "@sparkle/icons/app";
+import { CheckV2, ChevronRightV2 } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
 import * as React from "react";
@@ -223,7 +223,7 @@ const DropdownMenuSubTrigger = React.forwardRef<
     <ItemWithLabelIconAndDescription
       label={label}
       icon={icon}
-      endComponent={<Icon size="xs" visual={ChevronRightIcon} />}
+      endComponent={<Icon size="xs" visual={ChevronRightV2} />}
     >
       {children}
     </ItemWithLabelIconAndDescription>
@@ -634,7 +634,7 @@ const DropdownMenuCheckboxItem = React.forwardRef<
     >
       <span className={menuStyleClasses.subTrigger.span}>
         <DropdownMenuPrimitive.ItemIndicator>
-          <Icon size="xs" visual={CheckIcon} />
+          <Icon size="xs" visual={CheckV2} />
         </DropdownMenuPrimitive.ItemIndicator>
       </span>
       <ItemWithLabelIconAndDescription

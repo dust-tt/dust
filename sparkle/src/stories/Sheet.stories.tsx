@@ -22,16 +22,15 @@ import {
   SheetTrigger,
   TextArea,
 } from "@sparkle/components";
+import { CloudArrowLeftRightIcon, StarIcon } from "@sparkle/icons/app";
 import {
-  CloudArrowLeftRightIcon,
-  FolderIcon,
-  GlobeAltIcon,
-  MoreIcon,
-  PencilSquareIcon,
-  RocketIcon,
-  StarIcon,
-  TrashIcon,
-} from "@sparkle/icons/app";
+  DotsHorizontalV2,
+  Edit04V2,
+  FolderV2,
+  Globe01V2,
+  Rocket02V2,
+  Trash01V2,
+} from "@sparkle/icons/v2-stroke";
 
 const meta = {
   title: "Layouts/Sheet",
@@ -99,7 +98,7 @@ export function ContentDemo() {
         <SheetContent size="xl">
           <SheetHeader>
             <Page.Header
-              icon={RocketIcon}
+              icon={Rocket02V2}
               title={<>Quick Guide for new members</>}
             />
           </SheetHeader>
@@ -118,7 +117,7 @@ export function SheetCustom() {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
-            icon={MoreIcon}
+            icon={DotsHorizontalV2}
             onClick={(event) => {
               event.currentTarget.focus();
             }}
@@ -162,8 +161,8 @@ export function SheetCustom() {
               <div className="s-flex s-gap-2">
                 <Button icon={StarIcon} variant={"outline"} />
                 <Separator orientation="vertical" />
-                <Button icon={PencilSquareIcon} variant={"outline"} />
-                <Button icon={TrashIcon} variant={"outline"} />
+                <Button icon={Edit04V2} variant={"outline"} />
+                <Button icon={Trash01V2} variant={"outline"} />
                 <SimpleDropdownDemo />
               </div>
             </div>
@@ -269,7 +268,7 @@ const QIG: React.FC = () => (
         <Page.Vertical sizing="grow">
           <Page.Horizontal>
             <div className="flex items-center gap-2">
-              <Icon visual={FolderIcon} /> <Page.H variant="h6">Folders</Page.H>
+              <Icon visual={FolderV2} /> <Page.H variant="h6">Folders</Page.H>
             </div>
           </Page.Horizontal>
           <Page.P>Upload files (text, pdf, csv) directly in Dust.</Page.P>
@@ -277,8 +276,7 @@ const QIG: React.FC = () => (
         <Page.Vertical sizing="grow">
           <Page.Horizontal>
             <div className="flex items-center gap-2">
-              <Icon visual={GlobeAltIcon} />{" "}
-              <Page.H variant="h6">Websites</Page.H>
+              <Icon visual={Globe01V2} /> <Page.H variant="h6">Websites</Page.H>
             </div>
           </Page.Horizontal>
           <Page.P>
@@ -391,7 +389,7 @@ const QIG: React.FC = () => (
         <Page.Vertical sizing="grow">
           <Page.Horizontal>
             <div className="flex items-center gap-2">
-              <Icon visual={FolderIcon} /> <Page.H variant="h6">Folders</Page.H>
+              <Icon visual={FolderV2} /> <Page.H variant="h6">Folders</Page.H>
             </div>
           </Page.Horizontal>
           <Page.P>Upload files (text, pdf, csv) directly in Dust.</Page.P>
@@ -399,8 +397,7 @@ const QIG: React.FC = () => (
         <Page.Vertical sizing="grow">
           <Page.Horizontal>
             <div className="flex items-center gap-2">
-              <Icon visual={GlobeAltIcon} />{" "}
-              <Page.H variant="h6">Websites</Page.H>
+              <Icon visual={Globe01V2} /> <Page.H variant="h6">Websites</Page.H>
             </div>
           </Page.Horizontal>
           <Page.P>
@@ -439,7 +436,7 @@ export function SheetWithThreeButtons() {
             rightEndButtonProps={{
               label: "Delete",
               variant: "warning",
-              icon: TrashIcon,
+              icon: Trash01V2,
             }}
           />
         </SheetContent>
@@ -457,7 +454,7 @@ export function SheetWithIconInTitle() {
         </SheetTrigger>
         <SheetContent side="left">
           <SheetHeader hideButton>
-            <SheetTitle icon={RocketIcon}>About me</SheetTitle>
+            <SheetTitle icon={Rocket02V2}>About me</SheetTitle>
           </SheetHeader>
           <SheetContainer>
             <div className="s-flex s-flex-col s-gap-6">

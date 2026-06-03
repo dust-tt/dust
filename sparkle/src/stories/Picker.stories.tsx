@@ -3,7 +3,7 @@ import data from "@emoji-mart/data";
 import type { Meta } from "@storybook/react";
 import React, { useState } from "react";
 
-import { PaintIcon } from "@sparkle/icons";
+import { PaintV2 } from "@sparkle/icons";
 import { ActionIcons } from "@sparkle/icons";
 import { EmotionLaughIcon } from "@sparkle/icons/app";
 
@@ -111,7 +111,7 @@ const ColorPickerExample = () => {
             <Button
               label="Select Color"
               variant="outline"
-              icon={PaintIcon}
+              icon={PaintV2}
               size="sm"
               className={selectedColor}
               isSelect

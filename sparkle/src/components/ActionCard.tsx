@@ -3,7 +3,7 @@ import { Button } from "@sparkle/components/Button";
 import { Card, CardActionButton } from "@sparkle/components/Card";
 import { Chip } from "@sparkle/components/Chip";
 import { TruncatedText } from "@sparkle/components/TruncatedText";
-import { DashIcon, PlusIcon, XMarkIcon } from "@sparkle/icons/app/";
+import { MinusV2, PlusV2, XCloseV2 } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
 import React from "react";
@@ -33,8 +33,8 @@ const DIFF_CHIP_CONFIG: Record<
   ActionCardDiffStatus,
   { color: "green" | "warning"; icon: React.ComponentType }
 > = {
-  added: { color: "green", icon: PlusIcon },
-  removed: { color: "warning", icon: DashIcon },
+  added: { color: "green", icon: PlusV2 },
+  removed: { color: "warning", icon: MinusV2 },
 };
 
 interface ActionCardCommonProps {
@@ -125,7 +125,7 @@ export const ActionCard = React.forwardRef<HTMLDivElement, ActionCardProps>(
           onRemove ? (
             <CardActionButton
               size="icon"
-              icon={XMarkIcon}
+              icon={XCloseV2}
               onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                 onRemove();
                 e.stopPropagation();
@@ -169,7 +169,7 @@ export const ActionCard = React.forwardRef<HTMLDivElement, ActionCardProps>(
                   <Button
                     size="xs"
                     variant="outline"
-                    icon={PlusIcon}
+                    icon={PlusV2}
                     label="Add"
                     className={cn(FADE_TRANSITION_CLASSES, "s-flex-shrink-0")}
                   />
