@@ -47,6 +47,7 @@ function makeInvitation(
         reminderSentAt,
       }) + INVITATION_EXPIRATION_TIME_MS,
     isExpired: false,
+    seatType: null,
   };
 }
 
@@ -145,6 +146,7 @@ describe("claimReminderSlot", () => {
         updatedAt: new Date(createdAt),
         reminderSentAt: null,
         invitedUserId: null,
+        seatType: null,
       },
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       { workspace: {} as any }
@@ -182,6 +184,7 @@ describe("claimReminderSlot", () => {
         updatedAt: new Date(createdAt),
         reminderSentAt: null,
         invitedUserId: null,
+        seatType: null,
       },
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       { workspace: {} as any }
