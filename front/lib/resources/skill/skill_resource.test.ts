@@ -935,6 +935,63 @@ describe("SkillResource", () => {
         },
       ]);
     });
+
+    it("drops missing same-workspace nested skill references", async () => {
+      const parentSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Parent With Missing Skill Reference",
+      });
+      const missingSkillId = SkillResource.modelIdToSId({
+        id: parentSkill.id + 1_000_000,
+        workspaceId: testContext.workspace.id,
+      });
+
+      await parentSkill.updateSkill(testContext.authenticator, {
+        name: parentSkill.name,
+        agentFacingDescription: parentSkill.agentFacingDescription,
+        userFacingDescription: parentSkill.userFacingDescription,
+        instructions: parentSkill.instructions,
+        instructionsHtml: parentSkill.instructionsHtml,
+        icon: parentSkill.icon,
+        mcpServerViews: [],
+        attachedKnowledge: [],
+        requestedSpaceIds: parentSkill.requestedSpaceIds,
+        enableSkillReferences: true,
+        referencedSkillIds: [missingSkillId],
+      });
+
+      await expect(
+        parentSkill.fetchChildSkills(testContext.authenticator)
+      ).resolves.toHaveLength(0);
+    });
+
+    it("normalizes nested skill references present only in instructionsHtml", async () => {
+      const restrictedSpace = await SpaceFactory.regular(testContext.workspace);
+      const childSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "HTML Only Child Skill",
+        requestedSpaceIds: [restrictedSpace.id],
+      });
+      const skillReferenceHtmlTag = serializeSkillTag(
+        {
+          icon: childSkill.icon,
+          id: childSkill.sId,
+          name: childSkill.name,
+        },
+        { html: true }
+      );
+
+      const parentSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Parent With HTML Only Reference",
+        instructions: "Use the HTML-only child skill.",
+        instructionsHtml: `<p>Use ${skillReferenceHtmlTag}.</p>`,
+        enableSkillReferences: true,
+        referencedSkillIds: [childSkill.sId],
+      });
+
+      expect(parentSkill.instructions).not.toContain("<unavailable_skill");
+      expect(parentSkill.instructionsHtml).toContain(
+        `<unavailable_skill id="${childSkill.sId}"></unavailable_skill>`
+      );
+    });
   });
 
   describe("archive and restore", () => {
