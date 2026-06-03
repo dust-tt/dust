@@ -1,6 +1,7 @@
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import type { UserType } from "@app/types/user";
+import type { LightUserType, UserType } from "@app/types/user";
+import { toLightUser } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -17,13 +18,8 @@ const MembersLookupQuerySchema = z.object({
   ids: z.union([z.coerce.number(), z.array(z.coerce.number())]),
 });
 
-export type LightLookupUserType = Pick<
-  UserType,
-  "sId" | "id" | "firstName" | "lastName" | "fullName" | "image"
->;
-
 export type MembersLookupResponseBody = {
-  users: LightLookupUserType[];
+  users: LightUserType[];
 };
 
 type MembersLookupAdminResponseBody = {
@@ -83,14 +79,7 @@ app.get(
     }
 
     return ctx.json({
-      users: filteredUsers.map((user) => ({
-        sId: user.sId,
-        id: user.id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        fullName: user.fullName(),
-        image: user.imageUrl,
-      })),
+      users: filteredUsers.map((user) => toLightUser(user.toJSON())),
     });
   }
 );

@@ -4,6 +4,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 import type { UserType } from "@app/types/user";
+import { toLightUser } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -99,13 +100,7 @@ app.get("/", async (ctx) => {
   }
 
   return ctx.json({
-    editors: memberUsers.map((m) => ({
-      sId: m.sId,
-      firstName: m.firstName,
-      lastName: m.lastName,
-      fullName: m.fullName,
-      image: m.image,
-    })),
+    editors: memberUsers.map(toLightUser),
   });
 });
 
@@ -280,13 +275,7 @@ app.patch(
     }
 
     return ctx.json({
-      editors: updatedEditors.map((m) => ({
-        sId: m.sId,
-        firstName: m.firstName,
-        lastName: m.lastName,
-        fullName: m.fullName,
-        image: m.image,
-      })),
+      editors: updatedEditors.map(toLightUser),
     });
   }
 );

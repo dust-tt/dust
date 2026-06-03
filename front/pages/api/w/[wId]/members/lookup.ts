@@ -7,7 +7,8 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { UserType } from "@app/types/user";
+import type { LightUserType, UserType } from "@app/types/user";
+import { toLightUser } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
@@ -17,13 +18,8 @@ const MembersLookupQuerySchema = z.object({
   ids: z.union([z.coerce.number(), z.array(z.coerce.number())]),
 });
 
-export type LightLookupUserType = Pick<
-  UserType,
-  "sId" | "id" | "firstName" | "lastName" | "fullName" | "image"
->;
-
 export type MembersLookupResponseBody = {
-  users: LightLookupUserType[];
+  users: LightUserType[];
 };
 
 export type MembersLookupAdminResponseBody = {
@@ -94,14 +90,7 @@ async function handler(
       }
 
       return res.status(200).json({
-        users: filteredUsers.map((user) => ({
-          sId: user.sId,
-          id: user.id,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          fullName: user.fullName(),
-          image: user.imageUrl,
-        })),
+        users: filteredUsers.map((user) => toLightUser(user.toJSON())),
       });
     }
 

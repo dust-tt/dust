@@ -12,7 +12,7 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { LightUserType } from "@app/types/user";
-import { UserSchema } from "@app/types/user";
+import { toLightUser, UserSchema } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
@@ -137,13 +137,7 @@ async function handler(
       }
 
       return res.status(200).json({
-        editors: memberUsers.map((m) => ({
-          sId: m.sId,
-          firstName: m.firstName,
-          lastName: m.lastName,
-          fullName: m.fullName,
-          image: m.image,
-        })),
+        editors: memberUsers.map(toLightUser),
       });
     }
 
@@ -299,13 +293,7 @@ async function handler(
       }
 
       return res.status(200).json({
-        editors: updatedEditors.map((m) => ({
-          sId: m.sId,
-          firstName: m.firstName,
-          lastName: m.lastName,
-          fullName: m.fullName,
-          image: m.image,
-        })),
+        editors: updatedEditors.map(toLightUser),
       });
     }
 

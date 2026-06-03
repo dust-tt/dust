@@ -115,6 +115,16 @@ export type LightUserType = Pick<
   "sId" | "firstName" | "lastName" | "fullName" | "image"
 >;
 
+export function toLightUser(user: UserType): LightUserType {
+  return {
+    sId: user.sId,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    fullName: user.fullName,
+    image: user.image,
+  };
+}
+
 /**
  * @swaggerschema PrivateUser (swagger_private_schemas.ts)
  */

@@ -9,6 +9,7 @@ import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 import type { LightUserType, UserType } from "@app/types/user";
+import { toLightUser } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
@@ -96,13 +97,7 @@ async function handler(
       }
 
       return res.status(200).json({
-        editors: memberUsers.map((m) => ({
-          sId: m.sId,
-          firstName: m.firstName,
-          lastName: m.lastName,
-          fullName: m.fullName,
-          image: m.image,
-        })),
+        editors: memberUsers.map(toLightUser),
       });
     }
 
@@ -283,13 +278,7 @@ async function handler(
       }
 
       return res.status(200).json({
-        editors: updatedEditors.map((m) => ({
-          sId: m.sId,
-          firstName: m.firstName,
-          lastName: m.lastName,
-          fullName: m.fullName,
-          image: m.image,
-        })),
+        editors: updatedEditors.map(toLightUser),
       });
     }
 

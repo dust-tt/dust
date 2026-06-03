@@ -2,6 +2,7 @@ import { searchMembers } from "@app/lib/api/workspace";
 import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
 import { GROUP_KINDS } from "@app/types/groups";
 import type { LightUserType, UserTypeWithWorkspace } from "@app/types/user";
+import { toLightUser } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -74,13 +75,7 @@ app.get(
     }
 
     return ctx.json({
-      members: members.map((m) => ({
-        sId: m.sId,
-        firstName: m.firstName,
-        lastName: m.lastName,
-        fullName: m.fullName,
-        image: m.image,
-      })),
+      members: members.map(toLightUser),
       total,
     });
   }
