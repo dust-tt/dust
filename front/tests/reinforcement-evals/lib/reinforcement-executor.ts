@@ -12,12 +12,17 @@ import type { Authenticator } from "@app/lib/auth";
 import { buildSkillAggregationPrompt } from "@app/lib/reinforcement/aggregate_suggestions";
 import { buildSkillAnalysisPrompt } from "@app/lib/reinforcement/analyze_conversation";
 import { MAX_REINFORCED_ANALYSIS_STEPS } from "@app/lib/reinforcement/constants";
+import { formatSkillContext } from "@app/lib/reinforcement/format_skill_context";
 import {
   buildReinforcedSkillsLLMParams,
   classifySkillToolCalls,
 } from "@app/lib/reinforcement/run_reinforced_analysis";
 import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
-import { DESCRIBE_MCP_TOOL_NAME } from "@app/lib/reinforcement/types";
+import {
+  DESCRIBE_MCP_TOOL_NAME,
+  DESCRIBE_SKILL_TOOL_NAME,
+  isExploratoryToolName,
+} from "@app/lib/reinforcement/types";
 import { buildContinuationMessages } from "@app/lib/reinforcement/utils";
 import {
   BATCH_POLL_INTERVAL_MS,
@@ -38,6 +43,7 @@ import {
   type WorkspaceContext,
 } from "@app/tests/reinforcement-evals/lib/types";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 
 function makeSkillType(config: MockSkillConfig): SkillType {
@@ -91,6 +97,35 @@ function makeSkillType(config: MockSkillConfig): SkillType {
     isExtendable: false,
     isDefault: false,
     extendedSkillId: null,
+  };
+}
+
+/**
+ * Build the effective workspace context by merging the test case's skill configs
+ * into workspaceContext.skillConfigs, so describe_skill can resolve them.
+ */
+function buildEffectiveWorkspaceContext(testCase: TestCase): WorkspaceContext {
+  const testSkillConfigs = isAnalysisTestCase(testCase)
+    ? testCase.skillConfigs
+    : [testCase.skillConfig];
+
+  const existingSkillIds = new Set(
+    (testCase.workspaceContext.skillConfigs ?? []).map((s) => s.sId)
+  );
+  const newSkillConfigs = testSkillConfigs.filter(
+    (s) => !existingSkillIds.has(s.sId)
+  );
+
+  if (newSkillConfigs.length === 0) {
+    return testCase.workspaceContext;
+  }
+
+  return {
+    ...testCase.workspaceContext,
+    skillConfigs: [
+      ...(testCase.workspaceContext.skillConfigs ?? []),
+      ...newSkillConfigs,
+    ],
   };
 }
 
@@ -184,6 +219,10 @@ function simulateExploratoryTool(
   args: Record<string, unknown>,
   workspaceContext: WorkspaceContext
 ): string {
+  if (!isExploratoryToolName(toolName)) {
+    throw new Error(`Unknown exploratory tool: ${toolName}`);
+  }
+
   switch (toolName) {
     case "get_available_tools":
       return formatAvailableTools(workspaceContext.tools);
@@ -204,6 +243,19 @@ function simulateExploratoryTool(
         mcpId,
         mockDescriptionToFormatInput(mcpName, desc)
       );
+    }
+    case DESCRIBE_SKILL_TOOL_NAME: {
+      const skillId = args["skillId"];
+      if (!isString(skillId)) {
+        return "Error: skillId parameter is required";
+      }
+      const skillConfig = workspaceContext.skillConfigs?.find(
+        (s) => s.sId === skillId
+      );
+      if (!skillConfig) {
+        return `Skill not found: ${skillId}`;
+      }
+      return formatSkillContext(makeSkillType(skillConfig));
     }
     case "search_knowledge": {
       const nodes = workspaceContext.searchKnowledgeNodes ?? [];
@@ -226,7 +278,7 @@ function simulateExploratoryTool(
       return JSON.stringify({ dataSourceViews, nodes }, null, 2);
     }
     default:
-      return `Unknown exploratory tool: ${toolName}`;
+      assertNever(toolName);
   }
 }
 
@@ -337,7 +389,7 @@ export async function executeReinforced(
   return executeMultiStep(
     llm,
     params,
-    testCase.workspaceContext,
+    buildEffectiveWorkspaceContext(testCase),
     testCase.scenarioId
   );
 }
@@ -371,9 +423,9 @@ export async function executeBatch(
 ): Promise<Map<string, ExecutionResult>> {
   const llm = await getLLMInstance(auth);
 
-  const testCaseById = new Map<string, CategorizedTestCase>();
+  const effectiveContextById = new Map<string, WorkspaceContext>();
   for (const tc of testCases) {
-    testCaseById.set(tc.scenarioId, tc);
+    effectiveContextById.set(tc.scenarioId, buildEffectiveWorkspaceContext(tc));
   }
 
   // Build initial params for all test cases.
@@ -423,13 +475,13 @@ export async function executeBatch(
           );
         }
         // Simulate tool responses and prepare continuation params.
-        const tc = testCaseById.get(scenarioId)!;
+        const effectiveContext = effectiveContextById.get(scenarioId)!;
         const toolResultsMap: Record<string, string> = {};
         for (const toolCall of exploratoryToolCalls) {
           toolResultsMap[toolCall.id] = simulateExploratoryTool(
             toolCall.name,
             toolCall.arguments,
-            tc.workspaceContext
+            effectiveContext
           );
         }
         if (VERBOSE) {

@@ -46,6 +46,7 @@ Propose configuration changes only when <analysis_workflow> yields concrete evid
         : "Use this to discover tools you could suggest adding or to verify that suggested tools exist."
     }
 - describe_mcp: ALWAYS call this before suggesting instruction changes that reference specific tool names or workflows for a given MCP — you need to know the exact tool names and their inputs to write accurate instructions.
+- describe_skill: Use this to get the full details (instructions, tools, description) of a skill referenced in the conversation or inlined in another skill's instructions. Call this when you see a <skill> tag with an ID attribute and need to understand what the skill does before suggesting changes.
 - search_knowledge: ALWAYS call this before embedding any <knowledge> tag in an instruction edit — the tag requires node attributes (id, space, dsv, hasChildren) that must come from this tool. Use this whenever the conversation shows the agent navigating or retrieving specific data nodes that the skill instructions should directly reference. See <knowledge_nodes> for more details.
 `,
 

@@ -2,11 +2,13 @@ import type { ToolCallEvent } from "@app/lib/api/llm/types/events";
 import { z } from "zod";
 
 export const DESCRIBE_MCP_TOOL_NAME = "describe_mcp" as const;
+export const DESCRIBE_SKILL_TOOL_NAME = "describe_skill" as const;
 
 export type ExploratoryToolName =
   | "get_available_tools"
   | "search_knowledge"
-  | typeof DESCRIBE_MCP_TOOL_NAME;
+  | typeof DESCRIBE_MCP_TOOL_NAME
+  | typeof DESCRIBE_SKILL_TOOL_NAME;
 
 export type TerminalToolName = "edit_skill" | "reject_suggestion";
 
@@ -19,6 +21,7 @@ export const EXPLORATORY_TOOLS: ExploratoryToolName[] = [
   "get_available_tools",
   "search_knowledge",
   DESCRIBE_MCP_TOOL_NAME,
+  DESCRIBE_SKILL_TOOL_NAME,
 ];
 
 export const ALL_TOOLS = [...TERMINAL_TOOLS, ...EXPLORATORY_TOOLS];

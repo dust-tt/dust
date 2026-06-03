@@ -15,6 +15,7 @@ import {
 import {
   ALL_TOOLS,
   DESCRIBE_MCP_TOOL_NAME,
+  DESCRIBE_SKILL_TOOL_NAME,
   type ExploratoryToolCallInfo,
   getEditSkillToolSchema,
   getReinforcedSkillsMetadata,
@@ -63,6 +64,13 @@ function buildReinforcedSkillsToolDefinitions({
         "Get detailed information about a specific MCP server: its description, and each tool's name, description, and input parameters. Use this to understand what a tool can do before suggesting instruction changes that reference it.",
       schema: z.object({
         mcpId: z.string().describe("The sId of the MCP server to describe"),
+      }),
+    },
+    [DESCRIBE_SKILL_TOOL_NAME]: {
+      description:
+        "Get detailed information about a skill referenced in the conversation or in another skill's instructions. Returns the skill's name, description, instructions, and configured tools.",
+      schema: z.object({
+        skillId: z.string().describe("The sId of the skill to describe"),
       }),
     },
     search_knowledge: {
