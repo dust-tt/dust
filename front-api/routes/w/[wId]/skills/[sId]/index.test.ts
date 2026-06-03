@@ -410,6 +410,25 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
       }),
     ]);
 
+    const omittedResponse = await patchSkill(
+      workspace,
+      skill.sId,
+      buildBody(instructionsWithReference)
+    );
+    expect(omittedResponse.status).toBe(200);
+    const skillAfterOmittedReferences = await SkillResource.fetchById(
+      requestUserAuth,
+      skill.sId
+    );
+    expect(skillAfterOmittedReferences).not.toBeNull();
+    await expect(
+      skillAfterOmittedReferences!.fetchChildSkills(requestUserAuth)
+    ).resolves.toEqual([
+      expect.objectContaining({
+        sId: childSkill.sId,
+      }),
+    ]);
+
     const removeResponse = await patchSkill(
       workspace,
       skill.sId,
