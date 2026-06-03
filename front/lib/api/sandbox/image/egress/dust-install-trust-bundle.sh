@@ -35,6 +35,11 @@ if ! /usr/bin/openssl x509 -in "$CA_PATH" -out "$normalized_ca_tmp" -outform PEM
   exit 1
 fi
 
+# Snapshot the untouched system bundle once, before we ever fold in the dsbx
+# CA, so repeated installs (the health-probe repair path re-runs this) rebuild
+# deterministically from pristine roots instead of compounding. This lives on
+# the per-image rootfs, so it can't outlive the image version it was taken
+# from: a base-image bump ships a fresh rootfs with no stale .orig to reuse.
 if [ ! -s "$PRISTINE_SYSTEM_BUNDLE" ]; then
   /usr/bin/install -o root -g root -m 644 "$SYSTEM_CA_BUNDLE" "$PRISTINE_SYSTEM_BUNDLE"
 fi
@@ -64,6 +69,10 @@ system_tmp="$(/usr/bin/mktemp "${SYSTEM_CA_CERTS_DIR}/.ca-certificates.crt.XXXXX
 /usr/bin/chmod 644 "$system_tmp"
 /usr/bin/mv "$system_tmp" "$SYSTEM_CA_BUNDLE"
 
+# Replicate what c_rehash does for our one cert: openssl resolves trusted CAs
+# in SYSTEM_CA_CERTS_DIR via <subject_hash>.N symlinks. Find the first free
+# slot so we never clobber a system cert that happens to share the hash, and
+# no-op if a prior run already linked our cert (keeps re-runs idempotent).
 ca_hash="$(/usr/bin/openssl x509 -hash -noout -in "$normalized_ca_tmp")"
 slot=0
 while [ -e "${SYSTEM_CA_CERTS_DIR}/${ca_hash}.${slot}" ]; do

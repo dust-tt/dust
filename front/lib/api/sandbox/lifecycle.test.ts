@@ -65,6 +65,9 @@ function createDeferred<T>() {
     resolvePromise = resolve;
   });
 
+  // The Promise executor runs synchronously, so resolvePromise is always
+  // assigned by here. This guard is a type-narrowing crutch (avoids a `!`), not
+  // a reachable error path.
   if (!resolvePromise) {
     throw new Error("Deferred promise resolver was not initialized.");
   }

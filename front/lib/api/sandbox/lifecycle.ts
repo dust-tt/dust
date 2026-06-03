@@ -72,9 +72,13 @@ export async function ensureSandboxReady(
       // running token server will hand it to gcsfuse on the next request).
       if (freshlyCreated) {
         // The image seeds /etc/dust/ca-bundle.pem with system roots, and
-        // gcsfuse runs as root to storage.googleapis.com, which bypasses the
-        // uid-1003 nftables proxy rules. Egress prep can therefore overlap with
-        // the GCS mount while still keeping egress errors first.
+        // gcsfuse runs as root to storage.googleapis.com, which the in-sandbox
+        // nftables ruleset never touches: every rule is scoped to the agent uid
+        // (1003) and the chains default to accept, so root egress is never
+        // dropped, even mid-setup. The dev-unrestricted branch only tears the
+        // table down (loosening egress further), so it's safe to overlap too.
+        // Egress prep can therefore run alongside the GCS mount, with egress
+        // errors still taking precedence.
         const [prepResult, mountResult] = await Promise.all([
           traceSandboxStartupPhase("egress_prep", () =>
             prepareSandboxEgressBeforeMount(auth, sandbox)
