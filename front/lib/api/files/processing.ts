@@ -200,13 +200,13 @@ const resizeAndWriteToProcessed = async (
     );
   }
 
-  const writeStream = file.getWriteStream({
-    auth,
-    version: "processed",
-  });
-
   try {
     const stream = await createReadableFromUrl(result.file.url);
+
+    const writeStream = file.getWriteStream({
+      auth,
+      version: "processed",
+    });
 
     await pipeline(stream, writeStream);
     return new Ok(undefined);
@@ -669,11 +669,7 @@ export async function processAndStoreFile(
         file.getWriteStream({ auth, version: "original" })
       );
     } else {
-      const r = await parseUploadRequest(
-        file,
-        content.value,
-        file.getWriteStream({ auth, version: "original" })
-      );
+      const r = await parseUploadRequest(auth, file, content.value);
       if (r.isErr()) {
         await file.markAsFailed();
         return r;
