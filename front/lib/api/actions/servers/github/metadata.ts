@@ -171,6 +171,142 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
       done: "Comment on GitHub issue",
     },
   },
+  list_discussion_categories: {
+    description:
+      "List the discussion categories available in a GitHub repository. Use this to get the category ID required when creating a discussion.",
+    schema: {
+      owner: z
+        .string()
+        .describe(
+          "The owner of the repository (account or organization name)."
+        ),
+      repo: z.string().describe("The name of the repository."),
+      perPage: z
+        .number()
+        .min(1)
+        .max(25)
+        .optional()
+        .describe("Results per page. Defaults to 25, max 25."),
+      after: z.string().optional().describe("The cursor to start after."),
+      before: z.string().optional().describe("The cursor to start before."),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing GitHub discussion categories",
+      done: "List GitHub discussion categories",
+    },
+  },
+  create_discussion: {
+    description: "Create a new discussion in a GitHub repository.",
+    schema: {
+      owner: z
+        .string()
+        .describe(
+          "The owner of the repository (account or organization name)."
+        ),
+      repo: z.string().describe("The name of the repository."),
+      categoryId: z
+        .string()
+        .describe(
+          "The node ID of the GitHub discussion category. Use list_discussion_categories to get it."
+        ),
+      title: z.string().describe("The title of the discussion."),
+      body: z
+        .string()
+        .describe("The contents of the discussion (GitHub markdown)."),
+    },
+    stake: "low",
+    displayLabels: {
+      running: "Creating GitHub discussion",
+      done: "Create GitHub discussion",
+    },
+  },
+  comment_on_discussion: {
+    description:
+      "Add a comment to an existing GitHub discussion. Optionally reply to an existing discussion comment.",
+    schema: {
+      owner: z
+        .string()
+        .describe(
+          "The owner of the repository (account or organization name)."
+        ),
+      repo: z.string().describe("The name of the repository."),
+      discussionNumber: z.number().describe("The discussion number."),
+      body: z
+        .string()
+        .describe("The contents of the comment (GitHub markdown)."),
+      replyToId: z
+        .string()
+        .optional()
+        .describe(
+          "Optional node ID of the discussion comment to reply to. Omit to create a top-level comment."
+        ),
+    },
+    stake: "low",
+    displayLabels: {
+      running: "Commenting on GitHub discussion",
+      done: "Comment on GitHub discussion",
+    },
+  },
+  get_discussion: {
+    description:
+      "Retrieve a discussion from a specified GitHub repository including its description, category, comments, and replies.",
+    schema: {
+      owner: z
+        .string()
+        .describe(
+          "The owner of the repository (account or organization name)."
+        ),
+      repo: z.string().describe("The name of the repository."),
+      discussionNumber: z.number().describe("The discussion number."),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving GitHub discussion",
+      done: "Retrieve GitHub discussion",
+    },
+  },
+  list_discussions: {
+    description:
+      "List discussions from a specified GitHub repository with optional filtering.",
+    schema: {
+      owner: z
+        .string()
+        .describe(
+          "The owner of the repository (account or organization name)."
+        ),
+      repo: z.string().describe("The name of the repository."),
+      categoryId: z
+        .string()
+        .optional()
+        .describe("Filter discussions by category node ID."),
+      answered: z
+        .boolean()
+        .optional()
+        .describe("Filter discussions by whether they are answered."),
+      sort: z
+        .enum(["CREATED_AT", "UPDATED_AT"])
+        .optional()
+        .describe("What to sort results by. Defaults to UPDATED_AT."),
+      direction: z
+        .enum(["ASC", "DESC"])
+        .optional()
+        .describe("The direction of the sort. Defaults to DESC."),
+      perPage: z
+        .number()
+        .min(1)
+        .max(100)
+        .optional()
+        .describe("Results per page. Defaults to 50, max 100."),
+      after: z.string().optional().describe("The cursor to start after."),
+      before: z.string().optional().describe("The cursor to start before."),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing GitHub discussions",
+      done: "List GitHub discussions",
+    },
+  },
   get_issue: {
     description:
       "Retrieve an issue from a specified GitHub repository including its description, comments, and labels.",
@@ -329,7 +465,7 @@ export const GITHUB_SERVER = {
   serverInfo: {
     name: "github",
     version: "1.0.0",
-    description: "Manage issues and pull requests.",
+    description: "Manage issues, pull requests, and discussions.",
     authorization: {
       provider: "github",
       supported_use_cases: ["platform_actions", "personal_actions"],

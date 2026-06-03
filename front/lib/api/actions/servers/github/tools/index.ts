@@ -637,6 +637,601 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
       }
     },
 
+    list_discussion_categories: async (
+      { owner, repo, perPage = 25, after, before },
+      { authInfo }
+    ) => {
+      const octokit = await createOctokit(auth, {
+        accessToken: authInfo?.token,
+      });
+
+      try {
+        const query = `
+          query($owner: String!, $repo: String!, $first: Int!, $after: String, $before: String) {
+            repository(owner: $owner, name: $repo) {
+              discussionCategories(first: $first, after: $after, before: $before) {
+                totalCount
+                pageInfo {
+                  hasNextPage
+                  endCursor
+                  startCursor
+                  hasPreviousPage
+                }
+                nodes {
+                  id
+                  name
+                  slug
+                  description
+                  emoji
+                  isAnswerable
+                }
+              }
+            }
+          }`;
+
+        const categoriesResult = (await octokit.graphql(query, {
+          owner,
+          repo,
+          first: perPage,
+          after,
+          before,
+        })) as {
+          repository: {
+            discussionCategories: {
+              totalCount: number;
+              pageInfo: {
+                hasNextPage: boolean;
+                endCursor: string | null;
+                startCursor: string | null;
+                hasPreviousPage: boolean;
+              };
+              nodes: {
+                id: string;
+                name: string;
+                slug: string;
+                description: string | null;
+                emoji: string;
+                isAnswerable: boolean;
+              }[];
+            };
+          };
+        };
+
+        const categories =
+          categoriesResult.repository.discussionCategories.nodes;
+
+        return new Ok([
+          {
+            type: "text" as const,
+            text: `Retrieved ${categories.length} GitHub discussion categories`,
+          },
+          {
+            type: "text" as const,
+            text: JSON.stringify(
+              {
+                totalCount:
+                  categoriesResult.repository.discussionCategories.totalCount,
+                categories,
+                pageInfo:
+                  categoriesResult.repository.discussionCategories.pageInfo,
+              },
+              null,
+              2
+            ),
+          },
+        ]);
+      } catch (e) {
+        return new Err(
+          new MCPError(
+            `Error listing GitHub discussion categories: ${normalizeError(e).message}`
+          )
+        );
+      }
+    },
+
+    create_discussion: async (
+      { owner, repo, categoryId, title, body },
+      { authInfo }
+    ) => {
+      const octokit = await createOctokit(auth, {
+        accessToken: authInfo?.token,
+      });
+
+      try {
+        const repositoryQuery = `
+          query($owner: String!, $repo: String!) {
+            repository(owner: $owner, name: $repo) {
+              id
+            }
+          }`;
+
+        const repositoryResult = (await octokit.graphql(repositoryQuery, {
+          owner,
+          repo,
+        })) as {
+          repository: {
+            id: string;
+          };
+        };
+
+        const createDiscussionMutation = `
+          mutation($repositoryId: ID!, $categoryId: ID!, $title: String!, $body: String!) {
+            createDiscussion(input: {
+              repositoryId: $repositoryId,
+              categoryId: $categoryId,
+              title: $title,
+              body: $body
+            }) {
+              discussion {
+                id
+                number
+                title
+                url
+              }
+            }
+          }`;
+
+        const discussionResult = (await octokit.graphql(
+          createDiscussionMutation,
+          {
+            repositoryId: repositoryResult.repository.id,
+            categoryId,
+            title,
+            body,
+          }
+        )) as {
+          createDiscussion: {
+            discussion: {
+              id: string;
+              number: number;
+              title: string;
+              url: string;
+            };
+          };
+        };
+
+        const discussion = discussionResult.createDiscussion.discussion;
+
+        return new Ok([
+          {
+            type: "text" as const,
+            text: `Discussion created: #${discussion.number}`,
+          },
+          {
+            type: "text" as const,
+            text: JSON.stringify(discussion, null, 2),
+          },
+        ]);
+      } catch (e) {
+        return new Err(
+          new MCPError(
+            `Error creating GitHub discussion: ${normalizeError(e).message}`
+          )
+        );
+      }
+    },
+
+    comment_on_discussion: async (
+      { owner, repo, discussionNumber, body, replyToId },
+      { authInfo }
+    ) => {
+      const octokit = await createOctokit(auth, {
+        accessToken: authInfo?.token,
+      });
+
+      try {
+        const discussionQuery = `
+          query($owner: String!, $repo: String!, $discussionNumber: Int!) {
+            repository(owner: $owner, name: $repo) {
+              discussion(number: $discussionNumber) {
+                id
+              }
+            }
+          }`;
+
+        const discussionResult = (await octokit.graphql(discussionQuery, {
+          owner,
+          repo,
+          discussionNumber,
+        })) as {
+          repository: {
+            discussion: {
+              id: string;
+            } | null;
+          };
+        };
+
+        const discussion = discussionResult.repository.discussion;
+        if (!discussion) {
+          return new Err(
+            new MCPError(
+              `Discussion #${discussionNumber} not found in ${owner}/${repo}`
+            )
+          );
+        }
+
+        const addCommentMutation = `
+          mutation($discussionId: ID!, $body: String!, $replyToId: ID) {
+            addDiscussionComment(input: {
+              discussionId: $discussionId,
+              body: $body,
+              replyToId: $replyToId
+            }) {
+              comment {
+                id
+                url
+              }
+            }
+          }`;
+
+        const commentResult = (await octokit.graphql(addCommentMutation, {
+          discussionId: discussion.id,
+          body,
+          replyToId,
+        })) as {
+          addDiscussionComment: {
+            comment: {
+              id: string;
+              url: string;
+            };
+          };
+        };
+
+        const comment = commentResult.addDiscussionComment.comment;
+
+        return new Ok([
+          {
+            type: "text" as const,
+            text: `Comment added to discussion #${discussionNumber} with ID ${comment.id}`,
+          },
+          {
+            type: "text" as const,
+            text: JSON.stringify(comment, null, 2),
+          },
+        ]);
+      } catch (e) {
+        return new Err(
+          new MCPError(
+            `Error commenting on GitHub discussion: ${normalizeError(e).message}`
+          )
+        );
+      }
+    },
+
+    get_discussion: async ({ owner, repo, discussionNumber }, { authInfo }) => {
+      const octokit = await createOctokit(auth, {
+        accessToken: authInfo?.token,
+      });
+
+      try {
+        const query = `
+          query($owner: String!, $repo: String!, $discussionNumber: Int!) {
+            repository(owner: $owner, name: $repo) {
+              discussion(number: $discussionNumber) {
+                id
+                number
+                title
+                body
+                bodyText
+                url
+                createdAt
+                updatedAt
+                isAnswered
+                author {
+                  login
+                }
+                category {
+                  id
+                  name
+                  slug
+                  description
+                  emoji
+                  isAnswerable
+                }
+                comments(first: 100) {
+                  totalCount
+                  nodes {
+                    id
+                    body
+                    bodyText
+                    isAnswer
+                    createdAt
+                    updatedAt
+                    author {
+                      login
+                    }
+                    replies(first: 25) {
+                      totalCount
+                      nodes {
+                        id
+                        body
+                        bodyText
+                        isAnswer
+                        createdAt
+                        updatedAt
+                        author {
+                          login
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }`;
+
+        const discussionResult = (await octokit.graphql(query, {
+          owner,
+          repo,
+          discussionNumber,
+        })) as {
+          repository: {
+            discussion: {
+              id: string;
+              number: number;
+              title: string;
+              body: string;
+              bodyText: string;
+              url: string;
+              createdAt: string;
+              updatedAt: string;
+              isAnswered: boolean;
+              author: {
+                login: string;
+              } | null;
+              category: {
+                id: string;
+                name: string;
+                slug: string;
+                description: string | null;
+                emoji: string;
+                isAnswerable: boolean;
+              };
+              comments: {
+                totalCount: number;
+                nodes: {
+                  id: string;
+                  body: string;
+                  bodyText: string;
+                  isAnswer: boolean;
+                  createdAt: string;
+                  updatedAt: string;
+                  author: {
+                    login: string;
+                  } | null;
+                  replies: {
+                    totalCount: number;
+                    nodes: {
+                      id: string;
+                      body: string;
+                      bodyText: string;
+                      isAnswer: boolean;
+                      createdAt: string;
+                      updatedAt: string;
+                      author: {
+                        login: string;
+                      } | null;
+                    }[];
+                  };
+                }[];
+              };
+            } | null;
+          };
+        };
+
+        const discussion = discussionResult.repository.discussion;
+        if (!discussion) {
+          return new Err(
+            new MCPError(
+              `Discussion #${discussionNumber} not found in ${owner}/${repo}`
+            )
+          );
+        }
+
+        const formattedDiscussion = {
+          id: discussion.id,
+          number: discussion.number,
+          title: discussion.title,
+          body: discussion.body,
+          bodyText: discussion.bodyText,
+          url: discussion.url,
+          createdAt: discussion.createdAt,
+          updatedAt: discussion.updatedAt,
+          isAnswered: discussion.isAnswered,
+          author: discussion.author?.login || "unknown",
+          category: discussion.category,
+          commentCount: discussion.comments.totalCount,
+          comments: discussion.comments.nodes.map((comment) => ({
+            id: comment.id,
+            author: comment.author?.login || "unknown",
+            body: comment.body,
+            bodyText: comment.bodyText,
+            isAnswer: comment.isAnswer,
+            createdAt: comment.createdAt,
+            updatedAt: comment.updatedAt,
+            replyCount: comment.replies.totalCount,
+            replies: comment.replies.nodes.map((reply) => ({
+              id: reply.id,
+              author: reply.author?.login || "unknown",
+              body: reply.body,
+              bodyText: reply.bodyText,
+              isAnswer: reply.isAnswer,
+              createdAt: reply.createdAt,
+              updatedAt: reply.updatedAt,
+            })),
+          })),
+        };
+
+        return new Ok([
+          {
+            type: "text" as const,
+            text: `Retrieved discussion #${discussionNumber}`,
+          },
+          {
+            type: "text" as const,
+            text: JSON.stringify(formattedDiscussion, null, 2),
+          },
+        ]);
+      } catch (e) {
+        return new Err(
+          new MCPError(
+            `Error retrieving GitHub discussion: ${normalizeError(e).message}`
+          )
+        );
+      }
+    },
+
+    list_discussions: async (
+      {
+        owner,
+        repo,
+        categoryId,
+        answered,
+        sort = "UPDATED_AT",
+        direction = "DESC",
+        perPage = 50,
+        after,
+        before,
+      },
+      { authInfo }
+    ) => {
+      const octokit = await createOctokit(auth, {
+        accessToken: authInfo?.token,
+      });
+
+      try {
+        const query = `
+          query($owner: String!, $repo: String!, $first: Int!, $orderBy: DiscussionOrder, $categoryId: ID, $answered: Boolean, $after: String, $before: String) {
+            repository(owner: $owner, name: $repo) {
+              discussions(first: $first, orderBy: $orderBy, categoryId: $categoryId, answered: $answered, after: $after, before: $before) {
+                totalCount
+                pageInfo {
+                  hasNextPage
+                  endCursor
+                  startCursor
+                  hasPreviousPage
+                }
+                nodes {
+                  id
+                  number
+                  title
+                  bodyText
+                  url
+                  createdAt
+                  updatedAt
+                  isAnswered
+                  author {
+                    login
+                  }
+                  category {
+                    id
+                    name
+                    slug
+                    description
+                    emoji
+                    isAnswerable
+                  }
+                  comments {
+                    totalCount
+                  }
+                }
+              }
+            }
+          }`;
+
+        const discussionsResult = (await octokit.graphql(query, {
+          owner,
+          repo,
+          first: perPage,
+          orderBy: {
+            field: sort,
+            direction,
+          },
+          categoryId,
+          answered,
+          after,
+          before,
+        })) as {
+          repository: {
+            discussions: {
+              totalCount: number;
+              pageInfo: {
+                hasNextPage: boolean;
+                endCursor: string | null;
+                startCursor: string | null;
+                hasPreviousPage: boolean;
+              };
+              nodes: {
+                id: string;
+                number: number;
+                title: string;
+                bodyText: string;
+                url: string;
+                createdAt: string;
+                updatedAt: string;
+                isAnswered: boolean;
+                author: {
+                  login: string;
+                } | null;
+                category: {
+                  id: string;
+                  name: string;
+                  slug: string;
+                  description: string | null;
+                  emoji: string;
+                  isAnswerable: boolean;
+                };
+                comments: {
+                  totalCount: number;
+                };
+              }[];
+            };
+          };
+        };
+
+        const discussions = discussionsResult.repository.discussions.nodes.map(
+          (discussion) => ({
+            id: discussion.id,
+            number: discussion.number,
+            title: discussion.title,
+            bodyText: discussion.bodyText,
+            url: discussion.url,
+            createdAt: discussion.createdAt,
+            updatedAt: discussion.updatedAt,
+            isAnswered: discussion.isAnswered,
+            author: discussion.author?.login || "unknown",
+            category: discussion.category,
+            commentCount: discussion.comments.totalCount,
+          })
+        );
+
+        return new Ok([
+          {
+            type: "text" as const,
+            text: `Retrieved ${discussions.length} discussions`,
+          },
+          {
+            type: "text" as const,
+            text: JSON.stringify(
+              {
+                totalCount: discussionsResult.repository.discussions.totalCount,
+                discussions,
+                pageInfo: discussionsResult.repository.discussions.pageInfo,
+              },
+              null,
+              2
+            ),
+          },
+        ]);
+      } catch (e) {
+        return new Err(
+          new MCPError(
+            `Error listing GitHub discussions: ${normalizeError(e).message}`
+          )
+        );
+      }
+    },
+
     get_issue: async ({ owner, repo, issueNumber }, { authInfo }) => {
       const octokit = await createOctokit(auth, {
         accessToken: authInfo?.token,
