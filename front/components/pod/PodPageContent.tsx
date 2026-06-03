@@ -125,7 +125,7 @@ export function PodPageContent({
         },
         spaceId: podInfo.sId,
         // Navigate as soon as the conversation exists; the first message is posted
-        // from ConversationViewer on mount.
+        // in the background by useCreateConversationWithMessage.
         deferMessage: true,
       });
 

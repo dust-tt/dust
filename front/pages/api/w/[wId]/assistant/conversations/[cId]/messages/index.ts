@@ -96,6 +96,10 @@
  *                     type: array
  *                     items:
  *                       type: string
+ *                   selectedMCPServerViewIds:
+ *                     type: array
+ *                     items:
+ *                       type: string
  *               skipToolsValidation:
  *                 type: boolean
  *     responses:
@@ -128,6 +132,8 @@ import { fetchConversationMessages } from "@app/lib/api/assistant/messages";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getPaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { extractUniqueSkillIds } from "@app/lib/skills/format";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -309,6 +315,33 @@ async function handler(
       }
 
       const conversation = conversationRes.value;
+
+      if (context.selectedMCPServerViewIds?.length) {
+        const mcpServerViews = await MCPServerViewResource.fetchByIds(
+          auth,
+          context.selectedMCPServerViewIds
+        );
+
+        const upsertRes = await ConversationResource.upsertMCPServerViews(
+          auth,
+          {
+            conversation,
+            mcpServerViews,
+            enabled: true,
+            source: "conversation",
+            agentConfigurationId: null,
+          }
+        );
+        if (upsertRes.isErr()) {
+          return apiError(req, res, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: "Failed to add MCP server views to conversation",
+            },
+          });
+        }
+      }
 
       const selectedSkillIds = extractUniqueSkillIds(content);
       if (selectedSkillIds.length > 0) {

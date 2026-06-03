@@ -69,10 +69,10 @@ export function useCreateConversationWithMessage({
       spaceId?: string | null;
       metadata?: ConversationMetadata;
       skipToolsValidation?: boolean;
-      // When true (and no conversation-level tools are selected), create the
-      // conversation without the initial message and stash the message so that
-      // `ConversationViewer` posts it on mount. This lets the caller navigate to
-      // the conversation page as soon as the `sId` is known.
+      // When true, create the conversation without the initial message and stash
+      // the message so placeholders render immediately. The message (and tools) are
+      // posted in the background so the caller can navigate as soon as the `sId`
+      // is known.
       deferMessage?: boolean;
     }): Promise<Result<ConversationType, SubmitMessageError>> => {
       if (!user) {
@@ -100,9 +100,7 @@ export function useCreateConversationWithMessage({
       // them. Until that's wired through, deferring with tools would silently lose
       // them, so we keep the combined call in that case.
       const canDefer =
-        deferMessage &&
-        hasFeature("deferred_conversation_creation") &&
-        (selectedMCPServerViewIds?.length ?? 0) === 0;
+        deferMessage && hasFeature("deferred_conversation_creation");
 
       if (canDefer) {
         const createBody: z.infer<
@@ -146,6 +144,7 @@ export function useCreateConversationWithMessage({
             mentions,
             contentFragments,
             clientSideMCPServerIds,
+            selectedMCPServerViewIds,
             origin,
             skipToolsValidation,
             profilePictureUrl: user.image,
@@ -248,6 +247,7 @@ async function postFirstMessageInBackground({
   mentions,
   contentFragments,
   clientSideMCPServerIds,
+  selectedMCPServerViewIds,
   origin,
   skipToolsValidation,
   profilePictureUrl,
@@ -258,6 +258,7 @@ async function postFirstMessageInBackground({
   mentions: MentionType[];
   contentFragments: ContentFragmentsType;
   clientSideMCPServerIds?: string[];
+  selectedMCPServerViewIds?: string[];
   origin: ClientMessageOrigin;
   skipToolsValidation: boolean;
   profilePictureUrl: string | null;
@@ -329,6 +330,7 @@ async function postFirstMessageInBackground({
             timezone,
             profilePictureUrl,
             clientSideMCPServerIds,
+            selectedMCPServerViewIds,
             origin,
           },
           mentions,
