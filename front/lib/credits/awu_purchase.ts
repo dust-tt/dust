@@ -50,6 +50,10 @@ export type AwuPurchaseInfo =
       remainingCycleCredits: number;
       currency: SupportedCurrency;
       discountPercent: number;
+      paymentMethod:
+        | { type: "card"; brand: string; last4: string }
+        | { type: "sepa_debit"; last4: string }
+        | null;
     };
 
 export type AwuPurchaseResult = {
@@ -164,6 +168,32 @@ export async function getAwuPurchaseInfo(
 
   const discountPercent = await resolveAwuPurchaseDiscountPercent(auth);
 
+  // Fetch default payment method for display.
+  let paymentMethod:
+    | { type: "card"; brand: string; last4: string }
+    | { type: "sepa_debit"; last4: string }
+    | null = null;
+  try {
+    const customer = await stripe.customers.retrieve(stripeCustomerId, {
+      expand: ["invoice_settings.default_payment_method"],
+    });
+    if (!("deleted" in customer)) {
+      const pm = customer.invoice_settings
+        ?.default_payment_method as Stripe.PaymentMethod | null;
+      if (pm?.type === "card" && pm.card) {
+        paymentMethod = {
+          type: "card",
+          brand: pm.card.brand ?? "unknown",
+          last4: pm.card.last4 ?? "",
+        };
+      } else if (pm?.type === "sepa_debit" && pm.sepa_debit) {
+        paymentMethod = { type: "sepa_debit", last4: pm.sepa_debit.last4 ?? "" };
+      }
+    }
+  } catch {
+    // Non-fatal — display without payment method info.
+  }
+
   const billingCycle = getBillingCycle(subscription.startDate);
   if (!billingCycle) {
     return {
@@ -171,6 +201,7 @@ export async function getAwuPurchaseInfo(
       remainingCycleCredits: MAX_AWU_PURCHASE_CREDITS_PER_CYCLE,
       currency,
       discountPercent,
+      paymentMethod,
     };
   }
 
@@ -195,6 +226,7 @@ export async function getAwuPurchaseInfo(
     ),
     currency,
     discountPercent,
+    paymentMethod,
   };
 }
 

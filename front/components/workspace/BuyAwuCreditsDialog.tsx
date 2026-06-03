@@ -1,3 +1,7 @@
+import {
+  CardBrandIcon,
+  formatBrandName,
+} from "@app/components/checkout/PaymentMethodRow";
 import { useAwuPurchase } from "@app/hooks/useAwuPurchase";
 import config from "@app/lib/api/config";
 import type { AwuPurchaseInfo } from "@app/lib/credits/awu_purchase";
@@ -408,6 +412,37 @@ export function BuyAwuCreditsDialog({
                       if you need more.
                     </p>
                   )}
+
+                  {awuPurchaseInfo?.canPurchase &&
+                    awuPurchaseInfo.paymentMethod && (
+                      <div className="flex flex-col gap-2">
+                        <p className="text-sm font-medium text-foreground dark:text-foreground-night">
+                          Payment method
+                        </p>
+                        <div className="flex w-full items-center justify-between rounded-lg border border-separator bg-muted px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            {awuPurchaseInfo.paymentMethod.type === "card" ? (
+                              <CardBrandIcon
+                                brand={awuPurchaseInfo.paymentMethod.brand}
+                                width={38}
+                                height={24}
+                              />
+                            ) : null}
+                            <span className="text-sm font-medium">
+                              {awuPurchaseInfo.paymentMethod.type === "card"
+                                ? `${formatBrandName(awuPurchaseInfo.paymentMethod.brand)} ${awuPurchaseInfo.paymentMethod.last4}`
+                                : `IBAN •••• ${awuPurchaseInfo.paymentMethod.last4}`}
+                            </span>
+                          </div>
+                          <Button
+                            label="Change"
+                            variant="ghost"
+                            size="sm"
+                            href={`/w/${workspaceId}/subscription/manage`}
+                          />
+                        </div>
+                      </div>
+                    )}
                 </div>
               </TabsContent>
 
