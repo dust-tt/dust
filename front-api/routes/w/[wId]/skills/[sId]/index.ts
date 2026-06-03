@@ -1,6 +1,5 @@
-import { resolveAdditionalRequestedSpaceModelIds } from "@app/lib/api/skills/space_requirements";
+import { updateSkill } from "@app/lib/api/skills/mutations";
 import { getFeatureFlags } from "@app/lib/auth";
-import { pruneOutdatedSkillEditSuggestions } from "@app/lib/reinforcement/skill_suggestion_pruning";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -13,7 +12,6 @@ import type {
   SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 import type { APIErrorResponse } from "@app/types/error";
-import type { ModelId } from "@app/types/shared/model_id";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -183,7 +181,6 @@ app.patch(
   validate("json", PatchSkillRequestBodySchema),
   async (ctx): HandlerResult<PatchSkillResponseBody> => {
     const auth = ctx.get("auth");
-    const owner = auth.getNonNullableWorkspace();
     const { sId } = ctx.req.valid("param");
 
     const loaded = await loadSkill(ctx, sId);
@@ -212,19 +209,6 @@ app.patch(
         api_error: {
           type: "app_auth_error",
           message: "Only editors can modify this skill.",
-        },
-      });
-    }
-
-    // Check for existing active skill with the same name (excluding current skill).
-    const existingSkill = await SkillResource.fetchActiveByName(auth, name);
-
-    if (existingSkill && existingSkill.id !== skill.id) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: `A skill with the name "${name}" already exists.`,
         },
       });
     }
@@ -291,53 +275,6 @@ app.patch(
       })
     );
 
-    const computedRequestedSpaceIds =
-      await SkillResource.computeRequestedSpaceIds(auth, {
-        mcpServerViews,
-        attachedKnowledge: attachedKnowledgeWithDataSourceViews,
-      });
-
-    let additionalRequestedSpaceIds: ModelId[];
-
-    if (body.additionalRequestedSpaceIds !== undefined) {
-      const additionalRequestedSpaceIdsRes =
-        await resolveAdditionalRequestedSpaceModelIds(
-          auth,
-          body.additionalRequestedSpaceIds
-        );
-
-      if (additionalRequestedSpaceIdsRes.isErr()) {
-        return apiError(ctx, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: additionalRequestedSpaceIdsRes.error.message,
-          },
-        });
-      }
-
-      additionalRequestedSpaceIds = additionalRequestedSpaceIdsRes.value;
-    } else {
-      const previousAttachedKnowledge = await skill.getAttachedKnowledge(auth);
-      const previousComputedRequestedSpaceIds =
-        await SkillResource.computeRequestedSpaceIds(auth, {
-          mcpServerViews: skill.mcpServerViews,
-          attachedKnowledge: previousAttachedKnowledge,
-        });
-      const previousComputedRequestedSpaceIdsSet = new Set(
-        previousComputedRequestedSpaceIds
-      );
-
-      additionalRequestedSpaceIds = skill.requestedSpaceIds.filter(
-        (spaceId) => !previousComputedRequestedSpaceIdsSet.has(spaceId)
-      );
-    }
-
-    const requestedSpaceIds = uniq([
-      ...computedRequestedSpaceIds,
-      ...additionalRequestedSpaceIds,
-    ]);
-
     const featureFlags = await getFeatureFlags(auth);
     const enableSkillReferences = featureFlags.includes("nested_skills");
 
@@ -382,20 +319,7 @@ app.patch(
       }
     }
 
-    // When saving a suggested skill, automatically activate it.
-    const shouldActivate = skill.status === "suggested";
-
-    if (shouldActivate) {
-      logger.info(
-        {
-          skillId: skill.sId,
-          workspaceId: owner.sId,
-        },
-        "Suggested skill accepted"
-      );
-    }
-
-    await skill.updateSkill(auth, {
+    const skillResult = await updateSkill(auth, skill, {
       agentFacingDescription: body.agentFacingDescription,
       attachedKnowledge: attachedKnowledgeWithDataSourceViews,
       fileAttachments: files,
@@ -406,16 +330,18 @@ app.patch(
       mcpServerViews,
       name,
       reinforcement: body.reinforcement,
-      requestedSpaceIds,
+      additionalRequestedSpaceIds: body.additionalRequestedSpaceIds,
       enableSkillReferences,
       referencedSkillIds: body.referencedSkillIds,
       userFacingDescription: body.userFacingDescription,
-      ...(shouldActivate ? { status: "active" as const } : {}),
+      activateSuggestedSkill: true,
     });
 
-    await pruneOutdatedSkillEditSuggestions(auth, skill);
+    if (skillResult.isErr()) {
+      return apiError(ctx, skillResult.error);
+    }
 
-    return ctx.json({ skill: skill.toJSON(auth) });
+    return ctx.json({ skill: skillResult.value.toJSON(auth) });
   }
 );
 
