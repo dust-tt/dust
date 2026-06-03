@@ -2507,6 +2507,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return;
     }
 
+    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(
+      auth,
+      transaction
+    );
     const target = new Map<string, SkillReferenceTarget>([
       [
         this.sId,
@@ -2530,6 +2534,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     // Each update carries distinct instructions content so it cannot be
     // batched. Bounded by the number of skills referencing this one.
     for (const referencingSkill of referencingSkills) {
+      const parentRequestedSpaceIds = uniq([
+        ...referencingSkill.requestedSpaceIds,
+        globalSpace.id,
+      ]);
       const renamedInstructions = renameSkillReferencesInContent(
         referencingSkill.instructions,
         { skillId: this.sId, newName: name }
@@ -2544,14 +2552,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       const instructions = SkillResource.replaceSkillReferenceTags(
         renamedInstructions,
         target,
-        referencingSkill.requestedSpaceIds
+        parentRequestedSpaceIds
       );
       const instructionsHtml =
         renamedInstructionsHtml !== null
           ? SkillResource.replaceSkillReferenceTags(
               renamedInstructionsHtml,
               target,
-              referencingSkill.requestedSpaceIds,
+              parentRequestedSpaceIds,
               { html: true }
             )
           : null;
@@ -3435,17 +3443,26 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       )
     );
 
+    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(
+      auth,
+      transaction
+    );
+    const parentRequestedSpaceIds = uniq([
+      ...this.requestedSpaceIds,
+      globalSpace.id,
+    ]);
+
     const instructions = SkillResource.replaceSkillReferenceTags(
       this.instructions,
       targets,
-      this.requestedSpaceIds
+      parentRequestedSpaceIds
     );
     const instructionsHtml =
       this.instructionsHtml !== null
         ? SkillResource.replaceSkillReferenceTags(
             this.instructionsHtml,
             targets,
-            this.requestedSpaceIds,
+            parentRequestedSpaceIds,
             { html: true }
           )
         : null;
