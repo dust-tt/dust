@@ -259,7 +259,12 @@ export async function emitMetronomeUsageEventsActivity(
     ],
   });
 
-  const userId = userMessageRow?.userMessage?.user?.sId ?? null;
+  // Prefer the user associated with the UserMessage row; fall back to the
+  // user on the authenticator (covers doNotAssociateUser messages like
+  // pod_manager sub-conversations where the DB row has no user but the auth
+  // still carries the original session user).
+  const userId =
+    userMessageRow?.userMessage?.user?.sId ?? auth.user()?.sId ?? null;
 
   // Sub-agent messages have agenticMessageType set (e.g. "run_agent", "agent_handover").
   // agenticOriginMessageId is the sId of the parent agent message that spawned this one.
