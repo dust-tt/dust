@@ -3,7 +3,10 @@ import { makeColumnsForMembers } from "@app/components/poke/members/columns";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
-import { MEMBERSHIP_ROLE_TYPES } from "@app/types/memberships";
+import {
+  MEMBERSHIP_ORIGIN_TYPES,
+  MEMBERSHIP_ROLE_TYPES,
+} from "@app/types/memberships";
 import type {
   RoleType,
   UserTypeWithWorkspaces,
@@ -112,6 +115,14 @@ export function MembersDataTable({
           })}
           data={prepareMembersForDisplay(members)}
           facets={[
+            {
+              columnId: "origin",
+              title: "Origin",
+              options: MEMBERSHIP_ORIGIN_TYPES.map((o) => ({
+                label: o,
+                value: o,
+              })),
+            },
             {
               columnId: "role",
               title: "Role",
