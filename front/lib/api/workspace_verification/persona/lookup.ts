@@ -33,13 +33,13 @@ const PersonaReportResponseSchema = z.object({
     id: z.string(),
     attributes: z.object({
       status: z.string(),
-      "phone-number": z.string().optional(),
-      "phone-type": z.string().optional(),
-      "phone-carrier": z.string().nullable().optional(),
-      "phone-risk-level": z.string().optional(),
-      "phone-risk-score": z.number().optional(),
-      "phone-risk-recommendation": z.string().optional(),
-      "phone-risk-sim-swap": z.string().nullable().optional(),
+      "phone-number": z.string().nullish(),
+      "phone-type": z.string().nullish(),
+      "phone-carrier": z.string().nullish(),
+      "phone-risk-level": z.string().nullish(),
+      "phone-risk-score": z.number().nullish(),
+      "phone-risk-recommendation": z.string().nullish(),
+      "phone-risk-sim-swap": z.string().nullish(),
     }),
   }),
 });
@@ -257,6 +257,19 @@ export async function lookupPhoneNumber(
 
     const report = fetchResult.value;
     const attrs = report.data.attributes;
+
+    // "ready" is a terminal status. If the risk fields are still null at that
+    // point, Persona has finished and has no data on this number (typically a
+    // fake/invalid number). Reject now rather than polling out and returning a
+    // misleading "try again".
+    if (attrs.status === "ready" && !isCompletedReport(attrs)) {
+      return new Err(
+        new PhoneLookupError(
+          "invalid_phone_number",
+          "This phone number could not be verified."
+        )
+      );
+    }
 
     if (!isCompletedReport(attrs)) {
       continue;
