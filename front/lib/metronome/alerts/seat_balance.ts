@@ -25,7 +25,7 @@ const SEAT_LOW_BALANCE_REMAINING_RATIO = 0.2;
 const SEAT_ALERT_CONCURRENCY = 5;
 
 function seatExhaustedAlertUniquenessKey(workspaceId: string): string {
-  return `seat-balance-${workspaceId}`;
+  return `seat-exhausted-balance-${workspaceId}`;
 }
 
 function seatLowBalanceAlertUniquenessKeyPrefix(workspaceId: string): string {
@@ -114,16 +114,14 @@ export async function syncMetronomeSeatLowBalanceAlerts({
   contractId: string;
   workspaceId: string;
 }): Promise<Result<void, Error>> {
-  let seatDataByUserId: Map<string, { awuAllocation: number }>;
-  try {
-    seatDataByUserId = await buildSeatDataByUserId({
-      metronomeCustomerId,
-      contractId,
-      throwOnError: true,
-    });
-  } catch (err) {
-    return new Err(normalizeError(err));
+  const seatDataResult = await buildSeatDataByUserId({
+    metronomeCustomerId,
+    contractId,
+  });
+  if (seatDataResult.isErr()) {
+    return new Err(seatDataResult.error);
   }
+  const seatDataByUserId = seatDataResult.value;
 
   const existingResult = await listSeatLowBalanceAlertUserIds({
     metronomeCustomerId,
