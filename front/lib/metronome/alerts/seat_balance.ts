@@ -134,7 +134,11 @@ export async function syncMetronomeSeatLowBalanceAlerts({
   }
   const staleUserIds = new Set(existingResult.value);
 
-  const upserts: Array<{ userId: string; thresholdAwu: number }> = [];
+  const upserts: Array<{
+    userId: string;
+    thresholdAwu: number;
+    awuAllocation: number;
+  }> = [];
   for (const [userId, { awuAllocation }] of seatDataByUserId) {
     staleUserIds.delete(userId);
     const thresholdAwu = Math.ceil(
@@ -143,15 +147,15 @@ export async function syncMetronomeSeatLowBalanceAlerts({
     if (thresholdAwu <= 0) {
       continue;
     }
-    upserts.push({ userId, thresholdAwu });
+    upserts.push({ userId, thresholdAwu, awuAllocation });
   }
 
   const results = await concurrentExecutor(
     upserts,
-    ({ userId, thresholdAwu }) =>
+    ({ userId, thresholdAwu, awuAllocation }) =>
       upsertMetronomeAlert({
         alert_type: "low_remaining_seat_balance_reached",
-        name: `Seat low balance ${workspaceId}-${userId} (${thresholdAwu} AWU)`,
+        name: `Seat low balance ${workspaceId}-${userId} (${thresholdAwu} AWU  / ${Math.round(SEAT_LOW_BALANCE_REMAINING_RATIO * 100)}% of ${awuAllocation} )`,
         threshold: thresholdAwu,
         credit_type_id: getCreditTypeAwuId(),
         customer_id: metronomeCustomerId,
