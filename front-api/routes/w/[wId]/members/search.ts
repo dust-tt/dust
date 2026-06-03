@@ -68,7 +68,7 @@ app.get(
       query
     );
 
-    // biome-ignore lint/plugin/noDirectRoleCheck: conditional response — non-admins get a light response, not a 403
+    // biome-ignore lint/plugin/noDirectRoleCheck: non-admins get a response with sensitive fields (email, provider, lastLoginAt etc) stripped away
     if (auth.isAdmin()) {
       return ctx.json({ members, total });
     }
