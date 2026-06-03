@@ -20,6 +20,7 @@ import type { ModelId } from "@app/types/shared/model_id";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { Client, ScheduleHandle } from "@temporalio/client";
+import { WorkflowNotFoundError } from "@temporalio/client";
 import chunk from "lodash/chunk";
 import { QueryTypes } from "sequelize";
 
@@ -155,13 +156,13 @@ async function listRunningWorkflowIds(
 // ones that truly are not running. This runs only for the (normally tiny) set
 // of candidate-missing workflows, so the number of `describe()` calls stays
 // bounded and the batched visibility query remains the fast path.
-async function confirmRunningWorkflowIds(
+async function confirmMissingWorkflowIds(
   client: Client,
   workflowIds: string[],
   logger: Logger,
   heartbeat: () => void
 ) {
-  const runningWorkflowIds = new Set<string>();
+  const missingWorkflowIds = new Set<string>();
 
   // External Temporal calls (not DB queries), so concurrentExecutor is the
   // right fit here.
@@ -174,21 +175,32 @@ async function confirmRunningWorkflowIds(
         const description = await client.workflow
           .getHandle(workflowId)
           .describe();
-        if (description.status.name === "RUNNING") {
-          runningWorkflowIds.add(workflowId);
+        if (description.status.name !== "RUNNING") {
+          missingWorkflowIds.add(workflowId);
         }
       } catch (err) {
-        // `describe()` throws when the workflow does not exist; treat as missing.
-        logger.info(
+        // `describe()` throws `WorkflowNotFoundError` when the workflow does
+        // not exist — that is a genuine missing workflow. Any other error
+        // (transient RPC failure, auth/namespace issue, timeout) is a Temporal
+        // API problem: treating it as missing would reintroduce the very false
+        // positive this confirmation step is meant to avoid, so rethrow and let
+        // the check fail loudly instead.
+        if (err instanceof WorkflowNotFoundError) {
+          missingWorkflowIds.add(workflowId);
+          return;
+        }
+
+        logger.error(
           { workflowId, err: normalizeError(err) },
-          "Workflow not found while confirming missing Temporal workflow."
+          "Failed to confirm Temporal workflow status via describe()."
         );
+        throw err;
       }
     },
     { concurrency: 8 }
   );
 
-  return runningWorkflowIds;
+  return missingWorkflowIds;
 }
 
 async function getMissingTemporalSchedulesActive(
@@ -262,7 +274,7 @@ export const checkActiveWorkflows: CheckFunction = async (
         const candidateMissingWorkflowIds = workflowIds.filter(
           (workflowId) => !runningWorkflowIds.has(workflowId)
         );
-        const confirmedRunningWorkflowIds = await confirmRunningWorkflowIds(
+        const confirmedMissingWorkflowIds = await confirmMissingWorkflowIds(
           client,
           candidateMissingWorkflowIds,
           logger,
@@ -271,10 +283,8 @@ export const checkActiveWorkflows: CheckFunction = async (
 
         missingActiveWorkflows = removeNulls(
           workflowIdsByConnector.map(({ connector, workflowIds }) => {
-            const missingEntities = workflowIds.filter(
-              (workflowId) =>
-                !runningWorkflowIds.has(workflowId) &&
-                !confirmedRunningWorkflowIds.has(workflowId)
+            const missingEntities = workflowIds.filter((workflowId) =>
+              confirmedMissingWorkflowIds.has(workflowId)
             );
 
             return missingEntities.length > 0
