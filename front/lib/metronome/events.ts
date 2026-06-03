@@ -12,7 +12,7 @@ import {
   USAGE_TYPE_PROGRAMMATIC,
   USAGE_TYPE_USER,
 } from "./constants";
-import type { MetronomeEvent } from "./types";
+import type { MetronomeEvent, UsageType } from "./types";
 
 const MAX_TRANSACTION_ID_LENGTH = 128;
 const MAX_PROPERTY_VALUE_BYTES = 128;
@@ -166,11 +166,6 @@ export function getToolCategory(
 // ---------------------------------------------------------------------------
 // Usage type helpers
 // ---------------------------------------------------------------------------
-
-export type UsageType =
-  | typeof USAGE_TYPE_USER
-  | typeof USAGE_TYPE_PROGRAMMATIC
-  | typeof USAGE_TYPE_FREE;
 
 // Origins whose entire conversation is free (platform-assistive, not
 // user-requested output).
