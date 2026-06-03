@@ -2132,9 +2132,15 @@ export type GetOrPatchAgentConfigurationResponseType = z.infer<
   typeof GetOrPatchAgentConfigurationResponseSchema
 >;
 
-export const PatchAgentConfigurationRequestSchema = z.object({
-  userFavorite: z.boolean().optional(),
-});
+// Passthrough is required: beyond `userFavorite`, the endpoint accepts agent configuration
+// patch fields (`instructions`, `agent`, `generation_settings`, `tags`, `editors`, `skills`,
+// `toolset`, ...) which are validated server-side by `agentYAMLConfigPatchSchema`. Stripping
+// unknown keys here would silently drop them (see dust-tt/dust#26698).
+export const PatchAgentConfigurationRequestSchema = z
+  .object({
+    userFavorite: z.boolean().optional(),
+  })
+  .passthrough();
 
 export type PatchAgentConfigurationRequestType = z.infer<
   typeof PatchAgentConfigurationRequestSchema
