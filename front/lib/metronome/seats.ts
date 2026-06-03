@@ -828,17 +828,15 @@ export type SeatData = {
  * a map of userId → { awuAllocation, billingFrequency }. Makes a single
  * contract fetch and one seat-ID fetch per subscription.
  *
- * Returns an empty map on any error so callers degrade gracefully.
+ * Returns an Err on any contract or seat-ID fetch failure.
  */
 export async function buildSeatDataByUserId({
   metronomeCustomerId,
   contractId,
-  throwOnError = false,
 }: {
   metronomeCustomerId: string;
   contractId: string;
-  throwOnError?: boolean;
-}): Promise<Map<string, SeatData>> {
+}): Promise<Result<Map<string, SeatData>, Error>> {
   const contractResult = await getMetronomeContractById({
     metronomeCustomerId,
     metronomeContractId: contractId,
@@ -848,10 +846,7 @@ export async function buildSeatDataByUserId({
       { error: contractResult.error, metronomeCustomerId, contractId },
       "[Metronome] Failed to fetch contract"
     );
-    if (throwOnError) {
-      throw contractResult.error;
-    }
-    return new Map();
+    return new Err(contractResult.error);
   }
 
   const contract = contractResult.value;
@@ -862,11 +857,11 @@ export async function buildSeatDataByUserId({
     subscriptions,
     async (sub) => {
       if (sub.quantity_management_mode !== "SEAT_BASED" || !sub.id) {
-        return null;
+        return new Ok(null);
       }
       const seatType = getSeatTypeForSubscription(sub, productSeatTypes);
       if (!seatType) {
-        return null;
+        return new Ok(null);
       }
       const awuAllocation = getAwuAllocationForSeatType(
         contract,
@@ -874,7 +869,7 @@ export async function buildSeatDataByUserId({
         productSeatTypes
       );
       if (awuAllocation === 0) {
-        return null;
+        return new Ok(null);
       }
 
       const seatIdsResult = await getMetronomeSubscriptionAssignedSeatIds({
@@ -893,35 +888,36 @@ export async function buildSeatDataByUserId({
           },
           "[Metronome] Failed to fetch seat IDs"
         );
-        if (throwOnError) {
-          throw seatIdsResult.error;
-        }
-        return null;
+        return new Err(seatIdsResult.error);
       }
 
       const freq = sub.subscription_rate.billing_frequency;
-      return {
+      return new Ok({
         seatIds: seatIdsResult.value,
         awuAllocation,
         billingFrequency: freq === "MONTHLY" || freq === "ANNUAL" ? freq : null,
-      };
+      });
     },
     { concurrency: 10 }
   );
 
   const seatDataByUserId = new Map<string, SeatData>();
   for (const result of results) {
-    if (result) {
-      for (const seatId of result.seatIds) {
+    if (result.isErr()) {
+      return new Err(result.error);
+    }
+    const subSeatData = result.value;
+    if (subSeatData) {
+      for (const seatId of subSeatData.seatIds) {
         seatDataByUserId.set(seatId, {
-          awuAllocation: result.awuAllocation,
-          billingFrequency: result.billingFrequency,
+          awuAllocation: subSeatData.awuAllocation,
+          billingFrequency: subSeatData.billingFrequency,
         });
       }
     }
   }
 
-  return seatDataByUserId;
+  return new Ok(seatDataByUserId);
 }
 
 const SEAT_DATA_CACHE_TTL_MS = 60 * 1000;
@@ -938,12 +934,12 @@ async function fetchSeatDataRecord(args: {
   metronomeCustomerId: string;
   contractId: string;
 }): Promise<Record<string, SeatData>> {
-  return Object.fromEntries(
-    await buildSeatDataByUserId({
-      ...args,
-      throwOnError: true,
-    })
-  );
+  const seatDataResult = await buildSeatDataByUserId(args);
+  // Throw at the cache boundary so a transient fetch failure is not cached.
+  if (seatDataResult.isErr()) {
+    throw seatDataResult.error;
+  }
+  return Object.fromEntries(seatDataResult.value);
 }
 
 export const getCachedSeatDataByUserId = cacheWithRedis(

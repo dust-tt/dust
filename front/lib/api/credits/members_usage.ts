@@ -137,10 +137,18 @@ async function fetchSeatDataForMembersTableUncached({
   metronomeCustomerId: string;
   metronomeContractId: string;
 }): Promise<Map<string, SeatData>> {
-  return buildSeatDataByUserId({
+  const seatDataResult = await buildSeatDataByUserId({
     metronomeCustomerId,
     contractId: metronomeContractId,
   });
+  if (seatDataResult.isErr()) {
+    logger.warn(
+      { err: seatDataResult.error, metronomeCustomerId },
+      "[MembersUsage] Failed to build seat data, degrading to empty map"
+    );
+    return new Map();
+  }
+  return seatDataResult.value;
 }
 
 async function fetchSeatDataForMembersTable({
