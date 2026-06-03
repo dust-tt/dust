@@ -1,6 +1,7 @@
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import type { DustFileSystemError } from "@app/lib/api/file_system/types";
 import {
+  deleteCanonicalFile,
   moveCanonicalFile,
   renameCanonicalFile,
   streamThumbnail,
@@ -291,13 +292,14 @@ app.delete(
   "/:canonicalPath{.+}",
   validate("param", ParamsSchema),
   async (ctx) => {
+    const auth = ctx.get("auth");
     const { canonicalPath } = ctx.req.valid("param");
     const { fs: dustFs, err } = await resolveFs(ctx, canonicalPath);
     if (err) {
       return err;
     }
 
-    const deleteResult = await dustFs.delete(canonicalPath);
+    const deleteResult = await deleteCanonicalFile(auth, dustFs, canonicalPath);
     if (deleteResult.isErr()) {
       return apiError(ctx, mapDustFsError(deleteResult.error));
     }

@@ -22,6 +22,7 @@ function makeBucket(
     createReadStream: ReturnType<typeof vi.fn>;
     copyFile: ReturnType<typeof vi.fn>;
     delete: ReturnType<typeof vi.fn>;
+    fileDelete: ReturnType<typeof vi.fn>;
     getAllFilesByPrefix: ReturnType<typeof vi.fn>;
   }> = {}
 ) {
@@ -31,6 +32,8 @@ function makeBucket(
     vi.fn().mockResolvedValue([{ contentType: "text/plain", size: "42" }]);
   const createReadStream =
     overrides.createReadStream ?? vi.fn().mockReturnValue(makeReadStream());
+  const fileDelete =
+    overrides.fileDelete ?? vi.fn().mockResolvedValue(undefined);
 
   return {
     file: vi.fn((filePath: string) => ({
@@ -41,6 +44,7 @@ function makeBucket(
         ]),
       getMetadata,
       createReadStream,
+      delete: fileDelete,
     })),
     copyFile: overrides.copyFile ?? vi.fn().mockResolvedValue(undefined),
     delete: overrides.delete ?? vi.fn().mockResolvedValue(undefined),
@@ -381,6 +385,31 @@ describe("DELETE /api/w/:wId/files/path/:canonicalPath", () => {
 
     expect(response.status).toBe(204);
     expect(bucket.delete).toHaveBeenCalledOnce();
+  });
+
+  it("deletes the linked FileResource when one exists", async () => {
+    const { workspace, auth, conversation } = await setup();
+
+    const bucket = makeBucket();
+    vi.mocked(getPrivateUploadBucket).mockReturnValue(bucket as any);
+
+    const file = await FileFactory.create(auth, auth.getNonNullableUser(), {
+      contentType: "text/plain",
+      fileName: "linked.txt",
+      fileSize: 42,
+      status: "ready",
+      useCase: "tool_output",
+    });
+    await file.setUseCaseMetadata(auth, { conversationId: conversation.sId });
+
+    const response = await request(
+      workspace,
+      `conversation-${conversation.sId}/linked.txt`,
+      { method: "DELETE" }
+    );
+
+    expect(response.status).toBe(204);
+    await expect(FileResource.fetchById(auth, file.sId)).resolves.toBeNull();
   });
 
   it("returns 404 when file does not exist", async () => {

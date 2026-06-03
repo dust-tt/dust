@@ -5,6 +5,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import type { DustFileSystemError } from "@app/lib/api/file_system/types";
 import {
+  deleteCanonicalFile,
   moveCanonicalFile,
   renameCanonicalFile,
   streamThumbnail,
@@ -246,7 +247,11 @@ async function handler(
     }
 
     case "DELETE": {
-      const deleteResult = await dustFs.delete(canonicalPath);
+      const deleteResult = await deleteCanonicalFile(
+        auth,
+        dustFs,
+        canonicalPath
+      );
       if (deleteResult.isErr()) {
         return apiError(req, res, mapDustFsError(deleteResult.error));
       }
