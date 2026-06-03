@@ -133,7 +133,7 @@ describe("isUserBlocked", () => {
     });
     mockFetchUserById.mockResolvedValue({ sId: "u_test", id: 7 });
     mockGetActiveMembershipOfUserInWorkspace.mockResolvedValue({
-      creditState: "normal",
+      creditState: "on_pool",
     });
 
     const blocked = await isUserBlocked("ws_test", "u_test");
