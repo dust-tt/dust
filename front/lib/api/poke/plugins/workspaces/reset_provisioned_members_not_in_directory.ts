@@ -25,6 +25,9 @@ async function getDirectoryUserEmails(
       DirectoryUserWithGroups<DefaultCustomAttributes>
     > = await workOS.directorySync.listUsers({
       directory: directoryId,
+      // By default WorkOS returns 10 users per page; bump to the max of 100 to
+      // avoid hammering the rate-limited listUsers endpoint on large directories.
+      limit: 100,
       ...(after && { after }),
     });
     response.data.forEach((user) => {
