@@ -25,6 +25,7 @@ import pokeApp from "./routes/poke";
 import shareApp from "./routes/share";
 import sseApp from "./routes/sse";
 import stripeApp from "./routes/stripe";
+import subtle1App from "./routes/subtle1";
 import tApp from "./routes/t";
 import templatesApp from "./routes/templates";
 import userApp from "./routes/user";
@@ -84,4 +85,7 @@ export const honoApp = createHono();
 honoApp.use("*", requestLogger);
 honoApp.use("*", cors);
 honoApp.route("/api", apiApp);
+// PostHog reverse proxy lives at the domain root (not under /api), matching
+// the `/subtle1` rewrites in front/next.config.js.
+honoApp.route("/subtle1", subtle1App);
 honoApp.onError(unhandledErrorHandler);
