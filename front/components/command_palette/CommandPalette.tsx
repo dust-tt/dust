@@ -2,8 +2,12 @@ import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetail
 import type { CommandPaletteAction } from "@app/components/command_palette/CommandPaletteActionPhase";
 import { CommandPaletteActionPhase } from "@app/components/command_palette/CommandPaletteActionPhase";
 import { useCommandPalette } from "@app/components/command_palette/CommandPaletteContext";
-import type { CommandPaletteItem } from "@app/components/command_palette/CommandPaletteSearchPhase";
+import type {
+  CommandPaletteEntry,
+  CommandPaletteItem,
+} from "@app/components/command_palette/CommandPaletteSearchPhase";
 import { CommandPaletteSearchPhase } from "@app/components/command_palette/CommandPaletteSearchPhase";
+import { getDefaultPaletteActions } from "@app/components/command_palette/defaultActions";
 import { SkillDetailsSheetById } from "@app/components/command_palette/SkillDetailsSheetById";
 import { useAppRouter } from "@app/lib/platform";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
@@ -15,6 +19,7 @@ import {
   getSkillBuilderRoute,
 } from "@app/lib/utils/router";
 import { compareAgentsForSort } from "@app/types/assistant/assistant";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { Dialog, DialogContent } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -25,7 +30,7 @@ interface CommandPaletteProps {
 }
 
 export function CommandPalette({ owner, user }: CommandPaletteProps) {
-  const { isOpen, close } = useCommandPalette();
+  const { isOpen, close, actions: registeredActions } = useCommandPalette();
   const router = useAppRouter();
 
   // Dialog state.
@@ -80,6 +85,24 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
   // proper list virtualization (@tanstack/react-virtual).
   const MAX_DISPLAYED_AGENTS = 25;
   const MAX_DISPLAYED_SKILLS = 15;
+
+  const allActions = useMemo(
+    () => [
+      ...getDefaultPaletteActions({ owner, router }),
+      ...registeredActions,
+    ],
+    [owner, router, registeredActions]
+  );
+
+  const filteredActions = useMemo(() => {
+    if (!debouncedQuery) {
+      return allActions;
+    }
+    const lowerQuery = debouncedQuery.toLowerCase();
+    return allActions.filter((a) =>
+      subFilter(lowerQuery, a.label.toLowerCase())
+    );
+  }, [allActions, debouncedQuery]);
 
   const allFilteredAgents = useMemo(
     () =>
@@ -148,16 +171,30 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
   );
 
   const handleItemSelect = useCallback(
-    (item: CommandPaletteItem) => {
-      // Skills without write access have only one action (view details).
-      if (item.kind === "skill" && !item.skill.canWrite) {
-        executeAction(item, "view_details");
-      } else {
-        setSelectedItem(item);
-        setPhase("action");
+    (entry: CommandPaletteEntry) => {
+      switch (entry.kind) {
+        case "action":
+          close();
+          entry.action.onSelect();
+          return;
+        case "skill":
+          // Without write access, the only action is viewing details.
+          if (!entry.skill.canWrite) {
+            executeAction(entry, "view_details");
+          } else {
+            setSelectedItem(entry);
+            setPhase("action");
+          }
+          return;
+        case "agent":
+          setSelectedItem(entry);
+          setPhase("action");
+          return;
+        default:
+          assertNeverAndIgnore(entry);
       }
     },
-    [executeAction]
+    [close, executeAction]
   );
 
   const handleBack = useCallback(() => {
@@ -191,6 +228,7 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
             <CommandPaletteSearchPhase
               searchQuery={searchQuery}
               onSearchQueryChange={setSearchQuery}
+              actions={filteredActions}
               agents={filteredAgents}
               skills={filteredSkills}
               hasMoreAgents={hasMoreAgents}

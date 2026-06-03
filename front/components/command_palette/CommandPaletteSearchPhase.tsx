@@ -1,3 +1,4 @@
+import type { PaletteActionConfig } from "@app/components/command_palette/CommandPaletteContext";
 import {
   ItemEmptyState,
   ItemRow,
@@ -7,16 +8,22 @@ import {
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
-import { Avatar, SearchInput } from "@dust-tt/sparkle";
+import { Avatar, Icon, SearchInput } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef } from "react";
 
 export type CommandPaletteItem =
   | { kind: "agent"; agent: LightAgentConfigurationType }
   | { kind: "skill"; skill: SkillWithoutInstructionsAndToolsType };
 
+// Actions run immediately on select; agents and skills go through the action phase.
+export type CommandPaletteEntry =
+  | CommandPaletteItem
+  | { kind: "action"; action: PaletteActionConfig };
+
 interface CommandPaletteSearchPhaseProps {
   searchQuery: string;
   onSearchQueryChange: (query: string) => void;
+  actions: PaletteActionConfig[];
   agents: LightAgentConfigurationType[];
   skills: SkillWithoutInstructionsAndToolsType[];
   hasMoreAgents: boolean;
@@ -24,23 +31,28 @@ interface CommandPaletteSearchPhaseProps {
   isLoading: boolean;
   selectedIndex: number;
   onSelectedIndexChange: (index: number) => void;
-  onItemSelect: (item: CommandPaletteItem) => void;
+  onItemSelect: (entry: CommandPaletteEntry) => void;
   onClose: () => void;
 }
 
 function getFlatItems(
+  actions: PaletteActionConfig[],
   agents: LightAgentConfigurationType[],
   skills: SkillWithoutInstructionsAndToolsType[]
-): CommandPaletteItem[] {
+): CommandPaletteEntry[] {
   return [
-    ...agents.map((agent): CommandPaletteItem => ({ kind: "agent", agent })),
-    ...skills.map((skill): CommandPaletteItem => ({ kind: "skill", skill })),
+    ...actions.map(
+      (action): CommandPaletteEntry => ({ kind: "action", action })
+    ),
+    ...agents.map((agent): CommandPaletteEntry => ({ kind: "agent", agent })),
+    ...skills.map((skill): CommandPaletteEntry => ({ kind: "skill", skill })),
   ];
 }
 
 export function CommandPaletteSearchPhase({
   searchQuery,
   onSearchQueryChange,
+  actions,
   agents,
   skills,
   hasMoreAgents,
@@ -52,8 +64,8 @@ export function CommandPaletteSearchPhase({
   onClose,
 }: CommandPaletteSearchPhaseProps) {
   const flatItems = useMemo(
-    () => getFlatItems(agents, skills),
-    [agents, skills]
+    () => getFlatItems(actions, agents, skills),
+    [actions, agents, skills]
   );
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -73,10 +85,10 @@ export function CommandPaletteSearchPhase({
   }, [selectedIndex]);
 
   // Reset selection when the number of results changes (e.g., after typing).
-  // biome-ignore lint/correctness/useExhaustiveDependencies: agents.length and skills.length are intentional triggers
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the result counts are intentional triggers
   useEffect(() => {
     onSelectedIndexChange(0);
-  }, [agents.length, skills.length, onSelectedIndexChange]);
+  }, [actions.length, agents.length, skills.length, onSelectedIndexChange]);
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     const totalItems = flatItems.length;
@@ -113,7 +125,7 @@ export function CommandPaletteSearchPhase({
         <SearchInput
           ref={searchInputRef}
           name="command-palette-search"
-          placeholder="Search agents and skills…"
+          placeholder="Search actions, agents and skills…"
           value={searchQuery}
           onChange={onSearchQueryChange}
           onKeyDown={handleKeyDown}
@@ -137,35 +149,69 @@ export function CommandPaletteSearchPhase({
         {!isLoading && flatItems.length === 0 && searchQuery.length > 0 && (
           <ItemEmptyState>No results found.</ItemEmptyState>
         )}
-        {!isLoading && flatItems.length === 0 && searchQuery.length === 0 && (
-          <ItemEmptyState>Type to search agents and skills.</ItemEmptyState>
+
+        {actions.length > 0 && (
+          <div>
+            <ItemTitle>Actions</ItemTitle>
+            {actions.map((action, i) => (
+              <ItemRow
+                key={action.id}
+                ref={(el) => {
+                  itemRefs.current[i] = el;
+                }}
+                isSelected={selectedIndex === i}
+                onClick={() => onItemSelect({ kind: "action", action })}
+                onMouseEnter={() => onSelectedIndexChange(i)}
+              >
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center">
+                  <Icon visual={action.icon} size="sm" />
+                </div>
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <span className="shrink-0 font-medium">{action.label}</span>
+                  {action.description && (
+                    <>
+                      <span className="shrink-0 text-muted-foreground dark:text-muted-foreground-night">
+                        -
+                      </span>
+                      <span className="min-w-0 truncate text-muted-foreground dark:text-muted-foreground-night">
+                        {action.description}
+                      </span>
+                    </>
+                  )}
+                </div>
+              </ItemRow>
+            ))}
+          </div>
         )}
 
         {agents.length > 0 && (
           <div>
             <ItemTitle>Agents</ItemTitle>
-            {agents.map((agent, i) => (
-              <ItemRow
-                key={agent.sId}
-                ref={(el) => {
-                  itemRefs.current[i] = el;
-                }}
-                isSelected={selectedIndex === i}
-                onClick={() => onItemSelect({ kind: "agent", agent })}
-                onMouseEnter={() => onSelectedIndexChange(i)}
-              >
-                <Avatar visual={agent.pictureUrl} size="xs" />
-                <div className="flex min-w-0 items-center gap-1.5">
-                  <span className="shrink-0 font-medium">@{agent.name}</span>
-                  <span className="shrink-0 text-muted-foreground dark:text-muted-foreground-night">
-                    -
-                  </span>
-                  <span className="min-w-0 truncate text-muted-foreground dark:text-muted-foreground-night">
-                    {agent.description}
-                  </span>
-                </div>
-              </ItemRow>
-            ))}
+            {agents.map((agent, i) => {
+              const globalIndex = actions.length + i;
+              return (
+                <ItemRow
+                  key={agent.sId}
+                  ref={(el) => {
+                    itemRefs.current[globalIndex] = el;
+                  }}
+                  isSelected={selectedIndex === globalIndex}
+                  onClick={() => onItemSelect({ kind: "agent", agent })}
+                  onMouseEnter={() => onSelectedIndexChange(globalIndex)}
+                >
+                  <Avatar visual={agent.pictureUrl} size="xs" />
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <span className="shrink-0 font-medium">@{agent.name}</span>
+                    <span className="shrink-0 text-muted-foreground dark:text-muted-foreground-night">
+                      -
+                    </span>
+                    <span className="min-w-0 truncate text-muted-foreground dark:text-muted-foreground-night">
+                      {agent.description}
+                    </span>
+                  </div>
+                </ItemRow>
+              );
+            })}
             {hasMoreAgents && (
               <div className="px-3 py-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
                 More agents available. Type to filter.
@@ -178,7 +224,7 @@ export function CommandPaletteSearchPhase({
           <div>
             <ItemTitle>Skills</ItemTitle>
             {skills.map((skill, i) => {
-              const globalIndex = agents.length + i;
+              const globalIndex = actions.length + agents.length + i;
               const SkillAvatar = getSkillAvatarIcon(skill.icon);
               return (
                 <ItemRow
