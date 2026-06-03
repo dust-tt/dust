@@ -30,9 +30,9 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   Edit04V2,
-  EyeSlashIcon,
-  LinkIcon,
-  StarIcon,
+  EyeOffV2,
+  Link01V2,
+  Star01V2,
   XCloseV2,
 } from "@dust-tt/sparkle";
 import type React from "react";
@@ -253,7 +253,7 @@ export function PodMenu({
           <DropdownMenuLabel label="My settings" />
           <DropdownMenuItem
             label={isStarred ? "Remove from starred" : "Add to starred"}
-            icon={StarIcon}
+            icon={Star01V2}
             onClick={() => void starPod(!isStarred)}
           />
           {canLeave && (
@@ -309,7 +309,7 @@ export function PodMenu({
             <DropdownMenuItem
               label="Archive"
               onClick={archivePod}
-              icon={EyeSlashIcon}
+              icon={EyeOffV2}
               variant="warning"
             />
           )}
@@ -320,7 +320,7 @@ export function PodMenu({
               <DropdownMenuItem
                 label="Copy link"
                 onClick={copyPodLink}
-                icon={LinkIcon}
+                icon={Link01V2}
               />
             </>
           )}

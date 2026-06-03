@@ -5,14 +5,10 @@ import { AVATAR_SIZES } from "@sparkle/components/Avatar";
 import {
   ActionBeerIcon,
   ActionFlagIcon,
-  ActionMagnifyingGlassIcon,
-  ActionScanIcon,
   ActionShirtIcon,
-  ActionTableIcon,
   ActionUmbrellaIcon,
 } from "@sparkle/icons/actions";
 import SvgHome from "@sparkle/icons/actions/Home";
-import { StarStrokeIcon } from "@sparkle/icons/app";
 
 import {
   Avatar,
@@ -21,11 +17,17 @@ import {
   SlackLogo,
 } from "../index_with_tw_base";
 import { Image01V2, SidekickV2 } from "@sparkle/icons/v2-stroke";
+import {
+  ScanV2,
+  SearchMdV2,
+  Star01V2,
+  TableV2,
+} from "@sparkle/icons/v2-stroke";
 
 const ICONS = {
   none: null,
   ActionBeerIcon: ActionBeerIcon,
-  StarStrokeIcon: StarStrokeIcon,
+  Star01V2: Star01V2,
 } as const;
 
 const meta = {
@@ -201,7 +203,7 @@ export const AvatarExample: Story = {
         <Avatar size="lg" icon={ActionFlagIcon} />
         <Avatar size="lg" icon={SlackLogo} hexBgColor="#421D51" />
         <Avatar size="xl" icon={ActionShirtIcon} />
-        <Avatar size="2xl" icon={StarStrokeIcon} />
+        <Avatar size="2xl" icon={Star01V2} />
       </div>
       <div className="heading-2xl">Tools example</div>
       <div>Remote MCP Servers</div>
@@ -211,19 +213,19 @@ export const AvatarExample: Story = {
         <Avatar size="md" icon={ActionUmbrellaIcon} />
         <Avatar size="md" icon={ActionFlagIcon} />
         <Avatar size="md" icon={ActionShirtIcon} />
-        <Avatar size="md" icon={StarStrokeIcon} />
+        <Avatar size="md" icon={Star01V2} />
       </div>
       <div>Internal Tools Servers</div>
       <div className="s-flex s-gap-4">
         <Avatar
           size="md"
-          icon={ActionTableIcon}
+          icon={TableV2}
           backgroundColor="s-bg-gray-700"
           iconColor="s-text-gray-50"
         />
         <Avatar
           size="md"
-          icon={ActionMagnifyingGlassIcon}
+          icon={SearchMdV2}
           backgroundColor="s-bg-gray-700"
           iconColor="s-text-gray-50"
         />
@@ -235,7 +237,7 @@ export const AvatarExample: Story = {
         />
         <Avatar
           size="md"
-          icon={ActionScanIcon}
+          icon={ScanV2}
           backgroundColor="s-bg-gray-700"
           iconColor="s-text-gray-50"
         />

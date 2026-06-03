@@ -14,7 +14,7 @@ import {
   DropdownMenuTagList,
   DropdownMenuTrigger,
   Spinner,
-  TagIcon,
+  Tag01V2,
   XCloseV2,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -80,7 +80,7 @@ export const AgentEditBar = ({
               size="xs"
               variant="outline"
               isSelect
-              icon={TagIcon}
+              icon={Tag01V2}
               label="Tag selection"
               disabled={selectedAgents.length === 0 || isLoading}
             />

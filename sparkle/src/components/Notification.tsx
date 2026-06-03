@@ -1,5 +1,5 @@
-import { BellIcon } from "@sparkle/icons/app";
 import {
+  Bell01V2,
   CheckCircleV2,
   InfoCircleV2,
   XCircleV2,
@@ -63,7 +63,7 @@ export function NotificationContent({
       case "info":
         return InfoCircleV2;
       case "hello":
-        return BellIcon;
+        return Bell01V2;
       default:
         assertNever(type);
     }

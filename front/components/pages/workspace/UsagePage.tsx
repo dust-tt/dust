@@ -29,7 +29,6 @@ import { isCreditPricedPlan } from "@app/types/plan";
 import { isAdmin } from "@app/types/user";
 import {
   ActionCreditCoinsIcon,
-  ActionPieChartIcon,
   AlertCircleV2,
   ArrowUpV2,
   Button,
@@ -40,6 +39,7 @@ import {
   DropdownMenuTrigger,
   Icon,
   Page,
+  PieChart01V2,
   SearchInput,
   Spinner,
   Tooltip,
@@ -208,7 +208,7 @@ export function UsagePage() {
       <div className="flex flex-col items-stretch gap-10 pb-20">
         <Page.Vertical gap="xs">
           <Icon
-            visual={ActionPieChartIcon}
+            visual={PieChart01V2}
             className="text-muted-foreground dark:text-muted-foreground-night"
             size="lg"
           />

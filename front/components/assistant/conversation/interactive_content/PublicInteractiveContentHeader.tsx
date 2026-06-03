@@ -5,8 +5,8 @@ import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { UserTypeWithWorkspaces } from "@app/types/user";
 import {
   Button,
-  ChatBubbleBottomCenterTextIcon,
   cn,
+  MessageCircle01V2,
   Rocket02V2,
   SpaceClosedIcon,
 } from "@dust-tt/sparkle";
@@ -69,7 +69,7 @@ export function PublicInteractiveContentHeader({
               label="Go to conversation"
               href={conversationUrl}
               variant="outline"
-              icon={ChatBubbleBottomCenterTextIcon}
+              icon={MessageCircle01V2}
               className="hidden sm:flex"
             />
           )}

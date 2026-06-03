@@ -1,7 +1,7 @@
 import {
   AtomIcon,
   Avatar,
-  BoltOffIcon,
+  ZapOffV2,
   BookOpen01V2,
   Button,
   Card,
@@ -27,7 +27,7 @@ import {
   InboxIcon,
   Lightbulb04V2,
   ListSelectIcon,
-  LogoutIcon,
+  LogOut01V2,
   SearchMdV2,
   DotsHorizontalV2,
   NavigationList,
@@ -47,7 +47,7 @@ import {
   SlackLogo,
   SpaceClosedIcon,
   SpaceOpenIcon,
-  StarStrokeIcon,
+  Star01V2,
   Trash01V2,
   User01V2,
 } from "@dust-tt/sparkle";
@@ -745,7 +745,7 @@ function DustMain() {
             <DropdownMenuSeparator />
             <DropdownMenuItem
               label="Signout"
-              icon={LogoutIcon}
+              icon={LogOut01V2}
               onClick={(e: MouseEvent) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -1186,7 +1186,7 @@ function DustMain() {
                             />
                             <DropdownMenuItem
                               label="Remove from favorites"
-                              icon={StarStrokeIcon}
+                              icon={Star01V2}
                               onClick={(e: MouseEvent) => {
                                 e.preventDefault();
                                 e.stopPropagation();
@@ -1310,7 +1310,7 @@ function DustMain() {
                       <DropdownMenuLabel label="Conversations" />
                       <DropdownMenuItem
                         label="Hide triggered"
-                        icon={BoltOffIcon}
+                        icon={ZapOffV2}
                         onClick={(e: MouseEvent) => {
                           e.preventDefault();
                           e.stopPropagation();

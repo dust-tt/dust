@@ -17,7 +17,7 @@ import type { TemplateActionPreset } from "@app/types/assistant/templates";
 import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
 import {
   ActionIncludeIcon,
-  ActionScanIcon,
+  ScanV2,
   SearchMdV2,
   TableV2,
 } from "@dust-tt/sparkle";
@@ -88,7 +88,7 @@ export const CAPABILITY_CONFIGS: Record<string, CapabilityConfig> = {
     },
   },
   [EXTRACT_DATA_SERVER.serverInfo.name]: {
-    icon: ActionScanIcon,
+    icon: ScanV2,
     configPageTitle: "Configure Extract Data",
     configPageDescription:
       "Set extraction parameters and describe what data to extract.",

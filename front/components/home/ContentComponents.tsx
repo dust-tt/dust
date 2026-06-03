@@ -2,9 +2,9 @@ import { cn } from "@app/components/poke/shadcn/lib/utils";
 import { classNames } from "@app/lib/utils";
 import {
   CircleV2,
-  HexagonIcon,
+  Hexagon01V2,
   Icon,
-  LinkIcon,
+  Link01V2,
   PlanetIcon,
   RectangleIcon,
   RobotV2,
@@ -132,7 +132,7 @@ const shapeClasses = {
   square: SquareV2,
   circle: CircleV2,
   triangle: TriangleV2,
-  hexagon: HexagonIcon,
+  hexagon: Hexagon01V2,
   rectangle: RectangleIcon,
 };
 
@@ -311,7 +311,7 @@ export function TeamFeatureSection() {
           </P>
         </div>
         <div className="flex flex-1 flex-col rounded-2xl bg-golden-50 p-6">
-          <Icon visual={LinkIcon} className="mb-4 h-8 w-8 text-golden-400" />
+          <Icon visual={Link01V2} className="mb-4 h-8 w-8 text-golden-400" />
           <h4 className="text-lg font-semibold">
             Context-aware infrastructure
           </h4>

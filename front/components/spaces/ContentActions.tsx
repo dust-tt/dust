@@ -23,12 +23,12 @@ import {
 } from "@app/types/sheets";
 import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
-import type { MenuItem } from "@dust-tt/sparkle";
 import {
-  DocumentPileIcon,
   Edit04V2,
   EyeV2,
+  File04V2,
   LinkExternal01V2,
+  type MenuItem,
   Trash01V2,
 } from "@dust-tt/sparkle";
 import capitalize from "lodash/capitalize";
@@ -283,7 +283,7 @@ export const getMenuItems = (
     actions.push({
       kind: "item",
       label: "Copy DataSource ID",
-      icon: DocumentPileIcon,
+      icon: File04V2,
       onClick: (e: ReactMouseEvent) => {
         e.stopPropagation();
         void navigator.clipboard.writeText(dataSourceView.dataSource.sId);

@@ -49,8 +49,7 @@ import type { WorkspaceType } from "@app/types/user";
 import {
   ActionPushpinIcon,
   Button,
-  CloudArrowLeftRightIcon,
-  CloudArrowUpIcon,
+  CloudArrowLeftRightV2,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -64,6 +63,7 @@ import {
   EmptyCTA,
   FolderV2,
   Tooltip,
+  UploadCloud02V2,
 } from "@dust-tt/sparkle";
 import type React from "react";
 import {
@@ -105,7 +105,7 @@ function AttachKnowledgeDropdown({
       </DropdownMenuTrigger>
       <DropdownMenuContent>
         <DropdownMenuItem
-          icon={CloudArrowLeftRightIcon}
+          icon={CloudArrowLeftRightV2}
           label="From Company Data"
           onClick={onShowCompanyDataClick}
         />
@@ -115,7 +115,7 @@ function AttachKnowledgeDropdown({
           onClick={onCreateFolderClick}
         />
         <DropdownMenuItem
-          icon={CloudArrowUpIcon}
+          icon={UploadCloud02V2}
           label="Upload file"
           onClick={onUploadFileClick}
         />

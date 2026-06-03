@@ -4,7 +4,7 @@ import type { MembershipInvitationTypeWithLink } from "@app/types/membership_inv
 import {
   ClipboardV2,
   IconButton,
-  MovingMailIcon,
+  Mail01V2,
   Tooltip,
   Trash01V2,
 } from "@dust-tt/sparkle";
@@ -108,7 +108,7 @@ export function makeColumnsForInvitations(
 
         return (
           <IconButton
-            icon={MovingMailIcon}
+            icon={Mail01V2}
             size="xs"
             variant="outline"
             tooltip="Reinvite (revokes current and sends a new invitation)"

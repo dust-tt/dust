@@ -99,10 +99,10 @@ import type { AgentMessageStatus } from "@app/types/assistant/conversation";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  ActionDocumentTextIcon,
   ClockV2,
   ContentBlockWrapper,
   ContentMessage,
+  File06V2,
   Globe01V2,
   Markdown,
   SearchMdV2,
@@ -236,7 +236,7 @@ function MCPActionDetailsInner({
                   ? makeQueryTextForList(params)
                   : null
             }
-            visual={ActionDocumentTextIcon}
+            visual={File06V2}
           />
         );
       case FILESYSTEM_CAT_TOOL_NAME:

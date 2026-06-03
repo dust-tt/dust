@@ -10,9 +10,9 @@ import {
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import {
-  MessageChatSquareV2,
   CheckCircleV2,
   FolderV2,
+  MessageChatSquareV2,
   Spinner,
   Tabs,
   TabsList,

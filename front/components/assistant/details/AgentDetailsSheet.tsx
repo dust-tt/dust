@@ -26,16 +26,16 @@ import type { UserType, WorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
 import {
   ArrowLeftV2,
-  ArrowPathIcon,
   Avatar,
   BarChart01V2,
-  BellIcon,
+  Bell01V2,
   BrainV2,
   Button,
   Chip,
   ContentMessage,
   InfoCircleV2,
   Lock01V2,
+  RefreshCw02V2,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -282,7 +282,7 @@ export function AgentDetailsSheet({
                     setShowRestoreModal(true);
                   }}
                   className="mt-2"
-                  icon={ArrowPathIcon}
+                  icon={RefreshCw02V2}
                 />
               </div>
             </ContentMessage>
@@ -350,7 +350,7 @@ export function AgentDetailsSheet({
                       <TabsTrigger
                         value="triggers"
                         label="Triggers"
-                        icon={BellIcon}
+                        icon={Bell01V2}
                         onClick={() => setSelectedTab("triggers")}
                       />
                     )}

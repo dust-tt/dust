@@ -12,7 +12,6 @@ import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
 import {
   BookOpen01V2,
   Button,
-  ChatBubbleBottomCenterTextIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -22,6 +21,7 @@ import {
   HeartV2,
   Lightbulb04V2,
   MessageChatSquareV2,
+  MessageCircle01V2,
   SlackLogo,
 } from "@dust-tt/sparkle";
 import { useCallback, useContext } from "react";
@@ -168,19 +168,19 @@ export function HelpDropdown({
         />
         <DropdownMenuItem
           label="How to invite new users?"
-          icon={ChatBubbleBottomCenterTextIcon}
+          icon={MessageCircle01V2}
           onClick={() => void handleHelpSubmit("How to invite new users?", [])}
         />
         <DropdownMenuItem
           label="How to use agents in Slack workflow?"
-          icon={ChatBubbleBottomCenterTextIcon}
+          icon={MessageCircle01V2}
           onClick={() =>
             void handleHelpSubmit("How to use agents in Slack workflow?", [])
           }
         />
         <DropdownMenuItem
           label="How to manage billing?"
-          icon={ChatBubbleBottomCenterTextIcon}
+          icon={MessageCircle01V2}
           onClick={() => void handleHelpSubmit("How to manage billing?", [])}
         />
       </DropdownMenuContent>

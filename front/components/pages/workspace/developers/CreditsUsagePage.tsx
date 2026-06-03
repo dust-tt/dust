@@ -18,8 +18,8 @@ import type { SubscriptionType } from "@app/types/plan";
 import {
   AlertCircleV2,
   Button,
-  CardIcon,
   ContentMessage,
+  CreditCard01V2,
   Hoverable,
   Page,
 } from "@dust-tt/sparkle";
@@ -330,7 +330,7 @@ export function CreditsUsagePage() {
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
           title={"Programmatic Usage"}
-          icon={CardIcon}
+          icon={CreditCard01V2}
           description={
             <div>
               <p>

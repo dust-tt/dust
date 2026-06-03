@@ -22,8 +22,8 @@ import {
   SpaceOpenIcon,
   SpaceClosedIcon,
   CheckDoubleV2,
-  FullscreenIcon,
-  FullscreenExitIcon,
+  Maximize01V2,
+  Minimize01V2,
 } from "../index_with_tw_base";
 import type { NavigationListItemStatus } from "../components/NavigationList";
 

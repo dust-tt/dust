@@ -7,7 +7,7 @@ import {
   ArrowLeftV2,
   BarHeader,
   Button,
-  MenuIcon,
+  Menu01V2,
   Sheet,
   SheetContent,
   SheetHeader,
@@ -69,7 +69,7 @@ export const ConversationLayout = ({
             ) : (
               <Button
                 variant="ghost"
-                icon={MenuIcon}
+                icon={Menu01V2}
                 onClick={() => setSidebarOpen(true)}
               />
             )}

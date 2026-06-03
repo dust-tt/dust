@@ -3,10 +3,10 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import type { GenericErrorContent } from "@app/types/assistant/agent";
 import { isAgentErrorCategory } from "@app/types/assistant/agent";
 import {
-  ArrowPathIcon,
   Button,
   ContentMessage,
   InfoCircleV2,
+  RefreshCw02V2,
 } from "@dust-tt/sparkle";
 
 interface ErrorMessageProps {
@@ -56,7 +56,7 @@ export function ErrorMessage({ error, retryHandler }: ErrorMessageProps) {
         <Button
           variant="outline"
           size="xs"
-          icon={ArrowPathIcon}
+          icon={RefreshCw02V2}
           label="Retry"
           onClick={retry}
           disabled={isRetrying}

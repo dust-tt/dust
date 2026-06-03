@@ -4,7 +4,7 @@ import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
 import {
   BookOpen01V2,
   Button,
-  CloudArrowLeftRightIcon,
+  CloudArrowLeftRightV2,
   Hoverable,
   Page,
   Sheet,
@@ -138,7 +138,7 @@ export function CreateConnectionOAuthModal({
                   <Button
                     variant="highlight"
                     size="md"
-                    icon={CloudArrowLeftRightIcon}
+                    icon={CloudArrowLeftRightV2}
                     onClick={() => {
                       setIsLoading(true);
                       onConfirm(extraConfig);

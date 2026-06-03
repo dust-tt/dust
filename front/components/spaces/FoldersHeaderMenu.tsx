@@ -6,7 +6,6 @@ import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
-  CloudArrowUpIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -16,6 +15,7 @@ import {
   Settings01V2,
   TableV2,
   Tooltip,
+  UploadCloud02V2,
 } from "@dust-tt/sparkle";
 import type { RefObject } from "react";
 import { useState } from "react";
@@ -125,7 +125,7 @@ const AddDataDropDownButton = ({
             label="Create a table"
           />
           <DropdownMenuItem
-            icon={CloudArrowUpIcon}
+            icon={UploadCloud02V2}
             onClick={() => {
               contentActionsRef.current?.callAction("MultipleFilesUpload");
             }}

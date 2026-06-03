@@ -1,7 +1,7 @@
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  CloudArrowLeftRightIcon,
+  CloudArrowLeftRightV2,
   Icon,
   MessageChatSquareV2,
   RobotV2,
@@ -99,7 +99,7 @@ export function DontLoseSection({ owner }: DontLoseSectionProps) {
           isLoading={isLoading}
         />
         <DontLoseItem
-          icon={CloudArrowLeftRightIcon}
+          icon={CloudArrowLeftRightV2}
           title="Your connected company data"
           description="All your connected company data."
           isLoading={isLoading}

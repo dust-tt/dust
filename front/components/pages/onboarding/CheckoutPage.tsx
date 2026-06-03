@@ -22,15 +22,15 @@ import type { CouponType } from "@app/types/coupon";
 import type { BillingPeriod } from "@app/types/plan";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
-  ActionCheckCircleIcon,
-  ActionXCircleIcon,
   Button,
+  CheckCircleV2,
   DustLogoSquare,
   Icon,
   Input,
   Lock01V2,
   Spinner,
-  TagIcon,
+  Tag01V2,
+  XCircleV2,
   XCloseV2,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -436,7 +436,7 @@ export function CheckoutPage() {
               <div className="mt-4 flex flex-col gap-1">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5 rounded-md bg-muted px-2 py-1 text-sm text-muted-foreground">
-                    <Icon visual={TagIcon} size="xs" />
+                    <Icon visual={Tag01V2} size="xs" />
                     <span className="font-medium">{appliedCoupon.code}</span>
                     {phase === "card_capture" && (
                       <button
@@ -585,11 +585,7 @@ function RightPane({
       if (isPreparePaymentError) {
         return (
           <div className="flex flex-col items-center gap-6 text-center">
-            <Icon
-              visual={ActionXCircleIcon}
-              size="2xl"
-              className="text-warning-500"
-            />
+            <Icon visual={XCircleV2} size="2xl" className="text-warning-500" />
             <div className="flex flex-col gap-3">
               <h2 className="text-2xl font-semibold text-foreground">
                 Couldn&apos;t load payment details
@@ -657,7 +653,7 @@ function RightPane({
       return (
         <div className="flex flex-col items-center gap-6 text-center">
           <Icon
-            visual={ActionCheckCircleIcon}
+            visual={CheckCircleV2}
             size="2xl"
             className="text-success-500"
           />
@@ -671,11 +667,7 @@ function RightPane({
       if (phaseError?.kind === "metronome_error") {
         return (
           <div className="flex flex-col items-center gap-6 text-center">
-            <Icon
-              visual={ActionXCircleIcon}
-              size="2xl"
-              className="text-warning-500"
-            />
+            <Icon visual={XCircleV2} size="2xl" className="text-warning-500" />
             <div className="flex flex-col gap-3">
               <h2 className="text-2xl font-semibold text-foreground">
                 Something went wrong in your subscription
@@ -698,11 +690,7 @@ function RightPane({
       if (phaseError?.kind === "invalid_coupon") {
         return (
           <div className="flex flex-col items-center gap-6 text-center">
-            <Icon
-              visual={ActionXCircleIcon}
-              size="2xl"
-              className="text-warning-500"
-            />
+            <Icon visual={XCircleV2} size="2xl" className="text-warning-500" />
             <div className="flex flex-col gap-3">
               <h2 className="text-2xl font-semibold text-foreground">
                 Coupon no longer valid
@@ -718,11 +706,7 @@ function RightPane({
       }
       return (
         <div className="flex flex-col items-center gap-6 text-center">
-          <Icon
-            visual={ActionXCircleIcon}
-            size="2xl"
-            className="text-warning-500"
-          />
+          <Icon visual={XCircleV2} size="2xl" className="text-warning-500" />
           <div className="flex flex-col gap-3">
             <h2 className="text-2xl font-semibold text-foreground">
               Payment failed

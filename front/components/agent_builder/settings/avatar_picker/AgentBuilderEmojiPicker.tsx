@@ -10,7 +10,7 @@ import {
   Button,
   ColorPicker,
   EmojiPicker,
-  EmotionLaughIcon,
+  FaceSmileV2,
   PaintV2,
   PopoverContent,
   PopoverRoot,
@@ -83,7 +83,7 @@ const AgentBuilderEmojiPicker = React.forwardRef<
           <PopoverTrigger asChild>
             <Button
               variant="outline"
-              icon={EmotionLaughIcon}
+              icon={FaceSmileV2}
               label="Pick an Emoji"
             />
           </PopoverTrigger>

@@ -29,8 +29,8 @@ import {
   Button,
   ButtonsSwitch,
   ButtonsSwitchList,
-  CardIcon,
   Chip,
+  CreditCard01V2,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -423,7 +423,7 @@ export function MetronomeSubscriptionPanel({
           )}
           <div className="my-5">
             <Button
-              icon={CardIcon}
+              icon={CreditCard01V2}
               label="Your billing dashboard on Stripe"
               variant="ghost"
               onClick={withTracking(

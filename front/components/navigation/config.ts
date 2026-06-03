@@ -5,17 +5,17 @@ import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { WorkspaceType } from "@app/types/user";
 import { isAdmin, isBuilder } from "@app/types/user";
 import {
-  ActionPieChartIcon,
   BarChart01V2,
-  BracesIcon,
+  BracketsV2,
   BrainV2,
   Building04V2,
-  CardIcon,
+  CreditCard01V2,
   File04V2,
-  FolderOpenIcon,
+  FolderOpenV2,
   Globe01V2,
   IntersectDustV2,
   Lock01V2,
+  PieChart01V2,
   PlanetIcon,
   Settings01V2,
   ShapesIcon,
@@ -270,7 +270,7 @@ export const subNavigationAdmin = ({
               {
                 id: "usage" as const,
                 label: "Usage",
-                icon: ActionPieChartIcon,
+                icon: PieChart01V2,
                 href: `/w/${owner.sId}/usage`,
                 current: isCurrent("usage"),
               },
@@ -294,14 +294,14 @@ export const subNavigationAdmin = ({
           ? {
               id: "billing",
               label: "Billing",
-              icon: CardIcon,
+              icon: CreditCard01V2,
               href: `/w/${owner.sId}/billing`,
               current: isCurrent("billing"),
             }
           : {
               id: "subscription",
               label: "Subscription",
-              icon: CardIcon,
+              icon: CreditCard01V2,
               href: `/w/${owner.sId}/subscription`,
               current: isCurrent("subscription"),
             },
@@ -350,7 +350,7 @@ export const subNavigationAdmin = ({
         {
           id: "dev_secrets",
           label: "Secrets",
-          icon: BracesIcon,
+          icon: BracketsV2,
           href: `/w/${owner.sId}/developers/dev-secrets`,
           current: isCurrent("dev_secrets"),
         },
@@ -408,7 +408,7 @@ export const subNavigationApp = ({
       {
         value: "runs",
         label: "Logs",
-        icon: FolderOpenIcon,
+        icon: FolderOpenV2,
         href: `/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/runs`,
         current: current === "runs",
       },

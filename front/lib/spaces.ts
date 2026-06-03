@@ -4,11 +4,11 @@ import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { SpaceType } from "@app/types/space";
 import {
   Building04V2,
-  CloudArrowLeftRightIcon,
+  CloudArrowLeftRightV2,
   FolderV2,
   Globe01V2,
   Lock01V2,
-  ServerIcon,
+  Server03V2,
   SpaceClosedIcon,
   SpaceOpenIcon,
   TerminalV2,
@@ -40,7 +40,7 @@ export function getSpaceIcon(
     return Building04V2;
   }
 
-  return ServerIcon;
+  return Server03V2;
 }
 
 export const CATEGORY_DETAILS: {
@@ -54,7 +54,7 @@ export const CATEGORY_DETAILS: {
 } = {
   managed: {
     label: "Connected Data",
-    icon: CloudArrowLeftRightIcon,
+    icon: CloudArrowLeftRightV2,
   },
   folder: {
     label: "Folders",

@@ -21,7 +21,7 @@ import type { DataSourceViewType } from "@app/types/data_source_view";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  BracesIcon,
+  BracketsV2,
   Button,
   Chip,
   ContentMessage,
@@ -93,7 +93,7 @@ export function ViewDataSourceTable({
                 variant="outline"
                 size="sm"
                 onClick={() => setShowRawObjectsModal(true)}
-                icon={BracesIcon}
+                icon={BracketsV2}
                 label="Show raw objects"
               />
             </div>

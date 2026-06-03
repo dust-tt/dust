@@ -8,7 +8,7 @@ import {
   CardActionButton,
   CardGrid,
 } from "@sparkle/components/Card";
-import { BracesIcon, PlanetIcon } from "@sparkle/icons/app";
+import { PlanetIcon } from "@sparkle/icons/app";
 import {
   BookOpen01V2,
   ScanV2,
@@ -17,6 +17,7 @@ import {
   TerminalV2,
   XCloseV2,
 } from "@sparkle/icons/v2-stroke";
+import { BracketsV2 } from "@sparkle/icons/v2-stroke";
 
 const meta = {
   title: "Primitives/Card",
@@ -196,7 +197,7 @@ const cardData: CardData[] = [
     description: "Search & browse the web",
   },
   {
-    icon: BracesIcon,
+    icon: BracketsV2,
     title: "Code Interpreter",
     description: "Write a description for it",
   },

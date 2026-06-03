@@ -20,10 +20,9 @@ import { isOnlyAdmin, isOnlyBuilder, isOnlyUser } from "@app/types/user";
 import { datadogLogs } from "@datadog/browser-logs";
 import {
   Avatar,
-  MessagePlusCircleV2,
+  Beaker02V2,
   ChevronDownV2,
   ChromeLogo,
-  TerminalV2,
   cn,
   DropdownMenu,
   DropdownMenuContent,
@@ -34,15 +33,16 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-  EyeV2,
   EyeOffV2,
+  EyeV2,
   FirefoxLogo,
   Icon,
   Lightbulb04V2,
   LogOut01V2,
+  MessagePlusCircleV2,
   ShapesIcon,
   Star01V2,
-  Beaker02V2,
+  TerminalV2,
   User01V2,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";

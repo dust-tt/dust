@@ -11,10 +11,10 @@ import { Err, Ok } from "@app/types/shared/result";
 import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  ArrowPathIcon,
   BookOpen01V2,
   Button,
   ContextItem,
+  RefreshCw02V2,
   SliderToggle,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -149,7 +149,7 @@ export function BotToggle({
               variant="outline"
               label="Reconnect"
               size="xs"
-              icon={ArrowPathIcon}
+              icon={RefreshCw02V2}
               onClick={async () => {
                 const cRes = await setupOAuthConnection({
                   owner,

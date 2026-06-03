@@ -2,7 +2,7 @@ import type { Meta } from "@storybook/react";
 import React from "react";
 
 import {
-  ArrowPathIcon,
+  RefreshCw02V2,
   ZapV2,
   Button,
   ChevronRightV2,
@@ -13,8 +13,8 @@ import {
   ConversationContainer,
   ConversationMessage,
   GithubIcon,
-  HandThumbDownIcon,
-  HandThumbUpIcon,
+  ThumbsDownV2,
+  ThumbsUpV2,
   Icon,
   Markdown,
   Edit04V2,
@@ -71,13 +71,13 @@ export const ConversationExample = () => {
             pictureUrl="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
             buttons={[
               <Button
-                icon={HandThumbUpIcon}
+                icon={ThumbsUpV2}
                 onClick={() => {}}
                 size="xs"
                 variant={"outline"}
               />,
               <Button
-                icon={HandThumbDownIcon}
+                icon={ThumbsDownV2}
                 onClick={() => {}}
                 size="xs"
                 variant={"outline"}
@@ -223,7 +223,7 @@ export const ConversationHandoffExample = () => {
                 variant={"outline"}
               />,
               <Button
-                icon={ArrowPathIcon}
+                icon={RefreshCw02V2}
                 onClick={() => {}}
                 size="xs"
                 variant={"outline"}

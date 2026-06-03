@@ -62,17 +62,15 @@ import type { PodType, SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
 import {
-  ActionTimeIcon,
   ArrowRightV2,
   Avatar,
-  BoltOffIcon,
-  BracesIcon,
+  BracketsV2,
   Button,
-  ChatBubbleBottomCenterPlusIcon,
   Checkbox,
   CheckDone01V2,
   CheckDoubleV2,
   Chip,
+  ClockV2,
   cn,
   DotsHorizontalV2,
   DropdownMenu,
@@ -88,10 +86,11 @@ import {
   DropdownMenuTrigger,
   Edit04V2,
   File02V2,
-  FolderOpenIcon,
+  FolderOpenV2,
   Icon,
   Label,
-  MagicIcon,
+  MagicWand02V2,
+  MessagePlusCircleV2,
   NavigationList,
   NavigationListCollapsibleSection,
   NavigationListItem,
@@ -100,9 +99,10 @@ import {
   PlusV2,
   RobotV2,
   Spinner,
-  StarIcon,
+  Star01V2,
   Trash01V2,
   XCloseV2,
+  ZapOffV2,
   ZapV2,
 } from "@dust-tt/sparkle";
 import { AnimatePresence, motion } from "framer-motion";
@@ -360,7 +360,7 @@ function SearchResults({
                         ? "Show triggered"
                         : "Hide triggered"
                     }
-                    icon={hideTriggeredConversations ? ZapV2 : BoltOffIcon}
+                    icon={hideTriggeredConversations ? ZapV2 : ZapOffV2}
                     disabled={!hasTriggeredConversations}
                     onClick={() =>
                       setHideTriggeredConversations(!hideTriggeredConversations)
@@ -721,7 +721,7 @@ export function AgentSidebarMenu({
       <NavigationList className="px-2">
         <NavigationListCollapsibleSection
           label={showCount ? `Starred (${starredCountInSummary})` : "Starred"}
-          icon={StarIcon}
+          icon={Star01V2}
           type="collapse"
           visibleItems={VISIBLE_STARRED}
           overflowCount={hiddenOverflowCount}
@@ -975,7 +975,7 @@ export function AgentSidebarMenu({
                   <Button
                     label="New"
                     href={getConversationRoute(owner.sId)}
-                    icon={ChatBubbleBottomCenterPlusIcon}
+                    icon={MessagePlusCircleV2}
                     className="shrink-0"
                     tooltip="Create a new conversation"
                     onClick={handleNewClick}
@@ -1020,7 +1020,7 @@ export function AgentSidebarMenu({
                                       owner.sId,
                                       "create"
                                     )}
-                                    icon={MagicIcon}
+                                    icon={MagicWand02V2}
                                     label="From template"
                                     data-gtm-label="assistantCreationButton"
                                     data-gtm-location="sidebarMenu"
@@ -1034,7 +1034,7 @@ export function AgentSidebarMenu({
                                       isUploadingYAML ? (
                                         <Spinner size="xs" />
                                       ) : (
-                                        BracesIcon
+                                        BracketsV2
                                       )
                                     }
                                     label={
@@ -1117,7 +1117,7 @@ export function AgentSidebarMenu({
                                   label="From scratch"
                                 />
                                 <DropdownMenuItem
-                                  icon={FolderOpenIcon}
+                                  icon={FolderOpenV2}
                                   label="From existing"
                                   onClick={() =>
                                     setIsImportSkillDialogOpen(true)
@@ -1336,7 +1336,7 @@ interface WakeUpSuffixProps {
 function WakeUpSuffix({ nextWakeupAt }: WakeUpSuffixProps) {
   return (
     <span className="copy-xs flex items-center gap-1 text-muted-foreground dark:text-muted-foreground-night">
-      <Icon visual={ActionTimeIcon} size="xs" />
+      <Icon visual={ClockV2} size="xs" />
       {formatWakeUpSidebarLabel(nextWakeupAt)}
     </span>
   );
@@ -1650,7 +1650,7 @@ function NavigationListWithInbox({
                         ? "Show triggered"
                         : "Hide triggered"
                     }
-                    icon={hideTriggeredConversations ? ZapV2 : BoltOffIcon}
+                    icon={hideTriggeredConversations ? ZapV2 : ZapOffV2}
                     disabled={!hasTriggeredConversations}
                     onClick={() =>
                       setHideTriggeredConversations(!hideTriggeredConversations)

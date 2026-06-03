@@ -14,13 +14,13 @@ import type { SpaceType } from "@app/types/space";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
 import {
-  DocumentPileIcon,
   File02V2,
+  File04V2,
   FolderTableIcon,
   FolderV2,
+  LayersThree01V2,
   Lock01V2,
   MessageChatSquareV2,
-  Square3Stack3DIcon,
 } from "@dust-tt/sparkle";
 
 import {
@@ -43,7 +43,7 @@ export function getDocumentIcon(provider: string | null | undefined) {
 
 function getVisualForFileContentNode(node: ContentNode & { type: "document" }) {
   if (node.expandable) {
-    return DocumentPileIcon;
+    return File04V2;
   }
 
   return File02V2;
@@ -73,7 +73,7 @@ export function getVisualForDataSourceViewContentNode(
 export function getVisualForContentNodeType(type: ContentNodeType) {
   switch (type) {
     case "table":
-      return Square3Stack3DIcon;
+      return LayersThree01V2;
     case "folder":
       return FolderV2;
     case "document":
@@ -95,7 +95,7 @@ export function getVisualForContentNode(node: ContentNode) {
 
     // Handle database-like content.
     if (DATABASE_INTERNAL_MIME_TYPES.includes(node.mimeType)) {
-      return Square3Stack3DIcon;
+      return LayersThree01V2;
     }
 
     // Handle file-like content that isn't a document type.

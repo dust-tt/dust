@@ -28,7 +28,7 @@ import {
 import type { FileSystemEntry } from "@app/lib/api/file_system/types";
 import { isInteractiveContentType } from "@app/types/files";
 import { Err, type Result } from "@app/types/shared/result";
-import { cn, Edit04V2, FolderOpenIcon, Trash01V2 } from "@dust-tt/sparkle";
+import { cn, Edit04V2, FolderOpenV2, Trash01V2 } from "@dust-tt/sparkle";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -158,7 +158,7 @@ export function FileExplorer({
       ) {
         items.push({
           label: "Move to…",
-          icon: FolderOpenIcon,
+          icon: FolderOpenV2,
           onClick: (e) => {
             e.stopPropagation();
             setFileToMove(entry);

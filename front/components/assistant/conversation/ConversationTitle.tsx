@@ -15,15 +15,15 @@ import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { getConversationRoute, getPodRoute } from "@app/lib/utils/router";
 import { getConversationDisplayTitle } from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
-import type { BreadcrumbsItem } from "@dust-tt/sparkle";
 import {
-  ActionGitBranchIcon,
   ArrowLeftV2,
   Breadcrumbs,
+  type BreadcrumbsItem,
   Button,
   Chip,
   DotsHorizontalV2,
   FolderV2,
+  GitBranch01V2,
   Tooltip,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -117,7 +117,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
                   owner.sId,
                   forkedFrom.parentConversationId
                 )}
-                icon={ActionGitBranchIcon}
+                icon={GitBranch01V2}
                 label={isMobile ? tooltipLabel : chipLabel}
                 size="mini"
               />

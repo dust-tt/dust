@@ -4,8 +4,8 @@ import type { AvatarPickerTabElement } from "@app/components/agent_builder/setti
 import type { WorkspaceType } from "@app/types/user";
 import {
   Avatar,
-  EmotionLaughIcon,
-  ImageIcon,
+  FaceSmileV2,
+  Image01V2,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -68,19 +68,19 @@ export function AvatarPicker({
         label: "Droids",
         id: "droids",
         current: currentTab === "droids",
-        icon: ImageIcon,
+        icon: Image01V2,
       },
       {
         label: "Spirits",
         id: "spirits",
         current: currentTab === "spirits",
-        icon: ImageIcon,
+        icon: Image01V2,
       },
       {
         label: "Emojis",
         id: "emojis",
         current: currentTab === "emojis",
-        icon: EmotionLaughIcon,
+        icon: FaceSmileV2,
       },
       {
         label: "Upload",

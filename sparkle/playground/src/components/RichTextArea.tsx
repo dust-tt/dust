@@ -21,12 +21,12 @@ import React, {
 
 import {
   Avatar,
-  BoldIcon,
+  Bold01V2,
   Button,
   CheckV2,
   HoveringBar,
-  ItalicIcon,
-  LinkIcon,
+  Italic01V2,
+  Link01V2,
   Edit04V2,
   Stars02V2,
   XCloseV2,
@@ -1227,7 +1227,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
             >
               <HoveringBar size="xs">
                 <Button
-                  icon={BoldIcon}
+                  icon={Bold01V2}
                   size="icon"
                   variant={
                     editor.isActive("bold") ? "primary" : "ghost-secondary"
@@ -1238,7 +1238,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
                   }}
                 />
                 <Button
-                  icon={ItalicIcon}
+                  icon={Italic01V2}
                   size="icon"
                   variant={
                     editor.isActive("italic") ? "primary" : "ghost-secondary"
@@ -1250,7 +1250,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
                 />
                 <HoveringBar.Separator />
                 <Button
-                  icon={LinkIcon}
+                  icon={Link01V2}
                   size="icon"
                   variant={
                     editor.isActive("link") ? "primary" : "ghost-secondary"

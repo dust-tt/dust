@@ -20,8 +20,7 @@ import {
   Edit04V2,
   Input,
   Label,
-  LightModeIcon,
-  MoonIcon,
+  Moon01V2,
   Page,
   Spinner,
   SunV2,
@@ -295,8 +294,8 @@ export function AccountSettings({ owner }: AccountSettingsProps) {
                     themeField.value === "light"
                       ? SunV2
                       : themeField.value === "dark"
-                        ? MoonIcon
-                        : LightModeIcon
+                        ? Moon01V2
+                        : SunV2
                   }
                   label={
                     themeField.value === "light"
@@ -317,12 +316,12 @@ export function AccountSettings({ owner }: AccountSettingsProps) {
                     label="Light"
                   />
                   <DropdownMenuItem
-                    icon={MoonIcon}
+                    icon={Moon01V2}
                     onClick={() => themeField.onChange("dark")}
                     label="Dark"
                   />
                   <DropdownMenuItem
-                    icon={LightModeIcon}
+                    icon={SunV2}
                     onClick={() => themeField.onChange("system")}
                     label="System"
                   />

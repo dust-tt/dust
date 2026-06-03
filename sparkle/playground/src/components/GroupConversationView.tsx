@@ -12,8 +12,8 @@ import {
   CheckDoubleV2,
   CheckV2,
   Chip,
-  CloudArrowLeftRightIcon,
-  CloudArrowUpIcon,
+  CloudArrowLeftRightV2,
+  UploadCloud02V2,
   ContentMessage,
   ConversationListItem,
   Dialog,
@@ -3317,7 +3317,7 @@ export function GroupConversationView({
           return (
             <DataTable.CellContent>
               <Icon
-                visual={CloudArrowLeftRightIcon}
+                visual={CloudArrowLeftRightV2}
                 size="sm"
                 className="s-text-muted-foreground dark:s-text-muted-foreground-night"
               />
@@ -4394,7 +4394,7 @@ export function GroupConversationView({
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem
-                      icon={CloudArrowLeftRightIcon}
+                      icon={CloudArrowLeftRightV2}
                       label="From Company Data"
                       onClick={() => {}}
                     />
@@ -4404,7 +4404,7 @@ export function GroupConversationView({
                       onClick={() => {}}
                     />
                     <DropdownMenuItem
-                      icon={CloudArrowUpIcon}
+                      icon={UploadCloud02V2}
                       label="Upload file"
                       onClick={() => {}}
                     />

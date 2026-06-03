@@ -8,7 +8,7 @@ import type { MembershipInvitationType } from "@app/types/membership_invitation"
 import type { ActiveRoleType, WorkspaceType } from "@app/types/user";
 import {
   Button,
-  MovingMailIcon,
+  Mail01V2,
   Page,
   Sheet,
   SheetContainer,
@@ -120,7 +120,7 @@ export function EditInvitationModal({
                 <Button
                   variant="primary"
                   label="Send invitation again"
-                  icon={MovingMailIcon}
+                  icon={Mail01V2}
                   onClick={async () => {
                     await sendInvitations({
                       owner,

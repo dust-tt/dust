@@ -37,15 +37,15 @@ import { isString } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
-import type { MenuItem } from "@dust-tt/sparkle";
 import {
   Button,
   Chip,
-  CloudArrowLeftRightIcon,
-  CubeIcon,
+  CloudArrowLeftRightV2,
+  Cube01V2,
   cn,
   DataTable,
   Edit04V2,
+  type MenuItem,
   Settings01V2,
   Spinner,
   Trash01V2,
@@ -191,7 +191,7 @@ function getTableColumns(
             <Button
               variant="primary"
               size="xs"
-              icon={CloudArrowLeftRightIcon}
+              icon={CloudArrowLeftRightV2}
               disabled={disabled}
               onClick={buttonOnClick}
               label={isLoading ? "Connecting..." : "Connect"}
@@ -394,7 +394,7 @@ export const SpaceResourcesList = ({
             menuItems.push({
               label: "Use from API",
               kind: "item",
-              icon: CubeIcon,
+              icon: Cube01V2,
               onClick: (e) => {
                 e.stopPropagation();
                 setSelectedDataSourceView(dataSourceView);

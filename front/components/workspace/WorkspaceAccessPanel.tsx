@@ -13,11 +13,11 @@ import type { PlanType } from "@app/types/plan";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { WorkspaceDomain } from "@app/types/workspace";
 import {
-  ActionGlobeAltIcon,
   Button,
   Chip,
   DataTable,
   EmptyCTA,
+  Globe01V2,
   IconButton,
   LoadingBlock,
   Page,
@@ -102,7 +102,7 @@ function DomainVerification({
   owner,
 }: DomainVerificationProps) {
   return (
-    <WorkspaceSection icon={ActionGlobeAltIcon} title="Domain Verification">
+    <WorkspaceSection icon={Globe01V2} title="Domain Verification">
       <Page.P variant="secondary">
         Verify your company domains to enable Single Sign-On (SSO), automatic
         workspace enrollment for team members, and secure connections to your

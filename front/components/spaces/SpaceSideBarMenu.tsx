@@ -49,7 +49,7 @@ import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
-  CloudArrowLeftRightIcon,
+  CloudArrowLeftRightV2,
   NavigationList,
   NavigationListItem,
   NavigationListLabel,
@@ -245,7 +245,7 @@ const SYSTEM_SPACE_ITEMS: {
 }[] = [
   {
     label: "Connections",
-    visual: CloudArrowLeftRightIcon,
+    visual: CloudArrowLeftRightV2,
     category: "managed",
     flag: null,
   },

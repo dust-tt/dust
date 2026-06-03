@@ -10,7 +10,7 @@ import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
   ClipboardV2,
-  CubeIcon,
+  Cube01V2,
   Hoverable,
   Page,
   Sheet,
@@ -94,7 +94,7 @@ export function ViewAppAPIModal({
     <Sheet>
       <SheetTrigger>
         <Button
-          icon={CubeIcon}
+          icon={Cube01V2}
           tooltip={
             disabled
               ? "You need to run this app at least once successfully to view the endpoint"

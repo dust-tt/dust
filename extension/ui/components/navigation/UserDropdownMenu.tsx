@@ -12,8 +12,8 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-  LightModeIcon,
-  LogoutIcon,
+  LogOut01V2,
+  SunV2,
 } from "@dust-tt/sparkle";
 import { useExtensionAuth } from "@extension/ui/components/auth/AuthProvider";
 import { useMemo } from "react";
@@ -63,7 +63,7 @@ export const UserDropdownMenu = () => {
         )}
         <DropdownMenuLabel label="Preferences" />
         <DropdownMenuSub>
-          <DropdownMenuSubTrigger label="Theme" icon={LightModeIcon} />
+          <DropdownMenuSubTrigger label="Theme" icon={SunV2} />
           <DropdownMenuSubContent>
             <DropdownMenuRadioGroup value={theme}>
               <DropdownMenuRadioItem
@@ -86,7 +86,7 @@ export const UserDropdownMenu = () => {
         </DropdownMenuSub>
         <DropdownMenuLabel label="Account" />
         <DropdownMenuItem
-          icon={LogoutIcon}
+          icon={LogOut01V2}
           label="Sign out"
           onClick={handleLogout}
         />

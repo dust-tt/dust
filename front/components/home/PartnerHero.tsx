@@ -3,7 +3,7 @@ import { Grid, H1, H2, P } from "@app/components/home/ContentComponents";
 import { classNames } from "@app/lib/utils";
 import {
   Building04V2,
-  CardIcon,
+  CreditCard01V2,
   Globe01V2,
   HeartV2,
   Icon,
@@ -29,7 +29,7 @@ const PARTNER_BENEFITS: {
   color: ColorVariant;
 }[] = [
   {
-    icon: CardIcon,
+    icon: CreditCard01V2,
     title: "Revenue opportunity",
     description:
       "Attractive partner margins and recurring revenue from customer deployments.",

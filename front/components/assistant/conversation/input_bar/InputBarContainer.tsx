@@ -54,7 +54,7 @@ import {
   ArrowUpV2,
   Attachment01V2,
   Button,
-  CameraIcon,
+  Camera01V2,
   Chip,
   cn,
   DocumentPlusIcon,
@@ -65,12 +65,12 @@ import {
   DropdownMenuTrigger,
   Globe01V2,
   PlusV2,
-  TextIcon,
   Toolbar,
   TooltipContent,
   TooltipProvider,
   TooltipRoot,
   TooltipTrigger,
+  Type01V2,
   VoicePicker,
 } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
@@ -1236,7 +1236,7 @@ const InputBarContainer = ({
                   <div className="flex items-center">
                     <Button
                       variant="ghost-secondary"
-                      icon={TextIcon}
+                      icon={Type01V2}
                       size={buttonSize}
                       className={cn("flex", !isMobile && "hidden")}
                       onClick={() => setIsToolbarOpen(!isToolbarOpen)}
@@ -1330,7 +1330,7 @@ const InputBarContainer = ({
                             }
                           />
                           <DropdownMenuItem
-                            icon={CameraIcon}
+                            icon={Camera01V2}
                             label="Take screenshot"
                             disabled={
                               disableInput ||

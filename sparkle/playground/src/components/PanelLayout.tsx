@@ -1,7 +1,7 @@
 import {
   ArrowLeftV2,
   Button,
-  MenuIcon,
+  Menu01V2,
   SidebarLeftCloseIcon,
   SidebarLeftOpenIcon,
   XCloseV2,
@@ -354,7 +354,7 @@ export function PanelLayout({ children }: PanelLayoutProps) {
       size="sm"
       icon={
         isMobile
-          ? MenuIcon
+          ? Menu01V2
           : showNavOverlay
             ? SidebarLeftCloseIcon
             : SidebarLeftOpenIcon

@@ -12,11 +12,11 @@ import { useMCPActions } from "@app/lib/swr/mcp_actions";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { isString } from "@app/types/shared/utils/general";
 import {
-  ActionCodeBoxIcon,
   Avatar,
   Breadcrumbs,
   Button,
   Chip,
+  CodeSquare01V2,
   ContextItem,
   Icon,
   LinkExternal01V2,
@@ -152,7 +152,7 @@ export function AgentMCPActionsPage() {
           <Page>
             <Page.Header
               title={`MCP Actions for ${agent.name}`}
-              icon={ActionCodeBoxIcon}
+              icon={CodeSquare01V2}
               description={`View all MCP actions executed by the ${agent.name} agent.`}
             />
 
@@ -208,7 +208,7 @@ export function AgentMCPActionsPage() {
                           <ContextItem
                             key={action.sId}
                             title={action.functionCallName || "Unknown Action"}
-                            visual={<Icon visual={ActionCodeBoxIcon} />}
+                            visual={<Icon visual={CodeSquare01V2} />}
                             action={
                               <div className="flex items-center gap-2">
                                 <Chip
@@ -261,7 +261,7 @@ export function AgentMCPActionsPage() {
                     ) : (
                       <ContextItem
                         title="No Actions Found"
-                        visual={<Icon visual={ActionCodeBoxIcon} />}
+                        visual={<Icon visual={CodeSquare01V2} />}
                       >
                         <ContextItem.Description description="No MCP actions have been executed by this agent yet." />
                       </ContextItem>

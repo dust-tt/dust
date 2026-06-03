@@ -22,7 +22,7 @@ import {
   SheetTrigger,
   TextArea,
 } from "@sparkle/components";
-import { CloudArrowLeftRightIcon, StarIcon } from "@sparkle/icons/app";
+
 import {
   DotsHorizontalV2,
   Edit04V2,
@@ -31,6 +31,7 @@ import {
   Rocket02V2,
   Trash01V2,
 } from "@sparkle/icons/v2-stroke";
+import { CloudArrowLeftRightV2, Star01V2 } from "@sparkle/icons/v2-stroke";
 
 const meta = {
   title: "Layouts/Sheet",
@@ -159,7 +160,7 @@ export function SheetCustom() {
                 </SheetDescription>
               </div>
               <div className="s-flex s-gap-2">
-                <Button icon={StarIcon} variant={"outline"} />
+                <Button icon={Star01V2} variant={"outline"} />
                 <Separator orientation="vertical" />
                 <Button icon={Edit04V2} variant={"outline"} />
                 <Button icon={Trash01V2} variant={"outline"} />
@@ -257,7 +258,7 @@ const QIG: React.FC = () => (
       <Page.Horizontal>
         <Page.Vertical sizing="grow">
           <div className="flex items-center gap-2">
-            <Icon visual={CloudArrowLeftRightIcon} />{" "}
+            <Icon visual={CloudArrowLeftRightV2} />{" "}
             <Page.H variant="h6">Connections</Page.H>
           </div>
           <Page.P>
@@ -378,7 +379,7 @@ const QIG: React.FC = () => (
       <Page.Horizontal>
         <Page.Vertical sizing="grow">
           <div className="flex items-center gap-2">
-            <Icon visual={CloudArrowLeftRightIcon} />{" "}
+            <Icon visual={CloudArrowLeftRightV2} />{" "}
             <Page.H variant="h6">Connections</Page.H>
           </div>
           <Page.P>

@@ -49,18 +49,18 @@ import {
   Attachment01V2,
   Avatar,
   Button,
-  ChatBubbleBottomCenterPlusIcon,
+  MessagePlusCircleV2,
   Chip,
   CloudArrowDownIcon,
   Settings01V2,
   File02V2,
   DoubleIcon,
   FolderV2,
-  HandThumbDownIcon,
-  HandThumbUpIcon,
+  ThumbsDownV2,
+  ThumbsUpV2,
   Icon,
-  LogoutIcon,
-  MagicIcon,
+  LogOut01V2,
+  MagicWand02V2,
   SearchMdV2,
   PlusV2,
   RobotV2,
@@ -150,9 +150,9 @@ export const ComplexDropdown: Story = {
               <DropdownMenuSubTrigger icon={User01V2} label="Invite users" />
               <DropdownMenuPortal>
                 <DropdownMenuSubContent>
-                  <DropdownMenuItem icon={MagicIcon} label="Email" />
+                  <DropdownMenuItem icon={MagicWand02V2} label="Email" />
                   <DropdownMenuItem
-                    icon={ChatBubbleBottomCenterPlusIcon}
+                    icon={MessagePlusCircleV2}
                     label="Message"
                   />
                   <DropdownMenuSeparator />
@@ -176,7 +176,7 @@ export const ComplexDropdown: Story = {
           <DropdownMenuItem icon={CloudArrowDownIcon} label="API" disabled />
           <DropdownMenuSeparator />
           <DropdownMenuItem
-            icon={LogoutIcon}
+            icon={LogOut01V2}
             label="Log out"
             variant="warning"
             href="/api/auth/logout"
@@ -727,13 +727,13 @@ export const WithStaticItems: Story = {
               <Icon
                 size="xs"
                 className="s-text-muted-foreground"
-                visual={HandThumbUpIcon}
+                visual={ThumbsUpV2}
               />
               1
               <Icon
                 size="xs"
                 className="s-text-muted-foreground"
-                visual={HandThumbDownIcon}
+                visual={ThumbsDownV2}
               />
             </span>
           </DropdownMenuStaticItem>
@@ -1065,7 +1065,7 @@ export const WithTooltips: Story = {
                   side="left"
                   sideOffset={8}
                 >
-                  <DropdownMenuItem icon={MagicIcon} label="Help Item" />
+                  <DropdownMenuItem icon={MagicWand02V2} label="Help Item" />
                 </DropdownTooltipTrigger>
               </DropdownMenuContent>
             </DropdownMenu>

@@ -23,16 +23,16 @@ import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { TagType } from "@app/types/tag";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
-import type { MenuItem } from "@dust-tt/sparkle";
 import {
   Avatar,
-  BracesIcon,
+  BracketsV2,
   Checkbox,
   Chip,
   ClipboardV2,
   DataTable,
   Edit04V2,
   EyeV2,
+  type MenuItem,
   Tooltip,
   Trash01V2,
 } from "@dust-tt/sparkle";
@@ -440,7 +440,7 @@ export function AssistantsTable({
                     label: "Copy agent ID",
                     "data-gtm-label": "assistantCopyButton",
                     "data-gtm-location": "assistantDetails",
-                    icon: BracesIcon,
+                    icon: BracketsV2,
                     onClick: (e: React.MouseEvent) => {
                       e.stopPropagation();
                       void navigator.clipboard.writeText(

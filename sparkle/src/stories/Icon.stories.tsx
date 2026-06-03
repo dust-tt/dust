@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 
-import { ChatBubbleBottomCenterTextIcon, Icon } from "../index_with_tw_base";
+import { MessageCircle01V2, Icon } from "../index_with_tw_base";
 
 const meta = {
   title: "Primitives/Icon",
@@ -13,7 +13,7 @@ type Story = StoryObj<typeof meta>;
 
 export const IconSM: Story = {
   args: {
-    visual: ChatBubbleBottomCenterTextIcon,
+    visual: MessageCircle01V2,
     className: "s-text-highlight-500",
     size: "sm",
   },
@@ -21,7 +21,7 @@ export const IconSM: Story = {
 
 export const IconXS: Story = {
   args: {
-    visual: ChatBubbleBottomCenterTextIcon,
+    visual: MessageCircle01V2,
     className: "s-text-highlight-500",
     size: "xs",
   },
@@ -29,7 +29,7 @@ export const IconXS: Story = {
 
 export const IconMD: Story = {
   args: {
-    visual: ChatBubbleBottomCenterTextIcon,
+    visual: MessageCircle01V2,
     className: "s-text-highlight-500",
     size: "md",
   },
@@ -37,7 +37,7 @@ export const IconMD: Story = {
 
 export const IconLG: Story = {
   args: {
-    visual: ChatBubbleBottomCenterTextIcon,
+    visual: MessageCircle01V2,
     className: "s-text-highlight-500",
     size: "lg",
   },

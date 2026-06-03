@@ -14,7 +14,7 @@ import {
   Chip,
   ClipboardV2,
   cn,
-  EyeSlashIcon,
+  EyeOffV2,
   EyeV2,
   IconButton,
   IconPicker,
@@ -240,7 +240,7 @@ export function WebhookSourceDetailsInfo({
               </p>
               <div>
                 <IconButton
-                  icon={isSecretVisible ? EyeSlashIcon : EyeV2}
+                  icon={isSecretVisible ? EyeOffV2 : EyeV2}
                   onClick={() => setIsSecretVisible((prev) => !prev)}
                   size="xs"
                 />

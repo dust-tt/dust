@@ -16,8 +16,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
   File02V2,
-  FolderOpenIcon,
-  MagicIcon,
+  FolderOpenV2,
+  MagicWand02V2,
   PlusV2,
   PuzzlePiece01V2,
   Spinner,
@@ -72,7 +72,7 @@ export const CreateDropdown = ({
         />
         <DropdownMenuItem
           label="agent from template"
-          icon={MagicIcon}
+          icon={MagicWand02V2}
           onClick={withTracking(
             TRACKING_AREAS.BUILDER,
             "create_from_template",
@@ -84,7 +84,7 @@ export const CreateDropdown = ({
         />
         <DropdownMenuItem
           label={isUploadingYAML ? "Uploading..." : "agent from YAML"}
-          icon={isUploadingYAML ? <Spinner size="xs" /> : FolderOpenIcon}
+          icon={isUploadingYAML ? <Spinner size="xs" /> : FolderOpenV2}
           disabled={isUploadingYAML}
           onClick={triggerYAMLUpload}
         />
@@ -105,7 +105,7 @@ export const CreateDropdown = ({
             />
             <DropdownMenuItem
               label="skill from existing"
-              icon={FolderOpenIcon}
+              icon={FolderOpenV2}
               onClick={() => setIsImportSkillDialogOpen(true)}
             />
           </>

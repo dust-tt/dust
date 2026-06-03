@@ -2,9 +2,10 @@ import type { Meta } from "@storybook/react";
 import React from "react";
 
 import { DoubleIcon } from "@sparkle/components";
-import { ChatBubbleThoughtIcon } from "@sparkle/icons/app";
+
 import { DriveLogo, NotionLogo, SlackLogo } from "@sparkle/logo";
 import { File02V2, FolderV2 } from "@sparkle/icons/v2-stroke";
+import { MessageDotsCircleV2 } from "@sparkle/icons/v2-stroke";
 
 const meta = {
   title: "Primitives/DoubleIcon",
@@ -20,7 +21,7 @@ export const IconPositions = () => (
       <DoubleIcon size="xl" mainIcon={File02V2} secondaryIcon={NotionLogo} />{" "}
       <DoubleIcon
         size="xl"
-        mainIcon={ChatBubbleThoughtIcon}
+        mainIcon={MessageDotsCircleV2}
         secondaryIcon={SlackLogo}
       />
     </div>
@@ -29,7 +30,7 @@ export const IconPositions = () => (
       <DoubleIcon size="lg" mainIcon={File02V2} secondaryIcon={NotionLogo} />{" "}
       <DoubleIcon
         size="lg"
-        mainIcon={ChatBubbleThoughtIcon}
+        mainIcon={MessageDotsCircleV2}
         secondaryIcon={SlackLogo}
       />
     </div>
@@ -38,7 +39,7 @@ export const IconPositions = () => (
       <DoubleIcon size="md" mainIcon={File02V2} secondaryIcon={NotionLogo} />{" "}
       <DoubleIcon
         size="md"
-        mainIcon={ChatBubbleThoughtIcon}
+        mainIcon={MessageDotsCircleV2}
         secondaryIcon={SlackLogo}
       />
     </div>
@@ -47,7 +48,7 @@ export const IconPositions = () => (
       <DoubleIcon size="sm" mainIcon={File02V2} secondaryIcon={NotionLogo} />{" "}
       <DoubleIcon
         size="sm"
-        mainIcon={ChatBubbleThoughtIcon}
+        mainIcon={MessageDotsCircleV2}
         secondaryIcon={SlackLogo}
       />
     </div>

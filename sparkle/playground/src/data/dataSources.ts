@@ -1,12 +1,12 @@
 import {
-  BracesIcon,
+  BracketsV2,
   CodeSquare01V2,
   FolderV2,
   GooglePdfLogo,
   MicrosoftExcelLogo,
   MicrosoftPowerpointLogo,
   MicrosoftWordLogo,
-  TextIcon,
+  Type01V2,
 } from "@dust-tt/sparkle";
 import React from "react";
 
@@ -288,11 +288,11 @@ function getIconForFileType(
     case "csv":
       return MicrosoftExcelLogo;
     case "frame":
-      return BracesIcon;
+      return BracketsV2;
     case "pptx":
       return MicrosoftPowerpointLogo;
     case "txt":
-      return TextIcon;
+      return Type01V2;
     case "md":
       return CodeSquare01V2;
     default:

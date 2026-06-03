@@ -4,7 +4,7 @@ import {
   cn,
   File02V2,
   Icon,
-  ImageIcon,
+  Image01V2,
   ImageZoomDialog,
   Microphone01V2,
   PlusV2,
@@ -175,7 +175,7 @@ export function TodoInputBar({
                 key={id}
                 label={file.name}
                 size="lg"
-                visual={file.type.startsWith("image/") ? ImageIcon : File02V2}
+                visual={file.type.startsWith("image/") ? Image01V2 : File02V2}
                 variant="secondary"
                 imgSrc={objectUrl}
                 onClick={() => {

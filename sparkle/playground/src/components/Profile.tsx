@@ -1,6 +1,6 @@
 import {
   Avatar,
-  BellIcon,
+  Bell01V2,
   ZapV2,
   Button,
   Chip,
@@ -16,14 +16,13 @@ import {
   DropdownMenuTrigger,
   Input,
   Label,
-  LightModeIcon,
-  MoonIcon,
+  SunV2,
+  Moon01V2,
   Notification,
   Page,
   Edit04V2,
   SearchInput,
   Separator,
-  SunV2,
   Tabs,
   TabsContent,
   TabsList,
@@ -315,7 +314,7 @@ function ProfileContent({ initialUser }: ProfileContentProps) {
               <Avatar
                 size="xs"
                 visual={
-                  row.original.kind === "schedule" ? <ClockV2 /> : <BellIcon />
+                  row.original.kind === "schedule" ? <ClockV2 /> : <Bell01V2 />
                 }
               />
               <div className="s-flex s-min-w-0 s-flex-col s-gap-0">
@@ -361,7 +360,7 @@ function ProfileContent({ initialUser }: ProfileContentProps) {
   );
 
   const themeIcon =
-    theme === "light" ? SunV2 : theme === "dark" ? MoonIcon : LightModeIcon;
+    theme === "light" ? SunV2 : theme === "dark" ? Moon01V2 : SunV2;
   const themeLabel =
     theme === "light" ? "Light" : theme === "dark" ? "Dark" : "System";
 
@@ -457,12 +456,12 @@ function ProfileContent({ initialUser }: ProfileContentProps) {
                   label="Light"
                 />
                 <DropdownMenuItem
-                  icon={MoonIcon}
+                  icon={Moon01V2}
                   onClick={() => setTheme("dark")}
                   label="Dark"
                 />
                 <DropdownMenuItem
-                  icon={LightModeIcon}
+                  icon={SunV2}
                   onClick={() => setTheme("system")}
                   label="System"
                 />
@@ -616,7 +615,7 @@ function ProfileContent({ initialUser }: ProfileContentProps) {
         <Tabs defaultValue="tools" className="s-w-full">
           <TabsList>
             <TabsTrigger value="tools" label="Tools" icon={ZapV2} />
-            <TabsTrigger value="triggers" label="Triggers" icon={BellIcon} />
+            <TabsTrigger value="triggers" label="Triggers" icon={Bell01V2} />
           </TabsList>
           <TabsContent value="tools" className="s-mt-4">
             <div className="s-relative s-my-4">

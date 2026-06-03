@@ -7,9 +7,9 @@ import { AgentInstructionsHistory } from "@app/components/agent_builder/instruct
 import { useAgentConfigurationHistory } from "@app/lib/swr/assistants";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import {
-  ArrowPathIcon,
   Button,
   Label,
+  RefreshCw02V2,
   Separator,
   XCloseV2,
 } from "@dust-tt/sparkle";
@@ -80,7 +80,7 @@ export function AgentBuilderInstructionsBlock({
             <Button
               variant="warning"
               size="sm"
-              icon={ArrowPathIcon}
+              icon={RefreshCw02V2}
               onClick={restoreVersion}
               label="Restore this version"
             />

@@ -13,11 +13,11 @@ import {
   ActionFireIcon,
   AlertCircleV2,
   AnthropicLogo,
-  ArrowPathIcon,
   Button,
-  CardIcon,
-  CloudArrowLeftRightIcon,
+  CloudArrowLeftRightV2,
+  CreditCard01V2,
   OpenaiLogo,
+  RefreshCw02V2,
   Settings01V2,
   SliderToggle,
   Spinner,
@@ -43,7 +43,7 @@ const KILL_SWITCH_DEFINITIONS: Record<KillSwitchType, KillSwitchDefinition> = {
   save_data_source_views: {
     title: "Data Source Views",
     description: "Disable saving of data source views.",
-    icon: CloudArrowLeftRightIcon,
+    icon: CloudArrowLeftRightV2,
   },
   global_blacklist_anthropic: {
     title: "Anthropic Models",
@@ -66,14 +66,14 @@ const KILL_SWITCH_DEFINITIONS: Record<KillSwitchType, KillSwitchDefinition> = {
     description:
       "Force Dust and Deep Dive agents to use non-Anthropic providers.",
     note: "Use only when the latest Sonnet or Opus models are down.",
-    icon: ArrowPathIcon,
+    icon: RefreshCw02V2,
   },
   global_disable_metronome_billing: {
     title: "Metronome Billing",
     description:
       "Disable Metronome billing globally and fall back to legacy Stripe subscriptions.",
     note: "Workspaces with the `metronome_billing` feature flag bypass this kill switch.",
-    icon: CardIcon,
+    icon: CreditCard01V2,
   },
 };
 

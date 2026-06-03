@@ -11,9 +11,9 @@ import {
   ActionPushpinIcon,
   Button,
   cn,
-  EyeSlashIcon,
-  FullscreenExitIcon,
-  FullscreenIcon,
+  EyeOffV2,
+  Maximize01V2,
+  Minimize01V2,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -86,7 +86,7 @@ function PodPinnedBannerControls({
     >
       <div className="pointer-events-auto flex items-center gap-0.5 rounded-lg border border-border/60 bg-background/95 p-0.5 shadow-sm backdrop-blur-sm dark:border-border-night/60 dark:bg-background-night/95">
         <Button
-          icon={EyeSlashIcon}
+          icon={EyeOffV2}
           variant="ghost"
           size="xs"
           tooltip="Hide"
@@ -102,7 +102,7 @@ function PodPinnedBannerControls({
           />
         )}
         <Button
-          icon={isFullscreen ? FullscreenExitIcon : FullscreenIcon}
+          icon={isFullscreen ? Minimize01V2 : Maximize01V2}
           variant="ghost"
           size="xs"
           tooltip={isFullscreen ? "Exit full screen" : "Open in full screen"}
@@ -138,7 +138,7 @@ function PodPinnedBannerCollapsedAffordance({
       <Button label="Show" variant="ghost" size="xs" onClick={onShow} />
       <div className="ml-auto flex items-center gap-0.5">
         <Button
-          icon={FullscreenIcon}
+          icon={Maximize01V2}
           variant="ghost"
           size="xs"
           tooltip="Open in full screen"

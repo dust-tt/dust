@@ -8,7 +8,7 @@ import type { TriggerType } from "@app/types/assistant/triggers";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Avatar,
-  BellIcon,
+  Bell01V2,
   Button,
   Chip,
   ClockV2,
@@ -134,7 +134,7 @@ export function ProfileTriggersTab({ owner }: ProfileTriggersTabProps) {
               <Avatar
                 size="xs"
                 visual={
-                  row.original.kind === "schedule" ? <ClockV2 /> : <BellIcon />
+                  row.original.kind === "schedule" ? <ClockV2 /> : <Bell01V2 />
                 }
               />
               <div className="text-sm font-semibold">{row.original.name}</div>

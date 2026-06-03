@@ -40,10 +40,8 @@ import {
 import type { WorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
 import {
-  ActionGitBranchIcon,
   ArrowRightV2,
   Avatar,
-  ChatBubbleBottomCenterTextIcon,
   ContactsUserIcon,
   DropdownMenu,
   DropdownMenuContent,
@@ -56,10 +54,12 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   Edit04V2,
-  EyeSlashIcon,
+  EyeOffV2,
   EyeV2,
+  GitBranch01V2,
+  Link01V2,
   LinkExternal01V2,
-  LinkIcon,
+  MessageCircle01V2,
   PlusCircleV2,
   PlusV2,
   SidekickV2,
@@ -426,7 +426,7 @@ export function ConversationMenu({
             onClick={() => {
               void branchConversation();
             }}
-            icon={ActionGitBranchIcon}
+            icon={GitBranch01V2}
             disabled={isBranching}
           />
           <DropdownMenuSeparator />
@@ -449,7 +449,7 @@ export function ConversationMenu({
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
-                      icon={ChatBubbleBottomCenterTextIcon}
+                      icon={MessageCircle01V2}
                       label="Personal conversations"
                       onClick={async () =>
                         moveConversationOutOfPod(conversation)
@@ -546,7 +546,7 @@ export function ConversationMenu({
             <DropdownMenuItem
               label="Copy link"
               onClick={copyConversationLink}
-              icon={LinkIcon}
+              icon={Link01V2}
             />
           )}
           {(canMakeUrlAccessible || canRestrictUrlAccess) && (
@@ -563,7 +563,7 @@ export function ConversationMenu({
                     : "workspace_members"
                 );
               }}
-              icon={canRestrictUrlAccess ? EyeSlashIcon : EyeV2}
+              icon={canRestrictUrlAccess ? EyeOffV2 : EyeV2}
               disabled={isUpdatingConversationUrlAccessMode}
             />
           )}

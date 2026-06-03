@@ -1,11 +1,11 @@
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import {
   ActionIcons,
-  ActionPlusIcon,
   Avatar,
   Button,
   Edit04V2,
   IconPicker,
+  PlusV2,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
@@ -13,7 +13,7 @@ import {
 import { useState } from "react";
 import { useController } from "react-hook-form";
 
-const DEFAULT_ICON = ActionPlusIcon;
+const DEFAULT_ICON = PlusV2;
 
 export function SkillBuilderIconSection() {
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);

@@ -1,6 +1,6 @@
 import { useURLSheet } from "@app/hooks/useURLSheet";
 import {
-  CloudArrowLeftRightIcon,
+  CloudArrowLeftRightV2,
   FolderV2,
   Globe01V2,
   Icon,
@@ -110,7 +110,7 @@ export function QuickStartGuide() {
             <div className="col-span-2 flex flex-col gap-3">
               <div className="flex items-center gap-2">
                 <Icon
-                  visual={CloudArrowLeftRightIcon}
+                  visual={CloudArrowLeftRightV2}
                   className="text-foreground"
                 />
                 <h6 className="font-semibold">Connections</h6>

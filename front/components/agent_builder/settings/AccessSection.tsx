@@ -13,7 +13,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  EyeSlashIcon,
+  EyeOffV2,
   EyeV2,
   SlackLogo,
   Users01V2,
@@ -59,7 +59,7 @@ export function AccessSection() {
   };
 
   const getDisplayIcon = () => {
-    return scope.value === "visible" ? EyeV2 : EyeSlashIcon;
+    return scope.value === "visible" ? EyeV2 : EyeOffV2;
   };
 
   const slackDataSource = slackProvider
@@ -111,7 +111,7 @@ export function AccessSection() {
             <DropdownMenuItem
               label="Unpublished"
               description="Visible & usable by editors only."
-              icon={EyeSlashIcon}
+              icon={EyeOffV2}
               onClick={() => scope.onChange("hidden")}
               disabled={publishingToggleDisabled}
             />

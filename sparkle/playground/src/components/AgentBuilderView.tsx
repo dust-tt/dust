@@ -1,11 +1,11 @@
 import "@dust-tt/sparkle/styles/allotment.css";
 
 import {
-  HistoryIcon,
+  ClockRewindV2,
   Avatar,
   Bar,
   BarChart01V2,
-  BoldIcon,
+  Bold01V2,
   ZapV2,
   BookOpen01V2,
   Button,
@@ -13,7 +13,7 @@ import {
   CheckV2,
   Chip,
   CodeSquare01V2,
-  TagBlockIcon,
+  LayoutAlt02V2,
   SidekickV2,
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -24,12 +24,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   EyeV2,
-  EyeSlashIcon,
+  EyeOffV2,
   Heading01V2,
   Icon,
   Input,
-  ItalicIcon,
-  LinkIcon,
+  Italic01V2,
+  Link01V2,
   CheckDone01V2,
   ListGroup,
   ListItem,
@@ -38,9 +38,9 @@ import {
   Lock01V2,
   DiffBlock,
   Markdown,
-  QuoteTextIcon,
+  DoubleQuotesV2,
   Separator,
-  ServerIcon,
+  Server03V2,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -57,8 +57,8 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-  TagIcon,
-  TestTubeIcon,
+  Tag01V2,
+  Beaker02V2,
   Tool02V2,
   Users01V2,
   XCloseV2,
@@ -77,7 +77,7 @@ import type { Components } from "react-markdown";
 
 import { customColors } from "@dust-tt/sparkle/lib/colors";
 
-import type { DiffChange } from "@dust-tt/sparkle";
+import { DiffChange } from "@dust-tt/sparkle";
 
 import { InputBar } from "./InputBar";
 import { InviteUsersScreen } from "./InviteUsersScreen";
@@ -680,7 +680,7 @@ export function AgentBuilderView({
   };
   const rightPanelTabs = [
     { value: "sidekick", label: "Sidekick", icon: SidekickV2 },
-    { value: "testing", label: "Preview", icon: TestTubeIcon },
+    { value: "testing", label: "Preview", icon: Beaker02V2 },
     { value: "insights", label: "Insights", icon: BarChart01V2 },
   ];
 
@@ -810,14 +810,14 @@ export function AgentBuilderView({
                             tooltip="Heading"
                           />
                           <Button
-                            icon={BoldIcon}
+                            icon={Bold01V2}
                             size="icon"
                             variant="ghost-secondary"
                             tooltip="Bold"
                             tooltipShortcut="Cmd+B"
                           />
                           <Button
-                            icon={ItalicIcon}
+                            icon={Italic01V2}
                             size="icon"
                             variant="ghost-secondary"
                             tooltip="Italic"
@@ -825,7 +825,7 @@ export function AgentBuilderView({
                           />
                           <Separator orientation="vertical" />
                           <Button
-                            icon={LinkIcon}
+                            icon={Link01V2}
                             size="icon"
                             variant="ghost-secondary"
                             tooltip="Insert a link"
@@ -844,7 +844,7 @@ export function AgentBuilderView({
                           />
                           <Separator orientation="vertical" />
                           <Button
-                            icon={QuoteTextIcon}
+                            icon={DoubleQuotesV2}
                             size="icon"
                             variant="ghost-secondary"
                             tooltip="Quotation block"
@@ -857,7 +857,7 @@ export function AgentBuilderView({
                           />
                           <Separator orientation="vertical" />
                           <Button
-                            icon={TagBlockIcon}
+                            icon={LayoutAlt02V2}
                             size="icon"
                             variant="ghost-secondary"
                             tooltip="XML tag"
@@ -868,7 +868,7 @@ export function AgentBuilderView({
                               <Button
                                 size="icon"
                                 variant="ghost-secondary"
-                                icon={HistoryIcon}
+                                icon={ClockRewindV2}
                                 isSelect
                               />
                             </DropdownMenuTrigger>
@@ -1108,9 +1108,7 @@ export function AgentBuilderView({
                                   : "Unpublished"
                               }
                               icon={
-                                accessStatus === "published"
-                                  ? EyeV2
-                                  : EyeSlashIcon
+                                accessStatus === "published" ? EyeV2 : EyeOffV2
                               }
                               isSelect
                             />
@@ -1118,7 +1116,7 @@ export function AgentBuilderView({
                           <DropdownMenuContent>
                             <DropdownMenuItem
                               label="Unpublished"
-                              icon={EyeSlashIcon}
+                              icon={EyeOffV2}
                               onSelect={() => setAccessStatus("unpublished")}
                             />
                             <DropdownMenuItem
@@ -1162,7 +1160,7 @@ export function AgentBuilderView({
                               size="sm"
                               variant="ghost"
                               label="Manage"
-                              icon={TagIcon}
+                              icon={Tag01V2}
                             />
                           </DropdownMenuTrigger>
                           <DropdownMenuContent>
@@ -1539,7 +1537,7 @@ export function AgentBuilderView({
                             visual={
                               isRestrictedSpace(space.id)
                                 ? Lock01V2
-                                : ServerIcon
+                                : Server03V2
                             }
                             size="sm"
                           />
@@ -1732,7 +1730,7 @@ export function AgentBuilderView({
               <div className="s-flex s-w-full s-justify-end">
                 <Button
                   label="Restore this version"
-                  icon={HistoryIcon}
+                  icon={ClockRewindV2}
                   variant="outline"
                   size="sm"
                   onClick={() => setSelectedVersion(null)}

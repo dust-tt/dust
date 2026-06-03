@@ -2,14 +2,14 @@ import { calculateLinkTextAndPosition } from "@app/components/assistant/conversa
 import { useKeyboardShortcutLabel } from "@app/hooks/useKeyboardShortcutLabel";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import {
-  BoldIcon,
+  Bold01V2,
   CheckDone01V2,
   Code01V2,
   CodeSquare01V2,
+  DoubleQuotesV2,
   Heading01V2,
-  ItalicIcon,
+  Italic01V2,
   ListOrdered2Icon,
-  QuoteTextIcon,
   ToolbarContent,
   ToolbarIcon,
   ToolbarLink,
@@ -144,7 +144,7 @@ export function ToolBarContent({ editor }: ToolBarContentProps) {
         />,
         <ToolbarIcon
           key="bold"
-          icon={BoldIcon}
+          icon={Bold01V2}
           onClick={() => editor.chain().focus().toggleBold().run()}
           active={editor.isActive("bold")}
           tooltip={getTooltipText("Bold", boldShortcutLabel)}
@@ -152,7 +152,7 @@ export function ToolBarContent({ editor }: ToolBarContentProps) {
         />,
         <ToolbarIcon
           key="italic"
-          icon={ItalicIcon}
+          icon={Italic01V2}
           onClick={() => editor.chain().focus().toggleItalic().run()}
           active={editor.isActive("italic")}
           tooltip={getTooltipText("Italic", italicShortcutLabel)}
@@ -200,7 +200,7 @@ export function ToolBarContent({ editor }: ToolBarContentProps) {
         />,
         <ToolbarIcon
           key="blockquote"
-          icon={QuoteTextIcon}
+          icon={DoubleQuotesV2}
           onClick={() => {
             if (editor.isActive("codeBlock")) {
               editor.chain().focus().toggleCodeBlock().toggleBlockquote().run();

@@ -5,10 +5,10 @@ import { isNavigationLocked } from "@app/lib/navigation-lock";
 import { useAgentAnalytics } from "@app/lib/swr/assistants";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  HandThumbDownIcon,
-  HandThumbUpIcon,
   SafeSuspense,
   safeLazy,
+  ThumbsDownV2,
+  ThumbsUpV2,
   ValueCard,
 } from "@dust-tt/sparkle";
 
@@ -62,11 +62,11 @@ export function AgentFeedback({
               {allowReactions && agentAnalytics?.feedbacks ? (
                 <>
                   <div className="flex flex-row items-center">
-                    <HandThumbUpIcon className="w-7 pr-2 text-gray-400 dark:text-muted-foreground-night" />
+                    <ThumbsUpV2 className="w-7 pr-2 text-gray-400 dark:text-muted-foreground-night" />
                     <div>{agentAnalytics.feedbacks.positiveFeedbacks}</div>
                   </div>
                   <div className="flex flex-row items-center">
-                    <HandThumbDownIcon className="w-7 pr-2 text-gray-400 dark:text-muted-foreground-night" />
+                    <ThumbsDownV2 className="w-7 pr-2 text-gray-400 dark:text-muted-foreground-night" />
                     <div>{agentAnalytics.feedbacks.negativeFeedbacks}</div>
                   </div>
                 </>

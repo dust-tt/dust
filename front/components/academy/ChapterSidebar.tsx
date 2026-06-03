@@ -12,7 +12,7 @@ import {
   ArrowLeftV2,
   Button,
   cn,
-  MenuIcon,
+  Menu01V2,
   Sheet,
   SheetContent,
   SheetTitle,
@@ -144,7 +144,7 @@ export function ChapterMobileMenuButton(props: ChapterSidebarProps) {
   return (
     <>
       <Button
-        icon={MenuIcon}
+        icon={Menu01V2}
         variant="ghost"
         size="sm"
         className="lg:hidden"

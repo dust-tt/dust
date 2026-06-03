@@ -3,14 +3,15 @@ import { useNotionLastSyncedUrls } from "@app/lib/swr/data_sources";
 import { GetPostNotionSyncResponseBodySchema } from "@app/types/api/internal/spaces";
 import type { DataSourceType } from "@app/types/data_source";
 import type { WorkspaceType } from "@app/types/user";
-import type { DropdownMenu, NotificationType } from "@dust-tt/sparkle";
 import {
-  ArrowPathIcon,
   Button,
   CheckCircleV2,
   DataTable,
+  type DropdownMenu,
   Icon,
   Input,
+  type NotificationType,
+  RefreshCw02V2,
   TextArea,
   Tooltip,
   Trash01V2,
@@ -129,7 +130,7 @@ export function AdvancedNotionManagement({
             {info.row.original.method === "delete" ? (
               <Icon visual={Trash01V2} size="sm" />
             ) : (
-              <Icon visual={ArrowPathIcon} size="sm" />
+              <Icon visual={RefreshCw02V2} size="sm" />
             )}
 
             {info.row.original.success ? (

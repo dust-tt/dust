@@ -11,7 +11,7 @@ import {
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { usePendingInvitations } from "@app/lib/swr/user";
 import {
-  BellIcon,
+  Bell01V2,
   Page,
   Separator,
   Spinner,
@@ -66,7 +66,7 @@ export function ProfilePage() {
         <Tabs defaultValue="tools" className="w-full">
           <TabsList>
             <TabsTrigger value="tools" label="Tools" icon={ZapV2} />
-            <TabsTrigger value="triggers" label="Triggers" icon={BellIcon} />
+            <TabsTrigger value="triggers" label="Triggers" icon={Bell01V2} />
           </TabsList>
           <TabsContent value="tools" className="mt-4">
             <UserToolsTable owner={owner} />

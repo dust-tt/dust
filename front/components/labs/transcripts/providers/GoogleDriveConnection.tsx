@@ -1,7 +1,7 @@
 import type { LabsTranscriptsConfigurationType } from "@app/types/labs";
 import {
   Button,
-  CloudArrowLeftRightIcon,
+  CloudArrowLeftRightV2,
   Page,
   XCloseV2,
 } from "@dust-tt/sparkle";
@@ -24,7 +24,7 @@ export function GoogleDriveConnection({
           <Button
             label="Google connected"
             size="sm"
-            icon={CloudArrowLeftRightIcon}
+            icon={CloudArrowLeftRightV2}
             disabled={true}
           />
           <Button
@@ -45,7 +45,7 @@ export function GoogleDriveConnection({
             <Button
               label="Connect Google"
               size="sm"
-              icon={CloudArrowLeftRightIcon}
+              icon={CloudArrowLeftRightV2}
               onClick={onConnect}
             />
           </div>

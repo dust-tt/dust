@@ -22,7 +22,7 @@ import type { CoreAPIError } from "@app/types/core/core_api";
 import type { APIErrorResponse } from "@app/types/error";
 import type { BlockType } from "@app/types/run";
 import {
-  BracesIcon,
+  BracketsV2,
   Button,
   File04V2,
   PlayV2,
@@ -408,7 +408,7 @@ export function AppViewPage() {
             <div className="hidden flex-initial space-x-2 sm:block">
               <Button
                 variant="outline"
-                icon={BracesIcon}
+                icon={BracketsV2}
                 label="Secrets"
                 onClick={() => {
                   void router.push(`/w/${owner.sId}/developers/dev-secrets`);

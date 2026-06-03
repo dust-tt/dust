@@ -29,15 +29,15 @@ import type { ContentNodeType } from "@app/types/core/content_node";
 import type { ConnectorProvider } from "@app/types/data_source";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import {
-  ActionVolumeUpIcon,
   DoubleIcon,
   DoubleQuotesV2,
   FaviconIcon,
   File02V2,
   FolderV2,
   Icon,
-  ImageIcon,
+  Image01V2,
   TableV2,
+  VolumeMaxV2,
 } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
@@ -118,11 +118,11 @@ export const IconForAttachmentCitation = ({
   if (contentType) {
     const isImageType = contentType.startsWith("image/");
     if (isImageType) {
-      return <Icon visual={ImageIcon} size={size} />;
+      return <Icon visual={Image01V2} size={size} />;
     }
     const isAudioType = contentType.startsWith("audio/");
     if (isAudioType) {
-      return <Icon visual={ActionVolumeUpIcon} size={size} />;
+      return <Icon visual={VolumeMaxV2} size={size} />;
     }
     if (isPastedFile(contentType)) {
       return <Icon visual={DoubleQuotesV2} size={size} />;

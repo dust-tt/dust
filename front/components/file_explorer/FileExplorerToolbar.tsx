@@ -2,11 +2,11 @@ import type { ViewMode } from "@app/components/file_explorer/FileExplorerItem";
 import type { FileExplorerSortMode } from "@app/components/file_explorer/types";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import {
-  ActionTimeIcon,
   ArrowDownV2,
   ArrowUpV2,
   Button,
   CheckDone01V2,
+  ClockV2,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -20,7 +20,7 @@ const SORT_ITEMS: Record<
   FileExplorerSortMode,
   { label: string; icon: React.ComponentType<{ className?: string }> }
 > = {
-  "last-modified": { label: "Last modified", icon: ActionTimeIcon },
+  "last-modified": { label: "Last modified", icon: ClockV2 },
   "name-asc": { label: "Name A → Z", icon: ArrowDownV2 },
   "name-desc": { label: "Name Z → A", icon: ArrowUpV2 },
 };

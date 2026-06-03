@@ -23,7 +23,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  FolderOpenIcon,
+  FolderOpenV2,
   Page,
   PlusV2,
   SearchInput,
@@ -303,7 +303,7 @@ export function ManageSkillsPage() {
                 />
                 <DropdownMenuItem
                   label="From existing"
-                  icon={FolderOpenIcon}
+                  icon={FolderOpenV2}
                   onClick={() => setIsImportDialogOpen(true)}
                 />
               </DropdownMenuContent>

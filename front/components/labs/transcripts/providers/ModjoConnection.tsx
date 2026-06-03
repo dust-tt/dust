@@ -1,7 +1,7 @@
 import type { LabsTranscriptsConfigurationType } from "@app/types/labs";
 import {
   Button,
-  CloudArrowLeftRightIcon,
+  CloudArrowLeftRightV2,
   Input,
   Page,
   XCloseV2,
@@ -34,7 +34,7 @@ export function ModjoConnection({
           <Button
             label="Modjo connected"
             size="sm"
-            icon={CloudArrowLeftRightIcon}
+            icon={CloudArrowLeftRightV2}
             disabled={true}
           />
           <Button
@@ -75,7 +75,7 @@ export function ModjoConnection({
             <Button
               label="Connect Modjo"
               size="sm"
-              icon={CloudArrowLeftRightIcon}
+              icon={CloudArrowLeftRightV2}
               onClick={() =>
                 onConnect({
                   credentialId: apiKey,

@@ -23,12 +23,12 @@ import { asDisplayName, pluralize } from "@app/types/shared/utils/string_utils";
 import {
   Button,
   ContentMessage,
-  DocumentPileIcon,
   File02V2,
+  File04V2,
   FolderTableIcon,
+  LayersThree01V2,
   Lock01V2,
   MessageChatSquareV2,
-  Square3Stack3DIcon,
   Tree,
 } from "@dust-tt/sparkle";
 import { useMemo } from "react";
@@ -52,11 +52,11 @@ const getVisualForSourceItem = (
           : MessageChatSquareV2;
       }
       if (DATABASE_INTERNAL_MIME_TYPES.includes(source.mimeType)) {
-        return Square3Stack3DIcon;
+        return LayersThree01V2;
       }
 
       if (FILE_INTERNAL_MIME_TYPES.includes(source.mimeType)) {
-        return source.expandable ? DocumentPileIcon : File02V2;
+        return source.expandable ? File04V2 : File02V2;
       }
 
       if (SPREADSHEET_INTERNAL_MIME_TYPES.includes(source.mimeType)) {

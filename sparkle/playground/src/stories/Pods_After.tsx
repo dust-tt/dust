@@ -2,12 +2,12 @@ import {
   ArchiveV2,
   Attachment01V2,
   Avatar,
-  BellIcon,
-  BoltOffIcon,
+  Bell01V2,
+  ZapOffV2,
   Breadcrumbs,
   Button,
   Card,
-  ChatBubbleBottomCenterTextIcon,
+  MessageCircle01V2,
   MessageChatSquareV2,
   CheckCircleV2,
   Settings01V2,
@@ -30,8 +30,8 @@ import {
   HeartV2,
   InboxIcon,
   Lightbulb04V2,
-  LinkIcon,
-  LogoutIcon,
+  Link01V2,
+  LogOut01V2,
   DotsHorizontalV2,
   NavigationList,
   NavigationListCollapsibleSection,
@@ -47,8 +47,7 @@ import {
   SlackLogo,
   SpaceClosedIcon,
   SpaceOpenIcon,
-  StarIcon,
-  StarStrokeIcon,
+  Star01V2,
   Trash01V2,
   Users01V2,
   User01V2,
@@ -566,7 +565,7 @@ export default function Pods_After() {
         contextMenuItems: [
           {
             label: "Start a conversation with document",
-            icon: ChatBubbleBottomCenterTextIcon,
+            icon: MessageCircle01V2,
           },
           {
             label: "Show in files",
@@ -706,7 +705,7 @@ export default function Pods_After() {
       <>
         <DropdownMenuItem
           label={isStarred ? "Unstar" : "Star"}
-          icon={isStarred ? StarStrokeIcon : StarIcon}
+          icon={isStarred ? Star01V2 : Star01V2}
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -847,7 +846,7 @@ export default function Pods_After() {
             <DropdownMenuContent>
               <DropdownMenuItem
                 label={isStarred ? "Unstar" : "Star"}
-                icon={isStarred ? StarStrokeIcon : StarIcon}
+                icon={isStarred ? Star01V2 : Star01V2}
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -865,7 +864,7 @@ export default function Pods_After() {
                 }}
               />
               <DropdownMenuSub>
-                <DropdownMenuSubTrigger label="Notifications" icon={BellIcon} />
+                <DropdownMenuSubTrigger label="Notifications" icon={Bell01V2} />
                 <DropdownMenuSubContent>
                   <DropdownMenuRadioGroup
                     value={spaceNotificationPreferences.get(space.id) ?? "all"}
@@ -948,7 +947,7 @@ export default function Pods_After() {
               <DropdownMenuLabel label="Share" />
               <DropdownMenuItem
                 label="Copy link"
-                icon={LinkIcon}
+                icon={Link01V2}
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -1329,7 +1328,7 @@ export default function Pods_After() {
                 variant="primary"
                 tooltip="New Conversation"
                 size="sm"
-                icon={ChatBubbleBottomCenterTextIcon}
+                icon={MessageCircle01V2}
                 label="New"
                 onClick={() => {
                   setP2View({ kind: "welcome" });
@@ -1463,7 +1462,7 @@ export default function Pods_After() {
                     <NavigationListItem
                       key={c.id}
                       label={c.title}
-                      icon={ChatBubbleBottomCenterTextIcon}
+                      icon={MessageCircle01V2}
                       selected={isConversationSidebarSelected(c.id)}
                       moreMenu={getConversationMoreMenu(c)}
                       onClick={() =>
@@ -1551,7 +1550,7 @@ export default function Pods_After() {
                         <DropdownMenuContent>
                           <DropdownMenuItem
                             label="Hide triggered"
-                            icon={BoltOffIcon}
+                            icon={ZapOffV2}
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
@@ -1676,7 +1675,7 @@ export default function Pods_After() {
             <DropdownMenuSeparator />
             <DropdownMenuItem
               label="Signout"
-              icon={LogoutIcon}
+              icon={LogOut01V2}
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();

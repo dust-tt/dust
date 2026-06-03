@@ -20,9 +20,9 @@ import { slugify } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
-  DocumentPlusIcon,
-  EyeSlashIcon,
+  EyeOffV2,
   EyeV2,
+  FilePlus03V2,
   Input,
   Page,
   PlusV2,
@@ -442,7 +442,7 @@ export const DocumentUploadOrEditModal = ({
                             ? "Uploading..."
                             : "Upload file",
                         variant: "primary",
-                        icon: DocumentPlusIcon,
+                        icon: FilePlus03V2,
                         onClick: () => fileInputRef.current?.click(),
                         isLoading:
                           fileUploaderService.isProcessingFiles ||
@@ -490,7 +490,7 @@ export const DocumentUploadOrEditModal = ({
                       action={{
                         label: labelsVisible ? "Hide" : "Show",
                         variant: "ghost",
-                        icon: labelsVisible ? EyeSlashIcon : EyeV2,
+                        icon: labelsVisible ? EyeOffV2 : EyeV2,
                         onClick: () => setLabelsVisible(!labelsVisible),
                       }}
                     />

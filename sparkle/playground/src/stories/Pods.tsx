@@ -2,12 +2,12 @@ import {
   ArchiveV2,
   Attachment01V2,
   Avatar,
-  BellIcon,
-  BoltOffIcon,
+  Bell01V2,
+  ZapOffV2,
   Breadcrumbs,
   Button,
   Card,
-  ChatBubbleBottomCenterTextIcon,
+  MessageCircle01V2,
   MessageChatSquareV2,
   CheckDoubleV2,
   Settings01V2,
@@ -29,8 +29,8 @@ import {
   EyeV2,
   HeartV2,
   Lightbulb04V2,
-  LinkIcon,
-  LogoutIcon,
+  Link01V2,
+  LogOut01V2,
   DotsHorizontalV2,
   NavigationList,
   NavigationListCollapsibleSection,
@@ -557,7 +557,7 @@ function Pods() {
         contextMenuItems: [
           {
             label: "Start a conversation with document",
-            icon: ChatBubbleBottomCenterTextIcon,
+            icon: MessageCircle01V2,
           },
           {
             label: "Show in files",
@@ -1000,7 +1000,7 @@ function Pods() {
                 variant="primary"
                 tooltip="New Conversation"
                 size="sm"
-                icon={ChatBubbleBottomCenterTextIcon}
+                icon={MessageCircle01V2}
                 label="New"
               />
               <DropdownMenu
@@ -1126,7 +1126,7 @@ function Pods() {
                               ? "Show triggered"
                               : "Hide triggered"
                           }
-                          icon={BoltOffIcon}
+                          icon={ZapOffV2}
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
@@ -1243,7 +1243,7 @@ function Pods() {
                               <DropdownMenuSub>
                                 <DropdownMenuSubTrigger
                                   label="Notifications"
-                                  icon={BellIcon}
+                                  icon={Bell01V2}
                                 />
                                 <DropdownMenuSubContent>
                                   <DropdownMenuRadioGroup
@@ -1334,7 +1334,7 @@ function Pods() {
                               <DropdownMenuLabel label="Share" />
                               <DropdownMenuItem
                                 label="Copy link"
-                                icon={LinkIcon}
+                                icon={Link01V2}
                                 onClick={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
@@ -1386,7 +1386,7 @@ function Pods() {
                         <DropdownMenuContent>
                           <DropdownMenuItem
                             label="Hide triggered"
-                            icon={BoltOffIcon}
+                            icon={ZapOffV2}
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
@@ -1593,7 +1593,7 @@ function Pods() {
             <DropdownMenuSeparator />
             <DropdownMenuItem
               label="Signout"
-              icon={LogoutIcon}
+              icon={LogOut01V2}
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();

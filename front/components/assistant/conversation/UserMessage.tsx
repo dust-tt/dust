@@ -32,9 +32,9 @@ import {
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  ActionTimeIcon,
   Avatar,
   Button,
+  ClockV2,
   ConversationMessageContainer,
   ConversationMessageContent,
   ConversationMessageTitle,
@@ -46,7 +46,7 @@ import {
   DropdownMenuTrigger,
   Edit04V2,
   Icon,
-  LinkIcon,
+  Link01V2,
   Toolbar,
   Tooltip,
   Trash01V2,
@@ -396,7 +396,7 @@ export function UserMessage({
                 >
                   {isPending && (
                     <Icon
-                      visual={ActionTimeIcon}
+                      visual={ClockV2}
                       size="xs"
                       className="mt-1 shrink-0 text-faint dark:text-faint-night"
                     />
@@ -469,7 +469,7 @@ export function UserMessage({
             isCurrentUser && "justify-end"
           )}
         >
-          <Icon visual={ActionTimeIcon} size="xs" />
+          <Icon visual={ClockV2} size="xs" />
           {`Message${pluralize(pendingMessageCount)} queued`}
         </div>
       )}
@@ -610,7 +610,7 @@ function ActionMenu({
   const actions = showActions
     ? [
         {
-          icon: LinkIcon,
+          icon: Link01V2,
           label: "Copy message link",
           onClick: handleCopyMessageLink,
         },

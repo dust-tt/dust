@@ -14,8 +14,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  FullscreenIcon,
-  LinkIcon,
+  Maximize01V2,
+  Link01V2,
   DotsHorizontalV2,
   Sheet,
   SheetContent,
@@ -98,12 +98,12 @@ export function FrameView() {
                 tooltip="Refresh"
               />
               <Button
-                icon={FullscreenIcon}
+                icon={Maximize01V2}
                 variant="ghost"
                 tooltip="Full screen"
               />
               <Button icon={Download01V2} variant="ghost" tooltip="Export" />
-              <Button icon={LinkIcon} variant="ghost" tooltip="Share" />
+              <Button icon={Link01V2} variant="ghost" tooltip="Share" />
               <div className="s-flex s-h-8 s-items-center s-gap-1">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>

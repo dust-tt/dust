@@ -85,10 +85,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types/user";
-import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
 import {
-  ActionGitBranchIcon,
-  ArrowPathIcon,
   Button,
   ButtonGroup,
   ButtonGroupDropdown,
@@ -100,9 +97,12 @@ import {
   ConversationMessageContent,
   ConversationMessageTitle,
   DotsHorizontalV2,
+  type DropdownMenuItemProps,
+  GitBranch01V2,
   InfoCircleV2,
   InteractiveImageGrid,
-  LinkIcon,
+  Link01V2,
+  RefreshCw02V2,
   StopV2,
   Tooltip,
   Trash01V2,
@@ -839,14 +839,14 @@ export function AgentMessage({
     const dropdownItems: DropdownMenuItemProps[] = [
       {
         label: "Copy message link",
-        icon: LinkIcon,
+        icon: Link01V2,
         onSelect: handleCopyMessageLink,
       },
     ];
 
     dropdownItems.push({
       label: "Branch from here",
-      icon: ActionGitBranchIcon,
+      icon: GitBranch01V2,
       onSelect: () => {
         void branchConversation(agentMessage.sId);
       },
@@ -856,7 +856,7 @@ export function AgentMessage({
     if (shouldShowRetry) {
       dropdownItems.push({
         label: "Retry",
-        icon: ArrowPathIcon,
+        icon: RefreshCw02V2,
         onSelect: () => {
           void retryHandler({
             conversationId,
@@ -1431,7 +1431,7 @@ function AgentMessageContent({
                 items={[
                   {
                     label: "Retry",
-                    icon: ArrowPathIcon,
+                    icon: RefreshCw02V2,
                     onSelect: () => {
                       void retryHandler({
                         conversationId,

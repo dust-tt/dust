@@ -18,12 +18,12 @@ import {
 } from "@app/types/assistant/mentions";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  ChatBubbleBottomCenterPlusIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   EyeV2,
+  MessagePlusCircleV2,
 } from "@dust-tt/sparkle";
 import React from "react";
 
@@ -72,7 +72,7 @@ export const MentionDropdown = React.forwardRef<
         <DropdownMenuContent side="bottom" align="start">
           <DropdownMenuItem
             onClick={handleAgentStartConversation}
-            icon={ChatBubbleBottomCenterPlusIcon}
+            icon={MessagePlusCircleV2}
             label={`New conversation with @${mention.label}`}
           />
           {clientType !== "extension" && (

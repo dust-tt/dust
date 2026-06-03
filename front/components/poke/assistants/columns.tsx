@@ -6,7 +6,7 @@ import type { PokeAgentConfigurationType } from "@app/pages/api/poke/workspaces/
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Download01V2,
-  EmotionLaughIcon,
+  FaceSmileV2,
   IconButton,
   LinkWrapper,
   Trash01V2,
@@ -114,9 +114,7 @@ export function makeColumnsForAssistants(
         return (
           <>
             <IconButton
-              icon={
-                assistant.status !== "archived" ? Trash01V2 : EmotionLaughIcon
-              }
+              icon={assistant.status !== "archived" ? Trash01V2 : FaceSmileV2}
               size="xs"
               variant="outline"
               onClick={async () => {

@@ -8,6 +8,7 @@ import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPan
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import {
   BarChart01V2,
+  Beaker02V2,
   Button,
   ScrollArea,
   SidebarRightCloseIcon,
@@ -16,7 +17,6 @@ import {
   Tabs,
   TabsList,
   TabsTrigger,
-  TestTubeIcon,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -58,7 +58,7 @@ function PanelHeader({
                 <TabsTrigger
                   value="preview"
                   label="Preview"
-                  icon={TestTubeIcon}
+                  icon={Beaker02V2}
                   onClick={() => onTabChange("preview")}
                 />
                 <TabsTrigger
@@ -105,7 +105,7 @@ function CollapsedTabs({ onTabSelect }: CollapsedTabsProps) {
         onClick={() => onTabSelect("sidekick")}
       />
       <Button
-        icon={TestTubeIcon}
+        icon={Beaker02V2}
         variant="ghost"
         size="sm"
         tooltip="Preview"

@@ -14,7 +14,7 @@ import type { DemoVideoProps } from "@app/components/home/content/Solutions/Demo
 import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCasesSection";
 import {
   CheckCircleV2,
-  MagicIcon,
+  MagicWand02V2,
   Rocket02V2,
   Users01V2,
 } from "@dust-tt/sparkle";
@@ -83,7 +83,7 @@ export const Benefits: BenefitsProps = {
   sectionTitle: "Transform HR operations into strategic impact",
   items: [
     {
-      icon: MagicIcon,
+      icon: MagicWand02V2,
       title: "Scale HR knowledge",
       description:
         "Turn policies into instant answers, enabling employee self-service.",

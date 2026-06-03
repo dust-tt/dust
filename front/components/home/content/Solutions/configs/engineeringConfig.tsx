@@ -15,7 +15,7 @@ import type { DemoVideoProps } from "@app/components/home/content/Solutions/Demo
 import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCasesSection";
 import {
   CheckCircleV2,
-  MagicIcon,
+  MagicWand02V2,
   Rocket02V2,
   Users01V2,
 } from "@dust-tt/sparkle";
@@ -88,7 +88,7 @@ export const Benefits: BenefitsProps = {
   sectionTitle: "Amplify your engineering team's capabilities ",
   items: [
     {
-      icon: MagicIcon,
+      icon: MagicWand02V2,
       title: "Focus on building",
       description:
         "Maximize engineering time by automating documentation and support tasks.",

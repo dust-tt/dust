@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
 import {
-  ChatBubbleBottomCenterTextIcon,
+  MessageCircle01V2,
   ContentMessage,
   ContentMessageAction,
   ContentMessageInline,
@@ -17,7 +17,7 @@ type ContentMessageStoryProps = React.ComponentProps<typeof ContentMessage> & {
 const ICONS = {
   none: null,
   InfoCircleV2: InfoCircleV2,
-  ChatBubbleBottomCenterTextIcon: ChatBubbleBottomCenterTextIcon,
+  MessageCircle01V2: MessageCircle01V2,
   HeartV2: HeartV2,
 } as const;
 

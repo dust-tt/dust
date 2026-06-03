@@ -4,13 +4,13 @@ import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { classNames } from "@app/lib/utils";
 import type { ContentNode } from "@app/types/connectors/connectors_api";
 import type { APIError } from "@app/types/error";
-import type { NotificationType } from "@dust-tt/sparkle";
 import {
-  BracesIcon,
+  BracketsV2,
   Button,
   CheckDone01V2,
   IconButton,
   LinkExternal01V2,
+  type NotificationType,
   SearchInput,
   Spinner,
   Tree,
@@ -317,7 +317,7 @@ function ContentNodeTreeChildren({
                 {onDocumentViewClick && (
                   <IconButton
                     size="xs"
-                    icon={BracesIcon}
+                    icon={BracketsV2}
                     onClick={() => {
                       if (n.type === "document") {
                         onDocumentViewClick(n.internalId);

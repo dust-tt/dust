@@ -19,7 +19,7 @@ import { isSlugified, truncate } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import {
   AlertCircleV2,
-  DocumentPlusIcon,
+  FilePlus03V2,
   Input,
   Page,
   Sheet,
@@ -416,7 +416,7 @@ export const TableUploadOrEditModal = ({
                               ? "Replace file"
                               : "Upload file",
                         variant: "primary",
-                        icon: DocumentPlusIcon,
+                        icon: FilePlus03V2,
                         onClick: () => fileInputRef.current?.click(),
                       }}
                     />

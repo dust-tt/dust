@@ -8,7 +8,7 @@ import { LinkWrapper } from "@app/lib/platform";
 import {
   ArrowLeftV2,
   Button,
-  MenuIcon,
+  Menu01V2,
   Sheet,
   SheetContent,
   SheetTitle,
@@ -85,7 +85,7 @@ export function MobileMenuButton({
   return (
     <>
       <Button
-        icon={MenuIcon}
+        icon={Menu01V2}
         variant="ghost"
         size="sm"
         className="lg:hidden"

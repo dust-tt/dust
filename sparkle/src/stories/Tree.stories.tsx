@@ -17,7 +17,7 @@ import {
   DustIcon,
   EyeV2,
   FolderV2,
-  HistoryIcon,
+  ClockRewindV2,
   Icon,
   IconButton,
   PlusCircleV2,
@@ -130,7 +130,7 @@ export const TreeExample = () => {
                       <div className="s-flex s-grow s-flex-row s-items-center s-justify-between">
                         <Button size="icon" variant="outline" icon={EyeV2} />
                         <div className="s-flex s-flex-row s-items-center s-gap-1 s-text-sm s-text-muted-foreground">
-                          <Icon visual={HistoryIcon} size="xs" />
+                          <Icon visual={ClockRewindV2} size="xs" />
                           1y
                         </div>
                       </div>

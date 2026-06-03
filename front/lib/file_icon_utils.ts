@@ -1,9 +1,8 @@
 import { frameContentType, frameSlideshowContentType } from "@app/types/files";
 import {
   ActionFrameIcon,
-  ActionVolumeUpIcon,
   BigQueryLogo,
-  BracesIcon,
+  BracketsV2,
   ConfluenceLogo,
   DriveLogo,
   DustLogoSquare,
@@ -14,7 +13,7 @@ import {
   GooglePdfLogo,
   GoogleSlideLogo,
   GoogleSpreadsheetLogo,
-  ImageIcon,
+  Image01V2,
   IntercomLogo,
   MicrosoftExcelLogo,
   MicrosoftLogo,
@@ -25,7 +24,8 @@ import {
   SlackLogo,
   SnowflakeLogo,
   TableV2,
-  TextIcon,
+  Type01V2,
+  VolumeMaxV2,
   ZendeskLogo,
 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
@@ -99,12 +99,12 @@ const FILE_TYPE_MAPPINGS: FileTypeMapping[] = [
     extensions: ["csv", "tsv"],
   },
   {
-    icon: TextIcon,
+    icon: Type01V2,
     mimeTypes: ["text/plain"],
     extensions: ["txt"],
   },
   {
-    icon: BracesIcon,
+    icon: BracketsV2,
     mimeTypes: ["text/markdown", "application/json"],
     extensions: ["md", "markdown", "json"],
   },
@@ -129,10 +129,10 @@ export function getFileTypeIcon(
 ): ComponentType {
   // Check prefix-based content types first
   if (contentType.startsWith("image/")) {
-    return ImageIcon;
+    return Image01V2;
   }
   if (contentType.startsWith("audio/")) {
-    return ActionVolumeUpIcon;
+    return VolumeMaxV2;
   }
 
   // Internal Dust types (Notion, BigQuery, Slack, etc.) – use colored provider logos

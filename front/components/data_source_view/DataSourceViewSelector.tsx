@@ -51,7 +51,7 @@ import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
 import {
   Button,
   CheckDone01V2,
-  CloudArrowLeftRightIcon,
+  CloudArrowLeftRightV2,
   cn,
   FolderV2,
   Globe01V2,
@@ -601,7 +601,7 @@ export function DataSourceViewsSelector({
           <Tree.Item
             key="connected"
             label="Connected Data"
-            visual={CloudArrowLeftRightIcon}
+            visual={CloudArrowLeftRightV2}
             type="node"
             defaultCollapsed={
               !searchResult ||

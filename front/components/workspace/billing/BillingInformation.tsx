@@ -9,11 +9,11 @@ import type {
 import { useBillingInfo } from "@app/lib/swr/workspaces";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  ActionHashtagIcon,
-  ActionMailIcon,
-  ActionMapPinIcon,
   Button,
+  Hash01V2,
   Icon,
+  Mail01V2,
+  MarkerPin01V2,
   Spinner,
   User01V2,
 } from "@dust-tt/sparkle";
@@ -87,9 +87,9 @@ export function BillingInformation({ owner }: BillingInformationProps) {
   const address = formatAddress(billingInfo?.profile.address ?? null);
   const addressRows = [
     { icon: User01V2, value: billingInfo?.profile.name },
-    { icon: ActionMailIcon, value: billingInfo?.profile.email },
-    { icon: ActionHashtagIcon, value: billingInfo?.profile.phone },
-    { icon: ActionMapPinIcon, value: address },
+    { icon: Mail01V2, value: billingInfo?.profile.email },
+    { icon: Hash01V2, value: billingInfo?.profile.phone },
+    { icon: MarkerPin01V2, value: address },
   ].filter((row) => row.value);
   const paymentMethod = billingInfo?.paymentMethod ?? null;
 

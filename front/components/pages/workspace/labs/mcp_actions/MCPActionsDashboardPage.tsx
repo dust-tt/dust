@@ -8,11 +8,11 @@ import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import {
-  ActionCodeBoxIcon,
   Avatar,
   Breadcrumbs,
   Button,
   Chip,
+  CodeSquare01V2,
   ContextItem,
   Icon,
   LinkExternal01V2,
@@ -86,7 +86,7 @@ export function MCPActionsDashboardPage() {
           <Page>
             <Page.Header
               title="MCP Actions Dashboard"
-              icon={ActionCodeBoxIcon}
+              icon={CodeSquare01V2}
               description="Monitor and track MCP (Model Context Protocol) actions executed by your agents."
             />
 

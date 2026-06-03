@@ -12,10 +12,10 @@ import type {
 } from "@app/types/assistant/skill_configuration";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import {
-  ArrowPathIcon,
   Button,
   ContentMessage,
   InfoCircleV2,
+  RefreshCw02V2,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -204,7 +204,7 @@ const DescriptionSection = ({
                   onClick={() => {
                     setShowRestoreModal(true);
                   }}
-                  icon={ArrowPathIcon}
+                  icon={RefreshCw02V2}
                 />
               </div>
             )}

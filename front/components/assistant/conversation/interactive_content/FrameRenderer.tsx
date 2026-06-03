@@ -27,15 +27,15 @@ import {
   ArrowCircleIcon,
   Button,
   CheckCircleV2,
-  CloudArrowUpIcon,
   CodeBlock,
   EyeV2,
-  FullscreenExitIcon,
-  FullscreenIcon,
+  Maximize01V2,
+  Minimize01V2,
   ReverseLeftV2,
   Spinner,
   TerminalV2,
   Tooltip,
+  UploadCloud02V2,
 } from "@dust-tt/sparkle";
 import React, {
   useCallback,
@@ -393,7 +393,7 @@ export function FrameRenderer({
             )}
             {projectSaveState === "supported" && (
               <Button
-                icon={CloudArrowUpIcon}
+                icon={UploadCloud02V2}
                 variant="ghost"
                 label={
                   isMobile ? undefined : isSavingToProject ? "Saving…" : "Save"
@@ -489,7 +489,7 @@ function PreviewActionButtons({
           tooltipTriggerAsChild
           trigger={
             <Button
-              icon={isFullScreen ? FullscreenExitIcon : FullscreenIcon}
+              icon={isFullScreen ? Minimize01V2 : Maximize01V2}
               variant="ghost"
               size="xs"
               onClick={isFullScreen ? exitFullScreen : enterFullScreen}

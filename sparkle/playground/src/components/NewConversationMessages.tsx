@@ -14,12 +14,12 @@ import {
   PopoverTrigger,
   ChevronRightV2,
   ClipboardV2,
-  EmotionLaughIcon,
-  FullscreenExitIcon,
-  FullscreenIcon,
-  HandThumbDownIcon,
-  HandThumbUpIcon,
-  LinkIcon,
+  FaceSmileV2,
+  Minimize01V2,
+  Maximize01V2,
+  ThumbsDownV2,
+  ThumbsUpV2,
+  Link01V2,
   DotsHorizontalV2,
   Edit04V2,
   Trash01V2,
@@ -577,7 +577,7 @@ export const NewConversationUserMessage = React.forwardRef<
               <Button
                 size="xs"
                 variant="outline"
-                icon={EmotionLaughIcon}
+                icon={FaceSmileV2}
                 aria-label="React with emoji"
               />
             </PopoverTrigger>
@@ -600,7 +600,7 @@ export const NewConversationUserMessage = React.forwardRef<
               />
             </DropdownMenuTrigger>
             <DropdownMenuContent>
-              <DropdownMenuItem label="Copy anchor link" icon={LinkIcon} />
+              <DropdownMenuItem label="Copy anchor link" icon={Link01V2} />
               <DropdownMenuSeparator />
               {canEdit && (
                 <DropdownMenuItem
@@ -751,7 +751,7 @@ export const NewConversationUserMessage = React.forwardRef<
                       <Button
                         size="xs"
                         variant="outline"
-                        icon={isExpanded ? FullscreenExitIcon : FullscreenIcon}
+                        icon={isExpanded ? Minimize01V2 : Maximize01V2}
                         label={isExpanded ? "Show less" : "Show more"}
                         onClick={() => setIsExpanded((v) => !v)}
                         aria-expanded={isExpanded}
@@ -879,7 +879,7 @@ export const NewConversationAgentMessage = React.forwardRef<
                   <Button
                     size="xs"
                     variant="outline"
-                    icon={isExpanded ? FullscreenExitIcon : FullscreenIcon}
+                    icon={isExpanded ? Minimize01V2 : Maximize01V2}
                     label={isExpanded ? "Show less" : "Show all"}
                     onClick={() => setIsExpanded((value) => !value)}
                     aria-expanded={isExpanded}
@@ -898,13 +898,13 @@ export const NewConversationAgentMessage = React.forwardRef<
                 <div className="s-flex s-items-center s-gap-1 s-opacity-0 s-transition-opacity group-hover/new-conversation-message:s-opacity-100">
                   <ButtonGroup removeGaps>
                     <Button
-                      icon={HandThumbUpIcon}
+                      icon={ThumbsUpV2}
                       size="xs"
                       variant="outline"
                       aria-label="Thumbs up"
                     />
                     <Button
-                      icon={HandThumbDownIcon}
+                      icon={ThumbsDownV2}
                       size="xs"
                       variant="outline"
                       aria-label="Thumbs down"
@@ -928,7 +928,7 @@ export const NewConversationAgentMessage = React.forwardRef<
                     <DropdownMenuContent>
                       <DropdownMenuItem
                         label="Copy anchor link"
-                        icon={LinkIcon}
+                        icon={Link01V2}
                       />
                       <DropdownMenuSeparator />
                       <DropdownMenuItem label="Edit" icon={Edit04V2} />

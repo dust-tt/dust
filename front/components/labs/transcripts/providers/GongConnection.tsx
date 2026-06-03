@@ -1,7 +1,7 @@
 import type { LabsTranscriptsConfigurationType } from "@app/types/labs";
 import {
   Button,
-  CloudArrowLeftRightIcon,
+  CloudArrowLeftRightV2,
   Page,
   XCloseV2,
 } from "@dust-tt/sparkle";
@@ -28,7 +28,7 @@ export function GongConnection({
               <Button
                 label="Gong connected"
                 size="sm"
-                icon={CloudArrowLeftRightIcon}
+                icon={CloudArrowLeftRightV2}
                 disabled={true}
               />
               <Button
@@ -46,7 +46,7 @@ export function GongConnection({
                 <Button
                   label="Process your Gong transcripts"
                   size="sm"
-                  icon={CloudArrowLeftRightIcon}
+                  icon={CloudArrowLeftRightV2}
                   onClick={onConnect}
                 />
               </div>

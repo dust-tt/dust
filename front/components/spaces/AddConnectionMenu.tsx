@@ -41,7 +41,7 @@ import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
 import {
   Button,
-  CloudArrowLeftRightIcon,
+  CloudArrowLeftRightV2,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -540,7 +540,7 @@ export const AddConnectionMenu = ({
             <Button
               label="Add Connections"
               variant="primary"
-              icon={CloudArrowLeftRightIcon}
+              icon={CloudArrowLeftRightV2}
               size="sm"
               onClick={withTracking(
                 TRACKING_AREAS.DATA_SOURCES,

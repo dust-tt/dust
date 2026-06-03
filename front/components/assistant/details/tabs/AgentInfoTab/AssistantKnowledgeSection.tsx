@@ -31,7 +31,7 @@ import type {
 import { DocumentViewRawContentKey } from "@app/types/sheets";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  BracesIcon,
+  BracketsV2,
   Button,
   Chip,
   FolderV2,
@@ -564,7 +564,7 @@ function DataSourceViewSelectedNodes({
           />
           <IconButton
             size="xs"
-            icon={BracesIcon}
+            icon={BracketsV2}
             onClick={() => {
               if (node.type === "document") {
                 setDataSourceViewToDisplay(dataSourceView);

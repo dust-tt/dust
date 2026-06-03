@@ -14,7 +14,7 @@ import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
-  CloudArrowLeftRightIcon,
+  CloudArrowLeftRightV2,
   cn,
   DataTable,
   DropdownMenu,
@@ -161,7 +161,7 @@ export const SpaceCategoriesList = ({
           <DropdownMenuItem
             disabled={!isAdmin && !canWriteInSpace}
             href={`/w/${owner.sId}/spaces/${space.sId}/categories/managed?modal=managed`}
-            icon={CloudArrowLeftRightIcon}
+            icon={CloudArrowLeftRightV2}
             label="Connected Data"
           />
           <DropdownMenuItem

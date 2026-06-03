@@ -20,14 +20,14 @@ import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_provide
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import {
   Button,
-  CloudArrowLeftRightIcon,
+  CloudArrowLeftRightV2,
   DotsHorizontalV2,
   Download01V2,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  FolderOpenIcon,
+  FolderOpenV2,
   FolderV2,
   Icon,
   Spinner,
@@ -431,7 +431,7 @@ export function ContentNodeCard({
 }: ContentNodeCardProps) {
   const ProviderIcon = getConnectorProviderLogoWithFallback({
     provider: entry.connectorProvider,
-    fallback: CloudArrowLeftRightIcon,
+    fallback: CloudArrowLeftRightV2,
   });
 
   return (
@@ -451,7 +451,7 @@ export function FileExplorerEmptyState() {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-3">
       <Icon
-        visual={FolderOpenIcon}
+        visual={FolderOpenV2}
         size="lg"
         className="text-muted-foreground dark:text-muted-foreground-night"
       />

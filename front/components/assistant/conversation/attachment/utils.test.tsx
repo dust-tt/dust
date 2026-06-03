@@ -65,11 +65,11 @@ vi.mock("@dust-tt/sparkle", () => ({
   ActionBrainIcon: "ActionBrainIcon",
   ActionFrameIcon: "ActionFrameIcon",
   ActionIcons: "ActionIcons",
-  ActionVolumeUpIcon: "ActionVolumeUpIcon",
+  VolumeMaxV2: "VolumeMaxV2",
   File02V2: "File02V2",
   DoubleQuotesV2: "DoubleQuotesV2",
   FolderV2: "FolderV2",
-  ImageIcon: "ImageIcon",
+  Image01V2: "Image01V2",
   TableV2: "TableV2",
 
   // Components used by the implementation
@@ -183,14 +183,14 @@ describe("IconForAttachmentCitation", () => {
     render(<TestIcon contentType="image/jpeg" />);
     const el = screen.getByTestId("icon");
     expect(el).toBeInTheDocument();
-    expect(el).toHaveAttribute("data-visual", "ImageIcon");
+    expect(el).toHaveAttribute("data-visual", "Image01V2");
   });
 
   it("renders ActionVolumeUp icon for audio/* content types", () => {
     render(<TestIcon contentType="audio/wav" />);
     const el = screen.getByTestId("icon");
     expect(el).toBeInTheDocument();
-    expect(el).toHaveAttribute("data-visual", "ActionVolumeUpIcon");
+    expect(el).toHaveAttribute("data-visual", "VolumeMaxV2");
   });
 
   it("renders DoubleQuotes icon for pasted file content type", () => {

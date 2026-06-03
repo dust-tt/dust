@@ -19,7 +19,7 @@ import {
   File02V2,
   LinkExternal01V2,
   Icon,
-  ImageIcon,
+  Image01V2,
   ImageZoomDialog,
   Input,
   Markdown,
@@ -35,7 +35,7 @@ import {
   SlackLogo,
   TableV2,
 } from "@dust-tt/sparkle";
-import type { ActionCardState, BreadcrumbsItem } from "@dust-tt/sparkle";
+import { ActionCardState, BreadcrumbsItem } from "@dust-tt/sparkle";
 import {
   NewConversationActiveIndicator,
   NewConversationAgentMessage,
@@ -472,7 +472,7 @@ export function ConversationView({
       case "notion":
         return NotionLogo;
       case "image":
-        return ImageIcon;
+        return Image01V2;
       case "document":
       default:
         return File02V2;

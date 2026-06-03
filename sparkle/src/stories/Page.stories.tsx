@@ -4,8 +4,8 @@ import React from "react";
 import {
   Avatar,
   Button,
-  ChatBubbleBottomCenterTextIcon,
-  CloudArrowLeftRightIcon,
+  MessageCircle01V2,
+  CloudArrowLeftRightV2,
   ContextItem,
   FolderV2,
   Globe01V2,
@@ -28,7 +28,7 @@ export const PageSimpleExample = () => {
       <Page.Header
         title="Title"
         description="Description"
-        icon={ChatBubbleBottomCenterTextIcon}
+        icon={MessageCircle01V2}
       />
       <Page.P>
         Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam euismod
@@ -160,7 +160,7 @@ export const QIGExample = () => {
         <Page.Horizontal>
           <Page.Vertical sizing="grow">
             <div className="flex items-center gap-2">
-              <Icon visual={CloudArrowLeftRightIcon} />{" "}
+              <Icon visual={CloudArrowLeftRightV2} />{" "}
               <Page.H variant="h6">Connections</Page.H>
             </div>
             <Page.P>
@@ -200,7 +200,7 @@ export const PageExample = () => {
       <Page.Header
         title="Title"
         description="Description"
-        icon={ChatBubbleBottomCenterTextIcon}
+        icon={MessageCircle01V2}
       />
       <Page.P>
         Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam euismod
@@ -330,10 +330,7 @@ export const AssistantBuilder = () => {
 export const HelpExample = () => {
   return (
     <Page>
-      <Page.Header
-        title="Welcome to Agent"
-        icon={ChatBubbleBottomCenterTextIcon}
-      />
+      <Page.Header title="Welcome to Agent" icon={MessageCircle01V2} />
       <Page.Layout direction="vertical" gap="xs" align="left">
         <Page.SectionHeader title="Getting started?" />
         <Page.P variant="secondary">

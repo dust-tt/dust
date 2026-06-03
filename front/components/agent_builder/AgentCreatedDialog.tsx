@@ -1,13 +1,13 @@
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  ChatBubbleBottomCenterTextIcon,
   Dialog,
   DialogContainer,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  MessageCircle01V2,
 } from "@dust-tt/sparkle";
 
 interface AgentCreatedDialogProps {
@@ -54,7 +54,7 @@ export function AgentCreatedDialog({
           }}
           rightButtonProps={{
             label: "Start chat",
-            icon: ChatBubbleBottomCenterTextIcon,
+            icon: MessageCircle01V2,
             href: conversationRoute,
           }}
         />

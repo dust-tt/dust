@@ -36,7 +36,6 @@ import {
   Attachment01V2,
   Button,
   ChevronRightV2,
-  CloudArrowUpIcon,
   DoubleIcon,
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -54,6 +53,7 @@ import {
   LoadingBlock,
   SearchMdV2,
   Spinner,
+  UploadCloud02V2,
 } from "@dust-tt/sparkle";
 import type { ButtonVariantType } from "@dust-tt/sparkle/dist/esm/components/Button";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -649,7 +649,7 @@ export const InputBarAttachmentsPicker = ({
               }}
               button={
                 <Button
-                  icon={CloudArrowUpIcon}
+                  icon={UploadCloud02V2}
                   label="Upload File"
                   onClick={() => fileInputRef.current?.click()}
                   className="ml-4"

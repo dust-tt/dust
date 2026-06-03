@@ -15,7 +15,7 @@ import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   Chip,
-  CloudArrowLeftRightIcon,
+  CloudArrowLeftRightV2,
   ContentMessage,
   Dialog,
   DialogContainer,
@@ -202,7 +202,7 @@ export function PersonalConnectionRequiredDialog({
                           <Chip color="green" label="Connected" />
                         ) : (
                           <Button
-                            icon={CloudArrowLeftRightIcon}
+                            icon={CloudArrowLeftRightV2}
                             size="xs"
                             variant="outline"
                             label="Connect"

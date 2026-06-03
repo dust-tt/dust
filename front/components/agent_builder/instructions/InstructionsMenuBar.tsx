@@ -1,14 +1,14 @@
 import {
-  BoldIcon,
+  Bold01V2,
   Button,
   CheckDone01V2,
   CheckV2,
   CodeSquare01V2,
   Heading01V2,
-  ItalicIcon,
+  Italic01V2,
+  LayoutAlt02V2,
   ListOrdered2Icon,
   Separator,
-  TagBlockIcon,
   XCloseV2,
 } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
@@ -45,7 +45,7 @@ export function InstructionsMenuBar({
         onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
       />
       <Button
-        icon={BoldIcon}
+        icon={Bold01V2}
         size="icon"
         variant="ghost-secondary"
         tooltip="Bold"
@@ -53,7 +53,7 @@ export function InstructionsMenuBar({
         onClick={() => editor.chain().focus().toggleBold().run()}
       />
       <Button
-        icon={ItalicIcon}
+        icon={Italic01V2}
         size="icon"
         variant="ghost-secondary"
         tooltip="Italic"
@@ -85,7 +85,7 @@ export function InstructionsMenuBar({
       />
       <Separator orientation="vertical" />
       <Button
-        icon={TagBlockIcon}
+        icon={LayoutAlt02V2}
         size="icon"
         variant="ghost-secondary"
         tooltip="XML tag"

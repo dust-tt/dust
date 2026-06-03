@@ -8,7 +8,7 @@ import {
 } from "@sparkle/components/Button";
 
 import {
-  ArrowPathIcon,
+  RefreshCw02V2,
   Button,
   ButtonGroup,
   ButtonGroupDropdown,
@@ -180,7 +180,7 @@ export const WithDropdownMenu: Story = {
               <Button variant="outline" size="xs" icon={ChevronDownV2} />
             }
             items={[
-              { label: "Retry", icon: ArrowPathIcon },
+              { label: "Retry", icon: RefreshCw02V2 },
               { label: "Delete", icon: Trash01V2, variant: "warning" },
             ]}
           />

@@ -4,11 +4,11 @@ import { getSkillAvatarIcon } from "@app/lib/skill";
 import {
   ArrowLeftV2,
   Avatar,
-  ChatBubbleBottomCenterTextIcon,
   cn,
   Edit04V2,
   EyeV2,
   Icon,
+  MessageCircle01V2,
 } from "@dust-tt/sparkle";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
@@ -50,7 +50,7 @@ export function CommandPaletteActionPhase({
         action: "chat_with",
         label: "New conversation",
         description: "Open a new conversation",
-        icon: ChatBubbleBottomCenterTextIcon,
+        icon: MessageCircle01V2,
       });
     }
     result.push({

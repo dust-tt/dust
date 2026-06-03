@@ -10,7 +10,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import {
   ActionCard,
-  BellIcon,
+  Bell01V2,
   Button,
   CardGrid,
   ClockV2,
@@ -48,7 +48,7 @@ function getTriggerIcon(trigger: TriggerType) {
     case "schedule":
       return ClockV2;
     case "webhook":
-      return BellIcon;
+      return Bell01V2;
     default:
       assertNever(trigger);
   }

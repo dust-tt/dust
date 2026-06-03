@@ -5,10 +5,10 @@ import type { DataSourceViewCategory } from "@app/types/api/public/spaces";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
-import type { BreadcrumbsItem } from "@dust-tt/sparkle";
 import {
   Breadcrumbs,
-  CloudArrowLeftRightIcon,
+  type BreadcrumbsItem,
+  CloudArrowLeftRightV2,
   Tool02V2,
   ZapV2,
 } from "@dust-tt/sparkle";
@@ -75,7 +75,7 @@ export function SpaceBreadCrumbs({
           if (dataSourceView === undefined) {
             return [
               {
-                icon: CloudArrowLeftRightIcon,
+                icon: CloudArrowLeftRightV2,
                 label: "Connections Admin",
               },
             ];

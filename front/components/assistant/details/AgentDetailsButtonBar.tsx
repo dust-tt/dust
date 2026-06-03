@@ -16,9 +16,8 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import {
-  BracesIcon,
+  BracketsV2,
   Button,
-  ChatBubbleBottomCenterPlusIcon,
   ClipboardV2,
   DotsHorizontalV2,
   DropdownMenu,
@@ -27,9 +26,9 @@ import {
   DropdownMenuTrigger,
   Edit04V2,
   File02V2,
+  MessagePlusCircleV2,
   Spinner,
-  StarIcon,
-  StarStrokeIcon,
+  Star01V2,
   Trash01V2,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -81,8 +80,8 @@ export function AgentDetailsButtonBar({
         <Button
           icon={
             agentConfiguration.userFavorite || isFavoriteDisabled
-              ? StarIcon
-              : StarStrokeIcon
+              ? Star01V2
+              : Star01V2
           }
           tooltip={
             agentConfiguration.userFavorite || isFavoriteDisabled
@@ -97,7 +96,7 @@ export function AgentDetailsButtonBar({
         />
 
         <Button
-          icon={StarIcon}
+          icon={Star01V2}
           tooltip={
             agentConfiguration.userFavorite || isFavoriteDisabled
               ? "Remove from favorites"
@@ -113,7 +112,7 @@ export function AgentDetailsButtonBar({
 
       {canShowAgentConversationActions(agentConfiguration.sId) && (
         <Button
-          icon={ChatBubbleBottomCenterPlusIcon}
+          icon={MessagePlusCircleV2}
           size="sm"
           variant="outline"
           tooltip="New conversation"
@@ -258,7 +257,7 @@ export function AgentDetailsDropdownMenu({
           await navigator.clipboard.writeText(agentConfiguration.sId);
           onClose?.();
         }}
-        icon={BracesIcon}
+        icon={BracketsV2}
       />
       <DropdownMenuItem
         label={isExporting ? "Exporting..." : "Export to YAML"}

@@ -12,7 +12,7 @@ import {
   Chip,
   cn,
   DataTable,
-  MovingMailIcon,
+  Mail01V2,
   Page,
 } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
@@ -76,7 +76,7 @@ export function InvitationsList({
                   <Button
                     size="xs"
                     variant="outline"
-                    icon={MovingMailIcon}
+                    icon={Mail01V2}
                     label="Resend"
                     onClick={async (e: React.MouseEvent) => {
                       e.stopPropagation();

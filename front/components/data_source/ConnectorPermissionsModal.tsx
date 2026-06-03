@@ -52,11 +52,10 @@ import type { RegionInfo } from "@app/types/region";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
-import type { NotificationType } from "@dust-tt/sparkle";
 import {
   Avatar,
   Button,
-  CloudArrowLeftRightIcon,
+  CloudArrowLeftRightV2,
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
@@ -71,6 +70,7 @@ import {
   Hoverable,
   Icon,
   Lock01V2,
+  type NotificationType,
   Page,
   Sheet,
   SheetContainer,
@@ -965,7 +965,7 @@ export function ConnectorPermissionsModal({
         <Button
           size="sm"
           label={`Manage ${getDisplayNameForDataSource(dataSource)}`}
-          icon={CloudArrowLeftRightIcon}
+          icon={CloudArrowLeftRightV2}
           variant="primary"
           disabled={readOnly || !isAdmin}
           onClick={() => {

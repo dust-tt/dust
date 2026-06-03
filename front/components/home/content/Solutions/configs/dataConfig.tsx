@@ -14,7 +14,7 @@ import type { DemoVideoProps } from "@app/components/home/content/Solutions/Demo
 import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCasesSection";
 import {
   CheckCircleV2,
-  MagicIcon,
+  MagicWand02V2,
   Rocket02V2,
   Users01V2,
 } from "@dust-tt/sparkle";
@@ -87,7 +87,7 @@ export const Benefits: BenefitsProps = {
   sectionTitle: "Reduce toil, scale data education and deepen exploration",
   items: [
     {
-      icon: MagicIcon,
+      icon: MagicWand02V2,
       title: "Focus on insights",
       description:
         "Maximize analysis time by automating query writing and data exploration.",
