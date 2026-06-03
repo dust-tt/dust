@@ -190,11 +190,22 @@ export function getUsageType(
   return isProgrammaticUsage ? USAGE_TYPE_PROGRAMMATIC : USAGE_TYPE_USER;
 }
 
+// A tool invocation is always free (priced at 0 in the rate card) when its
+// internal MCP server is platform plumbing — see FREE_TOOL_SERVERS.
+export function isFreeToolServer(
+  internalMCPServerName: string | null
+): boolean {
+  return (
+    internalMCPServerName !== null &&
+    FREE_TOOL_SERVERS.has(internalMCPServerName)
+  );
+}
+
 function getToolUsageType(
   baseUsageType: UsageType,
   internalMCPServerName: string | null
 ): UsageType {
-  if (internalMCPServerName && FREE_TOOL_SERVERS.has(internalMCPServerName)) {
+  if (isFreeToolServer(internalMCPServerName)) {
     return USAGE_TYPE_FREE;
   }
   return baseUsageType;
@@ -237,17 +248,22 @@ export function intelligenceAwuFromRunUsages(
 
 // Tool (platform action) credits for a set of executed actions. Each action
 // costs a fixed number of credits depending on its category (basic = 1,
-// advanced = 3). Callers should pass only final-status actions (matching the
-// usage_queue extraction) so this equals the billed amount.
+// advanced = 3), except free tools (FREE_TOOL_SERVERS, e.g. agent_memory) which
+// are priced at 0 in the rate card and therefore contribute nothing. Callers
+// should pass only final-status actions (matching the usage_queue extraction)
+// so this equals the billed amount.
 export function toolAwuFromActions(
   actions: { internalMCPServerName: string | null }[]
 ): number {
-  return actions.reduce(
-    (total, action) =>
+  return actions.reduce((total, action) => {
+    if (isFreeToolServer(action.internalMCPServerName)) {
+      return total;
+    }
+    return (
       total +
-      TOOL_CATEGORY_AWU_WEIGHTS[getToolCategory(action.internalMCPServerName)],
-    0
-  );
+      TOOL_CATEGORY_AWU_WEIGHTS[getToolCategory(action.internalMCPServerName)]
+    );
+  }, 0);
 }
 
 // ---------------------------------------------------------------------------

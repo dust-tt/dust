@@ -72,6 +72,16 @@ describe("toolAwuFromActions", () => {
   it("treats unknown / external servers as advanced (3)", () => {
     expect(toolAwuFromActions([{ internalMCPServerName: null }])).toBe(3);
   });
+
+  it("does not charge for free tools (priced at 0 in the rate card)", () => {
+    // agent_memory is in FREE_TOOL_SERVERS — billed free, so contributes 0.
+    expect(
+      toolAwuFromActions([{ internalMCPServerName: "agent_memory" }])
+    ).toBe(0);
+    expect(
+      toolAwuFromActions([{ internalMCPServerName: "agent_memory" }])
+    ).toBe(0);
+  });
 });
 
 describe("computeAgentMessageCredits", () => {
