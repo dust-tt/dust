@@ -584,7 +584,7 @@ export async function createConversationFork(
   const parentSpace = parentConversation.space;
   if (parentSpace?.isProject() && !parentSpace.isMember(auth)) {
     return new Err(
-      new DustError("unauthorized", "You are not a member of the project.")
+      new DustError("unauthorized", "You are not a member of the Pod.")
     );
   }
 
