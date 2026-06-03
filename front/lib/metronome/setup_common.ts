@@ -39,6 +39,7 @@ export interface MetricDef {
     name: string;
     exists?: boolean;
     in_values?: string[];
+    not_in_values?: string[];
   }>;
   aggregation_type: "SUM" | "COUNT" | "max";
   aggregation_key?: string;
