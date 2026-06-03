@@ -818,12 +818,7 @@ export class DustFileSystem {
   private async fileExists(
     scopedPath: string
   ): Promise<Result<boolean, DustFileSystemError>> {
-    const fileStat = await this.backend.stat(scopedPath);
-    if (fileStat.isErr()) {
-      return fileStat;
-    }
-
-    return new Ok(fileStat.value !== null);
+    return this.backend.exists(scopedPath);
   }
 
   /**
