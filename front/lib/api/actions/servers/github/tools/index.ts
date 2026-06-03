@@ -928,33 +928,8 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
                   emoji
                   isAnswerable
                 }
-                comments(first: 100) {
+                comments {
                   totalCount
-                  nodes {
-                    id
-                    body
-                    bodyText
-                    isAnswer
-                    createdAt
-                    updatedAt
-                    author {
-                      login
-                    }
-                    replies(first: 25) {
-                      totalCount
-                      nodes {
-                        id
-                        body
-                        bodyText
-                        isAnswer
-                        createdAt
-                        updatedAt
-                        author {
-                          login
-                        }
-                      }
-                    }
-                  }
                 }
               }
             }
@@ -989,6 +964,123 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
               };
               comments: {
                 totalCount: number;
+              };
+            } | null;
+          };
+        };
+
+        const discussion = discussionResult.repository.discussion;
+        if (!discussion) {
+          return new Err(
+            new MCPError(
+              `Discussion #${discussionNumber} not found in ${owner}/${repo}`
+            )
+          );
+        }
+
+        const formattedDiscussion = {
+          id: discussion.id,
+          number: discussion.number,
+          title: discussion.title,
+          body: discussion.body,
+          bodyText: discussion.bodyText,
+          url: discussion.url,
+          createdAt: discussion.createdAt,
+          updatedAt: discussion.updatedAt,
+          isAnswered: discussion.isAnswered,
+          author: discussion.author?.login || "unknown",
+          category: discussion.category,
+          commentCount: discussion.comments.totalCount,
+        };
+
+        return new Ok([
+          {
+            type: "text" as const,
+            text: `Retrieved discussion #${discussionNumber}`,
+          },
+          {
+            type: "text" as const,
+            text: JSON.stringify(formattedDiscussion, null, 2),
+          },
+        ]);
+      } catch (e) {
+        return new Err(
+          new MCPError(
+            `Error retrieving GitHub discussion: ${normalizeError(e).message}`
+          )
+        );
+      }
+    },
+
+    get_discussion_comments: async (
+      { owner, repo, discussionNumber, perPage = 50, after, before },
+      { authInfo }
+    ) => {
+      const octokit = await createOctokit(auth, {
+        accessToken: authInfo?.token,
+      });
+
+      try {
+        const query = `
+          query($owner: String!, $repo: String!, $discussionNumber: Int!, $first: Int!, $after: String, $before: String) {
+            repository(owner: $owner, name: $repo) {
+              discussion(number: $discussionNumber) {
+                comments(first: $first, after: $after, before: $before) {
+                  totalCount
+                  pageInfo {
+                    hasNextPage
+                    endCursor
+                    startCursor
+                    hasPreviousPage
+                  }
+                  nodes {
+                    id
+                    body
+                    bodyText
+                    isAnswer
+                    createdAt
+                    updatedAt
+                    author {
+                      login
+                    }
+                    replies(first: 25) {
+                      totalCount
+                      nodes {
+                        id
+                        body
+                        bodyText
+                        isAnswer
+                        createdAt
+                        updatedAt
+                        author {
+                          login
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }`;
+
+        const discussionResult = (await octokit.graphql(query, {
+          owner,
+          repo,
+          discussionNumber,
+          first: perPage,
+          after,
+          before,
+        })) as {
+          repository: {
+            discussion: {
+              comments: {
+                totalCount: number;
+                pageInfo: {
+                  hasNextPage: boolean;
+                  endCursor: string | null;
+                  startCursor: string | null;
+                  hasPreviousPage: boolean;
+                };
                 nodes: {
                   id: string;
                   body: string;
@@ -1028,54 +1120,48 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
           );
         }
 
-        const formattedDiscussion = {
-          id: discussion.id,
-          number: discussion.number,
-          title: discussion.title,
-          body: discussion.body,
-          bodyText: discussion.bodyText,
-          url: discussion.url,
-          createdAt: discussion.createdAt,
-          updatedAt: discussion.updatedAt,
-          isAnswered: discussion.isAnswered,
-          author: discussion.author?.login || "unknown",
-          category: discussion.category,
-          commentCount: discussion.comments.totalCount,
-          comments: discussion.comments.nodes.map((comment) => ({
-            id: comment.id,
-            author: comment.author?.login || "unknown",
-            body: comment.body,
-            bodyText: comment.bodyText,
-            isAnswer: comment.isAnswer,
-            createdAt: comment.createdAt,
-            updatedAt: comment.updatedAt,
-            replyCount: comment.replies.totalCount,
-            replies: comment.replies.nodes.map((reply) => ({
-              id: reply.id,
-              author: reply.author?.login || "unknown",
-              body: reply.body,
-              bodyText: reply.bodyText,
-              isAnswer: reply.isAnswer,
-              createdAt: reply.createdAt,
-              updatedAt: reply.updatedAt,
-            })),
+        const comments = discussion.comments.nodes.map((comment) => ({
+          id: comment.id,
+          author: comment.author?.login || "unknown",
+          body: comment.body,
+          bodyText: comment.bodyText,
+          isAnswer: comment.isAnswer,
+          createdAt: comment.createdAt,
+          updatedAt: comment.updatedAt,
+          replyCount: comment.replies.totalCount,
+          replies: comment.replies.nodes.map((reply) => ({
+            id: reply.id,
+            author: reply.author?.login || "unknown",
+            body: reply.body,
+            bodyText: reply.bodyText,
+            isAnswer: reply.isAnswer,
+            createdAt: reply.createdAt,
+            updatedAt: reply.updatedAt,
           })),
-        };
+        }));
 
         return new Ok([
           {
             type: "text" as const,
-            text: `Retrieved discussion #${discussionNumber}`,
+            text: `Retrieved ${comments.length} comments from discussion #${discussionNumber}`,
           },
           {
             type: "text" as const,
-            text: JSON.stringify(formattedDiscussion, null, 2),
+            text: JSON.stringify(
+              {
+                totalCount: discussion.comments.totalCount,
+                comments,
+                pageInfo: discussion.comments.pageInfo,
+              },
+              null,
+              2
+            ),
           },
         ]);
       } catch (e) {
         return new Err(
           new MCPError(
-            `Error retrieving GitHub discussion: ${normalizeError(e).message}`
+            `Error retrieving GitHub discussion comments: ${normalizeError(e).message}`
           )
         );
       }

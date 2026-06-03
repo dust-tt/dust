@@ -250,7 +250,7 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
   },
   get_discussion: {
     description:
-      "Retrieve a discussion from a specified GitHub repository including its description, category, comments, and replies.",
+      "Retrieve a discussion from a specified GitHub repository including its description, category, and comment count.",
     schema: {
       owner: z
         .string()
@@ -264,6 +264,32 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
     displayLabels: {
       running: "Retrieving GitHub discussion",
       done: "Retrieve GitHub discussion",
+    },
+  },
+  get_discussion_comments: {
+    description:
+      "Retrieve comments from a specified GitHub discussion with pagination.",
+    schema: {
+      owner: z
+        .string()
+        .describe(
+          "The owner of the repository (account or organization name)."
+        ),
+      repo: z.string().describe("The name of the repository."),
+      discussionNumber: z.number().describe("The discussion number."),
+      perPage: z
+        .number()
+        .min(1)
+        .max(100)
+        .optional()
+        .describe("Results per page. Defaults to 50, max 100."),
+      after: z.string().optional().describe("The cursor to start after."),
+      before: z.string().optional().describe("The cursor to start before."),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving GitHub discussion comments",
+      done: "Retrieve GitHub discussion comments",
     },
   },
   list_discussions: {
