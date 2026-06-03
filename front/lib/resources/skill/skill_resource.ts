@@ -2611,8 +2611,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<void> {
     const workspace = auth.getNonNullableWorkspace();
-    const parentSkillId = this.id;
 
+    // Retrieve what we want the end state to be.
     const referencedCustomSkillIds = uniq(
       removeNulls(
         referencedSkillIds.map((sId) => {
@@ -2629,49 +2629,29 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       referencedSkillIds.filter((sId) => !getResourceNameAndIdFromSId(sId))
     );
 
+    const desiredCustomSkillIds = new Set(referencedCustomSkillIds);
+    const desiredGlobalSkillIds = new Set(referencedGlobalSkillIds);
+
+    // Retrieve the current state.
     const existingReferences = await SkillReferenceModel.findAll({
       where: {
         workspaceId: workspace.id,
-        parentSkillId,
+        parentSkillId: this.id,
       },
       transaction,
     });
 
-    const childSkills = await this.model.findAll({
-      attributes: ["id"],
-      where: {
-        id: { [Op.in]: referencedCustomSkillIds },
-        workspaceId: workspace.id,
-      },
-      transaction,
-    });
-    const desiredChildSkillIds = new Set(childSkills.map((skill) => skill.id));
-    const desiredGlobalSkillIds = new Set(referencedGlobalSkillIds);
-
-    if (desiredChildSkillIds.size === 0 && desiredGlobalSkillIds.size === 0) {
-      if (existingReferences.length > 0) {
-        await SkillReferenceModel.destroy({
-          where: {
-            id: { [Op.in]: existingReferences.map((ref) => ref.id) },
-            workspaceId: workspace.id,
-          },
-          transaction,
-        });
-      }
-
-      return;
-    }
-
-    const existingChildSkillIds = new Set(
+    const existingCustomSkillIds = new Set(
       removeNulls(existingReferences.map((ref) => ref.childCustomSkillId))
     );
     const existingGlobalSkillIds = new Set(
       removeNulls(existingReferences.map((ref) => ref.childGlobalSkillId))
     );
 
+    // Delete references that are in the current state but not the end state.
     const referencesToDelete = existingReferences.filter((ref) => {
       if (ref.childCustomSkillId !== null) {
-        return !desiredChildSkillIds.has(ref.childCustomSkillId);
+        return !desiredCustomSkillIds.has(ref.childCustomSkillId);
       }
 
       if (ref.childGlobalSkillId !== null) {
@@ -2680,6 +2660,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
       return true;
     });
+
     if (referencesToDelete.length > 0) {
       await SkillReferenceModel.destroy({
         where: {
@@ -2690,12 +2671,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       });
     }
 
+    // Add references that are in the end state but not the current state.
     const referencesToCreate = [
-      ...[...desiredChildSkillIds]
-        .filter((childSkillId) => !existingChildSkillIds.has(childSkillId))
+      ...[...desiredCustomSkillIds]
+        .filter((childSkillId) => !existingCustomSkillIds.has(childSkillId))
         .map((childSkillId) => ({
           workspaceId: workspace.id,
-          parentSkillId,
+          parentSkillId: this.id,
           childCustomSkillId: childSkillId,
           childGlobalSkillId: null,
         })),
@@ -2703,11 +2685,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         .filter((globalSkillId) => !existingGlobalSkillIds.has(globalSkillId))
         .map((globalSkillId) => ({
           workspaceId: workspace.id,
-          parentSkillId,
+          parentSkillId: this.id,
           childCustomSkillId: null,
           childGlobalSkillId: globalSkillId,
         })),
     ];
+
     if (referencesToCreate.length > 0) {
       await SkillReferenceModel.bulkCreate(referencesToCreate, { transaction });
     }
