@@ -12,7 +12,16 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+// Force a deterministic icon suggestion so the invalid-icon fallback does not
+// depend on a live LLM call.
+vi.mock("@app/lib/api/skills/icon_suggestion", async () => {
+  const { Ok } = await import("@app/types/shared/result");
+  return {
+    getSkillIconSuggestion: async () => new Ok("ActionBrainIcon"),
+  };
+});
 
 import { TOOLS } from "./index";
 
@@ -227,5 +236,82 @@ describe("skill_authoring tools", () => {
       throw new Error("Expected non-builder to fail.");
     }
     expect(result.error.message).toContain("builder");
+  });
+
+  it("ignores an invalid icon on create and falls back to a valid one", async () => {
+    const { authenticator } = await createResourceTest({ role: "builder" });
+
+    const createResult = await getTool(CREATE_SKILL_TOOL_NAME).handler(
+      {
+        name: "Bad Icon Skill",
+        userFacingDescription: "Skill with a hallucinated icon name.",
+        agentFacingDescription: "Use to verify icon validation.",
+        instructions: "Do the thing.",
+        icon: "TotallyNotARealIcon",
+      },
+      makeExtra(authenticator)
+    );
+
+    expect(createResult.isOk()).toBe(true);
+    if (createResult.isErr()) {
+      throw createResult.error;
+    }
+
+    const output = createResult.value[0];
+    if (!isSkillAuthoringResultOutput(output)) {
+      throw new Error("Expected structured skill authoring output.");
+    }
+
+    const createdSkill = await SkillResource.fetchById(
+      authenticator,
+      output.resource.skillId
+    );
+    // The hallucinated name is dropped; the suggestion fallback is persisted.
+    expect(createdSkill?.icon).toBe("ActionBrainIcon");
+  });
+
+  it("rejects an invalid icon on update", async () => {
+    const { authenticator } = await createResourceTest({ role: "builder" });
+
+    const createResult = await getTool(CREATE_SKILL_TOOL_NAME).handler(
+      {
+        name: "Update Icon Skill",
+        userFacingDescription: "Skill to update.",
+        agentFacingDescription: "Use to verify update icon validation.",
+        instructions: "Do the thing.",
+        icon: "ActionListIcon",
+      },
+      makeExtra(authenticator)
+    );
+    expect(createResult.isOk()).toBe(true);
+    if (createResult.isErr()) {
+      throw createResult.error;
+    }
+    const output = createResult.value[0];
+    if (!isSkillAuthoringResultOutput(output)) {
+      throw new Error("Expected structured skill authoring output.");
+    }
+
+    const updateResult = await getTool(UPDATE_SKILL_TOOL_NAME).handler(
+      {
+        sId: output.resource.skillId,
+        icon: "TotallyNotARealIcon",
+      },
+      makeExtra(authenticator)
+    );
+
+    expect(updateResult.isErr()).toBe(true);
+    if (updateResult.isOk()) {
+      throw new Error("Expected invalid icon to be rejected.");
+    }
+    expect(updateResult.error).toBeInstanceOf(MCPError);
+    expect(updateResult.error.message).toContain("not a valid skill icon");
+
+    // The original icon is preserved.
+    const skill = await SkillResource.fetchById(
+      authenticator,
+      output.resource.skillId
+    );
+    expect(skill?.icon).toBe("ActionListIcon");
   });
 });

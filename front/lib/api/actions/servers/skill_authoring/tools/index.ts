@@ -1,3 +1,7 @@
+import {
+  isCustomResourceIconType,
+  isInternalAllowedIcon,
+} from "@app/components/resources/resources_icon_names";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
@@ -37,6 +41,12 @@ function requireInteractiveBuilder(
   }
 
   return new Ok(user);
+}
+
+// The agent supplies icon names as free text (unlike the builder UI's picker),
+// so guard against hallucinated names that would render as a broken glyph.
+function isValidSkillIcon(icon: string): boolean {
+  return isInternalAllowedIcon(icon) || isCustomResourceIconType(icon);
 }
 
 function requireCustomSkillId(sId: string): Result<string, MCPError> {
@@ -154,7 +164,9 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
       );
     }
 
-    let resolvedIcon = icon ?? null;
+    // Ignore an invalid agent-supplied icon and fall back to a suggestion
+    // rather than persisting a name that renders as a broken glyph.
+    let resolvedIcon = icon && isValidSkillIcon(icon) ? icon : null;
     if (!resolvedIcon) {
       const iconResult = await getSkillIconSuggestion(auth, {
         name: trimmedName,
@@ -244,6 +256,14 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
       userFacingDescription === undefined
     ) {
       return new Err(new MCPError("No skill updates were provided."));
+    }
+
+    if (icon !== undefined && !isValidSkillIcon(icon)) {
+      return new Err(
+        new MCPError(
+          `"${icon}" is not a valid skill icon. Omit the icon or use a valid icon name.`
+        )
+      );
     }
 
     const skill = await SkillResource.fetchById(auth, customSkillId.value);
