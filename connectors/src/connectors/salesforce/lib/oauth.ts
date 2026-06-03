@@ -45,6 +45,7 @@ function isSalesforceSignInError(err: unknown): err is Error {
       "Error retrieving access token from salesforce: code=provider_access_token_refresh_error"
     ) &&
     (err.message.includes("invalid_grant") ||
-      err.message.includes("oauth_flow_disabled"))
+      err.message.includes("oauth_flow_disabled") ||
+      err.message.includes("app_not_found"))
   );
 }
