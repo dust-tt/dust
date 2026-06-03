@@ -60,7 +60,7 @@ export const SPEECH_GENERATOR_TOOLS_METADATA = createToolsRecord({
         .url()
         .optional()
         .describe(
-          "HTTPS URL of the audio or video file to transcribe (up to 2GB). " +
+          "HTTPS URL of the audio or video file to transcribe. " +
             "Any valid HTTPS URL is accepted, including pre-signed URLs from cloud storage providers. " +
             "Mutually exclusive with audio_blob."
         ),

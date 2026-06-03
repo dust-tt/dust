@@ -23,7 +23,7 @@ const handlers: ToolHandlers<typeof SPEECH_GENERATOR_TOOLS_METADATA> = {
 
       const result = await client.speechToText.convert({
         ...(audio_url
-          ? { cloudStorageUrl: audio_url }
+          ? { sourceUrl: audio_url }
           : { file: Buffer.from(audio_blob!, "base64") }),
         modelId: "scribe_v2",
         enableLogging: false,
