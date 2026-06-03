@@ -61,6 +61,7 @@ import { default as salesloftServer } from "@app/lib/api/actions/servers/saleslo
 import { default as sandboxServer } from "@app/lib/api/actions/servers/sandbox";
 import { default as schedulesManagementServer } from "@app/lib/api/actions/servers/schedules_management";
 import { default as searchServer } from "@app/lib/api/actions/servers/search";
+import { default as skillAuthoringServer } from "@app/lib/api/actions/servers/skill_authoring";
 import { default as skillManagementServer } from "@app/lib/api/actions/servers/skill_management";
 import { default as slabServer } from "@app/lib/api/actions/servers/slab";
 import { default as slackBotServer } from "@app/lib/api/actions/servers/slack_bot";
@@ -243,6 +244,8 @@ export async function getInternalMCPServer(
       return zendeskServer(auth, agentLoopContext);
     case "skill_management":
       return skillManagementServer(auth, agentLoopContext);
+    case "skill_authoring":
+      return skillAuthoringServer(auth, agentLoopContext);
     case "schedules_management":
       return schedulesManagementServer(auth, agentLoopContext);
     case "productboard":

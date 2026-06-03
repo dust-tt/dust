@@ -17,6 +17,7 @@ export const SKILL_SOURCES = [
   "github",
   "api",
   "local_file",
+  "agent",
 ] as const;
 
 export type SkillSourceType = (typeof SKILL_SOURCES)[number];

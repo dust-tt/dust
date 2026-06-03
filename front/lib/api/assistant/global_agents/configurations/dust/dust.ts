@@ -485,6 +485,7 @@ function _getDustLikeGlobalAgent(
       "discover_knowledge",
       "discover_skills",
       "frames",
+      "skill-authoring",
       "go-deep",
       "mention_users",
       "sandbox",

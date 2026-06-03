@@ -30,6 +30,7 @@ public enum MCPServerIcon {
         case "image_generation": .actionImage
         case "include_data", "schedules_management": .actionTime
         case "interactive_content": .actionFrame
+        case "skill_authoring": .actionList
         case "jira": .jiraLogo
         case "jit_testing", "primitive_types_debugger": .actionEmotionLaugh
         case "luma": .lumaLogo

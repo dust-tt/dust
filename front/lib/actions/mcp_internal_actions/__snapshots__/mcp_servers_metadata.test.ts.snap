@@ -573,6 +573,12 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   "search": {
     "semantic_search": "never_ask",
   },
+  "skill_authoring": {
+    "create_skill": "high",
+    "get_skill": "never_ask",
+    "list_skills": "never_ask",
+    "update_skill": "high",
+  },
   "skill_management": {
     "enable_skill": "never_ask",
   },
