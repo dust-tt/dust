@@ -33,19 +33,11 @@ export type PatchSkillEditorsRequestBody = z.infer<
   typeof PatchSkillEditorsRequestBodySchema
 >;
 
-export interface GetSkillEditorsResponseBody {
+export interface SkillEditorsResponseBody {
   editors: UserType[];
 }
 
-export interface GetSkillEditorsLightResponseBody {
-  editors: LightUserType[];
-}
-
-export interface PatchSkillEditorsResponseBody {
-  editors: UserType[];
-}
-
-export interface PatchSkillEditorsLightResponseBody {
+export interface SkillEditorsLightResponseBody {
   editors: LightUserType[];
 }
 
@@ -53,10 +45,8 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorResponse<
-      | GetSkillEditorsResponseBody
-      | GetSkillEditorsLightResponseBody
-      | PatchSkillEditorsResponseBody
-      | PatchSkillEditorsLightResponseBody
+      | SkillEditorsResponseBody
+      | SkillEditorsLightResponseBody
     >
   >,
   auth: Authenticator
@@ -100,6 +90,7 @@ async function handler(
       const members = await editorGroup.getActiveMembers(auth);
       const memberUsers = members.map((m) => m.toJSON());
 
+      // Non-admins get a response with sensitive fields (email, provider, lastLoginAt etc) stripped away.
       if (auth.isAdmin()) {
         return res.status(200).json({ editors: memberUsers });
       }
@@ -286,6 +277,7 @@ async function handler(
       const updatedMembers = await editorGroup.getActiveMembers(auth);
       const updatedEditors = updatedMembers.map((m) => m.toJSON());
 
+      // Non-admins get a response with sensitive fields (email, provider, lastLoginAt etc) stripped away.
       if (auth.isAdmin()) {
         return res.status(200).json({ editors: updatedEditors });
       }

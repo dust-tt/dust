@@ -35,25 +35,14 @@ export type PatchAgentEditorsRequestBody = z.infer<
   typeof PatchAgentEditorsRequestBodySchema
 >;
 
-export const GetAgentEditorsResponseBodySchema = z.object({
+export const AgentEditorsResponseBodySchema = z.object({
   editors: z.array(UserSchema),
 });
-export type GetAgentEditorsResponseBody = z.infer<
-  typeof GetAgentEditorsResponseBodySchema
+export type AgentEditorsResponseBody = z.infer<
+  typeof AgentEditorsResponseBodySchema
 >;
 
-export type GetAgentEditorsLightResponseBody = {
-  editors: LightUserType[];
-};
-
-export const PatchAgentEditorsResponseBodySchema = z.object({
-  editors: z.array(UserSchema),
-});
-export type PatchAgentEditorsResponseBody = z.infer<
-  typeof PatchAgentEditorsResponseBodySchema
->;
-
-export type PatchAgentEditorsLightResponseBody = {
+export type AgentEditorsLightResponseBody = {
   editors: LightUserType[];
 };
 
@@ -61,10 +50,8 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorResponse<
-      | GetAgentEditorsResponseBody
-      | GetAgentEditorsLightResponseBody
-      | PatchAgentEditorsResponseBody
-      | PatchAgentEditorsLightResponseBody
+      | AgentEditorsResponseBody
+      | AgentEditorsLightResponseBody
     >
   >,
   auth: Authenticator
@@ -144,6 +131,7 @@ async function handler(
       const members = await editorGroup.getActiveMembers(auth);
       const memberUsers = members.map((m) => m.toJSON());
 
+      // Non-admins get a response with sensitive fields (email, provider, lastLoginAt etc) stripped away.
       if (auth.isAdmin()) {
         return res.status(200).json({ editors: memberUsers });
       }
@@ -305,6 +293,7 @@ async function handler(
       const updatedMembers = await editorGroup.getActiveMembers(auth);
       const updatedEditors = updatedMembers.map((m) => m.toJSON());
 
+      // Non-admins get a response with sensitive fields (email, provider, lastLoginAt etc) stripped away.
       if (auth.isAdmin()) {
         return res.status(200).json({ editors: updatedEditors });
       }

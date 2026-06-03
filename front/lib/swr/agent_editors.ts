@@ -2,8 +2,8 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
-  GetAgentEditorsLightResponseBody,
-  GetAgentEditorsResponseBody,
+  AgentEditorsLightResponseBody,
+  AgentEditorsResponseBody,
   PatchAgentEditorsRequestBody,
 } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/editors";
 import { pluralize } from "@app/types/shared/utils/string_utils";
@@ -22,7 +22,7 @@ export function useEditors({
 }) {
   const { fetcher } = useFetcher();
   const editorsFetcher: Fetcher<
-    GetAgentEditorsResponseBody | GetAgentEditorsLightResponseBody
+    AgentEditorsResponseBody | AgentEditorsLightResponseBody
   > = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(

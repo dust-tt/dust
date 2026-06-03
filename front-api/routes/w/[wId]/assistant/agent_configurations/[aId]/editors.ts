@@ -12,19 +12,11 @@ import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
-export type GetAgentEditorsResponseBody = {
+export type AgentEditorsResponseBody = {
   editors: UserType[];
 };
 
-type GetAgentEditorsLightResponseBody = {
-  editors: LightUserType[];
-};
-
-export type PatchAgentEditorsResponseBody = {
-  editors: UserType[];
-};
-
-type PatchAgentEditorsLightResponseBody = {
+type AgentEditorsLightResponseBody = {
   editors: LightUserType[];
 };
 
@@ -52,7 +44,7 @@ app.get(
   async (
     ctx
   ): HandlerResult<
-    GetAgentEditorsResponseBody | GetAgentEditorsLightResponseBody
+    AgentEditorsResponseBody | AgentEditorsLightResponseBody
   > => {
     const auth = ctx.get("auth");
     const aId = ctx.req.param("aId") ?? "";
@@ -128,7 +120,7 @@ app.get(
     const members = await editorGroup.getActiveMembers(auth);
     const memberUsers = members.map((m) => m.toJSON());
 
-    // biome-ignore lint/plugin/noDirectRoleCheck: conditional response — non-admins get a light response, not a 403
+    // biome-ignore lint/plugin/noDirectRoleCheck: non-admins get a response with sensitive fields (email, provider, lastLoginAt etc) stripped away
     if (auth.isAdmin()) {
       return ctx.json({ editors: memberUsers });
     }
@@ -151,7 +143,7 @@ app.patch(
   async (
     ctx
   ): HandlerResult<
-    PatchAgentEditorsResponseBody | PatchAgentEditorsLightResponseBody
+    AgentEditorsResponseBody | AgentEditorsLightResponseBody
   > => {
     const auth = ctx.get("auth");
     const aId = ctx.req.param("aId") ?? "";
@@ -343,7 +335,7 @@ app.patch(
     const updatedMembers = await editorGroup.getActiveMembers(auth);
     const updatedEditors = updatedMembers.map((m) => m.toJSON());
 
-    // biome-ignore lint/plugin/noDirectRoleCheck: conditional response — non-admins get a light response, not a 403
+    // biome-ignore lint/plugin/noDirectRoleCheck: non-admins get a response with sensitive fields (email, provider, lastLoginAt etc) stripped away
     if (auth.isAdmin()) {
       return ctx.json({ editors: updatedEditors });
     }

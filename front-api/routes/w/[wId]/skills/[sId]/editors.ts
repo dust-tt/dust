@@ -30,11 +30,7 @@ export type PatchSkillEditorsRequestBody = z.infer<
   typeof PatchSkillEditorsRequestBodySchema
 >;
 
-export interface GetSkillEditorsResponseBody {
-  editors: UserType[];
-}
-
-export interface PatchSkillEditorsResponseBody {
+export interface SkillEditorsResponseBody {
   editors: UserType[];
 }
 
@@ -97,7 +93,7 @@ app.get("/", async (ctx) => {
   const members = await editorGroup.getActiveMembers(auth);
   const memberUsers = members.map((m) => m.toJSON());
 
-  // biome-ignore lint/plugin/noDirectRoleCheck: conditional response — non-admins get a light response, not a 403
+  // biome-ignore lint/plugin/noDirectRoleCheck: non-admins get a response with sensitive fields (email, provider, lastLoginAt etc) stripped away
   if (auth.isAdmin()) {
     return ctx.json({ editors: memberUsers });
   }
@@ -278,7 +274,7 @@ app.patch(
     const updatedMembers = await editorGroup.getActiveMembers(auth);
     const updatedEditors = updatedMembers.map((m) => m.toJSON());
 
-    // biome-ignore lint/plugin/noDirectRoleCheck: conditional response — non-admins get a light response, not a 403
+    // biome-ignore lint/plugin/noDirectRoleCheck: non-admins get a response with sensitive fields (email, provider, lastLoginAt etc) stripped away
     if (auth.isAdmin()) {
       return ctx.json({ editors: updatedEditors });
     }
