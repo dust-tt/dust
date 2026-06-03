@@ -49,6 +49,22 @@ function formatCredits(credits: number): string {
   return Math.round(credits).toLocaleString("en-US");
 }
 
+function formatPaymentMethodLabel(
+  pm:
+    | { type: "card"; brand: string; last4: string }
+    | { type: "sepa_debit"; last4: string }
+): string {
+  switch (pm.type) {
+    case "card":
+      return `${formatBrandName(pm.brand)} ${pm.last4}`;
+    case "sepa_debit":
+      return `IBAN •••• ${pm.last4}`;
+    default:
+      assertNeverAndIgnore(pm);
+      return "";
+  }
+}
+
 function formatCost(amount: number): string {
   if (Number.isInteger(amount)) {
     return amount.toLocaleString("en-US");
@@ -429,9 +445,9 @@ export function BuyAwuCreditsDialog({
                               />
                             ) : null}
                             <span className="text-sm font-medium">
-                              {awuPurchaseInfo.paymentMethod.type === "card"
-                                ? `${formatBrandName(awuPurchaseInfo.paymentMethod.brand)} ${awuPurchaseInfo.paymentMethod.last4}`
-                                : `IBAN •••• ${awuPurchaseInfo.paymentMethod.last4}`}
+                              {formatPaymentMethodLabel(
+                                awuPurchaseInfo.paymentMethod
+                              )}
                             </span>
                           </div>
                           <Button

@@ -178,8 +178,9 @@ export async function getAwuPurchaseInfo(
       expand: ["invoice_settings.default_payment_method"],
     });
     if (!("deleted" in customer)) {
-      const pm = customer.invoice_settings
-        ?.default_payment_method as Stripe.PaymentMethod | null;
+      const pmRaw = customer.invoice_settings?.default_payment_method;
+      const pm: Stripe.PaymentMethod | null =
+        pmRaw && typeof pmRaw !== "string" ? pmRaw : null;
       if (pm?.type === "card" && pm.card) {
         paymentMethod = {
           type: "card",
@@ -187,7 +188,10 @@ export async function getAwuPurchaseInfo(
           last4: pm.card.last4 ?? "",
         };
       } else if (pm?.type === "sepa_debit" && pm.sepa_debit) {
-        paymentMethod = { type: "sepa_debit", last4: pm.sepa_debit.last4 ?? "" };
+        paymentMethod = {
+          type: "sepa_debit",
+          last4: pm.sepa_debit.last4 ?? "",
+        };
       }
     }
   } catch {
