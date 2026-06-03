@@ -24,13 +24,13 @@ import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
 import { normalizeAsInternalDustError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  ArrowCircleIcon,
   Button,
   CheckCircleV2,
   CodeBlock,
   EyeV2,
   Maximize01V2,
   Minimize01V2,
+  RefreshCw01V2,
   ReverseLeftV2,
   Spinner,
   TerminalV2,
@@ -523,7 +523,7 @@ function PreviewActionButtons({
         tooltipTriggerAsChild
         trigger={
           <Button
-            icon={ArrowCircleIcon}
+            icon={RefreshCw01V2}
             variant="ghost"
             size="xs"
             onClick={reloadFile}

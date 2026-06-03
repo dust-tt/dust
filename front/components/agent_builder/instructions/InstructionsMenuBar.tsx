@@ -7,7 +7,7 @@ import {
   Heading01V2,
   Italic01V2,
   LayoutAlt02V2,
-  ListOrdered2Icon,
+  ListV2,
   Separator,
   XCloseV2,
 } from "@dust-tt/sparkle";
@@ -69,7 +69,7 @@ export function InstructionsMenuBar({
         onClick={() => editor.chain().focus().toggleBulletList().run()}
       />
       <Button
-        icon={ListOrdered2Icon}
+        icon={ListV2}
         size="icon"
         variant="ghost-secondary"
         tooltip="Ordered list"

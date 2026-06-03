@@ -16,7 +16,7 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { TemplateActionPreset } from "@app/types/assistant/templates";
 import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
 import {
-  ActionIncludeIcon,
+  ArrowCircleBrokenRightV2,
   ScanV2,
   SearchMdV2,
   TableV2,
@@ -76,7 +76,7 @@ export const CAPABILITY_CONFIGS: Record<string, CapabilityConfig> = {
     },
   },
   [INCLUDE_DATA_SERVER.serverInfo.name]: {
-    icon: ActionIncludeIcon,
+    icon: ArrowCircleBrokenRightV2,
     configPageTitle: "Configure Include Data",
     configPageDescription: "Set time range and describe what data to include.",
     descriptionConfig: {

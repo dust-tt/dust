@@ -2,7 +2,6 @@ import { useEmailAgentsToggle } from "@app/hooks/useEmailAgentsToggle";
 import { ASSISTANT_EMAIL_SUBDOMAIN } from "@app/lib/api/assistant/email/constants";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  ActionMailAiIcon,
   BookOpen01V2,
   Button,
   Chip,
@@ -13,6 +12,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Mail02V2,
   SliderToggle,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -68,7 +68,7 @@ export function EmailAgentsToggle({ owner }: EmailAgentsToggleProps) {
             </a>
           </div>
         }
-        visual={<ActionMailAiIcon className="h-6 w-6" />}
+        visual={<Mail02V2 className="h-6 w-6" />}
         hasSeparatorIfLast={true}
         action={
           <SliderToggle

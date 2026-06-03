@@ -7,12 +7,12 @@ import {
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  ActionCreditCoinsIcon,
   Avatar,
+  CoinsStacked03V2,
+  Cube01V2,
+  Hexagon01V2,
   Icon,
-  SeatFreeIcon,
-  SeatMaxIcon,
-  SeatProIcon,
+  SeatMaxV2,
   Spinner,
   User01V2,
 } from "@dust-tt/sparkle";
@@ -25,9 +25,9 @@ const SEAT_TYPE_ORDER: Record<string, number> = {
 };
 
 const SEAT_TYPE_ICONS: Record<string, React.ComponentType> = {
-  free: SeatFreeIcon,
-  pro: SeatProIcon,
-  max: SeatMaxIcon,
+  free: Hexagon01V2,
+  pro: Cube01V2,
+  max: SeatMaxV2,
 };
 
 function seatTypeAvatarColors(seatType: MembershipSeatType) {
@@ -203,7 +203,7 @@ export function BillingSeatsOverview({ owner }: BillingSeatsOverviewProps) {
             >
               <div className="flex items-center gap-2">
                 <Avatar
-                  icon={SEAT_TYPE_ICONS[seatType] ?? SeatProIcon}
+                  icon={SEAT_TYPE_ICONS[seatType] ?? Cube01V2}
                   size="xs"
                   backgroundColor={avatarColors.backgroundColor}
                   iconColor={avatarColors.iconColor}
@@ -225,7 +225,7 @@ export function BillingSeatsOverview({ owner }: BillingSeatsOverviewProps) {
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Icon visual={ActionCreditCoinsIcon} size="xs" />
+                  <Icon visual={CoinsStacked03V2} size="xs" />
                   <span>
                     {primaryPlan.awuCredits.toLocaleString()} credits{" "}
                     {formatAwuCreditsPeriod(primaryPlan.awuCreditsPeriod)}

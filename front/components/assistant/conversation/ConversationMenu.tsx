@@ -42,7 +42,6 @@ import { isBuilder } from "@app/types/user";
 import {
   ArrowRightV2,
   Avatar,
-  ContactsUserIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -64,6 +63,7 @@ import {
   PlusV2,
   SidekickV2,
   Trash01V2,
+  UserSquareV2,
   XCloseV2,
 } from "@dust-tt/sparkle";
 import type React from "react";
@@ -481,7 +481,7 @@ export function ConversationMenu({
           </DropdownMenuSub>
           <DropdownMenuSub>
             <DropdownMenuSubTrigger
-              icon={ContactsUserIcon}
+              icon={UserSquareV2}
               label="Participants"
               disabled={
                 !conversationParticipants?.users.length &&

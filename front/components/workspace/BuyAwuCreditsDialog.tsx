@@ -13,9 +13,9 @@ import { useAwuPurchaseStatus } from "@app/lib/swr/credits";
 import { CURRENCY_SYMBOLS } from "@app/types/currency";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
-  ActionCreditCoinsIcon,
   Button,
   CheckCircleV2,
+  CoinsStacked03V2,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -63,7 +63,7 @@ function CreditValue({ credits }: CreditValueProps) {
   return (
     <span className="flex items-center gap-1">
       <Icon
-        visual={ActionCreditCoinsIcon}
+        visual={CoinsStacked03V2}
         size="xs"
         className="text-muted-foreground dark:text-muted-foreground-night"
       />
@@ -342,7 +342,7 @@ export function BuyAwuCreditsDialog({
                       {isValidAmount && (
                         <span className="flex items-center gap-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
                           {formatCredits(addedCredits)} credits
-                          <Icon visual={ActionCreditCoinsIcon} size="xs" />
+                          <Icon visual={CoinsStacked03V2} size="xs" />
                         </span>
                       )}
                       <div className="ml-auto flex gap-2">

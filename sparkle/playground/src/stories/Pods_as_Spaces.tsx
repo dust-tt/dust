@@ -9,7 +9,7 @@ import {
   Settings01V2,
   Code01V2,
   ContactsRobotV2,
-  ContactsUserIcon,
+  UserSquareV2,
   Dialog,
   DialogContent,
   DropdownMenu,
@@ -26,7 +26,7 @@ import {
   HeartV2,
   InboxIcon,
   Lightbulb04V2,
-  ListSelectIcon,
+  ListSelectV2,
   LogOut01V2,
   SearchMdV2,
   DotsHorizontalV2,
@@ -45,8 +45,8 @@ import {
   SidebarLeftCloseIcon,
   SidebarLeftOpenIcon,
   SlackLogo,
-  SpaceClosedIcon,
-  SpaceOpenIcon,
+  SpaceClosedV2,
+  SpaceOpenV2,
   Star01V2,
   Trash01V2,
   User01V2,
@@ -549,7 +549,7 @@ function DustMain() {
           />
           <DropdownMenuSub>
             <DropdownMenuSubTrigger
-              icon={ContactsUserIcon}
+              icon={UserSquareV2}
               label="Participant list"
             />
             <DropdownMenuPortal>
@@ -844,7 +844,7 @@ function DustMain() {
               />
               <DropdownMenuItem
                 label="Manage agents"
-                icon={ContactsUserIcon}
+                icon={UserSquareV2}
                 onClick={(e: MouseEvent) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -970,7 +970,7 @@ function DustMain() {
                   <NavigationListItem
                     key={space.id}
                     label={space.name}
-                    icon={isRestricted ? SpaceOpenIcon : SpaceClosedIcon}
+                    icon={isRestricted ? SpaceOpenV2 : SpaceClosedV2}
                     selected={space.id === selectedSpaceId}
                     count={count}
                     moreMenu={
@@ -1104,7 +1104,7 @@ function DustMain() {
                       <DropdownMenuLabel>People</DropdownMenuLabel>
                       <DropdownMenuSub>
                         <DropdownMenuSubTrigger
-                          icon={ContactsUserIcon}
+                          icon={UserSquareV2}
                           label="Browse"
                         />
                         <DropdownMenuPortal>
@@ -1318,7 +1318,7 @@ function DustMain() {
                       />
                       <DropdownMenuItem
                         label="Edit history"
-                        icon={ListSelectIcon}
+                        icon={ListSelectV2}
                         onClick={(e: MouseEvent) => {
                           e.preventDefault();
                           e.stopPropagation();

@@ -1,6 +1,6 @@
 import { frameContentType, frameSlideshowContentType } from "@app/types/files";
 import {
-  ActionFrameIcon,
+  ActionFrameV2,
   BigQueryLogo,
   BracketsV2,
   ConfluenceLogo,
@@ -109,7 +109,7 @@ const FILE_TYPE_MAPPINGS: FileTypeMapping[] = [
     extensions: ["md", "markdown", "json"],
   },
   {
-    icon: ActionFrameIcon,
+    icon: ActionFrameV2,
     mimeTypes: [frameContentType, frameSlideshowContentType],
     extensions: [".js", ".jsx", ".ts", ".tsx"],
   },

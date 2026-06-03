@@ -9,8 +9,8 @@ import {
   Globe01V2,
   Lock01V2,
   Server03V2,
-  SpaceClosedIcon,
-  SpaceOpenIcon,
+  SpaceClosedV2,
+  SpaceOpenV2,
   TerminalV2,
   ZapV2,
 } from "@dust-tt/sparkle";
@@ -29,7 +29,7 @@ export function getSpaceIcon(
   space: SpaceType
 ): (props: React.SVGProps<SVGSVGElement>) => React.ReactElement {
   if (space.kind === "project") {
-    return space.isRestricted ? SpaceClosedIcon : SpaceOpenIcon;
+    return space.isRestricted ? SpaceClosedV2 : SpaceOpenV2;
   }
 
   if (space.isRestricted) {

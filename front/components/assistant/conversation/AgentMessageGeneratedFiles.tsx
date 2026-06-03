@@ -7,7 +7,7 @@ import {
 } from "@app/types/files";
 import { getTime } from "@app/types/shared/utils/date_utils";
 import {
-  ActionFrameIcon,
+  ActionFrameV2,
   Citation,
   CitationDescription,
   CitationGrid,
@@ -98,7 +98,7 @@ export function AgentMessageInteractiveContentGeneratedFiles({
                 )}
                 {variant === "list" && description && (
                   <p className="flex items-center gap-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
-                    <Icon visual={ActionFrameIcon} size="xs" />
+                    <Icon visual={ActionFrameV2} size="xs" />
                     {description}
                   </p>
                 )}

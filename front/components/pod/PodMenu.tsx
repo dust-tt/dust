@@ -18,7 +18,6 @@ import type { PodType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Avatar,
-  ContactsUserIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -33,6 +32,7 @@ import {
   EyeOffV2,
   Link01V2,
   Star01V2,
+  UserSquareV2,
   XCloseV2,
 } from "@dust-tt/sparkle";
 import type React from "react";
@@ -279,7 +279,7 @@ export function PodMenu({
           )}
           <DropdownMenuSub>
             <DropdownMenuSubTrigger
-              icon={ContactsUserIcon}
+              icon={UserSquareV2}
               disabled={!podInfo?.members?.length}
               label="Member list"
             />

@@ -34,7 +34,7 @@ import {
   ListGroup,
   ListItem,
   ListItemSection,
-  ListOrdered2Icon,
+  ListV2,
   Lock01V2,
   DiffBlock,
   Markdown,
@@ -48,10 +48,10 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
-  SidebarRightCloseIcon,
-  SidebarRightOpenIcon,
-  SpaceClosedIcon as SpaceCloseIcon,
-  SpaceOpenIcon,
+  LogIn01V2,
+  ArrowNarrowLeftV2,
+  SpaceClosedV2 as SpaceCloseIcon,
+  SpaceOpenV2,
   SpacesIcon,
   Tabs,
   TabsContent,
@@ -837,7 +837,7 @@ export function AgentBuilderView({
                             tooltip="Bulleted list"
                           />
                           <Button
-                            icon={ListOrdered2Icon}
+                            icon={ListV2}
                             size="icon"
                             variant="ghost-secondary"
                             tooltip="Ordered list"
@@ -943,9 +943,7 @@ export function AgentBuilderView({
                           return (
                             <Chip
                               key={space.id}
-                              icon={
-                                isRestricted ? SpaceCloseIcon : SpaceOpenIcon
-                              }
+                              icon={isRestricted ? SpaceCloseIcon : SpaceOpenV2}
                               size="sm"
                               color={isRestricted ? "rose" : "primary"}
                               label={space.name}
@@ -958,7 +956,7 @@ export function AgentBuilderView({
                         return (
                           <Chip
                             key={project.id}
-                            icon={isRestricted ? SpaceCloseIcon : SpaceOpenIcon}
+                            icon={isRestricted ? SpaceCloseIcon : SpaceOpenV2}
                             size="sm"
                             color={isRestricted ? "rose" : "primary"}
                             label={project.name}
@@ -1235,7 +1233,7 @@ export function AgentBuilderView({
               >
                 <TabsList className="s-pl-2 s-pr-6">
                   <Button
-                    icon={SidebarRightCloseIcon}
+                    icon={LogIn01V2}
                     variant="ghost-secondary"
                     size="sm"
                     onClick={() => setIsRightPanelOpen(false)}
@@ -1480,7 +1478,7 @@ export function AgentBuilderView({
         {!isRightPanelOpen && (
           <div className="s-flex s-h-full s-w-14 s-flex-col s-items-center s-gap-2 s-py-3">
             <Button
-              icon={SidebarRightOpenIcon}
+              icon={ArrowNarrowLeftV2}
               size="sm"
               variant="ghost-secondary"
               onClick={() => setIsRightPanelOpen(true)}
@@ -1586,7 +1584,7 @@ export function AgentBuilderView({
                           visual={
                             isRestrictedSpace(space.id)
                               ? SpaceCloseIcon
-                              : SpaceOpenIcon
+                              : SpaceOpenV2
                           }
                           size="sm"
                         />
@@ -1634,7 +1632,7 @@ export function AgentBuilderView({
                           visual={
                             isRestrictedSpace(space.id)
                               ? SpaceCloseIcon
-                              : SpaceOpenIcon
+                              : SpaceOpenV2
                           }
                           size="sm"
                         />

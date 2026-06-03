@@ -5,8 +5,7 @@ import {
   Hexagon01V2,
   Icon,
   Link01V2,
-  PlanetIcon,
-  RectangleIcon,
+  PlanetV2,
   RobotV2,
   SquareV2,
   TriangleV2,
@@ -133,7 +132,7 @@ const shapeClasses = {
   circle: CircleV2,
   triangle: TriangleV2,
   hexagon: Hexagon01V2,
-  rectangle: RectangleIcon,
+  rectangle: SquareV2,
 };
 
 export const P = ({
@@ -320,7 +319,7 @@ export function TeamFeatureSection() {
           </P>
         </div>
         <div className="flex flex-1 flex-col rounded-2xl bg-rose-50 p-6">
-          <Icon visual={PlanetIcon} className="mb-4 h-8 w-8 text-rose-400" />
+          <Icon visual={PlanetV2} className="mb-4 h-8 w-8 text-rose-400" />
           <h4 className="text-lg font-semibold">Universal access layer</h4>
           <P size="sm" className="mt-1 text-muted-foreground">
             Seamlessly integrate with your existing tools and systems.

@@ -8,7 +8,7 @@ import {
   CardActionButton,
   CardGrid,
 } from "@sparkle/components/Card";
-import { PlanetIcon } from "@sparkle/icons/app";
+import { PlanetV2 } from "@sparkle/icons/v2-stroke";
 import {
   BookOpen01V2,
   ScanV2,
@@ -192,7 +192,7 @@ const cardData: CardData[] = [
     description: "Find product references",
   },
   {
-    icon: PlanetIcon,
+    icon: PlanetV2,
     title: "Web",
     description: "Search & browse the web",
   },

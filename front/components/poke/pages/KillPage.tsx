@@ -10,7 +10,6 @@ import {
 } from "@app/poke/swr/sandbox_kill";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import {
-  ActionFireIcon,
   AlertCircleV2,
   AnthropicLogo,
   Button,
@@ -21,6 +20,7 @@ import {
   Settings01V2,
   SliderToggle,
   Spinner,
+  Star06V2,
   Trash01V2,
   ZapV2,
 } from "@dust-tt/sparkle";
@@ -59,7 +59,7 @@ const KILL_SWITCH_DEFINITIONS: Record<KillSwitchType, KillSwitchDefinition> = {
     title: "Firecrawl",
     description:
       "Disable Firecrawl for web browsing and use Spider.cloud instead.",
-    icon: ActionFireIcon,
+    icon: Star06V2,
   },
   global_dust_agents_fallback: {
     title: "Dust Agents Fallback Provider",

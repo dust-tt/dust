@@ -16,9 +16,9 @@ import {
   IntersectDustV2,
   Lock01V2,
   PieChart01V2,
-  PlanetIcon,
+  PlanetV2,
   Settings01V2,
-  ShapesIcon,
+  ShapesV2,
   Stars02V2,
   TerminalV2,
   User01V2,
@@ -186,7 +186,7 @@ export const getTopNavigationTabs = (
   nav.push({
     id: "data_sources",
     label: "Spaces",
-    icon: PlanetIcon,
+    icon: PlanetV2,
     href: `/w/${owner.sId}/spaces`,
     isCurrent: (currentRoute: string) =>
       currentRoute.startsWith("/w/[wId]/spaces") ||
@@ -342,7 +342,7 @@ export const subNavigationAdmin = ({
         {
           id: "providers",
           label: "App Credentials",
-          icon: ShapesIcon,
+          icon: ShapesV2,
           href: `/w/${owner.sId}/developers/providers`,
           current: isCurrent("providers"),
           featureFlag: "legacy_dust_apps",

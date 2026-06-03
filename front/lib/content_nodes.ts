@@ -16,7 +16,6 @@ import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
 import {
   File02V2,
   File04V2,
-  FolderTableIcon,
   FolderV2,
   LayersThree01V2,
   Lock01V2,
@@ -107,7 +106,7 @@ export function getVisualForContentNode(node: ContentNode) {
 
     // Handle spreadsheets.
     if (SPREADSHEET_INTERNAL_MIME_TYPES.includes(node.mimeType)) {
-      return FolderTableIcon;
+      return FolderV2;
     }
   }
 

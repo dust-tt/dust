@@ -12,14 +12,7 @@ import {
 import { useProviders } from "@app/lib/swr/apps";
 import { redactString } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
-import {
-  Button,
-  Chip,
-  Container,
-  cn,
-  Page,
-  ShapesIcon,
-} from "@dust-tt/sparkle";
+import { Button, Chip, Container, cn, Page, ShapesV2 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 interface ProvidersProps {
@@ -212,7 +205,7 @@ export function ProvidersPage() {
     <Page.Vertical gap="xl" align="stretch">
       <Page.Header
         title="App Credentials"
-        icon={ShapesIcon}
+        icon={ShapesV2}
         description="Configure model and service providers to enable advanced capabilities in your Apps. Note: These providers are not used by Dust agents at all, but are required for running your own custom Dust Apps."
       />
       <Page.Vertical align="stretch" gap="md">

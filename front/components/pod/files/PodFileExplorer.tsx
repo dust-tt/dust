@@ -47,7 +47,6 @@ import {
 import type { PodType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  ActionPushpinIcon,
   Button,
   CloudArrowLeftRightV2,
   Dialog,
@@ -62,6 +61,7 @@ import {
   DropdownMenuTrigger,
   EmptyCTA,
   FolderV2,
+  Pin02V2,
   Tooltip,
   UploadCloud02V2,
 } from "@dust-tt/sparkle";
@@ -279,7 +279,7 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
       return [
         {
           label: pinned ? "Unpin from banner" : "Pin as Pod banner",
-          icon: ActionPushpinIcon,
+          icon: Pin02V2,
           onClick: (e) => {
             e.stopPropagation();
             void togglePin(entry.path, { fileName: entry.fileName });

@@ -2,7 +2,7 @@ import type { Meta } from "@storybook/react";
 import React from "react";
 
 import { ActionCard, Hoverable } from "@sparkle/components";
-import { PlanetIcon } from "@sparkle/icons/app";
+import { PlanetV2 } from "@sparkle/icons/v2-stroke";
 import { BookOpen01V2, SearchMdV2, TerminalV2 } from "@sparkle/icons/v2-stroke";
 
 const meta: Meta<typeof ActionCard> = {
@@ -80,7 +80,7 @@ export const DiffStatus = () => (
     </div>
     <div className="s-w-80">
       <ActionCard
-        icon={PlanetIcon}
+        icon={PlanetV2}
         cardContainerClassName="s-h-36"
         label="Code Interpreter"
         description="Run code snippets in a sandboxed environment."

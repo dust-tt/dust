@@ -8,7 +8,7 @@ import {
   cn,
   MessageCircle01V2,
   Rocket02V2,
-  SpaceClosedIcon,
+  SpaceClosedV2,
 } from "@dust-tt/sparkle";
 
 interface PublicInteractiveContentHeaderProps {
@@ -79,7 +79,7 @@ export function PublicInteractiveContentHeader({
               href={projectUrl}
               variant="outline"
               // TODO(projects) this does not show the correct icon for open projects.
-              icon={SpaceClosedIcon}
+              icon={SpaceClosedV2}
               className="hidden sm:flex"
             />
           )}

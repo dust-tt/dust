@@ -11,7 +11,7 @@ import {
   MessageChatSquareV2,
   CheckCircleV2,
   Settings01V2,
-  ContactsUserIcon,
+  UserSquareV2,
   Dialog,
   DialogContent,
   DropdownMenu,
@@ -38,15 +38,15 @@ import {
   NavigationListItem,
   NavigationListItemAction,
   Edit04V2,
-  PlanetIcon,
+  PlanetV2,
   PlusV2,
   PuzzlePiece01V2,
   ScrollArea,
   ScrollBar,
   SearchInput,
   SlackLogo,
-  SpaceClosedIcon,
-  SpaceOpenIcon,
+  SpaceClosedV2,
+  SpaceOpenV2,
   Star01V2,
   Trash01V2,
   Users01V2,
@@ -723,7 +723,7 @@ export default function Pods_After() {
         />
         <DropdownMenuSub>
           <DropdownMenuSubTrigger
-            icon={ContactsUserIcon}
+            icon={UserSquareV2}
             label="Participant list"
           />
           <DropdownMenuPortal>
@@ -834,7 +834,7 @@ export default function Pods_After() {
       <NavigationListItem
         key={space.id}
         label={space.name}
-        icon={isRestricted ? SpaceOpenIcon : SpaceClosedIcon}
+        icon={isRestricted ? SpaceOpenV2 : SpaceClosedV2}
         selected={p2View.kind === "space" && p2View.spaceId === space.id}
         count={count}
         hasActivity={hasActivity}
@@ -902,7 +902,7 @@ export default function Pods_After() {
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger
                   label="Member list"
-                  icon={ContactsUserIcon}
+                  icon={UserSquareV2}
                 />
                 <DropdownMenuSubContent>
                   <DropdownMenuItem
@@ -1302,7 +1302,7 @@ export default function Pods_After() {
       onValueChange={setActiveTab}
       options={[
         { value: "chat", label: "Chat", icon: MessageChatSquareV2 },
-        { value: "spaces", label: "Spaces", icon: PlanetIcon },
+        { value: "spaces", label: "Spaces", icon: PlanetV2 },
         { value: "admin", icon: Settings01V2 },
       ]}
     />
@@ -1384,7 +1384,7 @@ export default function Pods_After() {
                   </DropdownMenuSub>
                   <DropdownMenuItem
                     label="Manage agents"
-                    icon={ContactsUserIcon}
+                    icon={UserSquareV2}
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();

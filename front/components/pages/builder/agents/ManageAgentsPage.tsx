@@ -30,7 +30,7 @@ import {
   Button,
   Chip,
   ContactsRobotV2,
-  ListSelectIcon,
+  ListSelectV2,
   Page,
   PlusV2,
   SearchInput,
@@ -310,7 +310,7 @@ export function ManageAgentsPage() {
                     {isAdmin(owner) && (
                       <Button
                         variant="outline"
-                        icon={ListSelectIcon}
+                        icon={ListSelectV2}
                         label="Batch edit"
                         onClick={() => {
                           setIsBatchEdit(true);

@@ -8,12 +8,12 @@ import logger from "@app/logger/logger";
 import type { RichSpaceType } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  ActionPushpinIcon,
   Button,
   cn,
   EyeOffV2,
   Maximize01V2,
   Minimize01V2,
+  Pin02V2,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -94,7 +94,7 @@ function PodPinnedBannerControls({
         />
         {isEditor && (
           <Button
-            icon={ActionPushpinIcon}
+            icon={Pin02V2}
             variant="ghost"
             size="xs"
             tooltip="Unpin"
@@ -126,7 +126,7 @@ function PodPinnedBannerCollapsedAffordance({
 }: PodPinnedBannerCollapsedAffordanceProps) {
   return (
     <div className="mb-2 flex min-w-0 items-center gap-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
-      <ActionPushpinIcon className="h-3.5 w-3.5 shrink-0" />
+      <Pin02V2 className="h-3.5 w-3.5 shrink-0" />
       <span className="shrink-0">Frame</span>
       <span aria-hidden className="shrink-0 text-muted-foreground/50">
         ·

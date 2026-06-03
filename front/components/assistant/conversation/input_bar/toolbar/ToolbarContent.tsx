@@ -9,7 +9,7 @@ import {
   DoubleQuotesV2,
   Heading01V2,
   Italic01V2,
-  ListOrdered2Icon,
+  ListV2,
   ToolbarContent,
   ToolbarIcon,
   ToolbarLink,
@@ -192,7 +192,7 @@ export function ToolBarContent({ editor }: ToolBarContentProps) {
         />,
         <ToolbarIcon
           key="ordered-list"
-          icon={ListOrdered2Icon}
+          icon={ListV2}
           onClick={() => editor.chain().focus().toggleOrderedList().run()}
           active={editor.isActive("orderedList")}
           tooltip={getTooltipText("Ordered list", orderedListShortcutLabel)}

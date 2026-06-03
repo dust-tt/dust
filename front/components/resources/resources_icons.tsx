@@ -2,8 +2,6 @@ import type { Avatar, Icon } from "@dust-tt/sparkle";
 import {
   ActionFrameV2,
   ActionIcons,
-  ActionNoiseIcon,
-  ActionSlideshowIcon,
   AmplitudeLogo,
   Announcement01V2,
   ApifyLogo,
@@ -62,6 +60,7 @@ import {
   PieChart01V2,
   PowerBiLogo,
   PraizLogo,
+  PresentationChart01V2,
   ProductboardLogo,
   PuzzlePiece01V2,
   RobotV2,
@@ -83,6 +82,7 @@ import {
   UkgLogo,
   ValTownLogo,
   VantaLogo,
+  VolumeMaxV2,
   ZendeskLogo,
 } from "@dust-tt/sparkle";
 import type { ComponentProps, ComponentType } from "react";
@@ -151,11 +151,11 @@ export const InternalActionIcons = {
   ActionLockIcon: Lock01V2,
   ActionMagnifyingGlassIcon: SearchMdV2,
   ActionMegaphoneIcon: Announcement01V2,
-  ActionNoiseIcon,
+  ActionNoiseIcon: VolumeMaxV2,
   ActionPieChartIcon: PieChart01V2,
   ActionRobotIcon: RobotV2,
   ActionScanIcon: ScanV2,
-  ActionSlideshowIcon,
+  ActionSlideshowIcon: PresentationChart01V2,
   ActionSpeakIcon: MessageSmileCircleV2,
   ActionTableIcon: TableV2,
   ActionTimeIcon: ClockV2,

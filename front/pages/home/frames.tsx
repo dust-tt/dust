@@ -12,7 +12,7 @@ import {
   CheckCircleV2,
   Icon,
   Lock01V2,
-  PlanetIcon,
+  PlanetV2,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
@@ -415,7 +415,7 @@ function AllTheBellsAndWhistlesSection() {
             </P>
           </div>
           <div className="flex flex-1 flex-col rounded-2xl bg-gray-50 p-6">
-            <Icon visual={PlanetIcon} className="mb-4 h-8 w-8 text-gray-600" />
+            <Icon visual={PlanetV2} className="mb-4 h-8 w-8 text-gray-600" />
             <h4 className="text-lg font-semibold">Works anywhere</h4>
             <P size="sm" className="mt-1 text-muted-foreground">
               Works with whatever your AI agents produce: CSVs, JSON, plain

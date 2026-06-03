@@ -19,13 +19,13 @@ import {
   Button,
   Chip,
   DataTable,
+  DotsHorizontalV2,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuPortal,
   DropdownMenuTrigger,
-  MoreIcon,
   SearchInput,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -176,7 +176,7 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <Button
-                icon={MoreIcon}
+                icon={DotsHorizontalV2}
                 size="icon"
                 variant="ghost-secondary"
                 onClick={(e) => e.stopPropagation()}

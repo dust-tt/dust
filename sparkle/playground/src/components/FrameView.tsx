@@ -1,7 +1,7 @@
 import "@dust-tt/sparkle/styles/allotment.css";
 
 import {
-  ArrowCircleIcon,
+  RefreshCw01V2,
   Download01V2,
   ReverseLeftV2,
   Button,
@@ -21,7 +21,7 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SpaceOpenIcon,
+  SpaceOpenV2,
   TextArea,
   XCloseV2,
   useCopyToClipboard,
@@ -92,11 +92,7 @@ export function FrameView() {
         <Allotment.Pane minSize={320} preferredSize={50} className="s-h-full">
           <div className="s-flex s-h-full s-flex-col">
             <div className="s-flex s-h-14 s-w-full s-items-center s-gap-2 s-border-b s-border-border s-bg-background s-px-3">
-              <Button
-                icon={ArrowCircleIcon}
-                variant="ghost"
-                tooltip="Refresh"
-              />
+              <Button icon={RefreshCw01V2} variant="ghost" tooltip="Refresh" />
               <Button
                 icon={Maximize01V2}
                 variant="ghost"
@@ -127,7 +123,7 @@ export function FrameView() {
                     {!isAddedToProject && (
                       <DropdownMenuItem
                         label="Add to project"
-                        icon={SpaceOpenIcon}
+                        icon={SpaceOpenV2}
                         onClick={handleAddToProject}
                       />
                     )}

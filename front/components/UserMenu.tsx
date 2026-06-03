@@ -40,7 +40,7 @@ import {
   Lightbulb04V2,
   LogOut01V2,
   MessagePlusCircleV2,
-  ShapesIcon,
+  ShapesV2,
   Star01V2,
   TerminalV2,
   User01V2,
@@ -250,7 +250,7 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
             <>
               <DropdownMenuLabel label="Advanced" />
               <DropdownMenuSub>
-                <DropdownMenuSubTrigger label="Dev Tools" icon={ShapesIcon} />
+                <DropdownMenuSubTrigger label="Dev Tools" icon={ShapesV2} />
                 <DropdownMenuPortal>
                   <DropdownMenuSubContent>
                     {(router.pathname === "/w/[wId]/conversation/[cId]" ||
@@ -271,7 +271,7 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
                             );
                           }
                         }}
-                        icon={ShapesIcon}
+                        icon={ShapesV2}
                       />
                     )}
                     {!isOnlyAdmin(owner) && (

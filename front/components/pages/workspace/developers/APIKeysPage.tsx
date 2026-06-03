@@ -18,7 +18,7 @@ import {
   BookOpen01V2,
   Button,
   Page,
-  ShapesIcon,
+  ShapesV2,
   Spinner,
 } from "@dust-tt/sparkle";
 import get from "lodash/get";
@@ -203,7 +203,7 @@ export function APIKeysPage() {
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
           title="API Keys"
-          icon={ShapesIcon}
+          icon={ShapesV2}
           description="API Keys allow you to securely connect to Dust from other applications and work with your data programmatically."
         />
         <Page.Vertical align="stretch" gap="md">

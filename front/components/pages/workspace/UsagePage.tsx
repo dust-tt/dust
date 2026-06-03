@@ -28,10 +28,10 @@ import type { MembershipSeatType } from "@app/types/memberships";
 import { isCreditPricedPlan } from "@app/types/plan";
 import { isAdmin } from "@app/types/user";
 import {
-  ActionCreditCoinsIcon,
   AlertCircleV2,
   ArrowUpV2,
   Button,
+  CoinsStacked03V2,
   ContentMessage,
   DropdownMenu,
   DropdownMenuContent,
@@ -227,7 +227,7 @@ export function UsagePage() {
               <div className="flex flex-col items-end gap-0.5">
                 <span className="flex items-center gap-1.5 text-[18px] font-semibold leading-[26px] tracking-[-0.36px] text-foreground dark:text-foreground-night">
                   <Icon
-                    visual={ActionCreditCoinsIcon}
+                    visual={CoinsStacked03V2}
                     size="sm"
                     className="text-muted-foreground dark:text-muted-foreground-night"
                   />

@@ -1,7 +1,7 @@
 import { useFrameSharingToggle } from "@app/hooks/useFrameSharingToggle";
 import type { WorkspaceSharingPolicy, WorkspaceType } from "@app/types/user";
 import {
-  ActionFrameIcon,
+  ActionFrameV2,
   Button,
   ContextItem,
   Dialog,
@@ -87,7 +87,7 @@ export function InteractiveContentSharingToggle({
       <ContextItem
         title="Frame sharing policy"
         subElement="Control how Frames can be shared in this workspace"
-        visual={<ActionFrameIcon className="h-6 w-6" />}
+        visual={<ActionFrameV2 className="h-6 w-6" />}
         hasSeparatorIfLast={true}
         action={
           <DropdownMenu>

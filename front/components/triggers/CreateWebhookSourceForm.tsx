@@ -20,7 +20,7 @@ import {
   DropdownMenuTrigger,
   Input,
   Label,
-  ListSelectIcon,
+  ListSelectV2,
   SliderToggle,
   TextArea,
   XCloseV2,
@@ -157,7 +157,7 @@ export function CreateWebhookSourceFormContent({
                       <div className="flex gap-2 p-2">
                         <Button
                           label="Select all"
-                          icon={ListSelectIcon}
+                          icon={ListSelectV2}
                           variant="primary"
                           size="xs"
                           onClick={handleSelectAll}
