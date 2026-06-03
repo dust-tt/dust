@@ -84,6 +84,7 @@ const TOOL_CATEGORY_MAP: Record<InternalMCPServerNameType, ToolCategory> = {
   missing_action_catcher: "basic",
   primitive_types_debugger: "basic",
   jit_testing: "basic",
+  skills: "basic",
   skill_management: "basic",
   schedules_management: "basic",
   pod_manager: "basic",

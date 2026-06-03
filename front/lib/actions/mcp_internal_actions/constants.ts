@@ -67,6 +67,7 @@ import { SANDBOX_SERVER } from "@app/lib/api/actions/servers/sandbox/metadata";
 import { SCHEDULES_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/schedules_management/metadata";
 import { SEARCH_SERVER } from "@app/lib/api/actions/servers/search/metadata";
 import { SKILL_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/skill_management/metadata";
+import { SKILLS_SERVER } from "@app/lib/api/actions/servers/skills/metadata";
 import { SLAB_SERVER } from "@app/lib/api/actions/servers/slab/metadata";
 import { SLACK_BOT_SERVER } from "@app/lib/api/actions/servers/slack_bot/metadata";
 import { SLACK_PERSONAL_SERVER } from "@app/lib/api/actions/servers/slack_personal/metadata";
@@ -204,6 +205,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "zendesk",
   SEARCH_SERVER_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
+  "skills",
   "skill_management",
   "schedules_management",
   "pod_manager",
@@ -1120,6 +1122,18 @@ export const INTERNAL_MCP_SERVERS = {
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: FILES_SERVER,
+  },
+  skills: {
+    id: 1034,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isRestricted: ({ featureFlags }) =>
+      !featureFlags.includes("skill_edition_tools"),
+    isPreview: false,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: SKILLS_SERVER,
   },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
 } satisfies {

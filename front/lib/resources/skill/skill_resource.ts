@@ -2584,6 +2584,33 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     await this.update({ reinforcement });
   }
 
+  async updateFileAttachments(
+    auth: Authenticator,
+    fileAttachments: FileResource[]
+  ): Promise<void> {
+    assert(
+      this.canWrite(auth),
+      "User is not authorized to update this skill's file attachments"
+    );
+
+    await withTransaction(async (transaction) => {
+      await this.saveVersion(auth, { transaction });
+
+      const editedBy = auth.user()?.id;
+      if (editedBy) {
+        await this.update({ editedBy }, transaction);
+      }
+
+      await this.setFileAttachments(auth, fileAttachments, { transaction });
+    });
+
+    await FileResource.bulkSetUseCaseMetadata(auth, fileAttachments, {
+      skillId: this.sId,
+    });
+
+    await this.upsertCurrentUserAsEditor(auth);
+  }
+
   async updateSelfImprovementLock(selfImprovementLock: boolean): Promise<void> {
     await this.update({ selfImprovementLock });
   }
@@ -2900,7 +2927,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   private async setFileAttachments(
     auth: Authenticator,
-    fileAttachments: FileResource[]
+    fileAttachments: FileResource[],
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<void> {
     const workspace = auth.getNonNullableWorkspace();
 
@@ -2909,6 +2937,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         skillConfigurationId: this.id,
         workspaceId: workspace.id,
       },
+      transaction,
     });
 
     const desiredFileModelIds = new Set(fileAttachments.map((f) => f.id));
@@ -2926,6 +2955,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           id: { [Op.in]: toRemove.map((a) => a.id) },
           workspaceId: workspace.id,
         },
+        transaction,
       });
     }
 
@@ -2940,7 +2970,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           skillConfigurationId: this.id,
           fileId: file.id,
           fileName: file.fileName,
-        }))
+        })),
+        { transaction }
       );
     }
 
