@@ -103,7 +103,11 @@ export function ConversationContainerVirtuoso({
           contentFragments,
           clientSideMCPServerIds,
           selectedMCPServerViewIds,
+          richMentions: mentions,
         },
+        // Navigate as soon as the conversation exists; the first message is posted
+        // from ConversationViewer on mount.
+        deferMessage: true,
       });
 
       setIsSubmitting(false);
