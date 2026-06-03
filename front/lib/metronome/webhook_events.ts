@@ -176,9 +176,22 @@ const InvoiceTotalResolvedSchema = z.object({
 });
 
 // alerts.low_remaining_seat_balance_*
-// Undocumented in the public webhook docs but emitted today.
+// Undocumented in the public webhook docs but emitted today. The alert is
+// scoped per seat via `seat_filter` (seat_group_key "user_id"), so the fired
+// event must carry the seat group key/value identifying whose balance crossed.
+// Metronome's exact field name for this on the webhook payload isn't
+// documented, so we accept both the seat-specific shape (`seat_group_values`)
+// and the generic `group_values` shape used by spend alerts, and read
+// whichever is populated. The handler logs the raw payload when it can't
+// resolve a user so the field can be confirmed from production.
+const seatGroupValuesSchema = z
+  .array(z.object({ key: z.string(), value: z.string().nullish() }))
+  .nullish();
 const lowRemainingSeatBalanceProps = baseAlertPropertiesSchema.extend({
   remaining_balance: z.number().nullish(),
+  credit_type_id: z.string().nullish(),
+  seat_group_values: seatGroupValuesSchema,
+  group_values: seatGroupValuesSchema,
 });
 const LowRemainingSeatBalanceReachedSchema = z.object({
   id: z.string(),
