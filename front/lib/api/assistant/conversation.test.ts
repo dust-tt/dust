@@ -90,6 +90,7 @@ import { ConversationForkResource } from "@app/lib/resources/conversation_fork_r
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { GroupSpaceViewerResource } from "@app/lib/resources/group_space_viewer_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { makeSId } from "@app/lib/resources/string_ids";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -2447,7 +2448,50 @@ describe("postUserMessage", () => {
       }
     });
 
-    it("should allow posting a message without an auth user to an open pod when user association is disabled", async () => {
+    it("should reject posting a message without an auth user to a restricted Pod even when user association is disabled", async () => {
+      expect(projectSpace.isOpen()).toBe(false);
+
+      const apiKey = await KeyFactory.regular(globalGroup);
+      const { workspaceAuth: apiKeyAuth } = await Authenticator.fromKey(
+        apiKey,
+        workspace.sId
+      );
+
+      expect(apiKeyAuth.user()).toBeNull();
+      const restrictedPod = await SpaceResource.fetchById(
+        apiKeyAuth,
+        projectSpace.sId
+      );
+      expect(restrictedPod).not.toBeNull();
+      expect(restrictedPod?.isOpen()).toBe(false);
+
+      const result = await postUserMessage(apiKeyAuth, {
+        conversation: projectConversation,
+        content: "Hello from an integration",
+        mentions: [],
+        context: {
+          username: "slack-bot",
+          timezone: "UTC",
+          fullName: null,
+          email: null,
+          profilePictureUrl: null,
+          origin: "slack",
+        },
+        doNotAssociateUser: true,
+        skipToolsValidation: false,
+      });
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.status_code).toBe(403);
+        expect(result.error.api_error.type).toBe("workspace_auth_error");
+        expect(result.error.api_error.message).toBe(
+          "You are not a member of the Pod."
+        );
+      }
+    });
+
+    it("should allow posting a message without an auth user to an open Pod when user association is disabled", async () => {
       const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
         workspace.sId
       );
@@ -2463,6 +2507,12 @@ describe("postUserMessage", () => {
       );
 
       expect(apiKeyAuth.user()).toBeNull();
+      const openPod = await SpaceResource.fetchById(
+        apiKeyAuth,
+        projectSpace.sId
+      );
+      expect(openPod).not.toBeNull();
+      expect(openPod?.isOpen()).toBe(true);
 
       const result = await postUserMessage(apiKeyAuth, {
         conversation: projectConversation,
@@ -2489,7 +2539,7 @@ describe("postUserMessage", () => {
       }
     });
 
-    it("should reject posting a message without an auth user to an open pod when user association is enabled", async () => {
+    it("should reject posting a message without an auth user to an open Pod when user association is enabled", async () => {
       const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
         workspace.sId
       );
@@ -2505,6 +2555,12 @@ describe("postUserMessage", () => {
       );
 
       expect(apiKeyAuth.user()).toBeNull();
+      const openPod = await SpaceResource.fetchById(
+        apiKeyAuth,
+        projectSpace.sId
+      );
+      expect(openPod).not.toBeNull();
+      expect(openPod?.isOpen()).toBe(true);
 
       const result = await postUserMessage(apiKeyAuth, {
         conversation: projectConversation,
