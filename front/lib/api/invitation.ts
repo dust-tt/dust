@@ -19,6 +19,7 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import type { MembershipInvitationType } from "@app/types/membership_invitation";
+import type { MembershipSeatType } from "@app/types/memberships";
 import type { SubscriptionType } from "@app/types/plan";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -143,6 +144,7 @@ export async function batchUnrevokeInvitations(
 interface MembershipInvitationBlob {
   email: string;
   role: ActiveRoleType;
+  seatType?: MembershipSeatType | null;
 }
 
 export interface HandleMembershipInvitationResult {
@@ -310,6 +312,7 @@ export async function handleMembershipInvitations(
         originalEmail: string;
         sanitizedEmail: string;
         role: ActiveRoleType;
+        seatType?: MembershipSeatType | null;
       }[] = [];
       for (const req of emailsToSendInvitations) {
         if (existingMemberEmails.has(req.email)) {
@@ -323,6 +326,7 @@ export async function handleMembershipInvitations(
             originalEmail: req.email,
             sanitizedEmail: sanitizeString(req.email),
             role: req.role,
+            seatType: req.seatType,
           });
         }
       }
@@ -347,6 +351,7 @@ export async function handleMembershipInvitations(
       const toCreate: {
         inviteEmail: string;
         initialRole: ActiveRoleType;
+        seatType?: MembershipSeatType | null;
       }[] = [];
       const invitationBySanitizedEmail = new Map<
         string,
@@ -356,12 +361,17 @@ export async function handleMembershipInvitations(
       for (const {
         sanitizedEmail,
         role,
+        seatType,
       } of uniqueCandidateBySanitizedEmail.values()) {
         const existing = existingByEmail.get(sanitizedEmail);
         if (existing) {
           toRevokeModelIds.push(existing.id);
         }
-        toCreate.push({ inviteEmail: sanitizedEmail, initialRole: role });
+        toCreate.push({
+          inviteEmail: sanitizedEmail,
+          initialRole: role,
+          seatType: seatType ?? null,
+        });
       }
 
       await MembershipInvitationResource.bulkRevokeByModelIds(auth, {

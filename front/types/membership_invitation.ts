@@ -1,6 +1,7 @@
 import type { RegionType } from "@app/types/region";
 import { z } from "zod";
 
+import type { MembershipSeatType } from "./memberships";
 import type { ModelId } from "./shared/model_id";
 import type { ActiveRoleType } from "./user";
 import { ActiveRoleSchema } from "./user";
@@ -15,6 +16,7 @@ export type MembershipInvitationType = {
   reminderSentAt: number | null;
   expiresAt: number;
   isExpired: boolean;
+  seatType: MembershipSeatType | null;
 };
 
 export type MembershipInvitationTypeWithLink = MembershipInvitationType & {
