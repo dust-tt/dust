@@ -19,14 +19,9 @@ const SEAT_BALANCE_SEAT_GROUP_KEY = "user_id";
 // fanned out across all seats). The low-balance warning fires when the
 // remaining balance drops to this fraction of the seat's allocation, i.e. when
 // the user has spent 80% of their personal credits.
-const SEAT_EXHAUSTED_THRESHOLD_AWU = 0;
 const SEAT_LOW_BALANCE_REMAINING_RATIO = 0.2;
 
 const SEAT_ALERT_CONCURRENCY = 5;
-
-function seatExhaustedAlertUniquenessKey(workspaceId: string): string {
-  return `seat-exhausted-balance-${workspaceId}`;
-}
 
 function seatLowBalanceAlertUniquenessKeyPrefix(workspaceId: string): string {
   return `seat-low-balance-${workspaceId}-`;
@@ -37,37 +32,6 @@ function seatLowBalanceAlertUniquenessKey(
   userId: string
 ): string {
   return `${seatLowBalanceAlertUniquenessKeyPrefix(workspaceId)}${userId}`;
-}
-
-export async function upsertMetronomeSeatExhaustedAlert({
-  metronomeCustomerId,
-  workspaceId,
-}: {
-  metronomeCustomerId: string;
-  workspaceId: string;
-}): Promise<Result<{ alertId: string }, Error>> {
-  const upsertResult = await upsertMetronomeAlert({
-    alert_type: "low_remaining_seat_balance_reached",
-    name: `Seat balance ${workspaceId} (${SEAT_EXHAUSTED_THRESHOLD_AWU} AWU)`,
-    threshold: SEAT_EXHAUSTED_THRESHOLD_AWU,
-    credit_type_id: getCreditTypeAwuId(),
-    customer_id: metronomeCustomerId,
-    seat_filter: { seat_group_key: SEAT_BALANCE_SEAT_GROUP_KEY },
-    uniqueness_key: seatExhaustedAlertUniquenessKey(workspaceId),
-  });
-  if (upsertResult.isErr()) {
-    return new Err(upsertResult.error);
-  }
-
-  logger.info(
-    {
-      workspaceId,
-      metronomeCustomerId,
-      alertId: upsertResult.value.alertId,
-    },
-    "[Metronome SeatBalance] Synced seat-exhaustion alert"
-  );
-  return new Ok({ alertId: upsertResult.value.alertId });
 }
 
 async function listSeatLowBalanceAlertUserIds({

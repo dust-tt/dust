@@ -1483,13 +1483,21 @@ interface AlertDef {
   alert_type:
     | "low_remaining_contract_credit_balance_reached"
     | "low_remaining_commit_balance_reached"
-    | "low_remaining_contract_credit_and_commit_balance_reached";
+    | "low_remaining_contract_credit_and_commit_balance_reached"
+    | "low_remaining_seat_balance_reached";
   threshold: number;
   // Idempotency key — Metronome rejects duplicate creates with the same key.
   uniqueness_key: string;
   // Tag identifying which credit type the threshold tracks. Resolved at sync
   // time (AWU ID differs per environment).
   credit_type: "AWU";
+  // Required for `low_remaining_seat_balance_reached` alerts. Scopes the alert
+  // to a seat group key; omitting `seat_group_value` fans the alert out across
+  // all seats (allocation-independent — e.g. a 0-balance exhaustion alert).
+  seat_filter?: {
+    seat_group_key: string;
+    seat_group_value?: string;
+  };
   // Custom field filters scoped to ContractCredit / Commit / Contract. Used
   // here to exclude excess recurring credits from contract-credit-balance
   // alerts (those credits exist solely to absorb over-consumption and would
@@ -1543,6 +1551,18 @@ const ALERTS: AlertDef[] = [
     credit_type: "AWU",
     custom_field_filters: [POOL_CONTRACT_CREDIT_FILTER],
   },
+  {
+    // Seat exhaustion: fires at 0 remaining seat balance. Allocation-independent
+    // (no `seat_group_value`) so the single default alert fans out across every
+    // seat of every customer. Seat ids in Metronome are user sIds, hence the
+    // "user_id" group key.
+    name: "Default: Empty seat balance (AWU)",
+    alert_type: "low_remaining_seat_balance_reached",
+    threshold: 0,
+    uniqueness_key: "default-low-seat-balance-zero-awu",
+    credit_type: "AWU",
+    seat_filter: { seat_group_key: "user_id" },
+  },
 ];
 
 async function syncAlerts(): Promise<void> {
@@ -1569,6 +1589,7 @@ async function syncAlerts(): Promise<void> {
         ...(desired.custom_field_filters
           ? { custom_field_filters: desired.custom_field_filters }
           : {}),
+        ...(desired.seat_filter ? { seat_filter: desired.seat_filter } : {}),
       });
       const id = (created as { data: { id: string } }).data.id;
       console.log(`  + Created: ${desired.name} → ${id}`);
