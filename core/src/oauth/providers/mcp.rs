@@ -576,18 +576,16 @@ mod tests {
 
     #[test]
     fn client_for_falls_back_to_untrusted_egress_when_static_ip_is_unavailable() {
-        let client = MCPConnectionProvider::client_for_builders(
-            true, false, || None, test_client, || None,
-        );
+        let client =
+            MCPConnectionProvider::client_for_builders(true, false, || None, test_client, || None);
 
         assert!(client.is_ok());
     }
 
     #[test]
     fn client_for_uses_untrusted_egress_without_static_ip() {
-        let client = MCPConnectionProvider::client_for_builders(
-            false, false, || None, test_client, || None,
-        );
+        let client =
+            MCPConnectionProvider::client_for_builders(false, false, || None, test_client, || None);
 
         assert!(client.is_ok());
     }
@@ -595,9 +593,8 @@ mod tests {
     #[test]
     fn client_for_falls_back_to_direct_when_no_proxy_is_configured() {
         // allow_direct = true models local development (no egress proxy configured).
-        let client = MCPConnectionProvider::client_for_builders(
-            false, true, || None, || None, test_client,
-        );
+        let client =
+            MCPConnectionProvider::client_for_builders(false, true, || None, || None, test_client);
 
         assert!(client.is_ok());
     }
@@ -606,18 +603,16 @@ mod tests {
     fn client_for_fails_closed_when_proxy_configured_but_unavailable() {
         // allow_direct = false models a deployed environment: a proxy is configured but failed to
         // build, so we must not silently egress directly.
-        let client = MCPConnectionProvider::client_for_builders(
-            false, false, || None, || None, test_client,
-        );
+        let client =
+            MCPConnectionProvider::client_for_builders(false, false, || None, || None, test_client);
 
         assert!(client.is_err());
     }
 
     #[test]
     fn client_for_errors_when_no_client_can_be_built() {
-        let client = MCPConnectionProvider::client_for_builders(
-            false, true, || None, || None, || None,
-        );
+        let client =
+            MCPConnectionProvider::client_for_builders(false, true, || None, || None, || None);
 
         assert!(client.is_err());
     }
