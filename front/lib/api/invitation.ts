@@ -189,9 +189,9 @@ export async function handleMembershipInvitations(
     ): Promise<
       Result<InvitationTransactionPayload, APIErrorWithContentfulStatusCode>
     > => {
-      if (maxUsers !== -1) {
-        await getWorkspaceAdministrationVersionLock(owner, t);
+      await getWorkspaceAdministrationVersionLock(owner, t);
 
+      if (maxUsers !== -1) {
         const membersCount =
           await MembershipResource.getMembersCountForWorkspace({
             workspace: owner,
