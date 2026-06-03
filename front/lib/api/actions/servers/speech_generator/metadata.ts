@@ -62,11 +62,26 @@ const ALLOWED_AUDIO_URL_DOMAINS = [
   "wistia.com",
   "wistia.net",
   "vidyard.com",
-  // Meeting recordings
+  // Meeting recordings & AI notetakers
   "zoom.us",
   "webex.com",
   "grain.com",
   "riverside.fm",
+  "fathom.video",
+  "granola.so",
+  "fireflies.ai",
+  "otter.ai",
+  "tldv.io",
+  "meetgeek.ai",
+  "avoma.com",
+  "gong.io",
+  "chorus.ai",
+  "read.ai",
+  "bluedot.ai",
+  "notta.ai",
+  "sembly.ai",
+  "tactiq.io",
+  "meetjamie.ai",
   // Cloud storage
   "drive.google.com",
   "googleusercontent.com",
@@ -82,7 +97,7 @@ const ALLOWED_AUDIO_URL_DOMAINS = [
   "soundcloud.com",
 ] as const;
 
-function isAllowedAudioUrl(url: string): boolean {
+export function isAllowedAudioUrl(url: string): boolean {
   try {
     const { hostname } = new URL(url);
     return ALLOWED_AUDIO_URL_DOMAINS.some(

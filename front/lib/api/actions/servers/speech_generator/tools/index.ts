@@ -6,7 +6,10 @@ import {
   resolveDefaultVoiceId,
   streamToBase64,
 } from "@app/lib/api/actions/servers/elevenlabs/utils";
-import { SPEECH_GENERATOR_TOOLS_METADATA } from "@app/lib/api/actions/servers/speech_generator/metadata";
+import {
+  isAllowedAudioUrl,
+  SPEECH_GENERATOR_TOOLS_METADATA,
+} from "@app/lib/api/actions/servers/speech_generator/metadata";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
@@ -15,6 +18,14 @@ const handlers: ToolHandlers<typeof SPEECH_GENERATOR_TOOLS_METADATA> = {
     if (!audio_url && !audio_blob) {
       return new Err(
         new MCPError("Either audio_url or audio_blob must be provided.")
+      );
+    }
+
+    if (audio_url && !isAllowedAudioUrl(audio_url)) {
+      return new Err(
+        new MCPError(
+          "audio_url must be from an allowed domain. Check the tool schema for the list of accepted platforms."
+        )
       );
     }
 
