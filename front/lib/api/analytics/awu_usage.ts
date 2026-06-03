@@ -19,7 +19,9 @@ import {
 import {
   getCreditTypeAwuId,
   getMetricLlmProviderCostAwuId,
+  getMetricLlmProviderCostAwuNonFreeId,
   getMetricToolInvocationsId,
+  getMetricToolInvocationsNonFreeId,
   USAGE_TYPE_FREE,
   USAGE_TYPE_GROUP_KEY,
   USAGE_TYPE_USER,
@@ -37,8 +39,10 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { z } from "zod";
 
-// All-usage AWU chart. Covers user + programmatic + free usage and is
-// denominated in AWU credits (never USD). The AWU metric's cost_awu values
+// All-usage AWU chart. Covers billable (non-free) usage — i.e. user +
+// programmatic, excluding free usage — unless the query opts into free usage
+// via `includeFreeUsage` (Poke only). Denominated in AWU credits (never USD).
+// The AWU metric's cost_awu values
 // already include the Dust markup (applied at event time), so no markup is
 // applied here, and credit balances are returned as whole AWU credits.
 const AWU_USAGE_GROUP_BY_KEYS = [
@@ -97,6 +101,14 @@ export const AwuUsageQuerySchema = z.object({
   selectedPeriod: z.string().optional(),
   billingCycleStartDay: z.coerce.number().min(1).max(31),
   windowSize: z.enum(["HOUR", "FOUR_HOURS", "DAY"]).optional().default("DAY"),
+  // When true, the chart also covers free usage (using the all-usage metrics
+  // rather than the non-free ones). Defaults to false: the workspace usage
+  // page only ever shows billable (non-free) usage; only Poke opts in.
+  includeFreeUsage: z
+    .enum(["true", "false"])
+    .optional()
+    .default("false")
+    .transform((v) => v === "true"),
 });
 
 export type AwuUsageQuery = z.infer<typeof AwuUsageQuerySchema>;
@@ -428,15 +440,21 @@ export async function getAwuUsage(
     return new Err({ type: "metronome_not_configured" });
   }
 
-  const awuMetricId = getMetricLlmProviderCostAwuId();
-
   const {
     groupBy,
     groupByCount,
     selectedPeriod,
     billingCycleStartDay,
     windowSize,
+    includeFreeUsage,
   } = query;
+
+  const awuMetricId = includeFreeUsage
+    ? getMetricLlmProviderCostAwuId()
+    : getMetricLlmProviderCostAwuNonFreeId();
+  const toolInvocationsMetricId = includeFreeUsage
+    ? getMetricToolInvocationsId()
+    : getMetricToolInvocationsNonFreeId();
 
   const referenceDate = selectedPeriod ? new Date(selectedPeriod) : new Date();
   if (selectedPeriod) {
@@ -509,7 +527,7 @@ export async function getAwuUsage(
       toolCfg
         ? listMetronomeUsageWithGroups({
             customerId: metronomeCustomerId,
-            billableMetricId: getMetricToolInvocationsId(),
+            billableMetricId: toolInvocationsMetricId,
             startingOn,
             endingBefore,
             windowSize: metronomeApiWindowSize,

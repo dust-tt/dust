@@ -150,6 +150,7 @@ export function usePokeAwuUsage({
   selectedPeriod,
   billingCycleStartDay,
   windowSize,
+  includeFreeUsage,
   disabled,
 }: PokeConditionalFetchProps & {
   groupBy?: AwuUsageGroupByType;
@@ -157,6 +158,7 @@ export function usePokeAwuUsage({
   selectedPeriod?: string;
   billingCycleStartDay: number;
   windowSize?: WindowSize;
+  includeFreeUsage?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetAwuUsageResponse> = fetcher;
@@ -174,6 +176,9 @@ export function usePokeAwuUsage({
   }
   if (windowSize) {
     queryParams.set("windowSize", windowSize);
+  }
+  if (includeFreeUsage) {
+    queryParams.set("includeFreeUsage", "true");
   }
   const queryString = queryParams.toString();
   const key = `/api/poke/workspaces/${owner.sId}/analytics/awu-usage?${queryString}`;
