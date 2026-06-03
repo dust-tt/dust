@@ -733,11 +733,49 @@ async function reconcileSeatBasedSegment({
     0,
     (seatLimit?.minSeats ?? 0) - desiredSIds.length
   );
-  const addUnassignedSeats = Math.max(0, desiredUnassigned - currentUnassigned);
+
+  // Metronome auto-fills unassigned seats when seat IDs are added: each added
+  // seat consumes one unassigned seat (total quantity unchanged) before
+  // increasing the total. So by the time our explicit unassigned delta is
+  // applied, the unassigned pool is already reduced by the number of seats we
+  // assign in this same edit (floored at 0). Reconcile against that post-fill
+  // baseline, NOT the raw current count — otherwise we'd double-count by both
+  // letting Metronome auto-fill AND explicitly removing/adding a seat, which is
+  // what caused the unassigned pool to balloon on every sync.
+  // (`removeSeatIds` decrease the total quantity rather than returning seats to
+  // the unassigned pool, so they don't affect this baseline.)
+  const unassignedAfterAutoFill = Math.max(
+    0,
+    currentUnassigned - addSeatIds.length
+  );
+  const addUnassignedSeats = Math.max(
+    0,
+    desiredUnassigned - unassignedAfterAutoFill
+  );
   const removeUnassignedSeats = Math.max(
     0,
-    currentUnassigned - desiredUnassigned
+    unassignedAfterAutoFill - desiredUnassigned
   );
+
+  // Snapshot of the current vs. desired seat state, logged on every reconcile
+  // (including no-ops) so the assigned/unassigned/total counts are always
+  // visible when debugging billing discrepancies.
+  const currentAssigned = assignedSeatIds.length;
+  const desiredAssigned = desiredSIds.length;
+  const seatStateLog = {
+    workspaceId,
+    contractId,
+    subscriptionId,
+    seatType,
+    minSeats: seatLimit?.minSeats,
+    currentAssigned,
+    currentUnassigned,
+    currentTotal: currentAssigned + currentUnassigned,
+    desiredAssigned,
+    desiredUnassigned,
+    desiredTotal: desiredAssigned + desiredUnassigned,
+    startingAt,
+  };
 
   if (
     addSeatIds.length === 0 &&
@@ -745,21 +783,21 @@ async function reconcileSeatBasedSegment({
     addUnassignedSeats === 0 &&
     removeUnassignedSeats === 0
   ) {
+    logger.info(
+      seatStateLog,
+      "[Metronome] Seat-based subscription already in sync — no changes"
+    );
     return new Ok(false);
   }
 
   logger.info(
     {
-      workspaceId,
-      contractId,
-      subscriptionId,
-      seatType,
+      ...seatStateLog,
       addCount: addSeatIds.length,
       removeCount: removeSeatIds.length,
+      unassignedAfterAutoFill,
       addUnassignedSeats,
       removeUnassignedSeats,
-      minSeats: seatLimit?.minSeats,
-      startingAt,
     },
     "[Metronome] Updating seat-based subscription assignments"
   );
