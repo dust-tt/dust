@@ -50,8 +50,7 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorResponse<
-      | AgentEditorsResponseBody
-      | AgentEditorsLightResponseBody
+      AgentEditorsResponseBody | AgentEditorsLightResponseBody
     >
   >,
   auth: Authenticator

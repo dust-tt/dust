@@ -2,9 +2,9 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
+  PatchSkillEditorsRequestBody,
   SkillEditorsLightResponseBody,
   SkillEditorsResponseBody,
-  PatchSkillEditorsRequestBody,
 } from "@app/pages/api/w/[wId]/skills/[sId]/editors";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";

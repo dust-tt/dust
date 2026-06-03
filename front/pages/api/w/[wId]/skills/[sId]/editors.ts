@@ -46,8 +46,7 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorResponse<
-      | SkillEditorsResponseBody
-      | SkillEditorsLightResponseBody
+      SkillEditorsResponseBody | SkillEditorsLightResponseBody
     >
   >,
   auth: Authenticator
