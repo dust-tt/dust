@@ -8,6 +8,7 @@ import type { AuditLogActor } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import {
+  getAwuAllocationForSeatType,
   getDefaultSeatTypeForContract,
   getProductSeatTypes,
 } from "@app/lib/metronome/seat_types";
@@ -32,6 +33,7 @@ import type {
   MembershipOriginType,
   MembershipRoleType,
   MembershipSeatType,
+  UserCreditState,
 } from "@app/types/memberships";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -61,27 +63,35 @@ import type { Transaction } from "sequelize";
  * `evaluateWorkspaceSeatAvailability` (signup) and `invitation.ts` (invite
  * creation).
  *
- * Returns `undefined` for workspaces not on Metronome billing. The caller
- * passes `undefined` to `createMembership`, which applies its built-in
- * default.
+ * Also resolves the new member's initial per-user credit state: `user_seat`
+ * when the resolved seat tier carries personal (seat) AWU credits, so a
+ * seat-based member starts spending their own credits immediately rather than
+ * waiting for the next billing-cycle reset; `on_pool` otherwise.
+ *
+ * Returns `seatType: undefined` for workspaces not on Metronome billing (the
+ * caller passes it to `createMembership`, which applies its built-in default)
+ * and `creditState: "on_pool"` — the pooled baseline.
  */
 async function resolveSeatTypeForNewMembership(
   user: UserResource,
   workspace: LightWorkspaceType,
   { useFreeSeat = true }: { useFreeSeat?: boolean } = {}
-): Promise<MembershipSeatType | undefined> {
+): Promise<{
+  seatType: MembershipSeatType | undefined;
+  creditState: UserCreditState;
+}> {
   if (!workspace.metronomeCustomerId) {
-    return undefined;
+    return { seatType: undefined, creditState: "on_pool" };
   }
   const subscription = await SubscriptionResource.fetchActiveByWorkspaceModelId(
     workspace.id
   );
   if (!subscription?.metronomeContractId) {
-    return undefined;
+    return { seatType: undefined, creditState: "on_pool" };
   }
   const contract = await getActiveContract(workspace.sId);
   if (!contract) {
-    return undefined;
+    return { seatType: undefined, creditState: "on_pool" };
   }
   const planLimits = subscription.toJSON().plan.limits.users;
   // `isReturningMember` is always queried — the one-shot rule (`free`
@@ -117,7 +127,17 @@ async function resolveSeatTypeForNewMembership(
       `Cannot resolve a seat type for user ${user.sId} in workspace ${workspace.sId}: contract has seat subscriptions but no tier is assignable${isReturningMember ? " (returning user; `free` is one-shot)" : ""}.`
     );
   }
-  return defaultSeatType;
+  // A seat tier with a personal AWU allocation starts the member on
+  // `user_seat`; tiers without one (and pooled workspaces) start on `on_pool`.
+  const seatAwuAllocation = getAwuAllocationForSeatType(
+    contract,
+    defaultSeatType,
+    productSeatTypes
+  );
+  return {
+    seatType: defaultSeatType,
+    creditState: seatAwuAllocation > 0 ? "user_seat" : "on_pool",
+  };
 }
 
 /**
@@ -158,9 +178,11 @@ export async function createAndTrackMembership({
       ? renderLightWorkspaceType({ workspace })
       : workspace;
 
-  const seatType = await resolveSeatTypeForNewMembership(user, w, {
-    useFreeSeat,
-  });
+  const { seatType, creditState } = await resolveSeatTypeForNewMembership(
+    user,
+    w,
+    { useFreeSeat }
+  );
 
   const m = await MembershipResource.createMembership({
     role,
@@ -168,6 +190,7 @@ export async function createAndTrackMembership({
     workspace: w,
     origin,
     seatType,
+    creditState,
   });
 
   void ServerSideTracking.trackCreateMembership({

@@ -65,9 +65,9 @@ import { extractFromString, serializeMention } from "@app/lib/mentions/format";
 import {
   getWorkspaceCreditPoolStatus,
   getWorkspaceProgrammaticCreditStatus,
-  isApiBlocked,
   isProgrammaticApiBlocked,
   isUserBlocked,
+  isWorkspacePoolDepleted,
 } from "@app/lib/metronome/user_block";
 import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import {
@@ -2420,7 +2420,7 @@ async function checkMessagesLimit(
 
   // Credit-state + programmatic rate-limit gate. Two systems coexist:
   // - Credit-priced (Metronome) plans: workspace pool + per-user cap, cached in Redis.
-  //   For API calls (no user), only the workspace pool applies via `isApiBlocked`.
+  //   For API calls (no user), only the workspace pool applies via `isWorkspacePoolDepleted`.
   //   Pool-balance concurrency limiting (`checkPoolCreditConcurrencyLimit`) prevents
   //   close-to-0 attacks where many requests overshoot the pool before debits settle.
   // - Legacy plans: programmatic credits checked via `checkProgrammaticUsageLimits`,
@@ -2431,7 +2431,7 @@ async function checkMessagesLimit(
   if (owner.metronomeCustomerId && plan && isCreditPricedPlan(plan)) {
     const blockedReason = user
       ? await isUserBlocked(owner.sId, user.sId)
-      : (await isApiBlocked(owner.sId))
+      : (await isWorkspacePoolDepleted(owner.sId))
         ? ("credits_exhausted" as const)
         : null;
     if (blockedReason === "user_cap_reached") {
@@ -2568,7 +2568,7 @@ async function checkPoolCreditConcurrencyLimit(
 
   const maxConcurrent = POOL_CREDIT_CONCURRENCY_LIMITS[status];
   if (maxConcurrent === undefined) {
-    // depleted / overage — handled by isUserBlocked / isApiBlocked upstream.
+    // depleted / overage — handled by isUserBlocked / isWorkspacePoolDepleted upstream.
     return { isLimitReached: false, limitType: null };
   }
 

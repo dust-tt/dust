@@ -26,8 +26,8 @@ import {
 } from "@app/lib/api/v1/backward_compatibility";
 import type { Authenticator } from "@app/lib/auth";
 import {
-  isApiBlocked,
   isProgrammaticApiBlocked,
+  isWorkspacePoolDepleted,
 } from "@app/lib/metronome/user_block";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -191,7 +191,7 @@ async function handler(
           if (plan && isCreditPricedPlan(plan)) {
             if (
               workspace.metronomeCustomerId &&
-              (await isApiBlocked(workspace.sId))
+              (await isWorkspacePoolDepleted(workspace.sId))
             ) {
               return apiError(req, res, {
                 status_code: 429,
