@@ -78,6 +78,19 @@ export function makeColumnsForMembers({
       },
     },
     {
+      accessorKey: "origin",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Origin" />
+      ),
+      filterFn: (row, id, value) => {
+        return value.includes(row.getValue(id));
+      },
+      cell: ({ row }) => {
+        const { origin } = row.original;
+        return <span>{origin ?? "-"}</span>;
+      },
+    },
+    {
       accessorKey: "role",
       header: ({ column }) => (
         <PokeColumnSortableHeader column={column} label="Role" />
