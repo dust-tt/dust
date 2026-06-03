@@ -79,9 +79,9 @@ struct OtherUserMessageBubble: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
-                Avatar(url: message.context?.profilePictureUrl)
+                Avatar(url: message.authorAvatarUrl)
 
-                Text(message.context?.fullName ?? message.context?.username ?? "User")
+                Text(message.authorName ?? "User")
                     .sparkleLabelXs()
                     .foregroundStyle(Color.dustForeground)
             }

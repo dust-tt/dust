@@ -211,6 +211,7 @@ final class ConversationDetailViewModel: ObservableObject {
             version: 0,
             rank: nextRank,
             content: content,
+            user: nil,
             context: UserMessageContext(username: nil, fullName: nil, email: userEmail, profilePictureUrl: nil),
             contentFragments: nil
         )

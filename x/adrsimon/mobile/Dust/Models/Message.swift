@@ -23,6 +23,7 @@ struct UserMessage: Codable, Identifiable {
     let version: Int
     let rank: Int
     let content: String
+    let user: MessageUser?
     let context: UserMessageContext?
     let contentFragments: [ContentFragment]?
 
@@ -33,6 +34,20 @@ struct UserMessage: Codable, Identifiable {
     var createdDate: Date {
         created.dateFromEpochMs
     }
+
+    /// `context` picture is often absent for other people's messages, so prefer `user`.
+    var authorAvatarUrl: String? {
+        user?.image ?? context?.profilePictureUrl
+    }
+
+    var authorName: String? {
+        user?.fullName ?? context?.fullName ?? context?.username
+    }
+}
+
+struct MessageUser: Codable {
+    let fullName: String?
+    let image: String?
 }
 
 struct UserMessageContext: Codable {
@@ -343,4 +358,35 @@ struct ConversationMessagesResponse: Decodable {
     let messages: [ConversationMessage]
     let hasMore: Bool
     let lastValue: Int?
+
+    private enum CodingKeys: String, CodingKey {
+        case messages, hasMore, lastValue
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.hasMore = try container.decode(Bool.self, forKey: .hasMore)
+        self.lastValue = try container.decodeIfPresent(Int.self, forKey: .lastValue)
+        self.messages = try container.decode([RenderableMessage].self, forKey: .messages).compactMap(\.message)
+    }
+}
+
+/// Skips unrenderable types (e.g. `compaction_message`) but lets a renderable message that
+/// fails to decode throw, so schema drift surfaces instead of dropping messages silently.
+private struct RenderableMessage: Decodable {
+    let message: ConversationMessage?
+
+    private enum CodingKeys: String, CodingKey {
+        case type
+    }
+
+    init(from decoder: Decoder) throws {
+        let type = try decoder.container(keyedBy: CodingKeys.self).decode(String.self, forKey: .type)
+        switch type {
+        case MessageType.userMessage.rawValue, MessageType.agentMessage.rawValue:
+            self.message = try ConversationMessage(from: decoder)
+        default:
+            self.message = nil
+        }
+    }
 }
