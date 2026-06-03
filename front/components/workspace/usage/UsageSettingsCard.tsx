@@ -72,8 +72,8 @@ export function UsageSettingsCard({ workspaceId }: UsageSettingsCardProps) {
       </span>
       <SettingsList>
         <SettingsList.Row
-          title="Default usage limit"
-          description="Define the default usage limit for all the users in your workspace"
+          title="Default pool credit limit"
+          description="Define the pool credit limit for users in your workspace. This limit is added on top of each seat's built-in allowance."
           action={
             <div className="relative w-32">
               <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground dark:text-muted-foreground-night">

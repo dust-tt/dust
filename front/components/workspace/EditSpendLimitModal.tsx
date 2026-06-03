@@ -200,7 +200,9 @@ export function EditSpendLimitModal({
                 Edit spend limit for {displayedMember?.name}
               </DialogTitle>
               <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                Maximum credits this member can consume during a billing cycle.
+                Maximum pool credits this member can consume during a billing
+                cycle. This limit is added on top of the seat&apos;s built-in
+                allowance.
               </p>
             </div>
           </div>

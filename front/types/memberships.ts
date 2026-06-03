@@ -1,3 +1,5 @@
+import { assertNever } from "@app/types/shared/utils/assert_never";
+
 export const MEMBERSHIP_ROLE_TYPES = ["admin", "builder", "user"] as const;
 
 export type MembershipRoleType = (typeof MEMBERSHIP_ROLE_TYPES)[number];
@@ -41,6 +43,55 @@ export function isMembershipSeatType(
     typeof value === "string" &&
     MEMBERSHIP_SEAT_TYPES.includes(value as MembershipSeatType)
   );
+}
+
+// Normalized seat types for pool credit limits. Monthly and yearly variants
+// share a single pool limit. Free seats are excluded (lifetime allocation,
+// no pool access).
+export const NORMALIZED_POOL_LIMIT_SEAT_TYPES = [
+  "pro",
+  "max",
+  "workspace",
+] as const;
+
+export type NormalizedPoolLimitSeatType =
+  (typeof NORMALIZED_POOL_LIMIT_SEAT_TYPES)[number];
+
+export function isNormalizedPoolLimitSeatType(
+  value: unknown
+): value is NormalizedPoolLimitSeatType {
+  return (
+    typeof value === "string" &&
+    (NORMALIZED_POOL_LIMIT_SEAT_TYPES as readonly string[]).includes(value)
+  );
+}
+
+/**
+ * Map a membership seat type to its normalized pool-limit seat type.
+ * Returns null for `free` seats (they have a fixed lifetime allocation with
+ * no pool access).
+ */
+export function normalizeToPoolLimitSeatType(
+  seatType: MembershipSeatType | null | undefined
+): NormalizedPoolLimitSeatType | null {
+  if (!seatType) {
+    return null;
+  }
+  switch (seatType) {
+    case "pro":
+    case "pro_yearly":
+      return "pro";
+    case "max":
+    case "max_yearly":
+      return "max";
+    case "workspace":
+    case "workspace_yearly":
+      return "workspace";
+    case "free":
+      return null;
+    default:
+      assertNever(seatType);
+  }
 }
 
 // Per-user credit state on a membership. Models where a user sits in the
