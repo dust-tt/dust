@@ -27,7 +27,7 @@ import {
   File04V2,
   PlayV2,
   Spinner,
-  StopIcon,
+  StopV2,
 } from "@dust-tt/sparkle";
 import { useRef, useState } from "react";
 import { useSWRConfig } from "swr";
@@ -376,7 +376,7 @@ export function AppViewPage() {
               disabled={cancelRequested}
               label={cancelRequested ? "Canceling..." : "Cancel"}
               onClick={() => handleCancelRun()}
-              icon={StopIcon}
+              icon={StopV2}
             />
           ) : (
             <Button
@@ -494,7 +494,7 @@ export function AppViewPage() {
                   disabled={cancelRequested}
                   label={cancelRequested ? "Canceling..." : "Cancel"}
                   onClick={() => handleCancelRun()}
-                  icon={StopIcon}
+                  icon={StopV2}
                 />
               ) : (
                 <Button

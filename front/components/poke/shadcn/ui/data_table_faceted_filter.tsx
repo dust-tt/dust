@@ -10,7 +10,7 @@ import {
 } from "@app/components/poke/shadcn/ui/command";
 import {
   CheckV2,
-  PlusCircleIcon,
+  PlusCircleV2,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
@@ -41,7 +41,7 @@ export function PokeDataTableFacetedFilter<TData, TValue>({
     <PopoverRoot>
       <PopoverTrigger asChild>
         <PokeButton variant="outline" size="sm" className="h-8 border-dashed">
-          <PlusCircleIcon className="mr-2 h-4 w-4" />
+          <PlusCircleV2 className="mr-2 h-4 w-4" />
           {title}
           {selectedValues?.size > 0 && (
             <>

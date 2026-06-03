@@ -25,7 +25,7 @@ import {
   CheckV2,
   ChevronDownV2,
   Chip,
-  ClipboardCheckIcon,
+  ClipboardCheckV2,
   ClipboardV2,
   CodeBlock,
   ConversationMessage,
@@ -707,7 +707,7 @@ export function ConversationPage() {
                       label={isCopiedJSON ? "Copied" : "Copy JSON"}
                       variant="outline"
                       size="xs"
-                      icon={isCopiedJSON ? ClipboardCheckIcon : ClipboardV2}
+                      icon={isCopiedJSON ? ClipboardCheckV2 : ClipboardV2}
                       onClick={() =>
                         copyJSON(
                           JSON.stringify(

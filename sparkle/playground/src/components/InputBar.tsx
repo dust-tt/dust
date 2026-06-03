@@ -1,5 +1,5 @@
 import {
-  ArrowUpIcon,
+  ArrowUpV2,
   Attachment01V2,
   Button,
   cn,
@@ -346,7 +346,7 @@ export function InputBar({
             />
             <Button
               variant="highlight"
-              icon={ArrowUpIcon}
+              icon={ArrowUpV2}
               size="xs"
               tooltip="Send message"
               isRounded

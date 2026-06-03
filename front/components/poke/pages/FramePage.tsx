@@ -6,7 +6,7 @@ import { dateToHumanReadable } from "@app/types/shared/utils/date_utils";
 import {
   Button,
   Chip,
-  ClipboardCheckIcon,
+  ClipboardCheckV2,
   ClipboardV2,
   CodeBlock,
   LinkExternal01V2,
@@ -154,7 +154,7 @@ export function FramePage() {
                   label={isCopiedMetadata ? "Copied!" : "Copy"}
                   variant="ghost"
                   size="xs"
-                  icon={isCopiedMetadata ? ClipboardCheckIcon : ClipboardV2}
+                  icon={isCopiedMetadata ? ClipboardCheckV2 : ClipboardV2}
                   onClick={() =>
                     copyMetadata(JSON.stringify(file.useCaseMetadata, null, 2))
                   }
@@ -206,9 +206,7 @@ export function FramePage() {
                         label={isCopiedShareUrl ? "Copied!" : "Copy"}
                         variant="ghost"
                         size="xs"
-                        icon={
-                          isCopiedShareUrl ? ClipboardCheckIcon : ClipboardV2
-                        }
+                        icon={isCopiedShareUrl ? ClipboardCheckV2 : ClipboardV2}
                         onClick={() => copyShareUrl(shareInfo.shareUrl)}
                       />
                     </div>
@@ -328,7 +326,7 @@ export function FramePage() {
                 label={isCopiedContent ? "Copied!" : "Copy Content"}
                 variant="ghost"
                 size="xs"
-                icon={isCopiedContent ? ClipboardCheckIcon : ClipboardV2}
+                icon={isCopiedContent ? ClipboardCheckV2 : ClipboardV2}
                 onClick={() => copyContent(content)}
               />
             </div>

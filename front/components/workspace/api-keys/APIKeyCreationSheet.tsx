@@ -2,7 +2,7 @@ import config from "@app/lib/api/config";
 import type { KeyType } from "@app/types/key";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  ClipboardCheckIcon,
+  ClipboardCheckV2,
   ClipboardV2,
   IconButton,
   Page,
@@ -64,7 +64,7 @@ export const APIKeyCreationSheet = ({
                 </pre>
                 <IconButton
                   tooltip="Copy to clipboard"
-                  icon={isCopiedName ? ClipboardCheckIcon : ClipboardV2}
+                  icon={isCopiedName ? ClipboardCheckV2 : ClipboardV2}
                   onClick={async () => {
                     if (latestKey?.name) {
                       await copyName(latestKey.name);
@@ -81,7 +81,7 @@ export const APIKeyCreationSheet = ({
                 </pre>
                 <IconButton
                   tooltip="Copy to clipboard"
-                  icon={isCopiedDomain ? ClipboardCheckIcon : ClipboardV2}
+                  icon={isCopiedDomain ? ClipboardCheckV2 : ClipboardV2}
                   onClick={async () => {
                     await copyDomain(domain);
                   }}
@@ -96,7 +96,7 @@ export const APIKeyCreationSheet = ({
                 </pre>
                 <IconButton
                   tooltip="Copy to clipboard"
-                  icon={isCopiedWorkspaceId ? ClipboardCheckIcon : ClipboardV2}
+                  icon={isCopiedWorkspaceId ? ClipboardCheckV2 : ClipboardV2}
                   onClick={async () => {
                     await copyWorkspaceId(workspace.sId);
                   }}
@@ -111,7 +111,7 @@ export const APIKeyCreationSheet = ({
                 </pre>
                 <IconButton
                   tooltip="Copy to clipboard"
-                  icon={isCopiedApiKey ? ClipboardCheckIcon : ClipboardV2}
+                  icon={isCopiedApiKey ? ClipboardCheckV2 : ClipboardV2}
                   onClick={async () => {
                     if (latestKey?.secret) {
                       await copyApiKey(latestKey.secret);

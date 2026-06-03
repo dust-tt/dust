@@ -51,7 +51,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import {
-  ArrowUpIcon,
+  ArrowUpV2,
   Attachment01V2,
   Button,
   CameraIcon,
@@ -1442,7 +1442,7 @@ const InputBarContainer = ({
                       isSubmitting &&
                       voiceTranscriberService.status !== "transcribing"
                     }
-                    icon={ArrowUpIcon}
+                    icon={ArrowUpV2}
                     variant={isSubmitBlocked ? "ghost-secondary" : "highlight"}
                     disabled={isSubmitDisabled}
                     onClick={async (e: React.MouseEvent<HTMLButtonElement>) => {

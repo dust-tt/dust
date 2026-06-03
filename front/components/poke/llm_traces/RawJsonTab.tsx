@@ -2,7 +2,7 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { LLMTrace } from "@app/lib/api/llm/traces/types";
 import {
   Button,
-  ClipboardCheckIcon,
+  ClipboardCheckV2,
   ClipboardV2,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
@@ -23,7 +23,7 @@ export function RawJsonTab({ trace }: RawJsonTabProps) {
           label={isCopied ? "Copied!" : "Copy JSON"}
           variant="outline"
           size="sm"
-          icon={isCopied ? ClipboardCheckIcon : ClipboardV2}
+          icon={isCopied ? ClipboardCheckV2 : ClipboardV2}
           onClick={() => copy(JSON.stringify(trace, null, 2))}
         />
       </div>

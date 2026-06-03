@@ -1,7 +1,7 @@
 import { cn } from "@app/components/poke/shadcn/lib/utils";
 import {
   Button,
-  ClipboardCheckIcon,
+  ClipboardCheckV2,
   ClipboardV2,
   Label,
   LinkWrapper,
@@ -154,7 +154,7 @@ const TableCellWithCopy = React.forwardRef<
           size="xs"
           variant="outline"
           onClick={handleCopy}
-          icon={isCopied ? ClipboardCheckIcon : ClipboardV2}
+          icon={isCopied ? ClipboardCheckV2 : ClipboardV2}
         />
       </div>
     </TableCell>

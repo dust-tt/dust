@@ -19,7 +19,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
   File02V2,
-  HeartIcon,
+  HeartV2,
   Lightbulb04V2,
   MessageChatSquareV2,
   SlackLogo,
@@ -118,7 +118,7 @@ export function HelpDropdown({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" label="Help" icon={HeartIcon} isSelect />
+        <Button variant="outline" label="Help" icon={HeartV2} isSelect />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         onCloseAutoFocus={(e) => {

@@ -5,7 +5,7 @@ import {
   Download01V2,
   ReverseLeftV2,
   Button,
-  ClipboardCheckIcon,
+  ClipboardCheckV2,
   ClipboardV2,
   TerminalV2,
   DropdownMenu,
@@ -150,7 +150,7 @@ export function FrameView() {
               <Button
                 size="sm"
                 variant="outline"
-                icon={isCopied ? ClipboardCheckIcon : ClipboardV2}
+                icon={isCopied ? ClipboardCheckV2 : ClipboardV2}
                 label={isCopied ? "Copied" : "Copy to clipboard"}
                 onClick={handleCopyCode}
               />

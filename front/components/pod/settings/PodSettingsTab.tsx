@@ -18,7 +18,7 @@ import type { PatchPodMetadataBodyType } from "@app/types/api/internal/spaces";
 import { PatchPodMetadataBodySchema } from "@app/types/api/internal/spaces";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  ArchiveIcon,
+  ArchiveV2,
   Button,
   ContentMessage,
   Globe01V2,
@@ -396,7 +396,7 @@ export function PodSettingsTab({
                   intact and can still be used as a data source.
                 </p>
                 <Button
-                  icon={ArchiveIcon}
+                  icon={ArchiveV2}
                   variant="warning-secondary"
                   label="Archive"
                   onClick={handleArchiveToggle}

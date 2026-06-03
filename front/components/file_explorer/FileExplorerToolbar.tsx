@@ -3,15 +3,15 @@ import type { FileExplorerSortMode } from "@app/components/file_explorer/types";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import {
   ActionTimeIcon,
-  ArrowDownIcon,
-  ArrowUpIcon,
+  ArrowDownV2,
+  ArrowUpV2,
   Button,
   CheckDone01V2,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  ListIcon,
+  ListV2,
   SearchInput,
 } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
@@ -21,8 +21,8 @@ const SORT_ITEMS: Record<
   { label: string; icon: React.ComponentType<{ className?: string }> }
 > = {
   "last-modified": { label: "Last modified", icon: ActionTimeIcon },
-  "name-asc": { label: "Name A → Z", icon: ArrowDownIcon },
-  "name-desc": { label: "Name Z → A", icon: ArrowUpIcon },
+  "name-asc": { label: "Name A → Z", icon: ArrowDownV2 },
+  "name-desc": { label: "Name Z → A", icon: ArrowUpV2 },
 };
 
 interface ViewToggleProps {
@@ -37,7 +37,7 @@ function ViewToggle({ value, onValueChange }: ViewToggleProps) {
         <Button
           variant="outline"
           size="sm"
-          icon={value === "grid" ? ListIcon : CheckDone01V2}
+          icon={value === "grid" ? ListV2 : CheckDone01V2}
           isSelect
         />
       </DropdownMenuTrigger>

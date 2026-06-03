@@ -1,6 +1,6 @@
 import {
   AnimatedText,
-  ArchiveIcon,
+  ArchiveV2,
   Download01V2,
   ArrowRightV2,
   Upload01V2,
@@ -40,7 +40,7 @@ import {
   Input,
   CheckDone01V2,
   ListGroup,
-  ListIcon,
+  ListV2,
   ListItemSection,
   DotsHorizontalV2,
   ReplySection,
@@ -4357,7 +4357,7 @@ export function GroupConversationView({
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="outline"
-                      icon={filesViewMode === "list" ? CheckDone01V2 : ListIcon}
+                      icon={filesViewMode === "list" ? CheckDone01V2 : ListV2}
                       isSelect
                     />
                   </DropdownMenuTrigger>
@@ -4378,7 +4378,7 @@ export function GroupConversationView({
                       <DropdownMenuRadioItem
                         value="grid"
                         label="Grid"
-                        icon={ListIcon}
+                        icon={ListV2}
                       />
                     </DropdownMenuRadioGroup>
                   </DropdownMenuContent>
@@ -4515,7 +4515,7 @@ export function GroupConversationView({
                   />
                 ) : (
                   <DropdownMenuItem
-                    icon={ArchiveIcon}
+                    icon={ArchiveV2}
                     label="Archive project"
                     variant="warning"
                     onClick={handleArchiveProject}
@@ -4698,7 +4698,7 @@ export function GroupConversationView({
               ) : (
                 <div className="s-flex s-w-full s-flex-col s-items-start">
                   <Button
-                    icon={ArchiveIcon}
+                    icon={ArchiveV2}
                     variant="warning-secondary"
                     label="Archive"
                     onClick={handleArchiveProject}

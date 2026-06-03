@@ -24,7 +24,7 @@ import {
   MoonIcon,
   Page,
   Spinner,
-  SunIcon,
+  SunV2,
   Tooltip,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -293,7 +293,7 @@ export function AccountSettings({ owner }: AccountSettingsProps) {
                   variant="outline"
                   icon={
                     themeField.value === "light"
-                      ? SunIcon
+                      ? SunV2
                       : themeField.value === "dark"
                         ? MoonIcon
                         : LightModeIcon
@@ -312,7 +312,7 @@ export function AccountSettings({ owner }: AccountSettingsProps) {
               <DropdownMenuPortal>
                 <DropdownMenuContent>
                   <DropdownMenuItem
-                    icon={SunIcon}
+                    icon={SunV2}
                     onClick={() => themeField.onChange("light")}
                     label="Light"
                   />

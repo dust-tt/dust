@@ -15,7 +15,7 @@ import type {
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
-  ArchiveIcon,
+  ArchiveV2,
   Button,
   ChevronDownV2,
   ChevronRightV2,
@@ -299,7 +299,7 @@ export function CouponsPage() {
               {
                 kind: "item" as const,
                 label: "Archive",
-                icon: ArchiveIcon,
+                icon: ArchiveV2,
                 onClick: (e: MouseEvent) => {
                   e.stopPropagation();
                   void archiveCoupon(coupon.sId);

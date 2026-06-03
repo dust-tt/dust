@@ -23,7 +23,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-  HeartIcon,
+  HeartV2,
   InboxIcon,
   Lightbulb04V2,
   ListSelectIcon,
@@ -677,7 +677,7 @@ function DustMain() {
               }}
             />
             <DropdownMenuSub>
-              <DropdownMenuSubTrigger icon={HeartIcon} label="Help & Support" />
+              <DropdownMenuSubTrigger icon={HeartV2} label="Help & Support" />
               <DropdownMenuPortal>
                 <DropdownMenuSubContent>
                   <DropdownMenuLabel label="Learn about Dust" />

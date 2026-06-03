@@ -21,7 +21,7 @@ import {
   Download01V2,
   Input,
   Label,
-  PlusCircleIcon,
+  PlusCircleV2,
   PlusV2,
   Upload01V2,
   XCircleV2,
@@ -628,7 +628,7 @@ export default function DatasetView({
                                   size="icon"
                                   variant="ghost"
                                   className="text-muted-foreground"
-                                  icon={PlusCircleIcon}
+                                  icon={PlusCircleV2}
                                   onClick={() => {
                                     handleNewKey(j);
                                   }}
@@ -802,7 +802,7 @@ export default function DatasetView({
                           />
                         ) : null}
                         <Button
-                          icon={PlusCircleIcon}
+                          icon={PlusCircleV2}
                           size="icon"
                           variant="ghost"
                           onClick={() => {

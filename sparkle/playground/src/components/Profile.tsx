@@ -23,7 +23,7 @@ import {
   Edit04V2,
   SearchInput,
   Separator,
-  SunIcon,
+  SunV2,
   Tabs,
   TabsContent,
   TabsList,
@@ -361,7 +361,7 @@ function ProfileContent({ initialUser }: ProfileContentProps) {
   );
 
   const themeIcon =
-    theme === "light" ? SunIcon : theme === "dark" ? MoonIcon : LightModeIcon;
+    theme === "light" ? SunV2 : theme === "dark" ? MoonIcon : LightModeIcon;
   const themeLabel =
     theme === "light" ? "Light" : theme === "dark" ? "Dark" : "System";
 
@@ -452,7 +452,7 @@ function ProfileContent({ initialUser }: ProfileContentProps) {
               </DropdownMenuTrigger>
               <DropdownMenuContent>
                 <DropdownMenuItem
-                  icon={SunIcon}
+                  icon={SunV2}
                   onClick={() => setTheme("light")}
                   label="Light"
                 />

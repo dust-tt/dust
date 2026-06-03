@@ -31,7 +31,7 @@ import {
   ActionCreditCoinsIcon,
   ActionPieChartIcon,
   AlertCircleV2,
-  ArrowUpIcon,
+  ArrowUpV2,
   Button,
   ContentMessage,
   DropdownMenu,
@@ -249,7 +249,7 @@ export function UsagePage() {
                           className="flex items-center gap-1 text-xs font-medium text-highlight-500 opacity-50 dark:text-highlight-500-night"
                           disabled
                         >
-                          <Icon visual={ArrowUpIcon} size="xs" />
+                          <Icon visual={ArrowUpV2} size="xs" />
                           Top up
                         </button>
                       }
@@ -259,7 +259,7 @@ export function UsagePage() {
                       className="flex cursor-pointer items-center gap-1 text-xs font-medium text-highlight-500 dark:text-highlight-500-night"
                       onClick={() => setShowBuyCreditDialog(true)}
                     >
-                      <Icon visual={ArrowUpIcon} size="xs" />
+                      <Icon visual={ArrowUpV2} size="xs" />
                       Top up
                     </button>
                   )}

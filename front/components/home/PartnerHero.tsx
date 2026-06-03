@@ -5,7 +5,7 @@ import {
   Building04V2,
   CardIcon,
   Globe01V2,
-  HeartIcon,
+  HeartV2,
   Icon,
   MessageChatSquareV2,
   PuzzlePiece01V2,
@@ -36,7 +36,7 @@ const PARTNER_BENEFITS: {
     color: "green",
   },
   {
-    icon: HeartIcon,
+    icon: HeartV2,
     title: "Dedicated support",
     description:
       "Technical onboarding, sales enablement, and partner success resources.",

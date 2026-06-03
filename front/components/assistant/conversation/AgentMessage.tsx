@@ -93,7 +93,7 @@ import {
   ButtonGroup,
   ButtonGroupDropdown,
   Chip,
-  ClipboardCheckIcon,
+  ClipboardCheckV2,
   ClipboardV2,
   ConversationMessageAvatar,
   ConversationMessageContainer,
@@ -103,7 +103,7 @@ import {
   InfoCircleV2,
   InteractiveImageGrid,
   LinkIcon,
-  StopIcon,
+  StopV2,
   Tooltip,
   Trash01V2,
   TruncatedContent,
@@ -662,7 +662,7 @@ export function AgentMessage({
         onClick={async () => {
           await cancelMessage([sId]);
         }}
-        icon={StopIcon}
+        icon={StopV2}
         className="text-muted-foreground"
       />
     );
@@ -884,7 +884,7 @@ export function AgentMessage({
           variant="outline"
           size="xs"
           onClick={handleCopyToClipboard}
-          icon={isCopied ? ClipboardCheckIcon : ClipboardV2}
+          icon={isCopied ? ClipboardCheckV2 : ClipboardV2}
           className="text-muted-foreground"
         />
         <ButtonGroupDropdown

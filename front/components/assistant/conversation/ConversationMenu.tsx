@@ -60,7 +60,7 @@ import {
   EyeV2,
   LinkExternal01V2,
   LinkIcon,
-  PlusCircleIcon,
+  PlusCircleV2,
   PlusV2,
   SidekickV2,
   Trash01V2,
@@ -496,7 +496,7 @@ export function ConversationMenu({
                     <DropdownMenuItem
                       label="Join"
                       onClick={joinConversation}
-                      icon={PlusCircleIcon}
+                      icon={PlusCircleV2}
                     />
                     <DropdownMenuSeparator />
                   </>

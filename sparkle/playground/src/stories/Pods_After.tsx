@@ -1,5 +1,5 @@
 import {
-  ArchiveIcon,
+  ArchiveV2,
   Attachment01V2,
   Avatar,
   BellIcon,
@@ -27,7 +27,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   EyeV2,
-  HeartIcon,
+  HeartV2,
   InboxIcon,
   Lightbulb04V2,
   LinkIcon,
@@ -937,7 +937,7 @@ export default function Pods_After() {
               </DropdownMenuSub>
               <DropdownMenuItem
                 label="Archive"
-                icon={ArchiveIcon}
+                icon={ArchiveV2}
                 variant="warning"
                 onClick={(e) => {
                   e.preventDefault();
@@ -1651,7 +1651,7 @@ export default function Pods_After() {
               }}
             />
             <DropdownMenuSub>
-              <DropdownMenuSubTrigger icon={HeartIcon} label="Help & Support" />
+              <DropdownMenuSubTrigger icon={HeartV2} label="Help & Support" />
               <DropdownMenuPortal>
                 <DropdownMenuSubContent>
                   <DropdownMenuItem

@@ -1,7 +1,7 @@
 import { cn } from "@app/components/poke/shadcn/lib/utils";
 import { classNames } from "@app/lib/utils";
 import {
-  CircleIcon,
+  CircleV2,
   HexagonIcon,
   Icon,
   LinkIcon,
@@ -9,7 +9,7 @@ import {
   RectangleIcon,
   RobotV2,
   SquareV2,
-  TriangleIcon,
+  TriangleV2,
 } from "@dust-tt/sparkle";
 import type React from "react";
 import type { AnchorHTMLAttributes, ReactNode } from "react";
@@ -130,8 +130,8 @@ interface PProps {
 
 const shapeClasses = {
   square: SquareV2,
-  circle: CircleIcon,
-  triangle: TriangleIcon,
+  circle: CircleV2,
+  triangle: TriangleV2,
   hexagon: HexagonIcon,
   rectangle: RectangleIcon,
 };

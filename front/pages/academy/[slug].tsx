@@ -36,7 +36,7 @@ import logger from "@app/logger/logger";
 import { isString } from "@app/types/shared/utils/general";
 import {
   Button,
-  ClipboardCheckIcon,
+  ClipboardCheckV2,
   ClipboardV2,
   cn,
   Markdown,
@@ -258,7 +258,7 @@ export default function CoursePage({
                         <Button
                           variant="outline"
                           size="xs"
-                          icon={isCopied ? ClipboardCheckIcon : ClipboardV2}
+                          icon={isCopied ? ClipboardCheckV2 : ClipboardV2}
                           label={
                             isCopied
                               ? academySettings.copied

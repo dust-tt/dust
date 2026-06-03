@@ -17,7 +17,7 @@ import type {
 import {
   Avatar,
   Button,
-  ClipboardCheckIcon,
+  ClipboardCheckV2,
   ClipboardV2,
   ContentMessage,
   ContextItem,
@@ -222,7 +222,7 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                icon={isCopied ? ClipboardCheckIcon : ClipboardV2}
+                icon={isCopied ? ClipboardCheckV2 : ClipboardV2}
                 label={isCopied ? "Copied!" : "Copy link"}
                 onClick={async () => {
                   await copyToClipboard(shareURL);
