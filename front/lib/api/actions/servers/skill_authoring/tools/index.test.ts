@@ -10,6 +10,8 @@ import { isSkillAuthoringResultOutput } from "@app/lib/api/actions/servers/skill
 import { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import { describe, expect, it } from "vitest";
 
 import { TOOLS } from "./index";
@@ -114,6 +116,53 @@ describe("skill_authoring tools", () => {
         instructions: "Collect impact, timeline, root cause, and follow-ups.",
       },
     });
+
+    const otherUser = await UserFactory.basic();
+    const owner = authenticator.getNonNullableWorkspace();
+    await MembershipFactory.associate(owner, otherUser, { role: "builder" });
+    const otherAuthenticator = await Authenticator.fromUserIdAndWorkspaceId(
+      otherUser.sId,
+      workspace.sId
+    );
+
+    const otherListResult = await getTool(LIST_SKILLS_TOOL_NAME).handler(
+      {},
+      makeExtra(otherAuthenticator)
+    );
+    expect(otherListResult.isOk()).toBe(true);
+    if (otherListResult.isErr()) {
+      throw otherListResult.error;
+    }
+    expect(otherListResult.value[1]?.type).toBe("text");
+    if (otherListResult.value[1]?.type !== "text") {
+      throw new Error("Expected JSON text output.");
+    }
+    expect(JSON.parse(otherListResult.value[1].text)).toMatchObject({
+      skills: [],
+    });
+
+    const otherGetResult = await getTool(GET_SKILL_TOOL_NAME).handler(
+      { sId: output.resource.skillId },
+      makeExtra(otherAuthenticator)
+    );
+    expect(otherGetResult.isErr()).toBe(true);
+    if (otherGetResult.isOk()) {
+      throw new Error("Expected another builder not to read the skill.");
+    }
+    expect(otherGetResult.error.message).toBe("Skill not found.");
+
+    const otherUpdateResult = await getTool(UPDATE_SKILL_TOOL_NAME).handler(
+      {
+        sId: output.resource.skillId,
+        instructions: "Unauthorized update.",
+      },
+      makeExtra(otherAuthenticator)
+    );
+    expect(otherUpdateResult.isErr()).toBe(true);
+    if (otherUpdateResult.isOk()) {
+      throw new Error("Expected another builder not to update the skill.");
+    }
+    expect(otherUpdateResult.error.message).toBe("Skill not found.");
 
     const updateResult = await getTool(UPDATE_SKILL_TOOL_NAME).handler(
       {

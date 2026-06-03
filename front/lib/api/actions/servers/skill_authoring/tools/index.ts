@@ -58,6 +58,11 @@ function makeJsonText(value: unknown) {
 
 const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
   [LIST_SKILLS_TOOL_NAME]: async (_params, { auth }) => {
+    const user = requireInteractiveBuilder(auth);
+    if (user.isErr()) {
+      return new Err(user.error);
+    }
+
     const skills = await SkillResource.listByWorkspace(auth, {
       status: "active",
       onlyCustom: true,
@@ -65,13 +70,15 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
       withTools: false,
     });
 
-    const summaries = skills.map((skill) => ({
-      sId: skill.sId,
-      name: skill.name,
-      agentFacingDescription: skill.agentFacingDescription,
-      userFacingDescription: skill.userFacingDescription,
-      icon: skill.icon,
-    }));
+    const summaries = skills
+      .filter((skill) => skill.canWrite(auth))
+      .map((skill) => ({
+        sId: skill.sId,
+        name: skill.name,
+        agentFacingDescription: skill.agentFacingDescription,
+        userFacingDescription: skill.userFacingDescription,
+        icon: skill.icon,
+      }));
 
     return new Ok([
       {
@@ -83,6 +90,11 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
   },
 
   [GET_SKILL_TOOL_NAME]: async ({ sId }, { auth }) => {
+    const user = requireInteractiveBuilder(auth);
+    if (user.isErr()) {
+      return new Err(user.error);
+    }
+
     const customSkillId = requireCustomSkillId(sId);
     if (customSkillId.isErr()) {
       return new Err(customSkillId.error);
@@ -90,6 +102,9 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
 
     const skill = await SkillResource.fetchById(auth, customSkillId.value);
     if (!skill) {
+      return new Err(new MCPError("Skill not found."));
+    }
+    if (!skill.canWrite(auth)) {
       return new Err(new MCPError("Skill not found."));
     }
 
@@ -237,7 +252,7 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
     }
 
     if (!skill.canWrite(auth)) {
-      return new Err(new MCPError("Only editors can modify this skill."));
+      return new Err(new MCPError("Skill not found."));
     }
 
     const trimmedName = name !== undefined ? name.trim() : skill.name;
