@@ -2441,7 +2441,7 @@ describe("postUserMessage", () => {
         expect(result.error.status_code).toBe(403);
         expect(result.error.api_error.type).toBe("workspace_auth_error");
         expect(result.error.api_error.message).toBe(
-          "You are not a member of the project."
+          "You are not a member of the Pod."
         );
       }
     });
