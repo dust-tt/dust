@@ -992,6 +992,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     role,
     origin = "invited",
     seatType = "workspace",
+    creditState,
     startAt = new Date(),
     transaction,
   }: {
@@ -1000,6 +1001,8 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     role: MembershipRoleType;
     origin?: MembershipOriginType;
     seatType?: MembershipSeatType;
+    // Initial per-user credit state. When omitted, the model default applies.
+    creditState?: UserCreditState;
     startAt?: Date;
     transaction?: Transaction;
   }): Promise<MembershipResource> {
@@ -1030,6 +1033,8 @@ export class MembershipResource extends BaseResource<MembershipModel> {
         role,
         origin,
         seatType,
+        // Omit when undefined so the model default ("on_pool") applies.
+        ...(creditState ? { creditState } : {}),
         firstUsedAt: origin === "provisioned" ? null : new Date(),
       },
       { transaction }

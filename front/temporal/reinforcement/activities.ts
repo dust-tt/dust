@@ -14,8 +14,8 @@ import { getRemainingDailyCapMicroUsd } from "@app/lib/api/programmatic_usage/da
 import { checkProgrammaticUsageLimits } from "@app/lib/api/programmatic_usage/tracking";
 import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import {
-  isApiBlocked,
   isProgrammaticApiBlocked,
+  isWorkspacePoolDepleted,
 } from "@app/lib/metronome/user_block";
 import {
   AgentMessageModel,
@@ -596,7 +596,7 @@ export async function getReinforcementSettingsActivity({
   let programmaticUsageLimitReached: boolean;
   if (plan && isCreditPricedPlan(plan) && workspace.metronomeCustomerId) {
     programmaticUsageLimitReached =
-      (await isApiBlocked(workspace.sId)) ||
+      (await isWorkspacePoolDepleted(workspace.sId)) ||
       (await isProgrammaticApiBlocked(workspace.sId));
   } else {
     // Legacy check for not metronome workspaces

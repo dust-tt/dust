@@ -10,6 +10,9 @@ import {
   dispatchProgrammaticCapReset,
   dispatchProgrammaticLowBalance,
   dispatchProgrammaticWarning,
+  dispatchSeatBalanceExhausted,
+  dispatchSeatBalanceLow,
+  resetWorkspaceUserCreditStates,
   syncPoolCreditStateFromBalance,
 } from "@app/lib/api/metronome/credit_state_dispatcher";
 import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
@@ -130,6 +133,22 @@ function programmaticEventFromAlertName(
     };
   }
   return null;
+}
+
+// Resolve the user sId a seat-balance alert is scoped to. Metronome fans the
+// alert out per seat via `seat_filter` (seat_group_key "user_id"); the fired
+// event echoes the resolved seat group key/value. We read it from either the
+// seat-specific `seat_group_values` or the generic `group_values`, whichever
+// Metronome populates. Returns null when no `user_id` value is present.
+function seatBalanceEventUserId(
+  event: Extract<
+    MetronomeWebhookEvent,
+    { type: "alerts.low_remaining_seat_balance_reached" }
+  >
+): string | null {
+  const groups =
+    event.properties.seat_group_values ?? event.properties.group_values;
+  return groups?.find((g) => g.key === "user_id")?.value ?? null;
 }
 
 export class ProcessMetronomeWebhookError extends Error {
@@ -923,9 +942,71 @@ export async function processMetronomeWebhook({
       );
       break;
     }
-    // Handled by custom alerts above
-    case "alerts.low_remaining_seat_balance_reached":
+    case "alerts.low_remaining_seat_balance_reached": {
+      // Per-seat fan-out: the alert is scoped per user via `seat_filter`
+      // (seat_group_key "user_id"), so Metronome fires one event per user whose
+      // personal (seat) credit balance crosses a threshold. Two alerts feed
+      // this event type; route by `remaining_balance` (same pattern as the
+      // pool's combined balance alert):
+      //   - ≤ 0  → balance exhausted: `user_seat*` → `on_pool`.
+      //   - > 0  → balance low: `user_seat` → `user_seat_low_balance`.
+      const userId = seatBalanceEventUserId(event);
+      if (!userId) {
+        logger.warn(
+          {
+            eventId: event.id,
+            workspaceId: workspace.sId,
+            properties: event.properties,
+          },
+          "[Metronome Webhook] low_remaining_seat_balance_reached: could not resolve user_id from event, skipping"
+        );
+        break;
+      }
+      const remaining = event.properties.remaining_balance;
+      const exhausted = remaining == null || remaining <= 0;
+      const dispatchResult = exhausted
+        ? await dispatchSeatBalanceExhausted({ workspace, userId })
+        : await dispatchSeatBalanceLow({ workspace, userId });
+      if (dispatchResult.isErr()) {
+        logger.error(
+          {
+            eventId: event.id,
+            workspaceId: workspace.sId,
+            userId,
+            exhausted,
+            err: dispatchResult.error,
+          },
+          "[Metronome Webhook] low_remaining_seat_balance_reached: dispatch failed"
+        );
+        return new Err(
+          new ProcessMetronomeWebhookError(
+            "processing_failed",
+            `Error dispatching seat balance ${exhausted ? "exhausted" : "low"}: ${dispatchResult.error.message}`
+          )
+        );
+      }
+      logger.info(
+        {
+          eventId: event.id,
+          workspaceId: workspace.sId,
+          userId,
+          remaining,
+          exhausted,
+        },
+        exhausted
+          ? "[Metronome Webhook] low_remaining_seat_balance_reached: user moved to pool"
+          : "[Metronome Webhook] low_remaining_seat_balance_reached: user seat balance low"
+      );
+      break;
+    }
     case "alerts.low_remaining_seat_balance_resolved":
+      // Seat (personal) credits replenished — e.g. at a new billing period.
+      // Moving the user back to `user_seat` is a future enhancement; today we
+      // leave the state untouched (the workspace pool already covers them).
+      logger.info(
+        { eventId: event.id, workspaceId: workspace.sId },
+        "[Metronome Webhook] low_remaining_seat_balance_resolved: no transition"
+      );
       break;
 
     case "alerts.invoice_total_reached":
@@ -1103,6 +1184,19 @@ export async function processMetronomeWebhook({
       }
 
       if (event.type === "credit.segment.start") {
+        // A new AWU credit segment marks a new billing period: seat and pool
+        // credits have refilled, so reset every member to their starting state
+        // (`user_seat` / `on_pool`).
+        if (
+          creditResult.value?.access_schedule?.credit_type?.id ===
+          getCreditTypeAwuId()
+        ) {
+          await resetWorkspaceUserCreditStates({
+            workspace,
+            metronomeCustomerId,
+          });
+        }
+
         // Special case: only a contract-bound managed free credit drives the
         // free monthly/yearly credit grant. Customer-level credits with no
         // parent contract can't be the managed free credit, so stop here.
