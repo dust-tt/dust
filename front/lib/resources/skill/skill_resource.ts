@@ -111,6 +111,11 @@ type SkillReferenceTarget = {
   id: string;
   name: string;
   requestedSpaceIds: readonly ModelId[];
+  status: SkillStatus;
+};
+
+type ReplaceSkillReferenceTagsOptions = {
+  html?: boolean;
 };
 
 type SkillResourceConstructorOptions =
@@ -2316,8 +2321,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         );
       }
 
-      // We preserve AgentSkillModel and ConversationSkillModel relationships
-      // so they can be restored when the skill is unarchived.
+      // We preserve AgentSkillModel, ConversationSkillModel, and
+      // SkillReferenceModel relationships so they can be restored when the skill
+      // is unarchived.
       const [count] = await this.update({ status: "archived" }, transaction);
 
       if (count > 0) {
@@ -2329,6 +2335,17 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           {
             previousRequestedSpaceIds: this.requestedSpaceIds,
             newRequestedSpaceIds: [],
+          },
+          { transaction }
+        );
+
+        await this.propagateReferenceUpdatesToParentSkills(
+          auth,
+          {
+            icon: this.icon,
+            name: this.name,
+            requestedSpaceIds: this.requestedSpaceIds,
+            status: "archived",
           },
           { transaction }
         );
@@ -2359,6 +2376,17 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           {
             previousRequestedSpaceIds: [],
             newRequestedSpaceIds: this.requestedSpaceIds,
+          },
+          { transaction }
+        );
+
+        await this.propagateReferenceUpdatesToParentSkills(
+          auth,
+          {
+            icon: this.icon,
+            name: this.name,
+            requestedSpaceIds: this.requestedSpaceIds,
+            status: "active",
           },
           { transaction }
         );
@@ -2417,6 +2445,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     // Snapshot the previous name before updating to detect a rename below.
     const previousName = this.name;
+    const previousStatus = this.status;
 
     await withTransaction(async (transaction) => {
       // Save the current version before updating.
@@ -2430,6 +2459,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         requestedSpaceIds.some(
           (spaceId) => !previousRequestedSpaceIdsSet.has(spaceId)
         );
+      const statusChanged = status !== undefined && previousStatus !== status;
 
       const editedBy = auth.user()?.id;
       await this.update(
@@ -2467,13 +2497,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         );
       }
 
-      if (name !== previousName || requestedSpaceIdsChanged) {
+      if (name !== previousName || requestedSpaceIdsChanged || statusChanged) {
         await this.propagateReferenceUpdatesToParentSkills(
           auth,
           {
             icon,
             name,
             requestedSpaceIds,
+            status: status ?? this.status,
           },
           { transaction }
         );
@@ -2505,7 +2536,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   /**
    * Rewrites inline references to this skill in every parent skill so their tag
-   * availability reflects this skill's current requested spaces.
+   * availability reflects this skill's current status and requested spaces.
    */
   private async propagateReferenceUpdatesToParentSkills(
     auth: Authenticator,
@@ -2513,10 +2544,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       icon,
       name,
       requestedSpaceIds,
+      status,
     }: {
       icon: string | null;
       name: string;
       requestedSpaceIds: readonly ModelId[];
+      status: SkillStatus;
     },
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<void> {
@@ -2550,6 +2583,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           id: this.sId,
           name,
           requestedSpaceIds,
+          status,
         },
       ],
     ]);
@@ -3012,6 +3046,17 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       );
 
       const affectedCount = await withTransaction(async (transaction) => {
+        await this.propagateReferenceUpdatesToParentSkills(
+          auth,
+          {
+            icon: this.icon,
+            name: this.name,
+            requestedSpaceIds: this.requestedSpaceIds,
+            status: "archived",
+          },
+          { transaction }
+        );
+
         // Delete agent-skill associations.
         await AgentSkillModel.destroy({
           where: {
@@ -3376,7 +3421,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     content: string,
     targets: ReadonlyMap<string, SkillReferenceTarget>,
     parentRequestedSpaceIds: readonly ModelId[],
-    { html = false }: { html?: boolean } = {}
+    { html = false }: ReplaceSkillReferenceTagsOptions = {}
   ): string {
     if (targets.size === 0) {
       return content;
@@ -3392,9 +3437,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         return tag;
       }
 
-      const isAvailable = target.requestedSpaceIds.every((spaceId) =>
-        parentRequestedSpaceIdsSet.has(spaceId)
-      );
+      const isAvailable =
+        target.status === "active" &&
+        target.requestedSpaceIds.every((spaceId) =>
+          parentRequestedSpaceIdsSet.has(spaceId)
+        );
 
       if (!isAvailable) {
         return serializeUnavailableSkillTag({ id: target.id }, { html });
@@ -3437,7 +3484,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         id: [...customSkillIdByModelId.keys()],
         workspaceId: workspace.id,
       },
-      attributes: ["id", "icon", "name", "requestedSpaceIds"],
+      attributes: ["id", "icon", "name", "requestedSpaceIds", "status"],
       transaction,
     });
     const targets = new Map<string, SkillReferenceTarget>(
@@ -3453,12 +3500,24 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
                   id: sId,
                   name: skill.name,
                   requestedSpaceIds: skill.requestedSpaceIds,
+                  status: skill.status,
                 },
               ]
             : null;
         })
       )
     );
+    for (const skillId of customSkillIdByModelId.values()) {
+      if (!targets.has(skillId)) {
+        targets.set(skillId, {
+          icon: null,
+          id: skillId,
+          name: "",
+          requestedSpaceIds: [],
+          status: "archived",
+        });
+      }
+    }
 
     const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(
       auth,
