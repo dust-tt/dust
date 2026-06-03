@@ -284,8 +284,12 @@ export const OPENAI_FORMATTING_META_PROMPT_WITHOUT_PARAGRAPH_PREFERENCE =
 
 // Returns the formatting meta prompt to inject for a given model. When `excludeParagraphPreference`
 // is set (driven by the `disable_paragraph_formatting_prompt` feature flag), the OpenAI prompt is
-// swapped for the variant that omits the paragraphs-over-bullets guidance. Other models are
-// returned unchanged.
+// swapped for the variant that omits the paragraphs-over-bullets guidance.
+//
+// The swap intentionally only fires when the prompt is exactly the known OpenAI default: the
+// variant is the default minus a few specific lines, so it is only a valid substitution for that
+// exact prompt. Any other prompt (a non-OpenAI model, or an OpenAI model with a customized
+// formatting prompt) is returned untouched rather than clobbered with the stripped default.
 export function selectOpenAIFormattingMetaPrompt(
   formattingMetaPrompt: string | undefined,
   { excludeParagraphPreference }: { excludeParagraphPreference: boolean }
