@@ -67,11 +67,15 @@ struct GeneratedFile: Codable, Identifiable, Hashable {
     let contentType: String
     let createdAt: Double?
     let updatedAt: Double?
-    let isInProjectContext: Bool?
     let hidden: Bool?
 
-    var id: String { fileId }
-    var isVisible: Bool { hidden != true }
+    var id: String {
+        fileId
+    }
+
+    var isVisible: Bool {
+        hidden != true
+    }
 }
 
 // MARK: - Citation (attached to AgentMessage)

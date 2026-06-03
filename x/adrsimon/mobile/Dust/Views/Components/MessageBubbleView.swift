@@ -312,7 +312,9 @@ struct CitationCard: View {
     struct Entry: Identifiable {
         let ref: String
         let citation: CitationReference
-        var id: String { ref }
+        var id: String {
+            ref
+        }
     }
 
     let entry: Entry
@@ -453,7 +455,9 @@ struct ActivityTimelineView: View {
         }
     }
 
-    private var isDone: Bool { !isStreaming }
+    private var isDone: Bool {
+        !isStreaming
+    }
 
     private var hasContent: Bool {
         !completedSteps.isEmpty

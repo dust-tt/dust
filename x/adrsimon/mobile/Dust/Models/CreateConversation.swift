@@ -80,8 +80,19 @@ struct ContentFragmentPayload: Encodable {
     }
 
     /// Creates a knowledge node content fragment.
-    static func node(title: String, nodeId: String, nodeDataSourceViewId: String, context: ContentFragmentContext) -> ContentFragmentPayload {
-        ContentFragmentPayload(title: title, fileId: nil, nodeId: nodeId, nodeDataSourceViewId: nodeDataSourceViewId, context: context)
+    static func node(
+        title: String,
+        nodeId: String,
+        nodeDataSourceViewId: String,
+        context: ContentFragmentContext
+    ) -> ContentFragmentPayload {
+        ContentFragmentPayload(
+            title: title,
+            fileId: nil,
+            nodeId: nodeId,
+            nodeDataSourceViewId: nodeDataSourceViewId,
+            context: context
+        )
     }
 
     func encode(to encoder: Encoder) throws {

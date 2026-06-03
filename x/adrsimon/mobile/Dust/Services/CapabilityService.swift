@@ -68,7 +68,13 @@ enum CapabilityService {
             workspaceId: workspaceId, conversationId: conversationId
         )
         let body = ConversationToolActionRequest(action: action, mcpServerViewId: mcpServerViewId)
-        try await APIClient.authenticatedSend(endpoint, method: "POST", body: body, tokenProvider: tokenProvider, snakeCase: true)
+        try await APIClient.authenticatedSend(
+            endpoint,
+            method: "POST",
+            body: body,
+            tokenProvider: tokenProvider,
+            snakeCase: true
+        )
     }
 }
 

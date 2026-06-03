@@ -89,6 +89,7 @@ struct MainContainerView: View {
                             currentUserEmail: user.email
                         )
                     }
+
                 case .newConversation:
                     if let workspaceId = viewModel.workspace?.sId {
                         NewConversationView(

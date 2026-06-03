@@ -6,8 +6,13 @@ struct Skill: Decodable, Identifiable {
     let userFacingDescription: String?
     let icon: String?
 
-    var id: String { sId }
-    var displayDescription: String { userFacingDescription ?? "" }
+    var id: String {
+        sId
+    }
+
+    var displayDescription: String {
+        userFacingDescription ?? ""
+    }
 }
 
 struct SkillsResponse: Decodable {
