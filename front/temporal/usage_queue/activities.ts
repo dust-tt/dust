@@ -10,6 +10,7 @@ import { ingestMetronomeEvents } from "@app/lib/metronome/client";
 import {
   buildLlmUsageEvents,
   buildToolUseEvents,
+  getUsageType,
 } from "@app/lib/metronome/events";
 import {
   hasMauSubscriptionInContract,
@@ -267,6 +268,7 @@ export async function emitMetronomeUsageEventsActivity(
   const isSubAgentMessage = userMessage?.agenticMessageType !== null;
 
   const programmatic = isProgrammaticUsage(auth, { userMessageOrigin });
+  const usageType = getUsageType(programmatic, userMessageOrigin);
   // Use updatedAt — this is when the agent message finished (not when it was created).
   const timestamp = agentMessage.updatedAt.toISOString();
   const authMethod = userMessage?.userContextAuthMethod ?? null;
@@ -340,7 +342,7 @@ export async function emitMetronomeUsageEventsActivity(
     runKey,
     runUsages,
     origin: userMessageOrigin,
-    isProgrammaticUsage: programmatic,
+    usageType,
     authMethod,
     apiKeyName,
     messageStatus,
@@ -358,7 +360,7 @@ export async function emitMetronomeUsageEventsActivity(
     runKey,
     actions: toolActions,
     origin: userMessageOrigin,
-    isProgrammaticUsage: programmatic,
+    usageType,
     authMethod,
     apiKeyName,
     messageStatus,
