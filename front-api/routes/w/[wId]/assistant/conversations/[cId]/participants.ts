@@ -4,13 +4,19 @@ import { ConversationError } from "@app/types/assistant/conversation";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  cId: z.string(),
+});
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/participants.
 const app = workspaceApp();
 
-app.get("/", async (ctx) => {
+app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
-  const conversationId = ctx.req.param("cId") ?? "";
+  const { cId: conversationId } = ctx.req.valid("param");
 
   const conversationRes =
     await ConversationResource.fetchConversationWithoutContent(
@@ -38,9 +44,9 @@ app.get("/", async (ctx) => {
   return ctx.json({ participants: participantsRes.value });
 });
 
-app.post("/", async (ctx) => {
+app.post("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
-  const conversationId = ctx.req.param("cId") ?? "";
+  const { cId: conversationId } = ctx.req.valid("param");
 
   const conversationRes =
     await ConversationResource.fetchConversationWithoutContent(

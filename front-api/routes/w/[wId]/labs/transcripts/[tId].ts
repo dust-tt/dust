@@ -39,15 +39,15 @@ type LoadResult =
   | { ok: true; configuration: LabsTranscriptsConfigurationResource }
   | { ok: false; response: ReturnType<typeof apiError> };
 
+const ParamsSchema = z.object({
+  tId: z.string(),
+});
+
 async function loadOwnedConfiguration(
   ctx: Context,
-  auth: Authenticator
+  auth: Authenticator,
+  transcriptsConfigurationId: string
 ): Promise<LoadResult> {
-  const transcriptsConfigurationId = ctx.req.param("tId");
-  if (!transcriptsConfigurationId) {
-    return { ok: false, response: apiError(ctx, NOT_FOUND_ERROR) };
-  }
-
   const transcriptsConfiguration =
     await LabsTranscriptsConfigurationResource.fetchById(
       auth,
@@ -69,24 +69,31 @@ async function loadOwnedConfiguration(
 // Mounted at /api/w/:wId/labs/transcripts/:tId.
 const app = workspaceApp();
 
-app.get("/", async (ctx): HandlerResult<GetResponseBody> => {
-  const auth = ctx.get("auth");
+app.get(
+  "/",
+  validate("param", ParamsSchema),
+  async (ctx): HandlerResult<GetResponseBody> => {
+    const auth = ctx.get("auth");
+    const { tId } = ctx.req.valid("param");
 
-  const loadRes = await loadOwnedConfiguration(ctx, auth);
-  if (!loadRes.ok) {
-    return loadRes.response;
+    const loadRes = await loadOwnedConfiguration(ctx, auth, tId);
+    if (!loadRes.ok) {
+      return loadRes.response;
+    }
+
+    return ctx.json({ configuration: loadRes.configuration.toJSON() });
   }
-
-  return ctx.json({ configuration: loadRes.configuration.toJSON() });
-});
+);
 
 app.patch(
   "/",
+  validate("param", ParamsSchema),
   validate("json", PatchLabsTranscriptsConfigurationBodySchema),
   async (ctx): HandlerResult<GetResponseBody> => {
     const auth = ctx.get("auth");
+    const { tId } = ctx.req.valid("param");
 
-    const loadRes = await loadOwnedConfiguration(ctx, auth);
+    const loadRes = await loadOwnedConfiguration(ctx, auth, tId);
     if (!loadRes.ok) {
       return loadRes.response;
     }
@@ -188,19 +195,24 @@ app.patch(
   }
 );
 
-app.delete("/", async (ctx): HandlerResult<GetResponseBody> => {
-  const auth = ctx.get("auth");
+app.delete(
+  "/",
+  validate("param", ParamsSchema),
+  async (ctx): HandlerResult<GetResponseBody> => {
+    const auth = ctx.get("auth");
+    const { tId } = ctx.req.valid("param");
 
-  const loadRes = await loadOwnedConfiguration(ctx, auth);
-  if (!loadRes.ok) {
-    return loadRes.response;
+    const loadRes = await loadOwnedConfiguration(ctx, auth, tId);
+    if (!loadRes.ok) {
+      return loadRes.response;
+    }
+    const transcriptsConfiguration = loadRes.configuration;
+
+    await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
+    await transcriptsConfiguration.delete(auth);
+
+    return ctx.json({ configuration: null });
   }
-  const transcriptsConfiguration = loadRes.configuration;
-
-  await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
-  await transcriptsConfiguration.delete(auth);
-
-  return ctx.json({ configuration: null });
-});
+);
 
 export default app;

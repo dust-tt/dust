@@ -1,8 +1,9 @@
 import {
   calledDescribeMcp,
   editSkillWithAgentFacingDescription,
+  editSkillWithInlineToolReference,
   editSkillWithInstructions,
-  editSkillWithTool,
+  editSkillWithoutInlineToolReference,
   type MockMcpDescription,
   mockTool,
   noSuggestion,
@@ -167,6 +168,7 @@ Score 3 if the suggestion provides clear, actionable instructions that would pre
     {
       scenarioId: "missing-tool",
       type: "analysis",
+      useInlineTools: true,
       skillConfigs: [
         {
           name: "Research Assistant",
@@ -201,33 +203,36 @@ Score 3 if the suggestion provides clear, actionable instructions that would pre
       ],
       workspaceContext: WORKSPACE_CONTEXT,
       expectedToolCalls: [
-        editSkillWithTool("skill_research", "mcp_web_search"),
+        editSkillWithInlineToolReference("skill_research", "mcp_web_search"),
       ],
-      judgeCriteria: `The analyst MUST call edit_skill with toolEdits to suggest adding the Web Search tool
-(mcp_web_search) to skill "skill_research". The suggestion should:
-- Recommend adding Web Search (toolId: mcp_web_search) with action "add"
+      judgeCriteria: `The analyst MUST call edit_skill with instructionEdits to suggest adding the Web Search tool
+as an inline <tool id="mcp_web_search" name="Web Search" /> reference in skill "skill_research". The suggestion should:
+- Discover available tools before authoring the inline <tool> reference
+- Add Web Search through an instruction edit; it MUST NOT include toolEdits
 - Include an analysis explaining that the skill's purpose requires web search for current information
 - Reference that the agent couldn't fulfill the user's core request without this capability
 
-Score 0 if no edit_skill with toolEdits call is made.
-Score 0-1 if edit_skill with toolEdits is called but with the wrong tool ID or wrong skill ID.
-Score 2 if the correct tool is suggested but the analysis is weak.
-Score 3 if the correct tool is suggested with a clear, well-reasoned analysis.`,
+Score 0 if no edit_skill with instructionEdits call is made.
+Score 0 if the suggestion uses toolEdits instead of an inline <tool> tag.
+Score 0-1 if edit_skill is called but with the wrong tool ID or wrong skill ID.
+Score 2 if the correct inline tool reference is suggested but the analysis is weak.
+Score 3 if the correct inline tool reference is suggested with a clear, well-reasoned analysis.`,
     },
     {
       scenarioId: "unused-tool",
       type: "analysis",
+      useInlineTools: true,
       skillConfigs: [
         {
           name: "Code Review Helper",
           sId: "skill_code_review",
           description: "Helps review code and suggest improvements",
-          instructions:
+          instructions: [
             "Review code provided by the user. Focus on code quality, potential bugs, and best practices. Suggest improvements.",
-          tools: [
-            { name: "GitHub", sId: "mcp_github" },
-            { name: "Calendar", sId: "mcp_calendar" },
-          ],
+            "",
+            '<tool id="mcp_github" name="GitHub" />',
+            '<tool id="mcp_calendar" name="Calendar" />',
+          ].join("\n"),
         },
       ],
       conversation: [
@@ -262,22 +267,27 @@ Score 3 if the correct tool is suggested with a clear, well-reasoned analysis.`,
       ],
       workspaceContext: WORKSPACE_CONTEXT,
       expectedToolCalls: [
-        editSkillWithTool("skill_code_review", "mcp_calendar"),
+        editSkillWithoutInlineToolReference(
+          "skill_code_review",
+          "mcp_calendar"
+        ),
       ],
-      judgeCriteria: `The analyst MUST call edit_skill with toolEdits to suggest removing the Calendar tool
-(mcp_calendar) from skill "skill_code_review". The suggestion should:
-- Recommend removing Calendar (toolId: mcp_calendar) with action "remove"
+      judgeCriteria: `The analyst MUST call edit_skill with instructionEdits to remove the inline Calendar tool
+reference (<tool id="mcp_calendar" name="Calendar" />) from skill "skill_code_review". The suggestion should:
+- Remove Calendar through an instruction edit; it MUST NOT include toolEdits
 - Include an analysis explaining that Calendar is irrelevant to code review and caused confusion
 - Reference the failed tool call and user complaint
 
-Score 0 if no edit_skill with toolEdits call is made.
-Score 0-1 if edit_skill with toolEdits is called but with the wrong action (add instead of remove).
-Score 2 if the correct tool removal is suggested but the analysis is weak.
+Score 0 if no edit_skill with instructionEdits call is made.
+Score 0 if the suggestion uses toolEdits instead of removing the inline <tool> tag.
+Score 0-1 if edit_skill is called but it removes the wrong inline tool reference.
+Score 2 if the correct inline tool removal is suggested but the analysis is weak.
 Score 3 if the correct removal is suggested with a clear analysis referencing the confusion it caused.`,
     },
     {
       scenarioId: "instruction-and-tool-gap",
       type: "analysis",
+      useInlineTools: true,
       skillConfigs: [
         {
           name: "Bug Reporter",
@@ -311,20 +321,19 @@ Score 3 if the correct removal is suggested with a clear analysis referencing th
       ],
       workspaceContext: WORKSPACE_CONTEXT,
       expectedToolCalls: [
-        editSkillWithInstructions("skill_bug_reporter"),
-        editSkillWithTool("skill_bug_reporter", "mcp_jira"),
+        editSkillWithInlineToolReference("skill_bug_reporter", "mcp_jira"),
       ],
-      judgeCriteria: `The analyst MUST make BOTH types of suggestions for skill "skill_bug_reporter":
-1. edit_skill with instructionEdits to update instructions to reference the JIRA tool for filing
-2. edit_skill with toolEdits to add JIRA (mcp_jira) so the skill can actually file bugs
+      judgeCriteria: `The analyst MUST call edit_skill with instructionEdits for skill "skill_bug_reporter".
+The instruction edit must add the JIRA capability as an inline <tool id="mcp_jira" name="JIRA" /> reference and update the surrounding instructions to use JIRA for filing bugs.
+The suggestion MUST NOT include toolEdits.
 
-The suggestions should be co-dependent — the instructions should reference using JIRA,
-and the tool addition provides the capability.
+The inline tool reference and instruction change are co-dependent and should be expressed together in the instruction edit.
 
-Score 0 if only one type of suggestion is made.
-Score 1 if both are made but the instructions don't reference the tool, or the analysis is weak.
-Score 2 if both are made with decent analysis but the instruction/tool connection isn't explicit.
-Score 3 if both are made with clear co-dependency: instructions reference JIRA, tool provides the capability, and analysis explains the mismatch.`,
+Score 0 if no edit_skill with instructionEdits call is made.
+Score 0 if the suggestion uses toolEdits instead of an inline <tool> tag.
+Score 1 if the inline JIRA tag is added but the instructions don't explain how to use it, or the analysis is weak.
+Score 2 if the JIRA tag and instructions are both present but the instruction/tool connection isn't explicit.
+Score 3 if the instruction edit clearly adds JIRA as an inline tool reference, tells the skill to file bugs through it, and explains the mismatch.`,
     },
     {
       scenarioId: "successful-conversation",
@@ -424,6 +433,7 @@ Score 3 if the suggestion addresses both brand voice and remedy guidance with a 
     {
       scenarioId: "wrong-tool-order-linkedin-enrich",
       type: "analysis",
+      useInlineTools: true,
       skillConfigs: [
         {
           name: "Enrich user info with LinkedIn",
@@ -431,8 +441,7 @@ Score 3 if the suggestion addresses both brand voice and remedy guidance with a 
           description:
             "Enriches company and people profiles using LinkedIn data",
           instructions:
-            "Use the LinkedIn tool to enrich user and company information when requested. Call enrich_user to get detailed profile data for a person, or enrich_company_data for company information.",
-          tools: [{ name: "LinkedIn", sId: "mcp_linkedin" }],
+            'Use the LinkedIn tool to enrich user and company information when requested.\n\n<tool id="mcp_linkedin" name="LinkedIn" />\n\nCall enrich_user to get detailed profile data for a person, or enrich_company_data for company information.',
         },
       ],
       conversation: [

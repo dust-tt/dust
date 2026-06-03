@@ -2,13 +2,19 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  fileId: z.string(),
+});
 
 // Mounted at /api/w/:wId/files/:fileId/signed-url.
 const app = workspaceApp();
 
-app.get("/", async (ctx) => {
+app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
-  const fileId = ctx.req.param("fileId") ?? "";
+  const { fileId } = ctx.req.valid("param");
 
   const fileResource = await FileResource.fetchById(auth, fileId);
   if (!fileResource) {

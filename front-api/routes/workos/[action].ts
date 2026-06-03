@@ -33,10 +33,16 @@ import { isString } from "@app/types/shared/utils/general";
 import { validateRelativePath } from "@app/types/shared/utils/url_utils";
 import { createHono } from "@front-api/lib/hono";
 import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import { OauthException } from "@workos-inc/node";
 import type { Context } from "hono";
 import { getCookie } from "hono/cookie";
 import { sealData } from "iron-session";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  action: z.string(),
+});
 
 function isValidScreenHint(
   screenHint: string | undefined
@@ -62,8 +68,8 @@ function redirectTo(ctx: Context, sanitizedReturnTo: string) {
 
 const app = createHono();
 
-app.all("/", async (ctx) => {
-  const action = ctx.req.param("action");
+app.all("/", validate("param", ParamsSchema), async (ctx) => {
+  const { action } = ctx.req.valid("param");
   switch (action) {
     case "login":
       return handleLogin(ctx);
@@ -163,7 +169,16 @@ async function handleLogin(ctx: Context) {
 }
 
 async function handleAuthenticate(ctx: Context) {
-  const body = await ctx.req.json().catch(() => ({}));
+  // The Chrome extension follows the OAuth 2.0 token-endpoint convention and
+  // sends this request as `application/x-www-form-urlencoded` (Next's body
+  // parser decoded it transparently; Hono's `ctx.req.json()` does not). Parse
+  // form bodies when the header says so, and default to JSON otherwise.
+  const contentType = ctx.req.header("content-type") ?? "";
+  const body: Record<string, unknown> = contentType.includes(
+    "application/x-www-form-urlencoded"
+  )
+    ? await ctx.req.parseBody().catch(() => ({}))
+    : await ctx.req.json().catch(() => ({}));
   const { code, grant_type, refresh_token, code_verifier } = body;
 
   if (grant_type && !isString(grant_type)) {
@@ -221,7 +236,7 @@ async function handleAuthenticate(ctx: Context) {
   try {
     const authResult = await authenticateWithWorkOSCode({
       code,
-      codeVerifier: code_verifier,
+      codeVerifier: isString(code_verifier) ? code_verifier : undefined,
     });
 
     const jwtPayload = JSON.parse(

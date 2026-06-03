@@ -31,18 +31,23 @@ const PostNotionUrlStatusBodySchema = z.object({
   url: z.string(),
 });
 
+const ParamsSchema = z.object({
+  dsId: z.string(),
+});
+
 // Mounted at /api/w/:wId/data_sources/:dsId/managed/notion_url_status.
 const app = workspaceApp();
 
 app.post(
   "/",
+  validate("param", ParamsSchema),
   ensureIsAdmin(),
   validate("json", PostNotionUrlStatusBodySchema),
   async (ctx): HandlerResult<PostNotionUrlStatusResponseBody> => {
     const auth = ctx.get("auth");
     const owner = auth.getNonNullableWorkspace();
 
-    const dsId = ctx.req.param("dsId") ?? "";
+    const { dsId } = ctx.req.valid("param");
 
     const dataSource = await DataSourceResource.fetchById(auth, dsId);
     if (!dataSource) {

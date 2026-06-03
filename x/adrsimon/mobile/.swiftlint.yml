@@ -1,5 +1,6 @@
 included:
   - Dust
+  - SparkleTokens/Sources/SparkleTokens/Helpers
 
 excluded:
   - Dust.xcodeproj
@@ -8,6 +9,13 @@ excluded:
 disabled_rules:
   - trailing_comma
   - todo
+  # Length thresholds are arbitrary and noisy — disabled.
+  - file_length
+  - type_body_length
+  - function_body_length
+  # Owned by SwiftFormat to avoid lint-fix/format ping-pong.
+  - opening_brace
+  - modifier_order
 
 opt_in_rules:
   - empty_count
@@ -19,7 +27,6 @@ opt_in_rules:
   - fatal_error_message
   - first_where
   - last_where
-  - modifier_order
   - overridden_super_call
   - private_action
   - private_outlet
@@ -31,15 +38,3 @@ opt_in_rules:
 line_length:
   warning: 120
   error: 200
-
-type_body_length:
-  warning: 300
-  error: 500
-
-file_length:
-  warning: 500
-  error: 1000
-
-function_body_length:
-  warning: 50
-  error: 100

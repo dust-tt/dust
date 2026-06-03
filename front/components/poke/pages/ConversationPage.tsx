@@ -1,5 +1,4 @@
 import { PluginList } from "@app/components/poke/plugins/PluginList";
-import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useRequiredPathParam } from "@app/lib/platform";
@@ -7,6 +6,7 @@ import { classNames } from "@app/lib/utils";
 import { usePokeConversation } from "@app/poke/swr";
 import { usePokeAgentConfigurations } from "@app/poke/swr/agent_configurations";
 import { usePokeConversationConfig } from "@app/poke/swr/conversation_config";
+import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { useCopyReinforcementTestCase } from "@app/poke/swr/reinforcement_test_case";
 import { usePokeSpaceDetails } from "@app/poke/swr/space_details";
 import type {
@@ -398,7 +398,6 @@ function getDatadogSandboxLogsUrl(conversationId: string): string {
 
 export function ConversationPage() {
   const owner = useWorkspace();
-  useDocumentTitle(`Poke - ${owner.name} - Conversation`);
 
   const conversationId = useRequiredPathParam("cId");
   const {
@@ -414,6 +413,12 @@ export function ConversationPage() {
   const { conversation } = usePokeConversation({
     workspaceId: owner.sId,
     conversationId,
+  });
+
+  usePokePageMetadata({
+    name: conversation?.title,
+    subtitle: owner.name,
+    sId: conversationId,
   });
 
   const { data: spaceDetails } = usePokeSpaceDetails({

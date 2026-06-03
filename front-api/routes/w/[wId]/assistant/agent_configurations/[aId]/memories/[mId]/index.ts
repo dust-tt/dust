@@ -20,6 +20,11 @@ export type PatchAgentMemoryResponseBody = {
   };
 };
 
+const ParamsSchema = z.object({
+  aId: z.string(),
+  mId: z.string(),
+});
+
 const PatchAgentMemoryRequestBodySchema = z.object({
   content: z.string(),
 });
@@ -28,14 +33,13 @@ const PatchAgentMemoryRequestBodySchema = z.object({
 const app = workspaceApp();
 
 async function loadAgentAndMemory(
-  ctx: Context
+  ctx: Context,
+  { aId, mId }: { aId: string; mId: string }
 ): Promise<
   | { ok: true; memory: AgentMemoryResource }
   | { ok: false; response: Response & TypedResponse<APIErrorResponse> }
 > {
   const auth = ctx.get("auth");
-  const aId = ctx.req.param("aId") ?? "";
-  const mId = ctx.req.param("mId") ?? "";
 
   const agentConfiguration = await getAgentConfiguration(auth, {
     agentId: aId,
@@ -91,9 +95,10 @@ async function loadAgentAndMemory(
 
 app.patch(
   "/",
+  validate("param", ParamsSchema),
   validate("json", PatchAgentMemoryRequestBodySchema),
   async (ctx): HandlerResult<PatchAgentMemoryResponseBody> => {
-    const r = await loadAgentAndMemory(ctx);
+    const r = await loadAgentAndMemory(ctx, ctx.req.valid("param"));
     if (!r.ok) {
       return r.response;
     }
@@ -106,8 +111,8 @@ app.patch(
   }
 );
 
-app.delete("/", async (ctx) => {
-  const r = await loadAgentAndMemory(ctx);
+app.delete("/", validate("param", ParamsSchema), async (ctx) => {
+  const r = await loadAgentAndMemory(ctx, ctx.req.valid("param"));
   if (!r.ok) {
     return r.response;
   }

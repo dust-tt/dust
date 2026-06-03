@@ -62,20 +62,18 @@ function formatCredits(credits: number): string {
   return Math.round(credits).toLocaleString("en-US");
 }
 
-const GROUP_BY_TYPE_OPTIONS: {
+const GROUP_BY_OPTIONS: {
   value: AwuUsageGroupByType;
   label: string;
 }[] = [
   { value: "usage_type", label: "By usage type" },
+  { value: "user", label: "By User" },
+  { value: "agent", label: "By Agent" },
   { value: "api_key", label: "By API Key" },
   { value: "model", label: "By Model" },
   { value: "origin", label: "By Source" },
+  { value: "tool_category", label: "By category (LLM & tools)" },
 ];
-
-const GROUP_BY_OPTIONS: {
-  value: "global" | AwuUsageGroupByType;
-  label: string;
-}[] = [{ value: "global", label: "Global" }, ...GROUP_BY_TYPE_OPTIONS];
 
 const TOP_K_OPTIONS = [
   { value: 5, label: "Top 5" },
@@ -240,7 +238,7 @@ interface BaseAwuUsageChartProps {
   setDisplayMode: (v: DisplayMode) => void;
 }
 
-function BaseAwuUsageChart({
+export function BaseAwuUsageChart({
   awuUsageData,
   isLoading,
   isError,
@@ -401,15 +399,19 @@ function BaseAwuUsageChart({
     [filter, setFilter]
   );
 
+  // Filtering is scoped to the active grouping (it only hides/keeps series of
+  // the current groupBy), so only surface chips for that grouping — otherwise a
+  // filter set on another dimension would show as active while doing nothing.
   const activeFilterChips = useMemo(() => {
-    return GROUP_BY_TYPE_OPTIONS.flatMap(({ value: type }) =>
-      (filter[type] ?? []).map((key) => ({
-        groupByType: type,
-        filterKey: key,
-        label: getFilterLabel(type, key),
-      }))
-    );
-  }, [filter, getFilterLabel]);
+    if (!groupBy) {
+      return [];
+    }
+    return (filter[groupBy] ?? []).map((key) => ({
+      groupByType: groupBy,
+      filterKey: key,
+      label: getFilterLabel(groupBy, key),
+    }));
+  }, [filter, groupBy, getFilterLabel]);
 
   const legendItems: LegendItem[] = useMemo(() => {
     const items: LegendItem[] = availableGroupsArray.map((group) => {
@@ -556,9 +558,8 @@ function BaseAwuUsageChart({
             <DropdownMenuTrigger asChild>
               <Button
                 label={
-                  groupBy
-                    ? GROUP_BY_OPTIONS.find((o) => o.value === groupBy)?.label
-                    : "Global"
+                  GROUP_BY_OPTIONS.find((o) => o.value === groupBy)?.label ??
+                  "By usage type"
                 }
                 size="xs"
                 variant="outline"
@@ -570,9 +571,7 @@ function BaseAwuUsageChart({
                 <DropdownMenuItem
                   key={o.value}
                   label={o.label}
-                  onClick={() =>
-                    setGroupBy(o.value === "global" ? undefined : o.value)
-                  }
+                  onClick={() => setGroupBy(o.value)}
                 />
               ))}
             </DropdownMenuContent>
@@ -675,12 +674,10 @@ function BaseAwuUsageChart({
           }}
         />
         {allGroupKeys
-          .filter(
-            (key) =>
-              ["total", "others"].includes(key) ||
-              !enabledGroupKeys ||
-              enabledGroupKeys.includes(key)
-          )
+          // With no filter, render every series (including "others"). Once a
+          // filter is active, render only the selected keys — "others"/"total"
+          // are never selectable, so they drop out.
+          .filter((key) => !enabledGroupKeys || enabledGroupKeys.includes(key))
           .map((groupKey) => {
             const colorClassName = getColorClassName(
               groupBy,

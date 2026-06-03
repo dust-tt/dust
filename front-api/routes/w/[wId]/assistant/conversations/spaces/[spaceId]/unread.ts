@@ -3,6 +3,12 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  spaceId: z.string(),
+});
 
 export type GetSpaceUnreadConversationsResponseBody = {
   unreadConversationIds: string[];
@@ -13,9 +19,10 @@ const app = workspaceApp();
 
 app.get(
   "/",
+  validate("param", ParamsSchema),
   async (ctx): HandlerResult<GetSpaceUnreadConversationsResponseBody> => {
     const auth = ctx.get("auth");
-    const spaceId = ctx.req.param("spaceId") ?? "";
+    const { spaceId } = ctx.req.valid("param");
 
     const space = await SpaceResource.fetchById(auth, spaceId);
     if (!space || !space.canReadOrAdministrate(auth)) {

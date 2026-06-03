@@ -1,3 +1,7 @@
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+} from "@app/lib/api/audit/workos_audit";
 import { dispatchProgrammaticCapReset } from "@app/lib/api/metronome/credit_state_dispatcher";
 import { createPlugin } from "@app/lib/api/poke/types";
 import {
@@ -89,7 +93,7 @@ export const manageProgrammaticMonthlyCapPlugin = createPlugin({
     });
   },
 
-  execute: async (_auth, workspace, rawArgs) => {
+  execute: async (auth, workspace, rawArgs) => {
     if (!workspace) {
       return new Err(new Error("Cannot find workspace."));
     }
@@ -114,6 +118,15 @@ export const manageProgrammaticMonthlyCapPlugin = createPlugin({
     }
     const { enabled, monthlyCapAwu } = parsed.data;
 
+    // Read previous cap for audit metadata (best-effort).
+    const previousResult = await getMetronomeProgrammaticCap({
+      metronomeCustomerId,
+      workspaceId: workspace.sId,
+    });
+    const previousCapCredits = previousResult.isOk()
+      ? previousResult.value
+      : null;
+
     if (enabled && monthlyCapAwu) {
       const result = await upsertMetronomeProgrammaticCapAlerts({
         metronomeCustomerId,
@@ -126,6 +139,17 @@ export const manageProgrammaticMonthlyCapPlugin = createPlugin({
 
       // Reset the state machine — thresholds may have changed.
       await dispatchProgrammaticCapReset({ workspace: workspaceResource });
+
+      void emitAuditLogEvent({
+        auth,
+        action: "workspace.programmatic_usage_limit_updated",
+        targets: [buildAuditLogTarget("workspace", workspace)],
+        metadata: {
+          previous_monthly_cap_credits:
+            previousCapCredits !== null ? String(previousCapCredits) : "unset",
+          new_monthly_cap_credits: String(monthlyCapAwu),
+        },
+      });
 
       return new Ok({
         display: "text",
@@ -142,6 +166,17 @@ export const manageProgrammaticMonthlyCapPlugin = createPlugin({
       return new Err(clearResult.error);
     }
     await dispatchProgrammaticCapReset({ workspace: workspaceResource });
+
+    void emitAuditLogEvent({
+      auth,
+      action: "workspace.programmatic_usage_limit_updated",
+      targets: [buildAuditLogTarget("workspace", workspace)],
+      metadata: {
+        previous_monthly_cap_credits:
+          previousCapCredits !== null ? String(previousCapCredits) : "unset",
+        new_monthly_cap_credits: "unset",
+      },
+    });
 
     return new Ok({
       display: "text",

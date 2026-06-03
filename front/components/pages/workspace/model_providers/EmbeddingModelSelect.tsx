@@ -35,7 +35,7 @@ export function EmbeddingModelSelect({ workspace }: EmbeddingModelSelectProps) {
           <DropdownMenuTrigger asChild disabled>
             <Button
               disabled
-              tooltip="Please contact us if you are willing to change this setting."
+              tooltip="Please contact us if you want to change this setting."
               isSelect
               label={PRETTIFIED_PROVIDER_NAMES[embeddingProvider]}
               variant="outline"

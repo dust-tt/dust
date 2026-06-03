@@ -36,5 +36,5 @@ export function TypingAnimation({
     };
   }, [duration, i, text]);
 
-  return <>{displayedText}</>;
+  return <span className="notranslate">{displayedText}</span>;
 }

@@ -79,9 +79,9 @@ struct OtherUserMessageBubble: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
-                Avatar(url: message.context?.profilePictureUrl)
+                Avatar(url: message.authorAvatarUrl)
 
-                Text(message.context?.fullName ?? message.context?.username ?? "User")
+                Text(message.authorName ?? "User")
                     .sparkleLabelXs()
                     .foregroundStyle(Color.dustForeground)
             }
@@ -312,7 +312,9 @@ struct CitationCard: View {
     struct Entry: Identifiable {
         let ref: String
         let citation: CitationReference
-        var id: String { ref }
+        var id: String {
+            ref
+        }
     }
 
     let entry: Entry
@@ -453,7 +455,9 @@ struct ActivityTimelineView: View {
         }
     }
 
-    private var isDone: Bool { !isStreaming }
+    private var isDone: Bool {
+        !isStreaming
+    }
 
     private var hasContent: Bool {
         !completedSteps.isEmpty

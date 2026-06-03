@@ -13,6 +13,7 @@ const {
   mockSetUserCapBlocked,
   mockClearUserCapBlocked,
   mockInvalidateCacheAfterCommit,
+  mockClearUserAwuWarned,
 } = vi.hoisted(() => ({
   mockSetUserCapBlocked: vi.fn(),
   mockClearUserCapBlocked: vi.fn(),
@@ -23,11 +24,13 @@ const {
       void fn();
     }
   ),
+  mockClearUserAwuWarned: vi.fn(),
 }));
 
 vi.mock("@app/lib/metronome/user_block", () => ({
   setUserCapBlocked: mockSetUserCapBlocked,
   clearUserCapBlocked: mockClearUserCapBlocked,
+  clearUserAwuWarned: mockClearUserAwuWarned,
 }));
 
 vi.mock("@app/lib/utils/cache", () => ({
@@ -67,8 +70,8 @@ beforeEach(() => {
 // ---------------------------------------------------------------------------
 
 describe("UserCreditStateMachine — transitions", () => {
-  it("normal + per_user_cap_reached → capped (blocks user)", async () => {
-    const membership = makeMembership("normal");
+  it("on_pool + per_user_cap_reached → capped (blocks user)", async () => {
+    const membership = makeMembership("on_pool");
     const result = await transitionUserCreditState(
       membership,
       { type: "per_user_cap_reached" },
@@ -86,7 +89,7 @@ describe("UserCreditStateMachine — transitions", () => {
     expect(mockClearUserCapBlocked).not.toHaveBeenCalled();
   });
 
-  it("capped + admin_raised_user_cap → normal (unblocks user)", async () => {
+  it("capped + admin_raised_user_cap → on_pool (unblocks user)", async () => {
     const membership = makeMembership("capped");
     const result = await transitionUserCreditState(
       membership,
@@ -95,17 +98,17 @@ describe("UserCreditStateMachine — transitions", () => {
     );
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
-      expect(result.value).toBe("normal");
+      expect(result.value).toBe("on_pool");
     }
     expect(membership.updateCreditState).toHaveBeenCalledWith(
-      "normal",
+      "on_pool",
       undefined
     );
     expect(mockClearUserCapBlocked).toHaveBeenCalledWith("ws_test", "u_test");
     expect(mockSetUserCapBlocked).not.toHaveBeenCalled();
   });
 
-  it("capped + per_user_cap_resolved → normal (unblocks user)", async () => {
+  it("capped + per_user_cap_resolved → on_pool (unblocks user)", async () => {
     const membership = makeMembership("capped");
     const result = await transitionUserCreditState(
       membership,
@@ -114,10 +117,10 @@ describe("UserCreditStateMachine — transitions", () => {
     );
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
-      expect(result.value).toBe("normal");
+      expect(result.value).toBe("on_pool");
     }
     expect(membership.updateCreditState).toHaveBeenCalledWith(
-      "normal",
+      "on_pool",
       undefined
     );
     expect(mockClearUserCapBlocked).toHaveBeenCalledWith("ws_test", "u_test");
@@ -140,8 +143,8 @@ describe("UserCreditStateMachine — transitions", () => {
     expect(mockClearUserCapBlocked).not.toHaveBeenCalled();
   });
 
-  it("normal + per_user_cap_resolved is idempotent and re-applies the unblock cache", async () => {
-    const membership = makeMembership("normal");
+  it("on_pool + per_user_cap_resolved is idempotent and re-applies the unblock cache", async () => {
+    const membership = makeMembership("on_pool");
     const result = await transitionUserCreditState(
       membership,
       { type: "per_user_cap_resolved" },
@@ -149,7 +152,7 @@ describe("UserCreditStateMachine — transitions", () => {
     );
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
-      expect(result.value).toBe("normal");
+      expect(result.value).toBe("on_pool");
     }
     expect(membership.updateCreditState).not.toHaveBeenCalled();
     expect(mockClearUserCapBlocked).toHaveBeenCalledWith("ws_test", "u_test");
@@ -163,7 +166,7 @@ describe("UserCreditStateMachine — transitions", () => {
 
 describe("UserCreditStateMachine — side effects and transactions", () => {
   it("invokes the DB update before registering the Redis side-effect", async () => {
-    const membership = makeMembership("normal");
+    const membership = makeMembership("on_pool");
     await transitionUserCreditState(
       membership,
       { type: "per_user_cap_reached" },
@@ -177,7 +180,7 @@ describe("UserCreditStateMachine — side effects and transactions", () => {
 
   it("forwards the provided transaction to both the DB update and cache invalidator", async () => {
     const tx = { __mock: "transaction" } as unknown as Transaction;
-    const membership = makeMembership("normal");
+    const membership = makeMembership("on_pool");
     await transitionUserCreditState(
       membership,
       { type: "per_user_cap_reached" },
@@ -192,7 +195,7 @@ describe("UserCreditStateMachine — side effects and transactions", () => {
   });
 
   it("passes undefined transaction when none is provided", async () => {
-    const membership = makeMembership("normal");
+    const membership = makeMembership("on_pool");
     await transitionUserCreditState(
       membership,
       { type: "per_user_cap_reached" },

@@ -7,6 +7,7 @@ import { ChangeSeatModal } from "@app/components/workspace/ChangeSeatModal";
 import { EditSpendLimitModal } from "@app/components/workspace/EditSpendLimitModal";
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
 import { UsageNotificationsCard } from "@app/components/workspace/usage/UsageNotificationsCard";
+import { UsageProgrammaticLimitCard } from "@app/components/workspace/usage/UsageProgrammaticLimitCard";
 import { UsageSettingsCard } from "@app/components/workspace/usage/UsageSettingsCard";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
@@ -48,36 +49,6 @@ import { useCallback, useEffect, useState } from "react";
 
 function formatCredits(credits: number): string {
   return Math.round(credits).toLocaleString("en-US");
-}
-
-function getOrdinalSuffix(day: number): string {
-  if (day >= 11 && day <= 13) {
-    return "th";
-  }
-  switch (day % 10) {
-    case 1:
-      return "st";
-    case 2:
-      return "nd";
-    case 3:
-      return "rd";
-    default:
-      return "th";
-  }
-}
-
-function getResetDateLabel(resetDate: string): string {
-  if (!resetDate) {
-    return "";
-  }
-  const date = new Date(resetDate);
-  const resetDay = date.getUTCDate();
-  const suffix = getOrdinalSuffix(resetDay);
-  const resetMonth = date.toLocaleDateString("en-US", {
-    month: "long",
-    timeZone: "UTC",
-  });
-  return `Resets on the ${resetDay}${suffix} of each month. Next reset: ${resetMonth} ${resetDay}${suffix}.`;
 }
 
 const DEFAULT_PAGE_SIZE = 25;
@@ -151,7 +122,6 @@ export function UsagePage() {
   const {
     totalRemainingCredits,
     totalActiveCredits,
-    resetDate,
     overageCredits,
     isAwuPoolSummaryLoading,
     isAwuPoolSummaryError,
@@ -218,8 +188,6 @@ export function UsagePage() {
     totalActiveCredits - totalRemainingCredits
   );
   const initialTotalCredits = totalActiveCredits;
-
-  const resetDateLabel = getResetDateLabel(resetDate);
 
   if (!isCreditPriced) {
     return null;
@@ -311,12 +279,6 @@ export function UsagePage() {
             </ContentMessage>
           )}
 
-          {resetDateLabel &&
-            !isAwuPoolSummaryLoading &&
-            !isAwuPoolSummaryError && (
-              <Page.P variant="secondary">{resetDateLabel}</Page.P>
-            )}
-
           {!isAwuPoolSummaryLoading && !isAwuPoolSummaryError && (
             <CreditPoolUsageBar
               totalCredits={initialTotalCredits}
@@ -341,6 +303,8 @@ export function UsagePage() {
         )}
 
         <UsageSettingsCard workspaceId={owner.sId} />
+
+        <UsageProgrammaticLimitCard workspaceId={owner.sId} />
 
         <UsageNotificationsCard workspaceId={owner.sId} />
 

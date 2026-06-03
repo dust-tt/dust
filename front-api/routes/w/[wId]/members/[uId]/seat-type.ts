@@ -15,6 +15,10 @@ const UpdateMemberSeatTypeBodySchema = z.object({
   seatType: z.enum(MEMBERSHIP_SEAT_TYPES),
 });
 
+const ParamsSchema = z.object({
+  uId: z.string(),
+});
+
 type PatchMemberSeatTypeResponseBody = {
   seatType: MembershipSeatType;
   scheduledSeatChangeAt: string | null;
@@ -25,6 +29,7 @@ const app = workspaceApp();
 
 app.patch(
   "/",
+  validate("param", ParamsSchema),
   ensureIsAdmin(),
   validate("json", UpdateMemberSeatTypeBodySchema),
   async (ctx) => {
@@ -44,7 +49,7 @@ app.patch(
       });
     }
 
-    const uId = ctx.req.param("uId") ?? "";
+    const { uId } = ctx.req.valid("param");
     const user = await getUserForWorkspace(auth, { userId: uId });
 
     if (!user) {

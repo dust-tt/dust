@@ -6,7 +6,7 @@ import {
 } from "@app/lib/api/llm/clients/google/types";
 import {
   toContents,
-  toTool,
+  toFunctionDeclaration,
 } from "@app/lib/api/llm/clients/google/utils/conversation_to_google";
 import {
   responseToLLMEvents,
@@ -88,7 +88,14 @@ export class GoogleLLM extends LLM<GoogleGenerateContentRequestParams> {
   ) {
     return {
       temperature: this.temperature ?? undefined,
-      tools: specifications.map(toTool),
+      tools:
+        specifications.length > 0
+          ? [
+              {
+                functionDeclarations: specifications.map(toFunctionDeclaration),
+              },
+            ]
+          : [],
       systemInstruction: { text: systemPromptToText(prompt) },
       // We only need one
       candidateCount: 1,

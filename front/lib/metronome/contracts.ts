@@ -1026,24 +1026,29 @@ export async function applyEnterpriseOverrides({
 }
 
 /**
- * A per-seat FLAT rate override to apply on a contract: set `productId`'s rate
- * to `priceNative` from `startingAt`. `priceNative` is in Metronome's fiat unit
- * (cents for USD, whole units for EUR) — the same unit the rate card uses, so
- * it is not labelled `Cents` (that would be wrong for EUR). `billingFrequency`
- * disambiguates the seat product's subscription rate (monthly vs annual seats).
+ * A per-seat FLAT override to apply on a contract. When `entitled` is true (the
+ * default) it sets `productId`'s rate to `priceNative` from `startingAt`; when
+ * `entitled` is false it disables the seat product (de-entitles it) — used when
+ * an operator unchecks a seat the package would otherwise sell. `priceNative` is
+ * in Metronome's fiat unit (cents for USD, whole units for EUR) — the same unit
+ * the rate card uses, so it is not labelled `Cents` (that would be wrong for
+ * EUR); pass 0 when disabling. `billingFrequency` disambiguates the seat
+ * product's subscription rate (monthly vs annual seats).
  */
 export interface SeatRateOverride {
   productId: string;
   billingFrequency: "MONTHLY" | "ANNUAL";
   priceNative: number;
   creditTypeId: string;
+  entitled: boolean;
 }
 
 /**
- * Apply FLAT per-seat rate overrides on a provisioned contract. Seats are
- * provisioned from the package at its default override rate; this overwrites
- * those rates with operator-specified values (e.g. a negotiated seat price)
- * effective at `startingAt`. No-op when `overrides` is empty.
+ * Apply FLAT per-seat overrides on a provisioned contract. Seats are provisioned
+ * from the package at its default override rate; this overwrites those rates
+ * with operator-specified values (e.g. a negotiated seat price), entitles seats
+ * the package does not sell by default, or disables seats the operator opted
+ * out of — all effective at `startingAt`. No-op when `overrides` is empty.
  */
 export async function applySeatRateOverrides({
   metronomeCustomerId,
@@ -1065,7 +1070,7 @@ export async function applySeatRateOverrides({
     add_overrides: overrides.map((o) => ({
       starting_at: startingAt,
       type: "OVERWRITE" as const,
-      entitled: true,
+      entitled: o.entitled,
       override_specifiers: [
         { product_id: o.productId, billing_frequency: o.billingFrequency },
       ],

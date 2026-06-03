@@ -1,4 +1,4 @@
-import { getMembershipInvitationToken } from "@app/lib/api/invitation";
+import { getMembershipInvitationToken } from "@app/lib/utils/invitation_token";
 import { MembershipInvitationFactory } from "@app/tests/utils/MembershipInvitationFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { honoApp } from "@front-api/app";

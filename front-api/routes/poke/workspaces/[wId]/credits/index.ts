@@ -8,6 +8,8 @@ import type { CreditDisplayData, CreditType } from "@app/types/credits";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
+import awuPoolSummary from "./awu-pool-summary";
+
 export type PokeCreditType = {
   id: number;
   createdAt: string;
@@ -138,5 +140,7 @@ app.get("/", async (ctx): HandlerResult<PokeListCreditsResponseBody> => {
     hasMetronome,
   });
 });
+
+app.route("/awu-pool-summary", awuPoolSummary);
 
 export default app;

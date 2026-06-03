@@ -3,10 +3,10 @@ import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { SkillSuggestionDataTable } from "@app/components/poke/skill_suggestions/table";
 import { SkillOverviewTable } from "@app/components/poke/skills/SkillOverviewTable";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import {
   usePokeSkillDetails,
   usePokeSkillVersions,
@@ -23,7 +23,6 @@ import { JsonViewer } from "@textea/json-viewer";
 
 export function SkillDetailsPage() {
   const owner = useWorkspace();
-  useDocumentTitle(`Poke - ${owner.name} - Skill`);
 
   const sId = useRequiredPathParam("sId");
   const { isDark } = useTheme();
@@ -36,6 +35,12 @@ export function SkillDetailsPage() {
     owner,
     skillId: sId,
     disabled: false,
+  });
+
+  usePokePageMetadata({
+    name: skillDetails?.skill.name,
+    subtitle: owner.name,
+    sId,
   });
 
   const { versions, isLoading: isLoadingVersions } = usePokeSkillVersions({

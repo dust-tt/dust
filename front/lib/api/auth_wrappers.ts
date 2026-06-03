@@ -1,10 +1,12 @@
+import type { SandboxExecTokenPayload } from "@app/lib/api/sandbox/access_tokens";
 import { verifySandboxExecToken } from "@app/lib/api/sandbox/access_tokens";
 import {
   Authenticator,
   getAPIKey,
   getApiKeyNameFromHeaders,
+  getAuthTokenKind,
+  getFeatureFlags,
   getSession,
-  isSandboxTokenPrefix,
 } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 
@@ -17,8 +19,6 @@ import type {
   WithAPIErrorResponse,
 } from "@app/types/error";
 import { getGroupIdsFromHeaders, getRoleFromHeaders } from "@app/types/groups";
-import type { Result } from "@app/types/shared/result";
-import { Err } from "@app/types/shared/result";
 import { isString } from "@app/types/shared/utils/general";
 import { getUserEmailFromHeaders } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -384,19 +384,6 @@ export function withPublicAPIAuthentication<T>(
         });
       }
 
-      // Sandbox token authentication.
-      const token = req.headers.authorization?.replace("Bearer ", "");
-      if (token && isSandboxTokenPrefix(token)) {
-        const authRes = await handleSandboxAuth(token, wId);
-        if (authRes.isErr()) {
-          return apiError(req, res, authRes.error);
-        }
-        const auth = authRes.value;
-        setClientIpOnAuth(auth, req);
-
-        return handler(req, res, auth, null);
-      }
-
       // Bearer token authentication (resolved by withLogging).
       // Only accept bearer tokens for the public API, not cookie-based sessions.
       if (session?.authenticationMethod === "bearer") {
@@ -547,24 +534,92 @@ export function withTokenAuthentication<T>(
 }
 
 /**
- * Verifies a sandbox token and returns an Authenticator for the sandbox user.
+ * Wrapper for the sandbox action callback endpoints
+ * (`/api/v1/w/:wId/sandbox/actions/*`). Requires a sandbox token, verifies it,
+ * resolves the sandbox `Authenticator`, enforces the `sandbox_dsbx_tools` flag,
+ * and passes the verified token `claims` to the handler so it does not need to
+ * re-verify the token to read `aId` / `cId` / `actionId` / `mId`.
  */
-async function handleSandboxAuth(
-  token: string,
-  wId: string
-): Promise<Result<Authenticator, APIErrorWithContentfulStatusCode>> {
-  const payload = await verifySandboxExecToken(token);
-  if (!payload) {
-    return new Err({
-      status_code: 401,
-      api_error: {
-        type: "invalid_sandbox_token_error",
-        message: "The sandbox token is invalid or expired.",
-      },
-    });
-  }
+export function withSandboxAuthentication<T>(
+  handler: (
+    req: NextApiRequest,
+    res: NextApiResponse<WithAPIErrorResponse<T>>,
+    auth: Authenticator,
+    claims: SandboxExecTokenPayload
+  ) => Promise<void> | void,
+  opts: { isStreaming?: boolean } = {}
+) {
+  return withLogging(
+    async (
+      req: NextApiRequestWithContext,
+      res: NextApiResponse<WithAPIErrorResponse<T>>
+    ) => {
+      const { wId } = req.query;
+      if (!isString(wId)) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "workspace_not_found",
+            message: "The workspace was not found.",
+          },
+        });
+      }
 
-  return Authenticator.fromSandboxToken(payload, wId);
+      const token = req.headers.authorization?.replace("Bearer ", "");
+      if (!token) {
+        return apiError(req, res, {
+          status_code: 401,
+          api_error: {
+            type: "not_authenticated",
+            message:
+              "The request does not have valid authentication credentials.",
+          },
+        });
+      }
+      if (getAuthTokenKind(token) !== "sandbox_token") {
+        return apiError(req, res, {
+          status_code: 401,
+          api_error: {
+            type: "not_authenticated",
+            message: "This endpoint requires a sandbox token.",
+          },
+        });
+      }
+
+      const claims = await verifySandboxExecToken(token);
+      if (!claims) {
+        return apiError(req, res, {
+          status_code: 401,
+          api_error: {
+            type: "invalid_sandbox_token_error",
+            message: "The sandbox token is invalid or expired.",
+          },
+        });
+      }
+
+      const authRes = await Authenticator.fromSandboxToken(claims, wId);
+      if (authRes.isErr()) {
+        return apiError(req, res, authRes.error);
+      }
+      const auth = authRes.value;
+
+      const featureFlags = await getFeatureFlags(auth);
+      if (!featureFlags.includes("sandbox_dsbx_tools")) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Sandbox dsbx tools are not enabled for this workspace.",
+          },
+        });
+      }
+
+      setClientIpOnAuth(auth, req);
+
+      return handler(req, res, auth, claims);
+    },
+    opts.isStreaming
+  );
 }
 
 /**

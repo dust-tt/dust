@@ -1,3 +1,4 @@
+import { maybeNotifyAdminsBalanceThresholdReached } from "@app/lib/api/credits/balance_threshold_alert";
 import {
   dispatchCreditsAdded,
   dispatchLowBalance,
@@ -60,6 +61,10 @@ import {
 import { invalidateContractCache } from "@app/lib/metronome/plan_type";
 import type { ProgrammaticCreditEvent } from "@app/lib/metronome/programmatic_credit_state_machine";
 import { isMetronomeFreeCredit } from "@app/lib/metronome/types";
+import {
+  clearUserAwuWarned,
+  setUserAwuWarned,
+} from "@app/lib/metronome/user_block";
 import type { MetronomeWebhookEvent } from "@app/lib/metronome/webhook_events";
 import { PlanModel } from "@app/lib/models/plan";
 import { notifyUserAwuCapReached } from "@app/lib/notifications/workflows/user-awu-cap-reached";
@@ -670,6 +675,7 @@ async function handlePerUserSpendThresholdEvent({
           )
         );
       }
+      void clearUserAwuWarned(workspace.sId, userId);
       break;
     }
     case "evaluating":
@@ -692,6 +698,7 @@ async function handlePerUserSpendThresholdEvent({
     logger.info(
       "[Metronome Webhook] per-user spend threshold warning: handling..."
     );
+    void setUserAwuWarned(workspace.sId, userId);
     const capAwuCredits = capThreshold ?? 0;
     const user = await UserResource.fetchById(userId);
     if (user) {
@@ -772,13 +779,16 @@ export async function processMetronomeWebhook({
         // three FSM-driving alerts (cap reached / low / critical).
         const alertName = event.properties.alert_name ?? "";
         if (alertName.startsWith(PROGRAMMATIC_WARNING_BALANCE_ALERT_NAME)) {
-          await dispatchProgrammaticWarning({ workspace });
+          await dispatchProgrammaticWarning({ workspace, eventId: event.id });
         } else {
           const programmaticEvent = programmaticEventFromAlertName(alertName);
           if (programmaticEvent) {
             switch (programmaticEvent.type) {
               case "programmatic_cap_reached":
-                await dispatchProgrammaticCapReached({ workspace });
+                await dispatchProgrammaticCapReached({
+                  workspace,
+                  eventId: event.id,
+                });
                 break;
               case "programmatic_low_balance":
                 await dispatchProgrammaticLowBalance({
@@ -889,6 +899,16 @@ export async function processMetronomeWebhook({
           "[Metronome Webhook] low_remaining_contract_credit_and_commit_balance_reached: low balance dispatched"
         );
       }
+
+      // If this is the workspace's own configured balance-threshold alert,
+      // email its admins.
+      await maybeNotifyAdminsBalanceThresholdReached({
+        metronomeCustomerId: workspace.metronomeCustomerId,
+        workspaceId: workspace.sId,
+        eventId: event.id,
+        alertId: event.properties.alert_id ?? null,
+        remainingBalanceCredits: remaining ?? null,
+      });
       break;
     }
     case "alerts.low_remaining_contract_credit_and_commit_balance_resolved": {

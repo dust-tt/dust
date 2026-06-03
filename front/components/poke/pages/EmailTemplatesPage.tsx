@@ -5,7 +5,6 @@ import {
   PokeFormItem,
   PokeFormLabel,
 } from "@app/components/poke/shadcn/ui/form";
-import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import {
   ConversationsUnreadEmailTemplatePropsSchema,
   renderEmail as renderConversationsUnreadEmail,
@@ -14,6 +13,7 @@ import {
   DefaultEmailTemplatePropsSchema,
   renderEmail as renderDefaultEmail,
 } from "@app/lib/notifications/email-templates/default";
+import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { Button, Input, TextArea } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { JSONSchema7 } from "json-schema";
@@ -337,7 +337,7 @@ function SchemaFormField({
 }
 
 export function EmailTemplatesPage() {
-  useDocumentTitle("Poke - Email Templates");
+  usePokePageMetadata({ name: "Email Templates" });
 
   const [selectedTemplateId, setSelectedTemplateId] =
     useState<string>("default");

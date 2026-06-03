@@ -9,6 +9,12 @@ import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversati
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  cId: z.string(),
+});
 
 export type PostOnboardingFollowupResponseBody = {
   agentMessages: AgentMessageType[];
@@ -19,10 +25,11 @@ const app = workspaceApp();
 
 app.post(
   "/",
+  validate("param", ParamsSchema),
   async (ctx): HandlerResult<PostOnboardingFollowupResponseBody> => {
     const auth = ctx.get("auth");
     const user = auth.getNonNullableUser();
-    const conversationId = ctx.req.param("cId") ?? "";
+    const { cId: conversationId } = ctx.req.valid("param");
 
     const body = await ctx.req.json().catch(() => ({}));
     const { toolId } = body;

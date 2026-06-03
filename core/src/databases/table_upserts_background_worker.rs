@@ -191,29 +191,6 @@ impl TableUpsertsBackgroundWorker {
                 break;
             }
 
-            // Drop entries that have been stuck far past the debounce window AND have already
-            // failed at least once. These are poison items (consistently failing) that we'd
-            // otherwise retry forever. The attempts > 0 guard ensures we never drop an entry
-            // that has never been tried (e.g. if the worker was down for a long time, every
-            // queued entry would be old but untried).
-            // Note: this leaves the table's CSV files orphaned in GCS, which is an
-            // acceptable (small, separately cleanable) trade-off for not blocking the queue.
-            if time_since_last_upsert > MAX_UPSERT_AGE_MS && table_data.attempts > 0 {
-                error!(
-                    project_id = table_data.project_id,
-                    data_source_id = table_data.data_source_id,
-                    table_id = table_data.table_id,
-                    age_ms = time_since_last_upsert,
-                    attempts = table_data.attempts,
-                    "TableUpsertsBackgroundWorker: Entry exceeded max age after failed attempts, dropping"
-                );
-                let _: () = self
-                    .redis_conn
-                    .hdel(REDIS_TABLE_UPSERT_HASH_NAME, key)
-                    .await?;
-                continue;
-            }
-
             let table = self
                 .store
                 .load_data_source_table(
@@ -225,6 +202,40 @@ impl TableUpsertsBackgroundWorker {
 
             match table {
                 Some(table) => {
+                    // Drop entries that have been stuck far past the debounce window AND have
+                    // already failed at least once. These are poison items (consistently failing)
+                    // that we'd otherwise retry forever. The attempts > 0 guard ensures we never
+                    // drop an entry that has never been tried (e.g. if the worker was down for a
+                    // long time, every queued entry would be old but untried).
+                    // We also delete the table's CSV files; otherwise they stay orphaned in GCS
+                    // and keep the pending-file count high, which would make the producer-side
+                    // backpressure reject all future upserts for this table forever.
+                    if time_since_last_upsert > MAX_UPSERT_AGE_MS && table_data.attempts > 0 {
+                        error!(
+                            table_id = table.table_id(),
+                            age_ms = time_since_last_upsert,
+                            attempts = table_data.attempts,
+                            "TableUpsertsBackgroundWorker: Entry exceeded max age after failed attempts, dropping"
+                        );
+                        if let Err(e) =
+                            GoogleCloudStorageBackgroundProcessingStore::delete_all_files_for_table(
+                                &table,
+                            )
+                            .await
+                        {
+                            error!(
+                                table_id = table.table_id(),
+                                "TableUpsertsBackgroundWorker: Failed to delete files for dropped entry: {}",
+                                e
+                            );
+                        }
+                        let _: () = self
+                            .redis_conn
+                            .hdel(REDIS_TABLE_UPSERT_HASH_NAME, key)
+                            .await?;
+                        continue;
+                    }
+
                     let mut now = utils::now();
 
                     let lock = match lock_manager

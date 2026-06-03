@@ -375,8 +375,8 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
       e.preventDefault();
       lastEscTimeRef.current = now;
       setTimeout(() => {
-        if (lastEscTimeRef.current === now) {
-          doAction(hasPending ? "interrupt" : "cancel");
+        if (lastEscTimeRef.current === now && hasPending) {
+          doAction("interrupt");
         }
       }, DOUBLE_ESC_WINDOW_MS);
     }

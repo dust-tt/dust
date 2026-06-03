@@ -3,7 +3,13 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agen
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import assert from "assert";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  aId: z.string(),
+});
 
 export type PokeExportAgentConfigurationResponseBody = {
   assistant: Omit<
@@ -31,9 +37,10 @@ const app = pokeApp();
 
 app.get(
   "/",
+  validate("param", ParamsSchema),
   async (ctx): HandlerResult<PokeExportAgentConfigurationResponseBody> => {
     const auth = ctx.get("auth");
-    const aId = ctx.req.param("aId") ?? "";
+    const { aId } = ctx.req.valid("param");
 
     const agentConfiguration = await getAgentConfiguration(auth, {
       agentId: aId,

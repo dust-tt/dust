@@ -1,7 +1,6 @@
 import { ViewAppTable } from "@app/components/poke/apps/view";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import {
@@ -11,6 +10,7 @@ import {
 } from "@app/lib/platform";
 import { decodeSqids } from "@app/lib/utils";
 import { usePokeAppDetails } from "@app/poke/swr/app_details";
+import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import type { AppType, SpecificationType } from "@app/types/app";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -25,7 +25,6 @@ import { JsonViewer } from "@textea/json-viewer";
 
 export function AppPage() {
   const owner = useWorkspace();
-  useDocumentTitle(`Poke - ${owner.name} - App`);
 
   const appId = useRequiredPathParam("appId");
   const hash = useSearchParam("hash");
@@ -38,6 +37,12 @@ export function AppPage() {
     appId,
     hash,
     disabled: false,
+  });
+
+  usePokePageMetadata({
+    name: appDetails?.app.name,
+    subtitle: owner.name,
+    sId: appId,
   });
 
   if (isLoading) {

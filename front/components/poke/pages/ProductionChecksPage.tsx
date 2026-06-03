@@ -1,11 +1,11 @@
 import { cn } from "@app/components/poke/shadcn/lib/utils";
-import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
   usePokeCheckHistory,
   usePokeProductionChecks,
   useRunProductionCheck,
 } from "@app/hooks/usePokeProductionChecks";
+import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import type {
   ActionLink,
   CheckFailurePayload,
@@ -492,7 +492,7 @@ function ProductionCheckCard({
 }
 
 export function ProductionChecksPage() {
-  useDocumentTitle("Poke - Production Checks");
+  usePokePageMetadata({ name: "Production Checks" });
 
   const { checks, isProductionChecksLoading, mutateProductionChecks } =
     usePokeProductionChecks();

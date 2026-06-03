@@ -1,10 +1,10 @@
-import { getMembershipInvitationToken } from "@app/lib/api/invitation";
 import { config } from "@app/lib/api/regions/config";
 import { isWorkspaceRelocationDone } from "@app/lib/api/workspace";
 import { findWorkspaceWithVerifiedDomain } from "@app/lib/iam/workspaces";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
+import { getMembershipInvitationToken } from "@app/lib/utils/invitation_token";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type {
   InvitationsLookupRequestBodyType,
@@ -302,6 +302,45 @@ export async function lookupShareToken(
   } catch (error) {
     return new Err(normalizeError(error));
   }
+}
+
+// Regional API subdomains the SPA can be forced onto via the `force_us_api_url`
+// feature flag. Hardcoded on purpose: these are stable public hostnames that
+// are independent of the per-environment app URLs in `config`.
+const REGION_API_URLS: Record<RegionType, string> = {
+  "europe-west1": "https://eu-api.dust.tt",
+  "us-central1": "https://us-api.dust.tt",
+};
+
+/**
+ * When the `force_us_api_url` flag is enabled on a workspace, returns a redirect
+ * that points the SPA at the current region's API subdomain (us-api/eu-api.dust.tt)
+ * so it uses that as its backend. Returns null when the flag is disabled or when
+ * the request already arrived on the target host (avoids a redirect loop once the
+ * SPA has switched).
+ */
+export function getForcedApiUrlRedirect({
+  enabled,
+  requestHost,
+}: {
+  enabled: boolean;
+  requestHost: string | undefined;
+}): RegionRedirectError | null {
+  if (!enabled) {
+    return null;
+  }
+
+  const currentRegion = config.getCurrentRegion();
+  const targetUrl = REGION_API_URLS[currentRegion];
+
+  if (requestHost === new URL(targetUrl).host) {
+    return null;
+  }
+
+  return {
+    region: currentRegion,
+    url: targetUrl,
+  };
 }
 
 /**

@@ -1,8 +1,8 @@
 import { cn } from "@app/components/poke/shadcn/lib/utils";
-import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { KILL_SWITCH_TYPES, type KillSwitchType } from "@app/lib/poke/types";
+import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeKillSwitches } from "@app/poke/swr/kill";
 import {
   usePokeSandboxKillImages,
@@ -98,7 +98,7 @@ function sandboxKillKey(
 }
 
 export function KillPage() {
-  useDocumentTitle("Poke - Kill Switches");
+  usePokePageMetadata({ name: "Kill Switches" });
 
   const { killSwitches, isKillSwitchesLoading, mutateKillSwitches } =
     usePokeKillSwitches();

@@ -2,15 +2,21 @@ import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_reso
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  cId: z.string(),
+  mId: z.string(),
+  aId: z.string(),
+});
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/messages/:mId/actions/:aId.
 const app = workspaceApp();
 
-app.get("/", async (ctx) => {
+app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
-  const cId = ctx.req.param("cId") ?? "";
-  const mId = ctx.req.param("mId") ?? "";
-  const aId = ctx.req.param("aId") ?? "";
+  const { cId, mId, aId } = ctx.req.valid("param");
 
   const conversation = await ConversationResource.fetchById(auth, cId);
   if (!conversation) {

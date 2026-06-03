@@ -6,6 +6,7 @@ import {
   formatSandboxImageId,
   type NetworkPolicy,
 } from "@app/lib/api/sandbox/image/types";
+import { traceSandboxStartupPhase } from "@app/lib/api/sandbox/instrumentation";
 import type {
   ExecOptions,
   ExecResult,
@@ -272,32 +273,41 @@ export class E2BSandboxProvider implements SandboxProvider {
         try {
           const envVars = config.envVars ?? {};
           const hasEnvVars = Object.keys(envVars).length > 0;
-          sandbox = await Sandbox.create(templateId, {
-            ...this.connectionOpts(),
-            envs: hasEnvVars ? envVars : undefined,
-            timeoutMs: SANDBOX_LIFETIME_MS,
-            requestTimeoutMs: REQUEST_TIMEOUT_MS,
-            network: config.network
-              ? toE2BNetworkOpts(config.network)
-              : { allowPublicTraffic: false },
-          });
+          // Split out from create so the raw E2B VM-create latency is visible
+          // separately from the hardening command that follows it (the two
+          // share the parent sandbox.provider.create span otherwise).
+          sandbox = await traceSandboxStartupPhase("provider.create_vm", () =>
+            Sandbox.create(templateId, {
+              ...this.connectionOpts(),
+              envs: hasEnvVars ? envVars : undefined,
+              timeoutMs: SANDBOX_LIFETIME_MS,
+              requestTimeoutMs: REQUEST_TIMEOUT_MS,
+              network: config.network
+                ? toE2BNetworkOpts(config.network)
+                : { allowPublicTraffic: false },
+            })
+          );
         } catch (err) {
           return new Err(normalizeError(err));
         }
 
         let hardeningResult: ExecResult;
         try {
-          const result = await sandbox.commands.run(
-            getRootSafeSandboxCommand(
-              rootCommand.unsafeShell(
-                getLocalAccountPrivilegeHardeningCommand(),
-                "create-time sandbox local account hardening"
+          const result = await traceSandboxStartupPhase(
+            "provider.hardening",
+            () =>
+              sandbox.commands.run(
+                getRootSafeSandboxCommand(
+                  rootCommand.unsafeShell(
+                    getLocalAccountPrivilegeHardeningCommand(),
+                    "create-time sandbox local account hardening"
+                  )
+                ),
+                {
+                  timeoutMs: LOCAL_ACCOUNT_HARDENING_TIMEOUT_MS,
+                  user: "root",
+                }
               )
-            ),
-            {
-              timeoutMs: LOCAL_ACCOUNT_HARDENING_TIMEOUT_MS,
-              user: "root",
-            }
           );
           hardeningResult = {
             exitCode: result.exitCode,

@@ -57,7 +57,7 @@ export function preprocessMarkdownForEditor(
 ): string {
   const preservedTags = ["knowledge"];
   if (enableSkillReferences) {
-    preservedTags.push("skill");
+    preservedTags.push("skill", "unavailable_skill");
   }
   const preservedTagsPattern = preservedTags.join("|");
   const escapeUnsupportedTags = (markdownToProcess: string) =>

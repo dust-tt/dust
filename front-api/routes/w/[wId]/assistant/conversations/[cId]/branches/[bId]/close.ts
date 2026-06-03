@@ -2,14 +2,20 @@ import { closeConversationBranch } from "@app/lib/api/assistant/conversation/bra
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  cId: z.string(),
+  bId: z.string(),
+});
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/branches/:bId/close.
 const app = workspaceApp();
 
-app.post("/", async (ctx) => {
+app.post("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
-  const cId = ctx.req.param("cId") ?? "";
-  const bId = ctx.req.param("bId") ?? "";
+  const { cId, bId } = ctx.req.valid("param");
 
   const closeRes = await closeConversationBranch(auth, {
     branchId: bId,

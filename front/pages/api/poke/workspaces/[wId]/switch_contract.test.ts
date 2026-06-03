@@ -8,9 +8,12 @@ import {
   getProductPrepaidCommitId,
 } from "@app/lib/metronome/constants";
 import {
+  applySeatRateOverrides,
   ensureMetronomeCustomerForWorkspace,
   provisionMetronomeContract,
+  syncContractQuantities,
 } from "@app/lib/metronome/contracts";
+import { remapMembershipSeatTypesForContract } from "@app/lib/metronome/seats";
 import { PlanModel } from "@app/lib/models/plan";
 import {
   CREDIT_PRICED_BUSINESS_PLAN_CODE,
@@ -53,6 +56,18 @@ vi.mock("@app/lib/metronome/contracts", async () => {
     ...actual,
     ensureMetronomeCustomerForWorkspace: vi.fn(),
     provisionMetronomeContract: vi.fn(),
+    applySeatRateOverrides: vi.fn(),
+    syncContractQuantities: vi.fn(),
+  };
+});
+
+vi.mock("@app/lib/metronome/seats", async () => {
+  const actual = await vi.importActual<
+    typeof import("@app/lib/metronome/seats")
+  >("@app/lib/metronome/seats");
+  return {
+    ...actual,
+    remapMembershipSeatTypesForContract: vi.fn(),
   };
 });
 
@@ -214,7 +229,29 @@ beforeEach(() => {
         aliases: ["business"],
         tier: "business",
         currency: "usd",
-        seats: [],
+        seats: [
+          {
+            seatType: "workspace",
+            productId: "prod_workspace",
+            productName: "Workspace seat",
+            defaultRate: 4000,
+            entitled: true,
+          },
+          {
+            seatType: "max",
+            productId: "prod_max",
+            productName: "Max seat",
+            defaultRate: null,
+            entitled: false,
+          },
+          {
+            seatType: "free",
+            productId: "prod_free",
+            productName: "Free seat",
+            defaultRate: null,
+            entitled: false,
+          },
+        ],
       },
     ])
   );
@@ -224,6 +261,11 @@ beforeEach(() => {
   vi.mocked(scheduleSubscriptionCancellation).mockResolvedValue(true);
   vi.mocked(addPrepaidCommitToContract).mockResolvedValue(
     new Ok({ editId: "edit_xxx" })
+  );
+  vi.mocked(applySeatRateOverrides).mockResolvedValue(new Ok(undefined));
+  vi.mocked(syncContractQuantities).mockResolvedValue(new Ok(undefined));
+  vi.mocked(remapMembershipSeatTypesForContract).mockResolvedValue(
+    new Ok(undefined)
   );
 });
 
@@ -501,6 +543,116 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — Pro / Business", (
     expect(secondPending!.metronomeContractId).toBe(SECOND_CONTRACT_ID);
     expect(secondPending!.getPlan().code).toBe(
       CREDIT_PRICED_BUSINESS_PLAN_CODE
+    );
+  });
+});
+
+describe("POST /api/poke/workspaces/[wId]/switch_contract — seats entitlement", () => {
+  it("entitles a seat the package does not entitle by default via a rate override", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      isSuperUser: true,
+    });
+    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
+
+    req.body = businessBody({
+      seats: [{ seatType: "max", minSeats: 0, rate: 50 }],
+    });
+    req.query.wId = workspace.sId;
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(applySeatRateOverrides).toHaveBeenCalledWith(
+      expect.objectContaining({
+        contractId: NEW_CONTRACT_ID,
+        overrides: [
+          expect.objectContaining({ productId: "prod_max", entitled: true }),
+        ],
+      })
+    );
+    // Memberships are re-mapped and seat quantities re-synced after entitlement
+    // changes, so members land on a billed seat and the new seat is billed.
+    expect(remapMembershipSeatTypesForContract).toHaveBeenCalledWith(
+      expect.objectContaining({
+        contractId: NEW_CONTRACT_ID,
+        workspace: expect.objectContaining({ sId: workspace.sId }),
+      })
+    );
+    expect(syncContractQuantities).toHaveBeenCalledWith(
+      METRONOME_CUSTOMER_ID,
+      NEW_CONTRACT_ID,
+      expect.objectContaining({ sId: workspace.sId }),
+      expect.any(String)
+    );
+  });
+
+  it("disables a package-entitled seat the operator unchecks", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      isSuperUser: true,
+    });
+    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
+
+    req.body = businessBody({
+      seats: [{ seatType: "workspace", selected: false, minSeats: 0, rate: 0 }],
+    });
+    req.query.wId = workspace.sId;
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(applySeatRateOverrides).toHaveBeenCalledWith(
+      expect.objectContaining({
+        overrides: [
+          expect.objectContaining({
+            productId: "prod_workspace",
+            entitled: false,
+          }),
+        ],
+      })
+    );
+  });
+
+  it("rejects entitling a non-free seat at rate 0", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      isSuperUser: true,
+    });
+    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
+
+    req.body = businessBody({
+      seats: [{ seatType: "max", minSeats: 0, rate: 0 }],
+    });
+    req.query.wId = workspace.sId;
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
+    expect(res._getJSONData().error.message).toContain(
+      "requires a rate greater than 0"
+    );
+  });
+
+  it("allows entitling the free seat at rate 0", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      isSuperUser: true,
+    });
+    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
+
+    req.body = businessBody({
+      seats: [{ seatType: "free", minSeats: 0, rate: 0 }],
+    });
+    req.query.wId = workspace.sId;
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(applySeatRateOverrides).toHaveBeenCalledWith(
+      expect.objectContaining({
+        overrides: [expect.objectContaining({ productId: "prod_free" })],
+      })
     );
   });
 });

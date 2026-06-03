@@ -577,26 +577,30 @@ export async function postUserMessage(
   }
 
   const featureFlags = await getFeatureFlags(auth);
-  const isPartOfProject = isPodConversation(conversation);
+  const isPartOfPod = isPodConversation(conversation);
 
-  if (isPartOfProject) {
+  if (isPartOfPod) {
     // Check if the user is a member of the space.
-    const space = await SpaceResource.fetchById(auth, conversation.spaceId);
-    if (!space) {
+    const pod = await SpaceResource.fetchById(auth, conversation.spaceId);
+    if (!pod) {
       return new Err({
         status_code: 404,
         api_error: {
           type: "space_not_found",
-          message: "Space not found",
+          message: "Pod not found",
         },
       });
     }
-    if (!space.isMember(auth)) {
+    // If the Pod is open and there is no user in the context (eg: slack bot message),
+    // we allow the message to be posted.
+    const skipMembershipCheck =
+      pod.isOpen() && !auth.user() && doNotAssociateUser === true;
+    if (!skipMembershipCheck && !pod.isMember(auth)) {
       return new Err({
         status_code: 403,
         api_error: {
           type: "workspace_auth_error",
-          message: "You are not a member of the project.",
+          message: "You are not a member of the Pod.",
         },
       });
     }
@@ -798,7 +802,7 @@ export async function postUserMessage(
     }
 
     // When the agent is not usable, we will create a branch.
-    if (isPartOfProject) {
+    if (isPartOfPod) {
       const canAgentBeUsed = await canAgentBeUsedInProjectConversation(auth, {
         configuration: agentConfig,
         conversation,

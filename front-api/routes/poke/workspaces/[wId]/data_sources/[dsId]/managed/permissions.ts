@@ -8,20 +8,26 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
 
 export type {
   ManagedPermissionsResponse as PokeGetDataSourcePermissionsResponseBody,
 };
+
+const ParamsSchema = z.object({
+  dsId: z.string(),
+});
 
 // Mounted at /api/poke/workspaces/:wId/data_sources/:dsId/managed/permissions.
 const app = pokeApp();
 
 app.get(
   "/",
+  validate("param", ParamsSchema),
   validate("query", ManagedPermissionsQuerySchema),
   async (ctx): HandlerResult<ManagedPermissionsResponse> => {
     const auth = ctx.get("auth");
-    const dsId = ctx.req.param("dsId") ?? "";
+    const { dsId } = ctx.req.valid("param");
 
     const dataSource = await DataSourceResource.fetchById(auth, dsId);
     if (!dataSource) {

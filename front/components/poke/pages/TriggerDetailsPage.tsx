@@ -3,15 +3,14 @@ import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { ExecutionStats } from "@app/components/poke/triggers/ExecutionStats";
 import { PokeRecentWebhookRequests } from "@app/components/poke/triggers/RecentWebhookRequests";
 import { ViewTriggerTable } from "@app/components/poke/triggers/view";
-import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
+import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeTriggerDetails } from "@app/poke/swr/trigger_details";
 import { LinkWrapper, Spinner } from "@dust-tt/sparkle";
 
 export function TriggerDetailsPage() {
   const owner = useWorkspace();
-  useDocumentTitle(`Poke - ${owner.name} - Trigger`);
 
   const triggerId = useRequiredPathParam("triggerId");
   const {
@@ -22,6 +21,12 @@ export function TriggerDetailsPage() {
     owner,
     triggerId,
     disabled: false,
+  });
+
+  usePokePageMetadata({
+    name: triggerDetails?.trigger.name,
+    subtitle: owner.name,
+    sId: triggerId,
   });
 
   if (isLoading) {

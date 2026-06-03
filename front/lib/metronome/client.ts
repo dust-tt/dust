@@ -162,6 +162,25 @@ export async function ingestMetronomeEvents(
 // ---------------------------------------------------------------------------
 
 /**
+ * Resolves how to address the Stripe billing-provider delivery method on a
+ * customer config. When the Metronome org has multiple Stripe
+ * DIRECT_TO_BILLING_PROVIDER connections, Metronome rejects the bare
+ * `delivery_method` and requires an explicit `delivery_method_id`; set
+ * METRONOME_STRIPE_DELIVERY_METHOD_ID to pin the intended connection (find ids
+ * with `scripts/list_metronome_delivery_methods.ts`). With a single connection
+ * (e.g. prod) the env var stays unset and the bare delivery_method resolves
+ * unambiguously.
+ */
+function stripeDeliveryMethod():
+  | { delivery_method_id: string }
+  | { delivery_method: "direct_to_billing_provider" } {
+  const deliveryMethodId = config.getMetronomeStripeDeliveryMethodId();
+  return deliveryMethodId
+    ? { delivery_method_id: deliveryMethodId }
+    : { delivery_method: "direct_to_billing_provider" };
+}
+
+/**
  * Create a customer in Metronome, linked to an existing Stripe customer.
  * The workspace sId is set as an ingest alias so that usage events
  * with `customer_id: workspaceId` are automatically matched.
@@ -188,7 +207,7 @@ export async function createMetronomeCustomer({
             customer_billing_provider_configurations: [
               {
                 billing_provider: "stripe",
-                delivery_method: "direct_to_billing_provider",
+                ...stripeDeliveryMethod(),
                 configuration: {
                   stripe_customer_id: stripeCustomerId,
                   stripe_collection_method: stripeCollectionMethod,
@@ -343,7 +362,7 @@ export async function ensureMetronomeStripeBillingConfig({
         {
           customer_id: metronomeCustomerId,
           billing_provider: "stripe",
-          delivery_method: "direct_to_billing_provider",
+          ...stripeDeliveryMethod(),
           configuration: {
             stripe_customer_id: stripeCustomerId,
             stripe_collection_method: stripeCollectionMethod,
@@ -466,17 +485,22 @@ export interface MetronomePackageSummary {
 }
 
 /**
- * A seat type sold by a package, plus the default per-seat flat rate stamped by
- * the package's entitlement override (in the rate card's fiat unit, e.g. cents
- * for USD). `defaultRate` is null when the override only flips entitlement
+ * A seat type that can be sold on a package. `entitled` reflects whether the
+ * package flips this seat on by default (via an `entitled: true` override);
+ * non-entitled seats are still surfaced so an operator can opt into entitling
+ * them when switching the contract. `defaultRate` is the per-seat flat rate
+ * stamped by the package's entitlement override (in the rate card's fiat unit,
+ * e.g. cents for USD); it is null when the seat is not entitled, or entitled
  * without an explicit rate. `productId` is the Metronome seat product the
- * override targets — used to apply a rate override on the provisioned contract.
+ * override targets — used to apply a rate/entitlement override on the
+ * provisioned contract.
  */
 export interface PackageSeatConfig {
   seatType: MembershipSeatType;
   productId: string;
   productName: string;
   defaultRate: number | null;
+  entitled: boolean;
 }
 
 // Structural shape of the package list-response overrides we read — only the
@@ -489,10 +513,12 @@ type PackageEntitlementOverride = {
 };
 
 /**
- * Resolve the seats a package sells from its entitlement overrides. A package
- * flips `entitled: true` on the seat products it sells (and stamps their flat
- * rate via `overwrite_rate`); we map those product IDs to seat types via the
- * `productId → seatType` map and surface the override's default rate.
+ * Resolve every seat a package can sell, flagging which ones it entitles by
+ * default. A package flips `entitled: true` on the seat products it sells (and
+ * stamps their flat rate via `overwrite_rate`); those become `entitled` seats
+ * with their default rate. Every other known seat product is surfaced as a
+ * non-entitled seat (no default rate) so an operator can opt into entitling it
+ * when switching the contract.
  */
 // `productId → { seatType, name }` for all seat products.
 type SeatProductInfo = { seatType: MembershipSeatType; name: string };
@@ -502,6 +528,8 @@ function seatConfigsFromPackageOverrides(
   seatProducts: Map<string, SeatProductInfo>
 ): PackageSeatConfig[] {
   const bySeatType = new Map<MembershipSeatType, PackageSeatConfig>();
+
+  // First pass: the seats the package entitles, with their default rate.
   for (const override of overrides ?? []) {
     if (override.entitled !== true) {
       continue;
@@ -518,10 +546,26 @@ function seatConfigsFromPackageOverrides(
           productId,
           productName: info.name,
           defaultRate: override.overwrite_rate?.price ?? null,
+          entitled: true,
         });
       }
     }
   }
+
+  // Second pass: every remaining seat product, surfaced as not entitled so the
+  // operator can opt into it.
+  for (const [productId, info] of seatProducts) {
+    if (!bySeatType.has(info.seatType)) {
+      bySeatType.set(info.seatType, {
+        seatType: info.seatType,
+        productId,
+        productName: info.name,
+        defaultRate: null,
+        entitled: false,
+      });
+    }
+  }
+
   return [...bySeatType.values()].sort((a, b) =>
     a.seatType.localeCompare(b.seatType)
   );
@@ -1193,16 +1237,22 @@ export async function updateSubscriptionQuantity({
 }
 
 // Response shape for POST /v1/contracts/getSubscriptionSeatsHistory. The
-// Metronome Node SDK (3.5.0, latest) has no typed binding for this endpoint —
-// `retrieveSubscriptionQuantityHistory` is the closest and returns quantity
-// totals, not seat IDs. So we route through the SDK client's generic post(),
-// which still gives us auth + retries + error handling.
+// Metronome Node SDK (3.5.0, latest) has no typed binding for this endpoint, so
+// we route through the SDK client's generic post(), which still gives us auth +
+// retries + error handling.
+//
+// `total_quantity` is the absolute billed seat count (assigned + unassigned) at
+// the segment, returned as a STRING. The unassigned count is derived as
+// `total_quantity - assigned_seat_ids.length` (see
+// `getMetronomeSubscriptionSeatState`). NOTE: do not use the subscription's
+// `quantity_schedule` or `retrieveSubscriptionQuantityHistory` for this — those
+// report the base/proration quantity, not the seat-driven total.
 interface SubscriptionSeatsHistoryResponse {
   data: Array<{
     starting_at: string;
     ending_before?: string | null;
     assigned_seat_ids: string[];
-    unassigned_seats?: number;
+    total_quantity?: string;
   }>;
 }
 
@@ -1217,7 +1267,12 @@ export type SubscriptionSeatState = {
 
 /**
  * Fetch the seat state (assigned seat IDs + unassigned seat count) on a
- * SEAT_BASED subscription at `coveringDate` (defaults to now).
+ * SEAT_BASED subscription at `coveringDate` (defaults to now), via the (untyped)
+ * getSubscriptionSeatsHistory endpoint.
+ *
+ * `unassignedSeats` is derived as `total_quantity - assignedCount` from the same
+ * response — the endpoint returns the absolute billed total, but not the
+ * unassigned count directly.
  */
 export async function getMetronomeSubscriptionSeatState({
   metronomeCustomerId,
@@ -1248,9 +1303,19 @@ export async function getMetronomeSubscriptionSeatState({
     // History is returned ascending by starting_at; take the last entry to
     // get the segment active at `coveringDate` (earlier entries are stale).
     const segment = response.data[response.data.length - 1];
+    const assignedSeatIds = segment?.assigned_seat_ids ?? [];
+
+    // `total_quantity` is a string (e.g. "998"). Fall back to the assigned
+    // count (→ 0 unassigned) if it's missing/unparseable so we never invent a
+    // floor top-up from a bad read.
+    const totalQuantity = Number(segment?.total_quantity);
+    const resolvedTotal = Number.isFinite(totalQuantity)
+      ? totalQuantity
+      : assignedSeatIds.length;
+
     return new Ok({
-      assignedSeatIds: segment?.assigned_seat_ids ?? [],
-      unassignedSeats: segment?.unassigned_seats ?? 0,
+      assignedSeatIds,
+      unassignedSeats: Math.max(0, resolvedTotal - assignedSeatIds.length),
     });
   } catch (err) {
     const error = normalizeError(err);
@@ -1264,8 +1329,7 @@ export async function getMetronomeSubscriptionSeatState({
 
 /**
  * Fetch the assigned seat IDs on a SEAT_BASED subscription at `coveringDate`
- * (defaults to now). Thin wrapper over `getMetronomeSubscriptionSeatState` for
- * callers that don't need the unassigned-seat count.
+ * (defaults to now), via the (untyped) getSubscriptionSeatsHistory endpoint.
  */
 export async function getMetronomeSubscriptionAssignedSeatIds({
   metronomeCustomerId,

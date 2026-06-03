@@ -12,7 +12,7 @@ struct NewConversationView: View {
     let user: User
     let workspaceId: String
     let tokenProvider: TokenProvider
-    var spaceId: String? = nil
+    var spaceId: String?
     let onConversationCreated: (Conversation) -> Void
 
     @StateObject private var inputBarViewModel: InputBarViewModel

@@ -66,6 +66,7 @@ const PostSkillRequestBodySchema = z.intersection(
     attachedKnowledge: z.array(AttachedKnowledgeSchema),
     instructionsHtml: z.string().nullable(),
     additionalRequestedSpaceIds: z.array(z.string()).optional(),
+    referencedSkillIds: z.array(z.string()).optional(),
     fileAttachments: z.array(z.object({ fileId: z.string() })).optional(),
     isDefault: z.boolean().optional(),
     reinforcement: z.enum(SKILL_REINFORCEMENT_MODES).optional(),
@@ -372,22 +373,7 @@ async function handler(
 
       const featureFlags = await getFeatureFlags(auth);
       const enableSkillReferences = featureFlags.includes("nested_skills");
-      if (enableSkillReferences) {
-        const skillReferenceValidation =
-          SkillResource.getValidatedSkillReferenceModelIds(auth, {
-            instructions: body.instructions,
-          });
-
-        if (skillReferenceValidation.isErr()) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: skillReferenceValidation.error.message,
-            },
-          });
-        }
-      }
+      const referencedSkillIds = uniq(body.referencedSkillIds ?? []);
 
       // Validate file attachments if provided (gated behind sandbox_tools).
       let files: FileResource[] | undefined;
@@ -472,6 +458,7 @@ async function handler(
           attachedKnowledge: attachedKnowledgeWithDataSourceViews,
           fileAttachments: files,
           enableSkillReferences,
+          referencedSkillIds,
         }
       );
 

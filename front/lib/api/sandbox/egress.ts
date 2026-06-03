@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { lookup } from "node:dns/promises";
 import config from "@app/lib/api/config";
 import { config as regionConfig } from "@app/lib/api/regions/config";
@@ -7,6 +8,7 @@ import {
 } from "@app/lib/api/sandbox/egress_secrets";
 import { writeSandboxEnvManifestFile } from "@app/lib/api/sandbox/env_manifest";
 import { SANDBOX_AGENT_PROXIED_UID } from "@app/lib/api/sandbox/image/types";
+import { traceSandboxStartupPhase } from "@app/lib/api/sandbox/instrumentation";
 import {
   type RootCommand,
   renderRootCommand,
@@ -27,6 +29,7 @@ import { fromError } from "zod-validation-error";
 const EGRESS_FORWARDER_LISTEN_ADDR = "127.0.0.1:9990";
 const EGRESS_RESOLVER_LISTEN_ADDR = "127.0.0.1:1053";
 const EGRESS_PROXIED_UID = SANDBOX_AGENT_PROXIED_UID;
+const EGRESS_TOKEN_DIR = "/etc/dust";
 const EGRESS_TOKEN_PATH = "/etc/dust/egress-token";
 const EGRESS_DENY_LOG_PATH = "/tmp/dust-egress-denied.log";
 const EGRESS_DENY_LOG_OFFSET_PATH = "/tmp/.dust-egress-deny-offset";
@@ -245,22 +248,24 @@ export async function checkEgressForwarderHealth(
 
   // Root is required: `nft list table` needs CAP_NET_ADMIN, and the probe also
   // reads /proc/net/{tcp,udp} which is fine non-root but pointless to split.
-  const result = await sandbox.execRoot(
-    auth,
-    rootCommand.exec("/opt/bin/dsbx", [
-      "healthcheck",
-      "--forwarder-listen",
-      EGRESS_FORWARDER_LISTEN_ADDR,
-      "--resolver-listen",
-      EGRESS_RESOLVER_LISTEN_ADDR,
-      "--proxied-uid",
-      EGRESS_PROXIED_UID,
-      "--ca-bundle",
-      MITM_CA_BUNDLE_PATH,
-      "--ca-bundle-marker",
-      MITM_CA_BUNDLE_MARKER_PATH,
-    ]),
-    { timeoutMs: 1_000 }
+  const result = await traceSandboxStartupPhase("egress.healthcheck", () =>
+    sandbox.execRoot(
+      auth,
+      rootCommand.exec("/opt/bin/dsbx", [
+        "healthcheck",
+        "--forwarder-listen",
+        EGRESS_FORWARDER_LISTEN_ADDR,
+        "--resolver-listen",
+        EGRESS_RESOLVER_LISTEN_ADDR,
+        "--proxied-uid",
+        EGRESS_PROXIED_UID,
+        "--ca-bundle",
+        MITM_CA_BUNDLE_PATH,
+        "--ca-bundle-marker",
+        MITM_CA_BUNDLE_MARKER_PATH,
+      ]),
+      { timeoutMs: 1_000 }
+    )
   );
 
   if (result.isErr()) {
@@ -421,6 +426,49 @@ export async function teardownInSandboxEgressRedirect(
   return runSuccessfulRootCommand(auth, sandbox, command);
 }
 
+// Writes the egress JWT to /etc/dust/egress-token as root, mode 600, in a
+// single round-trip (was a writeFile followed by a separate chmod). The token
+// is fed through stdin so it never lands in argv/journald, and goes via a tmp
+// file + mv so a reader (an old forwarder mid-restart) never sees a partial
+// write.
+async function writeEgressTokenFile(
+  auth: Authenticator,
+  sandbox: SandboxResource,
+  token: string
+): Promise<Result<void, Error>> {
+  const tmpPath = `${EGRESS_TOKEN_DIR}/.egress-token.${randomBytes(8).toString("hex")}.tmp`;
+  const command = rootCommand.and([
+    rootCommand.exec("/usr/bin/mkdir", ["-p", EGRESS_TOKEN_DIR]),
+    rootCommand.exec("/usr/bin/install", [
+      "-o",
+      "root",
+      "-g",
+      "root",
+      "-m",
+      "600",
+      "/dev/stdin",
+      tmpPath,
+    ]),
+    rootCommand.exec("/usr/bin/mv", [tmpPath, EGRESS_TOKEN_PATH]),
+  ]);
+
+  const result = await sandbox.execRoot(auth, command, { stdin: token });
+  if (result.isErr()) {
+    return result;
+  }
+  if (result.value.exitCode !== 0) {
+    return new Err(
+      new Error(
+        `Failed to write sandbox egress token file: ${
+          result.value.stderr || result.value.stdout || "unknown error"
+        }`
+      )
+    );
+  }
+
+  return new Ok(undefined);
+}
+
 export async function setupEgressForwarder(
   auth: Authenticator,
   sandbox: SandboxResource,
@@ -432,9 +480,13 @@ export async function setupEgressForwarder(
     sandboxId: sandbox.sId,
   };
 
+  // resolve_proxy is a Node-side DNS lookup that never becomes a sandbox
+  // command, so it has no provider span — a genuine timing blindspot until now.
   let proxyAddr: string;
   try {
-    proxyAddr = await resolveProxyAddr();
+    proxyAddr = await traceSandboxStartupPhase("egress.resolve_proxy", () =>
+      resolveProxyAddr()
+    );
   } catch (error) {
     return new Err(normalizeError(error));
   }
@@ -443,39 +495,48 @@ export async function setupEgressForwarder(
     sandbox.providerId,
     auth.getNonNullableWorkspace().sId
   );
-  const tokenWriteResult = await sandbox.writeFile(
-    auth,
-    EGRESS_TOKEN_PATH,
-    new TextEncoder().encode(token).buffer
+
+  // Token, secrets, and manifest are written in order, each gated on the
+  // previous succeeding, mirroring the original sequential flow exactly: any
+  // write failure returns before the next file is touched. This keeps the
+  // restart path safe — a failed write leaves the remaining files (and the
+  // still-running forwarder reading them) untouched rather than rewriting some
+  // of them under a forwarder that setup then declines to replace.
+  //
+  // These stay sequential on purpose: parallelizing them would let a later
+  // file (e.g. the manifest) land even when an earlier write fails, diverging
+  // the sandbox-visible state from what the forwarder actually loaded. The big
+  // round-trip wins in this path come from the merged token install and the
+  // GCS changes, not from overlapping these three.
+  const tokenWriteResult = await traceSandboxStartupPhase(
+    "egress.write_token",
+    () => writeEgressTokenFile(auth, sandbox, token)
   );
   if (tokenWriteResult.isErr()) {
     return tokenWriteResult;
   }
 
-  const prepareTokenResult = await runSuccessfulRootCommand(
-    auth,
-    sandbox,
-    rootCommand.exec("/usr/bin/chmod", ["600", EGRESS_TOKEN_PATH])
+  const secretsWriteResult = await traceSandboxStartupPhase(
+    "egress.write_secrets",
+    () => writeEgressSecretsFile(auth, sandbox)
   );
-  if (prepareTokenResult.isErr()) {
-    return prepareTokenResult;
-  }
-
-  // Write the secrets file before killing the old dsbx so a write failure
-  // leaves the existing forwarder running instead of taking it down with
-  // nothing to replace it.
-  const secretsWriteResult = await writeEgressSecretsFile(auth, sandbox);
   if (secretsWriteResult.isErr()) {
     return secretsWriteResult;
   }
 
-  const manifestWriteResult = await writeSandboxEnvManifestFile(auth, sandbox);
+  const manifestWriteResult = await traceSandboxStartupPhase(
+    "egress.write_manifest",
+    () => writeSandboxEnvManifestFile(auth, sandbox)
+  );
   if (manifestWriteResult.isErr()) {
     return manifestWriteResult;
   }
 
   if (restartExisting) {
-    const killResult = await killEgressForwarder(auth, sandbox);
+    const killResult = await traceSandboxStartupPhase(
+      "egress.kill_existing",
+      () => killEgressForwarder(auth, sandbox)
+    );
     if (killResult.isErr()) {
       return killResult;
     }
@@ -514,35 +575,52 @@ export async function setupEgressForwarder(
     )
   );
 
-  const startResult = await runSuccessfulRootCommand(
-    auth,
-    sandbox,
-    startForwarderCommand
+  const startResult = await traceSandboxStartupPhase(
+    "egress.start_forwarder",
+    () => runSuccessfulRootCommand(auth, sandbox, startForwarderCommand)
   );
   if (startResult.isErr()) {
     return startResult;
   }
 
-  for (let i = 0; i < EGRESS_SETUP_WAIT_RETRIES; i++) {
-    const healthResult = await checkEgressForwarderHealth(auth, sandbox);
-    if (healthResult.isErr()) {
-      return healthResult;
-    }
-    // Setup waits on the forwarder and DNS enforcement. The bundle gets
-    // installed below and is checked on subsequent execs.
-    if (
-      healthResult.value.portOk &&
-      healthResult.value.resolverOk &&
-      healthResult.value.nftablesOk
-    ) {
-      logger.info(logContext, "Sandbox egress is healthy");
-      return installMitmTrustBundle(auth, sandbox);
-    }
+  // wait_healthy brackets the poll loop (≤ EGRESS_SETUP_WAIT_RETRIES iterations
+  // with EGRESS_SETUP_WAIT_MS sleeps + per-iteration healthchecks) so the time
+  // spent waiting for the forwarder + DNS enforcement to come up is measured
+  // separately from installing the trust bundle.
+  const waitResult = await traceSandboxStartupPhase(
+    "egress.wait_healthy",
+    async () => {
+      for (let i = 0; i < EGRESS_SETUP_WAIT_RETRIES; i++) {
+        const healthResult = await checkEgressForwarderHealth(auth, sandbox);
+        if (healthResult.isErr()) {
+          return healthResult;
+        }
+        // Setup waits on the forwarder and DNS enforcement. The bundle gets
+        // installed below and is checked on subsequent execs.
+        if (
+          healthResult.value.portOk &&
+          healthResult.value.resolverOk &&
+          healthResult.value.nftablesOk
+        ) {
+          logger.info(logContext, "Sandbox egress is healthy");
+          return new Ok(undefined);
+        }
 
-    await sleep(EGRESS_SETUP_WAIT_MS);
+        await sleep(EGRESS_SETUP_WAIT_MS);
+      }
+
+      return new Err(
+        new Error("Sandbox egress did not become healthy in time")
+      );
+    }
+  );
+  if (waitResult.isErr()) {
+    return waitResult;
   }
 
-  return new Err(new Error("Sandbox egress did not become healthy in time"));
+  return traceSandboxStartupPhase("egress.install_trust_bundle", () =>
+    installMitmTrustBundle(auth, sandbox)
+  );
 }
 
 async function killEgressForwarder(

@@ -1,6 +1,6 @@
-import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
+import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeFileDetails } from "@app/poke/swr/frame_details";
 import { dateToHumanReadable } from "@app/types/shared/utils/date_utils";
 import {
@@ -17,7 +17,6 @@ import {
 
 export function FramePage() {
   const owner = useWorkspace();
-  useDocumentTitle(`Poke - ${owner.name} - File`);
 
   const sId = useRequiredPathParam("sId");
   const {
@@ -29,6 +28,12 @@ export function FramePage() {
     isFileError,
   } = usePokeFileDetails({
     owner,
+    sId,
+  });
+
+  usePokePageMetadata({
+    name: file?.fileName,
+    subtitle: owner.name,
     sId,
   });
 

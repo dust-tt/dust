@@ -124,15 +124,14 @@ final class ConversationDetailViewModel: ObservableObject {
 
     private func startConversationEvents() {
         conversationEventsTask?.cancel()
-        conversationEventsTask = Task { [weak self] in
-            guard let self else { return }
+        conversationEventsTask = Task { [weak self, workspaceId, conversationId = conversation.sId, tokenProvider] in
             var retryDelay: UInt64 = 1_000_000_000 // 1s
             let maxDelay: UInt64 = 30_000_000_000 // 30s
 
             while !Task.isCancelled {
                 let endpoint = AppConfig.Endpoints.conversationEvents(
                     workspaceId: workspaceId,
-                    conversationId: conversation.sId
+                    conversationId: conversationId
                 )
 
                 let stream = StreamingService.eventStream(
@@ -150,7 +149,7 @@ final class ConversationDetailViewModel: ObservableObject {
 
                         do {
                             let envelope = try decoder.decode(ConversationEventEnvelope.self, from: data)
-                            await handleConversationEvent(envelope.data)
+                            await self?.handleConversationEvent(envelope.data)
                         } catch {
                             logger.debug("Skipping unhandled conversation event: \(error)")
                         }
@@ -175,6 +174,7 @@ final class ConversationDetailViewModel: ObservableObject {
             startMessageStream(for: newEvent.message.sId)
 
         case let .userMessageNew(newEvent):
+            removeOptimisticUserMessage()
             insertMessageIfNew(.user(newEvent.message))
 
         case let .userMessagePromoted(event):
@@ -191,6 +191,38 @@ final class ConversationDetailViewModel: ObservableObject {
         guard !messages.contains(where: { $0.id == msg.id }) else { return }
         messages.append(msg)
         messages.sort(by: ConversationMessage.byRank)
+    }
+
+    // MARK: - Optimistic User Message
+
+    private var optimisticUserMessageId: String?
+
+    func addOptimisticUserMessage(content: String, userEmail: String) {
+        removeOptimisticUserMessage()
+        let sId = "pending-\(UUID().uuidString)"
+        let nextRank = (messages.map(\.rank).max() ?? 0) + 1
+        let message = UserMessage(
+            id: 0,
+            sId: sId,
+            type: .userMessage,
+            created: Date().timeIntervalSince1970 * 1000,
+            visibility: "visible",
+            version: 0,
+            rank: nextRank,
+            content: content,
+            user: nil,
+            context: UserMessageContext(username: nil, fullName: nil, email: userEmail, profilePictureUrl: nil),
+            contentFragments: nil
+        )
+        optimisticUserMessageId = sId
+        messages.append(.user(message))
+        messages.sort(by: ConversationMessage.byRank)
+    }
+
+    func removeOptimisticUserMessage() {
+        guard let id = optimisticUserMessageId else { return }
+        messages.removeAll { $0.id == id }
+        optimisticUserMessageId = nil
     }
 
     // MARK: - Message Streaming (tokens, thinking, actions)
@@ -219,11 +251,10 @@ final class ConversationDetailViewModel: ObservableObject {
         currentThinkingBuffer = ""
         stepCounter = 0
 
-        messageStreamTask = Task { [weak self] in
-            guard let self else { return }
+        messageStreamTask = Task { [weak self, workspaceId, conversationId = conversation.sId, tokenProvider] in
             let endpoint = AppConfig.Endpoints.messageEvents(
                 workspaceId: workspaceId,
-                conversationId: conversation.sId,
+                conversationId: conversationId,
                 messageId: messageId
             )
 
@@ -241,7 +272,7 @@ final class ConversationDetailViewModel: ObservableObject {
 
                     do {
                         let envelope = try decoder.decode(SSEEnvelope.self, from: data)
-                        await handleMessageEvent(envelope.data, messageId: messageId)
+                        await self?.handleMessageEvent(envelope.data, messageId: messageId)
                     } catch {
                         logger.debug("Skipping unhandled message event: \(error)")
                     }
@@ -254,6 +285,7 @@ final class ConversationDetailViewModel: ObservableObject {
 
             // Stream ended — only clean up if we're still the active generation
             // and not in a blocking state (approval/auth persist until resolved)
+            guard let self else { return }
             if streamGeneration == currentGeneration {
                 switch streamingPhase {
                 case .approvalRequired, .personalAuthRequired, .fileAuthRequired:
@@ -314,8 +346,8 @@ final class ConversationDetailViewModel: ObservableObject {
             lastError = ErrorInfo(from: event.error, messageId: messageId)
             finalizeMessage(messageId: messageId, status: .failed)
 
-        case .agentGenerationCancelled:
-            finalizeMessage(messageId: messageId, status: .cancelled)
+        case let .agentGenerationCancelled(event):
+            finalizeMessage(messageId: messageId, status: event.status == "interrupted" ? .interrupted : .cancelled)
 
         case let .toolPersonalAuthRequired(event):
             streamingPhase = .personalAuthRequired(

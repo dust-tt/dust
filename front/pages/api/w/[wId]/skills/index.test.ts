@@ -3,7 +3,6 @@ import { SkillMCPServerConfigurationModel } from "@app/lib/models/skill";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { discoverToolsSkill } from "@app/lib/resources/skill/code_defined/discover_tools";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { serializeSkillTag } from "@app/lib/skills/format";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
@@ -727,18 +726,17 @@ describe("POST /api/w/[wId]/skills", () => {
     const childSkill = await SkillFactory.create(auth, {
       name: "Referenced Skill",
     });
-    const skillReferenceTag =
-      SkillFactory.serializeSkillReferenceTag(childSkill);
 
     req.body = {
       name: "Parent Skill",
       agentFacingDescription: "To use with another skill",
       userFacingDescription: "A skill with a nested reference",
-      instructions: `Start with ${skillReferenceTag}.`,
+      instructions: "Start with the referenced skill.",
       icon: "PuzzleIcon",
       tools: [],
       extendedSkillId: null,
       attachedKnowledge: [],
+      referencedSkillIds: [childSkill.sId],
       instructionsHtml: null,
     };
 
@@ -758,36 +756,34 @@ describe("POST /api/w/[wId]/skills", () => {
     ]);
   });
 
-  it("returns 400 for invalid nested skill references", async () => {
+  it("drops missing nested skill references", async () => {
     const { auth, req, res } = await setupTest("POST", "admin");
 
     await FeatureFlagFactory.basic(auth, "nested_skills");
-    const invalidSkillReferenceTag = serializeSkillTag({
-      id: "not-a-skill-reference",
-      icon: null,
-      name: "Invalid Skill Reference",
-    });
 
     req.body = {
       name: "Parent Skill",
       agentFacingDescription: "To use with another skill",
       userFacingDescription: "A skill with an invalid nested reference",
-      instructions: `Start with ${invalidSkillReferenceTag}.`,
+      instructions: "Start with an invalid nested reference.",
       icon: "PuzzleIcon",
       tools: [],
       extendedSkillId: null,
       attachedKnowledge: [],
+      referencedSkillIds: ["not-a-skill-reference"],
       instructionsHtml: null,
     };
 
     await handler(req, res);
-    expect(res._getStatusCode()).toBe(400);
-    expect(res._getJSONData()).toEqual({
-      error: {
-        type: "invalid_request_error",
-        message: "Invalid skill reference ID: not-a-skill-reference",
-      },
-    });
+    expect(res._getStatusCode()).toBe(200);
+
+    const createdSkill = await SkillResource.fetchById(
+      auth,
+      res._getJSONData().skill.sId
+    );
+    expect(createdSkill).not.toBeNull();
+
+    await expect(createdSkill!.fetchChildSkills(auth)).resolves.toHaveLength(0);
   });
 
   it("creates a skill configuration with additional requested spaces", async () => {

@@ -5,6 +5,7 @@ import {
 } from "@app/components/resources/resources_icons";
 import {
   AttachmentChip,
+  Chip,
   ExclamationCircleIcon,
   ToolsIcon,
 } from "@dust-tt/sparkle";
@@ -23,6 +24,7 @@ function getToolIcon(toolIcon: string | null) {
 
 interface ToolChipProps {
   color?: React.ComponentProps<typeof AttachmentChip>["color"];
+  onClick?: () => void;
   onRemove?: () => void;
   title: string;
   toolIcon: string | null;
@@ -30,15 +32,17 @@ interface ToolChipProps {
 
 export function ToolChip({
   color = "white",
+  onClick,
   onRemove,
   title,
   toolIcon,
 }: ToolChipProps) {
   return (
-    <AttachmentChip
+    <Chip
       label={title}
-      icon={{ visual: getToolIcon(toolIcon) }}
+      icon={getToolIcon(toolIcon)}
       color={color}
+      onClick={onClick}
       onRemove={onRemove}
       size="xs"
     />

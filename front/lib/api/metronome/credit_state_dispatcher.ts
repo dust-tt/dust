@@ -1,13 +1,20 @@
+import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { isPAYGEnabled } from "@app/lib/credits/credit_payg";
+import { getMetronomeProgrammaticCap } from "@app/lib/metronome/alerts/programmatic_cap";
 import { listMetronomeBalances } from "@app/lib/metronome/client";
 import { getCreditTypeAwuId } from "@app/lib/metronome/constants";
 import { invalidateWorkspacePoolCredits } from "@app/lib/metronome/credit_balance";
 import { transitionProgrammaticCreditState } from "@app/lib/metronome/programmatic_credit_state_machine";
-import { clearUserCapBlocked } from "@app/lib/metronome/user_block";
+import {
+  clearUserCapBlocked,
+  clearWorkspaceProgrammaticWarned,
+  setWorkspaceProgrammaticWarned,
+} from "@app/lib/metronome/user_block";
 import { transitionUserCreditState } from "@app/lib/metronome/user_credit_state_machine";
 import type { WorkspaceCreditEvent } from "@app/lib/metronome/workspace_credit_state_machine";
 import { transitionWorkspaceCreditState } from "@app/lib/metronome/workspace_credit_state_machine";
+import { notifyAdminsProgrammaticCapReached } from "@app/lib/notifications/workflows/programmatic-cap-reached";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -190,11 +197,18 @@ export async function dispatchProgrammaticLowBalance({
 
 export async function dispatchProgrammaticCapReached({
   workspace,
+  eventId,
 }: {
   workspace: WorkspaceResource;
+  eventId: string;
 }): Promise<void> {
   await transitionProgrammaticCreditState(workspace, {
     type: "programmatic_cap_reached",
+  });
+  void notifyAdminsProgrammaticCapAboutStatus({
+    workspace,
+    isBlocked: true,
+    eventId,
   });
 }
 
@@ -206,6 +220,7 @@ export async function dispatchProgrammaticCapReset({
   await transitionProgrammaticCreditState(workspace, {
     type: "programmatic_cap_reset",
   });
+  void clearWorkspaceProgrammaticWarned(workspace.sId);
 }
 
 /**
@@ -213,18 +228,82 @@ export async function dispatchProgrammaticCapReset({
  * threshold (80% of the monthly cap). Unlike the other programmatic
  * dispatchers this does not transition the credit state machine — the
  * workspace stays in its current balance state and no throttling kicks in.
- * The signal is informational only.
+ * Sets the warning flag in Redis and emails workspace admins.
  */
 export async function dispatchProgrammaticWarning({
   workspace,
+  eventId,
 }: {
   workspace: WorkspaceResource;
+  eventId: string;
 }): Promise<void> {
-  // TODO: send notification to admin.
+  void setWorkspaceProgrammaticWarned(workspace.sId);
+  void notifyAdminsProgrammaticCapAboutStatus({
+    workspace,
+    isBlocked: false,
+    eventId,
+  });
   logger.info(
     { workspaceId: workspace.sId },
     "[ProgrammaticCreditDispatcher] Programmatic warning threshold reached"
   );
+}
+
+async function notifyAdminsProgrammaticCapAboutStatus({
+  workspace,
+  isBlocked,
+  eventId,
+}: {
+  workspace: WorkspaceResource;
+  isBlocked: boolean;
+  eventId: string;
+}): Promise<void> {
+  const metronomeCustomerId = workspace.metronomeCustomerId;
+  if (!metronomeCustomerId) {
+    return;
+  }
+
+  try {
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    const lightWorkspace = renderLightWorkspaceType({ workspace });
+
+    const capResult = await getMetronomeProgrammaticCap({
+      metronomeCustomerId,
+      workspaceId: workspace.sId,
+    });
+    const monthlyCapCredits = capResult.isOk() ? capResult.value : null;
+
+    const { members: admins } = await getMembers(auth, {
+      roles: ["admin"],
+      activeOnly: true,
+    });
+    if (admins.length === 0) {
+      logger.warn(
+        { workspaceId: workspace.sId },
+        "[ProgrammaticCreditDispatcher] No active admins found for cap notification"
+      );
+      return;
+    }
+
+    notifyAdminsProgrammaticCapReached({
+      admins: admins.map((admin) => ({
+        sId: admin.sId,
+        email: admin.email,
+        firstName: admin.firstName,
+        lastName: admin.lastName,
+      })),
+      workspaceId: workspace.sId,
+      workspaceName: lightWorkspace.name,
+      monthlyCapCredits,
+      isBlocked,
+      eventId,
+    });
+  } catch (err) {
+    logger.error(
+      { workspaceId: workspace.sId, isBlocked, err },
+      "[ProgrammaticCreditDispatcher] Failed to notify admins of programmatic cap status"
+    );
+  }
 }
 
 /**

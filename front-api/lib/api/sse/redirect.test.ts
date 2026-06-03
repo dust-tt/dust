@@ -38,7 +38,20 @@ describe("redirectToSse", () => {
     const res = await requestSseRedirect(routePattern, path);
 
     expect(res.status).toBe(307);
-    expect(new URL(res.headers.get("location")!).pathname).toBe(expected);
+    expect(res.headers.get("location")).toBe(expected);
+  });
+
+  // The Location must stay relative so the client resolves it against the
+  // original https request, preserving the Authorization header (an absolute
+  // http:// Location would downgrade the scheme and strip the header -> 401).
+  it("emits a relative location (no scheme/origin)", async () => {
+    const res = await requestSseRedirect(
+      "/api/v1/w/:wId/assistant/conversations/:cId/events",
+      "/api/v1/w/w1/assistant/conversations/c1/events"
+    );
+
+    const location = res.headers.get("location")!;
+    expect(location.startsWith("/")).toBe(true);
   });
 
   it("preserves the query string on the redirected location", async () => {
@@ -48,10 +61,8 @@ describe("redirectToSse", () => {
     );
 
     expect(res.status).toBe(307);
-    const location = new URL(res.headers.get("location")!);
-    expect(location.pathname).toBe(
-      "/api/sse/v1/w/w1/assistant/conversations/c1/events"
+    expect(res.headers.get("location")).toBe(
+      "/api/sse/v1/w/w1/assistant/conversations/c1/events?foo=bar"
     );
-    expect(location.search).toBe("?foo=bar");
   });
 });

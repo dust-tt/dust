@@ -6,6 +6,10 @@ import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
+const ParamsSchema = z.object({
+  cId: z.string(),
+});
+
 const PostConversationForkBodySchema = z.object({
   sourceMessageId: z.string().optional(),
 });
@@ -21,10 +25,11 @@ const app = workspaceApp();
 
 app.post(
   "/",
+  validate("param", ParamsSchema),
   validate("json", PostConversationForkBodySchema),
   async (ctx): HandlerResult<PostConversationForkResponseBody> => {
     const auth = ctx.get("auth");
-    const cId = ctx.req.param("cId") ?? "";
+    const { cId } = ctx.req.valid("param");
 
     const { sourceMessageId } = ctx.req.valid("json");
 

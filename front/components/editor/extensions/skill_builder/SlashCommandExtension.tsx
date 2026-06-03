@@ -313,6 +313,7 @@ SkillBuilderSlashCommandDropdown.displayName =
 export interface SlashCommandExtensionOptions {
   currentSkillId?: string | null;
   includeSkillSuggestions: boolean;
+  onSelectSkill?: (skill: SlashCommandSkillSuggestion) => void;
   onSelectTool?: (tool: MCPServerViewType) => void;
   owner?: LightWorkspaceType;
   suggestion: Partial<SuggestionOptions>;
@@ -348,6 +349,7 @@ export const SlashCommandExtension =
       return {
         currentSkillId: null,
         includeSkillSuggestions: false,
+        onSelectSkill: undefined,
         onSelectTool: undefined,
         owner: undefined,
         suggestion: {
@@ -419,11 +421,12 @@ export const SlashCommandExtension =
                   .focus()
                   .deleteRange(range)
                   .insertSkillNode({
-                    skillId: skill.id,
+                    skillId: skill.sId,
                     skillIcon: skill.icon,
                     skillName: skill.name,
                   })
                   .run();
+                extensionOptions.onSelectSkill?.(skill);
               }
             } else if (props.action === SELECT_TOOL_SLASH_COMMAND_ACTION) {
               const tool = props.data?.tool;

@@ -4,6 +4,7 @@ import {
 } from "@app/lib/api/files/mount_path";
 import { mintDownscopedGcsToken } from "@app/lib/api/sandbox/gcs/token";
 import type { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
+import { traceSandboxStartupPhase } from "@app/lib/api/sandbox/instrumentation";
 import {
   type RootCommand,
   rootCommand,
@@ -22,6 +23,18 @@ const MOUNT_TIMEOUT_MS = 30_000;
 
 const MOUNT_POINT_CONVERSATION = "/files/conversation";
 const MOUNT_POINT_POD = "/files/pod";
+
+// The token HTTP server (netcat loop baked into the image) that hands gcsfuse a
+// fresh GCS access token. gcsfuse fetches from it on every request.
+const TOKEN_SERVER_URL = "http://127.0.0.1:9876";
+
+// Readiness poll after starting the token server: up to
+// POLL_ATTEMPTS * POLL_INTERVAL_SECONDS = 5s of polling, well under the 10s
+// exec hard timeout. The loop exits the instant curl succeeds (typically
+// <100ms), so the 5s ceiling only bites on a genuinely stuck server.
+const TOKEN_SERVER_POLL_ATTEMPTS = 100;
+const TOKEN_SERVER_POLL_INTERVAL_SECONDS = 0.05;
+const TOKEN_SERVER_EXEC_TIMEOUT_MS = 10_000;
 
 interface MountTarget {
   label: "conversation" | "pod";
@@ -105,11 +118,14 @@ export async function mountConversationFiles(
     prefixes: targets.map((t) => t.prefix),
   });
 
-  // 1. Mint downscoped token covering every prefix.
-  const tokenResult = await mintDownscopedGcsToken({
-    bucket,
-    prefixes: targets.map((t) => t.prefix),
-  });
+  // 1. Mint downscoped token covering every prefix. This is a Node-side GCP
+  // call (no sandbox command, so no provider span) — a real timing blindspot.
+  const tokenResult = await traceSandboxStartupPhase("gcs.mint_token", () =>
+    mintDownscopedGcsToken({
+      bucket,
+      prefixes: targets.map((t) => t.prefix),
+    })
+  );
   if (tokenResult.isErr()) {
     childLogger.error(
       { err: tokenResult.error },
@@ -126,41 +142,49 @@ export async function mountConversationFiles(
     expires_in: expiresInSeconds,
   });
 
-  // 2. Write token file into the sandbox.
-  const writeResult = await sandbox.exec(
-    auth,
-    `printf '%s' '${escapeSingleQuotes(tokenJson)}' > /tmp/token.json`
+  // 2-3. Write the token file, start the token server (netcat loop baked into
+  // the template), and poll it ready, all in ONE exec. Polling every 50ms
+  // returns the instant the server is listening (typically <100ms) instead of
+  // a flat `sleep 1`, and folds what used to be three sandbox round-trips into
+  // one. The server is nohup'd so it survives this shell exiting.
+  const tokenServerResult = await traceSandboxStartupPhase(
+    "gcs.token_server",
+    () =>
+      sandbox.exec(
+        auth,
+        `printf '%s' '${escapeSingleQuotes(tokenJson)}' > /tmp/token.json; ` +
+          "nohup bash /home/agent/.bin/token-server.sh > /tmp/server.log 2>&1 & " +
+          `i=0; while [ $i -lt ${TOKEN_SERVER_POLL_ATTEMPTS} ]; do ` +
+          `curl -sf ${TOKEN_SERVER_URL} > /dev/null 2>&1 && exit 0; ` +
+          `sleep ${TOKEN_SERVER_POLL_INTERVAL_SECONDS}; i=$((i+1)); ` +
+          "done; exit 1",
+        { timeoutMs: TOKEN_SERVER_EXEC_TIMEOUT_MS }
+      )
   );
-  if (writeResult.isErr()) {
+  // A provider-level Err (sandbox-not-found, command transport failure,
+  // timeout) is a different failure class than "server didn't come up", so
+  // return it as-is to keep the concrete cause at the caller boundary rather
+  // than flattening it into the generic readiness error.
+  if (tokenServerResult.isErr()) {
     childLogger.error(
-      { err: writeResult.error },
-      "GCS mount: failed to write token file"
+      { err: tokenServerResult.error },
+      "GCS mount: token server exec failed"
     );
-    return writeResult;
+    return tokenServerResult;
   }
-
-  // 3. Start token server and wait until it's listening.
-  // The server script is a netcat loop baked into the template.
-  // Start in background, then verify with a separate exec (matching PoC).
-  const startResult = await sandbox.exec(
-    auth,
-    "bash /home/agent/.bin/token-server.sh > /tmp/server.log 2>&1 &"
-  );
-  if (startResult.isErr()) {
+  if (tokenServerResult.value.exitCode !== 0) {
+    const msg = "Token server not ready in time";
+    // Surface the poll-loop's own output (the nohup'd server logs to
+    // /tmp/server.log inside the sandbox, but the exec's stdout/stderr is the
+    // only signal we get back here) so a broken token-server.sh isn't an opaque
+    // timeout.
     childLogger.error(
-      { err: startResult.error },
-      "GCS mount: failed to start token server"
+      {
+        stdout: tokenServerResult.value.stdout,
+        stderr: tokenServerResult.value.stderr,
+      },
+      msg
     );
-    return startResult;
-  }
-
-  const checkResult = await sandbox.exec(
-    auth,
-    "sleep 1 && curl -sf http://127.0.0.1:9876 > /dev/null 2>&1"
-  );
-  if (checkResult.isErr() || checkResult.value.exitCode !== 0) {
-    const msg = "Token server not ready after 1s";
-    childLogger.error({}, msg);
     return new Err(new Error(msg));
   }
 
@@ -169,9 +193,14 @@ export async function mountConversationFiles(
     targets,
     async (target) => {
       const mountCmd = buildMountCommand({ bucket, ...target });
-      const mountResult = await sandbox.execRoot(auth, mountCmd, {
-        timeoutMs: MOUNT_TIMEOUT_MS,
-      });
+      const mountResult = await traceSandboxStartupPhase(
+        "gcs.gcsfuse_mount",
+        () =>
+          sandbox.execRoot(auth, mountCmd, {
+            timeoutMs: MOUNT_TIMEOUT_MS,
+          }),
+        { target: target.label }
+      );
 
       if (mountResult.isErr()) {
         childLogger.error(
@@ -288,7 +317,7 @@ export function buildMountCommand({
     rootCommand.timeout(
       rootCommand.exec("/usr/bin/gcsfuse", [
         "--token-url",
-        "http://127.0.0.1:9876",
+        TOKEN_SERVER_URL,
         "--reuse-token-from-url=false",
         "--only-dir",
         prefix,

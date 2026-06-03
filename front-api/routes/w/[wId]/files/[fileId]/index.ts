@@ -16,8 +16,14 @@ import { isConversationFileUseCase } from "@app/types/files";
 import { createHono } from "@front-api/lib/hono";
 import type { WorkspaceAwareCtx } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import type { HttpBindings } from "@hono/node-server";
 import type { Context } from "hono";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  fileId: z.string(),
+});
 
 import editText from "./edit-text";
 import exportApp from "./export";
@@ -64,9 +70,9 @@ function getSecureFileAction(
 // Mounted at /api/w/:wId/files/:fileId.
 const app = createHono<WorkspaceAwareCtx & { Bindings: HttpBindings }>();
 
-app.get("/", async (ctx) => {
+app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
-  const fileId = ctx.req.param("fileId") ?? "";
+  const { fileId } = ctx.req.valid("param");
 
   const file = await FileResource.fetchById(auth, fileId);
   if (!file) {
@@ -110,9 +116,9 @@ app.get("/", async (ctx) => {
   return ctx.redirect(url);
 });
 
-app.delete("/", async (ctx) => {
+app.delete("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
-  const fileId = ctx.req.param("fileId") ?? "";
+  const { fileId } = ctx.req.valid("param");
 
   const file = await FileResource.fetchById(auth, fileId);
   if (!file) {
@@ -183,9 +189,9 @@ app.delete("/", async (ctx) => {
   return ctx.body(null, 204);
 });
 
-app.post("/", async (ctx) => {
+app.post("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
-  const fileId = ctx.req.param("fileId") ?? "";
+  const { fileId } = ctx.req.valid("param");
 
   const file = await FileResource.fetchById(auth, fileId);
   if (!file) {

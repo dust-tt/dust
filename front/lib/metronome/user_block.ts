@@ -1,12 +1,13 @@
 // Redis fast-path cache for credit-state-driven access control.
 //
-// Two orthogonal keys back the credit state machines:
+// Three keys back the credit state machines:
 //   - `metronome:user_cap:<ws>:<user>`: caches the user's per-user cap state.
+//   - `metronome:user_awu_warning:<ws>:<user>`: caches the 80% AWU warning state.
 //   - `metronome:pool_depleted:<ws>`: caches the workspace pool state.
 //
 // Each key stores an explicit boolean flag:
-//   - `"1"`: blocked / depleted
-//   - `"0"`: not blocked / not depleted
+//   - `"1"`: blocked / warned / depleted
+//   - `"0"`: not blocked / not warned / not depleted
 //
 // `isUserBlocked` is the unified read: a user is blocked iff either cached flag
 // is `"1"`, and it returns the reason ("credits_exhausted" for a depleted
@@ -17,6 +18,9 @@
 // of truth. Cache writes are gated on DB transaction commit via
 // `invalidateCacheAfterCommit`, and cache misses fall back to DB and
 // repopulate both flags.
+//
+// The warning flag (`metronome:user_awu_warning`) has no DB column backing it:
+// a cold-cache miss returns `false` (safe default until the next webhook re-sets the flag).
 //
 import { runOnRedis } from "@app/lib/api/redis";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -43,12 +47,20 @@ function buildUserCapKey(workspaceId: string, userId: string): string {
   return `metronome:user_cap:${workspaceId}:${userId}`;
 }
 
+function buildUserAwuWarningKey(workspaceId: string, userId: string): string {
+  return `metronome:user_awu_warning:${workspaceId}:${userId}`;
+}
+
 function buildWorkspacePoolDepletedKey(workspaceId: string): string {
   return `metronome:pool_depleted:${workspaceId}`;
 }
 
 function buildWorkspaceCreditPoolStatusKey(workspaceId: string): string {
   return `metronome:pool_credit_status:${workspaceId}`;
+}
+
+function buildWorkspaceProgrammaticWarningKey(workspaceId: string): string {
+  return `metronome:programmatic_warning:${workspaceId}`;
 }
 
 function buildWorkspaceProgrammaticDepletedKey(workspaceId: string): string {
@@ -148,6 +160,61 @@ export async function clearUserCapBlocked(
   userId: string
 ): Promise<void> {
   await setFlag(buildUserCapKey(workspaceId, userId), NOT_BLOCKED_FLAG);
+}
+
+// Per-user AWU 80% warning (set by webhook; no DB fallback)
+
+export async function setUserAwuWarned(
+  workspaceId: string,
+  userId: string
+): Promise<void> {
+  await setFlag(buildUserAwuWarningKey(workspaceId, userId), BLOCKED_FLAG);
+}
+
+export async function clearUserAwuWarned(
+  workspaceId: string,
+  userId: string
+): Promise<void> {
+  await setFlag(buildUserAwuWarningKey(workspaceId, userId), NOT_BLOCKED_FLAG);
+}
+
+export async function isUserAwuWarned(
+  workspaceId: string,
+  userId: string
+): Promise<boolean> {
+  const val = await runOnRedis({ origin: REDIS_ORIGIN }, async (client) =>
+    client.get(buildUserAwuWarningKey(workspaceId, userId))
+  );
+  return val === BLOCKED_FLAG;
+}
+
+// Workspace programmatic cap 80% warning (set by webhook; no DB fallback)
+
+export async function setWorkspaceProgrammaticWarned(
+  workspaceId: string
+): Promise<void> {
+  await setFlag(
+    buildWorkspaceProgrammaticWarningKey(workspaceId),
+    BLOCKED_FLAG
+  );
+}
+
+export async function clearWorkspaceProgrammaticWarned(
+  workspaceId: string
+): Promise<void> {
+  await setFlag(
+    buildWorkspaceProgrammaticWarningKey(workspaceId),
+    NOT_BLOCKED_FLAG
+  );
+}
+
+export async function isWorkspaceProgrammaticWarned(
+  workspaceId: string
+): Promise<boolean> {
+  const val = await runOnRedis({ origin: REDIS_ORIGIN }, async (client) =>
+    client.get(buildWorkspaceProgrammaticWarningKey(workspaceId))
+  );
+  return val === BLOCKED_FLAG;
 }
 
 // Workspace pool depleted (workspace credit state machine)

@@ -11,6 +11,12 @@ import type { FileType } from "@app/types/files";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  cId: z.string(),
+});
 
 export type PlanApprovalState = "draft" | "pending" | "approved";
 
@@ -25,9 +31,10 @@ const app = workspaceApp();
 
 app.get(
   "/",
+  validate("param", ParamsSchema),
   async (ctx): HandlerResult<GetConversationPlanModeResponseBody> => {
     const auth = ctx.get("auth");
-    const cId = ctx.req.param("cId") ?? "";
+    const { cId } = ctx.req.valid("param");
 
     // Ensure the caller has access to the conversation.
     const conversationRes = await getLightConversation(auth, cId);

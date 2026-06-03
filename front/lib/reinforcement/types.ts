@@ -50,31 +50,36 @@ const SkillInstructionEditArgSchema = z.object({
   type: z.literal("replace"),
 });
 
-export const TOOL_SCHEMAS: Record<
-  TerminalToolName,
-  z.ZodObject<z.ZodRawShape>
-> = {
-  edit_skill: z.object({
+const SkillToolEditArgSchema = z.object({
+  action: z
+    .enum(["add", "remove"])
+    .describe("Whether to add or remove the tool"),
+  toolId: z.string().describe("The identifier of the tool to add or remove"),
+});
+
+export function getEditSkillToolSchema({
+  useInlineTools,
+}: {
+  useInlineTools: boolean;
+}): z.ZodObject<z.ZodRawShape> {
+  return z.object({
     skillId: z.string().describe("The sId of the skill to modify"),
     instructionEdits: z
       .array(SkillInstructionEditArgSchema)
       .optional()
       .describe(
-        "Block-targeted edits to the skill instructions. Each item targets one block by its data-block-id."
+        useInlineTools
+          ? "Block-targeted edits to the skill instructions. Each item targets one block by its data-block-id. Tool changes must be represented by adding or removing inline <tool> tags in these instruction edits."
+          : "Block-targeted edits to the skill instructions. Each item targets one block by its data-block-id."
       ),
-    toolEdits: z
-      .array(
-        z.object({
-          action: z
-            .enum(["add", "remove"])
-            .describe("Whether to add or remove the tool"),
-          toolId: z
-            .string()
-            .describe("The identifier of the tool to add or remove"),
-        })
-      )
-      .optional()
-      .describe("Tools to add or remove from the skill."),
+    ...(useInlineTools
+      ? {}
+      : {
+          toolEdits: z
+            .array(SkillToolEditArgSchema)
+            .optional()
+            .describe("Tools to add or remove from the skill."),
+        }),
     agentFacingDescriptionEdit: z
       .object({
         content: z
@@ -86,7 +91,9 @@ export const TOOL_SCHEMAS: Record<
       })
       .optional()
       .describe(
-        "Replacement for the skill's agent-facing description. Should typically be its own suggestion, not bundled with instruction or tool edits."
+        useInlineTools
+          ? "Replacement for the skill's agent-facing description. Should typically be its own suggestion, not bundled with instruction edits."
+          : "Replacement for the skill's agent-facing description. Should typically be its own suggestion, not bundled with instruction or tool edits."
       ),
     analysis: z
       .string()
@@ -107,7 +114,14 @@ export const TOOL_SCHEMAS: Record<
       .describe(
         "The sIds of the source suggestions consolidated into this suggestion."
       ),
-  }),
+  });
+}
+
+export const TOOL_SCHEMAS: Record<
+  TerminalToolName,
+  z.ZodObject<z.ZodRawShape>
+> = {
+  edit_skill: getEditSkillToolSchema({ useInlineTools: true }),
   reject_suggestion: z.object({
     sourceSuggestionIds: z
       .array(z.string())

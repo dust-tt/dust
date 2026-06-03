@@ -1,7 +1,9 @@
+import { WEB_SEARCH_BROWSE_SERVER_NAME } from "@app/lib/api/actions/servers/web_search_browse/metadata";
 import { MessageModel } from "@app/lib/models/agent/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type {
   AgentAsset,
@@ -149,6 +151,27 @@ export async function seedReinforcement(
     ctx.logger.warn(
       { error: e },
       "Failed to seed data sources (CoreAPI unavailable?), skills will have unresolved placeholders"
+    );
+  }
+
+  ctx.logger.info("Resolving MCP tool placeholders...");
+  try {
+    if (ctx.execute) {
+      await MCPServerViewResource.ensureAllAutoToolsAreCreated(ctx.auth);
+      const [webSearchView] =
+        await MCPServerViewResource.getMCPServerViewsForAutoInternalTools(
+          ctx.auth,
+          [WEB_SEARCH_BROWSE_SERVER_NAME]
+        );
+      const webSearchViewJson = webSearchView?.toJSON();
+      if (webSearchViewJson) {
+        placeholders.__WEB_SEARCH_TOOL_ID__ = webSearchViewJson.sId;
+      }
+    }
+  } catch (e) {
+    ctx.logger.warn(
+      { error: e },
+      "Failed to resolve MCP tool placeholders, inline tool seed suggestions will have unresolved placeholders"
     );
   }
 

@@ -137,6 +137,7 @@ WorkspaceModel.init(
     indexes: [
       { unique: true, fields: ["sId"] },
       { unique: true, fields: ["workOSOrganizationId"] },
+      { fields: ["name"], concurrently: true, name: "workspaces_name" },
     ],
   }
 );

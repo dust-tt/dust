@@ -11,14 +11,20 @@ import { isString } from "@app/types/shared/utils/general";
 import { readableToReadableStream } from "@app/types/shared/utils/streams";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import path from "path";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  cId: z.string(),
+});
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/files/thumbnail.
 const app = workspaceApp();
 
-app.get("/", async (ctx) => {
+app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
-  const cId = ctx.req.param("cId") ?? "";
+  const { cId } = ctx.req.valid("param");
   const filePath = ctx.req.query("filePath");
 
   if (!isString(filePath)) {

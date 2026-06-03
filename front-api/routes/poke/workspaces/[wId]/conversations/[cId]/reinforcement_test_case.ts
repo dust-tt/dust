@@ -11,6 +11,12 @@ import {
 import type { ModelId } from "@app/types/shared/model_id";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  cId: z.string(),
+});
 
 interface ReinforcementTestCaseMockAction {
   functionCallName: string;
@@ -82,9 +88,10 @@ const app = pokeApp();
 
 app.get(
   "/",
+  validate("param", ParamsSchema),
   async (ctx): HandlerResult<PokeGetReinforcementTestCaseResponseBody> => {
     const auth = ctx.get("auth");
-    const cId = ctx.req.param("cId") ?? "";
+    const { cId } = ctx.req.valid("param");
 
     const conversationRes = await getConversation(auth, cId, true);
     if (conversationRes.isErr()) {

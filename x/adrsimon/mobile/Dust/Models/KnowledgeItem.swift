@@ -9,7 +9,9 @@ struct KnowledgeItem: Identifiable {
     let connectorProvider: String?
     let nodeType: String?
 
-    var id: String { "\(dataSourceViewId):\(internalId)" }
+    var id: String {
+        "\(dataSourceViewId):\(internalId)"
+    }
 
     var icon: SparkleIcon {
         if let provider = connectorProvider, let icon = MCPServerIcon.icon(for: provider) {

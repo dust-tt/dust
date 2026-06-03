@@ -27,6 +27,10 @@ const ShareFileRequestBodySchema = z.object({
   shareScope: fileShareScopeSchema,
 });
 
+const ParamsSchema = z.object({
+  fileId: z.string(),
+});
+
 // Mounted at /api/w/:wId/files/:fileId/share.
 const app = workspaceApp();
 
@@ -35,32 +39,37 @@ const app = workspaceApp();
 // keeping mounts before leaf handlers matches the convention used elsewhere).
 app.route("/grants", grants);
 
-app.get("/", async (ctx): HandlerResult<ShareFileResponseBody> => {
-  const auth = ctx.get("auth");
-  const fileId = ctx.req.param("fileId") ?? "";
+app.get(
+  "/",
+  validate("param", ParamsSchema),
+  async (ctx): HandlerResult<ShareFileResponseBody> => {
+    const auth = ctx.get("auth");
+    const { fileId } = ctx.req.valid("param");
 
-  const file = await fetchShareableFile(ctx, auth, fileId);
-  if (file instanceof Response) {
-    return file;
+    const file = await fetchShareableFile(ctx, auth, fileId);
+    if (file instanceof Response) {
+      return file;
+    }
+
+    const shareInfo = await file.getShareInfo();
+    if (!shareInfo) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: { type: "file_not_found", message: "File not found." },
+      });
+    }
+
+    return ctx.json(shareInfo);
   }
-
-  const shareInfo = await file.getShareInfo();
-  if (!shareInfo) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: { type: "file_not_found", message: "File not found." },
-    });
-  }
-
-  return ctx.json(shareInfo);
-});
+);
 
 app.post(
   "/",
+  validate("param", ParamsSchema),
   validate("json", ShareFileRequestBodySchema),
   async (ctx): HandlerResult<ShareFileResponseBody> => {
     const auth = ctx.get("auth");
-    const fileId = ctx.req.param("fileId") ?? "";
+    const { fileId } = ctx.req.valid("param");
 
     const file = await fetchShareableFile(ctx, auth, fileId);
     if (file instanceof Response) {

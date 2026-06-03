@@ -1,12 +1,12 @@
-import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useAppRouter, useRequiredPathParam } from "@app/lib/platform";
 import { useFetcher } from "@app/lib/swr/swr";
+import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { Spinner } from "@dust-tt/sparkle";
 import { useEffect } from "react";
 import useSWR from "swr";
 
 export function ConnectorRedirectPage() {
-  useDocumentTitle("Poke - Connector Redirect");
+  usePokePageMetadata({ name: "Connector Redirect" });
 
   const connectorId = useRequiredPathParam("connectorId");
   const router = useAppRouter();

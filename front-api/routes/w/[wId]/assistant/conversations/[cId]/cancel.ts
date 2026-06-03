@@ -10,6 +10,10 @@ import { validate } from "@front-api/middlewares/validator";
 import type { SuccessResponseBody } from "@front-api/routes/types";
 import { z } from "zod";
 
+const ParamsSchema = z.object({
+  cId: z.string(),
+});
+
 const PostMessageEventBodySchema = z.object({
   action: z.enum(["cancel", "gracefully_stop", "interrupt"]),
   messageIds: z.array(z.string()),
@@ -22,10 +26,11 @@ app.use("*", streamingTag);
 
 app.post(
   "/",
+  validate("param", ParamsSchema),
   validate("json", PostMessageEventBodySchema),
   async (ctx): HandlerResult<SuccessResponseBody> => {
     const auth = ctx.get("auth");
-    const conversationId = ctx.req.param("cId") ?? "";
+    const { cId: conversationId } = ctx.req.valid("param");
 
     const conversationRes =
       await ConversationResource.fetchConversationWithoutContent(

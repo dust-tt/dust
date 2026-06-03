@@ -20,16 +20,21 @@ const PostDataSourceBodySchema = z
   })
   .strict();
 
+const ParamsSchema = z.object({
+  dsId: z.string(),
+});
+
 // Mounted under /api/w/:wId/data_sources/:dsId. The bare `/` handles POST to
 // update the data source settings.
 const app = workspaceApp();
 
 app.post(
   "/",
+  validate("param", ParamsSchema),
   validate("json", PostDataSourceBodySchema),
   async (ctx): HandlerResult<GetOrPostDataSourceResponseBody> => {
     const auth = ctx.get("auth");
-    const dsId = ctx.req.param("dsId") ?? "";
+    const { dsId } = ctx.req.valid("param");
 
     const dataSource = await DataSourceResource.fetchById(auth, dsId);
     if (!dataSource) {

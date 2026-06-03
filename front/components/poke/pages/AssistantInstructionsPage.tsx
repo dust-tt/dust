@@ -3,6 +3,7 @@ import { preprocessMarkdownForEditor } from "@app/components/editor/lib/preproce
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { usePokeAgentDetails } from "@app/poke/swr/agent_details";
+import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { Spinner } from "@dust-tt/sparkle";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { useEffect, useMemo, useRef } from "react";
@@ -24,6 +25,12 @@ export function AssistantInstructionsPage() {
   const agentConfig = agentDetails?.agentConfigurations[0];
   const instructions = agentConfig?.instructions ?? "";
   const instructionsHtml = agentConfig?.instructionsHtml ?? null;
+
+  usePokePageMetadata({
+    name: agentConfig ? `${agentConfig.name} — Instructions` : undefined,
+    subtitle: owner.name,
+    sId: aId,
+  });
 
   const extensions = useMemo(
     () => buildAgentInstructionsReadOnlyExtensions(),

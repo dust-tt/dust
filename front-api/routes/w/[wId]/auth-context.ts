@@ -1,5 +1,8 @@
 import config from "@app/lib/api/config";
-import { getWorkspaceRegionRedirect } from "@app/lib/api/regions/lookup";
+import {
+  getForcedApiUrlRedirect,
+  getWorkspaceRegionRedirect,
+} from "@app/lib/api/regions/lookup";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { isWorkspaceEligibleForTrial } from "@app/lib/plans/trial";
 import type { SubscriptionType } from "@app/types/plan";
@@ -8,6 +11,12 @@ import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { sessionApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  wId: z.string(),
+});
 
 export type GetWorkspaceAuthContextResponseType = {
   user: UserType;
@@ -31,9 +40,10 @@ const app = sessionApp();
 
 app.get(
   "/",
+  validate("param", ParamsSchema),
   async (ctx): HandlerResult<GetWorkspaceAuthContextResponseType> => {
     const session = ctx.get("session");
-    const wId = ctx.req.param("wId") ?? "";
+    const { wId } = ctx.req.valid("param");
 
     const auth = await Authenticator.fromSession(session, wId);
 
@@ -75,6 +85,25 @@ app.get(
       : false;
 
     const featureFlags = await getFeatureFlags(auth);
+
+    // When the workspace is flagged, force the SPA onto the regional API
+    // subdomain as its backend by reusing the region-redirect mechanism.
+    const forcedApiUrlRedirect = getForcedApiUrlRedirect({
+      enabled: featureFlags.includes("force_us_api_url"),
+      requestHost: ctx.req.header("host"),
+    });
+    if (forcedApiUrlRedirect) {
+      return ctx.json(
+        {
+          error: {
+            type: "workspace_in_different_region",
+            message: "Workspace is located in a different region",
+            redirect: forcedApiUrlRedirect,
+          },
+        },
+        400
+      );
+    }
 
     return ctx.json({
       user: user.toJSON(),

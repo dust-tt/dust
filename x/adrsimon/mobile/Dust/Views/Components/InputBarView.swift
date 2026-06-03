@@ -6,6 +6,8 @@ struct InputBarView: View {
     var conversationId: String?
     var onConversationCreated: ((Conversation) -> Void)?
     var onMessageSent: (() -> Void)?
+    var onWillSendReply: ((String) -> Void)?
+    var onReplySendFailed: (() -> Void)?
 
     @FocusState private var isTextFieldFocused: Bool
 
@@ -275,8 +277,14 @@ struct InputBarView: View {
             Task {
                 isTextFieldFocused = false
                 if let conversationId {
+                    let pendingText = viewModel.messageText.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !pendingText.isEmpty {
+                        onWillSendReply?(pendingText)
+                    }
                     if await viewModel.sendReply(conversationId: conversationId) {
                         onMessageSent?()
+                    } else {
+                        onReplySendFailed?()
                     }
                 } else if let conversation = await viewModel.sendMessage() {
                     onConversationCreated?(conversation)

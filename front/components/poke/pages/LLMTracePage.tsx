@@ -1,11 +1,11 @@
 import { InputTab } from "@app/components/poke/llm_traces/InputTab";
 import { OutputTab } from "@app/components/poke/llm_traces/OutputTab";
 import { RawJsonTab } from "@app/components/poke/llm_traces/RawJsonTab";
-import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import type { TokenUsage } from "@app/lib/api/llm/types/events";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { usePokeLLMTrace } from "@app/poke/swr";
+import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { isString } from "@app/types/shared/utils/general";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import {
@@ -45,9 +45,9 @@ function formatTimestamp(timestamp: string): string {
 
 export function LLMTracePage() {
   const owner = useWorkspace();
-  useDocumentTitle(`Poke - ${owner.name} - LLM Trace`);
 
   const runId = useRequiredPathParam("runId");
+  usePokePageMetadata({ name: owner.name, subtitle: "LLM Trace", sId: runId });
   const { trace, isLLMTraceLoading, isLLMTraceError } = usePokeLLMTrace({
     workspace: owner,
     runId,

@@ -106,17 +106,7 @@ export function SelectField<T extends FieldValues>({
   );
 }
 
-export function InputField<T extends FieldValues>({
-  control,
-  name,
-  title,
-  type,
-  placeholder,
-  min,
-  step,
-  readOnly,
-  transformValue,
-}: {
+interface InputFieldProps<T extends FieldValues> {
   control: Control<T>;
   name: Path<T>;
   title?: string;
@@ -127,9 +117,23 @@ export function InputField<T extends FieldValues>({
   /** Native `step` attribute, useful for `number` and `datetime-local`. */
   step?: number | string;
   readOnly?: boolean;
+  disabled?: boolean;
   /** Optional transform applied to the raw string value before updating the form. */
   transformValue?: (value: string) => string | number;
-}) {
+}
+
+export function InputField<T extends FieldValues>({
+  control,
+  name,
+  title,
+  type,
+  placeholder,
+  min,
+  step,
+  readOnly,
+  disabled,
+  transformValue,
+}: InputFieldProps<T>) {
   return (
     <PokeFormField
       control={control}
@@ -162,6 +166,7 @@ export function InputField<T extends FieldValues>({
                 field.onChange(e.target.value);
               }}
               readOnly={readOnly}
+              disabled={disabled}
             />
           </PokeFormControl>
           <PokeFormMessage />

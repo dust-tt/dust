@@ -15,15 +15,20 @@ const RenameRequestBodySchema = z.object({
   fileName: z.string().trim().min(1, "fileName must be a non-empty string"),
 });
 
+const ParamsSchema = z.object({
+  fileId: z.string(),
+});
+
 // Mounted at /api/w/:wId/files/:fileId/rename.
 const app = workspaceApp();
 
 app.patch(
   "/",
+  validate("param", ParamsSchema),
   validate("json", RenameRequestBodySchema),
   async (ctx): HandlerResult<RenameFileResponseBody> => {
     const auth = ctx.get("auth");
-    const fileId = ctx.req.param("fileId") ?? "";
+    const { fileId } = ctx.req.valid("param");
 
     const file = await FileResource.fetchById(auth, fileId);
     if (!file) {

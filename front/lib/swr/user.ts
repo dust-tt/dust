@@ -13,6 +13,7 @@ import type { GetUserMetadataResponseBody } from "@app/pages/api/user/metadata/[
 import type { GetUserApprovalsResponseBody } from "@app/pages/api/w/[wId]/me/approvals";
 import type { GetPendingInvitationsResponseBody } from "@app/pages/api/w/[wId]/me/pending-invitations";
 import type { GetSlackNotificationResponseBody } from "@app/pages/api/w/[wId]/me/slack-notifications";
+import type { GetWorkspaceUsageStatusResponseBody } from "@app/pages/api/w/[wId]/usage-status";
 import type { FavoritePlatform } from "@app/types/favorite_platforms";
 import type { JobType } from "@app/types/job_type";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -249,5 +250,29 @@ export function useSlackNotifications(
   return {
     isSlackSetupLoading,
     canConfigureSlack,
+  };
+}
+
+export function useWorkspaceUsageStatus({
+  owner,
+  disabled,
+}: {
+  owner: LightWorkspaceType;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const usageStatusFetcher: Fetcher<GetWorkspaceUsageStatusResponseBody> =
+    fetcher;
+  const { data, error } = useSWRWithDefaults(
+    `/api/w/${owner.sId}/usage-status`,
+    usageStatusFetcher,
+    { disabled }
+  );
+
+  return {
+    awuStatus: data?.awuStatus ?? "normal",
+    poolCreditState: data?.poolCreditState ?? "active",
+    programmaticCreditStatus: data?.programmaticCreditStatus ?? "active",
+    isUsageStatusLoading: !error && !data && !disabled,
   };
 }

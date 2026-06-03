@@ -1,5 +1,7 @@
 import {
+  clearUserAwuWarned,
   clearUserCapBlocked,
+  setUserAwuWarned,
   setUserCapBlocked,
 } from "@app/lib/metronome/user_block";
 import type { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -43,9 +45,29 @@ function syncUserCapCacheForState(
   transaction: Transaction | undefined
 ): void {
   switch (state) {
+    // Spending normally (personal credits or workspace pool): not capped, no
+    // low-balance warning. "normal" is the legacy alias of "on_pool" kept
+    // during the migration window (see USER_CREDIT_STATES).
     case "normal":
+    case "user_seat":
+    case "on_pool":
       invalidateCacheAfterCommit(transaction, () =>
         clearUserCapBlocked(ctx.workspaceId, ctx.userId)
+      );
+      invalidateCacheAfterCommit(transaction, () =>
+        clearUserAwuWarned(ctx.workspaceId, ctx.userId)
+      );
+      return;
+
+    // Still spending, but ≥80% of the personal balance / per-user cap used:
+    // not capped, but the low-balance warning is active.
+    case "user_seat_low_balance":
+    case "on_pool_low_balance":
+      invalidateCacheAfterCommit(transaction, () =>
+        clearUserCapBlocked(ctx.workspaceId, ctx.userId)
+      );
+      invalidateCacheAfterCommit(transaction, () =>
+        setUserAwuWarned(ctx.workspaceId, ctx.userId)
       );
       return;
 
@@ -62,7 +84,7 @@ function syncUserCapCacheForState(
 
 const TRANSITIONS: UserCreditTransition[] = [
   {
-    from: "normal",
+    from: "on_pool",
     event: "per_user_cap_reached",
     to: "capped",
   },
@@ -74,22 +96,22 @@ const TRANSITIONS: UserCreditTransition[] = [
   {
     from: "capped",
     event: "admin_raised_user_cap",
-    to: "normal",
+    to: "on_pool",
   },
   {
-    from: "normal",
+    from: "on_pool",
     event: "admin_raised_user_cap",
-    to: "normal",
+    to: "on_pool",
   },
   {
     from: "capped",
     event: "per_user_cap_resolved",
-    to: "normal",
+    to: "on_pool",
   },
   {
-    from: "normal",
+    from: "on_pool",
     event: "per_user_cap_resolved",
-    to: "normal",
+    to: "on_pool",
   },
 ];
 
@@ -106,7 +128,11 @@ export async function transitionUserCreditState(
   ctx: UserCreditContext,
   { transaction }: { transaction?: Transaction } = {}
 ): Promise<Result<UserCreditState, Error>> {
-  const currentState = membership.creditState;
+  const rawState = membership.creditState;
+  // "normal" is the legacy alias of "on_pool" (migration window): match
+  // transitions as if the row were already "on_pool". A matching transition
+  // then persists the canonical value, opportunistically migrating the row.
+  const currentState = rawState === "normal" ? "on_pool" : rawState;
   const match = findTransition(currentState, event);
 
   if (!match) {
@@ -126,7 +152,9 @@ export async function transitionUserCreditState(
     );
   }
 
-  if (currentState !== match.to) {
+  // Compare against the raw value so a legacy "normal" row is rewritten to the
+  // canonical "on_pool" even when the normalized state already matches.
+  if (rawState !== match.to) {
     await membership.updateCreditState(match.to, transaction);
   }
   syncUserCapCacheForState(match.to, ctx, transaction);
@@ -134,10 +162,10 @@ export async function transitionUserCreditState(
     {
       workspaceId: ctx.workspaceId,
       userId: ctx.userId,
-      fromState: currentState,
+      fromState: rawState,
       toState: match.to,
       eventType: event.type,
-      wasStateChanged: currentState !== match.to,
+      wasStateChanged: rawState !== match.to,
     },
     "[UserCreditStateMachine] Transition applied"
   );

@@ -400,6 +400,42 @@ const GLOBAL_AGENT_FLAGS: Record<
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
+  [GLOBAL_AGENTS_SID.DUST_PISTACHE]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
+  [GLOBAL_AGENTS_SID.DUST_PISTACHE_MEDIUM]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
+  [GLOBAL_AGENTS_SID.DUST_PISTACHE_HIGH]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
+  [GLOBAL_AGENTS_SID.DUST_CHALOM]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
+  [GLOBAL_AGENTS_SID.DUST_CHALOM_MEDIUM]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
+  [GLOBAL_AGENTS_SID.DUST_CHALOM_HIGH]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
   [GLOBAL_AGENTS_SID.HELPER]: {
     injectsMemory: false,
     injectsToolsets: false,
@@ -655,6 +691,7 @@ function getGlobalAgent({
   hasSandbox,
   globalAgentContext,
   excludeProviders,
+  preferGpt55DefaultModel,
 }: {
   auth: Authenticator;
   sId: string | number;
@@ -666,6 +703,7 @@ function getGlobalAgent({
   hasSandbox: boolean;
   globalAgentContext?: GlobalAgentContext;
   excludeProviders: ReadonlySet<ModelProviderIdType>;
+  preferGpt55DefaultModel: boolean;
 }): AgentConfigurationType | null {
   const settings =
     globalAgentSettings.find((settings) => settings.agentId === sId) ?? null;
@@ -872,6 +910,7 @@ function getGlobalAgent({
         hasDeepDive,
         globalAgentContext,
         excludeProviders,
+        preferGpt55DefaultModel,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_HIGH:
@@ -1166,6 +1205,12 @@ function getGlobalAgent({
     case GLOBAL_AGENTS_SID.DUST_SUNDAE:
     case GLOBAL_AGENTS_SID.DUST_SUNDAE_MEDIUM:
     case GLOBAL_AGENTS_SID.DUST_SUNDAE_HIGH:
+    case GLOBAL_AGENTS_SID.DUST_PISTACHE:
+    case GLOBAL_AGENTS_SID.DUST_PISTACHE_MEDIUM:
+    case GLOBAL_AGENTS_SID.DUST_PISTACHE_HIGH:
+    case GLOBAL_AGENTS_SID.DUST_CHALOM:
+    case GLOBAL_AGENTS_SID.DUST_CHALOM_MEDIUM:
+    case GLOBAL_AGENTS_SID.DUST_CHALOM_HIGH:
       agentConfiguration = _getCustomModelDustLikeGlobalAgent(
         auth,
         {
@@ -1394,6 +1439,12 @@ export async function getGlobalAgents(
     GLOBAL_AGENTS_SID.DUST_SUNDAE,
     GLOBAL_AGENTS_SID.DUST_SUNDAE_MEDIUM,
     GLOBAL_AGENTS_SID.DUST_SUNDAE_HIGH,
+    GLOBAL_AGENTS_SID.DUST_PISTACHE,
+    GLOBAL_AGENTS_SID.DUST_PISTACHE_MEDIUM,
+    GLOBAL_AGENTS_SID.DUST_PISTACHE_HIGH,
+    GLOBAL_AGENTS_SID.DUST_CHALOM,
+    GLOBAL_AGENTS_SID.DUST_CHALOM_MEDIUM,
+    GLOBAL_AGENTS_SID.DUST_CHALOM_HIGH,
   ];
   if (!flags.includes("dust_internal_global_agents")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
@@ -1442,6 +1493,7 @@ export async function getGlobalAgents(
       hasSandbox: flags.includes("sandbox_tools"),
       globalAgentContext: options?.globalAgentContext,
       excludeProviders,
+      preferGpt55DefaultModel: flags.includes("dust_agent_gpt_5_5_default"),
     })
   );
 

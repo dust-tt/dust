@@ -101,13 +101,16 @@ function buildPromptForTestCase(testCase: TestCase): {
   if (isAnalysisTestCase(testCase)) {
     const skillTypes = testCase.skillConfigs.map(makeSkillType);
     const conversationText = buildConversationText(testCase.conversation);
-    return buildSkillAnalysisPrompt(conversationText, skillTypes);
+    return buildSkillAnalysisPrompt(conversationText, skillTypes, {
+      useInlineTools: testCase.useInlineTools,
+    });
   }
   const skillType = makeSkillType(testCase.skillConfig);
   return buildSkillAggregationPrompt(
     skillType,
     testCase.syntheticSuggestions,
-    testCase.existingSuggestions ?? { pending: [], rejected: [] }
+    testCase.existingSuggestions ?? { pending: [], rejected: [] },
+    { useInlineTools: testCase.useInlineTools }
   );
 }
 
@@ -327,7 +330,9 @@ export async function executeReinforced(
   const operationType = isAggregationTestCase(testCase)
     ? "reinforcement_aggregate_suggestions"
     : "reinforcement_analyze_conversation";
-  const params = buildReinforcedSkillsLLMParams(prompt, operationType);
+  const params = buildReinforcedSkillsLLMParams(prompt, operationType, {
+    useInlineTools: testCase.useInlineTools,
+  });
 
   return executeMultiStep(
     llm,
@@ -380,7 +385,9 @@ export async function executeBatch(
       : "reinforcement_analyze_conversation";
     pendingParams.set(
       tc.scenarioId,
-      buildReinforcedSkillsLLMParams(prompt, operationType)
+      buildReinforcedSkillsLLMParams(prompt, operationType, {
+        useInlineTools: tc.useInlineTools,
+      })
     );
   }
 

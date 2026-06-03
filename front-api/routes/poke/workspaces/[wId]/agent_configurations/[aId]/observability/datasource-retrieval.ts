@@ -12,6 +12,10 @@ const QuerySchema = z.object({
   days: z.coerce.number().positive().optional().default(DEFAULT_PERIOD_DAYS),
 });
 
+const ParamsSchema = z.object({
+  aId: z.string(),
+});
+
 export type PokeGetDatasourceRetrievalResponse = {
   datasources: DatasourceRetrievalData[];
   total: number;
@@ -22,10 +26,11 @@ const app = pokeApp();
 
 app.get(
   "/",
+  validate("param", ParamsSchema),
   validate("query", QuerySchema),
   async (ctx): HandlerResult<PokeGetDatasourceRetrievalResponse> => {
     const auth = ctx.get("auth");
-    const aId = ctx.req.param("aId") ?? "";
+    const { aId } = ctx.req.valid("param");
     const { days } = ctx.req.valid("query");
 
     const assistant = await getAgentConfiguration(auth, {

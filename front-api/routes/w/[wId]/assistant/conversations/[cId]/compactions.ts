@@ -14,6 +14,10 @@ export type PostConversationCompactResponseBody = {
   compactionMessage: CompactionMessageType;
 };
 
+const ParamsSchema = z.object({
+  cId: z.string(),
+});
+
 const PostConversationCompactionsBodySchema = z.object({
   model: z.object({
     providerId: z.string(),
@@ -26,10 +30,11 @@ const app = workspaceApp();
 
 app.post(
   "/",
+  validate("param", ParamsSchema),
   validate("json", PostConversationCompactionsBodySchema),
   async (ctx): HandlerResult<PostConversationCompactResponseBody> => {
     const auth = ctx.get("auth");
-    const conversationId = ctx.req.param("cId") ?? "";
+    const { cId: conversationId } = ctx.req.valid("param");
 
     const conversationRes = await getConversation(auth, conversationId);
     if (conversationRes.isErr()) {

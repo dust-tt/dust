@@ -4,13 +4,14 @@ import { EditKeyCapDialog } from "@app/components/workspace/api-keys/EditKeyCapD
 import { NewAPIKeyDialog } from "@app/components/workspace/api-keys/NewAPIKeyDialog";
 import type { KeyRole } from "@app/components/workspace/api-keys/utils";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { useWorkspace } from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { useKeys } from "@app/lib/swr/apps";
 import { useGroups } from "@app/lib/swr/groups";
 import type { GroupType } from "@app/types/groups";
 import type { KeyType } from "@app/types/key";
+import { isCreditPricedPlan } from "@app/types/plan";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -30,6 +31,8 @@ interface APIKeysProps {
 
 export function APIKeys({ owner }: APIKeysProps) {
   const { mutate } = useSWRConfig();
+  const { subscription } = useAuth();
+  const showLegacyUsdMonthlyCap = !isCreditPricedPlan(subscription.plan);
   const [isNewApiKeyCreatedOpen, setIsNewApiKeyCreatedOpen] = useState(false);
   const [editCapKey, setEditCapKey] = useState<KeyType | null>(null);
 
@@ -167,6 +170,7 @@ export function APIKeys({ owner }: APIKeysProps) {
           isGenerating={isGenerating}
           isRevoking={isRevoking}
           onCreate={handleGenerate}
+          showLegacyUsdMonthlyCap={showLegacyUsdMonthlyCap}
         />
       </Page.Horizontal>
       <APIKeysList
@@ -176,8 +180,9 @@ export function APIKeys({ owner }: APIKeysProps) {
         isGenerating={isGenerating}
         onRevoke={handleRevoke}
         onEditCap={setEditCapKey}
+        showLegacyUsdMonthlyCap={showLegacyUsdMonthlyCap}
       />
-      {editCapKey && (
+      {showLegacyUsdMonthlyCap && editCapKey && (
         <EditKeyCapDialog
           keyData={editCapKey}
           isOpen={!!editCapKey}

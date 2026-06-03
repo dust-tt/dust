@@ -4,32 +4,44 @@ set -euo pipefail
 CA_PATH="/run/dust/egress-ca.pem"
 SYSTEM_CA_DIR="/usr/local/share/ca-certificates"
 SYSTEM_CA_DEST="${SYSTEM_CA_DIR}/dust-egress.crt"
-SYSTEM_CA_BUNDLE="/etc/ssl/certs/ca-certificates.crt"
+SYSTEM_CA_CERTS_DIR="/etc/ssl/certs"
+SYSTEM_CA_BUNDLE="${SYSTEM_CA_CERTS_DIR}/ca-certificates.crt"
 MERGED_BUNDLE="/etc/dust/ca-bundle.pem"
+PRISTINE_SYSTEM_BUNDLE="/etc/dust/system-ca-certificates.crt.orig"
 
 if [ ! -s "$CA_PATH" ]; then
-  echo "dsbx CA file $CA_PATH missing or empty" >&2
+  /usr/bin/printf '%s\n' "dsbx CA file $CA_PATH missing or empty" >&2
   exit 1
 fi
 
-/usr/bin/mkdir -p /etc/dust /etc/ssl/certs/java
+/usr/bin/mkdir -p /etc/dust "${SYSTEM_CA_CERTS_DIR}/java"
 
 normalized_ca_tmp="$(/usr/bin/mktemp /etc/dust/.egress-ca.pem.XXXXXX)"
+system_tmp=""
 bundle_tmp=""
 keytool_output=""
 cleanup() {
-  /bin/rm -f "$normalized_ca_tmp" "$bundle_tmp" "$keytool_output"
+  /bin/rm -f "$normalized_ca_tmp" "$system_tmp" "$bundle_tmp" "$keytool_output"
 }
 trap cleanup EXIT
 
 if [ ! -x /usr/bin/openssl ]; then
-  echo "openssl is required to validate $CA_PATH" >&2
+  /usr/bin/printf '%s\n' "openssl is required to validate $CA_PATH" >&2
   exit 1
 fi
 
 if ! /usr/bin/openssl x509 -in "$CA_PATH" -out "$normalized_ca_tmp" -outform PEM >/dev/null 2>&1; then
-  echo "dsbx CA file $CA_PATH is not a valid X.509 PEM certificate" >&2
+  /usr/bin/printf '%s\n' "dsbx CA file $CA_PATH is not a valid X.509 PEM certificate" >&2
   exit 1
+fi
+
+# Snapshot the untouched system bundle once, before we ever fold in the dsbx
+# CA, so repeated installs (the health-probe repair path re-runs this) rebuild
+# deterministically from pristine roots instead of compounding. This lives on
+# the per-image rootfs, so it can't outlive the image version it was taken
+# from: a base-image bump ships a fresh rootfs with no stale .orig to reuse.
+if [ ! -s "$PRISTINE_SYSTEM_BUNDLE" ]; then
+  /usr/bin/install -o root -g root -m 644 "$SYSTEM_CA_BUNDLE" "$PRISTINE_SYSTEM_BUNDLE"
 fi
 
 if [ -L "$SYSTEM_CA_DIR" ] || { [ -e "$SYSTEM_CA_DIR" ] && [ ! -d "$SYSTEM_CA_DIR" ]; }; then
@@ -40,30 +52,44 @@ fi
 /usr/bin/chown root:root "$SYSTEM_CA_DIR"
 /usr/bin/chmod 755 "$SYSTEM_CA_DIR"
 
-# update-ca-certificates follows symlinks under this directory. Treat it as
-# Dust-owned staging and keep only the CA we install below before root asks it
-# to rebuild the world-readable system bundle.
+# Treat this directory as Dust-owned staging and keep only the CA we install
+# below, so the incremental system-store update cannot ingest workload-staged
+# symlinks or garbage certs.
 /usr/bin/find "$SYSTEM_CA_DIR" -mindepth 1 -maxdepth 1 -exec /bin/rm -rf -- {} +
 /bin/rm -f "$SYSTEM_CA_DEST"
 
-if [ -x /usr/sbin/update-ca-certificates ]; then
-  /usr/bin/install -o root -g root -m 644 "$normalized_ca_tmp" "$SYSTEM_CA_DEST"
-  if ! /usr/sbin/update-ca-certificates >/dev/null 2>&1; then
-    echo "update-ca-certificates failed; continuing with explicit bundle" >&2
+# update-ca-certificates forks openssl once per system root and spends most of
+# cold-start on the constrained microVM. The image already has the public roots,
+# so install only the runtime dsbx CA and reproduce the same bundle/hash-symlink
+# outcome incrementally.
+/usr/bin/install -o root -g root -m 644 "$normalized_ca_tmp" "$SYSTEM_CA_DEST"
+
+system_tmp="$(/usr/bin/mktemp "${SYSTEM_CA_CERTS_DIR}/.ca-certificates.crt.XXXXXX")"
+{ /bin/cat "$PRISTINE_SYSTEM_BUNDLE"; /usr/bin/printf '\n'; /bin/cat "$normalized_ca_tmp"; } > "$system_tmp"
+/usr/bin/chmod 644 "$system_tmp"
+/usr/bin/mv "$system_tmp" "$SYSTEM_CA_BUNDLE"
+
+# Replicate what c_rehash does for our one cert: openssl resolves trusted CAs
+# in SYSTEM_CA_CERTS_DIR via <subject_hash>.N symlinks. Find the first free
+# slot so we never clobber a system cert that happens to share the hash, and
+# no-op if a prior run already linked our cert (keeps re-runs idempotent).
+ca_hash="$(/usr/bin/openssl x509 -hash -noout -in "$normalized_ca_tmp")"
+slot=0
+while [ -e "${SYSTEM_CA_CERTS_DIR}/${ca_hash}.${slot}" ]; do
+  if [ "$(/usr/bin/readlink -f "${SYSTEM_CA_CERTS_DIR}/${ca_hash}.${slot}")" = "$SYSTEM_CA_DEST" ]; then
+    slot=""
+    break
   fi
-else
-  echo "update-ca-certificates not found; continuing with explicit bundle" >&2
-fi
+  slot=$((slot+1))
+done
+[ -n "$slot" ] && /bin/ln -sf "$SYSTEM_CA_DEST" "${SYSTEM_CA_CERTS_DIR}/${ca_hash}.${slot}"
 
 bundle_tmp="$(/usr/bin/mktemp /etc/dust/.ca-bundle.pem.XXXXXX)"
 
 # Concatenate with an explicit newline so the join point can never glue the
-# last cert footer to the next BEGIN line if ca-certificates.crt drops its
-# trailing newline. If update-ca-certificates ran successfully the dsbx CA is
-# already in $SYSTEM_CA_BUNDLE; the explicit second copy is harmless (OpenSSL
-# dedupes by subject) and keeps the merged bundle correct even when update-ca-
-# certificates is missing or fails.
-{ /bin/cat "$SYSTEM_CA_BUNDLE"; printf '\n'; /bin/cat "$normalized_ca_tmp"; } > "$bundle_tmp"
+# last cert footer to the next BEGIN line if the pristine bundle drops its
+# trailing newline.
+{ /bin/cat "$PRISTINE_SYSTEM_BUNDLE"; /usr/bin/printf '\n'; /bin/cat "$normalized_ca_tmp"; } > "$bundle_tmp"
 /usr/bin/chmod 644 "$bundle_tmp"
 /usr/bin/mv "$bundle_tmp" "$MERGED_BUNDLE"
 

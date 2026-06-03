@@ -12,6 +12,10 @@ const PostConfigBodySchema = z.object({
   configValue: z.string(),
 });
 
+const ParamsSchema = z.object({
+  dsId: z.string(),
+});
+
 export type SetConfigResponseBody = {
   configKey: string;
   configValue: string;
@@ -22,19 +26,11 @@ const app = pokeApp();
 
 app.post(
   "/",
+  validate("param", ParamsSchema),
   validate("json", PostConfigBodySchema),
   async (ctx): HandlerResult<SetConfigResponseBody> => {
     const auth = ctx.get("auth");
-    const dsId = ctx.req.param("dsId");
-    if (!dsId) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid data source ID.",
-        },
-      });
-    }
+    const { dsId } = ctx.req.valid("param");
 
     const dataSource = await DataSourceResource.fetchById(auth, dsId);
     if (!dataSource) {
