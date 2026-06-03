@@ -698,7 +698,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "deepseek_feature"
   | "deepseek_r1_global_agent_feature"
   | "dev_mcp_actions"
-  | "disable_paragraph_formatting_prompt"
+  | "disable_formatting_prompt"
   | "disable_run_logs"
   | "disallow_agent_creation_to_users"
   | "discord_bot"

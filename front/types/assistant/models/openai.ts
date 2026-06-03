@@ -229,79 +229,22 @@ export const GPT_4O_MINI_MODEL_CONFIG: ModelConfigurationType = {
     "europe-west1": true,
   },
 };
-// The two variants of the formatting meta prompt are built from a single source of truth so they
-// cannot drift. `includeParagraphPreference` controls the lines that push the model towards prose
-// paragraphs over bullet points; it is dropped when the `disable_paragraph_formatting_prompt`
-// feature flag is enabled.
-function buildOpenAIFormattingMetaPrompt({
-  includeParagraphPreference,
-}: {
-  includeParagraphPreference: boolean;
-}): string {
-  const styleLines = [
-    "- Always respond using rich Markdown unless the user explicitly requests another format.",
-    ...(includeParagraphPreference
-      ? [
-          "- Default to clear narrative prose in connected, multi-sentence paragraphs when the answer is more than a couple of sentences.",
-        ]
-      : []),
-    "- Use smooth transitions and coherent flow, similar to a well-structured explanation or report.",
-    "- Use Markdown headings (##, ###) to structure multi-paragraph answers into sections when helpful.",
-    "- H1 titles (# Title) are optional; only add a title when the user asks for a document-like answer (for example a report, plan, or spec) or explicitly requests a title.",
-    "- In short, conversational, or single-sentence answers (such as greetings or quick confirmations), do not use headings or titles; respond with plain text.",
-    ...(includeParagraphPreference
-      ? [
-          "- Bullet or numbered lists are allowed only for brief, supporting enumerations; they must not be the primary structure of the response.",
-          "- Prefer paragraphs over lists for the main ideas of the answer.",
-        ]
-      : []),
-    "- Include tables when they materially aid clarity; use code blocks for code, configs, or commands.",
-    "- If the user specifies a different format, follow the user’s instructions even if it conflicts with this style guide.",
-    "- When style directives conflict, prefer this Markdown style guide.",
-  ];
-  const neverLines = [
-    ...(includeParagraphPreference
-      ? ["- Return a response that is just a list of bullet points."]
-      : []),
-    "- Add headings or titles for trivial, one-line answers.",
-  ];
-
-  return [
-    "# Response Formats",
-    "SYSTEM STYLE: Rich Markdown by default",
-    ...styleLines,
-    "NEVER:",
-    ...neverLines,
-  ].join("\n");
-}
-
-export const OPENAI_FORMATTING_META_PROMPT = buildOpenAIFormattingMetaPrompt({
-  includeParagraphPreference: true,
-});
-
-export const OPENAI_FORMATTING_META_PROMPT_WITHOUT_PARAGRAPH_PREFERENCE =
-  buildOpenAIFormattingMetaPrompt({ includeParagraphPreference: false });
-
-// Returns the formatting meta prompt to inject for a given model. When `excludeParagraphPreference`
-// is set (driven by the `disable_paragraph_formatting_prompt` feature flag), the OpenAI prompt is
-// swapped for the variant that omits the paragraphs-over-bullets guidance.
-//
-// The swap intentionally only fires when the prompt is exactly the known OpenAI default: the
-// variant is the default minus a few specific lines, so it is only a valid substitution for that
-// exact prompt. Any other prompt (a non-OpenAI model, or an OpenAI model with a customized
-// formatting prompt) is returned untouched rather than clobbered with the stripped default.
-export function selectOpenAIFormattingMetaPrompt(
-  formattingMetaPrompt: string | undefined,
-  { excludeParagraphPreference }: { excludeParagraphPreference: boolean }
-): string | undefined {
-  if (
-    excludeParagraphPreference &&
-    formattingMetaPrompt === OPENAI_FORMATTING_META_PROMPT
-  ) {
-    return OPENAI_FORMATTING_META_PROMPT_WITHOUT_PARAGRAPH_PREFERENCE;
-  }
-  return formattingMetaPrompt;
-}
+export const OPENAI_FORMATTING_META_PROMPT = `# Response Formats
+SYSTEM STYLE: Rich Markdown by default
+- Always respond using rich Markdown unless the user explicitly requests another format.
+- Default to clear narrative prose in connected, multi-sentence paragraphs when the answer is more than a couple of sentences.
+- Use smooth transitions and coherent flow, similar to a well-structured explanation or report.
+- Use Markdown headings (##, ###) to structure multi-paragraph answers into sections when helpful.
+- H1 titles (# Title) are optional; only add a title when the user asks for a document-like answer (for example a report, plan, or spec) or explicitly requests a title.
+- In short, conversational, or single-sentence answers (such as greetings or quick confirmations), do not use headings or titles; respond with plain text.
+- Bullet or numbered lists are allowed only for brief, supporting enumerations; they must not be the primary structure of the response.
+- Prefer paragraphs over lists for the main ideas of the answer.
+- Include tables when they materially aid clarity; use code blocks for code, configs, or commands.
+- If the user specifies a different format, follow the user’s instructions even if it conflicts with this style guide.
+- When style directives conflict, prefer this Markdown style guide.
+NEVER:
+- Return a response that is just a list of bullet points.
+- Add headings or titles for trivial, one-line answers.`;
 export const OPENAI_TOOL_USE_META_PROMPT =
   `CRITICAL: When calling functions or tools, ` +
   `you MUST be extremely careful with accented characters. ` +

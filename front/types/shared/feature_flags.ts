@@ -318,9 +318,9 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "as its backend for this workspace",
     stage: "on_demand",
   },
-  disable_paragraph_formatting_prompt: {
+  disable_formatting_prompt: {
     description:
-      "Drop the paragraphs-over-bullet-points guidance from the OpenAI formatting meta prompt",
+      "Skip injecting the OpenAI formatting meta prompt entirely (no markdown/paragraph style guidance)",
     stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;
