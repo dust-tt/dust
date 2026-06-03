@@ -41,6 +41,10 @@ import {
   SliderToggle,
   Toggle01LeftV2,
   Tool01V2,
+  Shield01V2,
+  LayersThree01V2,
+  PackageV2,
+  CodeSquare01V2,
   Sheet,
   SheetContent,
   SheetFooter,
@@ -144,16 +148,22 @@ const ANIMATION_CSS = `
 type Role = "super_admin" | "admin" | "security_admin" | "billing_admin";
 
 type AdminPage =
+  // Team
   | "people"
+  // Access
+  | "capabilities"
+  // Security
   | "identity"
-  | "governance"
+  | "audit"
+  // Workspace
   | "workspace"
   | "models"
-  | "analytics"
+  // Developer
   | "api_keys"
   | "programmatic"
   | "credentials"
   | "secrets"
+  // Billing
   | "billing"
   | "usage";
 
@@ -484,24 +494,32 @@ const ROLE_LABELS: Record<Role, string> = {
   billing_admin: "Billing Admin",
 };
 
-// Exact pages accessible per role, matching Figma nav
+// Exact pages accessible per role — V2 IA
 const ROLE_ACCESS: Record<Role, AdminPage[]> = {
   super_admin: [
     "people",
+    "capabilities",
     "identity",
-    "governance",
+    "audit",
     "workspace",
     "models",
-    "analytics",
+    "api_keys",
+    "programmatic",
+    "credentials",
+    "secrets",
     "billing",
     "usage",
+  ],
+  admin: [
+    "people",
+    "capabilities",
+    "models",
     "api_keys",
     "programmatic",
     "credentials",
     "secrets",
   ],
-  admin: ["people", "governance", "analytics"],
-  security_admin: ["people", "identity"],
+  security_admin: ["people", "identity", "audit"],
   billing_admin: ["billing", "usage"],
 };
 
@@ -715,13 +733,9 @@ function PeoplePage({
   const [inviteRole, setInviteRole] = useState("Operator");
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
-  const [newGroupMemberSearch, setNewGroupMemberSearch] = useState("");
-  const [newGroupSelectedIds, setNewGroupSelectedIds] = useState<string[]>([]);
   const [selectedGroup, setSelectedGroup] = useState<GroupRow | null>(null);
   const [selectedMember, setSelectedMember] = useState<MemberRow | null>(null);
   const [memberPlan, setMemberPlan] = useState<MemberRole>("member");
-  const [filterRole, setFilterRole] = useState<MemberRole | null>(null);
-  const [filterGroupId, setFilterGroupId] = useState<string | null>(null);
   const [confirmSuperAdmin, setConfirmSuperAdmin] = useState(false);
   const canEdit = role === "super_admin" || role === "admin";
 
@@ -850,18 +864,12 @@ function PeoplePage({
   const filteredMembers = useMemo(
     () =>
       members
-        .filter((m) => {
-          if (
-            search &&
-            !m.name.toLowerCase().includes(search.toLowerCase()) &&
-            !m.email.toLowerCase().includes(search.toLowerCase())
-          )
-            return false;
-          if (filterRole && m.role !== filterRole) return false;
-          if (filterGroupId && !m.groupIds.includes(filterGroupId))
-            return false;
-          return true;
-        })
+        .filter(
+          (m) =>
+            !search ||
+            m.name.toLowerCase().includes(search.toLowerCase()) ||
+            m.email.toLowerCase().includes(search.toLowerCase())
+        )
         .map((m) => ({
           ...m,
           onClick: canEdit
@@ -871,7 +879,7 @@ function PeoplePage({
               }
             : undefined,
         })),
-    [search, members, canEdit, filterRole, filterGroupId]
+    [search, members, canEdit]
   );
 
   const filteredGroups = useMemo(
@@ -923,13 +931,11 @@ function PeoplePage({
       {
         id: `g${Date.now()}`,
         name: newGroupName.trim(),
-        memberCount: newGroupSelectedIds.length,
+        memberCount: 0,
         type: "manual" as const,
       },
     ]);
     setNewGroupName("");
-    setNewGroupMemberSearch("");
-    setNewGroupSelectedIds([]);
     setCreateGroupOpen(false);
   };
 
@@ -996,65 +1002,18 @@ function PeoplePage({
                   <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
                     Filter by
                   </span>
-                  {/* Role filter */}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant={filterRole ? "primary" : "outline"}
-                        size="xs"
-                        label={
-                          filterRole
-                            ? ROLE_DISPLAY[filterRole].label
-                            : "Any role"
-                        }
-                        isSelect
-                      />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      <DropdownMenuItem
-                        label="Any role"
-                        onClick={() => setFilterRole(null)}
-                      />
-                      {(["super_admin", "admin", "member"] as MemberRole[]).map(
-                        (r) => (
-                          <DropdownMenuItem
-                            key={r}
-                            label={ROLE_DISPLAY[r].label}
-                            onClick={() => setFilterRole(r)}
-                          />
-                        )
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  {/* Group filter */}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant={filterGroupId ? "primary" : "outline"}
-                        size="xs"
-                        label={
-                          filterGroupId
-                            ? (groups.find((g) => g.id === filterGroupId)
-                                ?.name ?? "Any group")
-                            : "Any group"
-                        }
-                        isSelect
-                      />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      <DropdownMenuItem
-                        label="Any group"
-                        onClick={() => setFilterGroupId(null)}
-                      />
-                      {groups.map((g) => (
-                        <DropdownMenuItem
-                          key={g.id}
-                          label={g.name}
-                          onClick={() => setFilterGroupId(g.id)}
-                        />
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    label="Any role"
+                    isSelect
+                  />
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    label="Any group"
+                    isSelect
+                  />
                 </div>
               </div>
               <DataTable data={filteredMembers} columns={memberColumns} />
@@ -1071,7 +1030,7 @@ function PeoplePage({
                   <button
                     type="button"
                     className="s-underline s-font-medium s-text-foreground dark:s-text-foreground-night"
-                    onClick={() => onNavigate("identity")}
+                    onClick={() => onNavigate("identity" as AdminPage)}
                   >
                     Identity &amp; Provisioning → User provisioning
                   </button>
@@ -1158,134 +1117,29 @@ function PeoplePage({
       </Sheet>
 
       {/* Create group sheet */}
-      <Sheet
-        open={createGroupOpen}
-        onOpenChange={(open) => {
-          if (!open) {
-            setNewGroupMemberSearch("");
-            setNewGroupSelectedIds([]);
-          }
-          setCreateGroupOpen(open);
-        }}
-      >
+      <Sheet open={createGroupOpen} onOpenChange={setCreateGroupOpen}>
         <SheetContent side="right" size="lg">
           <SheetHeader>
             <SheetTitle>New group</SheetTitle>
           </SheetHeader>
-          <div className="s-flex s-flex-col s-gap-5 s-flex-1 s-overflow-hidden s-px-6 s-py-4">
-            {/* Group name */}
-            <div className="s-flex s-flex-col s-gap-1.5">
+          <div className="s-flex s-flex-col s-gap-4 s-flex-1 s-overflow-auto s-px-6 s-py-4">
+            <Page.Vertical gap="xs">
               <Label>Group name</Label>
               <Input
                 placeholder="e.g. Engineering Team"
                 value={newGroupName}
                 onChange={(e) => setNewGroupName(e.target.value)}
-                className="s-w-full"
               />
-            </div>
-
-            {/* Member picker */}
-            <div className="s-flex s-flex-col s-gap-1.5 s-flex-1 s-min-h-0">
+            </Page.Vertical>
+            <Page.Vertical gap="xs">
               <Label>Add members</Label>
               <SearchInput
-                name="new-group-search"
+                name="search"
                 placeholder="Search by name or email"
-                value={newGroupMemberSearch}
-                onChange={setNewGroupMemberSearch}
-                className="s-w-full"
+                value=""
+                onChange={() => {}}
               />
-              {/* Selected chips */}
-              {newGroupSelectedIds.length > 0 && (
-                <div className="s-flex s-flex-wrap s-gap-1.5">
-                  {newGroupSelectedIds.map((id) => {
-                    const m = members.find((x) => x.id === id);
-                    if (!m) return null;
-                    return (
-                      <Chip
-                        key={id}
-                        label={m.name}
-                        size="xs"
-                        color="highlight"
-                        onRemove={() =>
-                          setNewGroupSelectedIds((prev) =>
-                            prev.filter((x) => x !== id)
-                          )
-                        }
-                      />
-                    );
-                  })}
-                </div>
-              )}
-              {/* Member list */}
-              <div className="s-flex-1 s-overflow-auto s-min-h-0">
-                <table className="s-w-full">
-                  <tbody>
-                    {members
-                      .filter(
-                        (m) =>
-                          !newGroupMemberSearch ||
-                          m.name
-                            .toLowerCase()
-                            .includes(newGroupMemberSearch.toLowerCase()) ||
-                          m.email
-                            .toLowerCase()
-                            .includes(newGroupMemberSearch.toLowerCase())
-                      )
-                      .map((m) => (
-                        <tr
-                          key={m.id}
-                          className="s-border-b s-border-border dark:s-border-border-night last:s-border-0 s-cursor-pointer hover:s-bg-muted-background dark:hover:s-bg-muted-background-night"
-                          onClick={() =>
-                            setNewGroupSelectedIds((prev) =>
-                              prev.includes(m.id)
-                                ? prev.filter((x) => x !== m.id)
-                                : [...prev, m.id]
-                            )
-                          }
-                        >
-                          <td className="s-py-2.5 s-pr-3 s-w-8">
-                            <Checkbox
-                              checked={newGroupSelectedIds.includes(m.id)}
-                              onCheckedChange={() =>
-                                setNewGroupSelectedIds((prev) =>
-                                  prev.includes(m.id)
-                                    ? prev.filter((x) => x !== m.id)
-                                    : [...prev, m.id]
-                                )
-                              }
-                            />
-                          </td>
-                          <td className="s-py-2.5">
-                            <div className="s-flex s-items-center s-gap-2">
-                              <Avatar
-                                size="sm"
-                                name={m.name}
-                                visual={m.visual}
-                                isRounded
-                              />
-                              <div>
-                                <div className="s-text-sm s-font-medium s-text-foreground dark:s-text-foreground-night">
-                                  {m.name}
-                                </div>
-                                <div className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
-                                  {m.email}
-                                </div>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="s-py-2.5 s-text-right">
-                            <Chip
-                              label={ROLE_DISPLAY[m.role].label}
-                              color={ROLE_DISPLAY[m.role].color}
-                              size="xs"
-                            />
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            </Page.Vertical>
           </div>
           <SheetFooter
             leftButtonProps={{
@@ -1294,7 +1148,7 @@ function PeoplePage({
               variant: "outline",
             }}
             rightButtonProps={{
-              label: `Create group${newGroupSelectedIds.length > 0 ? ` (${newGroupSelectedIds.length})` : ""}`,
+              label: "Create group",
               onClick: handleCreateGroup,
               variant: "primary",
               disabled: !newGroupName.trim(),
@@ -2967,41 +2821,50 @@ interface NavSpec {
 
 const NAV_SECTIONS: { title: string; items: NavSpec[] }[] = [
   {
-    title: "Workspace Management",
+    title: "Team",
+    items: [{ id: "people", label: "People", icon: Users01V2 }],
+  },
+  {
+    title: "Access Control",
     items: [
-      { id: "people", label: "People", icon: Users01V2 },
-      {
-        id: "identity",
-        label: "Identity & provisioning",
-        icon: Fingerprint04V2,
-      },
-      { id: "governance", label: "Governance", icon: Toggle01LeftV2 },
-      { id: "workspace", label: "Workspace Settings", icon: Tool01V2 },
-      { id: "models", label: "Model Providers", icon: Server01V2 },
-      { id: "analytics", label: "Analytics", icon: BarChart01V2 },
-      { id: "billing", label: "Billing", icon: CreditCard01V2 },
-      { id: "usage", label: "Usage", icon: PieChart01V2 },
+      { id: "capabilities", label: "Capabilities", icon: Toggle01LeftV2 },
     ],
   },
   {
-    title: "API Keys & Programmatic",
+    title: "Security",
+    items: [
+      { id: "identity", label: "Identity & SSO", icon: Fingerprint04V2 },
+      { id: "audit", label: "Audit Logs", icon: Shield01V2 },
+    ],
+  },
+  {
+    title: "Workspace",
+    items: [
+      { id: "workspace", label: "Settings", icon: Tool01V2 },
+      { id: "models", label: "Model Providers", icon: Server01V2 },
+    ],
+  },
+  {
+    title: "Developer",
     items: [
       { id: "api_keys", label: "API Keys", icon: Key01V2 },
-      { id: "programmatic", label: "Programmatic usage", icon: Code01V2 },
+      { id: "programmatic", label: "Programmatic", icon: Code01V2 },
+      { id: "credentials", label: "App Credentials", icon: PuzzlePiece01V2 },
+      { id: "secrets", label: "Secrets", icon: Lock01V2 },
     ],
   },
   {
-    title: "Builder Tools Management",
+    title: "Billing",
     items: [
-      { id: "credentials", label: "App Credentials", icon: PuzzlePiece01V2 },
-      { id: "secrets", label: "Secrets", icon: Lock01V2 },
+      { id: "billing", label: "Plan & Invoices", icon: CreditCard01V2 },
+      { id: "usage", label: "Usage", icon: PieChart01V2 },
     ],
   },
 ];
 
 // ─── Main Story ───────────────────────────────────────────────────────────────
 
-export default function AdminGovernance() {
+export default function AdminGovernanceV2() {
   const sidebarRef = useRef<SidebarLayoutRef>(null);
   const [role, setRole] = useState<Role>("super_admin");
   const [activePage, setActivePage] = useState<AdminPage>("people");
@@ -3009,9 +2872,6 @@ export default function AdminGovernance() {
     label: string;
     requiredRoles: string[];
   } | null>(null);
-  const [peopleDefaultTab, setPeopleDefaultTab] = useState<
-    "members" | "groups"
-  >("members");
   const [members, setMembers] = useState<MemberRow[]>(INITIAL_MEMBERS);
   const [groups, setGroups] = useState<GroupRow[]>(GROUPS);
   const [governance, setGovernance] =
@@ -3139,29 +2999,36 @@ export default function AdminGovernance() {
             setMembers={setMembers}
             groups={groups}
             setGroups={setGroups}
-            onNavigate={setActivePage}
-            defaultTab={peopleDefaultTab}
-            onTabChange={setPeopleDefaultTab}
+            onNavigate={(page) => setActivePage(page as AdminPage)}
+            defaultTab="members"
+            onTabChange={() => {}}
           />
-        ) : effectivePage === "identity" ? (
-          <IdentityPage role={role} />
-        ) : effectivePage === "governance" ? (
+        ) : effectivePage === "roles" ? (
+          <PlaceholderPage
+            title="Role Assignment"
+            description="Assign roles to members directly or via groups."
+            icon={LayersThree01V2}
+          />
+        ) : effectivePage === "capabilities" ? (
           <GovernancePage
             role={role}
             settings={governance}
             setSettings={setGovernance}
             groups={groups}
-            onNavigateToGroups={() => {
-              setPeopleDefaultTab("groups");
-              setActivePage("people");
-            }}
+            onNavigateToGroups={() => setActivePage("people" as AdminPage)}
+          />
+        ) : effectivePage === "identity" ? (
+          <IdentityPage role={role} />
+        ) : effectivePage === "audit" ? (
+          <PlaceholderPage
+            title="Audit Logs"
+            description="View workspace activity and security events."
+            icon={Shield01V2}
           />
         ) : effectivePage === "billing" ? (
           <BillingPage />
         ) : effectivePage === "usage" ? (
           <UsagePage />
-        ) : effectivePage === "analytics" ? (
-          <AnalyticsPage />
         ) : effectivePage === "workspace" ? (
           <PlaceholderPage
             title="Workspace Settings"

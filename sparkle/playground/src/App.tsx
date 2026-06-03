@@ -24,7 +24,9 @@ const stories = Object.entries(storyModules)
       component: (module as { default: React.ComponentType }).default,
     };
   })
-  .filter((s) => s.name !== "TemplateSelection");
+  .filter(
+    (s) => s.name !== "TemplateSelection" && s.name !== "AdminGovernanceV2"
+  );
 
 type Theme = "light" | "dark";
 const THEME_STORAGE_KEY = "sparkle-playground-theme";
