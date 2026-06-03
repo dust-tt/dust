@@ -7,6 +7,7 @@ import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { createHash } from "crypto";
 
 import {
+  USAGE_TYPE_FREE,
   USAGE_TYPE_GROUP_KEY,
   USAGE_TYPE_PROGRAMMATIC,
   USAGE_TYPE_USER,
@@ -163,6 +164,48 @@ export function getToolCategory(
 }
 
 // ---------------------------------------------------------------------------
+// Usage type helpers
+// ---------------------------------------------------------------------------
+
+export type UsageType =
+  | typeof USAGE_TYPE_USER
+  | typeof USAGE_TYPE_PROGRAMMATIC
+  | typeof USAGE_TYPE_FREE;
+
+// Origins whose entire conversation is free (platform-assistive, not
+// user-requested output).
+const FREE_ORIGINS: ReadonlySet<string> = new Set<string>(["agent_sidekick"]);
+
+// Internal MCP servers whose tool invocations are always free regardless of
+// the message-level usage type (platform plumbing, not user output).
+const FREE_TOOL_SERVERS: ReadonlySet<string> = new Set<string>([
+  "agent_router",
+  "common_utilities",
+  "toolsets",
+  "agent_memory",
+]);
+
+export function getUsageType(
+  isProgrammaticUsage: boolean,
+  origin: string
+): UsageType {
+  if (FREE_ORIGINS.has(origin)) {
+    return USAGE_TYPE_FREE;
+  }
+  return isProgrammaticUsage ? USAGE_TYPE_PROGRAMMATIC : USAGE_TYPE_USER;
+}
+
+function getToolUsageType(
+  baseUsageType: UsageType,
+  internalMCPServerName: string | null
+): UsageType {
+  if (internalMCPServerName && FREE_TOOL_SERVERS.has(internalMCPServerName)) {
+    return USAGE_TYPE_FREE;
+  }
+  return baseUsageType;
+}
+
+// ---------------------------------------------------------------------------
 // LLM usage events
 // ---------------------------------------------------------------------------
 
@@ -184,7 +227,7 @@ export function buildLlmUsageEvents({
   runKey,
   runUsages,
   origin,
-  isProgrammaticUsage,
+  usageType,
   authMethod,
   apiKeyName,
   messageStatus,
@@ -201,7 +244,7 @@ export function buildLlmUsageEvents({
   runKey: string;
   runUsages: RunUsageType[];
   origin: UserMessageOrigin;
-  isProgrammaticUsage: boolean;
+  usageType: UsageType;
   authMethod: string | null;
   apiKeyName: string | null;
   messageStatus: string;
@@ -269,11 +312,10 @@ export function buildLlmUsageEvents({
       // 1 AWU credit = $0.0085
       cost_awu: Math.ceil(group.costMicroUsd / 0.85 / 10_000),
       // TODO: Remove is_programmatic_usage & is_free_usage, this is replaced by single property "usage type"
-      is_programmatic_usage: isProgrammaticUsage ? "true" : "false",
-      is_free_usage: "false",
-      [USAGE_TYPE_GROUP_KEY]: isProgrammaticUsage
-        ? USAGE_TYPE_PROGRAMMATIC
-        : USAGE_TYPE_USER,
+      is_programmatic_usage:
+        usageType === USAGE_TYPE_PROGRAMMATIC ? "true" : "false",
+      is_free_usage: usageType === USAGE_TYPE_FREE ? "true" : "false",
+      [USAGE_TYPE_GROUP_KEY]: usageType,
       auth_method: authMethod ?? "unknown",
       api_key_name: apiKeyName ?? "unknown",
       message_status: messageStatus,
@@ -313,7 +355,7 @@ export function buildToolUseEvents({
   runKey,
   actions,
   origin,
-  isProgrammaticUsage,
+  usageType,
   authMethod,
   apiKeyName,
   messageStatus,
@@ -329,7 +371,7 @@ export function buildToolUseEvents({
   runKey: string;
   actions: ToolAction[];
   origin: UserMessageOrigin;
-  isProgrammaticUsage: boolean;
+  usageType: UsageType;
   authMethod: string | null;
   apiKeyName: string | null;
   messageStatus: string;
@@ -356,44 +398,49 @@ export function buildToolUseEvents({
     }
   }
 
-  return [...groups.values()].map(({ action, count, totalDurationMs }) => ({
-    transaction_id: truncateTransactionId(
-      `tool3-${workspaceId}-${conversationId}-${agentMessageId}-${runKey}-${action.toolName}-${action.mcpServerId ?? ""}-${action.status}`
-    ),
-    customer_id: workspaceId,
-    event_type: "tool_use_v3",
-    timestamp,
-    properties: {
-      workspace_id: workspaceId,
-      user_id: userId ?? "unknown",
-      agent_message_id: agentMessageId,
-      conversation_id: conversationId,
-      agent_id: agentId ?? "unknown",
-      parent_agent_message_id: parentAgentMessageId ?? "none",
-      auth_method: authMethod ?? "unknown",
-      api_key_name: apiKeyName ?? "unknown",
-      tool_name: truncatePropertyValue(action.toolName),
-      mcp_server_id: truncatePropertyValue(action.mcpServerId ?? ""),
-      internal_mcp_server_name: truncatePropertyValue(
-        action.internalMCPServerName ?? ""
+  return [...groups.values()].map(({ action, count, totalDurationMs }) => {
+    const effectiveUsageType = getToolUsageType(
+      usageType,
+      action.internalMCPServerName
+    );
+    return {
+      transaction_id: truncateTransactionId(
+        `tool3-${workspaceId}-${conversationId}-${agentMessageId}-${runKey}-${action.toolName}-${action.mcpServerId ?? ""}-${action.status}`
       ),
-      tool_category: getToolCategory(action.internalMCPServerName),
-      // Constant grouping key — used as presentation_group_key in Metronome to
-      // aggregate all tool categories into a single "Tool Usage" invoice line.
-      tool_group: "tools",
-      status: action.status,
-      count,
-      total_execution_duration_ms: totalDurationMs,
-      // TODO: Remove is_programmatic_usage, this is replaced by single property "usage type"
-      is_programmatic_usage: isProgrammaticUsage ? "true" : "false",
-      [USAGE_TYPE_GROUP_KEY]: isProgrammaticUsage
-        ? USAGE_TYPE_PROGRAMMATIC
-        : USAGE_TYPE_USER,
-      message_status: messageStatus,
-      is_sub_agent_message: isSubAgentMessage ? "true" : "false",
-      origin,
-    },
-  }));
+      customer_id: workspaceId,
+      event_type: "tool_use_v3",
+      timestamp,
+      properties: {
+        workspace_id: workspaceId,
+        user_id: userId ?? "unknown",
+        agent_message_id: agentMessageId,
+        conversation_id: conversationId,
+        agent_id: agentId ?? "unknown",
+        parent_agent_message_id: parentAgentMessageId ?? "none",
+        auth_method: authMethod ?? "unknown",
+        api_key_name: apiKeyName ?? "unknown",
+        tool_name: truncatePropertyValue(action.toolName),
+        mcp_server_id: truncatePropertyValue(action.mcpServerId ?? ""),
+        internal_mcp_server_name: truncatePropertyValue(
+          action.internalMCPServerName ?? ""
+        ),
+        tool_category: getToolCategory(action.internalMCPServerName),
+        // Constant grouping key — used as presentation_group_key in Metronome to
+        // aggregate all tool categories into a single "Tool Usage" invoice line.
+        tool_group: "tools",
+        status: action.status,
+        count,
+        total_execution_duration_ms: totalDurationMs,
+        // TODO: Remove is_programmatic_usage, this is replaced by single property "usage type"
+        is_programmatic_usage:
+          effectiveUsageType === USAGE_TYPE_PROGRAMMATIC ? "true" : "false",
+        [USAGE_TYPE_GROUP_KEY]: effectiveUsageType,
+        message_status: messageStatus,
+        is_sub_agent_message: isSubAgentMessage ? "true" : "false",
+        origin,
+      },
+    };
+  });
 }
 
 // ---------------------------------------------------------------------------
