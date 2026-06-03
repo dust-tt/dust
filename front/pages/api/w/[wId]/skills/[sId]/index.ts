@@ -1,8 +1,9 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { updateSkill } from "@app/lib/api/skills/mutations";
+import { resolveAdditionalRequestedSpaceModelIds } from "@app/lib/api/skills/space_requirements";
 import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
+import { pruneOutdatedSkillEditSuggestions } from "@app/lib/reinforcement/skill_suggestion_pruning";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -16,6 +17,7 @@ import type {
   SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import type { ModelId } from "@app/types/shared/model_id";
 import { isString } from "@app/types/shared/utils/general";
 import uniq from "lodash/uniq";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -194,6 +196,19 @@ async function handler(
         });
       }
 
+      // Check for existing active skill with the same name (excluding current skill).
+      const existingSkill = await SkillResource.fetchActiveByName(auth, name);
+
+      if (existingSkill && existingSkill.id !== skill.id) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `A skill with the name "${name}" already exists.`,
+          },
+        });
+      }
+
       // Validate MCP server view IDs.
       for (const tool of body.tools) {
         if (!isResourceSId("mcp_server_view", tool.mcpServerViewId)) {
@@ -256,6 +271,54 @@ async function handler(
         })
       );
 
+      const computedRequestedSpaceIds =
+        await SkillResource.computeRequestedSpaceIds(auth, {
+          mcpServerViews,
+          attachedKnowledge: attachedKnowledgeWithDataSourceViews,
+        });
+
+      let additionalRequestedSpaceIds: ModelId[];
+
+      if (body.additionalRequestedSpaceIds !== undefined) {
+        const additionalRequestedSpaceIdsRes =
+          await resolveAdditionalRequestedSpaceModelIds(
+            auth,
+            body.additionalRequestedSpaceIds
+          );
+
+        if (additionalRequestedSpaceIdsRes.isErr()) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: additionalRequestedSpaceIdsRes.error.message,
+            },
+          });
+        }
+
+        additionalRequestedSpaceIds = additionalRequestedSpaceIdsRes.value;
+      } else {
+        const previousAttachedKnowledge =
+          await skill.getAttachedKnowledge(auth);
+        const previousComputedRequestedSpaceIds =
+          await SkillResource.computeRequestedSpaceIds(auth, {
+            mcpServerViews: skill.mcpServerViews,
+            attachedKnowledge: previousAttachedKnowledge,
+          });
+        const previousComputedRequestedSpaceIdsSet = new Set(
+          previousComputedRequestedSpaceIds
+        );
+
+        additionalRequestedSpaceIds = skill.requestedSpaceIds.filter(
+          (spaceId) => !previousComputedRequestedSpaceIdsSet.has(spaceId)
+        );
+      }
+
+      const requestedSpaceIds = uniq([
+        ...computedRequestedSpaceIds,
+        ...additionalRequestedSpaceIds,
+      ]);
+
       const featureFlags = await getFeatureFlags(auth);
       const enableSkillReferences = featureFlags.includes("nested_skills");
 
@@ -300,7 +363,20 @@ async function handler(
         }
       }
 
-      const skillResult = await updateSkill(auth, skill, {
+      // When saving a suggested skill, automatically activate it.
+      const shouldActivate = skill.status === "suggested";
+
+      if (shouldActivate) {
+        logger.info(
+          {
+            skillId: skill.sId,
+            workspaceId: owner.sId,
+          },
+          "Suggested skill accepted"
+        );
+      }
+
+      await skill.updateSkill(auth, {
         agentFacingDescription: body.agentFacingDescription,
         attachedKnowledge: attachedKnowledgeWithDataSourceViews,
         fileAttachments: files,
@@ -311,19 +387,17 @@ async function handler(
         mcpServerViews,
         name,
         reinforcement: body.reinforcement,
-        additionalRequestedSpaceIds: body.additionalRequestedSpaceIds,
+        requestedSpaceIds,
         enableSkillReferences,
         referencedSkillIds: body.referencedSkillIds,
         userFacingDescription: body.userFacingDescription,
-        activateSuggestedSkill: true,
+        ...(shouldActivate ? { status: "active" as const } : {}),
       });
 
-      if (skillResult.isErr()) {
-        return apiError(req, res, skillResult.error);
-      }
+      await pruneOutdatedSkillEditSuggestions(auth, skill);
 
       return res.status(200).json({
-        skill: skillResult.value.toJSON(auth),
+        skill: skill.toJSON(auth),
       });
     }
 

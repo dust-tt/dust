@@ -1,4 +1,5 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   CREATE_SKILL_TOOL_NAME,
   GET_SKILL_TOOL_NAME,
@@ -25,8 +26,13 @@ function getTool(name: string) {
 function makeExtra(auth: Authenticator) {
   return {
     auth,
+    requestId: "test-request",
+    sendNotification: async () => {},
+    sendRequest: async () => {
+      throw new Error("Unexpected MCP request in skill_authoring test.");
+    },
     signal: new AbortController().signal,
-  } as never;
+  } satisfies ToolHandlerExtra;
 }
 
 describe("skill_authoring tools", () => {
@@ -65,6 +71,9 @@ describe("skill_authoring tools", () => {
       output.resource.skillId
     );
     expect(createdSkill?.source).toBe("agent");
+    expect(createdSkill?.instructionsHtml).toContain(
+      "Collect impact, timeline, root cause, and follow-ups."
+    );
 
     const listResult = await getTool(LIST_SKILLS_TOOL_NAME).handler(
       {},
@@ -120,6 +129,9 @@ describe("skill_authoring tools", () => {
       output.resource.skillId
     );
     expect(updatedSkill?.instructions).toBe(
+      "Collect impact, timeline, root cause, and owners."
+    );
+    expect(updatedSkill?.instructionsHtml).toContain(
       "Collect impact, timeline, root cause, and owners."
     );
   });

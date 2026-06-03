@@ -9,11 +9,14 @@ import {
   UPDATE_SKILL_TOOL_NAME,
 } from "@app/lib/api/actions/servers/skill_authoring/metadata";
 import { makeSkillAuthoringResultOutput } from "@app/lib/api/actions/servers/skill_authoring/rendering";
-import { createSkill, updateSkill } from "@app/lib/api/skills/mutations";
-import type { Authenticator } from "@app/lib/auth";
+import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
+import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
+import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
+import { pruneOutdatedSkillEditSuggestions } from "@app/lib/reinforcement/skill_suggestion_pruning";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -121,25 +124,69 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
       return new Err(user.error);
     }
 
-    const skillResult = await createSkill(auth, {
-      name,
-      agentFacingDescription,
-      userFacingDescription,
-      instructions,
-      instructionsHtml: null,
-      icon,
-      mcpServerViews: [],
-      attachedKnowledge: [],
-      source: "agent",
-      sourceMetadata: null,
-    });
-
-    if (skillResult.isErr()) {
-      return new Err(new MCPError(skillResult.error.api_error.message));
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      return new Err(new MCPError("Skill name cannot be empty."));
     }
 
+    const existingSkill = await SkillResource.fetchActiveByName(
+      auth,
+      trimmedName
+    );
+    if (existingSkill) {
+      return new Err(
+        new MCPError(`A skill with the name "${trimmedName}" already exists.`)
+      );
+    }
+
+    let resolvedIcon = icon ?? null;
+    if (!resolvedIcon) {
+      const iconResult = await getSkillIconSuggestion(auth, {
+        name: trimmedName,
+        instructions,
+        agentFacingDescription,
+      });
+
+      if (iconResult.isOk()) {
+        resolvedIcon = iconResult.value;
+      } else {
+        logger.warn(
+          { err: iconResult.error },
+          "Failed to generate icon suggestion for skill"
+        );
+        resolvedIcon = "ActionListIcon";
+      }
+    }
+
+    const skill = await SkillResource.makeNew(
+      auth,
+      {
+        status: "active",
+        name: trimmedName,
+        agentFacingDescription,
+        userFacingDescription,
+        instructions,
+        instructionsHtml: convertMarkdownToBlockHtml(instructions),
+        editedBy: user.value.id,
+        requestedSpaceIds: [],
+        extendedSkillId: null,
+        icon: resolvedIcon,
+        source: "agent",
+        sourceMetadata: null,
+        isDefault: false,
+        reinforcement: "on",
+      },
+      {
+        mcpServerViews: [],
+        attachedKnowledge: [],
+        enableSkillReferences: false,
+        referencedSkillIds: [],
+      }
+    );
+
+    await auth.refresh();
+
     const owner = auth.getNonNullableWorkspace();
-    const skill = skillResult.value;
     const text = `Created skill "${skill.name}".`;
 
     return new Ok([
@@ -158,9 +205,9 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
       agentFacingDescription,
       icon,
       instructions,
+      userFacingDescription,
       name,
       sId,
-      userFacingDescription,
     },
     { auth }
   ) => {
@@ -189,27 +236,58 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
       return new Err(new MCPError("Skill not found."));
     }
 
-    const skillResult = await updateSkill(auth, skill, {
-      agentFacingDescription,
-      icon,
-      instructions,
-      name,
-      userFacingDescription,
-    });
-
-    if (skillResult.isErr()) {
-      return new Err(new MCPError(skillResult.error.api_error.message));
+    if (!skill.canWrite(auth)) {
+      return new Err(new MCPError("Only editors can modify this skill."));
     }
 
+    const trimmedName = name !== undefined ? name.trim() : skill.name;
+    if (!trimmedName) {
+      return new Err(new MCPError("Skill name cannot be empty."));
+    }
+
+    const existingSkill = await SkillResource.fetchActiveByName(
+      auth,
+      trimmedName
+    );
+    if (existingSkill && existingSkill.id !== skill.id) {
+      return new Err(
+        new MCPError(`A skill with the name "${trimmedName}" already exists.`)
+      );
+    }
+
+    const enableSkillReferences = (await getFeatureFlags(auth)).includes(
+      "nested_skills"
+    );
+    const attachedKnowledge = await skill.getAttachedKnowledge(auth);
+
+    await skill.updateSkill(auth, {
+      agentFacingDescription:
+        agentFacingDescription ?? skill.agentFacingDescription,
+      attachedKnowledge,
+      icon: icon !== undefined ? icon : skill.icon,
+      instructions: instructions ?? skill.instructions,
+      instructionsHtml:
+        instructions !== undefined
+          ? convertMarkdownToBlockHtml(instructions)
+          : skill.instructionsHtml,
+      mcpServerViews: skill.mcpServerViews,
+      name: trimmedName,
+      requestedSpaceIds: skill.requestedSpaceIds,
+      enableSkillReferences,
+      userFacingDescription:
+        userFacingDescription ?? skill.userFacingDescription,
+    });
+
+    await pruneOutdatedSkillEditSuggestions(auth, skill);
+
     const owner = auth.getNonNullableWorkspace();
-    const updatedSkill = skillResult.value;
-    const text = `Updated skill "${updatedSkill.name}".`;
+    const text = `Updated skill "${skill.name}".`;
 
     return new Ok([
       makeSkillAuthoringResultOutput({
         operation: "update",
-        skillId: updatedSkill.sId,
-        skillName: updatedSkill.name,
+        skillId: skill.sId,
+        skillName: skill.name,
         text,
         workspaceId: owner.sId,
       }),

@@ -1,12 +1,14 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { createSkill } from "@app/lib/api/skills/mutations";
+import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
+import { resolveAdditionalRequestedSpaceModelIds } from "@app/lib/api/skills/space_requirements";
 import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import {
   SKILL_REINFORCEMENT_MODES,
@@ -80,10 +82,6 @@ const PostSkillRequestBodySchema = z.intersection(
     z.object({
       source: z.literal("local_file"),
       sourceMetadata: z.object({ filePath: z.string() }).nullable(),
-    }),
-    z.object({
-      source: z.literal("agent"),
-      sourceMetadata: z.null().optional(),
     }),
     z.object({
       source: z.literal("web_app").optional(),
@@ -242,6 +240,8 @@ async function handler(
         });
       }
 
+      const user = auth.getNonNullableUser();
+
       const bodyValidation = PostSkillRequestBodySchema.safeParse(req.body);
 
       if (!bodyValidation.success) {
@@ -264,6 +264,18 @@ async function handler(
           api_error: {
             type: "invalid_request_error",
             message: "Skill name cannot be empty.",
+          },
+        });
+      }
+
+      const existingSkill = await SkillResource.fetchActiveByName(auth, name);
+
+      if (existingSkill) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `A skill with the name "${name}" already exists.`,
           },
         });
       }
@@ -316,6 +328,33 @@ async function handler(
           nodeId: attachment.nodeId,
         })
       );
+
+      const computedRequestedSpaceIds =
+        await SkillResource.computeRequestedSpaceIds(auth, {
+          mcpServerViews,
+          attachedKnowledge: attachedKnowledgeWithDataSourceViews,
+        });
+
+      const additionalRequestedSpaceIdsRes =
+        await resolveAdditionalRequestedSpaceModelIds(
+          auth,
+          body.additionalRequestedSpaceIds
+        );
+
+      if (additionalRequestedSpaceIdsRes.isErr()) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: additionalRequestedSpaceIdsRes.error.message,
+          },
+        });
+      }
+
+      const requestedSpaceIds = uniq([
+        ...computedRequestedSpaceIds,
+        ...additionalRequestedSpaceIdsRes.value,
+      ]);
 
       const extendedSkill = body.extendedSkillId
         ? await SkillResource.fetchById(auth, body.extendedSkillId)
@@ -377,32 +416,61 @@ async function handler(
         }
       }
 
-      const skillResult = await createSkill(auth, {
-        name,
-        agentFacingDescription: body.agentFacingDescription,
-        userFacingDescription: body.userFacingDescription,
-        instructions: body.instructions,
-        instructionsHtml: body.instructionsHtml,
-        icon: body.icon,
-        additionalRequestedSpaceIds: body.additionalRequestedSpaceIds,
-        extendedSkillId: body.extendedSkillId,
-        source: body.source ?? "web_app",
-        sourceMetadata: body.sourceMetadata ?? null,
-        isDefault: body.isDefault,
-        reinforcement: body.reinforcement,
-        mcpServerViews,
-        attachedKnowledge: attachedKnowledgeWithDataSourceViews,
-        fileAttachments: files,
-        enableSkillReferences,
-        referencedSkillIds,
-      });
+      // Generate icon suggestion if not provided.
+      let icon = body.icon;
+      if (!icon) {
+        const iconResult = await getSkillIconSuggestion(auth, {
+          name,
+          instructions: body.instructions,
+          agentFacingDescription: body.agentFacingDescription,
+        });
+        if (iconResult.isOk()) {
+          icon = iconResult.value;
+        } else {
+          logger.warn(
+            { error: iconResult.error },
+            "Failed to generate icon suggestion for skill"
+          );
+          icon = "ActionListIcon";
+        }
+      }
 
-      if (skillResult.isErr()) {
-        return apiError(req, res, skillResult.error);
+      const skill = await SkillResource.makeNew(
+        auth,
+        {
+          status: "active",
+          name,
+          agentFacingDescription: body.agentFacingDescription,
+          userFacingDescription: body.userFacingDescription,
+          instructions: body.instructions,
+          instructionsHtml: body.instructionsHtml,
+          editedBy: user.id,
+          requestedSpaceIds,
+          extendedSkillId: body.extendedSkillId,
+          icon,
+          source: body.source ?? "web_app",
+          sourceMetadata: body.sourceMetadata ?? null,
+          isDefault: body.isDefault ?? false,
+          reinforcement: body.reinforcement ?? "on",
+        },
+        {
+          mcpServerViews,
+          attachedKnowledge: attachedKnowledgeWithDataSourceViews,
+          fileAttachments: files,
+          enableSkillReferences,
+          referencedSkillIds,
+        }
+      );
+
+      // Update file useCaseMetadata with the newly created skill's sId.
+      if (files) {
+        await FileResource.bulkSetUseCaseMetadata(auth, files, {
+          skillId: skill.sId,
+        });
       }
 
       return res.status(200).json({
-        skill: skillResult.value.toJSON(auth),
+        skill: skill.toJSON(auth),
       });
     }
 
