@@ -24,16 +24,33 @@ import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { renderConversationAsTextWithFeedback } from "@app/lib/api/assistant/conversation/render_conversation_with_feedback";
 import type { AgentMessageFeedbackWithMetadataType } from "@app/lib/api/assistant/feedback";
 import { getAgentFeedbacks } from "@app/lib/api/assistant/feedback";
+import {
+  formatAvailableModels,
+  formatAvailableSkills,
+  formatAvailableTools,
+  formatMcpDescription,
+} from "@app/lib/api/assistant/global_agents/sidekick_context";
 import { fetchAgentOverview } from "@app/lib/api/assistant/observability/overview";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import {
   formatTemplatesAsText,
   getTemplatesForSidekick,
 } from "@app/lib/api/assistant/sidekick_templates";
+import {
+  describeMcpServer,
+  getAvailableModelsForWorkspace,
+  listAvailableSkills,
+  listAvailableTools,
+} from "@app/lib/api/assistant/workspace_capabilities";
 import config from "@app/lib/api/config";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
+import { formatSkillContext } from "@app/lib/reinforcement/format_skill_context";
+import {
+  DESCRIBE_MCP_TOOL_NAME,
+  DESCRIBE_SKILL_TOOL_NAME,
+} from "@app/lib/reinforcement/types";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -77,6 +94,7 @@ import {
   isToolsSuggestion,
 } from "@app/types/suggestions/agent_suggestion";
 import { JSDOM } from "jsdom";
+import type { z } from "zod";
 
 const SIDEKICK_KNOWLEDGE_CATEGORIES: DataSourceViewCategory[] = [
   "managed",
@@ -510,21 +528,6 @@ export async function createSkillsSuggestions({
   return new Ok(createdSuggestions);
 }
 
-import {
-  formatAvailableModels,
-  formatAvailableSkills,
-  formatAvailableTools,
-  formatMcpDescription,
-} from "@app/lib/api/assistant/global_agents/sidekick_context";
-import {
-  describeMcpServer,
-  getAvailableModelsForWorkspace,
-  listAvailableSkills,
-  listAvailableTools,
-} from "@app/lib/api/assistant/workspace_capabilities";
-import { DESCRIBE_MCP_TOOL_NAME } from "@app/lib/reinforcement/types";
-import type { z } from "zod";
-
 /**
  * Lists all knowledge data source views across all spaces the user has access to.
  * Filters to knowledge categories (managed, folder, website), with optional category narrowing.
@@ -602,6 +605,21 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     }
     return new Ok([
       { type: "text" as const, text: formatMcpDescription(mcpId, server) },
+    ]);
+  },
+
+  [DESCRIBE_SKILL_TOOL_NAME]: async ({ skillId }, { auth }) => {
+    const skill = await SkillResource.fetchById(auth, skillId);
+    if (!skill) {
+      return new Ok([
+        { type: "text" as const, text: `Skill not found: ${skillId}` },
+      ]);
+    }
+    return new Ok([
+      {
+        type: "text" as const,
+        text: formatSkillContext(skill.toJSON(auth)),
+      },
     ]);
   },
 
