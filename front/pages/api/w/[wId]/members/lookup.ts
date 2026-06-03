@@ -18,8 +18,12 @@ const MembersLookupQuerySchema = z.object({
   ids: z.union([z.coerce.number(), z.array(z.coerce.number())]),
 });
 
+// The lookup endpoint is queried by numeric ModelId, so the response must
+// include `id` so callers can correlate results back to the requested ids.
+export type LightLookupUserType = LightUserType & { id: number };
+
 export type MembersLookupResponseBody = {
-  users: LightUserType[];
+  users: LightLookupUserType[];
 };
 
 export type MembersLookupAdminResponseBody = {
@@ -90,7 +94,10 @@ async function handler(
       }
 
       return res.status(200).json({
-        users: filteredUsers.map((user) => toLightUser(user.toJSON())),
+        users: filteredUsers.map((user) => ({
+          ...toLightUser(user.toJSON()),
+          id: user.id,
+        })),
       });
     }
 
