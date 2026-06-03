@@ -11,7 +11,7 @@ import {
   Button,
   Label,
   Separator,
-  XMarkIcon,
+  XCloseV2,
 } from "@dust-tt/sparkle";
 import { format } from "date-fns/format";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
@@ -68,7 +68,7 @@ export function AgentBuilderInstructionsBlock({
           )}
           <div className="flex gap-2">
             <Button
-              icon={XMarkIcon}
+              icon={XCloseV2}
               variant="outline"
               size="sm"
               onClick={() => {

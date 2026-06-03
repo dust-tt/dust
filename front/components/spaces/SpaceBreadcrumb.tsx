@@ -7,10 +7,10 @@ import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { BreadcrumbsItem } from "@dust-tt/sparkle";
 import {
-  BoltIcon,
   Breadcrumbs,
   CloudArrowLeftRightIcon,
-  ToolsIcon,
+  Tool02V2,
+  ZapV2,
 } from "@dust-tt/sparkle";
 import React from "react";
 
@@ -85,14 +85,14 @@ export function SpaceBreadCrumbs({
         case "actions":
           return [
             {
-              icon: ToolsIcon,
+              icon: Tool02V2,
               label: "Tools",
             },
           ];
         case "triggers":
           return [
             {
-              icon: BoltIcon,
+              icon: ZapV2,
               label: "Triggers",
             },
           ];

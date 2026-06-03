@@ -19,17 +19,17 @@ import { PatchPodMetadataBodySchema } from "@app/types/api/internal/spaces";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   ArchiveIcon,
-  ArrowUpOnSquareIcon,
   Button,
   ContentMessage,
-  GlobeAltIcon,
+  Globe01V2,
   Input,
   ScrollArea,
   SearchInput,
   SliderToggle,
   TextArea,
   Tooltip,
-  UserGroupIcon,
+  Upload01V2,
+  Users01V2,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useContext, useEffect, useState } from "react";
@@ -295,7 +295,7 @@ export function PodSettingsTab({
           <div className="flex flex-col border-y border-border">
             <div className="flex items-center justify-between gap-4 py-4">
               <PodSettingsOptionLabel
-                icon={GlobeAltIcon}
+                icon={Globe01V2}
                 title="Open to everyone"
                 description="Anyone in the workspace can find and join the Pod."
               />
@@ -338,7 +338,7 @@ export function PodSettingsTab({
               <Button
                 label="Manage"
                 variant="outline"
-                icon={UserGroupIcon}
+                icon={Users01V2}
                 onClick={onOpenMembersPanel}
               />
             )}
@@ -382,7 +382,7 @@ export function PodSettingsTab({
                   .
                 </p>
                 <Button
-                  icon={ArrowUpOnSquareIcon}
+                  icon={Upload01V2}
                   variant="outline"
                   label="Unarchive"
                   onClick={handleArchiveToggle}

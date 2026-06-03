@@ -15,7 +15,7 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
   ActionCreditCoinsIcon,
   Button,
-  CheckCircleIcon,
+  CheckCircleV2,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -30,7 +30,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-  XCircleIcon,
+  XCircleV2,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -256,7 +256,7 @@ export function BuyAwuCreditsDialog({
         return (
           <div className="flex flex-col items-center justify-center gap-4 py-8">
             <Icon
-              visual={CheckCircleIcon}
+              visual={CheckCircleV2}
               size="lg"
               className="text-success-500"
             />
@@ -279,7 +279,7 @@ export function BuyAwuCreditsDialog({
       case "error":
         return (
           <div className="flex flex-col items-center justify-center gap-4 py-8">
-            <Icon visual={XCircleIcon} size="lg" className="text-warning-500" />
+            <Icon visual={XCircleV2} size="lg" className="text-warning-500" />
             <div className="text-center">
               <p className="text-lg font-medium text-foreground dark:text-foreground-night">
                 Something went wrong
@@ -521,11 +521,7 @@ export function BuyAwuCreditsDialog({
           </DialogHeader>
           <DialogContainer>
             <div className="flex flex-col items-center justify-center gap-4 py-8">
-              <Icon
-                visual={XCircleIcon}
-                size="lg"
-                className="text-warning-500"
-              />
+              <Icon visual={XCircleV2} size="lg" className="text-warning-500" />
               <p className="text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
                 Something went wrong while loading your top-up options. Please
                 try again in a moment, or{" "}

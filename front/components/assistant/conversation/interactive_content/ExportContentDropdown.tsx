@@ -4,8 +4,8 @@ import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { LightWorkspaceType } from "@app/types/user";
 import { datadogLogs } from "@datadog/browser-logs";
 import {
-  ArrowDownOnSquareIcon,
   Button,
+  Download01V2,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -73,7 +73,7 @@ export function ExportContentDropdown({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
-          icon={ArrowDownOnSquareIcon}
+          icon={Download01V2}
           isSelect
           label={isMobile ? undefined : exportLabel}
           tooltip={isMobile ? exportLabel : undefined}

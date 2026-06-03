@@ -25,16 +25,16 @@ import { normalizeAsInternalDustError } from "@app/types/shared/utils/error_util
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   ArrowCircleIcon,
-  ArrowGoBackIcon,
   Button,
-  CheckCircleIcon,
+  CheckCircleV2,
   CloudArrowUpIcon,
   CodeBlock,
-  CommandLineIcon,
-  EyeIcon,
+  EyeV2,
   FullscreenExitIcon,
   FullscreenIcon,
+  ReverseLeftV2,
   Spinner,
+  TerminalV2,
   Tooltip,
 } from "@dust-tt/sparkle";
 import React, {
@@ -359,7 +359,7 @@ export function FrameRenderer({
       <InteractiveContentHeader onClose={onClosePanel}>
         <div className="flex w-full items-center justify-between">
           <Button
-            icon={showCode ? EyeIcon : CommandLineIcon}
+            icon={showCode ? EyeV2 : TerminalV2}
             onClick={() => setShowCode(!showCode)}
             tooltip={showCode ? "Switch to Rendering" : "Switch to Code"}
             variant="ghost"
@@ -384,7 +384,7 @@ export function FrameRenderer({
             />
             {projectSaveState === "saved" && (
               <Button
-                icon={CheckCircleIcon}
+                icon={CheckCircleV2}
                 variant="ghost"
                 disabled={true}
                 label={isMobile ? undefined : "Saved"}
@@ -511,7 +511,7 @@ function PreviewActionButtons({
               variant="ghost"
               disabled={!hasPreviousVersion}
               size="xs"
-              icon={ArrowGoBackIcon}
+              icon={ReverseLeftV2}
               onClick={onRevert}
             />
           }

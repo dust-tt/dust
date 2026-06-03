@@ -26,10 +26,10 @@ import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
   Button,
   Checkbox,
-  CheckIcon,
+  CheckV2,
   ContentMessage,
   Label,
-  XMarkIcon,
+  XCloseV2,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
@@ -323,7 +323,7 @@ export function MCPToolValidationRequired({
                 label="Decline"
                 variant="outline"
                 size="xs"
-                icon={XMarkIcon}
+                icon={XCloseV2}
                 disabled={isValidating}
                 isPulsing={isPulsing}
                 onClick={() => void handleValidation("rejected")}
@@ -332,7 +332,7 @@ export function MCPToolValidationRequired({
                 label="Allow"
                 variant="highlight"
                 size="xs"
-                icon={CheckIcon}
+                icon={CheckV2}
                 disabled={isValidating}
                 isPulsing={isPulsing}
                 onClick={() => void handleValidation("approved")}

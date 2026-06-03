@@ -13,20 +13,20 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  ArrowUpOnSquareIcon,
   Button,
   CloudArrowLeftRightIcon,
-  Cog6ToothIcon,
-  CommandLineIcon,
   cn,
   DataTable,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  GlobeAltIcon,
-  PlusIcon,
+  Globe01V2,
+  PlusV2,
+  Settings01V2,
   Spinner,
+  TerminalV2,
+  Upload01V2,
 } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
 import type { ComponentType } from "react";
@@ -148,14 +148,14 @@ export const SpaceCategoriesList = ({
       {isAdmin && onButtonClick && space.kind === "regular" && (
         <Button
           label="Space settings"
-          icon={Cog6ToothIcon}
+          icon={Settings01V2}
           onClick={onButtonClick}
           variant="outline"
         />
       )}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button label="Add data" icon={PlusIcon} />
+          <Button label="Add data" icon={PlusV2} />
         </DropdownMenuTrigger>
         <DropdownMenuContent>
           <DropdownMenuItem
@@ -167,19 +167,19 @@ export const SpaceCategoriesList = ({
           <DropdownMenuItem
             disabled={!canWriteInSpace}
             href={`/w/${owner.sId}/spaces/${space.sId}/categories/folder`}
-            icon={ArrowUpOnSquareIcon}
+            icon={Upload01V2}
             label="Upload Data"
           />
           <DropdownMenuItem
             disabled={!canWriteInSpace}
             href={`/w/${owner.sId}/spaces/${space.sId}/categories/website?modal=website`}
-            icon={GlobeAltIcon}
+            icon={Globe01V2}
             label="Scrape a website"
           />
           <DropdownMenuItem
             disabled={!isBuilder || !canWriteInSpace}
             href={`/w/${owner.sId}/spaces/${space.sId}/categories/apps?modal=apps`}
-            icon={CommandLineIcon}
+            icon={TerminalV2}
             label="Create a Dust App"
           />
           <DropdownMenuItem

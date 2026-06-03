@@ -16,10 +16,10 @@ import { useCreditPurchaseInfo, useCredits } from "@app/lib/swr/credits";
 import type { CreditDisplayData, CreditType } from "@app/types/credits";
 import type { SubscriptionType } from "@app/types/plan";
 import {
+  AlertCircleV2,
   Button,
   CardIcon,
   ContentMessage,
-  ExclamationCircleIcon,
   Hoverable,
   Page,
 } from "@dust-tt/sparkle";
@@ -363,7 +363,7 @@ export function CreditsUsagePage() {
             title={`You're ${totalConsumed < totalCredits ? "almost" : ""} out of credits.`}
             variant="warning"
             size="lg"
-            icon={ExclamationCircleIcon}
+            icon={AlertCircleV2}
           >
             <div className="flex items-end justify-between">
               <p>Add credits to ensure uninterrupted usage.</p>
@@ -412,7 +412,7 @@ export function CreditsUsagePage() {
                 title={title}
                 variant="info"
                 size="lg"
-                icon={ExclamationCircleIcon}
+                icon={AlertCircleV2}
               >
                 <div className="flex items-end justify-between">
                   <p>Complete your payment to activate your credits.</p>

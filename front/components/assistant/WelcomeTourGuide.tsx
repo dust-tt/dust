@@ -7,7 +7,6 @@ import { isBuilder } from "@app/types/user";
 import {
   ActionBrainIcon,
   ActionGlobeIcon,
-  ActionImageIcon,
   ActionMagnifyingGlassIcon,
   ActionScanIcon,
   ActionTableIcon,
@@ -16,6 +15,7 @@ import {
   Button,
   ConfettiBackground,
   cn,
+  Image01V2,
   Tooltip,
   TypingAnimation,
 } from "@dust-tt/sparkle";
@@ -54,7 +54,7 @@ const ACTIONS_IN_TOUR_GUIDE = [
   },
   {
     label: "Image generation",
-    icon: ActionImageIcon,
+    icon: Image01V2,
   },
   {
     label: "Web search and browsing",

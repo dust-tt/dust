@@ -1,5 +1,5 @@
 import {
-  AttachmentIcon,
+  Attachment01V2,
   Icon,
   Markdown,
   Sheet,
@@ -50,7 +50,7 @@ export function FairUsageModal({ isOpened, onClose }: FairUsageModalProps) {
         </SheetHeader>
         <SheetContainer>
           <Icon
-            visual={AttachmentIcon}
+            visual={Attachment01V2}
             size="lg"
             className="text-success-500"
           />

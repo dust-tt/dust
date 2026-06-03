@@ -1,16 +1,16 @@
 import {
   AnimatedText,
   ArchiveIcon,
-  ArrowDownOnSquareIcon,
-  ArrowRightIcon,
-  ArrowUpOnSquareIcon,
+  Download01V2,
+  ArrowRightV2,
+  Upload01V2,
   Avatar,
   Button,
   ButtonsSwitch,
   ButtonsSwitchList,
-  ChatBubbleLeftRightIcon,
-  CheckDoubleIcon,
-  CheckIcon,
+  MessageChatSquareV2,
+  CheckDoubleV2,
+  CheckV2,
   Chip,
   CloudArrowLeftRightIcon,
   CloudArrowUpIcon,
@@ -22,7 +22,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DocumentIcon,
+  File02V2,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -35,14 +35,14 @@ import {
   DropdownMenuTrigger,
   EmptyCTA,
   EmptyCTAButton,
-  FolderIcon,
+  FolderV2,
   Icon,
   Input,
-  ListCheckIcon,
+  CheckDone01V2,
   ListGroup,
   ListIcon,
   ListItemSection,
-  MoreIcon,
+  DotsHorizontalV2,
   ReplySection,
   SearchInput,
   SearchInputWithPopover,
@@ -53,13 +53,13 @@ import {
   SheetHeader,
   SheetTitle,
   SliderToggle,
-  SparklesIcon,
+  Stars02V2,
   Tabs,
   TabsContent,
-  TrashIcon,
+  Trash01V2,
   TypingAnimation,
-  UserGroupIcon,
-  XMarkIcon,
+  Users01V2,
+  XCloseV2,
 } from "@dust-tt/sparkle";
 import { UniversalSearchItem } from "@dust-tt/sparkle/components/UniversalSearchItem";
 import { cn } from "@sparkle/lib/utils";
@@ -1313,7 +1313,7 @@ function ProjectSetupEmptyState({
       </p>
       <Button
         label="Let's go"
-        icon={SparklesIcon}
+        icon={Stars02V2}
         size="md"
         variant="highlight"
         onClick={onSetupProject}
@@ -2412,10 +2412,10 @@ export function GroupConversationView({
 
     const items: BreadcrumbsItem[] = [
       currentFolderId === null
-        ? { label: "Files", icon: FolderIcon }
+        ? { label: "Files", icon: FolderV2 }
         : {
             label: "Files",
-            icon: FolderIcon,
+            icon: FolderV2,
             onClick: () => {
               setCurrentFolderId(null);
               setKnowledgeSearchText("");
@@ -2428,13 +2428,13 @@ export function GroupConversationView({
     path.forEach((folder, index) => {
       const isLast = index === path.length - 1;
       if (isLast) {
-        items.push({ label: folder.fileName, icon: FolderIcon });
+        items.push({ label: folder.fileName, icon: FolderV2 });
         return;
       }
 
       items.push({
         label: folder.fileName,
-        icon: FolderIcon,
+        icon: FolderV2,
         onClick: () => {
           setCurrentFolderId(folder.id);
           setRevealedFileIdInKnowledge(null);
@@ -3394,7 +3394,7 @@ export function GroupConversationView({
                   {
                     kind: "item" as const,
                     label: "Add to Topbar",
-                    icon: DocumentIcon,
+                    icon: File02V2,
                     onClick: () => onAddFileToTopbar(dataSource.id),
                   },
                 ]
@@ -3402,7 +3402,7 @@ export function GroupConversationView({
             {
               kind: "item" as const,
               label: "Delete",
-              icon: TrashIcon,
+              icon: Trash01V2,
               variant: "warning" as const,
               onClick: () => {
                 setSelectedDataSourceId(dataSource.id);
@@ -3504,8 +3504,8 @@ export function GroupConversationView({
               {
                 kind: "item",
                 icon: editorIds.includes(info.row.original.userId)
-                  ? XMarkIcon
-                  : CheckIcon,
+                  ? XCloseV2
+                  : CheckV2,
                 label: editorIds.includes(info.row.original.userId)
                   ? "Remove from editors"
                   : "Set as editor",
@@ -3516,7 +3516,7 @@ export function GroupConversationView({
               {
                 kind: "item",
                 label: "Remove from the Pod",
-                icon: TrashIcon,
+                icon: Trash01V2,
                 variant: "warning",
                 onClick: () => {
                   setSelectedMemberIdToRemove(info.row.original.userId);
@@ -3683,7 +3683,7 @@ export function GroupConversationView({
                     <Button
                       size="sm"
                       variant="outline"
-                      icon={CheckDoubleIcon}
+                      icon={CheckDoubleV2}
                       className="@sm:s-hidden"
                       tooltip="Mark all as read"
                       onClick={() => {
@@ -3702,7 +3702,7 @@ export function GroupConversationView({
                       size="sm"
                       className="s-hidden @sm:s-inline-flex"
                       variant="outline"
-                      icon={CheckDoubleIcon}
+                      icon={CheckDoubleV2}
                       label="Mark all as read"
                       onClick={() => {
                         setCheckedSummaryItems((previous) => ({
@@ -4217,7 +4217,7 @@ export function GroupConversationView({
                                     >
                                       <DropdownMenuTrigger asChild>
                                         <Button
-                                          icon={MoreIcon}
+                                          icon={DotsHorizontalV2}
                                           size="xs"
                                           variant="ghost"
                                           tooltip="More actions"
@@ -4227,7 +4227,7 @@ export function GroupConversationView({
                                       <DropdownMenuContent align="end">
                                         <DropdownMenuItem
                                           label="Delete"
-                                          icon={TrashIcon}
+                                          icon={Trash01V2}
                                           variant="warning"
                                         />
                                         <DropdownMenuSub>
@@ -4279,7 +4279,7 @@ export function GroupConversationView({
                                       </DropdownMenuContent>
                                     </DropdownMenu>
                                     <Button
-                                      icon={ArrowRightIcon}
+                                      icon={ArrowRightV2}
                                       size="xs"
                                       variant="highlight"
                                       tooltip="Start working on task"
@@ -4297,7 +4297,7 @@ export function GroupConversationView({
                                                     conversationId
                                                   ) ?? conversationId,
                                                 tooltip: "Conversation context",
-                                                visual: ChatBubbleLeftRightIcon,
+                                                visual: MessageChatSquareV2,
                                               })
                                             ),
                                         });
@@ -4341,12 +4341,7 @@ export function GroupConversationView({
           {dataSources.length === 0 ? (
             <EmptyCTA
               message="No files in this room yet."
-              action={
-                <EmptyCTAButton
-                  icon={ArrowDownOnSquareIcon}
-                  label="Add files"
-                />
-              }
+              action={<EmptyCTAButton icon={Download01V2} label="Add files" />}
             />
           ) : (
             <>
@@ -4362,7 +4357,7 @@ export function GroupConversationView({
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="outline"
-                      icon={filesViewMode === "list" ? ListCheckIcon : ListIcon}
+                      icon={filesViewMode === "list" ? CheckDone01V2 : ListIcon}
                       isSelect
                     />
                   </DropdownMenuTrigger>
@@ -4378,7 +4373,7 @@ export function GroupConversationView({
                       <DropdownMenuRadioItem
                         value="list"
                         label="List"
-                        icon={ListCheckIcon}
+                        icon={CheckDone01V2}
                       />
                       <DropdownMenuRadioItem
                         value="grid"
@@ -4392,7 +4387,7 @@ export function GroupConversationView({
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="outline"
-                      icon={ArrowDownOnSquareIcon}
+                      icon={Download01V2}
                       label="Add files"
                       isSelect
                     />
@@ -4404,7 +4399,7 @@ export function GroupConversationView({
                       onClick={() => {}}
                     />
                     <DropdownMenuItem
-                      icon={FolderIcon}
+                      icon={FolderV2}
                       label="New folder"
                       onClick={() => {}}
                     />
@@ -4509,12 +4504,12 @@ export function GroupConversationView({
             </h3>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" icon={MoreIcon} />
+                <Button variant="outline" icon={DotsHorizontalV2} />
               </DropdownMenuTrigger>
               <DropdownMenuContent>
                 {isProjectArchived ? (
                   <DropdownMenuItem
-                    icon={ArrowUpOnSquareIcon}
+                    icon={Upload01V2}
                     label="Unarchive project"
                     onClick={handleUnarchiveProject}
                   />
@@ -4632,7 +4627,7 @@ export function GroupConversationView({
               <Button
                 label="Manage"
                 variant="outline"
-                icon={UserGroupIcon}
+                icon={Users01V2}
                 onClick={() => onInviteMembers?.()}
               />
             </div>
@@ -4641,7 +4636,7 @@ export function GroupConversationView({
                 message="Feeling lonely? Invite participants!."
                 action={
                   <EmptyCTAButton
-                    icon={UserGroupIcon}
+                    icon={Users01V2}
                     label="Invite"
                     onClick={() => onInviteMembers?.()}
                   />
@@ -4693,7 +4688,7 @@ export function GroupConversationView({
                   )}
                   <div className="s-flex s-w-full s-flex-col s-items-start">
                     <Button
-                      icon={ArrowUpOnSquareIcon}
+                      icon={Upload01V2}
                       variant="outline"
                       label="Unarchive"
                       onClick={handleUnarchiveProject}
@@ -4716,7 +4711,7 @@ export function GroupConversationView({
               </p>
               <div className="s-flex s-w-full s-flex-col s-items-start">
                 <Button
-                  icon={TrashIcon}
+                  icon={Trash01V2}
                   variant="warning"
                   label="Delete project"
                   onClick={() => setShowDeleteProjectDialog(true)}

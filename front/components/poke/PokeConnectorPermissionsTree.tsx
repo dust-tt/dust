@@ -7,9 +7,9 @@ import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
   DatadogLogo,
-  ExternalLinkIcon,
   IconButton,
-  InformationCircleIcon,
+  InfoCircleV2,
+  LinkExternal01V2,
   Popover,
 } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
@@ -90,7 +90,7 @@ export function PokePermissionTree({
                         target="_blank"
                         rel="noopener noreferrer"
                         label={"Source"}
-                        icon={ExternalLinkIcon}
+                        icon={LinkExternal01V2}
                         size="xs"
                         variant="outline"
                       />{" "}
@@ -110,11 +110,7 @@ export function PokePermissionTree({
             }
             className="max-w-md"
             trigger={
-              <IconButton
-                size="xs"
-                icon={InformationCircleIcon}
-                variant="outline"
-              />
+              <IconButton size="xs" icon={InfoCircleV2} variant="outline" />
             }
           />
         )}

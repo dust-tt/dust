@@ -2,13 +2,13 @@
 import { Grid, H1, H2, P } from "@app/components/home/ContentComponents";
 import { classNames } from "@app/lib/utils";
 import {
+  Building04V2,
   CardIcon,
-  ChatBubbleLeftRightIcon,
-  CompanyIcon,
-  GlobeAltIcon,
+  Globe01V2,
   HeartIcon,
   Icon,
-  PuzzleIcon,
+  MessageChatSquareV2,
+  PuzzlePiece01V2,
 } from "@dust-tt/sparkle";
 import Image from "next/image";
 import type { ComponentType } from "react";
@@ -43,7 +43,7 @@ const PARTNER_BENEFITS: {
     color: "blue",
   },
   {
-    icon: ChatBubbleLeftRightIcon,
+    icon: MessageChatSquareV2,
     title: "Co-selling",
     description: "Joint go-to-market opportunities with our sales team.",
     color: "rose",
@@ -57,20 +57,20 @@ const IDEAL_PARTNERS: {
   color: ColorVariant;
 }[] = [
   {
-    icon: CompanyIcon,
+    icon: Building04V2,
     title: "Service Partners",
     description:
       "Agencies and consultancies implementing AI solutions for clients.",
     color: "blue",
   },
   {
-    icon: GlobeAltIcon,
+    icon: Globe01V2,
     title: "Resellers",
     description: "Technology resellers and VARs with B2B customer bases.",
     color: "golden",
   },
   {
-    icon: PuzzleIcon,
+    icon: PuzzlePiece01V2,
     title: "Systems Integrators",
     description: "Teams deploying enterprise software at scale.",
     color: "green",

@@ -22,12 +22,12 @@ import type { DataSourceViewType } from "@app/types/data_source_view";
 import { asDisplayName, pluralize } from "@app/types/shared/utils/string_utils";
 import {
   Button,
-  ChatBubbleLeftRightIcon,
   ContentMessage,
-  DocumentIcon,
   DocumentPileIcon,
+  File02V2,
   FolderTableIcon,
-  LockIcon,
+  Lock01V2,
+  MessageChatSquareV2,
   Square3Stack3DIcon,
   Tree,
 } from "@dust-tt/sparkle";
@@ -40,7 +40,7 @@ const getVisualForSourceItem = (
   source: DataSourceFilterItem["selectedSources"][0]
 ) => {
   if (source.type === "data_source") {
-    return DocumentIcon;
+    return File02V2;
   }
 
   if (source.type === "node") {
@@ -48,15 +48,15 @@ const getVisualForSourceItem = (
     if (source.mimeType) {
       if (CHANNEL_INTERNAL_MIME_TYPES.includes(source.mimeType)) {
         return source.providerVisibility === "private"
-          ? LockIcon
-          : ChatBubbleLeftRightIcon;
+          ? Lock01V2
+          : MessageChatSquareV2;
       }
       if (DATABASE_INTERNAL_MIME_TYPES.includes(source.mimeType)) {
         return Square3Stack3DIcon;
       }
 
       if (FILE_INTERNAL_MIME_TYPES.includes(source.mimeType)) {
-        return source.expandable ? DocumentPileIcon : DocumentIcon;
+        return source.expandable ? DocumentPileIcon : File02V2;
       }
 
       if (SPREADSHEET_INTERNAL_MIME_TYPES.includes(source.mimeType)) {
@@ -68,11 +68,11 @@ const getVisualForSourceItem = (
       try {
         return getVisualForContentNodeType(source.nodeType);
       } catch {
-        return DocumentIcon;
+        return File02V2;
       }
     }
   }
-  return DocumentIcon;
+  return File02V2;
 };
 
 const groupSourcesByDataSource = (sources: DataSourceBuilderTreeItemType[]) => {

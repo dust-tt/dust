@@ -11,7 +11,7 @@ import { useSkillVersionComparisonContext } from "@app/components/skill_builder/
 import { useDebounceWithAbort } from "@app/hooks/useDebounce";
 import { useSimilarSkills, useSkills } from "@app/lib/swr/skill_configurations";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
-import { ArrowGoBackIcon, Button, cn } from "@dust-tt/sparkle";
+import { Button, cn, ReverseLeftV2 } from "@dust-tt/sparkle";
 import type { Transaction } from "@tiptap/pm/state";
 import type { Editor } from "@tiptap/react";
 import { useCallback, useEffect, useState } from "react";
@@ -195,7 +195,7 @@ export function SkillBuilderAgentFacingDescriptionSection() {
           <Button
             variant="outline"
             size="sm"
-            icon={ArrowGoBackIcon}
+            icon={ReverseLeftV2}
             onClick={restoreDescription}
             label="Restore description"
           />

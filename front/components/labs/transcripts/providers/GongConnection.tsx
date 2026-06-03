@@ -3,7 +3,7 @@ import {
   Button,
   CloudArrowLeftRightIcon,
   Page,
-  XMarkIcon,
+  XCloseV2,
 } from "@dust-tt/sparkle";
 
 interface GongConnectionProps {
@@ -33,7 +33,7 @@ export function GongConnection({
               />
               <Button
                 label="Disconnect"
-                icon={XMarkIcon}
+                icon={XCloseV2}
                 size="sm"
                 variant="outline"
                 onClick={() => setIsDeleteProviderDialogOpened(true)}

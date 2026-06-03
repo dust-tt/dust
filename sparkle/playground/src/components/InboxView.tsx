@@ -1,7 +1,7 @@
 import {
   Avatar,
   Button,
-  CheckIcon,
+  CheckV2,
   Collapsible,
   CollapsibleContent,
   ConversationListItem,
@@ -555,7 +555,7 @@ export function InboxView({
       {label}
       <Button
         label={actionLabel}
-        icon={CheckIcon}
+        icon={CheckV2}
         size="sm"
         variant="ghost-secondary"
         onClick={(e) => {

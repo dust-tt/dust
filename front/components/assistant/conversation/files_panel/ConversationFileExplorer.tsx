@@ -11,7 +11,7 @@ import {
   isPodConversation,
 } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Button, ButtonGroup, cn, XMarkIcon } from "@dust-tt/sparkle";
+import { Button, ButtonGroup, cn, XCloseV2 } from "@dust-tt/sparkle";
 import { useCallback, useState } from "react";
 
 type FilesTab = "conversation" | "pod";
@@ -91,7 +91,7 @@ export function ConversationFileExplorer({
           <Button
             variant="ghost"
             size="sm"
-            icon={XMarkIcon}
+            icon={XCloseV2}
             onClick={closePanel}
           />
         </div>

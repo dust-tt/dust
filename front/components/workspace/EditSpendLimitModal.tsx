@@ -7,6 +7,7 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import {
   ActionCreditCoinsIcon,
+  AlertCircleV2,
   Avatar,
   ContentMessage,
   Dialog,
@@ -15,7 +16,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  ExclamationCircleIcon,
   Icon,
   Input,
   RadioGroup,
@@ -211,7 +211,7 @@ export function EditSpendLimitModal({
           {isSpendLimitError ? (
             <ContentMessage
               title="Failed to load spend limit"
-              icon={ExclamationCircleIcon}
+              icon={AlertCircleV2}
               variant="warning"
             >
               <p>

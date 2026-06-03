@@ -10,13 +10,13 @@ import type { WorkspaceType } from "@app/types/user";
 import {
   ArrowPathIcon,
   Button,
-  ChevronDownIcon,
-  ChevronUpIcon,
+  ChevronDownV2,
+  ChevronUpV2,
   Chip,
   Input,
   Spinner,
   Square3Stack3DIcon,
-  TrashIcon,
+  Trash01V2,
 } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
@@ -141,19 +141,19 @@ export default function Block({
                 />
                 <Button
                   variant="ghost-secondary"
-                  icon={ChevronUpIcon}
+                  icon={ChevronUpV2}
                   onClick={onBlockUp}
                   size="icon"
                 />
                 <Button
                   variant="ghost-secondary"
-                  icon={ChevronDownIcon}
+                  icon={ChevronDownV2}
                   onClick={onBlockDown}
                   size="icon"
                 />
                 <Button
                   variant="ghost-secondary"
-                  icon={TrashIcon}
+                  icon={Trash01V2}
                   onClick={onBlockDelete}
                   size="icon"
                 />

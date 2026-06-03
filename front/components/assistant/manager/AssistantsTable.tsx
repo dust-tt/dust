@@ -29,12 +29,12 @@ import {
   BracesIcon,
   Checkbox,
   Chip,
-  ClipboardIcon,
+  ClipboardV2,
   DataTable,
-  EyeIcon,
-  PencilSquareIcon,
+  Edit04V2,
+  EyeV2,
   Tooltip,
-  TrashIcon,
+  Trash01V2,
 } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
 import type { ReactNode } from "react";
@@ -424,7 +424,7 @@ export function AssistantsTable({
                     label: "Edit",
                     "data-gtm-label": "assistantEditButton",
                     "data-gtm-location": "assistantDetails",
-                    icon: PencilSquareIcon,
+                    icon: Edit04V2,
                     disabled:
                       (!agentConfiguration.canEdit && !isAdmin(owner)) ||
                       noHealthyProviders,
@@ -453,7 +453,7 @@ export function AssistantsTable({
                     label: "More info",
                     "data-gtm-label": "assistantMoreInfoButton",
                     "data-gtm-location": "assistantDetails",
-                    icon: EyeIcon,
+                    icon: EyeV2,
                     onClick: (e: React.MouseEvent) => {
                       e.stopPropagation();
                       setDetailedAgentId(agentConfiguration.sId);
@@ -464,7 +464,7 @@ export function AssistantsTable({
                     label: "Duplicate (New)",
                     "data-gtm-label": "agentDuplicationButton",
                     "data-gtm-location": "agentDetails",
-                    icon: ClipboardIcon,
+                    icon: ClipboardV2,
                     onClick: (e: React.MouseEvent) => {
                       e.stopPropagation();
                       void router.push(
@@ -482,7 +482,7 @@ export function AssistantsTable({
                     label: "Archive",
                     "data-gtm-label": "assistantDeletionButton",
                     "data-gtm-location": "assistantDetails",
-                    icon: TrashIcon,
+                    icon: Trash01V2,
                     disabled: !agentConfiguration.canEdit && !isAdmin(owner),
                     variant: "warning" as const,
                     onClick: (e: React.MouseEvent) => {

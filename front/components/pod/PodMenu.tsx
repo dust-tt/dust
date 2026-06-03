@@ -29,11 +29,11 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  Edit04V2,
   EyeSlashIcon,
   LinkIcon,
-  PencilSquareIcon,
   StarIcon,
-  XMarkIcon,
+  XCloseV2,
 } from "@dust-tt/sparkle";
 import type React from "react";
 import type { ReactElement } from "react";
@@ -260,7 +260,7 @@ export function PodMenu({
             <DropdownMenuItem
               label="Leave"
               onClick={openLeaveDialog}
-              icon={XMarkIcon}
+              icon={XCloseV2}
             />
           )}
           <PodNotificationMenu
@@ -274,7 +274,7 @@ export function PodMenu({
             <DropdownMenuItem
               label="Rename"
               onClick={() => setShowRenameDialog(true)}
-              icon={PencilSquareIcon}
+              icon={Edit04V2}
             />
           )}
           <DropdownMenuSub>

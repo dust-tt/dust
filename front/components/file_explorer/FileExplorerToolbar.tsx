@@ -6,11 +6,11 @@ import {
   ArrowDownIcon,
   ArrowUpIcon,
   Button,
+  CheckDone01V2,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  ListCheckIcon,
   ListIcon,
   SearchInput,
 } from "@dust-tt/sparkle";
@@ -37,7 +37,7 @@ function ViewToggle({ value, onValueChange }: ViewToggleProps) {
         <Button
           variant="outline"
           size="sm"
-          icon={value === "grid" ? ListIcon : ListCheckIcon}
+          icon={value === "grid" ? ListIcon : CheckDone01V2}
           isSelect
         />
       </DropdownMenuTrigger>

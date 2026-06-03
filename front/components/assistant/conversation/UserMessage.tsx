@@ -34,23 +34,23 @@ import type { WorkspaceType } from "@app/types/user";
 import {
   ActionTimeIcon,
   Avatar,
-  BoltIcon,
   Button,
   ConversationMessageContainer,
   ConversationMessageContent,
   ConversationMessageTitle,
   cn,
+  DotsHorizontalV2,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  Edit04V2,
   Icon,
   LinkIcon,
-  MoreIcon,
-  PencilSquareIcon,
   Toolbar,
   Tooltip,
-  TrashIcon,
+  Trash01V2,
+  ZapV2,
 } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
 import { EditorContent } from "@tiptap/react";
@@ -516,7 +516,7 @@ function TriggerChip({ message }: { message?: UserMessageType }) {
   return (
     <Tooltip
       label={<Label message={message} />}
-      trigger={<Icon size="xs" visual={BoltIcon} className="h-3.5 w-3.5" />}
+      trigger={<Icon size="xs" visual={ZapV2} className="h-3.5 w-3.5" />}
     />
   );
 }
@@ -617,7 +617,7 @@ function ActionMenu({
         ...(canEdit
           ? [
               {
-                icon: PencilSquareIcon,
+                icon: Edit04V2,
                 label: "Edit message",
                 onClick: handleEditMessage,
               },
@@ -626,7 +626,7 @@ function ActionMenu({
         ...(canDelete
           ? [
               {
-                icon: TrashIcon,
+                icon: Trash01V2,
                 label: "Delete message",
                 onClick: handleDeleteMessage,
               },
@@ -667,7 +667,7 @@ function ActionMenu({
             >
               <DropdownMenuTrigger asChild>
                 <Button
-                  icon={MoreIcon}
+                  icon={DotsHorizontalV2}
                   size="icon-xs"
                   variant="outline"
                   aria-label="Message actions"

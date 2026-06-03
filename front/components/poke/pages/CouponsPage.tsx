@@ -17,12 +17,12 @@ import type { MenuItem } from "@dust-tt/sparkle";
 import {
   ArchiveIcon,
   Button,
-  ChevronDownIcon,
-  ChevronRightIcon,
+  ChevronDownV2,
+  ChevronRightV2,
   Chip,
   DataTable,
   LinkWrapper,
-  PlusIcon,
+  PlusV2,
   Spinner,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -77,9 +77,9 @@ const couponColumns: ColumnDef<CouponRowData>[] = [
     header: "",
     cell: ({ row }) =>
       row.original.isExpanded ? (
-        <ChevronDownIcon className="h-4 w-4" />
+        <ChevronDownV2 className="h-4 w-4" />
       ) : (
-        <ChevronRightIcon className="h-4 w-4" />
+        <ChevronRightV2 className="h-4 w-4" />
       ),
     meta: { className: "w-8" },
   },
@@ -341,7 +341,7 @@ export function CouponsPage() {
 
       <div className="mb-4 flex w-full justify-end">
         <Button
-          icon={PlusIcon}
+          icon={PlusV2}
           label="Create coupon"
           variant="outline"
           disabled={showCreateForm}

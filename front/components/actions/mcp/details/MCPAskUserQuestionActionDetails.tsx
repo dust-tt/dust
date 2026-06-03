@@ -5,7 +5,7 @@ import { UserQuestionSchema } from "@app/lib/actions/types";
 import { parseUserQuestionAnswer } from "@app/lib/actions/user_question";
 import {
   ChatBubbleBottomCenterTextIcon,
-  CheckIcon,
+  CheckV2,
   Icon,
 } from "@dust-tt/sparkle";
 
@@ -49,7 +49,7 @@ export function MCPAskUserQuestionActionDetails({
                 >
                   <div className="flex items-center gap-2">
                     <Icon
-                      visual={CheckIcon}
+                      visual={CheckV2}
                       size="xs"
                       className={
                         isSelected
@@ -76,7 +76,7 @@ export function MCPAskUserQuestionActionDetails({
             {customAnswer && (
               <div className="flex items-center gap-2 text-sm">
                 <Icon
-                  visual={CheckIcon}
+                  visual={CheckV2}
                   size="xs"
                   className="text-primary dark:text-primary-night"
                 />

@@ -18,8 +18,8 @@ import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
 import {
   ActionIncludeIcon,
   ActionScanIcon,
-  MagnifyingGlassIcon,
-  TableIcon,
+  SearchMdV2,
+  TableV2,
 } from "@dust-tt/sparkle";
 import isEmpty from "lodash/isEmpty";
 import type { ComponentType } from "react";
@@ -65,7 +65,7 @@ export function getKnowledgeLookupMethodLabel(
 
 export const CAPABILITY_CONFIGS: Record<string, CapabilityConfig> = {
   [SEARCH_SERVER.serverInfo.name]: {
-    icon: MagnifyingGlassIcon,
+    icon: SearchMdV2,
     configPageTitle: "Configure Knowledge",
     configPageDescription: "",
     descriptionConfig: {
@@ -101,7 +101,7 @@ export const CAPABILITY_CONFIGS: Record<string, CapabilityConfig> = {
     },
   },
   [QUERY_TABLES_V2_SERVER.serverInfo.name]: {
-    icon: TableIcon,
+    icon: TableV2,
     configPageTitle: "Configure Query Tables",
     configPageDescription:
       "Describe how you want to query the selected tables.",
@@ -113,7 +113,7 @@ export const CAPABILITY_CONFIGS: Record<string, CapabilityConfig> = {
     },
   },
   [DATA_WAREHOUSE_SERVER_NAME]: {
-    icon: TableIcon,
+    icon: TableV2,
     configPageTitle: "Configure Data Warehouse",
     configPageDescription:
       "Describe how you want to query the selected tables.",

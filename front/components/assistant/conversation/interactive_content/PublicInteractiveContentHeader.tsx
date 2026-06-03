@@ -7,7 +7,7 @@ import {
   Button,
   ChatBubbleBottomCenterTextIcon,
   cn,
-  RocketIcon,
+  Rocket02V2,
   SpaceClosedIcon,
 } from "@dust-tt/sparkle";
 
@@ -59,7 +59,7 @@ export function PublicInteractiveContentHeader({
               label="Try it yourself"
               href={`${staticWebsiteUrl}/?${UTM_PARAM}`}
               variant="outline"
-              icon={RocketIcon}
+              icon={Rocket02V2}
               onClick={withTracking(TRACKING_AREAS.FRAMES, "sign_up")}
               className="hidden sm:flex"
             />

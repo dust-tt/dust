@@ -10,16 +10,16 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
 import {
   Button,
-  DocumentIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
+  File02V2,
   FolderOpenIcon,
   MagicIcon,
-  PlusIcon,
-  PuzzleIcon,
+  PlusV2,
+  PuzzlePiece01V2,
   Spinner,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -45,7 +45,7 @@ export const CreateDropdown = ({
       <DropdownMenuTrigger asChild>
         <Button
           variant="primary"
-          icon={PlusIcon}
+          icon={PlusV2}
           label="Create"
           data-gtm-label="assistantCreationButton"
           data-gtm-location={dataGtmLocation}
@@ -60,7 +60,7 @@ export const CreateDropdown = ({
         {isBuilder(owner) && <DropdownMenuLabel label="Agents" />}
         <DropdownMenuItem
           label="agent from scratch"
-          icon={DocumentIcon}
+          icon={File02V2}
           onClick={withTracking(
             TRACKING_AREAS.BUILDER,
             "create_from_scratch",
@@ -93,7 +93,7 @@ export const CreateDropdown = ({
             <DropdownMenuLabel label="Skills" />
             <DropdownMenuItem
               label="skill from scratch"
-              icon={PuzzleIcon}
+              icon={PuzzlePiece01V2}
               onClick={withTracking(
                 TRACKING_AREAS.BUILDER,
                 "create_skill",

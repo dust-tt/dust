@@ -6,7 +6,7 @@ import {
   ArrowPathIcon,
   Button,
   ContentMessage,
-  InformationCircleIcon,
+  InfoCircleV2,
 } from "@dust-tt/sparkle";
 
 interface ErrorMessageProps {
@@ -34,7 +34,7 @@ export function ErrorMessage({ error, retryHandler }: ErrorMessageProps) {
       title={`${error.metadata?.errorTitle ?? "Something went wrong"}`}
       variant={errorIsRetryable ? "golden" : "warning"}
       className="flex flex-col gap-3"
-      icon={InformationCircleIcon}
+      icon={InfoCircleV2}
     >
       <div className="whitespace-normal break-words">
         {error.message}

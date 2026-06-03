@@ -1,7 +1,7 @@
 import { ManageUsersPanel } from "@app/components/assistant/conversation/space/ManageUsersPanel";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
-import { Button, UserGroupIcon } from "@dust-tt/sparkle";
+import { Button, Users01V2 } from "@dust-tt/sparkle";
 import { useState } from "react";
 import { useController } from "react-hook-form";
 
@@ -20,7 +20,7 @@ export function SkillEditorsSheet() {
       <Button
         variant="outline"
         size="sm"
-        icon={UserGroupIcon}
+        icon={Users01V2}
         label="Editors"
         onClick={() => setIsOpen(true)}
         type="button"

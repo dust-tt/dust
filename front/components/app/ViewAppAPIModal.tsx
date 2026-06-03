@@ -9,7 +9,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
-  ClipboardIcon,
+  ClipboardV2,
   CubeIcon,
   Hoverable,
   Page,
@@ -156,7 +156,7 @@ export function ViewAppAPIModal({
                     variant="outline"
                     onClick={() => handleCopyClick("run")}
                     label={copyRunButtonText}
-                    icon={ClipboardIcon}
+                    icon={ClipboardV2}
                   />
                 </div>
               </div>

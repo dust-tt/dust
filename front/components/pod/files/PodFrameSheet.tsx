@@ -13,7 +13,7 @@ import {
   SheetHeader,
   SheetTitle,
   Spinner,
-  XMarkIcon,
+  XCloseV2,
 } from "@dust-tt/sparkle";
 import { useRef } from "react";
 
@@ -86,7 +86,7 @@ export function PodFrameSheet({
               </div>
             )}
             <SheetClose asChild>
-              <Button icon={XMarkIcon} variant="ghost" size="sm" />
+              <Button icon={XCloseV2} variant="ghost" size="sm" />
             </SheetClose>
           </div>
         </SheetHeader>

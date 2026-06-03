@@ -27,7 +27,7 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
-  TrashIcon,
+  Trash01V2,
 } from "@dust-tt/sparkle";
 import { useEffect, useReducer, useState } from "react";
 
@@ -363,7 +363,7 @@ function DeleteSection({
     <div className="flex justify-end">
       <Button
         variant="warning"
-        icon={TrashIcon}
+        icon={Trash01V2}
         label="Delete this website"
         onClick={() => onOpenChange(true)}
       />

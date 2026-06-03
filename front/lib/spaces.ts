@@ -3,16 +3,16 @@ import type { DataSourceViewCategory } from "@app/types/api/public/spaces";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { SpaceType } from "@app/types/space";
 import {
-  BoltIcon,
+  Building04V2,
   CloudArrowLeftRightIcon,
-  CommandLineIcon,
-  CompanyIcon,
-  FolderIcon,
-  GlobeAltIcon,
-  LockIcon,
+  FolderV2,
+  Globe01V2,
+  Lock01V2,
   ServerIcon,
   SpaceClosedIcon,
   SpaceOpenIcon,
+  TerminalV2,
+  ZapV2,
 } from "@dust-tt/sparkle";
 import type React from "react";
 
@@ -33,11 +33,11 @@ export function getSpaceIcon(
   }
 
   if (space.isRestricted) {
-    return LockIcon;
+    return Lock01V2;
   }
 
   if (space.kind === "global") {
-    return CompanyIcon;
+    return Building04V2;
   }
 
   return ServerIcon;
@@ -58,15 +58,15 @@ export const CATEGORY_DETAILS: {
   },
   folder: {
     label: "Folders",
-    icon: FolderIcon,
+    icon: FolderV2,
   },
   website: {
     label: "Websites",
-    icon: GlobeAltIcon,
+    icon: Globe01V2,
   },
   apps: {
     label: "Apps",
-    icon: CommandLineIcon,
+    icon: TerminalV2,
     flag: "legacy_dust_apps",
   },
   actions: {
@@ -75,6 +75,6 @@ export const CATEGORY_DETAILS: {
   },
   triggers: {
     label: "Triggers",
-    icon: BoltIcon,
+    icon: ZapV2,
   },
 };

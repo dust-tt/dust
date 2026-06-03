@@ -9,9 +9,9 @@ import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
 import {
   Button,
-  CheckCircleIcon,
+  CheckCircleV2,
   Icon,
-  LockIcon,
+  Lock01V2,
   PlanetIcon,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
@@ -404,7 +404,7 @@ function AllTheBellsAndWhistlesSection() {
 
         <div className="flex w-full flex-col justify-between gap-6 md:flex-row">
           <div className="flex flex-1 flex-col rounded-2xl bg-gray-50 p-6">
-            <Icon visual={LockIcon} className="mb-4 h-8 w-8 text-gray-600" />
+            <Icon visual={Lock01V2} className="mb-4 h-8 w-8 text-gray-600" />
             <h4 className="text-lg font-semibold">
               Secure and collaborative by default
             </h4>
@@ -424,7 +424,7 @@ function AllTheBellsAndWhistlesSection() {
           </div>
           <div className="flex flex-1 flex-col rounded-2xl bg-gray-50 p-6">
             <Icon
-              visual={CheckCircleIcon}
+              visual={CheckCircleV2}
               className="mb-4 h-8 w-8 text-gray-600"
             />
             <h4 className="text-lg font-semibold">Wears your jersey</h4>

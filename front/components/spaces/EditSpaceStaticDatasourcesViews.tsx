@@ -4,7 +4,7 @@ import { useKillSwitches } from "@app/lib/swr/kill";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
-import { Button, PlusIcon, Tooltip } from "@dust-tt/sparkle";
+import { Button, PlusV2, Tooltip } from "@dust-tt/sparkle";
 
 interface EditSpaceStaticDatasourcesViewsProps {
   canWriteInSpace: boolean;
@@ -35,7 +35,7 @@ export function EditSpaceStaticDatasourcesViews({
     <Button
       label={`Add ${category}`}
       onClick={onOpen}
-      icon={PlusIcon}
+      icon={PlusV2}
       disabled={!canWriteInSpace || isSavingDisabled}
     />
   );

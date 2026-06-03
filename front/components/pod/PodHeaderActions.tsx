@@ -10,13 +10,13 @@ import type {
 import {
   Avatar,
   Button,
+  DotsHorizontalV2,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownTooltipTrigger,
-  MoreIcon,
-  XMarkIcon,
+  XCloseV2,
 } from "@dust-tt/sparkle";
 import { useCallback } from "react";
 import { PodNotificationMenu } from "./settings/PodNotificationMenu";
@@ -84,7 +84,7 @@ export function PodHeaderActions({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
-                icon={MoreIcon}
+                icon={DotsHorizontalV2}
                 variant="ghost"
                 size="sm"
                 tooltip="Pod options"
@@ -98,14 +98,14 @@ export function PodHeaderActions({
                 >
                   <DropdownMenuItem
                     label="Leave the Pod"
-                    icon={XMarkIcon}
+                    icon={XCloseV2}
                     disabled={true}
                   />
                 </DropdownTooltipTrigger>
               ) : (
                 <DropdownMenuItem
                   label="Leave the Pod"
-                  icon={XMarkIcon}
+                  icon={XCloseV2}
                   onClick={openLeaveDialog}
                 />
               )}

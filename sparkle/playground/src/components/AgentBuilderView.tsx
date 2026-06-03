@@ -4,17 +4,17 @@ import {
   HistoryIcon,
   Avatar,
   Bar,
-  BarChartIcon,
+  BarChart01V2,
   BoldIcon,
-  BoltIcon,
-  BookOpenIcon,
+  ZapV2,
+  BookOpen01V2,
   Button,
   Checkbox,
-  CheckIcon,
+  CheckV2,
   Chip,
-  CodeBlockIcon,
+  CodeSquare01V2,
   TagBlockIcon,
-  SidekickIcon,
+  SidekickV2,
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
@@ -23,19 +23,19 @@ import {
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  EyeIcon,
+  EyeV2,
   EyeSlashIcon,
-  HeadingIcon,
+  Heading01V2,
   Icon,
   Input,
   ItalicIcon,
   LinkIcon,
-  ListCheckIcon,
+  CheckDone01V2,
   ListGroup,
   ListItem,
   ListItemSection,
   ListOrdered2Icon,
-  LockIcon,
+  Lock01V2,
   DiffBlock,
   Markdown,
   QuoteTextIcon,
@@ -59,10 +59,10 @@ import {
   TabsTrigger,
   TagIcon,
   TestTubeIcon,
-  ToolsIcon,
-  UserGroupIcon,
-  XMarkIcon,
-  SparklesIcon,
+  Tool02V2,
+  Users01V2,
+  XCloseV2,
+  Stars02V2,
 } from "@dust-tt/sparkle";
 import { Allotment } from "allotment";
 import {
@@ -679,9 +679,9 @@ export function AgentBuilderView({
     );
   };
   const rightPanelTabs = [
-    { value: "sidekick", label: "Sidekick", icon: SidekickIcon },
+    { value: "sidekick", label: "Sidekick", icon: SidekickV2 },
     { value: "testing", label: "Preview", icon: TestTubeIcon },
-    { value: "insights", label: "Insights", icon: BarChartIcon },
+    { value: "insights", label: "Insights", icon: BarChart01V2 },
   ];
 
   return (
@@ -804,7 +804,7 @@ export function AgentBuilderView({
                       topBar={
                         <div className="s-flex s-flex-1 s-flex-wrap s-items-center s-gap-2 s-px-3 s-py-2">
                           <Button
-                            icon={HeadingIcon}
+                            icon={Heading01V2}
                             size="icon"
                             variant="ghost-secondary"
                             tooltip="Heading"
@@ -831,7 +831,7 @@ export function AgentBuilderView({
                             tooltip="Insert a link"
                           />
                           <Button
-                            icon={ListCheckIcon}
+                            icon={CheckDone01V2}
                             size="icon"
                             variant="ghost-secondary"
                             tooltip="Bulleted list"
@@ -850,7 +850,7 @@ export function AgentBuilderView({
                             tooltip="Quotation block"
                           />
                           <Button
-                            icon={CodeBlockIcon}
+                            icon={CodeSquare01V2}
                             size="icon"
                             variant="ghost-secondary"
                             tooltip="Code Block"
@@ -894,7 +894,7 @@ export function AgentBuilderView({
                               <Button
                                 size="xs"
                                 variant="outline"
-                                icon={XMarkIcon}
+                                icon={XCloseV2}
                                 label="Reject all"
                                 tooltip="Reject all suggestions"
                                 onClick={() => {
@@ -904,7 +904,7 @@ export function AgentBuilderView({
                               />
                               <Button
                                 size="xs"
-                                icon={CheckIcon}
+                                icon={CheckV2}
                                 variant="highlight-secondary"
                                 label="Accept all"
                                 tooltip="Accept all suggestions"
@@ -986,13 +986,13 @@ export function AgentBuilderView({
                         size="sm"
                         variant="outline"
                         label="Capabilities"
-                        icon={ToolsIcon}
+                        icon={Tool02V2}
                       />
                       <Button
                         size="sm"
                         variant="outline"
                         label="Knowledge"
-                        icon={BookOpenIcon}
+                        icon={BookOpen01V2}
                       />
                     </div>
                   </div>
@@ -1008,7 +1008,7 @@ export function AgentBuilderView({
                         size="sm"
                         variant="outline"
                         label="Triggers"
-                        icon={BoltIcon}
+                        icon={ZapV2}
                       />
                     </div>
                   </div>
@@ -1027,7 +1027,7 @@ export function AgentBuilderView({
                               <Button
                                 size="sm"
                                 variant={"ghost"}
-                                icon={SparklesIcon}
+                                icon={Stars02V2}
                                 tooltip="Suggest"
                               />
                             </DropdownMenuTrigger>
@@ -1070,7 +1070,7 @@ export function AgentBuilderView({
                           <Button
                             size="sm"
                             variant={"ghost"}
-                            icon={SparklesIcon}
+                            icon={Stars02V2}
                             tooltip="Suggest"
                           />
                         </DropdownMenuTrigger>
@@ -1109,7 +1109,7 @@ export function AgentBuilderView({
                               }
                               icon={
                                 accessStatus === "published"
-                                  ? EyeIcon
+                                  ? EyeV2
                                   : EyeSlashIcon
                               }
                               isSelect
@@ -1123,7 +1123,7 @@ export function AgentBuilderView({
                             />
                             <DropdownMenuItem
                               label="Published"
-                              icon={EyeIcon}
+                              icon={EyeV2}
                               onSelect={() => setAccessStatus("published")}
                             />
                           </DropdownMenuContent>
@@ -1146,7 +1146,7 @@ export function AgentBuilderView({
                           size="sm"
                           variant="ghost"
                           label="Manage"
-                          icon={UserGroupIcon}
+                          icon={Users01V2}
                           onClick={() => setIsInviteEditorsOpen(true)}
                         />
                       }
@@ -1308,7 +1308,7 @@ export function AgentBuilderView({
                                   <Button
                                     variant="outline"
                                     size="xs"
-                                    icon={EyeIcon}
+                                    icon={EyeV2}
                                     tooltip="View changes"
                                     onClick={() => {}}
                                   />
@@ -1538,7 +1538,7 @@ export function AgentBuilderView({
                           <Icon
                             visual={
                               isRestrictedSpace(space.id)
-                                ? LockIcon
+                                ? Lock01V2
                                 : ServerIcon
                             }
                             size="sm"

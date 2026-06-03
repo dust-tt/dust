@@ -30,6 +30,7 @@ import { isAdmin } from "@app/types/user";
 import {
   ActionCreditCoinsIcon,
   ActionPieChartIcon,
+  AlertCircleV2,
   ArrowUpIcon,
   Button,
   ContentMessage,
@@ -37,7 +38,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  ExclamationCircleIcon,
   Icon,
   Page,
   SearchInput,
@@ -271,7 +271,7 @@ export function UsagePage() {
           {isAwuPoolSummaryError && (
             <ContentMessage
               title="Failed to load Workspace Credits Pool"
-              icon={ExclamationCircleIcon}
+              icon={AlertCircleV2}
               variant="warning"
             >
               An error occurred while loading your Workspace Credits Pool data.

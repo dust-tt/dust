@@ -7,13 +7,13 @@ import type { LightWorkspaceType } from "@app/types/user";
 import {
   ActionBookOpenIcon,
   ActionIcons,
+  AlertCircleV2,
   Button,
   CloudArrowLeftRightIcon,
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
   ContentMessage,
-  ExclamationCircleIcon,
   IconPicker,
   Input,
   Label,
@@ -63,7 +63,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
       {lastError && (
         <ContentMessage
           variant="warning"
-          icon={ExclamationCircleIcon}
+          icon={AlertCircleV2}
           size="sm"
           title="Synchronization Error"
         >

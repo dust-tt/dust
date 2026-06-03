@@ -6,16 +6,16 @@ import type {
   TemplateActionPreset,
 } from "@app/types/assistant/templates";
 import {
-  BookOpenIcon,
+  BookOpen01V2,
   Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  Edit04V2,
   ListAddIcon,
   Markdown,
   Page,
-  PencilSquareIcon,
   Separator,
 } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
@@ -109,7 +109,7 @@ function TemplateButtons({ assistantTemplate }: TemplateButtonsProps) {
           <DropdownMenuItem
             label="Reset instructions"
             description="Set instructions back to template's default"
-            icon={PencilSquareIcon}
+            icon={Edit04V2}
             onClick={handleResetInstructions}
             disabled={!assistantTemplate.presetInstructions}
           />
@@ -140,7 +140,7 @@ function TemplatePresetActions({
       type === "TABLES_QUERY" ||
       type === "PROCESS"
     ) {
-      return BookOpenIcon;
+      return BookOpen01V2;
     }
     return ListAddIcon;
   };

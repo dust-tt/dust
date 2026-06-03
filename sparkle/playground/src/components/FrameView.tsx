@@ -2,12 +2,12 @@ import "@dust-tt/sparkle/styles/allotment.css";
 
 import {
   ArrowCircleIcon,
-  ArrowDownOnSquareIcon,
-  ArrowGoBackIcon,
+  Download01V2,
+  ReverseLeftV2,
   Button,
   ClipboardCheckIcon,
-  ClipboardIcon,
-  CommandLineIcon,
+  ClipboardV2,
+  TerminalV2,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -16,14 +16,14 @@ import {
   DropdownMenuTrigger,
   FullscreenIcon,
   LinkIcon,
-  MoreIcon,
+  DotsHorizontalV2,
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
   SpaceOpenIcon,
   TextArea,
-  XMarkIcon,
+  XCloseV2,
   useCopyToClipboard,
   useSendNotification,
 } from "@dust-tt/sparkle";
@@ -102,22 +102,18 @@ export function FrameView() {
                 variant="ghost"
                 tooltip="Full screen"
               />
-              <Button
-                icon={ArrowDownOnSquareIcon}
-                variant="ghost"
-                tooltip="Export"
-              />
+              <Button icon={Download01V2} variant="ghost" tooltip="Export" />
               <Button icon={LinkIcon} variant="ghost" tooltip="Share" />
               <div className="s-flex s-h-8 s-items-center s-gap-1">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button icon={MoreIcon} variant="ghost" />
+                    <Button icon={DotsHorizontalV2} variant="ghost" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
-                    <DropdownMenuItem label="Revert" icon={ArrowGoBackIcon} />
+                    <DropdownMenuItem label="Revert" icon={ReverseLeftV2} />
                     <DropdownMenuItem
                       label="Code view"
-                      icon={CommandLineIcon}
+                      icon={TerminalV2}
                       onClick={() => setIsCodeViewOpen(true)}
                     />
                     <DropdownMenuSeparator />
@@ -139,7 +135,7 @@ export function FrameView() {
                 </DropdownMenu>
               </div>
               <div className="s-flex-1" />
-              <Button icon={XMarkIcon} variant="ghost" />
+              <Button icon={XCloseV2} variant="ghost" />
             </div>
           </div>
         </Allotment.Pane>
@@ -154,7 +150,7 @@ export function FrameView() {
               <Button
                 size="sm"
                 variant="outline"
-                icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+                icon={isCopied ? ClipboardCheckIcon : ClipboardV2}
                 label={isCopied ? "Copied" : "Copy to clipboard"}
                 onClick={handleCopyCode}
               />

@@ -3,7 +3,7 @@ import {
   Button,
   CloudArrowLeftRightIcon,
   Page,
-  XMarkIcon,
+  XCloseV2,
 } from "@dust-tt/sparkle";
 
 interface GoogleDriveConnectionProps {
@@ -29,7 +29,7 @@ export function GoogleDriveConnection({
           />
           <Button
             label="Disconnect"
-            icon={XMarkIcon}
+            icon={XCloseV2}
             size="sm"
             variant="outline"
             onClick={() => setIsDeleteProviderDialogOpened(true)}

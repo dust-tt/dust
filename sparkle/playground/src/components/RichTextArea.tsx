@@ -23,13 +23,13 @@ import {
   Avatar,
   BoldIcon,
   Button,
-  CheckIcon,
+  CheckV2,
   HoveringBar,
   ItalicIcon,
   LinkIcon,
-  PencilSquareIcon,
-  SparklesIcon,
-  XMarkIcon,
+  Edit04V2,
+  Stars02V2,
+  XCloseV2,
 } from "@dust-tt/sparkle";
 import { menuStyleClasses } from "@sparkle/components/Dropdown";
 import { cn } from "@sparkle/lib/utils";
@@ -1197,7 +1197,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
           >
             <HoveringBar size="xs">
               <Button
-                icon={XMarkIcon}
+                icon={XCloseV2}
                 size="xs"
                 variant="ghost"
                 tooltip="Reject"
@@ -1207,7 +1207,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
               />
               <HoveringBar.Separator />
               <Button
-                icon={CheckIcon}
+                icon={CheckV2}
                 size="xs"
                 variant="highlight"
                 tooltip="Accept"
@@ -1274,7 +1274,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
                   label="Ask Sidekick"
                   size="xs"
                   variant="ghost"
-                  icon={SparklesIcon}
+                  icon={Stars02V2}
                   onClick={() => {
                     const payload = getSelectionPayload();
                     if (payload) {
@@ -1284,7 +1284,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
                 />
                 <Button
                   label="Rephrase"
-                  icon={PencilSquareIcon}
+                  icon={Edit04V2}
                   size="xs"
                   variant="ghost"
                   onClick={() => {

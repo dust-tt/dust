@@ -15,7 +15,7 @@ import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import {
   ActionCodeBoxIcon,
   ContextItem,
-  EyeIcon,
+  EyeV2,
   Icon,
   Page,
   TestTubeIcon,
@@ -28,7 +28,7 @@ const LABS_FEATURES: LabsFeatureItemType[] = [
     label: "Meeting Transcripts Processing",
     featureFlag: "labs_transcripts",
     visibleWithoutAccess: true,
-    icon: EyeIcon,
+    icon: EyeV2,
     description:
       "Receive meeting minutes processed by email automatically and store them in a Dust Folder.",
   },

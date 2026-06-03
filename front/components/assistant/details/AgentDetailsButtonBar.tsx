@@ -19,18 +19,18 @@ import {
   BracesIcon,
   Button,
   ChatBubbleBottomCenterPlusIcon,
-  ClipboardIcon,
-  DocumentIcon,
+  ClipboardV2,
+  DotsHorizontalV2,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  MoreIcon,
-  PencilSquareIcon,
+  Edit04V2,
+  File02V2,
   Spinner,
   StarIcon,
   StarStrokeIcon,
-  TrashIcon,
+  Trash01V2,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -132,7 +132,7 @@ export function AgentDetailsButtonBar({
           }
           disabled={!canEditAgent || !hasHealthyProviders(providersHealth)}
           variant="outline"
-          icon={PencilSquareIcon}
+          icon={Edit04V2}
         />
       )}
 
@@ -248,7 +248,7 @@ export function AgentDetailsDropdownMenu({
               );
               onClose?.();
             }}
-            icon={PencilSquareIcon}
+            icon={Edit04V2}
           />
         )}
       <DropdownMenuItem
@@ -267,7 +267,7 @@ export function AgentDetailsDropdownMenu({
           void handleExportToYAML();
           onClose?.();
         }}
-        icon={isExporting ? <Spinner size="xs" /> : DocumentIcon}
+        icon={isExporting ? <Spinner size="xs" /> : File02V2}
         disabled={isExporting}
       />
       {agentConfiguration.scope !== "global" && (
@@ -277,7 +277,7 @@ export function AgentDetailsDropdownMenu({
             disabled={noHealthyProviders}
             data-gtm-label="agentDuplicationButton"
             data-gtm-location="agentDetails"
-            icon={ClipboardIcon}
+            icon={ClipboardV2}
             onClick={async (e) => {
               e.stopPropagation();
               onClose?.();
@@ -293,7 +293,7 @@ export function AgentDetailsDropdownMenu({
           {allowDeletion && (
             <DropdownMenuItem
               label="Archive"
-              icon={TrashIcon}
+              icon={Trash01V2}
               onClick={(e) => {
                 e.stopPropagation();
                 setShowDeletionModal(true);
@@ -341,7 +341,7 @@ export function AgentDetailsDropdownMenu({
       ) : showTrigger ? (
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
-            <Button icon={MoreIcon} size="sm" variant="outline" />
+            <Button icon={DotsHorizontalV2} size="sm" variant="outline" />
           </DropdownMenuTrigger>
           <DropdownMenuContent>{menuItems}</DropdownMenuContent>
         </DropdownMenu>

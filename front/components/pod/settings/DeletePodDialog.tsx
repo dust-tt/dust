@@ -15,7 +15,7 @@ import {
   DialogTrigger,
   Input,
   Spinner,
-  TrashIcon,
+  Trash01V2,
 } from "@dust-tt/sparkle";
 import { type ChangeEvent, useCallback, useState } from "react";
 
@@ -54,7 +54,7 @@ export function DeletePodDialog({ owner, pod }: DeletePodDialogProps) {
     >
       <DialogTrigger asChild>
         <div className="flex w-full flex-col items-start">
-          <Button icon={TrashIcon} variant="warning" label="Delete Pod" />
+          <Button icon={Trash01V2} variant="warning" label="Delete Pod" />
         </div>
       </DialogTrigger>
       <DialogContent size="md">

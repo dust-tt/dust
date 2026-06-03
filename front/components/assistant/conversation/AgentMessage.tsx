@@ -94,18 +94,18 @@ import {
   ButtonGroupDropdown,
   Chip,
   ClipboardCheckIcon,
-  ClipboardIcon,
+  ClipboardV2,
   ConversationMessageAvatar,
   ConversationMessageContainer,
   ConversationMessageContent,
   ConversationMessageTitle,
-  InformationCircleIcon,
+  DotsHorizontalV2,
+  InfoCircleV2,
   InteractiveImageGrid,
   LinkIcon,
-  MoreIcon,
   StopIcon,
   Tooltip,
-  TrashIcon,
+  Trash01V2,
   TruncatedContent,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
@@ -161,7 +161,7 @@ function PrunedContextChip() {
           label="Context limit reached"
           size="xs"
           color="white"
-          icon={InformationCircleIcon}
+          icon={InfoCircleV2}
         />
       }
     />
@@ -870,7 +870,7 @@ export function AgentMessage({
     if (canDeleteAgentMessage) {
       dropdownItems.push({
         label: "Delete message",
-        icon: TrashIcon,
+        icon: Trash01V2,
         onSelect: handleDeleteAgentMessage,
         disabled: isDeleting,
         variant: "warning" as const,
@@ -884,7 +884,7 @@ export function AgentMessage({
           variant="outline"
           size="xs"
           onClick={handleCopyToClipboard}
-          icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+          icon={isCopied ? ClipboardCheckIcon : ClipboardV2}
           className="text-muted-foreground"
         />
         <ButtonGroupDropdown
@@ -892,7 +892,7 @@ export function AgentMessage({
             <Button
               variant="outline"
               size="xs"
-              icon={MoreIcon}
+              icon={DotsHorizontalV2}
               className="text-muted-foreground"
             />
           }
@@ -1424,7 +1424,7 @@ function AgentMessageContent({
                   <Button
                     variant="outline"
                     size="xs"
-                    icon={MoreIcon}
+                    icon={DotsHorizontalV2}
                     className="text-muted-foreground"
                   />
                 }

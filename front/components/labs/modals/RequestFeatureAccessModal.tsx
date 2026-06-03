@@ -3,7 +3,7 @@ import { sendRequestFeatureAccessEmail } from "@app/lib/email";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
-  PlusIcon,
+  PlusV2,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -63,7 +63,7 @@ export function RequestFeatureAccessModal({
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button label="Request" icon={PlusIcon} />
+        <Button label="Request" icon={PlusV2} />
       </SheetTrigger>
       <SheetContent size="lg">
         <SheetHeader>

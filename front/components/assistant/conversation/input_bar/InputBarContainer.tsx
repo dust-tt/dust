@@ -52,7 +52,7 @@ import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import {
   ArrowUpIcon,
-  AttachmentIcon,
+  Attachment01V2,
   Button,
   CameraIcon,
   Chip,
@@ -63,8 +63,8 @@ import {
   DropdownMenuItem,
   DropdownMenuShortcut,
   DropdownMenuTrigger,
-  GlobeAltIcon,
-  PlusIcon,
+  Globe01V2,
+  PlusV2,
   TextIcon,
   Toolbar,
   TooltipContent,
@@ -1295,7 +1295,7 @@ const InputBarContainer = ({
                     <DropdownMenuTrigger asChild>
                       <Button
                         variant="ghost-secondary"
-                        icon={PlusIcon}
+                        icon={PlusV2}
                         size={buttonSize}
                         disabled={disableInput}
                       />
@@ -1303,7 +1303,7 @@ const InputBarContainer = ({
                     <DropdownMenuContent align="end">
                       {actions.includes("attachment") && (
                         <DropdownMenuItem
-                          icon={AttachmentIcon}
+                          icon={Attachment01V2}
                           label="Attach knowledge"
                           onClick={() => {
                             setIsCaptureDropdownOpen(false);
@@ -1314,7 +1314,7 @@ const InputBarContainer = ({
                       {captureActions && (
                         <>
                           <DropdownMenuItem
-                            icon={GlobeAltIcon}
+                            icon={Globe01V2}
                             label="Attach page content"
                             disabled={
                               disableInput ||

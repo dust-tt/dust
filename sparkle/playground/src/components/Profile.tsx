@@ -1,10 +1,10 @@
 import {
   Avatar,
   BellIcon,
-  BoltIcon,
+  ZapV2,
   Button,
   Chip,
-  ClockIcon,
+  ClockV2,
   Collapsible,
   CollapsibleContent,
   DataTable,
@@ -20,7 +20,7 @@ import {
   MoonIcon,
   Notification,
   Page,
-  PencilSquareIcon,
+  Edit04V2,
   SearchInput,
   Separator,
   SunIcon,
@@ -28,7 +28,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-  TrashIcon,
+  Trash01V2,
   useSendNotification,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -315,11 +315,7 @@ function ProfileContent({ initialUser }: ProfileContentProps) {
               <Avatar
                 size="xs"
                 visual={
-                  row.original.kind === "schedule" ? (
-                    <ClockIcon />
-                  ) : (
-                    <BellIcon />
-                  )
+                  row.original.kind === "schedule" ? <ClockV2 /> : <BellIcon />
                 }
               />
               <div className="s-flex s-min-w-0 s-flex-col s-gap-0">
@@ -346,13 +342,13 @@ function ProfileContent({ initialUser }: ProfileContentProps) {
               <Button
                 variant="outline"
                 size="sm"
-                icon={PencilSquareIcon}
+                icon={Edit04V2}
                 label="Manage"
               />
               <Button
                 variant="outline"
                 size="sm"
-                icon={TrashIcon}
+                icon={Trash01V2}
                 label="Delete"
               />
             </div>
@@ -619,7 +615,7 @@ function ProfileContent({ initialUser }: ProfileContentProps) {
         <Page.SectionHeader title="Tools & Triggers" />
         <Tabs defaultValue="tools" className="s-w-full">
           <TabsList>
-            <TabsTrigger value="tools" label="Tools" icon={BoltIcon} />
+            <TabsTrigger value="tools" label="Tools" icon={ZapV2} />
             <TabsTrigger value="triggers" label="Triggers" icon={BellIcon} />
           </TabsList>
           <TabsContent value="tools" className="s-mt-4">

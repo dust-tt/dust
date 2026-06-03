@@ -7,7 +7,7 @@ import type {
 } from "@app/types/app";
 import type { BlockType, RunType } from "@app/types/run";
 import type { WorkspaceType } from "@app/types/user";
-import { Button, Label, PencilSquareIcon } from "@dust-tt/sparkle";
+import { Button, Edit04V2, Label } from "@dust-tt/sparkle";
 
 import Block from "./Block";
 
@@ -91,7 +91,7 @@ export default function Data({
               onClick={() => {
                 window.location.href = `/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/datasets/${block.spec.dataset}`;
               }}
-              icon={PencilSquareIcon}
+              icon={Edit04V2}
               label={readOnly ? "View" : "Edit"}
               size="xs"
             />

@@ -22,7 +22,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-  XMarkIcon,
+  XCloseV2,
 } from "@dust-tt/sparkle";
 import React, { useCallback, useContext, useMemo, useState } from "react";
 
@@ -101,7 +101,7 @@ export const NavigationSidebar = React.forwardRef<
                   <div className="flex flex-grow justify-end">
                     <TabsTrigger
                       value="close-icon"
-                      icon={XMarkIcon}
+                      icon={XCloseV2}
                       onClick={() => setSidebarOpen(false)}
                     />
                   </div>

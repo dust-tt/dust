@@ -6,10 +6,10 @@ import { classNames } from "@app/lib/utils";
 import {
   ArrowDownIcon,
   ArrowUpIcon,
-  BoltIcon,
   Button,
   IconButton,
   StopIcon,
+  ZapV2,
 } from "@dust-tt/sparkle";
 
 interface InputBarMessageNavigationProps {
@@ -41,7 +41,7 @@ export function InputBarMessageNavigation({
 }: InputBarMessageNavigationProps) {
   const stopButtonVariant = variant === "compact" ? "ghost-secondary" : "ghost";
   const isStopActionPending = pendingAction !== null;
-  const stopIcon = hasPendingMessages ? BoltIcon : StopIcon;
+  const stopIcon = hasPendingMessages ? ZapV2 : StopIcon;
   const showNavigationArrows =
     showMessageNavigation && !(variant === "compact" && showStopButton);
 

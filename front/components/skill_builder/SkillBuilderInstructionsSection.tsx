@@ -3,12 +3,12 @@ import { SkillBuilderInstructionsEditor } from "@app/components/skill_builder/Sk
 import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import {
-  ArrowGoBackIcon,
-  BookOpenIcon,
+  BookOpen01V2,
   Button,
   ContentMessage,
-  InformationCircleIcon,
-  ToolsIcon,
+  InfoCircleV2,
+  ReverseLeftV2,
+  Tool02V2,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 import { useFormContext } from "react-hook-form";
@@ -61,7 +61,7 @@ export function SkillBuilderInstructionsSection() {
             <Button
               variant="outline"
               size="sm"
-              icon={ArrowGoBackIcon}
+              icon={ReverseLeftV2}
               onClick={restoreInstructions}
               label="Restore instructions"
             />
@@ -70,7 +70,7 @@ export function SkillBuilderInstructionsSection() {
             <Button
               variant={enableSkillReferences ? "outline" : "primary"}
               label="Attach knowledge"
-              icon={BookOpenIcon}
+              icon={BookOpen01V2}
               onClick={addKnowledge ?? undefined}
               disabled={!addKnowledge}
             />
@@ -79,7 +79,7 @@ export function SkillBuilderInstructionsSection() {
             <Button
               variant="primary"
               label="Attach capabilities"
-              icon={ToolsIcon}
+              icon={Tool02V2}
               onClick={openCapabilities ?? undefined}
               disabled={!openCapabilities}
             />
@@ -90,7 +90,7 @@ export function SkillBuilderInstructionsSection() {
         LARGE_INSTRUCTIONS_CHARACTER_THRESHOLD && (
         <ContentMessage
           variant="info"
-          icon={InformationCircleIcon}
+          icon={InfoCircleV2}
           size="lg"
           title="This skill is noticeably large"
         >

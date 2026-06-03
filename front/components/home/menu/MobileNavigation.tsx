@@ -3,7 +3,7 @@ import { menuConfig } from "@app/components/home/menu/config";
 import { classNames } from "@app/lib/utils";
 import {
   Button,
-  ChevronRightIcon,
+  ChevronRightV2,
   DustLogo,
   IconButton,
   MenuIcon,
@@ -13,7 +13,7 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-  XMarkIcon,
+  XCloseV2,
 } from "@dust-tt/sparkle";
 import type { LinkProps } from "next/link";
 import Link from "next/link";
@@ -41,7 +41,7 @@ export function MobileNavigation() {
               <Button
                 size="sm"
                 variant="outline"
-                icon={XMarkIcon}
+                icon={XCloseV2}
                 onClick={() => {
                   setOpen(!open);
                 }}
@@ -79,7 +79,7 @@ export function MobileNavigation() {
                               onOpenChange={setOpen}
                               isExternal={subItem.isExternal}
                             >
-                              <ChevronRightIcon className="h-5 w-5 text-slate-400" />{" "}
+                              <ChevronRightV2 className="h-5 w-5 text-slate-400" />{" "}
                               {subItem.title}
                             </MobileLink>
                           ) : (

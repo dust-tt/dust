@@ -1,5 +1,5 @@
 import { H2 } from "@app/components/home/ContentComponents";
-import { BookOpenIcon, PlusIcon } from "@dust-tt/sparkle";
+import { BookOpen01V2, PlusV2 } from "@dust-tt/sparkle";
 
 import type { IntegrationTool } from "../types";
 
@@ -29,7 +29,7 @@ export function ToolsSection({ tools, integrationName }: ToolsSectionProps) {
             <div className="rounded-2xl border border-border bg-white p-6">
               <div className="mb-4 flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600">
-                  <BookOpenIcon className="h-5 w-5" />
+                  <BookOpen01V2 className="h-5 w-5" />
                 </div>
                 <h3 className="text-lg font-semibold text-foreground">
                   Read & Search
@@ -54,7 +54,7 @@ export function ToolsSection({ tools, integrationName }: ToolsSectionProps) {
             <div className="rounded-2xl border border-border bg-white p-6">
               <div className="mb-4 flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-100 text-green-600">
-                  <PlusIcon className="h-5 w-5" />
+                  <PlusV2 className="h-5 w-5" />
                 </div>
                 <h3 className="text-lg font-semibold text-foreground">
                   Create & Update

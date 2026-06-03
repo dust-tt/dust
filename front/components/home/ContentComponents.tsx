@@ -7,8 +7,8 @@ import {
   LinkIcon,
   PlanetIcon,
   RectangleIcon,
-  RobotIcon,
-  SquareIcon,
+  RobotV2,
+  SquareV2,
   TriangleIcon,
 } from "@dust-tt/sparkle";
 import type React from "react";
@@ -129,7 +129,7 @@ interface PProps {
 }
 
 const shapeClasses = {
-  square: SquareIcon,
+  square: SquareV2,
   circle: CircleIcon,
   triangle: TriangleIcon,
   hexagon: HexagonIcon,
@@ -303,7 +303,7 @@ export function TeamFeatureSection() {
     <div>
       <div className="flex w-full flex-col justify-between gap-6 md:flex-row">
         <div className="flex flex-1 flex-col rounded-2xl bg-blue-50 p-6">
-          <Icon visual={RobotIcon} className="mb-4 h-8 w-8 text-blue-400" />
+          <Icon visual={RobotV2} className="mb-4 h-8 w-8 text-blue-400" />
           <h4 className="text-lg font-semibold">Team orchestration</h4>
           <P size="sm" className="mt-1 text-muted-foreground">
             Build and manage teams of specialized agents that collaborate with

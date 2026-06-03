@@ -8,7 +8,7 @@ import type { WorkspaceType } from "@app/types/user";
 import {
   Avatar,
   Button,
-  ChevronRightIcon,
+  ChevronRightV2,
   Chip,
   cn,
   DataTable,
@@ -146,7 +146,7 @@ export function InvitationsList({
                 <Chip size="xs">Loading...</Chip>
               </div>
               <div className="hidden sm:block">
-                <ChevronRightIcon />
+                <ChevronRightV2 />
               </div>
             </div>
           </div>

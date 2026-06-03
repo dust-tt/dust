@@ -15,7 +15,7 @@ import { isCreditPricedPlan } from "@app/types/plan";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  BookOpenIcon,
+  BookOpen01V2,
   Button,
   Page,
   ShapesIcon,
@@ -160,7 +160,7 @@ export function APIKeys({ owner }: APIKeysProps) {
           label="Read the API reference"
           size="sm"
           variant="outline"
-          icon={BookOpenIcon}
+          icon={BookOpen01V2}
           onClick={() => {
             window.open("https://docs.dust.tt/reference", "_blank");
           }}

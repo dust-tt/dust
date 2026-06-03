@@ -1,13 +1,13 @@
 import {
-  AttachmentIcon,
+  Attachment01V2,
   Button,
   cn,
-  DocumentIcon,
+  File02V2,
   Icon,
   ImageIcon,
   ImageZoomDialog,
-  MicIcon,
-  PlusIcon,
+  Microphone01V2,
+  PlusV2,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -175,9 +175,7 @@ export function TodoInputBar({
                 key={id}
                 label={file.name}
                 size="lg"
-                visual={
-                  file.type.startsWith("image/") ? ImageIcon : DocumentIcon
-                }
+                visual={file.type.startsWith("image/") ? ImageIcon : File02V2}
                 variant="secondary"
                 imgSrc={objectUrl}
                 onClick={() => {
@@ -210,20 +208,20 @@ export function TodoInputBar({
           <div className="s-flex s-items-center s-gap-2 md:s-gap-1">
             <Button
               variant="ghost-secondary"
-              icon={AttachmentIcon}
+              icon={Attachment01V2}
               size="xs"
               tooltip="Attach a document"
             />
             <Button
               variant="ghost-secondary"
-              icon={MicIcon}
+              icon={Microphone01V2}
               size="xs"
               isRounded
             />
             <Button
               variant="highlight"
               size="xs"
-              icon={PlusIcon}
+              icon={PlusV2}
               label="Create"
               isRounded
               onClick={handleCreateTasks}
@@ -258,9 +256,7 @@ export function TodoInputBar({
             <SheetTitle>
               <div className="s-flex s-flex-1 s-flex-col s-w-full s-items-start s-gap-4">
                 <div className="s-flex s-items-center s-gap-2">
-                  {selectedDroppedFile && (
-                    <Icon visual={DocumentIcon} size="md" />
-                  )}
+                  {selectedDroppedFile && <Icon visual={File02V2} size="md" />}
                   <span>
                     {selectedDroppedFile?.file.name || "Document preview"}
                   </span>

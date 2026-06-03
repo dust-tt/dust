@@ -16,7 +16,7 @@ import {
 } from "@app/components/home/ContentComponents";
 import UTMButton from "@app/components/UTMButton";
 import { classNames } from "@app/lib/utils";
-import { RocketIcon } from "@dust-tt/sparkle";
+import { Rocket02V2 } from "@dust-tt/sparkle";
 import Image from "next/image";
 import type { ReactNode } from "react";
 import React, { useEffect, useState } from "react";
@@ -202,7 +202,7 @@ export const HeaderContentBlock = ({
             size="md"
             label="Get started"
             href="/pricing"
-            icon={RocketIcon}
+            icon={Rocket02V2}
             className="w-full xs:w-auto sm:w-auto md:w-auto"
           />
           <UTMButton

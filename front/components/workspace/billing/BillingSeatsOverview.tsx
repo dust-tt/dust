@@ -14,7 +14,7 @@ import {
   SeatMaxIcon,
   SeatProIcon,
   Spinner,
-  UserIcon,
+  User01V2,
 } from "@dust-tt/sparkle";
 import type React from "react";
 
@@ -215,7 +215,7 @@ export function BillingSeatsOverview({ owner }: BillingSeatsOverviewProps) {
 
               <div className="flex flex-col gap-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
                 <div className="flex items-center gap-2">
-                  <Icon visual={UserIcon} size="xs" />
+                  <Icon visual={User01V2} size="xs" />
                   <span>
                     {membersCount.toLocaleString()}{" "}
                     {membersCount === 1 ? "seat assigned" : "seats assigned"}

@@ -1,4 +1,4 @@
-import { InformationCircleIcon, Page } from "@dust-tt/sparkle";
+import { InfoCircleV2, Page } from "@dust-tt/sparkle";
 
 type WebhookSourceDetailsInfoProps = {
   signatureAlgorithm: string;
@@ -12,7 +12,7 @@ export function WebhookEndpointUsageInfo({
   return (
     <div className="mb-4">
       <div className="flex items-center space-x-2">
-        <InformationCircleIcon className="h-4 w-4 text-muted-foreground dark:text-muted-foreground-night" />
+        <InfoCircleV2 className="h-4 w-4 text-muted-foreground dark:text-muted-foreground-night" />
         <Page.H variant="h4">How to Use This Webhook</Page.H>
       </div>
       <div className="mt-4 space-y-4">

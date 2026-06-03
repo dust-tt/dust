@@ -14,12 +14,12 @@ import type { SpaceType } from "@app/types/space";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
 import {
-  ChatBubbleLeftRightIcon,
-  DocumentIcon,
   DocumentPileIcon,
-  FolderIcon,
+  File02V2,
   FolderTableIcon,
-  LockIcon,
+  FolderV2,
+  Lock01V2,
+  MessageChatSquareV2,
   Square3Stack3DIcon,
 } from "@dust-tt/sparkle";
 
@@ -34,11 +34,11 @@ export function getDocumentIcon(provider: string | null | undefined) {
   if (provider && isConnectorProvider(provider)) {
     const IconComponent = getConnectorProviderLogoWithFallback({
       provider,
-      fallback: DocumentIcon,
+      fallback: File02V2,
     });
     return IconComponent;
   }
-  return DocumentIcon;
+  return File02V2;
 }
 
 function getVisualForFileContentNode(node: ContentNode & { type: "document" }) {
@@ -46,7 +46,7 @@ function getVisualForFileContentNode(node: ContentNode & { type: "document" }) {
     return DocumentPileIcon;
   }
 
-  return DocumentIcon;
+  return File02V2;
 }
 
 export function getVisualForDataSourceViewContentNode(
@@ -75,9 +75,9 @@ export function getVisualForContentNodeType(type: ContentNodeType) {
     case "table":
       return Square3Stack3DIcon;
     case "folder":
-      return FolderIcon;
+      return FolderV2;
     case "document":
-      return DocumentIcon;
+      return File02V2;
     default:
       assertNever(type);
   }
@@ -89,8 +89,8 @@ export function getVisualForContentNode(node: ContentNode) {
     // Handle private channels with lock icon.
     if (CHANNEL_INTERNAL_MIME_TYPES.includes(node.mimeType)) {
       return node.providerVisibility === "private"
-        ? LockIcon
-        : ChatBubbleLeftRightIcon;
+        ? Lock01V2
+        : MessageChatSquareV2;
     }
 
     // Handle database-like content.

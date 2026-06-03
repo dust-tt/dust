@@ -7,7 +7,7 @@ import {
   CitationIcons,
   CitationTitle,
   Icon,
-  TableIcon,
+  TableV2,
 } from "@dust-tt/sparkle";
 
 export function MCPDataWarehousesBrowseDetails({
@@ -32,7 +32,7 @@ export function MCPDataWarehousesBrowseDetails({
           ? "Browsing Data Warehouses"
           : "Browse Data Warehouses"
       }
-      visual={TableIcon}
+      visual={TableV2}
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
         {nodeId && (
@@ -64,7 +64,7 @@ export function MCPDataWarehousesBrowseDetails({
                     <CitationIcons>
                       <Icon visual={IconComponent} />
                       {(isTable || isSchema || isDatabase || isWarehouse) && (
-                        <Icon visual={TableIcon} size="xs" />
+                        <Icon visual={TableV2} size="xs" />
                       )}
                     </CitationIcons>
                     <CitationTitle>{node.title}</CitationTitle>

@@ -12,7 +12,6 @@ import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { usePendingInvitations } from "@app/lib/swr/user";
 import {
   BellIcon,
-  BoltIcon,
   Page,
   Separator,
   Spinner,
@@ -20,7 +19,8 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-  UserIcon,
+  User01V2,
+  ZapV2,
 } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
@@ -42,7 +42,7 @@ export function ProfilePage() {
 
   return (
     <Page>
-      <Page.Header title="Personal Settings" icon={UserIcon} />
+      <Page.Header title="Personal Settings" icon={User01V2} />
       <Page.Layout direction="vertical">
         <AccountSettings owner={owner} />
 
@@ -65,7 +65,7 @@ export function ProfilePage() {
         <Page.SectionHeader title="Tools & Triggers" />
         <Tabs defaultValue="tools" className="w-full">
           <TabsList>
-            <TabsTrigger value="tools" label="Tools" icon={BoltIcon} />
+            <TabsTrigger value="tools" label="Tools" icon={ZapV2} />
             <TabsTrigger value="triggers" label="Triggers" icon={BellIcon} />
           </TabsList>
           <TabsContent value="tools" className="mt-4">

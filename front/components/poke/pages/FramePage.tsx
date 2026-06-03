@@ -7,9 +7,9 @@ import {
   Button,
   Chip,
   ClipboardCheckIcon,
-  ClipboardIcon,
+  ClipboardV2,
   CodeBlock,
-  ExternalLinkIcon,
+  LinkExternal01V2,
   Page,
   Spinner,
   useCopyToClipboard,
@@ -135,7 +135,7 @@ export function FramePage() {
                     label="View"
                     variant="ghost"
                     size="xs"
-                    icon={ExternalLinkIcon}
+                    icon={LinkExternal01V2}
                     href={`/poke/${owner.sId}/conversation/${file.useCaseMetadata.conversationId}`}
                   />
                 </div>
@@ -154,7 +154,7 @@ export function FramePage() {
                   label={isCopiedMetadata ? "Copied!" : "Copy"}
                   variant="ghost"
                   size="xs"
-                  icon={isCopiedMetadata ? ClipboardCheckIcon : ClipboardIcon}
+                  icon={isCopiedMetadata ? ClipboardCheckIcon : ClipboardV2}
                   onClick={() =>
                     copyMetadata(JSON.stringify(file.useCaseMetadata, null, 2))
                   }
@@ -207,7 +207,7 @@ export function FramePage() {
                         variant="ghost"
                         size="xs"
                         icon={
-                          isCopiedShareUrl ? ClipboardCheckIcon : ClipboardIcon
+                          isCopiedShareUrl ? ClipboardCheckIcon : ClipboardV2
                         }
                         onClick={() => copyShareUrl(shareInfo.shareUrl)}
                       />
@@ -328,7 +328,7 @@ export function FramePage() {
                 label={isCopiedContent ? "Copied!" : "Copy Content"}
                 variant="ghost"
                 size="xs"
-                icon={isCopiedContent ? ClipboardCheckIcon : ClipboardIcon}
+                icon={isCopiedContent ? ClipboardCheckIcon : ClipboardV2}
                 onClick={() => copyContent(content)}
               />
             </div>

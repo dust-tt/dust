@@ -6,7 +6,7 @@ import type { NotificationType } from "@dust-tt/sparkle";
 import {
   Button,
   ClipboardCheckIcon,
-  ClipboardIcon,
+  ClipboardV2,
   Dialog,
   DialogContent,
   DialogFooter,
@@ -212,7 +212,7 @@ export function SetupNotionPrivateIntegrationModal({
                           icon={
                             isCopiedWebhookUrl
                               ? ClipboardCheckIcon
-                              : ClipboardIcon
+                              : ClipboardV2
                           }
                           onClick={() =>
                             copyWebhookUrl(webhookConfig.webhookUrl)
@@ -252,7 +252,7 @@ export function SetupNotionPrivateIntegrationModal({
                         <div className="absolute inset-y-0 right-0 flex items-center pr-2">
                           <Button
                             icon={
-                              isCopiedToken ? ClipboardCheckIcon : ClipboardIcon
+                              isCopiedToken ? ClipboardCheckIcon : ClipboardV2
                             }
                             onClick={() =>
                               copyToken(webhookConfig.verificationToken!)

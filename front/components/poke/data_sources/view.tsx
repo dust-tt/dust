@@ -32,11 +32,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  ExternalLinkIcon,
+  LinkExternal01V2,
   LinkWrapper,
-  MagnifyingGlassIcon,
   ScrollArea,
   ScrollBar,
+  SearchMdV2,
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
@@ -413,7 +413,7 @@ function CheckConnectorStuck({
       <Button
         variant="outline"
         label={isLoading ? "Checking..." : "Check"}
-        icon={isLoading ? Spinner : MagnifyingGlassIcon}
+        icon={isLoading ? Spinner : SearchMdV2}
         disabled={isLoading}
         onClick={!isLoading ? checkStuck : undefined}
         size="xs"
@@ -508,7 +508,7 @@ function StuckActivitiesDialog({
                   hasSeparator={false}
                   action={
                     <Button
-                      icon={ExternalLinkIcon}
+                      icon={LinkExternal01V2}
                       variant="outline"
                       href={`https://cloud.temporal.io/namespaces/${temporalWorkspace}/workflows/${workflow.workflowId}`}
                       size="xs"
@@ -533,7 +533,7 @@ function StuckActivitiesDialog({
                     }
                     action={
                       <Button
-                        icon={ExternalLinkIcon}
+                        icon={LinkExternal01V2}
                         variant="outline"
                         href={
                           "https://app.datadoghq.eu/logs?query=%40dd.env%3Aprod%20%40dd.service%3Aconnectors-worker" +

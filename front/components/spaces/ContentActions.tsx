@@ -26,10 +26,10 @@ import type { WorkspaceType } from "@app/types/user";
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
   DocumentPileIcon,
-  ExternalLinkIcon,
-  EyeIcon,
-  PencilSquareIcon,
-  TrashIcon,
+  Edit04V2,
+  EyeV2,
+  LinkExternal01V2,
+  Trash01V2,
 } from "@dust-tt/sparkle";
 import capitalize from "lodash/capitalize";
 import type { MouseEvent as ReactMouseEvent, RefObject } from "react";
@@ -201,7 +201,7 @@ export const getMenuItems = (
     actions.push({
       kind: "item",
       label: "Edit",
-      icon: PencilSquareIcon,
+      icon: Edit04V2,
       onClick: (e: ReactMouseEvent) => {
         e.stopPropagation();
         contentActionsRef.current?.callAction(
@@ -215,7 +215,7 @@ export const getMenuItems = (
     actions.push({
       kind: "item",
       label: "Delete",
-      icon: TrashIcon,
+      icon: Trash01V2,
       onClick: (e: ReactMouseEvent) => {
         e.stopPropagation();
 
@@ -307,7 +307,7 @@ const makeViewSourceUrlContentAction = (
   return {
     kind: "item",
     label,
-    icon: ExternalLinkIcon,
+    icon: LinkExternal01V2,
     disabled: contentNode.sourceUrl === null,
     onClick: (e: ReactMouseEvent) => {
       e.stopPropagation();
@@ -326,7 +326,7 @@ const makeViewRawContentAction = (
   return {
     kind: "item",
     label: "View raw content",
-    icon: EyeIcon,
+    icon: EyeV2,
     onClick: (e: ReactMouseEvent) => {
       e.stopPropagation();
       setQueryParam(router, "documentId", contentNode.internalId);

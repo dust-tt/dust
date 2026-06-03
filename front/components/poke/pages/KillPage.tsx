@@ -11,18 +11,18 @@ import {
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import {
   ActionFireIcon,
+  AlertCircleV2,
   AnthropicLogo,
   ArrowPathIcon,
-  BoltIcon,
   Button,
   CardIcon,
   CloudArrowLeftRightIcon,
-  Cog6ToothIcon,
-  ExclamationCircleIcon,
   OpenaiLogo,
+  Settings01V2,
   SliderToggle,
   Spinner,
-  TrashIcon,
+  Trash01V2,
+  ZapV2,
 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 import { useState } from "react";
@@ -38,7 +38,7 @@ const KILL_SWITCH_DEFINITIONS: Record<KillSwitchType, KillSwitchDefinition> = {
   save_agent_configurations: {
     title: "Agent Configurations",
     description: "Disable saving of agent configurations.",
-    icon: Cog6ToothIcon,
+    icon: Settings01V2,
   },
   save_data_source_views: {
     title: "Data Source Views",
@@ -197,7 +197,7 @@ export function KillPage() {
     <main className="mx-auto max-w-4xl space-y-10 px-4 py-8 sm:px-6 lg:px-8">
       <section className="space-y-2">
         <h2 className={PANEL_HEADING_CLASSES}>
-          <BoltIcon className={PANEL_ICON_CLASSES} />
+          <ZapV2 className={PANEL_ICON_CLASSES} />
           <span>Kill switches</span>
         </h2>
         <p className={PANEL_DESCRIPTION_CLASSES}>
@@ -268,7 +268,7 @@ export function KillPage() {
 
       <section className="space-y-2">
         <h2 className={PANEL_HEADING_CLASSES}>
-          <TrashIcon className={PANEL_ICON_CLASSES} />
+          <Trash01V2 className={PANEL_ICON_CLASSES} />
           <span>Sandbox Kill Requester</span>
         </h2>
         <p className={PANEL_DESCRIPTION_CLASSES}>
@@ -283,7 +283,7 @@ export function KillPage() {
           </div>
         ) : images.length === 0 ? (
           <div className="mt-6 flex items-center gap-2 rounded-2xl border border-border bg-background p-5 text-sm text-muted-foreground dark:border-border-night dark:bg-background-night dark:text-muted-foreground-night">
-            <ExclamationCircleIcon className="h-4 w-4" />
+            <AlertCircleV2 className="h-4 w-4" />
             <span>No registered sandbox images found.</span>
           </div>
         ) : (

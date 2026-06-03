@@ -1,10 +1,10 @@
 import {
-  ArrowLeftIcon,
+  ArrowLeftV2,
   Button,
   MenuIcon,
   SidebarLeftCloseIcon,
   SidebarLeftOpenIcon,
-  XMarkIcon,
+  XCloseV2,
 } from "@dust-tt/sparkle";
 import { customColors } from "@dust-tt/sparkle/lib/colors";
 import {
@@ -460,7 +460,7 @@ export function PanelLayout({ children }: PanelLayoutProps) {
                   <Button
                     variant="ghost"
                     size="sm"
-                    icon={ArrowLeftIcon}
+                    icon={ArrowLeftV2}
                     onClick={p3.props.onClose}
                     tooltip="Back"
                   />
@@ -478,7 +478,7 @@ export function PanelLayout({ children }: PanelLayoutProps) {
                     <Button
                       variant="ghost"
                       size="sm"
-                      icon={XMarkIcon}
+                      icon={XCloseV2}
                       onClick={p3.props.onClose}
                       tooltip="Close"
                     />
@@ -510,7 +510,7 @@ export function PanelLayout({ children }: PanelLayoutProps) {
                   <Button
                     variant="ghost"
                     size="sm"
-                    icon={ArrowLeftIcon}
+                    icon={ArrowLeftV2}
                     onClick={p4.props.onClose}
                     tooltip="Back"
                   />
@@ -525,7 +525,7 @@ export function PanelLayout({ children }: PanelLayoutProps) {
                     <Button
                       variant="ghost"
                       size="sm"
-                      icon={XMarkIcon}
+                      icon={XCloseV2}
                       onClick={p4.props.onClose}
                       tooltip="Close"
                     />
@@ -577,7 +577,7 @@ export function PanelLayout({ children }: PanelLayoutProps) {
                   <Button
                     variant="ghost"
                     size="sm"
-                    icon={XMarkIcon}
+                    icon={XCloseV2}
                     onClick={() => {
                       setNavOverlay(false);
                       setNavPeek(false);

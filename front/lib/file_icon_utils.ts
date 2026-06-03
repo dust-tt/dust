@@ -5,9 +5,9 @@ import {
   BigQueryLogo,
   BracesIcon,
   ConfluenceLogo,
-  DocumentIcon,
   DriveLogo,
   DustLogoSquare,
+  File02V2,
   GithubLogo,
   GongLogo,
   GoogleDocLogo,
@@ -24,7 +24,7 @@ import {
   SalesforceLogo,
   SlackLogo,
   SnowflakeLogo,
-  TableIcon,
+  TableV2,
   TextIcon,
   ZendeskLogo,
 } from "@dust-tt/sparkle";
@@ -94,7 +94,7 @@ const FILE_TYPE_MAPPINGS: FileTypeMapping[] = [
     extensions: ["xls", "xlsx"],
   },
   {
-    icon: TableIcon,
+    icon: TableV2,
     mimeTypes: ["text/csv", "text/tab-separated-values"],
     extensions: ["csv", "tsv"],
   },
@@ -170,5 +170,5 @@ export function getFileTypeIcon(
     }
   }
 
-  return DocumentIcon;
+  return File02V2;
 }

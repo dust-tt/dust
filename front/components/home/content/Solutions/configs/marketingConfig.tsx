@@ -14,10 +14,10 @@ import type {
 import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
 import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCasesSection";
 import {
-  CheckCircleIcon,
+  CheckCircleV2,
   MagicIcon,
-  RocketIcon,
-  UserGroupIcon,
+  Rocket02V2,
+  Users01V2,
 } from "@dust-tt/sparkle";
 
 // Config exports
@@ -75,7 +75,7 @@ export const Hero: HeroProps = {
     primary: {
       label: "Get started",
       href: "/home/pricing",
-      icon: RocketIcon,
+      icon: Rocket02V2,
     },
     secondary: {
       label: "Talk to sales",
@@ -94,13 +94,13 @@ export const Benefits: BenefitsProps = {
         "Maximize impact by automating content creation and optimization tasks.",
     },
     {
-      icon: CheckCircleIcon,
+      icon: CheckCircleV2,
       title: "Ensure consistency",
       description:
         "Maintain perfect brand alignment across all content and communication channels.",
     },
     {
-      icon: UserGroupIcon,
+      icon: Users01V2,
       title: "Scale production",
       description:
         "Transform your content workflow into an efficient, brand-compliant machine.",

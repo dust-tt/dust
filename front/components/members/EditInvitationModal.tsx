@@ -16,7 +16,7 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
-  XMarkIcon,
+  XCloseV2,
 } from "@dust-tt/sparkle";
 import { useContext, useEffect, useState } from "react";
 
@@ -134,7 +134,7 @@ export function EditInvitationModal({
                 <Button
                   variant="warning"
                   label="Revoke invitation"
-                  icon={XMarkIcon}
+                  icon={XCloseV2}
                   disabled={owner.ssoEnforced}
                   onClick={async () => {
                     await updateInvitation({

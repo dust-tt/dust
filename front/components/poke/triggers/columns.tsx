@@ -6,7 +6,7 @@ import type { TriggerWithProviderType } from "@app/pages/api/poke/workspaces/[wI
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { TriggerType } from "@app/types/assistant/triggers";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Chip, IconButton, LinkWrapper, TrashIcon } from "@dust-tt/sparkle";
+import { Chip, IconButton, LinkWrapper, Trash01V2 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
 type TriggerDisplayType = TriggerWithProviderType;
@@ -164,7 +164,7 @@ export function makeColumnsForTriggers(
 
         return (
           <IconButton
-            icon={TrashIcon}
+            icon={Trash01V2}
             size="xs"
             variant="outline"
             onClick={async () => {

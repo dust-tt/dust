@@ -3,7 +3,7 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-  ExternalLinkIcon,
+  LinkExternal01V2,
 } from "@dust-tt/sparkle";
 
 function formatFieldValue(value: string | number | boolean): string {
@@ -63,7 +63,7 @@ export function AshbyJobPostingUpdateDetails({
         variant="outline"
         size="xs"
         label="View on Ashby"
-        icon={ExternalLinkIcon}
+        icon={LinkExternal01V2}
         href={jobPostingUrl}
         target="_blank"
       />

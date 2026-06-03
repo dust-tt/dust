@@ -24,10 +24,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   FolderOpenIcon,
-  MagnifyingGlassIcon,
   Page,
-  PlusIcon,
+  PlusV2,
   SearchInput,
+  SearchMdV2,
   Spinner,
   Tabs,
   TabsList,
@@ -38,7 +38,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 const SKILL_SEARCH_TAB = {
   id: "search",
   label: "Searching across all skills",
-  icon: MagnifyingGlassIcon,
+  icon: SearchMdV2,
   description: "Searching across all skills.",
 } as const;
 
@@ -293,7 +293,7 @@ export function ManageSkillsPage() {
             />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button label="Create skill" icon={PlusIcon} isSelect />
+                <Button label="Create skill" icon={PlusV2} isSelect />
               </DropdownMenuTrigger>
               <DropdownMenuContent>
                 <DropdownMenuItem

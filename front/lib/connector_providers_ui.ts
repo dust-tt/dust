@@ -20,10 +20,10 @@ import {
   DiscordLogo,
   DriveLogo,
   DustLogoSquare,
-  FolderIcon,
+  FolderV2,
   GithubLogo,
   GithubWhiteLogo,
-  GlobeAltIcon,
+  Globe01V2,
   GongLogo,
   IntercomLogo,
   MicrosoftLogo,
@@ -341,7 +341,7 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
     mismatchError: `You cannot change the URL. Please add a new Public URL instead.`,
     guideLink: "https://docs.dust.tt/docs/website-connection",
     getLogoComponent: () => {
-      return GlobeAltIcon;
+      return Globe01V2;
     },
     isNested: true,
     permissions: {
@@ -457,7 +457,7 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
 
 export function getConnectorProviderLogoWithFallback({
   provider,
-  fallback = FolderIcon,
+  fallback = FolderV2,
   isDark,
 }: {
   provider: ConnectorProvider | null;

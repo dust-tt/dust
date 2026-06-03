@@ -7,14 +7,14 @@ import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
   Button,
+  DotsHorizontalV2,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  MoreIcon,
-  RobotIcon,
+  RobotV2,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -72,7 +72,7 @@ export function AgentPicker({
           pickerButton
         ) : (
           <Button
-            icon={RobotIcon}
+            icon={RobotV2}
             variant="ghost-secondary"
             isSelect={showDropdownArrow}
             size={size}
@@ -121,7 +121,7 @@ export function AgentPicker({
               endComponent={
                 onAgentDetailsClick && clientType !== "extension" ? (
                   <Button
-                    icon={MoreIcon}
+                    icon={DotsHorizontalV2}
                     variant="outline"
                     size="mini"
                     className="opacity-0 group-hover:opacity-100"

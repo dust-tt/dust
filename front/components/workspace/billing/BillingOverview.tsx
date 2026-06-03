@@ -15,11 +15,11 @@ import { isSubscriptionMetronomeBilled } from "@app/types/plan";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   ActionCalendarIcon,
-  ArrowUpOnSquareIcon,
   Button,
   HistoryIcon,
   Icon,
   Spinner,
+  Upload01V2,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -184,7 +184,7 @@ export function BillingOverview({ owner, subscription }: BillingOverviewProps) {
               </div>
             )}
             <div className="flex items-center gap-2">
-              <Icon visual={ArrowUpOnSquareIcon} size="xs" />
+              <Icon visual={Upload01V2} size="xs" />
               <span>
                 Amount:{" "}
                 {getPriceAsString({

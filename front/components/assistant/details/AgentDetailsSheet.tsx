@@ -25,17 +25,17 @@ import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
 import {
-  ArrowLeftIcon,
+  ArrowLeftV2,
   ArrowPathIcon,
   Avatar,
-  BarChartIcon,
+  BarChart01V2,
   BellIcon,
-  BrainIcon,
+  BrainV2,
   Button,
   Chip,
   ContentMessage,
-  InformationCircleIcon,
-  LockIcon,
+  InfoCircleV2,
+  Lock01V2,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -46,7 +46,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-  UserGroupIcon,
+  Users01V2,
 } from "@dust-tt/sparkle";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useCallback, useEffect, useState } from "react";
@@ -91,7 +91,7 @@ export const SCOPE_INFO: Record<
     shortLabel: string;
     label: string;
     color: "green" | "golden" | "blue" | "primary";
-    icon?: typeof UserGroupIcon | undefined;
+    icon?: typeof Users01V2 | undefined;
     text: string;
   }
 > = {
@@ -269,7 +269,7 @@ export function AgentDetailsSheet({
             <ContentMessage
               title="This agent has been archived."
               variant="warning"
-              icon={InformationCircleIcon}
+              icon={InfoCircleV2}
               size="sm"
             >
               It is no longer active and cannot be used.
@@ -335,14 +335,14 @@ export function AgentDetailsSheet({
                     <TabsTrigger
                       value="info"
                       label="Info"
-                      icon={InformationCircleIcon}
+                      icon={InfoCircleV2}
                       onClick={() => setSelectedTab("info")}
                     />
                     {showInsightsTabs && (
                       <TabsTrigger
                         value="insights"
                         label="Insights"
-                        icon={BarChartIcon}
+                        icon={BarChart01V2}
                         onClick={() => setSelectedTab("insights")}
                       />
                     )}
@@ -358,7 +358,7 @@ export function AgentDetailsSheet({
                       <TabsTrigger
                         value="editors"
                         label="Editors"
-                        icon={UserGroupIcon}
+                        icon={Users01V2}
                         onClick={() => setSelectedTab("editors")}
                       />
                     )}
@@ -366,7 +366,7 @@ export function AgentDetailsSheet({
                       <TabsTrigger
                         value="agent_memory"
                         label="Memory"
-                        icon={BrainIcon}
+                        icon={BrainV2}
                         onClick={() => setSelectedTab("agent_memory")}
                       />
                     )}
@@ -419,7 +419,7 @@ export function AgentDetailsSheet({
               )}
               {isAgentConfigurationError?.error.type ===
                 "agent_configuration_not_found" && (
-                <ContentMessage title="Not Available" icon={LockIcon} size="md">
+                <ContentMessage title="Not Available" icon={Lock01V2} size="md">
                   This agent is not available.
                 </ContentMessage>
               )}
@@ -470,7 +470,7 @@ function TriggerEditView({
     <>
       <div className="flex flex-row items-center gap-2 p-5 text-sm text-foreground dark:text-foreground-night">
         <Button
-          icon={ArrowLeftIcon}
+          icon={ArrowLeftV2}
           variant="ghost"
           size="sm"
           onClick={() => {

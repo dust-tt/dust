@@ -15,33 +15,33 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
-  GlobeAltIcon,
-  LockIcon,
-  UserGroupIcon,
+  Globe01V2,
+  Lock01V2,
+  Users01V2,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 const SHARING_POLICY_OPTIONS: {
   description: string;
-  icon: typeof LockIcon;
+  icon: typeof Lock01V2;
   label: string;
   value: WorkspaceSharingPolicy;
 }[] = [
   {
-    icon: LockIcon,
+    icon: Lock01V2,
     label: "Workspace members only",
     description: "Frames can only be viewed by workspace members",
     value: "workspace_only",
   },
   {
-    icon: UserGroupIcon,
+    icon: Users01V2,
     label: "Members + email invites",
     description:
       "Frames can be shared with workspace members or via email invite",
     value: "workspace_and_emails",
   },
   {
-    icon: GlobeAltIcon,
+    icon: Globe01V2,
     label: "No restrictions",
     description:
       "Members can share Frames publicly, with the workspace, or via email invite",

@@ -10,18 +10,18 @@ import type { AgentMention, MentionType } from "@app/types/assistant/mentions";
 import { isAgentMention } from "@app/types/assistant/mentions";
 import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
 import {
-  BookOpenIcon,
+  BookOpen01V2,
   Button,
   ChatBubbleBottomCenterTextIcon,
-  ChatBubbleLeftRightIcon,
-  DocumentIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
+  File02V2,
   HeartIcon,
-  LightbulbIcon,
+  Lightbulb04V2,
+  MessageChatSquareV2,
   SlackLogo,
 } from "@dust-tt/sparkle";
 import { useCallback, useContext } from "react";
@@ -129,7 +129,7 @@ export function HelpDropdown({
         <DropdownMenuLabel label="Learn about Dust" />
         <DropdownMenuItem
           label="Quickstart Guide"
-          icon={LightbulbIcon}
+          icon={Lightbulb04V2}
           onClick={() =>
             router.push(
               {
@@ -143,13 +143,13 @@ export function HelpDropdown({
         />
         <DropdownMenuItem
           label="Guides & Documentation"
-          icon={DocumentIcon}
+          icon={File02V2}
           href="https://docs.dust.tt"
           target="_blank"
         />
         <DropdownMenuItem
           label="Dust Academy"
-          icon={BookOpenIcon}
+          icon={BookOpen01V2}
           href="https://dust.tt/academy"
           target="_blank"
         />
@@ -163,7 +163,7 @@ export function HelpDropdown({
         <DropdownMenuItem
           label="Ask @help"
           description="Ask anything about Dust"
-          icon={ChatBubbleLeftRightIcon}
+          icon={MessageChatSquareV2}
           onClick={() => void handleAskHelp()}
         />
         <DropdownMenuItem

@@ -20,13 +20,13 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  ExternalLinkIcon,
-  EyeIcon,
   EyeSlashIcon,
+  EyeV2,
   HandThumbDownIcon,
   HandThumbUpIcon,
   Hoverable,
   Icon,
+  LinkExternal01V2,
   Spinner,
   Timeline,
 } from "@dust-tt/sparkle";
@@ -293,7 +293,7 @@ function FeedbackCard({
         <div className="flex gap-1">
           <CardActionButton
             size="icon"
-            icon={feedback.dismissed ? EyeIcon : EyeSlashIcon}
+            icon={feedback.dismissed ? EyeV2 : EyeSlashIcon}
             onClick={() => toggleDismiss(!feedback.dismissed)}
             disabled={isDismissing}
             tooltip={`Mark feedback as ${feedback.dismissed ? "unseen" : "seen"}`}
@@ -301,7 +301,7 @@ function FeedbackCard({
           {conversationUrl && (
             <CardActionButton
               size="icon"
-              icon={ExternalLinkIcon}
+              icon={LinkExternal01V2}
               href={conversationUrl ?? ""}
               disabled={!conversationUrl}
               tooltip="View conversation"

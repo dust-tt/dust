@@ -19,7 +19,7 @@ import type { RegionType } from "@app/types/region";
 import { isDevelopment } from "@app/types/shared/env";
 import {
   Button,
-  ChevronRightIcon,
+  ChevronRightV2,
   Chip,
   LinkWrapper,
   Logo,
@@ -269,7 +269,7 @@ function PokeSearchCommandUI({
                       </Chip>
                     )}
                   </div>
-                  <ChevronRightIcon className="h-4 w-4 flex-shrink-0" />
+                  <ChevronRightV2 className="h-4 w-4 flex-shrink-0" />
                 </div>
               </PokeCommandItem>
             );

@@ -17,14 +17,14 @@ import {
 import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  ArrowDownOnSquareIcon,
   Dialog,
   DialogContainer,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  ExternalLinkIcon,
+  Download01V2,
+  LinkExternal01V2,
   Markdown,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -193,7 +193,7 @@ export const AttachmentViewer = ({
     if (provider && isInternalMCPServerName(provider)) {
       return getIcon(getInternalMCPServerIconByName(provider));
     }
-    return ExternalLinkIcon;
+    return LinkExternal01V2;
   };
 
   return (
@@ -223,7 +223,7 @@ export const AttachmentViewer = ({
             variant: "outline",
             onClick: onClickDownload,
             disabled: !canDownload,
-            icon: ArrowDownOnSquareIcon,
+            icon: Download01V2,
           }}
           rightButtonProps={{
             label: sourceUrlButtonLabel,

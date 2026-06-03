@@ -7,14 +7,14 @@ import type { DropdownMenu, NotificationType } from "@dust-tt/sparkle";
 import {
   ArrowPathIcon,
   Button,
-  CheckCircleIcon,
+  CheckCircleV2,
   DataTable,
   Icon,
   Input,
   TextArea,
   Tooltip,
-  TrashIcon,
-  XCircleIcon,
+  Trash01V2,
+  XCircleV2,
 } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
 import { useCallback, useState } from "react";
@@ -127,23 +127,19 @@ export function AdvancedNotionManagement({
         <DataTable.CellContent>
           <div className="flex items-center gap-2">
             {info.row.original.method === "delete" ? (
-              <Icon visual={TrashIcon} size="sm" />
+              <Icon visual={Trash01V2} size="sm" />
             ) : (
               <Icon visual={ArrowPathIcon} size="sm" />
             )}
 
             {info.row.original.success ? (
               <Icon
-                visual={CheckCircleIcon}
+                visual={CheckCircleV2}
                 size="sm"
                 className="text-success-500"
               />
             ) : (
-              <Icon
-                visual={XCircleIcon}
-                size="sm"
-                className="text-warning-500"
-              />
+              <Icon visual={XCircleV2} size="sm" className="text-warning-500" />
             )}
           </div>
         </DataTable.CellContent>
@@ -338,7 +334,7 @@ export function AdvancedNotionManagement({
                 {urlStatus.notion.exists ? (
                   <>
                     <Icon
-                      visual={CheckCircleIcon}
+                      visual={CheckCircleV2}
                       size="xs"
                       className="inline text-success-500"
                     />{" "}
@@ -347,7 +343,7 @@ export function AdvancedNotionManagement({
                 ) : (
                   <>
                     <Icon
-                      visual={XCircleIcon}
+                      visual={XCircleV2}
                       size="xs"
                       className="inline text-warning-500"
                     />{" "}
@@ -360,7 +356,7 @@ export function AdvancedNotionManagement({
                 {urlStatus.dust.synced ? (
                   <>
                     <Icon
-                      visual={CheckCircleIcon}
+                      visual={CheckCircleV2}
                       size="xs"
                       className="inline text-success-500"
                     />{" "}
@@ -376,7 +372,7 @@ export function AdvancedNotionManagement({
                 ) : (
                   <>
                     <Icon
-                      visual={XCircleIcon}
+                      visual={XCircleV2}
                       size="xs"
                       className="inline text-warning-500"
                     />{" "}
@@ -439,7 +435,7 @@ export function AdvancedNotionManagement({
           <div className="p-1 text-xs">
             An{" "}
             <Icon
-              visual={CheckCircleIcon}
+              visual={CheckCircleV2}
               size="xs"
               className="inline-block text-success-500"
             />{" "}

@@ -4,10 +4,10 @@ import {
   isInternalAllowedIcon,
 } from "@app/components/resources/resources_icons";
 import {
+  AlertCircleV2,
   AttachmentChip,
   Chip,
-  ExclamationCircleIcon,
-  ToolsIcon,
+  Tool02V2,
 } from "@dust-tt/sparkle";
 import type React from "react";
 
@@ -19,7 +19,7 @@ function getToolIcon(toolIcon: string | null) {
     return getIcon(toolIcon);
   }
 
-  return ToolsIcon;
+  return Tool02V2;
 }
 
 interface ToolChipProps {
@@ -58,7 +58,7 @@ export function ToolErrorChip({ onRemove, title }: ToolErrorChipProps) {
   return (
     <AttachmentChip
       label={title}
-      icon={{ visual: ExclamationCircleIcon }}
+      icon={{ visual: AlertCircleV2 }}
       color="white"
       onRemove={onRemove}
       size="xs"

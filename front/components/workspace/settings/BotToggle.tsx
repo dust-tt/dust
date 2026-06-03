@@ -12,7 +12,7 @@ import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
   ArrowPathIcon,
-  BookOpenIcon,
+  BookOpen01V2,
   Button,
   ContextItem,
   SliderToggle,
@@ -134,7 +134,7 @@ export function BotToggle({
               rel="noopener noreferrer"
               className="text-action-400 hover:text-action-500 text-sm"
             >
-              <BookOpenIcon className="h-4 w-4" />
+              <BookOpen01V2 className="h-4 w-4" />
             </a>
           )}
         </div>

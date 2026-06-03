@@ -1,5 +1,5 @@
 import { H2, P } from "@app/components/home/ContentComponents";
-import { ChevronUpIcon, Separator } from "@dust-tt/sparkle";
+import { ChevronUpV2, Separator } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 interface FeatureItem {
@@ -141,7 +141,7 @@ export function InteractiveFeaturesSection() {
                         isActive ? "rotate-180" : "rotate-0"
                       }`}
                     >
-                      <ChevronUpIcon className="h-5 w-5" />
+                      <ChevronUpV2 className="h-5 w-5" />
                     </span>
                   </button>
                   <div

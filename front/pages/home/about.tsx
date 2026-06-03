@@ -12,7 +12,7 @@ import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
 import { classNames } from "@app/lib/utils";
 import {
-  ArrowRightIcon,
+  ArrowRightV2,
   Button,
   Div3D,
   GithubIcon,
@@ -242,7 +242,7 @@ export default function About() {
                   variant="highlight"
                   size="md"
                   label="We're hiring"
-                  icon={ArrowRightIcon}
+                  icon={ArrowRightV2}
                 />
               </Link>
             </div>

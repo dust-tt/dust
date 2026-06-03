@@ -17,14 +17,14 @@ import type {
   DatasetViewType,
 } from "@app/types/dataset";
 import {
-  ArrowDownOnSquareIcon,
-  ArrowUpOnSquareIcon,
   Button,
+  Download01V2,
   Input,
   Label,
   PlusCircleIcon,
-  PlusIcon,
-  XCircleIcon,
+  PlusV2,
+  Upload01V2,
+  XCircleV2,
 } from "@dust-tt/sparkle";
 import { useEffect, useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
@@ -617,7 +617,7 @@ export default function DatasetView({
                                   size="icon"
                                   variant="ghost"
                                   className="text-muted-foreground"
-                                  icon={XCircleIcon}
+                                  icon={XCircleV2}
                                   tooltip="Delete property"
                                   onClick={() => {
                                     handleDeleteKey(j);
@@ -793,7 +793,7 @@ export default function DatasetView({
                       <div className="flex items-center justify-end gap-1 p-1 text-xs">
                         {datasetData.length > 1 ? (
                           <Button
-                            icon={XCircleIcon}
+                            icon={XCircleV2}
                             size="icon"
                             variant="ghost"
                             onClick={() => {
@@ -823,7 +823,7 @@ export default function DatasetView({
                     onClick={() => {
                       handleNewEntry(datasetData.length - 1);
                     }}
-                    icon={PlusIcon}
+                    icon={PlusV2}
                     label="New Entry"
                   />
                 ) : null}
@@ -849,7 +849,7 @@ export default function DatasetView({
                       downloadAnchorNode.click();
                       downloadAnchorNode.remove();
                     }}
-                    icon={ArrowDownOnSquareIcon}
+                    icon={Download01V2}
                     label="Download"
                   />
                 </div>
@@ -873,7 +873,7 @@ export default function DatasetView({
                           fileInputRef.current.click();
                         }
                       }}
-                      icon={ArrowUpOnSquareIcon}
+                      icon={Upload01V2}
                       label="JSONL"
                     />
                   ) : null}

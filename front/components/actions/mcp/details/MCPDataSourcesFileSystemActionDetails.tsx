@@ -16,7 +16,7 @@ import {
   Citation,
   CitationIcons,
   CitationTitle,
-  DocumentIcon,
+  File02V2,
   Icon,
   Markdown,
 } from "@dust-tt/sparkle";
@@ -42,7 +42,7 @@ export function DataSourceNodeContentDetails({
           ? "Retrieving file content"
           : "Retrieve file content"
       }
-      visual={DocumentIcon}
+      visual={File02V2}
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
         <div>

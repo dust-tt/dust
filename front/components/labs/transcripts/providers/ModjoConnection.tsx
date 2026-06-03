@@ -4,7 +4,7 @@ import {
   CloudArrowLeftRightIcon,
   Input,
   Page,
-  XMarkIcon,
+  XCloseV2,
 } from "@dust-tt/sparkle";
 
 interface ModjoConnectionProps {
@@ -39,7 +39,7 @@ export function ModjoConnection({
           />
           <Button
             label="Disconnect"
-            icon={XMarkIcon}
+            icon={XCloseV2}
             size="sm"
             variant="outline"
             onClick={() => setIsDeleteProviderDialogOpened(true)}

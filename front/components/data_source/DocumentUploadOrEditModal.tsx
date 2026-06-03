@@ -21,11 +21,11 @@ import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
   DocumentPlusIcon,
-  EyeIcon,
   EyeSlashIcon,
+  EyeV2,
   Input,
   Page,
-  PlusIcon,
+  PlusV2,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -34,7 +34,7 @@ import {
   SheetTitle,
   Spinner,
   TextArea,
-  TrashIcon,
+  Trash01V2,
 } from "@dust-tt/sparkle";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -490,7 +490,7 @@ export const DocumentUploadOrEditModal = ({
                       action={{
                         label: labelsVisible ? "Hide" : "Show",
                         variant: "ghost",
-                        icon: labelsVisible ? EyeSlashIcon : EyeIcon,
+                        icon: labelsVisible ? EyeSlashIcon : EyeV2,
                         onClick: () => setLabelsVisible(!labelsVisible),
                       }}
                     />
@@ -502,7 +502,7 @@ export const DocumentUploadOrEditModal = ({
                           action={{
                             label: "Add label",
                             variant: "ghost",
-                            icon: PlusIcon,
+                            icon: PlusV2,
                             onClick: () =>
                               setDocumentState((prev) => ({
                                 ...prev,
@@ -537,7 +537,7 @@ export const DocumentUploadOrEditModal = ({
                                 <div className="flex">
                                   <Button
                                     tooltip="Remove"
-                                    icon={TrashIcon}
+                                    icon={Trash01V2}
                                     variant="warning"
                                     onClick={() => {
                                       const newTags = [...documentState.tags];

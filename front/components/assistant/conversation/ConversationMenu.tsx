@@ -41,7 +41,7 @@ import type { WorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
 import {
   ActionGitBranchIcon,
-  ArrowRightIcon,
+  ArrowRightV2,
   Avatar,
   ChatBubbleBottomCenterTextIcon,
   ContactsUserIcon,
@@ -55,16 +55,16 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-  ExternalLinkIcon,
-  EyeIcon,
+  Edit04V2,
   EyeSlashIcon,
+  EyeV2,
+  LinkExternal01V2,
   LinkIcon,
-  PencilSquareIcon,
   PlusCircleIcon,
-  PlusIcon,
-  SidekickIcon,
-  TrashIcon,
-  XMarkIcon,
+  PlusV2,
+  SidekickV2,
+  Trash01V2,
+  XCloseV2,
 } from "@dust-tt/sparkle";
 import type React from "react";
 import type { ReactElement } from "react";
@@ -419,7 +419,7 @@ export function ConversationMenu({
           <DropdownMenuItem
             label="Rename conversation"
             onClick={() => setShowRenameDialog(true)}
-            icon={PencilSquareIcon}
+            icon={Edit04V2}
           />
           <DropdownMenuItem
             label="Branch conversation"
@@ -432,7 +432,7 @@ export function ConversationMenu({
           <DropdownMenuSeparator />
           <DropdownMenuSub>
             <DropdownMenuSubTrigger
-              icon={ArrowRightIcon}
+              icon={ArrowRightV2}
               label={canMoveOutOfPod ? "Move to..." : "Move to Pod"}
             />
             <DropdownMenuPortal>
@@ -441,7 +441,7 @@ export function ConversationMenu({
                 className="max-w-60"
               >
                 <DropdownMenuItem
-                  icon={PlusIcon}
+                  icon={PlusV2}
                   label="New Pod"
                   onClick={() => setIsCreatePodModalOpen(true)}
                 />
@@ -539,7 +539,7 @@ export function ConversationMenu({
             <DropdownMenuItem
               label="Open in a browser tab"
               onClick={openConversationInBrowser}
-              icon={ExternalLinkIcon}
+              icon={LinkExternal01V2}
             />
           )}
           {conversationLink && (
@@ -563,14 +563,14 @@ export function ConversationMenu({
                     : "workspace_members"
                 );
               }}
-              icon={canRestrictUrlAccess ? EyeSlashIcon : EyeIcon}
+              icon={canRestrictUrlAccess ? EyeSlashIcon : EyeV2}
               disabled={isUpdatingConversationUrlAccessMode}
             />
           )}
           {canTurnIntoAgent && (
             <DropdownMenuItem
               label="Convert to agent"
-              icon={SidekickIcon}
+              icon={SidekickV2}
               disabled={!hasHealthyProviders(providersHealth)}
               onClick={async () => {
                 const confirmed = await confirm({
@@ -594,14 +594,14 @@ export function ConversationMenu({
             <DropdownMenuItem
               label="Leave"
               onClick={() => setShowLeaveDialog(true)}
-              icon={XMarkIcon}
+              icon={XCloseV2}
             />
           )}
           {canDelete && (
             <DropdownMenuItem
               label="Delete"
               onClick={() => setShowDeleteDialog(true)}
-              icon={TrashIcon}
+              icon={Trash01V2}
               variant="warning"
             />
           )}

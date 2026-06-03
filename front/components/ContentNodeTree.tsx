@@ -8,9 +8,9 @@ import type { NotificationType } from "@dust-tt/sparkle";
 import {
   BracesIcon,
   Button,
-  ExternalLinkIcon,
+  CheckDone01V2,
   IconButton,
-  ListCheckIcon,
+  LinkExternal01V2,
   SearchInput,
   Spinner,
   Tree,
@@ -309,7 +309,7 @@ function ContentNodeTreeChildren({
                 {n.sourceUrl && (
                   <Button
                     href={n.sourceUrl}
-                    icon={ExternalLinkIcon}
+                    icon={LinkExternal01V2}
                     size="xs"
                     variant="outline"
                   />
@@ -369,7 +369,7 @@ function ContentNodeTreeChildren({
             </div>
 
             <Button
-              icon={ListCheckIcon}
+              icon={CheckDone01V2}
               label={selectAllClicked ? "Unselect All" : "Select All"}
               size="sm"
               className="m-1"

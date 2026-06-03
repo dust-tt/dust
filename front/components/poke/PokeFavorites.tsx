@@ -16,7 +16,7 @@ import {
   LinkWrapper,
   StarIcon,
   StarStrokeIcon,
-  XMarkIcon,
+  XCloseV2,
 } from "@dust-tt/sparkle";
 import type { ComponentProps } from "react";
 import { useCallback, useEffect, useState } from "react";
@@ -139,7 +139,7 @@ function PokeNavItemRow({ item, onRemove }: PokeNavItemRowProps) {
       {onRemove && (
         <div className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100">
           <IconButton
-            icon={XMarkIcon}
+            icon={XCloseV2}
             onClick={() => onRemove(item.url)}
             size="xs"
             variant="outline"

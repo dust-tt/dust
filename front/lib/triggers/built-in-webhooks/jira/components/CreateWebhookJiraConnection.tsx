@@ -10,7 +10,7 @@ import {
   DropdownMenuSearchbar,
   DropdownMenuTrigger,
   Label,
-  PlusIcon,
+  PlusV2,
   Spinner,
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
@@ -133,7 +133,7 @@ export function CreateWebhookJiraConnection({
                       <Button
                         label="Add project"
                         variant="outline"
-                        icon={PlusIcon}
+                        icon={PlusV2}
                         size="sm"
                       />
                     </DropdownMenuTrigger>

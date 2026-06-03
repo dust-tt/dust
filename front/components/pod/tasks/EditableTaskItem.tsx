@@ -21,9 +21,9 @@ import type { PodTaskType } from "@app/types/project_task";
 import {
   AnimatedText,
   Button,
-  ChatBubbleLeftRightIcon,
   Checkbox,
   cn,
+  MessageChatSquareV2,
   Tooltip,
   TypingAnimation,
 } from "@dust-tt/sparkle";
@@ -195,7 +195,7 @@ export function EditableTaskItem({ task }: EditableTaskItemProps) {
               trigger={
                 <div className="relative shrink-0">
                   <Button
-                    icon={ChatBubbleLeftRightIcon}
+                    icon={MessageChatSquareV2}
                     size="xs"
                     variant="outline"
                     onClick={() => {

@@ -11,7 +11,7 @@ import {
   DropdownMenuSearchbar,
   DropdownMenuTrigger,
   Label,
-  PlusIcon,
+  PlusV2,
   Spinner,
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
@@ -123,7 +123,7 @@ export function CreateWebhookLinearConnection({
                       <Button
                         label="Add team"
                         variant="outline"
-                        icon={PlusIcon}
+                        icon={PlusV2}
                         size="sm"
                       />
                     </DropdownMenuTrigger>

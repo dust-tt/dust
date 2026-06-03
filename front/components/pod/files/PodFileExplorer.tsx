@@ -62,7 +62,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   EmptyCTA,
-  FolderIcon,
+  FolderV2,
   Tooltip,
 } from "@dust-tt/sparkle";
 import type React from "react";
@@ -110,7 +110,7 @@ function AttachKnowledgeDropdown({
           onClick={onShowCompanyDataClick}
         />
         <DropdownMenuItem
-          icon={FolderIcon}
+          icon={FolderV2}
           label="New folder"
           onClick={onCreateFolderClick}
         />

@@ -1,5 +1,5 @@
 import { TAG_NAME_PATTERN } from "@app/components/editor/extensions/agent_builder/instructionBlockUtils";
-import { ChevronDownIcon, Chip, cn } from "@dust-tt/sparkle";
+import { ChevronDownV2, Chip, cn } from "@dust-tt/sparkle";
 import type React from "react";
 import { visit } from "unist-util-visit";
 
@@ -20,7 +20,7 @@ export function InstructionBlock({ tagName, children }: InstructionBlockProps) {
       <div className="flex items-start gap-1">
         {/* Static chevron - matches editor but non-interactive */}
         <div className="mt-[3px] p-0.5">
-          <ChevronDownIcon className="text-element-600 dark:text-element-600-night h-4 w-4" />
+          <ChevronDownV2 className="text-element-600 dark:text-element-600-night h-4 w-4" />
         </div>
         <div className="mt-0.5 w-full">
           <Chip

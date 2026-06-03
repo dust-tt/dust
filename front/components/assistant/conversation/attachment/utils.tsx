@@ -30,14 +30,14 @@ import type { ConnectorProvider } from "@app/types/data_source";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import {
   ActionVolumeUpIcon,
-  DocumentIcon,
   DoubleIcon,
-  DoubleQuotesIcon,
+  DoubleQuotesV2,
   FaviconIcon,
-  FolderIcon,
+  File02V2,
+  FolderV2,
   Icon,
   ImageIcon,
-  TableIcon,
+  TableV2,
 } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
@@ -102,10 +102,10 @@ export const IconForAttachmentCitation = ({
 
     const mainIcon =
       nodeType === "table"
-        ? TableIcon
+        ? TableV2
         : nodeType === "folder"
-          ? FolderIcon
-          : DocumentIcon;
+          ? FolderV2
+          : File02V2;
     return (
       <DoubleIcon
         mainIcon={mainIcon}
@@ -125,7 +125,7 @@ export const IconForAttachmentCitation = ({
       return <Icon visual={ActionVolumeUpIcon} size={size} />;
     }
     if (isPastedFile(contentType)) {
-      return <Icon visual={DoubleQuotesIcon} size={size} />;
+      return <Icon visual={DoubleQuotesV2} size={size} />;
     }
   }
 
@@ -135,7 +135,7 @@ export const IconForAttachmentCitation = ({
   ) {
     return (
       <DoubleIcon
-        mainIcon={DocumentIcon}
+        mainIcon={File02V2}
         secondaryIcon={getIcon(iconName)}
         size={size}
       />
@@ -147,7 +147,7 @@ export const IconForAttachmentCitation = ({
     return <Icon visual={FileIcon} size={size} />;
   }
 
-  return <Icon visual={DocumentIcon} size={size} />;
+  return <Icon visual={File02V2} size={size} />;
 };
 
 export function contentFragmentToAttachmentCitation(

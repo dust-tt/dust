@@ -4,8 +4,8 @@ import {
   ActionPlusIcon,
   Avatar,
   Button,
+  Edit04V2,
   IconPicker,
-  PencilSquareIcon,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
@@ -44,7 +44,7 @@ export function SkillBuilderIconSection() {
           <Button
             variant="outline"
             size="sm"
-            icon={PencilSquareIcon}
+            icon={Edit04V2}
             type="button"
             onClick={() => setIsPopoverOpen(true)}
             className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100"

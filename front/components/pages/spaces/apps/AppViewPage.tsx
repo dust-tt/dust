@@ -24,8 +24,8 @@ import type { BlockType } from "@app/types/run";
 import {
   BracesIcon,
   Button,
-  DocumentTextIcon,
-  PlayIcon,
+  File04V2,
+  PlayV2,
   Spinner,
   StopIcon,
 } from "@dust-tt/sparkle";
@@ -388,7 +388,7 @@ export function AppViewPage() {
                 runRequested || run?.status.run == "running" ? "Running" : "Run"
               }
               onClick={() => handleRun()}
-              icon={PlayIcon}
+              icon={PlayV2}
             />
           )}
           {runError ? (
@@ -416,7 +416,7 @@ export function AppViewPage() {
               />
               <Button
                 variant="ghost"
-                icon={DocumentTextIcon}
+                icon={File04V2}
                 label="Documentation"
                 onClick={() => {
                   window.open(
@@ -462,7 +462,7 @@ export function AppViewPage() {
             <p className="mt-4">
               <Button
                 variant="ghost"
-                icon={DocumentTextIcon}
+                icon={File04V2}
                 label="Follow the QuickStart Guide"
                 onClick={() => {
                   window.open(
@@ -508,7 +508,7 @@ export function AppViewPage() {
                       : "Run"
                   }
                   onClick={() => handleRun()}
-                  icon={PlayIcon}
+                  icon={PlayV2}
                 />
               )}
             </div>

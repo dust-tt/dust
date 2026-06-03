@@ -12,10 +12,10 @@ import {
   ActionIcons,
   Button,
   Chip,
-  ClipboardIcon,
+  ClipboardV2,
   cn,
-  EyeIcon,
   EyeSlashIcon,
+  EyeV2,
   IconButton,
   IconPicker,
   Input,
@@ -181,7 +181,7 @@ export function WebhookSourceDetailsInfo({
               {webhookUrl}
             </p>
             <IconButton
-              icon={ClipboardIcon}
+              icon={ClipboardV2}
               onClick={() => handleCopy(webhookUrl, "Webhook URL")}
               size="xs"
             />
@@ -240,12 +240,12 @@ export function WebhookSourceDetailsInfo({
               </p>
               <div>
                 <IconButton
-                  icon={isSecretVisible ? EyeSlashIcon : EyeIcon}
+                  icon={isSecretVisible ? EyeSlashIcon : EyeV2}
                   onClick={() => setIsSecretVisible((prev) => !prev)}
                   size="xs"
                 />
                 <IconButton
-                  icon={ClipboardIcon}
+                  icon={ClipboardV2}
                   onClick={() =>
                     handleCopy(
                       webhookSourceView.webhookSource.secret ?? "",

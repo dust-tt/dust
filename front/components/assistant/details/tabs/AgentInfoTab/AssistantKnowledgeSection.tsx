@@ -34,16 +34,16 @@ import {
   BracesIcon,
   Button,
   Chip,
-  ExternalLinkIcon,
-  FolderIcon,
+  FolderV2,
   IconButton,
   Label,
+  LinkExternal01V2,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
-  SparklesIcon,
   Spinner,
-  TableIcon,
+  Stars02V2,
+  TableV2,
   Tree,
 } from "@dust-tt/sparkle";
 import uniq from "lodash/uniq";
@@ -245,7 +245,7 @@ export function AssistantKnowledgeSection({
     <>
       {hasConnections && connectionItems}
       {hasFolders && (
-        <Tree.Item label="Folders" visual={FolderIcon}>
+        <Tree.Item label="Folders" visual={FolderV2}>
           {folderItems}
         </Tree.Item>
       )}
@@ -265,10 +265,10 @@ export function AssistantKnowledgeSection({
       </div>
       {hasDocuments && hasTables ? (
         <Tree isBoxed className="max-h-[400px] overflow-y-auto">
-          <Tree.Item label="Documents" visual={FolderIcon}>
+          <Tree.Item label="Documents" visual={FolderV2}>
             {documentItems}
           </Tree.Item>
-          <Tree.Item label="Tables" visual={TableIcon}>
+          <Tree.Item label="Tables" visual={TableV2}>
             {tableItems}
           </Tree.Item>
         </Tree>
@@ -378,7 +378,7 @@ function DataSourceViewsSection({
                   canBeExpanded(dataSourceView?.dataSource) ? "node" : "leaf"
                 }
                 label={dataSourceName}
-                visual={dsLogo ?? FolderIcon}
+                visual={dsLogo ?? FolderV2}
                 className="whitespace-nowrap"
                 actions={
                   <RetrievalActionTagsFilterPopover
@@ -503,7 +503,7 @@ function RetrievalActionTagsFilterPopover({
                 <Chip
                   color="success"
                   label="Activated"
-                  icon={SparklesIcon}
+                  icon={Stars02V2}
                   isBusy
                 />
               </div>
@@ -550,7 +550,7 @@ function DataSourceViewSelectedNodes({
         <div className="mr-8 flex flex-row gap-2">
           <IconButton
             size="xs"
-            icon={ExternalLinkIcon}
+            icon={LinkExternal01V2}
             onClick={() => {
               if (node.sourceUrl) {
                 window.open(node.sourceUrl, "_blank");

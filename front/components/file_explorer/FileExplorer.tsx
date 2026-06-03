@@ -28,12 +28,7 @@ import {
 import type { FileSystemEntry } from "@app/lib/api/file_system/types";
 import { isInteractiveContentType } from "@app/types/files";
 import { Err, type Result } from "@app/types/shared/result";
-import {
-  cn,
-  FolderOpenIcon,
-  PencilSquareIcon,
-  TrashIcon,
-} from "@dust-tt/sparkle";
+import { cn, Edit04V2, FolderOpenIcon, Trash01V2 } from "@dust-tt/sparkle";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -148,7 +143,7 @@ export function FileExplorer({
       if (onRename && (entry.kind === "file" || entry.kind === "folder")) {
         items.push({
           label: "Rename",
-          icon: PencilSquareIcon,
+          icon: Edit04V2,
           onClick: (e) => {
             e.stopPropagation();
             onRename(entry);
@@ -174,7 +169,7 @@ export function FileExplorer({
       if (onDelete) {
         items.push({
           label: entry.kind === "node" ? "Remove" : "Delete",
-          icon: TrashIcon,
+          icon: Trash01V2,
           variant: "warning",
           onClick: (e) => {
             e.stopPropagation();

@@ -18,8 +18,8 @@ import {
   Button,
   Chip,
   ContextItem,
-  ExternalLinkIcon,
   Icon,
+  LinkExternal01V2,
   Page,
   Pagination,
   Spinner,
@@ -227,7 +227,7 @@ export function AgentMCPActionsPage() {
                                   <Button
                                     size="xs"
                                     variant="outline"
-                                    icon={ExternalLinkIcon}
+                                    icon={LinkExternal01V2}
                                     onClick={() =>
                                       handleConversationLink(
                                         action.conversationId,

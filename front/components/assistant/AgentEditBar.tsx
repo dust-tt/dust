@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
   Spinner,
   TagIcon,
-  XMarkIcon,
+  XCloseV2,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -69,7 +69,7 @@ export const AgentEditBar = ({
           variant="outline"
           disabled={isLoading}
           label="Close edition"
-          icon={XMarkIcon}
+          icon={XCloseV2}
           onClick={onClose}
         />
         {isLoading && <Spinner size="xs" variant="dark" />}

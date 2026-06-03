@@ -42,13 +42,13 @@ import {
   Button,
   Chip,
   CloudArrowLeftRightIcon,
-  Cog6ToothIcon,
   CubeIcon,
   cn,
   DataTable,
-  PencilSquareIcon,
+  Edit04V2,
+  Settings01V2,
   Spinner,
-  TrashIcon,
+  Trash01V2,
 } from "@dust-tt/sparkle";
 import type { ColumnDef, SortingState } from "@tanstack/react-table";
 import type { ParsedUrlQuery } from "querystring";
@@ -203,7 +203,7 @@ function getTableColumns(
         <DataTable.CellContent>
           <Button
             variant="outline"
-            icon={Cog6ToothIcon}
+            icon={Settings01V2}
             disabled={disabled}
             onClick={buttonOnClick}
             label={isAdmin ? "Manage" : "View"}
@@ -383,7 +383,7 @@ export const SpaceResourcesList = ({
           menuItems.push({
             label: "Edit",
             kind: "item",
-            icon: PencilSquareIcon,
+            icon: Edit04V2,
             onClick: (e) => {
               e.stopPropagation();
               setSelectedDataSourceView(dataSourceView);
@@ -404,7 +404,7 @@ export const SpaceResourcesList = ({
           }
           menuItems.push({
             label: "Delete",
-            icon: TrashIcon,
+            icon: Trash01V2,
             kind: "item",
             variant: "warning",
             onClick: (e) => {

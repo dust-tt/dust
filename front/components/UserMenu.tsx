@@ -20,10 +20,10 @@ import { isOnlyAdmin, isOnlyBuilder, isOnlyUser } from "@app/types/user";
 import { datadogLogs } from "@datadog/browser-logs";
 import {
   Avatar,
-  ChatBubbleBottomCenterPlusIcon,
-  ChevronDownIcon,
+  MessagePlusCircleV2,
+  ChevronDownV2,
   ChromeLogo,
-  CommandLineIcon,
+  TerminalV2,
   cn,
   DropdownMenu,
   DropdownMenuContent,
@@ -34,16 +34,16 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-  EyeIcon,
-  EyeSlashIcon,
+  EyeV2,
+  EyeOffV2,
   FirefoxLogo,
   Icon,
-  LightbulbIcon,
-  LogoutIcon,
+  Lightbulb04V2,
+  LogOut01V2,
   ShapesIcon,
-  StarIcon,
-  TestTubeIcon,
-  UserIcon,
+  Star01V2,
+  Beaker02V2,
+  User01V2,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
@@ -170,7 +170,7 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
             </div>
             <div className="flex-shrink-0">
               <Icon
-                visual={ChevronDownIcon}
+                visual={ChevronDownV2}
                 className="text-muted-foreground group-hover:text-primary-400 group-active:text-primary-950 dark:text-muted-foreground-night dark:group-hover:text-foreground-night dark:group-active:text-primary-700"
               />
             </div>
@@ -190,7 +190,7 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
               <DropdownMenuLabel label="Beta" />
               <DropdownMenuItem
                 label="Exploratory features"
-                icon={TestTubeIcon}
+                icon={Beaker02V2}
                 href={`/w/${owner.sId}/labs`}
               />
             </>
@@ -218,13 +218,13 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
             <>
               <DropdownMenuItem
                 label="Personal Settings"
-                icon={UserIcon}
+                icon={User01V2}
                 href={`/w/${owner.sId}/me`}
               />
               {hasFeature("user_settings_v2") && (
                 <DropdownMenuItem
                   label="Personal Settings — Beta"
-                  icon={UserIcon}
+                  icon={User01V2}
                   onSelect={() => setSettingsOpen(true)}
                 />
               )}
@@ -233,7 +233,7 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
 
           <DropdownMenuItem
             label="Sign&nbsp;out"
-            icon={LogoutIcon}
+            icon={LogOut01V2}
             onClick={() => {
               // Clear all conversation drafts for this user.
               clearAllDraftsFromUser();
@@ -278,38 +278,38 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
                       <DropdownMenuItem
                         label="Become Admin"
                         onClick={() => forceRoleUpdate("admin")}
-                        icon={StarIcon}
+                        icon={Star01V2}
                       />
                     )}
                     {!isOnlyBuilder(owner) && (
                       <DropdownMenuItem
                         label="Become Builder"
                         onClick={() => forceRoleUpdate("builder")}
-                        icon={LightbulbIcon}
+                        icon={Lightbulb04V2}
                       />
                     )}
                     {!isOnlyUser(owner) && (
                       <DropdownMenuItem
                         label="Become User"
                         onClick={() => forceRoleUpdate("user")}
-                        icon={UserIcon}
+                        icon={User01V2}
                       />
                     )}
                     <DropdownMenuItem
                       label={`${privacyMask.isEnabled ? "Disable" : "Enable"} Privacy Mask`}
                       onClick={privacyMask.toggle}
-                      icon={privacyMask.isEnabled ? EyeSlashIcon : EyeIcon}
+                      icon={privacyMask.isEnabled ? EyeOffV2 : EyeV2}
                     />
                     <DropdownMenuItem
                       label={`${devMode.isEnabled ? "Disable" : "Enable"} Dev Console`}
                       onClick={devMode.toggle}
-                      icon={CommandLineIcon}
+                      icon={TerminalV2}
                     />
                     {owner.role === "admin" && (
                       <DropdownMenuItem
                         label="Send onboarding conversation"
                         onClick={handleSendOnboarding}
-                        icon={ChatBubbleBottomCenterPlusIcon}
+                        icon={MessagePlusCircleV2}
                       />
                     )}
                   </DropdownMenuSubContent>

@@ -11,13 +11,13 @@ import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/
 import { getSkillIcon } from "@app/lib/skill";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import {
-  ArrowGoBackIcon,
   Button,
   CardGrid,
   Chip,
   EmptyCTA,
+  ReverseLeftV2,
   Spinner,
-  ToolsIcon,
+  Tool02V2,
 } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useCallback, useMemo, useState } from "react";
@@ -93,7 +93,7 @@ export function SkillBuilderToolsSection({
       type="button"
       onClick={handleOpenSheet}
       label="Add tools"
-      icon={ToolsIcon}
+      icon={Tool02V2}
       variant="outline"
     />
   );
@@ -119,7 +119,7 @@ export function SkillBuilderToolsSection({
             <Button
               variant="outline"
               size="sm"
-              icon={ArrowGoBackIcon}
+              icon={ReverseLeftV2}
               onClick={restoreTools}
               label="Restore tools"
             />
@@ -141,7 +141,7 @@ export function SkillBuilderToolsSection({
                   type="button"
                   onClick={handleOpenSheet}
                   label="Add tools"
-                  icon={ToolsIcon}
+                  icon={Tool02V2}
                   variant="outline"
                 />
               }

@@ -4,7 +4,7 @@ import {
   Button,
   DustLogoSquare,
   Icon,
-  LoginIcon,
+  LogIn01V2,
   Page,
 } from "@dust-tt/sparkle";
 
@@ -89,7 +89,7 @@ function getErrorMessage(domain: string | null, reason: string | null) {
             variant="outline"
             size="sm"
             label="Sign in"
-            icon={LoginIcon}
+            icon={LogIn01V2}
             onClick={() => {
               window.location.href = `${config.getApiBaseUrl()}/api/workos/login?returnTo=/api/login`;
             }}

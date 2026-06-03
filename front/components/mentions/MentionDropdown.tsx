@@ -23,7 +23,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  EyeIcon,
+  EyeV2,
 } from "@dust-tt/sparkle";
 import React from "react";
 
@@ -78,7 +78,7 @@ export const MentionDropdown = React.forwardRef<
           {clientType !== "extension" && (
             <DropdownMenuItem
               onClick={handleAgentSeeDetails}
-              icon={EyeIcon}
+              icon={EyeV2}
               label={`About @${mention.label}`}
             />
           )}

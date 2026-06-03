@@ -7,10 +7,10 @@ import TrustedBy from "@app/components/home/TrustedBy";
 import UTMButton from "@app/components/UTMButton";
 import { classNames } from "@app/lib/utils";
 import {
-  ChevronDownIcon,
-  ChevronUpIcon,
+  ChevronDownV2,
+  ChevronUpV2,
   DustLogo,
-  RocketIcon,
+  Rocket02V2,
 } from "@dust-tt/sparkle";
 import Image from "next/image";
 import { useRouter } from "next/router";
@@ -63,7 +63,7 @@ function HeroSection() {
             size="md"
             label="Get started"
             href="/pricing"
-            icon={RocketIcon}
+            icon={Rocket02V2}
             className="w-full xs:w-auto sm:w-auto md:w-auto"
           />
           <UTMButton
@@ -370,9 +370,9 @@ function WhatThisMeansSection() {
                   </span>
                   <span className="ml-6 flex h-6 w-6 flex-shrink-0 items-center justify-center text-muted-foreground">
                     {openIndex === index ? (
-                      <ChevronUpIcon className="h-5 w-5" />
+                      <ChevronUpV2 className="h-5 w-5" />
                     ) : (
-                      <ChevronDownIcon className="h-5 w-5" />
+                      <ChevronDownV2 className="h-5 w-5" />
                     )}
                   </span>
                 </button>

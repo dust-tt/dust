@@ -28,10 +28,10 @@ import {
   DustLogoSquare,
   Icon,
   Input,
-  LockIcon,
+  Lock01V2,
   Spinner,
   TagIcon,
-  XMarkIcon,
+  XCloseV2,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -444,7 +444,7 @@ export function CheckoutPage() {
                         onClick={handleRemoveCoupon}
                         className="ml-0.5 hover:text-foreground"
                       >
-                        <Icon visual={XMarkIcon} size="xs" />
+                        <Icon visual={XCloseV2} size="xs" />
                       </button>
                     )}
                   </div>
@@ -637,7 +637,7 @@ function RightPane({
                 label="Confirm payment"
                 onClick={onConfirmPayment}
                 size="md"
-                icon={LockIcon}
+                icon={Lock01V2}
                 className="w-full"
               />
             </>

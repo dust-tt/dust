@@ -3,11 +3,11 @@ import { useKeyboardShortcutLabel } from "@app/hooks/useKeyboardShortcutLabel";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import {
   BoldIcon,
-  CodeBlockIcon,
-  CodeSlashIcon,
-  HeadingIcon,
+  CheckDone01V2,
+  Code01V2,
+  CodeSquare01V2,
+  Heading01V2,
   ItalicIcon,
-  ListCheckIcon,
   ListOrdered2Icon,
   QuoteTextIcon,
   ToolbarContent,
@@ -134,7 +134,7 @@ export function ToolBarContent({ editor }: ToolBarContentProps) {
       items: [
         <ToolbarIcon
           key="heading"
-          icon={HeadingIcon}
+          icon={Heading01V2}
           onClick={() =>
             editor.chain().focus().toggleHeading({ level: 1 }).run()
           }
@@ -184,7 +184,7 @@ export function ToolBarContent({ editor }: ToolBarContentProps) {
       items: [
         <ToolbarIcon
           key="bulleted-list"
-          icon={ListCheckIcon}
+          icon={CheckDone01V2}
           onClick={() => editor.chain().focus().toggleBulletList().run()}
           active={editor.isActive("bulletList")}
           tooltip={getTooltipText("Bulleted list", bulletListShortcutLabel)}
@@ -219,7 +219,7 @@ export function ToolBarContent({ editor }: ToolBarContentProps) {
       items: [
         <ToolbarIcon
           key="inline-code"
-          icon={CodeSlashIcon}
+          icon={Code01V2}
           onClick={() => editor.chain().focus().toggleCode().run()}
           active={editor.isActive("code")}
           tooltip={getTooltipText("Inline code", inlineCodeShortcutLabel)}
@@ -227,7 +227,7 @@ export function ToolBarContent({ editor }: ToolBarContentProps) {
         />,
         <ToolbarIcon
           key="code-block"
-          icon={CodeBlockIcon}
+          icon={CodeSquare01V2}
           onClick={() => {
             if (editor.isActive("blockquote")) {
               editor.chain().focus().toggleBlockquote().toggleCodeBlock().run();

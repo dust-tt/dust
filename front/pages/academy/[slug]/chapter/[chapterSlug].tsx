@@ -36,7 +36,7 @@ import { isString } from "@app/types/shared/utils/general";
 import {
   Button,
   ClipboardCheckIcon,
-  ClipboardIcon,
+  ClipboardV2,
   cn,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
@@ -312,7 +312,7 @@ export default function ChapterPage({
                       <Button
                         variant="outline"
                         size="xs"
-                        icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+                        icon={isCopied ? ClipboardCheckIcon : ClipboardV2}
                         label={
                           isCopied
                             ? academySettings.copied

@@ -27,7 +27,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
-import { Button, Card, LightbulbIcon, Page, XMarkIcon } from "@dust-tt/sparkle";
+import { Button, Card, Lightbulb04V2, Page, XCloseV2 } from "@dust-tt/sparkle";
 import { useCallback, useContext, useEffect, useState } from "react";
 
 interface ConversationContainerProps {
@@ -222,13 +222,13 @@ export function ConversationContainerVirtuoso({
               >
                 <div className="flex w-full flex-col gap-2 text-sm">
                   <div className="flex w-full items-center gap-2 font-semibold text-highlight-600 dark:text-highlight-400">
-                    <LightbulbIcon className="text-highlight-600 dark:text-highlight-400 h-5 w-5" />
+                    <Lightbulb04V2 className="text-highlight-600 dark:text-highlight-400 h-5 w-5" />
                     <div className="w-full">{suggestion.title}</div>
                     <div className="opacity-0 transition-opacity group-hover:opacity-100">
                       <Button
                         variant="ghost"
                         size="xs"
-                        icon={XMarkIcon}
+                        icon={XCloseV2}
                         tooltip="Dismiss"
                         onClick={() => onDismissSuggestion?.(suggestion.id)}
                         className="text-highlight-600 dark:text-highlight-400"

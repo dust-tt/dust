@@ -17,12 +17,12 @@ import {
   DropdownMenuPortal,
   DropdownMenuShortcut,
   DropdownMenuTrigger,
+  Edit04V2,
   Input,
   Label,
   LightModeIcon,
   MoonIcon,
   Page,
-  PencilSquareIcon,
   Spinner,
   SunIcon,
   Tooltip,
@@ -255,7 +255,7 @@ export function AccountSettings({ owner }: AccountSettingsProps) {
           <Button
             variant="outline"
             size="sm"
-            icon={PencilSquareIcon}
+            icon={Edit04V2}
             type="button"
             onClick={() => fileInputRef.current?.click()}
             className="absolute left-1/2 top-1/2 h-10 w-10 -translate-x-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100"

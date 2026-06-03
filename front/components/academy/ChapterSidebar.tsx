@@ -9,7 +9,7 @@ import type { TocItem } from "@app/lib/contentful/tableOfContents";
 import type { ChapterSummary, SearchableItem } from "@app/lib/contentful/types";
 import { LinkWrapper } from "@app/lib/platform";
 import {
-  ArrowLeftIcon,
+  ArrowLeftV2,
   Button,
   cn,
   MenuIcon,
@@ -60,7 +60,7 @@ function ChapterSidebarContent({
           onClick={onNavigate}
           className="flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
-          <ArrowLeftIcon className="h-4 w-4" />
+          <ArrowLeftV2 className="h-4 w-4" />
           {backToAcademy}
         </LinkWrapper>
       </div>

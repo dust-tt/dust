@@ -38,6 +38,7 @@ import {
   Button,
   Chip,
   cn,
+  DotsHorizontalV2,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -45,8 +46,7 @@ import {
   DropdownMenuTrigger,
   DropdownTooltipTrigger,
   LoadingBlock,
-  MoreIcon,
-  ToolsIcon,
+  Tool02V2,
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -224,7 +224,7 @@ function CapabilitiesPickerItemsList({
                 <Chip size="xs" color="golden" label="Configure" />
               ) : (
                 <Button
-                  icon={MoreIcon}
+                  icon={DotsHorizontalV2}
                   variant="outline"
                   size="mini"
                   className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
@@ -613,7 +613,7 @@ export function CapabilitiesPicker({
       >
         <DropdownMenuTrigger asChild>
           <Button
-            icon={ToolsIcon}
+            icon={Tool02V2}
             variant="ghost-secondary"
             size={buttonSize}
             tooltip="Capabilities"

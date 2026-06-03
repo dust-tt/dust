@@ -5,10 +5,10 @@ import { clientFetch } from "@app/lib/egress/client";
 import { useDustAppSecrets } from "@app/lib/swr/apps";
 import type { DustAppSecretType } from "@app/types/dust_app_secret";
 import {
-  BookOpenIcon,
+  BookOpen01V2,
   BracesIcon,
   Button,
-  ClipboardIcon,
+  ClipboardV2,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -17,8 +17,8 @@ import {
   DialogTitle,
   Input,
   Page,
-  PlusIcon,
-  TrashIcon,
+  PlusV2,
+  Trash01V2,
 } from "@dust-tt/sparkle";
 import { PencilIcon } from "@heroicons/react/20/solid";
 import { useState } from "react";
@@ -205,7 +205,7 @@ export function SecretsPage() {
               label="Read the API reference"
               size="sm"
               variant="outline"
-              icon={BookOpenIcon}
+              icon={BookOpen01V2}
               onClick={() => {
                 window.open(
                   "https://docs.dust.tt/reference/developer-platform-overview#developer-secrets",
@@ -222,7 +222,7 @@ export function SecretsPage() {
                   setIsInputNameDisabled(false);
                   setIsNewSecretPromptOpen(true);
                 }}
-                icon={PlusIcon}
+                icon={PlusV2}
                 disabled={isGenerating || isRevoking}
               />
             )}
@@ -242,7 +242,7 @@ export function SecretsPage() {
                       </pre>
                       <Button
                         variant="outline"
-                        icon={ClipboardIcon}
+                        icon={ClipboardV2}
                         onClick={() => {
                           const text = `env.secrets.${secret.name}`;
                           void navigator.clipboard.writeText(text);
@@ -274,7 +274,7 @@ export function SecretsPage() {
                             onClick={async () => {
                               setSecretToRevoke(secret);
                             }}
-                            icon={TrashIcon}
+                            icon={Trash01V2}
                           />
                         </div>
                       </>

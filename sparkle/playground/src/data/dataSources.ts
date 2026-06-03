@@ -1,7 +1,7 @@
 import {
   BracesIcon,
-  CodeBlockIcon,
-  FolderIcon,
+  CodeSquare01V2,
+  FolderV2,
   GooglePdfLogo,
   MicrosoftExcelLogo,
   MicrosoftPowerpointLogo,
@@ -294,7 +294,7 @@ function getIconForFileType(
     case "txt":
       return TextIcon;
     case "md":
-      return CodeBlockIcon;
+      return CodeSquare01V2;
     default:
       return GooglePdfLogo;
   }
@@ -475,7 +475,7 @@ export function getDataSourceIcon(
   item: DataSource
 ): React.ComponentType<{ className?: string }> | undefined {
   if (isDataSourceFolder(item)) {
-    return FolderIcon;
+    return FolderV2;
   }
 
   return (

@@ -12,17 +12,17 @@ import {
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
-  ChevronRightIcon,
-  ClipboardIcon,
+  ChevronRightV2,
+  ClipboardV2,
   EmotionLaughIcon,
   FullscreenExitIcon,
   FullscreenIcon,
   HandThumbDownIcon,
   HandThumbUpIcon,
   LinkIcon,
-  MoreIcon,
-  PencilSquareIcon,
-  TrashIcon,
+  DotsHorizontalV2,
+  Edit04V2,
+  Trash01V2,
   cn,
 } from "@dust-tt/sparkle";
 import type { EmojiMartData } from "@emoji-mart/data";
@@ -334,7 +334,7 @@ export const NewConversationMessageGroupHeader = React.forwardRef<
           {completionStatus ? (
             <Button
               label={completionStatus as string}
-              icon={ChevronRightIcon}
+              icon={ChevronRightV2}
               size="sm"
               variant="ghost"
             />
@@ -593,7 +593,7 @@ export const NewConversationUserMessage = React.forwardRef<
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
-                icon={MoreIcon}
+                icon={DotsHorizontalV2}
                 size="xs"
                 variant="outline"
                 aria-label="Message actions"
@@ -605,14 +605,14 @@ export const NewConversationUserMessage = React.forwardRef<
               {canEdit && (
                 <DropdownMenuItem
                   label="Edit"
-                  icon={PencilSquareIcon}
+                  icon={Edit04V2}
                   onClick={handleEditStart}
                 />
               )}
               <DropdownMenuItem
                 label="Delete"
                 variant="warning"
-                icon={TrashIcon}
+                icon={Trash01V2}
                 onClick={onDelete}
               />
             </DropdownMenuContent>
@@ -911,7 +911,7 @@ export const NewConversationAgentMessage = React.forwardRef<
                     />
                   </ButtonGroup>
                   <Button
-                    icon={ClipboardIcon}
+                    icon={ClipboardV2}
                     size="xs"
                     variant="outline"
                     aria-label="Copy"
@@ -919,7 +919,7 @@ export const NewConversationAgentMessage = React.forwardRef<
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
-                        icon={MoreIcon}
+                        icon={DotsHorizontalV2}
                         size="xs"
                         variant="outline"
                         aria-label="More actions"
@@ -931,11 +931,11 @@ export const NewConversationAgentMessage = React.forwardRef<
                         icon={LinkIcon}
                       />
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem label="Edit" icon={PencilSquareIcon} />
+                      <DropdownMenuItem label="Edit" icon={Edit04V2} />
                       <DropdownMenuItem
                         label="Delete"
                         variant="warning"
-                        icon={TrashIcon}
+                        icon={Trash01V2}
                         onClick={onDelete}
                       />
                     </DropdownMenuContent>

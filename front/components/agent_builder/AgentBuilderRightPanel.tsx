@@ -7,12 +7,12 @@ import { TabContentLayout } from "@app/components/agent_builder/observability/Ta
 import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import {
-  BarChartIcon,
+  BarChart01V2,
   Button,
   ScrollArea,
   SidebarRightCloseIcon,
   SidebarRightOpenIcon,
-  SidekickIcon,
+  SidekickV2,
   Tabs,
   TabsList,
   TabsTrigger,
@@ -52,7 +52,7 @@ function PanelHeader({
                 <TabsTrigger
                   value="sidekick"
                   label="Sidekick"
-                  icon={SidekickIcon}
+                  icon={SidekickV2}
                   onClick={() => onTabChange("sidekick")}
                 />
                 <TabsTrigger
@@ -64,7 +64,7 @@ function PanelHeader({
                 <TabsTrigger
                   value="insights"
                   label="Insights"
-                  icon={BarChartIcon}
+                  icon={BarChart01V2}
                   onClick={withTracking(
                     TRACKING_AREAS.BUILDER,
                     "insights_tab",
@@ -98,7 +98,7 @@ function CollapsedTabs({ onTabSelect }: CollapsedTabsProps) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-4">
       <Button
-        icon={SidekickIcon}
+        icon={SidekickV2}
         variant="ghost"
         size="sm"
         tooltip="Sidekick"
@@ -112,7 +112,7 @@ function CollapsedTabs({ onTabSelect }: CollapsedTabsProps) {
         onClick={() => onTabSelect("preview")}
       />
       <Button
-        icon={BarChartIcon}
+        icon={BarChart01V2}
         variant="ghost"
         size="sm"
         tooltip="Insights"
@@ -152,7 +152,7 @@ function ExpandedContent({
           ) : (
             <TabContentLayout title="Insights">
               <EmptyPlaceholder
-                icon={BarChartIcon}
+                icon={BarChart01V2}
                 title="Waiting for data"
                 description="Use your agent or share it with your team to see insights data."
               />

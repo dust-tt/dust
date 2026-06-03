@@ -13,6 +13,7 @@ import {
   BellIcon,
   Button,
   CardGrid,
+  ClockV2,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -20,9 +21,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  PlusIcon,
+  PlusV2,
   Spinner,
-  TimeIcon,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
@@ -46,7 +46,7 @@ function getTriggerDescription(trigger: TriggerType): string {
 function getTriggerIcon(trigger: TriggerType) {
   switch (trigger.kind) {
     case "schedule":
-      return TimeIcon;
+      return ClockV2;
     case "webhook":
       return BellIcon;
     default:
@@ -121,7 +121,7 @@ export function AgentTriggersTab({
         <h3 className="text-sm font-semibold">My triggers</h3>
         <Button
           label="Add trigger"
-          icon={PlusIcon}
+          icon={PlusV2}
           variant="outline"
           size="sm"
           onClick={onAddTrigger}

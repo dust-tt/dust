@@ -14,9 +14,9 @@ import type { BlockType, RunType } from "@app/types/run";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
-  EyeIcon,
+  Edit04V2,
+  EyeV2,
   Label,
-  PencilSquareIcon,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -140,7 +140,7 @@ export default function Input({
                   <Button
                     variant="outline"
                     onClick={() => setIsDatasetModalOpen(true)}
-                    icon={readOnly ? EyeIcon : PencilSquareIcon}
+                    icon={readOnly ? EyeV2 : Edit04V2}
                     label={readOnly ? "View" : "Edit"}
                     size="xs"
                   />
@@ -167,7 +167,7 @@ export default function Input({
                         onClick={() => {
                           window.location.href = `/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/datasets/${block.config.dataset}`;
                         }}
-                        icon={PencilSquareIcon}
+                        icon={Edit04V2}
                         label="Edit schema"
                       />
                     )}
