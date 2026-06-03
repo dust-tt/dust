@@ -16,7 +16,7 @@ use crate::{
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use serde::Deserialize;
-use tracing::{info, warn};
+use tracing::{error, info, warn};
 
 use super::utils::ProviderHttpRequestError;
 
@@ -226,12 +226,16 @@ impl Provider for MCPConnectionProvider {
     }
 
     fn reqwest_client(&self) -> reqwest::Client {
-        // Prefer the untrusted egress proxy, fall back to a direct connection when no proxy is
-        // configured (e.g. local development). MCP token activity uses `client_for` instead; this
-        // remains for the default `Provider` trait surface.
-        try_build_untrusted_egress_client()
-            .or_else(try_build_direct_client)
-            .unwrap_or_else(reqwest::Client::new)
+        // MCP token activity uses `client_for`; this remains for the default `Provider` trait
+        // surface. Prefer the untrusted egress proxy. If none is configured we fall back to a
+        // direct connection (expected in local development), but log it so we don't silently
+        // egress unproxied in a deployed environment where a proxy should always be set.
+        if let Some(client) = try_build_untrusted_egress_client() {
+            return client;
+        }
+
+        error!("MCP provider using an unproxied client; no egress proxy configured (misconfiguration?)");
+        try_build_direct_client().unwrap_or_else(reqwest::Client::new)
     }
 
     async fn finalize(

@@ -69,7 +69,7 @@ export async function getConnectorAccessToken(
   return null;
 }
 
-export async function getMCPConnectionAccessToken(
+export async function getInternalMCPServerAccessToken(
   auth: Authenticator,
   internalMCPServerId: string
 ): Promise<string | null> {
@@ -175,7 +175,7 @@ export async function resolveLabelSource(
     });
   }
 
-  const accessToken = await getMCPConnectionAccessToken(
+  const accessToken = await getInternalMCPServerAccessToken(
     auth,
     internalMCPServerId
   );
