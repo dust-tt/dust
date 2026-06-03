@@ -87,17 +87,20 @@ export function SkillBuilderRequestedSpacesSection({
     );
   }, [referencedSkills]);
 
-  const spaceIdsUsedBySkill = useMemo(() => {
+  const spaceIdsFromToolsAndKnowledge = useMemo(() => {
     const actionRequestedSpaceIds = Object.keys(actionsBySpaceId).filter(
       (spaceId) => actionsBySpaceId[spaceId]?.length > 0
     );
 
+    return new Set([...actionRequestedSpaceIds, ...spaceIdsFromKnowledge]);
+  }, [actionsBySpaceId, spaceIdsFromKnowledge]);
+
+  const spaceIdsBlockingRemoval = useMemo(() => {
     return new Set([
-      ...actionRequestedSpaceIds,
-      ...spaceIdsFromKnowledge,
+      ...spaceIdsFromToolsAndKnowledge,
       ...spaceIdsFromNestedSkills,
     ]);
-  }, [actionsBySpaceId, spaceIdsFromKnowledge, spaceIdsFromNestedSkills]);
+  }, [spaceIdsFromNestedSkills, spaceIdsFromToolsAndKnowledge]);
 
   const areSpaceRequirementsReady =
     !isMCPServerViewsLoading &&
@@ -134,12 +137,12 @@ export function SkillBuilderRequestedSpacesSection({
     }
 
     return initialRequestedSpaceIds.filter(
-      (spaceId) => !spaceIdsUsedBySkill.has(spaceId)
+      (spaceId) => !spaceIdsFromToolsAndKnowledge.has(spaceId)
     );
   }, [
     areSpaceRequirementsReady,
     initialRequestedSpaceIds,
-    spaceIdsUsedBySkill,
+    spaceIdsFromToolsAndKnowledge,
   ]);
 
   useEffect(() => {
@@ -170,17 +173,17 @@ export function SkillBuilderRequestedSpacesSection({
     return allSpaces.filter(
       (space) =>
         space.kind !== "global" &&
-        (spaceIdsUsedBySkill.has(space.sId) ||
+        (spaceIdsBlockingRemoval.has(space.sId) ||
           additionalSpaceIds.has(space.sId))
     );
-  }, [additionalSpaceIds, allSpaces, spaceIdsUsedBySkill]);
+  }, [additionalSpaceIds, allSpaces, spaceIdsBlockingRemoval]);
 
   const handleRemoveSpace = async (space: SpaceType) => {
     if (!areSpaceRequirementsReady) {
       return;
     }
 
-    if (spaceIdsUsedBySkill.has(space.sId)) {
+    if (spaceIdsBlockingRemoval.has(space.sId)) {
       await confirmBlockedSpaceRemoval({
         space,
         actions: actionsBySpaceId[space.sId] ?? [],
@@ -206,7 +209,7 @@ export function SkillBuilderRequestedSpacesSection({
 
     setDraftSelectedSpaces(
       selectedAdditionalSpaces.filter(
-        (spaceId) => !spaceIdsUsedBySkill.has(spaceId)
+        (spaceId) => !spaceIdsFromToolsAndKnowledge.has(spaceId)
       )
     );
     setIsSheetOpen(true);
@@ -252,8 +255,8 @@ export function SkillBuilderRequestedSpacesSection({
       {nonGlobalSpacesWithRestrictions.length > 0 && (
         <div className="mb-4 w-full">
           <ContentMessage variant="golden" size="lg">
-            Based on your selection of spaces, knowledge, and tools, this skill
-            can only be used by users with access to:&nbsp;
+            Based on your selection of spaces, knowledge, and capabilities, this
+            skill can only be used by users with access to:&nbsp;
             <strong>
               {nonGlobalSpacesWithRestrictions
                 .map((space) => space.name)
@@ -266,7 +269,7 @@ export function SkillBuilderRequestedSpacesSection({
       <SpaceChips spaces={spacesToDisplay} onRemoveSpace={handleRemoveSpace} />
 
       <SpaceSelectionSheet
-        alreadyRequestedSpaceIds={spaceIdsUsedBySkill}
+        alreadyRequestedSpaceIds={spaceIdsBlockingRemoval}
         entityName="skill"
         includeProjects={false}
         missingSpaceIds={missingSpaceIds}
