@@ -75,38 +75,51 @@ makeScript(
         "[debug] contract subscription"
       );
 
-      const quantityHistory =
-        await client.v1.contracts.retrieveSubscriptionQuantityHistory({
-          customer_id: metronomeCustomerId,
-          contract_id: contractId,
-          subscription_id: sub.id,
-        });
-      logger.info(
-        {
-          subscriptionId: sub.id,
-          raw: JSON.stringify(quantityHistory),
-        },
-        "[debug] retrieveSubscriptionQuantityHistory"
-      );
+      // The seat/quantity-history endpoints only accept SEAT_BASED subs.
+      if (sub.quantity_management_mode !== "SEAT_BASED") {
+        continue;
+      }
 
-      const seatsHistory = await client.post(
-        "/v1/contracts/getSubscriptionSeatsHistory",
-        {
-          body: {
+      try {
+        const quantityHistory =
+          await client.v1.contracts.retrieveSubscriptionQuantityHistory({
             customer_id: metronomeCustomerId,
             contract_id: contractId,
             subscription_id: sub.id,
-            covering_date: new Date().toISOString(),
-          },
-        }
-      );
-      logger.info(
-        {
-          subscriptionId: sub.id,
-          raw: JSON.stringify(seatsHistory),
-        },
-        "[debug] getSubscriptionSeatsHistory"
-      );
+          });
+        logger.info(
+          { subscriptionId: sub.id, raw: JSON.stringify(quantityHistory) },
+          "[debug] retrieveSubscriptionQuantityHistory"
+        );
+      } catch (err) {
+        logger.error(
+          { subscriptionId: sub.id, err },
+          "[debug] retrieveSubscriptionQuantityHistory failed"
+        );
+      }
+
+      try {
+        const seatsHistory = await client.post(
+          "/v1/contracts/getSubscriptionSeatsHistory",
+          {
+            body: {
+              customer_id: metronomeCustomerId,
+              contract_id: contractId,
+              subscription_id: sub.id,
+              covering_date: new Date().toISOString(),
+            },
+          }
+        );
+        logger.info(
+          { subscriptionId: sub.id, raw: JSON.stringify(seatsHistory) },
+          "[debug] getSubscriptionSeatsHistory"
+        );
+      } catch (err) {
+        logger.error(
+          { subscriptionId: sub.id, err },
+          "[debug] getSubscriptionSeatsHistory failed"
+        );
+      }
     }
   }
 );
