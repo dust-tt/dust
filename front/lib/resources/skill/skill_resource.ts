@@ -2500,9 +2500,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
 
     const referencingSkillIds = uniq(
-      references
-        .map((reference) => reference.parentSkillId)
-        .filter((parentSkillId) => parentSkillId !== this.id)
+      references.map((reference) => reference.parentSkillId)
     );
 
     if (referencingSkillIds.length === 0) {
@@ -2613,8 +2611,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           const parsed = getResourceNameAndIdFromSId(sId);
 
           return parsed?.resourceName === "skill" &&
-            parsed.workspaceModelId === workspace.id &&
-            parsed.resourceModelId !== parentSkillId
+            parsed.workspaceModelId === workspace.id
             ? parsed.resourceModelId
             : null;
         })
