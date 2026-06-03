@@ -1,4 +1,6 @@
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { formatCredits } from "@app/lib/client/credits";
+import { isCreditPricedPlan } from "@app/types/plan";
 import {
   ActionCreditCoinsIcon,
   DropdownMenuItem,
@@ -25,11 +27,18 @@ interface CreditCostMenuItemProps {
 }
 
 // Informational, non-interactive dropdown row showing a credit cost. Renders
-// nothing when there is no positive cost to display.
+// nothing when the workspace plan is not credit-priced, or when there is no
+// positive cost to display.
 export function CreditCostMenuItem({
   credits,
   scope,
 }: CreditCostMenuItemProps) {
+  const { subscription } = useAuth();
+
+  if (!isCreditPricedPlan(subscription.plan)) {
+    return null;
+  }
+
   if (credits == null || credits <= 0) {
     return null;
   }

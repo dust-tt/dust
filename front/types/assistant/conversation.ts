@@ -302,6 +302,7 @@ export type BaseAgentMessageType = {
   completionDurationMs: number | null;
   reactions: MessageReactionType[];
   prunedContext?: boolean;
+  costCredits: number | null;
 };
 
 export type InlineActivityStep =
@@ -544,6 +545,7 @@ export type ConversationWithoutContentType = ConversationListItemType & {
   depth: number;
   branchId: string | null;
   forkingData?: ConversationForkingDataType;
+  totalCostCredits?: number | null;
 };
 
 type ConversationDisplayTitleInput = Pick<

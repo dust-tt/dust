@@ -151,6 +151,10 @@
  *           type: array
  *           items:
  *             type: string
+ *         totalCostCredits:
+ *           type: integer
+ *           nullable: true
+ *           description: Aggregate cost of all agent messages in the conversation (including retries), in AWU credits. Only populated on the conversation detail view.
  *         forkingData:
  *           $ref: '#/components/schemas/PrivateConversationForkingData'
  *     PrivateConversationForkUser:
@@ -400,6 +404,10 @@
  *           type: array
  *           items:
  *             $ref: '#/components/schemas/PrivateReaction'
+ *         costCredits:
+ *           type: integer
+ *           nullable: true
+ *           description: Cost of producing this agent message, in AWU credits (intelligence + tool credits). Null when no billable usage is attributed to the message.
  *     PrivateLightAgentMessage:
  *       type: object
  *       description: A lighter agent message used in paginated message list responses.
@@ -492,6 +500,10 @@
  *         completionDurationMs:
  *           type: integer
  *           nullable: true
+ *         costCredits:
+ *           type: integer
+ *           nullable: true
+ *           description: Cost of producing this agent message, in AWU credits (intelligence + tool credits). Null when no billable usage is attributed to the message.
  *         activitySteps:
  *           type: array
  *           items:

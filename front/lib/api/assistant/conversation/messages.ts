@@ -552,6 +552,7 @@ export const createAgentMessages = async (
             ),
             richMentions: [],
             reactions: [],
+            costCredits: null,
           };
         }
       }

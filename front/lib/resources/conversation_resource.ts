@@ -659,6 +659,42 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return result;
   }
 
+  /**
+   * Returns the cost inputs (agent message model id + runIds) for every agent
+   * message in a conversation, across ALL ranks and versions (including
+   * retries / hidden versions). Used to aggregate the conversation's credit
+   * cost.
+   */
+  static async listAgentMessageCostInputs(
+    auth: Authenticator,
+    conversationId: ModelId
+  ): Promise<{ id: ModelId; runIds: string[] | null }[]> {
+    const rows = await MessageModel.findAll({
+      attributes: [],
+      include: [
+        {
+          model: AgentMessageModel,
+          as: "agentMessage",
+          required: true,
+          attributes: ["id", "runIds"],
+        },
+      ],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        conversationId,
+        agentMessageId: { [Op.ne]: null },
+      },
+    });
+
+    return removeNulls(
+      rows.map((row) =>
+        row.agentMessage
+          ? { id: row.agentMessage.id, runIds: row.agentMessage.runIds }
+          : null
+      )
+    );
+  }
+
   private static getOptions(
     options?: FetchConversationOptions
   ): ResourceFindOptions<ConversationModel> {

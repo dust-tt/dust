@@ -1,5 +1,6 @@
 import { deleteOrLeaveConversation } from "@app/lib/api/assistant/conversation";
 import { updateConversationTitle } from "@app/lib/api/assistant/conversation/title";
+import { computeConversationCreditCost } from "@app/lib/api/assistant/credit_cost";
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
@@ -91,6 +92,10 @@ app.get(
     }
 
     const conversation = conversationRes.value;
+    conversation.totalCostCredits = await computeConversationCreditCost(
+      auth,
+      conversation
+    );
 
     void emitAuditLogEvent({
       auth,
