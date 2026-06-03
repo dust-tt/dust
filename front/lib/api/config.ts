@@ -614,6 +614,18 @@ const config = {
   getMetronomeWebhookSecret: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("METRONOME_WEBHOOK_SECRET");
   },
+  // Pins which Stripe billing-provider delivery method (connection) to use when
+  // the Metronome org has more than one Stripe DIRECT_TO_BILLING_PROVIDER
+  // configuration (the bare delivery_method is ambiguous and rejected). Must be
+  // a delivery_method_id (UUID), discoverable via
+  // `scripts/list_metronome_delivery_methods.ts`. Leave unset when the org has a
+  // single Stripe connection (e.g. prod); Metronome then resolves the bare
+  // delivery_method.
+  getMetronomeStripeDeliveryMethodId: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "METRONOME_STRIPE_DELIVERY_METHOD_ID"
+    );
+  },
   getVertexAiProjectId: (): string => {
     return EnvironmentConfig.getEnvVariable("VERTEX_AI_PROJECT_ID");
   },

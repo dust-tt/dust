@@ -162,6 +162,25 @@ export async function ingestMetronomeEvents(
 // ---------------------------------------------------------------------------
 
 /**
+ * Resolves how to address the Stripe billing-provider delivery method on a
+ * customer config. When the Metronome org has multiple Stripe
+ * DIRECT_TO_BILLING_PROVIDER connections, Metronome rejects the bare
+ * `delivery_method` and requires an explicit `delivery_method_id`; set
+ * METRONOME_STRIPE_DELIVERY_METHOD_ID to pin the intended connection (find ids
+ * with `scripts/list_metronome_delivery_methods.ts`). With a single connection
+ * (e.g. prod) the env var stays unset and the bare delivery_method resolves
+ * unambiguously.
+ */
+function stripeDeliveryMethod():
+  | { delivery_method_id: string }
+  | { delivery_method: "direct_to_billing_provider" } {
+  const deliveryMethodId = config.getMetronomeStripeDeliveryMethodId();
+  return deliveryMethodId
+    ? { delivery_method_id: deliveryMethodId }
+    : { delivery_method: "direct_to_billing_provider" };
+}
+
+/**
  * Create a customer in Metronome, linked to an existing Stripe customer.
  * The workspace sId is set as an ingest alias so that usage events
  * with `customer_id: workspaceId` are automatically matched.
@@ -188,7 +207,7 @@ export async function createMetronomeCustomer({
             customer_billing_provider_configurations: [
               {
                 billing_provider: "stripe",
-                delivery_method: "direct_to_billing_provider",
+                ...stripeDeliveryMethod(),
                 configuration: {
                   stripe_customer_id: stripeCustomerId,
                   stripe_collection_method: stripeCollectionMethod,
@@ -343,7 +362,7 @@ export async function ensureMetronomeStripeBillingConfig({
         {
           customer_id: metronomeCustomerId,
           billing_provider: "stripe",
-          delivery_method: "direct_to_billing_provider",
+          ...stripeDeliveryMethod(),
           configuration: {
             stripe_customer_id: stripeCustomerId,
             stripe_collection_method: stripeCollectionMethod,
