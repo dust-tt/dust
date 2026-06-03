@@ -5,11 +5,9 @@
  */
 
 import type { DustFileSystem } from "@app/lib/api/file_system";
-import type {
-  DustFileSystemError,
-  FileSystemEntry,
-} from "@app/lib/api/file_system/types";
 import {
+  DustFileSystemError,
+  type FileSystemEntry,
   SCOPED_PREFIX_CONVERSATION,
   SCOPED_PREFIX_POD,
 } from "@app/lib/api/file_system/types";
@@ -192,6 +190,27 @@ export async function enrichListWithFileResourceIds(
 }
 
 // ---------------------------------------------------------------------------
+// FileResource lookup helpers
+// ---------------------------------------------------------------------------
+
+async function fetchLinkedFile(
+  auth: Authenticator,
+  dustFs: DustFileSystem,
+  scopedPath: string
+): Promise<FileResource | undefined> {
+  const gcsPath = dustFs.toMountFilePath(scopedPath);
+  if (!gcsPath) {
+    return undefined;
+  }
+
+  const [linkedFile] = await FileResource.fetchByMountFilePaths(auth, [
+    gcsPath,
+  ]);
+
+  return linkedFile;
+}
+
+// ---------------------------------------------------------------------------
 // Move with FileResource sync
 // ---------------------------------------------------------------------------
 
@@ -248,17 +267,7 @@ export async function renameCanonicalFile(
 ): Promise<
   Result<{ dest: string; sourceDeletionFailed: boolean }, DustFileSystemError>
 > {
-  const srcGcsPath = dustFs.toMountFilePath(scopedPath);
-  let linkedFile: FileResource | undefined;
-
-  if (srcGcsPath) {
-    const candidates = [srcGcsPath];
-    const legacyPath = srcGcsPath.replace(/\/pods\//, "/projects/");
-    if (legacyPath !== srcGcsPath) {
-      candidates.push(legacyPath);
-    }
-    [linkedFile] = await FileResource.fetchByMountFilePaths(auth, candidates);
-  }
+  const linkedFile = await fetchLinkedFile(auth, dustFs, scopedPath);
 
   const renameResult = await dustFs.rename(scopedPath, newFileName);
   if (renameResult.isErr()) {
@@ -296,17 +305,7 @@ export async function moveCanonicalFile(
   dest: string
 ): Promise<Result<{ sourceDeletionFailed: boolean }, DustFileSystemError>> {
   // Look up the linked FileResource before the bytes move.
-  const srcGcsPath = dustFs.toMountFilePath(src);
-  let linkedFile: FileResource | undefined;
-
-  if (srcGcsPath) {
-    const candidates = [srcGcsPath];
-    const legacyPath = srcGcsPath.replace(/\/pods\//, "/projects/");
-    if (legacyPath !== srcGcsPath) {
-      candidates.push(legacyPath);
-    }
-    [linkedFile] = await FileResource.fetchByMountFilePaths(auth, candidates);
-  }
+  const linkedFile = await fetchLinkedFile(auth, dustFs, src);
 
   const moveResult = await dustFs.move({ src, dest });
   if (moveResult.isErr()) {
@@ -330,4 +329,29 @@ export async function moveCanonicalFile(
   }
 
   return moveResult;
+}
+
+/**
+ * Delete a file at `scopedPath` and delete the linked FileResource record when
+ * the path corresponds to one. If no FileResource exists (for example a file
+ * created directly in the sandbox), falls back to deleting the raw GCS object.
+ */
+export async function deleteCanonicalFile(
+  auth: Authenticator,
+  dustFs: DustFileSystem,
+  scopedPath: string
+): Promise<Result<void, DustFileSystemError>> {
+  const linkedFile = await fetchLinkedFile(auth, dustFs, scopedPath);
+  if (!linkedFile) {
+    return dustFs.delete(scopedPath);
+  }
+
+  const deleteResult = await linkedFile.delete(auth);
+  if (deleteResult.isErr()) {
+    return new Err(
+      new DustFileSystemError("internal", deleteResult.error.message)
+    );
+  }
+
+  return new Ok(undefined);
 }
