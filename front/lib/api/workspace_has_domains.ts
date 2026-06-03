@@ -32,9 +32,10 @@ export async function isHostUnderVerifiedDomain(
 }
 
 // Decide whether MCP OAuth token traffic for `tokenEndpoint` should egress through the static IP
-// proxy. Mirrors the MCP tool-call routing decision in `lib/actions/mcp_metadata.ts`:
+// proxy. Mirrors the MCP tool-call routing decision in `lib/actions/mcp_metadata.ts`, with one
+// added gate (we never route a plaintext token endpoint through the static IP):
 //   1. Legacy hardcoded workspace check.
-//   2. Domain-based check: the token endpoint host is under a verified domain for this workspace.
+//   2. Domain-based check: the token endpoint host (HTTPS only) is under a verified domain.
 export async function computeUseStaticIpProxy(
   auth: Authenticator,
   tokenEndpoint: string | undefined

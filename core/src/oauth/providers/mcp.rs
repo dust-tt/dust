@@ -60,6 +60,14 @@ pub struct MCPConnectionMetadata {
     pub use_static_ip_proxy: Option<String>,
 }
 
+impl MCPConnectionMetadata {
+    /// Whether token requests for this connection should egress through the static IP proxy.
+    /// `front` persists this as the string `"true"`/`"false"`; anything else means untrusted egress.
+    fn use_static_ip(&self) -> bool {
+        self.use_static_ip_proxy.as_deref() == Some("true")
+    }
+}
+
 pub struct MCPConnectionProvider {}
 
 impl MCPConnectionProvider {
@@ -231,7 +239,7 @@ impl Provider for MCPConnectionProvider {
 
         let metadata: MCPConnectionMetadata = serde_json::from_value(connection.metadata().clone())
             .map_err(|e| ProviderError::InvalidMetadataError(e.to_string()))?;
-        let use_static_ip = metadata.use_static_ip_proxy.as_deref() == Some("true");
+        let use_static_ip = metadata.use_static_ip();
 
         let grant_type = "authorization_code";
 
@@ -331,7 +339,7 @@ impl Provider for MCPConnectionProvider {
 
         let metadata: MCPConnectionMetadata = serde_json::from_value(connection.metadata().clone())
             .map_err(|e| ProviderError::InvalidMetadataError(e.to_string()))?;
-        let use_static_ip = metadata.use_static_ip_proxy.as_deref() == Some("true");
+        let use_static_ip = metadata.use_static_ip();
 
         let use_basic_auth = matches!(
             metadata.token_endpoint_auth_method.as_deref(),

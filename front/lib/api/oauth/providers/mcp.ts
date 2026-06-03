@@ -45,6 +45,8 @@ const MCPMetadataSchema = BaseMCPMetadataSchema.extend({
   code_challenge: z.string(),
   code_verifier: z.string(),
   token_endpoint_auth_method: z.string().optional(),
+  // Stamped authoritatively in `getUpdatedExtraConfig` from the final persisted token endpoint;
+  // never caller-supplied. Required here so a new MCP connection can't be created without it.
   use_static_ip_proxy: z.enum(["true", "false"]),
 });
 

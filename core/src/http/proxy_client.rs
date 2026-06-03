@@ -36,14 +36,6 @@ lazy_static! {
     };
 }
 
-fn untrusted_egress_proxy_url() -> Option<&'static str> {
-    UNTRUSTED_EGRESS_PROXY.as_deref()
-}
-
-fn static_ip_proxy_url() -> Option<&'static str> {
-    STATIC_IP_PROXY.as_deref()
-}
-
 fn build_proxied_no_redirect(proxy_url: &str) -> Option<reqwest::Client> {
     let proxy = reqwest::Proxy::all(proxy_url)
         .map_err(|e| {
@@ -67,7 +59,7 @@ fn build_proxied_no_redirect(proxy_url: &str) -> Option<reqwest::Client> {
 pub fn create_untrusted_egress_client_builder() -> reqwest::ClientBuilder {
     let mut builder = reqwest::Client::builder();
 
-    if let Some(proxy_url) = untrusted_egress_proxy_url() {
+    if let Some(proxy_url) = UNTRUSTED_EGRESS_PROXY.as_deref() {
         match reqwest::Proxy::all(proxy_url) {
             Ok(proxy) => {
                 builder = builder.proxy(proxy);
@@ -82,11 +74,11 @@ pub fn create_untrusted_egress_client_builder() -> reqwest::ClientBuilder {
 }
 
 pub fn try_build_static_ip_client() -> Option<reqwest::Client> {
-    build_proxied_no_redirect(static_ip_proxy_url()?)
+    build_proxied_no_redirect(STATIC_IP_PROXY.as_deref()?)
 }
 
 pub fn try_build_untrusted_egress_client() -> Option<reqwest::Client> {
-    build_proxied_no_redirect(untrusted_egress_proxy_url()?)
+    build_proxied_no_redirect(UNTRUSTED_EGRESS_PROXY.as_deref()?)
 }
 
 /// Builds a direct (un-proxied) client with redirects disabled. Used as a last-resort fallback when

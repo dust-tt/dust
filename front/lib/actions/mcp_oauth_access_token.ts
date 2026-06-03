@@ -9,7 +9,7 @@ import { OAuthAPI } from "@app/types/oauth/oauth_api";
 import type { LoggerInterface } from "@app/types/shared/logger";
 import type { Result } from "@app/types/shared/result";
 
-const MCP_STATIC_IP_PROXY_FRESHNESS_TTL_MS = 1000 * 60 * 5;
+const MCP_STATIC_IP_PROXY_FRESHNESS_TTL_MS = 5 * 60 * 1000; // 5 minutes.
 
 const MCP_STATIC_IP_PROXY_LAST_CHECKED_MS = new Map<string, number>();
 
@@ -65,18 +65,24 @@ export async function syncMCPStaticIpProxyMetadata(
   const desired = await computeUseStaticIpProxy(auth, metadata.token_endpoint);
   const stored = metadata.use_static_ip_proxy === "true";
 
-  if (stored !== desired) {
-    const updateRes = await oauthApi.updateConnectionMetadata({
-      connectionId,
-      useStaticIpProxy: desired,
-    });
+  if (stored === desired) {
+    markMCPStaticIpProxyFreshnessChecked(connectionId);
+    return;
+  }
 
-    if (updateRes.isErr()) {
-      localLogger.warn(
-        { error: updateRes.error, connectionId, desired },
-        "Failed to sync MCP OAuth static IP proxy metadata"
-      );
-    }
+  const updateRes = await oauthApi.updateConnectionMetadata({
+    connectionId,
+    useStaticIpProxy: desired,
+  });
+
+  if (updateRes.isErr()) {
+    // Do not mark fresh on a failed write, so the next call retries the PATCH rather than waiting
+    // out the full TTL with the flag still stale.
+    localLogger.warn(
+      { error: updateRes.error, connectionId, desired },
+      "Failed to sync MCP OAuth static IP proxy metadata"
+    );
+    return;
   }
 
   markMCPStaticIpProxyFreshnessChecked(connectionId);
