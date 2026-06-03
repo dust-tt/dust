@@ -44,170 +44,181 @@ function legacyWarningKey(workspaceId: string): string {
   return `default-user-warning-${workspaceId}`;
 }
 
-makeScript({}, async ({ execute }, logger) => {
-  let migrated = 0;
-  let skipped = 0;
-  let failed = 0;
-  const productSeatTypes = await getProductSeatTypes();
+makeScript(
+  {
+    workspaceId: {
+      alias: "w",
+      describe: "Run on a single workspace (sId)",
+      type: "string" as const,
+    },
+  },
+  async ({ execute, workspaceId }, logger) => {
+    let migrated = 0;
+    let skipped = 0;
+    let failed = 0;
+    const productSeatTypes = await getProductSeatTypes();
 
-  async function migrateWorkspace(
-    workspace: LightWorkspaceType
-  ): Promise<void> {
-    const { metronomeCustomerId } = workspace;
-    if (!metronomeCustomerId) {
-      skipped++;
-      return;
-    }
-
-    // Check if a legacy cap alert exists.
-    const legacyResult = await findMetronomeAlert({
-      metronomeCustomerId,
-      uniquenessKey: legacyCapKey(workspace.sId),
-    });
-    if (legacyResult.isErr()) {
-      logger.warn(
-        { workspaceId: workspace.sId, err: legacyResult.error },
-        "Failed to read legacy alert, skipping"
-      );
-      failed++;
-      return;
-    }
-    if (!legacyResult.value) {
-      skipped++;
-      return;
-    }
-
-    const legacyThreshold = legacyResult.value.alert.threshold;
-    logger.info(
-      { workspaceId: workspace.sId, legacyThreshold },
-      "Found legacy default user cap alert"
-    );
-
-    // Look up the contract's seat types.
-    const contract = await getActiveContract(workspace.sId);
-    if (!contract) {
-      logger.warn(
-        { workspaceId: workspace.sId },
-        "No active contract found, skipping"
-      );
-      skipped++;
-      return;
-    }
-
-    const seatSubscriptions = getSeatSubscriptionsFromContract(
-      contract,
-      productSeatTypes
-    );
-
-    const normalizedSeatTypes = new Set<NormalizedPoolLimitSeatType>();
-    for (const seatType of seatSubscriptions.keys()) {
-      const normalized = normalizeToPoolLimitSeatType(seatType);
-      if (normalized) {
-        normalizedSeatTypes.add(normalized);
+    async function migrateWorkspace(
+      workspace: LightWorkspaceType
+    ): Promise<void> {
+      const { metronomeCustomerId } = workspace;
+      if (!metronomeCustomerId) {
+        skipped++;
+        return;
       }
-    }
 
-    // The legacy threshold was a total cap applied uniformly. Treat it as
-    // the pool credit limit. For each seat type, the new threshold =
-    // seatAllowance + poolLimit.
-    const poolAwuCredits = legacyThreshold;
+      // Check if a legacy cap alert exists.
+      const legacyResult = await findMetronomeAlert({
+        metronomeCustomerId,
+        uniquenessKey: legacyCapKey(workspace.sId),
+      });
+      if (legacyResult.isErr()) {
+        logger.warn(
+          { workspaceId: workspace.sId, err: legacyResult.error },
+          "Failed to read legacy alert, skipping"
+        );
+        failed++;
+        return;
+      }
+      if (!legacyResult.value) {
+        skipped++;
+        return;
+      }
 
-    for (const seatType of normalizedSeatTypes) {
-      const seatAllowance = getAwuAllocationForSeatType(
+      const legacyThreshold = legacyResult.value.alert.threshold;
+      logger.info(
+        { workspaceId: workspace.sId, legacyThreshold },
+        "Found legacy default user cap alert"
+      );
+
+      // Look up the contract's seat types.
+      const contract = await getActiveContract(workspace.sId);
+      if (!contract) {
+        logger.warn(
+          { workspaceId: workspace.sId },
+          "No active contract found, skipping"
+        );
+        skipped++;
+        return;
+      }
+
+      const seatSubscriptions = getSeatSubscriptionsFromContract(
         contract,
-        seatType,
         productSeatTypes
       );
-      const totalThreshold = seatAllowance + poolAwuCredits;
 
-      logger.info(
-        {
-          workspaceId: workspace.sId,
-          seatType,
-          seatAllowance,
-          poolAwuCredits,
-          totalThreshold,
-        },
-        "Creating per-seat-type alert"
-      );
-
-      if (execute) {
-        const capResult = await upsertMetronomeDefaultUserCapAlertForSeatType({
-          metronomeCustomerId,
-          workspaceId: workspace.sId,
-          seatType,
-          awuCredits: totalThreshold,
-        });
-        if (capResult.isErr()) {
-          logger.error(
-            { workspaceId: workspace.sId, seatType, err: capResult.error },
-            "Failed to create per-seat-type cap alert"
-          );
-          failed++;
-          return;
-        }
-
-        const warningResult =
-          await upsertMetronomeDefaultUserWarningAlertForSeatType({
-            metronomeCustomerId,
-            workspaceId: workspace.sId,
-            seatType,
-            capAwuCredits: totalThreshold,
-          });
-        if (warningResult.isErr()) {
-          logger.warn(
-            {
-              workspaceId: workspace.sId,
-              seatType,
-              err: warningResult.error,
-            },
-            "Failed to create per-seat-type warning alert, continuing"
-          );
+      const normalizedSeatTypes = new Set<NormalizedPoolLimitSeatType>();
+      for (const seatType of seatSubscriptions.keys()) {
+        const normalized = normalizeToPoolLimitSeatType(seatType);
+        if (normalized) {
+          normalizedSeatTypes.add(normalized);
         }
       }
-    }
 
-    // Archive the legacy alerts.
-    if (execute) {
-      const [capArchive, warningArchive] = await Promise.all([
-        clearMetronomeAlert({
-          metronomeCustomerId,
-          uniquenessKey: legacyCapKey(workspace.sId),
-        }),
-        clearMetronomeAlert({
-          metronomeCustomerId,
-          uniquenessKey: legacyWarningKey(workspace.sId),
-        }),
-      ]);
-      if (capArchive.isOk() && capArchive.value) {
-        logger.info(
-          { workspaceId: workspace.sId, alertId: capArchive.value.alertId },
-          "Archived legacy cap alert"
+      // The legacy threshold was a total cap applied uniformly. Treat it as
+      // the pool credit limit. For each seat type, the new threshold =
+      // seatAllowance + poolLimit.
+      const poolAwuCredits = legacyThreshold;
+
+      for (const seatType of normalizedSeatTypes) {
+        const seatAllowance = getAwuAllocationForSeatType(
+          contract,
+          seatType,
+          productSeatTypes
         );
-      }
-      if (warningArchive.isOk() && warningArchive.value) {
+        const totalThreshold = seatAllowance + poolAwuCredits;
+
         logger.info(
           {
             workspaceId: workspace.sId,
-            alertId: warningArchive.value.alertId,
+            seatType,
+            seatAllowance,
+            poolAwuCredits,
+            totalThreshold,
           },
-          "Archived legacy warning alert"
+          "Creating per-seat-type alert"
         );
+
+        if (execute) {
+          const capResult = await upsertMetronomeDefaultUserCapAlertForSeatType(
+            {
+              metronomeCustomerId,
+              workspaceId: workspace.sId,
+              seatType,
+              awuCredits: totalThreshold,
+            }
+          );
+          if (capResult.isErr()) {
+            logger.error(
+              { workspaceId: workspace.sId, seatType, err: capResult.error },
+              "Failed to create per-seat-type cap alert"
+            );
+            failed++;
+            return;
+          }
+
+          const warningResult =
+            await upsertMetronomeDefaultUserWarningAlertForSeatType({
+              metronomeCustomerId,
+              workspaceId: workspace.sId,
+              seatType,
+              capAwuCredits: totalThreshold,
+            });
+          if (warningResult.isErr()) {
+            logger.warn(
+              {
+                workspaceId: workspace.sId,
+                seatType,
+                err: warningResult.error,
+              },
+              "Failed to create per-seat-type warning alert, continuing"
+            );
+          }
+        }
       }
+
+      // Archive the legacy alerts.
+      if (execute) {
+        const [capArchive, warningArchive] = await Promise.all([
+          clearMetronomeAlert({
+            metronomeCustomerId,
+            uniquenessKey: legacyCapKey(workspace.sId),
+          }),
+          clearMetronomeAlert({
+            metronomeCustomerId,
+            uniquenessKey: legacyWarningKey(workspace.sId),
+          }),
+        ]);
+        if (capArchive.isOk() && capArchive.value) {
+          logger.info(
+            { workspaceId: workspace.sId, alertId: capArchive.value.alertId },
+            "Archived legacy cap alert"
+          );
+        }
+        if (warningArchive.isOk() && warningArchive.value) {
+          logger.info(
+            {
+              workspaceId: workspace.sId,
+              alertId: warningArchive.value.alertId,
+            },
+            "Archived legacy warning alert"
+          );
+        }
+      }
+
+      migrated++;
+      logger.info(
+        {
+          workspaceId: workspace.sId,
+          seatTypes: [...normalizedSeatTypes],
+          poolAwuCredits,
+        },
+        "Migrated legacy alert to per-seat-type alerts"
+      );
     }
 
-    migrated++;
-    logger.info(
-      {
-        workspaceId: workspace.sId,
-        seatTypes: [...normalizedSeatTypes],
-        poolAwuCredits,
-      },
-      "Migrated legacy alert to per-seat-type alerts"
-    );
+    await runOnAllWorkspaces(migrateWorkspace, { wId: workspaceId });
+
+    logger.info({ migrated, skipped, failed }, "Migration complete");
   }
-
-  await runOnAllWorkspaces(migrateWorkspace);
-
-  logger.info({ migrated, skipped, failed }, "Migration complete");
-});
+);
