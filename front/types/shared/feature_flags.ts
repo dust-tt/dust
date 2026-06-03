@@ -144,10 +144,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Access to Gemini 3.1 Pro model in the agent builder",
     stage: "on_demand",
   },
-  agent_management_tool: {
-    description: "MCP tool for creating and managing agent configurations",
-    stage: "dust_only",
-  },
   hootl_subscriptions: {
     description: "Subscription feature for Schedule & Triggers.",
     stage: "dust_only",

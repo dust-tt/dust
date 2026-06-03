@@ -4,7 +4,6 @@ import {
   RUN_AGENT_CALL_TOOL_TIMEOUT_MS,
 } from "@app/lib/actions/constants";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { AGENT_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/agent_management/metadata";
 import { AGENT_MEMORY_SERVER } from "@app/lib/api/actions/servers/agent_memory/metadata";
 import {
   AGENT_ROUTER_SERVER,
@@ -143,7 +142,6 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // It's okay to change the name of the server as we don't refer to it directly.
   "agent_sidekick_agent_state",
   "agent_sidekick_context",
-  "agent_management",
   "agent_memory",
   "agent_router",
   ASHBY_SERVER_NAME,
@@ -891,19 +889,6 @@ export const INTERNAL_MCP_SERVERS = {
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: DATA_SOURCES_FILE_SYSTEM_SERVER,
-  },
-  agent_management: {
-    id: 1011,
-    availability: "auto",
-    allowMultipleInstances: false,
-    isPreview: false,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("agent_management_tool");
-    },
-    tools_arguments_requiring_approval: undefined,
-    tools_retry_policies: undefined,
-    timeoutMs: undefined,
-    metadata: AGENT_MANAGEMENT_SERVER,
   },
   [DATA_WAREHOUSE_SERVER_NAME]: {
     id: 1012,

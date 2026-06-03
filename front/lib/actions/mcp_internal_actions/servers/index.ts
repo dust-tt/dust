@@ -5,7 +5,6 @@ import {
   isLightServerSideMCPToolConfiguration,
   isServerSideMCPServerConfiguration,
 } from "@app/lib/actions/types/guards";
-import { default as agentManagementServer } from "@app/lib/api/actions/servers/agent_management";
 import { default as agentMemoryServer } from "@app/lib/api/actions/servers/agent_memory";
 import { default as agentRouterServer } from "@app/lib/api/actions/servers/agent_router";
 import { default as agentSidekickAgentStateServer } from "@app/lib/api/actions/servers/agent_sidekick_agent_state";
@@ -224,8 +223,6 @@ export async function getInternalMCPServer(
       return agentSidekickAgentStateServer(auth, agentLoopContext);
     case "agent_sidekick_context":
       return agentSidekickContextServer(auth, agentLoopContext);
-    case "agent_management":
-      return agentManagementServer(auth, agentLoopContext);
     case "fathom":
       return fathomServer(auth, agentLoopContext);
     case "freshservice":
