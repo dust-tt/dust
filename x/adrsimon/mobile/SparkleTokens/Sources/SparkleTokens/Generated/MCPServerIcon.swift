@@ -9,7 +9,7 @@ import SwiftUI
 public enum MCPServerIcon {
     public static func icon(for serverName: String) -> SparkleIcon? {
         switch serverName {
-        case "agent_management", "agent_router", "agent_sidekick_agent_state", "agent_sidekick_context", "run_agent": .actionRobot
+        case "agent_router", "agent_sidekick_agent_state", "agent_sidekick_context", "run_agent": .actionRobot
         case "agent_memory", "poke", "toolsets": .actionLightbulb
         case "ashby": .ashbyLogo
         case "common_utilities": .actionAtom

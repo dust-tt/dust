@@ -8,7 +8,6 @@ import {
   makeQueryTextForInclude,
   makeQueryTextForList,
 } from "@app/components/actions/mcp/details/input_rendering";
-import { MCPAgentManagementActionDetails } from "@app/components/actions/mcp/details/MCPAgentManagementActionDetails";
 import {
   MCPAgentMemoryEditActionDetails,
   MCPAgentMemoryEraseActionDetails,
@@ -359,10 +358,6 @@ function MCPActionDetailsInner({
     toolName === ENABLE_SKILL_TOOL_NAME
   ) {
     return <MCPSkillEnableActionDetails {...toolOutputDetailsProps} />;
-  }
-
-  if (internalMCPServerName === "agent_management") {
-    return <MCPAgentManagementActionDetails {...toolOutputDetailsProps} />;
   }
 
   if (internalMCPServerName === "data_warehouses") {

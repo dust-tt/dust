@@ -687,7 +687,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "agent_builder_copilot"
   | "agent_builder_copilot_builders"
   | "agent_builder_shrink_wrap"
-  | "agent_management_tool"
   | "custom_model_feature"
   | "anthropic_vertex_fallback"
   | "audit_logs"
@@ -2175,30 +2174,6 @@ export const GetAgentConfigurationsResponseSchema = z.object({
 
 export type GetAgentConfigurationsResponseType = z.infer<
   typeof GetAgentConfigurationsResponseSchema
->;
-
-export const CreateGenericAgentConfigurationRequestSchema = z.object({
-  name: z.string(),
-  description: z.string(),
-  instructions: z.string(),
-  emoji: z.string().optional(),
-  subAgentName: z.string().optional(),
-  subAgentDescription: z.string().optional(),
-  subAgentInstructions: z.string().optional(),
-  subAgentEmoji: z.string().optional(),
-});
-
-export type CreateAgentConfigurationWithDefaultsRequestType = z.infer<
-  typeof CreateGenericAgentConfigurationRequestSchema
->;
-
-export const CreateGenericAgentConfigurationResponseSchema = z.object({
-  agentConfiguration: LightAgentConfigurationSchema,
-  subAgentConfiguration: LightAgentConfigurationSchema.optional(),
-});
-
-export type CreateGenericAgentConfigurationResponseType = z.infer<
-  typeof CreateGenericAgentConfigurationResponseSchema
 >;
 
 export const PostContentFragmentResponseSchema = z.object({

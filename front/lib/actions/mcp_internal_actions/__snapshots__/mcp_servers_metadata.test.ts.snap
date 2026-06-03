@@ -2,9 +2,6 @@
 
 exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across all servers 1`] = `
 {
-  "agent_management": {
-    "create_agent": "high",
-  },
   "agent_memory": {
     "compact_memory": "never_ask",
     "edit_entries": "never_ask",
