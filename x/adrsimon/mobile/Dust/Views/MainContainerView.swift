@@ -4,8 +4,8 @@ import SwiftUI
 enum ConversationDestination: Hashable {
     case conversation(Conversation)
     case newConversation
-    case project(Space)
-    case newProjectConversation(Space)
+    case pod(Space)
+    case newPodConversation(Space)
 }
 
 struct MainContainerView: View {
@@ -43,8 +43,8 @@ struct MainContainerView: View {
             ConversationListView(
                 searchText: $viewModel.searchText,
                 groupedConversations: viewModel.groupedConversations,
-                projects: viewModel.projects,
-                isProjectsExpanded: $viewModel.isProjectsExpanded,
+                pods: viewModel.pods,
+                isPodsExpanded: $viewModel.isPodsExpanded,
                 user: user,
                 currentWorkspace: viewModel.workspace,
                 workspaces: viewModel.workspaces,
@@ -55,8 +55,8 @@ struct MainContainerView: View {
                 onSelectConversation: { conversation in
                     navigationPath.append(ConversationDestination.conversation(conversation))
                 },
-                onSelectProject: { project in
-                    navigationPath.append(ConversationDestination.project(project))
+                onSelectPod: { pod in
+                    navigationPath.append(ConversationDestination.pod(pod))
                 },
                 onSwitchWorkspace: { workspace in
                     navigationPath = NavigationPath()
@@ -103,9 +103,9 @@ struct MainContainerView: View {
                         )
                     }
 
-                case let .project(space):
+                case let .pod(space):
                     if let workspaceId = viewModel.workspace?.sId {
-                        ProjectConversationsView(
+                        PodConversationsView(
                             space: space,
                             workspaceId: workspaceId,
                             tokenProvider: tokenProvider,
@@ -113,12 +113,12 @@ struct MainContainerView: View {
                                 navigationPath.append(ConversationDestination.conversation(conversation))
                             },
                             onNewConversation: {
-                                navigationPath.append(ConversationDestination.newProjectConversation(space))
+                                navigationPath.append(ConversationDestination.newPodConversation(space))
                             }
                         )
                     }
 
-                case let .newProjectConversation(space):
+                case let .newPodConversation(space):
                     if let workspaceId = viewModel.workspace?.sId {
                         NewConversationView(
                             firstName: user.firstName,
@@ -128,7 +128,7 @@ struct MainContainerView: View {
                             spaceId: space.sId,
                             onConversationCreated: { conversation in
                                 navigationPath = NavigationPath([
-                                    ConversationDestination.project(space),
+                                    ConversationDestination.pod(space),
                                     ConversationDestination.conversation(conversation),
                                 ])
                             }

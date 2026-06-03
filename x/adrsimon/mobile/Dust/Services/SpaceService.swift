@@ -1,7 +1,7 @@
 import Foundation
 
 enum SpaceService {
-    static func fetchProjects(
+    static func fetchPods(
         workspaceId: String,
         tokenProvider: TokenProvider
     ) async throws -> [Space] {
