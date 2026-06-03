@@ -7722,6 +7722,12 @@
                         "items": {
                           "type": "string"
                         }
+                      },
+                      "selectedMCPServerViewIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
                       }
                     }
                   },

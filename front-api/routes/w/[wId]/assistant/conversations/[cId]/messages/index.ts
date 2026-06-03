@@ -4,6 +4,8 @@ import { postUserMessage } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { fetchConversationMessages } from "@app/lib/api/assistant/messages";
 import { getPaginationParams } from "@app/lib/api/pagination";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { extractUniqueSkillIds } from "@app/lib/skills/format";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -173,6 +175,30 @@ app.post(
     }
 
     const conversation = conversationRes.value;
+
+    if (context.selectedMCPServerViewIds?.length) {
+      const mcpServerViews = await MCPServerViewResource.fetchByIds(
+        auth,
+        context.selectedMCPServerViewIds
+      );
+
+      const upsertRes = await ConversationResource.upsertMCPServerViews(auth, {
+        conversation,
+        mcpServerViews,
+        enabled: true,
+        source: "conversation",
+        agentConfigurationId: null,
+      });
+      if (upsertRes.isErr()) {
+        return apiError(ctx, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to add MCP server views to conversation",
+          },
+        });
+      }
+    }
 
     const selectedSkillIds = extractUniqueSkillIds(content);
     if (selectedSkillIds.length > 0) {
