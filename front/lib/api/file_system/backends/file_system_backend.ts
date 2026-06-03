@@ -52,6 +52,13 @@ export interface FileSystemBackend {
     >
   >;
 
+  /**
+   * Returns `Ok(true)` when a file exists at `scopedPath`, `Ok(false)` otherwise.
+   * Unlike `stat`, this never fetches metadata, so it is cheaper for pure existence checks.
+   * Returns `Err` on path or permission errors (including `invalid_path`).
+   */
+  exists(scopedPath: string): Promise<Result<boolean, DustFileSystemError>>;
+
   write(
     scopedPath: string,
     content: Buffer | string,

@@ -17,7 +17,7 @@ function makeReadStream() {
 
 function makeBucket(
   overrides: Partial<{
-    exists: ReturnType<typeof vi.fn>;
+    existingFilePathSuffixes: string[];
     getMetadata: ReturnType<typeof vi.fn>;
     createReadStream: ReturnType<typeof vi.fn>;
     copyFile: ReturnType<typeof vi.fn>;
@@ -25,17 +25,23 @@ function makeBucket(
     getAllFilesByPrefix: ReturnType<typeof vi.fn>;
   }> = {}
 ) {
-  const fileObj = {
-    exists: overrides.exists ?? vi.fn().mockResolvedValue([true]),
-    getMetadata:
-      overrides.getMetadata ??
-      vi.fn().mockResolvedValue([{ contentType: "text/plain", size: "42" }]),
-    createReadStream:
-      overrides.createReadStream ?? vi.fn().mockReturnValue(makeReadStream()),
-  };
+  const existingFilePathSuffixes = overrides.existingFilePathSuffixes ?? [];
+  const getMetadata =
+    overrides.getMetadata ??
+    vi.fn().mockResolvedValue([{ contentType: "text/plain", size: "42" }]);
+  const createReadStream =
+    overrides.createReadStream ?? vi.fn().mockReturnValue(makeReadStream());
 
   return {
-    file: vi.fn().mockReturnValue(fileObj),
+    file: vi.fn((filePath: string) => ({
+      exists: vi
+        .fn()
+        .mockResolvedValue([
+          existingFilePathSuffixes.some((suffix) => filePath.endsWith(suffix)),
+        ]),
+      getMetadata,
+      createReadStream,
+    })),
     copyFile: overrides.copyFile ?? vi.fn().mockResolvedValue(undefined),
     delete: overrides.delete ?? vi.fn().mockResolvedValue(undefined),
     getAllFilesByPrefix:
@@ -100,9 +106,7 @@ describe("GET /api/w/:wId/files/path/:canonicalPath", () => {
   it("returns 404 when file does not exist in GCS", async () => {
     const { workspace, conversation } = await setup();
 
-    const bucket = makeBucket({
-      exists: vi.fn().mockResolvedValue([false]),
-    });
+    const bucket = makeBucket();
     vi.mocked(getPrivateUploadBucket).mockReturnValue(bucket as any);
 
     const response = await request(
@@ -118,6 +122,7 @@ describe("GET /api/w/:wId/files/path/:canonicalPath", () => {
     const { workspace, conversation } = await setup();
 
     const bucket = makeBucket({
+      existingFilePathSuffixes: ["/files/report.pdf"],
       getMetadata: vi
         .fn()
         .mockResolvedValue([{ contentType: "application/pdf", size: "1024" }]),
@@ -137,7 +142,9 @@ describe("GET /api/w/:wId/files/path/:canonicalPath", () => {
   it("sets Content-Disposition when ?download=1", async () => {
     const { workspace, conversation } = await setup();
 
-    const bucket = makeBucket();
+    const bucket = makeBucket({
+      existingFilePathSuffixes: ["/files/report.txt"],
+    });
     vi.mocked(getPrivateUploadBucket).mockReturnValue(bucket as any);
 
     const segments = `conversation-${conversation.sId}/report.txt`
@@ -164,6 +171,7 @@ describe("GET /api/w/:wId/files/path/:canonicalPath?thumbnail=1", () => {
     const { workspace, auth, conversation } = await setup();
 
     const bucket = makeBucket({
+      existingFilePathSuffixes: ["/files/photo.png"],
       getMetadata: vi
         .fn()
         .mockResolvedValue([{ contentType: "image/png", size: "2048" }]),
@@ -201,6 +209,7 @@ describe("GET /api/w/:wId/files/path/:canonicalPath?thumbnail=1", () => {
     const { workspace, conversation } = await setup();
 
     const bucket = makeBucket({
+      existingFilePathSuffixes: ["/files/data.csv"],
       getMetadata: vi
         .fn()
         .mockResolvedValue([{ contentType: "text/plain", size: "100" }]),
@@ -229,6 +238,7 @@ describe("HEAD /api/w/:wId/files/path/:canonicalPath", () => {
     const { workspace, conversation } = await setup();
 
     const bucket = makeBucket({
+      existingFilePathSuffixes: ["/files/data.csv"],
       getMetadata: vi
         .fn()
         .mockResolvedValue([{ contentType: "text/csv", size: "512" }]),
@@ -251,9 +261,7 @@ describe("HEAD /api/w/:wId/files/path/:canonicalPath", () => {
   it("returns 404 when file does not exist", async () => {
     const { workspace, conversation } = await setup();
 
-    const bucket = makeBucket({
-      exists: vi.fn().mockResolvedValue([false]),
-    });
+    const bucket = makeBucket();
     vi.mocked(getPrivateUploadBucket).mockReturnValue(bucket as any);
 
     const segments = `conversation-${conversation.sId}/missing.txt`
@@ -294,7 +302,9 @@ describe("PATCH /api/w/:wId/files/path/:canonicalPath", () => {
   it("renames a file", async () => {
     const { workspace, conversation } = await setup();
 
-    const bucket = makeBucket();
+    const bucket = makeBucket({
+      existingFilePathSuffixes: ["/files/old.txt"],
+    });
     vi.mocked(getPrivateUploadBucket).mockReturnValue(bucket as any);
 
     const response = await request(
@@ -314,7 +324,9 @@ describe("PATCH /api/w/:wId/files/path/:canonicalPath", () => {
   it("moves a file to another path", async () => {
     const { workspace, conversation } = await setup();
 
-    const bucket = makeBucket();
+    const bucket = makeBucket({
+      existingFilePathSuffixes: ["/files/old.txt"],
+    });
     vi.mocked(getPrivateUploadBucket).mockReturnValue(bucket as any);
 
     const dest = `conversation-${conversation.sId}/archive/old.txt`;
@@ -356,7 +368,9 @@ describe("DELETE /api/w/:wId/files/path/:canonicalPath", () => {
   it("deletes a file and returns 204", async () => {
     const { workspace, conversation } = await setup();
 
-    const bucket = makeBucket();
+    const bucket = makeBucket({
+      existingFilePathSuffixes: ["/files/file.txt"],
+    });
     vi.mocked(getPrivateUploadBucket).mockReturnValue(bucket as any);
 
     const response = await request(
@@ -373,7 +387,6 @@ describe("DELETE /api/w/:wId/files/path/:canonicalPath", () => {
     const { workspace, conversation } = await setup();
 
     const bucket = makeBucket({
-      exists: vi.fn().mockResolvedValue([false]),
       getAllFilesByPrefix: vi
         .fn()
         .mockResolvedValue({ files: [], pageFetchCount: 1 }),
