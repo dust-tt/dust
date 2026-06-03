@@ -92,6 +92,7 @@ const ASK_USER_QUESTION_ALLOWED_ORIGINS: UserMessageOrigin[] = [
   "slack",
   "extension",
   "agent_sidekick",
+  "onboarding_conversation",
 ];
 
 // Concatenate two content strings, ensuring at least one whitespace character
