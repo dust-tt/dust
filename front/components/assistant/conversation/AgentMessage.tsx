@@ -6,6 +6,7 @@ import { AttachmentCitation } from "@app/components/assistant/conversation/attac
 import { markdownCitationToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 import { BlockedAction } from "@app/components/assistant/conversation/BlockedAction";
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
+import { CreditCostMenuItem } from "@app/components/assistant/conversation/CreditCostMenuItem";
 import { DeletedMessage } from "@app/components/assistant/conversation/DeletedMessage";
 import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessage";
 import type { FeedbackSelectorBaseProps } from "@app/components/assistant/conversation/FeedbackSelector";
@@ -99,6 +100,10 @@ import {
   ConversationMessageContainer,
   ConversationMessageContent,
   ConversationMessageTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   InformationCircleIcon,
   InteractiveImageGrid,
   LinkIcon,
@@ -877,6 +882,8 @@ export function AgentMessage({
       });
     }
 
+    const { costCredits } = agentMessage;
+
     hoverButtons.push(
       <ButtonGroup key="split-button-group">
         <Button
@@ -887,19 +894,22 @@ export function AgentMessage({
           icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
           className="text-muted-foreground"
         />
-        <ButtonGroupDropdown
-          trigger={
+        <DropdownMenu onOpenChange={setIsMenuOpen}>
+          <DropdownMenuTrigger asChild>
             <Button
               variant="outline"
               size="xs"
               icon={MoreIcon}
               className="text-muted-foreground"
             />
-          }
-          items={dropdownItems}
-          align="end"
-          onOpenChange={setIsMenuOpen}
-        />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-[237px]">
+            <CreditCostMenuItem credits={costCredits} scope="message" />
+            {dropdownItems.map((item, index) => (
+              <DropdownMenuItem key={index} {...item} />
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </ButtonGroup>
     );
   }
