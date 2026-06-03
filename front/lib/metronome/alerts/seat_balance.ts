@@ -18,10 +18,7 @@ const SEAT_BALANCE_SEAT_GROUP_KEY = "user_id";
 // Exhaustion fires at 0 remaining (allocation-independent → a single alert
 // fanned out across all seats). The low-balance warning fires when the
 // remaining balance drops to this fraction of the seat's allocation, i.e. when
-// the user has spent 80% of their personal credits. Because each seat tier has
-// a different allocation, the low threshold is an absolute AWU value computed
-// per user, so it must be created per user (one alert each, scoped via
-// `seat_group_value`) rather than as a single fanned-out alert.
+// the user has spent 80% of their personal credits.
 const SEAT_EXHAUSTED_THRESHOLD_AWU = 0;
 const SEAT_LOW_BALANCE_REMAINING_RATIO = 0.2;
 
@@ -42,15 +39,6 @@ function seatLowBalanceAlertUniquenessKey(
   return `${seatLowBalanceAlertUniquenessKeyPrefix(workspaceId)}${userId}`;
 }
 
-/**
- * Idempotently ensure the workspace's seat-exhaustion alert exists: a single
- * `low_remaining_seat_balance_reached` alert at threshold 0, fanned out per
- * user via `seat_filter`. Fires when any user's personal (seat) AWU balance
- * reaches 0 → the credit state machine moves them to `on_pool`.
- *
- * Allocation-independent, so it can be provisioned eagerly (e.g. at Metronome
- * customer creation) before any seats exist.
- */
 export async function upsertMetronomeSeatExhaustedAlert({
   metronomeCustomerId,
   workspaceId,
@@ -82,8 +70,6 @@ export async function upsertMetronomeSeatExhaustedAlert({
   return new Ok({ alertId: upsertResult.value.alertId });
 }
 
-// userId → uniqueness_key for every existing per-user low-balance alert on the
-// customer for this workspace (matched by uniqueness_key prefix).
 async function listSeatLowBalanceAlertUserIds({
   metronomeCustomerId,
   workspaceId,
@@ -118,9 +104,6 @@ async function listSeatLowBalanceAlertUserIds({
  * `ceil(20% × allocation)` (fires at 80% spent → `user_seat_low_balance`),
  * scoped to that user via `seat_filter.seat_group_value`. Alerts for users who
  * no longer hold a seat are archived.
- *
- * Depends on per-user allocations, so it must run on the seat-sync path (where
- * seats/allocations are known and change), not at customer creation.
  */
 export async function syncMetronomeSeatLowBalanceAlerts({
   metronomeCustomerId,
@@ -210,55 +193,6 @@ export async function syncMetronomeSeatLowBalanceAlerts({
       cleared: staleUserIds.size,
     },
     "[Metronome SeatBalance] Synced per-user seat low-balance alerts"
-  );
-  return new Ok(undefined);
-}
-
-/**
- * Archive the workspace's seat-balance alerts (the exhaustion alert and every
- * per-user low-balance alert). Idempotent — no-op for alerts that don't exist.
- */
-export async function clearMetronomeSeatBalanceAlerts({
-  metronomeCustomerId,
-  workspaceId,
-}: {
-  metronomeCustomerId: string;
-  workspaceId: string;
-}): Promise<Result<void, Error>> {
-  const exhaustedResult = await clearMetronomeAlert({
-    metronomeCustomerId,
-    uniquenessKey: seatExhaustedAlertUniquenessKey(workspaceId),
-  });
-  if (exhaustedResult.isErr()) {
-    return new Err(exhaustedResult.error);
-  }
-
-  const existingResult = await listSeatLowBalanceAlertUserIds({
-    metronomeCustomerId,
-    workspaceId,
-  });
-  if (existingResult.isErr()) {
-    return new Err(existingResult.error);
-  }
-
-  const clears = await concurrentExecutor(
-    [...existingResult.value],
-    (userId) =>
-      clearMetronomeAlert({
-        metronomeCustomerId,
-        uniquenessKey: seatLowBalanceAlertUniquenessKey(workspaceId, userId),
-      }),
-    { concurrency: SEAT_ALERT_CONCURRENCY }
-  );
-  for (const result of clears) {
-    if (result.isErr()) {
-      return new Err(result.error);
-    }
-  }
-
-  logger.info(
-    { workspaceId, metronomeCustomerId },
-    "[Metronome SeatBalance] Cleared seat-balance alerts"
   );
   return new Ok(undefined);
 }
