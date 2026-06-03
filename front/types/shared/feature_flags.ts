@@ -318,6 +318,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "as its backend for this workspace",
     stage: "on_demand",
   },
+  disable_paragraph_formatting_prompt: {
+    description:
+      "Drop the paragraphs-over-bullet-points guidance from the OpenAI formatting meta prompt",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";

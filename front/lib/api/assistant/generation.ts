@@ -46,6 +46,7 @@ import type {
   ConversationWithoutContentType,
   UserMessageType,
 } from "@app/types/assistant/conversation";
+import { selectOpenAIFormattingMetaPrompt } from "@app/types/assistant/models/openai";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { WorkspaceType } from "@app/types/user";
 import moment from "moment-timezone";
@@ -60,12 +61,14 @@ function constructContextSection({
   model,
   owner,
   errorContext,
+  excludeParagraphFormattingPreference,
 }: {
   userMessage: UserMessageType;
   agentConfiguration: AgentConfigurationType;
   model: ModelConfigurationType;
   owner: WorkspaceType | null;
   errorContext?: string;
+  excludeParagraphFormattingPreference: boolean;
 }): string {
   const d = moment(new Date()).tz(userMessage.context.timezone);
 
@@ -77,8 +80,12 @@ function constructContextSection({
     context += `workspace: ${owner.name}\n`;
   }
 
-  if (model.formattingMetaPrompt) {
-    context += `# RESPONSE FORMAT\n${model.formattingMetaPrompt}\n`;
+  const formattingMetaPrompt = selectOpenAIFormattingMetaPrompt(
+    model.formattingMetaPrompt,
+    { excludeParagraphPreference: excludeParagraphFormattingPreference }
+  );
+  if (formattingMetaPrompt) {
+    context += `# RESPONSE FORMAT\n${formattingMetaPrompt}\n`;
   }
 
   if (errorContext) {
@@ -416,6 +423,7 @@ export function constructPromptMultiActions(
     hasSandboxTools = false,
     hasNestedSkills = false,
     useFramesV2 = false,
+    excludeParagraphFormattingPreference = false,
   }: {
     userMessage: UserMessageType;
     agentConfiguration: AgentConfigurationType;
@@ -438,6 +446,7 @@ export function constructPromptMultiActions(
     hasSandboxTools?: boolean;
     hasNestedSkills?: boolean;
     useFramesV2?: boolean;
+    excludeParagraphFormattingPreference?: boolean;
   }
 ): SystemPromptSections {
   const owner = auth.workspace();
@@ -464,6 +473,7 @@ export function constructPromptMultiActions(
     model,
     owner,
     userMessage,
+    excludeParagraphFormattingPreference,
   });
   const branchContextSection = constructBranchContextSection({ conversation });
 
