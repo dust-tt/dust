@@ -1219,15 +1219,19 @@ export async function updateSubscriptionQuantity({
 
 // Response shape for POST /v1/contracts/getSubscriptionSeatsHistory. The
 // Metronome Node SDK (3.5.0, latest) has no typed binding for this endpoint —
-// `retrieveSubscriptionQuantityHistory` is the closest and returns quantity
+// `retrieveSubscriptionQuantityHistory` is the closest but returns quantity
 // totals, not seat IDs. So we route through the SDK client's generic post(),
 // which still gives us auth + retries + error handling.
+//
+// NOTE: this endpoint reliably returns the assigned seat IDs but does NOT
+// return the unassigned-seat count — the field below is never populated in
+// practice. The unassigned count is derived separately from the absolute
+// billed quantity (see `getMetronomeSubscriptionSeatState`).
 interface SubscriptionSeatsHistoryResponse {
   data: Array<{
     starting_at: string;
     ending_before?: string | null;
     assigned_seat_ids: string[];
-    unassigned_seats?: number;
   }>;
 }
 
@@ -1241,10 +1245,10 @@ export type SubscriptionSeatState = {
 };
 
 /**
- * Fetch the seat state (assigned seat IDs + unassigned seat count) on a
- * SEAT_BASED subscription at `coveringDate` (defaults to now).
+ * Fetch the assigned seat IDs on a SEAT_BASED subscription at `coveringDate`
+ * (defaults to now), via the (untyped) getSubscriptionSeatsHistory endpoint.
  */
-export async function getMetronomeSubscriptionSeatState({
+async function fetchAssignedSeatIdsFromHistory({
   metronomeCustomerId,
   contractId,
   subscriptionId,
@@ -1253,10 +1257,8 @@ export async function getMetronomeSubscriptionSeatState({
   metronomeCustomerId: string;
   contractId: string;
   subscriptionId: string;
-  // Defaults to `now`. Pass a future date to read the assignments projected
-  // at that point in time.
   coveringDate?: Date;
-}): Promise<Result<SubscriptionSeatState, Error>> {
+}): Promise<Result<string[], Error>> {
   try {
     const response =
       await getMetronomeClient().post<SubscriptionSeatsHistoryResponse>(
@@ -1273,10 +1275,7 @@ export async function getMetronomeSubscriptionSeatState({
     // History is returned ascending by starting_at; take the last entry to
     // get the segment active at `coveringDate` (earlier entries are stale).
     const segment = response.data[response.data.length - 1];
-    return new Ok({
-      assignedSeatIds: segment?.assigned_seat_ids ?? [],
-      unassignedSeats: segment?.unassigned_seats ?? 0,
-    });
+    return new Ok(segment?.assigned_seat_ids ?? []);
   } catch (err) {
     const error = normalizeError(err);
     logger.error(
@@ -1288,8 +1287,113 @@ export async function getMetronomeSubscriptionSeatState({
 }
 
 /**
+ * Fetch the absolute billed seat quantity (assigned + unassigned) on a
+ * SEAT_BASED subscription at `coveringDate` (defaults to now).
+ *
+ * This is the only reliable source for the unassigned-seat count:
+ * `getSubscriptionSeatsHistory` returns assigned seat IDs but not the
+ * unassigned total, so we read the absolute quantity here and derive
+ * `unassigned = quantity - assignedCount` in `getMetronomeSubscriptionSeatState`.
+ *
+ * Future scheduled changes are NOT included by this endpoint, so a future
+ * `coveringDate` resolves to the latest quantity at/under `now`.
+ */
+export async function getMetronomeSubscriptionTotalQuantity({
+  metronomeCustomerId,
+  contractId,
+  subscriptionId,
+  coveringDate,
+}: {
+  metronomeCustomerId: string;
+  contractId: string;
+  subscriptionId: string;
+  coveringDate?: Date;
+}): Promise<Result<number, Error>> {
+  try {
+    const response =
+      await getMetronomeClient().v1.contracts.retrieveSubscriptionQuantityHistory(
+        {
+          customer_id: metronomeCustomerId,
+          contract_id: contractId,
+          subscription_id: subscriptionId,
+        }
+      );
+    const coveringMs = (coveringDate ?? new Date()).getTime();
+    // `history` is ascending by `starting_at`. Pick the latest segment that
+    // has started at/under `coveringDate`; its quantity is the absolute total.
+    let quantity = 0;
+    let bestStartMs = Number.NEGATIVE_INFINITY;
+    for (const segment of response.data?.history ?? []) {
+      const startMs = Date.parse(segment.starting_at);
+      if (startMs <= coveringMs && startMs >= bestStartMs) {
+        bestStartMs = startMs;
+        // A seat subscription carries a single quantity datapoint per segment;
+        // take the last to be safe against multiple rate rows.
+        const points = segment.data ?? [];
+        quantity = points.length > 0 ? points[points.length - 1].quantity : 0;
+      }
+    }
+    return new Ok(quantity);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, contractId, subscriptionId },
+      "[Metronome] Failed to fetch subscription quantity history"
+    );
+    return new Err(error);
+  }
+}
+
+/**
+ * Fetch the seat state (assigned seat IDs + unassigned seat count) on a
+ * SEAT_BASED subscription at `coveringDate` (defaults to now).
+ *
+ * `unassignedSeats` is derived as `totalQuantity - assignedCount` because the
+ * seats-history endpoint does not return the unassigned count directly.
+ */
+export async function getMetronomeSubscriptionSeatState({
+  metronomeCustomerId,
+  contractId,
+  subscriptionId,
+  coveringDate,
+}: {
+  metronomeCustomerId: string;
+  contractId: string;
+  subscriptionId: string;
+  // Defaults to `now`. Pass a future date to read the assignments projected
+  // at that point in time.
+  coveringDate?: Date;
+}): Promise<Result<SubscriptionSeatState, Error>> {
+  const assignedResult = await fetchAssignedSeatIdsFromHistory({
+    metronomeCustomerId,
+    contractId,
+    subscriptionId,
+    coveringDate,
+  });
+  if (assignedResult.isErr()) {
+    return new Err(assignedResult.error);
+  }
+  const assignedSeatIds = assignedResult.value;
+
+  const quantityResult = await getMetronomeSubscriptionTotalQuantity({
+    metronomeCustomerId,
+    contractId,
+    subscriptionId,
+    coveringDate,
+  });
+  if (quantityResult.isErr()) {
+    return new Err(quantityResult.error);
+  }
+
+  return new Ok({
+    assignedSeatIds,
+    unassignedSeats: Math.max(0, quantityResult.value - assignedSeatIds.length),
+  });
+}
+
+/**
  * Fetch the assigned seat IDs on a SEAT_BASED subscription at `coveringDate`
- * (defaults to now). Thin wrapper over `getMetronomeSubscriptionSeatState` for
+ * (defaults to now). Reads only the seats history (no quantity lookup) for
  * callers that don't need the unassigned-seat count.
  */
 export async function getMetronomeSubscriptionAssignedSeatIds({
@@ -1305,16 +1409,12 @@ export async function getMetronomeSubscriptionAssignedSeatIds({
   // at that point in time.
   coveringDate?: Date;
 }): Promise<Result<string[], Error>> {
-  const stateResult = await getMetronomeSubscriptionSeatState({
+  return fetchAssignedSeatIdsFromHistory({
     metronomeCustomerId,
     contractId,
     subscriptionId,
     coveringDate,
   });
-  if (stateResult.isErr()) {
-    return new Err(stateResult.error);
-  }
-  return new Ok(stateResult.value.assignedSeatIds);
 }
 
 /**
