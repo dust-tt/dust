@@ -36,6 +36,13 @@ lazy_static! {
     };
 }
 
+/// Whether any egress proxy is configured. In deployed environments at least the untrusted egress
+/// proxy is always set, so this doubles as a "are we running locally?" signal: when it returns
+/// false, no `*_PROXY_*` env is set, which only happens in local development.
+pub fn is_egress_proxy_configured() -> bool {
+    STATIC_IP_PROXY.is_some() || UNTRUSTED_EGRESS_PROXY.is_some()
+}
+
 fn build_proxied_no_redirect(proxy_url: &str) -> Option<reqwest::Client> {
     let proxy = reqwest::Proxy::all(proxy_url)
         .map_err(|e| {

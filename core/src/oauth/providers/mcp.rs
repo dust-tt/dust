@@ -1,6 +1,7 @@
 use crate::{
     http::proxy_client::{
-        try_build_direct_client, try_build_static_ip_client, try_build_untrusted_egress_client,
+        is_egress_proxy_configured, try_build_direct_client, try_build_static_ip_client,
+        try_build_untrusted_egress_client,
     },
     oauth::{
         connection::{
@@ -175,6 +176,7 @@ impl MCPConnectionProvider {
 
     fn client_for_builders(
         use_static_ip: bool,
+        allow_direct: bool,
         build_static_ip_client: impl FnOnce() -> Option<reqwest::Client>,
         build_untrusted_egress_client: impl FnOnce() -> Option<reqwest::Client>,
         build_direct_client: impl FnOnce() -> Option<reqwest::Client>,
@@ -191,11 +193,14 @@ impl MCPConnectionProvider {
             return Ok(client);
         }
 
-        // No egress proxy configured (e.g. local development): fall back to a direct connection so
-        // MCP OAuth flows keep working. In production both proxies are configured, so this only
-        // triggers locally.
-        if let Some(client) = build_direct_client() {
-            return Ok(client);
+        // Direct (un-proxied) egress is only allowed when no egress proxy is configured at all,
+        // i.e. local development. In a deployed environment a proxy is always configured, so a
+        // build failure here means a misconfiguration and we fail closed rather than silently
+        // egressing directly.
+        if allow_direct {
+            if let Some(client) = build_direct_client() {
+                return Ok(client);
+            }
         }
 
         Err(ProviderError::from(anyhow!(
@@ -206,6 +211,7 @@ impl MCPConnectionProvider {
     fn client_for(&self, use_static_ip: bool) -> Result<reqwest::Client, ProviderError> {
         Self::client_for_builders(
             use_static_ip,
+            !is_egress_proxy_configured(),
             try_build_static_ip_client,
             try_build_untrusted_egress_client,
             try_build_direct_client,
@@ -570,31 +576,48 @@ mod tests {
 
     #[test]
     fn client_for_falls_back_to_untrusted_egress_when_static_ip_is_unavailable() {
-        let client =
-            MCPConnectionProvider::client_for_builders(true, || None, test_client, || None);
+        let client = MCPConnectionProvider::client_for_builders(
+            true, false, || None, test_client, || None,
+        );
 
         assert!(client.is_ok());
     }
 
     #[test]
     fn client_for_uses_untrusted_egress_without_static_ip() {
-        let client =
-            MCPConnectionProvider::client_for_builders(false, || None, test_client, || None);
+        let client = MCPConnectionProvider::client_for_builders(
+            false, false, || None, test_client, || None,
+        );
 
         assert!(client.is_ok());
     }
 
     #[test]
-    fn client_for_falls_back_to_direct_when_no_proxy_is_available() {
-        let client =
-            MCPConnectionProvider::client_for_builders(false, || None, || None, test_client);
+    fn client_for_falls_back_to_direct_when_no_proxy_is_configured() {
+        // allow_direct = true models local development (no egress proxy configured).
+        let client = MCPConnectionProvider::client_for_builders(
+            false, true, || None, || None, test_client,
+        );
 
         assert!(client.is_ok());
     }
 
     #[test]
-    fn client_for_errors_only_when_no_client_can_be_built() {
-        let client = MCPConnectionProvider::client_for_builders(false, || None, || None, || None);
+    fn client_for_fails_closed_when_proxy_configured_but_unavailable() {
+        // allow_direct = false models a deployed environment: a proxy is configured but failed to
+        // build, so we must not silently egress directly.
+        let client = MCPConnectionProvider::client_for_builders(
+            false, false, || None, || None, test_client,
+        );
+
+        assert!(client.is_err());
+    }
+
+    #[test]
+    fn client_for_errors_when_no_client_can_be_built() {
+        let client = MCPConnectionProvider::client_for_builders(
+            false, true, || None, || None, || None,
+        );
 
         assert!(client.is_err());
     }
