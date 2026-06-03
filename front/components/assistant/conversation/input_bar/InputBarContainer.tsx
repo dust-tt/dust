@@ -57,6 +57,7 @@ import {
   CameraIcon,
   Chip,
   cn,
+  DocumentPlusIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -1346,6 +1347,21 @@ const InputBarContainer = ({
                               />
                             }
                           />
+                          {captureActions.onSavePageToPod && (
+                            <DropdownMenuItem
+                              icon={DocumentPlusIcon}
+                              label="Save page to Pod"
+                              disabled={
+                                disableInput ||
+                                captureActions.isCapturing ||
+                                captureActions.isSavingPageToPod ||
+                                fileUploaderService.isProcessingFiles
+                              }
+                              onClick={() => {
+                                void captureActions.onSavePageToPod?.();
+                              }}
+                            />
+                          )}
                         </>
                       )}
                     </DropdownMenuContent>

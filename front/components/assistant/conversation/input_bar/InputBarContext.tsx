@@ -24,6 +24,13 @@ export type PendingConversationMessage = {
   contentFragments: ContentFragmentsType;
 };
 
+type CaptureActions = {
+  onCapture: (type: "text" | "screenshot") => void;
+  isCapturing: boolean;
+  onSavePageToPod?: () => Promise<void>;
+  isSavingPageToPod?: boolean;
+};
+
 export const InputBarContext = createContext<{
   animate: boolean;
   getAndClearSelectedAgent: () => RichAgentMention | null;
@@ -42,10 +49,7 @@ export const InputBarContext = createContext<{
   ) => void;
   clearPendingFirstMessage: (conversationId: string) => void;
   fileUploaderService: FileUploaderService;
-  captureActions?: {
-    onCapture: (type: "text" | "screenshot") => void;
-    isCapturing: boolean;
-  };
+  captureActions?: CaptureActions;
 }>({
   animate: false,
   getAndClearSelectedAgent: () => null,
@@ -74,10 +78,7 @@ export const InputBarContext = createContext<{
 interface InputBarContextProviderProps {
   children: ReactNode;
   fileUploaderService: FileUploaderService;
-  captureActions?: {
-    onCapture: (type: "text" | "screenshot") => void;
-    isCapturing: boolean;
-  };
+  captureActions?: CaptureActions;
 }
 
 export function InputBarContextProvider({
