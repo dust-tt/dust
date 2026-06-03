@@ -779,13 +779,16 @@ export async function processMetronomeWebhook({
         // three FSM-driving alerts (cap reached / low / critical).
         const alertName = event.properties.alert_name ?? "";
         if (alertName.startsWith(PROGRAMMATIC_WARNING_BALANCE_ALERT_NAME)) {
-          await dispatchProgrammaticWarning({ workspace });
+          await dispatchProgrammaticWarning({ workspace, eventId: event.id });
         } else {
           const programmaticEvent = programmaticEventFromAlertName(alertName);
           if (programmaticEvent) {
             switch (programmaticEvent.type) {
               case "programmatic_cap_reached":
-                await dispatchProgrammaticCapReached({ workspace });
+                await dispatchProgrammaticCapReached({
+                  workspace,
+                  eventId: event.id,
+                });
                 break;
               case "programmatic_low_balance":
                 await dispatchProgrammaticLowBalance({

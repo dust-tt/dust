@@ -59,6 +59,10 @@ function buildWorkspaceCreditPoolStatusKey(workspaceId: string): string {
   return `metronome:pool_credit_status:${workspaceId}`;
 }
 
+function buildWorkspaceProgrammaticWarningKey(workspaceId: string): string {
+  return `metronome:programmatic_warning:${workspaceId}`;
+}
+
 function buildWorkspaceProgrammaticDepletedKey(workspaceId: string): string {
   return `metronome:programmatic_depleted:${workspaceId}`;
 }
@@ -180,6 +184,35 @@ export async function isUserAwuWarned(
 ): Promise<boolean> {
   const val = await runOnRedis({ origin: REDIS_ORIGIN }, async (client) =>
     client.get(buildUserAwuWarningKey(workspaceId, userId))
+  );
+  return val === BLOCKED_FLAG;
+}
+
+// Workspace programmatic cap 80% warning (set by webhook; no DB fallback)
+
+export async function setWorkspaceProgrammaticWarned(
+  workspaceId: string
+): Promise<void> {
+  await setFlag(
+    buildWorkspaceProgrammaticWarningKey(workspaceId),
+    BLOCKED_FLAG
+  );
+}
+
+export async function clearWorkspaceProgrammaticWarned(
+  workspaceId: string
+): Promise<void> {
+  await setFlag(
+    buildWorkspaceProgrammaticWarningKey(workspaceId),
+    NOT_BLOCKED_FLAG
+  );
+}
+
+export async function isWorkspaceProgrammaticWarned(
+  workspaceId: string
+): Promise<boolean> {
+  const val = await runOnRedis({ origin: REDIS_ORIGIN }, async (client) =>
+    client.get(buildWorkspaceProgrammaticWarningKey(workspaceId))
   );
   return val === BLOCKED_FLAG;
 }
