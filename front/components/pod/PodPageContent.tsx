@@ -121,8 +121,12 @@ export function PodPageContent({
           mentions: mentions.map(toMentionType),
           contentFragments,
           selectedMCPServerViewIds,
+          richMentions: mentions,
         },
         spaceId: podInfo.sId,
+        // Navigate as soon as the conversation exists; the first message is posted
+        // from ConversationViewer on mount.
+        deferMessage: true,
       });
 
       setIsSubmitting(false);

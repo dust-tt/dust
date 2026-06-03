@@ -9,6 +9,10 @@ import {
 } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { useGenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import {
+  InputBarContext,
+  type PendingConversationMessage,
+} from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import {
   createPlaceholderAgentMessage,
   createPlaceholderUserMessage,
 } from "@app/components/assistant/conversation/lib";
@@ -83,7 +87,14 @@ import {
 } from "@virtuoso.dev/message-list";
 import debounce from "lodash/debounce";
 import type { MutableRefObject } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 import { mutate } from "swr";
@@ -259,6 +270,51 @@ function addConversationForkNotices(
 
   return mergedMessages;
 }
+
+interface FirstMessagePlaceholders {
+  userMessage: VirtuosoMessage;
+  agentMessages: VirtuosoMessage[];
+}
+
+// Builds the optimistic placeholders for the very first message of a
+// freshly-created conversation, so the list can mount non-empty.
+function buildFirstMessagePlaceholders(
+  pending: PendingConversationMessage,
+  user: UserType
+): FirstMessagePlaceholders {
+  const { input, mentions, contentFragments } = pending;
+
+  // Empty conversation: ranks start at 0 (no existing messages).
+  let rank =
+    contentFragments.contentNodes.length + contentFragments.uploaded.length;
+
+  const userMessage = createPlaceholderUserMessage({
+    input,
+    mentions,
+    user,
+    branchId: null,
+    rank,
+    contentFragments,
+  });
+
+  const agentMessages: VirtuosoMessage[] = [];
+  for (const mention of mentions) {
+    if (isRichAgentMention(mention)) {
+      rank += 1;
+      agentMessages.push(
+        createPlaceholderAgentMessage({
+          userMessage,
+          mention,
+          rank,
+          branchId: null,
+        })
+      );
+    }
+  }
+
+  return { userMessage, agentMessages };
+}
+
 export const ConversationViewer = ({
   owner,
   user,
@@ -280,6 +336,7 @@ export const ConversationViewer = ({
   });
   const sendNotification = useSendNotification();
   const { incrementPendingSteeringCount } = useGenerationContext();
+  const { peekPendingFirstMessage } = useContext(InputBarContext);
 
   const { mutateConversationAttachments } = useConversationAttachments({
     conversationId,
@@ -372,9 +429,39 @@ export const ConversationViewer = ({
   });
   const submitInFlightRef = useRef(false);
 
+  // Pending first message for a freshly-created conversation (deferred-send flow).
+  // Read from InputBarContext (survives Strict Mode remounts) and seeded as the
+  // initial (non-empty) list data so the message shows instantly. The actual send
+  // is handled by useCreateConversationWithMessage; this is display-only.
+  const pendingFirstMessageRef = useRef<
+    PendingConversationMessage | null | undefined
+  >(undefined);
+  if (pendingFirstMessageRef.current === undefined) {
+    pendingFirstMessageRef.current = peekPendingFirstMessage(conversationId);
+  }
+  const firstMessagePlaceholdersRef = useRef<FirstMessagePlaceholders | null>(
+    null
+  );
+  if (
+    pendingFirstMessageRef.current &&
+    firstMessagePlaceholdersRef.current === null
+  ) {
+    firstMessagePlaceholdersRef.current = buildFirstMessagePlaceholders(
+      pendingFirstMessageRef.current,
+      user
+    );
+  }
+
   const [initialListData, setInitialListData] = useState<
     VirtuosoMessage[] | undefined
-  >(undefined);
+  >(() =>
+    firstMessagePlaceholdersRef.current
+      ? [
+          firstMessagePlaceholdersRef.current.userMessage,
+          ...firstMessagePlaceholdersRef.current.agentMessages,
+        ]
+      : undefined
+  );
 
   const [messageIdToScrollTo, setMessageIdToScrollTo] = useState<number | null>(
     null
