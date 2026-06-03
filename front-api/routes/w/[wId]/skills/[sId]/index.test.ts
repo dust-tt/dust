@@ -169,6 +169,7 @@ describe("GET /api/w/:wId/skills/:sId", () => {
     expect(data.skill.relations.childSkills[0]).not.toHaveProperty(
       "instructions"
     );
+    expect(data.skill.relations.usage.skills).toEqual([]);
   });
 
   it("should return 404 for non-existent skill", async () => {

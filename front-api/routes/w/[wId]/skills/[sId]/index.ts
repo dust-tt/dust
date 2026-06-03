@@ -121,11 +121,19 @@ app.get(
         ? await SkillResource.fetchById(auth, serializedSkill.extendedSkillId)
         : null;
       const childSkills = await skill.fetchChildSkills(auth);
+      const usedBySkills =
+        (await SkillResource.batchFetchUsedBySkills(auth, [skill])).get(
+          skill.sId
+        ) ?? [];
 
       const skillWithRelations: SkillWithRelationsType = {
         ...serializedSkill,
         relations: {
-          usage,
+          usage: {
+            ...usage,
+            count: usage.count + usedBySkills.length,
+            skills: usedBySkills,
+          },
           editors: editors ? editors.map((e) => e.toJSON()) : null,
           editedByUser: editedByUser ? editedByUser.toJSON() : null,
           extendedSkill: extendedSkill ? extendedSkill.toJSON(auth) : null,

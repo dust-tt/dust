@@ -3,6 +3,7 @@ import type {
   SkillUsageType,
   UsedBySkillType,
 } from "@app/types/assistant/skill_configuration";
+import type { AgentsUsageType } from "@app/types/data_source";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { pluralize } from "@app/types/shared/utils/string_utils";
@@ -103,7 +104,7 @@ function UsedByButtonIcon({
 }
 
 interface UsedByButtonProps {
-  usage: SkillUsageType | null;
+  usage: AgentsUsageType | SkillUsageType | null;
   onItemClick: (assistantSid: string) => void;
   onSkillClick?: (skillId: string) => void;
 }
@@ -117,7 +118,7 @@ export function UsedByButton({
   const [isOpen, setIsOpen] = useState(false);
 
   const agents = usage?.agents ?? [];
-  const skills = usage?.skills ?? [];
+  const skills = usage && "skills" in usage ? usage.skills : [];
   const agentCount = agents.length;
   const skillCount = skills.length;
   const totalCount = agentCount + skillCount;

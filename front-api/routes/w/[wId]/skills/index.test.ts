@@ -407,7 +407,7 @@ describe("GET /api/w/:wId/skills?withRelations=true", () => {
 
     expect(skillResult).toMatchObject({
       relations: {
-        usage: { count: 0, agents: [] },
+        usage: { count: 0, agents: [], skills: [] },
       },
     });
   });
@@ -449,7 +449,7 @@ describe("GET /api/w/:wId/skills?withRelations=true", () => {
         ],
       },
     });
-    expect(skillResult.relations.childSkills?.[0]).not.toHaveProperty(
+    expect(skillResult.relations.childSkills[0]).not.toHaveProperty(
       "instructions"
     );
   });
