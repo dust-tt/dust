@@ -1,6 +1,6 @@
 import {
-  computeUseStaticIpProxy,
   isHostUnderVerifiedDomain,
+  shouldUseStaticIpProxy,
 } from "@app/lib/api/workspace_has_domains";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
@@ -11,7 +11,7 @@ function uniqueDomain(): string {
   return `${generateRandomModelSId().replaceAll("_", "-").toLowerCase()}.example.com`;
 }
 
-describe("computeUseStaticIpProxy", () => {
+describe("shouldUseStaticIpProxy", () => {
   it("returns true only for HTTPS token endpoints under a verified domain", async () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",
@@ -24,22 +24,22 @@ describe("computeUseStaticIpProxy", () => {
     });
 
     await expect(
-      computeUseStaticIpProxy(authenticator, `https://oauth.${domain}/token`)
+      shouldUseStaticIpProxy(authenticator, `https://oauth.${domain}/token`)
     ).resolves.toBe(true);
 
     await expect(
-      computeUseStaticIpProxy(authenticator, `http://oauth.${domain}/token`)
+      shouldUseStaticIpProxy(authenticator, `http://oauth.${domain}/token`)
     ).resolves.toBe(false);
 
     await expect(
-      computeUseStaticIpProxy(
+      shouldUseStaticIpProxy(
         authenticator,
         "https://unverified.example.com/token"
       )
     ).resolves.toBe(false);
 
     await expect(
-      computeUseStaticIpProxy(authenticator, "https://127.0.0.1/token")
+      shouldUseStaticIpProxy(authenticator, "https://127.0.0.1/token")
     ).resolves.toBe(false);
   });
 });

@@ -36,7 +36,7 @@ export async function isHostUnderVerifiedDomain(
 // added gate (we never route a plaintext token endpoint through the static IP):
 //   1. Legacy hardcoded workspace check.
 //   2. Domain-based check: the token endpoint host (HTTPS only) is under a verified domain.
-export async function computeUseStaticIpProxy(
+export async function shouldUseStaticIpProxy(
   auth: Authenticator,
   tokenEndpoint: string | undefined
 ): Promise<boolean> {

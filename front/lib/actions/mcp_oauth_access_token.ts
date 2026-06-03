@@ -1,6 +1,6 @@
 import apiConfig from "@app/lib/api/config";
 import { getOAuthConnectionAccessToken } from "@app/lib/api/oauth_access_token";
-import { computeUseStaticIpProxy } from "@app/lib/api/workspace_has_domains";
+import { shouldUseStaticIpProxy } from "@app/lib/api/workspace_has_domains";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import type { OAuthConnectionType } from "@app/types/oauth/lib";
@@ -62,7 +62,7 @@ export async function syncMCPStaticIpProxyMetadata(
   }
 
   const metadata = metadataRes.value.connection.metadata;
-  const desired = await computeUseStaticIpProxy(auth, metadata.token_endpoint);
+  const desired = await shouldUseStaticIpProxy(auth, metadata.token_endpoint);
   const stored = metadata.use_static_ip_proxy === "true";
 
   if (stored === desired) {

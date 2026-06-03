@@ -9,7 +9,7 @@ import {
   finalizeUriForProvider,
   getStringFromQuery,
 } from "@app/lib/api/oauth/utils";
-import { computeUseStaticIpProxy } from "@app/lib/api/workspace_has_domains";
+import { shouldUseStaticIpProxy } from "@app/lib/api/workspace_has_domains";
 import type { Authenticator } from "@app/lib/auth";
 import { getPKCEConfig } from "@app/lib/utils/pkce";
 import logger from "@app/logger/logger";
@@ -270,7 +270,7 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
           code_verifier,
           code_challenge,
           use_static_ip_proxy: String(
-            await computeUseStaticIpProxy(auth, tokenEndpoint)
+            await shouldUseStaticIpProxy(auth, tokenEndpoint)
           ),
         };
       }
@@ -293,7 +293,7 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
       return {
         ...finalConfig,
         use_static_ip_proxy: String(
-          await computeUseStaticIpProxy(auth, finalConfig.token_endpoint)
+          await shouldUseStaticIpProxy(auth, finalConfig.token_endpoint)
         ),
       };
     }
