@@ -3377,21 +3377,15 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   ): Promise<void> {
     const workspace = auth.getNonNullableWorkspace();
     const customSkillIdByModelId = new Map<ModelId, string>(
-      [
-        ...new Set(
-          [this.instructions, this.instructionsHtml].flatMap((content) =>
-            extractUniqueSkillReferenceIds(content ?? "")
-          )
-        ),
-      ].flatMap((skillId) => {
-        const modelId = isResourceSId("skill", skillId)
-          ? getResourceIdFromSId(skillId)
-          : null;
+      removeNulls(
+        extractUniqueSkillReferenceIds(this.instructions).map((skillId) => {
+          const modelId = isResourceSId("skill", skillId)
+            ? getResourceIdFromSId(skillId)
+            : null;
 
-        return modelId !== null && modelId !== this.id
-          ? ([[modelId, skillId]] satisfies [ModelId, string][])
-          : [];
-      })
+          return modelId ? [modelId, skillId] : null;
+        })
+      )
     );
 
     if (customSkillIdByModelId.size === 0) {
