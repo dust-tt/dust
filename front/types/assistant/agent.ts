@@ -299,6 +299,7 @@ export type AgentMessageDoneEvent = {
   configurationId: string;
   messageId: string;
   status: "success" | "error";
+  costCredits: number | null;
 };
 
 // Event sent when an error occurred during the tool call.

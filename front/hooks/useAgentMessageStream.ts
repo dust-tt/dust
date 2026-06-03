@@ -845,6 +845,13 @@ export function useAgentMessageStream({
             return {
               ...m,
               ...getLightAgentMessageFromAgentMessage(messageSuccess.message),
+              // costCredits is computed at terminal time and only delivered via
+              // the conversation-level agent_message_done event, never on this
+              // success event (its message always has a null cost). Preserve any
+              // value already patched in — the message and conversation SSE
+              // streams race, and for follow-up messages `done` can land before
+              // `success`; without this, success would clobber the cost to null.
+              costCredits: m.costCredits,
               ...(hadStreamedTokens ? { content: finalSegment || null } : {}),
               streaming: {
                 ...m.streaming,

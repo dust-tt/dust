@@ -665,10 +665,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
    * retries / hidden versions). Used to aggregate the conversation's credit
    * cost.
    */
-  static async listAgentMessageCostInputs(
+  static async listAgentMessageStoredCredits(
     auth: Authenticator,
     conversationId: ModelId
-  ): Promise<{ id: ModelId; runIds: string[] | null }[]> {
+  ): Promise<{ id: ModelId; costCredits: number | null }[]> {
     const rows = await MessageModel.findAll({
       attributes: [],
       include: [
@@ -676,7 +676,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           model: AgentMessageModel,
           as: "agentMessage",
           required: true,
-          attributes: ["id", "runIds"],
+          attributes: ["id", "costCredits"],
         },
       ],
       where: {
@@ -689,7 +689,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return removeNulls(
       rows.map((row) =>
         row.agentMessage
-          ? { id: row.agentMessage.id, runIds: row.agentMessage.runIds }
+          ? {
+              id: row.agentMessage.id,
+              costCredits: row.agentMessage.costCredits,
+            }
           : null
       )
     );

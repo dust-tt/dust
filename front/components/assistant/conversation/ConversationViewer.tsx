@@ -934,6 +934,21 @@ export const ConversationViewer = ({
               const msg =
                 vMsg && isAgentMessageWithStreaming(vMsg) ? vMsg : null;
 
+              // costCredits is computed at terminal time and only delivered on
+              // this conversation-level event (the message-level SSE fires
+              // agent_message_success before the cost exists). Patch it into the
+              // live Virtuoso entry so the per-message menu shows it without a
+              // reload. Only override when the event actually carries a value
+              // (defined) so we never wipe a cost already loaded from the API.
+              const hasCostCredits = event.costCredits !== undefined;
+              if (virtuosoMessageListRef.current && hasCostCredits) {
+                virtuosoMessageListRef.current.data.map((m) =>
+                  isAgentMessageWithStreaming(m) && m.sId === event.messageId
+                    ? { ...m, costCredits: event.costCredits }
+                    : m
+                );
+              }
+
               void mutateMessages(
                 (pages) =>
                   pages?.map((page) => ({
@@ -946,6 +961,9 @@ export const ConversationViewer = ({
                               event.status === "error"
                                 ? ("failed" as const)
                                 : ("succeeded" as const),
+                            ...(hasCostCredits
+                              ? { costCredits: event.costCredits }
+                              : {}),
                             ...(msg !== null
                               ? {
                                   content: msg.content,
@@ -961,6 +979,15 @@ export const ConversationViewer = ({
                   })),
                 { revalidate: msg === null }
               );
+
+              // Refresh the conversation so its aggregated credit total updates
+              // live. The cost is persisted before this event is published, so a
+              // revalidation reads the up-to-date total. Gated on hasCostCredits
+              // so we only refetch when the server actually emitted the value
+              // (avoids a needless fetch).
+              if (hasCostCredits) {
+                void mutateConversation();
+              }
             }
 
             // Update the conversation hasError state in the local cache without making a network request.

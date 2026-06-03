@@ -1,10 +1,6 @@
 import { contentsToActivitySteps } from "@app/lib/api/assistant/activity_steps";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
-import {
-  computeAgentMessageCredits,
-  fetchRunUsagesByAgentMessageId,
-} from "@app/lib/api/assistant/credit_cost";
 import { getMessagesReactions } from "@app/lib/api/assistant/reaction";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -20,7 +16,6 @@ import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_reso
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -637,11 +632,6 @@ export async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       );
     }
   }
-  const runUsagesByAgentMessageId = await fetchRunUsagesByAgentMessageId(
-    auth,
-    removeNulls(agentMessages.map((m) => m.agentMessage ?? null))
-  );
-
   const renderedMessages: Array<
     Result<RenderedAgentMessage, ConversationError>
   > = [];
@@ -657,7 +647,6 @@ export async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         handoverOriginMessagesBySId,
         mentionsByMessageId,
         reactionsByMessageId,
-        runUsagesByAgentMessageId,
         stepContentsByMessageId,
         usersById,
         viewType,
@@ -688,7 +677,6 @@ type RenderSingleAgentMessageContext = {
   handoverOriginMessagesBySId: Map<string, Pick<MessageModel, "sId">>;
   mentionsByMessageId: Map<ModelId, MentionModel[]>;
   reactionsByMessageId: Record<ModelId, MessageReactionType[]>;
-  runUsagesByAgentMessageId: Map<ModelId, RunUsageType[]>;
   stepContentsByMessageId: Record<string, AgentStepContentResource[]>;
   usersById: Map<ModelId, UserType>;
   viewType: RenderMessageVariant;
@@ -705,7 +693,6 @@ async function renderSingleAgentMessage(
     handoverOriginMessagesBySId,
     mentionsByMessageId,
     reactionsByMessageId,
-    runUsagesByAgentMessageId,
     stepContentsByMessageId,
     usersById,
     viewType,
@@ -857,10 +844,9 @@ async function renderSingleAgentMessage(
 
   const created = message.createdAt.getTime();
   const completedTs = agentMessage.completedAt?.getTime() ?? null;
-  const costCredits = computeAgentMessageCredits({
-    runUsages: runUsagesByAgentMessageId.get(agentMessage.id) ?? [],
-    actions,
-  });
+  // costCredits is computed once at the end of the agentic loop and persisted on the agent message
+  // (see computeAndStoreAgentMessageCredits). Older messages predating this have a null value.
+  const costCredits = agentMessage.costCredits ?? null;
   const renderedMessage = {
     id: message.id,
     agentMessageId: agentMessage.id,

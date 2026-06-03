@@ -5,11 +5,17 @@ import {
   intelligenceAwuFromRunUsages,
   toolAwuFromActions,
 } from "@app/lib/metronome/events";
+import {
+  AgentMessageModel,
+  MessageModel,
+} from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
+import logger from "@app/logger/logger";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 
 interface CreditActionMinimalInput {
@@ -42,7 +48,64 @@ export function computeAgentMessageCredits({
   );
 }
 
-export async function fetchRunUsagesByAgentMessageId(
+/**
+ * Compute the agent message credit cost once at the end of the agentic loop and persist it on the
+ * agent message. Returns the computed value (or null when there is nothing to track) so callers
+ * can attach it to the terminal `agent_message_done` event and update the live client without a
+ * reload.
+ *
+ * Computes from the message's full accumulated runIds + all final-status actions (the message-level
+ * total), so re-runs (interrupt/resume) overwrite the stored value with the complete cost. Only
+ * persists for statuses we track for billing, matching the Metronome gate.
+ */
+export async function computeAndStoreAgentMessageCredits(
+  auth: Authenticator,
+  { agentMessageId }: { agentMessageId: string }
+): Promise<number | null> {
+  const workspace = auth.getNonNullableWorkspace();
+
+  const messageRow = await MessageModel.findOne({
+    where: { sId: agentMessageId, workspaceId: workspace.id },
+    include: [{ model: AgentMessageModel, as: "agentMessage", required: true }],
+  });
+
+  const agentMessage = messageRow?.agentMessage;
+  if (!agentMessage) {
+    logger.warn(
+      { workspaceId: workspace.sId, agentMessageId },
+      "[Credits] Agent message not found while computing costCredits."
+    );
+    return null;
+  }
+
+  if (!AGENT_MESSAGE_STATUSES_TO_TRACK.includes(agentMessage.status)) {
+    return null;
+  }
+
+  const [runUsagesByAgentMessageId, actions] = await Promise.all([
+    fetchRunUsagesByAgentMessageId(auth, [
+      { id: agentMessage.id, runIds: agentMessage.runIds },
+    ]),
+    AgentMCPActionResource.listByAgentMessageIds(auth, [agentMessage.id]),
+  ]);
+
+  const costCredits = computeAgentMessageCredits({
+    runUsages: runUsagesByAgentMessageId.get(agentMessage.id) ?? [],
+    actions: actions.map((action) => ({
+      internalMCPServerName: action.metadata.internalMCPServerName,
+      status: action.status,
+    })),
+  });
+
+  await AgentMessageModel.update(
+    { costCredits },
+    { where: { id: agentMessage.id, workspaceId: workspace.id } }
+  );
+
+  return costCredits;
+}
+
+async function fetchRunUsagesByAgentMessageId(
   auth: Authenticator,
   agentMessages: CreditAgentMessageMinimalInput[]
 ): Promise<Map<ModelId, RunUsageType[]>> {
@@ -87,44 +150,17 @@ export async function computeConversationCreditCost(
   auth: Authenticator,
   conversation: ConversationWithoutContentType
 ): Promise<number | null> {
-  const agentMessages = await ConversationResource.listAgentMessageCostInputs(
-    auth,
-    conversation.id
-  );
-  if (agentMessages.length === 0) {
-    return null;
-  }
-
-  const [runUsagesByAgentMessageId, actions] = await Promise.all([
-    fetchRunUsagesByAgentMessageId(auth, agentMessages),
-    AgentMCPActionResource.listByAgentMessageIds(
+  const agentMessages =
+    await ConversationResource.listAgentMessageStoredCredits(
       auth,
-      agentMessages.map((m) => m.id)
-    ),
-  ]);
-
-  const actionsByAgentMessageId = new Map<
-    ModelId,
-    { internalMCPServerName: string | null; status: ToolExecutionStatus }[]
-  >();
-  for (const action of actions) {
-    const existing = actionsByAgentMessageId.get(action.agentMessageId) ?? [];
-    existing.push({
-      internalMCPServerName: action.metadata.internalMCPServerName,
-      status: action.status,
-    });
-    actionsByAgentMessageId.set(action.agentMessageId, existing);
-  }
+      conversation.id
+    );
 
   let total = 0;
   let hasBillableUsage = false;
   for (const message of agentMessages) {
-    const credits = computeAgentMessageCredits({
-      runUsages: runUsagesByAgentMessageId.get(message.id) ?? [],
-      actions: actionsByAgentMessageId.get(message.id) ?? [],
-    });
-    if (credits !== null) {
-      total += credits;
+    if (message.costCredits !== null) {
+      total += message.costCredits;
       hasBillableUsage = true;
     }
   }

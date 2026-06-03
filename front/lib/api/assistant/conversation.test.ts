@@ -4159,6 +4159,7 @@ describe("isConversationEventAllowedForAuth", () => {
       configurationId: "config-1",
       messageId: "msg-1",
       status: "success" as const,
+      costCredits: null,
     };
     const result = await isConversationEventAllowedForAuth(auth, { event });
     expect(result).toBe(true);
