@@ -566,6 +566,90 @@ describe("useAgentMessageStream", () => {
     expect(currentMessage.content).toBe("");
   });
 
+  it("keeps the success payload content when only activity tokens streamed", () => {
+    let currentMessage = makeInitialMessageStreamState(
+      makeLightAgentMessage({ content: null, chainOfThought: null })
+    );
+    let onEventCallback: ((event: string) => void) | null = null;
+
+    mockUseVirtuosoMethods.mockReturnValue(
+      makeVirtuosoMethodsMock(
+        (
+          updater: (message: typeof currentMessage) => typeof currentMessage
+        ) => {
+          currentMessage = updater(currentMessage);
+          return [currentMessage];
+        }
+      )
+    );
+
+    mockUseEventSource.mockImplementation(
+      (
+        _buildURL: unknown,
+        callback: (event: string) => void
+      ): { isError: null } => {
+        onEventCallback = callback;
+        return { isError: null };
+      }
+    );
+
+    renderHook(() =>
+      useAgentMessageStream({
+        agentMessage: currentMessage,
+        conversationId: "conv_123",
+        isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
+        owner: mockOwner,
+        streamId: "stream_123",
+      })
+    );
+
+    act(() => {
+      onEventCallback!(
+        JSON.stringify({
+          eventId: "1-0",
+          data: {
+            type: "generation_tokens",
+            created: Date.now(),
+            configurationId: "agent_123",
+            messageId: currentMessage.sId,
+            text: "I should inspect the tool results first.",
+            classification: "chain_of_thought",
+          },
+        })
+      );
+      onEventCallback!(
+        JSON.stringify({
+          eventId: "2-0",
+          data: {
+            type: "agent_message_success",
+            created: Date.now(),
+            configurationId: "agent_123",
+            messageId: currentMessage.sId,
+            message: {
+              ...makeLightAgentMessage({
+                content: "Here is the final answer from the model.",
+                chainOfThought: "I should inspect the tool results first.",
+              }),
+              actions: [],
+            },
+          },
+        })
+      );
+    });
+
+    expect(currentMessage.content).toBe(
+      "Here is the final answer from the model."
+    );
+    expect(currentMessage.streaming.agentState).toBe("done");
+    expect(currentMessage.streaming.inlineActivitySteps).toEqual([
+      {
+        type: "thinking",
+        content: "I should inspect the tool results first.",
+        id: expect.stringContaining("thinking-final-"),
+      },
+    ]);
+  });
+
   it("discards stale tokens from prior Temporal retries at tool_params", () => {
     let currentMessage = makeInitialMessageStreamState(
       makeLightAgentMessage({ content: null, chainOfThought: null })
