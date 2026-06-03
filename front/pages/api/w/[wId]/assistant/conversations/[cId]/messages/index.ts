@@ -386,13 +386,12 @@ async function handler(
         }
       }
 
-      // Derive origin: use explicitly provided origin, fall back to conversation metadata,
-      // then default to "web".
-      const origin =
-        context.origin ??
-        (isSidekickConversation(conversation.metadata)
-          ? "agent_sidekick"
-          : "web");
+      // Sidekick conversations always use "agent_sidekick" origin regardless of
+      // what the client sends (follow-up messages default to "web" because
+      // useClientType() doesn't know about sidekick context).
+      const origin = isSidekickConversation(conversation.metadata)
+        ? "agent_sidekick"
+        : (context.origin ?? "web");
 
       const messageRes = await postUserMessage(auth, {
         conversation,
