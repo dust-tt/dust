@@ -349,6 +349,16 @@ export async function setUserSpendLimit(
         awuCredits: totalAwuCredits,
       });
       if (upsertResult.isErr()) {
+        logger.error(
+          {
+            workspaceId: workspace.sId,
+            userId: user.sId,
+            awuCredits: totalAwuCredits,
+            seatAllowance,
+            err: upsertResult.error,
+          },
+          "[Metronome PerUserCap] Failed to upsert per-user cap alert"
+        );
         return new Err(
           new UserSpendLimitError("metronome_error", upsertResult.error.message)
         );

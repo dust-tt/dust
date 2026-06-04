@@ -16,7 +16,9 @@ import { Err, Ok } from "@app/types/shared/result";
 // orphan any existing alert (the new key wouldn't match, so
 // `clearMetronomeBalanceThresholdAlert` would silently no-op for workspaces
 // that have a pre-rename alert).
-function balanceThresholdAlertUniquenessKey(workspaceId: string): string {
+export function balanceThresholdAlertUniquenessKey(
+  workspaceId: string
+): string {
   return `workspace-balance-threshold-${workspaceId}`;
 }
 
