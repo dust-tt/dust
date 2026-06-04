@@ -2,6 +2,7 @@ import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBu
 import { SkillBuilderInstructionsEditor } from "@app/components/skill_builder/SkillBuilderInstructionsEditor";
 import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { SKILL_INSTRUCTIONS_LABEL } from "@app/lib/skills/labels";
 import {
   BookOpen01V2,
   Button,
@@ -54,7 +55,7 @@ export function SkillBuilderInstructionsSection() {
     <section className="flex flex-col gap-3">
       <div className="flex flex-col items-end justify-between gap-2 sm:flex-row">
         <h3 className="heading-lg font-semibold text-foreground dark:text-foreground-night">
-          What guidelines should it provide?
+          {SKILL_INSTRUCTIONS_LABEL}
         </h3>
         <div className="flex items-center gap-2">
           {instructionsDiffer && (

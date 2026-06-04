@@ -1,4 +1,5 @@
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
+import { SKILL_INVOCATION_LABEL } from "@app/lib/skills/labels";
 import {
   ContentMessage,
   Dialog,
@@ -88,7 +89,7 @@ export function SkillBuilderIsDefaultSection() {
                 >
                   The content in&nbsp;
                   <span className="font-semibold">
-                    What will this skill be used for
+                    {SKILL_INVOCATION_LABEL}
                   </span>
                   &nbsp;may be too short for agents to clearly understand when
                   to use this skill. Consider making it more descriptive before
