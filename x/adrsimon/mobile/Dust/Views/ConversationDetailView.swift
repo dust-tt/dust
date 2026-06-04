@@ -14,6 +14,7 @@ struct ConversationDetailView: View {
     @State private var showFilesSheet = false
     @State private var selectedFragment: ContentFragment?
     @State private var selectedGeneratedFile: GeneratedFile?
+    @Environment(\.scenePhase) private var scenePhase
 
     init(
         conversation: Conversation,
@@ -80,6 +81,11 @@ struct ConversationDetailView: View {
             async let caps: () = inputBarViewModel.loadCapabilities()
             _ = await (agents, caps)
         }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                Task { await viewModel.resyncOnForeground() }
+            }
+        }
         .onDisappear {
             inputBarViewModel.cancelUploads()
         }
@@ -119,8 +125,8 @@ struct ConversationDetailView: View {
 
     private func isSteeredAgentMessage(at index: Int) -> Bool {
         guard case let .agent(agentMsg) = viewModel.messages[index] else { return false }
-        for i in stride(from: index - 1, through: 0, by: -1) {
-            if case let .agent(prevAgent) = viewModel.messages[i] {
+        for priorIndex in stride(from: index - 1, through: 0, by: -1) {
+            if case let .agent(prevAgent) = viewModel.messages[priorIndex] {
                 return (prevAgent.status == .gracefullyStopped || prevAgent.status == .interrupted)
                     && prevAgent.configuration.sId == agentMsg.configuration.sId
             }
@@ -174,7 +180,7 @@ struct ConversationDetailView: View {
                                 let isStreaming = message.id == viewModel.streamingMessageId
                                 let hideAgentHeader = isSteeredAgentMessage(at: index)
                                 MessageBubbleView(
-                                    message: message,
+                                    message: viewModel.renderMessage(message),
                                     currentUserEmail: currentUserEmail,
                                     streamingPhase: isStreaming ? viewModel.streamingPhase : .idle,
                                     activeActions: isStreaming ? viewModel.activeActions : [],
@@ -197,6 +203,9 @@ struct ConversationDetailView: View {
                                     },
                                     onValidateAction: { approval in
                                         Task { await viewModel.validateAction(approved: approval) }
+                                    },
+                                    onAnswerQuestion: { answer in
+                                        Task { await viewModel.answerQuestion(answer) }
                                     },
                                     onRetry: { messageId in
                                         Task { await viewModel.retryMessage(messageId: messageId) }

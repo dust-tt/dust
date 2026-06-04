@@ -4,7 +4,6 @@ import SwiftUI
 class SnakeGameViewModel: ObservableObject {
     let gridSize = 10
 
-    // swiftlint:disable:next identifier_name
     struct GridPosition: Equatable, Hashable {
         var col: Int
         var row: Int

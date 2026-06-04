@@ -17,7 +17,7 @@ import { getMetronomeContractUrl } from "@app/lib/metronome/urls";
 import {
   FREE_NO_PLAN_CODE,
   isDustCompanyPlan,
-  isEntreprisePlanPrefix,
+  isEnterprisePlanPrefix,
   isProPlanPrefix,
 } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
@@ -507,7 +507,7 @@ export function PlanLimitationsTable({
                 <PokeTableCell>Is Opus enabled?</PokeTableCell>
                 <PokeTableCell>
                   {isDustCompanyPlan(activePlan.code) ||
-                  isEntreprisePlanPrefix(activePlan.code)
+                  isEnterprisePlanPrefix(activePlan.code)
                     ? "✅"
                     : "❌"}
                 </PokeTableCell>

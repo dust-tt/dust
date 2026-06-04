@@ -48,8 +48,8 @@ import {
 // Per-seat AWU allocations stamped onto recurring credits at package creation.
 // Runtime code reads the allocation from the contract's `recurring_credits`,
 // so these values aren't referenced anywhere else.
-const PRO_SEAT_MONTHLY_AWU_CREDITS = 8000;
-const MAX_SEAT_MONTHLY_AWU_CREDITS = 40000;
+export const PRO_SEAT_MONTHLY_AWU_CREDITS = 8000;
+export const MAX_SEAT_MONTHLY_AWU_CREDITS = 40000;
 // Per-seat AWU grant carried by the Free Seat subscription. Granted once
 // per seat on contract start and valid for the lifetime of the contract.
 // Never refilled.
@@ -112,6 +112,76 @@ export const NEW_METRICS: MetricDef[] = [
     aggregation_type: "SUM",
     aggregation_key: "cost_awu",
     // 7 group keys — see note on Tool Invocations above.
+    group_keys: [
+      ["user_id", USAGE_TYPE_GROUP_KEY],
+      ["user_id"],
+      ["api_key_name"],
+      ["model_id"],
+      ["origin"],
+      ["agent_id"],
+      [USAGE_TYPE_GROUP_KEY],
+    ],
+  },
+  // "(non-free)" twins of the two metrics above. Identical event filter,
+  // aggregation, and group keys, but the `usage_type` property filter also
+  // excludes free-tagged events (`not_in_values: ["free"]`) so they are never
+  // aggregated — any future paid usage_type is still included. `exists: true`
+  // is kept because Metronome requires every group-key property to have a
+  // matching required (`exists`) property filter. These are NOT attached to any
+  // product/rate (they carry no billing meaning); they exist so the usage graph
+  // can show usage excluding free without needing a group-key combining each
+  // dimension with `usage_type` (the billing metrics above are already at
+  // Metronome's 7 group-key cap and can't take more).
+  {
+    name: "Tool Invocations (non-free)",
+    event_type_filter: { in_values: ["tool_use_v3"] },
+    property_filters: [
+      { name: "count", exists: true },
+      {
+        name: USAGE_TYPE_GROUP_KEY,
+        exists: true,
+        not_in_values: [USAGE_TYPE_FREE],
+      },
+      { name: "tool_category", exists: true },
+      { name: "tool_group", exists: true },
+      { name: "user_id", exists: true },
+      { name: "api_key_name", exists: true },
+      { name: "origin", exists: true },
+      { name: "agent_id", exists: true },
+      { name: "mcp_server_id", exists: true },
+    ],
+    aggregation_type: "SUM",
+    aggregation_key: "count",
+    // Same 7 group keys as "Tool Invocations" — see note there.
+    group_keys: [
+      ["user_id", USAGE_TYPE_GROUP_KEY, "tool_category"],
+      ["user_id"],
+      ["tool_category"],
+      ["api_key_name", "tool_category"],
+      ["origin", "tool_category"],
+      ["agent_id", "tool_category"],
+      [USAGE_TYPE_GROUP_KEY, "tool_category"],
+    ],
+  },
+  {
+    name: "LLM Provider Cost AWU (non-free)",
+    event_type_filter: { in_values: ["llm_usage_v3"] },
+    property_filters: [
+      { name: "cost_awu", exists: true },
+      {
+        name: USAGE_TYPE_GROUP_KEY,
+        exists: true,
+        not_in_values: [USAGE_TYPE_FREE],
+      },
+      { name: "user_id", exists: true },
+      { name: "api_key_name", exists: true },
+      { name: "model_id", exists: true },
+      { name: "origin", exists: true },
+      { name: "agent_id", exists: true },
+    ],
+    aggregation_type: "SUM",
+    aggregation_key: "cost_awu",
+    // Same 7 group keys as "LLM Provider Cost AWU" — see note there.
     group_keys: [
       ["user_id", USAGE_TYPE_GROUP_KEY],
       ["user_id"],

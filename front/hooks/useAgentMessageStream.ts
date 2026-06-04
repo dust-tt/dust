@@ -810,12 +810,12 @@ export function useAgentMessageStream({
           // content.current tracks only the final text segment (intermediate
           // segments were flushed to content steps). The server's full message
           // includes ALL text, so we override with the tracked final segment.
-          // Only override when tokens were actually streamed (lastClassification
-          // is non-null); otherwise the content was set server-side without
-          // streaming (e.g. prompt commands like /list) and the server's value
-          // should be used as-is.
+          // Only override when final answer tokens were actually streamed.
+          // Reasoning/activity-only streams still receive the canonical answer
+          // in the success payload; overriding those with the empty token
+          // buffer would hide the final generation until reload.
           const finalSegment = content.current;
-          const hadStreamedTokens = lastClassification.current !== null;
+          const hadStreamedTokens = lastClassification.current === "tokens";
           lastClassification.current = null;
           mapMessagesWithAutoScroll((m) => {
             if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {

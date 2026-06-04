@@ -985,7 +985,6 @@ function getDynamicToolDisplayLabels({
     // All other servers: no dynamic labels.
     case "agent_sidekick_agent_state":
     case "agent_sidekick_context":
-    case "agent_management":
     case "agent_memory":
     case "agent_router":
     case "ashby":
@@ -1006,6 +1005,7 @@ function getDynamicToolDisplayLabels({
     case "jit_testing":
     case "run_dust_app":
     case "salesloft":
+    case "skill_authoring":
     case "slab":
     case "snowflake":
     case "sound_studio":

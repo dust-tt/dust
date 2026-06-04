@@ -240,6 +240,7 @@ export function SearchDropdownContent({
       {filteredAgents.length > 0 && <DropdownMenuLabel label="Agents" />}
       {filteredAgents.map((agent) => (
         <DropdownMenuItem
+          className="notranslate"
           key={agent.sId}
           onClick={() => onAgentClick(agent)}
           truncateText

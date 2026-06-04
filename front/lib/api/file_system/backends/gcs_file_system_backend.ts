@@ -318,6 +318,29 @@ export class GCSFileSystemBackend implements FileSystemBackend {
     }
   }
 
+  async exists(
+    scopedPath: string
+  ): Promise<Result<boolean, DustFileSystemError>> {
+    const gcsPath = this.toGCSPath(scopedPath);
+    if (!gcsPath) {
+      return new Err(
+        new DustFileSystemError(
+          "invalid_path",
+          `GCSFileSystemBackend.exists: unrecognised scoped path: ${scopedPath}`
+        )
+      );
+    }
+
+    try {
+      const [exists] = await getPrivateUploadBucket().file(gcsPath).exists();
+      return new Ok(exists);
+    } catch (err) {
+      return new Err(
+        new DustFileSystemError("internal", normalizeError(err).message)
+      );
+    }
+  }
+
   async write(
     scopedPath: string,
     content: Buffer | string,

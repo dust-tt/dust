@@ -82,6 +82,7 @@ export async function* getMCPEventsForServer(
   } catch (e) {
     logger.error({ error: e }, "Error getting conversation MCP events");
   } finally {
+    signal.removeEventListener("abort", unsubscribe);
     unsubscribe();
   }
 }

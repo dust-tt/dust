@@ -69,15 +69,12 @@ describe("POST /api/w/[wId]/invitations", () => {
     expect(sgSendMock).toHaveBeenCalledTimes(3);
   });
 
-  it("updates the role on an existing pending invitation without creating a new row", async () => {
+  it("revokes an existing non-expired invitation and creates a fresh one with the new role", async () => {
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "POST",
       role: "admin",
     });
 
-    // Invitations created in the last 24h hit the "already sent recently"
-    // rate limit, so age the existing invitation past that window but stay
-    // under the 7-day expiration so the role-update path fires.
     const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
     const existing = await MembershipInvitationFactory.create(workspace, {
       inviteEmail: "role-change@example.com",
@@ -97,10 +94,17 @@ describe("POST /api/w/[wId]/invitations", () => {
     const adminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
+
+    const oldInvitation = await MembershipInvitationResource.fetchById(
+      adminAuth,
+      existing.sId
+    );
+    expect(oldInvitation?.status).toBe("revoked");
+
     const invitations =
       await MembershipInvitationResource.getPendingInvitations(adminAuth);
     expect(invitations).toHaveLength(1);
-    expect(invitations[0].sId).toBe(existing.sId);
+    expect(invitations[0].sId).not.toBe(existing.sId);
     expect(invitations[0].initialRole).toBe("admin");
   });
 

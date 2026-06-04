@@ -112,12 +112,12 @@ lint-fix:
 ## format: format sources with SwiftFormat
 .PHONY: format
 format:
-	swiftformat .
+	swiftformat Dust SparkleTokens/Sources
 
 ## format-check: check formatting without writing changes
 .PHONY: format-check
 format-check:
-	swiftformat . --lint
+	swiftformat Dust SparkleTokens/Sources --lint
 
 ## clean: remove build artifacts
 .PHONY: clean

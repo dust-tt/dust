@@ -371,6 +371,45 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     expect(text).not.toContain("source message");
   });
 
+  it("should inject the formatting prompt by default and drop it when disabled", () => {
+    // Pick a model that actually carries a formatting prompt (OpenAI models do).
+    const modelWithFormatting = getSupportedModelConfigs().find(
+      (m) => m.formattingMetaPrompt
+    );
+    const formattingMetaPrompt = modelWithFormatting?.formattingMetaPrompt;
+    if (!modelWithFormatting || !formattingMetaPrompt) {
+      throw new Error(
+        "expected at least one model to carry a formatting prompt"
+      );
+    }
+
+    const baseParams = {
+      userMessage: userMessage1,
+      agentConfiguration: agentConfig1,
+      model: modelWithFormatting,
+      hasAvailableActions: true,
+      agentsList: null,
+      systemSkills: [],
+      enabledSkills: [],
+      equippedSkills: [],
+    };
+
+    const enabledText = systemPromptToText(
+      constructPromptMultiActions(authenticator1, baseParams)
+    );
+    expect(enabledText).toContain("# RESPONSE FORMAT");
+    expect(enabledText).toContain(formattingMetaPrompt);
+
+    const disabledText = systemPromptToText(
+      constructPromptMultiActions(authenticator1, {
+        ...baseParams,
+        disableFormattingPrompt: true,
+      })
+    );
+    expect(disabledText).not.toContain("# RESPONSE FORMAT");
+    expect(disabledText).not.toContain(formattingMetaPrompt);
+  });
+
   it("should place branch context in ephemeral tier for structured prompts", () => {
     const deepDiveConfig = {
       ...agentConfig1,

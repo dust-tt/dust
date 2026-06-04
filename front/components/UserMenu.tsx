@@ -1,5 +1,6 @@
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useConversationDrafts } from "@app/components/assistant/conversation/input_bar/useConversationDrafts";
+import { UserSettingsPopover } from "@app/components/UserSettingsPopover";
 import { WorkspacePickerRadioGroup } from "@app/components/WorkspacePicker";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useDevMode } from "@app/hooks/useDevMode";
@@ -59,7 +60,7 @@ import {
   TestTubeIcon,
   UserIcon,
 } from "@dust-tt/sparkle";
-import { useCallback, useContext, useMemo } from "react";
+import { useCallback, useContext, useMemo, useState } from "react";
 
 interface UserMenuProps {
   user: UserTypeWithWorkspaces;
@@ -69,7 +70,8 @@ interface UserMenuProps {
 
 export function UserMenu({ user, owner, subscription }: UserMenuProps) {
   const router = useAppRouter();
-  const { featureFlags } = useFeatureFlags();
+  const { featureFlags, hasFeature } = useFeatureFlags();
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const sendNotification = useSendNotification();
   const devMode = useDevMode();
@@ -221,251 +223,267 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
   }, [user]);
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger className="hover:bg-sidebar-hover data-[state=open]:bg-sidebar-hover dark:hover:bg-sidebar-hover-night dark:data-[state=open]:bg-sidebar-hover-night rounded-xl p-2 m-2">
-        <div className="group flex cursor-pointer  items-center justify-between gap-2">
-          <span className="sr-only">Open user menu</span>
-          <div className="flex gap-2 items-center">
-            {" "}
-            <Avatar
-              size="sm"
-              visual={
-                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                user.image
-                  ? user.image
-                  : "https://gravatar.com/avatar/anonymous?d=mp"
-              }
-              clickable
-              isRounded
-            />
-            <div className="flex min-w-0 flex-1 flex-col items-start text-left">
-              <span
-                className={cn(
-                  "heading-sm w-full truncate transition-colors",
-                  "text-foreground dark:text-foreground-night  "
-                )}
-              >
-                {user.firstName}
-              </span>
-              <span className="-mt-0.5 w-full truncate text-sm text-muted-foreground dark:text-muted-foreground-night">
-                {owner.name}
-              </span>
+    <>
+      {hasFeature("user_settings_v2") && (
+        <UserSettingsPopover
+          open={settingsOpen}
+          onOpenChange={setSettingsOpen}
+          owner={owner}
+        />
+      )}
+      <DropdownMenu>
+        <DropdownMenuTrigger className="hover:bg-sidebar-hover data-[state=open]:bg-sidebar-hover dark:hover:bg-sidebar-hover-night dark:data-[state=open]:bg-sidebar-hover-night rounded-xl p-2 m-2">
+          <div className="group flex cursor-pointer items-center justify-between gap-2">
+            <span className="sr-only">Open user menu</span>
+            <div className="flex gap-2 items-center">
+              {" "}
+              <Avatar
+                size="sm"
+                visual={
+                  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+                  user.image
+                    ? user.image
+                    : "https://gravatar.com/avatar/anonymous?d=mp"
+                }
+                clickable
+                isRounded
+              />
+              <div className="flex min-w-0 flex-1 flex-col items-start text-left">
+                <span
+                  className={cn(
+                    "heading-sm w-full truncate transition-colors",
+                    "text-foreground dark:text-foreground-night"
+                  )}
+                >
+                  {user.firstName}
+                </span>
+                <span className="-mt-0.5 w-full truncate text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  {owner.name}
+                </span>
+              </div>
+            </div>
+            <div className="flex-shrink-0">
+              <Icon
+                visual={ChevronDownIcon}
+                className="text-muted-foreground dark:text-muted-foreground-night"
+              />
             </div>
           </div>
-          <div className="flex-shrink-0">
-            <Icon
-              visual={ChevronDownIcon}
-              className="text-muted-foreground  dark:text-muted-foreground-night"
-            />
-          </div>
-        </div>
-      </DropdownMenuTrigger>
+        </DropdownMenuTrigger>
 
-      <DropdownMenuContent side="top" align="end" sideOffset={8}>
-        {hasMultipleWorkspaces && (
-          <>
-            <DropdownMenuLabel label="Workspace" />
-            <WorkspacePickerRadioGroup user={user} workspace={owner} />
-            <Separator className="my-1" />
-          </>
-        )}
+        <DropdownMenuContent side="top" align="end" sideOffset={8}>
+          {hasMultipleWorkspaces && (
+            <>
+              <DropdownMenuLabel label="Workspace" />
+              <WorkspacePickerRadioGroup user={user} workspace={owner} />
+              <Separator className="my-1" />
+            </>
+          )}
 
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger label="Help" icon={HeartIcon} />
-          <DropdownMenuPortal>
-            <DropdownMenuSubContent>
-              <DropdownMenuLabel label="Learn about Dust" />
-              <DropdownMenuItem
-                label="Quickstart Guide"
-                icon={LightbulbIcon}
-                onClick={() =>
-                  router.push(
-                    {
-                      pathname: router.pathname,
-                      query: { ...router.query, quickGuide: "true" },
-                    },
-                    undefined,
-                    { shallow: true }
-                  )
-                }
-              />
-              <DropdownMenuItem
-                label="Guides & Documentation"
-                icon={DocumentIcon}
-                href="https://docs.dust.tt"
-                target="_blank"
-              />
-              <DropdownMenuItem
-                label="Dust Academy"
-                icon={BookOpenIcon}
-                href="https://dust.tt/academy"
-                target="_blank"
-              />
-              <DropdownMenuItem
-                label="Join the Slack Community"
-                icon={SlackLogo}
-                href="https://dust-community.tightknit.community/join"
-                target="_blank"
-              />
-              <DropdownMenuLabel label="Ask questions" />
-              <DropdownMenuItem
-                label="Ask @help"
-                icon={ChatBubbleLeftRightIcon}
-                onClick={() => void handleAskHelp()}
-              />
-              <DropdownMenuItem
-                label="How to invite new users?"
-                icon={ChatBubbleBottomCenterTextIcon}
-                onClick={() =>
-                  void handleHelpSubmit("How to invite new users?", [])
-                }
-              />
-              <DropdownMenuItem
-                label="How to use agents in Slack workflow?"
-                icon={ChatBubbleBottomCenterTextIcon}
-                onClick={() =>
-                  void handleHelpSubmit(
-                    "How to use agents in Slack workflow?",
-                    []
-                  )
-                }
-              />
-              <DropdownMenuItem
-                label="How to manage billing?"
-                icon={ChatBubbleBottomCenterTextIcon}
-                onClick={() =>
-                  void handleHelpSubmit("How to manage billing?", [])
-                }
-              />
-            </DropdownMenuSubContent>
-          </DropdownMenuPortal>
-        </DropdownMenuSub>
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger label="Help" icon={HeartIcon} />
+            <DropdownMenuPortal>
+              <DropdownMenuSubContent>
+                <DropdownMenuLabel label="Learn about Dust" />
+                <DropdownMenuItem
+                  label="Quickstart Guide"
+                  icon={LightbulbIcon}
+                  onClick={() =>
+                    router.push(
+                      {
+                        pathname: router.pathname,
+                        query: { ...router.query, quickGuide: "true" },
+                      },
+                      undefined,
+                      { shallow: true }
+                    )
+                  }
+                />
+                <DropdownMenuItem
+                  label="Guides & Documentation"
+                  icon={DocumentIcon}
+                  href="https://docs.dust.tt"
+                  target="_blank"
+                />
+                <DropdownMenuItem
+                  label="Dust Academy"
+                  icon={BookOpenIcon}
+                  href="https://dust.tt/academy"
+                  target="_blank"
+                />
+                <DropdownMenuItem
+                  label="Join the Slack Community"
+                  icon={SlackLogo}
+                  href="https://dust-community.tightknit.community/join"
+                  target="_blank"
+                />
+                <DropdownMenuLabel label="Ask questions" />
+                <DropdownMenuItem
+                  label="Ask @help"
+                  icon={ChatBubbleLeftRightIcon}
+                  onClick={() => void handleAskHelp()}
+                />
+                <DropdownMenuItem
+                  label="How to invite new users?"
+                  icon={ChatBubbleBottomCenterTextIcon}
+                  onClick={() =>
+                    void handleHelpSubmit("How to invite new users?", [])
+                  }
+                />
+                <DropdownMenuItem
+                  label="How to use agents in Slack workflow?"
+                  icon={ChatBubbleBottomCenterTextIcon}
+                  onClick={() =>
+                    void handleHelpSubmit(
+                      "How to use agents in Slack workflow?",
+                      []
+                    )
+                  }
+                />
+                <DropdownMenuItem
+                  label="How to manage billing?"
+                  icon={ChatBubbleBottomCenterTextIcon}
+                  onClick={() =>
+                    void handleHelpSubmit("How to manage billing?", [])
+                  }
+                />
+              </DropdownMenuSubContent>
+            </DropdownMenuPortal>
+          </DropdownMenuSub>
 
-        {/* <Separator className="my-1" /> */}
-
-        {isFirefox ? (
-          <DropdownMenuItem
-            label="Firefox extension"
-            icon={FirefoxLogo}
-            href="https://addons.mozilla.org/firefox/addon/dust/"
-            target="_blank"
-          />
-        ) : (
-          <DropdownMenuItem
-            label="Chrome extension"
-            icon={ChromeLogo}
-            href="https://chromewebstore.google.com/detail/dust/fnkfcndbgingjcbdhaofkcnhcjpljhdn"
-            target="_blank"
-          />
-        )}
-
-        {subscription?.plan.limits.canUseProduct && (
-          <>
+          {isFirefox ? (
             <DropdownMenuItem
-              label="Exploratory features"
-              icon={TestTubeIcon}
-              href={`/w/${owner.sId}/labs`}
+              label="Firefox extension"
+              icon={FirefoxLogo}
+              href="https://addons.mozilla.org/firefox/addon/dust/"
+              target="_blank"
             />
-            <Separator className="my-1" />
-          </>
-        )}
+          ) : (
+            <DropdownMenuItem
+              label="Chrome extension"
+              icon={ChromeLogo}
+              href="https://chromewebstore.google.com/detail/dust/fnkfcndbgingjcbdhaofkcnhcjpljhdn"
+              target="_blank"
+            />
+          )}
 
-        <DropdownMenuLabel label="Account" />
-        {subscription?.plan.limits.canUseProduct && (
+          {subscription?.plan.limits.canUseProduct && (
+            <>
+              <DropdownMenuItem
+                label="Exploratory features"
+                icon={TestTubeIcon}
+                href={`/w/${owner.sId}/labs`}
+              />
+              <Separator className="my-1" />
+            </>
+          )}
+
+          <DropdownMenuLabel label="Account" />
+          {subscription?.plan.limits.canUseProduct && (
+            <>
+              <DropdownMenuItem
+                label="Personal Settings"
+                icon={UserIcon}
+                href={`/w/${owner.sId}/me`}
+              />
+              {hasFeature("user_settings_v2") && (
+                <DropdownMenuItem
+                  label="Personal Settings — Beta"
+                  icon={UserIcon}
+                  onSelect={() => setSettingsOpen(true)}
+                />
+              )}
+            </>
+          )}
+
           <DropdownMenuItem
-            label="Personal Settings"
-            icon={UserIcon}
-            href={`/w/${owner.sId}/me`}
+            label="Sign out"
+            icon={LogoutIcon}
+            onClick={() => {
+              // Clear all conversation drafts for this user.
+              clearAllDraftsFromUser();
+
+              datadogLogs.clearUser();
+              window.DD_RUM?.onReady(() => {
+                window.DD_RUM?.clearUser();
+              });
+              window.location.href = `${config.getApiBaseUrl()}/api/workos/logout`;
+            }}
           />
-        )}
 
-        <DropdownMenuItem
-          label="Sign out"
-          icon={LogoutIcon}
-          onClick={() => {
-            // Clear all conversation drafts for this user.
-            clearAllDraftsFromUser();
-
-            datadogLogs.clearUser();
-            window.DD_RUM?.onReady(() => {
-              window.DD_RUM?.clearUser();
-            });
-            window.location.href = `${config.getApiBaseUrl()}/api/workos/logout`;
-          }}
-        />
-
-        {showDebugTools(featureFlags) && (
-          <>
-            <Separator className="my-1" />
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger label="Dev Tools" icon={ShapesIcon} />
-              <DropdownMenuPortal>
-                <DropdownMenuSubContent>
-                  {(router.pathname === "/w/[wId]/conversation/[cId]" ||
-                    router.pathname.match(
-                      /^\/w\/[^/]+\/conversation\/[^/]+$/
-                    )) && (
-                    <DropdownMenuItem
-                      label="Debug conversation"
-                      onClick={() => {
-                        const regexp = new RegExp(
-                          `/w/([^/]+)/conversation/([^/]+)`
-                        );
-                        const match = window.location.href.match(regexp);
-                        if (match) {
-                          window.open(
-                            `/poke/${match[1]}/conversation/${match[2]}`,
-                            "_blank"
+          {showDebugTools(featureFlags) && (
+            <>
+              <Separator className="my-1" />
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger label="Dev Tools" icon={ShapesIcon} />
+                <DropdownMenuPortal>
+                  <DropdownMenuSubContent>
+                    {(router.pathname === "/w/[wId]/conversation/[cId]" ||
+                      router.pathname.match(
+                        /^\/w\/[^/]+\/conversation\/[^/]+$/
+                      )) && (
+                      <DropdownMenuItem
+                        label="Debug conversation"
+                        onClick={() => {
+                          const regexp = new RegExp(
+                            `/w/([^/]+)/conversation/([^/]+)`
                           );
-                        }
-                      }}
-                      icon={ShapesIcon}
-                    />
-                  )}
-                  {!isOnlyAdmin(owner) && (
+                          const match = window.location.href.match(regexp);
+                          if (match) {
+                            window.open(
+                              `/poke/${match[1]}/conversation/${match[2]}`,
+                              "_blank"
+                            );
+                          }
+                        }}
+                        icon={ShapesIcon}
+                      />
+                    )}
+                    {!isOnlyAdmin(owner) && (
+                      <DropdownMenuItem
+                        label="Become Admin"
+                        onClick={() => forceRoleUpdate("admin")}
+                        icon={StarIcon}
+                      />
+                    )}
+                    {!isOnlyBuilder(owner) && (
+                      <DropdownMenuItem
+                        label="Become Builder"
+                        onClick={() => forceRoleUpdate("builder")}
+                        icon={LightbulbIcon}
+                      />
+                    )}
+                    {!isOnlyUser(owner) && (
+                      <DropdownMenuItem
+                        label="Become User"
+                        onClick={() => forceRoleUpdate("user")}
+                        icon={UserIcon}
+                      />
+                    )}
                     <DropdownMenuItem
-                      label="Become Admin"
-                      onClick={() => forceRoleUpdate("admin")}
-                      icon={StarIcon}
+                      label={`${privacyMask.isEnabled ? "Disable" : "Enable"} Privacy Mask`}
+                      onClick={privacyMask.toggle}
+                      icon={privacyMask.isEnabled ? EyeSlashIcon : EyeIcon}
                     />
-                  )}
-                  {!isOnlyBuilder(owner) && (
                     <DropdownMenuItem
-                      label="Become Builder"
-                      onClick={() => forceRoleUpdate("builder")}
-                      icon={LightbulbIcon}
+                      label={`${devMode.isEnabled ? "Disable" : "Enable"} Dev Console`}
+                      onClick={devMode.toggle}
+                      icon={CommandLineIcon}
                     />
-                  )}
-                  {!isOnlyUser(owner) && (
-                    <DropdownMenuItem
-                      label="Become User"
-                      onClick={() => forceRoleUpdate("user")}
-                      icon={UserIcon}
-                    />
-                  )}
-                  <DropdownMenuItem
-                    label={`${privacyMask.isEnabled ? "Disable" : "Enable"} Privacy Mask`}
-                    onClick={privacyMask.toggle}
-                    icon={privacyMask.isEnabled ? EyeSlashIcon : EyeIcon}
-                  />
-                  <DropdownMenuItem
-                    label={`${devMode.isEnabled ? "Disable" : "Enable"} Dev Console`}
-                    onClick={devMode.toggle}
-                    icon={CommandLineIcon}
-                  />
-                  {owner.role === "admin" && (
-                    <DropdownMenuItem
-                      label="Send onboarding conversation"
-                      onClick={handleSendOnboarding}
-                      icon={ChatBubbleBottomCenterPlusIcon}
-                    />
-                  )}
-                </DropdownMenuSubContent>
-              </DropdownMenuPortal>
-            </DropdownMenuSub>
-          </>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+                    {owner.role === "admin" && (
+                      <DropdownMenuItem
+                        label="Send onboarding conversation"
+                        onClick={handleSendOnboarding}
+                        icon={ChatBubbleBottomCenterPlusIcon}
+                      />
+                    )}
+                  </DropdownMenuSubContent>
+                </DropdownMenuPortal>
+              </DropdownMenuSub>
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </>
   );
 }

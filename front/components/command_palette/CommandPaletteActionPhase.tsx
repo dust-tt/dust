@@ -14,8 +14,14 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 
 export type CommandPaletteAction = "view_details" | "edit" | "chat_with";
 
+// Pods navigate directly and never enter the action phase.
+export type ActionPhaseItem = Extract<
+  CommandPaletteItem,
+  { kind: "agent" | "skill" }
+>;
+
 interface CommandPaletteActionPhaseProps {
-  item: CommandPaletteItem;
+  item: ActionPhaseItem;
   onAction: (action: CommandPaletteAction) => void;
   onBack: () => void;
   onClose: () => void;
@@ -28,7 +34,7 @@ interface ActionDefinition {
   icon: typeof EyeIcon;
 }
 
-function canEdit(item: CommandPaletteItem): boolean {
+function canEdit(item: ActionPhaseItem): boolean {
   switch (item.kind) {
     case "agent":
       return item.agent.canEdit;

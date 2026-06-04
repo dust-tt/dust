@@ -1,10 +1,10 @@
 import Foundation
 import os
 
-private let logger = Logger(subsystem: AppConfig.bundleId, category: "ProjectConversations")
+private let logger = Logger(subsystem: AppConfig.bundleId, category: "PodConversations")
 
 @MainActor
-final class ProjectConversationsViewModel: ObservableObject {
+final class PodConversationsViewModel: ObservableObject {
     enum State {
         case loading
         case loaded
@@ -30,7 +30,7 @@ final class ProjectConversationsViewModel: ObservableObject {
         do {
             try await loadConversations()
         } catch {
-            logger.error("Failed to load project conversations: \(error)")
+            logger.error("Failed to load pod conversations: \(error)")
             state = .error(error.localizedDescription)
         }
     }
@@ -39,7 +39,7 @@ final class ProjectConversationsViewModel: ObservableObject {
         do {
             try await loadConversations()
         } catch {
-            logger.error("Failed to refresh project conversations: \(error)")
+            logger.error("Failed to refresh pod conversations: \(error)")
         }
     }
 
@@ -49,7 +49,8 @@ final class ProjectConversationsViewModel: ObservableObject {
             spaceId: space.sId,
             tokenProvider: tokenProvider
         )
-        conversations = response.conversations
+        // Hide conversations without a visible first message (e.g. compaction-only), as front does.
+        conversations = response.conversations.filter { $0.preview != nil }
         state = .loaded
     }
 

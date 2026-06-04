@@ -31,7 +31,7 @@ output:
   #  - execution      # Print any execution logs
   #  - execution_out  # Print execution output
   #  - execution_info # Print `EXECUTE > ...` logging
-  - skips          # Print "skip" (i.e. no files matched)
+  #  - skips          # Print "skip" (i.e. no files matched)
 
 pre-commit:
   # Run tasks in parallel for better performance
@@ -126,6 +126,21 @@ pre-commit:
       root: egress-proxy/
       run: cargo fmt -- {staged_files}
       stage_fixed: true
+
+    # Mobile (Swift) format — auto-formats staged files and re-stages them
+    mobile-swiftformat:
+      tags: mobile
+      glob: "*.swift"
+      root: x/adrsimon/mobile/
+      run: swiftformat {staged_files}
+      stage_fixed: true
+
+    # Mobile (Swift) lint — fails on lint errors (warnings do not block)
+    mobile-swiftlint:
+      tags: mobile
+      glob: "*.swift"
+      root: x/adrsimon/mobile/
+      run: swiftlint lint --quiet {staged_files}
 
     # Guard against adding files to frozen migrations/db/ directories
     no-legacy-db-migration-connectors:

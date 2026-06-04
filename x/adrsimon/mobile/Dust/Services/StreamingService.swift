@@ -22,7 +22,7 @@ final private class AuthPreservingDelegate: NSObject, URLSessionTaskDelegate {
         completionHandler: @escaping (URLRequest?) -> Void
     ) {
         var redirected = request
-        redirected.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        redirected.setBearer(accessToken)
         completionHandler(redirected)
     }
 }
@@ -52,6 +52,7 @@ enum StreamingService {
                     )
                     defer { session.invalidateAndCancel() }
                     try await readLines(from: bytes, into: continuation)
+                    logger.info("SSE disconnected: \(endpoint)")
                     continuation.finish()
                 } catch {
                     if !Task.isCancelled {
@@ -62,31 +63,19 @@ enum StreamingService {
             }
 
             continuation.onTermination = { _ in
+                logger.info("SSE cancelled: \(endpoint)")
                 task.cancel()
             }
         }
     }
 
-    /// Connects with token refresh on 401, invalidating the failed session before retry.
     private static func connectWithRetry(
         endpoint: String,
         tokenProvider: TokenProvider,
         lastEventId: String?
     ) async throws -> (URLSession.AsyncBytes, URLSession) {
-        let token = try await tokenProvider.validAccessToken()
-        do {
-            return try await connect(
-                endpoint: endpoint,
-                accessToken: token,
-                lastEventId: lastEventId
-            )
-        } catch APIError.httpError(statusCode: 401, _) {
-            let freshToken = try await tokenProvider.refreshedAccessToken()
-            return try await connect(
-                endpoint: endpoint,
-                accessToken: freshToken,
-                lastEventId: lastEventId
-            )
+        try await APIClient.withAuthRetry(tokenProvider: tokenProvider) { token in
+            try await connect(endpoint: endpoint, accessToken: token, lastEventId: lastEventId)
         }
     }
 
@@ -145,7 +134,7 @@ enum StreamingService {
         }
 
         var request = URLRequest(url: url)
-        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        request.setBearer(accessToken)
         request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
         return request
     }

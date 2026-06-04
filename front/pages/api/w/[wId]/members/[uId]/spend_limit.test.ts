@@ -22,7 +22,7 @@ vi.mock("@app/lib/metronome/alerts/spend_limits", async () => {
     upsertMetronomePerUserCapAlert: vi.fn(),
     clearMetronomePerUserCapAlert: vi.fn(),
     getMetronomePerUserCap: vi.fn(),
-    getMetronomeDefaultUserCapAlert: vi.fn(),
+    getMetronomeDefaultUserCapAlertForSeatType: vi.fn(),
   };
 });
 
@@ -70,7 +70,7 @@ beforeEach(() => {
     new Ok(new Map())
   );
   vi.mocked(
-    defaultUserCapAlert.getMetronomeDefaultUserCapAlert
+    defaultUserCapAlert.getMetronomeDefaultUserCapAlertForSeatType
   ).mockResolvedValue(new Ok(null));
   vi.mocked(creditStateDispatcher.dispatchPerUserCapReached).mockResolvedValue(
     new Ok(undefined)
@@ -298,7 +298,7 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
       });
 
       vi.mocked(
-        defaultUserCapAlert.getMetronomeDefaultUserCapAlert
+        defaultUserCapAlert.getMetronomeDefaultUserCapAlertForSeatType
       ).mockResolvedValueOnce(
         new Ok(
           mockCustomerAlert({
@@ -345,7 +345,7 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
       });
 
       vi.mocked(
-        defaultUserCapAlert.getMetronomeDefaultUserCapAlert
+        defaultUserCapAlert.getMetronomeDefaultUserCapAlertForSeatType
       ).mockResolvedValueOnce(
         new Ok(
           mockCustomerAlert({

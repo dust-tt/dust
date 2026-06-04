@@ -733,11 +733,49 @@ async function reconcileSeatBasedSegment({
     0,
     (seatLimit?.minSeats ?? 0) - desiredSIds.length
   );
-  const addUnassignedSeats = Math.max(0, desiredUnassigned - currentUnassigned);
+
+  // Metronome auto-fills unassigned seats when seat IDs are added: each added
+  // seat consumes one unassigned seat (total quantity unchanged) before
+  // increasing the total. So by the time our explicit unassigned delta is
+  // applied, the unassigned pool is already reduced by the number of seats we
+  // assign in this same edit (floored at 0). Reconcile against that post-fill
+  // baseline, NOT the raw current count — otherwise we'd double-count by both
+  // letting Metronome auto-fill AND explicitly removing/adding a seat, which is
+  // what caused the unassigned pool to balloon on every sync.
+  // (`removeSeatIds` decrease the total quantity rather than returning seats to
+  // the unassigned pool, so they don't affect this baseline.)
+  const unassignedAfterAutoFill = Math.max(
+    0,
+    currentUnassigned - addSeatIds.length
+  );
+  const addUnassignedSeats = Math.max(
+    0,
+    desiredUnassigned - unassignedAfterAutoFill
+  );
   const removeUnassignedSeats = Math.max(
     0,
-    currentUnassigned - desiredUnassigned
+    unassignedAfterAutoFill - desiredUnassigned
   );
+
+  // Snapshot of the current vs. desired seat state, logged on every reconcile
+  // (including no-ops) so the assigned/unassigned/total counts are always
+  // visible when debugging billing discrepancies.
+  const currentAssigned = assignedSeatIds.length;
+  const desiredAssigned = desiredSIds.length;
+  const seatStateLog = {
+    workspaceId,
+    contractId,
+    subscriptionId,
+    seatType,
+    minSeats: seatLimit?.minSeats,
+    currentAssigned,
+    currentUnassigned,
+    currentTotal: currentAssigned + currentUnassigned,
+    desiredAssigned,
+    desiredUnassigned,
+    desiredTotal: desiredAssigned + desiredUnassigned,
+    startingAt,
+  };
 
   if (
     addSeatIds.length === 0 &&
@@ -745,21 +783,21 @@ async function reconcileSeatBasedSegment({
     addUnassignedSeats === 0 &&
     removeUnassignedSeats === 0
   ) {
+    logger.info(
+      seatStateLog,
+      "[Metronome] Seat-based subscription already in sync — no changes"
+    );
     return new Ok(false);
   }
 
   logger.info(
     {
-      workspaceId,
-      contractId,
-      subscriptionId,
-      seatType,
+      ...seatStateLog,
       addCount: addSeatIds.length,
       removeCount: removeSeatIds.length,
+      unassignedAfterAutoFill,
       addUnassignedSeats,
       removeUnassignedSeats,
-      minSeats: seatLimit?.minSeats,
-      startingAt,
     },
     "[Metronome] Updating seat-based subscription assignments"
   );
@@ -790,17 +828,15 @@ export type SeatData = {
  * a map of userId → { awuAllocation, billingFrequency }. Makes a single
  * contract fetch and one seat-ID fetch per subscription.
  *
- * Returns an empty map on any error so callers degrade gracefully.
+ * Returns an Err on any contract or seat-ID fetch failure.
  */
 export async function buildSeatDataByUserId({
   metronomeCustomerId,
   contractId,
-  throwOnError = false,
 }: {
   metronomeCustomerId: string;
   contractId: string;
-  throwOnError?: boolean;
-}): Promise<Map<string, SeatData>> {
+}): Promise<Result<Map<string, SeatData>, Error>> {
   const contractResult = await getMetronomeContractById({
     metronomeCustomerId,
     metronomeContractId: contractId,
@@ -810,10 +846,7 @@ export async function buildSeatDataByUserId({
       { error: contractResult.error, metronomeCustomerId, contractId },
       "[Metronome] Failed to fetch contract"
     );
-    if (throwOnError) {
-      throw contractResult.error;
-    }
-    return new Map();
+    return new Err(contractResult.error);
   }
 
   const contract = contractResult.value;
@@ -824,11 +857,11 @@ export async function buildSeatDataByUserId({
     subscriptions,
     async (sub) => {
       if (sub.quantity_management_mode !== "SEAT_BASED" || !sub.id) {
-        return null;
+        return new Ok(null);
       }
       const seatType = getSeatTypeForSubscription(sub, productSeatTypes);
       if (!seatType) {
-        return null;
+        return new Ok(null);
       }
       const awuAllocation = getAwuAllocationForSeatType(
         contract,
@@ -836,7 +869,7 @@ export async function buildSeatDataByUserId({
         productSeatTypes
       );
       if (awuAllocation === 0) {
-        return null;
+        return new Ok(null);
       }
 
       const seatIdsResult = await getMetronomeSubscriptionAssignedSeatIds({
@@ -855,35 +888,36 @@ export async function buildSeatDataByUserId({
           },
           "[Metronome] Failed to fetch seat IDs"
         );
-        if (throwOnError) {
-          throw seatIdsResult.error;
-        }
-        return null;
+        return new Err(seatIdsResult.error);
       }
 
       const freq = sub.subscription_rate.billing_frequency;
-      return {
+      return new Ok({
         seatIds: seatIdsResult.value,
         awuAllocation,
         billingFrequency: freq === "MONTHLY" || freq === "ANNUAL" ? freq : null,
-      };
+      });
     },
     { concurrency: 10 }
   );
 
   const seatDataByUserId = new Map<string, SeatData>();
   for (const result of results) {
-    if (result) {
-      for (const seatId of result.seatIds) {
+    if (result.isErr()) {
+      return new Err(result.error);
+    }
+    const subSeatData = result.value;
+    if (subSeatData) {
+      for (const seatId of subSeatData.seatIds) {
         seatDataByUserId.set(seatId, {
-          awuAllocation: result.awuAllocation,
-          billingFrequency: result.billingFrequency,
+          awuAllocation: subSeatData.awuAllocation,
+          billingFrequency: subSeatData.billingFrequency,
         });
       }
     }
   }
 
-  return seatDataByUserId;
+  return new Ok(seatDataByUserId);
 }
 
 const SEAT_DATA_CACHE_TTL_MS = 60 * 1000;
@@ -900,12 +934,12 @@ async function fetchSeatDataRecord(args: {
   metronomeCustomerId: string;
   contractId: string;
 }): Promise<Record<string, SeatData>> {
-  return Object.fromEntries(
-    await buildSeatDataByUserId({
-      ...args,
-      throwOnError: true,
-    })
-  );
+  const seatDataResult = await buildSeatDataByUserId(args);
+  // Throw at the cache boundary so a transient fetch failure is not cached.
+  if (seatDataResult.isErr()) {
+    throw seatDataResult.error;
+  }
+  return Object.fromEntries(seatDataResult.value);
 }
 
 export const getCachedSeatDataByUserId = cacheWithRedis(

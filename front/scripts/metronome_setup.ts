@@ -40,7 +40,9 @@ import {
 import {
   getNewPackages,
   getNewRateCards,
+  MAX_SEAT_MONTHLY_AWU_CREDITS,
   NEW_METRICS,
+  PRO_SEAT_MONTHLY_AWU_CREDITS,
 } from "@app/lib/metronome/setup_new_pricing";
 
 if (!process.env.METRONOME_API_KEY) {
@@ -146,13 +148,28 @@ async function syncMetrics(): Promise<void> {
     const eventTypeMatch =
       JSON.stringify(ex?.event_type_filter?.in_values?.sort() ?? []) ===
       JSON.stringify([...desired.event_type_filter.in_values].sort());
+    // Sort filters by name AND normalize each filter to a canonical key order.
+    // The JSON.stringify comparison below is key-order-sensitive, and Metronome
+    // returns filter object keys in a different order than our literals
+    // (e.g. `not_in_values` before `exists`). Mapping every filter through a
+    // fixed key order — and letting JSON.stringify drop the `undefined` keys —
+    // makes the comparison depend only on content, not key order.
     const sortFilters = (
       filters: Array<{
         name: string;
         exists?: boolean;
         in_values?: string[];
+        not_in_values?: string[];
       }>
-    ) => [...filters].sort((a, b) => a.name.localeCompare(b.name));
+    ) =>
+      [...filters]
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((f) => ({
+          name: f.name,
+          exists: f.exists,
+          in_values: f.in_values,
+          not_in_values: f.not_in_values,
+        }));
     const propertyFiltersMatch =
       JSON.stringify(sortFilters(ex?.property_filters ?? [])) ===
       JSON.stringify(sortFilters(desired.property_filters ?? []));
@@ -1468,13 +1485,21 @@ interface AlertDef {
   alert_type:
     | "low_remaining_contract_credit_balance_reached"
     | "low_remaining_commit_balance_reached"
-    | "low_remaining_contract_credit_and_commit_balance_reached";
+    | "low_remaining_contract_credit_and_commit_balance_reached"
+    | "low_remaining_seat_balance_reached";
   threshold: number;
   // Idempotency key — Metronome rejects duplicate creates with the same key.
   uniqueness_key: string;
   // Tag identifying which credit type the threshold tracks. Resolved at sync
   // time (AWU ID differs per environment).
   credit_type: "AWU";
+  // Required for `low_remaining_seat_balance_reached` alerts. Scopes the alert
+  // to a seat group key; omitting `seat_group_value` fans the alert out across
+  // all seats (allocation-independent — e.g. a 0-balance exhaustion alert).
+  seat_filter?: {
+    seat_group_key: string;
+    seat_group_value?: string;
+  };
   // Custom field filters scoped to ContractCredit / Commit / Contract. Used
   // here to exclude excess recurring credits from contract-credit-balance
   // alerts (those credits exist solely to absorb over-consumption and would
@@ -1528,6 +1553,36 @@ const ALERTS: AlertDef[] = [
     credit_type: "AWU",
     custom_field_filters: [POOL_CONTRACT_CREDIT_FILTER],
   },
+  {
+    // Seat exhaustion: fires at 0 remaining seat balance. Allocation-independent
+    // (no `seat_group_value`) so the single default alert fans out across every
+    // seat of every customer. Seat ids in Metronome are user sIds, hence the
+    // "user_id" group key.
+    name: "Default: Empty seat balance (AWU)",
+    alert_type: "low_remaining_seat_balance_reached",
+    threshold: 0,
+    uniqueness_key: "default-low-seat-balance-zero-awu",
+    credit_type: "AWU",
+    seat_filter: { seat_group_key: "user_id" },
+  },
+  {
+    // Low-balance warning for max seats (8 000 AWU remaining).
+    name: `Default: Low seat balance max seats (${0.2 * MAX_SEAT_MONTHLY_AWU_CREDITS} AWU)`,
+    alert_type: "low_remaining_seat_balance_reached",
+    threshold: 0.2 * MAX_SEAT_MONTHLY_AWU_CREDITS,
+    uniqueness_key: "default-low-seat-balance-8000-awu",
+    credit_type: "AWU",
+    seat_filter: { seat_group_key: "user_id" },
+  },
+  {
+    // Low-balance warning for pro seats (1 600 AWU remaining).
+    name: `Default: Low seat balance pro seats (${0.2 * PRO_SEAT_MONTHLY_AWU_CREDITS} AWU)`,
+    alert_type: "low_remaining_seat_balance_reached",
+    threshold: 0.2 * PRO_SEAT_MONTHLY_AWU_CREDITS,
+    uniqueness_key: "default-low-seat-balance-1600-awu",
+    credit_type: "AWU",
+    seat_filter: { seat_group_key: "user_id" },
+  },
 ];
 
 async function syncAlerts(): Promise<void> {
@@ -1554,6 +1609,7 @@ async function syncAlerts(): Promise<void> {
         ...(desired.custom_field_filters
           ? { custom_field_filters: desired.custom_field_filters }
           : {}),
+        ...(desired.seat_filter ? { seat_filter: desired.seat_filter } : {}),
       });
       const id = (created as { data: { id: string } }).data.id;
       console.log(`  + Created: ${desired.name} → ${id}`);

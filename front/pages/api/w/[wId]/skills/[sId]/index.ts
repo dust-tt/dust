@@ -321,11 +321,6 @@ async function handler(
 
       const featureFlags = await getFeatureFlags(auth);
       const enableSkillReferences = featureFlags.includes("nested_skills");
-      const referencedSkillIds = uniq(
-        (body.referencedSkillIds ?? []).filter(
-          (referencedSkillId) => referencedSkillId !== skill.sId
-        )
-      );
 
       // Validate file attachments if provided (gated behind sandbox_tools).
       let files: FileResource[] | undefined;
@@ -394,7 +389,7 @@ async function handler(
         reinforcement: body.reinforcement,
         requestedSpaceIds,
         enableSkillReferences,
-        referencedSkillIds,
+        referencedSkillIds: body.referencedSkillIds,
         userFacingDescription: body.userFacingDescription,
         ...(shouldActivate ? { status: "active" as const } : {}),
       });

@@ -14,6 +14,8 @@ import { postUserMessageAndWaitForCompletion } from "@app/lib/api/assistant/stre
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import { addBackwardCompatibleAgentMessageFields } from "@app/lib/api/v1/backward_compatibility";
 import type { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
@@ -192,6 +194,44 @@ async function handler(
               "Messages from run_agent or agent_handover must come from a system key.",
           },
         });
+      }
+
+      if (context.selectedMCPServerViewIds?.length) {
+        if (!auth.user()) {
+          return apiError(req, res, {
+            status_code: 401,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "Selecting MCP server views is only available to authenticated users.",
+            },
+          });
+        }
+
+        const mcpServerViews = await MCPServerViewResource.fetchByIds(
+          auth,
+          context.selectedMCPServerViewIds
+        );
+
+        const upsertRes = await ConversationResource.upsertMCPServerViews(
+          auth,
+          {
+            conversation,
+            mcpServerViews,
+            enabled: true,
+            source: "conversation",
+            agentConfigurationId: null,
+          }
+        );
+        if (upsertRes.isErr()) {
+          return apiError(req, res, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: "Failed to add MCP server views to conversation",
+            },
+          });
+        }
       }
 
       const ctx: UserMessageContext = {

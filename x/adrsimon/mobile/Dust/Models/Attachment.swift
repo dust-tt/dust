@@ -43,8 +43,7 @@ struct Attachment: Identifiable {
         if contentType.hasPrefix("image/") { return "photo" }
         if contentType.contains("pdf") { return "doc.richtext" }
         if contentType.contains("text") || contentType.contains("json")
-            || contentType.contains("xml") || contentType.contains("html")
-        { return "doc.text" }
+            || contentType.contains("xml") || contentType.contains("html") { return "doc.text" }
         if contentType.contains("spreadsheet") || contentType.contains("csv") { return "tablecells" }
         return "doc"
     }

@@ -14,9 +14,9 @@ import type { IncomingMessage } from "http";
 import type { Writable } from "stream";
 
 export const parseUploadRequest = async (
+  auth: Authenticator,
   file: FileResource,
-  req: IncomingMessage,
-  writableStream: Writable
+  req: IncomingMessage
 ): Promise<
   Result<
     File,
@@ -29,10 +29,18 @@ export const parseUploadRequest = async (
     }
   >
 > => {
+  // Created by formidable only after the filter accepts a file part, so it is
+  // never allocated for rejected uploads. Captured here so the catch block can
+  // destroy it if formidable throws mid-upload after opening the stream.
+  let writeStream: Writable | undefined;
+
   try {
     const form = new IncomingForm({
       // Stream the uploaded document to the cloud storage.
-      fileWriteStreamHandler: () => writableStream,
+      fileWriteStreamHandler: () => {
+        writeStream = file.getWriteStream({ auth, version: "original" });
+        return writeStream;
+      },
 
       // Support only one file upload.
       maxFiles: 1,
@@ -66,6 +74,7 @@ export const parseUploadRequest = async (
 
     return new Ok(maybeFiles[0]);
   } catch (error) {
+    writeStream?.destroy();
     if (error instanceof Error) {
       if (error.message.startsWith("options.maxTotalFileSize")) {
         return new Err({

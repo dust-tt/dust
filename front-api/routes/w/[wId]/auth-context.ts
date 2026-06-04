@@ -1,5 +1,8 @@
 import config from "@app/lib/api/config";
-import { getWorkspaceRegionRedirect } from "@app/lib/api/regions/lookup";
+import {
+  getForcedApiUrlRedirect,
+  getWorkspaceRegionRedirect,
+} from "@app/lib/api/regions/lookup";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { isWorkspaceEligibleForTrial } from "@app/lib/plans/trial";
 import type { SubscriptionType } from "@app/types/plan";
@@ -82,6 +85,25 @@ app.get(
       : false;
 
     const featureFlags = await getFeatureFlags(auth);
+
+    // When the workspace is flagged, force the SPA onto the regional API
+    // subdomain as its backend by reusing the region-redirect mechanism.
+    const forcedApiUrlRedirect = getForcedApiUrlRedirect({
+      enabled: featureFlags.includes("force_us_api_url"),
+      requestHost: ctx.req.header("host"),
+    });
+    if (forcedApiUrlRedirect) {
+      return ctx.json(
+        {
+          error: {
+            type: "workspace_in_different_region",
+            message: "Workspace is located in a different region",
+            redirect: forcedApiUrlRedirect,
+          },
+        },
+        400
+      );
+    }
 
     return ctx.json({
       user: user.toJSON(),

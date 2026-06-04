@@ -12,6 +12,7 @@ import { useSpaceInfo } from "@app/lib/swr/spaces";
 import {
   ChatBubbleLeftRightIcon,
   CheckCircleIcon,
+  FolderIcon,
   Spinner,
   Tabs,
   TabsList,
@@ -87,10 +88,26 @@ export const PodMainPage = () => {
             <TabsList border={false}>
               <TabsTrigger
                 value="conversations"
-                label="Conversations"
+                label={
+                  currentTab === "conversations" ? "Conversations" : undefined
+                }
+                tooltip={
+                  currentTab !== "conversations" ? "Conversations" : undefined
+                }
                 icon={ChatBubbleLeftRightIcon}
               />
-              <TabsTrigger value="tasks" label="Tasks" icon={CheckCircleIcon} />
+              <TabsTrigger
+                value="tasks"
+                label={currentTab === "tasks" ? "Tasks" : undefined}
+                tooltip={currentTab !== "tasks" ? "Tasks" : undefined}
+                icon={CheckCircleIcon}
+              />
+              <TabsTrigger
+                value="files"
+                label={currentTab === "files" ? "Files" : undefined}
+                tooltip={currentTab !== "files" ? "Files" : undefined}
+                icon={FolderIcon}
+              />
             </TabsList>
           </div>
         }

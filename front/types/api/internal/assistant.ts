@@ -195,6 +195,17 @@ export const InternalPostConversationsRequestBodySchema = z.object({
   skipToolsValidation: z.boolean().optional(),
 });
 
+/** Response shape for POST /api/w/[wId]/assistant/conversations (deferred or combined). */
+export const PostConversationsResponseBodySchema = z.object({
+  conversation: z
+    .object({
+      sId: z.string(),
+    })
+    .passthrough(),
+  contentFragments: z.array(z.unknown()),
+  message: z.unknown().optional(),
+});
+
 export const InternalPostBuilderSuggestionsRequestBodySchema = z.union([
   z.object({
     type: z.literal("name"),

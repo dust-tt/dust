@@ -26,6 +26,7 @@ const {
   mockSyncMauCount,
   mockSyncSeatCount,
   mockRemapMembershipSeatTypesForContract,
+  mockBuildSeatDataByUserId,
 } = vi.hoisted(() => {
   const mockPrices = { retrieve: vi.fn() };
 
@@ -45,6 +46,7 @@ const {
     mockSyncMauCount: vi.fn(),
     mockSyncSeatCount: vi.fn(),
     mockRemapMembershipSeatTypesForContract: vi.fn(),
+    mockBuildSeatDataByUserId: vi.fn(),
   };
 });
 
@@ -79,6 +81,7 @@ vi.mock("@app/lib/metronome/seats", () => ({
   hasContractSeatSubscription: mockHasContractSeatSubscription,
   syncSeatCount: mockSyncSeatCount,
   remapMembershipSeatTypesForContract: mockRemapMembershipSeatTypesForContract,
+  buildSeatDataByUserId: mockBuildSeatDataByUserId,
 }));
 
 vi.mock("@app/lib/api/metronome/credit_state_dispatcher", () => ({
@@ -174,6 +177,9 @@ beforeEach(() => {
 
   mockRemapMembershipSeatTypesForContract.mockReset();
   mockRemapMembershipSeatTypesForContract.mockResolvedValue(new Ok(undefined));
+
+  mockBuildSeatDataByUserId.mockReset();
+  mockBuildSeatDataByUserId.mockResolvedValue(new Ok(new Map()));
 });
 
 function makeSubscription(

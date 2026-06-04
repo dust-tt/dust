@@ -5,7 +5,6 @@ import {
   isLightServerSideMCPToolConfiguration,
   isServerSideMCPServerConfiguration,
 } from "@app/lib/actions/types/guards";
-import { default as agentManagementServer } from "@app/lib/api/actions/servers/agent_management";
 import { default as agentMemoryServer } from "@app/lib/api/actions/servers/agent_memory";
 import { default as agentRouterServer } from "@app/lib/api/actions/servers/agent_router";
 import { default as agentSidekickAgentStateServer } from "@app/lib/api/actions/servers/agent_sidekick_agent_state";
@@ -62,6 +61,7 @@ import { default as salesloftServer } from "@app/lib/api/actions/servers/saleslo
 import { default as sandboxServer } from "@app/lib/api/actions/servers/sandbox";
 import { default as schedulesManagementServer } from "@app/lib/api/actions/servers/schedules_management";
 import { default as searchServer } from "@app/lib/api/actions/servers/search";
+import { default as skillAuthoringServer } from "@app/lib/api/actions/servers/skill_authoring";
 import { default as skillManagementServer } from "@app/lib/api/actions/servers/skill_management";
 import { default as slabServer } from "@app/lib/api/actions/servers/slab";
 import { default as slackBotServer } from "@app/lib/api/actions/servers/slack_bot";
@@ -224,8 +224,6 @@ export async function getInternalMCPServer(
       return agentSidekickAgentStateServer(auth, agentLoopContext);
     case "agent_sidekick_context":
       return agentSidekickContextServer(auth, agentLoopContext);
-    case "agent_management":
-      return agentManagementServer(auth, agentLoopContext);
     case "fathom":
       return fathomServer(auth, agentLoopContext);
     case "freshservice":
@@ -246,6 +244,8 @@ export async function getInternalMCPServer(
       return zendeskServer(auth, agentLoopContext);
     case "skill_management":
       return skillManagementServer(auth, agentLoopContext);
+    case "skill_authoring":
+      return skillAuthoringServer(auth, agentLoopContext);
     case "schedules_management":
       return schedulesManagementServer(auth, agentLoopContext);
     case "productboard":

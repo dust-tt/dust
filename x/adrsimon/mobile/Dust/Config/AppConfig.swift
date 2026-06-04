@@ -84,6 +84,10 @@ enum AppConfig {
             "/api/v1/w/\(workspaceId)/assistant/conversations/\(conversationId)/messages/\(messageId)/retry"
         }
 
+        static func answerQuestion(workspaceId: String, conversationId: String, messageId: String) -> String {
+            "/api/v1/w/\(workspaceId)/assistant/conversations/\(conversationId)/messages/\(messageId)/answer-question"
+        }
+
         static func mcpServerViews(workspaceId: String) -> String {
             "/api/w/\(workspaceId)/mcp/views"
         }

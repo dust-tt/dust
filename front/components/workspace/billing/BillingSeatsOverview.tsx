@@ -92,9 +92,10 @@ export function BillingSeatsOverview({ owner }: BillingSeatsOverviewProps) {
   const { seatPlans, isSeatPlanLoading } = useSeatPlan({
     workspaceId: owner.sId,
   });
-  const { membersSeats, isMembersSeatsLoading } = useMembersSeats({
-    workspaceId: owner.sId,
-  });
+  const { membersSeats, metronomeSeats, isMembersSeatsLoading } =
+    useMembersSeats({
+      workspaceId: owner.sId,
+    });
 
   if (isSeatPlanLoading || isMembersSeatsLoading) {
     return (
@@ -134,21 +135,46 @@ export function BillingSeatsOverview({ owner }: BillingSeatsOverviewProps) {
     );
   });
 
+  // Total seats billed in Metronome per seat type (assigned + unassigned),
+  // grouped the same way as the member counts. `undefined` for a group means
+  // Metronome had nothing to report for it (so we hide the unassigned line).
+  const metronomeBilledBySeatType = new Map<MembershipSeatType, number>();
+
+  Object.entries(metronomeSeats).forEach(([seatType, billed]) => {
+    if (!isMembershipSeatType(seatType) || billed === undefined) {
+      return;
+    }
+
+    const groupSeatType = seatTypeGroup(seatType);
+    metronomeBilledBySeatType.set(
+      groupSeatType,
+      (metronomeBilledBySeatType.get(groupSeatType) ?? 0) + billed
+    );
+  });
+
   const plansWithMembers: Array<{
     seatType: MembershipSeatType;
     primaryPlan: SeatTypeInfo;
     membersCount: number;
+    unassignedCount: number | null;
   }> = Array.from(plansBySeatType.entries()).flatMap(([seatType, plans]) => {
     const primaryPlan = plans.monthly ?? plans.annual;
     if (!primaryPlan) {
       return [];
     }
 
+    const membersCount = membersCountBySeatType.get(seatType) ?? 0;
+    const billed = metronomeBilledBySeatType.get(seatType);
+
     return [
       {
         seatType,
         primaryPlan,
-        membersCount: membersCountBySeatType.get(seatType) ?? 0,
+        membersCount,
+        // Unassigned = billed seats not backed by a real member. Null when
+        // Metronome had no figure for this seat type.
+        unassignedCount:
+          billed === undefined ? null : Math.max(0, billed - membersCount),
       },
     ];
   });
@@ -167,7 +193,7 @@ export function BillingSeatsOverview({ owner }: BillingSeatsOverviewProps) {
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
       {orderedPlansWithMembers.map(
-        ({ seatType, primaryPlan, membersCount }) => {
+        ({ seatType, primaryPlan, membersCount, unassignedCount }) => {
           const avatarColors = seatTypeAvatarColors(seatType);
 
           return (
@@ -193,6 +219,9 @@ export function BillingSeatsOverview({ owner }: BillingSeatsOverviewProps) {
                   <span>
                     {membersCount.toLocaleString()}{" "}
                     {membersCount === 1 ? "seat assigned" : "seats assigned"}
+                    {unassignedCount !== null && unassignedCount > 0
+                      ? ` - ${unassignedCount.toLocaleString()} available`
+                      : ""}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">

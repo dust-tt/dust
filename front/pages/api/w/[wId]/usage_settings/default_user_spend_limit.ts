@@ -65,6 +65,14 @@ function mapErrorToHttp(
           message: error.message,
         },
       });
+    case "contract_not_found":
+      return apiError(req, res, {
+        status_code: 404,
+        api_error: {
+          type: "workspace_not_found",
+          message: error.message,
+        },
+      });
     case "metronome_error":
       return apiError(req, res, {
         status_code: 502,

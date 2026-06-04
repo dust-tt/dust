@@ -7,6 +7,8 @@ import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { isUserMessageContextOverflowing } from "@app/lib/api/assistant/conversation/helper";
 import { postUserMessageAndWaitForCompletion } from "@app/lib/api/assistant/streaming/blocking";
 import { addBackwardCompatibleAgentMessageFields } from "@app/lib/api/v1/backward_compatibility";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { UserMessageContext } from "@app/types/assistant/conversation";
 import { isEmptyString } from "@app/types/shared/utils/general";
@@ -158,6 +160,41 @@ app.post(
             "Messages from run_agent or agent_handover must come from a system key.",
         },
       });
+    }
+
+    if (context.selectedMCPServerViewIds?.length) {
+      if (!auth.user()) {
+        return apiError(ctx, {
+          status_code: 401,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "Selecting MCP server views is only available to authenticated users.",
+          },
+        });
+      }
+
+      const mcpServerViews = await MCPServerViewResource.fetchByIds(
+        auth,
+        context.selectedMCPServerViewIds
+      );
+
+      const upsertRes = await ConversationResource.upsertMCPServerViews(auth, {
+        conversation,
+        mcpServerViews,
+        enabled: true,
+        source: "conversation",
+        agentConfigurationId: null,
+      });
+      if (upsertRes.isErr()) {
+        return apiError(ctx, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to add MCP server views to conversation",
+          },
+        });
+      }
     }
 
     const messageContext: UserMessageContext = {

@@ -3,12 +3,12 @@ import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { moveHandler } from "@app/lib/api/actions/servers/files/tools/move";
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import { Authenticator } from "@app/lib/auth";
-import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import assert from "assert";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 function makeExtra(
   auth: Authenticator,
@@ -56,6 +56,11 @@ describe("moveHandler", () => {
   it("moves a file from conversation to pod mount", async () => {
     const { auth, conversation, spaceId } = await setupProjectConversation();
 
+    // Source (conversation) exists, destination (pod) does not.
+    fileStorageMock.setFileExists((filePath) =>
+      filePath.includes("/conversations/")
+    );
+
     const result = await moveHandler(
       {
         source: `conversation-${conversation.sId}/report.pdf`,
@@ -77,6 +82,9 @@ describe("moveHandler", () => {
   it("moves a file from pod to conversation mount", async () => {
     const { auth, conversation, spaceId } = await setupProjectConversation();
 
+    // Source (pod) exists, destination (conversation) does not.
+    fileStorageMock.setFileExists((filePath) => filePath.includes("/pods/"));
+
     const result = await moveHandler(
       {
         source: `pod-${spaceId}/spec.md`,
@@ -91,13 +99,7 @@ describe("moveHandler", () => {
   it("returns Err when the source file does not exist", async () => {
     const { auth, conversation, spaceId } = await setupProjectConversation();
 
-    vi.mocked(getPrivateUploadBucket).mockReturnValueOnce({
-      file: vi.fn(() => ({
-        exists: vi.fn().mockResolvedValue([false]),
-        getMetadata: vi.fn().mockRejectedValue(new Error("Not Found")),
-        delete: vi.fn().mockResolvedValue(undefined),
-      })),
-    } as unknown as ReturnType<typeof getPrivateUploadBucket>);
+    fileStorageMock.setFileExists(() => false);
 
     const result = await moveHandler(
       {

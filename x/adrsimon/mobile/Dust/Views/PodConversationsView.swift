@@ -1,12 +1,12 @@
 import SparkleTokens
 import SwiftUI
 
-struct ProjectConversationsView: View {
+struct PodConversationsView: View {
     let space: Space
     let onSelectConversation: (Conversation) -> Void
     let onNewConversation: () -> Void
 
-    @StateObject private var viewModel: ProjectConversationsViewModel
+    @StateObject private var viewModel: PodConversationsViewModel
 
     init(
         space: Space,
@@ -19,7 +19,7 @@ struct ProjectConversationsView: View {
         self.onSelectConversation = onSelectConversation
         self.onNewConversation = onNewConversation
         _viewModel = StateObject(
-            wrappedValue: ProjectConversationsViewModel(
+            wrappedValue: PodConversationsViewModel(
                 space: space,
                 workspaceId: workspaceId,
                 tokenProvider: tokenProvider

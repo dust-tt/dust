@@ -977,13 +977,7 @@ export const createCommunication = async ({
 }): Promise<SimplePublicObject> => {
   const hubspotClient = new Client({ accessToken });
 
-  const finalProperties = { ...properties };
-
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  if (!finalProperties.hs_engagement_type) {
-    finalProperties.hs_engagement_type = "COMMUNICATION";
-  }
-  if (!finalProperties.hs_communication_channel_type) {
+  if (!properties.hs_communication_channel_type) {
     throw normalizeError(
       new Error(
         "hs_communication_channel_type is required in properties for createCommunication."
@@ -1003,7 +997,7 @@ export const createCommunication = async ({
       if (mapping.ids && mapping.ids.length > 0) {
         const associationTypeId = await getAssociationTypeId(
           accessToken,
-          "engagements",
+          "communications",
           mapping.toObjectType
         );
         for (const id of mapping.ids) {
@@ -1023,20 +1017,20 @@ export const createCommunication = async ({
   }
 
   const communicationData: SimplePublicObjectInputForCreate = {
-    properties: finalProperties,
+    properties,
     associations: builtAssociations,
   };
 
   try {
     const communication = await hubspotClient.crm.objects.basicApi.create(
-      "engagements",
+      "communications",
       communicationData
     );
     return communication;
   } catch (error) {
     localLogger.error(
       { error, communicationData, function: "createCommunication" },
-      `Error creating communication (engagement type: ${finalProperties.hs_engagement_type}, channel: ${finalProperties.hs_communication_channel_type}).`
+      `Error creating communication (channel: ${properties.hs_communication_channel_type}).`
     );
     throw normalizeError(error);
   }
@@ -1057,13 +1051,6 @@ export const createMeeting = async ({
 }): Promise<SimplePublicObject> => {
   const hubspotClient = new Client({ accessToken });
 
-  const finalProperties = { ...properties };
-
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  if (!finalProperties.hs_engagement_type) {
-    finalProperties.hs_engagement_type = "MEETING";
-  }
-
   const builtAssociations: SimplePublicObjectInputForCreate["associations"] =
     [];
   if (associations) {
@@ -1076,7 +1063,7 @@ export const createMeeting = async ({
       if (mapping.ids && mapping.ids.length > 0) {
         const associationTypeId = await getAssociationTypeId(
           accessToken,
-          "engagements",
+          "meetings",
           mapping.toObjectType
         );
         for (const id of mapping.ids) {
@@ -1096,20 +1083,20 @@ export const createMeeting = async ({
   }
 
   const meetingInput: SimplePublicObjectInputForCreate = {
-    properties: finalProperties,
+    properties,
     associations: builtAssociations,
   };
 
   try {
     const meeting = await hubspotClient.crm.objects.basicApi.create(
-      "engagements",
+      "meetings",
       meetingInput
     );
     return meeting;
   } catch (error) {
     localLogger.error(
       { error, meetingInput, function: "createMeeting" },
-      `Error creating meeting engagement (type: ${finalProperties.hs_engagement_type}).`
+      `Error creating meeting.`
     );
     throw normalizeError(error);
   }
@@ -1221,7 +1208,6 @@ export const getMeeting = async (
       "hs_meeting_external_url",
       "hubspot_owner_id",
     ];
-    // HubSpot CRM v3: meetings are created via "engagements" but retrieved via "meetings".
     const meeting = await hubspotClient.crm.objects.basicApi.getById(
       "meetings",
       meetingId,

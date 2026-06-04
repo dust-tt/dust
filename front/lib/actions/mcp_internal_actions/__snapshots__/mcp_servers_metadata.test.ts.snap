@@ -2,9 +2,6 @@
 
 exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across all servers 1`] = `
 {
-  "agent_management": {
-    "create_agent": "high",
-  },
   "agent_memory": {
     "compact_memory": "never_ask",
     "edit_entries": "never_ask",
@@ -182,12 +179,18 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   },
   "github": {
     "add_issue_to_project": "low",
+    "comment_on_discussion": "low",
     "comment_on_issue": "low",
+    "create_discussion": "low",
     "create_issue": "low",
     "create_pull_request_review": "high",
+    "get_discussion": "never_ask",
+    "get_discussion_comments": "never_ask",
     "get_issue": "never_ask",
     "get_issue_custom_fields": "never_ask",
     "get_pull_request": "never_ask",
+    "list_discussion_categories": "never_ask",
+    "list_discussions": "never_ask",
     "list_issues": "never_ask",
     "list_organization_projects": "never_ask",
     "list_pull_requests": "never_ask",
@@ -570,6 +573,12 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   "search": {
     "semantic_search": "never_ask",
   },
+  "skill_authoring": {
+    "create_skill": "high",
+    "get_skill": "never_ask",
+    "list_skills": "never_ask",
+    "update_skill": "high",
+  },
   "skill_management": {
     "enable_skill": "never_ask",
   },
@@ -623,6 +632,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "generate_sound_effects": "low",
   },
   "speech_generator": {
+    "speech_to_text": "low",
     "text_to_dialogue": "low",
     "text_to_speech": "low",
   },

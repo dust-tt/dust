@@ -81,7 +81,7 @@ import type {
   Transaction,
   WhereOptions,
 } from "sequelize";
-import { Op } from "sequelize";
+import { Op, UniqueConstraintError } from "sequelize";
 import type { Readable, Writable } from "stream";
 import { validate } from "uuid";
 import type { ModelStaticWorkspaceAware } from "./storage/wrappers/workspace_models";
@@ -934,9 +934,16 @@ export class FileResource extends BaseResource<FileModel> {
 
       const content = Buffer.concat(chunks).toString("utf-8");
       return content || null;
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
     } catch (error) {
+      logger.error(
+        {
+          err: normalizeError(error),
+          fileId: this.sId,
+          workspaceId: owner.sId,
+          version,
+        },
+        "getFileContent failed"
+      );
       return null;
     }
   }
@@ -1022,37 +1029,45 @@ export class FileResource extends BaseResource<FileModel> {
    * No-ops if the file already has a mountFilePath or conditions aren't met.
    */
   private async resolveAndSetMountFilePath(auth: Authenticator): Promise<void> {
-    if (this.mountFilePath) {
-      return;
+    if (!this.mountFilePath) {
+      const { useCase, useCaseMetadata } = this;
+
+      let resolved: { path: string; fallbackPath: string } | null = null;
+
+      if (
+        isConversationFileUseCase(useCase) &&
+        useCaseMetadata?.conversationId
+      ) {
+        resolved = await this.resolveConversationMountPath(auth, {
+          conversationId: useCaseMetadata.conversationId,
+        });
+      } else if (useCase === "project_context" && useCaseMetadata?.spaceId) {
+        resolved = await this.resolveProjectMountPath(auth, {
+          podId: useCaseMetadata.spaceId,
+        });
+      }
+
+      if (!resolved) {
+        return;
+      }
+
+      await this.claimMountFilePath(resolved);
     }
 
-    const { useCase, useCaseMetadata } = this;
-
-    let resolvedPath: string | null = null;
-
-    if (isConversationFileUseCase(useCase) && useCaseMetadata?.conversationId) {
-      resolvedPath = await this.resolveConversationMountPath(auth, {
-        conversationId: useCaseMetadata.conversationId,
-      });
-    } else if (useCase === "project_context" && useCaseMetadata?.spaceId) {
-      resolvedPath = await this.resolveProjectMountPath(auth, {
-        podId: useCaseMetadata.spaceId,
-      });
-    }
-
-    if (resolvedPath) {
-      await this.setMountFilePath(auth, resolvedPath);
-    }
+    // The DB row now owns a mount path. Copy the file's contents to it. This is idempotent, so it
+    // is safe to re-run on a Temporal retry that committed the path but failed before the copy.
+    await this.copyMountFiles(auth);
   }
 
   /**
-   * Resolve the mount path for a conversation file. Checks for collisions via the unique index on
-   * mountFilePath and disambiguates with the file's sId if needed.
+   * Resolve the desired mount path for a conversation file, alongside the sId-disambiguated
+   * fallback used when the desired path collides. The desired path is pre-checked against the
+   * unique index on mountFilePath; the fallback is always unique because it embeds the file's sId.
    */
   private async resolveConversationMountPath(
     auth: Authenticator,
     { conversationId }: { conversationId: string }
-  ): Promise<string> {
+  ): Promise<{ path: string; fallbackPath: string }> {
     const owner = auth.getNonNullableWorkspace();
 
     const desiredPath = getConversationFilePath({
@@ -1060,26 +1075,26 @@ export class FileResource extends BaseResource<FileModel> {
       conversationId,
       fileName: this.fileName,
     });
+    const fallbackPath = getConversationFilePath({
+      workspaceId: owner.sId,
+      conversationId,
+      fileName: disambiguateFileName(this),
+    });
 
     const isTaken = await this.isMountFilePathTaken(desiredPath);
 
-    return isTaken
-      ? getConversationFilePath({
-          workspaceId: owner.sId,
-          conversationId,
-          fileName: disambiguateFileName(this),
-        })
-      : desiredPath;
+    return { path: isTaken ? fallbackPath : desiredPath, fallbackPath };
   }
 
   /**
-   * Resolve the mount path for a project_context file. Checks for collisions via the unique index
-   * on mountFilePath and disambiguates with the file's sId if needed.
+   * Resolve the desired mount path for a project_context file, alongside the sId-disambiguated
+   * fallback used when the desired path collides. The desired path is pre-checked against the
+   * unique index on mountFilePath; the fallback is always unique because it embeds the file's sId.
    */
   private async resolveProjectMountPath(
     auth: Authenticator,
     { podId }: { podId: string }
-  ): Promise<string> {
+  ): Promise<{ path: string; fallbackPath: string }> {
     const owner = auth.getNonNullableWorkspace();
     const basePath = getPodFilesBasePath({
       workspaceId: owner.sId,
@@ -1087,9 +1102,39 @@ export class FileResource extends BaseResource<FileModel> {
     });
 
     const desiredPath = `${basePath}${this.fileName}`;
+    const fallbackPath = `${basePath}${disambiguateFileName(this)}`;
     const isTaken = await this.isMountFilePathTaken(desiredPath);
 
-    return isTaken ? `${basePath}${disambiguateFileName(this)}` : desiredPath;
+    return { path: isTaken ? fallbackPath : desiredPath, fallbackPath };
+  }
+
+  /**
+   * Persist the mount path on the DB row, claiming it against the unique index on
+   * (workspaceId, mountFilePath) BEFORE any GCS copy so a losing writer never clobbers the
+   * winner's mount object.
+   *
+   * The desired path is pre-checked in resolve*MountPath, but that check is not atomic with this
+   * write: a concurrent file with the same name in the same conversation/pod (tool outputs are
+   * processed concurrently, see mcp_execution.ts) can claim the path in between, surfacing a
+   * UniqueConstraintError here. In that case we fall back to the sId-disambiguated path, which is
+   * guaranteed unique. Catching here is allowed since Sequelize is an external library.
+   */
+  private async claimMountFilePath({
+    path,
+    fallbackPath,
+  }: {
+    path: string;
+    fallbackPath: string;
+  }): Promise<void> {
+    try {
+      await this.update({ mountFilePath: path });
+    } catch (err) {
+      if (err instanceof UniqueConstraintError && path !== fallbackPath) {
+        await this.update({ mountFilePath: fallbackPath });
+      } else {
+        throw err;
+      }
+    }
   }
 
   /**
@@ -1150,17 +1195,20 @@ export class FileResource extends BaseResource<FileModel> {
   }
 
   /**
-   * Set the mount file path and copy the file's original (and processed if exists) versions to the
-   * given GCS path for gcsfuse mounting. The path is conversation- or project-scoped depending on
-   * the caller.
+   * Copy the file's original (and processed if it exists) versions to its already-claimed mount
+   * path for gcsfuse mounting. The path is conversation- or project-scoped depending on the use
+   * case, and must have been persisted via claimMountFilePath() first.
    *
-   * This is a one-time operation: copies from the canonical path to the mount path. Subsequent
-   * edits (frames) write directly to the mount path.
+   * This copies from the canonical path to the mount path and is idempotent: the underlying GCS
+   * copies overwrite, so re-running after a partial failure is safe. Subsequent edits (frames)
+   * write directly to the mount path.
    */
-  private async setMountFilePath(
-    auth: Authenticator,
-    mountFilePath: string
-  ): Promise<void> {
+  private async copyMountFiles(auth: Authenticator): Promise<void> {
+    const { mountFilePath } = this;
+    if (!mountFilePath) {
+      return;
+    }
+
     const bucket = getPrivateUploadBucket();
 
     const srcOriginalPath = this.getCloudStoragePath(auth, "original");
@@ -1187,8 +1235,6 @@ export class FileResource extends BaseResource<FileModel> {
         await bucket.copyFile(srcProcessedPath, processedProjectsMountPath);
       }
     }
-
-    await this.update({ mountFilePath });
   }
 
   private async isMountFilePathTaken(mountFilePath: string): Promise<boolean> {

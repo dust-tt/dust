@@ -366,7 +366,12 @@ const NavigationListCollapsibleSection = React.forwardRef<
 
     const isCollapsible = type !== "static";
     const labelElement = (
-      <div className={collapseableStyles({ isCollapsible })}>
+      <div
+        className={cn(
+          "notranslate",
+          collapseableStyles({ isCollapsible })
+        )}
+      >
         {icon ? (
           <span className="s-flex s-items-center s-gap-1.5">
             <Icon visual={icon} size="xs" />

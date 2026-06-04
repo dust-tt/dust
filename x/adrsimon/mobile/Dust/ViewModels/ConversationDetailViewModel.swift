@@ -16,12 +16,10 @@ final class ConversationDetailViewModel: ObservableObject {
     @Published var messages: [ConversationMessage] = []
     @Published var hasMore = false
 
-    /// Streaming phase for the currently streaming agent message (if any).
-    @Published var streamingPhase: AgentStreamingPhase = .idle
-    /// Currently running actions (tools executing in parallel).
-    @Published var activeActions: [ActiveAction] = []
-    /// Completed activity timeline steps (thinking segments + finished actions).
-    @Published var completedSteps: [ActivityStep] = []
+    /// Live reduction of the currently streaming agent message (nil when not streaming).
+    @Published var turn: AgentMessageStream?
+    /// What the agent is blocked on, if anything. Outlives `turn` until resolved.
+    @Published var blockedState: BlockedState?
     /// sId of the message currently being streamed.
     @Published var streamingMessageId: String?
     /// Error info for the last failed agent message (if any).
@@ -29,16 +27,40 @@ final class ConversationDetailViewModel: ObservableObject {
     /// Whether a validate-action request is in-flight.
     @Published var isValidatingAction = false
 
+    var streamingPhase: AgentStreamingPhase {
+        if let blockedState { return blockedState.asPhase }
+        switch turn?.snapshot.activity {
+        case .thinking: return .thinking
+        case .generating: return .generating
+        case nil: return .idle
+        }
+    }
+
+    var activeActions: [ActiveAction] {
+        turn?.snapshot.activeActions ?? []
+    }
+
+    var completedSteps: [ActivityStep] {
+        turn?.snapshot.completedSteps ?? []
+    }
+
+    /// Overlays the streaming message with its live snapshot until finalize commits it.
+    func renderMessage(_ message: ConversationMessage) -> ConversationMessage {
+        guard case let .agent(agent) = message,
+              let snapshot = turn?.snapshot, snapshot.messageId == agent.sId
+        else { return message }
+        var merged = agent
+        merged.content = snapshot.content.isEmpty ? agent.content : snapshot.content
+        merged.chainOfThought = snapshot.chainOfThought
+        return .agent(merged)
+    }
+
     private let conversation: Conversation
     private let workspaceId: String
     private let tokenProvider: TokenProvider
     private var lastValue: Int?
     /// Monotonic counter to identify the active message stream generation.
     private var streamGeneration: UInt64 = 0
-    /// Buffer for the current thinking segment, flushed as a completed step on transition.
-    private var currentThinkingBuffer: String = ""
-    /// Counter for generating unique step IDs.
-    private var stepCounter: Int = 0
 
     // Streaming tasks
     private var conversationEventsTask: Task<Void, Never>?
@@ -124,15 +146,14 @@ final class ConversationDetailViewModel: ObservableObject {
 
     private func startConversationEvents() {
         conversationEventsTask?.cancel()
-        conversationEventsTask = Task { [weak self] in
-            guard let self else { return }
+        conversationEventsTask = Task { [weak self, workspaceId, conversationId = conversation.sId, tokenProvider] in
             var retryDelay: UInt64 = 1_000_000_000 // 1s
             let maxDelay: UInt64 = 30_000_000_000 // 30s
 
             while !Task.isCancelled {
                 let endpoint = AppConfig.Endpoints.conversationEvents(
                     workspaceId: workspaceId,
-                    conversationId: conversation.sId
+                    conversationId: conversationId
                 )
 
                 let stream = StreamingService.eventStream(
@@ -150,7 +171,7 @@ final class ConversationDetailViewModel: ObservableObject {
 
                         do {
                             let envelope = try decoder.decode(ConversationEventEnvelope.self, from: data)
-                            await handleConversationEvent(envelope.data)
+                            await self?.handleConversationEvent(envelope.data)
                         } catch {
                             logger.debug("Skipping unhandled conversation event: \(error)")
                         }
@@ -211,6 +232,7 @@ final class ConversationDetailViewModel: ObservableObject {
             version: 0,
             rank: nextRank,
             content: content,
+            user: nil,
             context: UserMessageContext(username: nil, fullName: nil, email: userEmail, profilePictureUrl: nil),
             contentFragments: nil
         )
@@ -237,7 +259,6 @@ final class ConversationDetailViewModel: ObservableObject {
         }
     }
 
-    // swiftlint:disable:next cyclomatic_complexity
     private func startMessageStream(for messageId: String) {
         if streamingMessageId == messageId { return }
 
@@ -245,17 +266,14 @@ final class ConversationDetailViewModel: ObservableObject {
         streamGeneration += 1
         let currentGeneration = streamGeneration
         streamingMessageId = messageId
-        streamingPhase = .thinking
+        turn = AgentMessageStream(messageId: messageId)
+        blockedState = nil
         lastError = nil
-        completedSteps = []
-        currentThinkingBuffer = ""
-        stepCounter = 0
 
-        messageStreamTask = Task { [weak self] in
-            guard let self else { return }
+        messageStreamTask = Task { [weak self, workspaceId, conversationId = conversation.sId, tokenProvider] in
             let endpoint = AppConfig.Endpoints.messageEvents(
                 workspaceId: workspaceId,
-                conversationId: conversation.sId,
+                conversationId: conversationId,
                 messageId: messageId
             )
 
@@ -273,7 +291,7 @@ final class ConversationDetailViewModel: ObservableObject {
 
                     do {
                         let envelope = try decoder.decode(SSEEnvelope.self, from: data)
-                        await handleMessageEvent(envelope.data, messageId: messageId)
+                        await self?.reduce(envelope.data, messageId: messageId)
                     } catch {
                         logger.debug("Skipping unhandled message event: \(error)")
                     }
@@ -284,143 +302,64 @@ final class ConversationDetailViewModel: ObservableObject {
                 }
             }
 
-            // Stream ended — only clean up if we're still the active generation
-            // and not in a blocking state (approval/auth persist until resolved)
-            if streamGeneration == currentGeneration {
-                switch streamingPhase {
-                case .approvalRequired, .personalAuthRequired, .fileAuthRequired:
-                    break
-                case .idle, .thinking, .generating:
-                    streamingPhase = .idle
-                    streamingMessageId = nil
-                }
+            // Stream ended — only clean up if we're still the active generation and not
+            // blocked (approval/auth keep their turn alive until the user resolves them).
+            guard let self else { return }
+            if streamGeneration == currentGeneration, blockedState == nil {
+                turn = nil
+                streamingMessageId = nil
             }
         }
     }
 
-    // swiftlint:disable:next cyclomatic_complexity
-    private func handleMessageEvent(_ event: StreamingEventData, messageId: String) async {
+    /// Blocking events seed `blockedState`; everything else drives the reducer.
+    private func reduce(_ event: StreamingEventData, messageId: String) {
         switch event {
-        case let .generationTokens(tokens):
-            handleGenerationTokens(tokens, messageId: messageId)
-
-        case let .toolParams(params):
-            flushThinkingBuffer()
-            // Clear the live chainOfThought on the message since it was flushed to a step.
-            updateAgentMessage(id: messageId) { msg in
-                msg.chainOfThought = nil
-            }
-            let action = ActiveAction(
-                id: params.action.id,
-                label: params.action.displayLabels?.running ?? params.action.toolName ?? "Working…",
-                serverName: params.action.internalMCPServerName
-            )
-            if !activeActions.contains(where: { $0.id == action.id }) {
-                activeActions.append(action)
-            }
-
-        case let .agentActionSuccess(event):
-            let doneLabel = event.action.displayLabels?.done ?? event.action.toolName ?? "Tool"
-            stepCounter += 1
-            completedSteps.append(.action(
-                id: "action-\(stepCounter)",
-                label: doneLabel,
-                serverName: event.action.internalMCPServerName
+        case let .toolApproveExecution(event):
+            blockedState = .approval(ToolApprovalInfo(
+                from: event,
+                fallbackMessageId: messageId,
+                fallbackConversationId: conversation.sId
             ))
-            activeActions.removeAll { $0.id == event.action.id }
-            if activeActions.isEmpty, streamingPhase != .generating, streamingPhase != .thinking {
-                streamingPhase = .thinking
-            }
-
-        case let .agentMessageSuccess(success):
-            finalizeMessage(messageId: messageId, status: .succeeded, from: success.message)
-
-        case let .agentMessageGracefullyStopped(event):
-            finalizeMessage(messageId: messageId, status: .gracefullyStopped, from: event.message)
-
-        case let .agentError(event):
-            lastError = ErrorInfo(from: event.error, messageId: messageId)
-            finalizeMessage(messageId: messageId, status: .failed)
-
-        case let .toolError(event):
-            lastError = ErrorInfo(from: event.error, messageId: messageId)
-            finalizeMessage(messageId: messageId, status: .failed)
-
-        case let .agentGenerationCancelled(event):
-            finalizeMessage(messageId: messageId, status: event.status == "interrupted" ? .interrupted : .cancelled)
 
         case let .toolPersonalAuthRequired(event):
-            streamingPhase = .personalAuthRequired(
+            blockedState = .personalAuth(
                 provider: event.authError.provider,
                 toolName: event.authError.toolName
             )
 
         case let .toolFileAuthRequired(event):
-            streamingPhase = .fileAuthRequired(
+            blockedState = .fileAuth(
                 fileName: event.fileAuthError.fileName,
                 toolName: event.fileAuthError.toolName
             )
 
-        case let .toolApproveExecution(event):
-            let approval = ToolApprovalInfo(
+        case let .toolAskUserQuestion(event):
+            blockedState = .userQuestion(UserQuestionInfo(
                 from: event,
                 fallbackMessageId: messageId,
                 fallbackConversationId: conversation.sId
-            )
-            streamingPhase = .approvalRequired(approval: approval)
+            ))
 
-        case .toolNotification, .agentContextPruned, .endOfStream, .unknown:
-            break
+        default:
+            turn?.apply(event)
+            if let snapshot = turn?.snapshot, snapshot.isFinished {
+                commitFinishedTurn(snapshot)
+            }
         }
     }
 
-    private func handleGenerationTokens(_ tokens: GenerationTokensEvent, messageId: String) {
-        updateAgentMessage(id: messageId) { msg in
-            switch tokens.classification {
-            case .tokens:
-                msg.content = (msg.content ?? "") + tokens.text
-            case .chainOfThought:
-                msg.chainOfThought = (msg.chainOfThought ?? "") + tokens.text
-            case .openingDelimiter, .closingDelimiter:
-                break
-            }
+    private func commitFinishedTurn(_ snapshot: AgentMessageStream.Snapshot) {
+        updateAgentMessage(id: snapshot.messageId) { msg in
+            msg.content = snapshot.content.isEmpty ? msg.content : snapshot.content
+            msg.chainOfThought = snapshot.chainOfThought
+            if let files = snapshot.generatedFiles { msg.generatedFiles = files }
+            if let citations = snapshot.citations { msg.citations = citations }
+            if let status = snapshot.status { msg.status = status }
         }
-        if tokens.classification == .chainOfThought {
-            currentThinkingBuffer += tokens.text
-        }
-        let newPhase: AgentStreamingPhase? = switch tokens.classification {
-        case .chainOfThought: .thinking
-        case .tokens: .generating
-        case .openingDelimiter, .closingDelimiter: nil
-        }
-        if let newPhase, streamingPhase != newPhase {
-            streamingPhase = newPhase
-        }
-    }
-
-    private func finalizeMessage(messageId: String, status: AgentMessageStatus, from final: AgentMessage? = nil) {
-        flushThinkingBuffer()
-        updateAgentMessage(id: messageId) { msg in
-            if let final {
-                msg.content = final.content
-                msg.chainOfThought = final.chainOfThought
-                msg.generatedFiles = final.generatedFiles
-                msg.citations = final.citations
-            }
-            msg.status = status
-        }
-        streamingPhase = .idle
-        activeActions = []
+        lastError = snapshot.error
+        turn = nil
         streamingMessageId = nil
-    }
-
-    /// Flush the current thinking buffer as a completed thinking step if non-empty.
-    private func flushThinkingBuffer() {
-        let text = currentThinkingBuffer.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty else { return }
-        stepCounter += 1
-        completedSteps.append(.thinking(id: "thinking-\(stepCounter)", content: text))
-        currentThinkingBuffer = ""
     }
 
     private func updateUserMessage(id: String, mutate: (inout UserMessage) -> Void) {
@@ -444,7 +383,7 @@ final class ConversationDetailViewModel: ObservableObject {
     // MARK: - Tool Approval
 
     func validateAction(approved: ActionApproval) async {
-        guard case let .approvalRequired(info) = streamingPhase else { return }
+        guard case let .approval(info) = blockedState else { return }
         isValidatingAction = true
         defer { isValidatingAction = false }
 
@@ -457,16 +396,36 @@ final class ConversationDetailViewModel: ObservableObject {
                 approved: approved,
                 tokenProvider: tokenProvider
             )
-            streamingPhase = .thinking
+            blockedState = nil
         } catch {
             logger.error("Failed to validate action: \(error)")
         }
     }
 
+    func answerQuestion(_ answer: UserQuestionAnswer) async {
+        guard case let .userQuestion(info) = blockedState else { return }
+        isValidatingAction = true
+        defer { isValidatingAction = false }
+
+        do {
+            try await ConversationService.answerQuestion(
+                workspaceId: workspaceId,
+                conversationId: info.conversationId,
+                messageId: info.messageId,
+                actionId: info.actionId,
+                answer: answer,
+                tokenProvider: tokenProvider
+            )
+            blockedState = nil
+        } catch {
+            logger.error("Failed to answer question: \(error)")
+        }
+    }
+
     // MARK: - Blocked Actions Reconciliation
 
-    /// Fetches any blocked actions from the server and sets the streaming phase accordingly.
-    /// This handles the case where we attach to a conversation that's already blocked.
+    /// Authoritative both ways: sets the block when the server reports one, clears it when not —
+    /// the latter unsticks a block resolved out-of-app (web auth), since the stream is then dead.
     private func reconcileBlockedActions() async {
         do {
             let blocked = try await ConversationService.fetchBlockedActions(
@@ -474,35 +433,65 @@ final class ConversationDetailViewModel: ObservableObject {
                 conversationId: conversation.sId,
                 tokenProvider: tokenProvider
             )
-            guard let action = blocked.first else { return }
-
-            // Find the message this action belongs to and ensure we're tracking it
-            if let messageId = action.messageId {
-                if streamingMessageId == nil {
-                    streamingMessageId = messageId
+            guard let action = blocked.first else {
+                // Resolved elsewhere — release the stream id so the stream can re-attach.
+                if blockedState != nil {
+                    blockedState = nil
+                    streamingMessageId = nil
+                    turn = nil
                 }
+                return
             }
 
-            switch action.status {
-            case .blockedValidationRequired:
-                let approval = ToolApprovalInfo(from: action, fallbackConversationId: conversation.sId)
-                streamingPhase = .approvalRequired(approval: approval)
+            // Find the message this action belongs to and ensure we're tracking it
+            if let messageId = action.messageId, streamingMessageId == nil {
+                streamingMessageId = messageId
+            }
 
-            case .blockedAuthenticationRequired:
-                let provider = action.metadata?.mcpServerName ?? "Unknown"
-                let toolName = action.metadata?.toolName ?? ""
-                streamingPhase = .personalAuthRequired(provider: provider, toolName: toolName)
-
-            case .blockedFileAuthorizationRequired:
-                let fileName = action.fileAuthorizationInfo?.fileName ?? "Unknown"
-                let toolName = action.fileAuthorizationInfo?.toolName ?? action.metadata?.toolName ?? ""
-                streamingPhase = .fileAuthRequired(fileName: fileName, toolName: toolName)
-
-            case .blockedChildActionInputRequired, .blockedUserAnswerRequired:
-                break
+            if let mapped = mapBlockedState(from: action) {
+                blockedState = mapped
             }
         } catch {
             logger.error("Failed to fetch blocked actions: \(error)")
+        }
+    }
+
+    private func mapBlockedState(from action: BlockedAction) -> BlockedState? {
+        switch action.status {
+        case .blockedValidationRequired:
+            return .approval(ToolApprovalInfo(from: action, fallbackConversationId: conversation.sId))
+
+        case .blockedAuthenticationRequired:
+            return .personalAuth(
+                provider: action.metadata?.mcpServerName ?? "Unknown",
+                toolName: action.metadata?.toolName ?? ""
+            )
+
+        case .blockedFileAuthorizationRequired:
+            return .fileAuth(
+                fileName: action.fileAuthorizationInfo?.fileName ?? "Unknown",
+                toolName: action.fileAuthorizationInfo?.toolName ?? action.metadata?.toolName ?? ""
+            )
+
+        case .blockedUserAnswerRequired:
+            guard let question = action.question else { return nil }
+            return .userQuestion(UserQuestionInfo(
+                from: action,
+                question: question,
+                fallbackConversationId: conversation.sId
+            ))
+
+        case .blockedChildActionInputRequired:
+            return nil
+        }
+    }
+
+    /// Foreground is the only signal that a block was resolved out-of-app; reload if it cleared.
+    func resyncOnForeground() async {
+        guard blockedState != nil else { return }
+        await reconcileBlockedActions()
+        if blockedState == nil {
+            await loadMessages()
         }
     }
 

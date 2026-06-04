@@ -9,6 +9,7 @@ import {
   filterSkillDefinitions,
   type GlobalSkillDefinition,
 } from "@app/lib/resources/skill/code_defined/shared";
+import { skillAuthoringSkill } from "@app/lib/resources/skill/code_defined/skill_authoring";
 import { xlsxSkill } from "@app/lib/resources/skill/code_defined/xlsx";
 import type { AllSkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 import { serializeSkillTag } from "@app/lib/skills/format";
@@ -20,6 +21,7 @@ const GLOBAL_SKILLS_ARRAY = ensureUniqueSIds([
   mentionUsersSkill,
   pptxSkill,
   projectsSkill,
+  skillAuthoringSkill,
   xlsxSkill,
 ] as const);
 

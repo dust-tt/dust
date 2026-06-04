@@ -6,20 +6,6 @@ import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@app/lib/api/config", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@app/lib/api/config")>();
-  return {
-    ...actual,
-    default: {
-      ...actual.default,
-      getOAuthAPIConfig: vi.fn(() => ({
-        url: "https://oauth-api.example.com",
-        apiKey: "test-api-key",
-      })),
-    },
-  };
-});
-
 vi.mock("@app/lib/api/triggers/built-in-webhooks/github/repos", () => ({
   getGithubRepositories: vi.fn(),
 }));

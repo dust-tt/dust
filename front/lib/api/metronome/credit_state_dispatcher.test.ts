@@ -24,7 +24,7 @@ const TEST_METRONOME_CUSTOMER_ID = "cust_test_xxx";
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(transitionUserCreditState).mockResolvedValue(new Ok("normal"));
+  vi.mocked(transitionUserCreditState).mockResolvedValue(new Ok("on_pool"));
 });
 
 describe("credit_state_dispatcher per-user caps", () => {
@@ -49,7 +49,7 @@ describe("credit_state_dispatcher per-user caps", () => {
     });
 
     expect(transitionUserCreditState).toHaveBeenCalledWith(
-      expect.objectContaining({ seatType: "pro", creditState: "normal" }),
+      expect.objectContaining({ seatType: "pro", creditState: "on_pool" }),
       { type: "per_user_cap_reached" },
       { workspaceId: workspaceType.sId, userId: user.sId }
     );
@@ -76,7 +76,7 @@ describe("credit_state_dispatcher per-user caps", () => {
     });
 
     expect(transitionUserCreditState).toHaveBeenCalledWith(
-      expect.objectContaining({ seatType: "max", creditState: "normal" }),
+      expect.objectContaining({ seatType: "max", creditState: "on_pool" }),
       { type: "per_user_cap_resolved" },
       { workspaceId: workspaceType.sId, userId: user.sId }
     );

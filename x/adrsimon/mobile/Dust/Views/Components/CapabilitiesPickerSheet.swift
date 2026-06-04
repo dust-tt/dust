@@ -76,7 +76,6 @@ struct CapabilitiesPickerSheet: View {
         }
     }
 
-    @ViewBuilder
     private func capabilityIcon(_ capability: Capability) -> some View {
         capability.icon.image
             .resizable()
