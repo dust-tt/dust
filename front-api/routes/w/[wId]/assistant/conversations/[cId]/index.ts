@@ -1,6 +1,5 @@
 import { deleteOrLeaveConversation } from "@app/lib/api/assistant/conversation";
 import { updateConversationTitle } from "@app/lib/api/assistant/conversation/title";
-import { computeConversationCreditCost } from "@app/lib/api/assistant/credit_cost";
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
@@ -36,6 +35,7 @@ import cancel from "./cancel";
 import compactions from "./compactions";
 import contentFragment from "./content_fragment";
 import contextUsage from "./context-usage";
+import creditCost from "./credit-cost";
 import events from "./events";
 import feedbacks from "./feedbacks";
 import files from "./files";
@@ -92,10 +92,6 @@ app.get(
     }
 
     const conversation = conversationRes.value;
-    conversation.totalCostCredits = await computeConversationCreditCost(
-      auth,
-      conversation
-    );
 
     void emitAuditLogEvent({
       auth,
@@ -290,6 +286,7 @@ app.route("/cancel", cancel);
 app.route("/compactions", compactions);
 app.route("/content_fragment", contentFragment);
 app.route("/context-usage", contextUsage);
+app.route("/credit-cost", creditCost);
 app.route("/events", events);
 app.route("/feedbacks", feedbacks);
 app.route("/files", files);

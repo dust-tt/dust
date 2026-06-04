@@ -11,7 +11,6 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import logger from "@app/logger/logger";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
 
 interface CreditActionMinimalInput {
@@ -116,26 +115,4 @@ async function fetchRunUsagesForAgentMessage(
   // produce belongs to this message.
   const runs = await RunResource.listByDustRunIds(auth, { dustRunIds });
   return RunResource.listRunUsagesForRuns(auth, { runs });
-}
-
-export async function computeConversationCreditCost(
-  auth: Authenticator,
-  conversation: ConversationWithoutContentType
-): Promise<number | null> {
-  const agentMessages =
-    await ConversationResource.listAgentMessageStoredCredits(
-      auth,
-      conversation.id
-    );
-
-  let total = 0;
-  let hasBillableUsage = false;
-  for (const message of agentMessages) {
-    if (message.costCredits !== null) {
-      total += message.costCredits;
-      hasBillableUsage = true;
-    }
-  }
-
-  return hasBillableUsage ? total : null;
 }

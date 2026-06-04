@@ -545,7 +545,6 @@ export type ConversationWithoutContentType = ConversationListItemType & {
   depth: number;
   branchId: string | null;
   forkingData?: ConversationForkingDataType;
-  totalCostCredits?: number | null;
 };
 
 type ConversationDisplayTitleInput = Pick<

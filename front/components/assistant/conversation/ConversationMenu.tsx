@@ -7,6 +7,7 @@ import { ConfirmContext } from "@app/components/Confirm";
 import {
   useBranchConversation,
   useConversation,
+  useConversationCreditCost,
   useConversationParticipants,
   useConversationParticipationOptions,
   useConversationUrlAccessMode,
@@ -221,13 +222,16 @@ export function ConversationMenu({
 
   const shouldWaitBeforeFetching =
     activeConversationId === null || user?.sId === undefined || !isOpen;
-  const { conversation: detailedConversation, mutateConversation } =
-    useConversation({
-      conversationId: isConversationDisplayed ? activeConversationId : null,
-      workspaceId: owner.sId,
-      options: { disabled: !isConversationDisplayed },
-    });
-  const totalCostCredits = detailedConversation?.totalCostCredits ?? null;
+  const { mutateConversation } = useConversation({
+    conversationId: isConversationDisplayed ? activeConversationId : null,
+    workspaceId: owner.sId,
+    options: { disabled: !isConversationDisplayed },
+  });
+  const { totalCostCredits } = useConversationCreditCost({
+    conversationId: activeConversationId,
+    workspaceId: owner.sId,
+    options: { disabled: !isConversationDisplayed },
+  });
   const creditCostItem = useCreditCostMenuItem({
     credits: totalCostCredits,
     scope: "conversation",

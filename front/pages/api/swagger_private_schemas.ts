@@ -151,10 +151,6 @@
  *           type: array
  *           items:
  *             type: string
- *         totalCostCredits:
- *           type: integer
- *           nullable: true
- *           description: Aggregate cost of all agent messages in the conversation (including retries), in AWU credits. Only populated on the conversation detail view.
  *         forkingData:
  *           $ref: '#/components/schemas/PrivateConversationForkingData'
  *     PrivateConversationForkUser:

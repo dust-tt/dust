@@ -662,42 +662,52 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   }
 
   /**
-   * Returns the cost inputs (agent message model id + runIds) for every agent
-   * message in a conversation, across ALL ranks and versions (including
-   * retries / hidden versions). Used to aggregate the conversation's credit
-   * cost.
+   * Aggregates the stored credit cost across every agent message in this
+   * conversation (all ranks and versions, including retries / hidden versions).
+   * The per-message cost is precomputed once at the end of the agentic loop and
+   * persisted on `agent_message.costCredits`, so this is a single SQL SUM rather
+   * than a recomputation.
+   *
+   * Returns `null` when no agent message has a billable cost yet (distinct from
+   * `0`, which means the conversation only had free-origin usage). `SUM` ignores
+   * NULLs, so we use `COUNT` over the same column to tell the two cases apart.
    */
-  static async listAgentMessageStoredCredits(
-    auth: Authenticator,
-    conversationId: ModelId
-  ): Promise<{ id: ModelId; costCredits: number | null }[]> {
-    const rows = await MessageModel.findAll({
-      attributes: [],
+  async getStoredCreditCost(auth: Authenticator): Promise<number | null> {
+    const row = await MessageModel.findOne({
+      attributes: [
+        [
+          fn("COALESCE", fn("SUM", col("agentMessage.costCredits")), 0),
+          "total",
+        ],
+        [fn("COUNT", col("agentMessage.costCredits")), "billableCount"],
+      ],
       include: [
         {
           model: AgentMessageModel,
           as: "agentMessage",
           required: true,
-          attributes: ["id", "costCredits"],
+          attributes: [],
         },
       ],
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
-        conversationId,
+        conversationId: this.id,
         agentMessageId: { [Op.ne]: null },
       },
+      raw: true,
     });
 
-    return removeNulls(
-      rows.map((row) =>
-        row.agentMessage
-          ? {
-              id: row.agentMessage.id,
-              costCredits: row.agentMessage.costCredits,
-            }
-          : null
-      )
-    );
+    // Aggregate results come back as strings from Postgres; parse defensively.
+    const aggregate = row as unknown as {
+      total: string | number | null;
+      billableCount: string | number | null;
+    } | null;
+
+    if (!aggregate || Number(aggregate.billableCount ?? 0) === 0) {
+      return null;
+    }
+
+    return Number(aggregate.total ?? 0);
   }
 
   /**
