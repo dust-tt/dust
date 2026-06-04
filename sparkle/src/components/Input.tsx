@@ -9,8 +9,14 @@ const MESSAGE_STATUS = ["info", "default", "error"] as const;
 
 type MessageStatus = (typeof MESSAGE_STATUS)[number];
 
+// Mirrors the Button size scale so inputs can sit next to buttons of the same
+// size. `sm` is the default and matches the historical input dimensions.
+export const INPUT_SIZES = ["xs", "sm", "md"] as const;
+
+type InputSizeType = (typeof INPUT_SIZES)[number];
+
 export interface InputProps
-  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "value"> {
+  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "value" | "size"> {
   message?: string | null;
   messageStatus?: MessageStatus;
   value?: string | null;
@@ -18,6 +24,7 @@ export interface InputProps
   className?: string;
   containerClassName?: string;
   label?: string;
+  size?: InputSizeType;
 }
 
 const INPUT_STATES = ["error", "disabled", "default"];
@@ -61,11 +68,17 @@ const messageVariant = cva("", {
   },
 });
 
+const sizeVariantStyles: Record<InputSizeType, string> = {
+  xs: "s-h-7 s-rounded-lg s-px-2.5 s-py-1 s-text-xs",
+  sm: "s-h-9 s-rounded-xl s-px-3 s-py-1.5 s-text-sm",
+  md: "s-h-12 s-rounded-2xl s-px-4 s-py-2 s-text-base",
+};
+
 const inputStyleClasses = cva(
   cn(
     "dark:s-text-primary-50",
-    "s-text-sm s-rounded-xl s-flex s-h-9 s-w-full s-px-3 s-py-1.5 ",
-    "s-bg-background dark:s-bg-background-night",
+    "s-flex s-w-full",
+    "s-bg-muted-background dark:s-bg-muted-background-night",
     "s-border focus-visible:s-ring",
     "file:s-border-0 file:s-bg-transparent file:s-text-sm file:s-font-medium file:s-text-foreground",
     "placeholder:s-text-muted-foreground dark:placeholder:s-text-muted-foreground-night"
@@ -73,9 +86,11 @@ const inputStyleClasses = cva(
   {
     variants: {
       state: stateVariantStyles,
+      size: sizeVariantStyles,
     },
     defaultVariants: {
       state: "default",
+      size: "sm",
     },
   }
 );
@@ -91,6 +106,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       label,
       isError,
       disabled,
+      size = "sm",
       ...props
     },
     ref
@@ -112,7 +128,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           ref={ref}
           className={cn(
             "s-ring-inset",
-            inputStyleClasses({ state }),
+            inputStyleClasses({ state, size }),
             className
           )}
           data-1p-ignore={props.type !== "password"}

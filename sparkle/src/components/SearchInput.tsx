@@ -31,6 +31,7 @@ export interface SearchInputProps {
   disabled?: boolean;
   isLoading?: boolean;
   className?: string;
+  size?: "xs" | "sm" | "md";
 }
 
 export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
@@ -46,12 +47,16 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
       disabled = false,
       isLoading = false,
       className,
+      size = "sm",
     },
     ref
   ) => {
     const clearInputField = () => {
       onChange("");
     };
+
+    // Mirror the Button size -> icon size scale (see ICON_SIZE_MAP in Button).
+    const iconSize = size === "md" ? "md" : size === "sm" ? "sm" : "xs";
 
     return (
       <div className={cn("s-relative", className)}>
@@ -68,18 +73,19 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
           onBlur={onBlur}
           onKeyDown={onKeyDown}
           disabled={disabled}
+          size={size}
           ref={ref}
         />
         <div className="s-absolute s-inset-y-0 s-right-0 s-flex s-items-center s-pr-1">
           {isLoading ? (
             <div className="s-px-1">
-              <Spinner size="xs" />
+              <Spinner size={iconSize} />
             </div>
           ) : value ? (
             <Button
               icon={XClose}
               variant="ghost"
-              size="xs"
+              size={size === "md" ? "sm" : "xs"}
               onClick={clearInputField}
             />
           ) : (

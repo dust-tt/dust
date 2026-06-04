@@ -6,7 +6,12 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuPortal,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
   Separator,
   XClose,
   type ButtonProps,
@@ -39,6 +44,24 @@ export interface FreeButtonSwitchContextMenuItem {
   variant?: "default" | "warning";
 }
 
+export interface FreeButtonSwitchDropdownSectionItem {
+  value: string;
+  label: string;
+  icon?: ComponentType;
+}
+
+// A section inside a dropdown option's menu.
+// - "tab": selecting an item sets the switch value (opens a tab).
+// - "radio": items drive a separate value via `onValueChange`, independent of
+//   the switch's active value.
+export interface FreeButtonSwitchDropdownSection {
+  label?: string;
+  kind: "tab" | "radio";
+  items: FreeButtonSwitchDropdownSectionItem[];
+  value?: string;
+  onValueChange?: (value: string) => void;
+}
+
 export interface FreeButtonSwitchOption<TValue extends string> {
   id?: Key;
   value: TValue;
@@ -50,6 +73,11 @@ export interface FreeButtonSwitchOption<TValue extends string> {
   draggable?: boolean;
   removable?: boolean;
   contextMenuItems?: FreeButtonSwitchContextMenuItem[];
+  // When set, the option renders as a dropdown button. Items in "tab" sections
+  // select the switch value; "radio" sections drive their own value.
+  dropdownSections?: FreeButtonSwitchDropdownSection[];
+  // Label shown on the dropdown button when no "tab" item is currently active.
+  defaultLabel?: string;
 }
 
 type FreeButtonSwitchSize = "xmini" | "mini" | "xs" | "sm" | "md";
@@ -367,6 +395,77 @@ export function FreeButtonSwitch<TValue extends string>({
       canReorder &&
       option.pinned !== "end" &&
       option.draggable !== false;
+
+    // Dropdown option: a button (with chevron) that opens a grouped menu.
+    if (option.dropdownSections) {
+      const tabItems = option.dropdownSections
+        .filter((section) => section.kind === "tab")
+        .flatMap((section) => section.items);
+      const activeTabItem = tabItems.find((item) => item.value === value);
+      const isActive = Boolean(activeTabItem);
+      const dropdownLabel = activeTabItem?.label ?? option.defaultLabel;
+
+      const dropdownButton = (
+        <Button
+          variant={isActive ? activeVariant : inactiveVariant}
+          size={size}
+          isSelect
+          label={hideLabels ? undefined : dropdownLabel}
+          icon={option.icon}
+          tooltip={hideLabels ? fallbackLabel : option.tooltip}
+          aria-label={option.ariaLabel ?? fallbackLabel}
+        />
+      );
+
+      // Measurement pass renders just the button (no menu) to avoid mounting
+      // duplicate portaled menus.
+      if (!interactive) {
+        return (
+          <div key={option.id ?? option.value} className="s-shrink-0">
+            {dropdownButton}
+          </div>
+        );
+      }
+
+      return (
+        <div key={option.id ?? option.value} className="s-shrink-0">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>{dropdownButton}</DropdownMenuTrigger>
+            <DropdownMenuContent>
+              {option.dropdownSections.map((section, sectionIndex) => (
+                <div key={section.label ?? sectionIndex}>
+                  {sectionIndex > 0 && <DropdownMenuSeparator />}
+                  {section.label && <DropdownMenuLabel label={section.label} />}
+                  <DropdownMenuRadioGroup
+                    value={
+                      section.kind === "tab"
+                        ? (value as string)
+                        : (section.value ?? "")
+                    }
+                    onValueChange={(next) => {
+                      if (section.kind === "tab") {
+                        onValueChange(next as TValue);
+                      } else {
+                        section.onValueChange?.(next);
+                      }
+                    }}
+                  >
+                    {section.items.map((item) => (
+                      <DropdownMenuRadioItem
+                        key={item.value}
+                        value={item.value}
+                        label={item.label}
+                        icon={item.icon}
+                      />
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </div>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      );
+    }
 
     const button = (
       <Button

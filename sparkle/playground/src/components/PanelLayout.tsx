@@ -1,17 +1,20 @@
 import {
   ArrowLeft,
   Button,
-  Menu01,
   LayoutLeft,
   LayoutRight,
+  Menu01,
   XClose,
 } from "@dust-tt/sparkle";
 import { customColors } from "@dust-tt/sparkle/lib/colors";
 import {
+  cloneElement,
   useCallback,
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
+  type ReactElement,
   type ReactNode,
 } from "react";
 
@@ -70,11 +73,24 @@ function makeDragResize({
 interface PanelTopBarProps {
   left?: ReactNode;
   right?: ReactNode;
+  /** When false, the bottom border fades out (used until content scrolls). */
+  hasBorder?: boolean;
 }
 
-export function PanelTopBar({ left, right }: PanelTopBarProps) {
+export function PanelTopBar({
+  left,
+  right,
+  hasBorder = true,
+}: PanelTopBarProps) {
   return (
-    <header className="s-flex s-h-[52px] s-flex-none s-items-center s-justify-between s-gap-2 s-overflow-hidden s-whitespace-nowrap s-border-b s-border-separator s-px-3 dark:s-border-separator-night">
+    <header
+      className={[
+        "s-flex s-h-[52px] s-flex-none s-items-center s-justify-between s-gap-2 s-overflow-hidden s-whitespace-nowrap s-border-b s-px-2 s-transition-colors s-duration-200",
+        hasBorder
+          ? "s-border-separator dark:s-border-separator-night"
+          : "s-border-transparent",
+      ].join(" ")}
+    >
       <div className="s-flex s-min-w-0 s-flex-1 s-items-center s-gap-1 s-overflow-hidden">
         {left}
       </div>
@@ -82,6 +98,89 @@ export function PanelTopBar({ left, right }: PanelTopBarProps) {
         <div className="s-flex s-flex-none s-items-center s-gap-1">{right}</div>
       )}
     </header>
+  );
+}
+
+// ── PanelSection ──────────────────────────────────────────────────────────────
+// A panel = its top bar + a scrollable content area. Tracks whether the inner
+// content has scrolled away from the top (via a capture-phase scroll listener,
+// since scroll events from descendants do not bubble) and toggles the top bar's
+// bottom border accordingly.
+
+interface PanelSectionProps {
+  width: number;
+  isNav: boolean;
+  topBar: ReactElement<PanelTopBarProps>;
+  content: ReactNode;
+  /** Changing this resets the scrolled state (e.g. when the view swaps). */
+  resetKey: string;
+  dragging: boolean;
+}
+
+function PanelSection({
+  width,
+  isNav,
+  topBar,
+  content,
+  resetKey,
+  dragging,
+}: PanelSectionProps) {
+  const hidden = width === 0;
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const el = contentRef.current;
+    if (!el) {
+      return;
+    }
+    const onScroll = (e: Event) => {
+      const target = e.target as HTMLElement | null;
+      setIsScrolled(!!target && target.scrollTop > 0);
+    };
+    // Capture phase so we catch scroll from the nested scroller(s) inside.
+    el.addEventListener("scroll", onScroll, true);
+    return () => el.removeEventListener("scroll", onScroll, true);
+  }, []);
+
+  // Reset when the view changes or the panel gets hidden: no scroll event fires
+  // when fresh, unscrolled content swaps in.
+  useEffect(() => {
+    setIsScrolled(false);
+  }, [resetKey, hidden]);
+
+  return (
+    <section
+      className={[
+        "s-relative s-flex s-h-full s-min-w-0 s-flex-none s-flex-col s-overflow-hidden",
+        isNav
+          ? "s-bg-muted-background dark:s-bg-muted-background-night"
+          : "s-bg-white dark:s-bg-structure-0-night",
+        hidden
+          ? ""
+          : "s-border-r s-border-separator dark:s-border-separator-night",
+        dragging
+          ? ""
+          : "s-transition-[width] s-duration-[260ms] s-ease-[cubic-bezier(.4,0,.2,1)]",
+      ].join(" ")}
+      style={{ width }}
+      {...(hidden ? { inert: "" } : {})} // inert not in React's HTMLAttributes yet
+    >
+      {cloneElement(topBar, { hasBorder: isScrolled })}
+      <div
+        ref={contentRef}
+        className={[
+          "s-relative s-flex s-min-h-0 s-flex-1 s-flex-col s-overflow-hidden",
+          !content
+            ? isNav
+              ? "s-bg-[repeating-linear-gradient(45deg,transparent_0,transparent_11px,rgba(0,0,0,0.06)_11px,rgba(0,0,0,0.06)_12px)]"
+              : "s-bg-[repeating-linear-gradient(45deg,transparent_0,transparent_11px,rgba(0,0,0,0.04)_11px,rgba(0,0,0,0.04)_12px)]"
+            : "",
+        ].join(" ")}
+      >
+        {content}
+      </div>
+    </section>
   );
 }
 
@@ -305,48 +404,6 @@ export function PanelLayout({ children }: PanelLayoutProps) {
     setNavOverlay((v) => !v);
   };
 
-  // ── Shared panel shell ──────────────────────────────────────────────────
-  const panelShell = (
-    width: number,
-    isNav: boolean,
-    topBar: ReactNode,
-    content: ReactNode
-  ) => {
-    const hidden = width === 0;
-    return (
-      <section
-        className={[
-          "s-relative s-flex s-h-full s-min-w-0 s-flex-none s-flex-col s-overflow-hidden",
-          isNav
-            ? "s-bg-muted-background dark:s-bg-muted-background-night"
-            : "s-bg-white dark:s-bg-structure-0-night",
-          hidden
-            ? ""
-            : "s-border-r s-border-separator dark:s-border-separator-night",
-          dragging
-            ? ""
-            : "s-transition-[width] s-duration-[260ms] s-ease-[cubic-bezier(.4,0,.2,1)]",
-        ].join(" ")}
-        style={{ width }}
-        {...(hidden ? { inert: "" } : {})} // inert not in React's HTMLAttributes yet
-      >
-        {topBar}
-        <div
-          className={[
-            "s-relative s-flex s-min-h-0 s-flex-1 s-flex-col s-overflow-hidden",
-            !content
-              ? isNav
-                ? "s-bg-[repeating-linear-gradient(45deg,transparent_0,transparent_11px,rgba(0,0,0,0.06)_11px,rgba(0,0,0,0.06)_12px)]"
-                : "s-bg-[repeating-linear-gradient(45deg,transparent_0,transparent_11px,rgba(0,0,0,0.04)_11px,rgba(0,0,0,0.04)_12px)]"
-              : "",
-          ].join(" ")}
-        >
-          {content}
-        </div>
-      </section>
-    );
-  };
-
   // ── Nav show/hide button ────────────────────────────────────────────────
   const navToggleButton = (
     <Button
@@ -382,29 +439,38 @@ export function PanelLayout({ children }: PanelLayoutProps) {
       `}</style>
       <div className="s-relative s-flex s-h-full s-min-w-0 s-flex-1 s-overflow-hidden">
         {/* ── Nav panel (P1) ── */}
-        {navChild &&
-          panelShell(
-            layout.nav,
-            true,
-            <PanelTopBar
-              left={navChild.props.topBarLeft}
-              right={
-                <>
-                  {navChild.props.topBarRight}
-                  {!isMobile && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      icon={LayoutLeft}
-                      onClick={() => setNavIntent(false)}
-                      tooltip="Hide navigation"
-                    />
-                  )}
-                </>
-              }
-            />,
-            resolvedNavChildren
-          )}
+        {navChild && (
+          <PanelSection
+            width={layout.nav}
+            isNav
+            resetKey="nav"
+            dragging={dragging}
+            topBar={
+              <PanelTopBar
+                left={navChild.props.topBarLeft}
+                right={
+                  <>
+                    {navChild.props.topBarRight}
+                    {!isMobile && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        icon={LayoutLeft}
+                        onClick={() => setNavIntent(false)}
+                        tooltip="Hide navigation"
+                      />
+                    )}
+                  </>
+                }
+              />
+            }
+            // Only mount the nav content when the inline nav is actually
+            // visible. The overlay below renders its own copy when shown;
+            // mounting both at once would duplicate portaled content such as
+            // open dropdown menus.
+            content={layout.nav > 0 ? resolvedNavChildren : null}
+          />
+        )}
 
         <ResizeHandle
           visible={layout.nav > 0 && layout.p2 > 0}
@@ -417,21 +483,26 @@ export function PanelLayout({ children }: PanelLayoutProps) {
         />
 
         {/* ── P2 ── */}
-        {p2 &&
-          panelShell(
-            layout.p2,
-            false,
-            <PanelTopBar
-              left={
-                <>
-                  {navHidden && navToggleButton}
-                  {p2.props.topBarLeft}
-                </>
-              }
-              right={p2.props.topBarRight}
-            />,
-            p2.props.children
-          )}
+        {p2 && (
+          <PanelSection
+            width={layout.p2}
+            isNav={false}
+            resetKey={p2.props.label}
+            dragging={dragging}
+            topBar={
+              <PanelTopBar
+                left={
+                  <>
+                    {navHidden && navToggleButton}
+                    {p2.props.topBarLeft}
+                  </>
+                }
+                right={p2.props.topBarRight}
+              />
+            }
+            content={p2.props.children}
+          />
+        )}
 
         <ResizeHandle
           visible={layout.p2 > 0 && layout.p3 > 0}
@@ -444,44 +515,49 @@ export function PanelLayout({ children }: PanelLayoutProps) {
         />
 
         {/* ── P3 ── */}
-        {p3 &&
-          panelShell(
-            layout.p3,
-            false,
-            <PanelTopBar
-              left={
-                isMobile ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    icon={ArrowLeft}
-                    onClick={p3.props.onClose}
-                    tooltip="Back"
-                  />
-                ) : (
-                  <>
-                    {p4Open && navHidden && navToggleButton}
-                    {p3.props.topBarLeft}
-                  </>
-                )
-              }
-              right={
-                <>
-                  {!isMobile && p3.props.topBarRight}
-                  {!isMobile && (
+        {p3 && (
+          <PanelSection
+            width={layout.p3}
+            isNav={false}
+            resetKey={p3.props.label}
+            dragging={dragging}
+            topBar={
+              <PanelTopBar
+                left={
+                  isMobile ? (
                     <Button
                       variant="ghost"
                       size="sm"
-                      icon={XClose}
+                      icon={ArrowLeft}
                       onClick={p3.props.onClose}
-                      tooltip="Close"
+                      tooltip="Back"
                     />
-                  )}
-                </>
-              }
-            />,
-            p3.props.children
-          )}
+                  ) : (
+                    <>
+                      {p4Open && navHidden && navToggleButton}
+                      {p3.props.topBarLeft}
+                    </>
+                  )
+                }
+                right={
+                  <>
+                    {!isMobile && p3.props.topBarRight}
+                    {!isMobile && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        icon={XClose}
+                        onClick={p3.props.onClose}
+                        tooltip="Close"
+                      />
+                    )}
+                  </>
+                }
+              />
+            }
+            content={p3.props.children}
+          />
+        )}
 
         <ResizeHandle
           visible={layout.p3 > 0 && layout.p4 > 0}
@@ -494,41 +570,46 @@ export function PanelLayout({ children }: PanelLayoutProps) {
         />
 
         {/* ── P4 ── */}
-        {p4 &&
-          panelShell(
-            layout.p4,
-            false,
-            <PanelTopBar
-              left={
-                isMobile ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    icon={ArrowLeft}
-                    onClick={p4.props.onClose}
-                    tooltip="Back"
-                  />
-                ) : (
-                  p4.props.topBarLeft
-                )
-              }
-              right={
-                <>
-                  {!isMobile && p4.props.topBarRight}
-                  {!isMobile && (
+        {p4 && (
+          <PanelSection
+            width={layout.p4}
+            isNav={false}
+            resetKey={p4.props.label}
+            dragging={dragging}
+            topBar={
+              <PanelTopBar
+                left={
+                  isMobile ? (
                     <Button
                       variant="ghost"
                       size="sm"
-                      icon={XClose}
+                      icon={ArrowLeft}
                       onClick={p4.props.onClose}
-                      tooltip="Close"
+                      tooltip="Back"
                     />
-                  )}
-                </>
-              }
-            />,
-            p4.props.children
-          )}
+                  ) : (
+                    p4.props.topBarLeft
+                  )
+                }
+                right={
+                  <>
+                    {!isMobile && p4.props.topBarRight}
+                    {!isMobile && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        icon={XClose}
+                        onClick={p4.props.onClose}
+                        tooltip="Close"
+                      />
+                    )}
+                  </>
+                }
+              />
+            }
+            content={p4.props.children}
+          />
+        )}
 
         {/* ── Scrim ── */}
         <div
@@ -582,7 +663,7 @@ export function PanelLayout({ children }: PanelLayoutProps) {
               }
             />
             <div className="s-flex-1 s-bg-[repeating-linear-gradient(45deg,transparent_0,transparent_11px,rgba(0,0,0,0.06)_11px,rgba(0,0,0,0.06)_12px)]">
-              {resolvedNavChildren}
+              {showNavOverlay ? resolvedNavChildren : null}
             </div>
           </div>
         )}

@@ -45,11 +45,11 @@ import {
   LayoutLeft,
   LayoutRight,
   SlackLogo,
-  SpaceClosed,
-  SpaceOpen,
+  Cube01,
+  CubeOutline,
   Star01,
   Trash01,
-  User01,
+  User03,
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 
@@ -657,7 +657,7 @@ function DustMain() {
           <DropdownMenuContent>
             <DropdownMenuItem
               label="Profile"
-              icon={User01}
+              icon={User03}
               onClick={(e: MouseEvent) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -970,7 +970,7 @@ function DustMain() {
                   <NavigationListItem
                     key={space.id}
                     label={space.name}
-                    icon={isRestricted ? SpaceOpen : SpaceClosed}
+                    icon={isRestricted ? Cube01 : CubeOutline}
                     selected={space.id === selectedSpaceId}
                     count={count}
                     moreMenu={
@@ -1241,7 +1241,7 @@ function DustMain() {
                           <DropdownMenuContent>
                             <DropdownMenuItem
                               label="View profile"
-                              icon={User01}
+                              icon={User03}
                               onClick={(e: MouseEvent) => {
                                 e.preventDefault();
                                 e.stopPropagation();

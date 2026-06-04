@@ -50,9 +50,8 @@ import {
   SheetTitle,
   LogIn01,
   ArrowNarrowLeft,
-  SpaceClosed as SpaceCloseIcon,
+  SpaceClosed,
   SpaceOpen,
-  Folder,
   Tabs,
   TabsContent,
   TabsList,
@@ -929,7 +928,7 @@ export function AgentBuilderView({
                         size="sm"
                         variant="outline"
                         label="Manage"
-                        icon={Folder}
+                        icon={SpaceClosed}
                         onClick={() => setIsSpacesSheetOpen(true)}
                       />
                       {[...selectedSpaces]
@@ -943,7 +942,7 @@ export function AgentBuilderView({
                           return (
                             <Chip
                               key={space.id}
-                              icon={isRestricted ? SpaceCloseIcon : SpaceOpen}
+                              icon={isRestricted ? SpaceClosed : SpaceOpen}
                               size="sm"
                               color={isRestricted ? "rose" : "primary"}
                               label={space.name}
@@ -956,7 +955,7 @@ export function AgentBuilderView({
                         return (
                           <Chip
                             key={project.id}
-                            icon={isRestricted ? SpaceCloseIcon : SpaceOpen}
+                            icon={isRestricted ? SpaceClosed : SpaceOpen}
                             size="sm"
                             color={isRestricted ? "rose" : "primary"}
                             label={project.name}
@@ -1105,7 +1104,9 @@ export function AgentBuilderView({
                                   ? "Published"
                                   : "Unpublished"
                               }
-                              icon={accessStatus === "published" ? Eye : EyeOff}
+                              icon={
+                                accessStatus === "published" ? Eye : EyeOff
+                              }
                               isSelect
                             />
                           </DropdownMenuTrigger>
@@ -1531,7 +1532,9 @@ export function AgentBuilderView({
                         >
                           <Icon
                             visual={
-                              isRestrictedSpace(space.id) ? Lock01 : Server03
+                              isRestrictedSpace(space.id)
+                                ? Lock01
+                                : Server03
                             }
                             size="sm"
                           />
@@ -1579,7 +1582,7 @@ export function AgentBuilderView({
                         <Icon
                           visual={
                             isRestrictedSpace(space.id)
-                              ? SpaceCloseIcon
+                              ? SpaceClosed
                               : SpaceOpen
                           }
                           size="sm"
@@ -1627,7 +1630,7 @@ export function AgentBuilderView({
                         <Icon
                           visual={
                             isRestrictedSpace(space.id)
-                              ? SpaceCloseIcon
+                              ? SpaceClosed
                               : SpaceOpen
                           }
                           size="sm"
