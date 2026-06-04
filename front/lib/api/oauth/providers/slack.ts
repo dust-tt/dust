@@ -44,7 +44,6 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
             "channels:manage",
             "channels:read",
             "chat:write",
-            "emoji:read",
             "files:read",
             "groups:history",
             "groups:read",
