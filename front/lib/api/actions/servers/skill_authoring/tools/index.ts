@@ -70,12 +70,17 @@ function makeJsonText(value: unknown) {
   };
 }
 
+type SpecialTagCategory = "nested skills" | "knowledge" | "tools";
+
 // Skills can embed special tags in their instructions (nested skill references,
 // knowledge, tools) that the builder UI wires up. The agent only sees them as
 // opaque markup, so guard against a full instructions replace silently dropping
 // them. Returns the categories of tags present before but missing after.
-function findDroppedSpecialTags(before: string, after: string): string[] {
-  const dropped: string[] = [];
+function findDroppedSpecialTags(
+  before: string,
+  after: string
+): SpecialTagCategory[] {
+  const dropped: SpecialTagCategory[] = [];
   const isMissingAny = (beforeIds: string[], afterIds: string[]): boolean => {
     const afterSet = new Set(afterIds);
     return beforeIds.some((id) => !afterSet.has(id));

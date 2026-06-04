@@ -5,7 +5,7 @@ export const KNOWLEDGE_TAG = "knowledge";
 export const KNOWLEDGE_TAG_REGEX = new RegExp(
   `^<${KNOWLEDGE_TAG}\\s+([^>]+)\\s*/>`
 );
-export const KNOWLEDGE_TAG_REGEX_GLOBAL = new RegExp(
+const KNOWLEDGE_TAG_REGEX_GLOBAL = new RegExp(
   `<${KNOWLEDGE_TAG}\\s+([^>]+)\\s*/>`,
   "g"
 );
