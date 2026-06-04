@@ -668,6 +668,55 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   }
 
   /**
+   * Aggregates the stored credit cost across every agent message in this
+   * conversation (all ranks and versions, including retries / hidden versions).
+   * The per-message cost is precomputed once at the end of the agentic loop and
+   * persisted on `agent_message.costCredits`, so this is a single SQL SUM rather
+   * than a recomputation.
+   *
+   * Returns `null` when no agent message has a billable cost yet (distinct from
+   * `0`, which means the conversation only had free-origin usage). `SUM` ignores
+   * NULLs, so we use `COUNT` over the same column to tell the two cases apart.
+   */
+  async getStoredCreditCost(auth: Authenticator): Promise<number | null> {
+    const row = await MessageModel.findOne({
+      attributes: [
+        [
+          fn("COALESCE", fn("SUM", col("agentMessage.costCredits")), 0),
+          "total",
+        ],
+        [fn("COUNT", col("agentMessage.costCredits")), "billableCount"],
+      ],
+      include: [
+        {
+          model: AgentMessageModel,
+          as: "agentMessage",
+          required: true,
+          attributes: [],
+        },
+      ],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        conversationId: this.id,
+        agentMessageId: { [Op.ne]: null },
+      },
+      raw: true,
+    });
+
+    // Aggregate results come back as strings from Postgres; parse defensively.
+    const aggregate = row as unknown as {
+      total: string | number | null;
+      billableCount: string | number | null;
+    } | null;
+
+    if (!aggregate || Number(aggregate.billableCount ?? 0) === 0) {
+      return null;
+    }
+
+    return Number(aggregate.total ?? 0);
+  }
+
+  /**
    * Fetches everything needed to compute an agent message's credit cost: the
    * agent message model id (used to look up its runs and actions), its tracking
    * status, its runIds, and the origin of the user message that triggered it
