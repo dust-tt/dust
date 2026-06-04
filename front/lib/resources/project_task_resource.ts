@@ -684,6 +684,27 @@ export class ProjectTaskResource extends BaseResource<ProjectTaskModel> {
     });
   }
 
+  static async unlinkConversation(
+    auth: Authenticator,
+    {
+      taskId,
+      conversationModelId,
+    }: { taskId: string; conversationModelId: ModelId }
+  ): Promise<number> {
+    const taskModelId = getResourceIdFromSId(taskId);
+    if (taskModelId === null) {
+      return 0;
+    }
+
+    return ProjectTaskConversationModel.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        projectTodoId: taskModelId,
+        conversationId: conversationModelId,
+      },
+    });
+  }
+
   // ── Source links (* => todo) ─────────────────────────────────────────────
 
   // Links the given takeaway item + source document to this todo. Idempotent

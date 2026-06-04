@@ -1453,6 +1453,9 @@ describe("postUserMessage", () => {
   let globalGroup: Awaited<
     ReturnType<typeof createResourceTest>
   >["globalGroup"];
+  let globalSpace: Awaited<
+    ReturnType<typeof createResourceTest>
+  >["globalSpace"];
   let conversation: ConversationType;
   let agentConfig1: LightAgentConfigurationType;
 
@@ -1461,6 +1464,7 @@ describe("postUserMessage", () => {
     auth = setup.authenticator;
     workspace = setup.workspace;
     globalGroup = setup.globalGroup;
+    globalSpace = setup.globalSpace;
 
     agentConfig1 = await AgentConfigurationFactory.createTestAgent(auth, {
       name: "Test Agent 1",
@@ -3072,6 +3076,119 @@ describe("postUserMessage", () => {
         });
         expect(mentionRow).not.toBeNull();
         expect(mentionRow!.status).toBe("approved");
+
+        rateLimiterSpy.mockRestore();
+      });
+
+      it("should create a branch anchor when the conversation only contains content fragments", async () => {
+        const user = auth.getNonNullableUser();
+        const userJson = user.toJSON();
+        const dsViewInGlobalSpace = await DataSourceViewFactory.folder(
+          workspace,
+          globalSpace,
+          user
+        );
+
+        const blob = new Ok({
+          contentType: "text/plain" as const,
+          fileId: null,
+          nodeId: "task-instructions-node-id",
+          nodeDataSourceViewId: dsViewInGlobalSpace.id,
+          nodeType: "document" as const,
+          sourceUrl: null,
+          textBytes: null,
+          title: "How to complete the task",
+        });
+        vi.mocked(getContentFragmentBlob).mockResolvedValueOnce(blob);
+
+        expect(projectConversation.content.length).toBe(0);
+
+        const contentFragmentRes = await postNewContentFragment(
+          auth,
+          projectConversation,
+          {
+            title: "How to complete the task",
+            nodeId: "task-instructions-node-id",
+            nodeDataSourceViewId: dsViewInGlobalSpace.sId,
+          },
+          null
+        );
+        expect(contentFragmentRes.isOk()).toBe(true);
+
+        const conversationWithContentFragmentRes = await getConversation(
+          auth,
+          projectConversation.sId
+        );
+        expect(conversationWithContentFragmentRes.isOk()).toBe(true);
+        if (conversationWithContentFragmentRes.isErr()) {
+          return;
+        }
+        projectConversation = conversationWithContentFragmentRes.value;
+        expect(projectConversation.content.length).toBe(1);
+
+        const rateLimiterSpy = vi
+          .spyOn(rateLimiterModule, "rateLimiter")
+          .mockResolvedValue(100);
+
+        const result = await postUserMessage(auth, {
+          conversation: projectConversation,
+          content: `Hello @${agentWithDifferentSpace.name}`,
+          mentions: [{ configurationId: agentWithDifferentSpace.sId }],
+          context: {
+            username: userJson.username,
+            timezone: "UTC",
+            fullName: userJson.fullName,
+            email: userJson.email,
+            profilePictureUrl: userJson.image,
+            origin: "web",
+          },
+          skipToolsValidation: false,
+        });
+
+        expect(result.isOk()).toBe(true);
+        if (!result.isOk()) {
+          return;
+        }
+
+        const branchesAfter =
+          await ConversationBranchResource.listForConversation(
+            auth,
+            projectConversation.id
+          );
+        expect(branchesAfter.length).toBe(1);
+        const branch = branchesAfter[0];
+        expect(projectConversation.branchId).toBe(branch.sId);
+
+        const anchorMessageRow = await MessageModel.findOne({
+          where: {
+            conversationId: projectConversation.id,
+            workspaceId: workspace.id,
+            rank: 1,
+            branchId: null,
+          },
+          include: [
+            {
+              model: UserMessageModel,
+              as: "userMessage",
+              required: true,
+            },
+          ],
+        });
+        expect(anchorMessageRow).not.toBeNull();
+        expect(anchorMessageRow!.userMessage!.content).toBe("");
+        expect(anchorMessageRow!.userMessage!.userContextOrigin).toBe(
+          "branch_anchor"
+        );
+
+        const newUserMessageRow = await MessageModel.findOne({
+          where: {
+            id: result.value.userMessage.id,
+            workspaceId: workspace.id,
+          },
+        });
+        expect(newUserMessageRow).not.toBeNull();
+        expect(newUserMessageRow!.branchId).toBe(branch.id);
+        expect(newUserMessageRow!.rank).toBe(2);
 
         rateLimiterSpy.mockRestore();
       });
