@@ -189,7 +189,7 @@ export function SkillBuilderAgentFacingDescriptionSection() {
     <section className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="heading-lg font-semibold text-foreground dark:text-foreground-night">
-          What will this skill be used for?
+          When to use this skill
         </h3>
         {descriptionDiffers && (
           <Button
