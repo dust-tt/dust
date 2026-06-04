@@ -12,7 +12,7 @@ const CURRENT_PROMO: PromoConfig | null = {
   badge: "Online Event",
   title: "Dust for Customer Success",
   time: "June 11",
-  host: "Gina Gard · AI Deployment",
+  host: "Gianna Gard · AI Deployment",
   linkLabel: "Register Now",
   // Banner auto-hides after this date (June 11th 7:00 PM Paris / CEST).
   expiresAt: new Date("2026-06-11T19:00:00+02:00"),
