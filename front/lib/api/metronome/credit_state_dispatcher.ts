@@ -67,9 +67,9 @@ async function resolvePoolLimitForUser({
   });
   if (userCapResult.isOk() && userCapResult.value) {
     // The threshold includes the seat allowance; subtract it to get the pool limit.
-    const totalThreshold = userCapResult.value.alert.threshold;
-    const seatAllowance = await getSeatAllowance(workspace, seatType);
-    return Math.max(0, totalThreshold - seatAllowance);
+    const totalThresholdAwuCredits = userCapResult.value.alert.threshold;
+    const seatAllowanceAwuCredits = await getSeatAllowance(workspace, seatType);
+    return Math.max(0, totalThresholdAwuCredits - seatAllowanceAwuCredits);
   }
 
   // 2. Per-seat-type workspace default.
@@ -81,9 +81,12 @@ async function resolvePoolLimitForUser({
       seatType: normalizedSeatType,
     });
     if (defaultCapResult.isOk() && defaultCapResult.value) {
-      const totalThreshold = defaultCapResult.value.alert.threshold;
-      const seatAllowance = await getSeatAllowance(workspace, seatType);
-      return Math.max(0, totalThreshold - seatAllowance);
+      const totalThresholdAwuCredits = defaultCapResult.value.alert.threshold;
+      const seatAllowanceAwuCredits = await getSeatAllowance(
+        workspace,
+        seatType
+      );
+      return Math.max(0, totalThresholdAwuCredits - seatAllowanceAwuCredits);
     }
   }
 
