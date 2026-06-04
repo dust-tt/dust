@@ -347,7 +347,7 @@ export const SlashCommandExtension =
         // ending with "/" is loaded programmatically via setContent on mount.
         hasBeenFocused: false,
         capabilitiesOnlyTriggerStart: null as number | null,
-        isOpeningCapsOnly: false,
+        isOpeningCapabilitiesOnly: false,
       };
     },
 
@@ -379,7 +379,7 @@ export const SlashCommandExtension =
           () =>
           ({ chain }) => {
             this.storage.hasBeenFocused = true;
-            this.storage.isOpeningCapsOnly = true;
+            this.storage.isOpeningCapabilitiesOnly = true;
 
             const inserted = chain()
               .focus()
@@ -420,7 +420,7 @@ export const SlashCommandExtension =
           },
           allow: ({ state, range }) =>
             extensionStorage.hasBeenFocused &&
-            (extensionStorage.isOpeningCapsOnly ||
+            (extensionStorage.isOpeningCapabilitiesOnly ||
               hasAllowedSlashPrefix(state, range.from)),
           command: ({ editor, range, props }) => {
             if (props.action === INSERT_KNOWLEDGE_NODE_ACTION) {
@@ -543,7 +543,7 @@ export const SlashCommandExtension =
           key: new PluginKey("skillBuilderSlashCommandCleanup"),
           view: () => ({
             update: (view) => {
-              extensionStorage.isOpeningCapsOnly = false;
+              extensionStorage.isOpeningCapabilitiesOnly = false;
               const triggerStart =
                 extensionStorage.capabilitiesOnlyTriggerStart;
 
