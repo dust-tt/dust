@@ -32,6 +32,7 @@ import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrapp
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
@@ -1825,9 +1826,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const result = await this.listPrivateConversationsForUserPaginated(
       auth,
       pagination
-    );
-    const { WakeUpResource } = await import(
-      "@app/lib/resources/wakeup_resource"
     );
     const nextWakeupAtByConversationId =
       await WakeUpResource.fetchNextWakeupAtByConversationId(

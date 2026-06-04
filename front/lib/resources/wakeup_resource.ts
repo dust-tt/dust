@@ -14,11 +14,11 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getNextWakeUpFireAtFromScheduleConfig } from "@app/lib/utils/wakeup_description";
+import { launchIndexConversationEsWorkflow } from "@app/temporal/es_indexation/client";
 import {
   cancelWakeUpTemporalWorkflow,
   launchOrScheduleWakeUpTemporalWorkflow,
 } from "@app/temporal/triggers/wakeup_client";
-import { launchIndexConversationEsWorkflow } from "@app/temporal/es_indexation/client";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import {
@@ -785,12 +785,27 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
   private async triggerConversationESIndexing(
     auth: Authenticator
   ): Promise<void> {
-    const conversation =
-      (
-        await ConversationResource.fetchByModelIds(auth, [this.conversationId])
-      )[0] ?? null;
-    if (conversation) {
-      await ConversationResource.triggerEsIndexing(auth, conversation.sId);
+    if (!(await hasFeatureFlag(auth, "conversation_search_indexing"))) {
+      return;
+    }
+
+    const conversation = await ConversationModel.findOne({
+      where: {
+        id: this.conversationId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      attributes: ["sId"],
+    });
+    if (!conversation) {
+      return;
+    }
+
+    const result = await launchIndexConversationEsWorkflow({
+      conversationId: conversation.sId,
+      workspaceId: auth.getNonNullableWorkspace().sId,
+    });
+    if (result.isErr()) {
+      throw result.error;
     }
   }
 
