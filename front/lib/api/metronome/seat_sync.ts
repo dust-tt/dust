@@ -1,3 +1,4 @@
+import { reconcileWorkspaceUserCreditStates } from "@app/lib/api/metronome/reconcile_credit_state";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import {
   hasContractSeatSubscription,
@@ -79,6 +80,16 @@ export async function syncMetronomeSeatCountForWorkspace({
   if (result.isErr()) {
     return new Err(result.error);
   }
+
+  // Now that per-user seat credits are assigned, reconcile each seated user's
+  // credit state from the live balances — this is what moves a freshly-created
+  // or just-upgraded seat user into the correct seat↔pool state. Never throws;
+  // a downstream reconcile issue must not fail (and retry) the seat sync.
+  await reconcileWorkspaceUserCreditStates({
+    workspace,
+    metronomeCustomerId: workspace.metronomeCustomerId,
+    metronomeContractId: subscription.metronomeContractId,
+  });
 
   return new Ok({ status: "synced" });
 }
