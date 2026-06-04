@@ -858,7 +858,7 @@ export function AgentMessage({
 
   // Add copy button or split button with dropdown (hover only)
   if (shouldShowMessageActions) {
-    const dropdownItems: DropdownMenuItemProps[] = [
+    let dropdownItems: DropdownMenuItemProps[] = [
       {
         label: "Copy message link",
         icon: Link01,
@@ -900,7 +900,7 @@ export function AgentMessage({
     }
 
     if (creditCostItem) {
-      dropdownItems.unshift(creditCostItem);
+      dropdownItems = [creditCostItem, ...dropdownItems];
     }
 
     hoverButtons.push(
