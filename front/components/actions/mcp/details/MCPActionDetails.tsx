@@ -93,9 +93,15 @@ import {
   GET_DATABASE_SCHEMA_TOOL_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
 } from "@app/lib/api/actions/servers/query_tables_v2/metadata";
+import {
+  SKILL_AUTHORING_SERVER_NAME,
+  UPDATE_SKILL_TOOL_NAME,
+} from "@app/lib/api/actions/servers/skill_authoring/metadata";
+import { useSkill } from "@app/lib/swr/skill_configurations";
 import { isValidJSON } from "@app/lib/utils/json";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type { AgentMessageStatus } from "@app/types/assistant/conversation";
+import { isString } from "@app/types/shared/utils/general";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -360,6 +366,21 @@ function MCPActionDetailsInner({
     return <MCPSkillEnableActionDetails {...toolOutputDetailsProps} />;
   }
 
+  if (
+    internalMCPServerName === SKILL_AUTHORING_SERVER_NAME &&
+    toolName === UPDATE_SKILL_TOOL_NAME
+  ) {
+    return (
+      <MCPSkillAuthoringUpdateActionDetails
+        owner={owner}
+        action={{ ...action, output }}
+        displayContext={displayContext}
+        lastNotification={lastNotification}
+        messageStatus={messageStatus}
+      />
+    );
+  }
+
   if (internalMCPServerName === "data_warehouses") {
     switch (toolName) {
       case DATA_WAREHOUSES_LIST_TOOL_NAME:
@@ -474,6 +495,32 @@ export function GenericActionDetails({
       )}
     </ActionDetailsWrapper>
   );
+}
+
+// `update_skill` identifies its target by `sId`, which is meaningless to a
+// human. Resolve it to the skill name (or "Unknown skill") and surface that in
+// the inputs instead of the raw id, reusing the generic renderer otherwise.
+function MCPSkillAuthoringUpdateActionDetails(props: MCPActionDetailsProps) {
+  const { action, owner } = props;
+
+  const skillId = isString(action.params.sId) ? action.params.sId : null;
+  const { skill, isSkillLoading } = useSkill({
+    workspaceId: owner.sId,
+    skillId,
+    disabled: !skillId,
+  });
+
+  const skillName = isSkillLoading
+    ? "Loading…"
+    : (skill?.name ?? "Unknown skill");
+
+  const { sId: _sId, ...restParams } = action.params;
+  const displayAction = {
+    ...action,
+    params: { skill: skillName, ...restParams },
+  };
+
+  return <GenericActionDetails {...props} action={displayAction} />;
 }
 
 const RenderToolItemMarkdown = ({
