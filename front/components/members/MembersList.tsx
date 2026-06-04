@@ -1,12 +1,12 @@
+import {
+  hasFullUserAccess,
+  type SearchMemberType,
+} from "@app/components/members/MemberSelectionTable";
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
 import assert from "@app/lib/utils/assert";
 import type { SearchMembersAdminResponseBody } from "@app/pages/api/w/[wId]/members/search";
 import type { MembershipOriginType } from "@app/types/memberships";
-import type {
-  RoleType,
-  UserType,
-  UserTypeWithWorkspace,
-} from "@app/types/user";
+import type { RoleType, UserType } from "@app/types/user";
 import {
   Chip,
   DataTable,
@@ -42,28 +42,33 @@ function getTableRows({
   onRemoveMemberClick,
   currentUserId,
 }: {
-  allUsers: UserTypeWithWorkspace[];
-  onClick: (user: UserTypeWithWorkspace) => void;
-  onRemoveMemberClick?: (user: UserTypeWithWorkspace) => void;
+  allUsers: SearchMemberType[];
+  onClick: (user: SearchMemberType) => void;
+  onRemoveMemberClick?: (user: SearchMemberType) => void;
   currentUserId: string;
 }): RowData[] {
-  return allUsers.map((user) => ({
-    icon: user.image ?? "",
-    name: user.fullName,
-    userId: user.sId,
-    email: user.email ?? "",
-    role: user.workspace.role,
-    status: user.lastLoginAt === null ? "Unregistered" : "Active",
-    groups: user.workspace.groups ?? [],
-    isCurrentUser: user.sId === currentUserId,
-    onClick: () => onClick(user),
-    onRemoveMemberClick: () => onRemoveMemberClick?.(user),
-    origin: user.origin,
-  }));
+  return allUsers.map((user) => {
+    const isFullAccess = hasFullUserAccess(user);
+    const workspace = isFullAccess ? user.workspace : undefined;
+    return {
+      icon: user.image ?? "",
+      name: user.fullName,
+      userId: user.sId,
+      email: isFullAccess ? (user.email ?? "") : "",
+      role: workspace?.role ?? "none",
+      status:
+        isFullAccess && user.lastLoginAt === null ? "Unregistered" : "Active",
+      groups: workspace?.groups ?? [],
+      isCurrentUser: user.sId === currentUserId,
+      onClick: () => onClick(user),
+      onRemoveMemberClick: () => onRemoveMemberClick?.(user),
+      origin: isFullAccess ? user.origin : undefined,
+    };
+  });
 }
 
 type MembersData = {
-  members: UserTypeWithWorkspace[];
+  members: SearchMemberType[];
   totalMembersCount: number;
   isLoading: boolean;
   mutateRegardlessOfQueryParams:
@@ -161,8 +166,8 @@ const memberColumns = [
 interface MembersListProps {
   currentUser: UserType | null;
   membersData: MembersData;
-  onRowClick: (user: UserTypeWithWorkspace) => void;
-  onRemoveMemberClick?: (user: UserTypeWithWorkspace) => void;
+  onRowClick: (user: SearchMemberType) => void;
+  onRemoveMemberClick?: (user: SearchMemberType) => void;
   showColumns: ("name" | "email" | "role" | "remove" | "status" | "groups")[];
   pagination?: PaginationState;
   setPagination?: (pagination: PaginationState) => void;
@@ -187,7 +192,9 @@ export function MembersList({
   const columns = memberColumns.filter((c) => showColumns.includes(c.id));
 
   const rows = useMemo(() => {
-    const filteredMembers = members.filter((m) => m.workspace.role !== "none");
+    const filteredMembers = members.filter(
+      (m) => !hasFullUserAccess(m) || m.workspace.role !== "none"
+    );
     return getTableRows({
       allUsers: filteredMembers,
       onClick: onRowClick,

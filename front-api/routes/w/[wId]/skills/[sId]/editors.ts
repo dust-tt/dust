@@ -4,6 +4,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 import type { UserType } from "@app/types/user";
+import { toLightUser } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -30,11 +31,7 @@ export type PatchSkillEditorsRequestBody = z.infer<
   typeof PatchSkillEditorsRequestBodySchema
 >;
 
-export interface GetSkillEditorsResponseBody {
-  editors: UserType[];
-}
-
-export interface PatchSkillEditorsResponseBody {
+export interface SkillEditorsResponseBody {
   editors: UserType[];
 }
 
@@ -97,7 +94,14 @@ app.get("/", async (ctx) => {
   const members = await editorGroup.getActiveMembers(auth);
   const memberUsers = members.map((m) => m.toJSON());
 
-  return ctx.json({ editors: memberUsers });
+  // biome-ignore lint/plugin/noDirectRoleCheck: non-admins get a response with sensitive fields (email, provider, lastLoginAt etc) stripped away
+  if (auth.isAdmin()) {
+    return ctx.json({ editors: memberUsers });
+  }
+
+  return ctx.json({
+    editors: memberUsers.map(toLightUser),
+  });
 });
 
 app.patch(
@@ -263,9 +267,15 @@ app.patch(
     }
 
     const updatedMembers = await editorGroup.getActiveMembers(auth);
+    const updatedEditors = updatedMembers.map((m) => m.toJSON());
+
+    // biome-ignore lint/plugin/noDirectRoleCheck: non-admins get a response with sensitive fields (email, provider, lastLoginAt etc) stripped away
+    if (auth.isAdmin()) {
+      return ctx.json({ editors: updatedEditors });
+    }
 
     return ctx.json({
-      editors: updatedMembers.map((m) => m.toJSON()),
+      editors: updatedEditors.map(toLightUser),
     });
   }
 );

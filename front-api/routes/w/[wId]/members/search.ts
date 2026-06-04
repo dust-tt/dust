@@ -2,6 +2,7 @@ import { searchMembers } from "@app/lib/api/workspace";
 import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
 import { GROUP_KINDS } from "@app/types/groups";
 import type { LightUserType, UserTypeWithWorkspace } from "@app/types/user";
+import { toLightUser } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -68,19 +69,13 @@ app.get(
       query
     );
 
-    // biome-ignore lint/plugin/noDirectRoleCheck: conditional response — non-admins get a light response, not a 403
+    // biome-ignore lint/plugin/noDirectRoleCheck: non-admins get a response with sensitive fields (email, provider, lastLoginAt etc) stripped away
     if (auth.isAdmin()) {
       return ctx.json({ members, total });
     }
 
     return ctx.json({
-      members: members.map((m) => ({
-        sId: m.sId,
-        firstName: m.firstName,
-        lastName: m.lastName,
-        fullName: m.fullName,
-        image: m.image,
-      })),
+      members: members.map(toLightUser),
       total,
     });
   }

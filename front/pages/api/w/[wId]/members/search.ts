@@ -9,6 +9,7 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { GROUP_KINDS } from "@app/types/groups";
 import type { LightUserType, UserTypeWithWorkspace } from "@app/types/user";
+import { toLightUser } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
@@ -83,18 +84,13 @@ async function handler(
         query
       );
 
+      // Non-admins get a response with sensitive fields (email, provider, lastLoginAt etc) stripped away.
       if (auth.isAdmin()) {
         return res.status(200).json({ members, total });
       }
 
       return res.status(200).json({
-        members: members.map((m) => ({
-          sId: m.sId,
-          firstName: m.firstName,
-          lastName: m.lastName,
-          fullName: m.fullName,
-          image: m.image,
-        })),
+        members: members.map(toLightUser),
         total,
       });
 

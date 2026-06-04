@@ -7,7 +7,8 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { UserType } from "@app/types/user";
+import type { LightUserType, UserType } from "@app/types/user";
+import { toLightUser } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
@@ -17,10 +18,9 @@ const MembersLookupQuerySchema = z.object({
   ids: z.union([z.coerce.number(), z.array(z.coerce.number())]),
 });
 
-export type LightLookupUserType = Pick<
-  UserType,
-  "sId" | "id" | "firstName" | "lastName" | "fullName" | "image"
->;
+// The lookup endpoint is queried by numeric ModelId, so the response must
+// include `id` so callers can correlate results back to the requested ids.
+export type LightLookupUserType = LightUserType & { id: number };
 
 export type MembersLookupResponseBody = {
   users: LightLookupUserType[];
@@ -86,6 +86,7 @@ async function handler(
       const validUserIds = new Set(memberships.map((m) => m.userId));
       const filteredUsers = users.filter((user) => validUserIds.has(user.id));
 
+      // Non-admins get a response with sensitive fields (email, provider, lastLoginAt etc) stripped away.
       if (auth.isAdmin()) {
         return res.status(200).json({
           users: filteredUsers.map((user) => user.toJSON()),
@@ -94,12 +95,8 @@ async function handler(
 
       return res.status(200).json({
         users: filteredUsers.map((user) => ({
-          sId: user.sId,
+          ...toLightUser(user.toJSON()),
           id: user.id,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          fullName: user.fullName(),
-          image: user.imageUrl,
         })),
       });
     }
