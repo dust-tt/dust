@@ -47,7 +47,11 @@ const app = workspaceApp();
 app.get(
   "/",
   validate("param", ParamsSchema),
-  async (ctx): HandlerResult<AgentEditorsResponseBody | AgentEditorsLightResponseBody> => {
+  async (
+    ctx
+  ): HandlerResult<
+    AgentEditorsResponseBody | AgentEditorsLightResponseBody
+  > => {
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("param");
 
