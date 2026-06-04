@@ -58,7 +58,7 @@ import { FILE_ID_PATTERN } from "@app/lib/files";
 import { useConversationWakeUps } from "@app/lib/swr/wakeups";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
-import { getNextWakeUpFireAt } from "@app/lib/utils/wakeup_description";
+import { getNextWakeUpFireAtFromScheduleConfig } from "@app/lib/utils/wakeup_description";
 import datadogLogger from "@app/logger/datadogLogger";
 import type { FetchConversationMessageResponseLight } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages/[mId]";
 import {
@@ -434,7 +434,9 @@ export function AgentMessage({
                 const activeWakeUp =
                   updated?.wakeUps.find(isActiveWakeUp) ?? null;
                 const nextWakeupAt = activeWakeUp
-                  ? getNextWakeUpFireAt(activeWakeUp)
+                  ? getNextWakeUpFireAtFromScheduleConfig(
+                      activeWakeUp.scheduleConfig
+                    )
                   : null;
                 void mutateConversations(
                   (currentData: ConversationListItemType[] | undefined) =>
