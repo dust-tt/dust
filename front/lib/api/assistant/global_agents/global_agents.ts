@@ -436,6 +436,24 @@ const GLOBAL_AGENT_FLAGS: Record<
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
+  [GLOBAL_AGENTS_SID.DUST_LIONEL]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
+  [GLOBAL_AGENTS_SID.DUST_LIONEL_MEDIUM]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
+  [GLOBAL_AGENTS_SID.DUST_LIONEL_HIGH]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
   [GLOBAL_AGENTS_SID.HELPER]: {
     injectsMemory: false,
     injectsToolsets: false,
@@ -1211,6 +1229,9 @@ function getGlobalAgent({
     case GLOBAL_AGENTS_SID.DUST_CHALOM:
     case GLOBAL_AGENTS_SID.DUST_CHALOM_MEDIUM:
     case GLOBAL_AGENTS_SID.DUST_CHALOM_HIGH:
+    case GLOBAL_AGENTS_SID.DUST_LIONEL:
+    case GLOBAL_AGENTS_SID.DUST_LIONEL_MEDIUM:
+    case GLOBAL_AGENTS_SID.DUST_LIONEL_HIGH:
       agentConfiguration = _getCustomModelDustLikeGlobalAgent(
         auth,
         {
@@ -1445,6 +1466,9 @@ export async function getGlobalAgents(
     GLOBAL_AGENTS_SID.DUST_CHALOM,
     GLOBAL_AGENTS_SID.DUST_CHALOM_MEDIUM,
     GLOBAL_AGENTS_SID.DUST_CHALOM_HIGH,
+    GLOBAL_AGENTS_SID.DUST_LIONEL,
+    GLOBAL_AGENTS_SID.DUST_LIONEL_MEDIUM,
+    GLOBAL_AGENTS_SID.DUST_LIONEL_HIGH,
   ];
   if (!flags.includes("dust_internal_global_agents")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(

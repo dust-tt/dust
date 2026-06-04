@@ -430,6 +430,28 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         description: "Same as dust-chalom but with high reasoning effort.",
         pictureUrl: DUST_AVATAR_URL,
       };
+    case GLOBAL_AGENTS_SID.DUST_LIONEL:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_LIONEL,
+        name: "dust-lionel",
+        description:
+          "Same as dust but running a custom model for internal testing.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_LIONEL_MEDIUM:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_LIONEL_MEDIUM,
+        name: "dust-lionel-medium",
+        description: "Same as dust-lionel but with medium reasoning effort.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_LIONEL_HIGH:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_LIONEL_HIGH,
+        name: "dust-lionel-high",
+        description: "Same as dust-lionel but with high reasoning effort.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
     case GLOBAL_AGENTS_SID.DUST_GOOG:
       return {
         sId: GLOBAL_AGENTS_SID.DUST_GOOG,
