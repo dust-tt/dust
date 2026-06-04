@@ -10,7 +10,7 @@ import { isPaygEligibleTier } from "@app/lib/metronome/types";
 import {
   CREDIT_PRICED_BUSINESS_PLAN_CODE,
   CREDIT_PRICED_FREE_PLAN_CODE,
-  isEntreprisePlanPrefix,
+  isEnterprisePlanPrefix,
   PRO_PLAN_SEAT_29_CODE,
   PRO_PLAN_SEAT_39_CODE,
 } from "@app/lib/plans/plan_codes";
@@ -350,7 +350,7 @@ export default function SwitchContractDialog({
       plans
         .filter(
           (plan) =>
-            isEntreprisePlanPrefix(plan.code) && isCreditPricedPlan(plan)
+            isEnterprisePlanPrefix(plan.code) && isCreditPricedPlan(plan)
         )
         .map((plan) => ({
           value: plan.code,

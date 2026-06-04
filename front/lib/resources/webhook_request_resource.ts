@@ -258,9 +258,13 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
       }
     );
 
-    return WorkspaceResource.fetchByModelIds(
+    // fetchByModelIds does not preserve input order, so re-sort by id ascending
+    // to honor the query's ORDER BY "workspaceId" ASC.
+    const workspaces = await WorkspaceResource.fetchByModelIds(
       rows.map((row) => row.workspaceId)
     );
+
+    return workspaces.sort((a, b) => a.id - b.id);
   }
 
   static async cleanUpWorkspace(

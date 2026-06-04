@@ -9,7 +9,7 @@ import type { CreditPurchaseLimits } from "@app/lib/credits/limits";
 import { getCreditPurchaseLimits } from "@app/lib/credits/limits";
 import { getMetronomeCustomerStripeCustomerId } from "@app/lib/metronome/client";
 import { resolveCurrencyForExistingMetronomeCustomer } from "@app/lib/metronome/contracts";
-import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
+import { isEnterprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import {
   getCreditPurchasePriceId,
   getStripePricingData,
@@ -82,7 +82,7 @@ export async function getCreditPurchaseInfo(
   let billingCycleStartDay: number | null = null;
 
   if (isMetronomeOnly) {
-    isEnterprise = isEntreprisePlanPrefix(subscription.getPlan().code);
+    isEnterprise = isEnterprisePlanPrefix(subscription.getPlan().code);
     creditPurchaseLimits = await getCreditPurchaseLimits(auth, {
       type: "metronome",
       subscription,
@@ -182,7 +182,7 @@ export async function createCreditPurchase(
   let metronomeCurrency: SupportedCurrency = "usd";
 
   if (isMetronomeOnly) {
-    isEnterprise = isEntreprisePlanPrefix(subscription.getPlan().code);
+    isEnterprise = isEnterprisePlanPrefix(subscription.getPlan().code);
     limits = await getCreditPurchaseLimits(auth, {
       type: "metronome",
       subscription,

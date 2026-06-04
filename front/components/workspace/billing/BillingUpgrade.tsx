@@ -2,7 +2,7 @@ import config from "@app/lib/api/config";
 import {
   CREDIT_PRICED_BUSINESS_PLAN_CODE,
   CREDIT_PRICED_FREE_PLAN_CODE,
-  isEntreprisePlanPrefix,
+  isEnterprisePlanPrefix,
 } from "@app/lib/plans/plan_codes";
 import type { SubscriptionType } from "@app/types/plan";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -16,7 +16,7 @@ interface BillingUpgradeProps {
 export function BillingUpgrade({ owner, subscription }: BillingUpgradeProps) {
   const { code } = subscription.plan;
 
-  if (subscription.endDate !== null || isEntreprisePlanPrefix(code)) {
+  if (subscription.endDate !== null || isEnterprisePlanPrefix(code)) {
     return null;
   }
 

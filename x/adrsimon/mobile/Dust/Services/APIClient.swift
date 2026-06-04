@@ -163,14 +163,14 @@ enum APIClient {
 
             var request = URLRequest(url: fullURL)
             request.httpMethod = "POST"
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            request.setBearer(token)
             request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
             request.httpBody = body
             return try await execute(request, endpoint: urlString, decoder: decoder)
         }
     }
 
-    private static func buildMultipartBody(
+    static func buildMultipartBody(
         fileData: Data,
         fileName: String,
         mimeType: String,
@@ -198,7 +198,7 @@ enum APIClient {
     }
 
     /// Executes a closure with a valid access token, retrying once on 401 after refreshing.
-    private static func withAuthRetry<T>(
+    static func withAuthRetry<T>(
         tokenProvider: TokenProvider,
         _ operation: (String) async throws -> T
     ) async throws -> T {
@@ -218,7 +218,7 @@ enum APIClient {
         var request = URLRequest(url: url)
         request.timeoutInterval = 30
         if let accessToken {
-            request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+            request.setBearer(accessToken)
         }
         return request
     }
@@ -260,5 +260,11 @@ enum APIClient {
             logger.error("Decode error: \(error)")
             throw APIError.decodingError(error)
         }
+    }
+}
+
+extension URLRequest {
+    mutating func setBearer(_ token: String) {
+        setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
     }
 }

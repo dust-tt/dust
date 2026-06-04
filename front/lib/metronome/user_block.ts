@@ -36,6 +36,8 @@ import {
   isWorkspacePoolCreditState,
   isWorkspaceProgrammaticCreditState,
 } from "@app/types/credits";
+import type { UserCreditState } from "@app/types/memberships";
+import { isUserCreditState } from "@app/types/memberships";
 
 export type UserBlockedReason = "credits_exhausted" | "user_cap_reached";
 
@@ -57,6 +59,10 @@ function buildWorkspacePoolDepletedKey(workspaceId: string): string {
 
 function buildWorkspaceCreditPoolStatusKey(workspaceId: string): string {
   return `metronome:pool_credit_status:${workspaceId}`;
+}
+
+function buildUserCreditStateKey(workspaceId: string, userId: string): string {
+  return `metronome:user_credit_state:${workspaceId}:${userId}`;
 }
 
 function buildWorkspaceProgrammaticWarningKey(workspaceId: string): string {
@@ -288,6 +294,66 @@ export async function isUserBlocked(
   });
 
   return deriveBlockedReason(state);
+}
+
+// Per-user credit state (fine-grained state mirroring memberships.creditState).
+
+export async function setUserCreditState(
+  workspaceId: string,
+  userId: string,
+  state: UserCreditState
+): Promise<void> {
+  await setFlag(buildUserCreditStateKey(workspaceId, userId), state);
+}
+
+export async function getUserCreditState(
+  workspaceId: string,
+  userId: string
+): Promise<UserCreditState> {
+  const cached = await runOnRedis({ origin: REDIS_ORIGIN }, async (client) =>
+    client.get(buildUserCreditStateKey(workspaceId, userId))
+  );
+
+  if (cached && isUserCreditState(cached)) {
+    return cached;
+  }
+
+  logger.info(
+    { workspaceId, userId, userCreditStateCacheHit: false },
+    "[MetronomeUserBlock] Cache miss during user credit state check, falling back to DB"
+  );
+
+  const user = await UserResource.fetchById(userId);
+  if (!user) {
+    logger.warn(
+      { workspaceId, userId },
+      "[MetronomeUserBlock] User not found during user credit state cache read-through fallback"
+    );
+    return "on_pool";
+  }
+
+  const workspace = await WorkspaceResource.fetchById(workspaceId);
+  if (!workspace) {
+    logger.warn(
+      { workspaceId, userId },
+      "[MetronomeUserBlock] Workspace not found during user credit state cache read-through fallback"
+    );
+    return "on_pool";
+  }
+
+  const membership =
+    await MembershipResource.getActiveMembershipOfUserInWorkspace({
+      user,
+      workspace: renderLightWorkspaceType({ workspace }),
+    });
+
+  const state: UserCreditState =
+    membership && isUserCreditState(membership.creditState)
+      ? membership.creditState
+      : "on_pool";
+
+  await setFlag(buildUserCreditStateKey(workspaceId, userId), state);
+  return state;
 }
 
 // Workspace credit pool status (fine-grained state for UI/notifications).

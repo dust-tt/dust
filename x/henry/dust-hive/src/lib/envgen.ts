@@ -34,6 +34,7 @@ export OAUTH_API=http://localhost:${ports.oauth}
 export DUST_FRONT_API=http://localhost:${ports.front}
 export DUST_FRONT_INTERNAL_API=http://localhost:${ports.front}
 export DUST_CLIENT_FACING_URL=http://localhost:${ports.front}
+export DUST_INTERNAL_API_URL=http://localhost:${ports.front}
 export DUST_PUBLIC_URL=http://localhost:${ports.front}
 export NEXT_PUBLIC_DUST_API_URL=http://localhost:${ports.front}
 export NEXT_PUBLIC_DUST_STATIC_WEBSITE_URL=http://localhost:${ports.front}

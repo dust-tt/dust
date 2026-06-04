@@ -76,14 +76,18 @@ export function CommandPaletteSearchPhase({
     return () => cancelAnimationFrame(frameId);
   }, []);
 
-  // Scroll selected item into view.
+  // Scroll selected item into view. Guard against selectedIndex being
+  // transiently out-of-bounds on the render cycle before the reset effect fires.
   useEffect(() => {
-    itemRefs.current[selectedIndex]?.scrollIntoView({ block: "nearest" });
-  }, [selectedIndex]);
+    if (selectedIndex < flatItems.length) {
+      itemRefs.current[selectedIndex]?.scrollIntoView({ block: "nearest" });
+    }
+  }, [selectedIndex, flatItems.length]);
 
-  // Reset selection when the number of results changes (e.g., after typing).
+  // Reset selection and trim stale refs when the number of results changes.
   // biome-ignore lint/correctness/useExhaustiveDependencies: agents.length, pods.length and skills.length are intentional triggers
   useEffect(() => {
+    itemRefs.current.length = flatItems.length;
     onSelectedIndexChange(0);
   }, [agents.length, pods.length, skills.length, onSelectedIndexChange]);
 
@@ -163,7 +167,7 @@ export function CommandPaletteSearchPhase({
                 }}
                 isSelected={selectedIndex === i}
                 onClick={() => onItemSelect({ kind: "agent", agent })}
-                onMouseEnter={() => onSelectedIndexChange(i)}
+                onMouseMove={() => onSelectedIndexChange(i)}
               >
                 <Avatar visual={agent.pictureUrl} size="xs" />
                 <div className="flex min-w-0 items-center gap-1.5">
@@ -198,7 +202,7 @@ export function CommandPaletteSearchPhase({
                   }}
                   isSelected={selectedIndex === globalIndex}
                   onClick={() => onItemSelect({ kind: "pod", pod })}
-                  onMouseEnter={() => onSelectedIndexChange(globalIndex)}
+                  onMouseMove={() => onSelectedIndexChange(globalIndex)}
                 >
                   <Icon visual={getSpaceIcon(pod)} size="xs" />
                   <div className="flex min-w-0 items-center gap-1.5">
@@ -239,7 +243,7 @@ export function CommandPaletteSearchPhase({
                   }}
                   isSelected={selectedIndex === globalIndex}
                   onClick={() => onItemSelect({ kind: "skill", skill })}
-                  onMouseEnter={() => onSelectedIndexChange(globalIndex)}
+                  onMouseMove={() => onSelectedIndexChange(globalIndex)}
                 >
                   <SkillAvatar size="xs" />
                   <div className="flex min-w-0 items-center gap-1.5">

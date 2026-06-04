@@ -25,66 +25,38 @@ enum TranscriptionService {
     static func transcribe(
         fileURL: URL,
         workspaceId: String,
+        mimeType: String,
         tokenProvider: TokenProvider
-    ) async throws -> String {
-        let token = try await tokenProvider.validAccessToken()
-        do {
-            return try await performTranscription(fileURL: fileURL, workspaceId: workspaceId, accessToken: token)
-        } catch let error as APIError where error.is401 {
-            let freshToken = try await tokenProvider.refreshedAccessToken()
-            return try await performTranscription(fileURL: fileURL, workspaceId: workspaceId, accessToken: freshToken)
-        }
-    }
-
-    private static func performTranscription(
-        fileURL: URL,
-        workspaceId: String,
-        accessToken: String
     ) async throws -> String {
         let endpoint = AppConfig.Endpoints.transcribe(workspaceId: workspaceId)
         guard let url = URL(string: "\(AppConfig.apiBaseURL)\(endpoint)") else {
             throw APIError.invalidURL
         }
-
         let fileData = try Data(contentsOf: fileURL)
-        let boundary = UUID().uuidString
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-        request.httpBody = buildMultipartBody(
+        let boundary = "Boundary-\(UUID().uuidString)"
+        let body = APIClient.buildMultipartBody(
             fileData: fileData,
             fileName: fileURL.lastPathComponent,
+            mimeType: mimeType,
             boundary: boundary
         )
 
-        let (bytes, response) = try await URLSession.shared.bytes(for: request)
+        return try await APIClient.withAuthRetry(tokenProvider: tokenProvider) { token in
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setBearer(token)
+            request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+            request.httpBody = body
 
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw APIError.invalidResponse
+            let (bytes, response) = try await URLSession.shared.bytes(for: request)
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw APIError.invalidResponse
+            }
+            guard (200 ... 299).contains(httpResponse.statusCode) else {
+                throw APIError.httpError(statusCode: httpResponse.statusCode, body: "Transcription request failed")
+            }
+            return try await parseSSEStream(bytes)
         }
-        if httpResponse.statusCode == 401 {
-            throw APIError.httpError(statusCode: 401, body: "Unauthorized")
-        }
-        guard (200 ... 299).contains(httpResponse.statusCode) else {
-            throw APIError.httpError(statusCode: httpResponse.statusCode, body: "Transcription request failed")
-        }
-
-        return try await parseSSEStream(bytes)
-    }
-
-    private static func buildMultipartBody(fileData: Data, fileName: String, boundary: String) -> Data {
-        var body = Data()
-        let crlf = "\r\n"
-        body.append("--\(boundary)\(crlf)")
-        body.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(fileName)\"\(crlf)")
-        body.append("Content-Type: audio/wav\(crlf)")
-        body.append(crlf)
-        body.append(fileData)
-        body.append(crlf)
-        body.append("--\(boundary)--\(crlf)")
-        return body
     }
 
     private static func parseSSEStream(_ bytes: URLSession.AsyncBytes) async throws -> String {
@@ -139,24 +111,5 @@ enum TranscriptionService {
                 return ""
             }
         }.joined()
-    }
-}
-
-// MARK: - Helpers
-
-private extension Data {
-    mutating func append(_ string: String) {
-        if let data = string.data(using: .utf8) {
-            append(data)
-        }
-    }
-}
-
-private extension APIError {
-    var is401: Bool {
-        if case let .httpError(statusCode, _) = self, statusCode == 401 {
-            return true
-        }
-        return false
     }
 }

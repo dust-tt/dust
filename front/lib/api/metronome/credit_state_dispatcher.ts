@@ -23,6 +23,160 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 
+/**
+ * Transition a single user from `user_seat` / `user_seat_low_balance` when
+ * Metronome fires `alerts.low_remaining_seat_balance_reached` for that user.
+ *
+ * Paid seats fall back to the workspace pool (`on_pool`). Free seats have no
+ * pool access and are capped (`capped`). The guard in the state machine decides
+ * which branch applies based on `seatType`.
+ */
+export async function dispatchSeatBalanceExhausted({
+  workspace,
+  userId,
+}: {
+  workspace: WorkspaceResource;
+  userId: string;
+}): Promise<void> {
+  const user = await UserResource.fetchById(userId);
+  if (!user) {
+    logger.warn(
+      { workspaceId: workspace.sId, userId },
+      "[CreditStateDispatcher] dispatchSeatBalanceExhausted: user not found, skipping"
+    );
+    return;
+  }
+
+  const lightWorkspace = renderLightWorkspaceType({ workspace });
+  const membership =
+    await MembershipResource.getActiveMembershipOfUserInWorkspace({
+      user,
+      workspace: lightWorkspace,
+    });
+  if (!membership) {
+    logger.warn(
+      { workspaceId: workspace.sId, userId },
+      "[CreditStateDispatcher] dispatchSeatBalanceExhausted: no active membership, skipping"
+    );
+    return;
+  }
+
+  const result = await transitionUserCreditState(
+    membership,
+    { type: "seat_balance_exhausted" },
+    { workspaceId: workspace.sId, userId, seatType: membership.seatType }
+  );
+  if (result.isErr()) {
+    logger.warn(
+      {
+        workspaceId: workspace.sId,
+        userId,
+        seatType: membership.seatType,
+        creditState: membership.creditState,
+      },
+      "[CreditStateDispatcher] dispatchSeatBalanceExhausted: transition skipped"
+    );
+  }
+}
+
+export async function dispatchSeatBalanceResolved({
+  workspace,
+  userId,
+}: {
+  workspace: WorkspaceResource;
+  userId: string;
+}): Promise<void> {
+  const user = await UserResource.fetchById(userId);
+  if (!user) {
+    logger.warn(
+      { workspaceId: workspace.sId, userId },
+      "[CreditStateDispatcher] dispatchSeatBalanceResolved: user not found, skipping"
+    );
+    return;
+  }
+
+  const lightWorkspace = renderLightWorkspaceType({ workspace });
+  const membership =
+    await MembershipResource.getActiveMembershipOfUserInWorkspace({
+      user,
+      workspace: lightWorkspace,
+    });
+  if (!membership) {
+    logger.warn(
+      { workspaceId: workspace.sId, userId },
+      "[CreditStateDispatcher] dispatchSeatBalanceResolved: no active membership, skipping"
+    );
+    return;
+  }
+
+  const result = await transitionUserCreditState(
+    membership,
+    { type: "seat_balance_resolved" },
+    { workspaceId: workspace.sId, userId, seatType: membership.seatType }
+  );
+  if (result.isErr()) {
+    logger.warn(
+      {
+        workspaceId: workspace.sId,
+        userId,
+        seatType: membership.seatType,
+        creditState: membership.creditState,
+      },
+      "[CreditStateDispatcher] dispatchSeatBalanceResolved: transition skipped"
+    );
+  }
+}
+
+export async function dispatchSeatLowBalance({
+  workspace,
+  userId,
+  threshold,
+}: {
+  workspace: WorkspaceResource;
+  userId: string;
+  threshold: number;
+}): Promise<void> {
+  const user = await UserResource.fetchById(userId);
+  if (!user) {
+    logger.warn(
+      { workspaceId: workspace.sId, userId },
+      "[CreditStateDispatcher] dispatchSeatLowBalance: user not found, skipping"
+    );
+    return;
+  }
+
+  const lightWorkspace = renderLightWorkspaceType({ workspace });
+  const membership =
+    await MembershipResource.getActiveMembershipOfUserInWorkspace({
+      user,
+      workspace: lightWorkspace,
+    });
+  if (!membership) {
+    logger.warn(
+      { workspaceId: workspace.sId, userId },
+      "[CreditStateDispatcher] dispatchSeatLowBalance: no active membership, skipping"
+    );
+    return;
+  }
+
+  const result = await transitionUserCreditState(
+    membership,
+    { type: "seat_low_balance", threshold },
+    { workspaceId: workspace.sId, userId, seatType: membership.seatType }
+  );
+  if (result.isErr()) {
+    logger.warn(
+      {
+        workspaceId: workspace.sId,
+        userId,
+        seatType: membership.seatType,
+        creditState: membership.creditState,
+      },
+      "[CreditStateDispatcher] dispatchSeatLowBalance: transition skipped"
+    );
+  }
+}
+
 export async function dispatchPerUserCapReached({
   workspace,
   userId,

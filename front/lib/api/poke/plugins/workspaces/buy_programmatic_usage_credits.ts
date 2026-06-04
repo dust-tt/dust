@@ -11,7 +11,7 @@ import {
   getProductFreeCreditId,
 } from "@app/lib/metronome/constants";
 import { resolveCurrencyForExistingMetronomeCustomer } from "@app/lib/metronome/contracts";
-import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
+import { isEnterprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import {
   getStripeSubscription,
   isEnterpriseSubscription,
@@ -276,7 +276,7 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
       }
       isEnterprise = isEnterpriseSubscription(stripeSubscription);
     } else {
-      isEnterprise = isEntreprisePlanPrefix(subscription.getPlan().code);
+      isEnterprise = isEnterprisePlanPrefix(subscription.getPlan().code);
     }
 
     if (!isEnterprise && !validatedArgs.confirmProOverride) {

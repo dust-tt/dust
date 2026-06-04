@@ -39,8 +39,8 @@ export const REINFORCEMENT_EXCLUDED_PLAN_CODES = new Set([
 export const isCreditPricedPlanPrefix = (planCode: string) =>
   planCode.startsWith("CP_");
 
-// If the plan code starts with ENT_, it's an entreprise plan
-export const isEntreprisePlanPrefix = (planCode: string) =>
+// If the plan code starts with ENT_, it's an enterprise plan
+export const isEnterprisePlanPrefix = (planCode: string) =>
   planCode.startsWith("ENT_") || planCode.startsWith("CP_ENT_");
 
 export const isDustCompanyPlan = (planCode: string) =>
@@ -63,7 +63,7 @@ export const isBusinessPlanPrefix = (planCode: string) =>
 
 // Everything else is free
 export const isFreePlan = (planCode: string) =>
-  !isEntreprisePlanPrefix(planCode) &&
+  !isEnterprisePlanPrefix(planCode) &&
   !isProPlanPrefix(planCode) &&
   !isCreditPricedBusinessPlan(planCode);
 
@@ -79,7 +79,7 @@ export const isOldFreePlan = (planCode: string) =>
 // ahead of free / old-free ones when the result set is over the requested
 // limit.
 export const getPlanCodeSortPriority = (planCode: string): number => {
-  if (isEntreprisePlanPrefix(planCode)) {
+  if (isEnterprisePlanPrefix(planCode)) {
     return 1;
   }
   if (isFriendsAndFamilyPlan(planCode)) {

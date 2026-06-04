@@ -19,7 +19,7 @@ import {
   getCreditTypeAwuId,
   getProductPrepaidCommitId,
 } from "@app/lib/metronome/constants";
-import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
+import { isEnterprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import { getStripeClient } from "@app/lib/plans/stripe";
 import logger from "@app/logger/logger";
 import type { SupportedCurrency } from "@app/types/currency";
@@ -114,7 +114,7 @@ async function checkAwuPurchaseEligibility(
     return new Err({ code: "legacy_plan" });
   }
 
-  if (isEntreprisePlanPrefix(subscription.plan.code)) {
+  if (isEnterprisePlanPrefix(subscription.plan.code)) {
     return new Err({ code: "enterprise_plan" });
   }
 

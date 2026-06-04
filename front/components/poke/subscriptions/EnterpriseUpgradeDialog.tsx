@@ -4,7 +4,7 @@ import {
   SelectField,
 } from "@app/components/poke/shadcn/ui/form/fields";
 import { clientFetch } from "@app/lib/egress/client";
-import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
+import { isEnterprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
 import { usePokeMetronomePackages, usePokePlans } from "@app/lib/swr/poke";
 import type {
@@ -249,7 +249,7 @@ export default function EnterpriseUpgradeDialog({
                       title="Enterprise Plan"
                       mountPortalContainer={portalContainer}
                       options={plans
-                        .filter((plan) => isEntreprisePlanPrefix(plan.code))
+                        .filter((plan) => isEnterprisePlanPrefix(plan.code))
                         .map((plan) => ({
                           value: plan.code,
                           display: `${plan.name} (${plan.code})`,

@@ -31,7 +31,7 @@ output:
   #  - execution      # Print any execution logs
   #  - execution_out  # Print execution output
   #  - execution_info # Print `EXECUTE > ...` logging
-  - skips          # Print "skip" (i.e. no files matched)
+  #  - skips          # Print "skip" (i.e. no files matched)
 
 pre-commit:
   # Run tasks in parallel for better performance

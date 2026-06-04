@@ -1,5 +1,5 @@
 import {
-  isEntreprisePlanPrefix,
+  isEnterprisePlanPrefix,
   isFreeTrialPhonePlan,
 } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
@@ -34,7 +34,7 @@ export function SubscriptionEndBanner({
   const router = useAppRouter();
   const endDate = subscription.endDate;
   const isTrial = isFreeTrialPhonePlan(subscription.plan.code);
-  const isEnterprise = isEntreprisePlanPrefix(subscription.plan.code);
+  const isEnterprise = isEnterprisePlanPrefix(subscription.plan.code);
   const currentPath = router.pathname || router.asPath.split("?")[0];
   const ctaHref = isCreditPricedPlan(subscription.plan)
     ? `/w/${owner.sId}/billing`
