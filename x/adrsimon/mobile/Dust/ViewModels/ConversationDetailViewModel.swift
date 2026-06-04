@@ -334,6 +334,13 @@ final class ConversationDetailViewModel: ObservableObject {
                 toolName: event.fileAuthError.toolName
             )
 
+        case let .toolAskUserQuestion(event):
+            blockedState = .userQuestion(UserQuestionInfo(
+                from: event,
+                fallbackMessageId: messageId,
+                fallbackConversationId: conversation.sId
+            ))
+
         default:
             turn?.apply(event)
             if let snapshot = turn?.snapshot, snapshot.isFinished {
@@ -395,6 +402,26 @@ final class ConversationDetailViewModel: ObservableObject {
         }
     }
 
+    func answerQuestion(_ answer: UserQuestionAnswer) async {
+        guard case let .userQuestion(info) = blockedState else { return }
+        isValidatingAction = true
+        defer { isValidatingAction = false }
+
+        do {
+            try await ConversationService.answerQuestion(
+                workspaceId: workspaceId,
+                conversationId: info.conversationId,
+                messageId: info.messageId,
+                actionId: info.actionId,
+                answer: answer,
+                tokenProvider: tokenProvider
+            )
+            blockedState = nil
+        } catch {
+            logger.error("Failed to answer question: \(error)")
+        }
+    }
+
     // MARK: - Blocked Actions Reconciliation
 
     /// Authoritative both ways: sets the block when the server reports one, clears it when not —
@@ -421,25 +448,41 @@ final class ConversationDetailViewModel: ObservableObject {
                 streamingMessageId = messageId
             }
 
-            switch action.status {
-            case .blockedValidationRequired:
-                blockedState = .approval(ToolApprovalInfo(from: action, fallbackConversationId: conversation.sId))
-
-            case .blockedAuthenticationRequired:
-                let provider = action.metadata?.mcpServerName ?? "Unknown"
-                let toolName = action.metadata?.toolName ?? ""
-                blockedState = .personalAuth(provider: provider, toolName: toolName)
-
-            case .blockedFileAuthorizationRequired:
-                let fileName = action.fileAuthorizationInfo?.fileName ?? "Unknown"
-                let toolName = action.fileAuthorizationInfo?.toolName ?? action.metadata?.toolName ?? ""
-                blockedState = .fileAuth(fileName: fileName, toolName: toolName)
-
-            case .blockedChildActionInputRequired, .blockedUserAnswerRequired:
-                break
+            if let mapped = mapBlockedState(from: action) {
+                blockedState = mapped
             }
         } catch {
             logger.error("Failed to fetch blocked actions: \(error)")
+        }
+    }
+
+    private func mapBlockedState(from action: BlockedAction) -> BlockedState? {
+        switch action.status {
+        case .blockedValidationRequired:
+            return .approval(ToolApprovalInfo(from: action, fallbackConversationId: conversation.sId))
+
+        case .blockedAuthenticationRequired:
+            return .personalAuth(
+                provider: action.metadata?.mcpServerName ?? "Unknown",
+                toolName: action.metadata?.toolName ?? ""
+            )
+
+        case .blockedFileAuthorizationRequired:
+            return .fileAuth(
+                fileName: action.fileAuthorizationInfo?.fileName ?? "Unknown",
+                toolName: action.fileAuthorizationInfo?.toolName ?? action.metadata?.toolName ?? ""
+            )
+
+        case .blockedUserAnswerRequired:
+            guard let question = action.question else { return nil }
+            return .userQuestion(UserQuestionInfo(
+                from: action,
+                question: question,
+                fallbackConversationId: conversation.sId
+            ))
+
+        case .blockedChildActionInputRequired:
+            return nil
         }
     }
 

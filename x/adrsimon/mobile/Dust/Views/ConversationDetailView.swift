@@ -204,6 +204,9 @@ struct ConversationDetailView: View {
                                     onValidateAction: { approval in
                                         Task { await viewModel.validateAction(approved: approval) }
                                     },
+                                    onAnswerQuestion: { answer in
+                                        Task { await viewModel.answerQuestion(answer) }
+                                    },
                                     onRetry: { messageId in
                                         Task { await viewModel.retryMessage(messageId: messageId) }
                                     },
