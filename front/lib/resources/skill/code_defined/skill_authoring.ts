@@ -1,4 +1,3 @@
-import { getFeatureFlags } from "@app/lib/auth";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 
 const SKILL_AUTHORING_INSTRUCTIONS = `
@@ -35,6 +34,4 @@ export const skillAuthoringSkill = {
   mcpServers: [{ name: "skill_authoring" }],
   version: 1,
   icon: "ActionListIcon",
-  isRestricted: async (auth) =>
-    !(await getFeatureFlags(auth)).includes("skill_authoring_tool"),
 } as const satisfies GlobalSkillDefinition;
