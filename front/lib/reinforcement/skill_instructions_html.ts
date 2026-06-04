@@ -4,10 +4,12 @@ import {
 } from "@app/components/editor/extensions/instructions/BlockIdExtension";
 import { INSTRUCTIONS_ROOT_NODE_NAME } from "@app/components/editor/extensions/instructions/InstructionsRootExtension";
 import { KNOWLEDGE_TAG_REGEX } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeConstants";
+import { SKILL_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/SkillNode";
 import { TOOL_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/ToolNode";
 import { buildSkillInstructionsExtensionsForServer } from "@app/lib/editor/build_skill_instructions_extensions_server";
 import { preprocessMarkdownForEditor } from "@app/lib/editor/skill_instructions_preprocessing";
 import { generateShortBlockId } from "@app/lib/generate_short_block_id";
+import { parseSkillReferenceTag } from "@app/lib/skills/format";
 import { parseToolTag } from "@app/lib/tools/format";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import type { JSONContent } from "@tiptap/core";
@@ -85,7 +87,7 @@ function stripPresentationAttributes(html: string): string {
   $("[class]").not("code").removeAttr("class");
   $("[style]").removeAttr("style");
   // Must maintain id on custom inline elements for their parseHTML rules.
-  $("[id]").not("knowledge, tool").removeAttr("id");
+  $("[id]").not("knowledge, tool, skill, unavailable_skill").removeAttr("id");
   return $.html();
 }
 
@@ -140,6 +142,24 @@ function recoverCustomInlineNodes(node: JSONContent): JSONContent {
                 mcpServerViewId: tool.id,
                 toolIcon: tool.icon,
                 toolName: tool.name,
+              },
+            },
+          ],
+        };
+      }
+
+      const skill = parseSkillReferenceTag(text);
+      if (skill) {
+        return {
+          ...node,
+          content: [
+            {
+              type: SKILL_NODE_TYPE,
+              attrs: {
+                skillId: skill.id,
+                skillIcon: skill.icon,
+                skillName: skill.name,
+                skillUnavailable: skill.unavailable ?? false,
               },
             },
           ],

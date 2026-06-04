@@ -148,4 +148,63 @@ describe("convertMarkdownToBlockHtml", () => {
     expect(html).toContain('name="GitHub Search"');
     expect(html).toContain('icon="GithubLogo"');
   });
+
+  it("renders inline <skill /> references as skill nodes (not HTML-escaped text)", () => {
+    const md =
+      '<skill id="skl_abc" name="Talk Like a Pirate" icon="ActionSpeakIcon" /> when in doubt';
+
+    const html = convertMarkdownToBlockHtml(md);
+    const $ = load(html);
+
+    expect(html).not.toContain("&lt;skill");
+
+    const skill = $("skill");
+    expect(skill).toHaveLength(1);
+    expect(skill.attr("id")).toBe("skl_abc");
+    expect(skill.attr("name")).toBe("Talk Like a Pirate");
+    expect(skill.attr("icon")).toBe("ActionSpeakIcon");
+    // The boolean parse-only attribute must not leak into the HTML.
+    expect(skill.attr("skillunavailable")).toBeUndefined();
+
+    // The trailing text must remain a sibling of the skill node, not get
+    // swallowed inside a self-closed <skill> element.
+    expect(skill.text()).not.toContain("when in doubt");
+    const paragraph = skill.parent("p");
+    expect(paragraph).toHaveLength(1);
+    expect(paragraph.text()).toContain("when in doubt");
+  });
+
+  it("recovers standalone <skill /> lines as skill nodes with id, name, and icon", () => {
+    const md = [
+      "Intro",
+      "",
+      '<skill id="skl_def" name="Triage Support" icon="ActionListIcon" />',
+      "",
+      "Outro",
+    ].join("\n");
+
+    const html = convertMarkdownToBlockHtml(md);
+
+    expect(html).not.toContain("&lt;skill");
+    expect(html).toContain("<skill");
+    expect(html).toContain('id="skl_def"');
+    expect(html).toContain('name="Triage Support"');
+    expect(html).toContain('icon="ActionListIcon"');
+  });
+
+  it("renders <unavailable_skill /> references preserving the id and keeping trailing text", () => {
+    const md = '<unavailable_skill id="skl_gone" /> for legacy callers';
+
+    const html = convertMarkdownToBlockHtml(md);
+    const $ = load(html);
+
+    expect(html).not.toContain("&lt;unavailable_skill");
+
+    const skill = $("unavailable_skill");
+    expect(skill).toHaveLength(1);
+    expect(skill.attr("id")).toBe("skl_gone");
+
+    expect(skill.text()).not.toContain("for legacy callers");
+    expect(skill.parent("p").text()).toContain("for legacy callers");
+  });
 });
