@@ -1,5 +1,4 @@
 import { updateAgentMessageWithFinalStatus } from "@app/lib/api/assistant/conversation";
-import { computeAndStoreAgentMessageCredits } from "@app/lib/api/assistant/credit_cost";
 import { getCompletionDuration } from "@app/lib/api/assistant/messages";
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
@@ -338,12 +337,14 @@ export async function processEventForDatabase(
       break;
   }
 
-  if (TERMINAL_AGENT_MESSAGE_EVENT_TYPES.includes(event.type)) {
-    await ConversationResource.setIsRunningAgentLoop(auth, {
-      conversation,
-      isRunningAgentLoop: false,
-    });
+  if (!TERMINAL_AGENT_MESSAGE_EVENT_TYPES.includes(event.type)) {
+    return;
   }
+
+  await ConversationResource.setIsRunningAgentLoop(auth, {
+    conversation,
+    isRunningAgentLoop: false,
+  });
 }
 
 // Process unread state for agent events before publishing to Redis.
@@ -352,11 +353,9 @@ async function processEventForUnreadState(
   {
     event,
     conversation,
-    costCredits,
   }: {
     event: AgentMessageEvents;
     conversation: ConversationWithoutContentType;
-    costCredits: number | null;
   }
 ) {
   // If the event is a done event, we want to mark the conversation as unread for all participants.
@@ -374,7 +373,6 @@ async function processEventForUnreadState(
           event.type === "agent_error" || event.type === "tool_error"
             ? "error"
             : "success",
-        costCredits,
       },
     });
   }
@@ -396,16 +394,10 @@ export async function updateResourceAndPublishEvent(
     modelInteractionDurationMs?: number;
   }
 ): Promise<void> {
-  // Persist the DB updates, then (for terminal events) compute the credit cost, then
-  // process the unread state. The order matters: the cost computation is gated on the
-  // committed terminal status, so the DB write must land first; the resulting cost then
-  // rides on the agent_message_done event published by processEventForUnreadState,
-  // updating the live client without a reload. processEventForUnreadState is a no-op for
-  // non-terminal events, so this single sequential flow covers both cases.
-  //
-  // computeAndStoreAgentMessageCredits is the computation site for the paths that flow
-  // through here (success, gracefully_stopped, cancelled); the interrupted path computes
-  // it in finalize.
+  // Persist the DB updates first, then publish the terminal done event. The credit cost is
+  // computed and persisted later, in the finalize activities (see finalize.ts), so it is
+  // intentionally not carried on the terminal events here — clients read it from the messages /
+  // conversation API on their next revalidation.
   await processEventForDatabase(auth, {
     event,
     agentMessage,
@@ -414,16 +406,9 @@ export async function updateResourceAndPublishEvent(
     modelInteractionDurationMs,
   });
 
-  const costCredits = TERMINAL_AGENT_MESSAGE_EVENT_TYPES.includes(event.type)
-    ? await computeAndStoreAgentMessageCredits(auth, {
-        agentMessageId: event.messageId,
-      })
-    : null;
-
   await processEventForUnreadState(auth, {
     event,
     conversation,
-    costCredits,
   });
 
   // All events go through the coalescer, which handles batching logic internally.

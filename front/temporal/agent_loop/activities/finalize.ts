@@ -31,6 +31,9 @@ export async function finalizeSuccessfulAgentLoopActivity(
     launchAgentMessageAnalytics(auth, agentLoopArgs),
     launchTrackProgrammaticUsage(auth, agentLoopArgs),
     launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
+    computeAndStoreAgentMessageCredits(auth, {
+      agentMessageId: agentLoopArgs.agentMessageId,
+    }),
     conversationUnreadNotification(auth, agentLoopArgs),
     handleMentions(auth, agentLoopArgs),
     sendEmailReplyOnCompletion(auth, agentLoopArgs),
@@ -56,6 +59,9 @@ export async function finalizeGracefullyStoppedAgentLoopActivity(
     launchAgentMessageAnalytics(auth, agentLoopArgs),
     launchTrackProgrammaticUsage(auth, agentLoopArgs),
     launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
+    computeAndStoreAgentMessageCredits(auth, {
+      agentMessageId: agentLoopArgs.agentMessageId,
+    }),
     conversationUnreadNotification(auth, agentLoopArgs),
     handleMentions(auth, agentLoopArgs),
   ]);
@@ -103,6 +109,9 @@ export async function finalizeCancelledAgentLoopActivity(
     launchAgentMessageAnalytics(auth, agentLoopArgs),
     launchTrackProgrammaticUsage(auth, agentLoopArgs),
     launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
+    computeAndStoreAgentMessageCredits(auth, {
+      agentMessageId: agentLoopArgs.agentMessageId,
+    }),
     sendEmailReplyOnError(
       auth,
       agentLoopArgs,
@@ -125,6 +134,9 @@ export async function finalizeErroredAgentLoopActivity(
     launchAgentMessageAnalytics(auth, agentLoopArgs),
     launchTrackProgrammaticUsage(auth, agentLoopArgs),
     launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
+    computeAndStoreAgentMessageCredits(auth, {
+      agentMessageId: agentLoopArgs.agentMessageId,
+    }),
     sendEmailReplyOnError(
       auth,
       agentLoopArgs,
