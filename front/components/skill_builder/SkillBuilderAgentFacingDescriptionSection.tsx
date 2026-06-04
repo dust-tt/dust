@@ -188,10 +188,15 @@ export function SkillBuilderAgentFacingDescriptionSection() {
 
   return (
     <section className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="heading-lg font-semibold text-foreground dark:text-foreground-night">
-          {SKILL_INVOCATION_LABEL}
-        </h3>
+      <div className="flex items-start justify-between gap-2">
+        <div className="space-y-1">
+          <h3 className="heading-lg font-semibold text-foreground dark:text-foreground-night">
+            {SKILL_INVOCATION_LABEL}
+          </h3>
+          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            Tell the agent when it should use this skill.
+          </p>
+        </div>
         {descriptionDiffers && (
           <Button
             variant="outline"

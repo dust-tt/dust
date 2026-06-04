@@ -53,10 +53,16 @@ export function SkillBuilderInstructionsSection() {
 
   return (
     <section className="flex flex-col gap-3">
-      <div className="flex flex-col items-end justify-between gap-2 sm:flex-row">
-        <h3 className="heading-lg font-semibold text-foreground dark:text-foreground-night">
-          {SKILL_INSTRUCTIONS_LABEL}
-        </h3>
+      <div className="flex flex-col items-start justify-between gap-2 sm:flex-row">
+        <div className="space-y-1">
+          <h3 className="heading-lg font-semibold text-foreground dark:text-foreground-night">
+            {SKILL_INSTRUCTIONS_LABEL}
+          </h3>
+          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            Provide the guidelines the skill should follow when it runs. Type
+            "/" to attach knowledge, tools, or another skill.
+          </p>
+        </div>
         <div className="flex items-center gap-2">
           {instructionsDiffer && (
             <Button
