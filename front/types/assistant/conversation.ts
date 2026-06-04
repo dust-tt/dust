@@ -302,6 +302,7 @@ export type BaseAgentMessageType = {
   completionDurationMs: number | null;
   reactions: MessageReactionType[];
   prunedContext?: boolean;
+  costCredits: number | null;
 };
 
 export type InlineActivityStep =
