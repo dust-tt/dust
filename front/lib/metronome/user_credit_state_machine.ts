@@ -3,6 +3,7 @@ import {
   clearUserCapBlocked,
   setUserAwuWarned,
   setUserCapBlocked,
+  setUserCreditState,
 } from "@app/lib/metronome/user_block";
 import type { MembershipResource } from "@app/lib/resources/membership_resource";
 import { invalidateCacheAfterCommit } from "@app/lib/utils/cache";
@@ -78,6 +79,9 @@ function syncUserCapCacheForState(
       invalidateCacheAfterCommit(transaction, () =>
         clearUserAwuWarned(ctx.workspaceId, ctx.userId)
       );
+      invalidateCacheAfterCommit(transaction, () =>
+        setUserCreditState(ctx.workspaceId, ctx.userId, state)
+      );
       return;
 
     // Still spending, but ≥80% of the personal balance / per-user cap used:
@@ -90,11 +94,17 @@ function syncUserCapCacheForState(
       invalidateCacheAfterCommit(transaction, () =>
         setUserAwuWarned(ctx.workspaceId, ctx.userId)
       );
+      invalidateCacheAfterCommit(transaction, () =>
+        setUserCreditState(ctx.workspaceId, ctx.userId, state)
+      );
       return;
 
     case "capped":
       invalidateCacheAfterCommit(transaction, () =>
         setUserCapBlocked(ctx.workspaceId, ctx.userId)
+      );
+      invalidateCacheAfterCommit(transaction, () =>
+        setUserCreditState(ctx.workspaceId, ctx.userId, state)
       );
       return;
 
