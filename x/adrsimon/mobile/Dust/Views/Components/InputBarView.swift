@@ -4,6 +4,7 @@ import SwiftUI
 struct InputBarView: View {
     @ObservedObject var viewModel: InputBarViewModel
     var conversationId: String?
+    var autoFocus: Bool = false
     var onConversationCreated: ((Conversation) -> Void)?
     var onMessageSent: (() -> Void)?
     var onWillSendReply: ((String) -> Void)?
@@ -86,6 +87,12 @@ struct InputBarView: View {
                 }
             )
             .presentationDetents([.medium, .large])
+        }
+        .task {
+            // A task hop is needed; setting @FocusState in onAppear doesn't take.
+            if autoFocus {
+                isTextFieldFocused = true
+            }
         }
     }
 
@@ -274,7 +281,8 @@ struct InputBarView: View {
 
     private var sendButton: some View {
         Button {
-            Task {
+            // @MainActor so callbacks after the await (e.g. navigation) run on the main actor.
+            Task { @MainActor in
                 isTextFieldFocused = false
                 if let conversationId {
                     let pendingText = viewModel.messageText.trimmingCharacters(in: .whitespacesAndNewlines)
