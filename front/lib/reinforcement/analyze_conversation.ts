@@ -1,6 +1,6 @@
 import { renderConversationAsTextWithFeedback } from "@app/lib/api/assistant/conversation/render_conversation_with_feedback";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
-import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
+import { type Authenticator } from "@app/lib/auth";
 import { formatSkillContext } from "@app/lib/reinforcement/format_skill_context";
 import { buildReinforcedSkillsLLMParams } from "@app/lib/reinforcement/run_reinforced_analysis";
 import { buildSkillInstructionHtmlEditPrompt } from "@app/lib/reinforcement/skill_instruction_edit_prompt";
@@ -209,8 +209,7 @@ export async function buildSkillConversationAnalysisBatchMap(
   { useInlineTools }: { useInlineTools?: boolean } = {}
 ): Promise<Map<string, LLMStreamParameters> | null> {
   const batchMap = new Map<string, LLMStreamParameters>();
-  const resolvedUseInlineTools =
-    useInlineTools ?? (await getFeatureFlags(auth)).includes("nested_skills");
+  const resolvedUseInlineTools = useInlineTools ?? true;
 
   // Collect all unique skill sIds across all conversations.
   const allSkillIds = [

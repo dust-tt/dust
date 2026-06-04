@@ -1,5 +1,5 @@
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
-import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { generateShortBlockId } from "@app/lib/generate_short_block_id";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -42,7 +42,9 @@ async function processWorkspace(
   logger: Logger
 ): Promise<WorkspaceStats> {
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-  const hasNestedSkills = await hasFeatureFlag(auth, "nested_skills");
+  // The nested_skills feature flag has been removed (feature released globally),
+  // so every workspace is now eligible for processing.
+  const hasNestedSkills = true;
   if (!hasNestedSkills && !includeUnflagged) {
     return {
       changed: 0,
@@ -203,7 +205,7 @@ makeScript(
     includeUnflagged: {
       default: false,
       describe:
-        "Also process workspaces without the nested_skills feature flag.",
+        "No-op: the nested_skills flag was removed and all workspaces are processed.",
       type: "boolean",
     },
     wId: {

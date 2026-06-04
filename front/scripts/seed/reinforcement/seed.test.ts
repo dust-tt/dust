@@ -145,7 +145,7 @@ describe("reinforcement seed script integration test", () => {
     expect(allReinforcement).toBe(true);
 
     // First suggestion includes an inline tool reference in its instruction edit
-    // so the nested_skills path can be exercised manually from seed data.
+    // so the inline tool reference path can be exercised manually from seed data.
     const withInlineToolReference = skillSuggestions.find((s) => {
       const json = s.toJSON();
       return json.suggestion.instructionEdits?.some(

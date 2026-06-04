@@ -92,7 +92,7 @@ export function SkillInfoTab({
     [skill.relations?.childSkills]
   );
 
-  const showChildSkills = hasFeature("nested_skills") && childSkills.length > 0;
+  const showChildSkills = childSkills.length > 0;
 
   const handleKnowledgeItemsChange = useCallback((items: KnowledgeItem[]) => {
     setKnowledgeItems(items);
@@ -125,7 +125,7 @@ export function SkillInfoTab({
           <SkillInstructionsReadOnlyEditor
             content={skill.instructions}
             htmlContent={skill.instructionsHtml ?? ""}
-            enableSkillReferences={hasFeature("nested_skills")}
+            enableSkillReferences={true}
             owner={owner}
             onKnowledgeItemsChange={handleKnowledgeItemsChange}
             className="max-h-150 overflow-y-auto"

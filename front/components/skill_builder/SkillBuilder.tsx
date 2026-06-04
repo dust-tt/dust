@@ -10,7 +10,6 @@ import { SkillBuilderInstructionsSection } from "@app/components/skill_builder/S
 import { SkillBuilderRequestedSpacesSection } from "@app/components/skill_builder/SkillBuilderRequestedSpacesSection";
 import { SkillBuilderSettingsSection } from "@app/components/skill_builder/SkillBuilderSettingsSection";
 import { SkillBuilderSuggestionsPanel } from "@app/components/skill_builder/SkillBuilderSuggestionsPanel";
-import { SkillBuilderToolsSection } from "@app/components/skill_builder/SkillBuilderToolsSection";
 import { SkillVersionHistoryPicker } from "@app/components/skill_builder/SkillBuilderVersionComparisonBanner";
 import { SkillBuilderVersionComparisonFooter } from "@app/components/skill_builder/SkillBuilderVersionComparisonFooter";
 import {
@@ -82,7 +81,6 @@ export default function SkillBuilder({
 
   const hasSelfImprovingSkills =
     hasFeature("reinforced_agents") && hasFeature("reinforcement_ui");
-  const enableSkillReferences = hasFeature("nested_skills");
 
   const { suggestions } = useSkillSuggestions({
     skillId: skill?.sId ?? null,
@@ -214,7 +212,7 @@ export default function SkillBuilder({
               size="lg"
             >
               A customized version of {extendedSkill.name} with your own
-              guidelines and {enableSkillReferences ? "capabilities" : "tools"}.
+              guidelines and capabilities.
             </ContentMessage>
           )}
           {skill?.status === "suggested" && (
@@ -235,9 +233,6 @@ export default function SkillBuilder({
           <SkillBuilderAgentFacingDescriptionSection />
           <SkillBuilderInstructionsSection />
           {hasFeature("sandbox_tools") && <SkillBuilderFilesSection />}
-          {!enableSkillReferences && (
-            <SkillBuilderToolsSection extendedSkill={extendedSkill} />
-          )}
           <SkillBuilderSettingsOrComparisonFooter
             skill={skill}
             hasSelfImprovingSkills={hasSelfImprovingSkills}

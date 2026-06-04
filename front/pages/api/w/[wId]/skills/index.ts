@@ -15,7 +15,6 @@ import {
   type SkillType,
   type SkillWithoutInstructionsAndToolsType,
   type SkillWithoutInstructionsAndToolsWithRelationsType,
-  type UsedBySkillType,
 } from "@app/types/assistant/skill_configuration";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -134,9 +133,6 @@ async function handler(
       });
 
       if (withRelations === "true") {
-        const featureFlags = await getFeatureFlags(auth);
-        const includeNestedSkills = featureFlags.includes("nested_skills");
-
         const extendedSkills = await SkillResource.fetchByIds(
           auth,
           removeNulls(uniq(skills.map((skill) => skill.extendedSkillId)))
@@ -147,16 +143,14 @@ async function handler(
           auth,
           skills
         );
-        let childSkillsMap = new Map<string, SkillResource[]>();
-        if (includeNestedSkills) {
-          childSkillsMap = await SkillResource.batchFetchChildSkills(
-            auth,
-            skills
-          );
-        }
-        const usedBySkillsMap = includeNestedSkills
-          ? await SkillResource.batchFetchUsedBySkills(auth, skills)
-          : new Map<string, UsedBySkillType[]>();
+        const childSkillsMap = await SkillResource.batchFetchChildSkills(
+          auth,
+          skills
+        );
+        const usedBySkillsMap = await SkillResource.batchFetchUsedBySkills(
+          auth,
+          skills
+        );
 
         const extendedSkillsMap = new Map(
           extendedSkills.map((skill) => [skill.sId, skill])
@@ -174,13 +168,11 @@ async function handler(
           const editors = editorsMap.get(sc.sId) ?? null;
           const editedByUser = editedByUsersMap.get(sc.sId) ?? null;
           const usedBySkills = usedBySkillsMap.get(sc.sId) ?? [];
-          const usageWithSkills = includeNestedSkills
-            ? {
-                ...usage,
-                count: usage.count + usedBySkills.length,
-                skills: usedBySkills,
-              }
-            : usage;
+          const usageWithSkills = {
+            ...usage,
+            count: usage.count + usedBySkills.length,
+            skills: usedBySkills,
+          };
 
           return {
             ...skillWithoutInstructionsAndTools,
@@ -192,22 +184,18 @@ async function handler(
                 ? (extendedSkillsMap.get(sc.extendedSkillId)?.toJSON(auth) ??
                   null)
                 : null,
-              ...(includeNestedSkills
-                ? {
-                    childSkills: (childSkillsMap.get(sc.sId) ?? []).map(
-                      (childSkill) => {
-                        const {
-                          instructions,
-                          instructionsHtml,
-                          tools,
-                          ...childSkillWithoutInstructionsAndTools
-                        } = childSkill.toJSON(auth);
+              childSkills: (childSkillsMap.get(sc.sId) ?? []).map(
+                (childSkill) => {
+                  const {
+                    instructions,
+                    instructionsHtml,
+                    tools,
+                    ...childSkillWithoutInstructionsAndTools
+                  } = childSkill.toJSON(auth);
 
-                        return childSkillWithoutInstructionsAndTools;
-                      }
-                    ),
-                  }
-                : {}),
+                  return childSkillWithoutInstructionsAndTools;
+                }
+              ),
             },
           } satisfies SkillWithoutInstructionsAndToolsWithRelationsType;
         });
@@ -372,7 +360,7 @@ async function handler(
       }
 
       const featureFlags = await getFeatureFlags(auth);
-      const enableSkillReferences = featureFlags.includes("nested_skills");
+      const enableSkillReferences = true;
       const referencedSkillIds = uniq(body.referencedSkillIds ?? []);
 
       // Validate file attachments if provided (gated behind sandbox_tools).
