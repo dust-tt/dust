@@ -937,6 +937,15 @@ export class FileResource extends BaseResource<FileModel> {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
     } catch (error) {
+      logger.error(
+        {
+          err: normalizeError(error),
+          fileSId: this.sId,
+          workspaceSId: owner.sId,
+          version,
+        },
+        "getFileContent failed"
+      );
       return null;
     }
   }
