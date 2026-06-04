@@ -302,8 +302,11 @@ fn is_unsafe_substitution_header(name: &str) -> bool {
             | "x-forwarded-host"
             | "x-forwarded-proto"
             | "x-forwarded-port"
+            | "x-forwarded-server"
             | "forwarded"
             | "x-real-ip"
+            | "true-client-ip"
+            | "cf-connecting-ip"
             | "via"
             // Request-id / trace context — echoed into response headers by convention.
             | "x-request-id"
@@ -311,9 +314,11 @@ fn is_unsafe_substitution_header(name: &str) -> bool {
             | "request-id"
             | "traceparent"
             | "tracestate"
+            | "baggage"
             | "x-amzn-trace-id"
             | "x-cloud-trace-context"
             | "uber-trace-id"
+            | "grpc-trace-bin"
             | "b3"
             // Privacy / preference signals — never credentials, UA-like reflection.
             | "dnt"
@@ -562,8 +567,11 @@ mod tests {
             "x-forwarded-host",
             "x-forwarded-proto",
             "x-forwarded-port",
+            "x-forwarded-server",
             "forwarded",
             "x-real-ip",
+            "true-client-ip",
+            "cf-connecting-ip",
             "via",
             // Request-id / trace context.
             "x-request-id",
@@ -571,9 +579,11 @@ mod tests {
             "request-id",
             "traceparent",
             "tracestate",
+            "baggage",
             "x-amzn-trace-id",
             "x-cloud-trace-context",
             "uber-trace-id",
+            "grpc-trace-bin",
             "b3",
             // Privacy / preference signals.
             "dnt",
