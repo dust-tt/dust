@@ -7,7 +7,18 @@ import type { CaptureService } from "@extension/shared/services/capture";
 import { attachTabsTextTool } from "@extension/shared/tools/attachPageTextTool";
 import { interactWithPageTool } from "@extension/shared/tools/interactWithPageTool";
 import { listBrowserTabsTool } from "@extension/shared/tools/listTabsTool";
-import { CHROME_TOOLS_METADATA } from "@extension/shared/tools/metadata";
+import {
+  ATTACH_TABS_TEXT_TOOL_NAME,
+  CHROME_TOOLS_METADATA,
+  CLOSE_BROWSER_TAB_TOOL_NAME,
+  INTERACT_WITH_PAGE_TOOL_NAME,
+  LIST_BROWSER_TABS_TOOL_NAME,
+  MOVE_BROWSER_TAB_TOOL_NAME,
+  OPEN_BROWSER_TAB_TOOL_NAME,
+  RELOAD_BROWSER_TAB_TOOL_NAME,
+  SWITCH_TO_BROWSER_TAB_TOOL_NAME,
+  TAKE_SCREENSHOT_OR_ATTACH_FILE_TOOL_NAME,
+} from "@extension/shared/tools/metadata";
 import {
   closeBrowserTabTool,
   moveBrowserTabTool,
@@ -29,21 +40,21 @@ export function registerAllTools(
   workspaceId: string
 ): void {
   const handlers: ClientToolHandlers<typeof CHROME_TOOLS_METADATA> = {
-    attach_tabs_text: (params) =>
+    [ATTACH_TABS_TEXT_TOOL_NAME]: (params) =>
       attachTabsTextTool({ ...params, captureService }),
-    take_screenshot_or_attach_file: (params) =>
+    [TAKE_SCREENSHOT_OR_ATTACH_FILE_TOOL_NAME]: (params) =>
       takeScreenshotOrAttachFileTool({
         ...params,
         captureService,
         workspaceId,
       }),
-    list_browser_tabs: () => listBrowserTabsTool(),
-    switch_to_browser_tab: (params) => switchBrowserTabTool(params),
-    close_browser_tab: (params) => closeBrowserTabTool(params),
-    move_browser_tab: (params) => moveBrowserTabTool(params),
-    open_browser_tab: (params) => openBrowserTab(params),
-    reload_browser_tab: (params) => reloadBrowserTabTool(params),
-    interact_with_page: (params) => interactWithPageTool(params),
+    [LIST_BROWSER_TABS_TOOL_NAME]: () => listBrowserTabsTool(),
+    [SWITCH_TO_BROWSER_TAB_TOOL_NAME]: (params) => switchBrowserTabTool(params),
+    [CLOSE_BROWSER_TAB_TOOL_NAME]: (params) => closeBrowserTabTool(params),
+    [MOVE_BROWSER_TAB_TOOL_NAME]: (params) => moveBrowserTabTool(params),
+    [OPEN_BROWSER_TAB_TOOL_NAME]: (params) => openBrowserTab(params),
+    [RELOAD_BROWSER_TAB_TOOL_NAME]: (params) => reloadBrowserTabTool(params),
+    [INTERACT_WITH_PAGE_TOOL_NAME]: (params) => interactWithPageTool(params),
   };
 
   const tools = buildClientTools(CHROME_TOOLS_METADATA, handlers);
