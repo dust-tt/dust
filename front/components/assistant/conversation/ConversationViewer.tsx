@@ -934,6 +934,11 @@ export const ConversationViewer = ({
               const msg =
                 vMsg && isAgentMessageWithStreaming(vMsg) ? vMsg : null;
 
+              // Note: costCredits is intentionally not patched here. It is
+              // computed and persisted later, in the finalize activities, so it
+              // is not on this event. The per-message and conversation totals are
+              // read from the messages / credit-cost API and refresh on their
+              // next SWR revalidation (e.g. when the cost menu opens).
               void mutateMessages(
                 (pages) =>
                   pages?.map((page) => ({

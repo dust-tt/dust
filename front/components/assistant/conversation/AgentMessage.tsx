@@ -24,6 +24,7 @@ import {
   isUserMessage,
   makeInitialMessageStreamState,
 } from "@app/components/assistant/conversation/types";
+import { useCreditCostMenuItem } from "@app/components/assistant/conversation/useCreditCostMenuItem";
 import { ConfirmContext } from "@app/components/Confirm";
 import {
   CitationsContext,
@@ -39,6 +40,7 @@ import {
 import {
   useBranchConversation,
   useCancelMessage,
+  useConversationMessage,
   usePostOnboardingFollowUp,
 } from "@app/hooks/conversations";
 import { useConversationAttachments } from "@app/hooks/conversations/useConversationAttachments";
@@ -260,6 +262,26 @@ export function AgentMessage({
   >([]);
   const [isCopied, copy] = useCopyToClipboard();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  // The streamed message carries a null cost: it is computed and persisted only
+  // after the agentic loop finishes, in the finalize activities. Re-fetch the
+  // message when the menu opens so a freshly-arrived message shows its cost
+  // without a reload. Falls back to the value already on the message otherwise.
+  const { message: refreshedMessage } = useConversationMessage({
+    conversationId,
+    workspaceId: owner.sId,
+    messageId: agentMessage.sId,
+    // Only refetch when the menu is open and we don't already have a cost (a
+    // reloaded message already carries it; a freshly-streamed one has null).
+    options: { disabled: !isMenuOpen || agentMessage.costCredits != null },
+  });
+  const refreshedCostCredits =
+    refreshedMessage?.type === "agent_message"
+      ? refreshedMessage.costCredits
+      : null;
+  const creditCostItem = useCreditCostMenuItem({
+    credits: refreshedCostCredits ?? agentMessage.costCredits,
+    scope: "message",
+  });
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
 
@@ -877,6 +899,10 @@ export function AgentMessage({
         disabled: isDeleting,
         variant: "warning" as const,
       });
+    }
+
+    if (creditCostItem) {
+      dropdownItems.unshift(creditCostItem);
     }
 
     hoverButtons.push(

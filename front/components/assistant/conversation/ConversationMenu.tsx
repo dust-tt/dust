@@ -2,10 +2,12 @@ import { CreatePodModal } from "@app/components/assistant/conversation/CreatePod
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
 import { EditConversationTitleDialog } from "@app/components/assistant/conversation/EditConversationTitleDialog";
 import { LeaveConversationDialog } from "@app/components/assistant/conversation/LeaveConversationDialog";
+import { useCreditCostMenuItem } from "@app/components/assistant/conversation/useCreditCostMenuItem";
 import { ConfirmContext } from "@app/components/Confirm";
 import {
   useBranchConversation,
   useConversation,
+  useConversationCreditCost,
   useConversationParticipants,
   useConversationParticipationOptions,
   useConversationUrlAccessMode,
@@ -225,6 +227,15 @@ export function ConversationMenu({
     workspaceId: owner.sId,
     options: { disabled: !isConversationDisplayed },
   });
+  const { totalCostCredits } = useConversationCreditCost({
+    conversationId: activeConversationId,
+    workspaceId: owner.sId,
+    options: { disabled: shouldWaitBeforeFetching },
+  });
+  const creditCostItem = useCreditCostMenuItem({
+    credits: totalCostCredits,
+    scope: "conversation",
+  });
   const conversationParticipationOptions = useConversationParticipationOptions({
     ownerId: owner.sId,
     conversationId: activeConversationId,
@@ -415,7 +426,11 @@ export function ConversationMenu({
         ) : (
           <DropdownMenuTrigger asChild>{menuTrigger}</DropdownMenuTrigger>
         )}
-        <DropdownMenuContent onFocusOutside={(e) => e.preventDefault()}>
+        <DropdownMenuContent
+          className="w-[237px]"
+          onFocusOutside={(e) => e.preventDefault()}
+        >
+          {creditCostItem && <DropdownMenuItem {...creditCostItem} />}
           <DropdownMenuItem
             label="Rename conversation"
             onClick={() => setShowRenameDialog(true)}
