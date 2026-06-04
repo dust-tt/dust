@@ -22,6 +22,21 @@ import type { z } from "zod";
 
 const PRODUCTBOARD_API_V2_BASE_URL = "https://api.productboard.com/v2";
 
+// Extracts the `pageCursor` query parameter from a `links.next` pagination
+// URL. Handles both absolute and relative URLs defensively: a cursor that we
+// fail to extract would otherwise silently truncate paginated results.
+function extractPageCursor(next: string | null | undefined): string | null {
+  if (!next) {
+    return null;
+  }
+  try {
+    const url = new URL(next, PRODUCTBOARD_API_V2_BASE_URL);
+    return url.searchParams.get("pageCursor");
+  } catch {
+    return null;
+  }
+}
+
 export class ProductboardApiError extends Error {
   public readonly isInvalidInput: boolean;
   public readonly statusCode: number;
@@ -315,18 +330,7 @@ export class ProductboardClient {
       return new Err(result.error);
     }
 
-    let pageCursor: string | null = null;
-    if (result.value.links?.next) {
-      try {
-        const url = new URL(result.value.links.next);
-        const cursor = url.searchParams.get("pageCursor");
-        if (cursor) {
-          pageCursor = cursor;
-        }
-      } catch {
-        pageCursor = null;
-      }
-    }
+    const pageCursor = extractPageCursor(result.value.links?.next);
 
     return new Ok({
       notes: result.value.data,
@@ -460,18 +464,7 @@ export class ProductboardClient {
       return new Err(result.error);
     }
 
-    let pageCursor: string | null = null;
-    if (result.value.links?.next) {
-      try {
-        const url = new URL(result.value.links.next);
-        const cursor = url.searchParams.get("pageCursor");
-        if (cursor) {
-          pageCursor = cursor;
-        }
-      } catch {
-        pageCursor = null;
-      }
-    }
+    const pageCursor = extractPageCursor(result.value.links?.next);
 
     return new Ok({
       entities: result.value.data,
@@ -616,18 +609,7 @@ export class ProductboardClient {
       return new Err(result.error);
     }
 
-    let pageCursor: string | null = null;
-    if (result.value.links?.next) {
-      try {
-        const url = new URL(result.value.links.next);
-        const cursor = url.searchParams.get("pageCursor");
-        if (cursor) {
-          pageCursor = cursor;
-        }
-      } catch {
-        pageCursor = null;
-      }
-    }
+    const pageCursor = extractPageCursor(result.value.links?.next);
 
     return new Ok({
       relationships: result.value.data,

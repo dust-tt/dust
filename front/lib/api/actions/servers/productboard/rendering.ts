@@ -51,6 +51,9 @@ export function renderNotesList(
   options?: { pageCursor?: string | null; totalResults?: number }
 ): string {
   if (notes.length === 0) {
+    if (options?.pageCursor) {
+      return `No notes on this page, but more results are available. To fetch the next page, call this tool again with \`page_cursor: "${options.pageCursor}"\`.`;
+    }
     return "No notes found.";
   }
 
@@ -124,6 +127,9 @@ export function renderEntitiesList(
   options?: { pageCursor?: string | null }
 ): string {
   if (entities.length === 0) {
+    if (options?.pageCursor) {
+      return `No hierarchy entities on this page, but more results are available. To fetch the next page, call this tool again with \`page_cursor: "${options.pageCursor}"\`.`;
+    }
     return "No hierarchy entities found.";
   }
 
@@ -329,6 +335,9 @@ export function renderRelationshipsList(
   options?: { pageCursor?: string | null; entityId?: string }
 ): string {
   if (relationships.length === 0) {
+    if (options?.pageCursor) {
+      return `No relationships on this page, but more results are available. To fetch the next page, call this tool again with \`page_cursor: "${options.pageCursor}"\`.`;
+    }
     return "No relationships found.";
   }
 
