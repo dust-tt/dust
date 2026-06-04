@@ -211,10 +211,13 @@ function UsageStatusBanner({ owner }: UsageStatusBannerProps) {
   // Pool balance and programmatic cap banners are only shown to admins who
   // manage workspace credits. The AWU cap banner is shown to any user subject
   // to a per-user usage cap. All can be displayed at the same time.
-  const showPoolBanner =
-    isAdmin(owner) &&
-    (poolCreditState === "active_low_balance" ||
-      poolCreditState === "active_critical_balance");
+  //
+  // The low/critical pool states are internal throttling signals and are not
+  // surfaced. Admins are alerted when the pool is fully depleted (agents
+  // blocked) or when it has run into pay-as-you-go overage.
+  const isPoolDepleted = poolCreditState === "depleted";
+  const isPoolOverage = poolCreditState === "overage";
+  const showPoolBanner = isAdmin(owner) && (isPoolDepleted || isPoolOverage);
   const showAwuBanner = awuStatus !== "normal";
   const showProgrammaticBanner =
     isAdmin(owner) && programmaticCreditStatus !== "active";
@@ -223,22 +226,20 @@ function UsageStatusBanner({ owner }: UsageStatusBannerProps) {
     return null;
   }
 
-  const isPoolCritical = poolCreditState === "active_critical_balance";
-
   return (
     <>
       {showPoolBanner && (
         <StatusBanner
-          variant={isPoolCritical ? "danger" : "warning"}
+          variant={isPoolDepleted ? "danger" : "warning"}
           title={
-            isPoolCritical
-              ? "Your workspace is critically low on credits"
-              : "Your workspace is running low on credits"
+            isPoolDepleted
+              ? "Your workspace is out of credits"
+              : "Your workspace has used all its credits"
           }
           description={
-            isPoolCritical
-              ? "Your workspace credits are almost depleted. Top up now to avoid interruptions to your agents."
-              : "Your workspace credits are running low. Consider topping up to avoid interruptions to your agents."
+            isPoolDepleted
+              ? "Your workspace has run out of credits. Agents are blocked until you top up."
+              : "Your workspace has used all of its included credits and is now billed pay-as-you-go. Top up to avoid overage charges."
           }
           footer={
             <LinkWrapper href={`/w/${owner.sId}/usage`} className="underline">
