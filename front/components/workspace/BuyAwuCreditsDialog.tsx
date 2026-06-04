@@ -1,3 +1,7 @@
+import {
+  CardBrandIcon,
+  formatBrandName,
+} from "@app/components/checkout/PaymentMethodRow";
 import { useAwuPurchase } from "@app/hooks/useAwuPurchase";
 import config from "@app/lib/api/config";
 import type { AwuPurchaseInfo } from "@app/lib/credits/awu_purchase";
@@ -43,6 +47,22 @@ const supportEmail = config.getSupportEmailAddress().email;
 
 function formatCredits(credits: number): string {
   return Math.round(credits).toLocaleString("en-US");
+}
+
+function formatPaymentMethodLabel(
+  pm:
+    | { type: "card"; brand: string; last4: string }
+    | { type: "sepa_debit"; last4: string }
+): string {
+  switch (pm.type) {
+    case "card":
+      return `${formatBrandName(pm.brand)} ${pm.last4}`;
+    case "sepa_debit":
+      return `IBAN •••• ${pm.last4}`;
+    default:
+      assertNeverAndIgnore(pm);
+      return "";
+  }
 }
 
 function formatCost(amount: number): string {
@@ -408,6 +428,37 @@ export function BuyAwuCreditsDialog({
                       if you need more.
                     </p>
                   )}
+
+                  {awuPurchaseInfo?.canPurchase &&
+                    awuPurchaseInfo.paymentMethod && (
+                      <div className="flex flex-col gap-2">
+                        <p className="text-sm font-medium text-foreground dark:text-foreground-night">
+                          Payment method
+                        </p>
+                        <div className="flex w-full items-center justify-between rounded-lg border border-separator bg-muted px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            {awuPurchaseInfo.paymentMethod.type === "card" ? (
+                              <CardBrandIcon
+                                brand={awuPurchaseInfo.paymentMethod.brand}
+                                width={38}
+                                height={24}
+                              />
+                            ) : null}
+                            <span className="text-sm font-medium">
+                              {formatPaymentMethodLabel(
+                                awuPurchaseInfo.paymentMethod
+                              )}
+                            </span>
+                          </div>
+                          <Button
+                            label="Change"
+                            variant="ghost"
+                            size="sm"
+                            href={`/w/${workspaceId}/subscription/manage`}
+                          />
+                        </div>
+                      </div>
+                    )}
                 </div>
               </TabsContent>
 
