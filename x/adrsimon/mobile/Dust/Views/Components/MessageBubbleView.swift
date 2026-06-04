@@ -120,6 +120,23 @@ struct AgentMessageBubble: View {
     var onRetry: ((String) -> Void)?
     var onOpenInBrowser: (() -> Void)?
 
+    // While streaming, directive parsing is throttled to avoid re-scanning the whole
+    // message on every token (~30/sec → ~7/sec). Once finished, the content is stable
+    // and we read a synchronously-memoized value so it's always in sync with the message.
+    @State private var streamingRender: RenderedAgentMessage = .empty
+    @State private var throttleTask: DispatchWorkItem?
+    @State private var cache = RenderCache()
+
+    private static let throttleIntervalSeconds: TimeInterval = 0.15
+
+    private var rawContent: String {
+        message.content ?? ""
+    }
+
+    private var rendered: RenderedAgentMessage {
+        message.isStreaming ? streamingRender : cache.rendered(for: rawContent)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             if !hideHeader {
@@ -142,8 +159,10 @@ struct AgentMessageBubble: View {
                 )
             }
 
-            if let content = message.content, !content.isEmpty {
-                StreamingMarkdownView(rawContent: content, isStreaming: message.isStreaming)
+            if !rendered.displayMarkdown.isEmpty {
+                Markdown(rendered.displayMarkdown)
+                    .markdownTheme(.dust)
+                    .lineSpacing(4)
                     .textSelection(!message.isStreaming)
             }
 
@@ -155,12 +174,9 @@ struct AgentMessageBubble: View {
 
             if !message.isStreaming,
                let citations = message.citations, !citations.isEmpty,
-               let content = message.content
+               !rendered.citeMapping.isEmpty
             {
-                let mapping = processCiteDirectives(content).mapping
-                if !mapping.isEmpty {
-                    CitationsSection(mapping: mapping, citations: citations, onTap: onCitationTap)
-                }
+                CitationsSection(mapping: rendered.citeMapping, citations: citations, onTap: onCitationTap)
             }
 
             if message.isStreaming {
@@ -198,6 +214,34 @@ struct AgentMessageBubble: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.top, 16)
+        .onAppear {
+            if message.isStreaming { streamingRender = RenderedAgentMessage(content: rawContent) }
+        }
+        .onChange(of: rawContent) { _, newValue in
+            if message.isStreaming { scheduleUpdate(newValue) }
+        }
+    }
+
+    private func scheduleUpdate(_ content: String) {
+        throttleTask?.cancel()
+        let work = DispatchWorkItem { streamingRender = RenderedAgentMessage(content: content) }
+        throttleTask = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.throttleIntervalSeconds, execute: work)
+    }
+}
+
+/// Memoizes the directive parse for a finished message so repeated SwiftUI body
+/// evaluations (scrolling, sibling streaming) don't re-scan the whole content.
+final private class RenderCache {
+    private var content: String?
+    private var value: RenderedAgentMessage = .empty
+
+    func rendered(for content: String) -> RenderedAgentMessage {
+        if self.content != content {
+            self.content = content
+            value = RenderedAgentMessage(content: content)
+        }
+        return value
     }
 }
 

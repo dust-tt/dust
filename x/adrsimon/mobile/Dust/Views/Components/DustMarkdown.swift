@@ -65,9 +65,34 @@ private func superscript(_ number: Int) -> String {
     String(String(number).map { superscriptDigits[Int(String($0))!] })
 }
 
-struct CiteEntry {
+struct CiteEntry: Equatable {
     let ref: String
     let number: Int
+}
+
+/// An agent message's content run through the directive pipeline once: the
+/// display markdown and the citation mapping both come from a single cite pass,
+/// so consumers never re-scan the content.
+struct RenderedAgentMessage: Equatable {
+    let displayMarkdown: String
+    let citeMapping: [CiteEntry]
+
+    static let empty = RenderedAgentMessage(displayMarkdown: "", citeMapping: [])
+
+    init(content: String) {
+        let range = NSRange(content.startIndex..., in: content)
+        let mentioned = mentionRegex.stringByReplacingMatches(
+            in: content, range: range, withTemplate: "[@$1](dust://mention)"
+        )
+        let cited = processCiteDirectives(mentioned)
+        self.displayMarkdown = cited.text
+        self.citeMapping = cited.mapping
+    }
+
+    private init(displayMarkdown: String, citeMapping: [CiteEntry]) {
+        self.displayMarkdown = displayMarkdown
+        self.citeMapping = citeMapping
+    }
 }
 
 // MARK: - Markdown Theme
