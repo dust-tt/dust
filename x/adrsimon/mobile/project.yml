@@ -24,7 +24,8 @@ packages:
 settings:
   base:
     SWIFT_VERSION: "5.9"
-    DEVELOPMENT_TEAM: ""
+    DEVELOPMENT_TEAM: "ABH98MM6YT"
+    CODE_SIGN_STYLE: Automatic
 
 targets:
   Dust:
@@ -45,6 +46,7 @@ targets:
         CURRENT_PROJECT_VERSION: 1
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        TARGETED_DEVICE_FAMILY: "1" # iPhone only
       configs:
         # Only the Dev config defines DEV; debug configs already inherit DEBUG.
         Dev:
@@ -52,6 +54,9 @@ targets:
     info:
       path: Dust/Info.plist
       properties:
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        ITSAppUsesNonExemptEncryption: false
         CFBundleURLTypes:
           - CFBundleURLSchemes:
               - dust
