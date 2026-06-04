@@ -148,6 +148,7 @@ export async function startVerification(
         workspaceId: workspace.sId,
         phoneNumberHash,
         errorCode: error.code,
+        detail: error.detail,
       },
       "Phone lookup validation failed"
     );
