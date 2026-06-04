@@ -242,7 +242,7 @@ function sanitizeSkillInstructionsHtml(
   }
 }
 
-const INSTRUCTIONS_EDITOR_SIZE = "min-h-60 max-h-[1024px]";
+const INSTRUCTIONS_EDITOR_SIZE = "min-h-60 max-h-[50vh]";
 const INSTRUCTIONS_EDITOR_REFERENCE_SUMMARY_SIZE =
   "min-h-80 rounded-b-none border-b-0 pb-44";
 
