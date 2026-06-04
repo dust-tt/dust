@@ -1,9 +1,9 @@
 import type { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import { getClientIp } from "@app/lib/utils/request";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
+import { getClientIpFromContext } from "@front-api/lib/request";
 import { createMiddleware } from "hono/factory";
 
 type RequestLoggerEnv = {
@@ -50,11 +50,7 @@ export const requestLogger = createMiddleware<RequestLoggerEnv>(
     const statusCode = c.res.status;
     const route = c.req.routePath ?? c.req.path;
 
-    const headers: Record<string, string | string[] | undefined> = {};
-    c.req.raw.headers.forEach((value, key) => {
-      headers[key] = value;
-    });
-    const clientIp = getClientIp({ headers });
+    const clientIp = getClientIpFromContext(c);
 
     const auth = c.get("auth");
     const session = c.get("session");
