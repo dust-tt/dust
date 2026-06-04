@@ -8,6 +8,7 @@ import {
   setUserAlwaysApprovedTool,
 } from "@app/lib/actions/tool_status";
 import { isSandboxChildActionInfo } from "@app/lib/actions/types";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
 import { resumeAncestorConversations as resumeAncestorConversationsHelper } from "@app/lib/api/assistant/conversation/resume_ancestor_conversations";
@@ -21,7 +22,6 @@ import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import { resolveSandboxChildBlock } from "@app/lib/api/sandbox/sandbox_child_block";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
-import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -95,13 +95,10 @@ async function emitToolApprovalDecidedAuditEvent({
       attributes: ["agentConfigurationId", "agentConfigurationVersion"],
     });
     const agentConfiguration = agentMessage
-      ? await AgentConfigurationModel.findOne({
-          where: {
-            workspaceId: owner.id,
-            sId: agentMessage.agentConfigurationId,
-            version: agentMessage.agentConfigurationVersion,
-          },
-          attributes: ["name"],
+      ? await getAgentConfiguration(auth, {
+          agentId: agentMessage.agentConfigurationId,
+          agentVersion: agentMessage.agentConfigurationVersion,
+          variant: "extra_light",
         })
       : null;
 
