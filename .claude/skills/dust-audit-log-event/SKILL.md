@@ -129,6 +129,11 @@ with every event; a stale or missing version causes WorkOS validation failures.
 A CI test (`audit_log_schemas.test.ts`) fails if any `AuditAction` has no entry in the version map,
 so a forgotten registration is caught before merge — just like a missing migration.
 
+DangerJS also fails the PR if a schema file under `front/admin/audit_log_schemas/` changed but its
+version in `schema_versions.json` was not bumped relative to `main` (i.e. the registration step was
+skipped). In the rare case the edit is a no-op WorkOS treats as identical (so no new version is
+created), add the `audit-log-ack` label to override.
+
 ## Validation
 
 Check all of the following:
