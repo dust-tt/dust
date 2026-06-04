@@ -3,9 +3,9 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
-import { Authenticator } from "@app/lib/auth";
+import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
+import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { WakeUpModel } from "@app/lib/resources/storage/models/wakeup";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
@@ -18,6 +18,7 @@ import {
   cancelWakeUpTemporalWorkflow,
   launchOrScheduleWakeUpTemporalWorkflow,
 } from "@app/temporal/triggers/wakeup_client";
+import { launchIndexConversationEsWorkflow } from "@app/temporal/es_indexation/client";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import {
@@ -200,7 +201,7 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
           cronTimezone: string;
           reason: string;
         },
-    conversation: ConversationResource,
+    conversation: ConversationWithoutContentType,
     agentConfiguration: AgentConfigurationType,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<WakeUpResource, Error>> {
