@@ -19,7 +19,10 @@ import {
   useCreditPurchaseInfo,
   useSeatPlan,
 } from "@app/lib/swr/credits";
-import { useMembersUsage } from "@app/lib/swr/memberships";
+import {
+  useMembersUsage,
+  useUpdateMemberSeatType,
+} from "@app/lib/swr/memberships";
 import {
   usePerSeatPricing,
   useWorkspaceSeatAvailability,
@@ -42,8 +45,9 @@ import {
   SearchInput,
   Spinner,
 } from "@dust-tt/sparkle";
+import { ConfirmContext } from "@app/components/Confirm";
 import type { PaginationState, SortingState } from "@tanstack/react-table";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useState } from "react";
 
 function formatCredits(credits: number): string {
   return Math.round(credits).toLocaleString("en-US");
@@ -82,6 +86,32 @@ export function UsagePage() {
   const [showBuyCreditDialog, setShowBuyCreditDialog] = useState(false);
   const [changeSeatMember, setChangeSeatMember] =
     useState<MemberUsageType | null>(null);
+
+  const confirm = useContext(ConfirmContext);
+  const { doUpdateSeatType } = useUpdateMemberSeatType({
+    workspaceId: owner.sId,
+  });
+  const onRemoveSeat = useCallback(
+    async (member: MemberUsageType) => {
+      const confirmed = await confirm({
+        title: "Remove seat",
+        message: `Are you sure you want to remove ${member.name}'s seat? They will keep access until the end of the current billing period, then lose the ability to send messages.`,
+        validateLabel: "Remove seat",
+        validateVariant: "warning",
+      });
+      if (!confirmed) {
+        return;
+      }
+      void doUpdateSeatType({
+        memberId: member.sId,
+        memberName: member.name,
+        seatType: "none",
+        isCancellingScheduledChange: false,
+        hasSeatPool: false,
+      });
+    },
+    [confirm, doUpdateSeatType]
+  );
   const [editSpendLimitMember, setEditSpendLimitMember] =
     useState<MemberUsageType | null>(null);
   const [inviteBlockedPopupReason, setInviteBlockedPopupReason] =
@@ -330,6 +360,7 @@ export function UsagePage() {
             seatTypeFilter={seatTypeFilter}
             isSeatBased={isSeatBased}
             onChangeSeat={setChangeSeatMember}
+            onRemoveSeat={onRemoveSeat}
             onEditSpendLimit={setEditSpendLimitMember}
             pagination={pagination}
             setPagination={setPagination}

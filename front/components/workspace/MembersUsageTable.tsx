@@ -375,6 +375,7 @@ interface MembersUsageTableProps {
   seatTypeFilter: MembershipSeatType | "none" | null;
   isSeatBased: boolean;
   onChangeSeat: (member: MemberUsageType) => void;
+  onRemoveSeat: (member: MemberUsageType) => void;
   onEditSpendLimit: (member: MemberUsageType) => void;
   pagination: PaginationState;
   setPagination: (pagination: PaginationState) => void;
@@ -389,6 +390,7 @@ export function MembersUsageTable({
   seatTypeFilter,
   isSeatBased,
   onChangeSeat,
+  onRemoveSeat,
   onEditSpendLimit,
   pagination,
   setPagination,
@@ -437,9 +439,20 @@ export function MembersUsageTable({
             ? [
                 {
                   kind: "item" as const,
-                  label: "Change seat type",
+                  label: m.seatType ? "Change seat type" : "Assign seat",
                   onClick: () => onChangeSeat(m),
                 },
+                // Only members who currently hold a billable seat can have it removed.
+                ...(m.seatType && m.seatType !== "none"
+                  ? [
+                      {
+                        kind: "item" as const,
+                        label: "Remove seat",
+                        variant: "warning" as const,
+                        onClick: () => onRemoveSeat(m),
+                      },
+                    ]
+                  : []),
               ]
             : []),
           {
@@ -449,7 +462,7 @@ export function MembersUsageTable({
           },
         ],
       })),
-    [filtered, isSeatBased, onChangeSeat, onEditSpendLimit]
+    [filtered, isSeatBased, onChangeSeat, onRemoveSeat, onEditSpendLimit]
   );
 
   const displayPeriodColumn = useMemo(
