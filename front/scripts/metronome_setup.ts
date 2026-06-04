@@ -40,7 +40,9 @@ import {
 import {
   getNewPackages,
   getNewRateCards,
+  MAX_SEAT_MONTHLY_AWU_CREDITS,
   NEW_METRICS,
+  PRO_SEAT_MONTHLY_AWU_CREDITS,
 } from "@app/lib/metronome/setup_new_pricing";
 
 if (!process.env.METRONOME_API_KEY) {
@@ -1560,6 +1562,24 @@ const ALERTS: AlertDef[] = [
     alert_type: "low_remaining_seat_balance_reached",
     threshold: 0,
     uniqueness_key: "default-low-seat-balance-zero-awu",
+    credit_type: "AWU",
+    seat_filter: { seat_group_key: "user_id" },
+  },
+  {
+    // Low-balance warning for max seats (8 000 AWU remaining).
+    name: `Default: Low seat balance max seats (${0.2 * MAX_SEAT_MONTHLY_AWU_CREDITS} AWU)`,
+    alert_type: "low_remaining_seat_balance_reached",
+    threshold: 0.2 * MAX_SEAT_MONTHLY_AWU_CREDITS,
+    uniqueness_key: "default-low-seat-balance-8000-awu",
+    credit_type: "AWU",
+    seat_filter: { seat_group_key: "user_id" },
+  },
+  {
+    // Low-balance warning for pro seats (1 600 AWU remaining).
+    name: `Default: Low seat balance pro seats (${0.2 * PRO_SEAT_MONTHLY_AWU_CREDITS} AWU)`,
+    alert_type: "low_remaining_seat_balance_reached",
+    threshold: 0.2 * PRO_SEAT_MONTHLY_AWU_CREDITS,
+    uniqueness_key: "default-low-seat-balance-1600-awu",
     credit_type: "AWU",
     seat_filter: { seat_group_key: "user_id" },
   },

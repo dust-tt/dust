@@ -1,7 +1,14 @@
+import {
+  MAX_SEAT_MONTHLY_AWU_CREDITS,
+  PRO_SEAT_MONTHLY_AWU_CREDITS,
+} from "@app/lib/metronome/setup_new_pricing";
 import type { UserCreditContext } from "@app/lib/metronome/user_credit_state_machine";
 import { transitionUserCreditState } from "@app/lib/metronome/user_credit_state_machine";
 import type { MembershipResource } from "@app/lib/resources/membership_resource";
-import type { UserCreditState } from "@app/types/memberships";
+import type {
+  MembershipSeatType,
+  UserCreditState,
+} from "@app/types/memberships";
 import type { Transaction } from "sequelize";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -14,6 +21,8 @@ const {
   mockClearUserCapBlocked,
   mockInvalidateCacheAfterCommit,
   mockClearUserAwuWarned,
+  mockSetUserAwuWarned,
+  mockSetUserCreditState,
 } = vi.hoisted(() => ({
   mockSetUserCapBlocked: vi.fn(),
   mockClearUserCapBlocked: vi.fn(),
@@ -25,12 +34,16 @@ const {
     }
   ),
   mockClearUserAwuWarned: vi.fn(),
+  mockSetUserAwuWarned: vi.fn(),
+  mockSetUserCreditState: vi.fn(),
 }));
 
 vi.mock("@app/lib/metronome/user_block", () => ({
   setUserCapBlocked: mockSetUserCapBlocked,
   clearUserCapBlocked: mockClearUserCapBlocked,
   clearUserAwuWarned: mockClearUserAwuWarned,
+  setUserAwuWarned: mockSetUserAwuWarned,
+  setUserCreditState: mockSetUserCreditState,
 }));
 
 vi.mock("@app/lib/utils/cache", () => ({
@@ -49,9 +62,13 @@ type MembershipDouble = MembershipResource & {
   updateCreditState: ReturnType<typeof vi.fn>;
 };
 
-function makeMembership(creditState: UserCreditState): MembershipDouble {
+function makeMembership(
+  creditState: UserCreditState,
+  seatType?: MembershipSeatType
+): MembershipDouble {
   return {
     creditState,
+    seatType,
     updateCreditState: vi.fn().mockResolvedValue(undefined),
   } as unknown as MembershipDouble;
 }
@@ -87,6 +104,11 @@ describe("UserCreditStateMachine — transitions", () => {
     );
     expect(mockSetUserCapBlocked).toHaveBeenCalledWith("ws_test", "u_test");
     expect(mockClearUserCapBlocked).not.toHaveBeenCalled();
+    expect(mockSetUserCreditState).toHaveBeenCalledWith(
+      "ws_test",
+      "u_test",
+      "capped"
+    );
   });
 
   it("capped + admin_raised_user_cap → on_pool (unblocks user)", async () => {
@@ -106,6 +128,11 @@ describe("UserCreditStateMachine — transitions", () => {
     );
     expect(mockClearUserCapBlocked).toHaveBeenCalledWith("ws_test", "u_test");
     expect(mockSetUserCapBlocked).not.toHaveBeenCalled();
+    expect(mockSetUserCreditState).toHaveBeenCalledWith(
+      "ws_test",
+      "u_test",
+      "on_pool"
+    );
   });
 
   it("capped + per_user_cap_resolved → on_pool (unblocks user)", async () => {
@@ -125,6 +152,11 @@ describe("UserCreditStateMachine — transitions", () => {
     );
     expect(mockClearUserCapBlocked).toHaveBeenCalledWith("ws_test", "u_test");
     expect(mockSetUserCapBlocked).not.toHaveBeenCalled();
+    expect(mockSetUserCreditState).toHaveBeenCalledWith(
+      "ws_test",
+      "u_test",
+      "on_pool"
+    );
   });
 
   it("capped + per_user_cap_reached is idempotent and re-applies the block cache", async () => {
@@ -141,6 +173,11 @@ describe("UserCreditStateMachine — transitions", () => {
     expect(membership.updateCreditState).not.toHaveBeenCalled();
     expect(mockSetUserCapBlocked).toHaveBeenCalledWith("ws_test", "u_test");
     expect(mockClearUserCapBlocked).not.toHaveBeenCalled();
+    expect(mockSetUserCreditState).toHaveBeenCalledWith(
+      "ws_test",
+      "u_test",
+      "capped"
+    );
   });
 
   it("on_pool + per_user_cap_resolved is idempotent and re-applies the unblock cache", async () => {
@@ -157,6 +194,202 @@ describe("UserCreditStateMachine — transitions", () => {
     expect(membership.updateCreditState).not.toHaveBeenCalled();
     expect(mockClearUserCapBlocked).toHaveBeenCalledWith("ws_test", "u_test");
     expect(mockSetUserCapBlocked).not.toHaveBeenCalled();
+    expect(mockSetUserCreditState).toHaveBeenCalledWith(
+      "ws_test",
+      "u_test",
+      "on_pool"
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Seat balance transitions
+// ---------------------------------------------------------------------------
+
+describe("UserCreditStateMachine — seat_balance_exhausted", () => {
+  it("user_seat + free seat → capped", async () => {
+    const membership = makeMembership("user_seat", "free");
+    const result = await transitionUserCreditState(
+      membership,
+      { type: "seat_balance_exhausted" },
+      { ...baseCtx, seatType: "free" }
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("capped");
+    }
+    expect(membership.updateCreditState).toHaveBeenCalledWith(
+      "capped",
+      undefined
+    );
+    expect(mockSetUserCapBlocked).toHaveBeenCalledWith("ws_test", "u_test");
+    expect(mockClearUserCapBlocked).not.toHaveBeenCalled();
+    expect(mockSetUserCreditState).toHaveBeenCalledWith(
+      "ws_test",
+      "u_test",
+      "capped"
+    );
+  });
+
+  it("user_seat_low_balance + free seat → capped", async () => {
+    const membership = makeMembership("user_seat_low_balance", "free");
+    const result = await transitionUserCreditState(
+      membership,
+      { type: "seat_balance_exhausted" },
+      { ...baseCtx, seatType: "free" }
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("capped");
+    }
+    expect(membership.updateCreditState).toHaveBeenCalledWith(
+      "capped",
+      undefined
+    );
+    expect(mockSetUserCapBlocked).toHaveBeenCalledWith("ws_test", "u_test");
+    expect(mockSetUserCreditState).toHaveBeenCalledWith(
+      "ws_test",
+      "u_test",
+      "capped"
+    );
+  });
+
+  it("user_seat + pro seat → on_pool", async () => {
+    const membership = makeMembership("user_seat", "pro");
+    const result = await transitionUserCreditState(
+      membership,
+      { type: "seat_balance_exhausted" },
+      { ...baseCtx, seatType: "pro" }
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("on_pool");
+    }
+    expect(membership.updateCreditState).toHaveBeenCalledWith(
+      "on_pool",
+      undefined
+    );
+    expect(mockClearUserCapBlocked).toHaveBeenCalledWith("ws_test", "u_test");
+    expect(mockSetUserCapBlocked).not.toHaveBeenCalled();
+    expect(mockSetUserCreditState).toHaveBeenCalledWith(
+      "ws_test",
+      "u_test",
+      "on_pool"
+    );
+  });
+
+  it("user_seat_low_balance + max seat → on_pool", async () => {
+    const membership = makeMembership("user_seat_low_balance", "max");
+    const result = await transitionUserCreditState(
+      membership,
+      { type: "seat_balance_exhausted" },
+      { ...baseCtx, seatType: "max" }
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("on_pool");
+    }
+    expect(membership.updateCreditState).toHaveBeenCalledWith(
+      "on_pool",
+      undefined
+    );
+    expect(mockSetUserCreditState).toHaveBeenCalledWith(
+      "ws_test",
+      "u_test",
+      "on_pool"
+    );
+  });
+});
+
+describe("UserCreditStateMachine — seat_low_balance", () => {
+  it("user_seat + max threshold + max seat → user_seat_low_balance", async () => {
+    const membership = makeMembership("user_seat", "max");
+    const result = await transitionUserCreditState(
+      membership,
+      {
+        type: "seat_low_balance",
+        threshold: 0.2 * MAX_SEAT_MONTHLY_AWU_CREDITS,
+      },
+      { ...baseCtx, seatType: "max" }
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("user_seat_low_balance");
+    }
+    expect(membership.updateCreditState).toHaveBeenCalledWith(
+      "user_seat_low_balance",
+      undefined
+    );
+    expect(mockSetUserAwuWarned).toHaveBeenCalledWith("ws_test", "u_test");
+    expect(mockSetUserCapBlocked).not.toHaveBeenCalled();
+    expect(mockSetUserCreditState).toHaveBeenCalledWith(
+      "ws_test",
+      "u_test",
+      "user_seat_low_balance"
+    );
+  });
+
+  it("user_seat + pro threshold + pro seat → user_seat_low_balance", async () => {
+    const membership = makeMembership("user_seat", "pro");
+    const result = await transitionUserCreditState(
+      membership,
+      {
+        type: "seat_low_balance",
+        threshold: 0.2 * PRO_SEAT_MONTHLY_AWU_CREDITS,
+      },
+      { ...baseCtx, seatType: "pro" }
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("user_seat_low_balance");
+    }
+    expect(membership.updateCreditState).toHaveBeenCalledWith(
+      "user_seat_low_balance",
+      undefined
+    );
+    expect(mockSetUserAwuWarned).toHaveBeenCalledWith("ws_test", "u_test");
+    expect(mockSetUserCreditState).toHaveBeenCalledWith(
+      "ws_test",
+      "u_test",
+      "user_seat_low_balance"
+    );
+  });
+
+  it("user_seat + max threshold + pro seat → no transition (guard mismatch)", async () => {
+    const membership = makeMembership("user_seat", "pro");
+    const result = await transitionUserCreditState(
+      membership,
+      {
+        type: "seat_low_balance",
+        threshold: 0.2 * MAX_SEAT_MONTHLY_AWU_CREDITS,
+      },
+      { ...baseCtx, seatType: "pro" }
+    );
+    expect(result.isErr()).toBe(true);
+    expect(membership.updateCreditState).not.toHaveBeenCalled();
+    expect(mockSetUserCreditState).not.toHaveBeenCalled();
+  });
+
+  it("user_seat_low_balance + max threshold + max seat is idempotent", async () => {
+    const membership = makeMembership("user_seat_low_balance", "max");
+    const result = await transitionUserCreditState(
+      membership,
+      {
+        type: "seat_low_balance",
+        threshold: 0.2 * MAX_SEAT_MONTHLY_AWU_CREDITS,
+      },
+      { ...baseCtx, seatType: "max" }
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("user_seat_low_balance");
+    }
+    expect(membership.updateCreditState).not.toHaveBeenCalled();
+    expect(mockSetUserCreditState).toHaveBeenCalledWith(
+      "ws_test",
+      "u_test",
+      "user_seat_low_balance"
+    );
   });
 });
 

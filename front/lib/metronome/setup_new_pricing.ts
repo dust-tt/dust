@@ -48,8 +48,8 @@ import {
 // Per-seat AWU allocations stamped onto recurring credits at package creation.
 // Runtime code reads the allocation from the contract's `recurring_credits`,
 // so these values aren't referenced anywhere else.
-const PRO_SEAT_MONTHLY_AWU_CREDITS = 8000;
-const MAX_SEAT_MONTHLY_AWU_CREDITS = 40000;
+export const PRO_SEAT_MONTHLY_AWU_CREDITS = 8000;
+export const MAX_SEAT_MONTHLY_AWU_CREDITS = 40000;
 // Per-seat AWU grant carried by the Free Seat subscription. Granted once
 // per seat on contract start and valid for the lifetime of the contract.
 // Never refilled.
