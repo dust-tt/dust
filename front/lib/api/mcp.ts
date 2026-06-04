@@ -59,6 +59,11 @@ export type ToolDisplayLabels = {
   icon?: InternalAllowedIconType; // optional per-tool icon override
 };
 
+export type EditableToolConfig = {
+  isEditable: boolean;
+  editableArguments: string[];
+};
+
 export type MCPToolType = {
   name: string;
   description: string;
@@ -66,6 +71,7 @@ export type MCPToolType = {
   // Optional for remote MCP servers (external sources may not have this).
   // Mandatory for internal MCP servers (enforced via ServerMetadata type).
   displayLabels?: ToolDisplayLabels;
+  editable?: EditableToolConfig;
 };
 
 export type MCPServerType = {

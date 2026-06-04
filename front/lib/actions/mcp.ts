@@ -24,6 +24,7 @@ import type {
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { isInternalServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type {
+  EditableToolConfig,
   MCPToolRetryPolicyType,
   ToolDisplayLabels,
 } from "@app/lib/api/mcp";
@@ -66,6 +67,7 @@ export type ServerSideMCPToolType = Omit<
   // When present, the user must approve the specific (agent, tool, argument values) combination.
   argumentsRequiringApproval?: string[];
   displayLabels?: ToolDisplayLabels;
+  editable?: EditableToolConfig;
 };
 
 export type ClientSideMCPToolType = Omit<

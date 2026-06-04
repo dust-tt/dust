@@ -237,6 +237,7 @@ export function makeServerSideMCPToolConfigurations(
     dustProject: config.dustProject,
     ...(tool.timeoutMs && { timeoutMs: tool.timeoutMs }),
     ...(tool.displayLabels && { displayLabels: tool.displayLabels }),
+    ...(tool.editable && { editable: tool.editable }),
     argumentsRequiringApproval: toolsArgumentsRequiringApproval?.[tool.name],
   }));
 }

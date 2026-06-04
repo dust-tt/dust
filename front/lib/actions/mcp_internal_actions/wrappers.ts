@@ -35,6 +35,7 @@ export function registerTool(
         dust: {
           stake: tool.stake,
           displayLabels: tool.displayLabels,
+          editable: tool.editable,
         },
       },
     },
