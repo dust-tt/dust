@@ -1,15 +1,15 @@
 import {
   AtomIcon,
   Avatar,
-  BoltOffIcon,
-  BookOpenIcon,
+  ZapOffV2,
+  BookOpen01V2,
   Button,
   Card,
-  ChatBubbleLeftRightIcon,
-  Cog6ToothIcon,
-  CodeSlashIcon,
-  ContactsRobotIcon,
-  ContactsUserIcon,
+  MessageChatSquareV2,
+  Settings01V2,
+  Code01V2,
+  ContactsRobotV2,
+  UserSquareV2,
   Dialog,
   DialogContent,
   DropdownMenu,
@@ -23,20 +23,20 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-  HeartIcon,
+  HeartV2,
   InboxIcon,
-  LightbulbIcon,
-  ListSelectIcon,
-  LogoutIcon,
-  MagnifyingGlassIcon,
-  MoreIcon,
+  Lightbulb04V2,
+  ListSelectV2,
+  LogOut01V2,
+  SearchMdV2,
+  DotsHorizontalV2,
   NavigationList,
   NavigationListCollapsibleSection,
   NavigationListCompactLabel,
   NavigationListItem,
   NavigationListItemAction,
-  PencilSquareIcon,
-  PlusIcon,
+  Edit04V2,
+  PlusV2,
   ScrollArea,
   ScrollBar,
   SearchInput,
@@ -45,11 +45,11 @@ import {
   SidebarLeftCloseIcon,
   SidebarLeftOpenIcon,
   SlackLogo,
-  SpaceClosedIcon,
-  SpaceOpenIcon,
-  StarStrokeIcon,
-  TrashIcon,
-  UserIcon,
+  SpaceClosedV2,
+  SpaceOpenV2,
+  Star01V2,
+  Trash01V2,
+  User01V2,
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 
@@ -541,7 +541,7 @@ function DustMain() {
         <DropdownMenuContent>
           <DropdownMenuItem
             label="Rename"
-            icon={PencilSquareIcon}
+            icon={Edit04V2}
             onClick={(e: MouseEvent) => {
               e.preventDefault();
               e.stopPropagation();
@@ -549,7 +549,7 @@ function DustMain() {
           />
           <DropdownMenuSub>
             <DropdownMenuSubTrigger
-              icon={ContactsUserIcon}
+              icon={UserSquareV2}
               label="Participant list"
             />
             <DropdownMenuPortal>
@@ -601,7 +601,7 @@ function DustMain() {
           </DropdownMenuSub>
           <DropdownMenuItem
             label="Delete"
-            icon={TrashIcon}
+            icon={Trash01V2}
             variant="warning"
             onClick={(e: MouseEvent) => {
               e.preventDefault();
@@ -657,7 +657,7 @@ function DustMain() {
           <DropdownMenuContent>
             <DropdownMenuItem
               label="Profile"
-              icon={UserIcon}
+              icon={User01V2}
               onClick={(e: MouseEvent) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -670,20 +670,20 @@ function DustMain() {
             />
             <DropdownMenuItem
               label="Administration"
-              icon={Cog6ToothIcon}
+              icon={Settings01V2}
               onClick={(e: MouseEvent) => {
                 e.preventDefault();
                 e.stopPropagation();
               }}
             />
             <DropdownMenuSub>
-              <DropdownMenuSubTrigger icon={HeartIcon} label="Help & Support" />
+              <DropdownMenuSubTrigger icon={HeartV2} label="Help & Support" />
               <DropdownMenuPortal>
                 <DropdownMenuSubContent>
                   <DropdownMenuLabel label="Learn about Dust" />
                   <DropdownMenuItem
                     label="Quickstart Guide"
-                    icon={LightbulbIcon}
+                    icon={Lightbulb04V2}
                     onClick={(e: MouseEvent) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -691,7 +691,7 @@ function DustMain() {
                   />
                   <DropdownMenuItem
                     label="Guides & Documentation"
-                    icon={BookOpenIcon}
+                    icon={BookOpen01V2}
                     onClick={(e: MouseEvent) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -709,7 +709,7 @@ function DustMain() {
                   <DropdownMenuItem
                     label="Ask @help"
                     description="Ask anything about Dust"
-                    icon={ChatBubbleLeftRightIcon}
+                    icon={MessageChatSquareV2}
                     onClick={(e: MouseEvent) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -717,7 +717,7 @@ function DustMain() {
                   />
                   <DropdownMenuItem
                     label="How to invite new users?"
-                    icon={ChatBubbleLeftRightIcon}
+                    icon={MessageChatSquareV2}
                     onClick={(e: MouseEvent) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -725,7 +725,7 @@ function DustMain() {
                   />
                   <DropdownMenuItem
                     label="How to use agents in Slack workflow?"
-                    icon={ChatBubbleLeftRightIcon}
+                    icon={MessageChatSquareV2}
                     onClick={(e: MouseEvent) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -733,7 +733,7 @@ function DustMain() {
                   />
                   <DropdownMenuItem
                     label="How to manage billing?"
-                    icon={ChatBubbleLeftRightIcon}
+                    icon={MessageChatSquareV2}
                     onClick={(e: MouseEvent) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -745,7 +745,7 @@ function DustMain() {
             <DropdownMenuSeparator />
             <DropdownMenuItem
               label="Signout"
-              icon={LogoutIcon}
+              icon={LogOut01V2}
               onClick={(e: MouseEvent) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -775,7 +775,7 @@ function DustMain() {
             variant="primary"
             tooltip="New Conversation"
             size="sm"
-            icon={ChatBubbleLeftRightIcon}
+            icon={MessageChatSquareV2}
             label="New"
             onClick={handleNewConversation}
           />
@@ -787,7 +787,7 @@ function DustMain() {
               <Button
                 variant="ghost"
                 size="sm"
-                icon={MoreIcon}
+                icon={DotsHorizontalV2}
                 aria-label="More options"
                 onClick={(e: MouseEvent) => {
                   e.preventDefault();
@@ -798,13 +798,10 @@ function DustMain() {
             <DropdownMenuContent>
               <DropdownMenuLabel label="Agents" />
               <DropdownMenuSub>
-                <DropdownMenuSubTrigger
-                  icon={PlusIcon}
-                  label="Build an agent"
-                />
+                <DropdownMenuSubTrigger icon={PlusV2} label="Build an agent" />
                 <DropdownMenuSubContent>
                   <DropdownMenuItem
-                    icon={PencilSquareIcon}
+                    icon={Edit04V2}
                     label="From scratch"
                     onClick={(e: MouseEvent) => {
                       e.preventDefault();
@@ -812,7 +809,7 @@ function DustMain() {
                     }}
                   />
                   <DropdownMenuItem
-                    icon={LightbulbIcon}
+                    icon={Lightbulb04V2}
                     label="Browse templates"
                     onClick={(e: MouseEvent) => {
                       e.preventDefault();
@@ -829,7 +826,7 @@ function DustMain() {
                   />
                   <DropdownMenuItem
                     label="Open YAML"
-                    icon={CodeSlashIcon}
+                    icon={Code01V2}
                     onClick={(e: MouseEvent) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -839,7 +836,7 @@ function DustMain() {
               </DropdownMenuSub>
               <DropdownMenuItem
                 label="Edit agent"
-                icon={PencilSquareIcon}
+                icon={Edit04V2}
                 onClick={(e: MouseEvent) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -847,7 +844,7 @@ function DustMain() {
               />
               <DropdownMenuItem
                 label="Manage agents"
-                icon={ContactsUserIcon}
+                icon={UserSquareV2}
                 onClick={(e: MouseEvent) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -876,7 +873,7 @@ function DustMain() {
               />
               <NavigationListItem
                 label="New Conversation"
-                icon={ChatBubbleLeftRightIcon}
+                icon={MessageChatSquareV2}
                 selected={selectedConversationId === "new-conversation"}
                 onClick={() => {
                   setShowProfileView(false);
@@ -896,7 +893,7 @@ function DustMain() {
               <div className="s-flex s-w-full s-justify-end s-gap-1.5">
                 <Button
                   size="xs"
-                  icon={MagnifyingGlassIcon}
+                  icon={SearchMdV2}
                   variant="highlight"
                   label="Documents"
                 />
@@ -918,7 +915,7 @@ function DustMain() {
                 <>
                   <Button
                     size="xmini"
-                    icon={PlusIcon}
+                    icon={PlusV2}
                     variant="ghost"
                     aria-label="Agents options"
                     onClick={(e: MouseEvent) => {
@@ -930,7 +927,7 @@ function DustMain() {
                     <DropdownMenuTrigger asChild>
                       <Button
                         size="xmini"
-                        icon={MoreIcon}
+                        icon={DotsHorizontalV2}
                         variant="ghost"
                         aria-label="Spaces options"
                         onClick={(e: MouseEvent) => {
@@ -942,14 +939,14 @@ function DustMain() {
                     <DropdownMenuContent>
                       <DropdownMenuItem
                         label="Browse"
-                        icon={PencilSquareIcon}
+                        icon={Edit04V2}
                         onClick={(e: MouseEvent) => {
                           e.preventDefault();
                           e.stopPropagation();
                         }}
                       />
                       <DropdownMenuItem
-                        icon={PlusIcon}
+                        icon={PlusV2}
                         label="Create"
                         onClick={(e: MouseEvent) => {
                           e.preventDefault();
@@ -973,7 +970,7 @@ function DustMain() {
                   <NavigationListItem
                     key={space.id}
                     label={space.name}
-                    icon={isRestricted ? SpaceOpenIcon : SpaceClosedIcon}
+                    icon={isRestricted ? SpaceOpenV2 : SpaceClosedV2}
                     selected={space.id === selectedSpaceId}
                     count={count}
                     moreMenu={
@@ -984,7 +981,7 @@ function DustMain() {
                         <DropdownMenuContent>
                           <DropdownMenuItem
                             label="Edit"
-                            icon={PencilSquareIcon}
+                            icon={Edit04V2}
                             onClick={(e: MouseEvent) => {
                               e.preventDefault();
                               e.stopPropagation();
@@ -992,7 +989,7 @@ function DustMain() {
                           />
                           <DropdownMenuItem
                             label="Explore"
-                            icon={MagnifyingGlassIcon}
+                            icon={SearchMdV2}
                             onClick={(e: MouseEvent) => {
                               e.preventDefault();
                               e.stopPropagation();
@@ -1026,7 +1023,7 @@ function DustMain() {
                 <>
                   <Button
                     size="xmini"
-                    icon={PlusIcon}
+                    icon={PlusV2}
                     variant="ghost"
                     tooltip="Create an Agent"
                     aria-label="Agents options"
@@ -1039,7 +1036,7 @@ function DustMain() {
                     <DropdownMenuTrigger asChild>
                       <Button
                         size="xmini"
-                        icon={MoreIcon}
+                        icon={DotsHorizontalV2}
                         variant="ghost"
                         aria-label="Agents options"
                         onClick={(e: MouseEvent) => {
@@ -1052,14 +1049,14 @@ function DustMain() {
                       <DropdownMenuLabel>Agents</DropdownMenuLabel>
                       <DropdownMenuItem
                         label="Create agent"
-                        icon={PlusIcon}
+                        icon={PlusV2}
                         onClick={(e: MouseEvent) => {
                           e.preventDefault();
                           e.stopPropagation();
                         }}
                       />
                       <DropdownMenuItem
-                        icon={ContactsRobotIcon}
+                        icon={ContactsRobotV2}
                         label="Manage"
                         onClick={(e: MouseEvent) => {
                           e.preventDefault();
@@ -1067,10 +1064,7 @@ function DustMain() {
                         }}
                       />
                       <DropdownMenuSub>
-                        <DropdownMenuSubTrigger
-                          icon={PencilSquareIcon}
-                          label="Edit"
-                        />
+                        <DropdownMenuSubTrigger icon={Edit04V2} label="Edit" />
                         <DropdownMenuPortal>
                           <DropdownMenuSubContent>
                             <DropdownMenuSearchbar
@@ -1110,7 +1104,7 @@ function DustMain() {
                       <DropdownMenuLabel>People</DropdownMenuLabel>
                       <DropdownMenuSub>
                         <DropdownMenuSubTrigger
-                          icon={ContactsUserIcon}
+                          icon={UserSquareV2}
                           label="Browse"
                         />
                         <DropdownMenuPortal>
@@ -1184,7 +1178,7 @@ function DustMain() {
                           <DropdownMenuContent>
                             <DropdownMenuItem
                               label="Edit"
-                              icon={PencilSquareIcon}
+                              icon={Edit04V2}
                               onClick={(e: MouseEvent) => {
                                 e.preventDefault();
                                 e.stopPropagation();
@@ -1192,7 +1186,7 @@ function DustMain() {
                             />
                             <DropdownMenuItem
                               label="Remove from favorites"
-                              icon={StarStrokeIcon}
+                              icon={Star01V2}
                               onClick={(e: MouseEvent) => {
                                 e.preventDefault();
                                 e.stopPropagation();
@@ -1200,7 +1194,7 @@ function DustMain() {
                             />
                             <DropdownMenuItem
                               label="Delete"
-                              icon={TrashIcon}
+                              icon={Trash01V2}
                               variant="warning"
                               onClick={(e: MouseEvent) => {
                                 e.preventDefault();
@@ -1247,7 +1241,7 @@ function DustMain() {
                           <DropdownMenuContent>
                             <DropdownMenuItem
                               label="View profile"
-                              icon={UserIcon}
+                              icon={User01V2}
                               onClick={(e: MouseEvent) => {
                                 e.preventDefault();
                                 e.stopPropagation();
@@ -1255,7 +1249,7 @@ function DustMain() {
                             />
                             <DropdownMenuItem
                               label="Remove from favorites"
-                              icon={TrashIcon}
+                              icon={Trash01V2}
                               variant="warning"
                               onClick={(e: MouseEvent) => {
                                 e.preventDefault();
@@ -1290,7 +1284,7 @@ function DustMain() {
                 <>
                   <Button
                     size="xmini"
-                    icon={ChatBubbleLeftRightIcon}
+                    icon={MessageChatSquareV2}
                     variant="ghost"
                     aria-label="New Conversation"
                     tooltip="New Conversation"
@@ -1303,7 +1297,7 @@ function DustMain() {
                     <DropdownMenuTrigger asChild>
                       <Button
                         size="xmini"
-                        icon={MoreIcon}
+                        icon={DotsHorizontalV2}
                         variant="ghost"
                         aria-label="Conversations options"
                         onClick={(e: MouseEvent) => {
@@ -1316,7 +1310,7 @@ function DustMain() {
                       <DropdownMenuLabel label="Conversations" />
                       <DropdownMenuItem
                         label="Hide triggered"
-                        icon={BoltOffIcon}
+                        icon={ZapOffV2}
                         onClick={(e: MouseEvent) => {
                           e.preventDefault();
                           e.stopPropagation();
@@ -1324,7 +1318,7 @@ function DustMain() {
                       />
                       <DropdownMenuItem
                         label="Edit history"
-                        icon={ListSelectIcon}
+                        icon={ListSelectV2}
                         onClick={(e: MouseEvent) => {
                           e.preventDefault();
                           e.stopPropagation();
@@ -1333,7 +1327,7 @@ function DustMain() {
                       <DropdownMenuItem
                         label="Clear history"
                         variant="warning"
-                        icon={TrashIcon}
+                        icon={Trash01V2}
                         onClick={(e: MouseEvent) => {
                           e.preventDefault();
                           e.stopPropagation();

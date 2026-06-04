@@ -3,7 +3,7 @@ import type { ActiveRoleType } from "@app/types/user";
 import { ACTIVE_ROLES } from "@app/types/user";
 import {
   Button,
-  ChevronDownIcon,
+  ChevronDownV2,
   Chip,
   DropdownMenu,
   DropdownMenuContent,
@@ -45,7 +45,7 @@ export function RoleDropDown({
           >
             {displayRole(selectedRole)}
           </Chip>
-          <Button icon={ChevronDownIcon} size="sm" variant="ghost" />
+          <Button icon={ChevronDownV2} size="sm" variant="ghost" />
         </div>
       </DropdownMenuTrigger>
       <DropdownMenuContent>

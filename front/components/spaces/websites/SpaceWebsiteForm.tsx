@@ -9,6 +9,7 @@ import type { LightWorkspaceType } from "@app/types/user";
 import type { WebsiteFormAction, WebsiteFormState } from "@app/types/website";
 import { DEPTH_DISPLAY_TEXT, FREQUENCY_DISPLAY_TEXT } from "@app/types/website";
 import {
+  AlertCircleV2,
   Button,
   ContentMessage,
   DropdownMenu,
@@ -16,8 +17,7 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
-  ExclamationCircleIcon,
-  InformationCircleIcon,
+  InfoCircleV2,
   Input,
   Label,
   Page,
@@ -74,7 +74,7 @@ export function SpaceWebsiteForm({
         />
         <ContentMessage
           title="Ensure the website is public"
-          icon={InformationCircleIcon}
+          icon={InfoCircleV2}
           variant="golden"
         >
           Only public websites accessible without authentication will work.
@@ -223,7 +223,7 @@ export function SpaceWebsiteForm({
         <Page.H variant="h3">Name</Page.H>
         {webCrawlerConfiguration ? (
           <p className="mt-1 flex items-center gap-1 text-sm text-gray-500">
-            <ExclamationCircleIcon />
+            <AlertCircleV2 />
             Website name cannot be changed.
           </p>
         ) : (

@@ -15,7 +15,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import { CodeBlock, TableIcon } from "@dust-tt/sparkle";
+import { CodeBlock, TableV2 } from "@dust-tt/sparkle";
 
 export function MCPTablesQueryActionDetails({
   toolOutput,
@@ -44,7 +44,7 @@ export function MCPTablesQueryActionDetails({
       actionName={
         displayContext === "conversation" ? "Querying tables" : "Query tables"
       }
-      visual={TableIcon}
+      visual={TableV2}
     >
       {displayContext === "conversation" ? (
         thinkingBlocks.length > 0 && (

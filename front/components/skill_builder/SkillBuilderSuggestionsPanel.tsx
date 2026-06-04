@@ -11,7 +11,7 @@ import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestio
 import {
   Chip,
   ContentMessage,
-  LightbulbIcon,
+  Lightbulb04V2,
   ScrollArea,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -165,7 +165,7 @@ export function SkillBuilderSuggestionsPanel() {
             </div>
           ) : suggestions.length === 0 ? (
             <div className="flex flex-col items-center gap-3 py-12 text-center">
-              <LightbulbIcon className="text-muted-foreground dark:text-muted-foreground-night" />
+              <Lightbulb04V2 className="text-muted-foreground dark:text-muted-foreground-night" />
               <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                 No pending suggestions.
               </p>

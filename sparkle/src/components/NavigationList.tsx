@@ -14,7 +14,11 @@ import {
 } from "@sparkle/components/LinkWrapper";
 import { ScrollArea, ScrollBar } from "@sparkle/components/ScrollArea";
 import { TypingAnimation } from "@sparkle/components/TypingAnimation";
-import { ChevronDownIcon, ChevronUpIcon, MoreIcon } from "@sparkle/icons/app";
+import {
+  ChevronDownV2,
+  ChevronUpV2,
+  DotsHorizontalV2,
+} from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
@@ -257,7 +261,7 @@ const NavigationListItemAction = React.forwardRef<
       )}
       {...props}
     >
-      <Button size="xmini" icon={MoreIcon} variant="ghost" />
+      <Button size="xmini" icon={DotsHorizontalV2} variant="ghost" />
     </div>
   );
 });
@@ -501,7 +505,7 @@ const NavigationListCollapsibleSection = React.forwardRef<
               {isShowingAll ? (
                 <Button
                   size="xs"
-                  icon={ChevronUpIcon}
+                  icon={ChevronUpV2}
                   variant="ghost-secondary"
                   label="Hide"
                   onClick={() => setIsShowingAll(false)}
@@ -509,7 +513,7 @@ const NavigationListCollapsibleSection = React.forwardRef<
               ) : (
                 <Button
                   size="xs"
-                  icon={ChevronDownIcon}
+                  icon={ChevronDownV2}
                   variant="ghost-secondary"
                   label="Show all"
                   isCounter={overflowCount !== undefined && overflowCount > 0}

@@ -6,7 +6,7 @@ import {
   cn,
   DustLogo,
   Page,
-  RocketIcon,
+  Rocket02V2,
 } from "@dust-tt/sparkle";
 import { UserDropdownMenu } from "@extension/ui/components/navigation/UserDropdownMenu";
 import { Link } from "react-router-dom";
@@ -49,7 +49,7 @@ export const SubscribePage = () => {
             <div className="m-1 flex text-center">
               <Link to={`${regionInfo.url}/w/${workspace.sId}/subscribe`}>
                 <Button
-                  icon={RocketIcon}
+                  icon={Rocket02V2}
                   variant="primary"
                   label="Get started"
                   onClick={() => {

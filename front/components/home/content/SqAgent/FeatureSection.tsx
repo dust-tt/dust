@@ -1,5 +1,5 @@
 import { H2, P } from "@app/components/home/ContentComponents";
-import { CheckIcon, cn, Icon } from "@dust-tt/sparkle";
+import { CheckV2, cn, Icon } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 
 const BULLET_COLORS = [
@@ -57,7 +57,7 @@ export function FeatureSection({
                 colors.bg
               )}
             >
-              <Icon visual={CheckIcon} className={cn("h-3 w-3", colors.text)} />
+              <Icon visual={CheckV2} className={cn("h-3 w-3", colors.text)} />
             </span>
             <span className="text-foreground">{feature}</span>
           </li>

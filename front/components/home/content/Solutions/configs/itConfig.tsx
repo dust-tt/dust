@@ -13,10 +13,10 @@ import type {
 import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
 import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCasesSection";
 import {
-  CheckCircleIcon,
-  MagicIcon,
-  RocketIcon,
-  UserGroupIcon,
+  CheckCircleV2,
+  MagicWand02V2,
+  Rocket02V2,
+  Users01V2,
 } from "@dust-tt/sparkle";
 
 // Config exports
@@ -73,7 +73,7 @@ export const Hero: HeroProps = {
     primary: {
       label: "Get started",
       href: "/home/pricing",
-      icon: RocketIcon,
+      icon: Rocket02V2,
     },
     secondary: {
       label: "Talk to sales",
@@ -86,19 +86,19 @@ export const Benefits: BenefitsProps = {
   sectionTitle: "Create IT agents that knows your systems inside out",
   items: [
     {
-      icon: MagicIcon,
+      icon: MagicWand02V2,
       title: "Focus on complex tasks",
       description:
         "Maximize IT team efficiency by automating routine support requests.",
     },
     {
-      icon: CheckCircleIcon,
+      icon: CheckCircleV2,
       title: "Speed up resolution",
       description:
         "Instantly provide accurate solutions using your documented knowledge base.",
     },
     {
-      icon: UserGroupIcon,
+      icon: Users01V2,
       title: "Empower employees",
       description:
         "Turn IT support into a self-service experience that scales across the organization.",

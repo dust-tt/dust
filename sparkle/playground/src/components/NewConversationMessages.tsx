@@ -12,17 +12,17 @@ import {
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
-  ChevronRightIcon,
-  ClipboardIcon,
-  EmotionLaughIcon,
-  FullscreenExitIcon,
-  FullscreenIcon,
-  HandThumbDownIcon,
-  HandThumbUpIcon,
-  LinkIcon,
-  MoreIcon,
-  PencilSquareIcon,
-  TrashIcon,
+  ChevronRightV2,
+  ClipboardV2,
+  FaceSmileV2,
+  Minimize01V2,
+  Maximize01V2,
+  ThumbsDownV2,
+  ThumbsUpV2,
+  Link01V2,
+  DotsHorizontalV2,
+  Edit04V2,
+  Trash01V2,
   cn,
 } from "@dust-tt/sparkle";
 import type { EmojiMartData } from "@emoji-mart/data";
@@ -334,7 +334,7 @@ export const NewConversationMessageGroupHeader = React.forwardRef<
           {completionStatus ? (
             <Button
               label={completionStatus as string}
-              icon={ChevronRightIcon}
+              icon={ChevronRightV2}
               size="sm"
               variant="ghost"
             />
@@ -577,7 +577,7 @@ export const NewConversationUserMessage = React.forwardRef<
               <Button
                 size="xs"
                 variant="outline"
-                icon={EmotionLaughIcon}
+                icon={FaceSmileV2}
                 aria-label="React with emoji"
               />
             </PopoverTrigger>
@@ -593,26 +593,26 @@ export const NewConversationUserMessage = React.forwardRef<
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
-                icon={MoreIcon}
+                icon={DotsHorizontalV2}
                 size="xs"
                 variant="outline"
                 aria-label="Message actions"
               />
             </DropdownMenuTrigger>
             <DropdownMenuContent>
-              <DropdownMenuItem label="Copy anchor link" icon={LinkIcon} />
+              <DropdownMenuItem label="Copy anchor link" icon={Link01V2} />
               <DropdownMenuSeparator />
               {canEdit && (
                 <DropdownMenuItem
                   label="Edit"
-                  icon={PencilSquareIcon}
+                  icon={Edit04V2}
                   onClick={handleEditStart}
                 />
               )}
               <DropdownMenuItem
                 label="Delete"
                 variant="warning"
-                icon={TrashIcon}
+                icon={Trash01V2}
                 onClick={onDelete}
               />
             </DropdownMenuContent>
@@ -751,7 +751,7 @@ export const NewConversationUserMessage = React.forwardRef<
                       <Button
                         size="xs"
                         variant="outline"
-                        icon={isExpanded ? FullscreenExitIcon : FullscreenIcon}
+                        icon={isExpanded ? Minimize01V2 : Maximize01V2}
                         label={isExpanded ? "Show less" : "Show more"}
                         onClick={() => setIsExpanded((v) => !v)}
                         aria-expanded={isExpanded}
@@ -879,7 +879,7 @@ export const NewConversationAgentMessage = React.forwardRef<
                   <Button
                     size="xs"
                     variant="outline"
-                    icon={isExpanded ? FullscreenExitIcon : FullscreenIcon}
+                    icon={isExpanded ? Minimize01V2 : Maximize01V2}
                     label={isExpanded ? "Show less" : "Show all"}
                     onClick={() => setIsExpanded((value) => !value)}
                     aria-expanded={isExpanded}
@@ -898,20 +898,20 @@ export const NewConversationAgentMessage = React.forwardRef<
                 <div className="s-flex s-items-center s-gap-1 s-opacity-0 s-transition-opacity group-hover/new-conversation-message:s-opacity-100">
                   <ButtonGroup removeGaps>
                     <Button
-                      icon={HandThumbUpIcon}
+                      icon={ThumbsUpV2}
                       size="xs"
                       variant="outline"
                       aria-label="Thumbs up"
                     />
                     <Button
-                      icon={HandThumbDownIcon}
+                      icon={ThumbsDownV2}
                       size="xs"
                       variant="outline"
                       aria-label="Thumbs down"
                     />
                   </ButtonGroup>
                   <Button
-                    icon={ClipboardIcon}
+                    icon={ClipboardV2}
                     size="xs"
                     variant="outline"
                     aria-label="Copy"
@@ -919,7 +919,7 @@ export const NewConversationAgentMessage = React.forwardRef<
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
-                        icon={MoreIcon}
+                        icon={DotsHorizontalV2}
                         size="xs"
                         variant="outline"
                         aria-label="More actions"
@@ -928,14 +928,14 @@ export const NewConversationAgentMessage = React.forwardRef<
                     <DropdownMenuContent>
                       <DropdownMenuItem
                         label="Copy anchor link"
-                        icon={LinkIcon}
+                        icon={Link01V2}
                       />
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem label="Edit" icon={PencilSquareIcon} />
+                      <DropdownMenuItem label="Edit" icon={Edit04V2} />
                       <DropdownMenuItem
                         label="Delete"
                         variant="warning"
-                        icon={TrashIcon}
+                        icon={Trash01V2}
                         onClick={onDelete}
                       />
                     </DropdownMenuContent>

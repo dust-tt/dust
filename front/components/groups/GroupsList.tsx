@@ -4,8 +4,8 @@ import {
   Button,
   DataTable,
   Spinner,
-  UserGroupIcon,
-  XMarkIcon,
+  Users01V2,
+  XCloseV2,
 } from "@dust-tt/sparkle";
 import type { CellContext, PaginationState } from "@tanstack/react-table";
 import { useMemo } from "react";
@@ -26,7 +26,7 @@ const groupColumns = [
     accessorKey: "name",
     header: "Group name",
     cell: (info: GroupInfo) => (
-      <DataTable.CellContent icon={UserGroupIcon} className="capitalize">
+      <DataTable.CellContent icon={Users01V2} className="capitalize">
         {info.row.original.name}
       </DataTable.CellContent>
     ),
@@ -53,7 +53,7 @@ const groupColumns = [
       return (
         <DataTable.CellContent>
           <Button
-            icon={XMarkIcon}
+            icon={XCloseV2}
             size="xs"
             variant="ghost-secondary"
             onClick={info.row.original.onRemoveGroupClick}

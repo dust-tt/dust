@@ -7,14 +7,14 @@ import {
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
 import {
-  ActionCreditCoinsIcon,
+  CoinsStacked03V2,
+  Cube01V2,
   DataTable,
+  Hexagon01V2,
   Icon,
   LoadingBlock,
   type MenuItem,
-  SeatFreeIcon,
-  SeatMaxIcon,
-  SeatProIcon,
+  SeatMaxV2,
   Tooltip,
 } from "@dust-tt/sparkle";
 import type {
@@ -47,9 +47,9 @@ type Info = CellContext<RowData, string>;
 const SEAT_TYPE_ICONS: Partial<
   Record<MembershipSeatType, React.ComponentType>
 > = {
-  max: SeatMaxIcon,
-  pro: SeatProIcon,
-  free: SeatFreeIcon,
+  max: SeatMaxV2,
+  pro: Cube01V2,
+  free: Hexagon01V2,
 };
 
 // Yearly seat types are billed yearly but render in the table identically to
@@ -310,7 +310,7 @@ const consumedAwuCreditsColumn: ColumnDef<RowData, string> = {
   id: "consumedAwuCredits" as const,
   header: () => (
     <span className="flex items-center gap-1.5">
-      <Icon visual={ActionCreditCoinsIcon} size="xs" />
+      <Icon visual={CoinsStacked03V2} size="xs" />
       Credits usage
     </span>
   ),

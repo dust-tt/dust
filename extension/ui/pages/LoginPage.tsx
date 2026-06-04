@@ -2,7 +2,7 @@ import {
   Button,
   cn,
   DustLogo,
-  LoginIcon,
+  LogIn01V2,
   Page,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -81,7 +81,7 @@ export const LoginPage = () => {
             {authError && authError.code === "user_not_found" && (
               <Link to="https://dust.tt/home">
                 <Button
-                  icon={LoginIcon}
+                  icon={LogIn01V2}
                   variant="primary"
                   label="Sign up"
                   onClick={() => {
@@ -96,7 +96,7 @@ export const LoginPage = () => {
             )}
 
             <Button
-              icon={LoginIcon}
+              icon={LogIn01V2}
               variant="primary"
               label="Sign in"
               onClick={() => handleLogin()}
@@ -139,7 +139,7 @@ export const LoginPage = () => {
           />
           <div className="text-center">Then</div>
           <Button
-            icon={LoginIcon}
+            icon={LogIn01V2}
             variant="primary"
             label="Sign in"
             onClick={() => handleLogin()}
@@ -173,7 +173,7 @@ export const LoginPage = () => {
               />
               <div className="text-center">Then</div>
               <Button
-                icon={LoginIcon}
+                icon={LogIn01V2}
                 variant="primary"
                 label="Sign in"
                 onClick={() => handleLogin()}

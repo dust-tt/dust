@@ -1,9 +1,9 @@
 import type { LabsTranscriptsConfigurationType } from "@app/types/labs";
 import {
   Button,
-  CloudArrowLeftRightIcon,
+  CloudArrowLeftRightV2,
   Page,
-  XMarkIcon,
+  XCloseV2,
 } from "@dust-tt/sparkle";
 
 interface GoogleDriveConnectionProps {
@@ -24,12 +24,12 @@ export function GoogleDriveConnection({
           <Button
             label="Google connected"
             size="sm"
-            icon={CloudArrowLeftRightIcon}
+            icon={CloudArrowLeftRightV2}
             disabled={true}
           />
           <Button
             label="Disconnect"
-            icon={XMarkIcon}
+            icon={XCloseV2}
             size="sm"
             variant="outline"
             onClick={() => setIsDeleteProviderDialogOpened(true)}
@@ -45,7 +45,7 @@ export function GoogleDriveConnection({
             <Button
               label="Connect Google"
               size="sm"
-              icon={CloudArrowLeftRightIcon}
+              icon={CloudArrowLeftRightV2}
               onClick={onConnect}
             />
           </div>

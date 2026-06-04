@@ -7,10 +7,9 @@ import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import { stripMimeParameters } from "@app/types/files";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
-  ArrowDownOnSquareIcon,
   Button,
-  ChevronLeftIcon,
-  ChevronRightIcon,
+  ChevronLeftV2,
+  ChevronRightV2,
   CodeBlock,
   cn,
   DataTable,
@@ -19,6 +18,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Download01V2,
   Icon,
   Markdown,
   ScrollableDataTable,
@@ -425,7 +425,7 @@ export function FilePreviewDialog({
               <Button
                 variant="outline"
                 size="sm"
-                icon={ChevronLeftIcon}
+                icon={ChevronLeftV2}
                 onClick={onPrev}
                 disabled={!onPrev}
                 tooltip="Previous"
@@ -433,7 +433,7 @@ export function FilePreviewDialog({
               <Button
                 variant="outline"
                 size="sm"
-                icon={ChevronRightIcon}
+                icon={ChevronRightV2}
                 onClick={onNext}
                 disabled={!onNext}
                 tooltip="Next"
@@ -442,7 +442,7 @@ export function FilePreviewDialog({
             <Button
               variant="outline"
               size="sm"
-              icon={ArrowDownOnSquareIcon}
+              icon={Download01V2}
               label={isDownloading ? "Downloading…" : "Download"}
               onClick={handleDownload}
               disabled={!entry || isDownloading}

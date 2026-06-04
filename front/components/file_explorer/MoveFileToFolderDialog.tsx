@@ -15,7 +15,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  FolderIcon,
+  FolderV2,
   Tree,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -42,7 +42,7 @@ function FolderTreeNode({
     <Tree.Item
       isNavigatable
       label={isCurrentLocation ? `${node.name} (current location)` : node.name}
-      visual={FolderIcon}
+      visual={FolderV2}
       type={hasChildren ? "node" : "leaf"}
       isSelected={selectedPath === node.path}
       onItemClick={() => onSelect(node.path)}
@@ -152,7 +152,7 @@ export function MoveFileToFolderDialog({
                   ? `${ROOT_FOLDER_LABEL} (current location)`
                   : ROOT_FOLDER_LABEL
               }
-              visual={FolderIcon}
+              visual={FolderV2}
               type={hasFolders ? "node" : "leaf"}
               isSelected={selectedPath === ""}
               onItemClick={() => setSelectedPath("")}

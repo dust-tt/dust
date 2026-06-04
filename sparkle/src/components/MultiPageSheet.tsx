@@ -11,7 +11,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@sparkle/components/Sheet";
-import { ChevronLeftIcon, ChevronRightIcon } from "@sparkle/icons/app";
+import { ChevronLeftV2, ChevronRightV2 } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import * as React from "react";
 
@@ -177,7 +177,7 @@ const MultiPageSheetContent = React.forwardRef<
               {showNavigation && showHeaderNavigation && (
                 <div className="s-flex s-items-center s-gap-1">
                   <Button
-                    icon={ChevronLeftIcon}
+                    icon={ChevronLeftV2}
                     variant="ghost"
                     size="sm"
                     disabled={!hasPrevious}
@@ -185,7 +185,7 @@ const MultiPageSheetContent = React.forwardRef<
                     tooltip={hasPrevious ? "Previous page" : undefined}
                   />
                   <Button
-                    icon={ChevronRightIcon}
+                    icon={ChevronRightV2}
                     variant="ghost"
                     size="sm"
                     disabled={nextButtonDisabled}

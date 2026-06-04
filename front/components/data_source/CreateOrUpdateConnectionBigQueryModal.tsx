@@ -20,11 +20,11 @@ import type { WorkspaceType } from "@app/types/user";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { isConnectorsAPIError } from "@dust-tt/client";
 import {
-  BookOpenIcon,
+  BookOpen01V2,
   Button,
   ContentMessage,
   Icon,
-  InformationCircleIcon,
+  InfoCircleV2,
   Label,
   Page,
   RadioGroup,
@@ -333,7 +333,7 @@ export function CreateOrUpdateConnectionBigQueryModal({
                 variant="outline"
                 target="_blank"
                 rel="noopener noreferrer"
-                icon={BookOpenIcon}
+                icon={BookOpen01V2}
               />
 
               {connectorUIConfiguration.limitations && (
@@ -391,7 +391,7 @@ export function CreateOrUpdateConnectionBigQueryModal({
                               className="flex cursor-pointer items-center gap-1"
                             >
                               <span className="font-semibold">{location}</span>{" "}
-                              - {tables.length} tables <InformationCircleIcon />
+                              - {tables.length} tables <InfoCircleV2 />
                             </Label>
                           }
                         />

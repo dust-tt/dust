@@ -36,7 +36,7 @@ vi.mock("@dust-tt/sparkle", () => ({
   DropdownMenuContent: ({ children }: any) => <div>{children}</div>,
   DropdownMenuItem: ({ label }: any) => <button type="button">{label}</button>,
   DropdownMenuTrigger: ({ children }: any) => <div>{children}</div>,
-  InformationCircleIcon: () => null,
+  InfoCircleV2: () => null,
 }));
 
 // Treat the test server as remote so default-stake lookups skip the internal

@@ -3,14 +3,14 @@ import React, { useState } from "react";
 
 import type { ToolbarProps } from "../index_with_tw_base";
 import {
-  BoldIcon,
-  CodeBlockIcon,
-  CodeSlashIcon,
-  HeadingIcon,
-  ItalicIcon,
-  ListCheckIcon,
+  Bold01V2,
+  CodeSquare01V2,
+  Code01V2,
+  Heading01V2,
+  Italic01V2,
+  CheckDone01V2,
   ListOrdered2Icon,
-  QuoteTextIcon,
+  DoubleQuotesV2,
   Toolbar,
   ToolbarContent,
   ToolbarIcon,
@@ -57,7 +57,7 @@ function ToolbarPreview({ variant, scroll, onClose }: ToolbarPreviewProps) {
       items: [
         <ToolbarIcon
           key="heading"
-          icon={HeadingIcon}
+          icon={Heading01V2}
           onClick={handleToolbarAction}
           active
           tooltip="Heading"
@@ -65,7 +65,7 @@ function ToolbarPreview({ variant, scroll, onClose }: ToolbarPreviewProps) {
         />,
         <ToolbarIcon
           key="bold"
-          icon={BoldIcon}
+          icon={Bold01V2}
           onClick={handleToolbarAction}
           active
           tooltip="Bold"
@@ -73,7 +73,7 @@ function ToolbarPreview({ variant, scroll, onClose }: ToolbarPreviewProps) {
         />,
         <ToolbarIcon
           key="italic"
-          icon={ItalicIcon}
+          icon={Italic01V2}
           onClick={handleToolbarAction}
           tooltip="Italic"
           size={buttonSize}
@@ -104,7 +104,7 @@ function ToolbarPreview({ variant, scroll, onClose }: ToolbarPreviewProps) {
       items: [
         <ToolbarIcon
           key="bulleted-list"
-          icon={ListCheckIcon}
+          icon={CheckDone01V2}
           onClick={handleToolbarAction}
           tooltip="Bulleted list"
           size={buttonSize}
@@ -118,7 +118,7 @@ function ToolbarPreview({ variant, scroll, onClose }: ToolbarPreviewProps) {
         />,
         <ToolbarIcon
           key="blockquote"
-          icon={QuoteTextIcon}
+          icon={DoubleQuotesV2}
           onClick={handleToolbarAction}
           tooltip="Blockquote"
           size={buttonSize}
@@ -130,14 +130,14 @@ function ToolbarPreview({ variant, scroll, onClose }: ToolbarPreviewProps) {
       items: [
         <ToolbarIcon
           key="inline-code"
-          icon={CodeSlashIcon}
+          icon={Code01V2}
           onClick={handleToolbarAction}
           tooltip="Inline code"
           size={buttonSize}
         />,
         <ToolbarIcon
           key="code-block"
-          icon={CodeBlockIcon}
+          icon={CodeSquare01V2}
           onClick={handleToolbarAction}
           tooltip="Code block"
           size={buttonSize}

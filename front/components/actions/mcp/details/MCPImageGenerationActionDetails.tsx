@@ -8,7 +8,7 @@ import { useFileMetadata } from "@app/lib/swr/files";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import { stripFileExtension } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
-import { ActionImageIcon, Chip, cn, Separator } from "@dust-tt/sparkle";
+import { Chip, cn, Image01V2, Separator } from "@dust-tt/sparkle";
 import React from "react";
 
 // "high" is retained for historical actions generated before the 4K tier was
@@ -51,7 +51,7 @@ export function MCPImageGenerationActionDetails({
             ? "Generating image"
             : "Generate image"
         }
-        visual={ActionImageIcon}
+        visual={Image01V2}
       />
     );
   }
@@ -67,7 +67,7 @@ export function MCPImageGenerationActionDetails({
           ? "Generating image"
           : "Generate image"
       }
-      visual={ActionImageIcon}
+      visual={Image01V2}
     >
       <div
         className={cn(
@@ -121,7 +121,7 @@ export function MCPImageGenerationGroupedDetails({
     <ActionDetailsWrapper
       displayContext={displayContext}
       actionName={`Generating ${actions.length} images`}
-      visual={ActionImageIcon}
+      visual={Image01V2}
     >
       <div
         className={cn(

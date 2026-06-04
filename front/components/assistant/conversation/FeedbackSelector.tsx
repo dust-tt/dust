@@ -10,12 +10,12 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  HandThumbDownIcon,
-  HandThumbUpIcon,
   Label,
-  MagicIcon,
+  MagicWand02V2,
   Spinner,
   TextArea,
+  ThumbsDownV2,
+  ThumbsUpV2,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import React from "react";
@@ -189,7 +189,7 @@ export function FeedbackSelector({
         size="xs"
         disabled={isSubmittingThumb}
         onClick={handleButtonClick}
-        icon={MagicIcon}
+        icon={MagicWand02V2}
         label={buttonLabel}
         className={feedback ? "" : "text-muted-foreground"}
       />
@@ -221,14 +221,14 @@ export function FeedbackSelector({
                   <div className="flex gap-2">
                     <Button
                       label="Yes, helpful"
-                      icon={HandThumbUpIcon}
+                      icon={ThumbsUpV2}
                       size="sm"
                       variant={thumbDirection === "up" ? "primary" : "outline"}
                       onClick={() => handleThumbSelect("up")}
                     />
                     <Button
                       label="Needs work"
-                      icon={HandThumbDownIcon}
+                      icon={ThumbsDownV2}
                       size="sm"
                       variant={
                         thumbDirection === "down" ? "primary" : "outline"

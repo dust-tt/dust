@@ -1,5 +1,5 @@
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
-import { Button, PlusIcon, XMarkIcon } from "@dust-tt/sparkle";
+import { Button, PlusV2, XCloseV2 } from "@dust-tt/sparkle";
 import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
 
@@ -58,7 +58,7 @@ function SteeringBanner({
         />
         <Button
           variant="outline"
-          icon={XMarkIcon}
+          icon={XCloseV2}
           size="icon-xs"
           className="absolute right-1 top-1"
           onClick={onDismiss}
@@ -130,7 +130,7 @@ function PodBanner({
         />
         <Button
           variant="outline"
-          icon={XMarkIcon}
+          icon={XCloseV2}
           size="icon-xs"
           className="absolute right-1 top-1"
           onClick={onDismiss}
@@ -148,7 +148,7 @@ function PodBanner({
           <Button
             variant="highlight"
             size="xs"
-            icon={PlusIcon}
+            icon={PlusV2}
             label="Create a Pod"
             onClick={withTracking(
               TRACKING_AREAS.PODS,

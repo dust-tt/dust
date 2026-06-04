@@ -105,13 +105,13 @@ import { isString } from "@app/types/shared/utils/general";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  ActionDocumentTextIcon,
-  ClockIcon,
+  ClockV2,
   ContentBlockWrapper,
   ContentMessage,
-  GlobeAltIcon,
-  MagnifyingGlassIcon,
+  File06V2,
+  Globe01V2,
   Markdown,
+  SearchMdV2,
 } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
@@ -216,7 +216,7 @@ function MCPActionDetailsInner({
                 : "Search data"
             }
             actionOutput={output}
-            visual={MagnifyingGlassIcon}
+            visual={SearchMdV2}
             query={
               isSearchInputTypeWithTags(params)
                 ? makeQueryTextForDataSourceSearch(params)
@@ -242,7 +242,7 @@ function MCPActionDetailsInner({
                   ? makeQueryTextForList(params)
                   : null
             }
-            visual={ActionDocumentTextIcon}
+            visual={File06V2}
           />
         );
       case FILESYSTEM_CAT_TOOL_NAME:
@@ -265,7 +265,7 @@ function MCPActionDetailsInner({
           displayContext === "conversation" ? "Including data" : "Include data"
         }
         actionOutput={output}
-        visual={ClockIcon}
+        visual={ClockV2}
         query={
           isIncludeInputType(params) ? makeQueryTextForInclude(params) : null
         }
@@ -290,7 +290,7 @@ function MCPActionDetailsInner({
                 : "Web search"
             }
             actionOutput={output}
-            visual={GlobeAltIcon}
+            visual={Globe01V2}
           />
         );
       case WEBBROWSER_TOOL_NAME:

@@ -6,10 +6,10 @@ import { dateToHumanReadable } from "@app/types/shared/utils/date_utils";
 import {
   Button,
   Chip,
-  ClipboardCheckIcon,
-  ClipboardIcon,
+  ClipboardCheckV2,
+  ClipboardV2,
   CodeBlock,
-  ExternalLinkIcon,
+  LinkExternal01V2,
   Page,
   Spinner,
   useCopyToClipboard,
@@ -135,7 +135,7 @@ export function FramePage() {
                     label="View"
                     variant="ghost"
                     size="xs"
-                    icon={ExternalLinkIcon}
+                    icon={LinkExternal01V2}
                     href={`/poke/${owner.sId}/conversation/${file.useCaseMetadata.conversationId}`}
                   />
                 </div>
@@ -154,7 +154,7 @@ export function FramePage() {
                   label={isCopiedMetadata ? "Copied!" : "Copy"}
                   variant="ghost"
                   size="xs"
-                  icon={isCopiedMetadata ? ClipboardCheckIcon : ClipboardIcon}
+                  icon={isCopiedMetadata ? ClipboardCheckV2 : ClipboardV2}
                   onClick={() =>
                     copyMetadata(JSON.stringify(file.useCaseMetadata, null, 2))
                   }
@@ -206,9 +206,7 @@ export function FramePage() {
                         label={isCopiedShareUrl ? "Copied!" : "Copy"}
                         variant="ghost"
                         size="xs"
-                        icon={
-                          isCopiedShareUrl ? ClipboardCheckIcon : ClipboardIcon
-                        }
+                        icon={isCopiedShareUrl ? ClipboardCheckV2 : ClipboardV2}
                         onClick={() => copyShareUrl(shareInfo.shareUrl)}
                       />
                     </div>
@@ -328,7 +326,7 @@ export function FramePage() {
                 label={isCopiedContent ? "Copied!" : "Copy Content"}
                 variant="ghost"
                 size="xs"
-                icon={isCopiedContent ? ClipboardCheckIcon : ClipboardIcon}
+                icon={isCopiedContent ? ClipboardCheckV2 : ClipboardV2}
                 onClick={() => copyContent(content)}
               />
             </div>

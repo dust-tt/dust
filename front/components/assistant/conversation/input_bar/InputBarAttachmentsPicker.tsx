@@ -33,10 +33,9 @@ import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  AttachmentIcon,
+  Attachment01V2,
   Button,
-  ChevronRightIcon,
-  CloudArrowUpIcon,
+  ChevronRightV2,
   DoubleIcon,
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -52,8 +51,9 @@ import {
   Icon,
   Input,
   LoadingBlock,
-  MagnifyingGlassIcon,
+  SearchMdV2,
   Spinner,
+  UploadCloud02V2,
 } from "@dust-tt/sparkle";
 import type { ButtonVariantType } from "@dust-tt/sparkle/dist/esm/components/Button";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -563,7 +563,7 @@ export const InputBarAttachmentsPicker = ({
         <DropdownMenuTrigger asChild>
           <Button
             variant={buttonVariant}
-            icon={AttachmentIcon}
+            icon={Attachment01V2}
             size={buttonSize}
             disabled={disabled || isLoading || isAnyToolFileUploading}
             isLoading={isLoading || isAnyToolFileUploading}
@@ -596,9 +596,9 @@ export const InputBarAttachmentsPicker = ({
             setIsOpen(true);
           }}
         >
-          <AttachmentIcon className="w-5 h-5" />
+          <Attachment01V2 className="w-5 h-5" />
           Attach knowledge
-          <ChevronRightIcon className="w-5 h-5" />
+          <ChevronRightV2 className="w-5 h-5" />
         </DropdownMenuSubTrigger>
       )}
       <ContentWrapper
@@ -649,7 +649,7 @@ export const InputBarAttachmentsPicker = ({
               }}
               button={
                 <Button
-                  icon={CloudArrowUpIcon}
+                  icon={UploadCloud02V2}
                   label="Upload File"
                   onClick={() => fileInputRef.current?.click()}
                   className="ml-4"
@@ -800,7 +800,7 @@ export const InputBarAttachmentsPicker = ({
         ) : (
           <div className="flex h-full w-full items-center justify-center">
             <div className="flex flex-col items-center justify-center gap-0 text-center text-base font-semibold text-primary-400">
-              <Icon visual={MagnifyingGlassIcon} size="sm" />
+              <Icon visual={SearchMdV2} size="sm" />
               Search knowledge
             </div>
           </div>

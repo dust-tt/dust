@@ -1,10 +1,10 @@
 import type { LabsTranscriptsConfigurationType } from "@app/types/labs";
 import {
   Button,
-  CloudArrowLeftRightIcon,
+  CloudArrowLeftRightV2,
   Input,
   Page,
-  XMarkIcon,
+  XCloseV2,
 } from "@dust-tt/sparkle";
 
 interface ModjoConnectionProps {
@@ -34,12 +34,12 @@ export function ModjoConnection({
           <Button
             label="Modjo connected"
             size="sm"
-            icon={CloudArrowLeftRightIcon}
+            icon={CloudArrowLeftRightV2}
             disabled={true}
           />
           <Button
             label="Disconnect"
-            icon={XMarkIcon}
+            icon={XCloseV2}
             size="sm"
             variant="outline"
             onClick={() => setIsDeleteProviderDialogOpened(true)}
@@ -75,7 +75,7 @@ export function ModjoConnection({
             <Button
               label="Connect Modjo"
               size="sm"
-              icon={CloudArrowLeftRightIcon}
+              icon={CloudArrowLeftRightV2}
               onClick={() =>
                 onConnect({
                   credentialId: apiKey,

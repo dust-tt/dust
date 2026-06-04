@@ -29,9 +29,9 @@ import {
   Button,
   ButtonsSwitch,
   ButtonsSwitchList,
-  CardIcon,
   Chip,
   ContentMessage,
+  CreditCard01V2,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -413,7 +413,7 @@ export function SubscriptionPage() {
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
           title="Subscription"
-          icon={CardIcon}
+          icon={CreditCard01V2}
           description="Manage your plan."
         />
         <Page.Vertical align="stretch" gap="md">
@@ -544,7 +544,7 @@ export function SubscriptionPage() {
                   )}
                   <div className="my-5">
                     <Button
-                      icon={CardIcon}
+                      icon={CreditCard01V2}
                       label="Your billing dashboard on Stripe"
                       variant="ghost"
                       onClick={withTracking(

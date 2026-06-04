@@ -18,7 +18,6 @@ import type { PodType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Avatar,
-  ContactsUserIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -29,11 +28,12 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-  EyeSlashIcon,
-  LinkIcon,
-  PencilSquareIcon,
-  StarIcon,
-  XMarkIcon,
+  Edit04V2,
+  EyeOffV2,
+  Link01V2,
+  Star01V2,
+  UserSquareV2,
+  XCloseV2,
 } from "@dust-tt/sparkle";
 import type React from "react";
 import type { ReactElement } from "react";
@@ -253,14 +253,14 @@ export function PodMenu({
           <DropdownMenuLabel label="My settings" />
           <DropdownMenuItem
             label={isStarred ? "Remove from starred" : "Add to starred"}
-            icon={StarIcon}
+            icon={Star01V2}
             onClick={() => void starPod(!isStarred)}
           />
           {canLeave && (
             <DropdownMenuItem
               label="Leave"
               onClick={openLeaveDialog}
-              icon={XMarkIcon}
+              icon={XCloseV2}
             />
           )}
           <PodNotificationMenu
@@ -274,12 +274,12 @@ export function PodMenu({
             <DropdownMenuItem
               label="Rename"
               onClick={() => setShowRenameDialog(true)}
-              icon={PencilSquareIcon}
+              icon={Edit04V2}
             />
           )}
           <DropdownMenuSub>
             <DropdownMenuSubTrigger
-              icon={ContactsUserIcon}
+              icon={UserSquareV2}
               disabled={!podInfo?.members?.length}
               label="Member list"
             />
@@ -309,7 +309,7 @@ export function PodMenu({
             <DropdownMenuItem
               label="Archive"
               onClick={archivePod}
-              icon={EyeSlashIcon}
+              icon={EyeOffV2}
               variant="warning"
             />
           )}
@@ -320,7 +320,7 @@ export function PodMenu({
               <DropdownMenuItem
                 label="Copy link"
                 onClick={copyPodLink}
-                icon={LinkIcon}
+                icon={Link01V2}
               />
             </>
           )}

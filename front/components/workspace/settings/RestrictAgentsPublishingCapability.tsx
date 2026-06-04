@@ -1,4 +1,4 @@
-import { ContextItem, LockIcon, SliderToggle } from "@dust-tt/sparkle";
+import { ContextItem, Lock01V2, SliderToggle } from "@dust-tt/sparkle";
 
 export function RestrictAgentsPublishingCapability({
   subElement,
@@ -9,7 +9,7 @@ export function RestrictAgentsPublishingCapability({
     <ContextItem
       title="Restricted agents publication"
       subElement={subElement}
-      visual={<LockIcon className="h-6 w-6" />}
+      visual={<Lock01V2 className="h-6 w-6" />}
       hasSeparatorIfLast={true}
       action={
         <SliderToggle selected={true} disabled={true} onClick={() => {}} />

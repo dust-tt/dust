@@ -22,13 +22,13 @@ import type { DataSourceViewType } from "@app/types/data_source_view";
 import { asDisplayName, pluralize } from "@app/types/shared/utils/string_utils";
 import {
   Button,
-  ChatBubbleLeftRightIcon,
   ContentMessage,
-  DocumentIcon,
-  DocumentPileIcon,
-  FolderTableIcon,
-  LockIcon,
-  Square3Stack3DIcon,
+  File02V2,
+  File04V2,
+  FolderTableV2,
+  LayersThree01V2,
+  Lock01V2,
+  MessageChatSquareV2,
   Tree,
 } from "@dust-tt/sparkle";
 import { useMemo } from "react";
@@ -40,7 +40,7 @@ const getVisualForSourceItem = (
   source: DataSourceFilterItem["selectedSources"][0]
 ) => {
   if (source.type === "data_source") {
-    return DocumentIcon;
+    return File02V2;
   }
 
   if (source.type === "node") {
@@ -48,19 +48,19 @@ const getVisualForSourceItem = (
     if (source.mimeType) {
       if (CHANNEL_INTERNAL_MIME_TYPES.includes(source.mimeType)) {
         return source.providerVisibility === "private"
-          ? LockIcon
-          : ChatBubbleLeftRightIcon;
+          ? Lock01V2
+          : MessageChatSquareV2;
       }
       if (DATABASE_INTERNAL_MIME_TYPES.includes(source.mimeType)) {
-        return Square3Stack3DIcon;
+        return LayersThree01V2;
       }
 
       if (FILE_INTERNAL_MIME_TYPES.includes(source.mimeType)) {
-        return source.expandable ? DocumentPileIcon : DocumentIcon;
+        return source.expandable ? File04V2 : File02V2;
       }
 
       if (SPREADSHEET_INTERNAL_MIME_TYPES.includes(source.mimeType)) {
-        return FolderTableIcon;
+        return FolderTableV2;
       }
     }
 
@@ -68,11 +68,11 @@ const getVisualForSourceItem = (
       try {
         return getVisualForContentNodeType(source.nodeType);
       } catch {
-        return DocumentIcon;
+        return File02V2;
       }
     }
   }
-  return DocumentIcon;
+  return File02V2;
 };
 
 const groupSourcesByDataSource = (sources: DataSourceBuilderTreeItemType[]) => {

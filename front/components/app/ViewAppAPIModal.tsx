@@ -9,8 +9,8 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
-  ClipboardIcon,
-  CubeIcon,
+  ClipboardV2,
+  Cube01V2,
   Hoverable,
   Page,
   Sheet,
@@ -94,7 +94,7 @@ export function ViewAppAPIModal({
     <Sheet>
       <SheetTrigger>
         <Button
-          icon={CubeIcon}
+          icon={Cube01V2}
           tooltip={
             disabled
               ? "You need to run this app at least once successfully to view the endpoint"
@@ -156,7 +156,7 @@ export function ViewAppAPIModal({
                     variant="outline"
                     onClick={() => handleCopyClick("run")}
                     label={copyRunButtonText}
-                    icon={ClipboardIcon}
+                    icon={ClipboardV2}
                   />
                 </div>
               </div>

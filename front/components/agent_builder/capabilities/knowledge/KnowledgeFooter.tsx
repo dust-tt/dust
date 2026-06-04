@@ -21,7 +21,7 @@ import {
   ContextItem,
   Icon,
   LoadingBlock,
-  XMarkIcon,
+  XCloseV2,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -87,7 +87,7 @@ function KnowledgeFooterItem({
         <Button
           size="icon"
           variant="ghost"
-          icon={XMarkIcon}
+          icon={XCloseV2}
           onClick={() => removeNodeWithPath(item)}
         />
       }

@@ -6,16 +6,16 @@ import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
-  CloudArrowUpIcon,
-  Cog6ToothIcon,
-  DocumentTextIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  PlusIcon,
-  TableIcon,
+  File04V2,
+  PlusV2,
+  Settings01V2,
+  TableV2,
   Tooltip,
+  UploadCloud02V2,
 } from "@dust-tt/sparkle";
 import type { RefObject } from "react";
 import { useState } from "react";
@@ -102,7 +102,7 @@ const AddDataDropDownButton = ({
         <Button
           size="sm"
           label="Add data"
-          icon={PlusIcon}
+          icon={PlusV2}
           variant="primary"
           isSelect
           disabled={!canWriteInSpace}
@@ -111,21 +111,21 @@ const AddDataDropDownButton = ({
       {canWriteInSpace && (
         <DropdownMenuContent>
           <DropdownMenuItem
-            icon={DocumentTextIcon}
+            icon={File04V2}
             onClick={() => {
               contentActionsRef.current?.callAction("DocumentUploadOrEdit");
             }}
             label="Create a document"
           />
           <DropdownMenuItem
-            icon={TableIcon}
+            icon={TableV2}
             onClick={() => {
               contentActionsRef.current?.callAction("TableUploadOrEdit");
             }}
             label="Create a table"
           />
           <DropdownMenuItem
-            icon={CloudArrowUpIcon}
+            icon={UploadCloud02V2}
             onClick={() => {
               contentActionsRef.current?.callAction("MultipleFilesUpload");
             }}
@@ -166,7 +166,7 @@ const EditFolderButton = ({
       <Button
         size="sm"
         label="Edit folder"
-        icon={Cog6ToothIcon}
+        icon={Settings01V2}
         variant="primary"
         onClick={() => {
           setShowEditFolderModal(true);

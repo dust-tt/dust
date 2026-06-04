@@ -15,20 +15,19 @@ import type {
   WorkspaceSharingPolicy,
 } from "@app/types/user";
 import {
-  ArrowUpOnSquareIcon,
   Avatar,
   Button,
-  ClipboardCheckIcon,
-  ClipboardIcon,
+  ClipboardCheckV2,
+  ClipboardV2,
   ContentMessage,
   ContextItem,
-  GlobeAltIcon,
+  Globe01V2,
   Icon,
   IconButton,
-  InformationCircleIcon,
+  InfoCircleV2,
   Input,
   Label,
-  LockIcon,
+  Lock01V2,
   ScrollArea,
   Sheet,
   SheetContainer,
@@ -36,9 +35,10 @@ import {
   SheetHeader,
   SheetTitle,
   Spinner,
-  UserGroupIcon,
+  Upload01V2,
+  Users01V2,
   useCopyToClipboard,
-  XMarkIcon,
+  XCloseV2,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { intlFormatDistance } from "date-fns";
@@ -47,7 +47,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 function getScopeOptions(sharingPolicy: WorkspaceSharingPolicy): {
-  icon: typeof LockIcon;
+  icon: typeof Lock01V2;
   label: string;
   description: string;
   value: FileShareScope;
@@ -55,7 +55,7 @@ function getScopeOptions(sharingPolicy: WorkspaceSharingPolicy): {
   const externalOff = sharingPolicy === "workspace_only";
   return [
     {
-      icon: LockIcon,
+      icon: Lock01V2,
       label: externalOff ? "Invited members only" : "Invite only",
       description: externalOff
         ? "Only the workspace members you invite"
@@ -63,7 +63,7 @@ function getScopeOptions(sharingPolicy: WorkspaceSharingPolicy): {
       value: "emails_only",
     },
     {
-      icon: UserGroupIcon,
+      icon: Users01V2,
       label: externalOff
         ? "All workspace members + invited members"
         : "All workspace members + invites",
@@ -73,7 +73,7 @@ function getScopeOptions(sharingPolicy: WorkspaceSharingPolicy): {
       value: "workspace_and_emails",
     },
     {
-      icon: GlobeAltIcon,
+      icon: Globe01V2,
       label: "Anyone with the link",
       description: "No sign-in required",
       value: "public",
@@ -211,7 +211,7 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
         variant="ghost"
         label={isMobile ? undefined : "Share"}
         tooltip={isMobile ? "Share" : undefined}
-        icon={ArrowUpOnSquareIcon}
+        icon={Upload01V2}
         onClick={() => setIsOpen(true)}
       />
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -222,7 +222,7 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+                icon={isCopied ? ClipboardCheckV2 : ClipboardV2}
                 label={isCopied ? "Copied!" : "Copy link"}
                 onClick={async () => {
                   await copyToClipboard(shareURL);
@@ -239,7 +239,7 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
               <div className="flex flex-col gap-6">
                 {owner.sharingPolicy === "workspace_only" && (
                   <ContentMessage
-                    icon={InformationCircleIcon}
+                    icon={InfoCircleV2}
                     variant="info"
                     title="Only workspace members can be added"
                   >
@@ -401,7 +401,7 @@ function GrantRow({ grant, onRevoke, blocked = false }: GrantRowProps) {
       hasSeparator={false}
       action={
         <IconButton
-          icon={XMarkIcon}
+          icon={XCloseV2}
           tooltip="Revoke access"
           size="xs"
           onClick={onRevoke}

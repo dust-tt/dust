@@ -9,13 +9,13 @@ import type {
 import { useBillingInfo } from "@app/lib/swr/workspaces";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  ActionHashtagIcon,
-  ActionMailIcon,
-  ActionMapPinIcon,
   Button,
+  Hash01V2,
   Icon,
+  Mail01V2,
+  MarkerPin01V2,
   Spinner,
-  UserIcon,
+  User01V2,
 } from "@dust-tt/sparkle";
 
 interface BillingInformationProps {
@@ -86,10 +86,10 @@ export function BillingInformation({ owner }: BillingInformationProps) {
   const portalHref = `/w/${owner.sId}/subscription/manage`;
   const address = formatAddress(billingInfo?.profile.address ?? null);
   const addressRows = [
-    { icon: UserIcon, value: billingInfo?.profile.name },
-    { icon: ActionMailIcon, value: billingInfo?.profile.email },
-    { icon: ActionHashtagIcon, value: billingInfo?.profile.phone },
-    { icon: ActionMapPinIcon, value: address },
+    { icon: User01V2, value: billingInfo?.profile.name },
+    { icon: Mail01V2, value: billingInfo?.profile.email },
+    { icon: Hash01V2, value: billingInfo?.profile.phone },
+    { icon: MarkerPin01V2, value: address },
   ].filter((row) => row.value);
   const paymentMethod = billingInfo?.paymentMethod ?? null;
 

@@ -9,8 +9,8 @@ import {
   PokeCommandSeparator,
 } from "@app/components/poke/shadcn/ui/command";
 import {
-  CheckIcon,
-  PlusCircleIcon,
+  CheckV2,
+  PlusCircleV2,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
@@ -41,7 +41,7 @@ export function PokeDataTableFacetedFilter<TData, TValue>({
     <PopoverRoot>
       <PopoverTrigger asChild>
         <PokeButton variant="outline" size="sm" className="h-8 border-dashed">
-          <PlusCircleIcon className="mr-2 h-4 w-4" />
+          <PlusCircleV2 className="mr-2 h-4 w-4" />
           {title}
           {selectedValues?.size > 0 && (
             <>
@@ -109,7 +109,7 @@ export function PokeDataTableFacetedFilter<TData, TValue>({
                           : "[&_svg]:invisible"
                       )}
                     >
-                      <CheckIcon className={cn("h-4 w-4")} />
+                      <CheckV2 className={cn("h-4 w-4")} />
                     </div>
                     {option.icon && (
                       <option.icon className="mr-2 h-4 w-4 text-muted-foreground" />

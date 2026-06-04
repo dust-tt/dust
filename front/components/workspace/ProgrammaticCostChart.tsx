@@ -21,11 +21,11 @@ import { getBillingCycleFromDay } from "@app/lib/client/subscription";
 import { clientFetch } from "@app/lib/egress/client";
 import { useWorkspaceProgrammaticCost } from "@app/lib/swr/workspaces";
 import {
-  ArrowDownOnSquareIcon,
   Button,
-  ChevronLeftIcon,
-  ChevronRightIcon,
+  ChevronLeftV2,
+  ChevronRightV2,
   Chip,
+  Download01V2,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -585,7 +585,7 @@ export function BaseProgrammaticCostChart({
         <div className="flex items-center gap-2">
           <span>Usage cost graph</span>
           <Button
-            icon={ChevronLeftIcon}
+            icon={ChevronLeftV2}
             size="xs"
             variant="ghost"
             onClick={handlePreviousPeriod}
@@ -597,7 +597,7 @@ export function BaseProgrammaticCostChart({
           </span>
           {canGoNext && (
             <Button
-              icon={ChevronRightIcon}
+              icon={ChevronRightV2}
               size="xs"
               variant="ghost"
               onClick={handleNextPeriod}
@@ -605,7 +605,7 @@ export function BaseProgrammaticCostChart({
             />
           )}
           <Button
-            icon={ArrowDownOnSquareIcon}
+            icon={Download01V2}
             size="xs"
             variant="ghost"
             onClick={handleExportCsv}

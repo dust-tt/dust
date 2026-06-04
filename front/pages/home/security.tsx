@@ -10,7 +10,7 @@ import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
 import { classNames } from "@app/lib/utils";
-import { ArrowRightIcon, Button, Div3D, Hover3D } from "@dust-tt/sparkle";
+import { ArrowRightV2, Button, Div3D, Hover3D } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
@@ -125,7 +125,7 @@ export default function Security() {
                 href="https://app.vanta.com/dust.tt/trust/f3ytzxpay31bwsiyuqjto"
                 variant="highlight"
                 size="md"
-                icon={ArrowRightIcon}
+                icon={ArrowRightV2}
                 label="Visit our Trust Center"
                 target="_blank"
               />
@@ -240,7 +240,7 @@ export default function Security() {
               href="https://app.vanta.com/dust.tt/trust/f3ytzxpay31bwsiyuqjto"
               variant="highlight"
               size="md"
-              icon={ArrowRightIcon}
+              icon={ArrowRightV2}
               label="Visit our Trust Center"
               target="_blank"
             />

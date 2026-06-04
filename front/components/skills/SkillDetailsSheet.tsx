@@ -12,10 +12,10 @@ import type {
 } from "@app/types/assistant/skill_configuration";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import {
-  ArrowPathIcon,
   Button,
   ContentMessage,
-  InformationCircleIcon,
+  InfoCircleV2,
+  RefreshCw02V2,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -26,7 +26,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-  UserGroupIcon,
+  Users01V2,
 } from "@dust-tt/sparkle";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useState } from "react";
@@ -109,13 +109,13 @@ export function SkillDetailsSheetContent({
           <TabsTrigger
             value="info"
             label="Info"
-            icon={InformationCircleIcon}
+            icon={InfoCircleV2}
             onClick={() => setSelectedTab("info")}
           />
           <TabsTrigger
             value="editors"
             label="Editors"
-            icon={UserGroupIcon}
+            icon={Users01V2}
             onClick={() => setSelectedTab("editors")}
           />
         </TabsList>
@@ -192,7 +192,7 @@ const DescriptionSection = ({
           <ContentMessage
             title="This skill has been archived."
             variant="warning"
-            icon={InformationCircleIcon}
+            icon={InfoCircleV2}
             size="sm"
           >
             It is no longer active and cannot be used.
@@ -204,7 +204,7 @@ const DescriptionSection = ({
                   onClick={() => {
                     setShowRestoreModal(true);
                   }}
-                  icon={ArrowPathIcon}
+                  icon={RefreshCw02V2}
                 />
               </div>
             )}

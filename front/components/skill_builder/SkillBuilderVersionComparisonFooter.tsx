@@ -1,7 +1,7 @@
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
-import { ArrowGoBackIcon, Button, Separator } from "@dust-tt/sparkle";
+import { Button, ReverseLeftV2, Separator } from "@dust-tt/sparkle";
 import { useFormContext } from "react-hook-form";
 
 export function SkillBuilderVersionComparisonFooter() {
@@ -38,7 +38,7 @@ export function SkillBuilderVersionComparisonFooter() {
         <Button
           variant="outline"
           size="sm"
-          icon={ArrowGoBackIcon}
+          icon={ReverseLeftV2}
           onClick={restoreAll}
           label="Restore all fields from this version"
         />

@@ -4,7 +4,7 @@ import type {
 } from "@sparkle/components/Button";
 import { Button } from "@sparkle/components/Button";
 import { useTranscribingProgress } from "@sparkle/hooks/useTranscribingProgress";
-import { MicIcon, SquareIcon } from "@sparkle/icons/app";
+import { Microphone01V2, SquareV2 } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import * as React from "react";
 
@@ -225,7 +225,7 @@ export function VoicePicker({
     }
   }
 
-  const icon = shouldShowStop ? SquareIcon : MicIcon;
+  const icon = shouldShowStop ? SquareV2 : Microphone01V2;
   const variant = shouldShowStop ? "highlight" : "ghost-secondary";
   const label = isTranscribing
     ? `${transcribingProgress ?? 0}%`

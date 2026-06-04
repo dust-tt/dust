@@ -5,14 +5,14 @@ import type { SkillWithoutInstructionsAndToolsWithRelationsType } from "@app/typ
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
-  ClipboardIcon,
+  ClipboardV2,
+  DotsHorizontalV2,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  MoreIcon,
-  PencilSquareIcon,
-  TrashIcon,
+  Edit04V2,
+  Trash01V2,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -52,18 +52,18 @@ export function SkillDetailsButtonBar({
             tooltip="Edit skill"
             href={getSkillBuilderRoute(owner.sId, skill.sId)}
             variant="outline"
-            icon={PencilSquareIcon}
+            icon={Edit04V2}
           />
         )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button icon={MoreIcon} size="sm" variant="ghost" />
+            <Button icon={DotsHorizontalV2} size="sm" variant="ghost" />
           </DropdownMenuTrigger>
           <DropdownMenuContent>
             {skill.isExtendable && (
               <DropdownMenuItem
                 label="Customize (New)"
-                icon={ClipboardIcon}
+                icon={ClipboardV2}
                 onClick={async (e) => {
                   e.stopPropagation();
                   await router.push(
@@ -79,7 +79,7 @@ export function SkillDetailsButtonBar({
             {skill.canWrite && (
               <DropdownMenuItem
                 label="Archive"
-                icon={TrashIcon}
+                icon={Trash01V2}
                 variant="warning"
                 onClick={(e) => {
                   e.stopPropagation();

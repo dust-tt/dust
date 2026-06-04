@@ -1,14 +1,13 @@
 import { Tooltip } from "@sparkle/components/Tooltip";
 import {
-  ArrowUpOnSquareIcon,
-  ChevronLeftIcon,
-  TrashIcon,
-  XMarkIcon,
-} from "@sparkle/icons/app";
+  ChevronLeftV2,
+  Trash01V2,
+  Upload01V2,
+  XCloseV2,
+} from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import React from "react";
-
 import { Button, type ButtonProps } from "./Button";
 
 const barVariants = cva("s-flex s-flex-row s-items-center s-gap-3 s-px-4", {
@@ -138,7 +137,7 @@ Bar.ButtonBar = function (props: BarButtonBarProps) {
       return (
         <Button
           size="sm"
-          icon={ChevronLeftIcon}
+          icon={ChevronLeftV2}
           variant="ghost"
           tooltip="Back"
           onClick={props.onBack}
@@ -148,7 +147,7 @@ Bar.ButtonBar = function (props: BarButtonBarProps) {
       return (
         <Button
           size="sm"
-          icon={XMarkIcon}
+          icon={XCloseV2}
           variant="ghost"
           tooltip="Close"
           onClick={props.onClose}
@@ -166,7 +165,7 @@ Bar.ButtonBar = function (props: BarButtonBarProps) {
         <>
           <Button
             size="sm"
-            icon={TrashIcon}
+            icon={Trash01V2}
             tooltip="Delete"
             variant="ghost"
             onClick={props.onDelete}
@@ -174,7 +173,7 @@ Bar.ButtonBar = function (props: BarButtonBarProps) {
           <Button
             size="sm"
             label="Share"
-            icon={ArrowUpOnSquareIcon}
+            icon={Upload01V2}
             variant="ghost"
             onClick={props.onShare}
           />

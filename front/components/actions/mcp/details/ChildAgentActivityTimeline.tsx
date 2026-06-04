@@ -3,7 +3,7 @@ import type { PendingToolCall } from "@app/components/assistant/conversation/typ
 import { getPendingToolCallKey } from "@app/components/assistant/conversation/types";
 import { getToolCallDisplayLabel } from "@app/lib/actions/tool_display_labels";
 import type { InlineActivityStep } from "@app/types/assistant/conversation";
-import { AnimatedText, CheckIcon, XCircleIcon } from "@dust-tt/sparkle";
+import { AnimatedText, CheckV2, XCircleV2 } from "@dust-tt/sparkle";
 
 interface ChildAgentActivityTimelineProps {
   inlineActivitySteps: InlineActivityStep[];
@@ -65,7 +65,7 @@ export function ChildAgentActivityTimeline({
       terminalRow={
         isDone && inlineActivitySteps.length > 0
           ? {
-              icon: isError ? XCircleIcon : CheckIcon,
+              icon: isError ? XCircleV2 : CheckV2,
               label: isError ? "Error" : "Done",
             }
           : undefined

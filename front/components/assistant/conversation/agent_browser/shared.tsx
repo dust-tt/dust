@@ -9,9 +9,9 @@ import {
   Button,
   CardGrid,
   Chip,
+  DotsHorizontalV2,
   DropdownMenuItem,
   DropdownMenuLabel,
-  MoreIcon,
   SearchDropdownMenu,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -252,7 +252,7 @@ export function SearchDropdownContent({
               <Button
                 variant="ghost"
                 size="xs"
-                icon={MoreIcon}
+                icon={DotsHorizontalV2}
                 onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                   e.stopPropagation();
                   onAgentMoreClick(agent.sId);

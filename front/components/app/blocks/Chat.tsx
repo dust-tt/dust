@@ -19,7 +19,7 @@ import {
   CollapsibleTrigger,
   Input,
   Label,
-  XMarkIcon,
+  XCloseV2,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -284,7 +284,7 @@ export default function Chat({
                           onClick={() => handleRemoveStop(i)}
                           className="ml-1 flex cursor-pointer items-center"
                         >
-                          <XMarkIcon />
+                          <XCloseV2 />
                         </span>
                       </div>
                     )

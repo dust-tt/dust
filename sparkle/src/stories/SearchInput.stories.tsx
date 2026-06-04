@@ -3,7 +3,7 @@ import React, { useState } from "react";
 
 import {
   cn,
-  InformationCircleIcon,
+  InfoCircleV2,
   SearchInput,
   SearchInputWithPopover,
 } from "../index_with_tw_base";
@@ -107,7 +107,7 @@ export function SearchInputWithPopoverScrollableExample() {
       contentMessage={{
         title: "You can add a custom message here",
         variant: "green",
-        icon: InformationCircleIcon,
+        icon: InfoCircleV2,
         className: "s-w-full",
         size: "lg",
       }}

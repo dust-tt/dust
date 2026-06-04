@@ -18,7 +18,7 @@ import type { LightWorkspaceType } from "@app/types/user";
 import {
   AttachmentChip,
   Avatar,
-  CheckCircleIcon,
+  CheckCircleV2,
   LinkWrapper,
   PopoverContent,
   PopoverRoot,
@@ -382,7 +382,7 @@ function TaskDirectiveChipInner({
           >
             <AttachmentChip
               label={displayLabel}
-              icon={{ visual: CheckCircleIcon }}
+              icon={{ visual: CheckCircleV2 }}
               color="green"
               className="min-w-0 max-w-full transition-opacity group-hover:opacity-90"
             />

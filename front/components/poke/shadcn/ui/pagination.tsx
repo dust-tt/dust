@@ -1,4 +1,4 @@
-import { ArrowLeftIcon, ArrowRightIcon, IconButton } from "@dust-tt/sparkle";
+import { ArrowLeftV2, ArrowRightV2, IconButton } from "@dust-tt/sparkle";
 import type { Table } from "@tanstack/react-table";
 
 interface DataTablePaginationProps<TData> {
@@ -20,13 +20,13 @@ export function PokeDataTablePagination<TData>({
         </div>
         <div className="flex items-center space-x-2">
           <IconButton
-            icon={ArrowLeftIcon}
+            icon={ArrowLeftV2}
             className="h-8 w-8 p-0"
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
           />
           <IconButton
-            icon={ArrowRightIcon}
+            icon={ArrowRightV2}
             className="h-8 w-8 p-0"
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}

@@ -16,21 +16,20 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import {
-  BracesIcon,
+  BracketsV2,
   Button,
-  ChatBubbleBottomCenterPlusIcon,
-  ClipboardIcon,
-  DocumentIcon,
+  ClipboardV2,
+  DotsHorizontalV2,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  MoreIcon,
-  PencilSquareIcon,
+  Edit04V2,
+  File02V2,
+  MessagePlusCircleV2,
   Spinner,
-  StarIcon,
-  StarStrokeIcon,
-  TrashIcon,
+  Star01V2,
+  Trash01V2,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -81,8 +80,8 @@ export function AgentDetailsButtonBar({
         <Button
           icon={
             agentConfiguration.userFavorite || isFavoriteDisabled
-              ? StarIcon
-              : StarStrokeIcon
+              ? Star01V2
+              : Star01V2
           }
           tooltip={
             agentConfiguration.userFavorite || isFavoriteDisabled
@@ -97,7 +96,7 @@ export function AgentDetailsButtonBar({
         />
 
         <Button
-          icon={StarIcon}
+          icon={Star01V2}
           tooltip={
             agentConfiguration.userFavorite || isFavoriteDisabled
               ? "Remove from favorites"
@@ -113,7 +112,7 @@ export function AgentDetailsButtonBar({
 
       {canShowAgentConversationActions(agentConfiguration.sId) && (
         <Button
-          icon={ChatBubbleBottomCenterPlusIcon}
+          icon={MessagePlusCircleV2}
           size="sm"
           variant="outline"
           tooltip="New conversation"
@@ -132,7 +131,7 @@ export function AgentDetailsButtonBar({
           }
           disabled={!canEditAgent || !hasHealthyProviders(providersHealth)}
           variant="outline"
-          icon={PencilSquareIcon}
+          icon={Edit04V2}
         />
       )}
 
@@ -248,7 +247,7 @@ export function AgentDetailsDropdownMenu({
               );
               onClose?.();
             }}
-            icon={PencilSquareIcon}
+            icon={Edit04V2}
           />
         )}
       <DropdownMenuItem
@@ -258,7 +257,7 @@ export function AgentDetailsDropdownMenu({
           await navigator.clipboard.writeText(agentConfiguration.sId);
           onClose?.();
         }}
-        icon={BracesIcon}
+        icon={BracketsV2}
       />
       <DropdownMenuItem
         label={isExporting ? "Exporting..." : "Export to YAML"}
@@ -267,7 +266,7 @@ export function AgentDetailsDropdownMenu({
           void handleExportToYAML();
           onClose?.();
         }}
-        icon={isExporting ? <Spinner size="xs" /> : DocumentIcon}
+        icon={isExporting ? <Spinner size="xs" /> : File02V2}
         disabled={isExporting}
       />
       {agentConfiguration.scope !== "global" && (
@@ -277,7 +276,7 @@ export function AgentDetailsDropdownMenu({
             disabled={noHealthyProviders}
             data-gtm-label="agentDuplicationButton"
             data-gtm-location="agentDetails"
-            icon={ClipboardIcon}
+            icon={ClipboardV2}
             onClick={async (e) => {
               e.stopPropagation();
               onClose?.();
@@ -293,7 +292,7 @@ export function AgentDetailsDropdownMenu({
           {allowDeletion && (
             <DropdownMenuItem
               label="Archive"
-              icon={TrashIcon}
+              icon={Trash01V2}
               onClick={(e) => {
                 e.stopPropagation();
                 setShowDeletionModal(true);
@@ -341,7 +340,7 @@ export function AgentDetailsDropdownMenu({
       ) : showTrigger ? (
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
-            <Button icon={MoreIcon} size="sm" variant="outline" />
+            <Button icon={DotsHorizontalV2} size="sm" variant="outline" />
           </DropdownMenuTrigger>
           <DropdownMenuContent>{menuItems}</DropdownMenuContent>
         </DropdownMenu>

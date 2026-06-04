@@ -16,10 +16,10 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { TemplateActionPreset } from "@app/types/assistant/templates";
 import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
 import {
-  ActionIncludeIcon,
-  ActionScanIcon,
-  MagnifyingGlassIcon,
-  TableIcon,
+  ArrowCircleBrokenRightV2,
+  ScanV2,
+  SearchMdV2,
+  TableV2,
 } from "@dust-tt/sparkle";
 import isEmpty from "lodash/isEmpty";
 import type { ComponentType } from "react";
@@ -65,7 +65,7 @@ export function getKnowledgeLookupMethodLabel(
 
 export const CAPABILITY_CONFIGS: Record<string, CapabilityConfig> = {
   [SEARCH_SERVER.serverInfo.name]: {
-    icon: MagnifyingGlassIcon,
+    icon: SearchMdV2,
     configPageTitle: "Configure Knowledge",
     configPageDescription: "",
     descriptionConfig: {
@@ -76,7 +76,7 @@ export const CAPABILITY_CONFIGS: Record<string, CapabilityConfig> = {
     },
   },
   [INCLUDE_DATA_SERVER.serverInfo.name]: {
-    icon: ActionIncludeIcon,
+    icon: ArrowCircleBrokenRightV2,
     configPageTitle: "Configure Include Data",
     configPageDescription: "Set time range and describe what data to include.",
     descriptionConfig: {
@@ -88,7 +88,7 @@ export const CAPABILITY_CONFIGS: Record<string, CapabilityConfig> = {
     },
   },
   [EXTRACT_DATA_SERVER.serverInfo.name]: {
-    icon: ActionScanIcon,
+    icon: ScanV2,
     configPageTitle: "Configure Extract Data",
     configPageDescription:
       "Set extraction parameters and describe what data to extract.",
@@ -101,7 +101,7 @@ export const CAPABILITY_CONFIGS: Record<string, CapabilityConfig> = {
     },
   },
   [QUERY_TABLES_V2_SERVER.serverInfo.name]: {
-    icon: TableIcon,
+    icon: TableV2,
     configPageTitle: "Configure Query Tables",
     configPageDescription:
       "Describe how you want to query the selected tables.",
@@ -113,7 +113,7 @@ export const CAPABILITY_CONFIGS: Record<string, CapabilityConfig> = {
     },
   },
   [DATA_WAREHOUSE_SERVER_NAME]: {
-    icon: TableIcon,
+    icon: TableV2,
     configPageTitle: "Configure Data Warehouse",
     configPageDescription:
       "Describe how you want to query the selected tables.",

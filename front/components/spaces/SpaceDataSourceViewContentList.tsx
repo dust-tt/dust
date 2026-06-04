@@ -46,13 +46,13 @@ import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
   Button,
-  Cog6ToothIcon,
   cn,
   DataTable,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  Settings01V2,
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
@@ -514,7 +514,7 @@ export const SpaceDataSourceViewContentList = ({
       isAdmin ? (
         <Button
           label="Manage Data"
-          icon={Cog6ToothIcon}
+          icon={Settings01V2}
           onClick={() => {
             if (systemSpace) {
               void router.push(

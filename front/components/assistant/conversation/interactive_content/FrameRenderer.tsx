@@ -24,18 +24,18 @@ import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
 import { normalizeAsInternalDustError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  ArrowCircleIcon,
-  ArrowGoBackIcon,
   Button,
-  CheckCircleIcon,
-  CloudArrowUpIcon,
+  CheckCircleV2,
   CodeBlock,
-  CommandLineIcon,
-  EyeIcon,
-  FullscreenExitIcon,
-  FullscreenIcon,
+  EyeV2,
+  Maximize01V2,
+  Minimize01V2,
+  RefreshCw01V2,
+  ReverseLeftV2,
   Spinner,
+  TerminalV2,
   Tooltip,
+  UploadCloud02V2,
 } from "@dust-tt/sparkle";
 import React, {
   useCallback,
@@ -359,7 +359,7 @@ export function FrameRenderer({
       <InteractiveContentHeader onClose={onClosePanel}>
         <div className="flex w-full items-center justify-between">
           <Button
-            icon={showCode ? EyeIcon : CommandLineIcon}
+            icon={showCode ? EyeV2 : TerminalV2}
             onClick={() => setShowCode(!showCode)}
             tooltip={showCode ? "Switch to Rendering" : "Switch to Code"}
             variant="ghost"
@@ -384,7 +384,7 @@ export function FrameRenderer({
             />
             {projectSaveState === "saved" && (
               <Button
-                icon={CheckCircleIcon}
+                icon={CheckCircleV2}
                 variant="ghost"
                 disabled={true}
                 label={isMobile ? undefined : "Saved"}
@@ -393,7 +393,7 @@ export function FrameRenderer({
             )}
             {projectSaveState === "supported" && (
               <Button
-                icon={CloudArrowUpIcon}
+                icon={UploadCloud02V2}
                 variant="ghost"
                 label={
                   isMobile ? undefined : isSavingToProject ? "Saving…" : "Save"
@@ -489,7 +489,7 @@ function PreviewActionButtons({
           tooltipTriggerAsChild
           trigger={
             <Button
-              icon={isFullScreen ? FullscreenExitIcon : FullscreenIcon}
+              icon={isFullScreen ? Minimize01V2 : Maximize01V2}
               variant="ghost"
               size="xs"
               onClick={isFullScreen ? exitFullScreen : enterFullScreen}
@@ -511,7 +511,7 @@ function PreviewActionButtons({
               variant="ghost"
               disabled={!hasPreviousVersion}
               size="xs"
-              icon={ArrowGoBackIcon}
+              icon={ReverseLeftV2}
               onClick={onRevert}
             />
           }
@@ -523,7 +523,7 @@ function PreviewActionButtons({
         tooltipTriggerAsChild
         trigger={
           <Button
-            icon={ArrowCircleIcon}
+            icon={RefreshCw01V2}
             variant="ghost"
             size="xs"
             onClick={reloadFile}

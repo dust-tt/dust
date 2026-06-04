@@ -14,7 +14,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSearchbar,
   DropdownMenuTrigger,
-  PlusIcon,
+  PlusV2,
   Spinner,
 } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
@@ -58,7 +58,7 @@ export const AddToolsMenu = ({
         <Button
           label="Add Tools"
           variant={buttonVariant}
-          icon={PlusIcon}
+          icon={PlusV2}
           size="sm"
           onClick={withTracking(TRACKING_AREAS.TOOLS, "add_tools_menu")}
         />
@@ -77,7 +77,7 @@ export const AddToolsMenu = ({
             disabled={isAvailableMCPServersLoading}
             button={
               <Button
-                icon={PlusIcon}
+                icon={PlusV2}
                 label="Add MCP Server"
                 // Empty call is required given onClick passes a MouseEvent
                 onClick={withTracking(

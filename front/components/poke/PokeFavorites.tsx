@@ -14,9 +14,8 @@ import {
   Icon,
   IconButton,
   LinkWrapper,
-  StarIcon,
-  StarStrokeIcon,
-  XMarkIcon,
+  Star01V2,
+  XCloseV2,
 } from "@dust-tt/sparkle";
 import type { ComponentProps } from "react";
 import { useCallback, useEffect, useState } from "react";
@@ -94,7 +93,7 @@ export function PokeFavoriteButton() {
 
   return (
     <IconButton
-      icon={isCurrentlyFavorite ? StarIcon : StarStrokeIcon}
+      icon={isCurrentlyFavorite ? Star01V2 : Star01V2}
       onClick={handleToggle}
       disabled={currentForPath === null}
       variant="outline"
@@ -139,7 +138,7 @@ function PokeNavItemRow({ item, onRemove }: PokeNavItemRowProps) {
       {onRemove && (
         <div className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100">
           <IconButton
-            icon={XMarkIcon}
+            icon={XCloseV2}
             onClick={() => onRemove(item.url)}
             size="xs"
             variant="outline"
@@ -193,7 +192,7 @@ export function PokeFavoritesList() {
         <CollapsibleTrigger>
           <div className="flex items-center gap-2">
             <Icon
-              visual={StarIcon}
+              visual={Star01V2}
               size="sm"
               className="text-muted-foreground dark:text-muted-foreground-night"
             />

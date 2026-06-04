@@ -7,7 +7,7 @@ import type { StripePricingData } from "@app/types/stripe/pricing";
 import {
   Button,
   Checkbox,
-  CheckCircleIcon,
+  CheckCircleV2,
   ContentMessage,
   Dialog,
   DialogContainer,
@@ -16,13 +16,13 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  ExternalLinkIcon,
   Hoverable,
   Icon,
-  InformationCircleIcon,
+  InfoCircleV2,
   Input,
+  LinkExternal01V2,
   Spinner,
-  XCircleIcon,
+  XCircleV2,
 } from "@dust-tt/sparkle";
 import { useCallback, useMemo, useState } from "react";
 
@@ -182,7 +182,7 @@ export function BuyCreditDialog({
         return (
           <div className="flex flex-col items-center justify-center gap-4 py-8">
             <Icon
-              visual={CheckCircleIcon}
+              visual={CheckCircleV2}
               size="lg"
               className="text-success-500"
             />
@@ -206,7 +206,7 @@ export function BuyCreditDialog({
         return (
           <div className="flex flex-col items-center justify-center gap-4 py-8">
             <Icon
-              visual={ExternalLinkIcon}
+              visual={LinkExternal01V2}
               size="lg"
               className="text-primary dark:text-primary-night"
             />
@@ -225,7 +225,7 @@ export function BuyCreditDialog({
       case "error":
         return (
           <div className="flex flex-col items-center justify-center gap-4 py-8">
-            <Icon visual={XCircleIcon} size="lg" className="text-warning-500" />
+            <Icon visual={XCircleV2} size="lg" className="text-warning-500" />
             <div className="text-center">
               <p className="text-lg font-medium text-foreground dark:text-foreground-night">
                 Something went wrong
@@ -246,7 +246,7 @@ export function BuyCreditDialog({
             {showPaygCapWarning && (
               <ContentMessage
                 variant="info"
-                icon={InformationCircleIcon}
+                icon={InfoCircleV2}
                 title="You still have pay-as-you-go capacity"
               >
                 You're still under {PAYG_CAP_WARNING_THRESHOLD_PERCENT}% of your

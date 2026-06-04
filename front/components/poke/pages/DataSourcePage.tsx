@@ -29,15 +29,15 @@ import {
   Button,
   Chip,
   ContextItem,
-  DocumentTextIcon,
-  EyeIcon,
+  EyeV2,
+  File04V2,
   Input,
   LinkWrapper,
-  LockIcon,
-  MagnifyingGlassIcon,
+  Lock01V2,
+  SearchMdV2,
   SliderToggle,
   Spinner,
-  TableIcon,
+  TableV2,
   Tooltip,
 } from "@dust-tt/sparkle";
 import { JsonViewer } from "@textea/json-viewer";
@@ -158,7 +158,7 @@ function FolderDisplay({
                 visual={
                   <ContextItem.Visual
                     visual={({ className }) =>
-                      DocumentTextIcon({
+                      File04V2({
                         className:
                           className +
                           " text-muted-foreground dark:text-muted-foreground-night",
@@ -170,7 +170,7 @@ function FolderDisplay({
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
-                      icon={EyeIcon}
+                      icon={EyeV2}
                       onClick={() =>
                         onDisplayDocumentSource(d.document_id, dataSource.sId)
                       }
@@ -247,7 +247,7 @@ function FolderDisplay({
                 visual={
                   <ContextItem.Visual
                     visual={({ className }) =>
-                      TableIcon({
+                      TableV2({
                         className:
                           className +
                           " text-muted-foreground dark:text-muted-foreground-night",
@@ -704,7 +704,7 @@ function ZendeskTicketCheck({
         </div>
         <Button
           variant="outline"
-          icon={idsIsLoading ? Spinner : MagnifyingGlassIcon}
+          icon={idsIsLoading ? Spinner : SearchMdV2}
           label={idsIsLoading ? undefined : "Check"}
           disabled={!ticketId || idsIsLoading}
           onClick={async () => {
@@ -735,7 +735,7 @@ function ZendeskTicketCheck({
         </div>
         <Button
           variant="outline"
-          icon={urlIsLoading ? Spinner : MagnifyingGlassIcon}
+          icon={urlIsLoading ? Spinner : SearchMdV2}
           label={urlIsLoading ? undefined : "Check"}
           disabled={!ticketUrl || urlIsLoading}
           onClick={async () => {
@@ -1014,7 +1014,7 @@ export function DataSourcePage() {
                 }
               }}
               label="Search Data"
-              icon={LockIcon}
+              icon={Lock01V2}
             />
             {[
               "bigquery",
@@ -1039,7 +1039,7 @@ export function DataSourcePage() {
                   }
                 }}
                 label="Query Data"
-                icon={LockIcon}
+                icon={Lock01V2}
               />
             ) : null}
             {dataSource.connectorProvider === "notion" && (
@@ -1058,7 +1058,7 @@ export function DataSourcePage() {
                     }
                   }}
                   label="Notion Requests"
-                  icon={LockIcon}
+                  icon={Lock01V2}
                 />
                 <NotionUrlCheckOrFind owner={owner} dsId={dataSource.sId} />
               </>

@@ -1,29 +1,29 @@
 import "@dust-tt/sparkle/styles/allotment.css";
 
 import {
-  ArrowCircleIcon,
-  ArrowDownOnSquareIcon,
-  ArrowGoBackIcon,
+  RefreshCw01V2,
+  Download01V2,
+  ReverseLeftV2,
   Button,
-  ClipboardCheckIcon,
-  ClipboardIcon,
-  CommandLineIcon,
+  ClipboardCheckV2,
+  ClipboardV2,
+  TerminalV2,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  FullscreenIcon,
-  LinkIcon,
-  MoreIcon,
+  Maximize01V2,
+  Link01V2,
+  DotsHorizontalV2,
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SpaceOpenIcon,
+  SpaceOpenV2,
   TextArea,
-  XMarkIcon,
+  XCloseV2,
   useCopyToClipboard,
   useSendNotification,
 } from "@dust-tt/sparkle";
@@ -92,32 +92,24 @@ export function FrameView() {
         <Allotment.Pane minSize={320} preferredSize={50} className="s-h-full">
           <div className="s-flex s-h-full s-flex-col">
             <div className="s-flex s-h-14 s-w-full s-items-center s-gap-2 s-border-b s-border-border s-bg-background s-px-3">
+              <Button icon={RefreshCw01V2} variant="ghost" tooltip="Refresh" />
               <Button
-                icon={ArrowCircleIcon}
-                variant="ghost"
-                tooltip="Refresh"
-              />
-              <Button
-                icon={FullscreenIcon}
+                icon={Maximize01V2}
                 variant="ghost"
                 tooltip="Full screen"
               />
-              <Button
-                icon={ArrowDownOnSquareIcon}
-                variant="ghost"
-                tooltip="Export"
-              />
-              <Button icon={LinkIcon} variant="ghost" tooltip="Share" />
+              <Button icon={Download01V2} variant="ghost" tooltip="Export" />
+              <Button icon={Link01V2} variant="ghost" tooltip="Share" />
               <div className="s-flex s-h-8 s-items-center s-gap-1">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button icon={MoreIcon} variant="ghost" />
+                    <Button icon={DotsHorizontalV2} variant="ghost" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
-                    <DropdownMenuItem label="Revert" icon={ArrowGoBackIcon} />
+                    <DropdownMenuItem label="Revert" icon={ReverseLeftV2} />
                     <DropdownMenuItem
                       label="Code view"
-                      icon={CommandLineIcon}
+                      icon={TerminalV2}
                       onClick={() => setIsCodeViewOpen(true)}
                     />
                     <DropdownMenuSeparator />
@@ -131,7 +123,7 @@ export function FrameView() {
                     {!isAddedToProject && (
                       <DropdownMenuItem
                         label="Add to project"
-                        icon={SpaceOpenIcon}
+                        icon={SpaceOpenV2}
                         onClick={handleAddToProject}
                       />
                     )}
@@ -139,7 +131,7 @@ export function FrameView() {
                 </DropdownMenu>
               </div>
               <div className="s-flex-1" />
-              <Button icon={XMarkIcon} variant="ghost" />
+              <Button icon={XCloseV2} variant="ghost" />
             </div>
           </div>
         </Allotment.Pane>
@@ -154,7 +146,7 @@ export function FrameView() {
               <Button
                 size="sm"
                 variant="outline"
-                icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+                icon={isCopied ? ClipboardCheckV2 : ClipboardV2}
                 label={isCopied ? "Copied" : "Copy to clipboard"}
                 onClick={handleCopyCode}
               />

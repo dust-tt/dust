@@ -15,15 +15,15 @@ import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { getConversationRoute, getPodRoute } from "@app/lib/utils/router";
 import { getConversationDisplayTitle } from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
-import type { BreadcrumbsItem } from "@dust-tt/sparkle";
 import {
-  ActionGitBranchIcon,
-  ArrowLeftIcon,
+  ArrowLeftV2,
   Breadcrumbs,
+  type BreadcrumbsItem,
   Button,
   Chip,
-  FolderIcon,
-  MoreIcon,
+  DotsHorizontalV2,
+  FolderV2,
+  GitBranch01V2,
   Tooltip,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -74,7 +74,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
 
   if (spaceId && spaceInfo) {
     breadcrumbItems.push({
-      icon: isMobile ? undefined : ArrowLeftIcon,
+      icon: isMobile ? undefined : ArrowLeftV2,
       label: spaceInfo.name,
       onClick: () => {
         void router.push(getPodRoute(owner.sId, spaceId), undefined, {
@@ -117,7 +117,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
                   owner.sId,
                   forkedFrom.parentConversationId
                 )}
-                icon={ActionGitBranchIcon}
+                icon={GitBranch01V2}
                 label={isMobile ? tooltipLabel : chipLabel}
                 size="mini"
               />
@@ -172,7 +172,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
           <Button
             size="sm"
             label={isMobile ? undefined : "Files"}
-            icon={FolderIcon}
+            icon={FolderV2}
             variant="ghost"
             onClick={() => openPanel({ type: "files" })}
           />
@@ -184,7 +184,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
               <Button
                 size="sm"
                 variant="ghost"
-                icon={MoreIcon}
+                icon={DotsHorizontalV2}
                 aria-label="Conversation menu"
                 isLoading={isPendingAction}
                 disabled={

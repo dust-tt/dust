@@ -8,16 +8,16 @@ import {
   CardActionButton,
   CardGrid,
 } from "@sparkle/components/Card";
+import { PlanetV2 } from "@sparkle/icons/v2-stroke";
 import {
-  BookOpenIcon,
-  BracesIcon,
-  CommandLineIcon,
-  MagnifyingGlassIcon,
-  PlanetIcon,
-  ScanIcon,
-  TableIcon,
-  XMarkIcon,
-} from "@sparkle/icons/app";
+  BookOpen01V2,
+  ScanV2,
+  SearchMdV2,
+  TableV2,
+  TerminalV2,
+  XCloseV2,
+} from "@sparkle/icons/v2-stroke";
+import { BracketsV2 } from "@sparkle/icons/v2-stroke";
 
 const meta = {
   title: "Primitives/Card",
@@ -182,37 +182,37 @@ interface CardData {
 
 const cardData: CardData[] = [
   {
-    icon: MagnifyingGlassIcon,
+    icon: SearchMdV2,
     title: "Search",
     description: "Architecture Projects Descriptions",
   },
   {
-    icon: TableIcon,
+    icon: TableV2,
     title: "Table Query",
     description: "Find product references",
   },
   {
-    icon: PlanetIcon,
+    icon: PlanetV2,
     title: "Web",
     description: "Search & browse the web",
   },
   {
-    icon: BracesIcon,
+    icon: BracketsV2,
     title: "Code Interpreter",
     description: "Write a description for it",
   },
   {
-    icon: CommandLineIcon,
+    icon: TerminalV2,
     title: "Dust App",
     description: "Dust App Name",
   },
   {
-    icon: BookOpenIcon,
+    icon: BookOpen01V2,
     title: "Include",
     description: "Description of the Data",
   },
   {
-    icon: ScanIcon,
+    icon: ScanV2,
     title: "Extract Data",
     description: "Description of the Data",
   },
@@ -229,7 +229,7 @@ export const WithActions: Story = {
           onClick={() => {
             alert(`You clicked on ${card.title}`);
           }}
-          action={<CardActionButton size="icon" icon={XMarkIcon} />}
+          action={<CardActionButton size="icon" icon={XCloseV2} />}
         >
           <div className="s-flex s-w-full s-flex-col s-gap-1 s-text-sm">
             <div className="s-flex s-w-full s-gap-1 s-font-semibold s-text-foreground">
@@ -259,7 +259,7 @@ export const SelectableGrid: Story = {
             size="md"
             selected={selected === index}
             onClick={() => setSelected(index)}
-            action={<CardActionButton size="icon" icon={XMarkIcon} />}
+            action={<CardActionButton size="icon" icon={XCloseV2} />}
           >
             <div className="s-flex s-w-full s-flex-col s-gap-1 s-text-sm">
               <div className="s-flex s-w-full s-gap-1 s-font-semibold s-text-foreground">

@@ -3,7 +3,7 @@ import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { clientFetch } from "@app/lib/egress/client";
 import { classNames } from "@app/lib/utils";
 import type { WorkspaceType } from "@app/types/user";
-import { ArrowUpOnSquareIcon, Button } from "@dust-tt/sparkle";
+import { Button, Upload01V2 } from "@dust-tt/sparkle";
 import type { ChangeEvent } from "react";
 import { forwardRef, useImperativeHandle, useRef, useState } from "react";
 import type { Crop } from "react-image-crop";
@@ -179,7 +179,7 @@ const AgentBuilderCustomUpload = forwardRef<
         ) : (
           <Button
             label="Upload"
-            icon={ArrowUpOnSquareIcon}
+            icon={Upload01V2}
             onClick={() => fileInputRef?.current?.click()}
           />
         )}

@@ -1,6 +1,6 @@
 import type { IndustryPageConfig } from "@app/components/home/content/Industry/configs/utils";
 import { createLayoutConfig } from "@app/components/home/content/Industry/configs/utils";
-import { BarChartIcon } from "@dust-tt/sparkle";
+import { BarChart01V2 } from "@dust-tt/sparkle";
 
 export const consultingConfig: IndustryPageConfig = {
   seo: {
@@ -20,7 +20,7 @@ export const consultingConfig: IndustryPageConfig = {
     chip: {
       label: "Consulting Firms",
       color: "blue",
-      icon: BarChartIcon,
+      icon: BarChart01V2,
     },
     title: (
       <>

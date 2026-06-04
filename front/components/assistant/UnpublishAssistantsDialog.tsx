@@ -15,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  EyeSlashIcon,
+  EyeOffV2,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -54,7 +54,7 @@ export function UnpublishAssistantsDialog({
         <Button
           size="xs"
           variant="outline"
-          icon={EyeSlashIcon}
+          icon={EyeOffV2}
           label="Unpublish"
           disabled={disabled}
         />

@@ -1,9 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
-import { ArrowUpIcon, ChevronDownIcon } from "@sparkle/icons/app";
-
 import { Button, FlexSplitButton } from "../index_with_tw_base";
+import { ArrowUpV2, ChevronDownV2 } from "@sparkle/icons/v2-stroke";
 
 const meta: Meta<React.ComponentProps<typeof FlexSplitButton>> = {
   title: "Primitives/SplitButton",
@@ -19,77 +18,73 @@ export const FlexSplitButtonVariants: Story = {
       <FlexSplitButton
         label="Send"
         variant="highlight"
-        icon={ArrowUpIcon}
+        icon={ArrowUpV2}
         splitAction={
-          <Button size="icon" variant="highlight" icon={ChevronDownIcon} />
+          <Button size="icon" variant="highlight" icon={ChevronDownV2} />
         }
       />
       <FlexSplitButton
         label="Send"
         variant="primary"
-        icon={ArrowUpIcon}
+        icon={ArrowUpV2}
         splitAction={
-          <Button size="icon" variant="primary" icon={ChevronDownIcon} />
+          <Button size="icon" variant="primary" icon={ChevronDownV2} />
         }
       />
       <FlexSplitButton
         label="Send"
         variant="outline"
-        icon={ArrowUpIcon}
+        icon={ArrowUpV2}
         splitAction={
-          <Button size="icon" variant="outline" icon={ChevronDownIcon} />
+          <Button size="icon" variant="outline" icon={ChevronDownV2} />
         }
       />
       <FlexSplitButton
         label="Send"
         variant="highlight-secondary"
-        icon={ArrowUpIcon}
+        icon={ArrowUpV2}
         splitAction={
           <Button
             size="icon"
             variant="highlight-secondary"
-            icon={ChevronDownIcon}
+            icon={ChevronDownV2}
           />
         }
       />
       <FlexSplitButton
         label="Send"
         variant="warning"
-        icon={ArrowUpIcon}
+        icon={ArrowUpV2}
         splitAction={
-          <Button size="icon" variant="warning" icon={ChevronDownIcon} />
+          <Button size="icon" variant="warning" icon={ChevronDownV2} />
         }
       />
       <FlexSplitButton
         label="Send"
         variant="warning-secondary"
-        icon={ArrowUpIcon}
+        icon={ArrowUpV2}
         splitAction={
           <Button
             size="icon"
             variant="warning-secondary"
-            icon={ChevronDownIcon}
+            icon={ChevronDownV2}
           />
         }
       />
       <FlexSplitButton
         label="Send"
         variant="ghost"
-        icon={ArrowUpIcon}
+        icon={ArrowUpV2}
         splitAction={
-          <Button size="icon" variant="ghost" icon={ChevronDownIcon} />
+          <Button size="icon" variant="ghost" icon={ChevronDownV2} />
         }
       />
       <FlexSplitButton
         label="Send"
         variant="ghost-secondary"
-        icon={ArrowUpIcon}
+        icon={ArrowUpV2}
         splitAction={
-          <Button
-            size="icon"
-            variant="ghost-secondary"
-            icon={ChevronDownIcon}
-          />
+          <Button size="icon" variant="ghost-secondary" icon={ChevronDownV2} />
         }
       />
     </div>
@@ -102,85 +97,81 @@ export const FlexSplitButtonLoading: Story = {
       <FlexSplitButton
         label="Sending"
         variant="highlight"
-        icon={ArrowUpIcon}
+        icon={ArrowUpV2}
         isLoading
         splitAction={
-          <Button size="icon" variant="highlight" icon={ChevronDownIcon} />
+          <Button size="icon" variant="highlight" icon={ChevronDownV2} />
         }
       />
       <FlexSplitButton
         label="Sending"
         variant="primary"
-        icon={ArrowUpIcon}
+        icon={ArrowUpV2}
         isLoading
         splitAction={
-          <Button size="icon" variant="primary" icon={ChevronDownIcon} />
+          <Button size="icon" variant="primary" icon={ChevronDownV2} />
         }
       />
       <FlexSplitButton
         label="Sending"
         variant="outline"
-        icon={ArrowUpIcon}
+        icon={ArrowUpV2}
         isLoading
         splitAction={
-          <Button size="icon" variant="outline" icon={ChevronDownIcon} />
+          <Button size="icon" variant="outline" icon={ChevronDownV2} />
         }
       />
       <FlexSplitButton
         label="Sending"
         variant="highlight-secondary"
-        icon={ArrowUpIcon}
+        icon={ArrowUpV2}
         isLoading
         splitAction={
           <Button
             size="icon"
             variant="highlight-secondary"
-            icon={ChevronDownIcon}
+            icon={ChevronDownV2}
           />
         }
       />
       <FlexSplitButton
         label="Sending"
         variant="warning"
-        icon={ArrowUpIcon}
+        icon={ArrowUpV2}
         isLoading
         splitAction={
-          <Button size="icon" variant="warning" icon={ChevronDownIcon} />
+          <Button size="icon" variant="warning" icon={ChevronDownV2} />
         }
       />
       <FlexSplitButton
         label="Sending"
         variant="warning-secondary"
-        icon={ArrowUpIcon}
+        icon={ArrowUpV2}
         isLoading
         splitAction={
           <Button
             size="icon"
             variant="warning-secondary"
-            icon={ChevronDownIcon}
+            icon={ChevronDownV2}
           />
         }
       />
       <FlexSplitButton
         label="Sending"
         variant="ghost"
-        icon={ArrowUpIcon}
+        icon={ArrowUpV2}
         isLoading
         splitAction={
-          <Button size="icon" variant="ghost" icon={ChevronDownIcon} />
+          <Button size="icon" variant="ghost" icon={ChevronDownV2} />
         }
       />
       <FlexSplitButton
         label="Sending"
         variant="ghost-secondary"
-        icon={ArrowUpIcon}
+        icon={ArrowUpV2}
         isLoading
         splitAction={
-          <Button
-            size="icon"
-            variant="ghost-secondary"
-            icon={ChevronDownIcon}
-          />
+          <Button size="icon" variant="ghost-secondary" icon={ChevronDownV2} />
         }
       />
     </div>
