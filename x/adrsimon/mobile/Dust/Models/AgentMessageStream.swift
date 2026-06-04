@@ -80,7 +80,7 @@ struct AgentMessageStream {
 
         // Handled by the ViewModel, or no activity meaning.
         case .toolPersonalAuthRequired, .toolFileAuthRequired, .toolApproveExecution,
-             .toolNotification, .agentContextPruned, .endOfStream, .unknown:
+             .toolAskUserQuestion, .toolNotification, .agentContextPruned, .endOfStream, .unknown:
             break
         }
     }
