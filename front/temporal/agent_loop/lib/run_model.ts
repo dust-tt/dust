@@ -380,6 +380,9 @@ export async function runModel(
   const hasSandboxTools = featureFlags.includes("sandbox_tools");
   const hasNestedSkills = featureFlags.includes("nested_skills");
   const useFramesV2 = featureFlags.includes("frames_skill_v2");
+  const disableFormattingPrompt = featureFlags.includes(
+    "disable_formatting_prompt"
+  );
 
   const prompt = constructPromptMultiActions(auth, {
     userMessage,
@@ -403,6 +406,7 @@ export async function runModel(
     hasSandboxTools,
     hasNestedSkills,
     useFramesV2,
+    disableFormattingPrompt,
   });
   const leadingMessages = removeNulls([
     renderEquippedSkillsUserMessage(equippedSkills),

@@ -48,7 +48,106 @@ export type VoiceUseCase = (typeof VOICE_USE_CASES)[number];
 
 export const SPEECH_GENERATOR_SERVER_NAME = "speech_generator" as const;
 
+const ALLOWED_AUDIO_URL_DOMAINS = [
+  // Video platforms
+  "youtube.com",
+  "youtu.be",
+  "googlevideo.com",
+  "vimeo.com",
+  "vimeocdn.com",
+  "dailymotion.com",
+  // Async video / screen recording
+  "loom.com",
+  "tella.tv",
+  "wistia.com",
+  "wistia.net",
+  "vidyard.com",
+  // Meeting recordings & AI notetakers
+  "zoom.us",
+  "webex.com",
+  "grain.com",
+  "riverside.fm",
+  "fathom.video",
+  "granola.so",
+  "fireflies.ai",
+  "otter.ai",
+  "tldv.io",
+  "meetgeek.ai",
+  "avoma.com",
+  "gong.io",
+  "chorus.ai",
+  "read.ai",
+  "bluedot.ai",
+  "notta.ai",
+  "sembly.ai",
+  "tactiq.io",
+  "meetjamie.ai",
+  // Cloud storage
+  "drive.google.com",
+  "googleusercontent.com",
+  "sharepoint.com",
+  "onedrive.live.com",
+  "onedrive.com",
+  "1drv.ms",
+  "dropbox.com",
+  "dropboxusercontent.com",
+  // Collaboration / comms
+  "slack.com",
+  // Audio
+  "soundcloud.com",
+] as const;
+
+export function isAllowedAudioUrl(url: string): boolean {
+  try {
+    const { hostname } = new URL(url);
+    return ALLOWED_AUDIO_URL_DOMAINS.some(
+      (domain) => hostname === domain || hostname.endsWith(`.${domain}`)
+    );
+  } catch {
+    return false;
+  }
+}
+
 export const SPEECH_GENERATOR_TOOLS_METADATA = createToolsRecord({
+  speech_to_text: {
+    description:
+      "Transcribe speech from an audio or video file into text. " +
+      "Supported formats: MP3, WAV, OGG, FLAC, AAC, MP4, MOV, WEBM, MKV, and most " +
+      "common audio/video formats.",
+    schema: {
+      audio_url: z
+        .string()
+        .url()
+        .refine(isAllowedAudioUrl, {
+          message: `URL must be from an allowed domain: ${ALLOWED_AUDIO_URL_DOMAINS.join(", ")}.`,
+        })
+        .optional()
+        .describe(
+          "HTTPS URL of the audio or video file to transcribe. " +
+            "Only URLs from the allowlist of known video/audio platforms are accepted. " +
+            "Mutually exclusive with audio_blob."
+        ),
+      audio_blob: z
+        .string()
+        .optional()
+        .describe(
+          "Base64-encoded content of an audio or video file. " +
+            "Mutually exclusive with audio_url."
+        ),
+      language_code: z
+        .string()
+        .optional()
+        .describe(
+          "ISO-639-1 or ISO-639-3 language code of the audio (e.g. 'en', 'fr'). " +
+            "Auto-detected if omitted."
+        ),
+    },
+    stake: "low",
+    displayLabels: {
+      running: "Transcribing audio",
+      done: "Transcribe audio",
+    },
+  },
   text_to_speech: {
     description: "Generate speech audio from a text prompt with desired voice.",
     schema: {

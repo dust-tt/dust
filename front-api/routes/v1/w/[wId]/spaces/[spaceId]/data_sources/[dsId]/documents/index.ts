@@ -81,6 +81,7 @@ app.route("/:documentId", documentId);
 
 const ParamsSchema = z.object({
   dsId: z.string(),
+  spaceId: z.string().optional(),
 });
 
 const QuerySchema = z.object({
@@ -94,7 +95,7 @@ app.get(
   validate("query", QuerySchema),
   async (ctx): HandlerResult<GetDocumentsResponseType> => {
     const auth = ctx.get("auth");
-    const { dsId } = ctx.req.valid("param");
+    const { dsId, spaceId: spaceIdParam } = ctx.req.valid("param");
 
     const dataSource = await DataSourceResource.fetchByNameOrId(
       auth,
@@ -105,7 +106,7 @@ app.get(
 
     const spaceId = await resolveLegacyDataSourceSpaceId(
       auth,
-      ctx.req.param("spaceId"),
+      spaceIdParam,
       dataSource
     );
 

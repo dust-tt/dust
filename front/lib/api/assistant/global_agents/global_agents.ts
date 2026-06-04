@@ -691,6 +691,7 @@ function getGlobalAgent({
   hasSandbox,
   globalAgentContext,
   excludeProviders,
+  preferGpt55DefaultModel,
 }: {
   auth: Authenticator;
   sId: string | number;
@@ -702,6 +703,7 @@ function getGlobalAgent({
   hasSandbox: boolean;
   globalAgentContext?: GlobalAgentContext;
   excludeProviders: ReadonlySet<ModelProviderIdType>;
+  preferGpt55DefaultModel: boolean;
 }): AgentConfigurationType | null {
   const settings =
     globalAgentSettings.find((settings) => settings.agentId === sId) ?? null;
@@ -908,6 +910,7 @@ function getGlobalAgent({
         hasDeepDive,
         globalAgentContext,
         excludeProviders,
+        preferGpt55DefaultModel,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_HIGH:
@@ -1490,6 +1493,7 @@ export async function getGlobalAgents(
       hasSandbox: flags.includes("sandbox_tools"),
       globalAgentContext: options?.globalAgentContext,
       excludeProviders,
+      preferGpt55DefaultModel: flags.includes("dust_agent_gpt_5_5_default"),
     })
   );
 

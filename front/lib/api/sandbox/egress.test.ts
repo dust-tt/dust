@@ -169,7 +169,6 @@ describe("sandbox egress helpers", () => {
     const sandbox = {
       providerId: "provider-sandbox-id",
       sId: "sandbox-id",
-      writeFile: vi.fn().mockResolvedValue(new Ok(undefined)),
       execRoot: vi
         .fn()
         .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
@@ -200,19 +199,19 @@ describe("sandbox egress helpers", () => {
     expect(mockLookup).toHaveBeenCalledWith("eu.sandbox-egress.dust.tt", {
       family: 4,
     });
-    expect(sandbox.writeFile).toHaveBeenCalledWith(
-      auth,
-      "/etc/dust/egress-token",
-      expect.anything()
-    );
+    // Token now lands via a single root `install -m600 /dev/stdin` (was a
+    // writeFile + chmod), with the JWT passed through stdin, never argv.
     expect(sandbox.execRoot).toHaveBeenNthCalledWith(
       1,
       auth,
-      expect.any(Object)
+      expect.any(Object),
+      { stdin: expect.any(String) }
     );
-    expect(getRootCommandCall(sandbox.execRoot, 0)).toContain(
-      "chmod 600 /etc/dust/egress-token"
+    const tokenCall = getRootCommandCall(sandbox.execRoot, 0);
+    expect(tokenCall).toContain(
+      "/usr/bin/install -o root -g root -m 600 /dev/stdin"
     );
+    expect(tokenCall).toContain("/etc/dust/egress-token");
     expect(mockWriteEgressSecretsFile).toHaveBeenCalledWith(auth, sandbox);
     expect(mockWriteSandboxEnvManifestFile).toHaveBeenCalledWith(auth, sandbox);
     const spawnCall = getRootCommandCall(sandbox.execRoot, 1);
@@ -294,7 +293,6 @@ describe("sandbox egress helpers", () => {
     const sandbox = {
       providerId: "provider-sandbox-id",
       sId: "sandbox-id",
-      writeFile: vi.fn().mockResolvedValue(new Ok(undefined)),
       execRoot: vi
         .fn()
         // First call: health probe with empty stdout.
@@ -390,7 +388,6 @@ describe("sandbox egress helpers", () => {
     const sandbox = {
       providerId: "provider-sandbox-id",
       sId: "sandbox-id",
-      writeFile: vi.fn().mockResolvedValue(new Ok(undefined)),
       execRoot: vi
         .fn()
         .mockResolvedValue(new Err(new Error("sandbox command failed"))),
@@ -412,7 +409,6 @@ describe("sandbox egress helpers", () => {
     const sandbox = {
       providerId: "provider-sandbox-id",
       sId: "sandbox-id",
-      writeFile: vi.fn().mockResolvedValue(new Ok(undefined)),
       execRoot: vi
         .fn()
         .mockResolvedValue(new Ok({ exitCode: 0, stdout: "", stderr: "" })),
@@ -425,6 +421,10 @@ describe("sandbox egress helpers", () => {
       expect(result.error.message).toContain("secrets write failed");
     }
     expect(sandbox.execRoot).toHaveBeenCalledTimes(1);
+    // The writes are sequentially gated: a secrets failure must short-circuit
+    // before the manifest is touched, so the sandbox-visible manifest never
+    // diverges from what the forwarder loaded on the restart path.
+    expect(mockWriteSandboxEnvManifestFile).not.toHaveBeenCalled();
   });
 
   it("surfaces failures from writing the environment manifest file", async () => {
@@ -435,7 +435,6 @@ describe("sandbox egress helpers", () => {
     const sandbox = {
       providerId: "provider-sandbox-id",
       sId: "sandbox-id",
-      writeFile: vi.fn().mockResolvedValue(new Ok(undefined)),
       execRoot: vi
         .fn()
         .mockResolvedValue(new Ok({ exitCode: 0, stdout: "", stderr: "" })),
@@ -454,7 +453,6 @@ describe("sandbox egress helpers", () => {
     const sandbox = {
       providerId: "provider-sandbox-id",
       sId: "sandbox-id",
-      writeFile: vi.fn().mockResolvedValue(new Ok(undefined)),
       execRoot: vi
         .fn()
         .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
@@ -483,7 +481,6 @@ describe("sandbox egress helpers", () => {
     const sandbox = {
       providerId: "provider-sandbox-id",
       sId: "sandbox-id",
-      writeFile: vi.fn().mockResolvedValue(new Ok(undefined)),
       execRoot: vi
         .fn()
         .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
@@ -631,7 +628,6 @@ describe("sandbox egress helpers", () => {
     const sandbox = {
       providerId: "provider-sandbox-id",
       sId: "sandbox-id",
-      writeFile: vi.fn().mockResolvedValue(new Ok(undefined)),
       execRoot: vi
         .fn()
         .mockResolvedValueOnce(

@@ -8,8 +8,7 @@ import { useMaybeMCPServerViewsContext } from "@app/components/shared/tools_pick
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { NodeViewProps } from "@tiptap/react";
 import { NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react";
-import type React from "react";
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 
 function useToolNodeDisplay(attrs: ToolNodeAttributes) {
   const ctx = useMaybeMCPServerViewsContext();
@@ -49,11 +48,7 @@ function useToolNodeDisplay(attrs: ToolNodeAttributes) {
   }, [attrs.mcpServerViewId, attrs.toolIcon, attrs.toolName, ctx]);
 }
 
-const ToolNodeView: React.FC<NodeViewProps> = ({
-  deleteNode,
-  editor,
-  node,
-}) => {
+function ToolNodeView({ node }: NodeViewProps) {
   const attrs: ToolNodeAttributes = {
     mcpServerViewId: node.attrs.mcpServerViewId,
     toolIcon: node.attrs.toolIcon,
@@ -61,30 +56,16 @@ const ToolNodeView: React.FC<NodeViewProps> = ({
   };
   const display = useToolNodeDisplay(attrs);
 
-  const handleRemove = useCallback(
-    (e?: React.MouseEvent) => {
-      e?.stopPropagation();
-      deleteNode();
-    },
-    [deleteNode]
-  );
-
-  const onRemove = editor.isEditable ? handleRemove : undefined;
-
   return (
-    <NodeViewWrapper as="span" className="inline">
+    <NodeViewWrapper className="inline-flex align-middle">
       {display.kind === "error" ? (
-        <ToolErrorChip title={display.title} onRemove={onRemove} />
+        <ToolErrorChip title={display.title} />
       ) : (
-        <ToolChip
-          title={display.title}
-          toolIcon={display.toolIcon}
-          onRemove={onRemove}
-        />
+        <ToolChip title={display.title} toolIcon={display.toolIcon} />
       )}
     </NodeViewWrapper>
   );
-};
+}
 
 export const ToolNodeWithView = ToolNode.extend({
   addNodeView() {

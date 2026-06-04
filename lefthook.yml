@@ -127,6 +127,21 @@ pre-commit:
       run: cargo fmt -- {staged_files}
       stage_fixed: true
 
+    # Mobile (Swift) format — auto-formats staged files and re-stages them
+    mobile-swiftformat:
+      tags: mobile
+      glob: "*.swift"
+      root: x/adrsimon/mobile/
+      run: swiftformat {staged_files}
+      stage_fixed: true
+
+    # Mobile (Swift) lint — fails on lint errors (warnings do not block)
+    mobile-swiftlint:
+      tags: mobile
+      glob: "*.swift"
+      root: x/adrsimon/mobile/
+      run: swiftlint lint --quiet {staged_files}
+
     # Guard against adding files to frozen migrations/db/ directories
     no-legacy-db-migration-connectors:
       glob: "connectors/migrations/db/*.sql"

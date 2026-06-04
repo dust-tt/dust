@@ -1,4 +1,5 @@
 import { AgentInstructionDiffExtension } from "@app/components/editor/extensions/agent_builder/AgentInstructionDiffExtension";
+import type { SlashCommandSkillSuggestion } from "@app/components/editor/extensions/shared/SlashCommandSkillItems";
 import { KNOWLEDGE_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import { SlashCommandExtension } from "@app/components/editor/extensions/skill_builder/SlashCommandExtension";
@@ -98,6 +99,7 @@ function useEditorService(
 interface SkillInstructionsSkillReferencesOptions {
   currentSkillId?: string | null;
   enableSkillReferences: boolean;
+  onSelectSkill?: (skill: SlashCommandSkillSuggestion) => void;
   onSelectTool?: (tool: MCPServerViewType) => void;
   owner?: LightWorkspaceType;
 }
@@ -115,11 +117,13 @@ interface UseSkillInstructionsEditorProps {
 function buildSkillInstructionsEditableExtensions({
   currentSkillId,
   includeSkillSuggestions,
+  onSelectSkill,
   onSelectTool,
   owner,
 }: {
   currentSkillId?: string | null;
   includeSkillSuggestions: boolean;
+  onSelectSkill?: (skill: SlashCommandSkillSuggestion) => void;
   onSelectTool?: (tool: MCPServerViewType) => void;
   owner?: LightWorkspaceType;
 }) {
@@ -127,6 +131,7 @@ function buildSkillInstructionsEditableExtensions({
     SlashCommandExtension.configure({
       currentSkillId: currentSkillId ?? null,
       includeSkillSuggestions,
+      onSelectSkill,
       onSelectTool,
       owner,
     }),
@@ -153,6 +158,7 @@ export function useSkillInstructionsEditor({
 }: UseSkillInstructionsEditorProps) {
   const enableSkillReferences = skillReferences?.enableSkillReferences === true;
   const currentSkillId = skillReferences?.currentSkillId ?? null;
+  const onSelectSkill = skillReferences?.onSelectSkill;
   const onSelectTool = skillReferences?.onSelectTool;
   const owner = skillReferences?.owner;
   const includeSkillSuggestions = enableSkillReferences && !!owner;
@@ -161,10 +167,17 @@ export function useSkillInstructionsEditor({
       buildSkillInstructionsEditableExtensions({
         currentSkillId,
         includeSkillSuggestions,
+        onSelectSkill,
         onSelectTool,
         owner,
       }),
-    [currentSkillId, includeSkillSuggestions, onSelectTool, owner]
+    [
+      currentSkillId,
+      includeSkillSuggestions,
+      onSelectSkill,
+      onSelectTool,
+      owner,
+    ]
   );
 
   const extensions = useMemo(

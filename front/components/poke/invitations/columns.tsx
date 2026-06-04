@@ -1,5 +1,4 @@
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
-import { INVITATION_EXPIRATION_TIME_SEC } from "@app/lib/constants/invitation";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { MembershipInvitationTypeWithLink } from "@app/types/membership_invitation";
 import {
@@ -11,15 +10,11 @@ import {
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
-const INVITATION_EXPIRATION_TIME_MS = INVITATION_EXPIRATION_TIME_SEC * 1000;
-
-function formatExpiresIn(createdAt: number): {
+function formatExpiresIn(expiresAtMs: number): {
   label: string;
   isExpired: boolean;
   exactDate: string;
 } {
-  const expiresAtMs =
-    new Date(createdAt).getTime() + INVITATION_EXPIRATION_TIME_MS;
   const nowMs = Date.now();
   const diffMs = expiresAtMs - nowMs;
   const exactDate = new Date(expiresAtMs).toLocaleString();
@@ -65,8 +60,8 @@ export function makeColumnsForInvitations(
       id: "expires",
       header: "Expires",
       cell: ({ row }) => {
-        const createdAt: number = row.original.createdAt;
-        const { label, isExpired, exactDate } = formatExpiresIn(createdAt);
+        const expiresAt: number = row.original.expiresAt;
+        const { label, isExpired, exactDate } = formatExpiresIn(expiresAt);
         return (
           <Tooltip
             label={exactDate}

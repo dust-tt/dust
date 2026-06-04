@@ -188,6 +188,28 @@ enum ConversationService {
         )
     }
 
+    // swiftlint:disable:next function_parameter_count
+    static func answerQuestion(
+        workspaceId: String,
+        conversationId: String,
+        messageId: String,
+        actionId: String,
+        answer: UserQuestionAnswer,
+        tokenProvider: TokenProvider
+    ) async throws {
+        let endpoint = AppConfig.Endpoints.answerQuestion(
+            workspaceId: workspaceId,
+            conversationId: conversationId,
+            messageId: messageId
+        )
+        try await APIClient.authenticatedSend(
+            endpoint,
+            method: "POST",
+            body: AnswerQuestionRequest(actionId: actionId, answer: answer),
+            tokenProvider: tokenProvider
+        )
+    }
+
     static func retryMessage(
         workspaceId: String,
         conversationId: String,
@@ -212,6 +234,11 @@ enum ConversationService {
     private struct ValidateActionRequest: Encodable {
         let actionId: String
         let approved: String
+    }
+
+    private struct AnswerQuestionRequest: Encodable {
+        let actionId: String
+        let answer: UserQuestionAnswer
     }
 
     private struct RetryMessageRequest: Encodable {}

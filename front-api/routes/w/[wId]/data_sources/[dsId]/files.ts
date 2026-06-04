@@ -4,13 +4,19 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import type { APIErrorType } from "@app/types/error";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  dsId: z.string(),
+});
 
 // Mounted at /api/w/:wId/data_sources/:dsId/files.
 const app = workspaceApp();
 
-app.post("/", async (ctx) => {
+app.post("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
-  const dsId = ctx.req.param("dsId") ?? "";
+  const { dsId } = ctx.req.valid("param");
 
   const body = await ctx.req.json().catch(() => ({}));
   const { fileId, upsertArgs } = body;

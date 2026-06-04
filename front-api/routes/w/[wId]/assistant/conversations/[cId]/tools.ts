@@ -7,6 +7,10 @@ import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
+const ParamsSchema = z.object({
+  cId: z.string(),
+});
+
 const ConversationToolActionRequestSchema = z.object({
   action: z.enum(["add", "delete"]),
   mcp_server_view_id: z.string(),
@@ -15,9 +19,9 @@ const ConversationToolActionRequestSchema = z.object({
 // Mounted at /api/w/:wId/assistant/conversations/:cId/tools.
 const app = workspaceApp();
 
-app.get("/", async (ctx) => {
+app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
-  const conversationId = ctx.req.param("cId") ?? "";
+  const { cId: conversationId } = ctx.req.valid("param");
 
   const conversationRes =
     await ConversationResource.fetchConversationWithoutContent(
@@ -56,10 +60,11 @@ app.get("/", async (ctx) => {
 
 app.post(
   "/",
+  validate("param", ParamsSchema),
   validate("json", ConversationToolActionRequestSchema),
   async (ctx) => {
     const auth = ctx.get("auth");
-    const conversationId = ctx.req.param("cId") ?? "";
+    const { cId: conversationId } = ctx.req.valid("param");
 
     const conversationRes =
       await ConversationResource.fetchConversationWithoutContent(

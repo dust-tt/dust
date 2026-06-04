@@ -38,6 +38,10 @@ const PostConnectionBodySchema = z.union([
   PostConnectionCredentialsBodySchema,
 ]);
 
+const ParamsSchema = z.object({
+  connectionType: z.string(),
+});
+
 export type PostConnectionBodyType = z.infer<typeof PostConnectionBodySchema>;
 
 // Wire shape: ctx.json serializes Date to ISO string, so the response type
@@ -201,30 +205,38 @@ async function validateAuthReferenceForMCPConnection(
 // Mounted under /api/w/:wId/mcp/connections/:connectionType.
 const app = workspaceApp();
 
-app.get("/", async (ctx): HandlerResult<GetConnectionsResponseBody> => {
-  const connectionType = ctx.req.param("connectionType");
-  if (!isMCPServerConnectionConnectionType(connectionType)) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid connection type",
-      },
-    });
-  }
+app.get(
+  "/",
+  validate("param", ParamsSchema),
+  async (ctx): HandlerResult<GetConnectionsResponseBody> => {
+    const { connectionType } = ctx.req.valid("param");
+    if (!isMCPServerConnectionConnectionType(connectionType)) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Invalid connection type",
+        },
+      });
+    }
 
-  const auth = ctx.get("auth");
-  const connections = await MCPServerConnectionResource.listByWorkspace(auth, {
-    connectionType,
-  });
-  return ctx.json({ connections: connections.map((c) => c.toJSON()) });
-});
+    const auth = ctx.get("auth");
+    const connections = await MCPServerConnectionResource.listByWorkspace(
+      auth,
+      {
+        connectionType,
+      }
+    );
+    return ctx.json({ connections: connections.map((c) => c.toJSON()) });
+  }
+);
 
 app.post(
   "/",
+  validate("param", ParamsSchema),
   validate("json", PostConnectionBodySchema),
   async (ctx): HandlerResult<PostConnectionResponseBody> => {
-    const connectionType = ctx.req.param("connectionType");
+    const { connectionType } = ctx.req.valid("param");
     if (!isMCPServerConnectionConnectionType(connectionType)) {
       return apiError(ctx, {
         status_code: 400,

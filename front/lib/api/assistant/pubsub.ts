@@ -101,6 +101,7 @@ export async function* getConversationEvents({
   } catch (e) {
     logger.error({ error: e }, "Error getting conversation events");
   } finally {
+    signal.removeEventListener("abort", unsubscribe);
     unsubscribe();
   }
 }
@@ -265,6 +266,7 @@ export async function* getMessagesEvents(
   } catch (e) {
     logger.error({ error: e }, "Error getting messages events");
   } finally {
+    signal.removeEventListener("abort", unsubscribe);
     unsubscribe();
   }
 }

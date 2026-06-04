@@ -12,6 +12,11 @@ import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { withDataSource } from "@front-api/middlewares/with_data_source";
 import { withSpace } from "@front-api/middlewares/with_space";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  documentId: z.string(),
+});
 
 export type PatchDocumentResponseBody = {
   document: DocumentType | CoreAPILightDocument;
@@ -22,13 +27,14 @@ const app = workspaceApp();
 
 app.patch(
   "/",
+  validate("param", ParamsSchema),
   withSpace({ requireCanRead: true }),
   withDataSource({ requireCanRead: true }),
   validate("json", PostDataSourceDocumentRequestBodySchema),
   async (ctx): HandlerResult<PatchDocumentResponseBody> => {
     const auth = ctx.get("auth");
     const dataSource = ctx.get("dataSource");
-    const documentId = ctx.req.param("documentId") ?? "";
+    const { documentId } = ctx.req.valid("param");
 
     if (!dataSource.canWrite(auth)) {
       return apiError(ctx, {
@@ -116,12 +122,13 @@ app.patch(
 
 app.delete(
   "/",
+  validate("param", ParamsSchema),
   withSpace({ requireCanRead: true }),
   withDataSource({ requireCanRead: true }),
   async (ctx) => {
     const auth = ctx.get("auth");
     const dataSource = ctx.get("dataSource");
-    const documentId = ctx.req.param("documentId") ?? "";
+    const { documentId } = ctx.req.valid("param");
 
     if (!dataSource.canWrite(auth)) {
       return apiError(ctx, {

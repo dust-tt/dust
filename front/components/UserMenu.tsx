@@ -1,4 +1,5 @@
 import { useConversationDrafts } from "@app/components/assistant/conversation/input_bar/useConversationDrafts";
+import { UserSettingsPopover } from "@app/components/UserSettingsPopover";
 import { WorkspacePickerRadioGroup } from "@app/components/WorkspacePicker";
 import { useDevMode } from "@app/hooks/useDevMode";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -44,7 +45,7 @@ import {
   TestTubeIcon,
   UserIcon,
 } from "@dust-tt/sparkle";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 interface UserMenuProps {
   user: UserTypeWithWorkspaces;
@@ -54,7 +55,8 @@ interface UserMenuProps {
 
 export function UserMenu({ user, owner, subscription }: UserMenuProps) {
   const router = useAppRouter();
-  const { featureFlags } = useFeatureFlags();
+  const { featureFlags, hasFeature } = useFeatureFlags();
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const sendNotification = useSendNotification();
   const devMode = useDevMode();
@@ -130,175 +132,193 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
   }, [user]);
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger>
-        <div className="group flex max-w-[200px] cursor-pointer items-center gap-2">
-          <span className="sr-only">Open user menu</span>
-          <Avatar
-            size="sm"
-            visual={
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-              user.image
-                ? user.image
-                : "https://gravatar.com/avatar/anonymous?d=mp"
-            }
-            clickable
-            isRounded
-          />
-          <div className="flex min-w-0 flex-1 flex-col items-start text-left">
-            <span
-              className={cn(
-                "heading-sm w-full truncate transition-colors duration-200",
-                "text-foreground group-hover:text-primary-600 group-active:text-primary-950 dark:text-foreground-night dark:group-hover:text-muted-foreground-night dark:group-active:text-primary-700"
-              )}
-            >
-              {user.firstName}
-            </span>
-            <span className="-mt-0.5 w-full truncate text-sm text-muted-foreground dark:text-muted-foreground-night">
-              {owner.name}
-            </span>
-          </div>
-          <div className="flex-shrink-0">
-            <Icon
-              visual={ChevronDownIcon}
-              className="text-muted-foreground group-hover:text-primary-400 group-active:text-primary-950 dark:text-muted-foreground-night dark:group-hover:text-foreground-night dark:group-active:text-primary-700"
-            />
-          </div>
-        </div>
-      </DropdownMenuTrigger>
-
-      <DropdownMenuContent>
-        {hasMultipleWorkspaces && (
-          <>
-            <DropdownMenuLabel label="Workspace" />
-            <WorkspacePickerRadioGroup user={user} workspace={owner} />
-          </>
-        )}
-
-        {subscription?.plan.limits.canUseProduct && (
-          <>
-            <DropdownMenuLabel label="Beta" />
-            <DropdownMenuItem
-              label="Exploratory features"
-              icon={TestTubeIcon}
-              href={`/w/${owner.sId}/labs`}
-            />
-          </>
-        )}
-
-        <DropdownMenuLabel label="Extension" />
-        {isFirefox ? (
-          <DropdownMenuItem
-            label="Dust Firefox Extension"
-            icon={FirefoxLogo}
-            href="https://addons.mozilla.org/firefox/addon/dust/"
-            target="_blank"
-          />
-        ) : (
-          <DropdownMenuItem
-            label="Dust Chrome Extension"
-            icon={ChromeLogo}
-            href="https://chromewebstore.google.com/detail/dust/fnkfcndbgingjcbdhaofkcnhcjpljhdn"
-            target="_blank"
-          />
-        )}
-
-        <DropdownMenuLabel label="Account" />
-        {subscription?.plan.limits.canUseProduct && (
-          <DropdownMenuItem
-            label="Personal Settings"
-            icon={UserIcon}
-            href={`/w/${owner.sId}/me`}
-          />
-        )}
-
-        <DropdownMenuItem
-          label="Sign&nbsp;out"
-          icon={LogoutIcon}
-          onClick={() => {
-            // Clear all conversation drafts for this user.
-            clearAllDraftsFromUser();
-
-            datadogLogs.clearUser();
-            window.DD_RUM?.onReady(() => {
-              window.DD_RUM?.clearUser();
-            });
-            window.location.href = `${config.getApiBaseUrl()}/api/workos/logout`;
-          }}
+    <>
+      {hasFeature("user_settings_v2") && (
+        <UserSettingsPopover
+          open={settingsOpen}
+          onOpenChange={setSettingsOpen}
+          owner={owner}
         />
+      )}
+      <DropdownMenu>
+        <DropdownMenuTrigger>
+          <div className="group flex max-w-[200px] cursor-pointer items-center gap-2">
+            <span className="sr-only">Open user menu</span>
+            <Avatar
+              size="sm"
+              visual={
+                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+                user.image
+                  ? user.image
+                  : "https://gravatar.com/avatar/anonymous?d=mp"
+              }
+              clickable
+              isRounded
+            />
+            <div className="flex min-w-0 flex-1 flex-col items-start text-left">
+              <span
+                className={cn(
+                  "heading-sm w-full truncate transition-colors duration-200",
+                  "text-foreground group-hover:text-primary-600 group-active:text-primary-950 dark:text-foreground-night dark:group-hover:text-muted-foreground-night dark:group-active:text-primary-700"
+                )}
+              >
+                {user.firstName}
+              </span>
+              <span className="-mt-0.5 w-full truncate text-sm text-muted-foreground dark:text-muted-foreground-night">
+                {owner.name}
+              </span>
+            </div>
+            <div className="flex-shrink-0">
+              <Icon
+                visual={ChevronDownIcon}
+                className="text-muted-foreground group-hover:text-primary-400 group-active:text-primary-950 dark:text-muted-foreground-night dark:group-hover:text-foreground-night dark:group-active:text-primary-700"
+              />
+            </div>
+          </div>
+        </DropdownMenuTrigger>
 
-        {showDebugTools(featureFlags) && (
-          <>
-            <DropdownMenuLabel label="Advanced" />
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger label="Dev Tools" icon={ShapesIcon} />
-              <DropdownMenuPortal>
-                <DropdownMenuSubContent>
-                  {(router.pathname === "/w/[wId]/conversation/[cId]" ||
-                    router.pathname.match(
-                      /^\/w\/[^/]+\/conversation\/[^/]+$/
-                    )) && (
-                    <DropdownMenuItem
-                      label="Debug conversation"
-                      onClick={() => {
-                        const regexp = new RegExp(
-                          `/w/([^/]+)/conversation/([^/]+)`
-                        );
-                        const match = window.location.href.match(regexp);
-                        if (match) {
-                          window.open(
-                            `/poke/${match[1]}/conversation/${match[2]}`,
-                            "_blank"
+        <DropdownMenuContent>
+          {hasMultipleWorkspaces && (
+            <>
+              <DropdownMenuLabel label="Workspace" />
+              <WorkspacePickerRadioGroup user={user} workspace={owner} />
+            </>
+          )}
+
+          {subscription?.plan.limits.canUseProduct && (
+            <>
+              <DropdownMenuLabel label="Beta" />
+              <DropdownMenuItem
+                label="Exploratory features"
+                icon={TestTubeIcon}
+                href={`/w/${owner.sId}/labs`}
+              />
+            </>
+          )}
+
+          <DropdownMenuLabel label="Extension" />
+          {isFirefox ? (
+            <DropdownMenuItem
+              label="Dust Firefox Extension"
+              icon={FirefoxLogo}
+              href="https://addons.mozilla.org/firefox/addon/dust/"
+              target="_blank"
+            />
+          ) : (
+            <DropdownMenuItem
+              label="Dust Chrome Extension"
+              icon={ChromeLogo}
+              href="https://chromewebstore.google.com/detail/dust/fnkfcndbgingjcbdhaofkcnhcjpljhdn"
+              target="_blank"
+            />
+          )}
+
+          <DropdownMenuLabel label="Account" />
+          {subscription?.plan.limits.canUseProduct && (
+            <>
+              <DropdownMenuItem
+                label="Personal Settings"
+                icon={UserIcon}
+                href={`/w/${owner.sId}/me`}
+              />
+              {hasFeature("user_settings_v2") && (
+                <DropdownMenuItem
+                  label="Personal Settings — Beta"
+                  icon={UserIcon}
+                  onSelect={() => setSettingsOpen(true)}
+                />
+              )}
+            </>
+          )}
+
+          <DropdownMenuItem
+            label="Sign&nbsp;out"
+            icon={LogoutIcon}
+            onClick={() => {
+              // Clear all conversation drafts for this user.
+              clearAllDraftsFromUser();
+
+              datadogLogs.clearUser();
+              window.DD_RUM?.onReady(() => {
+                window.DD_RUM?.clearUser();
+              });
+              window.location.href = `${config.getApiBaseUrl()}/api/workos/logout`;
+            }}
+          />
+
+          {showDebugTools(featureFlags) && (
+            <>
+              <DropdownMenuLabel label="Advanced" />
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger label="Dev Tools" icon={ShapesIcon} />
+                <DropdownMenuPortal>
+                  <DropdownMenuSubContent>
+                    {(router.pathname === "/w/[wId]/conversation/[cId]" ||
+                      router.pathname.match(
+                        /^\/w\/[^/]+\/conversation\/[^/]+$/
+                      )) && (
+                      <DropdownMenuItem
+                        label="Debug conversation"
+                        onClick={() => {
+                          const regexp = new RegExp(
+                            `/w/([^/]+)/conversation/([^/]+)`
                           );
-                        }
-                      }}
-                      icon={ShapesIcon}
-                    />
-                  )}
-                  {!isOnlyAdmin(owner) && (
+                          const match = window.location.href.match(regexp);
+                          if (match) {
+                            window.open(
+                              `/poke/${match[1]}/conversation/${match[2]}`,
+                              "_blank"
+                            );
+                          }
+                        }}
+                        icon={ShapesIcon}
+                      />
+                    )}
+                    {!isOnlyAdmin(owner) && (
+                      <DropdownMenuItem
+                        label="Become Admin"
+                        onClick={() => forceRoleUpdate("admin")}
+                        icon={StarIcon}
+                      />
+                    )}
+                    {!isOnlyBuilder(owner) && (
+                      <DropdownMenuItem
+                        label="Become Builder"
+                        onClick={() => forceRoleUpdate("builder")}
+                        icon={LightbulbIcon}
+                      />
+                    )}
+                    {!isOnlyUser(owner) && (
+                      <DropdownMenuItem
+                        label="Become User"
+                        onClick={() => forceRoleUpdate("user")}
+                        icon={UserIcon}
+                      />
+                    )}
                     <DropdownMenuItem
-                      label="Become Admin"
-                      onClick={() => forceRoleUpdate("admin")}
-                      icon={StarIcon}
+                      label={`${privacyMask.isEnabled ? "Disable" : "Enable"} Privacy Mask`}
+                      onClick={privacyMask.toggle}
+                      icon={privacyMask.isEnabled ? EyeSlashIcon : EyeIcon}
                     />
-                  )}
-                  {!isOnlyBuilder(owner) && (
                     <DropdownMenuItem
-                      label="Become Builder"
-                      onClick={() => forceRoleUpdate("builder")}
-                      icon={LightbulbIcon}
+                      label={`${devMode.isEnabled ? "Disable" : "Enable"} Dev Console`}
+                      onClick={devMode.toggle}
+                      icon={CommandLineIcon}
                     />
-                  )}
-                  {!isOnlyUser(owner) && (
-                    <DropdownMenuItem
-                      label="Become User"
-                      onClick={() => forceRoleUpdate("user")}
-                      icon={UserIcon}
-                    />
-                  )}
-                  <DropdownMenuItem
-                    label={`${privacyMask.isEnabled ? "Disable" : "Enable"} Privacy Mask`}
-                    onClick={privacyMask.toggle}
-                    icon={privacyMask.isEnabled ? EyeSlashIcon : EyeIcon}
-                  />
-                  <DropdownMenuItem
-                    label={`${devMode.isEnabled ? "Disable" : "Enable"} Dev Console`}
-                    onClick={devMode.toggle}
-                    icon={CommandLineIcon}
-                  />
-                  {owner.role === "admin" && (
-                    <DropdownMenuItem
-                      label="Send onboarding conversation"
-                      onClick={handleSendOnboarding}
-                      icon={ChatBubbleBottomCenterPlusIcon}
-                    />
-                  )}
-                </DropdownMenuSubContent>
-              </DropdownMenuPortal>
-            </DropdownMenuSub>
-          </>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+                    {owner.role === "admin" && (
+                      <DropdownMenuItem
+                        label="Send onboarding conversation"
+                        onClick={handleSendOnboarding}
+                        icon={ChatBubbleBottomCenterPlusIcon}
+                      />
+                    )}
+                  </DropdownMenuSubContent>
+                </DropdownMenuPortal>
+              </DropdownMenuSub>
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </>
   );
 }

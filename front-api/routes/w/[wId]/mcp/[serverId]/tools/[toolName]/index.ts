@@ -28,17 +28,22 @@ export type PatchMCPServerToolsPermissionsResponseBody = {
   success: boolean;
 };
 
+const ParamsSchema = z.object({
+  serverId: z.string(),
+  toolName: z.string(),
+});
+
 // Mounted at /api/w/:wId/mcp/:serverId/tools/:toolName.
 const app = workspaceApp();
 
 app.patch(
   "/",
+  validate("param", ParamsSchema),
   ensureIsUser(),
   validate("json", UpdateMCPToolSettingsBodySchema),
   async (ctx): HandlerResult<PatchMCPServerToolsPermissionsResponseBody> => {
     const auth = ctx.get("auth");
-    const serverId = ctx.req.param("serverId") ?? "";
-    const toolName = ctx.req.param("toolName") ?? "";
+    const { serverId, toolName } = ctx.req.valid("param");
 
     const { id } = getServerTypeAndIdFromSId(serverId);
     if (!id) {

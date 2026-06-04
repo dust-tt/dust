@@ -13,6 +13,10 @@ import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
+const ParamsSchema = z.object({
+  aId: z.string(),
+});
+
 export type AgentEditorsResponseBody = {
   editors: UserType[];
 };
@@ -42,13 +46,10 @@ const app = workspaceApp();
 
 app.get(
   "/",
-  async (
-    ctx
-  ): HandlerResult<
-    AgentEditorsResponseBody | AgentEditorsLightResponseBody
-  > => {
+  validate("param", ParamsSchema),
+  async (ctx): HandlerResult<AgentEditorsResponseBody | AgentEditorsLightResponseBody> => {
     const auth = ctx.get("auth");
-    const aId = ctx.req.param("aId") ?? "";
+    const { aId } = ctx.req.valid("param");
 
     const agent = await getAgentConfiguration(auth, {
       agentId: aId,
@@ -134,6 +135,7 @@ app.get(
 
 app.patch(
   "/",
+  validate("param", ParamsSchema),
   validate("json", PatchAgentEditorsRequestBodySchema),
   async (
     ctx
@@ -141,7 +143,7 @@ app.patch(
     AgentEditorsResponseBody | AgentEditorsLightResponseBody
   > => {
     const auth = ctx.get("auth");
-    const aId = ctx.req.param("aId") ?? "";
+    const { aId } = ctx.req.valid("param");
 
     const agent = await getAgentConfiguration(auth, {
       agentId: aId,

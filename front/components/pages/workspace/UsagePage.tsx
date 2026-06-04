@@ -51,36 +51,6 @@ function formatCredits(credits: number): string {
   return Math.round(credits).toLocaleString("en-US");
 }
 
-function getOrdinalSuffix(day: number): string {
-  if (day >= 11 && day <= 13) {
-    return "th";
-  }
-  switch (day % 10) {
-    case 1:
-      return "st";
-    case 2:
-      return "nd";
-    case 3:
-      return "rd";
-    default:
-      return "th";
-  }
-}
-
-function getResetDateLabel(resetDate: string): string {
-  if (!resetDate) {
-    return "";
-  }
-  const date = new Date(resetDate);
-  const resetDay = date.getUTCDate();
-  const suffix = getOrdinalSuffix(resetDay);
-  const resetMonth = date.toLocaleDateString("en-US", {
-    month: "long",
-    timeZone: "UTC",
-  });
-  return `Resets on the ${resetDay}${suffix} of each month. Next reset: ${resetMonth} ${resetDay}${suffix}.`;
-}
-
 const DEFAULT_PAGE_SIZE = 25;
 
 interface CreditPoolUsageBarProps {
@@ -152,7 +122,6 @@ export function UsagePage() {
   const {
     totalRemainingCredits,
     totalActiveCredits,
-    resetDate,
     overageCredits,
     isAwuPoolSummaryLoading,
     isAwuPoolSummaryError,
@@ -219,8 +188,6 @@ export function UsagePage() {
     totalActiveCredits - totalRemainingCredits
   );
   const initialTotalCredits = totalActiveCredits;
-
-  const resetDateLabel = getResetDateLabel(resetDate);
 
   if (!isCreditPriced) {
     return null;
@@ -311,12 +278,6 @@ export function UsagePage() {
               Please refresh the page or contact support if the issue persists.
             </ContentMessage>
           )}
-
-          {resetDateLabel &&
-            !isAwuPoolSummaryLoading &&
-            !isAwuPoolSummaryError && (
-              <Page.P variant="secondary">{resetDateLabel}</Page.P>
-            )}
 
           {!isAwuPoolSummaryLoading && !isAwuPoolSummaryError && (
             <CreditPoolUsageBar

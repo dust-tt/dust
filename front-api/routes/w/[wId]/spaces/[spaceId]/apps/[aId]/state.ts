@@ -17,17 +17,22 @@ const PostStateBodySchema = z.object({
   run: z.string().optional(),
 });
 
+const ParamsSchema = z.object({
+  aId: z.string(),
+});
+
 // Mounted under /api/w/:wId/spaces/:spaceId/apps/:aId/state.
 const app = workspaceApp();
 
 app.post(
   "/",
+  validate("param", ParamsSchema),
   withSpace({ requireCanWrite: true }),
   validate("json", PostStateBodySchema),
   async (ctx): HandlerResult<PostStateResponseBody> => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");
-    const aId = ctx.req.param("aId") ?? "";
+    const { aId } = ctx.req.valid("param");
 
     const found = await AppResource.fetchById(auth, aId);
     if (!found || found.space.sId !== space.sId) {

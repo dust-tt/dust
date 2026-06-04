@@ -290,11 +290,13 @@ export function useUpdateMemberSeatType({
       memberName,
       seatType,
       isCancellingScheduledChange,
+      hasSeatPool,
     }: {
       memberId: string;
       memberName: string;
       seatType: MembershipSeatType;
       isCancellingScheduledChange: boolean;
+      hasSeatPool: boolean;
     }): Promise<boolean> => {
       const res = await clientFetch(
         `/api/w/${workspaceId}/members/${memberId}/seat-type`,
@@ -324,7 +326,9 @@ export function useUpdateMemberSeatType({
           ? `${memberName}'s seat will change to ${seatType} at the next credit refresh.`
           : isCancellingScheduledChange
             ? `${memberName}'s scheduled seat change has been cancelled.`
-            : `${memberName}'s seat has been updated to ${seatType}.`,
+            : hasSeatPool
+              ? `${memberName}'s seat has been updated to ${seatType}. The seat pool will be provisioned shortly.`
+              : `${memberName}'s seat has been updated to ${seatType}.`,
       });
 
       await invalidateMembersUsage(workspaceId);

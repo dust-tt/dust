@@ -93,6 +93,7 @@ enum StreamingEventData: Decodable {
     case toolPersonalAuthRequired(ToolPersonalAuthRequiredEvent)
     case toolFileAuthRequired(ToolFileAuthRequiredEvent)
     case toolApproveExecution(ToolApproveExecutionEvent)
+    case toolAskUserQuestion(ToolAskUserQuestionEvent)
     case agentContextPruned
     case endOfStream
     case unknown(String)
@@ -131,6 +132,8 @@ enum StreamingEventData: Decodable {
             self = try .toolFileAuthRequired(ToolFileAuthRequiredEvent(from: decoder))
         case "tool_approve_execution":
             self = try .toolApproveExecution(ToolApproveExecutionEvent(from: decoder))
+        case "tool_ask_user_question":
+            self = try .toolAskUserQuestion(ToolAskUserQuestionEvent(from: decoder))
         case "agent_context_pruned":
             self = .agentContextPruned
         case "end-of-stream":
@@ -206,6 +209,7 @@ struct AgentGenerationCancelledEvent: Decodable {
     let created: Double
     let configurationId: String
     let messageId: String
+    let status: String?
 }
 
 struct AgentMessageGracefullyStoppedEvent: Decodable {
@@ -257,6 +261,30 @@ struct ToolApprovalMetadata: Decodable {
     let toolName: String?
     let mcpServerName: String?
     let agentName: String?
+}
+
+struct ToolAskUserQuestionEvent: Decodable {
+    let conversationId: String?
+    let messageId: String?
+    let actionId: String?
+    let question: UserQuestion
+}
+
+struct UserQuestion: Decodable, Equatable {
+    let question: String
+    let options: [UserQuestionOption]
+    let multiSelect: Bool
+}
+
+struct UserQuestionOption: Decodable, Equatable {
+    let label: String
+    let description: String?
+}
+
+/// Indices of the chosen options plus an optional free-text response.
+struct UserQuestionAnswer: Encodable, Equatable {
+    let selectedOptions: [Int]
+    let customResponse: String?
 }
 
 /// Lightweight wrapper for heterogeneous JSON values in tool inputs.
@@ -328,6 +356,7 @@ struct BlockedAction: Decodable {
     let argumentsRequiringApproval: [String]?
     let authError: ToolPersonalAuthError?
     let fileAuthorizationInfo: BlockedFileAuthInfo?
+    let question: UserQuestion?
 }
 
 struct BlockedFileAuthInfo: Decodable {

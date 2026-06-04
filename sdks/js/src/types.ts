@@ -687,7 +687,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "agent_builder_copilot"
   | "agent_builder_copilot_builders"
   | "agent_builder_shrink_wrap"
-  | "agent_management_tool"
+  | "skill_authoring_tool"
   | "custom_model_feature"
   | "anthropic_vertex_fallback"
   | "audit_logs"
@@ -698,15 +698,18 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "deepseek_feature"
   | "deepseek_r1_global_agent_feature"
   | "dev_mcp_actions"
+  | "disable_formatting_prompt"
   | "disable_run_logs"
   | "disallow_agent_creation_to_users"
   | "discord_bot"
   | "dummy_feature_for_flag_testing"
   | "dust_academy"
+  | "dust_agent_gpt_5_5_default"
   | "dust_internal_global_agents"
   | "dust_no_spa"
   | "dust_spa"
   | "fireworks_new_model_feature"
+  | "force_us_api_url"
   | "frames_skill_v2"
   | "gemini_3_1_pro_feature"
   | "clari_copilot_mcp"
@@ -758,6 +761,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "sensitivity_labels"
   | "conversation_search_indexing"
   | "conversation_search_read"
+  | "deferred_conversation_creation"
   | "new_file_explorer"
   | "use_vertex_for_supported_models"
   | "metronome_billing_usage_page"
@@ -2129,9 +2133,15 @@ export type GetOrPatchAgentConfigurationResponseType = z.infer<
   typeof GetOrPatchAgentConfigurationResponseSchema
 >;
 
-export const PatchAgentConfigurationRequestSchema = z.object({
-  userFavorite: z.boolean().optional(),
-});
+// Passthrough is required: beyond `userFavorite`, the endpoint accepts agent configuration
+// patch fields (`instructions`, `agent`, `generation_settings`, `tags`, `editors`, `skills`,
+// `toolset`, ...) which are validated server-side by `agentYAMLConfigPatchSchema`. Stripping
+// unknown keys here would silently drop them (see dust-tt/dust#26698).
+export const PatchAgentConfigurationRequestSchema = z
+  .object({
+    userFavorite: z.boolean().optional(),
+  })
+  .passthrough();
 
 export type PatchAgentConfigurationRequestType = z.infer<
   typeof PatchAgentConfigurationRequestSchema
@@ -2166,30 +2176,6 @@ export const GetAgentConfigurationsResponseSchema = z.object({
 
 export type GetAgentConfigurationsResponseType = z.infer<
   typeof GetAgentConfigurationsResponseSchema
->;
-
-export const CreateGenericAgentConfigurationRequestSchema = z.object({
-  name: z.string(),
-  description: z.string(),
-  instructions: z.string(),
-  emoji: z.string().optional(),
-  subAgentName: z.string().optional(),
-  subAgentDescription: z.string().optional(),
-  subAgentInstructions: z.string().optional(),
-  subAgentEmoji: z.string().optional(),
-});
-
-export type CreateAgentConfigurationWithDefaultsRequestType = z.infer<
-  typeof CreateGenericAgentConfigurationRequestSchema
->;
-
-export const CreateGenericAgentConfigurationResponseSchema = z.object({
-  agentConfiguration: LightAgentConfigurationSchema,
-  subAgentConfiguration: LightAgentConfigurationSchema.optional(),
-});
-
-export type CreateGenericAgentConfigurationResponseType = z.infer<
-  typeof CreateGenericAgentConfigurationResponseSchema
 >;
 
 export const PostContentFragmentResponseSchema = z.object({

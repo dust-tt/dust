@@ -6,21 +6,31 @@ struct Avatar: View {
     var size: CGFloat = 24
 
     var body: some View {
-        AsyncImage(url: url.flatMap { URL(string: $0) }) { image in
-            image
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-        } placeholder: {
+        if let emojiAvatar = url.flatMap({ EmojiAvatar(urlString: $0) }) {
             Circle()
-                .fill(Color.dustFaint.opacity(0.3))
+                .fill(emojiAvatar.backgroundColor)
+                .frame(width: size, height: size)
                 .overlay {
-                    SparkleIcon.user.image
-                        .resizable()
-                        .frame(width: size * 0.5, height: size * 0.5)
-                        .foregroundStyle(Color.dustFaint)
+                    Text(emojiAvatar.emoji)
+                        .font(.system(size: size * 0.55))
                 }
+        } else {
+            AsyncImage(url: url.flatMap { URL(string: $0) }) { image in
+                image
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+            } placeholder: {
+                Circle()
+                    .fill(Color.dustFaint.opacity(0.3))
+                    .overlay {
+                        SparkleIcon.user.image
+                            .resizable()
+                            .frame(width: size * 0.5, height: size * 0.5)
+                            .foregroundStyle(Color.dustFaint)
+                    }
+            }
+            .frame(width: size, height: size)
+            .clipShape(Circle())
         }
-        .frame(width: size, height: size)
-        .clipShape(Circle())
     }
 }

@@ -36,7 +36,6 @@ struct MessageContext: Encodable {
     let timezone: String
     let profilePictureUrl: String?
     var selectedMCPServerViewIds: [String]?
-    var selectedSkillIds: [String]?
 
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
@@ -44,11 +43,10 @@ struct MessageContext: Encodable {
         // Explicitly encode nil as JSON null
         try container.encode(profilePictureUrl, forKey: .profilePictureUrl)
         try container.encodeIfPresent(selectedMCPServerViewIds, forKey: .selectedMCPServerViewIds)
-        try container.encodeIfPresent(selectedSkillIds, forKey: .selectedSkillIds)
     }
 
     private enum CodingKeys: String, CodingKey {
-        case timezone, profilePictureUrl, selectedMCPServerViewIds, selectedSkillIds
+        case timezone, profilePictureUrl, selectedMCPServerViewIds
     }
 }
 
@@ -82,8 +80,19 @@ struct ContentFragmentPayload: Encodable {
     }
 
     /// Creates a knowledge node content fragment.
-    static func node(title: String, nodeId: String, nodeDataSourceViewId: String, context: ContentFragmentContext) -> ContentFragmentPayload {
-        ContentFragmentPayload(title: title, fileId: nil, nodeId: nodeId, nodeDataSourceViewId: nodeDataSourceViewId, context: context)
+    static func node(
+        title: String,
+        nodeId: String,
+        nodeDataSourceViewId: String,
+        context: ContentFragmentContext
+    ) -> ContentFragmentPayload {
+        ContentFragmentPayload(
+            title: title,
+            fileId: nil,
+            nodeId: nodeId,
+            nodeDataSourceViewId: nodeDataSourceViewId,
+            context: context
+        )
     }
 
     func encode(to encoder: Encoder) throws {

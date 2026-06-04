@@ -1,6 +1,7 @@
 import config from "@app/lib/api/config";
 import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/utils";
 import { getTemporalClientForConnectorsNamespace } from "@app/lib/temporal";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Logger } from "@app/logger/logger";
 import {
   getZendeskGarbageCollectionWorkflowId,
@@ -16,8 +17,10 @@ import {
 import type { ConnectorProvider } from "@app/types/data_source";
 import type { ActionLink, CheckFunction } from "@app/types/production_checks";
 import type { ModelId } from "@app/types/shared/model_id";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { Client, ScheduleHandle } from "@temporalio/client";
+import { WorkflowNotFoundError } from "@temporalio/client";
 import chunk from "lodash/chunk";
 import { QueryTypes } from "sequelize";
 
@@ -144,6 +147,62 @@ async function listRunningWorkflowIds(
   return runningWorkflowIds;
 }
 
+// `client.workflow.list` reads from Temporal's visibility store, which is
+// eventually consistent and can lag behind the actual workflow state — notably
+// for incremental sync workflows that `continueAsNew` on every cycle, where a
+// genuinely running workflow can transiently be absent from the visibility
+// query. To avoid false positives, re-check any workflow flagged as missing
+// against the authoritative mutable state via `describe()`, and only keep the
+// ones that truly are not running. This runs only for the (normally tiny) set
+// of candidate-missing workflows, so the number of `describe()` calls stays
+// bounded and the batched visibility query remains the fast path.
+async function confirmMissingWorkflowIds(
+  client: Client,
+  workflowIds: string[],
+  logger: Logger,
+  heartbeat: () => void
+) {
+  const missingWorkflowIds = new Set<string>();
+
+  // External Temporal calls (not DB queries), so concurrentExecutor is the
+  // right fit here.
+  await concurrentExecutor(
+    workflowIds,
+    async (workflowId) => {
+      heartbeat();
+
+      try {
+        const description = await client.workflow
+          .getHandle(workflowId)
+          .describe();
+        if (description.status.name !== "RUNNING") {
+          missingWorkflowIds.add(workflowId);
+        }
+      } catch (err) {
+        // `describe()` throws `WorkflowNotFoundError` when the workflow does
+        // not exist — that is a genuine missing workflow. Any other error
+        // (transient RPC failure, auth/namespace issue, timeout) is a Temporal
+        // API problem: treating it as missing would reintroduce the very false
+        // positive this confirmation step is meant to avoid, so rethrow and let
+        // the check fail loudly instead.
+        if (err instanceof WorkflowNotFoundError) {
+          missingWorkflowIds.add(workflowId);
+          return;
+        }
+
+        logger.error(
+          { workflowId, err: normalizeError(err) },
+          "Failed to confirm Temporal workflow status via describe()."
+        );
+        throw err;
+      }
+    },
+    { concurrency: 8 }
+  );
+
+  return missingWorkflowIds;
+}
+
 async function getMissingTemporalSchedulesActive(
   client: Client,
   connector: ConnectorBlob,
@@ -209,10 +268,23 @@ export const checkActiveWorkflows: CheckFunction = async (
           heartbeat
         );
 
+        // Workflows the visibility query did not return are only *candidates*
+        // for being missing — confirm them against the authoritative mutable
+        // state before reporting, to avoid false positives from visibility lag.
+        const candidateMissingWorkflowIds = workflowIds.filter(
+          (workflowId) => !runningWorkflowIds.has(workflowId)
+        );
+        const confirmedMissingWorkflowIds = await confirmMissingWorkflowIds(
+          client,
+          candidateMissingWorkflowIds,
+          logger,
+          heartbeat
+        );
+
         missingActiveWorkflows = removeNulls(
           workflowIdsByConnector.map(({ connector, workflowIds }) => {
-            const missingEntities = workflowIds.filter(
-              (workflowId) => !runningWorkflowIds.has(workflowId)
+            const missingEntities = workflowIds.filter((workflowId) =>
+              confirmedMissingWorkflowIds.has(workflowId)
             );
 
             return missingEntities.length > 0

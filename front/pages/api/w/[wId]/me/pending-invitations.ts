@@ -2,9 +2,9 @@
 
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { getMembershipInvitationToken } from "@app/lib/api/invitation";
 import type { Authenticator } from "@app/lib/auth";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
+import { getMembershipInvitationToken } from "@app/lib/utils/invitation_token";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { PendingInvitationOption } from "@app/types/membership_invitation";

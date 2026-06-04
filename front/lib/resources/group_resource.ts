@@ -1467,7 +1467,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
 
     // Check if the user is already a member of the group.
-    const activeMembers = await this.getActiveMembers(auth);
+    const activeMembers = await this.getActiveMembers(auth, { transaction });
     const activeMembersIds = activeMembers.map((m) => m.sId);
     const alreadyActiveUserIds = userIds.filter((userId) =>
       activeMembersIds.includes(userId)

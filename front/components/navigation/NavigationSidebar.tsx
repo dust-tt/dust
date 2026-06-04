@@ -87,6 +87,7 @@ export const NavigationSidebar = React.forwardRef<
                 {navs.map((tab) => (
                   <div key={tab.id} ref={tab.ref ?? undefined}>
                     <TabsTrigger
+                      className="notranslate"
                       key={tab.id}
                       value={tab.id}
                       label={tab.hideLabel ? undefined : tab.label}

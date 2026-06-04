@@ -12,6 +12,10 @@ const QueryBodySchema = z.object({
   tableIds: z.array(z.string()).min(1),
 });
 
+const ParamsSchema = z.object({
+  dsId: z.string(),
+});
+
 export type PokeQueryResponseBody = {
   schema: Array<{
     name: string;
@@ -25,10 +29,11 @@ const app = pokeApp();
 
 app.post(
   "/",
+  validate("param", ParamsSchema),
   validate("json", QueryBodySchema),
   async (ctx): HandlerResult<PokeQueryResponseBody> => {
     const auth = ctx.get("auth");
-    const dsId = ctx.req.param("dsId") ?? "";
+    const { dsId } = ctx.req.valid("param");
     const { query, tableIds } = ctx.req.valid("json");
 
     const dataSource = await DataSourceResource.fetchById(auth, dsId);

@@ -3,7 +3,13 @@ import logger from "@app/logger/logger";
 import type { APIErrorResponse } from "@app/types/error";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import type { TypedResponse } from "hono";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  sId: z.string(),
+});
 
 /**
  * @swagger
@@ -55,13 +61,14 @@ const app = publicApiApp();
 
 app.get(
   "/",
+  validate("param", ParamsSchema),
   async (
     ctx
   ): Promise<
     TypedResponse<string, 200, "body"> | TypedResponse<APIErrorResponse>
   > => {
     const auth = ctx.get("auth");
-    const sId = ctx.req.param("sId") ?? "";
+    const { sId } = ctx.req.valid("param");
     const allParams = ctx.req.param();
 
     logger.info(

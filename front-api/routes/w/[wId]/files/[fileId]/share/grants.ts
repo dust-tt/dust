@@ -22,12 +22,16 @@ const RevokeGrantRequestBodySchema = z.object({
   grantId: z.number(),
 });
 
+const ParamsSchema = z.object({
+  fileId: z.string(),
+});
+
 // Mounted at /api/w/:wId/files/:fileId/share/grants.
 const app = workspaceApp();
 
-app.get("/", async (ctx) => {
+app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
-  const fileId = ctx.req.param("fileId") ?? "";
+  const { fileId } = ctx.req.valid("param");
 
   const file = await fetchShareableFile(ctx, auth, fileId);
   if (file instanceof Response) {
@@ -65,76 +69,86 @@ app.get("/", async (ctx) => {
   return ctx.json({ grants });
 });
 
-app.post("/", validate("json", AddGrantsRequestBodySchema), async (ctx) => {
-  const auth = ctx.get("auth");
-  const fileId = ctx.req.param("fileId") ?? "";
+app.post(
+  "/",
+  validate("param", ParamsSchema),
+  validate("json", AddGrantsRequestBodySchema),
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const { fileId } = ctx.req.valid("param");
 
-  const file = await fetchShareableFile(ctx, auth, fileId);
-  if (file instanceof Response) {
-    return file;
+    const file = await fetchShareableFile(ctx, auth, fileId);
+    if (file instanceof Response) {
+      return file;
+    }
+
+    const { emails: rawEmails } = ctx.req.valid("json");
+
+    const workspace = auth.getNonNullableWorkspace();
+    if (workspace.sharingPolicy === "workspace_only") {
+      const emails = rawEmails.map((e) => e.toLowerCase());
+      const users = await UserResource.fetchByEmails(emails);
+
+      const userIdToEmail = new Map(
+        users.map((u) => [u.id, u.email.toLowerCase()])
+      );
+
+      const { memberships } = await MembershipResource.getActiveMemberships({
+        users,
+        workspace,
+      });
+
+      const memberEmails = new Set(
+        memberships.map((m) => userIdToEmail.get(m.userId)).filter(Boolean)
+      );
+
+      const hasNonMemberEmails = emails.some((e) => !memberEmails.has(e));
+      if (hasNonMemberEmails) {
+        return apiError(ctx, {
+          status_code: 403,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "Only workspace members can be invited when external sharing is disabled.",
+          },
+        });
+      }
+    }
+
+    const grants = await file.addSharingGrants(auth, { emails: rawEmails });
+    return ctx.json({ grants });
   }
+);
 
-  const { emails: rawEmails } = ctx.req.valid("json");
+app.delete(
+  "/",
+  validate("param", ParamsSchema),
+  validate("json", RevokeGrantRequestBodySchema),
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const { fileId } = ctx.req.valid("param");
 
-  const workspace = auth.getNonNullableWorkspace();
-  if (workspace.sharingPolicy === "workspace_only") {
-    const emails = rawEmails.map((e) => e.toLowerCase());
-    const users = await UserResource.fetchByEmails(emails);
+    const file = await fetchShareableFile(ctx, auth, fileId);
+    if (file instanceof Response) {
+      return file;
+    }
 
-    const userIdToEmail = new Map(
-      users.map((u) => [u.id, u.email.toLowerCase()])
-    );
+    const { grantId } = ctx.req.valid("json");
+    const result = await file.revokeSharingGrant({ grantId });
 
-    const { memberships } = await MembershipResource.getActiveMemberships({
-      users,
-      workspace,
-    });
-
-    const memberEmails = new Set(
-      memberships.map((m) => userIdToEmail.get(m.userId)).filter(Boolean)
-    );
-
-    const hasNonMemberEmails = emails.some((e) => !memberEmails.has(e));
-    if (hasNonMemberEmails) {
+    if (result.isErr()) {
       return apiError(ctx, {
-        status_code: 403,
+        status_code: 404,
         api_error: {
-          type: "invalid_request_error",
-          message:
-            "Only workspace members can be invited when external sharing is disabled.",
+          type: "file_not_found",
+          message: result.error.message,
         },
       });
     }
+
+    return ctx.body(null, 204);
   }
-
-  const grants = await file.addSharingGrants(auth, { emails: rawEmails });
-  return ctx.json({ grants });
-});
-
-app.delete("/", validate("json", RevokeGrantRequestBodySchema), async (ctx) => {
-  const auth = ctx.get("auth");
-  const fileId = ctx.req.param("fileId") ?? "";
-
-  const file = await fetchShareableFile(ctx, auth, fileId);
-  if (file instanceof Response) {
-    return file;
-  }
-
-  const { grantId } = ctx.req.valid("json");
-  const result = await file.revokeSharingGrant({ grantId });
-
-  if (result.isErr()) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "file_not_found",
-        message: result.error.message,
-      },
-    });
-  }
-
-  return ctx.body(null, 204);
-});
+);
 
 async function fetchShareableFile(
   ctx: Context,

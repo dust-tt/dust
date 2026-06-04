@@ -32,7 +32,10 @@ import {
   resolveCurrencyFromStripe,
   resolvePackageAliasForCurrency,
 } from "@app/lib/plans/billing_currency";
-import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
+import {
+  isDustCompanyPlan,
+  isEntreprisePlanPrefix,
+} from "@app/lib/plans/plan_codes";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import {
   assertStripeSubscriptionIsValid,
@@ -515,7 +518,10 @@ async function notifyAdminsOfPaymentFailure({
       "notifyAdminsOfPaymentFailure: missing owner or subscription on auth"
     );
   }
-  if (isEntreprisePlanPrefix(subscriptionType.plan.code)) {
+  if (
+    isEntreprisePlanPrefix(subscriptionType.plan.code) ||
+    isDustCompanyPlan(subscriptionType.plan.code)
+  ) {
     logger.info(
       {
         workspaceId: owner.sId,

@@ -26,6 +26,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Access to internal global agents (dust-edge, dust-quick, dust-oai, dust-goog, custom model agents and their variants)",
     stage: "dust_only",
   },
+  dust_agent_gpt_5_5_default: {
+    description:
+      "Use GPT 5.5 (medium reasoning) as the default model for the @dust agent",
+    stage: "dust_only",
+  },
   notion_private_integration: {
     description: "Setup Notion private integration tokens",
     stage: "on_demand",
@@ -139,8 +144,8 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Access to Gemini 3.1 Pro model in the agent builder",
     stage: "on_demand",
   },
-  agent_management_tool: {
-    description: "MCP tool for creating and managing agent configurations",
+  skill_authoring_tool: {
+    description: "MCP tool for agents to create and update workspace Skills",
     stage: "dust_only",
   },
   hootl_subscriptions: {
@@ -284,6 +289,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable Microsoft sensitivity labels for data classification on connectors and MCP servers",
     stage: "on_demand",
   },
+  deferred_conversation_creation: {
+    description:
+      "Create conversations in two steps (conversation first, first message in background) for faster navigation to the conversation page",
+    stage: "dust_only",
+  },
   conversation_search_indexing: {
     description: "Enable ES indexing of conversations on mutation (write path)",
     stage: "dust_only",
@@ -300,6 +310,17 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   user_settings_v2: {
     description: "Enable the new user settings v2 experience",
+    stage: "dust_only",
+  },
+  force_us_api_url: {
+    description:
+      "Force the SPA to use the regional API subdomain (us-api/eu-api.dust.tt) " +
+      "as its backend for this workspace",
+    stage: "on_demand",
+  },
+  disable_formatting_prompt: {
+    description:
+      "Skip injecting the OpenAI formatting meta prompt entirely (no markdown/paragraph style guidance)",
     stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;

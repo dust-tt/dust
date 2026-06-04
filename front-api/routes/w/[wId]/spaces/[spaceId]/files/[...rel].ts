@@ -22,6 +22,11 @@ import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { withSpace } from "@front-api/middlewares/with_space";
 import type { Context, TypedResponse } from "hono";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  rel: z.string(),
+});
 
 export type ProjectFileRelResponseBody = Record<string, never>;
 
@@ -31,7 +36,10 @@ export type ProjectFileRelResponseBody = Record<string, never>;
 // captures everything past `/files/` (matching Next's `[...rel]`).
 const app = workspaceApp();
 
-async function buildContext(ctx: Context): Promise<
+async function buildContext(
+  ctx: Context,
+  rel: string
+): Promise<
   | {
       auth: Authenticator;
       space: SpaceResource;
@@ -50,19 +58,6 @@ async function buildContext(ctx: Context): Promise<
         api_error: {
           type: "invalid_request_error",
           message: "Files are only available for Pod spaces.",
-        },
-      }),
-    };
-  }
-
-  const rel = ctx.req.param("rel");
-  if (!isString(rel) || rel.length === 0) {
-    return {
-      error: apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Missing file path.",
         },
       }),
     };
@@ -105,57 +100,66 @@ async function buildContext(ctx: Context): Promise<
   };
 }
 
-app.get("/:rel{.+}", withSpace({ requireCanRead: true }), async (ctx) => {
-  const built = await buildContext(ctx);
-  if ("error" in built) {
-    return built.error;
-  }
-  const { normalizedGcsPath } = built;
+app.get(
+  "/:rel{.+}",
+  validate("param", ParamsSchema),
+  withSpace({ requireCanRead: true }),
+  async (ctx) => {
+    const { rel } = ctx.req.valid("param");
+    const built = await buildContext(ctx, rel);
+    if ("error" in built) {
+      return built.error;
+    }
+    const { normalizedGcsPath } = built;
 
-  const bucket = getPrivateUploadBucket();
-  const contentTypeResult = await bucket.getFileContentType(normalizedGcsPath);
-  if (contentTypeResult.isErr()) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "file_not_found",
-        message: "File not found.",
+    const bucket = getPrivateUploadBucket();
+    const contentTypeResult =
+      await bucket.getFileContentType(normalizedGcsPath);
+    if (contentTypeResult.isErr()) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "file_not_found",
+          message: "File not found.",
+        },
+      });
+    }
+
+    const contentType = contentTypeResult.value ?? "application/octet-stream";
+    const readStream = bucket.file(normalizedGcsPath).createReadStream();
+
+    // Stream the file as the Hono response body.
+    const webStream = new ReadableStream({
+      start(controller) {
+        readStream.on("data", (chunk) => controller.enqueue(chunk));
+        readStream.on("end", () => controller.close());
+        readStream.on("error", (err) => {
+          logger.error(
+            { err, gcsPath: normalizedGcsPath },
+            "Error streaming project file (GCS)"
+          );
+          controller.error(err);
+        });
+      },
+      cancel() {
+        readStream.destroy();
       },
     });
+
+    return new Response(webStream, {
+      status: 200,
+      headers: { "Content-Type": contentType },
+    });
   }
-
-  const contentType = contentTypeResult.value ?? "application/octet-stream";
-  const readStream = bucket.file(normalizedGcsPath).createReadStream();
-
-  // Stream the file as the Hono response body.
-  const webStream = new ReadableStream({
-    start(controller) {
-      readStream.on("data", (chunk) => controller.enqueue(chunk));
-      readStream.on("end", () => controller.close());
-      readStream.on("error", (err) => {
-        logger.error(
-          { err, gcsPath: normalizedGcsPath },
-          "Error streaming project file (GCS)"
-        );
-        controller.error(err);
-      });
-    },
-    cancel() {
-      readStream.destroy();
-    },
-  });
-
-  return new Response(webStream, {
-    status: 200,
-    headers: { "Content-Type": contentType },
-  });
-});
+);
 
 app.patch(
   "/:rel{.+}",
+  validate("param", ParamsSchema),
   withSpace({ requireCanRead: true }),
   async (ctx): HandlerResult<ProjectFileRelResponseBody> => {
-    const built = await buildContext(ctx);
+    const { rel } = ctx.req.valid("param");
+    const built = await buildContext(ctx, rel);
     if ("error" in built) {
       return built.error;
     }
@@ -210,9 +214,11 @@ app.patch(
 
 app.delete(
   "/:rel{.+}",
+  validate("param", ParamsSchema),
   withSpace({ requireCanRead: true }),
   async (ctx): HandlerResult<ProjectFileRelResponseBody> => {
-    const built = await buildContext(ctx);
+    const { rel } = ctx.req.valid("param");
+    const built = await buildContext(ctx, rel);
     if ("error" in built) {
       return built.error;
     }
@@ -248,11 +254,13 @@ app.delete(
 
 app.post(
   "/:rel{.+}",
+  validate("param", ParamsSchema),
   withSpace({ requireCanWrite: true }),
   validate("json", MoveMountFileRequestBodySchema),
   async (c): HandlerResult<ProjectFileRelResponseBody> => {
     const space = c.get("space");
     const auth = c.get("auth");
+    const { rel } = c.req.valid("param");
 
     if (!space.isProject()) {
       return apiError(c, {
@@ -260,17 +268,6 @@ app.post(
         api_error: {
           type: "invalid_request_error",
           message: "Files are only available for project spaces.",
-        },
-      });
-    }
-
-    const rel = c.req.param("rel");
-    if (!isString(rel) || rel.length === 0) {
-      return apiError(c, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Missing file path.",
         },
       });
     }

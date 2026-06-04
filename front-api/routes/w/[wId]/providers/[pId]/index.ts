@@ -20,18 +20,23 @@ const PostProviderBodySchema = z.object({
   config: z.string(),
 });
 
+const ParamsSchema = z.object({
+  pId: z.string(),
+});
+
 // Mounted at /api/w/:wId/providers/:pId.
 const app = workspaceApp();
 
 app.post(
   "/",
+  validate("param", ParamsSchema),
   ensureIsAdmin(),
   validate("json", PostProviderBodySchema),
   async (ctx): HandlerResult<PostProviderResponseBody> => {
     const auth = ctx.get("auth");
     const owner = auth.getNonNullableWorkspace();
 
-    const pId = ctx.req.param("pId") ?? "";
+    const { pId } = ctx.req.valid("param");
 
     const body = ctx.req.valid("json");
 
@@ -75,12 +80,13 @@ app.post(
 
 app.delete(
   "/",
+  validate("param", ParamsSchema),
   ensureIsAdmin(),
   async (ctx): HandlerResult<DeleteProviderResponseBody> => {
     const auth = ctx.get("auth");
     const owner = auth.getNonNullableWorkspace();
 
-    const pId = ctx.req.param("pId") ?? "";
+    const { pId } = ctx.req.valid("param");
 
     const provider = await ProviderModel.findOne({
       where: {

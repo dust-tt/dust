@@ -6,7 +6,6 @@ import {
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import { SKILL_REINFORCEMENT_MODES } from "@app/types/assistant/skill_configuration";
-import { isString } from "@app/types/shared/utils/general";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -36,25 +35,20 @@ export type PatchSkillReinforcementResponseBody = {
   skill: SkillType;
 };
 
+const ParamsSchema = z.object({
+  sId: z.string(),
+});
+
 // Mounted at /api/w/:wId/skills/:sId/reinforcement.
 const app = workspaceApp();
 
 app.patch(
   "/",
+  validate("param", ParamsSchema),
   validate("json", PatchSkillReinforcementBodySchema),
   async (ctx): HandlerResult<PatchSkillReinforcementResponseBody> => {
     const auth = ctx.get("auth");
-    const sId = ctx.req.param("sId");
-
-    if (!isString(sId)) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid skill ID.",
-        },
-      });
-    }
+    const { sId } = ctx.req.valid("param");
 
     const skill = await SkillResource.fetchById(auth, sId);
     if (!skill) {

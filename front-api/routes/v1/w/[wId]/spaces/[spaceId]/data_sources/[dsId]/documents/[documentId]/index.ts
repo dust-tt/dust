@@ -39,6 +39,7 @@ import parents from "./parents";
 const ParamsSchema = z.object({
   dsId: z.string(),
   documentId: z.string(),
+  spaceId: z.string().optional(),
 });
 
 /**
@@ -274,7 +275,7 @@ app.get(
   validate("param", ParamsSchema),
   async (ctx): HandlerResult<GetDocumentResponseType> => {
     const auth = ctx.get("auth");
-    const { dsId, documentId } = ctx.req.valid("param");
+    const { dsId, documentId, spaceId: spaceIdParam } = ctx.req.valid("param");
 
     const dataSource = await DataSourceResource.fetchByNameOrId(
       auth,
@@ -285,7 +286,7 @@ app.get(
 
     const spaceId = await resolveLegacyDataSourceSpaceId(
       auth,
-      ctx.req.param("spaceId"),
+      spaceIdParam,
       dataSource
     );
 
@@ -350,7 +351,7 @@ app.post(
     UpsertDocumentResponseType | { document: { document_id: string } }
   > => {
     const auth = ctx.get("auth");
-    const { dsId, documentId } = ctx.req.valid("param");
+    const { dsId, documentId, spaceId: spaceIdParam } = ctx.req.valid("param");
 
     const dataSource = await DataSourceResource.fetchByNameOrId(
       auth,
@@ -361,7 +362,7 @@ app.post(
 
     const spaceId = await resolveLegacyDataSourceSpaceId(
       auth,
-      ctx.req.param("spaceId"),
+      spaceIdParam,
       dataSource
     );
 
@@ -726,7 +727,7 @@ app.delete(
   validate("param", ParamsSchema),
   async (ctx): HandlerResult<DeleteDocumentResponseType> => {
     const auth = ctx.get("auth");
-    const { dsId, documentId } = ctx.req.valid("param");
+    const { dsId, documentId, spaceId: spaceIdParam } = ctx.req.valid("param");
 
     const dataSource = await DataSourceResource.fetchByNameOrId(
       auth,
@@ -737,7 +738,7 @@ app.delete(
 
     const spaceId = await resolveLegacyDataSourceSpaceId(
       auth,
-      ctx.req.param("spaceId"),
+      spaceIdParam,
       dataSource
     );
 

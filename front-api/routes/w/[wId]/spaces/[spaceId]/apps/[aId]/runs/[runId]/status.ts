@@ -6,7 +6,14 @@ import type { RunType } from "@app/types/run";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import { withSpace } from "@front-api/middlewares/with_space";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  aId: z.string(),
+  runId: z.string(),
+});
 
 export type GetRunStatusResponseBody = {
   run: RunType | null;
@@ -17,12 +24,13 @@ const app = workspaceApp();
 
 app.get(
   "/",
+  validate("param", ParamsSchema),
   withSpace({ requireCanRead: true }),
   async (ctx): HandlerResult<GetRunStatusResponseBody> => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");
-    const aId = ctx.req.param("aId") ?? "";
-    let runId: string | null = ctx.req.param("runId") ?? null;
+    const { aId, runId: runIdParam } = ctx.req.valid("param");
+    let runId: string | null = runIdParam;
 
     const found = await AppResource.fetchById(auth, aId);
     if (!found || found.space.sId !== space.sId) {

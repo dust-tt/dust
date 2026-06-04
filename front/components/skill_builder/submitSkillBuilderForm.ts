@@ -14,7 +14,7 @@ export async function submitSkillBuilderForm({
   currentEditors = [],
 }: {
   formData: SkillBuilderFormData;
-  owner: WorkspaceType;
+  owner: Pick<WorkspaceType, "sId">;
   skillId?: string;
   currentEditors?: LightUserType[];
 }): Promise<
@@ -56,6 +56,7 @@ export async function submitSkillBuilderForm({
         })),
         attachedKnowledge: formData.attachedKnowledge ?? [],
         additionalRequestedSpaceIds: formData.additionalSpaces,
+        referencedSkillIds: formData.referencedSkillIds,
       }),
     });
 

@@ -16,6 +16,7 @@ struct MessageBubbleView: View {
     var onGeneratedFileTap: ((GeneratedFile) -> Void)?
     var onCitationTap: ((CitationReference) -> Void)?
     var onValidateAction: ((ActionApproval) -> Void)?
+    var onAnswerQuestion: ((UserQuestionAnswer) -> Void)?
     var onRetry: ((String) -> Void)?
     var onOpenInBrowser: (() -> Void)?
 
@@ -39,6 +40,7 @@ struct MessageBubbleView: View {
                 onGeneratedFileTap: onGeneratedFileTap,
                 onCitationTap: onCitationTap,
                 onValidateAction: onValidateAction,
+                onAnswerQuestion: onAnswerQuestion,
                 onRetry: onRetry,
                 onOpenInBrowser: onOpenInBrowser
             )
@@ -79,9 +81,9 @@ struct OtherUserMessageBubble: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
-                Avatar(url: message.context?.profilePictureUrl)
+                Avatar(url: message.authorAvatarUrl)
 
-                Text(message.context?.fullName ?? message.context?.username ?? "User")
+                Text(message.authorName ?? "User")
                     .sparkleLabelXs()
                     .foregroundStyle(Color.dustForeground)
             }
@@ -114,6 +116,7 @@ struct AgentMessageBubble: View {
     var onGeneratedFileTap: ((GeneratedFile) -> Void)?
     var onCitationTap: ((CitationReference) -> Void)?
     var onValidateAction: ((ActionApproval) -> Void)?
+    var onAnswerQuestion: ((UserQuestionAnswer) -> Void)?
     var onRetry: ((String) -> Void)?
     var onOpenInBrowser: (() -> Void)?
 
@@ -177,6 +180,12 @@ struct AgentMessageBubble: View {
                     AuthRequiredView(
                         label: "File access required for \(fileName)",
                         onOpenInBrowser: onOpenInBrowser
+                    )
+                case let .userQuestionRequired(info):
+                    UserQuestionInlineView(
+                        question: info.question,
+                        isLoading: isValidatingAction,
+                        onAnswer: onAnswerQuestion
                     )
                 case .idle, .thinking, .generating:
                     EmptyView()
@@ -312,7 +321,9 @@ struct CitationCard: View {
     struct Entry: Identifiable {
         let ref: String
         let citation: CitationReference
-        var id: String { ref }
+        var id: String {
+            ref
+        }
     }
 
     let entry: Entry
@@ -453,7 +464,9 @@ struct ActivityTimelineView: View {
         }
     }
 
-    private var isDone: Bool { !isStreaming }
+    private var isDone: Bool {
+        !isStreaming
+    }
 
     private var hasContent: Bool {
         !completedSteps.isEmpty
@@ -863,6 +876,133 @@ struct AuthRequiredView: View {
         }
         .padding(12)
         .liquidGlassRoundedRect()
+    }
+}
+
+// MARK: - User Question
+
+struct UserQuestionInlineView: View {
+    let question: UserQuestion
+    var isLoading: Bool = false
+    var onAnswer: ((UserQuestionAnswer) -> Void)?
+
+    @State private var selectedOptions: Set<Int> = []
+    @State private var customResponse = ""
+
+    private var trimmedResponse: String {
+        customResponse.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var canSend: Bool {
+        !selectedOptions.isEmpty || !trimmedResponse.isEmpty
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(question.question)
+                .sparkleLabelSm()
+                .foregroundStyle(Color.dustForeground)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            VStack(spacing: 6) {
+                ForEach(Array(question.options.enumerated()), id: \.offset) { index, option in
+                    optionRow(index: index, option: option)
+                }
+            }
+
+            TextField("Type something else", text: $customResponse, axis: .vertical)
+                .sparkleCopyXs()
+                .lineLimit(1 ... 4)
+                .padding(10)
+                .background(Color.dustMutedBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+
+            Divider()
+                .foregroundStyle(Color.dustBorder)
+
+            VStack(spacing: 8) {
+                Button { onAnswer?(buildAnswer()) } label: {
+                    Text("Send")
+                        .sparkleLabelXs()
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(Color.highlight)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+                .disabled(!canSend)
+                .opacity(canSend ? 1.0 : 0.5)
+
+                Button { onAnswer?(UserQuestionAnswer(selectedOptions: [], customResponse: nil)) } label: {
+                    Text("Skip")
+                        .sparkleLabelXs()
+                        .foregroundStyle(Color.dustForeground)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                }
+            }
+            .disabled(isLoading)
+            .opacity(isLoading ? 0.5 : 1.0)
+        }
+        .padding(12)
+        .liquidGlassRoundedRect()
+    }
+
+    private func optionRow(index: Int, option: UserQuestionOption) -> some View {
+        let isSelected = selectedOptions.contains(index)
+        return Button {
+            toggle(index)
+        } label: {
+            HStack(alignment: .top, spacing: 8) {
+                (isSelected ? SparkleIcon.checkCircle : SparkleIcon.circle).image
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 16, height: 16)
+                    .foregroundStyle(isSelected ? Color.highlight : Color.dustFaint)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(option.label)
+                        .sparkleLabelXs()
+                        .foregroundStyle(Color.dustForeground)
+                    if let description = option.description, !description.isEmpty {
+                        Text(description)
+                            .sparkleCopyXs()
+                            .foregroundStyle(Color.dustFaint)
+                    }
+                }
+
+                Spacer(minLength: 0)
+            }
+            .padding(10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.dustMutedBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(isSelected ? Color.highlight : Color.clear, lineWidth: 1)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func toggle(_ index: Int) {
+        if question.multiSelect {
+            if selectedOptions.contains(index) {
+                selectedOptions.remove(index)
+            } else {
+                selectedOptions.insert(index)
+            }
+        } else {
+            selectedOptions = [index]
+        }
+    }
+
+    private func buildAnswer() -> UserQuestionAnswer {
+        UserQuestionAnswer(
+            selectedOptions: selectedOptions.sorted(),
+            customResponse: trimmedResponse.isEmpty ? nil : trimmedResponse
+        )
     }
 }
 

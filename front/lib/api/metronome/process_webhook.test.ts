@@ -66,7 +66,39 @@ vi.mock("@app/lib/metronome/alerts/spend_limits", async () => {
   return {
     ...actual,
     getMetronomePerUserCap: vi.fn(),
-    getMetronomeDefaultUserCapAlert: vi.fn(),
+    getMetronomePerUserWarningAlert: vi.fn(),
+    getMetronomeDefaultUserCapAlertForSeatType: vi.fn(),
+    getMetronomeDefaultUserWarningAlertForSeatType: vi.fn(),
+  };
+});
+
+// Mock UserResource.fetchById and MembershipResource for resolveUserSpendAlerts.
+// The default mock returns a user with a "pro" seat so the default alert path works.
+vi.mock("@app/lib/resources/user_resource", async () => {
+  const actual = await vi.importActual<
+    typeof import("@app/lib/resources/user_resource")
+  >("@app/lib/resources/user_resource");
+  return {
+    ...actual,
+    UserResource: {
+      ...actual.UserResource,
+      fetchById: vi.fn().mockResolvedValue({ sId: "user_test_xxx" }),
+    },
+  };
+});
+
+vi.mock("@app/lib/resources/membership_resource", async () => {
+  const actual = await vi.importActual<
+    typeof import("@app/lib/resources/membership_resource")
+  >("@app/lib/resources/membership_resource");
+  return {
+    ...actual,
+    MembershipResource: {
+      ...actual.MembershipResource,
+      getActiveMembershipOfUserInWorkspace: vi
+        .fn()
+        .mockResolvedValue({ seatType: "pro" }),
+    },
   };
 });
 
@@ -93,13 +125,15 @@ function contractEvent(
 
 function spendThresholdEvent(
   type: "alerts.spend_threshold_reached" | "alerts.spend_threshold_resolved",
-  groupValues?: Array<{ key: string; value?: string }>
+  groupValues?: Array<{ key: string; value?: string }>,
+  alertId?: string
 ): MetronomeWebhookEvent {
   return {
     id: `evt_${type}_xxx`,
     type,
     properties: {
       customer_id: METRONOME_CUSTOMER_ID,
+      alert_id: alertId,
       current_spend: 1234,
       group_values: groupValues,
     },
@@ -158,7 +192,13 @@ beforeEach(() => {
     new Ok(null)
   );
   vi.mocked(
-    defaultUserCapAlert.getMetronomeDefaultUserCapAlert
+    defaultUserCapAlert.getMetronomeDefaultUserCapAlertForSeatType
+  ).mockResolvedValue(new Ok(null));
+  vi.mocked(perUserAlerts.getMetronomePerUserWarningAlert).mockResolvedValue(
+    new Ok(null)
+  );
+  vi.mocked(
+    defaultUserCapAlert.getMetronomeDefaultUserWarningAlertForSeatType
   ).mockResolvedValue(new Ok(null));
 });
 
@@ -643,7 +683,7 @@ describe("processMetronomeWebhook — swap webhook ordering", () => {
 });
 
 describe("processMetronomeWebhook — per-user spend threshold (no default alert)", () => {
-  it("dispatches reached when override is IN_ALARM (on reached event)", async () => {
+  it("dispatches reached when override cap alert fires (reached event)", async () => {
     const workspace = await setupMetronomeWorkspaceResource();
     vi.mocked(perUserAlerts.getMetronomePerUserCap).mockResolvedValue(
       new Ok(
@@ -656,9 +696,11 @@ describe("processMetronomeWebhook — per-user spend threshold (no default alert
     );
 
     const result = await processMetronomeWebhook({
-      event: spendThresholdEvent("alerts.spend_threshold_reached", [
-        { key: "user_id", value: USER_ID },
-      ]),
+      event: spendThresholdEvent(
+        "alerts.spend_threshold_reached",
+        [{ key: "user_id", value: USER_ID }],
+        "alert_override_xxx"
+      ),
       workspace,
     });
 
@@ -669,7 +711,7 @@ describe("processMetronomeWebhook — per-user spend threshold (no default alert
     expect(dispatchPerUserCapResolved).not.toHaveBeenCalled();
   });
 
-  it("dispatches resolved when override is OK (on resolved event)", async () => {
+  it("dispatches resolved when override cap alert fires (resolved event)", async () => {
     const workspace = await setupMetronomeWorkspaceResource();
     vi.mocked(perUserAlerts.getMetronomePerUserCap).mockResolvedValue(
       new Ok(
@@ -682,9 +724,11 @@ describe("processMetronomeWebhook — per-user spend threshold (no default alert
     );
 
     const result = await processMetronomeWebhook({
-      event: spendThresholdEvent("alerts.spend_threshold_resolved", [
-        { key: "user_id", value: USER_ID },
-      ]),
+      event: spendThresholdEvent(
+        "alerts.spend_threshold_resolved",
+        [{ key: "user_id", value: USER_ID }],
+        "alert_override_xxx"
+      ),
       workspace,
     });
 
@@ -695,9 +739,9 @@ describe("processMetronomeWebhook — per-user spend threshold (no default alert
     expect(dispatchPerUserCapReached).not.toHaveBeenCalled();
   });
 
-  it("no-ops when neither override nor default is configured (defensive)", async () => {
+  it("ignores event when neither override nor default is configured", async () => {
     const workspace = await setupMetronomeWorkspaceResource();
-    // getMetronomePerUserCap and getMetronomeDefaultUserCapAlert default to Ok(null).
+    // getMetronomePerUserCap and getMetronomeDefaultUserCapAlertForSeatType default to Ok(null).
 
     const result = await processMetronomeWebhook({
       event: spendThresholdEvent("alerts.spend_threshold_reached", [
@@ -707,11 +751,9 @@ describe("processMetronomeWebhook — per-user spend threshold (no default alert
     });
 
     expect(result.isOk()).toBe(true);
+    // No matching alert → event ignored, no dispatch.
     expect(dispatchPerUserCapReached).not.toHaveBeenCalled();
-    // With no alert in place, effective state is "ok" → dispatch resolved.
-    expect(dispatchPerUserCapResolved).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: USER_ID })
-    );
+    expect(dispatchPerUserCapResolved).not.toHaveBeenCalled();
   });
 
   it("skips per-user events with no user_id value", async () => {
@@ -733,10 +775,10 @@ describe("processMetronomeWebhook — per-user spend threshold (no default alert
 });
 
 describe("processMetronomeWebhook — per-user spend threshold (default alert configured)", () => {
-  it("uses default alert state when no override exists (IN_ALARM → reached)", async () => {
+  it("dispatches reached when default cap alert fires (reached event)", async () => {
     const workspace = await setupMetronomeWorkspaceResource();
     vi.mocked(
-      defaultUserCapAlert.getMetronomeDefaultUserCapAlert
+      defaultUserCapAlert.getMetronomeDefaultUserCapAlertForSeatType
     ).mockResolvedValue(
       new Ok(
         mockCustomerAlert({
@@ -748,9 +790,11 @@ describe("processMetronomeWebhook — per-user spend threshold (default alert co
     );
 
     const result = await processMetronomeWebhook({
-      event: spendThresholdEvent("alerts.spend_threshold_reached", [
-        { key: "user_id", value: USER_ID },
-      ]),
+      event: spendThresholdEvent(
+        "alerts.spend_threshold_reached",
+        [{ key: "user_id", value: USER_ID }],
+        "alert_default_xxx"
+      ),
       workspace,
     });
 
@@ -761,7 +805,7 @@ describe("processMetronomeWebhook — per-user spend threshold (default alert co
     expect(dispatchPerUserCapResolved).not.toHaveBeenCalled();
   });
 
-  it("override (OK) wins over default (IN_ALARM) — dispatches resolved", async () => {
+  it("override alert ID takes precedence — event matching override dispatches resolved", async () => {
     const workspace = await setupMetronomeWorkspaceResource();
     vi.mocked(perUserAlerts.getMetronomePerUserCap).mockResolvedValue(
       new Ok(
@@ -773,7 +817,7 @@ describe("processMetronomeWebhook — per-user spend threshold (default alert co
       )
     );
     vi.mocked(
-      defaultUserCapAlert.getMetronomeDefaultUserCapAlert
+      defaultUserCapAlert.getMetronomeDefaultUserCapAlertForSeatType
     ).mockResolvedValue(
       new Ok(
         mockCustomerAlert({
@@ -784,10 +828,13 @@ describe("processMetronomeWebhook — per-user spend threshold (default alert co
       )
     );
 
+    // Event comes from the override alert (resolved).
     const result = await processMetronomeWebhook({
-      event: spendThresholdEvent("alerts.spend_threshold_reached", [
-        { key: "user_id", value: USER_ID },
-      ]),
+      event: spendThresholdEvent(
+        "alerts.spend_threshold_resolved",
+        [{ key: "user_id", value: USER_ID }],
+        "alert_override_xxx"
+      ),
       workspace,
     });
 
@@ -798,11 +845,11 @@ describe("processMetronomeWebhook — per-user spend threshold (default alert co
     expect(dispatchPerUserCapReached).not.toHaveBeenCalled();
     // Override existed → default lookup was skipped.
     expect(
-      defaultUserCapAlert.getMetronomeDefaultUserCapAlert
+      defaultUserCapAlert.getMetronomeDefaultUserCapAlertForSeatType
     ).not.toHaveBeenCalled();
   });
 
-  it("override (IN_ALARM) wins over default (OK) — dispatches reached", async () => {
+  it("override alert ID takes precedence — event matching override dispatches reached", async () => {
     const workspace = await setupMetronomeWorkspaceResource();
     vi.mocked(perUserAlerts.getMetronomePerUserCap).mockResolvedValue(
       new Ok(
@@ -813,22 +860,14 @@ describe("processMetronomeWebhook — per-user spend threshold (default alert co
         })
       )
     );
-    vi.mocked(
-      defaultUserCapAlert.getMetronomeDefaultUserCapAlert
-    ).mockResolvedValue(
-      new Ok(
-        mockCustomerAlert({
-          id: "alert_default_xxx",
-          threshold: 1_000_000,
-          customer_status: "ok",
-        })
-      )
-    );
 
+    // Event comes from the override alert (reached).
     const result = await processMetronomeWebhook({
-      event: spendThresholdEvent("alerts.spend_threshold_resolved", [
-        { key: "user_id", value: USER_ID },
-      ]),
+      event: spendThresholdEvent(
+        "alerts.spend_threshold_reached",
+        [{ key: "user_id", value: USER_ID }],
+        "alert_override_xxx"
+      ),
       workspace,
     });
 
@@ -839,24 +878,25 @@ describe("processMetronomeWebhook — per-user spend threshold (default alert co
     expect(dispatchPerUserCapResolved).not.toHaveBeenCalled();
   });
 
-  it("no-ops when effective state is EVALUATING", async () => {
+  it("ignores event from unrelated alert when override exists", async () => {
     const workspace = await setupMetronomeWorkspaceResource();
-    vi.mocked(
-      defaultUserCapAlert.getMetronomeDefaultUserCapAlert
-    ).mockResolvedValue(
+    vi.mocked(perUserAlerts.getMetronomePerUserCap).mockResolvedValue(
       new Ok(
         mockCustomerAlert({
-          id: "alert_default_xxx",
-          threshold: 50_000,
-          customer_status: "evaluating",
+          id: "alert_override_xxx",
+          threshold: 100,
+          customer_status: "in_alarm",
         })
       )
     );
 
+    // Event comes from a different alert (e.g. default for another seat type).
     const result = await processMetronomeWebhook({
-      event: spendThresholdEvent("alerts.spend_threshold_reached", [
-        { key: "user_id", value: USER_ID },
-      ]),
+      event: spendThresholdEvent(
+        "alerts.spend_threshold_reached",
+        [{ key: "user_id", value: USER_ID }],
+        "alert_unrelated_zzz"
+      ),
       workspace,
     });
 

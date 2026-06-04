@@ -8,6 +8,7 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { usePlatform } from "@extension/shared/context/PlatformContext";
 import type { AttachSelectionMessage } from "@extension/shared/messages";
 import { useSearchParam } from "@extension/shared/platform";
+import { useExtensionQuickActions } from "@extension/ui/components/quick_actions/ExtensionQuickActionsProvider";
 import { useFileUploaderService } from "@extension/ui/hooks/useFileUploaderService";
 import type { ReactNode } from "react";
 import { useContext, useEffect, useState } from "react";
@@ -24,6 +25,7 @@ export function ExtensionInputBarProvider({
   children,
 }: ExtensionInputBarProviderProps) {
   const platform = usePlatform();
+  const quickActions = useExtensionQuickActions();
   const fileUploaderService = useFileUploaderService(
     platform.capture,
     conversationId
@@ -32,7 +34,8 @@ export function ExtensionInputBarProvider({
   const captureActions = platform.useCaptureActions(
     workspace,
     fileUploaderService.uploadContentTab,
-    fileUploaderService.isCapturing
+    fileUploaderService.isCapturing,
+    quickActions
   );
 
   // Reset fileBlobs when conversationId changes.

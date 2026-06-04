@@ -75,6 +75,9 @@ interface DustLikeGlobalAgentArgs {
   hasDeepDive: boolean;
   globalAgentContext?: GlobalAgentContext;
   excludeProviders?: ReadonlySet<ModelProviderIdType>;
+  // When set, the @dust agent defaults to GPT 5.5 (medium reasoning) instead of
+  // Claude Sonnet 4.6. Gated by the `dust_agent_gpt_5_5_default` feature flag.
+  preferGpt55DefaultModel?: boolean;
 }
 
 const INSTRUCTION_SECTIONS = {
@@ -482,6 +485,7 @@ function _getDustLikeGlobalAgent(
       "discover_knowledge",
       "discover_skills",
       "frames",
+      "skill-authoring",
       "go-deep",
       "mention_users",
       "sandbox",
@@ -506,7 +510,9 @@ export function _getDustGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST,
     name: "dust",
-    preferredModelConfiguration: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+    preferredModelConfiguration: args.preferGpt55DefaultModel
+      ? GPT_5_5_MODEL_CONFIG
+      : CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
     preferredReasoningEffort: "medium",
   });
 }

@@ -23,6 +23,10 @@ export type GetAgentOverviewResponseBody = {
   };
 };
 
+const ParamsSchema = z.object({
+  aId: z.string(),
+});
+
 const QuerySchema = z.object({
   days: z.coerce.number().positive().optional().default(DEFAULT_PERIOD_DAYS),
   version: z.string().optional(),
@@ -33,10 +37,11 @@ const app = workspaceApp();
 
 app.get(
   "/",
+  validate("param", ParamsSchema),
   validate("query", QuerySchema),
   async (ctx): HandlerResult<GetAgentOverviewResponseBody> => {
     const auth = ctx.get("auth");
-    const aId = ctx.req.param("aId") ?? "";
+    const { aId } = ctx.req.valid("param");
 
     const assistant = await getAgentConfiguration(auth, {
       agentId: aId,

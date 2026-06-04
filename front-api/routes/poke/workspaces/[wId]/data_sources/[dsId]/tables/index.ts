@@ -18,24 +18,20 @@ const QuerySchema = z.object({
   offset: z.coerce.number().int().nonnegative().optional().default(0),
 });
 
+const ParamsSchema = z.object({
+  dsId: z.string(),
+});
+
 // Mounted at /api/poke/workspaces/:wId/data_sources/:dsId/tables.
 const app = pokeApp();
 
 app.get(
   "/",
+  validate("param", ParamsSchema),
   validate("query", QuerySchema),
   async (ctx): HandlerResult<GetTablesResponseBody> => {
     const auth = ctx.get("auth");
-    const dsId = ctx.req.param("dsId");
-    if (!dsId) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid data source ID.",
-        },
-      });
-    }
+    const { dsId } = ctx.req.valid("param");
 
     const dataSource = await DataSourceResource.fetchById(auth, dsId);
     if (!dataSource) {

@@ -348,6 +348,7 @@ export function useMembersSeats({
 
   return {
     membersSeats: data?.seatTypes ?? {},
+    metronomeSeats: data?.metronomeSeats ?? {},
     totalMembersSeats: data?.total ?? 0,
     isMembersSeatsLoading: !error && !data && !disabled,
     isMembersSeatsError: error,

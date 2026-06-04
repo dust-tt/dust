@@ -18,6 +18,8 @@ import { invitationsApp } from "./routes/invitations";
 import { killApp } from "./routes/kill";
 import privateLoginApp from "./routes/login";
 import lookupApp from "./routes/lookup";
+import { mcpApp } from "./routes/mcp/index";
+import { mcpWellKnownApp } from "./routes/mcp/well-known";
 import metronomeApp from "./routes/metronome";
 import novuApp from "./routes/novu";
 import oauthApp from "./routes/oauth";
@@ -25,6 +27,7 @@ import pokeApp from "./routes/poke";
 import shareApp from "./routes/share";
 import sseApp from "./routes/sse";
 import stripeApp from "./routes/stripe";
+import subtle1App from "./routes/subtle1";
 import tApp from "./routes/t";
 import templatesApp from "./routes/templates";
 import userApp from "./routes/user";
@@ -83,5 +86,14 @@ apiApp.route("/:preStopSecret", preStopApp);
 export const honoApp = createHono();
 honoApp.use("*", requestLogger);
 honoApp.use("*", cors);
+
+// Dust as MCP Server — inbound from remote clients (Inspector, Cursor, etc.).
+// Mounted at root level so /.well-known/* and /mcp are not under /api/.
+honoApp.route("/mcp", mcpApp);
+honoApp.route("/", mcpWellKnownApp);
+
 honoApp.route("/api", apiApp);
+// PostHog reverse proxy lives at the domain root (not under /api), matching
+// the `/subtle1` rewrites in front/next.config.js.
+honoApp.route("/subtle1", subtle1App);
 honoApp.onError(unhandledErrorHandler);

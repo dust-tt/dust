@@ -6,6 +6,10 @@ import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
+const ParamsSchema = z.object({
+  aId: z.string(),
+});
+
 const PatchGlobalAgentSettingsRequestBodySchema = z.object({
   status: z.enum(["active", "disabled_by_admin"]),
 });
@@ -19,11 +23,12 @@ const app = workspaceApp();
 
 app.patch(
   "/",
+  validate("param", ParamsSchema),
   ensureIsBuilder(),
   validate("json", PatchGlobalAgentSettingsRequestBodySchema),
   async (ctx): HandlerResult<PatchGlobalAgentSettingResponseBody> => {
     const auth = ctx.get("auth");
-    const agentId = ctx.req.param("aId") ?? "";
+    const { aId: agentId } = ctx.req.valid("param");
     const body = ctx.req.valid("json");
 
     const created = await upsertGlobalAgentSettings(auth, {

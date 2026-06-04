@@ -89,6 +89,8 @@ import { ConversationBranchResource } from "@app/lib/resources/conversation_bran
 import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { CreditResource } from "@app/lib/resources/credit_resource";
+import { GroupSpaceViewerResource } from "@app/lib/resources/group_space_viewer_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { makeSId } from "@app/lib/resources/string_ids";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -1451,6 +1453,9 @@ describe("postUserMessage", () => {
   let globalGroup: Awaited<
     ReturnType<typeof createResourceTest>
   >["globalGroup"];
+  let globalSpace: Awaited<
+    ReturnType<typeof createResourceTest>
+  >["globalSpace"];
   let conversation: ConversationType;
   let agentConfig1: LightAgentConfigurationType;
 
@@ -1459,6 +1464,7 @@ describe("postUserMessage", () => {
     auth = setup.authenticator;
     workspace = setup.workspace;
     globalGroup = setup.globalGroup;
+    globalSpace = setup.globalSpace;
 
     agentConfig1 = await AgentConfigurationFactory.createTestAgent(auth, {
       name: "Test Agent 1",
@@ -2441,7 +2447,146 @@ describe("postUserMessage", () => {
         expect(result.error.status_code).toBe(403);
         expect(result.error.api_error.type).toBe("workspace_auth_error");
         expect(result.error.api_error.message).toBe(
-          "You are not a member of the project."
+          "You are not a member of the Pod."
+        );
+      }
+    });
+
+    it("should reject posting a message without an auth user to a restricted Pod even when user association is disabled", async () => {
+      expect(projectSpace.isOpen()).toBe(false);
+
+      const apiKey = await KeyFactory.regular(globalGroup);
+      const { workspaceAuth: apiKeyAuth } = await Authenticator.fromKey(
+        apiKey,
+        workspace.sId
+      );
+
+      expect(apiKeyAuth.user()).toBeNull();
+      const restrictedPod = await SpaceResource.fetchById(
+        apiKeyAuth,
+        projectSpace.sId
+      );
+      expect(restrictedPod).not.toBeNull();
+      expect(restrictedPod?.isOpen()).toBe(false);
+
+      const result = await postUserMessage(apiKeyAuth, {
+        conversation: projectConversation,
+        content: "Hello from an integration",
+        mentions: [],
+        context: {
+          username: "slack-bot",
+          timezone: "UTC",
+          fullName: null,
+          email: null,
+          profilePictureUrl: null,
+          origin: "slack",
+        },
+        doNotAssociateUser: true,
+        skipToolsValidation: false,
+      });
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.status_code).toBe(403);
+        expect(result.error.api_error.type).toBe("workspace_auth_error");
+        expect(result.error.api_error.message).toBe(
+          "You are not a member of the Pod."
+        );
+      }
+    });
+
+    it("should allow posting a message without an auth user to an open Pod when user association is disabled", async () => {
+      const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+      await GroupSpaceViewerResource.makeNew(internalAdminAuth, {
+        group: globalGroup,
+        space: projectSpace,
+      });
+
+      const apiKey = await KeyFactory.regular(globalGroup);
+      const { workspaceAuth: apiKeyAuth } = await Authenticator.fromKey(
+        apiKey,
+        workspace.sId
+      );
+
+      expect(apiKeyAuth.user()).toBeNull();
+      const openPod = await SpaceResource.fetchById(
+        apiKeyAuth,
+        projectSpace.sId
+      );
+      expect(openPod).not.toBeNull();
+      expect(openPod?.isOpen()).toBe(true);
+
+      const result = await postUserMessage(apiKeyAuth, {
+        conversation: projectConversation,
+        content: "Hello from an integration",
+        mentions: [],
+        context: {
+          username: "slack-bot",
+          timezone: "UTC",
+          fullName: null,
+          email: null,
+          profilePictureUrl: null,
+          origin: "slack",
+        },
+        doNotAssociateUser: true,
+        skipToolsValidation: false,
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.userMessage.content).toBe(
+          "Hello from an integration"
+        );
+        expect(result.value.userMessage.user).toBeNull();
+      }
+    });
+
+    it("should reject posting a message without an auth user to an open Pod when user association is enabled", async () => {
+      const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+      await GroupSpaceViewerResource.makeNew(internalAdminAuth, {
+        group: globalGroup,
+        space: projectSpace,
+      });
+
+      const apiKey = await KeyFactory.regular(globalGroup);
+      const { workspaceAuth: apiKeyAuth } = await Authenticator.fromKey(
+        apiKey,
+        workspace.sId
+      );
+
+      expect(apiKeyAuth.user()).toBeNull();
+      const openPod = await SpaceResource.fetchById(
+        apiKeyAuth,
+        projectSpace.sId
+      );
+      expect(openPod).not.toBeNull();
+      expect(openPod?.isOpen()).toBe(true);
+
+      const result = await postUserMessage(apiKeyAuth, {
+        conversation: projectConversation,
+        content: "Hello from an integration",
+        mentions: [],
+        context: {
+          username: "slack-bot",
+          timezone: "UTC",
+          fullName: null,
+          email: null,
+          profilePictureUrl: null,
+          origin: "slack",
+        },
+        skipToolsValidation: false,
+      });
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.status_code).toBe(403);
+        expect(result.error.api_error.type).toBe("workspace_auth_error");
+        expect(result.error.api_error.message).toBe(
+          "You are not a member of the Pod."
         );
       }
     });
@@ -2475,7 +2620,7 @@ describe("postUserMessage", () => {
       if (result.isErr()) {
         expect(result.error.status_code).toBe(404);
         expect(result.error.api_error.type).toBe("space_not_found");
-        expect(result.error.api_error.message).toBe("Space not found");
+        expect(result.error.api_error.message).toBe("Pod not found");
       }
     });
 
@@ -2931,6 +3076,119 @@ describe("postUserMessage", () => {
         });
         expect(mentionRow).not.toBeNull();
         expect(mentionRow!.status).toBe("approved");
+
+        rateLimiterSpy.mockRestore();
+      });
+
+      it("should create a branch anchor when the conversation only contains content fragments", async () => {
+        const user = auth.getNonNullableUser();
+        const userJson = user.toJSON();
+        const dsViewInGlobalSpace = await DataSourceViewFactory.folder(
+          workspace,
+          globalSpace,
+          user
+        );
+
+        const blob = new Ok({
+          contentType: "text/plain" as const,
+          fileId: null,
+          nodeId: "task-instructions-node-id",
+          nodeDataSourceViewId: dsViewInGlobalSpace.id,
+          nodeType: "document" as const,
+          sourceUrl: null,
+          textBytes: null,
+          title: "How to complete the task",
+        });
+        vi.mocked(getContentFragmentBlob).mockResolvedValueOnce(blob);
+
+        expect(projectConversation.content.length).toBe(0);
+
+        const contentFragmentRes = await postNewContentFragment(
+          auth,
+          projectConversation,
+          {
+            title: "How to complete the task",
+            nodeId: "task-instructions-node-id",
+            nodeDataSourceViewId: dsViewInGlobalSpace.sId,
+          },
+          null
+        );
+        expect(contentFragmentRes.isOk()).toBe(true);
+
+        const conversationWithContentFragmentRes = await getConversation(
+          auth,
+          projectConversation.sId
+        );
+        expect(conversationWithContentFragmentRes.isOk()).toBe(true);
+        if (conversationWithContentFragmentRes.isErr()) {
+          return;
+        }
+        projectConversation = conversationWithContentFragmentRes.value;
+        expect(projectConversation.content.length).toBe(1);
+
+        const rateLimiterSpy = vi
+          .spyOn(rateLimiterModule, "rateLimiter")
+          .mockResolvedValue(100);
+
+        const result = await postUserMessage(auth, {
+          conversation: projectConversation,
+          content: `Hello @${agentWithDifferentSpace.name}`,
+          mentions: [{ configurationId: agentWithDifferentSpace.sId }],
+          context: {
+            username: userJson.username,
+            timezone: "UTC",
+            fullName: userJson.fullName,
+            email: userJson.email,
+            profilePictureUrl: userJson.image,
+            origin: "web",
+          },
+          skipToolsValidation: false,
+        });
+
+        expect(result.isOk()).toBe(true);
+        if (!result.isOk()) {
+          return;
+        }
+
+        const branchesAfter =
+          await ConversationBranchResource.listForConversation(
+            auth,
+            projectConversation.id
+          );
+        expect(branchesAfter.length).toBe(1);
+        const branch = branchesAfter[0];
+        expect(projectConversation.branchId).toBe(branch.sId);
+
+        const anchorMessageRow = await MessageModel.findOne({
+          where: {
+            conversationId: projectConversation.id,
+            workspaceId: workspace.id,
+            rank: 1,
+            branchId: null,
+          },
+          include: [
+            {
+              model: UserMessageModel,
+              as: "userMessage",
+              required: true,
+            },
+          ],
+        });
+        expect(anchorMessageRow).not.toBeNull();
+        expect(anchorMessageRow!.userMessage!.content).toBe("");
+        expect(anchorMessageRow!.userMessage!.userContextOrigin).toBe(
+          "branch_anchor"
+        );
+
+        const newUserMessageRow = await MessageModel.findOne({
+          where: {
+            id: result.value.userMessage.id,
+            workspaceId: workspace.id,
+          },
+        });
+        expect(newUserMessageRow).not.toBeNull();
+        expect(newUserMessageRow!.branchId).toBe(branch.id);
+        expect(newUserMessageRow!.rank).toBe(2);
 
         rateLimiterSpy.mockRestore();
       });

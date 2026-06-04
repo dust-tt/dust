@@ -14,4 +14,4 @@
 --header strip
 --ifdef no-indent
 --modifierorder nonisolated,private,static
---exclude Dust.xcodeproj,SparkleTokens/Sources/SparkleTokens/Generated
+--exclude Dust.xcodeproj,build,SparkleTokens/build,SparkleTokens/Sources/SparkleTokens/Generated

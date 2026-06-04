@@ -6,38 +6,39 @@ import type {
 } from "@app/types/poke/plugins";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
 
 export interface PokeGetPluginDetailsResponseBody {
   manifest: PluginManifest<PluginArgs, SupportedResourceType>;
 }
 
+const ParamsSchema = z.object({
+  pluginId: z.string(),
+});
+
 // Mounted at /api/poke/plugins/:pluginId/manifest.
 const app = pokeApp();
 
-app.get("/", async (ctx): HandlerResult<PokeGetPluginDetailsResponseBody> => {
-  const pluginId = ctx.req.param("pluginId");
-  if (!pluginId) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Missing `pluginId` in path.",
-      },
-    });
-  }
+app.get(
+  "/",
+  validate("param", ParamsSchema),
+  async (ctx): HandlerResult<PokeGetPluginDetailsResponseBody> => {
+    const { pluginId } = ctx.req.valid("param");
 
-  const plugin = pluginManager.getPluginById(pluginId);
-  if (!plugin) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "plugin_not_found",
-        message: "Could not find the plugin.",
-      },
-    });
-  }
+    const plugin = pluginManager.getPluginById(pluginId);
+    if (!plugin) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "plugin_not_found",
+          message: "Could not find the plugin.",
+        },
+      });
+    }
 
-  return ctx.json({ manifest: plugin.manifest });
-});
+    return ctx.json({ manifest: plugin.manifest });
+  }
+);
 
 export default app;

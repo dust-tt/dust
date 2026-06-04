@@ -238,7 +238,7 @@ interface BaseAwuUsageChartProps {
   setDisplayMode: (v: DisplayMode) => void;
 }
 
-function BaseAwuUsageChart({
+export function BaseAwuUsageChart({
   awuUsageData,
   isLoading,
   isError,
@@ -399,15 +399,19 @@ function BaseAwuUsageChart({
     [filter, setFilter]
   );
 
+  // Filtering is scoped to the active grouping (it only hides/keeps series of
+  // the current groupBy), so only surface chips for that grouping — otherwise a
+  // filter set on another dimension would show as active while doing nothing.
   const activeFilterChips = useMemo(() => {
-    return GROUP_BY_OPTIONS.flatMap(({ value: type }) =>
-      (filter[type] ?? []).map((key) => ({
-        groupByType: type,
-        filterKey: key,
-        label: getFilterLabel(type, key),
-      }))
-    );
-  }, [filter, getFilterLabel]);
+    if (!groupBy) {
+      return [];
+    }
+    return (filter[groupBy] ?? []).map((key) => ({
+      groupByType: groupBy,
+      filterKey: key,
+      label: getFilterLabel(groupBy, key),
+    }));
+  }, [filter, groupBy, getFilterLabel]);
 
   const legendItems: LegendItem[] = useMemo(() => {
     const items: LegendItem[] = availableGroupsArray.map((group) => {
@@ -670,12 +674,10 @@ function BaseAwuUsageChart({
           }}
         />
         {allGroupKeys
-          .filter(
-            (key) =>
-              ["total", "others"].includes(key) ||
-              !enabledGroupKeys ||
-              enabledGroupKeys.includes(key)
-          )
+          // With no filter, render every series (including "others"). Once a
+          // filter is active, render only the selected keys — "others"/"total"
+          // are never selectable, so they drop out.
+          .filter((key) => !enabledGroupKeys || enabledGroupKeys.includes(key))
           .map((groupKey) => {
             const colorClassName = getColorClassName(
               groupBy,

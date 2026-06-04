@@ -76,6 +76,12 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
         .describe(
           "Optional. The ID of the message to reply to. If provided, the draft will be created as a reply in the existing thread, with proper threading headers and the original message quoted."
         ),
+      attachmentFilePath: z
+        .string()
+        .optional()
+        .describe(
+          "Optional. Scoped path of the file to attach to the email (e.g. `conversation-<id>/report.pdf` or `pod-<id>/data.csv`)."
+        ),
     },
     stake: "medium",
     displayLabels: {
@@ -241,6 +247,12 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
         .optional()
         .describe(
           "Optional. The ID of the message to reply to. If provided, the email will be sent as a reply in the existing thread, with proper threading headers and the original message quoted."
+        ),
+      attachmentFilePath: z
+        .string()
+        .optional()
+        .describe(
+          "Optional. Scoped path of the file to attach to the email (e.g. `conversation-<id>/report.pdf` or `pod-<id>/data.csv`)."
         ),
     },
     stake: "high",

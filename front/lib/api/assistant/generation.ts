@@ -60,12 +60,14 @@ function constructContextSection({
   model,
   owner,
   errorContext,
+  disableFormattingPrompt,
 }: {
   userMessage: UserMessageType;
   agentConfiguration: AgentConfigurationType;
   model: ModelConfigurationType;
   owner: WorkspaceType | null;
   errorContext?: string;
+  disableFormattingPrompt: boolean;
 }): string {
   const d = moment(new Date()).tz(userMessage.context.timezone);
 
@@ -77,7 +79,7 @@ function constructContextSection({
     context += `workspace: ${owner.name}\n`;
   }
 
-  if (model.formattingMetaPrompt) {
+  if (model.formattingMetaPrompt && !disableFormattingPrompt) {
     context += `# RESPONSE FORMAT\n${model.formattingMetaPrompt}\n`;
   }
 
@@ -416,6 +418,7 @@ export function constructPromptMultiActions(
     hasSandboxTools = false,
     hasNestedSkills = false,
     useFramesV2 = false,
+    disableFormattingPrompt = false,
   }: {
     userMessage: UserMessageType;
     agentConfiguration: AgentConfigurationType;
@@ -438,6 +441,7 @@ export function constructPromptMultiActions(
     hasSandboxTools?: boolean;
     hasNestedSkills?: boolean;
     useFramesV2?: boolean;
+    disableFormattingPrompt?: boolean;
   }
 ): SystemPromptSections {
   const owner = auth.workspace();
@@ -464,6 +468,7 @@ export function constructPromptMultiActions(
     model,
     owner,
     userMessage,
+    disableFormattingPrompt,
   });
   const branchContextSection = constructBranchContextSection({ conversation });
 

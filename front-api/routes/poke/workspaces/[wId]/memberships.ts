@@ -1,6 +1,6 @@
-import { getMembershipInvitationUrl } from "@app/lib/api/invitation";
 import { getMembers } from "@app/lib/api/workspace";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
+import { getMembershipInvitationUrl } from "@app/lib/utils/invitation_token";
 import type { MembershipInvitationTypeWithLink } from "@app/types/membership_invitation";
 import type { UserTypeWithWorkspaces } from "@app/types/user";
 import { pokeApp } from "@front-api/middlewares/ctx";

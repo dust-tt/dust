@@ -18,6 +18,7 @@ vi.mock("@app/lib/api/files/file_system_ops", async (importOriginal) => {
     streamThumbnail: vi.fn(),
     renameCanonicalFile: vi.fn(),
     moveCanonicalFile: vi.fn(),
+    deleteCanonicalFile: vi.fn(),
   };
 });
 
@@ -624,7 +625,10 @@ describe("DELETE /api/w/[wId]/files/path/[...canonicalPath]", () => {
     });
 
     vi.spyOn(DustFileSystem, "fromScopedPath").mockResolvedValue(
-      new Ok(makeMockFs({ found: true }))
+      new Ok(makeMockFs())
+    );
+    vi.mocked(fileSystemOps.deleteCanonicalFile).mockResolvedValue(
+      new Ok(undefined)
     );
 
     req.query = {
@@ -635,6 +639,7 @@ describe("DELETE /api/w/[wId]/files/path/[...canonicalPath]", () => {
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(204);
+    expect(fileSystemOps.deleteCanonicalFile).toHaveBeenCalledOnce();
   });
 
   it("returns 404 when the file does not exist", async () => {
@@ -642,16 +647,11 @@ describe("DELETE /api/w/[wId]/files/path/[...canonicalPath]", () => {
       method: "DELETE",
     });
 
-    const mockFs = {
-      delete: vi
-        .fn()
-        .mockResolvedValue(
-          new Err(new DustFileSystemError("not_found", "File not found."))
-        ),
-    } as unknown as DustFileSystem;
-
     vi.spyOn(DustFileSystem, "fromScopedPath").mockResolvedValue(
-      new Ok(mockFs)
+      new Ok(makeMockFs())
+    );
+    vi.mocked(fileSystemOps.deleteCanonicalFile).mockResolvedValue(
+      new Err(new DustFileSystemError("not_found", "File not found."))
     );
 
     req.query = {
