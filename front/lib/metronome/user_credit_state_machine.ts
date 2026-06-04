@@ -193,7 +193,6 @@ const TRANSITIONS: UserCreditTransition[] = [
       "user_seat_low_balance",
       "on_pool",
       "on_pool_low_balance",
-      "capped",
     ],
     event: "seat_balance_resolved",
     guard: (ctx) =>
