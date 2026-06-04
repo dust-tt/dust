@@ -183,6 +183,25 @@ const TRANSITIONS: UserCreditTransition[] = [
       (ctx.seatType === "pro" || ctx.seatType === "pro_yearly"),
     to: "user_seat_low_balance",
   },
+
+  // Billing-period renewal for pro/max seats: reset to user_seat regardless
+  // of current state. Workspace seats are reset by per_user_cap_resolved;
+  // free seats are not reset.
+  {
+    from: [
+      "user_seat",
+      "user_seat_low_balance",
+      "on_pool",
+      "on_pool_low_balance",
+    ],
+    event: "seat_balance_resolved",
+    guard: (ctx) =>
+      ctx.seatType === "pro" ||
+      ctx.seatType === "pro_yearly" ||
+      ctx.seatType === "max" ||
+      ctx.seatType === "max_yearly",
+    to: "user_seat",
+  },
 ];
 
 function findTransition(
