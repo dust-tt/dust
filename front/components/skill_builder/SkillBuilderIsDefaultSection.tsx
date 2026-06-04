@@ -87,9 +87,7 @@ export function SkillBuilderIsDefaultSection() {
                   className="w-full"
                 >
                   The content in&nbsp;
-                  <span className="font-semibold">
-                    What will this skill be used for
-                  </span>
+                  <span className="font-semibold">When to use this skill</span>
                   &nbsp;may be too short for agents to clearly understand when
                   to use this skill. Consider making it more descriptive before
                   allowing discovery.
