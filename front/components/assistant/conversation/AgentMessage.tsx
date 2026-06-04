@@ -270,8 +270,6 @@ export function AgentMessage({
     conversationId,
     workspaceId: owner.sId,
     messageId: agentMessage.sId,
-    // Only refetch when the menu is open and we don't already have a cost (a
-    // reloaded message already carries it; a freshly-streamed one has null).
     options: { disabled: !isMenuOpen || agentMessage.costCredits != null },
   });
   const refreshedCostCredits =
