@@ -46,9 +46,12 @@ export function computeAgentMessageCredits({
 
 /**
  * Compute the agent message credit cost once at the end of the agentic loop and persist it on the
- * agent message. Returns the computed value (or null when there is nothing to track) so callers
- * can attach it to the terminal `agent_message_done` event and update the live client without a
- * reload.
+ * agent message. Returns the computed value (or null when there is nothing to track).
+ *
+ * Called from the finalize activities (alongside the Metronome usage events it is derived from),
+ * not from the hot terminal-event path, so publishing the terminal events stays lightweight. The
+ * value is not pushed on any event — clients read it from the messages / conversation API on their
+ * next revalidation.
  *
  * Computes from the message's full accumulated runIds + all final-status actions (the message-level
  * total), so re-runs (interrupt/resume) overwrite the stored value with the complete cost. Only
