@@ -903,6 +903,8 @@ mod tests {
     use super::super::test_support::{empty_table, secret_table_with_secret};
     use super::*;
 
+    const TEST_PLACEHOLDER: &str = "__DSEC_0123456789abcdef0123456789abcdef__";
+
     #[tokio::test]
     async fn forwards_get_request_unchanged() -> Result<()> {
         let table = empty_table()?;
@@ -1231,7 +1233,7 @@ mod tests {
 
     #[tokio::test]
     async fn substitutes_placeholder_in_header_value() -> Result<()> {
-        let placeholder = "__DSEC_0123456789abcdef0123456789abcdef__";
+        let placeholder = TEST_PLACEHOLDER;
         let table = secret_table_with_secret(
             "OPENAI_API_KEY",
             placeholder,
@@ -1315,12 +1317,13 @@ mod tests {
     // Regression for the reflection exfil: a recognized placeholder in an
     // unsafe (non-credential, reflection-prone) header must be left intact, so
     // the real secret never reaches a reflecting endpoint like
-    // `/cdn-cgi/trace` (which echoes `User-Agent`).
-    async fn assert_skips_unsafe_header(header_line: &str, header_echo: &str) -> Result<()> {
-        let placeholder = "__DSEC_0123456789abcdef0123456789abcdef__";
+    // `/cdn-cgi/trace` (which echoes `User-Agent`). The header line is echoed
+    // back verbatim with the placeholder unsubstituted, and the real value
+    // never appears on the wire.
+    async fn assert_skips_unsafe_header(header_line: &str) -> Result<()> {
         let table = secret_table_with_secret(
             "OPENAI_API_KEY",
-            placeholder,
+            TEST_PLACEHOLDER,
             "sk-real",
             &["api.openai.com"],
         )?;
@@ -1337,7 +1340,7 @@ mod tests {
         let text = String::from_utf8(output)?;
 
         assert!(
-            text.contains(&format!("{header_echo}\r\n")),
+            text.contains(&format!("{header_line}\r\n")),
             "placeholder must be left intact in unsafe header, got: {text}"
         );
         assert!(
@@ -1349,59 +1352,34 @@ mod tests {
 
     #[tokio::test]
     async fn skips_substitution_in_user_agent_header() -> Result<()> {
-        let placeholder = "__DSEC_0123456789abcdef0123456789abcdef__";
-        assert_skips_unsafe_header(
-            &format!("User-Agent: {placeholder}"),
-            &format!("User-Agent: {placeholder}"),
-        )
-        .await
+        assert_skips_unsafe_header(&format!("User-Agent: {TEST_PLACEHOLDER}")).await
     }
 
     #[tokio::test]
     async fn skips_substitution_in_origin_header() -> Result<()> {
-        let placeholder = "__DSEC_0123456789abcdef0123456789abcdef__";
-        assert_skips_unsafe_header(
-            &format!("Origin: {placeholder}"),
-            &format!("Origin: {placeholder}"),
-        )
-        .await
+        assert_skips_unsafe_header(&format!("Origin: {TEST_PLACEHOLDER}")).await
     }
 
     #[tokio::test]
     async fn skips_substitution_in_request_id_header() -> Result<()> {
-        let placeholder = "__DSEC_0123456789abcdef0123456789abcdef__";
-        assert_skips_unsafe_header(
-            &format!("X-Request-Id: {placeholder}"),
-            &format!("X-Request-Id: {placeholder}"),
-        )
-        .await
+        assert_skips_unsafe_header(&format!("X-Request-Id: {TEST_PLACEHOLDER}")).await
     }
 
     #[tokio::test]
-    async fn skips_substitution_in_extended_accept_header() -> Result<()> {
-        let placeholder = "__DSEC_0123456789abcdef0123456789abcdef__";
-        assert_skips_unsafe_header(
-            &format!("Accept: {placeholder}"),
-            &format!("Accept: {placeholder}"),
-        )
-        .await
+    async fn skips_substitution_in_accept_header() -> Result<()> {
+        assert_skips_unsafe_header(&format!("Accept: {TEST_PLACEHOLDER}")).await
     }
 
     #[tokio::test]
     async fn skips_substitution_in_sec_ch_ua_prefix_header() -> Result<()> {
-        let placeholder = "__DSEC_0123456789abcdef0123456789abcdef__";
-        assert_skips_unsafe_header(
-            &format!("Sec-CH-UA-Platform: {placeholder}"),
-            &format!("Sec-CH-UA-Platform: {placeholder}"),
-        )
-        .await
+        assert_skips_unsafe_header(&format!("Sec-CH-UA-Platform: {TEST_PLACEHOLDER}")).await
     }
 
     #[tokio::test]
     async fn substitutes_in_non_blocklisted_cookie_header() -> Result<()> {
         // Cookie carries session credentials and is deliberately NOT
         // blocklisted: substitution must still fire.
-        let placeholder = "__DSEC_0123456789abcdef0123456789abcdef__";
+        let placeholder = TEST_PLACEHOLDER;
         let table =
             secret_table_with_secret("SESSION", placeholder, "sk-real", &["api.openai.com"])?;
         let input = format!(
@@ -1426,7 +1404,7 @@ mod tests {
     #[tokio::test]
     async fn substitutes_in_non_blocklisted_custom_header() -> Result<()> {
         // No default-deny: a bespoke auth header still substitutes.
-        let placeholder = "__DSEC_0123456789abcdef0123456789abcdef__";
+        let placeholder = TEST_PLACEHOLDER;
         let table = secret_table_with_secret(
             "OPENAI_API_KEY",
             placeholder,

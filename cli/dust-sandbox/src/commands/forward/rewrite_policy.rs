@@ -235,6 +235,13 @@ fn rewrite_header_value(
     // (it reveals nothing) rather than substituting or dropping the
     // connection. Checked after the port-80 guard so plaintext HTTP keeps its
     // stricter drop-on-placeholder behavior.
+    //
+    // Note this short-circuits before the substitution path, so it also
+    // suppresses that path's unknown-placeholder and non-allowed-host denies
+    // for these headers: a forged or cross-host placeholder in a blocklisted
+    // header now travels upstream as the opaque placeholder instead of
+    // dropping the connection. Acceptable because the placeholder reveals
+    // nothing and any real credential check fails loudly upstream.
     if is_unsafe_substitution_header(&header.name) {
         if contains_placeholder(&header.value) {
             debug!(
@@ -272,11 +279,13 @@ fn is_unsafe_substitution_header(name: &str) -> bool {
     let lower = name.to_ascii_lowercase();
 
     // Prefix families: UA client hints (`Sec-CH-UA`, `Sec-CH-UA-Platform`,
-    // ...), fetch metadata (`Sec-Fetch-Site`, ...), and B3 trace headers
-    // (`X-B3-TraceId`, `X-B3-SpanId`, ...).
+    // ...), fetch metadata (`Sec-Fetch-Site`, ...), B3 trace headers
+    // (`X-B3-TraceId`, `X-B3-SpanId`, ...), and Datadog trace headers
+    // (`X-Datadog-Trace-Id`, `X-Datadog-Parent-Id`, ...).
     if lower.starts_with("sec-ch-ua")
         || lower.starts_with("sec-fetch-")
         || lower.starts_with("x-b3-")
+        || lower.starts_with("x-datadog-")
     {
         return true;
     }
@@ -303,6 +312,7 @@ fn is_unsafe_substitution_header(name: &str) -> bool {
             | "traceparent"
             | "tracestate"
             | "x-amzn-trace-id"
+            | "x-cloud-trace-context"
             | "uber-trace-id"
             | "b3"
             // Privacy / preference signals — never credentials, UA-like reflection.
@@ -530,4 +540,101 @@ fn validate_host_headers_match(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_unsafe_substitution_header;
+
+    // Locks down the full blocklist membership: this set is the security
+    // surface of the reflection-skip, so a fat-fingered edit that drops a
+    // header should fail here rather than silently start leaking it.
+    #[test]
+    fn unsafe_header_blocklist_membership() {
+        let unsafe_headers = [
+            // Identity / referrer.
+            "user-agent",
+            "referer",
+            "origin",
+            "from",
+            // Forwarding / proxy metadata.
+            "x-forwarded-for",
+            "x-forwarded-host",
+            "x-forwarded-proto",
+            "x-forwarded-port",
+            "forwarded",
+            "x-real-ip",
+            "via",
+            // Request-id / trace context.
+            "x-request-id",
+            "x-correlation-id",
+            "request-id",
+            "traceparent",
+            "tracestate",
+            "x-amzn-trace-id",
+            "x-cloud-trace-context",
+            "uber-trace-id",
+            "b3",
+            // Privacy / preference signals.
+            "dnt",
+            "sec-gpc",
+            // Content negotiation (extended).
+            "accept",
+            "accept-encoding",
+            "accept-language",
+            "accept-charset",
+            // Caching / conditional (extended).
+            "cache-control",
+            "pragma",
+            "if-match",
+            "if-none-match",
+            "if-modified-since",
+            "if-unmodified-since",
+            "if-range",
+            "range",
+            // Prefix families.
+            "sec-ch-ua",
+            "sec-ch-ua-platform",
+            "sec-fetch-site",
+            "sec-fetch-mode",
+            "x-b3-traceid",
+            "x-b3-spanid",
+            "x-datadog-trace-id",
+            "x-datadog-parent-id",
+        ];
+
+        for header in unsafe_headers {
+            assert!(
+                is_unsafe_substitution_header(header),
+                "expected {header} to be blocklisted"
+            );
+        }
+    }
+
+    #[test]
+    fn credential_and_custom_headers_are_not_blocklisted() {
+        for header in [
+            "authorization",
+            "cookie",
+            "proxy-authorization",
+            "x-api-key",
+            "x-auth-token",
+            "x-acme-token",
+            "content-type",
+        ] {
+            assert!(
+                !is_unsafe_substitution_header(header),
+                "expected {header} to still substitute"
+            );
+        }
+    }
+
+    #[test]
+    fn blocklist_match_is_case_insensitive() {
+        assert!(is_unsafe_substitution_header("User-Agent"));
+        assert!(is_unsafe_substitution_header("USER-AGENT"));
+        assert!(is_unsafe_substitution_header("Sec-CH-UA"));
+        assert!(is_unsafe_substitution_header("X-Datadog-Trace-Id"));
+        assert!(!is_unsafe_substitution_header("Authorization"));
+    }
 }
