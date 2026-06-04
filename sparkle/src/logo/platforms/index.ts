@@ -48,6 +48,7 @@ export { default as HuggingFaceLogo } from "./HuggingFace";
 export { default as ImageLogo } from "./Image";
 export { default as IntercomLogo } from "./Intercom";
 export { default as JiraLogo } from "./Jira";
+export { default as LemlistLogo } from "./Lemlist";
 export { default as LinearLogo } from "./Linear";
 export { default as LinearWhiteLogo } from "./LinearWhite";
 export { default as LumaLogo } from "./Luma";
