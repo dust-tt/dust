@@ -36,7 +36,12 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { UserType } from "@app/types/user";
 import { CronExpressionParser } from "cron-parser";
-import type { Attributes, Transaction, WhereOptions } from "sequelize";
+import {
+  type Attributes,
+  Op,
+  type Transaction,
+  type WhereOptions,
+} from "sequelize";
 
 // Maximum fire counts for each wake-up to prevent run-away situations. The limit is exposed to
 // agents to let them reschedule their wake-ups if they want to keep being triggered after reaching
