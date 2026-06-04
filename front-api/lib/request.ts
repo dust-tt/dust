@@ -12,7 +12,20 @@ export function getClientIpFromContext(c: Context): string {
     headers[key] = value;
   });
 
-  const remoteAddress = getConnInfo(c).remote.address;
+  return getClientIp({
+    headers,
+    socket: { remoteAddress: getRemoteAddress(c) },
+  });
+}
 
-  return getClientIp({ headers, socket: { remoteAddress } });
+// `getConnInfo` reads the Node server bindings off `c.env`, which only exist
+// when the app runs through the `@hono/node-server` adapter. Under
+// `honoApp.request(...)` (tests, plain fetch) those bindings are absent and it
+// throws, so we guard the external call and fall back to no socket address.
+function getRemoteAddress(c: Context): string | undefined {
+  try {
+    return getConnInfo(c).remote.address;
+  } catch {
+    return undefined;
+  }
 }
