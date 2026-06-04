@@ -1,3 +1,4 @@
+import config from "@app/lib/api/config";
 import { AnthropicLLM } from "@app/lib/api/llm/clients/anthropic";
 import {
   isAnthropicVertexWhitelistedModelId,
@@ -23,6 +24,23 @@ import type { LLMParameters } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
+import type { LLMCredentialsType } from "@app/types/provider_credential";
+
+// EAP models are served through a dedicated Anthropic workspace key
+// (ANTHROPIC_EAP_API_KEY) rather than the workspace's Dust-managed / BYOK
+// credentials. Fail loudly if the key is missing so the model is unavailable
+// instead of silently falling back to the standard key.
+function withEapAnthropicKey(
+  credentials: LLMCredentialsType
+): LLMCredentialsType {
+  const eapApiKey = config.getAnthropicEapApiKey();
+  if (!eapApiKey) {
+    throw new Error(
+      "ANTHROPIC_EAP_API_KEY is not configured but this model requires the EAP Anthropic key."
+    );
+  }
+  return { ...credentials, ANTHROPIC_API_KEY: eapApiKey };
+}
 
 export async function getLLM(
   auth: Authenticator,
@@ -140,7 +158,9 @@ export async function getLLM(
 
     return new AnthropicLLM(auth, {
       useVertex,
-      credentials,
+      credentials: modelConfig.useEapKey
+        ? withEapAnthropicKey(credentials)
+        : credentials,
       getTraceInput,
       getTraceOutput,
       modelId,

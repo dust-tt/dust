@@ -102,6 +102,13 @@ const config = {
   getSendgridApiKey: (): string => {
     return EnvironmentConfig.getEnvVariable("SENDGRID_API_KEY");
   },
+  // Dedicated Anthropic API key scoped to our EAP workspace. Optional: only set
+  // in deployments that serve EAP models (those with `useEapKey` in their config).
+  getAnthropicEapApiKey: (): string | null => {
+    return (
+      EnvironmentConfig.getOptionalEnvVariable("ANTHROPIC_EAP_API_KEY") ?? null
+    );
+  },
   getSupportEmailAddress: (): { name: string; email: string } => {
     return {
       name: "Dust team",
