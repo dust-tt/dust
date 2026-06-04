@@ -1,8 +1,8 @@
 import { CreatePodModal } from "@app/components/assistant/conversation/CreatePodModal";
-import { CreditCostMenuItem } from "@app/components/assistant/conversation/CreditCostMenuItem";
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
 import { EditConversationTitleDialog } from "@app/components/assistant/conversation/EditConversationTitleDialog";
 import { LeaveConversationDialog } from "@app/components/assistant/conversation/LeaveConversationDialog";
+import { useCreditCostMenuItem } from "@app/components/assistant/conversation/useCreditCostMenuItem";
 import { ConfirmContext } from "@app/components/Confirm";
 import {
   useBranchConversation,
@@ -228,6 +228,10 @@ export function ConversationMenu({
       options: { disabled: !isConversationDisplayed },
     });
   const totalCostCredits = detailedConversation?.totalCostCredits ?? null;
+  const creditCostItem = useCreditCostMenuItem({
+    credits: totalCostCredits,
+    scope: "conversation",
+  });
   const conversationParticipationOptions = useConversationParticipationOptions({
     ownerId: owner.sId,
     conversationId: activeConversationId,
@@ -422,7 +426,7 @@ export function ConversationMenu({
           className="w-[237px]"
           onFocusOutside={(e) => e.preventDefault()}
         >
-          <CreditCostMenuItem credits={totalCostCredits} scope="conversation" />
+          {creditCostItem && <DropdownMenuItem {...creditCostItem} />}
           <DropdownMenuItem
             label="Rename conversation"
             onClick={() => setShowRenameDialog(true)}

@@ -20,6 +20,7 @@ import {
   SearchInput,
   type SearchInputProps,
 } from "@sparkle/components/SearchInput";
+import { Tooltip } from "@sparkle/components/Tooltip";
 import { useSheetContainer } from "@sparkle/hooks/useSheetContainer";
 import { CheckIcon, ChevronRightIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
@@ -517,6 +518,8 @@ export type DropdownMenuItemProps = MutuallyExclusiveProps<
     inset?: boolean;
     itemId?: string;
     variant?: ItemVariantType;
+    tooltip?: React.ReactNode;
+    separatorAfter?: boolean;
   } & Omit<LinkWrapperProps, "children" | "className">,
   LabelAndIconProps & {
     description?: string;
@@ -548,6 +551,8 @@ const DropdownMenuItem = React.forwardRef<
       shallow,
       prefetch,
       endComponent,
+      tooltip,
+      separatorAfter,
       ...props
     },
     ref
@@ -569,7 +574,7 @@ const DropdownMenuItem = React.forwardRef<
       [dropdownItemRegistry, itemId, ref]
     );
 
-    return (
+    const item = (
       <LinkWrapper
         href={href}
         target={target}
@@ -602,6 +607,27 @@ const DropdownMenuItem = React.forwardRef<
         </DropdownMenuPrimitive.Item>
       </LinkWrapper>
     );
+
+    const itemWithTooltip = tooltip ? (
+      <Tooltip
+        tooltipTriggerAsChild
+        label={tooltip}
+        trigger={<span className="s-block s-w-full">{item}</span>}
+      />
+    ) : (
+      item
+    );
+
+    if (separatorAfter) {
+      return (
+        <>
+          {itemWithTooltip}
+          <DropdownMenuSeparator />
+        </>
+      );
+    }
+
+    return itemWithTooltip;
   }
 );
 DropdownMenuItem.displayName = DropdownMenuPrimitive.Item.displayName;

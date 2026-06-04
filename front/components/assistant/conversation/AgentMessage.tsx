@@ -6,7 +6,6 @@ import { AttachmentCitation } from "@app/components/assistant/conversation/attac
 import { markdownCitationToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 import { BlockedAction } from "@app/components/assistant/conversation/BlockedAction";
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
-import { CreditCostMenuItem } from "@app/components/assistant/conversation/CreditCostMenuItem";
 import { DeletedMessage } from "@app/components/assistant/conversation/DeletedMessage";
 import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessage";
 import type { FeedbackSelectorBaseProps } from "@app/components/assistant/conversation/FeedbackSelector";
@@ -25,6 +24,7 @@ import {
   isUserMessage,
   makeInitialMessageStreamState,
 } from "@app/components/assistant/conversation/types";
+import { useCreditCostMenuItem } from "@app/components/assistant/conversation/useCreditCostMenuItem";
 import { ConfirmContext } from "@app/components/Confirm";
 import {
   CitationsContext,
@@ -100,10 +100,6 @@ import {
   ConversationMessageContainer,
   ConversationMessageContent,
   ConversationMessageTitle,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
   InformationCircleIcon,
   InteractiveImageGrid,
   LinkIcon,
@@ -265,6 +261,10 @@ export function AgentMessage({
   >([]);
   const [isCopied, copy] = useCopyToClipboard();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const creditCostItem = useCreditCostMenuItem({
+    credits: agentMessage.costCredits,
+    scope: "message",
+  });
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
 
@@ -882,7 +882,9 @@ export function AgentMessage({
       });
     }
 
-    const { costCredits } = agentMessage;
+    if (creditCostItem) {
+      dropdownItems.unshift(creditCostItem);
+    }
 
     hoverButtons.push(
       <ButtonGroup key="split-button-group">
@@ -894,22 +896,19 @@ export function AgentMessage({
           icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
           className="text-muted-foreground"
         />
-        <DropdownMenu onOpenChange={setIsMenuOpen}>
-          <DropdownMenuTrigger asChild>
+        <ButtonGroupDropdown
+          trigger={
             <Button
               variant="outline"
               size="xs"
               icon={MoreIcon}
               className="text-muted-foreground"
             />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-[237px]">
-            <CreditCostMenuItem credits={costCredits} scope="message" />
-            {dropdownItems.map((item, index) => (
-              <DropdownMenuItem key={index} {...item} />
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+          }
+          items={dropdownItems}
+          align="end"
+          onOpenChange={setIsMenuOpen}
+        />
       </ButtonGroup>
     );
   }
