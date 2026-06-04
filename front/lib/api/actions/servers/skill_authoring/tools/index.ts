@@ -1,4 +1,4 @@
-import { extractKnowledgeTagIds } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeConstants";
+import { extractKnowledgeTagSignatures } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeConstants";
 import {
   isCustomResourceIconType,
   isInternalAllowedIcon,
@@ -23,7 +23,7 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { extractUniqueSkillReferenceIds } from "@app/lib/skills/format";
-import { extractToolTags } from "@app/lib/tools/format";
+import { extractToolTags, serializeToolTag } from "@app/lib/tools/format";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -74,16 +74,19 @@ type SpecialTagCategory = "nested skills" | "knowledge" | "tools";
 
 // Skills can embed special tags in their instructions (nested skill references,
 // knowledge, tools) that the builder UI wires up. The agent only sees them as
-// opaque markup, so guard against a full instructions replace silently dropping
-// them. Returns the categories of tags present before but missing after.
+// opaque markup, so guard against updates dropping or altering them. Returns
+// the categories of tags present before but missing or changed after.
 function findDroppedSpecialTags(
   before: string,
   after: string
 ): SpecialTagCategory[] {
   const dropped: SpecialTagCategory[] = [];
-  const isMissingAny = (beforeIds: string[], afterIds: string[]): boolean => {
-    const afterSet = new Set(afterIds);
-    return beforeIds.some((id) => !afterSet.has(id));
+  const isMissingAny = (
+    beforeValues: string[],
+    afterValues: string[]
+  ): boolean => {
+    const afterSet = new Set(afterValues);
+    return beforeValues.some((value) => !afterSet.has(value));
   };
 
   if (
@@ -95,14 +98,17 @@ function findDroppedSpecialTags(
     dropped.push("nested skills");
   }
   if (
-    isMissingAny(extractKnowledgeTagIds(before), extractKnowledgeTagIds(after))
+    isMissingAny(
+      extractKnowledgeTagSignatures(before),
+      extractKnowledgeTagSignatures(after)
+    )
   ) {
     dropped.push("knowledge");
   }
   if (
     isMissingAny(
-      extractToolTags(before).map((tool) => tool.id),
-      extractToolTags(after).map((tool) => tool.id)
+      extractToolTags(before).map((tool) => serializeToolTag(tool)),
+      extractToolTags(after).map((tool) => serializeToolTag(tool))
     )
   ) {
     dropped.push("tools");
@@ -348,23 +354,6 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
       return new Err(new MCPError("Skill not found."));
     }
 
-    // A full replace is wholesale and likely to drop the special tags that wire
-    // up nested skills, knowledge, and tools. Reject it rather than silently
-    // breaking that wiring; a targeted edit preserves the tags by construction.
-    if (instructions !== undefined) {
-      const dropped = findDroppedSpecialTags(skill.instructions, instructions);
-      if (dropped.length > 0) {
-        return new Err(
-          new MCPError(
-            `The new instructions drop special tags the skill depends on ` +
-              `(${dropped.join(", ")}). These tags are managed in the builder ` +
-              "and must be preserved verbatim. Keep them in the new instructions, " +
-              "or make a targeted edit with `old_string`/`new_string` instead."
-          )
-        );
-      }
-    }
-
     // Resolve the new instructions: undefined keeps the existing ones, a full
     // string replaces them, and a targeted edit applies a str-replace on the
     // current instructions (mirroring the Files MCP edit pattern).
@@ -399,6 +388,28 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
       }
 
       resolvedInstructions = updatedContent;
+    }
+
+    // Preserve builder-managed special tags. A full replace or targeted edit
+    // can drop or alter tags that wire nested skills, knowledge, and tools, so
+    // check the resolved instructions regardless of edit mode.
+    if (
+      resolvedInstructions !== undefined &&
+      resolvedInstructions !== skill.instructions
+    ) {
+      const dropped = findDroppedSpecialTags(
+        skill.instructions,
+        resolvedInstructions
+      );
+      if (dropped.length > 0) {
+        return new Err(
+          new MCPError(
+            `The edit drops or alters special tags the skill depends on ` +
+              `(${dropped.join(", ")}). These tags are managed in the builder ` +
+              "and must be preserved verbatim. Keep them intact in the new instructions."
+          )
+        );
+      }
     }
 
     const trimmedName = name !== undefined ? name.trim() : skill.name;
