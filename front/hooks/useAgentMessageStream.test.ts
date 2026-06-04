@@ -108,6 +108,7 @@ function makeLightAgentMessage(
     richMentions: [],
     completionDurationMs: null,
     reactions: [],
+    costCredits: null,
     configuration: {
       sId: "agent_123",
       name: "dust",
