@@ -4,7 +4,7 @@ import { BillingSeatsOverview } from "@app/components/workspace/billing/BillingS
 import { BillingUpgrade } from "@app/components/workspace/billing/BillingUpgrade";
 import { RecentInvoices } from "@app/components/workspace/billing/RecentInvoices";
 import { useAuth } from "@app/lib/auth/AuthContext";
-import { CardIcon, Page } from "@dust-tt/sparkle";
+import { CreditCard01V2, Page } from "@dust-tt/sparkle";
 
 export function BillingPage() {
   const { workspace: owner, subscription } = useAuth();
@@ -14,7 +14,7 @@ export function BillingPage() {
     <Page.Vertical gap="xl" align="stretch">
       <Page.Header
         title="Billing"
-        icon={CardIcon}
+        icon={CreditCard01V2}
         description="Edit your subscription and billing information."
       />
       <BillingOverview owner={owner} subscription={subscription} />

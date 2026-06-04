@@ -1,6 +1,6 @@
 import type { IndustryPageConfig } from "@app/components/home/content/Industry/configs/utils";
 import { createLayoutConfig } from "@app/components/home/content/Industry/configs/utils";
-import { ActionBankIcon } from "@dust-tt/sparkle";
+import { BankV2 } from "@dust-tt/sparkle";
 
 export const financialServicesConfig: IndustryPageConfig = {
   seo: {
@@ -24,7 +24,7 @@ export const financialServicesConfig: IndustryPageConfig = {
     chip: {
       label: "Financial Services",
       color: "golden",
-      icon: ActionBankIcon,
+      icon: BankV2,
     },
     title: (
       <>

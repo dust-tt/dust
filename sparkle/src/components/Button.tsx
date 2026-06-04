@@ -8,7 +8,7 @@ import {
 import type { SpinnerProps } from "@sparkle/components/Spinner";
 import { Spinner } from "@sparkle/components/Spinner";
 import { Tooltip } from "@sparkle/components/Tooltip";
-import { ChevronDownIcon } from "@sparkle/icons/app";
+import { ChevronDownV2 } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
@@ -489,7 +489,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             )}
           </div>
         )}
-        {isSelect && renderChevron(ChevronDownIcon, isLoading ? "" : "-s-mr-1")}
+        {isSelect && renderChevron(ChevronDownV2, isLoading ? "" : "-s-mr-1")}
       </>
     );
 

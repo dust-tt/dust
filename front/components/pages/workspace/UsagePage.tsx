@@ -28,18 +28,18 @@ import type { MembershipSeatType } from "@app/types/memberships";
 import { isCreditPricedPlan } from "@app/types/plan";
 import { isAdmin } from "@app/types/user";
 import {
-  ActionCreditCoinsIcon,
-  ActionPieChartIcon,
-  ArrowUpIcon,
+  AlertCircleV2,
+  ArrowUpV2,
   Button,
+  CoinsStacked03V2,
   ContentMessage,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  ExclamationCircleIcon,
   Icon,
   Page,
+  PieChart01V2,
   SearchInput,
   Spinner,
   Tooltip,
@@ -208,7 +208,7 @@ export function UsagePage() {
       <div className="flex flex-col items-stretch gap-10 pb-20">
         <Page.Vertical gap="xs">
           <Icon
-            visual={ActionPieChartIcon}
+            visual={PieChart01V2}
             className="text-muted-foreground dark:text-muted-foreground-night"
             size="lg"
           />
@@ -227,7 +227,7 @@ export function UsagePage() {
               <div className="flex flex-col items-end gap-0.5">
                 <span className="flex items-center gap-1.5 text-[18px] font-semibold leading-[26px] tracking-[-0.36px] text-foreground dark:text-foreground-night">
                   <Icon
-                    visual={ActionCreditCoinsIcon}
+                    visual={CoinsStacked03V2}
                     size="sm"
                     className="text-muted-foreground dark:text-muted-foreground-night"
                   />
@@ -249,7 +249,7 @@ export function UsagePage() {
                           className="flex items-center gap-1 text-xs font-medium text-highlight-500 opacity-50 dark:text-highlight-500-night"
                           disabled
                         >
-                          <Icon visual={ArrowUpIcon} size="xs" />
+                          <Icon visual={ArrowUpV2} size="xs" />
                           Top up
                         </button>
                       }
@@ -259,7 +259,7 @@ export function UsagePage() {
                       className="flex cursor-pointer items-center gap-1 text-xs font-medium text-highlight-500 dark:text-highlight-500-night"
                       onClick={() => setShowBuyCreditDialog(true)}
                     >
-                      <Icon visual={ArrowUpIcon} size="xs" />
+                      <Icon visual={ArrowUpV2} size="xs" />
                       Top up
                     </button>
                   )}
@@ -271,7 +271,7 @@ export function UsagePage() {
           {isAwuPoolSummaryError && (
             <ContentMessage
               title="Failed to load Workspace Credits Pool"
-              icon={ExclamationCircleIcon}
+              icon={AlertCircleV2}
               variant="warning"
             >
               An error occurred while loading your Workspace Credits Pool data.

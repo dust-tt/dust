@@ -723,6 +723,17 @@ export class DustFileSystem {
     return this.backend.stat(resolved.value.path);
   }
 
+  async exists(
+    scopedPath: string
+  ): Promise<Result<boolean, DustFileSystemError>> {
+    const resolved = this.requireReadMount(scopedPath);
+    if (resolved.isErr()) {
+      return resolved;
+    }
+
+    return this.backend.exists(resolved.value.path);
+  }
+
   async write(
     scopedPath: string,
     content: Buffer | string,
@@ -815,12 +826,6 @@ export class DustFileSystem {
     return new Ok({ dest, ...moveResult.value });
   }
 
-  private async fileExists(
-    scopedPath: string
-  ): Promise<Result<boolean, DustFileSystemError>> {
-    return this.backend.exists(scopedPath);
-  }
-
   /**
    * Move `src` to `dest` (copy then delete source).
    *
@@ -844,7 +849,7 @@ export class DustFileSystem {
       return resolvedDest;
     }
 
-    const destExists = await this.fileExists(resolvedDest.value.path);
+    const destExists = await this.backend.exists(resolvedDest.value.path);
     if (destExists.isErr()) {
       return destExists;
     }

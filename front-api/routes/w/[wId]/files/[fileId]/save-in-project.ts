@@ -116,9 +116,9 @@ app.post(
     });
     if (result.isErr()) {
       return apiError(ctx, {
-        status_code: 500,
+        status_code: 400,
         api_error: {
-          type: "internal_server_error",
+          type: "invalid_request_error",
           message: result.error.message,
         },
       });

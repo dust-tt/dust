@@ -14,7 +14,7 @@ import {
   ACADEMY_LOCALES,
 } from "@app/lib/contentful/types";
 import { LinkWrapper, useAppRouter } from "@app/lib/platform";
-import { Button, cn, EyeIcon, SearchInput, Tooltip } from "@dust-tt/sparkle";
+import { Button, cn, EyeV2, SearchInput, Tooltip } from "@dust-tt/sparkle";
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -49,7 +49,7 @@ export function ChapterStatusIcons({
           side="top"
           trigger={
             <span className="inline-flex text-highlight">
-              <EyeIcon className={iconClass} />
+              <EyeV2 className={iconClass} />
             </span>
           }
         />

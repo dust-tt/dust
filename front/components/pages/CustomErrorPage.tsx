@@ -1,5 +1,5 @@
 import { LinkWrapper } from "@app/lib/platform";
-import { Button, ExclamationCircleIcon, Icon } from "@dust-tt/sparkle";
+import { AlertCircleV2, Button, Icon } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 
 interface CustomErrorPageProps {
@@ -24,7 +24,7 @@ export default function CustomErrorPage({
         <div className="flex flex-col items-center">
           <div>
             <Icon
-              visual={ExclamationCircleIcon}
+              visual={AlertCircleV2}
               size="lg"
               className="dark:text-golder-400-night text-golden-400"
             />

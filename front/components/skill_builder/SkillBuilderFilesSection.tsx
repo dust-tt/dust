@@ -4,15 +4,15 @@ import { useSkillVersionComparisonContext } from "@app/components/skill_builder/
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
-  ArrowGoBackIcon,
   Button,
   ContextItem,
   cn,
-  DocumentIcon,
   EmptyCTA,
-  PlusIcon,
+  File02V2,
+  PlusV2,
+  ReverseLeftV2,
   Spinner,
-  XMarkIcon,
+  XCloseV2,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
@@ -152,7 +152,7 @@ export function SkillBuilderFilesSection() {
       type="button"
       onClick={onUploadClick}
       label="Upload files"
-      icon={isProcessingFiles ? Spinner : PlusIcon}
+      icon={isProcessingFiles ? Spinner : PlusV2}
       variant="outline"
       disabled={isProcessingFiles}
     />
@@ -175,7 +175,7 @@ export function SkillBuilderFilesSection() {
             <Button
               variant="outline"
               size="sm"
-              icon={ArrowGoBackIcon}
+              icon={ReverseLeftV2}
               onClick={restoreFiles}
               label="Restore files"
             />
@@ -206,7 +206,7 @@ export function SkillBuilderFilesSection() {
                 type="button"
                 onClick={onUploadClick}
                 label="Upload files"
-                icon={PlusIcon}
+                icon={PlusV2}
                 variant="outline"
                 disabled={isProcessingFiles}
               />
@@ -236,14 +236,14 @@ export function SkillBuilderFilesSection() {
                         {field.fileName}
                       </span>
                     }
-                    visual={<ContextItem.Visual visual={DocumentIcon} />}
+                    visual={<ContextItem.Visual visual={File02V2} />}
                     hoverAction={!isDiffMode}
                     action={
                       !isDiffMode ? (
                         <Button
                           type="button"
                           variant="ghost"
-                          icon={XMarkIcon}
+                          icon={XCloseV2}
                           size="xs"
                           onClick={() => remove(originalIndex)}
                         />

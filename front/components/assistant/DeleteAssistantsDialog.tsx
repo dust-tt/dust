@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  TrashIcon,
+  Trash01V2,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -46,7 +46,7 @@ export function DeleteAssistantsDialog({
         <Button
           size="xs"
           variant="warning"
-          icon={TrashIcon}
+          icon={Trash01V2}
           label="Archive selection"
           disabled={disabled}
         />

@@ -1,7 +1,7 @@
 import { getIcon } from "@app/components/resources/resources_icons";
 import { normalizeWebhookIcon } from "@app/lib/webhook_source";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
-import { ActionCard, SearchInput, TimeIcon } from "@dust-tt/sparkle";
+import { ActionCard, ClockV2, SearchInput } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useMemo, useState } from "react";
 
@@ -59,7 +59,7 @@ export function TriggerSelectionPageContent({
         <div className="grid grid-cols-2 gap-3">
           {showSchedule && (
             <ActionCard
-              icon={TimeIcon}
+              icon={ClockV2}
               label="Schedule"
               description="Trigger this agent on a schedule"
               isSelected={false}

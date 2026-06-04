@@ -12,7 +12,7 @@ import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
   cn,
-  MenuIcon,
+  Menu01V2,
   Sheet,
   SheetContent,
   SheetHeader,
@@ -84,7 +84,7 @@ export function Navigation({
             <SheetTrigger asChild>
               <Button
                 variant="ghost"
-                icon={MenuIcon}
+                icon={Menu01V2}
                 onClick={() => setSidebarOpen(true)}
               />
             </SheetTrigger>

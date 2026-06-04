@@ -515,10 +515,25 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
         const folders = folderPath
           .split("/")
           .filter((f: string) => f.length > 0);
-        let currentPath = "";
-        let parentItemId = "root";
 
-        for (const folder of folders) {
+        // Fetch the drive root so we can strip the library name if the user
+        // included it in folderPath (e.g. "Documents partages/Sub"), which
+        // would otherwise cause a 403 when trying to create a folder named
+        // after the library root.
+        const root = await client
+          .api(`${endpoint}/root`)
+          .select("name,id")
+          .get();
+        let parentItemId: string = root.id;
+
+        const effectiveFolders =
+          root.name && folders[0]?.toLowerCase() === root.name.toLowerCase()
+            ? folders.slice(1)
+            : folders;
+
+        let currentPath = "";
+
+        for (const folder of effectiveFolders) {
           currentPath = currentPath
             ? `${currentPath}/${encodeURIComponent(folder)}`
             : encodeURIComponent(folder);
@@ -549,11 +564,30 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
                 // Update parent item ID for next iteration
                 parentItemId = createdFolder.id;
               } catch (createErr) {
-                return new Err(
-                  new MCPError(
-                    `Failed to create folder '${folder}': ${normalizeError(createErr).message}`
-                  )
-                );
+                const createError = normalizeError(createErr);
+                const alreadyExists =
+                  createError.message
+                    .toLowerCase()
+                    .includes("namealreadyexists") ||
+                  createError.message
+                    .toLowerCase()
+                    .includes("name already exists");
+
+                if (alreadyExists) {
+                  // Folder was created concurrently between our GET and POST
+                  // (or the GET error didn't match isNotFound). Fetch the
+                  // existing folder's ID and continue.
+                  const existingFolder = await client
+                    .api(`${endpoint}/root:/${currentPath}`)
+                    .get();
+                  parentItemId = existingFolder.id;
+                } else {
+                  return new Err(
+                    new MCPError(
+                      `Failed to create folder '${folder}': ${createError.message}`
+                    )
+                  );
+                }
               }
             } else {
               return new Err(
@@ -581,7 +615,14 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
         : uploadFileName;
 
       // Upload using PUT /drive/root:/{path}:/content
-      const uploadEndpoint = `${endpoint}/root:/${encodeURIComponent(uploadPath)}:/content`;
+      // Encode each path segment individually so "/" separators in nested
+      // paths are preserved (encoding the whole path would turn them into
+      // %2F and Graph would treat the result as a single flat filename).
+      const encodedUploadPath = uploadPath
+        .split("/")
+        .map(encodeURIComponent)
+        .join("/");
+      const uploadEndpoint = `${endpoint}/root:/${encodedUploadPath}:/content`;
 
       const response = await client
         .api(uploadEndpoint)

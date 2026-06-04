@@ -3,7 +3,7 @@ import {
   Button,
   cn,
   EmojiPicker,
-  EmotionLaughIcon,
+  FaceSmileV2,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
@@ -35,7 +35,7 @@ export function MessageEmojiPicker({
           tooltip="Add reaction"
           variant="outline"
           size="xmini"
-          icon={EmotionLaughIcon}
+          icon={FaceSmileV2}
           isSelect
           className={cn("text-muted-foreground", className)}
         />

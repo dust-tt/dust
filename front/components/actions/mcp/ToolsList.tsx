@@ -24,7 +24,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  InformationCircleIcon,
+  InfoCircleV2,
 } from "@dust-tt/sparkle";
 import { memo } from "react";
 import { Controller, useFormContext } from "react-hook-form";
@@ -181,7 +181,7 @@ export const ToolsList = memo(
               className="mb-4 mt-2 w-full"
               variant="blue"
               size="lg"
-              icon={InformationCircleIcon}
+              icon={InfoCircleV2}
               title="User Approval Settings"
             >
               <ul>

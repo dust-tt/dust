@@ -15,8 +15,8 @@ import type { ActiveRoleType, WorkspaceType } from "@app/types/user";
 import {
   Button,
   ContentMessage,
-  InformationCircleIcon,
-  PlusIcon,
+  InfoCircleV2,
+  PlusV2,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -198,7 +198,7 @@ export function InviteEmailButtonWithModal({
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
         <Button
-          icon={PlusIcon}
+          icon={PlusV2}
           label="Invite members"
           variant="primary"
           onClick={onInviteClick}
@@ -272,7 +272,7 @@ function ProPlanBillingNotice({
   perSeatPricing: SubscriptionPerSeatPricing;
 }) {
   return (
-    <ContentMessage size="md" title="Note" icon={InformationCircleIcon}>
+    <ContentMessage size="md" title="Note" icon={InfoCircleV2}>
       <p>
         New users will be charged a{" "}
         <span className="font-semibold">

@@ -7,7 +7,7 @@ import {
   MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
 } from "@app/types/credits";
 import {
-  ActionCreditCoinsIcon,
+  CoinsStacked03V2,
   Icon,
   Input,
   Page,
@@ -77,7 +77,7 @@ export function UsageSettingsCard({ workspaceId }: UsageSettingsCardProps) {
           action={
             <div className="relative w-32">
               <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground dark:text-muted-foreground-night">
-                <Icon visual={ActionCreditCoinsIcon} size="xs" />
+                <Icon visual={CoinsStacked03V2} size="xs" />
               </div>
               <Input
                 type="text"

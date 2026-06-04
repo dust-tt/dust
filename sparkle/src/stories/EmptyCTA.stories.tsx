@@ -2,7 +2,8 @@ import type { Meta } from "@storybook/react";
 import React from "react";
 
 import { Button, EmptyCTA, EmptyCTAButton } from "@sparkle/components";
-import { CloudArrowDownIcon, PlusIcon } from "@sparkle/icons/app";
+import { CloudArrowDownIcon } from "@sparkle/icons/app";
+import { PlusV2 } from "@sparkle/icons/v2-stroke";
 
 const meta = {
   title: "Components/EmptyCTA",
@@ -25,7 +26,7 @@ export const Demo = () => {
         />
       </div>
       <div className="s-flex s-items-center s-space-x-2">
-        <EmptyCTA action={<Button icon={PlusIcon} label="Add domain" />} />
+        <EmptyCTA action={<Button icon={PlusV2} label="Add domain" />} />
       </div>
     </div>
   );

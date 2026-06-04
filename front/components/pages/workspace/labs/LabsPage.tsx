@@ -13,12 +13,12 @@ import {
 import type { LabsFeatureItemType } from "@app/types/labs";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import {
-  ActionCodeBoxIcon,
+  Beaker02V2,
+  CodeSquare01V2,
   ContextItem,
-  EyeIcon,
+  EyeV2,
   Icon,
   Page,
-  TestTubeIcon,
 } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
@@ -28,7 +28,7 @@ const LABS_FEATURES: LabsFeatureItemType[] = [
     label: "Meeting Transcripts Processing",
     featureFlag: "labs_transcripts",
     visibleWithoutAccess: true,
-    icon: EyeIcon,
+    icon: EyeV2,
     description:
       "Receive meeting minutes processed by email automatically and store them in a Dust Folder.",
   },
@@ -37,7 +37,7 @@ const LABS_FEATURES: LabsFeatureItemType[] = [
     label: "MCP Actions Dashboard",
     featureFlag: "labs_mcp_actions_dashboard",
     visibleWithoutAccess: false,
-    icon: ActionCodeBoxIcon,
+    icon: CodeSquare01V2,
     description:
       "Monitor and track MCP (Model Context Protocol) actions executed by your agents.",
     onlyAdminCanManage: true,
@@ -71,7 +71,7 @@ export function LabsPage() {
     <>
       <Page.Header
         title="Exploratory features"
-        icon={TestTubeIcon}
+        icon={Beaker02V2}
         description="Expect some bumps and changes. Feedback welcome, tell us what you think!"
       />
       <Page.Layout direction="vertical">

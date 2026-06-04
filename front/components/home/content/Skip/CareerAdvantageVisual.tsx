@@ -1,4 +1,4 @@
-import { CheckIcon, cn, Icon } from "@dust-tt/sparkle";
+import { CheckV2, cn, Icon } from "@dust-tt/sparkle";
 
 const TOOL_PILLS = [
   { name: "Slack", color: "bg-purple-100 text-purple-700" },
@@ -75,7 +75,7 @@ export function CareerAdvantageVisual() {
               className="flex items-center gap-3 rounded-lg border border-gray-100 bg-gray-50/50 px-3 py-2.5"
             >
               <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-emerald-100">
-                <Icon visual={CheckIcon} className="h-3 w-3 text-emerald-600" />
+                <Icon visual={CheckV2} className="h-3 w-3 text-emerald-600" />
               </span>
               <span className="flex-1 text-sm text-gray-700">{task.label}</span>
               <span className="flex-shrink-0 text-xs text-gray-400">

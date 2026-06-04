@@ -12,7 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSearchbar,
   DropdownMenuTrigger,
-  PlusIcon,
+  PlusV2,
   Spinner,
 } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
@@ -61,7 +61,7 @@ export default function SpaceManagedActionsViewsModel({
       }}
     >
       <DropdownMenuTrigger asChild>
-        <Button label="Add Tools" variant="primary" icon={PlusIcon} size="sm" />
+        <Button label="Add Tools" variant="primary" icon={PlusV2} size="sm" />
       </DropdownMenuTrigger>
 
       <DropdownMenuContent

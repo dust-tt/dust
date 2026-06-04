@@ -21,8 +21,8 @@ import { getBillingCycleFromDay } from "@app/lib/client/subscription";
 import { useAwuUsage } from "@app/lib/swr/workspaces";
 import {
   Button,
-  ChevronLeftIcon,
-  ChevronRightIcon,
+  ChevronLeftV2,
+  ChevronRightV2,
   Chip,
   DropdownMenu,
   DropdownMenuContent,
@@ -497,7 +497,7 @@ export function BaseAwuUsageChart({
         <div className="flex items-center gap-2">
           <span>Usage</span>
           <Button
-            icon={ChevronLeftIcon}
+            icon={ChevronLeftV2}
             size="xs"
             variant="ghost"
             onClick={() => setSelectedPeriod(formatPeriod(previousPeriodDate))}
@@ -508,7 +508,7 @@ export function BaseAwuUsageChart({
           </span>
           {canGoNext && (
             <Button
-              icon={ChevronRightIcon}
+              icon={ChevronRightV2}
               size="xs"
               variant="ghost"
               onClick={() => setSelectedPeriod(formatPeriod(nextPeriodDate))}

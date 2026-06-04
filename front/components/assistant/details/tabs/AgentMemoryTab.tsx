@@ -16,7 +16,7 @@ import {
   DialogTitle,
   Page,
   Spinner,
-  TrashIcon,
+  Trash01V2,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -138,7 +138,7 @@ export function AgentMemoryTab({
                     action={
                       <CardActionButton
                         size="icon"
-                        icon={TrashIcon}
+                        icon={Trash01V2}
                         onClick={() => {
                           setMemoryToDelete(memory.sId);
                         }}

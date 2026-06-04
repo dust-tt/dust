@@ -1,6 +1,6 @@
 import { useExtensionMcpToolsToggle } from "@app/hooks/useExtensionMcpToolsToggle";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Page, PuzzleIcon, SliderToggle } from "@dust-tt/sparkle";
+import { Page, PuzzlePiece01V2, SliderToggle } from "@dust-tt/sparkle";
 
 import { WorkspaceSection } from "./WorkspaceSection";
 
@@ -15,7 +15,7 @@ export function ExtensionMcpToolsSection({
     useExtensionMcpToolsToggle({ owner });
 
   return (
-    <WorkspaceSection title="Browser Extension Tools" icon={PuzzleIcon}>
+    <WorkspaceSection title="Browser Extension Tools" icon={PuzzlePiece01V2}>
       <div className="flex w-full flex-row items-center gap-2">
         <div className="flex-1">
           <Page.P variant="secondary">

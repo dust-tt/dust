@@ -30,8 +30,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  InformationCircleIcon,
-  PlusIcon,
+  InfoCircleV2,
+  PlusV2,
   Tooltip,
 } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
@@ -151,7 +151,7 @@ export function EditSpaceManagedDataSourcesViews({
               size="md"
               variant="warning"
               title="Warning"
-              icon={InformationCircleIcon}
+              icon={InfoCircleV2}
             >
               Deleting these data sources will affect the agents using them.
               These agents will no longer have access to this data and may not
@@ -345,7 +345,7 @@ export function EditSpaceManagedDataSourcesViews({
           : "Add data from connections"
       }
       variant="primary"
-      icon={PlusIcon}
+      icon={PlusV2}
       size="sm"
       onClick={() => {
         openAddDataModal();

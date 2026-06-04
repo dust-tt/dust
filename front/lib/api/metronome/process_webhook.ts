@@ -5,6 +5,7 @@ import {
   dispatchPaygCapReached,
   dispatchPerUserCapReached,
   dispatchPerUserCapResolved,
+  dispatchPerUserCapWarning,
   dispatchPoolExhausted,
   dispatchProgrammaticCapReached,
   dispatchProgrammaticCapReset,
@@ -728,6 +729,7 @@ async function handlePerUserSpendThresholdEvent({
   } else if (eventAlertId === warningAlertId && isReached) {
     // Warning alert (80%) fired — notify but don't block.
     void setUserAwuWarned(workspace.sId, userId);
+    void dispatchPerUserCapWarning({ workspace, userId });
     const user = await UserResource.fetchById(userId);
     if (user) {
       const lightWorkspace = renderLightWorkspaceType({ workspace });

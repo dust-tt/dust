@@ -8,7 +8,7 @@ import { EbookForm } from "@app/components/home/EbookForm";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
-import { CheckIcon } from "@dust-tt/sparkle";
+import { CheckV2 } from "@dust-tt/sparkle";
 import Image from "next/image";
 import type { ReactElement } from "react";
 
@@ -95,7 +95,7 @@ export default function EbookLandingPage() {
                   {LEARNING_POINTS.map((point, index) => (
                     <li key={index} className="flex items-start gap-3">
                       <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700">
-                        <CheckIcon className="h-3.5 w-3.5" />
+                        <CheckV2 className="h-3.5 w-3.5" />
                       </span>
                       <span className="text-base leading-[1.55] text-muted-foreground">
                         {point}

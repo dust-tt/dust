@@ -1,15 +1,14 @@
 import { cn } from "@app/components/poke/shadcn/lib/utils";
 import { classNames } from "@app/lib/utils";
 import {
-  CircleIcon,
-  HexagonIcon,
+  CircleV2,
+  Hexagon01V2,
   Icon,
-  LinkIcon,
-  PlanetIcon,
-  RectangleIcon,
-  RobotIcon,
-  SquareIcon,
-  TriangleIcon,
+  Link01V2,
+  PlanetV2,
+  RobotV2,
+  SquareV2,
+  TriangleV2,
 } from "@dust-tt/sparkle";
 import type React from "react";
 import type { AnchorHTMLAttributes, ReactNode } from "react";
@@ -129,11 +128,11 @@ interface PProps {
 }
 
 const shapeClasses = {
-  square: SquareIcon,
-  circle: CircleIcon,
-  triangle: TriangleIcon,
-  hexagon: HexagonIcon,
-  rectangle: RectangleIcon,
+  square: SquareV2,
+  circle: CircleV2,
+  triangle: TriangleV2,
+  hexagon: Hexagon01V2,
+  rectangle: SquareV2,
 };
 
 export const P = ({
@@ -303,7 +302,7 @@ export function TeamFeatureSection() {
     <div>
       <div className="flex w-full flex-col justify-between gap-6 md:flex-row">
         <div className="flex flex-1 flex-col rounded-2xl bg-blue-50 p-6">
-          <Icon visual={RobotIcon} className="mb-4 h-8 w-8 text-blue-400" />
+          <Icon visual={RobotV2} className="mb-4 h-8 w-8 text-blue-400" />
           <h4 className="text-lg font-semibold">Team orchestration</h4>
           <P size="sm" className="mt-1 text-muted-foreground">
             Build and manage teams of specialized agents that collaborate with
@@ -311,7 +310,7 @@ export function TeamFeatureSection() {
           </P>
         </div>
         <div className="flex flex-1 flex-col rounded-2xl bg-golden-50 p-6">
-          <Icon visual={LinkIcon} className="mb-4 h-8 w-8 text-golden-400" />
+          <Icon visual={Link01V2} className="mb-4 h-8 w-8 text-golden-400" />
           <h4 className="text-lg font-semibold">
             Context-aware infrastructure
           </h4>
@@ -320,7 +319,7 @@ export function TeamFeatureSection() {
           </P>
         </div>
         <div className="flex flex-1 flex-col rounded-2xl bg-rose-50 p-6">
-          <Icon visual={PlanetIcon} className="mb-4 h-8 w-8 text-rose-400" />
+          <Icon visual={PlanetV2} className="mb-4 h-8 w-8 text-rose-400" />
           <h4 className="text-lg font-semibold">Universal access layer</h4>
           <P size="sm" className="mt-1 text-muted-foreground">
             Seamlessly integrate with your existing tools and systems.

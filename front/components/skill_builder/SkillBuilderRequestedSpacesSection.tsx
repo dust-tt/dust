@@ -12,7 +12,7 @@ import type {
 import { useSpaceProjectsLookup } from "@app/lib/swr/spaces";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
-import { Button, ContentMessage, PlanetIcon } from "@dust-tt/sparkle";
+import { Button, ContentMessage, PlanetV2 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
 import { useController, useFormContext, useWatch } from "react-hook-form";
 
@@ -243,7 +243,7 @@ export function SkillBuilderRequestedSpacesSection({
         </div>
         <Button
           label="Manage"
-          icon={PlanetIcon}
+          icon={PlanetV2}
           variant="outline"
           disabled={!areSpaceRequirementsReady}
           onClick={handleOpenSheet}

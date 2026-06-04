@@ -8,7 +8,7 @@ import { getAgentBuilderRoute, setQueryParam } from "@app/lib/utils/router";
 import { isBuilder } from "@app/types/user";
 import {
   Button,
-  ContactsRobotIcon,
+  ContactsRobotV2,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -112,7 +112,7 @@ export function WebAgentBrowser({
                 <Button
                   href={getAgentBuilderRoute(owner.sId, "manage")}
                   variant="primary"
-                  icon={ContactsRobotIcon}
+                  icon={ContactsRobotV2}
                   label="Manage agents"
                   data-gtm-label="assistantManagementButton"
                   data-gtm-location="homepage"

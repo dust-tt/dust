@@ -33,7 +33,7 @@ import {
   ConfluenceLogo,
   cn,
   GithubLogo,
-  GlobeAltIcon,
+  Globe01V2,
   GoogleLogo,
   IntercomLogo,
   LinkWrapper,
@@ -460,7 +460,7 @@ export function PlanLimitationsTable({
                       <ConfluenceLogo />
                     ) : null}
                     {activePlan.limits.connections.isWebCrawlerAllowed ? (
-                      <GlobeAltIcon />
+                      <Globe01V2 />
                     ) : null}
                     {activePlan.limits.connections.isSalesforceAllowed ? (
                       <SalesforceLogo />

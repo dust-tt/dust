@@ -11,7 +11,7 @@ import {
   ContentMessage,
   ContextItem,
   Icon,
-  InformationCircleIcon,
+  InfoCircleV2,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -98,7 +98,7 @@ export function ProviderConfigurationContextItem({
         {apiKey && isHealthy === false && (
           <ContentMessage
             variant="warning"
-            icon={InformationCircleIcon}
+            icon={InfoCircleV2}
             title="Invalid API key"
             size="lg"
             className="mt-4"

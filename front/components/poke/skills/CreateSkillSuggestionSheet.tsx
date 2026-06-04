@@ -17,7 +17,7 @@ import {
   IconPicker,
   Input,
   Label,
-  PlusIcon,
+  PlusV2,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
@@ -217,7 +217,7 @@ export function CreateSkillSuggestionSheet({
                 <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild>
                     <Button
-                      icon={PlusIcon}
+                      icon={PlusV2}
                       variant="outline"
                       label="Add"
                       isSelect

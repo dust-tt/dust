@@ -10,7 +10,7 @@ import type {
 } from "@app/types/user";
 import {
   Button,
-  CheckIcon,
+  CheckV2,
   DataTable,
   Sheet,
   SheetContainer,
@@ -190,7 +190,7 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
                 size="xs"
                 variant={isEditor ? "highlight" : "outline"}
                 label={isEditor ? "Editor" : "Set as editor"}
-                icon={isEditor ? CheckIcon : undefined}
+                icon={isEditor ? CheckV2 : undefined}
                 onClick={(e) => {
                   toggleEditor(sId);
                   e.stopPropagation();

@@ -11,6 +11,7 @@ import {
   Avatar,
   Button,
   cn,
+  DotsHorizontalV2,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -21,9 +22,8 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-  MoreIcon,
-  TrashIcon,
-  UserIcon,
+  Trash01V2,
+  User01V2,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
@@ -82,7 +82,7 @@ export function TaskOverflowMenu({ task }: TaskOverflowMenuProps) {
       <DropdownMenuTrigger asChild>
         <Button
           aria-label="Task actions"
-          icon={MoreIcon}
+          icon={DotsHorizontalV2}
           size="xs"
           variant="ghost"
           className={cn(
@@ -102,7 +102,7 @@ export function TaskOverflowMenu({ task }: TaskOverflowMenuProps) {
           >
             <DropdownMenuSubTrigger
               label="Reassign"
-              icon={UserIcon}
+              icon={User01V2}
               disabled={podMembers.length === 0 && task.user === null}
             />
             <DropdownMenuPortal>
@@ -174,7 +174,7 @@ export function TaskOverflowMenu({ task }: TaskOverflowMenuProps) {
         )}
         <DropdownMenuItem
           label="Delete task"
-          icon={TrashIcon}
+          icon={Trash01V2}
           variant="warning"
           onClick={() => {
             void requestDelete(task);

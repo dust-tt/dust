@@ -3,11 +3,11 @@ import { Dialog, DialogClose, DialogContent } from "@sparkle/components/Dialog";
 import { ImageWrapper } from "@sparkle/components/ImageWrapper";
 import { Spinner } from "@sparkle/components/Spinner";
 import {
-  ArrowDownOnSquareIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  XMarkIcon,
-} from "@sparkle/icons/app";
+  ChevronLeftV2,
+  ChevronRightV2,
+  Download01V2,
+  XCloseV2,
+} from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import React, { useCallback, useState } from "react";
 
@@ -70,7 +70,7 @@ function ImageZoomDialog({
             <Button
               variant="ghost"
               size="sm"
-              icon={ChevronLeftIcon}
+              icon={ChevronLeftV2}
               onClick={(e) => {
                 e.stopPropagation();
                 navigation.onPrevious();
@@ -102,7 +102,7 @@ function ImageZoomDialog({
                   <Button
                     variant="outline"
                     size="xs"
-                    icon={XMarkIcon}
+                    icon={XCloseV2}
                     className="s-absolute s-right-2 s-top-2"
                   />
                 </DialogClose>
@@ -110,7 +110,7 @@ function ImageZoomDialog({
                   <Button
                     variant="outline"
                     size="xs"
-                    icon={ArrowDownOnSquareIcon}
+                    icon={Download01V2}
                     tooltip="Download"
                     className="s-absolute s-bottom-2 s-right-2"
                     onClick={handleDownload}
@@ -125,7 +125,7 @@ function ImageZoomDialog({
             <Button
               variant="ghost"
               size="sm"
-              icon={ChevronRightIcon}
+              icon={ChevronRightV2}
               onClick={(e) => {
                 e.stopPropagation();
                 navigation.onNext();

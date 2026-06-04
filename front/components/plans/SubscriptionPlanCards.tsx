@@ -8,7 +8,7 @@ import {
 import { isWhitelistedBusinessPlan } from "@app/lib/plans/plan_codes";
 import type { BillingPeriod } from "@app/types/plan";
 import type { WorkspaceType } from "@app/types/user";
-import { Button, CheckIcon, Icon } from "@dust-tt/sparkle";
+import { Button, CheckV2, Icon } from "@dust-tt/sparkle";
 
 const PRO_FEATURES = [
   "From 1 user",
@@ -86,7 +86,7 @@ export function SubscriptionPlanCards({
           ].map((feature, index) => (
             <li key={index} className="flex items-start gap-2">
               <Icon
-                visual={CheckIcon}
+                visual={CheckV2}
                 size="sm"
                 className="mt-0.5 shrink-0 text-highlight-500 dark:text-highlight-500-night"
               />
@@ -132,7 +132,7 @@ export function SubscriptionPlanCards({
           {ENTERPRISE_FEATURES.map((feature, index) => (
             <li key={index} className="flex items-start gap-2">
               <Icon
-                visual={CheckIcon}
+                visual={CheckV2}
                 size="sm"
                 className="mt-0.5 shrink-0 text-highlight-500 dark:text-highlight-500-night"
               />

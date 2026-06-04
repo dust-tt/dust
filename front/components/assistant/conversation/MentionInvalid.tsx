@@ -9,11 +9,11 @@ import type {
 import { isPodConversation } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
+  AlertCircleV2,
   Button,
   ContentMessage,
-  ExclamationCircleIcon,
   Icon,
-  XMarkIcon,
+  XCloseV2,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
@@ -82,7 +82,7 @@ export function MentionInvalid({
       return (
         <ContentMessage variant="warning" className="my-3 w-full max-w-full">
           <div className="flex items-center gap-2">
-            <Icon visual={ExclamationCircleIcon} className="hidden sm:block" />
+            <Icon visual={AlertCircleV2} className="hidden sm:block" />
             <div>
               <span className="font-semibold">{mention.label}</span> {message}
             </div>
@@ -91,7 +91,7 @@ export function MentionInvalid({
                 label="Dismiss"
                 variant="outline"
                 size="xs"
-                icon={XMarkIcon}
+                icon={XCloseV2}
                 disabled={isSubmitting}
                 onClick={handleDismiss}
               />
@@ -105,7 +105,7 @@ export function MentionInvalid({
       return (
         <ContentMessage variant="warning" className="my-3 w-full max-w-full">
           <div className="flex items-center gap-2">
-            <Icon visual={ExclamationCircleIcon} className="hidden sm:block" />
+            <Icon visual={AlertCircleV2} className="hidden sm:block" />
             <div>
               <span className="font-semibold">{mention.label}</span> can't be
               invoked as it is configured to use at least one space that the
@@ -117,7 +117,7 @@ export function MentionInvalid({
                 label="Dismiss"
                 variant="outline"
                 size="xs"
-                icon={XMarkIcon}
+                icon={XCloseV2}
                 disabled={isSubmitting}
                 onClick={handleDismiss}
               />

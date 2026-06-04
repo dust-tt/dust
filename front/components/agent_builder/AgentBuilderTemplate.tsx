@@ -6,16 +6,16 @@ import type {
   TemplateActionPreset,
 } from "@app/types/assistant/templates";
 import {
-  BookOpenIcon,
+  BookOpen01V2,
   Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  ListAddIcon,
+  Edit04V2,
+  ListAddV2,
   Markdown,
   Page,
-  PencilSquareIcon,
   Separator,
 } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
@@ -109,14 +109,14 @@ function TemplateButtons({ assistantTemplate }: TemplateButtonsProps) {
           <DropdownMenuItem
             label="Reset instructions"
             description="Set instructions back to template's default"
-            icon={PencilSquareIcon}
+            icon={Edit04V2}
             onClick={handleResetInstructions}
             disabled={!assistantTemplate.presetInstructions}
           />
           <DropdownMenuItem
             label="Reset tools"
             description="Remove all tools"
-            icon={ListAddIcon}
+            icon={ListAddV2}
             onClick={handleResetActions}
           />
         </DropdownMenuContent>
@@ -140,9 +140,9 @@ function TemplatePresetActions({
       type === "TABLES_QUERY" ||
       type === "PROCESS"
     ) {
-      return BookOpenIcon;
+      return BookOpen01V2;
     }
-    return ListAddIcon;
+    return ListAddV2;
   };
 
   const getActionLabel = (type: MultiActionPreset) => {

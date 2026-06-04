@@ -10,7 +10,7 @@ import {
   ConfluenceLogo,
   DriveLogo,
   GithubLogo,
-  GlobeAltIcon,
+  Globe01V2,
   Input,
   IntercomLogo,
   NotionLogo,
@@ -258,7 +258,7 @@ export const PLAN_FIELDS = {
     type: "boolean",
     width: "tiny",
     title: "Websites",
-    IconComponent: () => <GlobeAltIcon className="h-4 w-4" />,
+    IconComponent: () => <Globe01V2 className="h-4 w-4" />,
   },
   isSalesforceAllowed: {
     type: "boolean",

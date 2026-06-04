@@ -9,7 +9,7 @@ import {
   Card,
   ContentMessage,
   DataTable,
-  InformationCircleIcon,
+  InfoCircleV2,
   SearchInput,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -65,7 +65,7 @@ function AgentMessage({ title, children }: AgentMessageProps) {
   return (
     <ContentMessage
       title={title}
-      icon={InformationCircleIcon}
+      icon={InfoCircleV2}
       variant="warning"
       size="sm"
     >

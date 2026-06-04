@@ -1,6 +1,6 @@
 import { classNames } from "@app/lib/utils";
 import type { RegularButtonProps } from "@dust-tt/sparkle";
-import { Button, ChevronLeftIcon, ChevronRightIcon } from "@dust-tt/sparkle";
+import { Button, ChevronLeftV2, ChevronRightV2 } from "@dust-tt/sparkle";
 import type { UseEmblaCarouselType } from "embla-carousel-react";
 import useEmblaCarousel from "embla-carousel-react";
 import * as React from "react";
@@ -206,7 +206,7 @@ const CarouselPrevious = React.forwardRef<
       ref={ref}
       variant={variant}
       size={size}
-      icon={ChevronLeftIcon}
+      icon={ChevronLeftV2}
       className={className}
       disabled={!isLooping && !canScrollPrev}
       onClick={scrollPrev}
@@ -225,7 +225,7 @@ const CarouselNext = React.forwardRef<HTMLButtonElement, RegularButtonProps>(
         ref={ref}
         variant={variant}
         size={size}
-        icon={ChevronRightIcon}
+        icon={ChevronRightV2}
         className={className}
         disabled={!isLooping && !canScrollNext}
         onClick={scrollNext}

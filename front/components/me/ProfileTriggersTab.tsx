@@ -8,10 +8,10 @@ import type { TriggerType } from "@app/types/assistant/triggers";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Avatar,
-  BellIcon,
+  Bell01V2,
   Button,
   Chip,
-  ClockIcon,
+  ClockV2,
   DataTable,
   Dialog,
   DialogContainer,
@@ -20,10 +20,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  PencilSquareIcon,
+  Edit04V2,
   SearchInput,
   Spinner,
-  TrashIcon,
+  Trash01V2,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useCallback, useMemo, useState } from "react";
@@ -134,11 +134,7 @@ export function ProfileTriggersTab({ owner }: ProfileTriggersTabProps) {
               <Avatar
                 size="xs"
                 visual={
-                  row.original.kind === "schedule" ? (
-                    <ClockIcon />
-                  ) : (
-                    <BellIcon />
-                  )
+                  row.original.kind === "schedule" ? <ClockV2 /> : <Bell01V2 />
                 }
               />
               <div className="text-sm font-semibold">{row.original.name}</div>
@@ -161,12 +157,12 @@ export function ProfileTriggersTab({ owner }: ProfileTriggersTabProps) {
           const buttonProps = isGlobalAgentId(row.original.agentConfigurationId)
             ? {
                 onClick: () => setTriggerToDelete(row.original),
-                icon: TrashIcon,
+                icon: Trash01V2,
                 label: "Delete",
               }
             : {
                 href: getEditionURL(row.original.agentConfigurationId),
-                icon: PencilSquareIcon,
+                icon: Edit04V2,
                 label: "Manage",
               };
 

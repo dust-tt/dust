@@ -3,11 +3,11 @@ import { P } from "@app/components/home/ContentComponents";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { appendUTMParams } from "@app/lib/utils/utm";
 import {
-  ArrowRightIcon,
+  ArrowRightV2,
   Button,
-  CheckIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
+  CheckV2,
+  ChevronLeftV2,
+  ChevronRightV2,
   cn,
   Icon,
 } from "@dust-tt/sparkle";
@@ -84,14 +84,14 @@ function TestimonialSlider({
               className="flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 text-gray-600 transition-colors hover:bg-gray-50"
               aria-label="Previous testimonial"
             >
-              <ChevronLeftIcon className="h-5 w-5" />
+              <ChevronLeftV2 className="h-5 w-5" />
             </button>
             <button
               onClick={next}
               className="flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 text-gray-600 transition-colors hover:bg-gray-50"
               aria-label="Next testimonial"
             >
-              <ChevronRightIcon className="h-5 w-5" />
+              <ChevronRightV2 className="h-5 w-5" />
             </button>
           </div>
         </div>
@@ -187,7 +187,7 @@ export function ChatGptEnterpriseDeepDive({
               {/* Pros */}
               <div>
                 <h3 className="mb-6 flex items-center gap-2 text-xl font-bold text-[#111418]">
-                  <Icon visual={CheckIcon} className="h-6 w-6 text-green-500" />
+                  <Icon visual={CheckV2} className="h-6 w-6 text-green-500" />
                   Why Dust Wins
                 </h3>
                 <ul className="space-y-4">
@@ -231,7 +231,7 @@ export function ChatGptEnterpriseDeepDive({
                     variant="primary"
                     size="md"
                     label="Book a demo"
-                    icon={ArrowRightIcon}
+                    icon={ArrowRightV2}
                     onClick={withTracking(
                       TRACKING_AREAS.COMPETITIVE,
                       "chatgpt_enterprise_deep_dive_demo",

@@ -14,6 +14,8 @@ import type {
 } from "@app/lib/api/analytics/programmatic_cost";
 import type { GetBillingInfoResponseBody } from "@app/lib/api/billing/info";
 import type { GetBillingInvoicesResponseBody } from "@app/lib/api/billing/invoices";
+import type { PostCheckoutPaymentResponseBody } from "@app/lib/api/checkout/payment";
+import type { GetPreparePaymentResponseBody } from "@app/lib/api/checkout/prepare_payment";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
@@ -41,8 +43,6 @@ import type {
   GetSubscriptionsResponseBody,
   PostSubscriptionResponseBody,
 } from "@app/pages/api/w/[wId]/subscriptions";
-import type { PostCheckoutPaymentResponseBody } from "@app/pages/api/w/[wId]/subscriptions/checkout/payment";
-import type { GetPreparePaymentResponseBody } from "@app/pages/api/w/[wId]/subscriptions/checkout/prepare-payment";
 import type { GetCheckoutStatusResponseBody } from "@app/pages/api/w/[wId]/subscriptions/checkout-status";
 import type { GetSubscriptionPricingResponseBody } from "@app/pages/api/w/[wId]/subscriptions/pricing";
 import type { GetSubscriptionStatusResponseBody } from "@app/pages/api/w/[wId]/subscriptions/status";
@@ -1301,7 +1301,7 @@ export function useConfirmPayment({ workspaceId }: { workspaceId: string }) {
             return null;
           }
         }
-        return res.json();
+        return await res.json();
       } finally {
         setIsConfirming(false);
       }

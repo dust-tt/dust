@@ -4,7 +4,7 @@ import {
   getInternalMCPServerToolIcon,
   type InternalMCPServerNameType,
 } from "@app/lib/actions/mcp_internal_actions/constants";
-import { ToolsIcon } from "@dust-tt/sparkle";
+import { ShapesPlusV2 } from "@dust-tt/sparkle";
 import type React from "react";
 
 export function getCollapseAnimationStyle(
@@ -31,5 +31,5 @@ export function getActionStepIcon(step: {
       toolIcon ?? getInternalMCPServerIconByName(step.internalMCPServerName);
     return InternalActionIcons[iconName];
   }
-  return ToolsIcon;
+  return ShapesPlusV2;
 }

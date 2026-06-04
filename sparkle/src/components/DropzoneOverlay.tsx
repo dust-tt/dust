@@ -1,5 +1,5 @@
 import { Icon } from "@sparkle/components/Icon";
-import { ArrowUpOnSquareIcon } from "@sparkle/icons/app";
+import { Upload01V2 } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib";
 import anim from "@sparkle/lottie/dragArea";
 import Lottie, { type LottieRefCurrentProps } from "lottie-react";
@@ -18,7 +18,7 @@ export function DropzoneOverlay({
   title,
   visual = (
     <Icon
-      visual={ArrowUpOnSquareIcon}
+      visual={Upload01V2}
       size="lg"
       className="s-text-white dark:s-text-primary-950"
     />

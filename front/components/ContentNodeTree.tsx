@@ -4,13 +4,13 @@ import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { classNames } from "@app/lib/utils";
 import type { ContentNode } from "@app/types/connectors/connectors_api";
 import type { APIError } from "@app/types/error";
-import type { NotificationType } from "@dust-tt/sparkle";
 import {
-  BracesIcon,
+  BracketsV2,
   Button,
-  ExternalLinkIcon,
+  CheckDone01V2,
   IconButton,
-  ListCheckIcon,
+  LinkExternal01V2,
+  type NotificationType,
   SearchInput,
   Spinner,
   Tree,
@@ -309,7 +309,7 @@ function ContentNodeTreeChildren({
                 {n.sourceUrl && (
                   <Button
                     href={n.sourceUrl}
-                    icon={ExternalLinkIcon}
+                    icon={LinkExternal01V2}
                     size="xs"
                     variant="outline"
                   />
@@ -317,7 +317,7 @@ function ContentNodeTreeChildren({
                 {onDocumentViewClick && (
                   <IconButton
                     size="xs"
-                    icon={BracesIcon}
+                    icon={BracketsV2}
                     onClick={() => {
                       if (n.type === "document") {
                         onDocumentViewClick(n.internalId);
@@ -369,7 +369,7 @@ function ContentNodeTreeChildren({
             </div>
 
             <Button
-              icon={ListCheckIcon}
+              icon={CheckDone01V2}
               label={selectAllClicked ? "Unselect All" : "Select All"}
               size="sm"
               className="m-1"

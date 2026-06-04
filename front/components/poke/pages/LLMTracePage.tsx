@@ -10,7 +10,7 @@ import { isString } from "@app/types/shared/utils/general";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import {
   Chip,
-  ExternalLinkIcon,
+  LinkExternal01V2,
   Page,
   Spinner,
   Tabs,
@@ -97,7 +97,7 @@ export function LLMTracePage() {
                 label={`Agent: ${trace.context.agentConfigurationId}`}
                 size="sm"
                 href={`/poke/${owner.sId}/assistants/${trace.context.agentConfigurationId}`}
-                icon={ExternalLinkIcon}
+                icon={LinkExternal01V2}
               />
             )}
             {trace.context.conversationId && (
@@ -106,7 +106,7 @@ export function LLMTracePage() {
                 label={`Conversation`}
                 size="sm"
                 href={`/poke/${owner.sId}/conversation/${trace.context.conversationId}`}
-                icon={ExternalLinkIcon}
+                icon={LinkExternal01V2}
               />
             )}
           </div>

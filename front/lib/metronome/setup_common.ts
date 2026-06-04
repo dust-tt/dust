@@ -427,6 +427,10 @@ export const PRODUCTS: ProductDef[] = [
     name: "Seat Subscription Credits",
     type: "FIXED",
   },
+  {
+    name: "Seat Subscription Commit",
+    type: "FIXED",
+  },
 ];
 
 // Factory for a single seat subscription. All share the same ADVANCE collection

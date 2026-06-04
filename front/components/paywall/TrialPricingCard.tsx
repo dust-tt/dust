@@ -8,7 +8,7 @@ import {
   Button,
   ButtonsSwitch,
   ButtonsSwitchList,
-  CheckIcon,
+  CheckV2,
   Icon,
 } from "@dust-tt/sparkle";
 
@@ -68,7 +68,7 @@ export function TrialPricingCard({
         {FEATURES.map((feature, index) => (
           <li key={index} className="flex items-start gap-2">
             <Icon
-              visual={CheckIcon}
+              visual={CheckV2}
               size="sm"
               className="mt-0.5 shrink-0 text-highlight-500 dark:text-highlight-500-night"
             />

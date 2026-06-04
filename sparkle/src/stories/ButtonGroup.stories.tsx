@@ -8,16 +8,16 @@ import {
 } from "@sparkle/components/Button";
 
 import {
-  ArrowPathIcon,
+  RefreshCw02V2,
   Button,
   ButtonGroup,
   ButtonGroupDropdown,
-  ChevronDownIcon,
-  ClipboardIcon,
-  PlusIcon,
-  RobotIcon,
+  ChevronDownV2,
+  ClipboardV2,
+  PlusV2,
+  RobotV2,
   Separator,
-  TrashIcon,
+  Trash01V2,
 } from "../index_with_tw_base";
 
 const DefaultButtons = ({
@@ -74,8 +74,8 @@ export const WithIcons: Story = {
   args: {
     children: (
       <>
-        <Button icon={PlusIcon} label="Add" variant="outline" size="sm" />
-        <Button icon={RobotIcon} label="Agent" variant="outline" size="sm" />
+        <Button icon={PlusV2} label="Add" variant="outline" size="sm" />
+        <Button icon={RobotV2} label="Agent" variant="outline" size="sm" />
         <Button label="More" variant="outline" size="sm" />
       </>
     ),
@@ -170,18 +170,18 @@ export const WithDropdownMenu: Story = {
         </h3>
         <ButtonGroup>
           <Button
-            icon={ClipboardIcon}
+            icon={ClipboardV2}
             tooltip="Copy to clipboard"
             variant="outline"
             size="xs"
           />
           <ButtonGroupDropdown
             trigger={
-              <Button variant="outline" size="xs" icon={ChevronDownIcon} />
+              <Button variant="outline" size="xs" icon={ChevronDownV2} />
             }
             items={[
-              { label: "Retry", icon: ArrowPathIcon },
-              { label: "Delete", icon: TrashIcon, variant: "warning" },
+              { label: "Retry", icon: RefreshCw02V2 },
+              { label: "Delete", icon: Trash01V2, variant: "warning" },
             ]}
           />
         </ButtonGroup>
@@ -194,7 +194,7 @@ export const WithDropdownMenu: Story = {
             <Button label="Copy" variant="outline" size="sm" />
             <ButtonGroupDropdown
               trigger={
-                <Button variant="outline" size="sm" icon={ChevronDownIcon} />
+                <Button variant="outline" size="sm" icon={ChevronDownV2} />
               }
               items={[
                 { label: "Option 1" },
@@ -208,26 +208,21 @@ export const WithDropdownMenu: Story = {
             <Button label="Save" variant="primary" size="sm" />
             <ButtonGroupDropdown
               trigger={
-                <Button variant="primary" size="sm" icon={ChevronDownIcon} />
+                <Button variant="primary" size="sm" icon={ChevronDownV2} />
               }
               items={[{ label: "Save and close" }, { label: "Save as draft" }]}
             />
           </ButtonGroup>
 
           <ButtonGroup>
-            <Button icon={PlusIcon} label="Add" variant="outline" size="sm" />
-            <Button
-              icon={RobotIcon}
-              label="Agent"
-              variant="outline"
-              size="sm"
-            />
+            <Button icon={PlusV2} label="Add" variant="outline" size="sm" />
+            <Button icon={RobotV2} label="Agent" variant="outline" size="sm" />
             <ButtonGroupDropdown
               trigger={
-                <Button variant="outline" size="sm" icon={ChevronDownIcon} />
+                <Button variant="outline" size="sm" icon={ChevronDownV2} />
               }
               items={[
-                { label: "More options", icon: PlusIcon },
+                { label: "More options", icon: PlusV2 },
                 { label: "Settings" },
               ]}
             />

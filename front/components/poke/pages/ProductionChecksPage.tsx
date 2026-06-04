@@ -17,12 +17,12 @@ import { conjugate, pluralize } from "@app/types/shared/utils/string_utils";
 import {
   Button,
   Chip,
-  ClipboardIcon,
+  ClipboardV2,
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
   LinkWrapper,
-  PlayIcon,
+  PlayV2,
   Spinner,
 } from "@dust-tt/sparkle";
 import type React from "react";
@@ -165,7 +165,7 @@ function ActionLinksList({ payload, links, checkName }: ActionLinksListProps) {
         <Button
           variant="ghost"
           size="xs"
-          icon={ClipboardIcon}
+          icon={ClipboardV2}
           onClick={() => handleCopyDocumentIds(item)}
           tooltip="Copy document IDs"
         />
@@ -411,7 +411,7 @@ function ProductionCheckCard({
       <Button
         variant="outline"
         size="xs"
-        icon={isRunning ? Spinner : PlayIcon}
+        icon={isRunning ? Spinner : PlayV2}
         onClick={(e: React.MouseEvent) => {
           e.stopPropagation();
           onRun();

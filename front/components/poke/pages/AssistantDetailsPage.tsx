@@ -18,8 +18,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  ExternalLinkIcon,
   IconButton,
+  LinkExternal01V2,
   LinkWrapper,
   Page,
   Spinner,
@@ -28,7 +28,7 @@ import {
   TabsList,
   TabsTrigger,
   TextArea,
-  UserGroupIcon,
+  Users01V2,
 } from "@dust-tt/sparkle";
 import { JsonViewer } from "@textea/json-viewer";
 
@@ -93,7 +93,7 @@ export function AssistantDetailsPage() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
-              icon={UserGroupIcon}
+              icon={Users01V2}
               onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                 e.currentTarget.focus();
               }}
@@ -243,7 +243,7 @@ export function AssistantDetailsPage() {
                                     target="_blank"
                                   >
                                     <IconButton
-                                      icon={ExternalLinkIcon}
+                                      icon={LinkExternal01V2}
                                       size="xs"
                                       variant="outline"
                                     />
@@ -268,7 +268,7 @@ export function AssistantDetailsPage() {
                               href={`/poke/${owner.sId}/assistants/${a.sId}/instructions`}
                             >
                               <Button
-                                icon={ExternalLinkIcon}
+                                icon={LinkExternal01V2}
                                 label="View in editor"
                                 variant="outline"
                                 size="xs"

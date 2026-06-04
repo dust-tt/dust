@@ -3,9 +3,9 @@ import React from "react";
 
 import {
   Button,
-  Cog6ToothIcon,
-  CommandIcon,
-  LightbulbIcon,
+  Settings01V2,
+  CommandV2,
+  Lightbulb04V2,
   Tabs,
   TabsContent,
   TabsList,
@@ -26,12 +26,12 @@ export const Default: Story = {
     <div className="s-w-80">
       <Tabs defaultValue="account">
         <TabsList className="s-px-2">
-          <TabsTrigger value="account" label="Hello" icon={CommandIcon} />
-          <TabsTrigger value="password" label="World" icon={LightbulbIcon} />
+          <TabsTrigger value="account" label="Hello" icon={CommandV2} />
+          <TabsTrigger value="password" label="World" icon={Lightbulb04V2} />
           <div className="s-grow" />
           <TabsTrigger
             value="settings"
-            icon={Cog6ToothIcon}
+            icon={Settings01V2}
             tooltip="Settings"
           />
         </TabsList>
@@ -48,12 +48,12 @@ export const WithMultipleTabs: Story = {
     <div className="s-w-[100%]">
       <Tabs defaultValue="tab1">
         <TabsList className="s-px-2">
-          <TabsTrigger value="tab1" label="Tab 1" icon={CommandIcon} />
-          <TabsTrigger value="tab2" label="Tab 2" icon={LightbulbIcon} />
-          <TabsTrigger value="tab3" label="Tab 3" icon={Cog6ToothIcon} />
-          <TabsTrigger value="tab4" label="Tab 4" icon={CommandIcon} />
-          <TabsTrigger value="tab5" label="Tab 5" icon={LightbulbIcon} />
-          <TabsTrigger value="tab6" label="Tab 6" icon={Cog6ToothIcon} />
+          <TabsTrigger value="tab1" label="Tab 1" icon={CommandV2} />
+          <TabsTrigger value="tab2" label="Tab 2" icon={Lightbulb04V2} />
+          <TabsTrigger value="tab3" label="Tab 3" icon={Settings01V2} />
+          <TabsTrigger value="tab4" label="Tab 4" icon={CommandV2} />
+          <TabsTrigger value="tab5" label="Tab 5" icon={Lightbulb04V2} />
+          <TabsTrigger value="tab6" label="Tab 6" icon={Settings01V2} />
           <div className="s-grow" />
           <Button label="Hello" />
         </TabsList>

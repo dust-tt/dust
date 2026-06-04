@@ -8,7 +8,7 @@ import {
   TooltipRoot,
   TooltipTrigger,
 } from "@sparkle/components/Tooltip";
-import { ArrowDownSIcon, ArrowRightSIcon } from "@sparkle/icons/app";
+import { ChevronDownV2, ChevronRightV2 } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import React, {
   type ComponentType,
@@ -17,7 +17,6 @@ import React, {
   useEffect,
   useState,
 } from "react";
-
 import { Checkbox, type CheckboxProps } from "./Checkbox";
 
 export interface TreeProps {
@@ -238,7 +237,7 @@ Tree.Item = React.forwardRef<
         >
           {type === "node" && (
             <Button
-              icon={isExpanded ? ArrowDownSIcon : ArrowRightSIcon}
+              icon={isExpanded ? ChevronDownV2 : ChevronRightV2}
               size="xmini"
               variant="ghost-secondary"
               disabled={!effectiveOnChevronClick}

@@ -5,7 +5,7 @@ import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal
 import type { MCPServerType } from "@app/lib/api/mcp";
 import {
   Icon,
-  InformationCircleIcon,
+  InfoCircleV2,
   Label,
   SliderToggle,
   Tooltip,
@@ -45,7 +45,7 @@ export function CustomHeadersConfigurationSection({
               <Tooltip
                 trigger={
                   <Icon
-                    visual={InformationCircleIcon}
+                    visual={InfoCircleV2}
                     size="xs"
                     className="text-gray-400"
                   />

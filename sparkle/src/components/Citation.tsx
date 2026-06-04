@@ -3,7 +3,7 @@ import { Card, type CardProps } from "@sparkle/components/Card";
 import { ImagePreview } from "@sparkle/components/ImagePreview";
 import { Spinner } from "@sparkle/components/Spinner";
 import { Tooltip } from "@sparkle/components/Tooltip";
-import { XMarkIcon } from "@sparkle/icons/app";
+import { XCloseV2 } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
 import React, { type ReactNode } from "react";
@@ -185,7 +185,7 @@ const CitationClose = React.forwardRef<HTMLButtonElement, CitationCloseProps>(
         variant="ghost"
         size="icon"
         className={className}
-        icon={XMarkIcon}
+        icon={XCloseV2}
         onClick={(e) => {
           e.stopPropagation();
           onClick?.(e);

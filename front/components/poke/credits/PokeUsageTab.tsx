@@ -3,11 +3,7 @@ import type { PokeStripeSubscriptionWire } from "@app/lib/api/poke/workspace_inf
 import { usePokeAwuPoolSummary } from "@app/poke/swr/credits";
 import type { SubscriptionType } from "@app/types/plan";
 import type { WorkspaceType } from "@app/types/user";
-import {
-  ContentMessage,
-  ExclamationCircleIcon,
-  Spinner,
-} from "@dust-tt/sparkle";
+import { AlertCircleV2, ContentMessage, Spinner } from "@dust-tt/sparkle";
 
 interface PokeUsageTabProps {
   owner: WorkspaceType;
@@ -39,7 +35,7 @@ function PokeCreditPoolCard({ owner }: PokeCreditPoolCardProps) {
     return (
       <ContentMessage
         title="Failed to load Workspace Credits Pool"
-        icon={ExclamationCircleIcon}
+        icon={AlertCircleV2}
         variant="warning"
       >
         Could not load the credit pool summary for this workspace.

@@ -8,7 +8,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isWebbrowseInputType } from "@app/lib/actions/mcp_internal_actions/types";
 import { validateUrl } from "@app/types/shared/utils/url_utils";
-import { Card, FaviconIcon, GlobeAltIcon } from "@dust-tt/sparkle";
+import { Card, FaviconIcon, Globe01V2 } from "@dust-tt/sparkle";
 
 interface BrowseResultItemProps {
   result: BrowseResultResourceType;
@@ -69,7 +69,7 @@ export function MCPBrowseActionDetails({
           ? "Browsing the web"
           : "Web navigation"
       }
-      visual={GlobeAltIcon}
+      visual={Globe01V2}
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
         {(displayContext === "conversation" || browseResults.length === 0) &&

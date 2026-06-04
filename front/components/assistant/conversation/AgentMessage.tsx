@@ -85,27 +85,27 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types/user";
-import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
 import {
-  ActionGitBranchIcon,
-  ArrowPathIcon,
   Button,
   ButtonGroup,
   ButtonGroupDropdown,
   Chip,
-  ClipboardCheckIcon,
-  ClipboardIcon,
+  ClipboardCheckV2,
+  ClipboardV2,
   ConversationMessageAvatar,
   ConversationMessageContainer,
   ConversationMessageContent,
   ConversationMessageTitle,
-  InformationCircleIcon,
+  DotsHorizontalV2,
+  type DropdownMenuItemProps,
+  GitBranch01V2,
+  InfoCircleV2,
   InteractiveImageGrid,
-  LinkIcon,
-  MoreIcon,
-  StopIcon,
+  Link01V2,
+  RefreshCw02V2,
+  StopV2,
   Tooltip,
-  TrashIcon,
+  Trash01V2,
   TruncatedContent,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
@@ -161,7 +161,7 @@ function PrunedContextChip() {
           label="Context limit reached"
           size="xs"
           color="white"
-          icon={InformationCircleIcon}
+          icon={InfoCircleV2}
         />
       }
     />
@@ -664,7 +664,7 @@ export function AgentMessage({
         onClick={async () => {
           await cancelMessage([sId]);
         }}
-        icon={StopIcon}
+        icon={StopV2}
         className="text-muted-foreground"
       />
     );
@@ -841,14 +841,14 @@ export function AgentMessage({
     const dropdownItems: DropdownMenuItemProps[] = [
       {
         label: "Copy message link",
-        icon: LinkIcon,
+        icon: Link01V2,
         onSelect: handleCopyMessageLink,
       },
     ];
 
     dropdownItems.push({
       label: "Branch from here",
-      icon: ActionGitBranchIcon,
+      icon: GitBranch01V2,
       onSelect: () => {
         void branchConversation(agentMessage.sId);
       },
@@ -858,7 +858,7 @@ export function AgentMessage({
     if (shouldShowRetry) {
       dropdownItems.push({
         label: "Retry",
-        icon: ArrowPathIcon,
+        icon: RefreshCw02V2,
         onSelect: () => {
           void retryHandler({
             conversationId,
@@ -872,7 +872,7 @@ export function AgentMessage({
     if (canDeleteAgentMessage) {
       dropdownItems.push({
         label: "Delete message",
-        icon: TrashIcon,
+        icon: Trash01V2,
         onSelect: handleDeleteAgentMessage,
         disabled: isDeleting,
         variant: "warning" as const,
@@ -886,7 +886,7 @@ export function AgentMessage({
           variant="outline"
           size="xs"
           onClick={handleCopyToClipboard}
-          icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+          icon={isCopied ? ClipboardCheckV2 : ClipboardV2}
           className="text-muted-foreground"
         />
         <ButtonGroupDropdown
@@ -894,7 +894,7 @@ export function AgentMessage({
             <Button
               variant="outline"
               size="xs"
-              icon={MoreIcon}
+              icon={DotsHorizontalV2}
               className="text-muted-foreground"
             />
           }
@@ -1426,14 +1426,14 @@ function AgentMessageContent({
                   <Button
                     variant="outline"
                     size="xs"
-                    icon={MoreIcon}
+                    icon={DotsHorizontalV2}
                     className="text-muted-foreground"
                   />
                 }
                 items={[
                   {
                     label: "Retry",
-                    icon: ArrowPathIcon,
+                    icon: RefreshCw02V2,
                     onSelect: () => {
                       void retryHandler({
                         conversationId,

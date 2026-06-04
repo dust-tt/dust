@@ -39,7 +39,7 @@ import {
   ContentMessageAction,
   ContentMessageInline,
   EmptyCTA,
-  InformationCircleIcon,
+  InfoCircleV2,
 } from "@dust-tt/sparkle";
 import {
   useVirtuosoLocation,
@@ -496,7 +496,7 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
       </div>
       {blockedActions.length > 0 && (
         <ContentMessageInline
-          icon={InformationCircleIcon}
+          icon={InfoCircleV2}
           variant="primary"
           className="mb-5 flex max-h-dvh w-full"
         >

@@ -6,8 +6,8 @@ import type { WorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
 import {
   Button,
-  CheckIcon,
-  ChevronDownIcon,
+  CheckV2,
+  ChevronDownV2,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuLabel,
@@ -57,7 +57,7 @@ export const TableTagSelector = ({
         ) : (
           <Button
             variant="ghost"
-            icon={ChevronDownIcon}
+            icon={ChevronDownV2}
             size="xmini"
             className="invisible text-muted-foreground group-hover:visible dark:text-muted-foreground-night"
           />
@@ -90,7 +90,7 @@ export const TableTagSelector = ({
                     <DropdownMenuTagItem
                       label={t.name}
                       color="golden"
-                      icon={isChecked ? CheckIcon : undefined}
+                      icon={isChecked ? CheckV2 : undefined}
                       onClick={async () => {
                         setIsLoading(true);
                         await updateAgentTags(agentConfigurationId, {

@@ -9,9 +9,9 @@ import type { LightWorkspaceType } from "@app/types/user";
 import {
   Chip,
   Icon,
-  InformationCircleIcon,
+  InfoCircleV2,
   SliderToggle,
-  SparklesIcon,
+  Stars02V2,
   Tooltip,
 } from "@dust-tt/sparkle";
 import { useCallback, useContext, useRef, useState } from "react";
@@ -135,7 +135,7 @@ export function SuggestedTasksGenerationTile({
   return (
     <div className="flex items-center justify-between gap-4">
       <PodSettingsOptionLabel
-        icon={SparklesIcon}
+        icon={Stars02V2}
         title="Suggest tasks"
         description="Automatic task suggestions from Pod activity"
         trailingInTitle={
@@ -151,7 +151,7 @@ export function SuggestedTasksGenerationTile({
               className="inline-flex rounded-md p-1 text-muted-foreground hover:text-foreground dark:text-muted-foreground-night dark:hover:text-foreground-night"
               aria-label="Last automatic task suggestion scan"
             >
-              <Icon visual={InformationCircleIcon} size="sm" />
+              <Icon visual={InfoCircleV2} size="sm" />
             </button>
           }
         />

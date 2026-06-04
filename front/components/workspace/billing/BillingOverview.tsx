@@ -14,12 +14,12 @@ import type { SubscriptionType } from "@app/types/plan";
 import { isSubscriptionMetronomeBilled } from "@app/types/plan";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  ActionCalendarIcon,
-  ArrowUpOnSquareIcon,
   Button,
-  HistoryIcon,
+  CalendarV2,
+  ClockRewindV2,
   Icon,
   Spinner,
+  Upload01V2,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -161,19 +161,19 @@ export function BillingOverview({ owner, subscription }: BillingOverviewProps) {
           <div className="flex flex-col gap-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
             {subscriptionEndLabel && (
               <div className="flex items-center gap-2 font-semibold text-foreground dark:text-foreground-night">
-                <Icon visual={ActionCalendarIcon} size="xs" />
+                <Icon visual={CalendarV2} size="xs" />
                 <span>Subscription end: {subscriptionEndLabel}</span>
               </div>
             )}
             <div className="flex items-center gap-2">
-              <Icon visual={HistoryIcon} size="xs" />
+              <Icon visual={ClockRewindV2} size="xs" />
               <span>
                 Frequency: {formatBillingPeriod(invoice.billingPeriod)}
               </span>
             </div>
             {!isCancellationScheduled && (
               <div className="flex items-center gap-2">
-                <Icon visual={ActionCalendarIcon} size="xs" />
+                <Icon visual={CalendarV2} size="xs" />
                 <span>
                   Next billing date:{" "}
                   {formatTimestampToFriendlyDate(
@@ -184,7 +184,7 @@ export function BillingOverview({ owner, subscription }: BillingOverviewProps) {
               </div>
             )}
             <div className="flex items-center gap-2">
-              <Icon visual={ArrowUpOnSquareIcon} size="xs" />
+              <Icon visual={Upload01V2} size="xs" />
               <span>
                 Amount:{" "}
                 {getPriceAsString({

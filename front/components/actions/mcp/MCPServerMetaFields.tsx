@@ -1,5 +1,5 @@
 import type { MetaRow } from "@app/types/shared/utils/http_headers";
-import { Button, Input, XMarkIcon } from "@dust-tt/sparkle";
+import { Button, Input, XCloseV2 } from "@dust-tt/sparkle";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
 type FormWithMetaFields = {
@@ -39,7 +39,7 @@ export function MCPServerMetaFields() {
             </div>
             <Button
               variant="outline"
-              icon={XMarkIcon}
+              icon={XCloseV2}
               onClick={() => remove(index)}
             />
           </div>

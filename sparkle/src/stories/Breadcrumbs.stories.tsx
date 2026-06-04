@@ -3,8 +3,8 @@ import React from "react";
 
 import {
   Breadcrumbs,
-  CompanyIcon,
-  FolderIcon,
+  Building04V2,
+  FolderV2,
   HomeIcon,
 } from "../index_with_tw_base";
 
@@ -36,7 +36,7 @@ export const BreadcrumbsExample = (args: BreadcrumbsExampleProps) => {
   ];
   const items2 = [
     { label: "Home", href: "#", icon: HomeIcon },
-    { label: "Spaces", href: "#", icon: CompanyIcon },
+    { label: "Spaces", href: "#", icon: Building04V2 },
     { label: "My Space", href: "#" },
     { label: "loooong name in the end, like very very long long" },
   ];
@@ -46,11 +46,11 @@ export const BreadcrumbsExample = (args: BreadcrumbsExampleProps) => {
     {
       label: "Middle long name, oh very looong folder name in the middle",
       href: "#",
-      icon: CompanyIcon,
+      icon: Building04V2,
     },
     { label: "My Space", href: "#" },
     { label: "Data Sources", href: ".." },
-    { label: "Folder1", href: "#", icon: FolderIcon },
+    { label: "Folder1", href: "#", icon: FolderV2 },
     { label: "With ellipsis", href: "#" },
   ];
 
@@ -59,13 +59,13 @@ export const BreadcrumbsExample = (args: BreadcrumbsExampleProps) => {
     {
       label: "Middle long name, oh very looong folder name in the middle",
       href: "#",
-      icon: CompanyIcon,
+      icon: Building04V2,
     },
     { label: "My Space", href: "#" },
     { label: "Data Sources" },
-    { label: "Folder1", href: "#", icon: FolderIcon },
-    { label: "Folder2", href: "#", icon: FolderIcon },
-    { label: "Folder3", href: "#", icon: FolderIcon },
+    { label: "Folder1", href: "#", icon: FolderV2 },
+    { label: "Folder2", href: "#", icon: FolderV2 },
+    { label: "Folder3", href: "#", icon: FolderV2 },
     { label: "With ellipsis", href: "#" },
   ];
 
@@ -74,7 +74,7 @@ export const BreadcrumbsExample = (args: BreadcrumbsExampleProps) => {
     {
       label: "Long, oh very looong folder name in the middle",
       href: "#",
-      icon: CompanyIcon,
+      icon: Building04V2,
     },
     { label: "My Space", href: "#" },
     { label: "Data Sources" },

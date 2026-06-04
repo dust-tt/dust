@@ -1,6 +1,6 @@
 import type { WebhookDetailsComponentProps } from "@app/components/triggers/webhook_preset_components";
 import { GithubAdditionalDataSchema } from "@app/lib/triggers/built-in-webhooks/github/types";
-import { Chip, ExternalLinkIcon, Page } from "@dust-tt/sparkle";
+import { Chip, LinkExternal01V2, Page } from "@dust-tt/sparkle";
 
 export function WebhookSourceGithubDetails({
   webhookSource,
@@ -49,7 +49,7 @@ export function WebhookSourceGithubDetails({
           <Chip
             key={item}
             label={item}
-            icon={ExternalLinkIcon}
+            icon={LinkExternal01V2}
             size="xs"
             color="primary"
             className="m-0.5"

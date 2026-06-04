@@ -1,4 +1,4 @@
-import type { RocketIcon } from "@dust-tt/sparkle";
+import type { Rocket02V2 } from "@dust-tt/sparkle";
 
 export interface SeoConfig {
   title: string;
@@ -29,7 +29,7 @@ export interface HeroProps {
     primary: {
       label: string;
       href: string;
-      icon: typeof RocketIcon;
+      icon: typeof Rocket02V2;
     };
     secondary: {
       label: string;

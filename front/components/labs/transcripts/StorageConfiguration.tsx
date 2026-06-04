@@ -9,8 +9,8 @@ import type { LabsTranscriptsConfigurationType } from "@app/types/labs";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  ChatBubbleThoughtIcon,
   ContentMessage,
+  MessageDotsCircleV2,
   Page,
   SliderToggle,
 } from "@dust-tt/sparkle";
@@ -170,7 +170,7 @@ export function StorageConfiguration({
           title="Default storage"
           variant="primary"
           size="lg"
-          icon={ChatBubbleThoughtIcon}
+          icon={MessageDotsCircleV2}
         >
           Your configuration handles the storage of all your workspace's
           transcripts. Other users will not have the possibility to store their

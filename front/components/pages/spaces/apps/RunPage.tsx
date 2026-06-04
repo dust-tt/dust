@@ -7,7 +7,7 @@ import { useRequiredPathParam } from "@app/lib/platform";
 import { cleanSpecificationFromCore } from "@app/lib/specification";
 import { useApp, useRunWithSpec } from "@app/lib/swr/apps";
 import Custom404 from "@app/pages/404";
-import { Button, CheckCircleIcon, ClockIcon, Spinner } from "@dust-tt/sparkle";
+import { Button, CheckCircleV2, ClockV2, Spinner } from "@dust-tt/sparkle";
 import { useContext, useState } from "react";
 
 export function RunPage() {
@@ -130,13 +130,13 @@ export function RunPage() {
               <Button
                 onClick={restore}
                 disabled={isLoading}
-                icon={ClockIcon}
+                icon={ClockV2}
                 label={isLoading ? "Restoring..." : "Restore"}
               />
             ) : (
               <Button
                 disabled={true}
-                icon={CheckCircleIcon}
+                icon={CheckCircleV2}
                 label="Latest version"
                 variant="outline"
               />

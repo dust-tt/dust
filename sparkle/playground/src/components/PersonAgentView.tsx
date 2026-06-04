@@ -4,7 +4,7 @@ import {
   ConversationListItem,
   ListGroup,
   ListItemSection,
-  PencilSquareIcon,
+  Edit04V2,
   ReplySection,
   SearchInput,
   Sheet,
@@ -245,7 +245,7 @@ export function PersonAgentView({
                   label={`Edit`}
                   size="sm"
                   variant="outline"
-                  icon={PencilSquareIcon}
+                  icon={Edit04V2}
                   onClick={() => setIsSheetOpen(true)}
                 />
               )}

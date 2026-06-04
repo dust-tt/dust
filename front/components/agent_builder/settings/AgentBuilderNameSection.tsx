@@ -11,8 +11,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Input,
-  SparklesIcon,
   Spinner,
+  Stars02V2,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
@@ -164,7 +164,7 @@ export function AgentBuilderNameSection({
           >
             <DropdownMenuTrigger asChild>
               <Button
-                icon={isGenerating ? () => <Spinner size="xs" /> : SparklesIcon}
+                icon={isGenerating ? () => <Spinner size="xs" /> : Stars02V2}
                 variant="outline"
                 size="xs"
                 className="absolute right-0 top-1/2 mr-1 h-7 w-7 -translate-y-1/2 rounded-lg p-0"

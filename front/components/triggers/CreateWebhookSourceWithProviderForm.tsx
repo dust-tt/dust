@@ -9,7 +9,7 @@ import { CLIENT_SIDE_WEBHOOK_PRESETS } from "@app/types/triggers/webhooks_client
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
-  CloudArrowLeftRightIcon,
+  CloudArrowLeftRightV2,
   Label,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -116,7 +116,7 @@ export function CreateWebhookSourceWithProviderForm({
           <Button
             variant={"outline"}
             label={buttonLabel}
-            icon={CloudArrowLeftRightIcon}
+            icon={CloudArrowLeftRightV2}
             // if we are not connected, click starts the OAuth flow
             // if we are connected with a connection page URL, click opens that page
             // otherwise button is disabled

@@ -28,13 +28,10 @@ import { isOnlyAdmin, isOnlyBuilder, isOnlyUser } from "@app/types/user";
 import { datadogLogs } from "@datadog/browser-logs";
 import {
   Avatar,
-  BookOpenIcon,
-  ChatBubbleBottomCenterPlusIcon,
-  ChatBubbleBottomCenterTextIcon,
-  ChatBubbleLeftRightIcon,
-  ChevronDownIcon,
+  Beaker02V2,
+  BookOpen01V2,
+  ChevronDownV2,
   ChromeLogo,
-  CommandLineIcon,
   cn,
   DocumentIcon,
   DropdownMenu,
@@ -46,19 +43,22 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-  EyeIcon,
-  EyeSlashIcon,
+  EyeOffV2,
+  EyeV2,
   FirefoxLogo,
   HeartIcon,
   Icon,
-  LightbulbIcon,
-  LogoutIcon,
+  Lightbulb04V2,
+  LogOut01V2,
+  MessageChatCircleV2,
+  MessagePlusCircleV2,
+  MessageTextCircle01V2,
   Separator,
-  ShapesIcon,
+  ShapesV2,
   SlackLogo,
-  StarIcon,
-  TestTubeIcon,
-  UserIcon,
+  Star01V2,
+  TerminalV2,
+  User01V2,
 } from "@dust-tt/sparkle";
 import { useCallback, useContext, useMemo, useState } from "react";
 
@@ -264,8 +264,8 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
             </div>
             <div className="flex-shrink-0">
               <Icon
-                visual={ChevronDownIcon}
-                className="text-muted-foreground dark:text-muted-foreground-night"
+                visual={ChevronDownV2}
+                className="text-muted-foreground group-hover:text-primary-400 group-active:text-primary-950 dark:text-muted-foreground-night dark:group-hover:text-foreground-night dark:group-active:text-primary-700"
               />
             </div>
           </div>
@@ -287,7 +287,7 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
                 <DropdownMenuLabel label="Learn about Dust" />
                 <DropdownMenuItem
                   label="Quickstart Guide"
-                  icon={LightbulbIcon}
+                  icon={Lightbulb04V2}
                   onClick={() =>
                     router.push(
                       {
@@ -307,7 +307,7 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
                 />
                 <DropdownMenuItem
                   label="Dust Academy"
-                  icon={BookOpenIcon}
+                  icon={BookOpen01V2}
                   href="https://dust.tt/academy"
                   target="_blank"
                 />
@@ -320,19 +320,19 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
                 <DropdownMenuLabel label="Ask questions" />
                 <DropdownMenuItem
                   label="Ask @help"
-                  icon={ChatBubbleLeftRightIcon}
+                  icon={MessageChatCircleV2}
                   onClick={() => void handleAskHelp()}
                 />
                 <DropdownMenuItem
                   label="How to invite new users?"
-                  icon={ChatBubbleBottomCenterTextIcon}
+                  icon={MessageTextCircle01V2}
                   onClick={() =>
                     void handleHelpSubmit("How to invite new users?", [])
                   }
                 />
                 <DropdownMenuItem
                   label="How to use agents in Slack workflow?"
-                  icon={ChatBubbleBottomCenterTextIcon}
+                  icon={MessageTextCircle01V2}
                   onClick={() =>
                     void handleHelpSubmit(
                       "How to use agents in Slack workflow?",
@@ -342,7 +342,7 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
                 />
                 <DropdownMenuItem
                   label="How to manage billing?"
-                  icon={ChatBubbleBottomCenterTextIcon}
+                  icon={MessageTextCircle01V2}
                   onClick={() =>
                     void handleHelpSubmit("How to manage billing?", [])
                   }
@@ -371,7 +371,7 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
             <>
               <DropdownMenuItem
                 label="Exploratory features"
-                icon={TestTubeIcon}
+                icon={Beaker02V2}
                 href={`/w/${owner.sId}/labs`}
               />
               <Separator className="my-1" />
@@ -383,13 +383,13 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
             <>
               <DropdownMenuItem
                 label="Personal Settings"
-                icon={UserIcon}
+                icon={User01V2}
                 href={`/w/${owner.sId}/me`}
               />
               {hasFeature("user_settings_v2") && (
                 <DropdownMenuItem
                   label="Personal Settings — Beta"
-                  icon={UserIcon}
+                  icon={User01V2}
                   onSelect={() => setSettingsOpen(true)}
                 />
               )}
@@ -397,8 +397,8 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
           )}
 
           <DropdownMenuItem
-            label="Sign out"
-            icon={LogoutIcon}
+            label="Sign&nbsp;out"
+            icon={LogOut01V2}
             onClick={() => {
               // Clear all conversation drafts for this user.
               clearAllDraftsFromUser();
@@ -415,7 +415,7 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
             <>
               <Separator className="my-1" />
               <DropdownMenuSub>
-                <DropdownMenuSubTrigger label="Dev Tools" icon={ShapesIcon} />
+                <DropdownMenuSubTrigger label="Dev Tools" icon={ShapesV2} />
                 <DropdownMenuPortal>
                   <DropdownMenuSubContent>
                     {(router.pathname === "/w/[wId]/conversation/[cId]" ||
@@ -436,45 +436,45 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
                             );
                           }
                         }}
-                        icon={ShapesIcon}
+                        icon={ShapesV2}
                       />
                     )}
                     {!isOnlyAdmin(owner) && (
                       <DropdownMenuItem
                         label="Become Admin"
                         onClick={() => forceRoleUpdate("admin")}
-                        icon={StarIcon}
+                        icon={Star01V2}
                       />
                     )}
                     {!isOnlyBuilder(owner) && (
                       <DropdownMenuItem
                         label="Become Builder"
                         onClick={() => forceRoleUpdate("builder")}
-                        icon={LightbulbIcon}
+                        icon={Lightbulb04V2}
                       />
                     )}
                     {!isOnlyUser(owner) && (
                       <DropdownMenuItem
                         label="Become User"
                         onClick={() => forceRoleUpdate("user")}
-                        icon={UserIcon}
+                        icon={User01V2}
                       />
                     )}
                     <DropdownMenuItem
                       label={`${privacyMask.isEnabled ? "Disable" : "Enable"} Privacy Mask`}
                       onClick={privacyMask.toggle}
-                      icon={privacyMask.isEnabled ? EyeSlashIcon : EyeIcon}
+                      icon={privacyMask.isEnabled ? EyeOffV2 : EyeV2}
                     />
                     <DropdownMenuItem
                       label={`${devMode.isEnabled ? "Disable" : "Enable"} Dev Console`}
                       onClick={devMode.toggle}
-                      icon={CommandLineIcon}
+                      icon={TerminalV2}
                     />
                     {owner.role === "admin" && (
                       <DropdownMenuItem
                         label="Send onboarding conversation"
                         onClick={handleSendOnboarding}
-                        icon={ChatBubbleBottomCenterPlusIcon}
+                        icon={MessagePlusCircleV2}
                       />
                     )}
                   </DropdownMenuSubContent>

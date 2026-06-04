@@ -53,8 +53,8 @@ struct Conversation: Decodable, Identifiable, Hashable {
         self.unread = try container.decode(Bool.self, forKey: .unread)
         self.actionRequired = try container.decode(Bool.self, forKey: .actionRequired)
 
-        let content = try container.decodeIfPresent([PreviewMessage].self, forKey: .content)
-        self.preview = content.flatMap(ConversationPreview.init(content:))
+        let content = try container.decodeIfPresent([[PreviewMessage]].self, forKey: .content)
+        self.preview = content.map { $0.compactMap(\.last) }.flatMap(ConversationPreview.init(content:))
     }
 }
 

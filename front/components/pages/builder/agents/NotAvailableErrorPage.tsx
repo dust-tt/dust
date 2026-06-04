@@ -1,6 +1,6 @@
 import CustomErrorPage from "@app/components/pages/CustomErrorPage";
 import type { LightWorkspaceType } from "@app/types/user";
-import { BrainIcon, LoginIcon } from "@dust-tt/sparkle";
+import { BrainV2, LogIn01V2 } from "@dust-tt/sparkle";
 
 interface NotAvailableErrorPageProps {
   isAdmin: boolean;
@@ -15,14 +15,14 @@ export function NotAvailableErrorPage({
     ? {
         href: `/w/${owner.sId}/model-providers`,
         label: "Configure model providers",
-        icon: BrainIcon,
+        icon: BrainV2,
         description:
           "Providers must be configured in your workspace to use the agent builder.",
       }
     : {
         href: "/",
         label: "Back to homepage",
-        icon: LoginIcon,
+        icon: LogIn01V2,
         description:
           "No provider is configured in your workspace. Contact your administrator.",
       };

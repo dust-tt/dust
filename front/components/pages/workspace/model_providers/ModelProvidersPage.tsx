@@ -2,7 +2,7 @@ import { ModelProvidersPageContent } from "@app/components/pages/workspace/model
 import { useProvidersSelection } from "@app/hooks/useProvidersSelection";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useWorkspace as useWorkspaceDetails } from "@app/lib/swr/workspaces";
-import { BrainIcon, Page, Spinner } from "@dust-tt/sparkle";
+import { BrainV2, Page, Spinner } from "@dust-tt/sparkle";
 
 export function ModelProvidersPage() {
   const owner = useWorkspace();
@@ -23,7 +23,7 @@ export function ModelProvidersPage() {
     <Page.Vertical align="stretch" gap="xl">
       <Page.Header
         title="Model Providers"
-        icon={BrainIcon}
+        icon={BrainV2}
         description="Choose which AI providers and models are available to your workspace."
       />
       <Page.Vertical align="stretch" gap="md">

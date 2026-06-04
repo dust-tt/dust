@@ -1,6 +1,6 @@
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
-import { InformationCircleIcon, SliderToggle, Tooltip } from "@dust-tt/sparkle";
+import { InfoCircleV2, SliderToggle, Tooltip } from "@dust-tt/sparkle";
 import { useFormContext } from "react-hook-form";
 
 interface SkillBuilderEnableSuggestionsSectionProps {
@@ -29,7 +29,7 @@ export function SkillBuilderEnableSuggestionsSection({
     <div className="flex flex-col gap-2">
       {isDisabled && (
         <div className="flex items-start gap-1.5 text-xs text-muted-foreground dark:text-muted-foreground-night">
-          <InformationCircleIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <InfoCircleV2 className="mt-0.5 h-3.5 w-3.5 shrink-0" />
           <span>
             {!isAllowedByWorkspace
               ? "Self-improving skills are disabled in your workspace. Ask your admin to enable this feature."
@@ -51,7 +51,7 @@ export function SkillBuilderEnableSuggestionsSection({
         <Tooltip
           label="Dust will analyze how this skill is used and suggest improvements to its instructions over time."
           trigger={
-            <InformationCircleIcon className="text-muted-foreground dark:text-muted-foreground-night h-4 w-4" />
+            <InfoCircleV2 className="text-muted-foreground dark:text-muted-foreground-night h-4 w-4" />
           }
         />
       </div>

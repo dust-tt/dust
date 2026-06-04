@@ -62,19 +62,17 @@ import type { PodType, SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
 import {
-  ActionTimeIcon,
-  ArrowRightIcon,
+  ArrowRightV2,
   Avatar,
-  BoltIcon,
-  BoltOffIcon,
-  BracesIcon,
+  BracketsV2,
   Button,
-  ChatBubbleBottomCenterPlusIcon,
   Checkbox,
-  CheckDoubleIcon,
+  CheckDone01V2,
+  CheckDoubleV2,
   Chip,
+  ClockV2,
   cn,
-  DocumentIcon,
+  DotsHorizontalV2,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -86,24 +84,26 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-  FolderOpenIcon,
+  Edit04V2,
+  File02V2,
+  FolderOpenV2,
   Icon,
   Label,
-  ListCheckIcon,
-  MagicIcon,
-  MoreIcon,
+  MagicWand02V2,
+  MessagePlusCircleV2,
   NavigationList,
   NavigationListCollapsibleSection,
   NavigationListItem,
   NavigationListItemAction,
   NavigationListLabel,
-  PencilSquareIcon,
-  PlusIcon,
-  RobotIcon,
+  PlusV2,
+  RobotV2,
   Spinner,
-  StarIcon,
-  TrashIcon,
-  XMarkIcon,
+  Star01V2,
+  Trash01V2,
+  XCloseV2,
+  ZapOffV2,
+  ZapV2,
 } from "@dust-tt/sparkle";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -285,7 +285,7 @@ function SearchResults({
             <>
               <Button
                 size="xs"
-                icon={PlusIcon}
+                icon={PlusV2}
                 label="New"
                 variant="ghost-secondary"
                 onClick={(e) => {
@@ -342,9 +342,9 @@ function SearchResults({
               <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <Button
-                    size="icon-xs"
-                    icon={MoreIcon}
-                    variant="ghost-secondary"
+                    size="xmini"
+                    icon={DotsHorizontalV2}
+                    variant="ghost"
                     aria-label="Conversations options"
                     onClick={(e) => {
                       e.preventDefault();
@@ -360,7 +360,7 @@ function SearchResults({
                         ? "Show triggered"
                         : "Hide triggered"
                     }
-                    icon={hideTriggeredConversations ? BoltIcon : BoltOffIcon}
+                    icon={hideTriggeredConversations ? ZapV2 : ZapOffV2}
                     disabled={!hasTriggeredConversations}
                     onClick={() =>
                       setHideTriggeredConversations(!hideTriggeredConversations)
@@ -721,7 +721,7 @@ export function AgentSidebarMenu({
       <NavigationList className="px-2">
         <NavigationListCollapsibleSection
           label={showCount ? `Starred (${starredCountInSummary})` : "Starred"}
-          icon={StarIcon}
+          icon={Star01V2}
           type="collapse"
           visibleItems={VISIBLE_STARRED}
           overflowCount={hiddenOverflowCount}
@@ -780,7 +780,7 @@ export function AgentSidebarMenu({
               {nonStarredSummary.length > 0 && (
                 <Button
                   size="xs"
-                  icon={PlusIcon}
+                  icon={PlusV2}
                   label="New"
                   variant="ghost-secondary"
                   onClick={(e) => {
@@ -808,7 +808,7 @@ export function AgentSidebarMenu({
           ) : (
             <NavigationListItem
               label="Create a Pod"
-              icon={PlusIcon}
+              icon={PlusV2}
               onClick={() => setIsCreatePodModalOpen(true)}
             />
           )}
@@ -914,7 +914,7 @@ export function AgentSidebarMenu({
                       <Button
                         variant="outline"
                         label="Move to Pod"
-                        icon={ArrowRightIcon}
+                        icon={ArrowRightV2}
                         disabled={selectedConversations.length === 0}
                         isLoading={isMoving}
                       />
@@ -924,7 +924,7 @@ export function AgentSidebarMenu({
                       onFocusOutside={(e) => e.preventDefault()}
                     >
                       <DropdownMenuItem
-                        icon={PlusIcon}
+                        icon={PlusV2}
                         label="New Pod"
                         onClick={() => {
                           setPendingMoveToNewPod(true);
@@ -958,8 +958,8 @@ export function AgentSidebarMenu({
                   />
                 </div>
                 <Button
-                  variant="ghost-secondary"
-                  icon={XMarkIcon}
+                  variant="ghost"
+                  icon={XCloseV2}
                   onClick={toggleMultiSelect}
                 />
               </div>
@@ -975,7 +975,7 @@ export function AgentSidebarMenu({
                   <Button
                     label="New"
                     href={getConversationRoute(owner.sId)}
-                    icon={ChatBubbleBottomCenterPlusIcon}
+                    icon={MessagePlusCircleV2}
                     className="shrink-0"
                     tooltip="Create a new conversation"
                     onClick={handleNewClick}
@@ -984,8 +984,8 @@ export function AgentSidebarMenu({
                     <DropdownMenu modal={false}>
                       <DropdownMenuTrigger asChild>
                         <Button
-                          size="icon-sm"
-                          icon={MoreIcon}
+                          size="sm"
+                          icon={DotsHorizontalV2}
                           variant="outline"
                         />
                       </DropdownMenuTrigger>
@@ -995,7 +995,7 @@ export function AgentSidebarMenu({
                             <DropdownMenuLabel>Agents</DropdownMenuLabel>
                             <DropdownMenuSub>
                               <DropdownMenuSubTrigger
-                                icon={PlusIcon}
+                                icon={PlusV2}
                                 label="New agent"
                                 disabled={noHealthyProviders}
                               />
@@ -1006,7 +1006,7 @@ export function AgentSidebarMenu({
                                       owner.sId,
                                       "new"
                                     )}
-                                    icon={DocumentIcon}
+                                    icon={File02V2}
                                     label="From scratch"
                                     data-gtm-label="assistantCreationButton"
                                     data-gtm-location="sidebarMenu"
@@ -1020,7 +1020,7 @@ export function AgentSidebarMenu({
                                       owner.sId,
                                       "create"
                                     )}
-                                    icon={MagicIcon}
+                                    icon={MagicWand02V2}
                                     label="From template"
                                     data-gtm-label="assistantCreationButton"
                                     data-gtm-location="sidebarMenu"
@@ -1034,7 +1034,7 @@ export function AgentSidebarMenu({
                                       isUploadingYAML ? (
                                         <Spinner size="xs" />
                                       ) : (
-                                        BracesIcon
+                                        BracketsV2
                                       )
                                     }
                                     label={
@@ -1053,7 +1053,7 @@ export function AgentSidebarMenu({
                             {editableAgents.length > 0 && (
                               <DropdownMenuSub>
                                 <DropdownMenuSubTrigger
-                                  icon={PencilSquareIcon}
+                                  icon={Edit04V2}
                                   label="Edit agent"
                                   disabled={noHealthyProviders}
                                 />
@@ -1091,7 +1091,7 @@ export function AgentSidebarMenu({
                             )}
                             <DropdownMenuItem
                               href={getAgentBuilderRoute(owner.sId, "manage")}
-                              icon={RobotIcon}
+                              icon={RobotV2}
                               label="Manage agents"
                               data-gtm-label="assistantManagementButton"
                               data-gtm-location="sidebarMenu"
@@ -1107,7 +1107,7 @@ export function AgentSidebarMenu({
                             <DropdownMenuLabel>Skills</DropdownMenuLabel>
                             <DropdownMenuSub>
                               <DropdownMenuSubTrigger
-                                icon={PlusIcon}
+                                icon={PlusV2}
                                 label="New skill"
                               />
                               <DropdownMenuSubContent>
@@ -1117,7 +1117,7 @@ export function AgentSidebarMenu({
                                   label="From scratch"
                                 />
                                 <DropdownMenuItem
-                                  icon={FolderOpenIcon}
+                                  icon={FolderOpenV2}
                                   label="From existing"
                                   onClick={() =>
                                     setIsImportSkillDialogOpen(true)
@@ -1136,13 +1136,13 @@ export function AgentSidebarMenu({
                         <DropdownMenuItem
                           label="Edit conversations"
                           onClick={toggleMultiSelect}
-                          icon={ListCheckIcon}
+                          icon={CheckDone01V2}
                           disabled={filteredConversations.length === 0}
                         />
                         <DropdownMenuItem
                           label="Clear conversation history"
                           onClick={() => setShowDeleteDialog("all")}
-                          icon={TrashIcon}
+                          icon={Trash01V2}
                           disabled={filteredConversations.length === 0}
                         />
                       </DropdownMenuContent>
@@ -1252,9 +1252,9 @@ function UnreadConversationsSection({
       action={
         shouldShowMarkAllAsReadButton ? (
           <Button
-            size="icon-xs"
-            variant="ghost-secondary"
-            icon={CheckDoubleIcon}
+            size="xmini"
+            variant="ghost"
+            icon={CheckDoubleV2}
             tooltip="Mark all as read"
             onClick={() => onMarkAllAsRead(conversations.map((c) => c.sId))}
             isLoading={isMarkingAllAsRead}
@@ -1330,7 +1330,7 @@ interface WakeUpSuffixProps {
 function WakeUpSuffix({ nextWakeupAt }: WakeUpSuffixProps) {
   return (
     <span className="copy-xs flex items-center gap-1 text-muted-foreground dark:text-muted-foreground-night">
-      <Icon visual={ActionTimeIcon} size="xs" />
+      <Icon visual={ClockV2} size="xs" />
       {formatWakeUpSidebarLabel(nextWakeupAt)}
     </span>
   );
@@ -1626,9 +1626,9 @@ function NavigationListWithInbox({
               <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <Button
-                    size="icon-xs"
-                    icon={MoreIcon}
-                    variant="ghost-secondary"
+                    size="xmini"
+                    icon={DotsHorizontalV2}
+                    variant="ghost"
                     aria-label="Conversations options"
                     onClick={(e) => {
                       e.preventDefault();
@@ -1644,7 +1644,7 @@ function NavigationListWithInbox({
                         ? "Show triggered"
                         : "Hide triggered"
                     }
-                    icon={hideTriggeredConversations ? BoltIcon : BoltOffIcon}
+                    icon={hideTriggeredConversations ? ZapV2 : ZapOffV2}
                     disabled={!hasTriggeredConversations}
                     onClick={() =>
                       setHideTriggeredConversations(!hideTriggeredConversations)
@@ -1652,14 +1652,14 @@ function NavigationListWithInbox({
                   />
                   <DropdownMenuItem
                     label="Edit history"
-                    icon={ListCheckIcon}
+                    icon={CheckDone01V2}
                     onClick={toggleMultiSelect}
                     disabled={conversations.length === 0}
                   />
                   <DropdownMenuItem
                     label="Clear history"
                     variant="warning"
-                    icon={TrashIcon}
+                    icon={Trash01V2}
                     onClick={() => setShowDeleteDialog("all")}
                     disabled={conversations.length === 0}
                   />

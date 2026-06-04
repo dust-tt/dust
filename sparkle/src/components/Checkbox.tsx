@@ -1,9 +1,8 @@
 import * as CheckboxPrimitive from "@radix-ui/react-checkbox";
-import { CheckIcon, DashIcon } from "@sparkle/icons/app";
+import { CheckV2, MinusV2 } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import React from "react";
-
 import { Icon } from "./Icon";
 import { Label } from "./Label";
 import { Tooltip } from "./Tooltip";
@@ -88,7 +87,7 @@ const Checkbox = React.forwardRef<
           <span className={cn(size === "xs" ? "-s-mt-px" : "")}>
             <Icon
               size="xs"
-              visual={checked === "partial" ? DashIcon : CheckIcon}
+              visual={checked === "partial" ? MinusV2 : CheckV2}
               className="s-text-background dark:s-text-background-night"
             />
           </span>

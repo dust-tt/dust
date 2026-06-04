@@ -13,17 +13,17 @@ import type { PlanType } from "@app/types/plan";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { WorkspaceDomain } from "@app/types/workspace";
 import {
-  ActionGlobeAltIcon,
   Button,
   Chip,
   DataTable,
   EmptyCTA,
+  Globe01V2,
   IconButton,
   LoadingBlock,
   Page,
-  PlusIcon,
+  PlusV2,
   Separator,
-  XMarkIcon,
+  XCloseV2,
 } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
 import type { Organization } from "@workos-inc/node";
@@ -102,7 +102,7 @@ function DomainVerification({
   owner,
 }: DomainVerificationProps) {
   return (
-    <WorkspaceSection icon={ActionGlobeAltIcon} title="Domain Verification">
+    <WorkspaceSection icon={Globe01V2} title="Domain Verification">
       <Page.P variant="secondary">
         Verify your company domains to enable Single Sign-On (SSO), automatic
         workspace enrollment for team members, and secure connections to your
@@ -116,7 +116,7 @@ function DomainVerification({
             <Button
               label="Add Domain"
               variant="primary"
-              icon={PlusIcon}
+              icon={PlusV2}
               href={addDomainLink}
             />
           }
@@ -216,7 +216,7 @@ function DomainVerificationTable({
         cell: ({ row }: CellContext<DomainRowData, string>) => {
           return (
             <IconButton
-              icon={XMarkIcon}
+              icon={XCloseV2}
               size="xs"
               variant="ghost"
               onClick={() => handleDeleteDomain(row.original.domain)}
@@ -248,7 +248,7 @@ function DomainVerificationTable({
             label="Add Domain"
             variant="primary"
             href={addDomainLink}
-            icon={PlusIcon}
+            icon={PlusV2}
           />
         </div>
       )}
