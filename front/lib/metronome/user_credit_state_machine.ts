@@ -183,10 +183,6 @@ const TRANSITIONS: UserCreditTransition[] = [
       (ctx.seatType === "pro" || ctx.seatType === "pro_yearly"),
     to: "user_seat_low_balance",
   },
-
-  // Seat low-balance warning (balance > 0).
-  { from: "user_seat", event: "seat_low_balance", to: "user_seat_low_balance" },
-  { from: "on_pool", event: "seat_low_balance", to: "on_pool_low_balance" },
 ];
 
 function findTransition(
