@@ -351,11 +351,9 @@ async function processEventForUnreadState(
   {
     event,
     conversation,
-    costCredits,
   }: {
     event: AgentMessageEvents;
     conversation: ConversationWithoutContentType;
-    costCredits: number | null;
   }
 ) {
   // If the event is a done event, we want to mark the conversation as unread for all participants.
@@ -373,7 +371,7 @@ async function processEventForUnreadState(
           event.type === "agent_error" || event.type === "tool_error"
             ? "error"
             : "success",
-        costCredits,
+        costCredits: null,
       },
     });
   }
@@ -409,7 +407,6 @@ export async function updateResourceAndPublishEvent(
     processEventForUnreadState(auth, {
       event,
       conversation,
-      costCredits: null,
     }),
   ]);
 
