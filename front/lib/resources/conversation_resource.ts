@@ -1826,8 +1826,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       auth,
       pagination
     );
+    const { WakeUpResource } = await import(
+      "@app/lib/resources/wakeup_resource"
+    );
     const nextWakeupAtByConversationId =
-      await this.fetchNextWakeupAtByConversationId(
+      await WakeUpResource.fetchNextWakeupAtByConversationId(
         auth,
         result.conversations.map((c) => c.id)
       );
@@ -1840,63 +1843,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       hasMore: result.hasMore,
       lastValue: result.lastValue,
     };
-  }
-
-  private static async fetchNextWakeupAtByConversationId(
-    auth: Authenticator,
-    conversationIds: ModelId[]
-  ): Promise<Map<ModelId, number>> {
-    if (conversationIds.length === 0) {
-      return new Map();
-    }
-
-    const wakeUps = await WakeUpModel.findAll({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        conversationId: { [Op.in]: conversationIds },
-        status: ACTIVE_WAKE_UP_STATUSES,
-      },
-      order: [
-        ["createdAt", "ASC"],
-        ["id", "ASC"],
-      ],
-    });
-
-    const nextWakeupAtByConversationId = new Map<ModelId, number>();
-    for (const wakeUp of wakeUps) {
-      const scheduleConfig: WakeUpScheduleConfig | null = (() => {
-        switch (wakeUp.scheduleType) {
-          case "one_shot":
-            return wakeUp.fireAt
-              ? { type: "one_shot", fireAt: wakeUp.fireAt.getTime() }
-              : null;
-          case "cron":
-            return wakeUp.cronExpression && wakeUp.cronTimezone
-              ? {
-                  type: "cron",
-                  cron: wakeUp.cronExpression,
-                  timezone: wakeUp.cronTimezone,
-                }
-              : null;
-          default:
-            return assertNever(wakeUp.scheduleType);
-        }
-      })();
-
-      const nextWakeupAt = scheduleConfig
-        ? getNextWakeUpFireAtFromScheduleConfig(scheduleConfig)
-        : null;
-      if (nextWakeupAt === null) {
-        continue;
-      }
-
-      const previous = nextWakeupAtByConversationId.get(wakeUp.conversationId);
-      if (previous === undefined || nextWakeupAt < previous) {
-        nextWakeupAtByConversationId.set(wakeUp.conversationId, nextWakeupAt);
-      }
-    }
-
-    return nextWakeupAtByConversationId;
   }
 
   static async listSpaceUnreadConversationsAndActivityForUser(
