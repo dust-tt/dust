@@ -632,6 +632,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "generate_sound_effects": "low",
   },
   "speech_generator": {
+    "speech_to_text": "low",
     "text_to_dialogue": "low",
     "text_to_speech": "low",
   },
