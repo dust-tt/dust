@@ -5,6 +5,8 @@ import {
 } from "@app/lib/api/assistant/conversation/attachments";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
+import { DustFileSystem } from "@app/lib/api/file_system";
+import { SCOPED_PREFIX_POD } from "@app/lib/api/file_system/types";
 import {
   createGCSMountDirectory,
   deleteGCSMountFile,
@@ -366,6 +368,36 @@ export async function addFileToProject(
     }
 
     const destFileName = file.fileName;
+    const destScopedPath = `${SCOPED_PREFIX_POD}${space.sId}/${destFileName}`;
+
+    // Reject the move when a file with the same name already exists in the Pod, rather
+    // than silently overwriting it. moveFile (raw GCS) does not check, so we check the
+    // destination through a Pod-scoped file system first.
+    const fsRes = await DustFileSystem.forPod(auth, space);
+    if (fsRes.isErr()) {
+      return new Err({
+        name: "dust_error",
+        code: "internal_error",
+        message: fsRes.error.message,
+      });
+    }
+
+    const destExistsRes = await fsRes.value.exists(destScopedPath);
+    if (destExistsRes.isErr()) {
+      return new Err({
+        name: "dust_error",
+        code: "internal_error",
+        message: destExistsRes.error.message,
+      });
+    }
+    if (destExistsRes.value) {
+      return new Err({
+        name: "dust_error",
+        code: "invalid_request_error",
+        message: "A file with this name already exists in the Pod.",
+      });
+    }
+
     const moveRes = await moveFile(auth, {
       file,
       sourceGcsPath: file.mountFilePath,
