@@ -171,6 +171,35 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
       done: "Comment on GitHub issue",
     },
   },
+  transfer_issue: {
+    description: "Transfer an open GitHub issue to another repository.",
+    schema: {
+      owner: z
+        .string()
+        .describe(
+          "The owner of the source repository (account or organization name)."
+        ),
+      repo: z.string().describe("The name of the source repository."),
+      issueNumber: z.number().describe("The issue number to transfer."),
+      targetOwner: z
+        .string()
+        .describe(
+          "The owner of the target repository (account or organization name)."
+        ),
+      targetRepo: z.string().describe("The name of the target repository."),
+      createLabelsIfMissing: z
+        .boolean()
+        .optional()
+        .describe(
+          "Whether to create missing labels in the target repository. Defaults to false."
+        ),
+    },
+    stake: "high",
+    displayLabels: {
+      running: "Transferring GitHub issue",
+      done: "Transfer GitHub issue",
+    },
+  },
   list_discussion_categories: {
     description:
       "List the discussion categories available in a GitHub repository. Use this to get the category ID required when creating a discussion.",

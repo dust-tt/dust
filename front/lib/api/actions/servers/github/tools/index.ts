@@ -637,6 +637,176 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
       }
     },
 
+    transfer_issue: async (
+      {
+        owner,
+        repo,
+        issueNumber,
+        targetOwner,
+        targetRepo,
+        createLabelsIfMissing = false,
+      },
+      { authInfo }
+    ) => {
+      const octokit = await createOctokit(auth, {
+        accessToken: authInfo?.token,
+      });
+
+      try {
+        const issueAndRepositoryQuery = `
+          query($owner: String!, $repo: String!, $issueNumber: Int!, $targetOwner: String!, $targetRepo: String!) {
+            sourceRepository: repository(owner: $owner, name: $repo) {
+              issue(number: $issueNumber) {
+                id
+                number
+                title
+                state
+                url
+              }
+            }
+            targetRepository: repository(owner: $targetOwner, name: $targetRepo) {
+              id
+              name
+              owner {
+                login
+              }
+            }
+          }`;
+
+        const issueAndRepository = (await octokit.graphql(
+          issueAndRepositoryQuery,
+          {
+            owner,
+            repo,
+            issueNumber,
+            targetOwner,
+            targetRepo,
+          }
+        )) as {
+          sourceRepository: {
+            issue: {
+              id: string;
+              number: number;
+              title: string;
+              state: string;
+              url: string;
+            } | null;
+          } | null;
+          targetRepository: {
+            id: string;
+            name: string;
+            owner: {
+              login: string;
+            };
+          } | null;
+        };
+
+        const issue = issueAndRepository.sourceRepository?.issue;
+        if (!issue) {
+          return new Err(
+            new MCPError(`Issue #${issueNumber} not found in ${owner}/${repo}`)
+          );
+        }
+
+        if (issue.state !== "OPEN") {
+          return new Err(
+            new MCPError(
+              `Issue #${issueNumber} in ${owner}/${repo} is not open and cannot be transferred`
+            )
+          );
+        }
+
+        const targetRepository = issueAndRepository.targetRepository;
+        if (!targetRepository) {
+          return new Err(
+            new MCPError(
+              `Target repository ${targetOwner}/${targetRepo} not found`
+            )
+          );
+        }
+
+        const transferIssueMutation = `
+          mutation($issueId: ID!, $repositoryId: ID!, $createLabelsIfMissing: Boolean) {
+            transferIssue(input: {
+              issueId: $issueId,
+              repositoryId: $repositoryId,
+              createLabelsIfMissing: $createLabelsIfMissing
+            }) {
+              issue {
+                number
+                title
+                url
+                repository {
+                  name
+                  owner {
+                    login
+                  }
+                }
+              }
+            }
+          }`;
+
+        const transferResult = (await octokit.graphql(transferIssueMutation, {
+          issueId: issue.id,
+          repositoryId: targetRepository.id,
+          createLabelsIfMissing,
+        })) as {
+          transferIssue: {
+            issue: {
+              number: number;
+              title: string;
+              url: string;
+              repository: {
+                name: string;
+                owner: {
+                  login: string;
+                };
+              };
+            };
+          };
+        };
+
+        const transferredIssue = transferResult.transferIssue.issue;
+        const transferredRepository = `${transferredIssue.repository.owner.login}/${transferredIssue.repository.name}`;
+
+        return new Ok([
+          {
+            type: "text" as const,
+            text:
+              `Issue #${issueNumber} transferred to ` +
+              `${transferredRepository} as #${transferredIssue.number}`,
+          },
+          {
+            type: "text" as const,
+            text: JSON.stringify(
+              {
+                sourceIssue: {
+                  number: issue.number,
+                  title: issue.title,
+                  url: issue.url,
+                  repository: `${owner}/${repo}`,
+                },
+                transferredIssue: {
+                  number: transferredIssue.number,
+                  title: transferredIssue.title,
+                  url: transferredIssue.url,
+                  repository: transferredRepository,
+                },
+              },
+              null,
+              2
+            ),
+          },
+        ]);
+      } catch (e) {
+        return new Err(
+          new MCPError(
+            `Error transferring GitHub issue: ${normalizeError(e).message}`
+          )
+        );
+      }
+    },
+
     list_discussion_categories: async (
       { owner, repo, perPage = 25, after, before },
       { authInfo }

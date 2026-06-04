@@ -195,6 +195,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "list_organization_projects": "never_ask",
     "list_pull_requests": "never_ask",
     "search_advanced": "never_ask",
+    "transfer_issue": "high",
   },
   "gmail": {
     "create_draft": "medium",
