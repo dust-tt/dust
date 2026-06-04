@@ -299,7 +299,12 @@ export type AgentMessageDoneEvent = {
   configurationId: string;
   messageId: string;
   status: "success" | "error";
-  costCredits: number | null;
+  // Optional during rollout: this event is published to pub/sub and replayed to
+  // browsers that may run a different deploy than the worker emitting it, so an
+  // old worker (or a replayed pre-deploy event) can omit the field entirely
+  // (`undefined`, not `null`). Tighten to `number | null` once the whole credit-cost
+  // stack is deployed and the replay buffer TTL has cycled. See [BACK12].
+  costCredits?: number | null;
 };
 
 // Event sent when an error occurred during the tool call.
