@@ -1,3 +1,4 @@
+import { computeAndStoreAgentMessageCredits } from "@app/lib/api/assistant/credit_cost";
 import {
   sendEmailReplyOnCompletion,
   sendEmailReplyOnError,
@@ -55,7 +56,6 @@ export async function finalizeGracefullyStoppedAgentLoopActivity(
     launchAgentMessageAnalytics(auth, agentLoopArgs),
     launchTrackProgrammaticUsage(auth, agentLoopArgs),
     launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
-
     conversationUnreadNotification(auth, agentLoopArgs),
     handleMentions(auth, agentLoopArgs),
   ]);
@@ -82,6 +82,9 @@ export async function finalizeInterruptedAgentLoopActivity(
     launchAgentMessageAnalytics(auth, agentLoopArgs),
     launchTrackProgrammaticUsage(auth, agentLoopArgs),
     launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
+    computeAndStoreAgentMessageCredits(auth, {
+      agentMessageId: agentLoopArgs.agentMessageId,
+    }),
     conversationUnreadNotification(auth, agentLoopArgs),
     handleMentions(auth, agentLoopArgs),
   ]);
