@@ -75,6 +75,12 @@ export const ModelConfigurationSchema = z.object({
   }),
   customThinkingType: z.enum(CUSTOM_THINKING_TYPES).optional(),
   customBetas: z.array(z.string()).optional(),
+  // Ordered list of fallback model ids. When set, the request is sent with a
+  // server-side fallback param so the provider retries against these models, in
+  // order, if the primary model refuses or is unavailable. Requires the relevant
+  // beta header (carried in customBetas) and provider-side enablement. Only
+  // consulted for Anthropic models; ignored for other providers.
+  fallbackModels: z.array(z.string()).optional(),
   // If true, the model is served through the dedicated EAP (Early Access
   // Program) Anthropic API key (ANTHROPIC_EAP_API_KEY) instead of the
   // workspace's Dust-managed / BYOK credentials, for models hosted in a

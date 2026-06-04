@@ -50,6 +50,14 @@ import assert from "assert";
 const MESSAGE_CONVERSION_CONCURRENCY = 10;
 const BATCH_PAYLOAD_BUILD_CONCURRENCY = 10;
 
+// Server-side fallback is a beta param not yet typed by the SDK. We forward it
+// as an extra body param alongside the typed request fields. The list of
+// fallback model ids is driven by modelConfig.fallbackModels (set in the GCS
+// custom-model entry), so no fallback target is hardcoded here.
+type AnthropicRequestPayload = MessageCreateParamsNonStreaming & {
+  fallback?: { model: string }[];
+};
+
 /**
  * Maps prompt tiers to Anthropic system blocks with cache breakpoints.
  *
@@ -156,7 +164,7 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
     prompt,
     specifications,
     forceToolCall,
-  }: LLMStreamParameters): Promise<MessageCreateParamsNonStreaming> {
+  }: LLMStreamParameters): Promise<AnthropicRequestPayload> {
     const messages = await concurrentExecutor(
       conversation.messages,
       (msg, index) =>
@@ -198,6 +206,12 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
       hasConditionalJITTools,
     });
 
+    const fallbackModels = this.modelConfig.fallbackModels;
+    const fallback =
+      fallbackModels && fallbackModels.length > 0
+        ? fallbackModels.map((model) => ({ model }))
+        : undefined;
+
     return {
       model: this.modelId,
       ...thinkingConfig,
@@ -207,6 +221,7 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
       tools: specifications.map(toTool),
       max_tokens: this.modelConfig.generationTokensCount,
       tool_choice: toToolChoiceParam(specifications, forceToolCall),
+      ...(fallback ? { fallback } : {}),
     };
   }
 

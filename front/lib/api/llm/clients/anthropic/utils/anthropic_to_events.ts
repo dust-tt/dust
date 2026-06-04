@@ -24,7 +24,10 @@ import { EventError } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import { parseToolArguments } from "@app/lib/api/llm/utils/tool_arguments";
 import logger from "@app/logger/logger";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import {
+  assertNever,
+  assertNeverAndIgnore,
+} from "@app/types/shared/utils/assert_never";
 import { isRecord } from "@app/types/shared/utils/general";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import cloneDeep from "lodash/cloneDeep";
@@ -165,7 +168,14 @@ function* handleMessageStreamEvent(
       );
       break;
     default:
-      assertNever(messageStreamEvent);
+      // Anthropic may emit new top-level stream event types (e.g. the
+      // server-side fallback event) before the SDK types and this client are
+      // updated. Log and ignore rather than crashing the stream with a throw.
+      logger.warn(
+        { event: messageStreamEvent },
+        "Unhandled Anthropic message stream event type, ignoring."
+      );
+      assertNeverAndIgnore(messageStreamEvent);
   }
 }
 
