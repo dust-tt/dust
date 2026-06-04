@@ -1,6 +1,7 @@
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { frameContentType } from "@app/types/files";
@@ -289,6 +290,8 @@ describe("POST /api/w/[wId]/files/[fileId]/save-in-project", () => {
       useCaseMetadata: { conversationId: conversation.sId },
     });
 
+    fileStorageMock.setFileExists(() => false);
+
     req.query = {
       ...req.query,
       fileId: file.sId,
@@ -307,6 +310,49 @@ describe("POST /api/w/[wId]/files/[fileId]/save-in-project", () => {
     );
     // updateUseCase clears conversationId to avoid confusion when accessing the file in project context.
     expect(data.file.useCaseMetadata.conversationId).toBeUndefined();
+  });
+
+  it("should return 400 when a file with the same name already exists in the project", async () => {
+    const { req, res, workspace, user, auth } =
+      await createPrivateApiMockRequest({
+        method: "POST",
+        role: "user",
+      });
+
+    const project = await SpaceFactory.project(workspace, user.id);
+
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+    });
+
+    const file = await FileFactory.create(auth, user, {
+      contentType: frameContentType,
+      fileName: "test.frame",
+      fileSize: 1024,
+      status: "ready",
+      useCase: "tool_output",
+      useCaseMetadata: { conversationId: conversation.sId },
+    });
+
+    // A file with the same name already exists at the destination in the Pod.
+    fileStorageMock.setFileExists(() => true);
+
+    req.query = {
+      ...req.query,
+      fileId: file.sId,
+    };
+    req.body = { projectId: project.sId };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
+    expect(res._getJSONData()).toEqual({
+      error: {
+        type: "invalid_request_error",
+        message: "A file with this name already exists in the Pod.",
+      },
+    });
   });
 
   it("should return 405 for unsupported methods", async () => {
