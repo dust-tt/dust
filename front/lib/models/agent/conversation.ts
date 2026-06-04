@@ -451,6 +451,7 @@ export class AgentMessageModel extends WorkspaceAwareModel<AgentMessageModel> {
   declare modelInteractionDurationMs: number | null;
   declare completedAt: Date | null;
   declare prunedContext: boolean | null;
+  declare costCredits: number | null;
 }
 
 AgentMessageModel.init(
@@ -535,6 +536,11 @@ AgentMessageModel.init(
       type: DataTypes.BOOLEAN,
       allowNull: true,
       defaultValue: false,
+    },
+    costCredits: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: null,
     },
   },
   {
