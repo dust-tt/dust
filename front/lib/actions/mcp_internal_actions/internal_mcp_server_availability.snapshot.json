@@ -31,7 +31,8 @@
     { "name": "pod_tasks", "id": 1029 },
     { "name": "wakeups", "id": 1031 },
     { "name": "plan_mode", "id": 1032 },
-    { "name": "files", "id": 1033 }
+    { "name": "files", "id": 1033 },
+    { "name": "skill_authoring", "id": 1034 }
   ],
   "manual": [
     { "name": "github", "id": 1 },

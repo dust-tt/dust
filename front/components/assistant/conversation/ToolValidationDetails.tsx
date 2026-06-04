@@ -29,6 +29,11 @@ import {
   isPodTasksCreateTasksInput,
   isPodTasksUpdateTasksInput,
 } from "@app/lib/api/actions/servers/pod_tasks/types";
+import {
+  SKILL_AUTHORING_SERVER_NAME,
+  UPDATE_SKILL_TOOL_NAME,
+} from "@app/lib/api/actions/servers/skill_authoring/metadata";
+import { useSkill } from "@app/lib/swr/skill_configurations";
 import { isString } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
@@ -86,17 +91,44 @@ export function ToolValidationDetails({
   conversationId,
   defaultExpanded = false,
 }: ToolValidationDetailsProps) {
+  // For skill_authoring `update_skill`, the only identifier the agent passes is
+  // the skill `sId`, which is meaningless to a human approving the call. Resolve
+  // it to the skill's name (or "Unknown skill" if the id is wrong / missing).
+  const isSkillAuthoringUpdate =
+    blockedAction.metadata.mcpServerName === SKILL_AUTHORING_SERVER_NAME &&
+    blockedAction.metadata.toolName === UPDATE_SKILL_TOOL_NAME;
+
+  const skillId =
+    isSkillAuthoringUpdate && isString(blockedAction.inputs?.sId)
+      ? blockedAction.inputs.sId
+      : null;
+
+  const { skill, isSkillLoading } = useSkill({
+    workspaceId: owner.sId,
+    skillId,
+    disabled: !skillId,
+  });
+
+  const resolvedSkillName = isSkillLoading
+    ? "Loading…"
+    : (skill?.name ?? "Unknown skill");
+
   const displayableInputs: DisplayableInput[] = useMemo(() => {
     if (!blockedAction.inputs) {
       return [];
     }
     return Object.entries(blockedAction.inputs)
-      .map(([key, value]) => ({
-        label: humanizeFieldName(key),
-        value: formatDisplayValue(value),
-      }))
+      .map(([key, value]) => {
+        if (isSkillAuthoringUpdate && key === "sId") {
+          return { label: "Skill", value: resolvedSkillName };
+        }
+        return {
+          label: humanizeFieldName(key),
+          value: formatDisplayValue(value),
+        };
+      })
       .filter((entry): entry is DisplayableInput => entry.value !== null);
-  }, [blockedAction.inputs]);
+  }, [blockedAction.inputs, isSkillAuthoringUpdate, resolvedSkillName]);
 
   if (
     blockedAction.metadata.mcpServerName === ASHBY_SERVER_NAME &&

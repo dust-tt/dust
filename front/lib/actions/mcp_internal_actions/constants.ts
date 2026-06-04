@@ -66,6 +66,7 @@ import { SALESLOFT_SERVER } from "@app/lib/api/actions/servers/salesloft/metadat
 import { SANDBOX_SERVER } from "@app/lib/api/actions/servers/sandbox/metadata";
 import { SCHEDULES_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/schedules_management/metadata";
 import { SEARCH_SERVER } from "@app/lib/api/actions/servers/search/metadata";
+import { SKILL_AUTHORING_SERVER } from "@app/lib/api/actions/servers/skill_authoring/metadata";
 import { SKILL_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/skill_management/metadata";
 import { SLAB_SERVER } from "@app/lib/api/actions/servers/slab/metadata";
 import { SLACK_BOT_SERVER } from "@app/lib/api/actions/servers/slack_bot/metadata";
@@ -120,6 +121,7 @@ export const TOOLSETS_ENABLE_TOOL_NAME = "enable";
 export const TOOLSETS_LIST_TOOL_NAME = "list";
 
 export const SKILL_MANAGEMENT_SERVER_NAME = "skill_management";
+export const SKILL_AUTHORING_SERVER_NAME = "skill_authoring";
 
 export const GENERATE_IMAGE_TOOL_NAME = "generate_image";
 // Kept for backward compatibility with existing actions in conversations.
@@ -204,6 +206,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "zendesk",
   SEARCH_SERVER_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
+  SKILL_AUTHORING_SERVER_NAME,
   "skill_management",
   "schedules_management",
   "pod_manager",
@@ -970,6 +973,19 @@ export const INTERNAL_MCP_SERVERS = {
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: SKILL_MANAGEMENT_SERVER,
+  },
+  [SKILL_AUTHORING_SERVER_NAME]: {
+    id: 1034,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isPreview: false,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("skill_authoring_tool");
+    },
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: SKILL_AUTHORING_SERVER,
   },
   schedules_management: {
     id: 1020,
