@@ -182,7 +182,7 @@ const lowRemainingSeatBalanceProps = baseAlertPropertiesSchema.extend({
   seat_filter: z
     .object({
       seat_group_key: z.string(),
-      value: z.string().nullish(),
+      seat_group_value: z.string().nullish(),
     })
     .nullish(),
 });

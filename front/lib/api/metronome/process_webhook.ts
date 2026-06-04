@@ -955,7 +955,7 @@ export async function processMetronomeWebhook({
       break;
     }
     case "alerts.low_remaining_seat_balance_reached": {
-      const userId = event.properties.seat_filter?.value;
+      const userId = event.properties.seat_filter?.seat_group_value;
       if (!userId) {
         logger.warn(
           { eventId: event.id, workspaceId: workspace.sId },
