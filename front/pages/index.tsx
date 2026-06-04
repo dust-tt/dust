@@ -1,5 +1,6 @@
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
+import { getSession } from "@app/lib/auth";
 import type { NewsItem } from "@app/lib/homepage_news";
 import { fetchHomepageNews } from "@app/lib/homepage_news";
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
@@ -14,6 +15,25 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   news: NewsItem[];
 }>(async (context) => {
   const { inviteToken } = context.query;
+
+  // The root marketing page is the one place where an authenticated user's intent when typing
+  // "dust.tt" is overwhelmingly to open the product, not to browse the homepage. If they have a
+  // valid session, send them straight into the app via /api/login (which resolves the target
+  // workspace). Marketing sub-pages (/pricing, /security, /resources/..., etc.) are separate routes
+  // and are intentionally left untouched so they stay accessible to logged-in users.
+  const session = await getSession(context.req, context.res);
+  if (session) {
+    const queryIndex = context.resolvedUrl.indexOf("?");
+    const queryString =
+      queryIndex >= 0 ? context.resolvedUrl.slice(queryIndex) : "";
+
+    return {
+      redirect: {
+        permanent: false,
+        destination: `/api/login${queryString}`,
+      },
+    };
+  }
 
   let postLoginCallbackUrl = "/api/login";
   if (inviteToken) {
