@@ -53,12 +53,6 @@ export function getNextWakeUpFireAtFromScheduleConfig(
   }
 }
 
-export function getNextWakeUpFireAt(wakeUp: WakeUpType): number {
-  return (
-    getNextWakeUpFireAtFromScheduleConfig(wakeUp.scheduleConfig) ?? Date.now()
-  );
-}
-
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 // Compact label for the sidebar conversation-list wake-up indicator. When
