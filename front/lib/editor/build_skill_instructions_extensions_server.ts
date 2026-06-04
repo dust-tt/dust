@@ -1,10 +1,10 @@
 // Server-side variant of buildSkillInstructionsExtensions. Mirrors the editor
-// builder but uses schema-only TipTap extensions and skips React/sparkle
-// imports, so it can be loaded by server code (e.g. skill_instructions_html)
-// without dragging the editor's React NodeView chain into the import graph.
+// builder but uses schema-only TipTap extensions and avoids React/sparkle
+// imports, so it can be loaded by server and worker code (e.g.
+// skill_instructions_html) without dragging the editor's React NodeView chain
+// or @dust-tt/sparkle into the import graph (the worker bundle forbids sparkle).
 import { InstructionSuggestionExtension } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { CodeExtension } from "@app/components/editor/extensions/CodeExtension";
-import { HeadingExtension } from "@app/components/editor/extensions/HeadingExtension";
 import { BlockIdExtension } from "@app/components/editor/extensions/instructions/BlockIdExtension";
 import { InstructionsDocumentExtension } from "@app/components/editor/extensions/instructions/InstructionsDocumentExtension";
 import { InstructionsRootExtension } from "@app/components/editor/extensions/instructions/InstructionsRootExtension";
@@ -17,6 +17,7 @@ import {
 import { ToolNode } from "@app/components/editor/extensions/skill_builder/ToolNode";
 import { LinkExtension } from "@app/components/editor/input_bar/LinkExtension";
 import type { Extensions } from "@tiptap/core";
+import { Heading } from "@tiptap/extension-heading";
 import { Markdown } from "@tiptap/markdown";
 import { StarterKit } from "@tiptap/starter-kit";
 
@@ -47,7 +48,12 @@ export function buildSkillInstructionsExtensionsForServer(): Extensions {
       autolink: false,
       openOnClick: false,
     }),
-    HeadingExtension.configure({
+    // Use the plain TipTap Heading (not HeadingExtension) here: HeadingExtension
+    // imports markdownHeaderClasses from @dust-tt/sparkle, which is forbidden in
+    // the worker bundle. Server-side rendering strips presentation attributes
+    // anyway (see stripPresentationAttributes in skill_instructions_html.ts), so
+    // the sparkle-derived classes would be removed regardless.
+    Heading.configure({
       levels: [1, 2, 3, 4, 5, 6],
     }),
     BlockIdExtension,
