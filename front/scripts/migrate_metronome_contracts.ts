@@ -41,7 +41,7 @@ import {
 } from "@app/lib/metronome/types";
 import { resolvePackageAliasForCurrency } from "@app/lib/plans/billing_currency";
 import {
-  isEntreprisePlanPrefix,
+  isEnterprisePlanPrefix,
   isProPlanPrefix,
   PRO_PLAN_SEAT_39_CODE,
 } from "@app/lib/plans/plan_codes";
@@ -181,7 +181,7 @@ async function getSubscriptionInfo(
   const planCode = subscription.getPlan().code;
 
   // Enterprise plans: extract MAU pricing from Stripe tiers.
-  if (isEntreprisePlanPrefix(planCode)) {
+  if (isEnterprisePlanPrefix(planCode)) {
     if (!stripeSubscription) {
       return undefined;
     }

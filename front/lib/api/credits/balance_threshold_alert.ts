@@ -6,7 +6,7 @@ import {
   upsertMetronomeBalanceThresholdAlert,
 } from "@app/lib/metronome/alerts/balance_threshold";
 import { notifyAdminsBalanceThresholdReached } from "@app/lib/notifications/workflows/balance-threshold-reached";
-import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
+import { isEnterprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -155,7 +155,7 @@ export async function maybeNotifyAdminsBalanceThresholdReached({
       workspaceName: workspace.name,
       balanceThresholdCredits: thresholdCredits,
       remainingBalanceCredits,
-      isEnterprise: isEntreprisePlanPrefix(auth.getNonNullablePlan().code),
+      isEnterprise: isEnterprisePlanPrefix(auth.getNonNullablePlan().code),
       eventId,
     });
   } catch (err) {

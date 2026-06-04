@@ -3,7 +3,7 @@ import { useAuth } from "@app/lib/auth/AuthContext";
 import {
   FREE_BYOK_TRANSITIONING_PLAN_CODE,
   isDustCompanyPlan,
-  isEntreprisePlanPrefix,
+  isEnterprisePlanPrefix,
 } from "@app/lib/plans/plan_codes";
 import { useAppStatus } from "@app/lib/swr/useAppStatus";
 import { useWorkspaceUsageStatus } from "@app/lib/swr/user";
@@ -300,7 +300,7 @@ export function SidebarBanners() {
       {subscription.paymentFailingSince &&
         isAdmin(owner) &&
         !isDustCompanyPlan(subscription.plan.code) &&
-        !isEntreprisePlanPrefix(subscription.plan.code) && (
+        !isEnterprisePlanPrefix(subscription.plan.code) && (
           <SubscriptionPastDueBanner />
         )}
     </>

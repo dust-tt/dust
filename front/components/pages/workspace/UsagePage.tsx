@@ -11,7 +11,7 @@ import { UsageProgrammaticLimitCard } from "@app/components/workspace/usage/Usag
 import { UsageSettingsCard } from "@app/components/workspace/usage/UsageSettingsCard";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
-import { isEntreprisePlanPrefix, isUpgraded } from "@app/lib/plans/plan_codes";
+import { isEnterprisePlanPrefix, isUpgraded } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
 import {
   useAwuPoolSummary,
@@ -163,7 +163,7 @@ export function UsagePage() {
   const isSeatBased = Object.keys(seatPlans).length > 1;
 
   const plan = subscription.plan;
-  const isEnterprise = isEntreprisePlanPrefix(plan.code);
+  const isEnterprise = isEnterprisePlanPrefix(plan.code);
   const isManualInvitationsEnabled =
     owner.metadata?.disableManualInvitations !== true;
 

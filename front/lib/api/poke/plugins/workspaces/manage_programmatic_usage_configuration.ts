@@ -16,7 +16,7 @@ import {
 } from "@app/lib/credits/payg";
 import { PAYG_ELIGIBLE_TIERS } from "@app/lib/metronome/types";
 import {
-  isEntreprisePlanPrefix,
+  isEnterprisePlanPrefix,
   PRO_PLAN_SEAT_39_CODE,
 } from "@app/lib/plans/plan_codes";
 import {
@@ -327,7 +327,7 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
       } else {
         const planCode = subscription?.plan.code ?? "";
         const isEligible =
-          isEntreprisePlanPrefix(planCode) ||
+          isEnterprisePlanPrefix(planCode) ||
           planCode === PRO_PLAN_SEAT_39_CODE;
         if (!isEligible) {
           return new Err(
