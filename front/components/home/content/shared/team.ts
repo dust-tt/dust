@@ -579,7 +579,7 @@ export const PEOPLE: Record<string, TeamMember> = {
     title: "Marketing",
     image: "https://ca.slack-edge.com/T050RH73H9P-U0ATZB2QZNW-7de3b65a6066-512",
     linkedIn: "https://www.linkedin.com/in/ellen-woodcock/",
-    github: "",
+    github: "https://github.com/ecw42990",
   },
   tvicaire: {
     name: "Thomas Vicaire",
