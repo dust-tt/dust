@@ -397,7 +397,8 @@ final class ConversationDetailViewModel: ObservableObject {
 
     // MARK: - Blocked Actions Reconciliation
 
-    /// Sets `blockedState` from the server, for a conversation that's already blocked on load.
+    /// Authoritative both ways: sets the block when the server reports one, clears it when not —
+    /// the latter unsticks a block resolved out-of-app (web auth), since the stream is then dead.
     private func reconcileBlockedActions() async {
         do {
             let blocked = try await ConversationService.fetchBlockedActions(
@@ -405,7 +406,15 @@ final class ConversationDetailViewModel: ObservableObject {
                 conversationId: conversation.sId,
                 tokenProvider: tokenProvider
             )
-            guard let action = blocked.first else { return }
+            guard let action = blocked.first else {
+                // Resolved elsewhere — release the stream id so the stream can re-attach.
+                if blockedState != nil {
+                    blockedState = nil
+                    streamingMessageId = nil
+                    turn = nil
+                }
+                return
+            }
 
             // Find the message this action belongs to and ensure we're tracking it
             if let messageId = action.messageId, streamingMessageId == nil {
@@ -431,6 +440,15 @@ final class ConversationDetailViewModel: ObservableObject {
             }
         } catch {
             logger.error("Failed to fetch blocked actions: \(error)")
+        }
+    }
+
+    /// Foreground is the only signal that a block was resolved out-of-app; reload if it cleared.
+    func resyncOnForeground() async {
+        guard blockedState != nil else { return }
+        await reconcileBlockedActions()
+        if blockedState == nil {
+            await loadMessages()
         }
     }
 
