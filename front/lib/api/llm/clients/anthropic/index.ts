@@ -50,12 +50,18 @@ import assert from "assert";
 const MESSAGE_CONVERSION_CONCURRENCY = 10;
 const BATCH_PAYLOAD_BUILD_CONCURRENCY = 10;
 
-// Server-side fallback is a beta param not yet typed by the SDK. We forward it
-// as an extra body param alongside the typed request fields. The list of
-// fallback model ids is driven by modelConfig.fallbackModels (set in the GCS
-// custom-model entry), so no fallback target is hardcoded here.
-type AnthropicRequestPayload = MessageCreateParamsNonStreaming & {
-  fallback?: { model: string }[];
+// Required (with exactly this date) for the `fallbacks` request param; any
+// other server-side-fallback-* value gets the request rejected with a 400.
+// https://platform.claude.com/docs/en/build-with-claude/refusals-and-fallback#server-side-fallback
+const SERVER_SIDE_FALLBACK_BETA_HEADER = "server-side-fallback-2026-06-01";
+
+// Server-side fallback is a beta param not yet typed by the SDK (0.100.1). We
+// forward it as an extra body param on the streaming request. The list of
+// fallback model ids is driven by modelConfig.fallbackModels, so no fallback
+// target is hardcoded here. Scoped to the streaming path only: the Message
+// Batches API rejects the fallbacks param.
+type AnthropicStreamPayload = BetaMessageStreamParams & {
+  fallbacks?: { model: string }[];
 };
 
 /**
@@ -164,7 +170,7 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
     prompt,
     specifications,
     forceToolCall,
-  }: LLMStreamParameters): Promise<AnthropicRequestPayload> {
+  }: LLMStreamParameters): Promise<MessageCreateParamsNonStreaming> {
     const messages = await concurrentExecutor(
       conversation.messages,
       (msg, index) =>
@@ -206,12 +212,6 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
       hasConditionalJITTools,
     });
 
-    const fallbackModels = this.modelConfig.fallbackModels;
-    const fallback =
-      fallbackModels && fallbackModels.length > 0
-        ? fallbackModels.map((model) => ({ model }))
-        : undefined;
-
     return {
       model: this.modelId,
       ...thinkingConfig,
@@ -221,19 +221,39 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
       tools: specifications.map(toTool),
       max_tokens: this.modelConfig.generationTokensCount,
       tool_choice: toToolChoiceParam(specifications, forceToolCall),
-      ...(fallback ? { fallback } : {}),
     };
+  }
+
+  // Builds the server-side fallback param from modelConfig.fallbackModels, or
+  // undefined when none are configured (so the param is omitted entirely).
+  // Server-side fallback is not available on Vertex AI, so it is never attached
+  // to Vertex requests.
+  private buildFallbacksParam(): { model: string }[] | undefined {
+    const fallbackModels = this.modelConfig.fallbackModels;
+    if (this.useVertex || !fallbackModels || fallbackModels.length === 0) {
+      return undefined;
+    }
+    return fallbackModels.map((model) => ({ model }));
   }
 
   protected async buildStreamRequestPayload(
     streamParameters: LLMStreamParameters
   ): Promise<BetaMessageStreamParams> {
-    const betas = this.modelConfig.customBetas;
-
     const basePayload = await this.buildBaseRequestPayload(streamParameters);
     const outputFormat = toOutputFormatParam(this.responseFormat);
+    const fallbacks = this.buildFallbacksParam();
 
-    return {
+    // The fallbacks param is rejected unless the request carries the
+    // server-side fallback beta header, so the header is attached here rather
+    // than left to customBetas (which could drift out of sync).
+    const betas = fallbacks
+      ? [
+          ...(this.modelConfig.customBetas ?? []),
+          SERVER_SIDE_FALLBACK_BETA_HEADER,
+        ]
+      : this.modelConfig.customBetas;
+
+    const payload: AnthropicStreamPayload = {
       ...basePayload,
       stream: true,
       betas,
@@ -244,7 +264,9 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
       // buildBaseRequestPayload (isFirst and isLast) cover Vertex instead.
       ...(!this.useVertex ? { cache_control: { type: "ephemeral" } } : {}),
       model: getModel(this.useVertex, { modelId: this.modelId }),
+      ...(fallbacks ? { fallbacks } : {}),
     };
+    return payload;
   }
 
   protected async *sendRequest(
