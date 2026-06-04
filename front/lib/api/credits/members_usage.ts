@@ -545,6 +545,119 @@ export async function fetchRemainingCapCreditsPercentageForUser({
   return Math.max(0, (spendLimitAwuCredits - consumed) / spendLimitAwuCredits);
 }
 
+export type GetMemberUsageResponseBody = {
+  member: MemberUsageType | null;
+};
+
+export async function getMemberUsage({
+  auth,
+}: {
+  auth: Authenticator;
+}): Promise<GetMemberUsageResponseBody> {
+  const workspace = auth.getNonNullableWorkspace();
+  const subscription = auth.subscription();
+  const userResource = auth.user();
+
+  if (!userResource) {
+    return { member: null };
+  }
+
+  const { metronomeCustomerId } = workspace;
+  const metronomeContractId = subscription?.metronomeContractId ?? null;
+  const userId = userResource.sId;
+
+  const [
+    membershipsResult,
+    perUserTotalConsumedCredits,
+    seatDataByUserId,
+    perUserSpendLimits,
+  ] = await Promise.all([
+    MembershipResource.getActiveMemberships({
+      workspace,
+      users: [userResource],
+    }),
+    fetchPerUserUsageCreditsForMembersTable({
+      metronomeCustomerId: metronomeCustomerId ?? null,
+      metronomeContractId,
+      userIds: [userId],
+    }),
+    fetchSeatDataForMembersTable({
+      metronomeCustomerId: metronomeCustomerId ?? null,
+      metronomeContractId,
+    }),
+    fetchEffectivePerUserSpendLimits({
+      metronomeCustomerId: metronomeCustomerId ?? null,
+      workspaceId: workspace.sId,
+      includeAlertLinks: false,
+    }),
+  ]);
+
+  const { defaultAwuCreditsBySeatType, seatAllowanceBySeatType } =
+    perUserSpendLimits;
+  const { memberships } = membershipsResult;
+  const membership = memberships.find((m) => m.userId === userResource.id);
+
+  if (!membership) {
+    return { member: null };
+  }
+
+  const totalConsumedCredits = perUserTotalConsumedCredits.get(userId) ?? 0;
+  const seatData = seatDataByUserId.get(userId);
+  const awuAllocation = seatData?.awuAllocation ?? 0;
+
+  const consumedFromAllowanceAwuCredits = Math.min(
+    totalConsumedCredits,
+    awuAllocation
+  );
+  const consumedFromPoolAwuCredits =
+    totalConsumedCredits - consumedFromAllowanceAwuCredits;
+
+  const normalizedSeatType = normalizeToPoolLimitSeatType(membership.seatType);
+  const defaultCap = normalizedSeatType
+    ? (defaultAwuCreditsBySeatType[normalizedSeatType] ?? null)
+    : null;
+  const overrideAwuCredits =
+    membership.poolCapOverrideAwuCredits !== null
+      ? membership.poolCapOverrideAwuCredits +
+        (normalizedSeatType
+          ? (seatAllowanceBySeatType[normalizedSeatType] ?? 0)
+          : 0)
+      : null;
+
+  const spendLimitSource = resolveEffectiveSpendLimitSource({
+    overrideAwuCredits,
+    defaultAwuCredits: defaultCap?.threshold ?? null,
+  });
+
+  return {
+    member: {
+      sId: userId,
+      name: userResource.fullName() || userResource.name,
+      email: userResource.email ?? null,
+      image: userResource.imageUrl ?? null,
+      seatType: membership.seatType ?? null,
+      memberUsageLimit: awuAllocation > 0 ? awuAllocation : null,
+      seatBalanceAwu: null,
+      consumedAwuCredits: totalConsumedCredits,
+      consumedFromAllowanceAwuCredits,
+      consumedFromPoolAwuCredits,
+      billingFrequency:
+        seatData?.billingFrequency ??
+        deriveWorkspaceSeatBillingFrequency(membership.seatType ?? null),
+      scheduledSeatType: null,
+      scheduledSeatChangeAt: null,
+      spendLimitAwuCredits: resolveEffectiveSpendLimitAwuCredits({
+        overrideAwuCredits,
+        defaultAwuCredits: defaultCap?.threshold ?? null,
+      }),
+      spendLimitSource,
+      spendLimitAlertId: null,
+      spendLimitWarningAlertId: null,
+      creditState: membership.creditState,
+    },
+  };
+}
+
 export async function getMembersUsage({
   auth,
   paginationParams,
