@@ -236,6 +236,11 @@ interface BaseAwuUsageChartProps {
   billingCycleStartDay: number;
   displayMode: DisplayMode;
   setDisplayMode: (v: DisplayMode) => void;
+  // When `setIncludeFreeUsage` is provided, a toggle to include/exclude free
+  // usage is shown. The workspace usage page omits it (always non-free); only
+  // Poke wires it up.
+  includeFreeUsage?: boolean;
+  setIncludeFreeUsage?: (v: boolean) => void;
 }
 
 export function BaseAwuUsageChart({
@@ -253,6 +258,8 @@ export function BaseAwuUsageChart({
   billingCycleStartDay,
   displayMode,
   setDisplayMode,
+  includeFreeUsage,
+  setIncludeFreeUsage,
 }: BaseAwuUsageChartProps) {
   const [nowMs] = useState(() => Date.now());
   // Cache labels per groupBy dimension so filter chips keep readable labels
@@ -377,10 +384,18 @@ export function BaseAwuUsageChart({
         const allKeys = availableGroupsArray
           .map((g) => g.groupKey)
           .filter((k) => !["total", "others"].includes(k));
+        // Collapsing to `undefined` ("no filter") is only equivalent to having
+        // every key selected when there's no "others" bucket — an undefined
+        // filter also re-shows "others", which the user can't deselect since
+        // it isn't clickable. When "others" is present, keep the explicit list
+        // so selecting all real keys still hides "others".
+        const hasOthers = availableGroupsArray.some(
+          (g) => g.groupKey === "others"
+        );
+        const allRealKeysSelected = newEnabled.length === allKeys.length;
         setFilter({
           ...filter,
-          [groupBy]:
-            newEnabled.length === allKeys.length ? undefined : newEnabled,
+          [groupBy]: !hasOthers && allRealKeysSelected ? undefined : newEnabled,
         });
       }
     },
@@ -531,6 +546,28 @@ export function BaseAwuUsageChart({
               variant="ghost"
               onClick={() => setFilter({})}
             />
+          )}
+          {setIncludeFreeUsage && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  label={includeFreeUsage ? "Including free" : "Excluding free"}
+                  size="xs"
+                  variant="outline"
+                  isSelect
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  label="Excluding free"
+                  onClick={() => setIncludeFreeUsage(false)}
+                />
+                <DropdownMenuItem
+                  label="Including free"
+                  onClick={() => setIncludeFreeUsage(true)}
+                />
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
