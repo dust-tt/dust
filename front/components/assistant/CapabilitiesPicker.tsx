@@ -46,7 +46,7 @@ import {
   DropdownMenuTrigger,
   DropdownTooltipTrigger,
   LoadingBlock,
-  Tool02V2,
+  ShapesPlusV2,
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -613,7 +613,7 @@ export function CapabilitiesPicker({
       >
         <DropdownMenuTrigger asChild>
           <Button
-            icon={Tool02V2}
+            icon={ShapesPlusV2}
             variant="ghost-secondary"
             size={buttonSize}
             tooltip="Capabilities"

@@ -6,9 +6,9 @@ import {
   CodeSquare01V2,
   Heading01V2,
   Italic01V2,
-  LayoutAlt02V2,
   ListV2,
   Separator,
+  TagBlockV2,
   XCloseV2,
 } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
@@ -85,7 +85,7 @@ export function InstructionsMenuBar({
       />
       <Separator orientation="vertical" />
       <Button
-        icon={LayoutAlt02V2}
+        icon={TagBlockV2}
         size="icon"
         variant="ghost-secondary"
         tooltip="XML tag"

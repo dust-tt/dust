@@ -30,7 +30,6 @@ import {
   TabsTrigger,
   User01V2,
 } from "@dust-tt/sparkle";
-import { UsersIcon } from "@heroicons/react/20/solid";
 import type { PaginationState } from "@tanstack/react-table";
 import { useCallback, useEffect, useState } from "react";
 
@@ -197,7 +196,7 @@ export function MembersPage() {
       <Page.Vertical gap="lg" align="stretch">
         <Page.Header
           title="People & Security"
-          icon={UsersIcon}
+          icon={User01V2}
           description="Verify your domain, manage team members and their permissions."
         />
         <WorkspaceAccessPanel

@@ -16,8 +16,8 @@ import {
   Chip,
   EmptyCTA,
   ReverseLeftV2,
+  ShapesPlusV2,
   Spinner,
-  Tool02V2,
 } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useCallback, useMemo, useState } from "react";
@@ -93,7 +93,7 @@ export function SkillBuilderToolsSection({
       type="button"
       onClick={handleOpenSheet}
       label="Add tools"
-      icon={Tool02V2}
+      icon={ShapesPlusV2}
       variant="outline"
     />
   );
@@ -141,7 +141,7 @@ export function SkillBuilderToolsSection({
                   type="button"
                   onClick={handleOpenSheet}
                   label="Add tools"
-                  icon={Tool02V2}
+                  icon={ShapesPlusV2}
                   variant="outline"
                 />
               }

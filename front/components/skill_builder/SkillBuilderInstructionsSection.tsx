@@ -8,7 +8,7 @@ import {
   ContentMessage,
   InfoCircleV2,
   ReverseLeftV2,
-  Tool02V2,
+  ShapesPlusV2,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 import { useFormContext } from "react-hook-form";
@@ -79,7 +79,7 @@ export function SkillBuilderInstructionsSection() {
             <Button
               variant="primary"
               label="Attach capabilities"
-              icon={Tool02V2}
+              icon={ShapesPlusV2}
               onClick={openCapabilities ?? undefined}
               disabled={!openCapabilities}
             />

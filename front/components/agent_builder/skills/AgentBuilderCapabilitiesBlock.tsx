@@ -35,8 +35,8 @@ import {
   CardGrid,
   EmptyCTA,
   Hoverable,
+  ShapesPlusV2,
   Spinner,
-  Tool02V2,
 } from "@dust-tt/sparkle";
 import { useCallback, useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
@@ -78,7 +78,7 @@ function ActionButtons({
         type="button"
         onClick={onClickCapability}
         label="Add capabilities"
-        icon={Tool02V2}
+        icon={ShapesPlusV2}
         variant="primary"
       />
       <Button

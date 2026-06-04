@@ -7,11 +7,10 @@ import { TabContentLayout } from "@app/components/agent_builder/observability/Ta
 import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import {
-  ArrowNarrowLeftV2,
   BarChart01V2,
   Beaker02V2,
   Button,
-  LogIn01V2,
+  LayoutRightV2,
   ScrollArea,
   SidekickV2,
   Tabs,
@@ -43,7 +42,7 @@ function PanelHeader({
             <Tabs value={selectedTab} className="w-full">
               <TabsList>
                 <Button
-                  icon={LogIn01V2}
+                  icon={LayoutRightV2}
                   size="sm"
                   variant="ghost-secondary"
                   tooltip="Hide preview"
@@ -78,7 +77,7 @@ function PanelHeader({
       ) : (
         <div className="flex h-full w-full items-end justify-center pb-3.5">
           <Button
-            icon={ArrowNarrowLeftV2}
+            icon={LayoutRightV2}
             size="sm"
             variant="ghost-secondary"
             tooltip="Open preview"

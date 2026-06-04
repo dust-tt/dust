@@ -54,8 +54,8 @@ import {
   NavigationListItem,
   NavigationListLabel,
   PlusV2,
+  ShapesPlusV2,
   TerminalV2,
-  Tool02V2,
   Tree,
   ZapV2,
 } from "@dust-tt/sparkle";
@@ -251,7 +251,7 @@ const SYSTEM_SPACE_ITEMS: {
   },
   {
     label: "Tools",
-    visual: Tool02V2,
+    visual: ShapesPlusV2,
     category: "actions",
     flag: null,
   },

@@ -33,6 +33,7 @@ import {
   NavigationListItem,
   Separator,
   Settings01V2,
+  ShapesPlusV2,
   Spinner,
   Stars02V2,
   SunV2,
@@ -40,7 +41,6 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-  Tool02V2,
   User01V2,
   XCloseV2,
   ZapV2,
@@ -566,7 +566,7 @@ const NAV_ITEMS: Array<{
   { section: "usage", icon: BarChart01V2, label: "Usage" },
   { section: "customization", icon: Settings01V2, label: "Customization" },
   { section: "notifications", icon: Bell01V2, label: "Notifications" },
-  { section: "tools", icon: Tool02V2, label: "Tools and Triggers" },
+  { section: "tools", icon: ShapesPlusV2, label: "Tools and Triggers" },
 ];
 
 export function UserSettingsPopover({

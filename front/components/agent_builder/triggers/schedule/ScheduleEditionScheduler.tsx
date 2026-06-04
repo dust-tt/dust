@@ -10,9 +10,9 @@ import type { LightWorkspaceType } from "@app/types/user";
 import {
   AnimatedText,
   ArrowRightV2,
-  CircleV2,
   ContentMessage,
   ContentMessageInline,
+  DotV2,
   Icon,
   InfoCircleV2,
   Label,
@@ -218,7 +218,7 @@ export function ScheduleEditionScheduler({
             <div className="flex flex-row items-start gap-2 text-foreground dark:text-foreground-night">
               {generationStatus === "loading" ? (
                 <>
-                  <CircleV2 className="mt-0.5 h-4 w-4 shrink-0 self-start" />
+                  <DotV2 className="mt-0.5 h-4 w-4 shrink-0 self-start" />
                   <AnimatedText variant="primary">
                     {cronDescription}
                   </AnimatedText>

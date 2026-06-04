@@ -17,8 +17,8 @@ import type { WorkspaceType } from "@app/types/user";
 import {
   BookOpen01V2,
   Button,
+  Lock01V2,
   Page,
-  ShapesV2,
   Spinner,
 } from "@dust-tt/sparkle";
 import get from "lodash/get";
@@ -203,7 +203,7 @@ export function APIKeysPage() {
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
           title="API Keys"
-          icon={ShapesV2}
+          icon={Lock01V2}
           description="API Keys allow you to securely connect to Dust from other applications and work with your data programmatically."
         />
         <Page.Vertical align="stretch" gap="md">

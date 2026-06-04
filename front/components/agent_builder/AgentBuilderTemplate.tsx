@@ -13,7 +13,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Edit04V2,
-  FilePlus01V2,
+  ListAddV2,
   Markdown,
   Page,
   Separator,
@@ -116,7 +116,7 @@ function TemplateButtons({ assistantTemplate }: TemplateButtonsProps) {
           <DropdownMenuItem
             label="Reset tools"
             description="Remove all tools"
-            icon={FilePlus01V2}
+            icon={ListAddV2}
             onClick={handleResetActions}
           />
         </DropdownMenuContent>
@@ -142,7 +142,7 @@ function TemplatePresetActions({
     ) {
       return BookOpen01V2;
     }
-    return FilePlus01V2;
+    return ListAddV2;
   };
 
   const getActionLabel = (type: MultiActionPreset) => {

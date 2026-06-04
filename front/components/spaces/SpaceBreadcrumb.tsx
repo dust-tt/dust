@@ -9,7 +9,7 @@ import {
   Breadcrumbs,
   type BreadcrumbsItem,
   CloudArrowLeftRightV2,
-  Tool02V2,
+  ShapesPlusV2,
   ZapV2,
 } from "@dust-tt/sparkle";
 import React from "react";
@@ -85,7 +85,7 @@ export function SpaceBreadCrumbs({
         case "actions":
           return [
             {
-              icon: Tool02V2,
+              icon: ShapesPlusV2,
               label: "Tools",
             },
           ];

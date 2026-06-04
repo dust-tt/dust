@@ -3,9 +3,9 @@ import { NetworkSection } from "@app/components/pages/workspace/developers/secti
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import {
   ContentMessage,
+  Globe01V2,
   InfoCircleV2,
   Page,
-  TerminalV2,
 } from "@dust-tt/sparkle";
 
 export function SandboxPage() {
@@ -44,7 +44,7 @@ export function SandboxPage() {
     <Page.Vertical gap="xl" align="stretch">
       <Page.Header
         title="Computer"
-        icon={TerminalV2}
+        icon={Globe01V2}
         description="Configure workspace-level network access and environment variables for the Computer."
       />
       {renderBody()}

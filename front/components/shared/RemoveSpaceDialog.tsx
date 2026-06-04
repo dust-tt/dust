@@ -7,7 +7,7 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { getSkillAvatarIcon, getSkillIcon } from "@app/lib/skill";
 import { getSpaceName } from "@app/lib/spaces";
 import type { SpaceType } from "@app/types/space";
-import { Chip, File02V2, Icon, Tool02V2 } from "@dust-tt/sparkle";
+import { Chip, File02V2, Icon, ShapesPlusV2 } from "@dust-tt/sparkle";
 import React, { useContext } from "react";
 
 function getActionDisplayName(
@@ -44,7 +44,7 @@ function getActionChipIcon(
     (view) => view.sId === action.configuration.mcpServerViewId
   );
   if (!mcpServerView?.server) {
-    return Tool02V2;
+    return ShapesPlusV2;
   }
 
   return getIcon(mcpServerView.server.icon);

@@ -5,12 +5,12 @@ import type { SpaceType } from "@app/types/space";
 import {
   Building04V2,
   CloudArrowLeftRightV2,
+  Cube01V2,
+  CubeOutlineV2,
   FolderV2,
   Globe01V2,
   Lock01V2,
   Server03V2,
-  SpaceClosedV2,
-  SpaceOpenV2,
   TerminalV2,
   ZapV2,
 } from "@dust-tt/sparkle";
@@ -29,7 +29,7 @@ export function getSpaceIcon(
   space: SpaceType
 ): (props: React.SVGProps<SVGSVGElement>) => React.ReactElement {
   if (space.kind === "project") {
-    return space.isRestricted ? SpaceClosedV2 : SpaceOpenV2;
+    return space.isRestricted ? CubeOutlineV2 : Cube01V2;
   }
 
   if (space.isRestricted) {

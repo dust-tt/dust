@@ -15,12 +15,12 @@ import {
   Button,
   CloudArrowLeftRightV2,
   CreditCard01V2,
+  FireV2,
   OpenaiLogo,
   RefreshCw02V2,
   Settings01V2,
   SliderToggle,
   Spinner,
-  Star06V2,
   Trash01V2,
   ZapV2,
 } from "@dust-tt/sparkle";
@@ -59,7 +59,7 @@ const KILL_SWITCH_DEFINITIONS: Record<KillSwitchType, KillSwitchDefinition> = {
     title: "Firecrawl",
     description:
       "Disable Firecrawl for web browsing and use Spider.cloud instead.",
-    icon: Star06V2,
+    icon: FireV2,
   },
   global_dust_agents_fallback: {
     title: "Dust Agents Fallback Provider",

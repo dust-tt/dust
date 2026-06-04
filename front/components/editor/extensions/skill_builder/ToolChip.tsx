@@ -7,7 +7,7 @@ import {
   AlertCircleV2,
   AttachmentChip,
   Chip,
-  Tool02V2,
+  ShapesPlusV2,
 } from "@dust-tt/sparkle";
 import type React from "react";
 
@@ -19,7 +19,7 @@ function getToolIcon(toolIcon: string | null) {
     return getIcon(toolIcon);
   }
 
-  return Tool02V2;
+  return ShapesPlusV2;
 }
 
 interface ToolChipProps {

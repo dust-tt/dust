@@ -19,9 +19,9 @@ import {
   AlertCircleV2,
   Button,
   ContentMessage,
-  CreditCard01V2,
   Hoverable,
   Page,
+  ZapV2,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
@@ -330,7 +330,7 @@ export function CreditsUsagePage() {
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
           title={"Programmatic Usage"}
-          icon={CreditCard01V2}
+          icon={ZapV2}
           description={
             <div>
               <p>

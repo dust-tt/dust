@@ -25,7 +25,7 @@ import {
   ContentMessage,
   File02V2,
   File04V2,
-  FolderV2,
+  FolderTableV2,
   LayersThree01V2,
   Lock01V2,
   MessageChatSquareV2,
@@ -60,7 +60,7 @@ const getVisualForSourceItem = (
       }
 
       if (SPREADSHEET_INTERNAL_MIME_TYPES.includes(source.mimeType)) {
-        return FolderV2;
+        return FolderTableV2;
       }
     }
 
