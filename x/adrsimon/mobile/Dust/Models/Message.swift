@@ -292,6 +292,40 @@ struct ErrorInfo: Equatable {
     }
 }
 
+/// A point where the agent is waiting on the user before it can continue. Owned by the
+/// ViewModel and seeded both by the blocked-actions REST reconciliation and by stream events;
+/// outlives the stream until resolved. Distinct from the streaming `Activity`.
+enum BlockedState: Equatable {
+    case approval(ToolApprovalInfo)
+    case personalAuth(provider: String, toolName: String)
+    case fileAuth(fileName: String, toolName: String)
+    case userQuestion(UserQuestionInfo)
+}
+
+/// Everything needed to render a tool's question to the user and submit their answer back.
+struct UserQuestionInfo: Equatable {
+    let actionId: String
+    let messageId: String
+    let conversationId: String
+    let question: UserQuestion
+
+    init(from event: ToolAskUserQuestionEvent, fallbackMessageId: String, fallbackConversationId: String) {
+        self.actionId = event.actionId ?? ""
+        self.messageId = event.messageId ?? fallbackMessageId
+        self.conversationId = event.conversationId ?? fallbackConversationId
+        self.question = event.question
+    }
+
+    init(from action: BlockedAction, question: UserQuestion, fallbackConversationId: String) {
+        self.actionId = action.actionId ?? ""
+        self.messageId = action.messageId ?? ""
+        self.conversationId = action.conversationId ?? fallbackConversationId
+        self.question = question
+    }
+}
+
+/// View-facing projection of the agent's streaming state: the streaming `Activity` overlaid
+/// with any `BlockedState`. Not stored — derived by the ViewModel from its split state.
 enum AgentStreamingPhase: Equatable {
     case idle
     case thinking
@@ -299,6 +333,18 @@ enum AgentStreamingPhase: Equatable {
     case personalAuthRequired(provider: String, toolName: String)
     case fileAuthRequired(fileName: String, toolName: String)
     case approvalRequired(approval: ToolApprovalInfo)
+    case userQuestionRequired(question: UserQuestionInfo)
+}
+
+extension BlockedState {
+    var asPhase: AgentStreamingPhase {
+        switch self {
+        case let .approval(info): .approvalRequired(approval: info)
+        case let .personalAuth(provider, toolName): .personalAuthRequired(provider: provider, toolName: toolName)
+        case let .fileAuth(fileName, toolName): .fileAuthRequired(fileName: fileName, toolName: toolName)
+        case let .userQuestion(info): .userQuestionRequired(question: info)
+        }
+    }
 }
 
 enum ConversationMessage: Identifiable {
