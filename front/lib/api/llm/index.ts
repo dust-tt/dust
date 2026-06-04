@@ -158,10 +158,17 @@ export async function getLLM(
   }
 
   if (isAnthropicWhitelistedModelId(modelId)) {
-    const useVertex =
-      useVertexPrerequisite && isAnthropicVertexWhitelistedModelId(modelId);
+    const useEapKey = modelConfig.useEapKey ?? false;
 
-    const anthropicCredentials = modelConfig.useEapKey
+    // EAP models must hit the Anthropic API directly with the EAP key. Vertex
+    // authenticates via GCP project creds and ignores ANTHROPIC_API_KEY, so
+    // routing an EAP model through Vertex would silently drop the EAP key.
+    const useVertex =
+      !useEapKey &&
+      useVertexPrerequisite &&
+      isAnthropicVertexWhitelistedModelId(modelId);
+
+    const anthropicCredentials = useEapKey
       ? withEapAnthropicKey(modelId, credentials)
       : credentials;
 
