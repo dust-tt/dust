@@ -29,6 +29,7 @@ import type {
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { isInternalServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type {
+  EditableToolConfig,
   MCPToolRetryPolicyType,
   ToolDisplayLabels,
 } from "@app/lib/api/mcp";
@@ -76,6 +77,7 @@ export type ServerSideMCPToolType = Omit<
   // When true, the tool is loaded upfront in the cached tools prefix instead of
   // being deferred behind tool search.
   eager?: boolean;
+  editable?: EditableToolConfig;
 };
 
 export type ClientSideMCPToolType = Omit<
