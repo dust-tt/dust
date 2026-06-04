@@ -35,12 +35,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { UserType } from "@app/types/user";
 import { CronExpressionParser } from "cron-parser";
-import {
-  type Attributes,
-  Op,
-  type Transaction,
-  type WhereOptions,
-} from "sequelize";
+import type { Attributes, Transaction, WhereOptions } from "sequelize";
 
 // Maximum fire counts for each wake-up to prevent run-away situations. The limit is exposed to
 // agents to let them reschedule their wake-ups if they want to keep being triggered after reaching
@@ -337,63 +332,6 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
         ["id", "ASC"],
       ],
     });
-  }
-
-  static async fetchNextWakeupAtByConversationId(
-    auth: Authenticator,
-    conversationIds: ModelId[]
-  ): Promise<Map<ModelId, number>> {
-    if (conversationIds.length === 0) {
-      return new Map();
-    }
-
-    const wakeUps = await this.model.findAll({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        conversationId: { [Op.in]: conversationIds },
-        status: ACTIVE_WAKE_UP_STATUSES,
-      },
-      order: [
-        ["createdAt", "ASC"],
-        ["id", "ASC"],
-      ],
-    });
-
-    const nextWakeupAtByConversationId = new Map<ModelId, number>();
-    for (const wakeUp of wakeUps) {
-      const scheduleConfig: WakeUpScheduleConfig | null = (() => {
-        switch (wakeUp.scheduleType) {
-          case "one_shot":
-            return wakeUp.fireAt
-              ? { type: "one_shot", fireAt: wakeUp.fireAt.getTime() }
-              : null;
-          case "cron":
-            return wakeUp.cronExpression && wakeUp.cronTimezone
-              ? {
-                  type: "cron",
-                  cron: wakeUp.cronExpression,
-                  timezone: wakeUp.cronTimezone,
-                }
-              : null;
-          default:
-            return assertNever(wakeUp.scheduleType);
-        }
-      })();
-
-      const nextWakeupAt = scheduleConfig
-        ? getNextWakeUpFireAtFromScheduleConfig(scheduleConfig)
-        : null;
-      if (nextWakeupAt === null) {
-        continue;
-      }
-
-      const previous = nextWakeupAtByConversationId.get(wakeUp.conversationId);
-      if (previous === undefined || nextWakeupAt < previous) {
-        nextWakeupAtByConversationId.set(wakeUp.conversationId, nextWakeupAt);
-      }
-    }
-
-    return nextWakeupAtByConversationId;
   }
 
   /**
