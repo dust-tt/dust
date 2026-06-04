@@ -75,9 +75,11 @@ export const ModelConfigurationSchema = z.object({
   }),
   customThinkingType: z.enum(CUSTOM_THINKING_TYPES).optional(),
   customBetas: z.array(z.string()).optional(),
-  // If true, the model is served through the dedicated EAP Anthropic API key
-  // (ANTHROPIC_EAP_API_KEY) instead of the workspace's Dust-managed / BYOK
-  // credentials. Used for models hosted in a separate Anthropic workspace.
+  // If true, the model is served through the dedicated EAP (Early Access
+  // Program) Anthropic API key (ANTHROPIC_EAP_API_KEY) instead of the
+  // workspace's Dust-managed / BYOK credentials, for models hosted in a
+  // separate Anthropic workspace. Only consulted for Anthropic models;
+  // ignored for other providers.
   useEapKey: z.boolean().optional(),
   disablePrefill: z.boolean().optional(),
   supportsBatchProcessing: z.boolean().optional(),

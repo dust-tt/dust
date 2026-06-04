@@ -24,19 +24,24 @@ import type { LLMParameters } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
+import type { ModelIdType } from "@app/types/assistant/models/types";
 import type { LLMCredentialsType } from "@app/types/provider_credential";
 
-// EAP models are served through a dedicated Anthropic workspace key
-// (ANTHROPIC_EAP_API_KEY) rather than the workspace's Dust-managed / BYOK
-// credentials. Fail loudly if the key is missing so the model is unavailable
-// instead of silently falling back to the standard key.
+// EAP (Early Access Program) models are served through a dedicated Anthropic
+// workspace key (ANTHROPIC_EAP_API_KEY) rather than the workspace's
+// Dust-managed / BYOK credentials.
+//
+// Invariant: the env key must be set before any model opts into `useEapKey`
+// (see deploy plan). We throw rather than degrade to "unsupported" so the
+// misconfiguration is loud instead of silently falling back to the standard key.
 function withEapAnthropicKey(
+  modelId: ModelIdType,
   credentials: LLMCredentialsType
 ): LLMCredentialsType {
   const eapApiKey = config.getAnthropicEapApiKey();
   if (!eapApiKey) {
     throw new Error(
-      "ANTHROPIC_EAP_API_KEY is not configured but this model requires the EAP Anthropic key."
+      `ANTHROPIC_EAP_API_KEY is not configured but model ${modelId} requires the EAP Anthropic key.`
     );
   }
   return { ...credentials, ANTHROPIC_API_KEY: eapApiKey };
@@ -156,11 +161,13 @@ export async function getLLM(
     const useVertex =
       useVertexPrerequisite && isAnthropicVertexWhitelistedModelId(modelId);
 
+    const anthropicCredentials = modelConfig.useEapKey
+      ? withEapAnthropicKey(modelId, credentials)
+      : credentials;
+
     return new AnthropicLLM(auth, {
       useVertex,
-      credentials: modelConfig.useEapKey
-        ? withEapAnthropicKey(credentials)
-        : credentials,
+      credentials: anthropicCredentials,
       getTraceInput,
       getTraceOutput,
       modelId,
