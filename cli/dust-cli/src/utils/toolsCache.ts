@@ -7,10 +7,49 @@ interface ToolsCacheOptions {
 }
 
 type ToolsCacheKeyParams = {
+  scope: string;
   agentName: string;
   mcpServerName: string;
   toolName: string;
 };
+
+type LegacyToolsCacheKeyParams = Omit<ToolsCacheKeyParams, "scope">;
+
+async function pathExists(filePath: string): Promise<boolean> {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function hasProjectRootMarker(directory: string): Promise<boolean> {
+  return (
+    (await pathExists(path.join(directory, ".git"))) ||
+    (await pathExists(path.join(directory, "package.json")))
+  );
+}
+
+export async function resolveToolsCacheScope(
+  cwd = process.cwd()
+): Promise<string> {
+  const resolvedCwd = path.resolve(cwd);
+  let currentDirectory = resolvedCwd;
+
+  while (true) {
+    if (await hasProjectRootMarker(currentDirectory)) {
+      return currentDirectory;
+    }
+
+    const parentDirectory = path.dirname(currentDirectory);
+    if (parentDirectory === currentDirectory) {
+      return resolvedCwd;
+    }
+
+    currentDirectory = parentDirectory;
+  }
+}
 
 export class ToolsCache {
   private cacheDir: string;
@@ -58,21 +97,43 @@ export class ToolsCache {
   }
 
   private createToolKey({
+    scope,
     agentName,
     mcpServerName,
     toolName,
   }: ToolsCacheKeyParams): string {
+    return `${scope}:${agentName}:${mcpServerName}:${toolName}`;
+  }
+
+  private createLegacyToolKey({
+    agentName,
+    mcpServerName,
+    toolName,
+  }: LegacyToolsCacheKeyParams): string {
     return `${agentName}:${mcpServerName}:${toolName}`;
   }
 
   public async getCachedApproval({
+    scope,
     agentName,
     mcpServerName,
     toolName,
   }: ToolsCacheKeyParams): Promise<boolean | null> {
     const cache = await this.loadCache();
-    const toolKey = this.createToolKey({ agentName, mcpServerName, toolName });
-    const cachedEntry = cache.find((entry) => entry === toolKey);
+    const toolKey = this.createToolKey({
+      scope,
+      agentName,
+      mcpServerName,
+      toolName,
+    });
+    const legacyToolKey = this.createLegacyToolKey({
+      agentName,
+      mcpServerName,
+      toolName,
+    });
+    const cachedEntry = cache.find(
+      (entry) => entry === toolKey || entry === legacyToolKey
+    );
 
     if (!cachedEntry) {
       return null;
@@ -82,12 +143,22 @@ export class ToolsCache {
   }
 
   public async setCachedApproval({
+    scope,
     agentName,
     mcpServerName,
     toolName,
   }: ToolsCacheKeyParams): Promise<void> {
     const cache = await this.loadCache();
-    const toolKey = this.createToolKey({ agentName, mcpServerName, toolName });
+    const toolKey = this.createToolKey({
+      scope,
+      agentName,
+      mcpServerName,
+      toolName,
+    });
+    if (cache.includes(toolKey)) {
+      return;
+    }
+
     await this.saveCache([...cache, toolKey]);
   }
 
