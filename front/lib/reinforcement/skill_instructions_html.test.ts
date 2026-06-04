@@ -1,4 +1,5 @@
 import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
+import { extractUniqueSkillReferenceIds } from "@app/lib/skills/format";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import * as cheerio from "cheerio";
 import { describe, expect, it } from "vitest";
@@ -166,9 +167,16 @@ describe("convertMarkdownToBlockHtml", () => {
     // The boolean parse-only attribute must not leak into the HTML.
     expect(skill.attr("skillunavailable")).toBeUndefined();
 
+    // The skill must serialize as an empty paired tag (`<skill ...></skill>`),
+    // never self-closing and never with a child element. This is the form the
+    // rename / availability reconciliation regex matches; a child would break it
+    // and silently desync instructionsHtml from the markdown instructions.
+    expect(skill.children().length).toBe(0);
+    expect(skill.text()).toBe("");
+    expect(extractUniqueSkillReferenceIds(html)).toEqual(["skl_abc"]);
+
     // The trailing text must remain a sibling of the skill node, not get
     // swallowed inside a self-closed <skill> element.
-    expect(skill.text()).not.toContain("when in doubt");
     const paragraph = skill.parent("p");
     expect(paragraph).toHaveLength(1);
     expect(paragraph.text()).toContain("when in doubt");
@@ -204,7 +212,12 @@ describe("convertMarkdownToBlockHtml", () => {
     expect(skill).toHaveLength(1);
     expect(skill.attr("id")).toBe("skl_gone");
 
-    expect(skill.text()).not.toContain("for legacy callers");
+    // Empty paired tag: no chip child, no "Unavailable skill" label leaking into
+    // the stored HTML (and, downstream, into the model prompt).
+    expect(skill.children().length).toBe(0);
+    expect(skill.text()).toBe("");
+    expect(extractUniqueSkillReferenceIds(html)).toEqual(["skl_gone"]);
+
     expect(skill.parent("p").text()).toContain("for legacy callers");
   });
 });

@@ -4,7 +4,6 @@ import {
   SKILL_TAG_NAME,
   serializeSkillTag,
   serializeUnavailableSkillTag,
-  UNAVAILABLE_SKILL_LABEL,
   UNAVAILABLE_SKILL_TAG_NAME,
 } from "@app/lib/skills/format";
 import { isString } from "@app/types/shared/utils/general";
@@ -19,9 +18,6 @@ export type SkillNodeAttributes = {
 
 export const SKILL_NODE_TYPE = "skill";
 
-const SKILL_CHIP_CLASS =
-  "inline-flex items-center gap-0.5 border border-current/40 rounded px-0.5 text-xs leading-tight";
-
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
     skillNode: {
@@ -31,9 +27,9 @@ declare module "@tiptap/core" {
 }
 
 // Schema-only skill reference node. Kept React-free (the interactive node view
-// lives in SkillNodeWithView) so server-side code (e.g. skill_instructions_html)
-// can register it without dragging the editor's React/TipTap node-view chain
-// into the import graph.
+// lives in input_bar/SkillNode.tsx) so server-side code (e.g.
+// skill_instructions_html) can register it without dragging the editor's
+// React/TipTap node-view chain into the import graph.
 // TODO(2026-05-02 aubin): Check whether we can share logic with KnowledgeNode,
 // for example through a base extension.
 export const SkillNode = Node.create({
@@ -82,16 +78,25 @@ export const SkillNode = Node.create({
   },
 
   renderHTML({ node, HTMLAttributes }) {
-    // The chip span child is required, not cosmetic: the static HTML-string
-    // renderer (server path) self-closes a childless custom element as
-    // `<skill .../>`, and HTML5 parsers ignore self-closing on unknown tags, so
-    // following text gets swallowed into the node. An explicit child forces a
-    // properly closed `<skill ...>...</skill>`, matching ToolNode/KnowledgeNode.
+    // The empty-string child is required, not cosmetic. It forces the tag to be
+    // serialized as an empty paired element (`<skill ...></skill>`) rather than
+    // self-closing, for two reasons:
+    //   1. The static HTML-string renderer (server path) self-closes a childless
+    //      custom element as `<skill .../>`, and HTML5 parsers ignore
+    //      self-closing on unknown tags, so following text gets swallowed into
+    //      the node.
+    //   2. The paired form is the one `serializeSkillTag(..., { html: true })`
+    //      emits and that SKILL_REFERENCE_TAG_REGEX matches, so the skill rename
+    //      / availability reconciliation can rewrite references stored in
+    //      instructionsHtml. A child element (e.g. a chip span) would break that
+    //      regex and silently desync instructionsHtml from the markdown
+    //      instructions.
+    // The visible chip is rendered by the React node view, not from this HTML.
     if (node.attrs.skillUnavailable === true) {
       return [
         UNAVAILABLE_SKILL_TAG_NAME,
         isString(node.attrs.skillId) ? { id: node.attrs.skillId } : {},
-        ["span", { class: SKILL_CHIP_CLASS }, UNAVAILABLE_SKILL_LABEL],
+        "",
       ];
     }
 
@@ -100,11 +105,7 @@ export const SkillNode = Node.create({
       return ["span", {}];
     }
 
-    return [
-      SKILL_TAG_NAME,
-      HTMLAttributes,
-      ["span", { class: SKILL_CHIP_CLASS }, skillName],
-    ];
+    return [SKILL_TAG_NAME, HTMLAttributes, ""];
   },
 
   renderText({ node }) {
