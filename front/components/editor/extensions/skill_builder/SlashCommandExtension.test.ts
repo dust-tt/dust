@@ -8,8 +8,8 @@ import { afterEach, describe, expect, it } from "vitest";
 import type { SlashCommand } from "./SlashCommandDropdown";
 import {
   buildSkillBuilderSlashCommandItems,
-  slashCommandPluginKey,
   SlashCommandExtension,
+  slashCommandPluginKey,
 } from "./SlashCommandExtension";
 
 const attachKnowledgeItem: SlashCommand = {
