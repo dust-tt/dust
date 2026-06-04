@@ -995,6 +995,137 @@ export function createSlackPersonalTools(
         );
       }
     },
+
+    list_custom_emoji: async ({ includeCategories }, { authInfo }) => {
+      const accessToken = authInfo?.token;
+      if (!accessToken) {
+        return new Err(new MCPError("Access token not found"));
+      }
+
+      const slackClient = await getSlackClient(accessToken);
+
+      try {
+        const response = await slackClient.emoji.list({
+          include_categories: includeCategories ?? false,
+        });
+
+        if (!response.ok) {
+          return new Err(
+            new MCPError(`Error listing custom emoji: ${response.error}`)
+          );
+        }
+
+        const emoji = response.emoji ?? {};
+        const emojiCount = Object.keys(emoji).length;
+
+        return new Ok([
+          {
+            type: "text" as const,
+            text: `Found ${emojiCount} custom emoji in the workspace`,
+          },
+          {
+            type: "text" as const,
+            text: JSON.stringify(
+              {
+                emoji,
+                total_count: emojiCount,
+                ...(includeCategories && response.categories
+                  ? { categories: response.categories }
+                  : {}),
+              },
+              null,
+              2
+            ),
+          },
+        ]);
+      } catch (error) {
+        const authError = handleSlackAuthError(error);
+        if (authError) {
+          return authError;
+        }
+        return new Err(
+          new MCPError(`Error listing custom emoji: ${normalizeError(error)}`)
+        );
+      }
+    },
+
+    add_reaction: async ({ channel, timestamp, name }, { authInfo }) => {
+      const accessToken = authInfo?.token;
+      if (!accessToken) {
+        return new Err(new MCPError("Access token not found"));
+      }
+
+      const slackClient = await getSlackClient(accessToken);
+
+      try {
+        const response = await slackClient.reactions.add({
+          channel,
+          timestamp,
+          name,
+        });
+
+        if (!response.ok) {
+          return new Err(
+            new MCPError(`Error adding reaction: ${response.error}`)
+          );
+        }
+
+        return new Ok([
+          {
+            type: "text" as const,
+            text: `Successfully added :${name}: reaction to message`,
+          },
+          { type: "text" as const, text: JSON.stringify(response, null, 2) },
+        ]);
+      } catch (error) {
+        const authError = handleSlackAuthError(error);
+        if (authError) {
+          return authError;
+        }
+        return new Err(
+          new MCPError(`Error adding reaction: ${normalizeError(error)}`)
+        );
+      }
+    },
+
+    remove_reaction: async ({ channel, timestamp, name }, { authInfo }) => {
+      const accessToken = authInfo?.token;
+      if (!accessToken) {
+        return new Err(new MCPError("Access token not found"));
+      }
+
+      const slackClient = await getSlackClient(accessToken);
+
+      try {
+        const response = await slackClient.reactions.remove({
+          channel,
+          timestamp,
+          name,
+        });
+
+        if (!response.ok) {
+          return new Err(
+            new MCPError(`Error removing reaction: ${response.error}`)
+          );
+        }
+
+        return new Ok([
+          {
+            type: "text" as const,
+            text: `Successfully removed :${name}: reaction from message`,
+          },
+          { type: "text" as const, text: JSON.stringify(response, null, 2) },
+        ]);
+      } catch (error) {
+        const authError = handleSlackAuthError(error);
+        if (authError) {
+          return authError;
+        }
+        return new Err(
+          new MCPError(`Error removing reaction: ${normalizeError(error)}`)
+        );
+      }
+    },
   };
 
   const tools = buildTools(SLACK_PERSONAL_TOOLS_METADATA, handlers);

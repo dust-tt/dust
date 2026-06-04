@@ -491,6 +491,63 @@ Set search_all=true only if the user explicitly requests to search all public wo
       done: "Archive Slack channel",
     },
   },
+  list_custom_emoji: {
+    description:
+      "List custom emoji available in the workspace. Use this to discover custom reacjis before adding them as reactions. Returns emoji names and their image URLs.",
+    schema: {
+      includeCategories: z
+        .boolean()
+        .optional()
+        .describe(
+          "If true, also include the categories for each emoji. Defaults to false."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing custom emoji",
+      done: "List custom emoji",
+    },
+  },
+  add_reaction: {
+    description:
+      "Add a reaction emoji to a message. Supports both standard emoji (e.g., 'thumbsup', 'heart') and custom workspace emoji. Use the list_custom_emoji tool first to discover available custom reacjis.",
+    schema: {
+      channel: z.string().describe("The channel where the message is located"),
+      timestamp: z
+        .string()
+        .describe("The timestamp of the message to react to"),
+      name: z
+        .string()
+        .describe(
+          "The name of the emoji reaction (without colons, e.g., 'thumbsup', 'heart', 'custom-emoji-name'). Use list_custom_emoji to discover available custom emoji."
+        ),
+    },
+    stake: "low",
+    displayLabels: {
+      running: "Adding Slack reaction",
+      done: "Add Slack reaction",
+    },
+  },
+  remove_reaction: {
+    description:
+      "Remove a reaction emoji from a message. Supports both standard and custom workspace emoji.",
+    schema: {
+      channel: z.string().describe("The channel where the message is located"),
+      timestamp: z
+        .string()
+        .describe("The timestamp of the message to remove reaction from"),
+      name: z
+        .string()
+        .describe(
+          "The name of the emoji reaction to remove (without colons, e.g., 'thumbsup', 'heart', 'custom-emoji-name')"
+        ),
+    },
+    stake: "low",
+    displayLabels: {
+      running: "Removing Slack reaction",
+      done: "Remove Slack reaction",
+    },
+  },
 });
 
 // Server metadata for external consumption (e.g., by SDK).

@@ -175,8 +175,26 @@ The search_all parameter should only be set to true if the user explicitly reque
       done: "Read Slack thread messages",
     },
   },
+  list_custom_emoji: {
+    description:
+      "List custom emoji available in the workspace. Use this to discover custom reacjis before adding them as reactions. Returns emoji names and their image URLs.",
+    schema: {
+      includeCategories: z
+        .boolean()
+        .optional()
+        .describe(
+          "If true, also include the categories for each emoji. Defaults to false."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing custom emoji",
+      done: "List custom emoji",
+    },
+  },
   add_reaction: {
-    description: "Add a reaction emoji to a message",
+    description:
+      "Add a reaction emoji to a message. Supports both standard emoji (e.g., 'thumbsup', 'heart') and custom workspace emoji. Use the list_custom_emoji tool first to discover available custom reacjis.",
     schema: {
       channel: z.string().describe("The channel where the message is located"),
       timestamp: z
@@ -185,7 +203,7 @@ The search_all parameter should only be set to true if the user explicitly reque
       name: z
         .string()
         .describe(
-          "The name of the emoji reaction (without colons, e.g., 'thumbsup', 'heart')"
+          "The name of the emoji reaction (without colons, e.g., 'thumbsup', 'heart', 'custom-emoji-name'). Use list_custom_emoji to discover available custom emoji."
         ),
     },
     stake: "low",
@@ -195,7 +213,8 @@ The search_all parameter should only be set to true if the user explicitly reque
     },
   },
   remove_reaction: {
-    description: "Remove a reaction emoji from a message",
+    description:
+      "Remove a reaction emoji from a message. Supports both standard and custom workspace emoji.",
     schema: {
       channel: z.string().describe("The channel where the message is located"),
       timestamp: z
@@ -204,7 +223,7 @@ The search_all parameter should only be set to true if the user explicitly reque
       name: z
         .string()
         .describe(
-          "The name of the emoji reaction to remove (without colons, e.g., 'thumbsup', 'heart')"
+          "The name of the emoji reaction to remove (without colons, e.g., 'thumbsup', 'heart', 'custom-emoji-name')"
         ),
     },
     stake: "low",

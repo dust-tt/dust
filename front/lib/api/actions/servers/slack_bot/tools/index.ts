@@ -222,6 +222,55 @@ export function createSlackBotTools(
       }
     },
 
+    list_custom_emoji: async ({ includeCategories }, { authInfo }) => {
+      const accessToken = authInfo?.token;
+      if (!accessToken) {
+        return new Err(new MCPError("Access token not found"));
+      }
+
+      const slackClient = await getSlackClient(accessToken);
+
+      try {
+        const response = await slackClient.emoji.list({
+          include_categories: includeCategories ?? false,
+        });
+
+        if (!response.ok) {
+          return new Err(
+            new MCPError(`Error listing custom emoji: ${response.error}`)
+          );
+        }
+
+        const emoji = response.emoji ?? {};
+        const emojiCount = Object.keys(emoji).length;
+
+        return new Ok([
+          {
+            type: "text" as const,
+            text: `Found ${emojiCount} custom emoji in the workspace`,
+          },
+          {
+            type: "text" as const,
+            text: JSON.stringify(
+              {
+                emoji,
+                total_count: emojiCount,
+                ...(includeCategories && response.categories
+                  ? { categories: response.categories }
+                  : {}),
+              },
+              null,
+              2
+            ),
+          },
+        ]);
+      } catch (error) {
+        return new Err(
+          new MCPError(`Error listing custom emoji: ${normalizeError(error)}`)
+        );
+      }
+    },
+
     add_reaction: async ({ channel, timestamp, name }, { authInfo }) => {
       const accessToken = authInfo?.token;
       if (!accessToken) {
