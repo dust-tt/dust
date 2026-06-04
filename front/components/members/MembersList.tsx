@@ -1,5 +1,6 @@
 import {
   hasFullUserAccess,
+  hasWorkspaceInfo,
   type SearchMemberType,
 } from "@app/components/members/MemberSelectionTable";
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
@@ -49,7 +50,7 @@ function getTableRows({
 }): RowData[] {
   return allUsers.map((user) => {
     const isFullAccess = hasFullUserAccess(user);
-    const workspace = isFullAccess ? user.workspace : undefined;
+    const workspace = hasWorkspaceInfo(user) ? user.workspace : undefined;
     return {
       icon: user.image ?? "",
       name: user.fullName,
@@ -193,7 +194,7 @@ export function MembersList({
 
   const rows = useMemo(() => {
     const filteredMembers = members.filter(
-      (m) => !hasFullUserAccess(m) || m.workspace.role !== "none"
+      (m) => !hasWorkspaceInfo(m) || m.workspace.role !== "none"
     );
     return getTableRows({
       allUsers: filteredMembers,

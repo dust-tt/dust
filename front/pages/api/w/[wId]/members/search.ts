@@ -8,8 +8,11 @@ import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { GROUP_KINDS } from "@app/types/groups";
-import type { LightUserType, UserTypeWithWorkspace } from "@app/types/user";
-import { toLightUser } from "@app/types/user";
+import type {
+  LightUserTypeWithWorkspace,
+  UserTypeWithWorkspace,
+} from "@app/types/user";
+import { toLightUserWithWorkspace } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
@@ -29,7 +32,7 @@ const SearchMembersQuerySchema = z.object({
 });
 
 export type SearchMembersResponseBody = {
-  members: LightUserType[];
+  members: LightUserTypeWithWorkspace[];
   total: number;
 };
 
@@ -90,7 +93,7 @@ async function handler(
       }
 
       return res.status(200).json({
-        members: members.map(toLightUser),
+        members: members.map(toLightUserWithWorkspace),
         total,
       });
 

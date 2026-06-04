@@ -1,6 +1,7 @@
 import { useSearchMembers } from "@app/lib/swr/memberships";
 import type {
   LightUserType,
+  LightUserTypeWithWorkspace,
   LightWorkspaceType,
   UserTypeWithWorkspace,
 } from "@app/types/user";
@@ -18,12 +19,21 @@ import type {
 } from "@tanstack/react-table";
 import { useMemo, useRef, useState } from "react";
 
-export type SearchMemberType = LightUserType | UserTypeWithWorkspace;
+export type SearchMemberType =
+  | LightUserType
+  | LightUserTypeWithWorkspace
+  | UserTypeWithWorkspace;
 
 export function hasFullUserAccess(
   user: SearchMemberType
 ): user is UserTypeWithWorkspace {
   return "email" in user;
+}
+
+export function hasWorkspaceInfo(
+  user: SearchMemberType
+): user is LightUserTypeWithWorkspace | UserTypeWithWorkspace {
+  return "workspace" in user;
 }
 
 export interface MemberRowData {

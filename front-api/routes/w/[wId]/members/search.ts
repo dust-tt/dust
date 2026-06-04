@@ -1,8 +1,11 @@
 import { searchMembers } from "@app/lib/api/workspace";
 import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
 import { GROUP_KINDS } from "@app/types/groups";
-import type { LightUserType, UserTypeWithWorkspace } from "@app/types/user";
-import { toLightUser } from "@app/types/user";
+import type {
+  LightUserTypeWithWorkspace,
+  UserTypeWithWorkspace,
+} from "@app/types/user";
+import { toLightUserWithWorkspace } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -24,7 +27,7 @@ const SearchMembersQuerySchema = z.object({
 });
 
 export type SearchMembersResponseBody = {
-  members: LightUserType[];
+  members: LightUserTypeWithWorkspace[];
   total: number;
 };
 
@@ -75,7 +78,7 @@ app.get(
     }
 
     return ctx.json({
-      members: members.map(toLightUser),
+      members: members.map(toLightUserWithWorkspace),
       total,
     });
   }

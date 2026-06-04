@@ -115,6 +115,10 @@ export type LightUserType = Pick<
   "sId" | "firstName" | "lastName" | "fullName" | "image"
 >;
 
+export type LightUserTypeWithWorkspace = LightUserType & {
+  workspace: WorkspaceType;
+};
+
 export function toLightUser(user: UserType): LightUserType {
   return {
     sId: user.sId,
@@ -122,6 +126,15 @@ export function toLightUser(user: UserType): LightUserType {
     lastName: user.lastName,
     fullName: user.fullName,
     image: user.image,
+  };
+}
+
+export function toLightUserWithWorkspace(
+  user: UserTypeWithWorkspace
+): LightUserTypeWithWorkspace {
+  return {
+    ...toLightUser(user),
+    workspace: user.workspace,
   };
 }
 
