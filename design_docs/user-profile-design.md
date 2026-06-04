@@ -7,10 +7,11 @@
 Users repeatedly have to restate stable personal context: who they are, what they work on,
 how they prefer to be helped, and recurring constraints or communication preferences.
 
-The proposed v1 is a per-user, per-workspace free-text field, edited in account settings
-and injected into the system prompt of the user's real agent conversations so agents can
-personalize responses. It is manually authored, not auto-learned. It is called **Profile**,
-not "Memory," to avoid clashing with the existing Agent Memory feature.
+The proposed v1 is a per-user, per-workspace profile/memory surface, edited in account
+settings and injected into the system prompt of the user's real agent conversations so
+agents can personalize responses. It is explicitly maintained by the user and by agents,
+not auto-groomed from all conversations in the background. **Profile** is the user-facing
+name for this memory surface.
 
 This solves: "who I am / how I want to be helped." It does **not** solve working memory,
 instruction self-editing, or org-shared knowledge.
@@ -23,26 +24,36 @@ instruction self-editing, or org-shared knowledge.
 | -------------- | ------------------------------------------------------------------------------------------------------ |
 | Scope          | Per-workspace, one profile per (user, workspace)                                                       |
 | Reach          | All active agents in real conversations, incl. custom, **default-on except Slack**                     |
-| Controls       | None in v1 (no builder opt-out, no admin toggle). This is a platform-level user personalization layer. |
+| Controls       | None in v1 (no builder opt-out, no admin toggle). This is a platform-level user memory layer.           |
+| Writes         | Bidirectional from day 0: users and agents update the same profile/memory surface.                      |
 | Multi-user     | Inject the triggering poster's profile                                                                 |
 | Privacy policy | Dust conversation sharing is user responsibility; Slack-originated runs are excluded by default        |
 | UI             | Section in the account settings page (`AccountSettings.tsx`)                                           |
 
 ### Longer-term vision
 
-Should we ship manual Profile now, or wait for a more ambitious auto-built memory layer?
+**Decision:** v1 uses one bidirectional profile/memory system.
 
-**Recommendation:** ship manual Profile first.
+We should avoid creating two memory systems: one manually edited "Profile" and another
+agent-maintained "Memory." The user-facing profile should be the editable surface of the
+same underlying memory object that agents can update. If a user can add or correct stable
+context, an agent should be able to propose or perform the same class of update through the
+same store and same UI surface.
 
-Manual Profile is the smallest useful product surface for the problem we are actually
-solving in v1: stable user-provided context such as role, communication preferences,
-recurring constraints, and "how I want Dust to help me." It is explicit, user-controlled,
-easy to explain in the UI, easy to delete, and easy to debug when an answer feels overly
-personalized. It also lets us validate whether a single cross-agent, per-workspace profile
-is valuable before building the much harder automatic layer.
+This keeps the product model simple:
 
-Auto-built memory is not simply a better implementation of the same feature. It changes the
-problem:
+- Users have one place to inspect, edit, and delete what Dust knows about them in a
+  workspace.
+- Agents do not maintain a separate hidden memory layer that can diverge from the profile.
+- Support/debugging can point to one source of personalization.
+- Future automatic behavior improves the same memory object instead of introducing a second
+  persistence mechanism.
+
+Agent writes happen through a tool. The tool follows the existing tool-permission model:
+if updating memory is not considered low-stake, the user is asked for permission before the
+write. This keeps v1 bidirectional without adding a second "suggestions" system.
+
+Fully auto-built memory remains a harder problem:
 
 - **Memory quality:** the system must decide what is worth remembering, avoid false or
   over-specific facts, and avoid turning one-off context into permanent preference.
@@ -60,48 +71,45 @@ problem:
   surfaces. Without those, it risks becoming the "messy memories" problem users already
   report in other products.
 
-The better v2 is probably not "agents silently write profile." It is likely
-**auto-suggested profile edits**: Dust proposes additions or changes based on repeated
-signals, and the user accepts, edits, or rejects them. That preserves user control while
-testing whether automatic extraction can produce useful profile content.
+The likely v2 is a **dream mode**: an overnight/background process that reviews the user's
+recent conversations, reinforces useful memories, removes or rewrites stale ones, and
+grooms the profile/memory surface into something cleaner than raw accumulated facts. That
+should improve the same memory object, not create a second one.
 
 ### Phased plan
 
-1. **v1: Manual Profile**
-   - User-authored, per-workspace profile.
+1. **v1: Bidirectional Profile / Memory**
+   - One per-workspace memory surface for stable user context.
+   - User-editable in account settings.
+   - Agent-writable through a tool that updates the same underlying store.
+   - Permission is requested through the existing tool-permission model when the write is
+     not low-stake.
    - Default-on for real Dust conversations, disabled for Slack-originated runs.
    - No builder opt-out.
-   - Measure adoption, token cost, and qualitative impact.
+   - Measure adoption, token cost, write quality, and qualitative impact.
 
-2. **v1.5: Profile Suggestions**
-   - Dust can suggest profile edits based on repeated patterns.
-   - Suggestions are never written silently.
-   - User accepts, edits, or rejects each suggestion.
-   - This tests whether automatic extraction is useful without taking on full memory risk.
-
-3. **v2: Auto-Built Memory Decision**
-   - Only pursue if v1/v1.5 show strong value.
-   - Requires clear write policy, stale-memory handling, edit/delete UX, and observability.
-   - May use `agent_memories` or a separate memory layer depending on scope.
-
-4. **Future: Agent-Writable Profile / Memory**
-   - Not part of v1.
-   - Requires source tracking, updated-by tracking, auditability, and user-visible controls.
+2. **v2: Dream Mode**
+   - Background reinforcement/grooming of the same memory surface.
+   - Reviews recent conversations to improve, consolidate, and prune memories.
+   - Requires stale-memory handling, auditability, observability, and strong user controls.
 
 ## Tech framing for MVP
 
 ### Data model
 
-New `user_profiles` table (`WorkspaceAwareModel`, wrapped by `UserProfileResource`):
+New `user_profiles` table (`WorkspaceAwareModel`, wrapped by `UserProfileResource`).
+Despite the table name, this is the single per-user, per-workspace profile/memory store:
 
 - `workspaceId`, `userId` (both FK + indexed), `content varchar(2048)`, timestamps.
+- `source` and `updatedByUserId` so user and agent writes are attributable.
 - Unique index `(workspaceId, userId)`.
 - 2000 chars enforced server-side.
-- Future automatic/suggested writes may require `source` and `updatedByUserId`.
 
 **Alternatives rejected:** `user_metadata` (no typed columns for the roadmap; viable
-fallback if automatic/suggested profile writes are dropped). `agent_memories` (agent-keyed + accumulation model;
-it is the right home for the _later_ auto-learned / agent-writable layers, not this).
+fallback if agent-writable memory is dropped). A separate `agent_memories` layer for this
+use case is rejected because it would create two memory systems for the same user-facing
+problem. Existing agent-keyed memory concepts can still inform the write/grooming workflow,
+but the user should inspect and edit one profile/memory surface.
 `profile.md` in a Computer (shared computer is multi-person so wrong privacy scope, only
 reaches computer-enabled agents, pull-based read is unreliable; revisit as a future
 convergence, see Dependencies).
@@ -161,6 +169,11 @@ where visibility is channel-driven and less explicitly controlled by the Dust us
 builder-surprise surface, accepted as product direction); profile visible in LLM traces
 (no redaction yet); no write rate limit beyond the char cap.
 
+### Lifecycle
+
+Delete the row on user deletion, workspace deletion, and **membership revocation** (the
+last is a gap that exists for `user_metadata` today, `lib/api/membership.ts:223`).
+
 ### Rollout
 
 Behind feature flag `user_profile`, used as the rollout kill switch. Emit StatsD adoption.
@@ -170,6 +183,9 @@ Behind feature flag `user_profile`, used as the rollout kill switch. Emit StatsD
 - `GET /api/w/[wId]/me/profile`
 - `PUT /api/w/[wId]/me/profile`, zod `content: z.string().max(2000)`.
 - `DELETE /api/w/[wId]/me/profile`
+- Agent writes go through a memory-update tool, reuse the existing tool-permission model,
+  and update the same row through `UserProfileResource` with `source` / `updatedByUserId`
+  attribution.
 - `AccountSettings.tsx`: `TextArea` + char counter; SWR `useUserProfile` / `useUpdateUserProfile`;
   transparency help text (see Security).
 
