@@ -22,11 +22,12 @@ import {
 } from "@app/lib/resources/permission_utils";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { WakeUpModel } from "@app/lib/resources/storage/models/wakeup";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { launchIndexConversationEsWorkflow } from "@app/temporal/es_indexation/client";
+import * as wakeUpTemporalClient from "@app/temporal/triggers/wakeup_client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
@@ -40,6 +41,7 @@ import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 import { assert, beforeEach, describe, expect, it, vi } from "vitest";
 import { destroyConversation } from "../api/assistant/conversation/destroy";
@@ -2504,8 +2506,15 @@ describe("listPrivateConversationsForUser", () => {
   });
 
   it("hydrates nextWakeupAt in the DB paginated list", async () => {
+    vi.spyOn(
+      wakeUpTemporalClient,
+      "launchOrScheduleWakeUpTemporalWorkflow"
+    ).mockResolvedValue(new Ok(undefined));
+
+    const agentConfiguration =
+      await AgentConfigurationFactory.createTestAgent(adminAuth);
     const conversation = await ConversationFactory.create(adminAuth, {
-      agentConfigurationId: agents[0].sId,
+      agentConfigurationId: agentConfiguration.sId,
       messagesCreatedAt: [new Date()],
     });
     await ConversationResource.upsertParticipation(userAuth, {
@@ -2517,34 +2526,34 @@ describe("listPrivateConversationsForUser", () => {
     const scheduledFireAt = new Date("2030-01-01T12:00:00.000Z");
     const cancelledFireAt = new Date("2029-01-01T12:00:00.000Z");
 
-    await WakeUpModel.bulkCreate([
+    const cancelledWakeUpResult = await WakeUpResource.makeNew(
+      adminAuth,
       {
-        workspaceId: workspace.id,
-        conversationId: conversation.id,
-        userId: adminAuth.getNonNullableUser().id,
-        agentConfigurationId: agents[0].sId,
         scheduleType: "one_shot",
         fireAt: cancelledFireAt,
         cronExpression: null,
         cronTimezone: null,
         reason: "Cancelled wake-up",
-        status: "cancelled",
-        fireCount: 0,
       },
+      conversation,
+      agentConfiguration
+    );
+    assert(cancelledWakeUpResult.isOk(), "Failed to create cancelled wake-up.");
+    await cancelledWakeUpResult.value.markCancelled(adminAuth);
+
+    const scheduledWakeUpResult = await WakeUpResource.makeNew(
+      adminAuth,
       {
-        workspaceId: workspace.id,
-        conversationId: conversation.id,
-        userId: adminAuth.getNonNullableUser().id,
-        agentConfigurationId: agents[0].sId,
         scheduleType: "one_shot",
         fireAt: scheduledFireAt,
         cronExpression: null,
         cronTimezone: null,
         reason: "Scheduled wake-up",
-        status: "scheduled",
-        fireCount: 0,
       },
-    ]);
+      conversation,
+      agentConfiguration
+    );
+    assert(scheduledWakeUpResult.isOk(), "Failed to create scheduled wake-up.");
 
     const result =
       await ConversationResource.listPrivateConversationsForUserPaginatedFromDB(
