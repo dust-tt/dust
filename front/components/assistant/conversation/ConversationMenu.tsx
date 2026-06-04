@@ -194,7 +194,7 @@ export function ConversationMenu({
         owner.sId,
         activeConversationId,
         `agentDetails=${agentId}`,
-        config.getApiBaseUrl()
+        config.getAppUrl()
       );
       window.open(agentDetailsUrl, "_blank");
       return;
@@ -209,7 +209,7 @@ export function ConversationMenu({
         owner.sId,
         activeConversationId,
         `userDetails=${userId}`,
-        config.getApiBaseUrl()
+        config.getAppUrl()
       );
       window.open(userDetailsUrl, "_blank");
       return;
@@ -295,7 +295,7 @@ export function ConversationMenu({
     owner.sId,
     activeConversationId,
     undefined,
-    config.getApiBaseUrl()
+    config.getAppUrl()
   );
 
   const doDelete = useDeleteConversation(owner);
