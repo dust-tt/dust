@@ -4,6 +4,7 @@ import { getSession } from "@app/lib/auth";
 import type { NewsItem } from "@app/lib/homepage_news";
 import { fetchHomepageNews } from "@app/lib/homepage_news";
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
+import logger from "@app/logger/logger";
 import { Landing } from "@app/pages/home";
 import type { ReactElement } from "react";
 
@@ -16,21 +17,24 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
 }>(async (context) => {
   const { inviteToken } = context.query;
 
-  // The root marketing page is the one place where an authenticated user's intent when typing
-  // "dust.tt" is overwhelmingly to open the product, not to browse the homepage. If they have a
-  // valid session, send them straight into the app via /api/login (which resolves the target
-  // workspace). Marketing sub-pages (/pricing, /security, /resources/..., etc.) are separate routes
-  // and are intentionally left untouched so they stay accessible to logged-in users.
+  // On the marketing root, an authenticated user's intent is to open the product, not browse the
+  // homepage. Send them into the app via /api/login (which resolves the target workspace). Marketing
+  // sub-pages (/pricing, /security, /resources/...) are separate routes, left untouched.
+  //
+  // We don't forward the query string: the only params /api/login reads here is inviteToken, and an
+  // expired/invalid token makes it return a 400, which would turn the bare root into an error wall.
+  // The "open the product" intent doesn't depend on any param, so a plain redirect is safer.
   const session = await getSession(context.req, context.res);
   if (session) {
-    const queryIndex = context.resolvedUrl.indexOf("?");
-    const queryString =
-      queryIndex >= 0 ? context.resolvedUrl.slice(queryIndex) : "";
+    logger.info(
+      { path: context.resolvedUrl },
+      "Redirecting authenticated user from marketing root to the app"
+    );
 
     return {
       redirect: {
         permanent: false,
-        destination: `/api/login${queryString}`,
+        destination: "/api/login",
       },
     };
   }
