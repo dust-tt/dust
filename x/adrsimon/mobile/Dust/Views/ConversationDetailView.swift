@@ -14,6 +14,7 @@ struct ConversationDetailView: View {
     @State private var showFilesSheet = false
     @State private var selectedFragment: ContentFragment?
     @State private var selectedGeneratedFile: GeneratedFile?
+    @Environment(\.scenePhase) private var scenePhase
 
     init(
         conversation: Conversation,
@@ -79,6 +80,11 @@ struct ConversationDetailView: View {
             async let agents: () = inputBarViewModel.loadAgents()
             async let caps: () = inputBarViewModel.loadCapabilities()
             _ = await (agents, caps)
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                Task { await viewModel.resyncOnForeground() }
+            }
         }
         .onDisappear {
             inputBarViewModel.cancelUploads()
