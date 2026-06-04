@@ -63,8 +63,10 @@ export const SKILL_AUTHORING_TOOLS_METADATA = createToolsRecord({
   [UPDATE_SKILL_TOOL_NAME]: {
     description:
       "Update an existing custom Skill by id. Provide only the fields that should change. " +
-      "To change the instructions you can either replace them wholesale with `instructions`, " +
+      "To change the instructions you can either replace them entirely with `instructions`, " +
       "or make a targeted edit with `old_string`/`new_string` (preferred for small changes). " +
+      "A targeted edit is an exact string replacement (not a regular expression) and replaces " +
+      "every occurrence of `old_string`; by default `old_string` must match exactly once. " +
       "These two modes are mutually exclusive.",
     schema: {
       sId: z.string().describe("The custom skill id to update."),
@@ -89,11 +91,11 @@ export const SKILL_AUTHORING_TOOLS_METADATA = createToolsRecord({
         .string()
         .optional()
         .describe(
-          "For a targeted edit of the instructions: the exact existing text to replace. " +
-            "Must match the current instructions exactly, including whitespace and line " +
-            "breaks. Include enough surrounding context to identify the text uniquely. " +
-            "Call `get_skill` first to read the current instructions. Cannot be combined " +
-            "with `instructions`."
+          "For a targeted edit of the instructions: the exact existing text to replace " +
+            "(literal text, not a regular expression). Must match the current instructions " +
+            "exactly, including whitespace and line breaks. Include enough surrounding context " +
+            "to identify the text uniquely. Call `get_skill` first to read the current " +
+            "instructions. Cannot be combined with `instructions`."
         ),
       new_string: z
         .string()
