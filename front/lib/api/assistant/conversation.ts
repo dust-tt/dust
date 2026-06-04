@@ -1203,6 +1203,14 @@ export async function editUserMessage(
     return canInteractRes;
   }
 
+  const editLimitResult = await checkMessagesLimit(auth, {
+    mentions,
+    context: message.context,
+  });
+  if (editLimitResult.isErr()) {
+    return editLimitResult;
+  }
+
   let userMessage: UserMessageType | null = null;
   let agentMessages: AgentMessageType[] = [];
 
@@ -2445,6 +2453,26 @@ async function checkMessagesLimit(
   const owner = auth.getNonNullableWorkspace();
   const plan = auth.subscription()?.plan;
   const user = auth.user();
+
+  if (user) {
+    const membership =
+      await MembershipResource.getActiveMembershipOfUserInWorkspace({
+        user,
+        workspace: owner,
+      });
+    if (membership?.seatType === "none") {
+      return new Err({
+        status_code: 403,
+        api_error: {
+          type: "no_seat",
+          message:
+            "You don't have a seat in this workspace. Ask a workspace admin " +
+            "to assign you one to start sending messages.",
+        },
+      });
+    }
+  }
+
   if (owner.metronomeCustomerId && plan && isCreditPricedPlan(plan)) {
     const blockedReason = user
       ? await isUserBlocked(owner.sId, user.sId)

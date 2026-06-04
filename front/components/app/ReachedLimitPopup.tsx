@@ -25,7 +25,8 @@ export type WorkspaceLimit =
   | "message_limit"
   | "credits_exhausted"
   | "pool_credits_exhausted"
-  | "user_credits_exhausted";
+  | "user_credits_exhausted"
+  | "no_seat";
 
 function getLimitPromptForCode(
   router: AppRouter,
@@ -194,6 +195,21 @@ function getLimitPromptForCode(
               {isAdmin
                 ? "Your workspace has run out of credits. Please purchase more credits to continue using Dust."
                 : "Your workspace has run out of credits. Please contact your administrator to purchase more credits."}
+            </Page.P>
+          </>
+        ),
+      };
+    }
+
+    case "no_seat": {
+      return {
+        title: "No seat assigned",
+        validateLabel: "Ok",
+        children: (
+          <>
+            <Page.P>
+              You don&apos;t have a seat assigned in this workspace. Please
+              contact your administrator to assign you one.
             </Page.P>
           </>
         ),

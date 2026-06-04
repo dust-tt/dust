@@ -13,6 +13,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import type { DustError } from "@app/lib/error";
 import { useAppRouter } from "@app/lib/platform";
+import { useMembersUsage } from "@app/lib/swr/memberships";
 import { classNames } from "@app/lib/utils";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { ConversationListItemType } from "@app/types/assistant/conversation";
@@ -28,7 +29,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import { Button, Card, Lightbulb04, Page, XClose } from "@dust-tt/sparkle";
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
 interface ConversationContainerProps {
   owner: WorkspaceType;
@@ -61,6 +62,29 @@ export function ConversationContainerVirtuoso({
 
   const [limitReachedCode, setLimitReachedCode] =
     useState<WorkspaceLimit | null>(null);
+
+  // Proactively fetch the current user's seat type so the no-seat banner
+  // shows immediately without requiring a failed send first.
+  const { membersUsage: selfUsage } = useMembersUsage({
+    workspaceId: owner.sId,
+    searchTerm: user.email ?? "",
+    pageIndex: 0,
+    pageSize: 1,
+    disabled: !user.email,
+  });
+  const isNoSeat =
+    selfUsage.length > 0 &&
+    selfUsage[0].sId === user.sId &&
+    selfUsage[0].seatType === "none";
+
+  const effectiveLimitCode: WorkspaceLimit | null = isNoSeat
+    ? "no_seat"
+    : limitReachedCode;
+
+  const lastLimitReachedCode = useRef<WorkspaceLimit>("message_limit");
+  if (effectiveLimitCode !== null) {
+    lastLimitReachedCode.current = effectiveLimitCode;
+  }
   const { setSelectedSingleAgent } = useContext(InputBarContext);
 
   const router = useAppRouter();
@@ -185,6 +209,7 @@ export function ConversationContainerVirtuoso({
           user={user}
           conversationId={activeConversationId}
           setLimitReachedCode={setLimitReachedCode}
+          limitReachedCode={effectiveLimitCode}
           key={conversationViewerKey}
           clientSideMCPServerIds={clientSideMCPServerIds}
         />
@@ -210,6 +235,9 @@ export function ConversationContainerVirtuoso({
               onSubmit={handleConversationCreation}
               draftKey="home-new-conversation"
               disableAutoFocus={false}
+              submitBlockMessage={
+                isNoSeat ? "You don't have a seat in this workspace." : null
+              }
             />
           </div>
 
@@ -253,11 +281,11 @@ export function ConversationContainerVirtuoso({
       )}
       <ReachedLimitPopup
         isAdmin={isAdmin(owner)}
-        isOpened={!!limitReachedCode}
+        isOpened={!!effectiveLimitCode && effectiveLimitCode !== "no_seat"}
         onClose={() => setLimitReachedCode(null)}
         subscription={subscription}
         owner={owner}
-        code={limitReachedCode ?? "message_limit"}
+        code={lastLimitReachedCode.current}
       />
     </DropzoneContainer>
   );

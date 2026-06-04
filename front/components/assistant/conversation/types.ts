@@ -141,6 +141,7 @@ export type VirtuosoMessageListContext = {
   branchIdToApprove?: string;
   setBranchIdToApprove?: (branchId: string | null) => void;
   isAutoScrollEnabledRef: MutableRefObject<boolean>;
+  isNoSeat?: boolean;
 };
 
 export const areSameRankAndBranch = (

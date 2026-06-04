@@ -26,6 +26,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  AlertCircle,
   Hexagon01,
   SeatMax,
 } from "@dust-tt/sparkle";
@@ -35,6 +36,7 @@ import { useEffect, useRef, useState } from "react";
 // (`SeatTypeInfo.name`) so adding a new seat tier only requires tagging the
 // product in Metronome — no code change here.
 const SEAT_TYPE_ICONS: Record<MembershipSeatType, React.ComponentType> = {
+  none: AlertCircle,
   free: Hexagon01,
   pro: Cube01,
   pro_yearly: Cube01,

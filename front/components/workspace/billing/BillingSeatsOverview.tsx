@@ -62,6 +62,8 @@ function seatTypeGroup(seatType: MembershipSeatType): MembershipSeatType {
       return "pro";
     case "max_yearly":
       return "max";
+    case "none":
+      return "none";
     default:
       assertNeverAndIgnore(seatType);
       return seatType;

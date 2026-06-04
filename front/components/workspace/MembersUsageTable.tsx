@@ -10,7 +10,9 @@ import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
 import {
   Cube01,
   DataTable,
+  AlertCircle,
   Hexagon01,
+  Icon,
   LoadingBlock,
   type MenuItem,
   SeatMax,
@@ -47,6 +49,7 @@ type Info = CellContext<RowData, string>;
 const SEAT_TYPE_ICONS: Partial<
   Record<MembershipSeatType, React.ComponentType>
 > = {
+  none: AlertCircle,
   max: SeatMax,
   pro: Cube01,
   free: Hexagon01,
