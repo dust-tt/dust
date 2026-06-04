@@ -12,6 +12,7 @@ import type {
 } from "@app/lib/api/analytics/programmatic_cost";
 import type { WindowSize } from "@app/lib/api/analytics/time_utils";
 import type { AwuPoolSummaryResponseBody } from "@app/lib/api/credits/awu_pool_summary";
+import type { GetMembersUsageResponseBody } from "@app/lib/api/credits/members_usage";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeListCreditsResponseBody } from "@app/pages/api/poke/workspaces/[wId]/credits";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
@@ -211,5 +212,27 @@ export function usePokeAwuPoolSummary({
     isAwuPoolSummaryError: error,
     isAwuPoolSummaryValidating: isValidating,
     mutateAwuPoolSummary: mutate,
+  };
+}
+
+export function usePokeMembersUsage({
+  owner,
+  disabled,
+}: PokeConditionalFetchProps) {
+  const { fetcher } = useFetcher();
+  const fetcherFn: Fetcher<GetMembersUsageResponseBody> = fetcher;
+
+  const { data, error, isValidating, mutate } = useSWRWithDefaults(
+    disabled ? null : `/api/poke/workspaces/${owner.sId}/credits/members-usage`,
+    fetcherFn
+  );
+
+  return {
+    members: data?.members ?? emptyArray(),
+    totalMembers: data?.total ?? 0,
+    isMembersUsageLoading: !error && !data && !disabled,
+    isMembersUsageError: error,
+    isMembersUsageValidating: isValidating,
+    mutateMembersUsage: mutate,
   };
 }

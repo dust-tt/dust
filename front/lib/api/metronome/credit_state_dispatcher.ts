@@ -21,7 +21,7 @@ import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 /**
  * Transition a single user from `user_seat` / `user_seat_low_balance` when
@@ -527,18 +527,40 @@ export async function syncPoolCreditStateFromBalance({
 }): Promise<void> {
   await invalidateWorkspacePoolCredits(workspace.sId, metronomeCustomerId);
 
-  const balancesResult = await listMetronomeBalances(metronomeCustomerId);
+  const balanceResult = await getWorkspacePoolAwuBalance(metronomeCustomerId);
 
-  if (balancesResult.isErr()) {
+  if (balanceResult.isErr()) {
     logger.warn(
       {
         workspaceId: workspace.sId,
         metronomeCustomerId,
-        error: balancesResult.error,
+        error: balanceResult.error,
       },
       "[CreditStateDispatcher] syncPoolCreditStateFromBalance: failed to fetch balances, skipping dispatch"
     );
     return;
+  }
+
+  const awuBalance = balanceResult.value;
+  if (awuBalance > 0) {
+    await dispatchCreditsAdded({ workspace, newBalanceAwu: awuBalance });
+  } else {
+    await dispatchPoolExhausted({ workspace });
+  }
+}
+
+/**
+ * Sum the live Metronome AWU balance across all AWU credit-type schedules for
+ * a customer. This is the same balance the pool credit state machine reacts
+ * to via `syncPoolCreditStateFromBalance`; exposed so debug tooling can read
+ * it without re-implementing the reduction.
+ */
+export async function getWorkspacePoolAwuBalance(
+  metronomeCustomerId: string
+): Promise<Result<number, Error>> {
+  const balancesResult = await listMetronomeBalances(metronomeCustomerId);
+  if (balancesResult.isErr()) {
+    return new Err(balancesResult.error);
   }
 
   const awuCreditTypeId = getCreditTypeAwuId();
@@ -549,9 +571,5 @@ export async function syncPoolCreditStateFromBalance({
     return sum + (entry.balance ?? 0);
   }, 0);
 
-  if (awuBalance > 0) {
-    await dispatchCreditsAdded({ workspace, newBalanceAwu: awuBalance });
-  } else {
-    await dispatchPoolExhausted({ workspace });
-  }
+  return new Ok(awuBalance);
 }

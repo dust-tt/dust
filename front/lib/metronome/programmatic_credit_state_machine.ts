@@ -22,6 +22,42 @@ export type ProgrammaticCreditEvent =
   /** Cap reset (new billing period or cap removed/raised). */
   | { type: "programmatic_cap_reset" };
 
+/**
+ * The canonical programmatic credit state implied purely by which of the
+ * monthly-cap spend-threshold alerts are currently in alarm. This mirrors what
+ * the webhook routing produces by dispatching `programmatic_cap_reached` /
+ * `programmatic_low_balance` / `programmatic_cap_reset` through the machine,
+ * expressed as a pure function so callers can *check* whether the persisted
+ * `workspace.programmaticCreditState` has drifted from reality without mutating
+ * anything.
+ *
+ *   cap in alarm        -> depleted
+ *   critical in alarm   -> active_critical_balance
+ *   low in alarm        -> active_low_balance
+ *   none in alarm (or
+ *   no cap configured)  -> active
+ */
+export function expectedProgrammaticCreditStateFromAlerts({
+  capInAlarm,
+  criticalInAlarm,
+  lowInAlarm,
+}: {
+  capInAlarm: boolean;
+  criticalInAlarm: boolean;
+  lowInAlarm: boolean;
+}): WorkspaceProgrammaticCreditState {
+  if (capInAlarm) {
+    return "depleted";
+  }
+  if (criticalInAlarm) {
+    return "active_critical_balance";
+  }
+  if (lowInAlarm) {
+    return "active_low_balance";
+  }
+  return "active";
+}
+
 type ProgrammaticCreditGuard = (event: ProgrammaticCreditEvent) => boolean;
 
 type ProgrammaticCreditTransition = {

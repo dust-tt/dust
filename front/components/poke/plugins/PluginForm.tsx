@@ -165,9 +165,15 @@ export function PluginForm({
                 ? arg.dependsOn
                 : [arg.dependsOn]
               : [];
-            const isDependentFieldHidden = conditions.some(
-              (c) => watchedValues[c.field] !== c.value
-            );
+            const isDependentFieldHidden = conditions.some((c) => {
+              const watched = watchedValues[c.field];
+              // Enum fields surface their selection as an array of values, so
+              // match by membership; everything else compares by value.
+              if (Array.isArray(watched)) {
+                return !watched.includes(c.value);
+              }
+              return watched !== c.value;
+            });
 
             if (isDependentFieldHidden) {
               return null;

@@ -135,6 +135,12 @@ export function WorkspacePage() {
     membersCount,
     metronomeCustomerId,
     pendingSubscription,
+    poolCreditState,
+    poolAlertId,
+    programmaticAlertIds,
+    usageCapAlertId,
+    defaultAlertIds,
+    programmaticCreditState,
     stripeSubscription,
     stripeCustomerId,
     subscriptions,
@@ -142,6 +148,7 @@ export function WorkspacePage() {
     workspaceVerifiedDomains,
     workspaceCreationDay,
     extensionConfig,
+    creditUsageConfig,
     programmaticUsageConfig,
     workosEnvironmentId,
     temporalFrontNamespace,
@@ -341,6 +348,13 @@ export function WorkspacePage() {
                   owner={owner}
                   subscription={activeSubscription}
                   stripeSubscription={stripeSubscription}
+                  poolCreditState={poolCreditState}
+                  programmaticCreditState={programmaticCreditState}
+                  creditUsageConfig={creditUsageConfig}
+                  poolAlertId={poolAlertId}
+                  programmaticAlertIds={programmaticAlertIds}
+                  usageCapAlertId={usageCapAlertId}
+                  defaultAlertIds={defaultAlertIds}
                 />
               </TabsContent>
             )}

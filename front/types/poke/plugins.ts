@@ -4,7 +4,10 @@ import type { LightWorkspaceType } from "../user";
 
 export interface DependsOnCondition {
   field: string;
-  value: boolean;
+  // The value the dependency field must hold for this field to render. For a
+  // boolean field this is the toggle state; for an enum field it's the value
+  // that must be selected (matched by membership against the selected values).
+  value: boolean | string;
 }
 
 interface BaseArgDefinition {
