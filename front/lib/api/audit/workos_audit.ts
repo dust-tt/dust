@@ -84,6 +84,8 @@ export const AUDIT_ACTIONS = [
   "scim.group_user_removed",
   // Agent & Tool Execution.
   "agent.executed",
+  "tool.approval_decided",
+  "tool.approval_requested",
   "tool.executed",
   // Triggers.
   "trigger.created",

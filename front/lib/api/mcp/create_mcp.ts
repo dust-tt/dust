@@ -5,6 +5,11 @@ import type {
 import { MCP_TOOL_CONFIGURATION_FIELDS_TO_OMIT } from "@app/lib/actions/mcp";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import type { StepContext } from "@app/lib/actions/types";
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
@@ -42,7 +47,7 @@ export async function createMCPAction(
     MCP_TOOL_CONFIGURATION_FIELDS_TO_OMIT
   ) as LightMCPToolConfigurationType;
 
-  return AgentMCPActionResource.makeNew(
+  const action = await AgentMCPActionResource.makeNew(
     auth,
     { conversation, stepContent },
     {
@@ -55,4 +60,28 @@ export async function createMCPAction(
       toolConfiguration,
     }
   );
+
+  if (status === "blocked_validation_required") {
+    void emitAuditLogEvent({
+      auth,
+      action: "tool.approval_requested",
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        buildAuditLogTarget("agent", agentMessage.configuration),
+        buildAuditLogTarget("tool", {
+          sId: toolConfiguration.name,
+          name: toolConfiguration.originalName,
+        }),
+      ],
+      context: getAuditLogContext(auth),
+      metadata: {
+        tool_name: String(toolConfiguration.originalName),
+        mcp_server_name: String(toolConfiguration.mcpServerName),
+        conversation_id: String(conversation.sId),
+        message_id: String(agentMessage.sId),
+      },
+    });
+  }
+
+  return action;
 }

@@ -1,0 +1,21 @@
+{
+  "action": "tool.approval_requested",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "agent"
+    },
+    {
+      "type": "tool"
+    }
+  ],
+  "metadata": {
+    "tool_name": "string",
+    "mcp_server_name": "string",
+    "conversation_id": "string",
+    "message_id": "string",
+    "actor_type": "string"
+  }
+}

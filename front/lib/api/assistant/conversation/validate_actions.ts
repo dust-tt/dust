@@ -12,10 +12,16 @@ import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant
 import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
 import { resumeAncestorConversations as resumeAncestorConversationsHelper } from "@app/lib/api/assistant/conversation/resume_ancestor_conversations";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import { resolveSandboxChildBlock } from "@app/lib/api/sandbox/sandbox_child_block";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -23,6 +29,125 @@ import logger from "@app/logger/logger";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { isString } from "@app/types/shared/utils/general";
+
+function getAuditLogDecision(
+  approvalState: ActionApprovalStateType
+): "approved" | "rejected" {
+  switch (approvalState) {
+    case "approved":
+    case "always_approved":
+      return "approved";
+    case "rejected":
+      return "rejected";
+    default:
+      return assertNever(approvalState);
+  }
+}
+
+function extractDataSourceId(input: unknown): string | null {
+  if (isString(input)) {
+    return input.split("/").pop() ?? input;
+  }
+
+  if (!input || typeof input !== "object" || !("uri" in input)) {
+    return null;
+  }
+
+  const { uri } = input;
+  return isString(uri) ? uri.split("/").pop() ?? uri : null;
+}
+
+function extractAccessedDataSourceIds(
+  inputs: Record<string, unknown>
+): string {
+  const dataSources = inputs.dataSources;
+  if (!Array.isArray(dataSources)) {
+    return "";
+  }
+
+  return dataSources.map(extractDataSourceId).filter(isString).join(",");
+}
+
+async function emitToolApprovalDecidedAuditEvent({
+  action,
+  approvalState,
+  auth,
+  conversationId,
+  messageId,
+}: {
+  action: AgentMCPActionResource;
+  approvalState: ActionApprovalStateType;
+  auth: Authenticator;
+  conversationId: string;
+  messageId: string;
+}): Promise<void> {
+  try {
+    const owner = auth.getNonNullableWorkspace();
+    const user = auth.user();
+    const agentMessage = await AgentMessageModel.findOne({
+      where: {
+        workspaceId: owner.id,
+        id: action.agentMessageId,
+      },
+      attributes: ["agentConfigurationId", "agentConfigurationVersion"],
+    });
+    const agentConfiguration = agentMessage
+      ? await AgentConfigurationModel.findOne({
+          where: {
+            workspaceId: owner.id,
+            sId: agentMessage.agentConfigurationId,
+            version: agentMessage.agentConfigurationVersion,
+          },
+          attributes: ["name"],
+        })
+      : null;
+
+    void emitAuditLogEvent({
+      auth,
+      action: "tool.approval_decided",
+      targets: [
+        buildAuditLogTarget("workspace", owner),
+        buildAuditLogTarget("agent", {
+          sId: agentMessage?.agentConfigurationId ?? "unknown",
+          name:
+            agentConfiguration?.name ??
+            agentMessage?.agentConfigurationId ??
+            "unknown",
+        }),
+        buildAuditLogTarget("tool", {
+          sId: action.toolConfiguration.name,
+          name: action.toolConfiguration.originalName,
+        }),
+      ],
+      context: getAuditLogContext(auth),
+      metadata: {
+        tool_name: String(action.toolConfiguration.originalName),
+        mcp_server_name: String(action.toolConfiguration.mcpServerName),
+        conversation_id: String(conversationId),
+        message_id: String(messageId),
+        decision: getAuditLogDecision(approvalState),
+        deciding_user_id: user?.sId ?? "unknown",
+        deciding_user_email: user?.email ?? "unknown",
+        accessed_data_source_ids: extractAccessedDataSourceIds(
+          action.augmentedInputs
+        ),
+      },
+    });
+  } catch (error) {
+    logger.error(
+      {
+        ...normalizeError(error),
+        actionId: action.sId,
+        conversationId,
+        messageId,
+      },
+      "Failed to prepare tool approval decision audit event"
+    );
+  }
+}
 
 export async function validateAction(
   auth: Authenticator,
@@ -151,6 +276,14 @@ export async function validateAction(
 
     return new Ok(undefined);
   }
+
+  void emitToolApprovalDecidedAuditEvent({
+    action,
+    approvalState,
+    auth,
+    conversationId,
+    messageId,
+  });
 
   // Remove the tool approval request event from the message channel.
   await getRedisHybridManager().removeEvent((event) => {
