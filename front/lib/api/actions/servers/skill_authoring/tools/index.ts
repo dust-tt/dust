@@ -306,8 +306,12 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
 
     // Resolve the new instructions: undefined keeps the existing ones, a full
     // string replaces them, and a targeted edit applies a str-replace on the
-    // current instructions (mirroring the Files MCP edit pattern).
+    // current instructions (mirroring the Files MCP edit pattern). Unlike
+    // editClientExecutableFile, we don't take an edit lock: a skill is a single
+    // builder-driven row, so the read-modify-write contention isn't a concern.
     let resolvedInstructions: string | undefined = instructions;
+    // The `old_string !== undefined` check only narrows the type; both halves
+    // are already guaranteed non-undefined by the validation above.
     if (isTargetedInstructionsEdit && old_string !== undefined) {
       const { updatedContent, occurrences } = getUpdatedContentAndOccurrences({
         oldString: old_string,
