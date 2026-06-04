@@ -940,8 +940,8 @@ export class FileResource extends BaseResource<FileModel> {
       logger.error(
         {
           err: normalizeError(error),
-          fileSId: this.sId,
-          workspaceSId: owner.sId,
+          fileId: this.sId,
+          workspaceId: owner.sId,
           version,
         },
         "getFileContent failed"
