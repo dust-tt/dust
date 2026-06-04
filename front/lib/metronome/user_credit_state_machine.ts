@@ -132,17 +132,18 @@ const TRANSITIONS: UserCreditTransition[] = [
       "user_seat_low_balance",
       "on_pool",
       "on_pool_low_balance",
+      "capped",
     ],
     event: "per_user_cap_reached",
     to: "capped",
   },
   {
-    from: ["on_pool_low_balance", "capped"],
+    from: ["on_pool", "on_pool_low_balance", "capped"],
     event: "admin_raised_user_cap",
     to: "on_pool",
   },
   {
-    from: ["on_pool_low_balance", "capped"],
+    from: ["on_pool", "on_pool_low_balance", "capped"],
     event: "per_user_cap_resolved",
     to: "on_pool",
   },
@@ -150,13 +151,13 @@ const TRANSITIONS: UserCreditTransition[] = [
   // Seat balance exhausted. Order matters: free check first (guard wins on
   // first match), paid fallback second.
   {
-    from: ["user_seat", "user_seat_low_balance"],
+    from: ["user_seat", "user_seat_low_balance", "capped"],
     event: "seat_balance_exhausted",
     guard: (ctx) => ctx.seatType === "free",
     to: "capped",
   },
   {
-    from: ["user_seat", "user_seat_low_balance"],
+    from: ["user_seat", "user_seat_low_balance", "on_pool"],
     event: "seat_balance_exhausted",
     guard: (ctx) => ctx.seatType !== "free",
     to: "on_pool",
@@ -165,7 +166,7 @@ const TRANSITIONS: UserCreditTransition[] = [
   // Seat low-balance warning (balance > 0). Guards match threshold to seat
   // type so only the intended seats transition.
   {
-    from: "user_seat",
+    from: ["user_seat", "user_seat_low_balance"],
     event: "seat_low_balance",
     guard: (ctx, event) =>
       event.type === "seat_low_balance" &&
@@ -174,7 +175,7 @@ const TRANSITIONS: UserCreditTransition[] = [
     to: "user_seat_low_balance",
   },
   {
-    from: "user_seat",
+    from: ["user_seat", "user_seat_low_balance"],
     event: "seat_low_balance",
     guard: (ctx, event) =>
       event.type === "seat_low_balance" &&
