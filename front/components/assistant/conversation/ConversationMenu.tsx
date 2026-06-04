@@ -230,7 +230,7 @@ export function ConversationMenu({
   const { totalCostCredits } = useConversationCreditCost({
     conversationId: activeConversationId,
     workspaceId: owner.sId,
-    options: { disabled: !isConversationDisplayed },
+    options: { disabled: shouldWaitBeforeFetching },
   });
   const creditCostItem = useCreditCostMenuItem({
     credits: totalCostCredits,
