@@ -1117,6 +1117,30 @@ export const CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS = new Map<
       preferredReasoningEffort: "high",
     },
   ],
+  [
+    GLOBAL_AGENTS_SID.DUST_LIONEL,
+    {
+      name: "dust-lionel",
+      customModelIndex: 5,
+      preferredReasoningEffort: "light",
+    },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_LIONEL_MEDIUM,
+    {
+      name: "dust-lionel-medium",
+      customModelIndex: 5,
+      preferredReasoningEffort: "medium",
+    },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_LIONEL_HIGH,
+    {
+      name: "dust-lionel-high",
+      customModelIndex: 5,
+      preferredReasoningEffort: "high",
+    },
+  ],
 ]);
 
 export function getCustomModelDustGlobalAgentIndex(
