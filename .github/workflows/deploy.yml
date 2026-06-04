@@ -29,6 +29,7 @@ on:
           - viz
           - dante
           - egress-proxy
+          - sparkle-storybook
       check_deployment_blocked:
         description: "Check #deployment locks or force deploy"
         required: true
