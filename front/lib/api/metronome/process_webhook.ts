@@ -10,6 +10,8 @@ import {
   dispatchProgrammaticCapReset,
   dispatchProgrammaticLowBalance,
   dispatchProgrammaticWarning,
+  dispatchSeatBalanceExhausted,
+  dispatchSeatLowBalance,
   syncPoolCreditStateFromBalance,
 } from "@app/lib/api/metronome/credit_state_dispatcher";
 import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
@@ -952,8 +954,41 @@ export async function processMetronomeWebhook({
       );
       break;
     }
-    // Handled by custom alerts above
-    case "alerts.low_remaining_seat_balance_reached":
+    case "alerts.low_remaining_seat_balance_reached": {
+      const userId = event.properties.seat_filter?.value;
+      if (!userId) {
+        logger.warn(
+          { eventId: event.id, workspaceId: workspace.sId },
+          "[Metronome Webhook] low_remaining_seat_balance_reached: no seat_group_value in payload, skipping"
+        );
+        break;
+      }
+      const threshold = event.properties.threshold;
+      if (threshold === 0) {
+        await dispatchSeatBalanceExhausted({ workspace, userId });
+        logger.info(
+          {
+            eventId: event.id,
+            workspaceId: workspace.sId,
+            userId,
+            remaining: threshold,
+          },
+          "[Metronome Webhook] low_remaining_seat_balance_reached: seat balance exhausted dispatched"
+        );
+      } else {
+        await dispatchSeatLowBalance({ workspace, userId });
+        logger.info(
+          {
+            eventId: event.id,
+            workspaceId: workspace.sId,
+            userId,
+            remaining: threshold,
+          },
+          "[Metronome Webhook] low_remaining_seat_balance_reached: seat low balance dispatched"
+        );
+      }
+      break;
+    }
     case "alerts.low_remaining_seat_balance_resolved":
       break;
 

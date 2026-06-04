@@ -179,6 +179,12 @@ const InvoiceTotalResolvedSchema = z.object({
 // Undocumented in the public webhook docs but emitted today.
 const lowRemainingSeatBalanceProps = baseAlertPropertiesSchema.extend({
   remaining_balance: z.number().nullish(),
+  seat_filter: z
+    .object({
+      seat_group_key: z.string(),
+      value: z.string().nullish(),
+    })
+    .nullish(),
 });
 const LowRemainingSeatBalanceReachedSchema = z.object({
   id: z.string(),

@@ -7,7 +7,10 @@ import {
 import type { MembershipResource } from "@app/lib/resources/membership_resource";
 import { invalidateCacheAfterCommit } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
-import type { UserCreditState } from "@app/types/memberships";
+import type {
+  MembershipSeatType,
+  UserCreditState,
+} from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -16,6 +19,8 @@ import type { Transaction } from "sequelize";
 export type UserCreditContext = {
   workspaceId: string;
   userId: string;
+  /** Seat type of the membership — required by guards on seat-balance transitions. */
+  seatType?: MembershipSeatType | null;
 };
 
 export type UserCreditEvent =
@@ -31,11 +36,27 @@ export type UserCreditEvent =
    * TODO(remy): fire this transition when a user alert is removed and a
    * new one is created.
    */
-  | { type: "admin_raised_user_cap" };
+  | { type: "admin_raised_user_cap" }
+  /**
+   * This user's personal seat balance is exhausted. Paid seats fall back to
+   * the workspace pool (`on_pool`); free seats cannot use the pool and are
+   * transitioned to `capped`. The guard on each transition decides which
+   * branch applies based on `ctx.seatType`.
+   */
+  | { type: "seat_balance_exhausted" }
+  /**
+   * This user's personal seat balance crossed a low-balance warning threshold
+   * (balance > 0). Moves `user_seat` → `user_seat_low_balance` and
+   * `on_pool` → `on_pool_low_balance`.
+   */
+  | { type: "seat_low_balance" };
+
+type UserCreditGuard = (ctx: UserCreditContext) => boolean;
 
 type UserCreditTransition = {
-  from: UserCreditState;
+  from: UserCreditState | UserCreditState[];
   event: UserCreditEvent["type"];
+  guard?: UserCreditGuard;
   to: UserCreditState;
 };
 
@@ -84,42 +105,57 @@ function syncUserCapCacheForState(
 
 const TRANSITIONS: UserCreditTransition[] = [
   {
-    from: "on_pool",
+    from: [
+      "user_seat",
+      "user_seat_low_balance",
+      "on_pool",
+      "on_pool_low_balance",
+    ],
     event: "per_user_cap_reached",
     to: "capped",
   },
   {
-    from: "capped",
-    event: "per_user_cap_reached",
+    from: ["on_pool_low_balance", "capped"],
+    event: "admin_raised_user_cap",
+    to: "on_pool",
+  },
+  {
+    from: ["on_pool_low_balance", "capped"],
+    event: "per_user_cap_resolved",
+    to: "on_pool",
+  },
+
+  // Seat balance exhausted. Order matters: free check first (guard wins on
+  // first match), paid fallback second.
+  {
+    from: ["user_seat", "user_seat_low_balance"],
+    event: "seat_balance_exhausted",
+    guard: (ctx) => ctx.seatType === "free",
     to: "capped",
   },
   {
-    from: "capped",
-    event: "admin_raised_user_cap",
+    from: ["user_seat", "user_seat_low_balance"],
+    event: "seat_balance_exhausted",
+    guard: (ctx) => ctx.seatType !== "free",
     to: "on_pool",
   },
-  {
-    from: "on_pool",
-    event: "admin_raised_user_cap",
-    to: "on_pool",
-  },
-  {
-    from: "capped",
-    event: "per_user_cap_resolved",
-    to: "on_pool",
-  },
-  {
-    from: "on_pool",
-    event: "per_user_cap_resolved",
-    to: "on_pool",
-  },
+
+  // Seat low-balance warning (balance > 0).
+  { from: "user_seat", event: "seat_low_balance", to: "user_seat_low_balance" },
+  { from: "on_pool", event: "seat_low_balance", to: "on_pool_low_balance" },
 ];
 
 function findTransition(
   current: UserCreditState,
-  event: UserCreditEvent
+  event: UserCreditEvent,
+  ctx: UserCreditContext
 ): UserCreditTransition | undefined {
-  return TRANSITIONS.find((t) => t.from === current && t.event === event.type);
+  return TRANSITIONS.find((t) => {
+    const fromMatch = Array.isArray(t.from)
+      ? t.from.includes(current)
+      : t.from === current;
+    return fromMatch && t.event === event.type && (!t.guard || t.guard(ctx));
+  });
 }
 
 export async function transitionUserCreditState(
@@ -133,7 +169,7 @@ export async function transitionUserCreditState(
   // transitions as if the row were already "on_pool". A matching transition
   // then persists the canonical value, opportunistically migrating the row.
   const currentState = rawState === "normal" ? "on_pool" : rawState;
-  const match = findTransition(currentState, event);
+  const match = findTransition(currentState, event, ctx);
 
   if (!match) {
     logger.warn(
