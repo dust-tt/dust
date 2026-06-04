@@ -334,7 +334,7 @@ export async function lookupPhoneNumber(
 
   return new Err(
     new PhoneLookupError(
-      "lookup_failed",
+      "lookup_timeout",
       "Phone lookup failed. Please try again.",
       `poll_timeout after ${MAX_POLL_ATTEMPTS} attempts ` +
         `(lastStatus: ${lastStatus ?? "none"}` +

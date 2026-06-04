@@ -137,6 +137,11 @@ export async function startVerification(
         message = error.message;
         panic = true;
         break;
+      case "lookup_timeout":
+        // Persona was still processing when our poll window elapsed. This is
+        // transient latency on their side, not actionable by eng-oncall.
+        message = error.message;
+        break;
       default:
         assertNever(error.code);
     }
