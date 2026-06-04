@@ -1,5 +1,4 @@
 import type { BillingCycle } from "@app/lib/client/subscription";
-import { syncMetronomeSeatLowBalanceAlerts } from "@app/lib/metronome/alerts/seat_balance";
 import {
   ceilToHourISO,
   createMetronomeContract,
@@ -428,27 +427,6 @@ export async function syncContractQuantities(
   for (const result of results) {
     if (result.isErr()) {
       return new Err(result.error);
-    }
-  }
-
-  // Sync the per-user seat low-balance alerts (fire at 80% of each seat's
-  // allocation spent) now that seats are reconciled and per-user allocations
-  // are known.
-  if (shouldSyncSeats) {
-    const lowBalanceAlertResult = await syncMetronomeSeatLowBalanceAlerts({
-      metronomeCustomerId,
-      contractId: metronomeContractId,
-      workspaceId: workspace.sId,
-    });
-    if (lowBalanceAlertResult.isErr()) {
-      logger.warn(
-        {
-          workspaceId: workspace.sId,
-          metronomeContractId,
-          error: lowBalanceAlertResult.error.message,
-        },
-        "[Metronome] Failed to sync seat low-balance alerts (non-fatal)"
-      );
     }
   }
 

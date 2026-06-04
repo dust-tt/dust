@@ -16,6 +16,10 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { Transaction } from "sequelize";
+import {
+  MAX_SEAT_MONTHLY_AWU_CREDITS,
+  PRO_SEAT_MONTHLY_AWU_CREDITS,
+} from "./setup_new_pricing";
 
 export type UserCreditContext = {
   workspaceId: string;
@@ -47,12 +51,20 @@ export type UserCreditEvent =
   | { type: "seat_balance_exhausted" }
   /**
    * This user's personal seat balance crossed a low-balance warning threshold
-   * (balance > 0). Moves `user_seat` → `user_seat_low_balance` and
-   * `on_pool` → `on_pool_low_balance`.
+   * (balance > 0). Moves `user_seat` → `user_seat_low_balance`.
    */
-  | { type: "seat_low_balance" };
+  | { type: "seat_low_balance"; threshold: number }
+  /**
+   * Billing-period renewal: Metronome replenished this user's seat balance.
+   * Only applies to pro/max seats (workspace seats have no individual seat
+   * balance; free seats stay `capped`). Resets any state back to `user_seat`.
+   */
+  | { type: "seat_balance_resolved" };
 
-type UserCreditGuard = (ctx: UserCreditContext) => boolean;
+type UserCreditGuard = (
+  ctx: UserCreditContext,
+  event: UserCreditEvent
+) => boolean;
 
 type UserCreditTransition = {
   from: UserCreditState | UserCreditState[];
@@ -150,9 +162,26 @@ const TRANSITIONS: UserCreditTransition[] = [
     to: "on_pool",
   },
 
-  // Seat low-balance warning (balance > 0).
-  { from: "user_seat", event: "seat_low_balance", to: "user_seat_low_balance" },
-  { from: "on_pool", event: "seat_low_balance", to: "on_pool_low_balance" },
+  // Seat low-balance warning (balance > 0). Guards match threshold to seat
+  // type so only the intended seats transition.
+  {
+    from: "user_seat",
+    event: "seat_low_balance",
+    guard: (ctx, event) =>
+      event.type === "seat_low_balance" &&
+      event.threshold === 0.2 * MAX_SEAT_MONTHLY_AWU_CREDITS &&
+      (ctx.seatType === "max" || ctx.seatType === "max_yearly"),
+    to: "user_seat_low_balance",
+  },
+  {
+    from: "user_seat",
+    event: "seat_low_balance",
+    guard: (ctx, event) =>
+      event.type === "seat_low_balance" &&
+      event.threshold === 0.2 * PRO_SEAT_MONTHLY_AWU_CREDITS &&
+      (ctx.seatType === "pro" || ctx.seatType === "pro_yearly"),
+    to: "user_seat_low_balance",
+  },
 ];
 
 function findTransition(
@@ -164,7 +193,9 @@ function findTransition(
     const fromMatch = Array.isArray(t.from)
       ? t.from.includes(current)
       : t.from === current;
-    return fromMatch && t.event === event.type && (!t.guard || t.guard(ctx));
+    return (
+      fromMatch && t.event === event.type && (!t.guard || t.guard(ctx, event))
+    );
   });
 }
 

@@ -964,6 +964,9 @@ export async function processMetronomeWebhook({
         break;
       }
       const threshold = event.properties.threshold;
+      if (!threshold) {
+        break;
+      }
       if (threshold === 0) {
         await dispatchSeatBalanceExhausted({ workspace, userId });
         logger.info(
@@ -976,7 +979,7 @@ export async function processMetronomeWebhook({
           "[Metronome Webhook] low_remaining_seat_balance_reached: seat balance exhausted dispatched"
         );
       } else {
-        await dispatchSeatLowBalance({ workspace, userId });
+        await dispatchSeatLowBalance({ workspace, userId, threshold });
         logger.info(
           {
             eventId: event.id,

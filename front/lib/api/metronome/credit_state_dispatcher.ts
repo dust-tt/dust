@@ -82,9 +82,11 @@ export async function dispatchSeatBalanceExhausted({
 export async function dispatchSeatLowBalance({
   workspace,
   userId,
+  threshold,
 }: {
   workspace: WorkspaceResource;
   userId: string;
+  threshold: number;
 }): Promise<void> {
   const user = await UserResource.fetchById(userId);
   if (!user) {
@@ -111,7 +113,7 @@ export async function dispatchSeatLowBalance({
 
   const result = await transitionUserCreditState(
     membership,
-    { type: "seat_low_balance" },
+    { type: "seat_low_balance", threshold },
     { workspaceId: workspace.sId, userId, seatType: membership.seatType }
   );
   if (result.isErr()) {
