@@ -3,8 +3,8 @@
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import {
-  BodySchema,
   type CheckoutPaymentError,
+  PostCheckoutPaymentBodySchema,
   type PostCheckoutPaymentResponseBody,
   processCheckoutPayment,
 } from "@app/lib/api/checkout/payment";
@@ -15,8 +15,6 @@ import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
-
-export type { PostCheckoutPaymentResponseBody };
 
 async function handler(
   req: NextApiRequest,
@@ -46,7 +44,7 @@ async function handler(
         });
       }
 
-      const bodyValidation = BodySchema.safeParse(req.body);
+      const bodyValidation = PostCheckoutPaymentBodySchema.safeParse(req.body);
       if (!bodyValidation.success) {
         return apiError(req, res, {
           status_code: 400,
@@ -63,7 +61,7 @@ async function handler(
         return mapCheckoutPaymentError(req, res, result.error);
       }
 
-      return res.status(200).json(result.value);
+      return res.status(200).json({ success: true });
     },
     { endpoint: req.url ?? null }
   );
@@ -83,6 +81,9 @@ function mapCheckoutPaymentError(
           message: "Metronome billing is not enabled for this workspace.",
         },
       });
+    case "setup_failed":
+      res.status(500).json({ error: "setup_failed" });
+      return;
     case "workspace_mismatch":
       return apiError(req, res, {
         status_code: 403,
@@ -124,6 +125,12 @@ function mapCheckoutPaymentError(
           message: "Stripe customer has been deleted.",
         },
       });
+    case "invalid_coupon":
+      res.status(500).json({ error: "invalid_coupon" });
+      return;
+    case "payment_failed":
+      res.status(500).json({ error: "payment_failed" });
+      return;
     case "metronome_provisioning_failed":
       res.status(500).json({ error: "metronome_error" });
       return;

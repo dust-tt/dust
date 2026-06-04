@@ -17,7 +17,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import { z } from "zod";
 
-export const BodySchema = z.object({
+export const PostCheckoutPaymentBodySchema = z.object({
   setupSessionId: z.string(),
 });
 
@@ -34,17 +34,20 @@ export type PostCheckoutPaymentResponseBody =
 
 export type CheckoutPaymentError =
   | { type: "metronome_not_enabled" }
+  | { type: "setup_failed" }
   | { type: "workspace_mismatch" }
   | { type: "missing_metadata" }
   | { type: "missing_customer_id" }
   | { type: "missing_payment_method" }
   | { type: "customer_deleted" }
+  | { type: "invalid_coupon" }
+  | { type: "payment_failed" }
   | { type: "metronome_provisioning_failed" };
 
 export async function processCheckoutPayment(
   auth: Authenticator,
   setupSessionId: string
-): Promise<Result<PostCheckoutPaymentResponseBody, CheckoutPaymentError>> {
+): Promise<Result<{ success: true }, CheckoutPaymentError>> {
   const useMetronomeBilling = await isMetronomeBillingEnabled(auth);
   if (!useMetronomeBilling) {
     return new Err({ type: "metronome_not_enabled" });
@@ -73,7 +76,7 @@ export async function processCheckoutPayment(
     isString(setupIntent) ||
     setupIntent.status !== "succeeded"
   ) {
-    return new Ok({ error: "setup_failed" });
+    return new Err({ type: "setup_failed" });
   }
 
   if (setupSession.client_reference_id !== owner.sId) {
@@ -136,11 +139,11 @@ export async function processCheckoutPayment(
   if (couponCode) {
     const found = await CouponResource.findByCode(couponCode);
     if (!found) {
-      return new Ok({ error: "invalid_coupon" });
+      return new Err({ type: "invalid_coupon" });
     }
     const validation = found.validateRedemption();
     if (validation.isErr()) {
-      return new Ok({ error: "invalid_coupon" });
+      return new Err({ type: "invalid_coupon" });
     }
     const existing =
       await CouponRedemptionResource.findActiveOrPendingByCouponAndWorkspace(
@@ -148,7 +151,7 @@ export async function processCheckoutPayment(
         { coupon: found }
       );
     if (existing) {
-      return new Ok({ error: "invalid_coupon" });
+      return new Err({ type: "invalid_coupon" });
     }
     const pendingResult = await CouponRedemptionResource.createPending(auth, {
       coupon: found,
@@ -162,7 +165,7 @@ export async function processCheckoutPayment(
         },
         "[Checkout] Failed to create pending coupon redemption"
       );
-      return new Ok({ error: "invalid_coupon" });
+      return new Err({ type: "invalid_coupon" });
     }
     pendingRedemption = pendingResult.value;
     coupon = found;
@@ -194,7 +197,7 @@ export async function processCheckoutPayment(
         );
       }
     }
-    return new Ok({ error: "payment_failed" });
+    return new Err({ type: "payment_failed" });
   }
 
   if (shouldEnforceFirstPeriodPayment && effectiveSubtotalCents > 0) {
@@ -220,7 +223,7 @@ export async function processCheckoutPayment(
           );
         }
       }
-      return new Ok({ error: "payment_failed" });
+      return new Err({ type: "payment_failed" });
     }
   }
 

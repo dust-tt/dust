@@ -9,8 +9,6 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 
-export type { GetPreparePaymentResponseBody };
-
 // Mounted at /api/w/:wId/subscriptions/checkout/prepare-payment.
 const app = workspaceApp();
 

@@ -1,6 +1,6 @@
 import {
-  BodySchema,
   type CheckoutPaymentError,
+  PostCheckoutPaymentBodySchema,
   type PostCheckoutPaymentResponseBody,
   processCheckoutPayment,
 } from "@app/lib/api/checkout/payment";
@@ -10,14 +10,12 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 
-export type { PostCheckoutPaymentResponseBody };
-
 // Mounted at /api/w/:wId/subscriptions/checkout/payment.
 const app = workspaceApp();
 
 app.post(
   "/",
-  validate("json", BodySchema),
+  validate("json", PostCheckoutPaymentBodySchema),
   async (ctx): HandlerResult<PostCheckoutPaymentResponseBody> => {
     return wakeLock(
       async () => {
@@ -38,16 +36,10 @@ app.post(
         const { setupSessionId } = ctx.req.valid("json");
         const result = await processCheckoutPayment(auth, setupSessionId);
         if (result.isErr()) {
-          if (result.error.type === "metronome_provisioning_failed") {
-            return ctx.json<PostCheckoutPaymentResponseBody>(
-              { error: "metronome_error" },
-              500
-            );
-          }
           return mapCheckoutPaymentError(ctx, result.error);
         }
 
-        return ctx.json<PostCheckoutPaymentResponseBody>(result.value);
+        return ctx.json<PostCheckoutPaymentResponseBody>({ success: true });
       },
       { endpoint: ctx.req.url ?? null }
     );
@@ -56,11 +48,8 @@ app.post(
 
 function mapCheckoutPaymentError(
   ctx: Parameters<typeof apiError>[0],
-  error: Exclude<
-    CheckoutPaymentError,
-    { type: "metronome_provisioning_failed" }
-  >
-): ReturnType<typeof apiError> {
+  error: CheckoutPaymentError
+) {
   switch (error.type) {
     case "metronome_not_enabled":
       return apiError(ctx, {
@@ -111,6 +100,26 @@ function mapCheckoutPaymentError(
           message: "Stripe customer has been deleted.",
         },
       });
+    case "setup_failed":
+      return ctx.json<PostCheckoutPaymentResponseBody>(
+        { error: "setup_failed" },
+        500
+      );
+    case "invalid_coupon":
+      return ctx.json<PostCheckoutPaymentResponseBody>(
+        { error: "invalid_coupon" },
+        500
+      );
+    case "payment_failed":
+      return ctx.json<PostCheckoutPaymentResponseBody>(
+        { error: "payment_failed" },
+        500
+      );
+    case "metronome_provisioning_failed":
+      return ctx.json<PostCheckoutPaymentResponseBody>(
+        { error: "metronome_error" },
+        500
+      );
     default:
       assertNever(error);
   }
