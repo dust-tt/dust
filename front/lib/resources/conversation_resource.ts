@@ -27,6 +27,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { UserModel } from "@app/lib/resources/storage/models/user";
+import { WakeUpModel } from "@app/lib/resources/storage/models/wakeup";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
@@ -34,6 +35,7 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
+import { getNextWakeUpFireAtFromScheduleConfig } from "@app/lib/utils/wakeup_description";
 import logger from "@app/logger/logger";
 import { launchIndexConversationEsWorkflow } from "@app/temporal/es_indexation/client";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
@@ -54,6 +56,10 @@ import {
   getConversationDisplayTitle,
   getConversationUrlAccessMode,
 } from "@app/types/assistant/conversation";
+import {
+  ACTIVE_WAKE_UP_STATUSES,
+  type WakeUpScheduleConfig,
+} from "@app/types/assistant/wakeups";
 import type { ContentFragmentVersion } from "@app/types/content_fragment";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -1826,11 +1832,77 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       auth,
       pagination
     );
+    const nextWakeupAtByConversationId =
+      await this.fetchNextWakeupAtByConversationId(
+        auth,
+        result.conversations.map((c) => c.id)
+      );
+
     return {
-      conversations: result.conversations.map((c) => c.toListItem()),
+      conversations: result.conversations.map((c) => ({
+        ...c.toListItem(),
+        nextWakeupAt: nextWakeupAtByConversationId.get(c.id) ?? null,
+      })),
       hasMore: result.hasMore,
       lastValue: result.lastValue,
     };
+  }
+
+  private static async fetchNextWakeupAtByConversationId(
+    auth: Authenticator,
+    conversationIds: ModelId[]
+  ): Promise<Map<ModelId, number>> {
+    if (conversationIds.length === 0) {
+      return new Map();
+    }
+
+    const wakeUps = await WakeUpModel.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        conversationId: { [Op.in]: conversationIds },
+        status: ACTIVE_WAKE_UP_STATUSES,
+      },
+      order: [
+        ["createdAt", "ASC"],
+        ["id", "ASC"],
+      ],
+    });
+
+    const nextWakeupAtByConversationId = new Map<ModelId, number>();
+    for (const wakeUp of wakeUps) {
+      const scheduleConfig: WakeUpScheduleConfig | null = (() => {
+        switch (wakeUp.scheduleType) {
+          case "one_shot":
+            return wakeUp.fireAt
+              ? { type: "one_shot", fireAt: wakeUp.fireAt.getTime() }
+              : null;
+          case "cron":
+            return wakeUp.cronExpression && wakeUp.cronTimezone
+              ? {
+                  type: "cron",
+                  cron: wakeUp.cronExpression,
+                  timezone: wakeUp.cronTimezone,
+                }
+              : null;
+          default:
+            return assertNever(wakeUp.scheduleType);
+        }
+      })();
+
+      const nextWakeupAt = scheduleConfig
+        ? getNextWakeUpFireAtFromScheduleConfig(scheduleConfig)
+        : null;
+      if (nextWakeupAt === null) {
+        continue;
+      }
+
+      const previous = nextWakeupAtByConversationId.get(wakeUp.conversationId);
+      if (previous === undefined || nextWakeupAt < previous) {
+        nextWakeupAtByConversationId.set(wakeUp.conversationId, nextWakeupAt);
+      }
+    }
+
+    return nextWakeupAtByConversationId;
   }
 
   static async listSpaceUnreadConversationsAndActivityForUser(

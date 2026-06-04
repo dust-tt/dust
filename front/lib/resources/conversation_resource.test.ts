@@ -22,6 +22,7 @@ import {
 } from "@app/lib/resources/permission_utils";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { WakeUpModel } from "@app/lib/resources/storage/models/wakeup";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -2500,6 +2501,59 @@ describe("listPrivateConversationsForUser", () => {
     expect(userConversations).toHaveLength(1);
     expect(userConversations[0].sId).toBe(conversationIds[0]);
     expect(userConversations[0]).toBeInstanceOf(ConversationResource);
+  });
+
+  it("hydrates nextWakeupAt in the DB paginated list", async () => {
+    const conversation = await ConversationFactory.create(adminAuth, {
+      agentConfigurationId: agents[0].sId,
+      messagesCreatedAt: [new Date()],
+    });
+    await ConversationResource.upsertParticipation(userAuth, {
+      conversation,
+      action: "posted",
+      user: userAuth.getNonNullableUser().toJSON(),
+    });
+
+    const scheduledFireAt = new Date("2030-01-01T12:00:00.000Z");
+    const cancelledFireAt = new Date("2029-01-01T12:00:00.000Z");
+
+    await WakeUpModel.bulkCreate([
+      {
+        workspaceId: workspace.id,
+        conversationId: conversation.id,
+        userId: adminAuth.getNonNullableUser().id,
+        agentConfigurationId: agents[0].sId,
+        scheduleType: "one_shot",
+        fireAt: cancelledFireAt,
+        cronExpression: null,
+        cronTimezone: null,
+        reason: "Cancelled wake-up",
+        status: "cancelled",
+        fireCount: 0,
+      },
+      {
+        workspaceId: workspace.id,
+        conversationId: conversation.id,
+        userId: adminAuth.getNonNullableUser().id,
+        agentConfigurationId: agents[0].sId,
+        scheduleType: "one_shot",
+        fireAt: scheduledFireAt,
+        cronExpression: null,
+        cronTimezone: null,
+        reason: "Scheduled wake-up",
+        status: "scheduled",
+        fireCount: 0,
+      },
+    ]);
+
+    const result =
+      await ConversationResource.listPrivateConversationsForUserPaginatedFromDB(
+        userAuth,
+        { limit: 100 }
+      );
+    const item = result.conversations.find((c) => c.sId === conversation.sId);
+
+    expect(item?.nextWakeupAt).toBe(scheduledFireAt.getTime());
   });
 
   it("should return conversations with populated participation data", async () => {

@@ -1,4 +1,7 @@
-import type { WakeUpType } from "@app/types/assistant/wakeups";
+import type {
+  WakeUpScheduleConfig,
+  WakeUpType,
+} from "@app/types/assistant/wakeups";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { CronExpressionParser } from "cron-parser";
 import cronstrue from "cronstrue";
@@ -27,22 +30,33 @@ function prefers24HourTime(): boolean {
 // Compute the millisecond timestamp of the next time a wake-up fires. For
 // one-shot schedules this is the stored `fireAt`; for cron schedules we
 // resolve the next firing in the schedule's stored timezone.
-export function getNextWakeUpFireAt(wakeUp: WakeUpType): number {
-  const config = wakeUp.scheduleConfig;
-  switch (config.type) {
+export function getNextWakeUpFireAtFromScheduleConfig(
+  scheduleConfig: WakeUpScheduleConfig
+): number | null {
+  switch (scheduleConfig.type) {
     case "one_shot":
-      return config.fireAt;
+      return scheduleConfig.fireAt;
     case "cron":
-      return CronExpressionParser.parse(config.cron, { tz: config.timezone })
-        .next()
-        .toDate()
-        .getTime();
+      try {
+        return CronExpressionParser.parse(scheduleConfig.cron, {
+          tz: scheduleConfig.timezone,
+        })
+          .next()
+          .toDate()
+          .getTime();
+      } catch {
+        return null;
+      }
     default:
-      assertNeverAndIgnore(config);
-      // Unknown schedule type from a newer server: treat as "fires now" so
-      // the optimistic-clear timer clears the indicator on the next tick.
-      return Date.now();
+      assertNeverAndIgnore(scheduleConfig);
+      return null;
   }
+}
+
+export function getNextWakeUpFireAt(wakeUp: WakeUpType): number {
+  return (
+    getNextWakeUpFireAtFromScheduleConfig(wakeUp.scheduleConfig) ?? Date.now()
+  );
 }
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
