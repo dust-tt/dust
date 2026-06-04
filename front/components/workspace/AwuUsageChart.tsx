@@ -53,7 +53,6 @@ type DisplayMode = "cumulative" | "daily";
 
 type ChartDataPoint = {
   timestamp: number;
-  totalCredits?: number;
   [key: string]: string | number | undefined;
 };
 
@@ -106,8 +105,7 @@ function UsageTooltip(
   props: TooltipContentProps<number, string>,
   groupBy: AwuUsageGroupByType | undefined,
   availableGroups: { groupKey: string; groupLabel: string }[],
-  displayMode: DisplayMode,
-  shouldShowTotalCredits: boolean
+  displayMode: DisplayMode
 ): JSX.Element | null {
   const { active, payload } = props;
   if (!active || !payload || payload.length === 0) {
@@ -121,11 +119,7 @@ function UsageTooltip(
 
   const rows = payload
     .filter(
-      (p) =>
-        p.dataKey !== "totalCredits" &&
-        p.value != null &&
-        typeof p.value === "number" &&
-        p.value > 0
+      (p) => p.value != null && typeof p.value === "number" && p.value > 0
     )
     .map((p) => {
       const groupKey = p.name;
@@ -148,14 +142,6 @@ function UsageTooltip(
         ),
       };
     });
-
-  if (shouldShowTotalCredits) {
-    rows.push({
-      label: "Total credits",
-      value: `${formatCredits(data.totalCredits)} credits`,
-      colorClassName: COST_PALETTE.totalCredits,
-    });
-  }
 
   if (rows.length === 0) {
     return null;
@@ -318,28 +304,6 @@ export function BaseAwuUsageChart({
     return keys;
   }, [points]);
 
-  const maxCumulatedValue = useMemo(() => {
-    return points.reduce((max, point) => {
-      return Math.max(
-        max,
-        point.groups.reduce(
-          (sum, group) => sum + (group.cumulatedValueCredits ?? 0),
-          0
-        )
-      );
-    }, 0);
-  }, [points]);
-
-  const shouldShowTotalCredits = useMemo(() => {
-    if (displayMode !== "cumulative") {
-      return false;
-    }
-    const futurePoints = points.filter((p) => p.timestamp > nowMs);
-    return !futurePoints.every(
-      (p) => p.totalInitialCredits > 4 * maxCumulatedValue
-    );
-  }, [points, maxCumulatedValue, nowMs, displayMode]);
-
   const enabledGroupKeys = groupBy ? filter[groupBy] : undefined;
 
   useEffect(() => {
@@ -457,22 +421,12 @@ export function BaseAwuUsageChart({
       };
     });
 
-    if (shouldShowTotalCredits) {
-      items.push({
-        key: "totalCredits",
-        label: "Total credits",
-        colorClassName: COST_PALETTE.totalCredits,
-        isActive: true,
-      });
-    }
-
     return items;
   }, [
     availableGroupsArray,
     allGroupKeys,
     groupBy,
     visibleGroupKeys,
-    shouldShowTotalCredits,
     enabledGroupKeys,
     handleFilterChange,
   ]);
@@ -481,7 +435,6 @@ export function BaseAwuUsageChart({
     if (displayMode === "cumulative") {
       return points.map((point) => {
         const dataPoint: ChartDataPoint = { timestamp: point.timestamp };
-        dataPoint.totalCredits = point.totalInitialCredits;
         for (const g of point.groups) {
           dataPoint[g.groupKey] = g.cumulatedValueCredits;
         }
@@ -693,13 +646,7 @@ export function BaseAwuUsageChart({
         />
         <Tooltip
           content={(props: TooltipContentProps<number, string>) =>
-            UsageTooltip(
-              props,
-              groupBy,
-              availableGroupsArray,
-              displayMode,
-              shouldShowTotalCredits
-            )
+            UsageTooltip(props, groupBy, availableGroupsArray, displayMode)
           }
           cursor={false}
           wrapperStyle={{ outline: "none" }}
@@ -758,19 +705,6 @@ export function BaseAwuUsageChart({
               />
             );
           })}
-        {shouldShowTotalCredits && (
-          <Line
-            type="monotone"
-            dataKey="totalCredits"
-            name="Total credits"
-            stroke="currentColor"
-            strokeWidth={2}
-            className={COST_PALETTE.totalCredits}
-            strokeDasharray="5 5"
-            dot={false}
-            activeDot={{ r: 5 }}
-          />
-        )}
       </ChartComponent>
     </ChartContainer>
   );
