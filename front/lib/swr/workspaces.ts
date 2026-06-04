@@ -14,6 +14,7 @@ import type {
 } from "@app/lib/api/analytics/programmatic_cost";
 import type { GetBillingInfoResponseBody } from "@app/lib/api/billing/info";
 import type { GetBillingInvoicesResponseBody } from "@app/lib/api/billing/invoices";
+import type { PostCheckoutPaymentResponseBody } from "@app/lib/api/checkout/payment";
 import type { GetPreparePaymentResponseBody } from "@app/lib/api/checkout/prepare_payment";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { clientFetch } from "@app/lib/egress/client";
@@ -42,7 +43,6 @@ import type {
   GetSubscriptionsResponseBody,
   PostSubscriptionResponseBody,
 } from "@app/pages/api/w/[wId]/subscriptions";
-import type { PostCheckoutPaymentResponseBody } from "@app/pages/api/w/[wId]/subscriptions/checkout/payment";
 import type { GetCheckoutStatusResponseBody } from "@app/pages/api/w/[wId]/subscriptions/checkout-status";
 import type { GetSubscriptionPricingResponseBody } from "@app/pages/api/w/[wId]/subscriptions/pricing";
 import type { GetSubscriptionStatusResponseBody } from "@app/pages/api/w/[wId]/subscriptions/status";
