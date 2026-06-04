@@ -1,4 +1,5 @@
 use base64::{engine::general_purpose, Engine as _};
+use tracing::debug;
 
 use crate::egress_secrets::{
     Secret, SecretTable, PLACEHOLDER_HEX_LEN, PLACEHOLDER_PREFIX as PLACEHOLDER_PREFIX_STR,
@@ -226,6 +227,25 @@ fn rewrite_header_value(
         ));
     }
 
+    // Never release a real secret into a non-credential header that tends to
+    // be reflected back in responses (CORS `Origin`, request-id/trace echo,
+    // `/cdn-cgi/trace`'s `uag=`) or written to logs and forwarded downstream.
+    // Substituting here would let the agent read the secret back or leak it,
+    // defeating the placeholder model. Leave the opaque placeholder in place
+    // (it reveals nothing) rather than substituting or dropping the
+    // connection. Checked after the port-80 guard so plaintext HTTP keeps its
+    // stricter drop-on-placeholder behavior.
+    if is_unsafe_substitution_header(&header.name) {
+        if contains_placeholder(&header.value) {
+            debug!(
+                header = %header.name,
+                host = %host,
+                "skipping secret substitution in unsafe header; placeholder left in place"
+            );
+        }
+        return Ok(header.value.clone());
+    }
+
     if header.name.eq_ignore_ascii_case("authorization") {
         if let Some(value) = rewrite_basic_auth(&header.value, host, secret_table, mode)? {
             return Ok(value);
@@ -236,6 +256,73 @@ fn rewrite_header_value(
         Some(rewritten) => Ok(rewritten),
         None => Ok(header.value.clone()),
     }
+}
+
+// Request headers we never substitute secrets into. These are not credential
+// carriers and are routinely reflected back to the client (CORS `Origin`,
+// request-id/trace echo, `/cdn-cgi/trace`'s `uag=`) or written to logs and
+// forwarded downstream, so a real secret placed here would round-trip back to
+// the agent or leak out of band.
+//
+// This is a blocklist by design, not a credential allowlist: standard auth
+// headers (`Authorization`, `Cookie`, `Proxy-Authorization`) and any bespoke
+// custom header (`X-Api-Key`, `X-Acme-Token`, ...) still substitute, so
+// callers using non-standard auth header names are unaffected.
+fn is_unsafe_substitution_header(name: &str) -> bool {
+    let lower = name.to_ascii_lowercase();
+
+    // Prefix families: UA client hints (`Sec-CH-UA`, `Sec-CH-UA-Platform`,
+    // ...), fetch metadata (`Sec-Fetch-Site`, ...), and B3 trace headers
+    // (`X-B3-TraceId`, `X-B3-SpanId`, ...).
+    if lower.starts_with("sec-ch-ua")
+        || lower.starts_with("sec-fetch-")
+        || lower.starts_with("x-b3-")
+    {
+        return true;
+    }
+
+    matches!(
+        lower.as_str(),
+        // Identity / referrer — reflected by echo endpoints and analytics, logged.
+        "user-agent"
+            | "referer"
+            | "origin"
+            | "from"
+            // Forwarding / proxy metadata — logged and echoed by debug endpoints.
+            | "x-forwarded-for"
+            | "x-forwarded-host"
+            | "x-forwarded-proto"
+            | "x-forwarded-port"
+            | "forwarded"
+            | "x-real-ip"
+            | "via"
+            // Request-id / trace context — echoed into response headers by convention.
+            | "x-request-id"
+            | "x-correlation-id"
+            | "request-id"
+            | "traceparent"
+            | "tracestate"
+            | "x-amzn-trace-id"
+            | "uber-trace-id"
+            | "b3"
+            // Privacy / preference signals — never credentials, UA-like reflection.
+            | "dnt"
+            | "sec-gpc"
+            // Content negotiation (extended) — never credentials.
+            | "accept"
+            | "accept-encoding"
+            | "accept-language"
+            | "accept-charset"
+            // Caching / conditional (extended) — never credentials.
+            | "cache-control"
+            | "pragma"
+            | "if-match"
+            | "if-none-match"
+            | "if-modified-since"
+            | "if-unmodified-since"
+            | "if-range"
+            | "range"
+    )
 }
 
 fn rewrite_basic_auth(

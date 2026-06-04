@@ -1312,6 +1312,146 @@ mod tests {
         Ok(())
     }
 
+    // Regression for the reflection exfil: a recognized placeholder in an
+    // unsafe (non-credential, reflection-prone) header must be left intact, so
+    // the real secret never reaches a reflecting endpoint like
+    // `/cdn-cgi/trace` (which echoes `User-Agent`).
+    async fn assert_skips_unsafe_header(header_line: &str, header_echo: &str) -> Result<()> {
+        let placeholder = "__DSEC_0123456789abcdef0123456789abcdef__";
+        let table = secret_table_with_secret(
+            "OPENAI_API_KEY",
+            placeholder,
+            "sk-real",
+            &["api.openai.com"],
+        )?;
+        let input = format!("GET / HTTP/1.1\r\nHost: api.openai.com\r\n{header_line}\r\n\r\n");
+
+        let output = rewrite_once(
+            input.as_bytes(),
+            &table,
+            HttpRewriteMode::Tls {
+                sni: "api.openai.com",
+            },
+        )
+        .await?;
+        let text = String::from_utf8(output)?;
+
+        assert!(
+            text.contains(&format!("{header_echo}\r\n")),
+            "placeholder must be left intact in unsafe header, got: {text}"
+        );
+        assert!(
+            !text.contains("sk-real"),
+            "real secret must not be substituted into unsafe header, got: {text}"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn skips_substitution_in_user_agent_header() -> Result<()> {
+        let placeholder = "__DSEC_0123456789abcdef0123456789abcdef__";
+        assert_skips_unsafe_header(
+            &format!("User-Agent: {placeholder}"),
+            &format!("User-Agent: {placeholder}"),
+        )
+        .await
+    }
+
+    #[tokio::test]
+    async fn skips_substitution_in_origin_header() -> Result<()> {
+        let placeholder = "__DSEC_0123456789abcdef0123456789abcdef__";
+        assert_skips_unsafe_header(
+            &format!("Origin: {placeholder}"),
+            &format!("Origin: {placeholder}"),
+        )
+        .await
+    }
+
+    #[tokio::test]
+    async fn skips_substitution_in_request_id_header() -> Result<()> {
+        let placeholder = "__DSEC_0123456789abcdef0123456789abcdef__";
+        assert_skips_unsafe_header(
+            &format!("X-Request-Id: {placeholder}"),
+            &format!("X-Request-Id: {placeholder}"),
+        )
+        .await
+    }
+
+    #[tokio::test]
+    async fn skips_substitution_in_extended_accept_header() -> Result<()> {
+        let placeholder = "__DSEC_0123456789abcdef0123456789abcdef__";
+        assert_skips_unsafe_header(
+            &format!("Accept: {placeholder}"),
+            &format!("Accept: {placeholder}"),
+        )
+        .await
+    }
+
+    #[tokio::test]
+    async fn skips_substitution_in_sec_ch_ua_prefix_header() -> Result<()> {
+        let placeholder = "__DSEC_0123456789abcdef0123456789abcdef__";
+        assert_skips_unsafe_header(
+            &format!("Sec-CH-UA-Platform: {placeholder}"),
+            &format!("Sec-CH-UA-Platform: {placeholder}"),
+        )
+        .await
+    }
+
+    #[tokio::test]
+    async fn substitutes_in_non_blocklisted_cookie_header() -> Result<()> {
+        // Cookie carries session credentials and is deliberately NOT
+        // blocklisted: substitution must still fire.
+        let placeholder = "__DSEC_0123456789abcdef0123456789abcdef__";
+        let table =
+            secret_table_with_secret("SESSION", placeholder, "sk-real", &["api.openai.com"])?;
+        let input = format!(
+            "GET / HTTP/1.1\r\nHost: api.openai.com\r\nCookie: session={placeholder}\r\n\r\n"
+        );
+
+        let output = rewrite_once(
+            input.as_bytes(),
+            &table,
+            HttpRewriteMode::Tls {
+                sni: "api.openai.com",
+            },
+        )
+        .await?;
+        let text = String::from_utf8(output)?;
+
+        assert!(text.contains("Cookie: session=sk-real\r\n"));
+        assert!(!text.contains(placeholder));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn substitutes_in_non_blocklisted_custom_header() -> Result<()> {
+        // No default-deny: a bespoke auth header still substitutes.
+        let placeholder = "__DSEC_0123456789abcdef0123456789abcdef__";
+        let table = secret_table_with_secret(
+            "OPENAI_API_KEY",
+            placeholder,
+            "sk-real",
+            &["api.openai.com"],
+        )?;
+        let input = format!(
+            "GET / HTTP/1.1\r\nHost: api.openai.com\r\nX-Acme-Token: {placeholder}\r\n\r\n"
+        );
+
+        let output = rewrite_once(
+            input.as_bytes(),
+            &table,
+            HttpRewriteMode::Tls {
+                sni: "api.openai.com",
+            },
+        )
+        .await?;
+        let text = String::from_utf8(output)?;
+
+        assert!(text.contains("X-Acme-Token: sk-real\r\n"));
+        assert!(!text.contains(placeholder));
+        Ok(())
+    }
+
     #[tokio::test]
     async fn denies_unknown_placeholder_in_header_value() -> Result<()> {
         let table = secret_table_with_secret(
