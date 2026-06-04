@@ -14,6 +14,7 @@ import type { UserResource } from "@app/lib/resources/user_resource";
 import { getInvitationTokenStartMs } from "@app/lib/utils/invitation_token";
 import logger from "@app/logger/logger";
 import type { MembershipInvitationType } from "@app/types/membership_invitation";
+import type { MembershipSeatType } from "@app/types/memberships";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -231,7 +232,11 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
       blobs,
       transaction,
     }: {
-      blobs: { inviteEmail: string; initialRole: ActiveRoleType }[];
+      blobs: {
+        inviteEmail: string;
+        initialRole: ActiveRoleType;
+        seatType?: MembershipSeatType | null;
+      }[];
       transaction?: Transaction;
     }
   ): Promise<MembershipInvitationResource[]> {
@@ -514,6 +519,7 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
       sId: this.sId,
       status: this.status,
       isExpired: this.isExpired(),
+      seatType: this.seatType,
     };
   }
 }
