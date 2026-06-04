@@ -231,12 +231,16 @@ export function useMembersUsage({
   searchTerm = "",
   pageIndex,
   pageSize,
+  orderColumn,
+  orderDirection,
   disabled,
 }: {
   workspaceId: string;
   searchTerm?: string;
   pageIndex: number;
   pageSize: number;
+  orderColumn?: "name" | "email";
+  orderDirection?: "asc" | "desc";
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
@@ -254,6 +258,12 @@ export function useMembersUsage({
   });
   if (debouncedSearchTerm.trim().length > 0) {
     searchParams.set("search", debouncedSearchTerm.trim());
+  }
+  if (orderColumn) {
+    searchParams.set("orderColumn", orderColumn);
+  }
+  if (orderDirection) {
+    searchParams.set("orderDirection", orderDirection);
   }
 
   const { data, error } = useSWRWithDefaults(

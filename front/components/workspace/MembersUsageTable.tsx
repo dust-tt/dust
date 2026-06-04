@@ -21,6 +21,7 @@ import type {
   CellContext,
   ColumnDef,
   PaginationState,
+  SortingState,
 } from "@tanstack/react-table";
 import type React from "react";
 import { useMemo } from "react";
@@ -218,6 +219,7 @@ function AwuUsageBar({
 const nameColumn: ColumnDef<RowData, string> = {
   id: "name" as const,
   header: "Name",
+  enableSorting: true,
   accessorFn: (row) => row.name,
   cell: (info: Info) => (
     <DataTable.CellContent
@@ -239,6 +241,7 @@ const nameColumn: ColumnDef<RowData, string> = {
 const seatTypeColumn: ColumnDef<RowData, string> = {
   id: "seatType" as const,
   header: "Seat",
+  enableSorting: false,
   accessorFn: (row) => row.seatType ?? "",
   cell: (info: Info) => {
     const seatType = info.row.original.seatType;
@@ -275,6 +278,7 @@ const seatTypeColumn: ColumnDef<RowData, string> = {
 const billingFrequencyColumn: ColumnDef<RowData, string> = {
   id: "billingFrequency" as const,
   header: "Period",
+  enableSorting: false,
   accessorFn: (row) => row.billingFrequency ?? "",
   cell: (info: Info) => {
     const freq = info.row.original.billingFrequency;
@@ -332,14 +336,15 @@ const consumedAwuCreditsColumn: ColumnDef<RowData, string> = {
   meta: {
     className: "w-64",
   },
-  enableSorting: true,
-  sortingFn: (a, b) =>
-    a.original.consumedAwuCredits - b.original.consumedAwuCredits,
+  // Consumed is computed per-page from Metronome usage, not a server-sortable
+  // field, so it can't participate in server-side sorting.
+  enableSorting: false,
 };
 
 const actionsColumn: ColumnDef<RowData, string> = {
   id: "actions" as const,
   header: "",
+  enableSorting: false,
   accessorKey: "actions",
   cell: (info: Info) => (
     <DataTable.MoreButton menuItems={info.row.original.menuItems} />
@@ -381,6 +386,8 @@ interface MembersUsageTableProps {
   pagination: PaginationState;
   setPagination: (pagination: PaginationState) => void;
   totalRowCount: number;
+  sorting: SortingState;
+  setSorting: (sorting: SortingState) => void;
 }
 
 export function MembersUsageTable({
@@ -393,6 +400,8 @@ export function MembersUsageTable({
   pagination,
   setPagination,
   totalRowCount,
+  sorting,
+  setSorting,
 }: MembersUsageTableProps) {
   // Name/email search is handled server-side; only filter by seat type here.
   const filtered = useMemo(
@@ -477,6 +486,9 @@ export function MembersUsageTable({
       pagination={pagination}
       setPagination={setPagination}
       totalRowCount={totalRowCount}
+      sorting={sorting}
+      setSorting={setSorting}
+      isServerSideSorting
     />
   );
 }
