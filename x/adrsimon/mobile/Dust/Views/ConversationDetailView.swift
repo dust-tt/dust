@@ -174,7 +174,7 @@ struct ConversationDetailView: View {
                                 let isStreaming = message.id == viewModel.streamingMessageId
                                 let hideAgentHeader = isSteeredAgentMessage(at: index)
                                 MessageBubbleView(
-                                    message: message,
+                                    message: viewModel.renderMessage(message),
                                     currentUserEmail: currentUserEmail,
                                     streamingPhase: isStreaming ? viewModel.streamingPhase : .idle,
                                     activeActions: isStreaming ? viewModel.activeActions : [],

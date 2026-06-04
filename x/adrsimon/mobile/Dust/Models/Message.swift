@@ -292,6 +292,14 @@ struct ErrorInfo: Equatable {
     }
 }
 
+/// What the agent is waiting on the user for. Outlives the stream until resolved.
+enum BlockedState: Equatable {
+    case approval(ToolApprovalInfo)
+    case personalAuth(provider: String, toolName: String)
+    case fileAuth(fileName: String, toolName: String)
+}
+
+/// Derived view projection of `Activity` overlaid with any `BlockedState`. Not stored.
 enum AgentStreamingPhase: Equatable {
     case idle
     case thinking
@@ -299,6 +307,16 @@ enum AgentStreamingPhase: Equatable {
     case personalAuthRequired(provider: String, toolName: String)
     case fileAuthRequired(fileName: String, toolName: String)
     case approvalRequired(approval: ToolApprovalInfo)
+}
+
+extension BlockedState {
+    var asPhase: AgentStreamingPhase {
+        switch self {
+        case let .approval(info): .approvalRequired(approval: info)
+        case let .personalAuth(provider, toolName): .personalAuthRequired(provider: provider, toolName: toolName)
+        case let .fileAuth(fileName, toolName): .fileAuthRequired(fileName: fileName, toolName: toolName)
+        }
+    }
 }
 
 enum ConversationMessage: Identifiable {
