@@ -7,7 +7,7 @@ import {
 } from "@app/lib/metronome/contract_lifecycle";
 import { parseMauTiers } from "@app/lib/metronome/mau_sync";
 import { hasContractSeatSubscription } from "@app/lib/metronome/seats";
-import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
+import { isEnterprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -58,7 +58,7 @@ export async function getMetronomeContractSummary(
 
   const contract = contractResult.value;
 
-  const planFamily: "pro" | "enterprise" = isEntreprisePlanPrefix(
+  const planFamily: "pro" | "enterprise" = isEnterprisePlanPrefix(
     subscription.plan.code
   )
     ? "enterprise"

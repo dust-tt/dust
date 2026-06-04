@@ -6,7 +6,7 @@ import { getPriceAsString } from "@app/lib/client/subscription";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import {
-  isEntreprisePlanPrefix,
+  isEnterprisePlanPrefix,
   isProPlan,
   isUpgraded,
   isWhitelistedBusinessPlan,
@@ -424,7 +424,7 @@ export function SubscriptionPage() {
               title={`Your subscription ends on ${endDate}.`}
               variant="warning"
             >
-              {isEntreprisePlanPrefix(plan.code) ? (
+              {isEnterprisePlanPrefix(plan.code) ? (
                 <>
                   Please reach out to your account manager to ensure continuity.
                 </>

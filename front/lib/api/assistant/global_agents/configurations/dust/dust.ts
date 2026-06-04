@@ -29,7 +29,7 @@ import type { Authenticator } from "@app/lib/auth";
 import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
 import {
   isDustCompanyPlan,
-  isEntreprisePlanPrefix,
+  isEnterprisePlanPrefix,
 } from "@app/lib/plans/plan_codes";
 import type { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -500,7 +500,7 @@ function _getDustLikeGlobalAgent(
 export function shouldUseOpus(auth: Authenticator): boolean {
   const planCode = auth.plan()?.code ?? "";
 
-  return isDustCompanyPlan(planCode) || isEntreprisePlanPrefix(planCode);
+  return isDustCompanyPlan(planCode) || isEnterprisePlanPrefix(planCode);
 }
 
 export function _getDustGlobalAgent(

@@ -31,7 +31,7 @@ import type { PlanAttributes } from "@app/lib/plans/free_plans";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
 import {
   FREE_TEST_PLAN_CODE,
-  isEntreprisePlanPrefix,
+  isEnterprisePlanPrefix,
   isFreePlan,
   isProOrBusinessPlanCode,
   isProPlanPrefix,
@@ -892,7 +892,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     }
 
     const plan = await this.findPlanOrThrow(enterpriseDetails.planCode);
-    if (!isEntreprisePlanPrefix(plan.code)) {
+    if (!isEnterprisePlanPrefix(plan.code)) {
       throw new Error(`Plan ${plan.code} is not an enterprise plan.`);
     }
     // End the current subscription if any.
@@ -1012,7 +1012,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     }
 
     // Ugrade to Enterprise is not allowed through this function.
-    if (isEntreprisePlanPrefix(newPlan.code)) {
+    if (isEnterprisePlanPrefix(newPlan.code)) {
       throw new Error(
         `Cannot subscribe to plan ${planCode}: Enterprise Plans requires a special process.`
       );

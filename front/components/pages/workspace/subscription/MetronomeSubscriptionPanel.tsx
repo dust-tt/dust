@@ -9,7 +9,7 @@ import { getPriceAsString } from "@app/lib/client/subscription";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import {
-  isEntreprisePlanPrefix,
+  isEnterprisePlanPrefix,
   isProPlan,
   isUpgraded,
   isWhitelistedBusinessPlan,
@@ -181,7 +181,7 @@ export function MetronomeSubscriptionPanel({
   const sendNotification = useSendNotification();
 
   const isMetronomeBilled = isSubscriptionMetronomeBilled(subscription);
-  const isEnterprise = isEntreprisePlanPrefix(subscription.plan.code);
+  const isEnterprise = isEnterprisePlanPrefix(subscription.plan.code);
 
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("monthly");
   const [showCancelDialog, setShowCancelDialog] = useState(false);

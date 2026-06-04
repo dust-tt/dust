@@ -34,7 +34,7 @@ import {
 } from "@app/lib/plans/billing_currency";
 import {
   isDustCompanyPlan,
-  isEntreprisePlanPrefix,
+  isEnterprisePlanPrefix,
 } from "@app/lib/plans/plan_codes";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import {
@@ -183,7 +183,7 @@ interface SubscriptionInvoiceCtx {
 function isAuthOnEnterprisePlan(auth: Authenticator): boolean {
   const subscription = auth.subscription();
   return (
-    subscription !== null && isEntreprisePlanPrefix(subscription.plan.code)
+    subscription !== null && isEnterprisePlanPrefix(subscription.plan.code)
   );
 }
 
@@ -519,7 +519,7 @@ async function notifyAdminsOfPaymentFailure({
     );
   }
   if (
-    isEntreprisePlanPrefix(subscriptionType.plan.code) ||
+    isEnterprisePlanPrefix(subscriptionType.plan.code) ||
     isDustCompanyPlan(subscriptionType.plan.code)
   ) {
     logger.info(

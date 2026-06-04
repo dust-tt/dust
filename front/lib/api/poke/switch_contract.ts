@@ -36,7 +36,7 @@ import {
 import { resolveCurrencyFromStripe } from "@app/lib/plans/billing_currency";
 import {
   CREDIT_PRICED_BUSINESS_PLAN_CODE,
-  isEntreprisePlanPrefix,
+  isEnterprisePlanPrefix,
   isProPlanPrefix,
   PRO_PLAN_SEAT_39_CODE,
 } from "@app/lib/plans/plan_codes";
@@ -155,7 +155,7 @@ export type SwitchContractSuccess = {
 };
 
 function classifyPlanCode(planCode: string): MetronomePackageTier {
-  if (isEntreprisePlanPrefix(planCode)) {
+  if (isEnterprisePlanPrefix(planCode)) {
     return "enterprise";
   }
   if (

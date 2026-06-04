@@ -2,7 +2,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { getBillingCycleFromDay } from "@app/lib/client/subscription";
 import { countEligibleUsersForCredits } from "@app/lib/credits/common";
 import { getCustomerPaymentStatus } from "@app/lib/credits/free";
-import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
+import { isEnterprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import { isEnterpriseSubscription } from "@app/lib/plans/stripe";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
@@ -52,7 +52,7 @@ export async function getCreditPurchaseLimits(
   const isEnterprise =
     context.type === "stripe-subscription"
       ? isEnterpriseSubscription(context.stripeSubscription)
-      : isEntreprisePlanPrefix(context.subscription.getPlan().code);
+      : isEnterprisePlanPrefix(context.subscription.getPlan().code);
 
   const { cycleStart, cycleEnd } = getCycleBounds(context);
 
