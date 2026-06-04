@@ -351,11 +351,9 @@ async function processEventForUnreadState(
   {
     event,
     conversation,
-    costCredits,
   }: {
     event: AgentMessageEvents;
     conversation: ConversationWithoutContentType;
-    costCredits: number | null;
   }
 ) {
   // If the event is a done event, we want to mark the conversation as unread for all participants.
