@@ -9,8 +9,10 @@ import {
 import { isSkillAuthoringResultOutput } from "@app/lib/api/actions/servers/skill_authoring/rendering";
 import { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { describe, expect, it, vi } from "vitest";
 
@@ -456,6 +458,123 @@ describe("skill_authoring tools", () => {
       output.resource.skillId
     );
     expect(skill?.instructions).toBe("phase. phase. phase.");
+  });
+
+  it("rejects a full replace that drops special tags", async () => {
+    const { authenticator } = await createResourceTest({ role: "builder" });
+
+    const createResult = await getTool(CREATE_SKILL_TOOL_NAME).handler(
+      {
+        name: "Tagged Skill",
+        userFacingDescription: "Skill with a knowledge tag.",
+        agentFacingDescription: "Use to verify special-tag preservation.",
+        instructions:
+          'Summarize the runbook. <knowledge id="data_xyz" title="Runbook" />',
+        icon: "ActionListIcon",
+      },
+      makeExtra(authenticator)
+    );
+    expect(createResult.isOk()).toBe(true);
+    if (createResult.isErr()) {
+      throw createResult.error;
+    }
+    const output = createResult.value[0];
+    if (!isSkillAuthoringResultOutput(output)) {
+      throw new Error("Expected structured skill authoring output.");
+    }
+
+    // A full replace that omits the knowledge tag is rejected.
+    const droppingResult = await getTool(UPDATE_SKILL_TOOL_NAME).handler(
+      {
+        sId: output.resource.skillId,
+        instructions: "Summarize the runbook in three bullet points.",
+      },
+      makeExtra(authenticator)
+    );
+    expect(droppingResult.isErr()).toBe(true);
+    if (droppingResult.isOk()) {
+      throw new Error("Expected a tag-dropping replace to be rejected.");
+    }
+    expect(droppingResult.error.message).toContain("special tags");
+    expect(droppingResult.error.message).toContain("knowledge");
+
+    // The instructions are left untouched.
+    const untouched = await SkillResource.fetchById(
+      authenticator,
+      output.resource.skillId
+    );
+    expect(untouched?.instructions).toBe(
+      'Summarize the runbook. <knowledge id="data_xyz" title="Runbook" />'
+    );
+
+    // A full replace that keeps the tag is allowed.
+    const keepingResult = await getTool(UPDATE_SKILL_TOOL_NAME).handler(
+      {
+        sId: output.resource.skillId,
+        instructions:
+          'Summarize the runbook briefly. <knowledge id="data_xyz" title="Runbook" />',
+      },
+      makeExtra(authenticator)
+    );
+    expect(keepingResult.isOk()).toBe(true);
+  });
+
+  it("keeps nested skill references in sync when editing instructions", async () => {
+    const { authenticator } = await createResourceTest({ role: "builder" });
+    await FeatureFlagFactory.basic(authenticator, "nested_skills");
+
+    const childSkill = await SkillFactory.create(authenticator, {
+      name: "Child Skill",
+    });
+    const skillReferenceTag =
+      SkillFactory.serializeSkillReferenceTag(childSkill);
+
+    const createResult = await getTool(CREATE_SKILL_TOOL_NAME).handler(
+      {
+        name: "Parent Skill",
+        userFacingDescription: "Skill that references another skill.",
+        agentFacingDescription: "Use to verify reference syncing.",
+        instructions: `Use ${skillReferenceTag} when needed.`,
+        icon: "ActionListIcon",
+      },
+      makeExtra(authenticator)
+    );
+    expect(createResult.isOk()).toBe(true);
+    if (createResult.isErr()) {
+      throw createResult.error;
+    }
+    const output = createResult.value[0];
+    if (!isSkillAuthoringResultOutput(output)) {
+      throw new Error("Expected structured skill authoring output.");
+    }
+
+    // create_skill does not wire references, so there are none yet.
+    const parentBefore = await SkillResource.fetchById(
+      authenticator,
+      output.resource.skillId
+    );
+    await expect(
+      parentBefore?.fetchChildSkills(authenticator)
+    ).resolves.toEqual([]);
+
+    // A targeted edit that keeps the reference tag re-derives the references.
+    const updateResult = await getTool(UPDATE_SKILL_TOOL_NAME).handler(
+      {
+        sId: output.resource.skillId,
+        old_string: "when needed",
+        new_string: "for details",
+      },
+      makeExtra(authenticator)
+    );
+    expect(updateResult.isOk()).toBe(true);
+
+    const parentAfter = await SkillResource.fetchById(
+      authenticator,
+      output.resource.skillId
+    );
+    await expect(parentAfter?.fetchChildSkills(authenticator)).resolves.toEqual(
+      [expect.objectContaining({ sId: childSkill.sId })]
+    );
   });
 
   it("rejects combining a full instructions replace with a targeted edit", async () => {

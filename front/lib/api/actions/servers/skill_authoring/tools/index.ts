@@ -1,3 +1,4 @@
+import { extractKnowledgeTagIds } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeConstants";
 import {
   isCustomResourceIconType,
   isInternalAllowedIcon,
@@ -21,6 +22,8 @@ import { pruneOutdatedSkillEditSuggestions } from "@app/lib/reinforcement/skill_
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { extractUniqueSkillReferenceIds } from "@app/lib/skills/format";
+import { extractToolTags } from "@app/lib/tools/format";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -65,6 +68,42 @@ function makeJsonText(value: unknown) {
     type: "text" as const,
     text: JSON.stringify(value, null, 2),
   };
+}
+
+// Skills can embed special tags in their instructions (nested skill references,
+// knowledge, tools) that the builder UI wires up. The agent only sees them as
+// opaque markup, so guard against a full instructions replace silently dropping
+// them. Returns the categories of tags present before but missing after.
+function findDroppedSpecialTags(before: string, after: string): string[] {
+  const dropped: string[] = [];
+  const isMissingAny = (beforeIds: string[], afterIds: string[]): boolean => {
+    const afterSet = new Set(afterIds);
+    return beforeIds.some((id) => !afterSet.has(id));
+  };
+
+  if (
+    isMissingAny(
+      extractUniqueSkillReferenceIds(before),
+      extractUniqueSkillReferenceIds(after)
+    )
+  ) {
+    dropped.push("nested skills");
+  }
+  if (
+    isMissingAny(extractKnowledgeTagIds(before), extractKnowledgeTagIds(after))
+  ) {
+    dropped.push("knowledge");
+  }
+  if (
+    isMissingAny(
+      extractToolTags(before).map((tool) => tool.id),
+      extractToolTags(after).map((tool) => tool.id)
+    )
+  ) {
+    dropped.push("tools");
+  }
+
+  return dropped;
 }
 
 const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
@@ -304,6 +343,23 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
       return new Err(new MCPError("Skill not found."));
     }
 
+    // A full replace is wholesale and likely to drop the special tags that wire
+    // up nested skills, knowledge, and tools. Reject it rather than silently
+    // breaking that wiring; a targeted edit preserves the tags by construction.
+    if (instructions !== undefined) {
+      const dropped = findDroppedSpecialTags(skill.instructions, instructions);
+      if (dropped.length > 0) {
+        return new Err(
+          new MCPError(
+            `The new instructions drop special tags the skill depends on ` +
+              `(${dropped.join(", ")}). These tags are managed in the builder ` +
+              "and must be preserved verbatim. Keep them in the new instructions, " +
+              "or make a targeted edit with `old_string`/`new_string` instead."
+          )
+        );
+      }
+    }
+
     // Resolve the new instructions: undefined keeps the existing ones, a full
     // string replaces them, and a targeted edit applies a str-replace on the
     // current instructions (mirroring the Files MCP edit pattern).
@@ -360,6 +416,14 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
     );
     const attachedKnowledge = await skill.getAttachedKnowledge(auth);
 
+    // When the instructions change, re-derive the referenced skills from the new
+    // text so the nested-skill links stay in sync with the tags (the builder UI
+    // does the same). Leave them untouched when the instructions are unchanged.
+    const referencedSkillIds =
+      resolvedInstructions !== undefined
+        ? extractUniqueSkillReferenceIds(resolvedInstructions)
+        : undefined;
+
     await skill.updateSkill(auth, {
       agentFacingDescription:
         agentFacingDescription ?? skill.agentFacingDescription,
@@ -374,6 +438,7 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
       name: trimmedName,
       requestedSpaceIds: skill.requestedSpaceIds,
       enableSkillReferences,
+      referencedSkillIds,
       userFacingDescription:
         userFacingDescription ?? skill.userFacingDescription,
     });
