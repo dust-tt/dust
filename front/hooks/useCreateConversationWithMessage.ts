@@ -1,4 +1,5 @@
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useClientType } from "@app/lib/context/clientType";
 import { clientFetch } from "@app/lib/egress/client";
@@ -40,6 +41,7 @@ export function useCreateConversationWithMessage({
   const { fetcher } = useFetcher();
   const contextOrigin = useClientType();
   const { hasFeature } = useFeatureFlags();
+  const sendNotification = useSendNotification();
   const { setPendingFirstMessage, clearPendingFirstMessage } =
     useContext(InputBarContext);
 
@@ -148,6 +150,13 @@ export function useCreateConversationWithMessage({
             origin,
             skipToolsValidation,
             profilePictureUrl: user.image,
+            onError: (err) => {
+              sendNotification({
+                title: err.title,
+                description: err.message,
+                type: "error",
+              });
+            },
           }).finally(() => {
             clearPendingFirstMessage(conversationId);
           });
@@ -231,6 +240,7 @@ export function useCreateConversationWithMessage({
       fetcher,
       contextOrigin,
       hasFeature,
+      sendNotification,
       setPendingFirstMessage,
       clearPendingFirstMessage,
     ]
@@ -251,6 +261,7 @@ async function postFirstMessageInBackground({
   origin,
   skipToolsValidation,
   profilePictureUrl,
+  onError,
 }: {
   workspaceId: string;
   conversationId: string;
@@ -262,6 +273,7 @@ async function postFirstMessageInBackground({
   origin: ClientMessageOrigin;
   skipToolsValidation: boolean;
   profilePictureUrl: string | null;
+  onError?: (err: SubmitMessageError) => void;
 }): Promise<void> {
   const timezone =
     Intl.DateTimeFormat().resolvedOptions().timeZone || "Etc/UTC";
@@ -319,7 +331,7 @@ async function postFirstMessageInBackground({
       );
     }
 
-    await clientFetch(
+    const msgRes = await clientFetch(
       `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages`,
       {
         method: "POST",
@@ -338,8 +350,25 @@ async function postFirstMessageInBackground({
         }),
       }
     );
+    if (!msgRes.ok) {
+      const body = await msgRes.json().catch(() => null);
+      if (onError) {
+        const errResult = toConversationCreationError(
+          isAPIErrorResponse(body) ? body : new Error("Failed to post message")
+        );
+        if (errResult.isErr()) {
+          onError(errResult.error);
+        }
+      }
+    }
   } catch (e) {
     logger.error({ err: e }, "Failed to post first message in background");
+    if (onError) {
+      const err = toConversationCreationError(e);
+      if (err.isErr()) {
+        onError(err.error);
+      }
+    }
   }
 }
 

@@ -111,6 +111,7 @@ interface ConversationViewerProps {
   additionalMarkdownComponents?: Components;
   additionalMarkdownPlugins?: PluggableList;
   setLimitReachedCode?: (code: WorkspaceLimit) => void;
+  limitReachedCode?: WorkspaceLimit | null;
   owner: WorkspaceType;
   user: UserType;
   clientSideMCPServerIds?: string[];
@@ -323,6 +324,7 @@ export const ConversationViewer = ({
   additionalMarkdownComponents,
   additionalMarkdownPlugins,
   setLimitReachedCode,
+  limitReachedCode,
   clientSideMCPServerIds,
 }: ConversationViewerProps) => {
   const virtuosoMessageListRef =
@@ -1409,6 +1411,7 @@ export const ConversationViewer = ({
       branchIdToApprove: branchIdToApprove ?? undefined,
       setBranchIdToApprove,
       isAutoScrollEnabledRef,
+      isNoSeat: limitReachedCode === "no_seat",
     };
   }, [
     user,
@@ -1426,6 +1429,7 @@ export const ConversationViewer = ({
     spaceInfo?.archivedAt,
     spaceInfo?.name,
     branchIdToApprove,
+    limitReachedCode,
   ]);
 
   return (

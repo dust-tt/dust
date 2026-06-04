@@ -163,12 +163,16 @@ export function classifySeatChange({
     newSeatType,
     productSeatTypes
   );
-  if (newAllocation >= previousAllocation) {
+  // Removing a seat (`none`) always defers, even when the previous tier had
+  // zero AWU allocation (e.g. workspace seats): 0 >= 0 would otherwise
+  // classify as immediate. Any genuine upgrade takes effect right away.
+  if (newSeatType !== "none" && newAllocation >= previousAllocation) {
     return { kind: "immediate" };
   }
 
-  // Downgrade — defer to the start of the next billing period so the user
-  // keeps the richer access they've already paid for. Billing-period
+  // Downgrade (or seat removal) — defer to the start of the next billing
+  // period so the user keeps the richer access they've already paid for.
+  // Billing-period
   // boundaries aren't anchored to midnight on the contract, so ceil to
   // midnight UTC to match how the invoice timestamp is displayed.
   const nextStartingAt = (contract.subscriptions ?? [])
@@ -519,6 +523,10 @@ export async function syncSeatCount({
     );
     const uncoveredUsersBySeatType = new Map<MembershipSeatType, string[]>();
     for (const [userSId, seatType] of currentSeatByUserSId) {
+      // `none` is intentionally unbilled — skip silently.
+      if (seatType === "none") {
+        continue;
+      }
       if (!coveredSeatTypes.has(seatType)) {
         const bucket = uncoveredUsersBySeatType.get(seatType) ?? [];
         bucket.push(userSId);

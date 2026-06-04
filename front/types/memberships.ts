@@ -24,7 +24,8 @@ export function isMembershipOriginType(
   return MEMBERSHIP_ORIGIN_TYPES.includes(value as MembershipOriginType);
 }
 
-export const MEMBERSHIP_SEAT_TYPES = [
+// Billable seat types — each maps to a Metronome product.
+export const BILLABLE_SEAT_TYPES = [
   "free",
   "workspace",
   "workspace_yearly",
@@ -32,6 +33,12 @@ export const MEMBERSHIP_SEAT_TYPES = [
   "pro_yearly",
   "max",
   "max_yearly",
+] as const;
+
+export const MEMBERSHIP_SEAT_TYPES = [
+  // `none` = no billable seat assigned; member cannot send messages.
+  "none",
+  ...BILLABLE_SEAT_TYPES,
 ] as const;
 
 export type MembershipSeatType = (typeof MEMBERSHIP_SEAT_TYPES)[number];
@@ -88,6 +95,7 @@ export function normalizeToPoolLimitSeatType(
     case "workspace_yearly":
       return "workspace";
     case "free":
+    case "none":
       return null;
     default:
       assertNever(seatType);
