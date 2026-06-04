@@ -2,10 +2,19 @@ import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { isPAYGEnabled } from "@app/lib/credits/credit_payg";
 import { getMetronomeProgrammaticCap } from "@app/lib/metronome/alerts/programmatic_cap";
+import {
+  getMetronomeDefaultUserCapAlertForSeatType,
+  getMetronomePerUserCap,
+} from "@app/lib/metronome/alerts/spend_limits";
 import { listMetronomeBalances } from "@app/lib/metronome/client";
 import { getCreditTypeAwuId } from "@app/lib/metronome/constants";
 import { invalidateWorkspacePoolCredits } from "@app/lib/metronome/credit_balance";
+import { getActiveContract } from "@app/lib/metronome/plan_type";
 import { transitionProgrammaticCreditState } from "@app/lib/metronome/programmatic_credit_state_machine";
+import {
+  getAwuAllocationForSeatType,
+  getProductSeatTypes,
+} from "@app/lib/metronome/seat_types";
 import {
   clearUserCapBlocked,
   clearWorkspaceProgrammaticWarned,
@@ -15,21 +24,108 @@ import { transitionUserCreditState } from "@app/lib/metronome/user_credit_state_
 import type { WorkspaceCreditEvent } from "@app/lib/metronome/workspace_credit_state_machine";
 import { transitionWorkspaceCreditState } from "@app/lib/metronome/workspace_credit_state_machine";
 import { notifyAdminsProgrammaticCapReached } from "@app/lib/notifications/workflows/programmatic-cap-reached";
+import { getPlanDefaultPoolLimitAwuCredits } from "@app/lib/plans/plan_codes";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import type { MembershipSeatType } from "@app/types/memberships";
+import { normalizeToPoolLimitSeatType } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+
+/**
+ * Resolve the effective pool credit limit for a user.
+ *
+ * Priority: per-user Metronome override > per-seat-type workspace default > plan-tier fallback.
+ *
+ * Returns `number | null`:
+ *   - a number (including 0) when a limit is configured or implied by the plan
+ *   - `null` when the user has unlimited pool access (enterprise with no limit)
+ */
+async function resolvePoolLimitForUser({
+  workspace,
+  userId,
+  seatType,
+}: {
+  workspace: WorkspaceResource;
+  userId: string;
+  seatType: MembershipSeatType | null | undefined;
+}): Promise<number | null> {
+  const { metronomeCustomerId } = workspace;
+  if (!metronomeCustomerId) {
+    return null;
+  }
+
+  // 1. Per-user override.
+  const userCapResult = await getMetronomePerUserCap({
+    metronomeCustomerId,
+    workspaceId: workspace.sId,
+    userId,
+  });
+  if (userCapResult.isOk() && userCapResult.value) {
+    // The threshold includes the seat allowance; subtract it to get the pool limit.
+    const totalThreshold = userCapResult.value.alert.threshold;
+    const seatAllowance = await getSeatAllowance(workspace, seatType);
+    return Math.max(0, totalThreshold - seatAllowance);
+  }
+
+  // 2. Per-seat-type workspace default.
+  const normalizedSeatType = normalizeToPoolLimitSeatType(seatType);
+  if (normalizedSeatType) {
+    const defaultCapResult = await getMetronomeDefaultUserCapAlertForSeatType({
+      metronomeCustomerId,
+      workspaceId: workspace.sId,
+      seatType: normalizedSeatType,
+    });
+    if (defaultCapResult.isOk() && defaultCapResult.value) {
+      const totalThreshold = defaultCapResult.value.alert.threshold;
+      const seatAllowance = await getSeatAllowance(workspace, seatType);
+      return Math.max(0, totalThreshold - seatAllowance);
+    }
+  }
+
+  // 3. Plan-tier fallback: enterprise → unlimited, everything else → 0.
+  const subscription = await SubscriptionResource.fetchActiveByWorkspaceModelId(
+    workspace.id
+  );
+  const planCode = subscription?.getPlan().code;
+  if (!planCode) {
+    return 0;
+  }
+  return getPlanDefaultPoolLimitAwuCredits(planCode);
+}
+
+async function getSeatAllowance(
+  workspace: WorkspaceResource,
+  seatType: MembershipSeatType | null | undefined
+): Promise<number> {
+  const normalizedSeatType = normalizeToPoolLimitSeatType(seatType);
+  if (!normalizedSeatType) {
+    return 0;
+  }
+  const contract = await getActiveContract(workspace.sId);
+  if (!contract) {
+    return 0;
+  }
+  const productSeatTypes = await getProductSeatTypes();
+  return getAwuAllocationForSeatType(
+    contract,
+    normalizedSeatType,
+    productSeatTypes
+  );
+}
 
 /**
  * Transition a single user from `user_seat` / `user_seat_low_balance` when
  * Metronome fires `alerts.low_remaining_seat_balance_reached` for that user.
  *
- * Paid seats fall back to the workspace pool (`on_pool`). Free seats have no
- * pool access and are capped (`capped`). The guard in the state machine decides
- * which branch applies based on `seatType`.
+ * Resolves the user's effective pool credit limit from Metronome alerts, then
+ * falls back by plan tier (enterprise → unlimited, business → 0). The state
+ * machine uses this limit to decide whether the user goes to `on_pool` or
+ * `capped`.
  */
 export async function dispatchSeatBalanceExhausted({
   workspace,
@@ -61,9 +157,15 @@ export async function dispatchSeatBalanceExhausted({
     return;
   }
 
+  const poolLimitAwuCredits = await resolvePoolLimitForUser({
+    workspace,
+    userId,
+    seatType: membership.seatType,
+  });
+
   const result = await transitionUserCreditState(
     membership,
-    { type: "seat_balance_exhausted" },
+    { type: "seat_balance_exhausted", poolLimitAwuCredits },
     { workspaceId: workspace.sId, userId, seatType: membership.seatType }
   );
   if (result.isErr()) {
@@ -73,6 +175,7 @@ export async function dispatchSeatBalanceExhausted({
         userId,
         seatType: membership.seatType,
         creditState: membership.creditState,
+        poolLimitAwuCredits,
       },
       "[CreditStateDispatcher] dispatchSeatBalanceExhausted: transition skipped"
     );
