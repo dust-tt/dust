@@ -332,6 +332,78 @@ async fn connections_metadata(
 }
 
 #[derive(Deserialize)]
+struct ConnectionUpdateMetadataPayload {
+    use_static_ip_proxy: bool,
+}
+
+async fn connections_update_metadata(
+    State(state): State<Arc<OAuthState>>,
+    Path(connection_id): Path<String>,
+    Json(payload): Json<ConnectionUpdateMetadataPayload>,
+) -> (StatusCode, Json<APIResponse>) {
+    match state.store.retrieve_connection(&connection_id).await {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to retrieve connection",
+            Some(e),
+        ),
+        Ok(None) => error_response(
+            StatusCode::NOT_FOUND,
+            "connection_not_found",
+            "Requested connection was not found",
+            None,
+        ),
+        Ok(Some(mut c)) => {
+            if c.provider() != ConnectionProvider::Mcp
+                && c.provider() != ConnectionProvider::McpStatic
+            {
+                return error_response(
+                    StatusCode::BAD_REQUEST,
+                    "invalid_provider",
+                    "Connection metadata updates are only supported for MCP providers",
+                    None,
+                );
+            }
+
+            let mut extra_metadata = serde_json::Map::new();
+            extra_metadata.insert(
+                "use_static_ip_proxy".to_string(),
+                serde_json::Value::String(payload.use_static_ip_proxy.to_string()),
+            );
+
+            if let Err(e) = c
+                .update_metadata(state.clone().store.clone(), extra_metadata)
+                .await
+            {
+                return error_response(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    &e.code.to_string(),
+                    &e.message,
+                    None,
+                );
+            }
+
+            (
+                StatusCode::OK,
+                Json(APIResponse {
+                    error: None,
+                    response: Some(json!(ConnectionMetadataResponse {
+                        connection: ConnectionInfo {
+                            connection_id: c.connection_id(),
+                            created: c.created(),
+                            provider: c.provider(),
+                            status: c.status(),
+                            metadata: c.metadata().clone(),
+                        },
+                    })),
+                }),
+            )
+        }
+    }
+}
+
+#[derive(Deserialize)]
 struct ConnectionUpdateCredentialPayload {
     related_credential_id: String,
     metadata: serde_json::Map<String, serde_json::Value>,
@@ -539,6 +611,10 @@ pub async fn create_app() -> Result<Router> {
         .route(
             "/connections/{connection_id}/metadata",
             get(connections_metadata),
+        )
+        .route(
+            "/connections/{connection_id}/metadata",
+            patch(connections_update_metadata),
         )
         .route(
             "/connections/{connection_id}/credential",
