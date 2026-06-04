@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
-import * as V2StrokeIcons from "@sparkle/icons/v2-stroke";
+import * as Icons from "@sparkle/icons/v2-stroke";
 
 import { Icon } from "../index_with_tw_base";
 
@@ -12,7 +12,7 @@ type IconModule = {
 };
 
 const meta = {
-  title: "Assets/IconsV2",
+  title: "Assets/Icons",
   tags: ["autodocs"],
 } satisfies Meta;
 
@@ -58,6 +58,6 @@ const renderIconGrid = (icons: IconModule) => (
   </div>
 );
 
-export const StrokeIconSet: Story = {
-  render: () => renderIconGrid(V2StrokeIcons as IconModule),
+export const IconSet: Story = {
+  render: () => renderIconGrid(Icons as IconModule),
 };
