@@ -302,7 +302,11 @@ export type BaseAgentMessageType = {
   completionDurationMs: number | null;
   reactions: MessageReactionType[];
   prunedContext?: boolean;
-  costCredits: number | null;
+  // Optional during rollout: serialized from the API, so an old API server can
+  // return agent messages without this field (`undefined`) to a newer client
+  // during the credit-cost stack rollout. Tighten to `number | null` once the API
+  // change is fully deployed. See [BACK12].
+  costCredits?: number | null;
 };
 
 export type InlineActivityStep =
