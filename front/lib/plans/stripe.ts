@@ -286,6 +286,8 @@ export const createEmbeddedMetronomeSetupCheckoutSession = async ({
   pricePerSeatCents,
   couponCode,
   user,
+  seatType,
+  targetUserId,
 }: {
   allowedPaymentMethods?: SupportedPaymentMethod[];
   metronomePackageAlias: string;
@@ -296,6 +298,8 @@ export const createEmbeddedMetronomeSetupCheckoutSession = async ({
   pricePerSeatCents?: number;
   couponCode?: string;
   user: UserType;
+  seatType?: "pro" | "max";
+  targetUserId?: string;
 }): Promise<{ clientSecret: string; sessionId: string }> => {
   const stripe = getStripeClient();
 
@@ -314,6 +318,12 @@ export const createEmbeddedMetronomeSetupCheckoutSession = async ({
   }
   if (couponCode) {
     metadata.couponCode = couponCode;
+  }
+  if (seatType) {
+    metadata.seatType = seatType;
+  }
+  if (targetUserId) {
+    metadata.targetUserId = targetUserId;
   }
 
   const session = await stripe.checkout.sessions.create({
