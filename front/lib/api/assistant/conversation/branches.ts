@@ -17,6 +17,7 @@ import { MessageModel } from "@app/lib/models/agent/conversation";
 import { ConversationBranchModel } from "@app/lib/models/agent/conversation_branch";
 import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import {
@@ -463,6 +464,14 @@ export async function closeConversationBranch(
     );
   }
   await conversation.updateVisibilityToDeleted(auth);
+
+  const taskId = conversation.metadata?.projectTaskId;
+  if (taskId) {
+    await ProjectTaskResource.unlinkConversation(auth, {
+      taskId,
+      conversationModelId: conversation.id,
+    });
+  }
 
   return new Ok({
     closedBranchId: closeRes.value.branch.id,

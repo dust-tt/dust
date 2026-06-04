@@ -151,6 +151,7 @@ import type {
   ContentFragmentContextType,
   ContentFragmentType,
 } from "@app/types/content_fragment";
+import { isContentFragmentType } from "@app/types/content_fragment";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import { isCreditPricedPlan } from "@app/types/plan";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -834,62 +835,75 @@ export async function postUserMessage(
         logger.info(
           "Message has user mentions, for now we do not support branching with user mentions."
         );
-      } else if (conversation.content.length === 0) {
-        // Create an invisible anchor message so the branch has a previousMessageId
-        // to reference.
-        const anchorMessage = await createUserMessage(auth, {
-          conversation,
-          content: "",
-          metadata: {
-            type: "create",
-            user: user.toJSON(),
-            rank: 0,
-            context: {
-              ...context,
-              origin: "branch_anchor",
-            },
-          },
-          transaction: t,
-        });
-
-        const branch = await ConversationBranchResource.makeNew(
-          auth,
-          {
-            conversationId: conversation.id,
-            previousMessageId: anchorMessage.id,
-            state: "open",
-            userId: user.id,
-          },
-          t
-        );
-
-        conversation.branchId = branch.sId;
-        nextMessageRank = 1;
       } else {
-        // Get the last message in the conversation.
-        const previousMessage =
-          conversation.content[conversation.content.length - 1].at(-1);
-        if (!previousMessage) {
-          logger.error(
-            "Last message in conversation has no content, cannot create branch."
-          );
-        } else {
-          // Create a new branch for the conversation.
+        const latestMessages = removeNulls(
+          conversation.content.map((versions) => versions.at(-1))
+        );
+        const shouldCreateAnchorMessage =
+          latestMessages.length === 0 ||
+          latestMessages.every(isContentFragmentType);
+
+        if (shouldCreateAnchorMessage) {
+          // Create an invisible anchor message so the branch has a previousMessageId
+          // to reference. If the conversation only contains content fragments, keep
+          // them before the anchor so they remain attached to the branch context.
+          const anchorMessageRank =
+            latestMessages.length > 0
+              ? Math.max(...latestMessages.map((m) => m.rank)) + 1
+              : 0;
+          const anchorMessage = await createUserMessage(auth, {
+            conversation,
+            content: "",
+            metadata: {
+              type: "create",
+              user: user.toJSON(),
+              rank: anchorMessageRank,
+              context: {
+                ...context,
+                origin: "branch_anchor",
+              },
+            },
+            transaction: t,
+          });
+
           const branch = await ConversationBranchResource.makeNew(
             auth,
             {
               conversationId: conversation.id,
-              previousMessageId: previousMessage.id,
+              previousMessageId: anchorMessage.id,
               state: "open",
               userId: user.id,
             },
             t
           );
 
-          // Update the conversation with the new branch id so the rest of the functions will operate on the branch.
           conversation.branchId = branch.sId;
-          // Set the next message rank to the rank of the previous message plus one.
-          nextMessageRank = previousMessage.rank + 1;
+          nextMessageRank = anchorMessageRank + 1;
+        } else {
+          // Get the last message in the conversation.
+          const previousMessage = latestMessages.at(-1);
+          if (!previousMessage) {
+            logger.error(
+              "Last message in conversation has no content, cannot create branch."
+            );
+          } else {
+            // Create a new branch for the conversation.
+            const branch = await ConversationBranchResource.makeNew(
+              auth,
+              {
+                conversationId: conversation.id,
+                previousMessageId: previousMessage.id,
+                state: "open",
+                userId: user.id,
+              },
+              t
+            );
+
+            // Update the conversation with the new branch id so the rest of the functions will operate on the branch.
+            conversation.branchId = branch.sId;
+            // Set the next message rank to the rank of the previous message plus one.
+            nextMessageRank = previousMessage.rank + 1;
+          }
         }
       }
     }
