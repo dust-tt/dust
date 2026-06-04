@@ -65,9 +65,7 @@ export function SkillBuilderRequestedSpacesSection({
   });
 
   const allSpaces = useMemo(() => {
-    return [...spaces, ...missingSpaces].filter(
-      (space) => space.kind !== "project"
-    );
+    return [...spaces, ...missingSpaces];
   }, [spaces, missingSpaces]);
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -235,10 +233,10 @@ export function SkillBuilderRequestedSpacesSection({
       <div className="flex items-start justify-between">
         <div>
           <h3 className="heading-lg font-semibold text-foreground dark:text-foreground-night">
-            Spaces
+            Spaces and Pods
           </h3>
           <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            Set what knowledge and tools the skill can access.
+            Set what knowledge and capabilities the skill can access.
           </p>
         </div>
         <Button
@@ -252,8 +250,9 @@ export function SkillBuilderRequestedSpacesSection({
       {nonGlobalSpacesWithRestrictions.length > 0 && (
         <div className="mb-4 w-full">
           <ContentMessage variant="golden" size="lg">
-            Based on your selection of spaces, knowledge, and tools, this skill
-            can only be used by users with access to:&nbsp;
+            Based on your selection of spaces, Pods, knowledge, and
+            capabilities, this skill can only be used by users with access
+            to:&nbsp;
             <strong>
               {nonGlobalSpacesWithRestrictions
                 .map((space) => space.name)
@@ -268,7 +267,6 @@ export function SkillBuilderRequestedSpacesSection({
       <SpaceSelectionSheet
         alreadyRequestedSpaceIds={spaceIdsUsedBySkill}
         entityName="skill"
-        includeProjects={false}
         missingSpaceIds={missingSpaceIds}
         onClose={handleCloseSheet}
         onSave={handleSaveSpaces}
