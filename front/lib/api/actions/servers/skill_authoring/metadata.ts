@@ -62,7 +62,10 @@ export const SKILL_AUTHORING_TOOLS_METADATA = createToolsRecord({
   },
   [UPDATE_SKILL_TOOL_NAME]: {
     description:
-      "Update an existing custom Skill by id. Provide only the fields that should change.",
+      "Update an existing custom Skill by id. Provide only the fields that should change. " +
+      "To change the instructions you can either replace them wholesale with `instructions`, " +
+      "or make a targeted edit with `old_string`/`new_string` (preferred for small changes). " +
+      "These two modes are mutually exclusive.",
     schema: {
       sId: z.string().describe("The custom skill id to update."),
       name: z.string().optional().describe("New skill name."),
@@ -77,7 +80,37 @@ export const SKILL_AUTHORING_TOOLS_METADATA = createToolsRecord({
       instructions: z
         .string()
         .optional()
-        .describe("New skill instructions/playbook in markdown."),
+        .describe(
+          "New skill instructions/playbook in markdown. Replaces the instructions " +
+            "entirely. For small, targeted changes prefer `old_string`/`new_string`. " +
+            "Cannot be combined with `old_string`/`new_string`."
+        ),
+      old_string: z
+        .string()
+        .optional()
+        .describe(
+          "For a targeted edit of the instructions: the exact existing text to replace. " +
+            "Must match the current instructions exactly, including whitespace and line " +
+            "breaks. Include enough surrounding context to identify the text uniquely. " +
+            "Call `get_skill` first to read the current instructions. Cannot be combined " +
+            "with `instructions`."
+        ),
+      new_string: z
+        .string()
+        .optional()
+        .describe(
+          "The replacement text for `old_string`. Use an empty string to delete the " +
+            "matched text. Required when `old_string` is provided."
+        ),
+      expected_replacements: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe(
+          "Number of occurrences of `old_string` expected to be replaced. Defaults to 1. " +
+            "The edit fails if the actual count differs."
+        ),
       icon: z.string().optional().describe("New icon name."),
     },
     stake: "high",

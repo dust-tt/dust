@@ -13,6 +13,7 @@ import {
   UPDATE_SKILL_TOOL_NAME,
 } from "@app/lib/api/actions/servers/skill_authoring/metadata";
 import { makeSkillAuthoringResultOutput } from "@app/lib/api/actions/servers/skill_authoring/rendering";
+import { getUpdatedContentAndOccurrences } from "@app/lib/api/files/utils";
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
 import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
@@ -232,6 +233,9 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
       agentFacingDescription,
       icon,
       instructions,
+      old_string,
+      new_string,
+      expected_replacements,
       userFacingDescription,
       name,
       sId,
@@ -248,14 +252,39 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
       return new Err(customSkillId.error);
     }
 
+    const isTargetedInstructionsEdit =
+      old_string !== undefined || new_string !== undefined;
+
     if (
       agentFacingDescription === undefined &&
       icon === undefined &&
       instructions === undefined &&
+      !isTargetedInstructionsEdit &&
       name === undefined &&
       userFacingDescription === undefined
     ) {
       return new Err(new MCPError("No skill updates were provided."));
+    }
+
+    if (isTargetedInstructionsEdit && instructions !== undefined) {
+      return new Err(
+        new MCPError(
+          "Provide either `instructions` (full replace) or `old_string`/" +
+            "`new_string` (targeted edit), not both."
+        )
+      );
+    }
+
+    if (
+      isTargetedInstructionsEdit &&
+      (old_string === undefined || new_string === undefined)
+    ) {
+      return new Err(
+        new MCPError(
+          "A targeted instructions edit requires both `old_string` and " +
+            "`new_string`."
+        )
+      );
     }
 
     if (icon !== undefined && !isValidSkillIcon(icon)) {
@@ -273,6 +302,40 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
 
     if (!skill.canWrite(auth)) {
       return new Err(new MCPError("Skill not found."));
+    }
+
+    // Resolve the new instructions: undefined keeps the existing ones, a full
+    // string replaces them, and a targeted edit applies a str-replace on the
+    // current instructions (mirroring the Files MCP edit pattern).
+    let resolvedInstructions: string | undefined = instructions;
+    if (isTargetedInstructionsEdit && old_string !== undefined) {
+      const { updatedContent, occurrences } = getUpdatedContentAndOccurrences({
+        oldString: old_string,
+        newString: new_string ?? "",
+        currentContent: skill.instructions,
+      });
+
+      if (occurrences === 0) {
+        return new Err(
+          new MCPError(
+            `\`old_string\` was not found in the skill instructions: "${old_string}".`
+          )
+        );
+      }
+
+      const expected = expected_replacements ?? 1;
+      if (occurrences !== expected) {
+        return new Err(
+          new MCPError(
+            `Expected ${expected} replacement${expected === 1 ? "" : "s"}, but ` +
+              `\`old_string\` matched ${occurrences} time${occurrences === 1 ? "" : "s"}. ` +
+              "Add more surrounding context to target a single occurrence, or set " +
+              "`expected_replacements`."
+          )
+        );
+      }
+
+      resolvedInstructions = updatedContent;
     }
 
     const trimmedName = name !== undefined ? name.trim() : skill.name;
@@ -300,10 +363,10 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
         agentFacingDescription ?? skill.agentFacingDescription,
       attachedKnowledge,
       icon: icon !== undefined ? icon : skill.icon,
-      instructions: instructions ?? skill.instructions,
+      instructions: resolvedInstructions ?? skill.instructions,
       instructionsHtml:
-        instructions !== undefined
-          ? convertMarkdownToBlockHtml(instructions)
+        resolvedInstructions !== undefined
+          ? convertMarkdownToBlockHtml(resolvedInstructions)
           : skill.instructionsHtml,
       mcpServerViews: skill.mcpServerViews,
       name: trimmedName,

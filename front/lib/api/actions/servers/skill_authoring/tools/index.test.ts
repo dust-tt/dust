@@ -314,4 +314,193 @@ describe("skill_authoring tools", () => {
     );
     expect(skill?.icon).toBe("ActionListIcon");
   });
+
+  it("applies a targeted instructions edit with old_string/new_string", async () => {
+    const { authenticator } = await createResourceTest({ role: "builder" });
+
+    const createResult = await getTool(CREATE_SKILL_TOOL_NAME).handler(
+      {
+        name: "Targeted Edit Skill",
+        userFacingDescription: "Skill to edit.",
+        agentFacingDescription: "Use to verify targeted edits.",
+        instructions: "Collect impact, timeline, root cause, and follow-ups.",
+        icon: "ActionListIcon",
+      },
+      makeExtra(authenticator)
+    );
+    expect(createResult.isOk()).toBe(true);
+    if (createResult.isErr()) {
+      throw createResult.error;
+    }
+    const output = createResult.value[0];
+    if (!isSkillAuthoringResultOutput(output)) {
+      throw new Error("Expected structured skill authoring output.");
+    }
+
+    const updateResult = await getTool(UPDATE_SKILL_TOOL_NAME).handler(
+      {
+        sId: output.resource.skillId,
+        old_string: "follow-ups",
+        new_string: "owners",
+      },
+      makeExtra(authenticator)
+    );
+    expect(updateResult.isOk()).toBe(true);
+
+    const skill = await SkillResource.fetchById(
+      authenticator,
+      output.resource.skillId
+    );
+    expect(skill?.instructions).toBe(
+      "Collect impact, timeline, root cause, and owners."
+    );
+    expect(skill?.instructionsHtml).toContain("owners");
+  });
+
+  it("rejects an edit when old_string is not found", async () => {
+    const { authenticator } = await createResourceTest({ role: "builder" });
+
+    const createResult = await getTool(CREATE_SKILL_TOOL_NAME).handler(
+      {
+        name: "Missing Match Skill",
+        userFacingDescription: "Skill to edit.",
+        agentFacingDescription: "Use to verify missing matches.",
+        instructions: "Do the thing.",
+        icon: "ActionListIcon",
+      },
+      makeExtra(authenticator)
+    );
+    expect(createResult.isOk()).toBe(true);
+    if (createResult.isErr()) {
+      throw createResult.error;
+    }
+    const output = createResult.value[0];
+    if (!isSkillAuthoringResultOutput(output)) {
+      throw new Error("Expected structured skill authoring output.");
+    }
+
+    const updateResult = await getTool(UPDATE_SKILL_TOOL_NAME).handler(
+      {
+        sId: output.resource.skillId,
+        old_string: "not in the instructions",
+        new_string: "whatever",
+      },
+      makeExtra(authenticator)
+    );
+
+    expect(updateResult.isErr()).toBe(true);
+    if (updateResult.isOk()) {
+      throw new Error("Expected a missing old_string to be rejected.");
+    }
+    expect(updateResult.error.message).toContain("was not found");
+
+    // The instructions are left untouched.
+    const skill = await SkillResource.fetchById(
+      authenticator,
+      output.resource.skillId
+    );
+    expect(skill?.instructions).toBe("Do the thing.");
+  });
+
+  it("rejects an edit when the replacement count does not match", async () => {
+    const { authenticator } = await createResourceTest({ role: "builder" });
+
+    const createResult = await getTool(CREATE_SKILL_TOOL_NAME).handler(
+      {
+        name: "Multiple Match Skill",
+        userFacingDescription: "Skill to edit.",
+        agentFacingDescription: "Use to verify count mismatches.",
+        instructions: "step. step. step.",
+        icon: "ActionListIcon",
+      },
+      makeExtra(authenticator)
+    );
+    expect(createResult.isOk()).toBe(true);
+    if (createResult.isErr()) {
+      throw createResult.error;
+    }
+    const output = createResult.value[0];
+    if (!isSkillAuthoringResultOutput(output)) {
+      throw new Error("Expected structured skill authoring output.");
+    }
+
+    const updateResult = await getTool(UPDATE_SKILL_TOOL_NAME).handler(
+      {
+        sId: output.resource.skillId,
+        old_string: "step",
+        new_string: "phase",
+      },
+      makeExtra(authenticator)
+    );
+
+    expect(updateResult.isErr()).toBe(true);
+    if (updateResult.isOk()) {
+      throw new Error("Expected a count mismatch to be rejected.");
+    }
+    expect(updateResult.error.message).toContain("matched 3 times");
+
+    // Passing the right expected_replacements lets the edit through.
+    const retryResult = await getTool(UPDATE_SKILL_TOOL_NAME).handler(
+      {
+        sId: output.resource.skillId,
+        old_string: "step",
+        new_string: "phase",
+        expected_replacements: 3,
+      },
+      makeExtra(authenticator)
+    );
+    expect(retryResult.isOk()).toBe(true);
+
+    const skill = await SkillResource.fetchById(
+      authenticator,
+      output.resource.skillId
+    );
+    expect(skill?.instructions).toBe("phase. phase. phase.");
+  });
+
+  it("rejects combining a full instructions replace with a targeted edit", async () => {
+    const { authenticator } = await createResourceTest({ role: "builder" });
+
+    const createResult = await getTool(CREATE_SKILL_TOOL_NAME).handler(
+      {
+        name: "Conflicting Modes Skill",
+        userFacingDescription: "Skill to edit.",
+        agentFacingDescription: "Use to verify mutually exclusive modes.",
+        instructions: "Original instructions.",
+        icon: "ActionListIcon",
+      },
+      makeExtra(authenticator)
+    );
+    expect(createResult.isOk()).toBe(true);
+    if (createResult.isErr()) {
+      throw createResult.error;
+    }
+    const output = createResult.value[0];
+    if (!isSkillAuthoringResultOutput(output)) {
+      throw new Error("Expected structured skill authoring output.");
+    }
+
+    const updateResult = await getTool(UPDATE_SKILL_TOOL_NAME).handler(
+      {
+        sId: output.resource.skillId,
+        instructions: "Brand new instructions.",
+        old_string: "Original",
+        new_string: "Updated",
+      },
+      makeExtra(authenticator)
+    );
+
+    expect(updateResult.isErr()).toBe(true);
+    if (updateResult.isOk()) {
+      throw new Error("Expected conflicting modes to be rejected.");
+    }
+    expect(updateResult.error.message).toContain("not both");
+
+    // Nothing changed.
+    const skill = await SkillResource.fetchById(
+      authenticator,
+      output.resource.skillId
+    );
+    expect(skill?.instructions).toBe("Original instructions.");
+  });
 });
