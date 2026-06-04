@@ -11,7 +11,7 @@ import {
   CitationTitle,
   CodeBlock,
   Icon,
-  ScanV2,
+  Scan,
 } from "@dust-tt/sparkle";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { useState } from "react";
@@ -58,7 +58,7 @@ export function MCPExtractActionDetails({
       actionName={
         displayContext === "conversation" ? "Extracting data" : "Extract data"
       }
-      visual={ScanV2}
+      visual={Scan}
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
         <div className="flex flex-col gap-1">
@@ -165,7 +165,7 @@ function MCPExtractActionResults({
           isLoading={isDownloading}
         >
           <CitationIcons>
-            <Icon visual={ScanV2} />
+            <Icon visual={Scan} />
           </CitationIcons>
           <CitationTitle>{resultResource.title}</CitationTitle>
         </Citation>

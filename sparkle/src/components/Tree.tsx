@@ -8,7 +8,7 @@ import {
   TooltipRoot,
   TooltipTrigger,
 } from "@sparkle/components/Tooltip";
-import { ChevronDownV2, ChevronRightV2 } from "@sparkle/icons/v2-stroke";
+import { ChevronDown, ChevronRight } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import React, {
   type ComponentType,
@@ -237,7 +237,7 @@ Tree.Item = React.forwardRef<
         >
           {type === "node" && (
             <Button
-              icon={isExpanded ? ChevronDownV2 : ChevronRightV2}
+              icon={isExpanded ? ChevronDown : ChevronRight}
               size="xmini"
               variant="ghost-secondary"
               disabled={!effectiveOnChevronClick}

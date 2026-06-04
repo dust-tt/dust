@@ -4,12 +4,12 @@ import {
 } from "@app/components/assistant/conversation/input_bar/inputBarCompactStyles";
 import { classNames } from "@app/lib/utils";
 import {
-  ArrowDownV2,
-  ArrowUpV2,
+  ArrowDown,
+  ArrowUp,
   Button,
   IconButton,
-  StopV2,
-  ZapV2,
+  Stop,
+  Zap,
 } from "@dust-tt/sparkle";
 
 interface InputBarMessageNavigationProps {
@@ -41,12 +41,12 @@ export function InputBarMessageNavigation({
 }: InputBarMessageNavigationProps) {
   const stopButtonVariant = variant === "compact" ? "ghost-secondary" : "ghost";
   const isStopActionPending = pendingAction !== null;
-  const stopIcon = hasPendingMessages ? ZapV2 : StopV2;
+  const stopIcon = hasPendingMessages ? Zap : Stop;
   const showNavigationArrows =
     showMessageNavigation && !(variant === "compact" && showStopButton);
 
   const renderNavigationArrowButton = (
-    icon: typeof ArrowUpV2,
+    icon: typeof ArrowUp,
     onClick: () => void,
     disabled: boolean,
     ariaLabel: string
@@ -110,13 +110,13 @@ export function InputBarMessageNavigation({
       {showNavigationArrows && (
         <>
           {renderNavigationArrowButton(
-            ArrowUpV2,
+            ArrowUp,
             onScrollUp,
             !canScrollUp,
             "Previous user message"
           )}
           {renderNavigationArrowButton(
-            ArrowDownV2,
+            ArrowDown,
             onScrollDown,
             !canScrollDown,
             "Next user message"

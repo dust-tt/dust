@@ -6,11 +6,11 @@ import type { LightWorkspaceType, SpaceUserType } from "@app/types/user";
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
   Avatar,
-  CheckV2,
+  Check,
   Chip,
   DataTable,
-  Trash01V2,
-  XCloseV2,
+  Trash01,
+  XClose,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useCallback, useContext, useMemo } from "react";
@@ -246,7 +246,7 @@ export function PodMembersTable({
                     kind: "item",
                     label: editorLabel,
                     disabled: rows.filter((row) => row.isEditor).length <= 1, // disable the "remove" action if it's the last editor
-                    icon: XCloseV2,
+                    icon: XClose,
                     variant: "default",
                     onClick: async () => {
                       const confirmed = await confirm({
@@ -266,7 +266,7 @@ export function PodMembersTable({
                   editorSettingItem = {
                     kind: "item",
                     label: editorLabel,
-                    icon: CheckV2,
+                    icon: Check,
                     variant: "default",
                     onClick: async () => {
                       const confirmed = await confirm({
@@ -289,7 +289,7 @@ export function PodMembersTable({
                       {
                         kind: "item",
                         label: "Remove from Pod",
-                        icon: Trash01V2,
+                        icon: Trash01,
                         variant: "warning",
                         onClick: async () => {
                           const confirmed = await confirm({

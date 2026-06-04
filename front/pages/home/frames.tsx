@@ -7,13 +7,7 @@ import { PageMetadata } from "@app/components/home/PageMetadata";
 import TrustedBy from "@app/components/home/TrustedBy";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
-import {
-  Button,
-  CheckCircleV2,
-  Icon,
-  Lock01V2,
-  PlanetV2,
-} from "@dust-tt/sparkle";
+import { Button, CheckCircle, Icon, Lock01, Planet } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
@@ -404,7 +398,7 @@ function AllTheBellsAndWhistlesSection() {
 
         <div className="flex w-full flex-col justify-between gap-6 md:flex-row">
           <div className="flex flex-1 flex-col rounded-2xl bg-gray-50 p-6">
-            <Icon visual={Lock01V2} className="mb-4 h-8 w-8 text-gray-600" />
+            <Icon visual={Lock01} className="mb-4 h-8 w-8 text-gray-600" />
             <h4 className="text-lg font-semibold">
               Secure and collaborative by default
             </h4>
@@ -415,7 +409,7 @@ function AllTheBellsAndWhistlesSection() {
             </P>
           </div>
           <div className="flex flex-1 flex-col rounded-2xl bg-gray-50 p-6">
-            <Icon visual={PlanetV2} className="mb-4 h-8 w-8 text-gray-600" />
+            <Icon visual={Planet} className="mb-4 h-8 w-8 text-gray-600" />
             <h4 className="text-lg font-semibold">Works anywhere</h4>
             <P size="sm" className="mt-1 text-muted-foreground">
               Works with whatever your AI agents produce: CSVs, JSON, plain
@@ -423,10 +417,7 @@ function AllTheBellsAndWhistlesSection() {
             </P>
           </div>
           <div className="flex flex-1 flex-col rounded-2xl bg-gray-50 p-6">
-            <Icon
-              visual={CheckCircleV2}
-              className="mb-4 h-8 w-8 text-gray-600"
-            />
+            <Icon visual={CheckCircle} className="mb-4 h-8 w-8 text-gray-600" />
             <h4 className="text-lg font-semibold">Wears your jersey</h4>
             <P size="sm" className="mt-1 text-muted-foreground">
               Your charts, dashboards, and pages don't look like they came from

@@ -21,15 +21,15 @@ import React, {
 
 import {
   Avatar,
-  Bold01V2,
+  Bold01,
   Button,
-  CheckV2,
+  Check,
   HoveringBar,
-  Italic01V2,
-  Link01V2,
-  Edit04V2,
-  Stars02V2,
-  XCloseV2,
+  Italic01,
+  Link01,
+  Edit04,
+  Stars02,
+  XClose,
 } from "@dust-tt/sparkle";
 import { menuStyleClasses } from "@sparkle/components/Dropdown";
 import { cn } from "@sparkle/lib/utils";
@@ -1197,7 +1197,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
           >
             <HoveringBar size="xs">
               <Button
-                icon={XCloseV2}
+                icon={XClose}
                 size="xs"
                 variant="ghost"
                 tooltip="Reject"
@@ -1207,7 +1207,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
               />
               <HoveringBar.Separator />
               <Button
-                icon={CheckV2}
+                icon={Check}
                 size="xs"
                 variant="highlight"
                 tooltip="Accept"
@@ -1227,7 +1227,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
             >
               <HoveringBar size="xs">
                 <Button
-                  icon={Bold01V2}
+                  icon={Bold01}
                   size="icon"
                   variant={
                     editor.isActive("bold") ? "primary" : "ghost-secondary"
@@ -1238,7 +1238,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
                   }}
                 />
                 <Button
-                  icon={Italic01V2}
+                  icon={Italic01}
                   size="icon"
                   variant={
                     editor.isActive("italic") ? "primary" : "ghost-secondary"
@@ -1250,7 +1250,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
                 />
                 <HoveringBar.Separator />
                 <Button
-                  icon={Link01V2}
+                  icon={Link01}
                   size="icon"
                   variant={
                     editor.isActive("link") ? "primary" : "ghost-secondary"
@@ -1274,7 +1274,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
                   label="Ask Sidekick"
                   size="xs"
                   variant="ghost"
-                  icon={Stars02V2}
+                  icon={Stars02}
                   onClick={() => {
                     const payload = getSelectionPayload();
                     if (payload) {
@@ -1284,7 +1284,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
                 />
                 <Button
                   label="Rephrase"
-                  icon={Edit04V2}
+                  icon={Edit04}
                   size="xs"
                   variant="ghost"
                   onClick={() => {

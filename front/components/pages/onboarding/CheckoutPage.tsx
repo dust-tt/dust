@@ -23,15 +23,15 @@ import type { BillingPeriod } from "@app/types/plan";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
   Button,
-  CheckCircleV2,
+  CheckCircle,
   DustLogoSquare,
   Icon,
   Input,
-  Lock01V2,
+  Lock01,
   Spinner,
-  Tag01V2,
-  XCircleV2,
-  XCloseV2,
+  Tag01,
+  XCircle,
+  XClose,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -436,7 +436,7 @@ export function CheckoutPage() {
               <div className="mt-4 flex flex-col gap-1">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5 rounded-md bg-muted px-2 py-1 text-sm text-muted-foreground">
-                    <Icon visual={Tag01V2} size="xs" />
+                    <Icon visual={Tag01} size="xs" />
                     <span className="font-medium">{appliedCoupon.code}</span>
                     {phase === "card_capture" && (
                       <button
@@ -444,7 +444,7 @@ export function CheckoutPage() {
                         onClick={handleRemoveCoupon}
                         className="ml-0.5 hover:text-foreground"
                       >
-                        <Icon visual={XCloseV2} size="xs" />
+                        <Icon visual={XClose} size="xs" />
                       </button>
                     )}
                   </div>
@@ -585,7 +585,7 @@ function RightPane({
       if (isPreparePaymentError) {
         return (
           <div className="flex flex-col items-center gap-6 text-center">
-            <Icon visual={XCircleV2} size="2xl" className="text-warning-500" />
+            <Icon visual={XCircle} size="2xl" className="text-warning-500" />
             <div className="flex flex-col gap-3">
               <h2 className="text-2xl font-semibold text-foreground">
                 Couldn&apos;t load payment details
@@ -633,7 +633,7 @@ function RightPane({
                 label="Confirm payment"
                 onClick={onConfirmPayment}
                 size="md"
-                icon={Lock01V2}
+                icon={Lock01}
                 className="w-full"
               />
             </>
@@ -652,11 +652,7 @@ function RightPane({
     case "activating":
       return (
         <div className="flex flex-col items-center gap-6 text-center">
-          <Icon
-            visual={CheckCircleV2}
-            size="2xl"
-            className="text-success-500"
-          />
+          <Icon visual={CheckCircle} size="2xl" className="text-success-500" />
           <h2 className="text-2xl font-semibold text-foreground">
             Thanks for subscribing
           </h2>
@@ -667,7 +663,7 @@ function RightPane({
       if (phaseError?.kind === "metronome_error") {
         return (
           <div className="flex flex-col items-center gap-6 text-center">
-            <Icon visual={XCircleV2} size="2xl" className="text-warning-500" />
+            <Icon visual={XCircle} size="2xl" className="text-warning-500" />
             <div className="flex flex-col gap-3">
               <h2 className="text-2xl font-semibold text-foreground">
                 Something went wrong in your subscription
@@ -690,7 +686,7 @@ function RightPane({
       if (phaseError?.kind === "invalid_coupon") {
         return (
           <div className="flex flex-col items-center gap-6 text-center">
-            <Icon visual={XCircleV2} size="2xl" className="text-warning-500" />
+            <Icon visual={XCircle} size="2xl" className="text-warning-500" />
             <div className="flex flex-col gap-3">
               <h2 className="text-2xl font-semibold text-foreground">
                 Coupon no longer valid
@@ -706,7 +702,7 @@ function RightPane({
       }
       return (
         <div className="flex flex-col items-center gap-6 text-center">
-          <Icon visual={XCircleV2} size="2xl" className="text-warning-500" />
+          <Icon visual={XCircle} size="2xl" className="text-warning-500" />
           <div className="flex flex-col gap-3">
             <h2 className="text-2xl font-semibold text-foreground">
               Payment failed

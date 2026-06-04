@@ -18,10 +18,10 @@ import {
 
 import { GmailLogo } from "@sparkle/logo/platforms";
 import {
-  AlertCircleV2,
-  File04V2,
-  Settings01V2,
-  User01V2,
+  AlertCircle,
+  File04,
+  Settings01,
+  User01,
 } from "@sparkle/icons/v2-stroke";
 
 const meta: Meta<typeof MultiPageDialogContent> = {
@@ -37,7 +37,7 @@ const samplePages: MultiPageDialogPage[] = [
     id: "profile",
     title: "User Profile",
     description: "Manage your personal information",
-    icon: User01V2,
+    icon: User01,
     content: (
       <div className="s-space-y-4">
         <div>
@@ -73,7 +73,7 @@ const samplePages: MultiPageDialogPage[] = [
     id: "documents",
     title: "Documents",
     description: "Manage your uploaded files",
-    icon: File04V2,
+    icon: File04,
     content: (
       <div className="s-space-y-4">
         <div>
@@ -99,7 +99,7 @@ const samplePages: MultiPageDialogPage[] = [
     id: "settings",
     title: "Settings",
     description: "Configure your preferences",
-    icon: Settings01V2,
+    icon: Settings01,
     content: (
       <div className="s-space-y-4">
         <div>
@@ -367,7 +367,7 @@ export const InteractiveContent: Story = {
         id: "step1",
         title: "Personal Info",
         description: "Enter your basic information",
-        icon: User01V2,
+        icon: User01,
         content: (
           <div className="s-space-y-4">
             <div>
@@ -411,7 +411,7 @@ export const InteractiveContent: Story = {
         id: "step2",
         title: "File Selection",
         description: "Choose your files",
-        icon: File04V2,
+        icon: File04,
         content: (
           <div className="s-space-y-4">
             <div>
@@ -458,7 +458,7 @@ export const InteractiveContent: Story = {
         id: "step3",
         title: "Final Settings",
         description: "Configure your preferences",
-        icon: Settings01V2,
+        icon: Settings01,
         content: (
           <div className="s-space-y-4">
             <div>
@@ -576,7 +576,7 @@ export const WithConditionalNavigation: Story = {
         id: "data-selection",
         title: "Select Data Sources",
         description: "Choose which data sources to include",
-        icon: File04V2,
+        icon: File04,
         content: (
           <div className="s-space-y-4">
             <div>
@@ -634,7 +634,7 @@ export const WithConditionalNavigation: Story = {
         id: "description",
         title: "Add Description",
         description: "Describe your configuration",
-        icon: Settings01V2,
+        icon: Settings01,
         content: (
           <div className="s-space-y-4">
             <div>
@@ -756,7 +756,7 @@ export const ScrollableContent: Story = {
         title: "Long Form Content",
         description:
           "This page demonstrates scrollable content with fixed search",
-        icon: File04V2,
+        icon: File04,
         fixedContent: (
           <SearchInput
             value={searchTerm}
@@ -840,7 +840,7 @@ export const ScrollableContent: Story = {
       {
         id: "summary",
         title: "Summary",
-        icon: Settings01V2,
+        icon: Settings01,
         content: (
           <div className="s-space-y-4">
             <div>
@@ -956,7 +956,7 @@ export const ActionValidation: Story = {
 
                 {errorMessage && (
                   <div className="s-flex s-items-center s-gap-2 s-text-sm s-font-medium s-text-warning-800">
-                    <AlertCircleV2 className="s-h-4 s-w-4" />
+                    <AlertCircle className="s-h-4 s-w-4" />
                     {errorMessage}
                   </div>
                 )}

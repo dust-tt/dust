@@ -9,7 +9,7 @@ import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
-  ClipboardV2,
+  Clipboard,
   Hoverable,
   Page,
   Sheet,
@@ -140,7 +140,7 @@ export function ViewFolderAPIModal({
                   variant="outline"
                   onClick={() => handleCopyClick("upsert")}
                   label={copyUpsertButtonText}
-                  icon={ClipboardV2}
+                  icon={Clipboard}
                 />
               </div>
             </div>
@@ -174,7 +174,7 @@ export function ViewFolderAPIModal({
                   variant="outline"
                   onClick={() => handleCopyClick("search")}
                   label={copySearchButtonText}
-                  icon={ClipboardV2}
+                  icon={Clipboard}
                 />
               </div>
             </div>

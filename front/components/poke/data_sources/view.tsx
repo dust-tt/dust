@@ -21,7 +21,7 @@ import type { DataSourceViewType } from "@app/types/data_source_view";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  BracketsV2,
+  Brackets,
   Button,
   Chip,
   ContentMessage,
@@ -32,11 +32,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  LinkExternal01V2,
+  LinkExternal01,
   LinkWrapper,
   ScrollArea,
   ScrollBar,
-  SearchMdV2,
+  SearchMd,
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
@@ -93,7 +93,7 @@ export function ViewDataSourceTable({
                 variant="outline"
                 size="sm"
                 onClick={() => setShowRawObjectsModal(true)}
-                icon={BracketsV2}
+                icon={Brackets}
                 label="Show raw objects"
               />
             </div>
@@ -413,7 +413,7 @@ function CheckConnectorStuck({
       <Button
         variant="outline"
         label={isLoading ? "Checking..." : "Check"}
-        icon={isLoading ? Spinner : SearchMdV2}
+        icon={isLoading ? Spinner : SearchMd}
         disabled={isLoading}
         onClick={!isLoading ? checkStuck : undefined}
         size="xs"
@@ -508,7 +508,7 @@ function StuckActivitiesDialog({
                   hasSeparator={false}
                   action={
                     <Button
-                      icon={LinkExternal01V2}
+                      icon={LinkExternal01}
                       variant="outline"
                       href={`https://cloud.temporal.io/namespaces/${temporalWorkspace}/workflows/${workflow.workflowId}`}
                       size="xs"
@@ -533,7 +533,7 @@ function StuckActivitiesDialog({
                     }
                     action={
                       <Button
-                        icon={LinkExternal01V2}
+                        icon={LinkExternal01}
                         variant="outline"
                         href={
                           "https://app.datadoghq.eu/logs?query=%40dd.env%3Aprod%20%40dd.service%3Aconnectors-worker" +

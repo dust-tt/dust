@@ -14,19 +14,19 @@ import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
-  CloudArrowLeftRightV2,
+  CloudArrowLeftRight,
   cn,
   DataTable,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Globe01V2,
-  PlusV2,
-  Settings01V2,
+  Globe01,
+  Plus,
+  Settings01,
   Spinner,
-  TerminalV2,
-  Upload01V2,
+  Terminal,
+  Upload01,
 } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
 import type { ComponentType } from "react";
@@ -148,38 +148,38 @@ export const SpaceCategoriesList = ({
       {isAdmin && onButtonClick && space.kind === "regular" && (
         <Button
           label="Space settings"
-          icon={Settings01V2}
+          icon={Settings01}
           onClick={onButtonClick}
           variant="outline"
         />
       )}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button label="Add data" icon={PlusV2} />
+          <Button label="Add data" icon={Plus} />
         </DropdownMenuTrigger>
         <DropdownMenuContent>
           <DropdownMenuItem
             disabled={!isAdmin && !canWriteInSpace}
             href={`/w/${owner.sId}/spaces/${space.sId}/categories/managed?modal=managed`}
-            icon={CloudArrowLeftRightV2}
+            icon={CloudArrowLeftRight}
             label="Connected Data"
           />
           <DropdownMenuItem
             disabled={!canWriteInSpace}
             href={`/w/${owner.sId}/spaces/${space.sId}/categories/folder`}
-            icon={Upload01V2}
+            icon={Upload01}
             label="Upload Data"
           />
           <DropdownMenuItem
             disabled={!canWriteInSpace}
             href={`/w/${owner.sId}/spaces/${space.sId}/categories/website?modal=website`}
-            icon={Globe01V2}
+            icon={Globe01}
             label="Scrape a website"
           />
           <DropdownMenuItem
             disabled={!isBuilder || !canWriteInSpace}
             href={`/w/${owner.sId}/spaces/${space.sId}/categories/apps?modal=apps`}
-            icon={TerminalV2}
+            icon={Terminal}
             label="Create a Dust App"
           />
           <DropdownMenuItem

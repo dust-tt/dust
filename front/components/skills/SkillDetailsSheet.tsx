@@ -14,8 +14,8 @@ import type { UserType, WorkspaceType } from "@app/types/user";
 import {
   Button,
   ContentMessage,
-  InfoCircleV2,
-  RefreshCw02V2,
+  InfoCircle,
+  RefreshCw02,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -26,7 +26,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-  Users01V2,
+  Users01,
 } from "@dust-tt/sparkle";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useState } from "react";
@@ -109,13 +109,13 @@ export function SkillDetailsSheetContent({
           <TabsTrigger
             value="info"
             label="Info"
-            icon={InfoCircleV2}
+            icon={InfoCircle}
             onClick={() => setSelectedTab("info")}
           />
           <TabsTrigger
             value="editors"
             label="Editors"
-            icon={Users01V2}
+            icon={Users01}
             onClick={() => setSelectedTab("editors")}
           />
         </TabsList>
@@ -192,7 +192,7 @@ const DescriptionSection = ({
           <ContentMessage
             title="This skill has been archived."
             variant="warning"
-            icon={InfoCircleV2}
+            icon={InfoCircle}
             size="sm"
           >
             It is no longer active and cannot be used.
@@ -204,7 +204,7 @@ const DescriptionSection = ({
                   onClick={() => {
                     setShowRestoreModal(true);
                   }}
-                  icon={RefreshCw02V2}
+                  icon={RefreshCw02}
                 />
               </div>
             )}

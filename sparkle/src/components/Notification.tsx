@@ -1,8 +1,8 @@
 import {
-  Bell01V2,
-  CheckCircleV2,
-  InfoCircleV2,
-  XCircleV2,
+  Bell01,
+  CheckCircle,
+  InfoCircle,
+  XCircle,
 } from "@sparkle/icons/v2-stroke";
 import { assertNever } from "@sparkle/lib/internal_utils";
 import { cn } from "@sparkle/lib/utils";
@@ -57,13 +57,13 @@ export function NotificationContent({
   const icon = (() => {
     switch (type) {
       case "success":
-        return CheckCircleV2;
+        return CheckCircle;
       case "error":
-        return XCircleV2;
+        return XCircle;
       case "info":
-        return InfoCircleV2;
+        return InfoCircle;
       case "hello":
-        return Bell01V2;
+        return Bell01;
       default:
         assertNever(type);
     }

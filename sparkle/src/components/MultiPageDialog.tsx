@@ -11,7 +11,7 @@ import {
 } from "@sparkle/components/Dialog";
 import { ScrollArea } from "@sparkle/components/ScrollArea";
 import { Separator } from "@sparkle/components/Separator";
-import { ChevronLeftV2, ChevronRightV2 } from "@sparkle/icons/v2-stroke";
+import { ChevronLeft, ChevronRight } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
 import * as React from "react";
@@ -202,7 +202,7 @@ const MultiPageDialogContent = React.forwardRef<
                 {showNavigation && showHeaderNavigation && (
                   <div className="s-flex s-items-center s-gap-1">
                     <Button
-                      icon={ChevronLeftV2}
+                      icon={ChevronLeft}
                       variant="ghost"
                       size="sm"
                       disabled={prevButtonDisabled}
@@ -214,7 +214,7 @@ const MultiPageDialogContent = React.forwardRef<
                       }
                     />
                     <Button
-                      icon={ChevronRightV2}
+                      icon={ChevronRight}
                       variant="ghost"
                       size="sm"
                       disabled={nextButtonDisabled}

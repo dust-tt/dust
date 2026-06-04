@@ -5,12 +5,12 @@ import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { PokeAgentConfigurationType } from "@app/pages/api/poke/workspaces/[wId]/agent_configurations";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  Download01V2,
-  FaceSmileV2,
+  Download01,
+  FaceSmile,
   IconButton,
   LinkWrapper,
-  Trash01V2,
-  XCloseV2,
+  Trash01,
+  XClose,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
@@ -99,11 +99,7 @@ export function makeColumnsForAssistants(
       cell: ({ row }) => {
         const sId: string = row.getValue("sId");
         const retention: number = agentsRetention[sId];
-        return retention ? (
-          `${retention} days`
-        ) : (
-          <XCloseV2 className="h-4 w-4" />
-        );
+        return retention ? `${retention} days` : <XClose className="h-4 w-4" />;
       },
     },
     {
@@ -114,7 +110,7 @@ export function makeColumnsForAssistants(
         return (
           <>
             <IconButton
-              icon={assistant.status !== "archived" ? Trash01V2 : FaceSmileV2}
+              icon={assistant.status !== "archived" ? Trash01 : FaceSmile}
               size="xs"
               variant="outline"
               onClick={async () => {
@@ -137,7 +133,7 @@ export function makeColumnsForAssistants(
               target="_blank"
               rel="noopener noreferrer"
             >
-              <IconButton icon={Download01V2} size="xs" variant="outline" />
+              <IconButton icon={Download01} size="xs" variant="outline" />
             </a>
           </>
         );

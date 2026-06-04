@@ -2,16 +2,16 @@ import type { ViewMode } from "@app/components/file_explorer/FileExplorerItem";
 import type { FileExplorerSortMode } from "@app/components/file_explorer/types";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import {
-  ArrowDownV2,
-  ArrowUpV2,
+  ArrowDown,
+  ArrowUp,
   Button,
-  CheckDone01V2,
-  ClockV2,
+  CheckDone01,
+  Clock,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  ListV2,
+  List,
   SearchInput,
 } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
@@ -20,9 +20,9 @@ const SORT_ITEMS: Record<
   FileExplorerSortMode,
   { label: string; icon: React.ComponentType<{ className?: string }> }
 > = {
-  "last-modified": { label: "Last modified", icon: ClockV2 },
-  "name-asc": { label: "Name A → Z", icon: ArrowDownV2 },
-  "name-desc": { label: "Name Z → A", icon: ArrowUpV2 },
+  "last-modified": { label: "Last modified", icon: Clock },
+  "name-asc": { label: "Name A → Z", icon: ArrowDown },
+  "name-desc": { label: "Name Z → A", icon: ArrowUp },
 };
 
 interface ViewToggleProps {
@@ -37,7 +37,7 @@ function ViewToggle({ value, onValueChange }: ViewToggleProps) {
         <Button
           variant="outline"
           size="sm"
-          icon={value === "grid" ? ListV2 : CheckDone01V2}
+          icon={value === "grid" ? List : CheckDone01}
           isSelect
         />
       </DropdownMenuTrigger>

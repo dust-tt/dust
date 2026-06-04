@@ -2,13 +2,13 @@
 import { Grid, H1, H2, P } from "@app/components/home/ContentComponents";
 import { classNames } from "@app/lib/utils";
 import {
-  Building04V2,
-  CreditCard01V2,
-  Globe01V2,
-  HeartV2,
+  Building04,
+  CreditCard01,
+  Globe01,
+  Heart,
   Icon,
-  MessageChatSquareV2,
-  PuzzlePiece01V2,
+  MessageChatSquare,
+  PuzzlePiece01,
 } from "@dust-tt/sparkle";
 import Image from "next/image";
 import type { ComponentType } from "react";
@@ -29,21 +29,21 @@ const PARTNER_BENEFITS: {
   color: ColorVariant;
 }[] = [
   {
-    icon: CreditCard01V2,
+    icon: CreditCard01,
     title: "Revenue opportunity",
     description:
       "Attractive partner margins and recurring revenue from customer deployments.",
     color: "green",
   },
   {
-    icon: HeartV2,
+    icon: Heart,
     title: "Dedicated support",
     description:
       "Technical onboarding, sales enablement, and partner success resources.",
     color: "blue",
   },
   {
-    icon: MessageChatSquareV2,
+    icon: MessageChatSquare,
     title: "Co-selling",
     description: "Joint go-to-market opportunities with our sales team.",
     color: "rose",
@@ -57,20 +57,20 @@ const IDEAL_PARTNERS: {
   color: ColorVariant;
 }[] = [
   {
-    icon: Building04V2,
+    icon: Building04,
     title: "Service Partners",
     description:
       "Agencies and consultancies implementing AI solutions for clients.",
     color: "blue",
   },
   {
-    icon: Globe01V2,
+    icon: Globe01,
     title: "Resellers",
     description: "Technology resellers and VARs with B2B customer bases.",
     color: "golden",
   },
   {
-    icon: PuzzlePiece01V2,
+    icon: PuzzlePiece01,
     title: "Systems Integrators",
     description: "Teams deploying enterprise software at scale.",
     color: "green",

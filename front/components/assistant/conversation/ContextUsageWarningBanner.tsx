@@ -4,7 +4,7 @@ import type { LightWorkspaceType } from "@app/types/user";
 import {
   ContentMessageAction,
   ContentMessageInline,
-  InfoCircleV2,
+  InfoCircle,
 } from "@dust-tt/sparkle";
 
 interface ContextUsageWarningBannerProps {
@@ -25,7 +25,7 @@ export const ContextUsageWarningBanner = ({
 
   return (
     <ContentMessageInline
-      icon={InfoCircleV2}
+      icon={InfoCircle}
       variant="info"
       className="mb-5 flex max-h-dvh w-full"
     >

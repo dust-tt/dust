@@ -9,7 +9,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
-  AlertCircleV2,
+  AlertCircle,
   AnimatedText,
   ContentMessage,
   Spinner,
@@ -31,7 +31,7 @@ export function CompactionMessage({
           title="Context compaction failed"
           variant="warning"
           className="flex flex-col gap-3"
-          icon={AlertCircleV2}
+          icon={AlertCircle}
         >
           <div className="whitespace-normal break-words">
             You may experience reduced performance on very long conversations.

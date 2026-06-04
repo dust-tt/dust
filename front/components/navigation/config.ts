@@ -5,24 +5,24 @@ import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { WorkspaceType } from "@app/types/user";
 import { isAdmin, isBuilder } from "@app/types/user";
 import {
-  BarChart01V2,
-  BracketsV2,
-  BrainV2,
-  Building04V2,
-  CreditCard01V2,
-  File04V2,
-  FolderOpenV2,
-  Globe01V2,
-  IntersectDustV2,
-  Lock01V2,
-  PieChart01V2,
-  PlanetV2,
-  Settings01V2,
-  ShapesV2,
-  Stars02V2,
-  TerminalV2,
-  User01V2,
-  ZapV2,
+  BarChart01,
+  Brackets,
+  Brain,
+  Building04,
+  CreditCard01,
+  File04,
+  FolderOpen,
+  Globe01,
+  IntersectDust,
+  Lock01,
+  PieChart01,
+  Planet,
+  Settings01,
+  Shapes,
+  Stars02,
+  Terminal,
+  User01,
+  Zap,
 } from "@dust-tt/sparkle";
 
 /**
@@ -173,7 +173,7 @@ export const getTopNavigationTabs = (
     id: "conversations",
     label: "Work",
     href: getConversationRoute(owner.sId),
-    icon: IntersectDustV2,
+    icon: IntersectDust,
     sizing: "hug",
     isCurrent: (currentRoute) =>
       matchesRoutePattern(currentRoute, [
@@ -186,7 +186,7 @@ export const getTopNavigationTabs = (
   nav.push({
     id: "data_sources",
     label: "Spaces",
-    icon: PlanetV2,
+    icon: Planet,
     href: `/w/${owner.sId}/spaces`,
     isCurrent: (currentRoute: string) =>
       currentRoute.startsWith("/w/[wId]/spaces") ||
@@ -199,7 +199,7 @@ export const getTopNavigationTabs = (
     nav.push({
       id: "settings",
       label: "Admin",
-      icon: Settings01V2,
+      icon: Settings01,
       href: `/w/${owner.sId}/members`,
       isCurrent: (currentRoute) =>
         matchesRoutePattern(currentRoute, [
@@ -254,14 +254,14 @@ export const subNavigationAdmin = ({
         {
           id: "members",
           label: "People & Security",
-          icon: User01V2,
+          icon: User01,
           href: `/w/${owner.sId}/members`,
           current: isCurrent("members"),
         },
         {
           id: "workspace",
           label: "Workspace Settings",
-          icon: Building04V2,
+          icon: Building04,
           href: `/w/${owner.sId}/workspace`,
           current: isCurrent("workspace"),
         },
@@ -270,7 +270,7 @@ export const subNavigationAdmin = ({
               {
                 id: "usage" as const,
                 label: "Usage",
-                icon: PieChart01V2,
+                icon: PieChart01,
                 href: `/w/${owner.sId}/usage`,
                 current: isCurrent("usage"),
               },
@@ -279,14 +279,14 @@ export const subNavigationAdmin = ({
         {
           id: "model_providers",
           label: "Model Providers",
-          icon: BrainV2,
+          icon: Brain,
           href: `/w/${owner.sId}/model-providers`,
           current: isCurrent("model_providers"),
         },
         {
           id: "analytics",
           label: "Analytics",
-          icon: BarChart01V2,
+          icon: BarChart01,
           href: `/w/${owner.sId}/analytics`,
           current: isCurrent("analytics"),
         },
@@ -294,14 +294,14 @@ export const subNavigationAdmin = ({
           ? {
               id: "billing",
               label: "Billing",
-              icon: CreditCard01V2,
+              icon: CreditCard01,
               href: `/w/${owner.sId}/billing`,
               current: isCurrent("billing"),
             }
           : {
               id: "subscription",
               label: "Subscription",
-              icon: CreditCard01V2,
+              icon: CreditCard01,
               href: `/w/${owner.sId}/subscription`,
               current: isCurrent("subscription"),
             },
@@ -316,7 +316,7 @@ export const subNavigationAdmin = ({
         {
           id: "api_keys",
           label: "API Keys",
-          icon: Lock01V2,
+          icon: Lock01,
           href: `/w/${owner.sId}/developers/api-keys`,
           current: isCurrent("api_keys"),
         },
@@ -326,7 +326,7 @@ export const subNavigationAdmin = ({
               {
                 id: "credits_usage" as const,
                 label: "Programmatic Usage",
-                icon: ZapV2,
+                icon: Zap,
                 href: `/w/${owner.sId}/developers/credits-usage`,
                 current: isCurrent("credits_usage"),
               },
@@ -342,7 +342,7 @@ export const subNavigationAdmin = ({
         {
           id: "providers",
           label: "App Credentials",
-          icon: ShapesV2,
+          icon: Shapes,
           href: `/w/${owner.sId}/developers/providers`,
           current: isCurrent("providers"),
           featureFlag: "legacy_dust_apps",
@@ -350,14 +350,14 @@ export const subNavigationAdmin = ({
         {
           id: "dev_secrets",
           label: "Secrets",
-          icon: BracketsV2,
+          icon: Brackets,
           href: `/w/${owner.sId}/developers/dev-secrets`,
           current: isCurrent("dev_secrets"),
         },
         {
           id: "sandbox",
           label: "Computer",
-          icon: Globe01V2,
+          icon: Globe01,
           href: `/w/${owner.sId}/developers/sandbox`,
           current: isCurrent("sandbox"),
           featureFlag: "sandbox_workspace_admin",
@@ -365,7 +365,7 @@ export const subNavigationAdmin = ({
         {
           id: "self_improving_skills",
           label: "Self-Improving Skills",
-          icon: Stars02V2,
+          icon: Stars02,
           href: `/w/${owner.sId}/developers/self-improving-skills`,
           current: isCurrent("self_improving_skills"),
           featureFlag: "reinforcement_ui",
@@ -390,14 +390,14 @@ export const subNavigationApp = ({
     {
       value: "specification",
       label: "Specification",
-      icon: TerminalV2,
+      icon: Terminal,
       href: `/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}`,
       current: current === "specification",
     },
     {
       value: "datasets",
       label: "Datasets",
-      icon: File04V2,
+      icon: File04,
       href: `/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/datasets`,
       current: current === "datasets",
     },
@@ -408,14 +408,14 @@ export const subNavigationApp = ({
       {
         value: "runs",
         label: "Logs",
-        icon: FolderOpenV2,
+        icon: FolderOpen,
         href: `/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/runs`,
         current: current === "runs",
       },
       {
         value: "settings",
         label: "Settings",
-        icon: Settings01V2,
+        icon: Settings01,
         href: `/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/settings`,
         current: current === "settings",
       },

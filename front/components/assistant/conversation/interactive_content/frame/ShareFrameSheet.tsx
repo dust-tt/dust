@@ -17,17 +17,17 @@ import type {
 import {
   Avatar,
   Button,
-  ClipboardCheckV2,
-  ClipboardV2,
+  Clipboard,
+  ClipboardCheck,
   ContentMessage,
   ContextItem,
-  Globe01V2,
+  Globe01,
   Icon,
   IconButton,
-  InfoCircleV2,
+  InfoCircle,
   Input,
   Label,
-  Lock01V2,
+  Lock01,
   ScrollArea,
   Sheet,
   SheetContainer,
@@ -35,10 +35,10 @@ import {
   SheetHeader,
   SheetTitle,
   Spinner,
-  Upload01V2,
-  Users01V2,
+  Upload01,
+  Users01,
   useCopyToClipboard,
-  XCloseV2,
+  XClose,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { intlFormatDistance } from "date-fns";
@@ -47,7 +47,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 function getScopeOptions(sharingPolicy: WorkspaceSharingPolicy): {
-  icon: typeof Lock01V2;
+  icon: typeof Lock01;
   label: string;
   description: string;
   value: FileShareScope;
@@ -55,7 +55,7 @@ function getScopeOptions(sharingPolicy: WorkspaceSharingPolicy): {
   const externalOff = sharingPolicy === "workspace_only";
   return [
     {
-      icon: Lock01V2,
+      icon: Lock01,
       label: externalOff ? "Invited members only" : "Invite only",
       description: externalOff
         ? "Only the workspace members you invite"
@@ -63,7 +63,7 @@ function getScopeOptions(sharingPolicy: WorkspaceSharingPolicy): {
       value: "emails_only",
     },
     {
-      icon: Users01V2,
+      icon: Users01,
       label: externalOff
         ? "All workspace members + invited members"
         : "All workspace members + invites",
@@ -73,7 +73,7 @@ function getScopeOptions(sharingPolicy: WorkspaceSharingPolicy): {
       value: "workspace_and_emails",
     },
     {
-      icon: Globe01V2,
+      icon: Globe01,
       label: "Anyone with the link",
       description: "No sign-in required",
       value: "public",
@@ -211,7 +211,7 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
         variant="ghost"
         label={isMobile ? undefined : "Share"}
         tooltip={isMobile ? "Share" : undefined}
-        icon={Upload01V2}
+        icon={Upload01}
         onClick={() => setIsOpen(true)}
       />
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -222,7 +222,7 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                icon={isCopied ? ClipboardCheckV2 : ClipboardV2}
+                icon={isCopied ? ClipboardCheck : Clipboard}
                 label={isCopied ? "Copied!" : "Copy link"}
                 onClick={async () => {
                   await copyToClipboard(shareURL);
@@ -239,7 +239,7 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
               <div className="flex flex-col gap-6">
                 {owner.sharingPolicy === "workspace_only" && (
                   <ContentMessage
-                    icon={InfoCircleV2}
+                    icon={InfoCircle}
                     variant="info"
                     title="Only workspace members can be added"
                   >
@@ -401,7 +401,7 @@ function GrantRow({ grant, onRevoke, blocked = false }: GrantRowProps) {
       hasSeparator={false}
       action={
         <IconButton
-          icon={XCloseV2}
+          icon={XClose}
           tooltip="Revoke access"
           size="xs"
           onClick={onRevoke}

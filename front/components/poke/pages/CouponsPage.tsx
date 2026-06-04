@@ -15,14 +15,14 @@ import type {
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
-  ArchiveV2,
+  Archive,
   Button,
-  ChevronDownV2,
-  ChevronRightV2,
+  ChevronDown,
+  ChevronRight,
   Chip,
   DataTable,
   LinkWrapper,
-  PlusV2,
+  Plus,
   Spinner,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -77,9 +77,9 @@ const couponColumns: ColumnDef<CouponRowData>[] = [
     header: "",
     cell: ({ row }) =>
       row.original.isExpanded ? (
-        <ChevronDownV2 className="h-4 w-4" />
+        <ChevronDown className="h-4 w-4" />
       ) : (
-        <ChevronRightV2 className="h-4 w-4" />
+        <ChevronRight className="h-4 w-4" />
       ),
     meta: { className: "w-8" },
   },
@@ -299,7 +299,7 @@ export function CouponsPage() {
               {
                 kind: "item" as const,
                 label: "Archive",
-                icon: ArchiveV2,
+                icon: Archive,
                 onClick: (e: MouseEvent) => {
                   e.stopPropagation();
                   void archiveCoupon(coupon.sId);
@@ -341,7 +341,7 @@ export function CouponsPage() {
 
       <div className="mb-4 flex w-full justify-end">
         <Button
-          icon={PlusV2}
+          icon={Plus}
           label="Create coupon"
           variant="outline"
           disabled={showCreateForm}

@@ -6,14 +6,14 @@ import type {
   TemplateActionPreset,
 } from "@app/types/assistant/templates";
 import {
-  BookOpen01V2,
+  BookOpen01,
   Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Edit04V2,
-  ListAddV2,
+  Edit04,
+  ListAdd,
   Markdown,
   Page,
   Separator,
@@ -109,14 +109,14 @@ function TemplateButtons({ assistantTemplate }: TemplateButtonsProps) {
           <DropdownMenuItem
             label="Reset instructions"
             description="Set instructions back to template's default"
-            icon={Edit04V2}
+            icon={Edit04}
             onClick={handleResetInstructions}
             disabled={!assistantTemplate.presetInstructions}
           />
           <DropdownMenuItem
             label="Reset tools"
             description="Remove all tools"
-            icon={ListAddV2}
+            icon={ListAdd}
             onClick={handleResetActions}
           />
         </DropdownMenuContent>
@@ -140,9 +140,9 @@ function TemplatePresetActions({
       type === "TABLES_QUERY" ||
       type === "PROCESS"
     ) {
-      return BookOpen01V2;
+      return BookOpen01;
     }
-    return ListAddV2;
+    return ListAdd;
   };
 
   const getActionLabel = (type: MultiActionPreset) => {

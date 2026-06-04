@@ -25,16 +25,16 @@ import type { UserType, WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import {
   Avatar,
-  BracketsV2,
+  Brackets,
   Checkbox,
   Chip,
-  ClipboardV2,
+  Clipboard,
   DataTable,
-  Edit04V2,
-  EyeV2,
+  Edit04,
+  Eye,
   type MenuItem,
   Tooltip,
-  Trash01V2,
+  Trash01,
 } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
 import type { ReactNode } from "react";
@@ -424,7 +424,7 @@ export function AssistantsTable({
                     label: "Edit",
                     "data-gtm-label": "assistantEditButton",
                     "data-gtm-location": "assistantDetails",
-                    icon: Edit04V2,
+                    icon: Edit04,
                     disabled:
                       (!agentConfiguration.canEdit && !isAdmin(owner)) ||
                       noHealthyProviders,
@@ -440,7 +440,7 @@ export function AssistantsTable({
                     label: "Copy agent ID",
                     "data-gtm-label": "assistantCopyButton",
                     "data-gtm-location": "assistantDetails",
-                    icon: BracketsV2,
+                    icon: Brackets,
                     onClick: (e: React.MouseEvent) => {
                       e.stopPropagation();
                       void navigator.clipboard.writeText(
@@ -453,7 +453,7 @@ export function AssistantsTable({
                     label: "More info",
                     "data-gtm-label": "assistantMoreInfoButton",
                     "data-gtm-location": "assistantDetails",
-                    icon: EyeV2,
+                    icon: Eye,
                     onClick: (e: React.MouseEvent) => {
                       e.stopPropagation();
                       setDetailedAgentId(agentConfiguration.sId);
@@ -464,7 +464,7 @@ export function AssistantsTable({
                     label: "Duplicate (New)",
                     "data-gtm-label": "agentDuplicationButton",
                     "data-gtm-location": "agentDetails",
-                    icon: ClipboardV2,
+                    icon: Clipboard,
                     onClick: (e: React.MouseEvent) => {
                       e.stopPropagation();
                       void router.push(
@@ -482,7 +482,7 @@ export function AssistantsTable({
                     label: "Archive",
                     "data-gtm-label": "assistantDeletionButton",
                     "data-gtm-location": "assistantDetails",
-                    icon: Trash01V2,
+                    icon: Trash01,
                     disabled: !agentConfiguration.canEdit && !isAdmin(owner),
                     variant: "warning" as const,
                     onClick: (e: React.MouseEvent) => {

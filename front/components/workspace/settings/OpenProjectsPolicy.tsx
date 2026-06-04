@@ -8,8 +8,8 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
-  SpaceClosedV2,
-  SpaceOpenV2,
+  SpaceClosed,
+  SpaceOpen,
 } from "@dust-tt/sparkle";
 
 const OPEN_PROJECTS_POLICIES = [
@@ -17,14 +17,14 @@ const OPEN_PROJECTS_POLICIES = [
     value: "private_and_open",
     label: "Restricted and open Pods",
     description: "Members can create either restricted or open Pods.",
-    icon: SpaceOpenV2,
+    icon: SpaceOpen,
     allowOpenProjects: true,
   },
   {
     value: "private_only",
     label: "Restricted Pods only",
     description: "Members can only create restricted Pods.",
-    icon: SpaceClosedV2,
+    icon: SpaceClosed,
     allowOpenProjects: false,
   },
 ] as const;
@@ -41,7 +41,7 @@ export function OpenProjectsPolicy({ owner }: { owner: WorkspaceType }) {
     <ContextItem
       title="Pod access policy"
       subElement="Control whether Pods can be restricted only or restricted and open."
-      visual={<SpaceClosedV2 className="h-6 w-6" />}
+      visual={<SpaceClosed className="h-6 w-6" />}
       hasSeparatorIfLast={true}
       action={
         <DropdownMenu>

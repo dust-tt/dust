@@ -10,7 +10,7 @@ import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   ContentMessage,
-  MessageDotsCircleV2,
+  MessageDotsCircle,
   Page,
   SliderToggle,
 } from "@dust-tt/sparkle";
@@ -170,7 +170,7 @@ export function StorageConfiguration({
           title="Default storage"
           variant="primary"
           size="lg"
-          icon={MessageDotsCircleV2}
+          icon={MessageDotsCircle}
         >
           Your configuration handles the storage of all your workspace's
           transcripts. Other users will not have the possibility to store their

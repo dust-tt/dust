@@ -1,6 +1,6 @@
 import type { IndustryPageConfig } from "@app/components/home/content/Industry/configs/utils";
 import { createLayoutConfig } from "@app/components/home/content/Industry/configs/utils";
-import { MedicalCrossV2 } from "@dust-tt/sparkle";
+import { MedicalCross } from "@dust-tt/sparkle";
 
 export const insuranceConfig: IndustryPageConfig = {
   seo: {
@@ -24,7 +24,7 @@ export const insuranceConfig: IndustryPageConfig = {
     chip: {
       label: "Insurance",
       color: "blue",
-      icon: MedicalCrossV2,
+      icon: MedicalCross,
     },
     title: (
       <>

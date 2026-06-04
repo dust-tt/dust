@@ -13,7 +13,7 @@ import {
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { BillingPeriod } from "@app/types/plan";
 import { isDevelopment } from "@app/types/shared/env";
-import { BarHeader, Button, Lock01V2, Page, Spinner } from "@dust-tt/sparkle";
+import { BarHeader, Button, Lock01, Page, Spinner } from "@dust-tt/sparkle";
 import { CreditCardIcon } from "@heroicons/react/20/solid";
 import React, { useEffect } from "react";
 
@@ -218,7 +218,7 @@ export function SubscribePage() {
           ) : (
             <Page.Horizontal>
               <Page.Vertical sizing="grow" gap="lg">
-                <Page.Header icon={Lock01V2} title="Workspace locked" />
+                <Page.Header icon={Lock01} title="Workspace locked" />
                 <Page.P>
                   <span className="font-bold">
                     The subscription for this workspace is not active.

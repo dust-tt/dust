@@ -18,11 +18,11 @@ import type { SubscriptionType } from "@app/types/plan";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  AlertCircleV2,
+  AlertCircle,
   Chip,
   ContentMessage,
-  ExternalLinkIcon,
   Icon,
+  LinkExternal01,
   LinkWrapper,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -63,7 +63,7 @@ function AlertLink({
       className="inline-flex items-center gap-0.5 text-xs text-highlight-400"
     >
       {label ? <span>{label}</span> : null}
-      <Icon visual={ExternalLinkIcon} size="xs" />
+      <Icon visual={LinkExternal01} size="xs" />
     </LinkWrapper>
   );
 }
@@ -282,7 +282,7 @@ function PokeCreditPoolCard({ owner }: PokeCreditPoolCardProps) {
     return (
       <ContentMessage
         title="Failed to load Workspace Credits Pool"
-        icon={AlertCircleV2}
+        icon={AlertCircle}
         variant="warning"
       >
         Could not load the credit pool summary for this workspace.

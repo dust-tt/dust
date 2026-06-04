@@ -23,8 +23,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  Download01V2,
-  LinkExternal01V2,
+  Download01,
+  LinkExternal01,
   Markdown,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -193,7 +193,7 @@ export const AttachmentViewer = ({
     if (provider && isInternalMCPServerName(provider)) {
       return getIcon(getInternalMCPServerIconByName(provider));
     }
-    return LinkExternal01V2;
+    return LinkExternal01;
   };
 
   return (
@@ -223,7 +223,7 @@ export const AttachmentViewer = ({
             variant: "outline",
             onClick: onClickDownload,
             disabled: !canDownload,
-            icon: Download01V2,
+            icon: Download01,
           }}
           rightButtonProps={{
             label: sourceUrlButtonLabel,

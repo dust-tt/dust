@@ -55,7 +55,7 @@ import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
 import {
   Avatar,
   Button,
-  CloudArrowLeftRightV2,
+  CloudArrowLeftRight,
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
@@ -69,7 +69,7 @@ import {
   DialogTrigger,
   Hoverable,
   Icon,
-  Lock01V2,
+  Lock01,
   type NotificationType,
   Page,
   Sheet,
@@ -79,7 +79,7 @@ import {
   SheetHeader,
   SheetTitle,
   Spinner,
-  Trash01V2,
+  Trash01,
 } from "@dust-tt/sparkle";
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
 import type React from "react";
@@ -497,7 +497,7 @@ function UpdateConnectionOAuthModal({
             <DialogTrigger>
               <Button
                 label="Edit Permissions"
-                icon={Lock01V2}
+                icon={Lock01}
                 variant="warning"
                 disabled={
                   !isExtraConfigValid || permissionsConfigurable.blocked
@@ -651,7 +651,7 @@ function DataSourceDeletionModal({
             <DialogTrigger>
               <Button
                 label="Delete Connection"
-                icon={Lock01V2}
+                icon={Lock01}
                 variant="warning"
               />
             </DialogTrigger>
@@ -965,7 +965,7 @@ export function ConnectorPermissionsModal({
         <Button
           size="sm"
           label={`Manage ${getDisplayNameForDataSource(dataSource)}`}
-          icon={CloudArrowLeftRightV2}
+          icon={CloudArrowLeftRight}
           variant="primary"
           disabled={readOnly || !isAdmin}
           onClick={() => {
@@ -999,7 +999,7 @@ export function ConnectorPermissionsModal({
                           : "Edit connection"
                       }
                       variant="outline"
-                      icon={Lock01V2}
+                      icon={Lock01}
                       onClick={() => {
                         setModalToShow("edition");
                       }}
@@ -1011,7 +1011,7 @@ export function ConnectorPermissionsModal({
                       <Button
                         label="Setup Private Integration"
                         variant="outline"
-                        icon={Lock01V2}
+                        icon={Lock01}
                         onClick={() => setModalToShow("private_integration")}
                       />
                     )}
@@ -1019,7 +1019,7 @@ export function ConnectorPermissionsModal({
                     <Button
                       label="Delete connection"
                       variant="warning"
-                      icon={Trash01V2}
+                      icon={Trash01}
                       onClick={() => {
                         setModalToShow("deletion");
                       }}

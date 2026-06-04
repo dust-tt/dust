@@ -11,10 +11,10 @@ import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import {
-  CheckCircleV2,
-  FolderV2,
-  MessageChatSquareV2,
-  Settings01V2,
+  CheckCircle,
+  Folder,
+  MessageChatSquare,
+  Settings01,
   Spinner,
   Tabs,
   TabsList,
@@ -87,25 +87,25 @@ export function PodPage() {
               value="conversations"
               label={compactPodTabs ? undefined : "Conversations"}
               tooltip={compactPodTabs ? "Conversations" : undefined}
-              icon={MessageChatSquareV2}
+              icon={MessageChatSquare}
             />
             <TabsTrigger
               value="tasks"
               label={compactPodTabs ? undefined : "Tasks"}
               tooltip={compactPodTabs ? "Tasks" : undefined}
-              icon={CheckCircleV2}
+              icon={CheckCircle}
             />
             <TabsTrigger
               value="files"
               label={compactPodTabs ? undefined : "Files"}
               tooltip={compactPodTabs ? "Files" : undefined}
-              icon={FolderV2}
+              icon={Folder}
             />
             <TabsTrigger
               value="settings"
               label={compactPodTabs ? undefined : "Settings"}
               tooltip={compactPodTabs ? "Settings" : undefined}
-              icon={Settings01V2}
+              icon={Settings01}
             />
           </TabsList>
 

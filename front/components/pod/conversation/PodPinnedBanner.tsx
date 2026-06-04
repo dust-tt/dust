@@ -10,10 +10,10 @@ import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
   cn,
-  EyeOffV2,
-  Maximize01V2,
-  Minimize01V2,
-  Pin02V2,
+  EyeOff,
+  Maximize01,
+  Minimize01,
+  Pin02,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -86,7 +86,7 @@ function PodPinnedBannerControls({
     >
       <div className="pointer-events-auto flex items-center gap-0.5 rounded-lg border border-border/60 bg-background/95 p-0.5 shadow-sm backdrop-blur-sm dark:border-border-night/60 dark:bg-background-night/95">
         <Button
-          icon={EyeOffV2}
+          icon={EyeOff}
           variant="ghost"
           size="xs"
           tooltip="Hide"
@@ -94,7 +94,7 @@ function PodPinnedBannerControls({
         />
         {isEditor && (
           <Button
-            icon={Pin02V2}
+            icon={Pin02}
             variant="ghost"
             size="xs"
             tooltip="Unpin"
@@ -102,7 +102,7 @@ function PodPinnedBannerControls({
           />
         )}
         <Button
-          icon={isFullscreen ? Minimize01V2 : Maximize01V2}
+          icon={isFullscreen ? Minimize01 : Maximize01}
           variant="ghost"
           size="xs"
           tooltip={isFullscreen ? "Exit full screen" : "Open in full screen"}
@@ -126,7 +126,7 @@ function PodPinnedBannerCollapsedAffordance({
 }: PodPinnedBannerCollapsedAffordanceProps) {
   return (
     <div className="mb-2 flex min-w-0 items-center gap-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
-      <Pin02V2 className="h-3.5 w-3.5 shrink-0" />
+      <Pin02 className="h-3.5 w-3.5 shrink-0" />
       <span className="shrink-0">Frame</span>
       <span aria-hidden className="shrink-0 text-muted-foreground/50">
         ·
@@ -138,7 +138,7 @@ function PodPinnedBannerCollapsedAffordance({
       <Button label="Show" variant="ghost" size="xs" onClick={onShow} />
       <div className="ml-auto flex items-center gap-0.5">
         <Button
-          icon={Maximize01V2}
+          icon={Maximize01}
           variant="ghost"
           size="xs"
           tooltip="Open in full screen"

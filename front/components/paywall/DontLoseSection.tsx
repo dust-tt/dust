@@ -1,11 +1,11 @@
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  CloudArrowLeftRightV2,
+  CloudArrowLeftRight,
   Icon,
-  MessageChatSquareV2,
-  RobotV2,
-  Stars02V2,
+  MessageChatSquare,
+  Robot,
+  Stars02,
 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 
@@ -87,25 +87,25 @@ export function DontLoseSection({ owner }: DontLoseSectionProps) {
       </h2>
       <div className="flex flex-col gap-5">
         <DontLoseItem
-          icon={RobotV2}
+          icon={Robot}
           title={agentTitle}
           description="All the AI agents you've configured with your workflows"
           isLoading={isLoading}
         />
         <DontLoseItem
-          icon={MessageChatSquareV2}
+          icon={MessageChatSquare}
           title="Your conversation history & context"
           description="Everything your agents have learned from your interactions"
           isLoading={isLoading}
         />
         <DontLoseItem
-          icon={CloudArrowLeftRightV2}
+          icon={CloudArrowLeftRight}
           title="Your connected company data"
           description="All your connected company data."
           isLoading={isLoading}
         />
         <DontLoseItem
-          icon={Stars02V2}
+          icon={Stars02}
           title="Your advanced AI models access"
           description="Access to GPT-5, Claude 4.5, Gemini, and Mistral"
           isLoading={isLoading}

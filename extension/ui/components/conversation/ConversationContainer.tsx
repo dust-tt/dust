@@ -5,7 +5,7 @@ import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { SubscriptionType } from "@app/types/plan";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
-import { Button, Menu01V2 } from "@dust-tt/sparkle";
+import { Button, Menu01 } from "@dust-tt/sparkle";
 import { usePlatform } from "@extension/shared/context/PlatformContext";
 import { sendGetSessionInfoMessage } from "@extension/shared/messages";
 import { ExtensionInputBarProvider } from "@extension/ui/components/conversation/ExtensionInputBarProvider";
@@ -121,7 +121,7 @@ export const ConversationContainer = ({
           <div className="absolute left-0 top-0 z-10 flex h-[58px] shrink-0 items-center px-2">
             <Button
               variant="ghost"
-              icon={Menu01V2}
+              icon={Menu01}
               onClick={() => setSidebarOpen(true)}
             />
           </div>

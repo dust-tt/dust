@@ -11,8 +11,8 @@ import type { WorkspaceType } from "@app/types/user";
 import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
 import {
   Avatar,
-  BarChart01V2,
-  Bell01V2,
+  BarChart01,
+  Bell01,
   Button,
   cn,
   Dialog,
@@ -24,26 +24,26 @@ import {
   DropdownMenuPortal,
   DropdownMenuShortcut,
   DropdownMenuTrigger,
-  Edit04V2,
+  Edit04,
   Input,
   Label,
-  LinkExternal01V2,
-  Moon01V2,
+  LinkExternal01,
+  Moon01,
   NavigationList,
   NavigationListItem,
   Separator,
-  Settings01V2,
-  ShapesPlusV2,
+  Settings01,
+  ShapesPlus,
   Spinner,
-  Stars02V2,
-  SunV2,
+  Stars02,
+  Sun,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-  User01V2,
-  XCloseV2,
-  ZapV2,
+  User01,
+  XClose,
+  Zap,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -140,7 +140,7 @@ function UsageSection() {
         <div className="flex items-center justify-between">
           <span className="flex items-center gap-2">
             <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-highlight-100 outline outline-1 outline-highlight-500/20 dark:bg-highlight-100-night">
-              <Stars02V2 className="h-3 w-3 text-highlight-500" />
+              <Stars02 className="h-3 w-3 text-highlight-500" />
             </span>
             <span className="text-base font-semibold text-foreground dark:text-foreground-night">
               Pro plan
@@ -178,7 +178,7 @@ function UsageSection() {
           variant="outline"
           size="xs"
           label="Billing"
-          icon={LinkExternal01V2}
+          icon={LinkExternal01}
         />
       </section>
     </SectionContent>
@@ -294,7 +294,7 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
           <Button
             variant="outline"
             size="sm"
-            icon={Edit04V2}
+            icon={Edit04}
             type="button"
             onClick={() => fileInputRef.current?.click()}
             className="absolute left-1/2 top-1/2 h-10 w-10 -translate-x-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100"
@@ -410,10 +410,10 @@ function CustomizationSection() {
                 variant="outline"
                 icon={
                   localTheme === "light"
-                    ? SunV2
+                    ? Sun
                     : localTheme === "dark"
-                      ? Moon01V2
-                      : SunV2
+                      ? Moon01
+                      : Sun
                 }
                 label={
                   localTheme === "light"
@@ -429,17 +429,17 @@ function CustomizationSection() {
             <DropdownMenuPortal>
               <DropdownMenuContent>
                 <DropdownMenuItem
-                  icon={SunV2}
+                  icon={Sun}
                   label="Light"
                   onClick={() => setLocalTheme("light")}
                 />
                 <DropdownMenuItem
-                  icon={Moon01V2}
+                  icon={Moon01}
                   label="Dark"
                   onClick={() => setLocalTheme("dark")}
                 />
                 <DropdownMenuItem
-                  icon={SunV2}
+                  icon={Sun}
                   label="System"
                   onClick={() => setLocalTheme("system")}
                 />
@@ -539,8 +539,8 @@ function ToolsSection({ owner }: { owner: WorkspaceType }) {
     <SectionContent title="Tools and Triggers">
       <Tabs defaultValue="tools">
         <TabsList border>
-          <TabsTrigger value="tools" label="Tools" icon={ZapV2} />
-          <TabsTrigger value="triggers" label="Triggers" icon={Bell01V2} />
+          <TabsTrigger value="tools" label="Tools" icon={Zap} />
+          <TabsTrigger value="triggers" label="Triggers" icon={Bell01} />
         </TabsList>
         <TabsContent value="tools">
           <UserToolsTable owner={owner} />
@@ -562,11 +562,11 @@ const NAV_ITEMS: Array<{
   icon: React.ComponentType;
   label: string;
 }> = [
-  { section: "personal", icon: User01V2, label: "Personal Information" },
-  { section: "usage", icon: BarChart01V2, label: "Usage" },
-  { section: "customization", icon: Settings01V2, label: "Customization" },
-  { section: "notifications", icon: Bell01V2, label: "Notifications" },
-  { section: "tools", icon: ShapesPlusV2, label: "Tools and Triggers" },
+  { section: "personal", icon: User01, label: "Personal Information" },
+  { section: "usage", icon: BarChart01, label: "Usage" },
+  { section: "customization", icon: Settings01, label: "Customization" },
+  { section: "notifications", icon: Bell01, label: "Notifications" },
+  { section: "tools", icon: ShapesPlus, label: "Tools and Triggers" },
 ];
 
 export function UserSettingsPopover({
@@ -597,7 +597,7 @@ export function UserSettingsPopover({
               <Button
                 variant="ghost"
                 size="xmini"
-                icon={XCloseV2}
+                icon={XClose}
                 className="flex-shrink-0 px-2"
               />
             </DialogClose>
@@ -627,7 +627,7 @@ export function UserSettingsPopover({
           <div className="hidden w-64 flex-shrink-0 flex-col border-r border-border bg-muted-background sm:flex dark:border-border-night dark:bg-muted-background-night">
             <div className="flex-shrink-0 p-2">
               <DialogClose asChild>
-                <Button variant="ghost" size="mini" icon={XCloseV2} />
+                <Button variant="ghost" size="mini" icon={XClose} />
               </DialogClose>
             </div>
             <NavigationList className="flex-1 px-2 pb-3">

@@ -8,7 +8,7 @@ import {
   ResourceAvatar,
 } from "@app/components/resources/resources_icons";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
-import { Button, LinkExternal01V2, Rocket02V2 } from "@dust-tt/sparkle";
+import { Button, LinkExternal01, Rocket02 } from "@dust-tt/sparkle";
 
 import type { IntegrationBase } from "../types";
 
@@ -55,7 +55,7 @@ export function IntegrationHeroSection({
             variant="highlight"
             size="md"
             label="Get started with Dust"
-            icon={Rocket02V2}
+            icon={Rocket02}
             href="/home/contact"
             onClick={withTracking(
               TRACKING_AREAS.HOME,
@@ -67,7 +67,7 @@ export function IntegrationHeroSection({
               variant="outline"
               size="md"
               label="View documentation"
-              icon={LinkExternal01V2}
+              icon={LinkExternal01}
               href={integration.documentationUrl}
               target="_blank"
               onClick={withTracking(

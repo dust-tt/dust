@@ -18,8 +18,8 @@ import { Err } from "@app/types/shared/result";
 import { isSlugified, truncate } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  AlertCircleV2,
-  FilePlus03V2,
+  AlertCircle,
+  FilePlus03,
   Input,
   Page,
   Sheet,
@@ -416,7 +416,7 @@ export const TableUploadOrEditModal = ({
                               ? "Replace file"
                               : "Upload file",
                         variant: "primary",
-                        icon: FilePlus03V2,
+                        icon: FilePlus03,
                         onClick: () => fileInputRef.current?.click(),
                       }}
                     />
@@ -430,7 +430,7 @@ export const TableUploadOrEditModal = ({
                     {isBigFile && (
                       <div className="flex flex-col gap-y-2 pt-4">
                         <div className="flex grow flex-row items-center gap-1 text-sm font-medium text-warning-500">
-                          <AlertCircleV2 />
+                          <AlertCircle />
                           Warning: Large file (5MB+)
                         </div>
                         <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">

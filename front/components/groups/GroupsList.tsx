@@ -1,12 +1,6 @@
 import assert from "@app/lib/utils/assert";
 import type { GroupType } from "@app/types/groups";
-import {
-  Button,
-  DataTable,
-  Spinner,
-  Users01V2,
-  XCloseV2,
-} from "@dust-tt/sparkle";
+import { Button, DataTable, Spinner, Users01, XClose } from "@dust-tt/sparkle";
 import type { CellContext, PaginationState } from "@tanstack/react-table";
 import { useMemo } from "react";
 
@@ -26,7 +20,7 @@ const groupColumns = [
     accessorKey: "name",
     header: "Group name",
     cell: (info: GroupInfo) => (
-      <DataTable.CellContent icon={Users01V2} className="capitalize">
+      <DataTable.CellContent icon={Users01} className="capitalize">
         {info.row.original.name}
       </DataTable.CellContent>
     ),
@@ -53,7 +47,7 @@ const groupColumns = [
       return (
         <DataTable.CellContent>
           <Button
-            icon={XCloseV2}
+            icon={XClose}
             size="xs"
             variant="ghost-secondary"
             onClick={info.row.original.onRemoveGroupClick}

@@ -4,8 +4,8 @@ import type { AvatarPickerTabElement } from "@app/components/agent_builder/setti
 import type { WorkspaceType } from "@app/types/user";
 import {
   Avatar,
-  FaceSmileV2,
-  Image01V2,
+  FaceSmile,
+  Image01,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -16,7 +16,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-  Upload01V2,
+  Upload01,
 } from "@dust-tt/sparkle";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import type React from "react";
@@ -68,25 +68,25 @@ export function AvatarPicker({
         label: "Droids",
         id: "droids",
         current: currentTab === "droids",
-        icon: Image01V2,
+        icon: Image01,
       },
       {
         label: "Spirits",
         id: "spirits",
         current: currentTab === "spirits",
-        icon: Image01V2,
+        icon: Image01,
       },
       {
         label: "Emojis",
         id: "emojis",
         current: currentTab === "emojis",
-        icon: FaceSmileV2,
+        icon: FaceSmile,
       },
       {
         label: "Upload",
         id: "upload",
         current: currentTab === "upload",
-        icon: Upload01V2,
+        icon: Upload01,
       },
     ],
     [currentTab]

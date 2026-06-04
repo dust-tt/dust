@@ -2,7 +2,7 @@ import { useEmailAgentsToggle } from "@app/hooks/useEmailAgentsToggle";
 import { ASSISTANT_EMAIL_SUBDOMAIN } from "@app/lib/api/assistant/email/constants";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  BookOpen01V2,
+  BookOpen01,
   Button,
   Chip,
   ContextItem,
@@ -12,7 +12,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  Mail02V2,
+  Mail02,
   SliderToggle,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -64,11 +64,11 @@ export function EmailAgentsToggle({ owner }: EmailAgentsToggleProps) {
               rel="noopener noreferrer"
               className="text-action-400 hover:text-action-500 text-sm"
             >
-              <BookOpen01V2 className="h-4 w-4" />
+              <BookOpen01 className="h-4 w-4" />
             </a>
           </div>
         }
-        visual={<Mail02V2 className="h-6 w-6" />}
+        visual={<Mail02 className="h-6 w-6" />}
         hasSeparatorIfLast={true}
         action={
           <SliderToggle

@@ -11,7 +11,7 @@ import {
 import { Input } from "@sparkle/components/Input";
 import { ScrollArea } from "@sparkle/components/ScrollArea";
 import { Separator } from "@sparkle/components/Separator";
-import { Link01V2, XCloseV2 } from "@sparkle/icons/v2-stroke";
+import { Link01, XClose } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
 import React from "react";
@@ -114,7 +114,7 @@ function Toolbar({
 
     const buttonProps = {
       variant: closeVariant,
-      icon: XCloseV2,
+      icon: XClose,
       onClick: onClose,
       ...restCloseButtonProps,
     };
@@ -259,7 +259,7 @@ function ToolbarLink({
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <ToolbarIcon
-        icon={Link01V2}
+        icon={Link01}
         onClick={onOpenDialog}
         active={active}
         tooltip={tooltip}

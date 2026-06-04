@@ -7,12 +7,12 @@ import { TabContentLayout } from "@app/components/agent_builder/observability/Ta
 import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import {
-  BarChart01V2,
-  Beaker02V2,
+  BarChart01,
+  Beaker02,
   Button,
-  LayoutRightV2,
+  LayoutRight,
   ScrollArea,
-  SidekickV2,
+  Sidekick,
   Tabs,
   TabsList,
   TabsTrigger,
@@ -42,7 +42,7 @@ function PanelHeader({
             <Tabs value={selectedTab} className="w-full">
               <TabsList>
                 <Button
-                  icon={LayoutRightV2}
+                  icon={LayoutRight}
                   size="sm"
                   variant="ghost-secondary"
                   tooltip="Hide preview"
@@ -51,19 +51,19 @@ function PanelHeader({
                 <TabsTrigger
                   value="sidekick"
                   label="Sidekick"
-                  icon={SidekickV2}
+                  icon={Sidekick}
                   onClick={() => onTabChange("sidekick")}
                 />
                 <TabsTrigger
                   value="preview"
                   label="Preview"
-                  icon={Beaker02V2}
+                  icon={Beaker02}
                   onClick={() => onTabChange("preview")}
                 />
                 <TabsTrigger
                   value="insights"
                   label="Insights"
-                  icon={BarChart01V2}
+                  icon={BarChart01}
                   onClick={withTracking(
                     TRACKING_AREAS.BUILDER,
                     "insights_tab",
@@ -77,7 +77,7 @@ function PanelHeader({
       ) : (
         <div className="flex h-full w-full items-end justify-center pb-3.5">
           <Button
-            icon={LayoutRightV2}
+            icon={LayoutRight}
             size="sm"
             variant="ghost-secondary"
             tooltip="Open preview"
@@ -97,21 +97,21 @@ function CollapsedTabs({ onTabSelect }: CollapsedTabsProps) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-4">
       <Button
-        icon={SidekickV2}
+        icon={Sidekick}
         variant="ghost"
         size="sm"
         tooltip="Sidekick"
         onClick={() => onTabSelect("sidekick")}
       />
       <Button
-        icon={Beaker02V2}
+        icon={Beaker02}
         variant="ghost"
         size="sm"
         tooltip="Preview"
         onClick={() => onTabSelect("preview")}
       />
       <Button
-        icon={BarChart01V2}
+        icon={BarChart01}
         variant="ghost"
         size="sm"
         tooltip="Insights"
@@ -151,7 +151,7 @@ function ExpandedContent({
           ) : (
             <TabContentLayout title="Insights">
               <EmptyPlaceholder
-                icon={BarChart01V2}
+                icon={BarChart01}
                 title="Waiting for data"
                 description="Use your agent or share it with your team to see insights data."
               />

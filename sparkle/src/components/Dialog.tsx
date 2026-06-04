@@ -3,7 +3,7 @@ import { FocusScope } from "@radix-ui/react-focus-scope";
 import { Button, type ButtonProps } from "@sparkle/components/Button";
 import { ScrollArea } from "@sparkle/components/ScrollArea";
 import { Separator } from "@sparkle/components/Separator";
-import { XCloseV2 } from "@sparkle/icons/v2-stroke";
+import { XClose } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
 import * as React from "react";
@@ -176,7 +176,7 @@ const DialogHeader = ({
     {children}
     {!hideButton && (
       <DialogClose asChild className="s-absolute s-right-3 s-top-3">
-        <Button icon={XCloseV2} variant={buttonVariant} size={buttonSize} />
+        <Button icon={XClose} variant={buttonVariant} size={buttonSize} />
       </DialogClose>
     )}
   </div>

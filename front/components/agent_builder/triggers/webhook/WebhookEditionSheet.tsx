@@ -11,7 +11,7 @@ import type {
 } from "@app/types/triggers/webhooks_source_preset";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  AlertCircleV2,
+  AlertCircle,
   Button,
   Checkbox,
   ContentMessage,
@@ -110,7 +110,7 @@ function WebhookEditionExecutionLimit({
       <ContentMessage
         variant="info"
         size="lg"
-        icon={AlertCircleV2}
+        icon={AlertCircle}
         title={`Up to ${executionLimit} requests per day`}
       >
         This trigger can send a limited number of messages per day. This

@@ -9,7 +9,7 @@ import type { APIError } from "@app/types/error";
 import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  AlertCircleV2,
+  AlertCircle,
   Input,
   Page,
   Sheet,
@@ -133,8 +133,8 @@ export const SpaceCreateAppModal = ({
                 messageStatus="error"
               />
               <p className="mt-1 flex items-center gap-1 text-sm text-gray-500">
-                <AlertCircleV2 /> Must be unique and only use alphanumeric, - or
-                _ characters.
+                <AlertCircle /> Must be unique and only use alphanumeric, - or _
+                characters.
               </p>
             </div>
             <Page.Separator />

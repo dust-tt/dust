@@ -5,7 +5,7 @@ import {
   Avatar,
   Icon,
   ListGroup,
-  Type01V2,
+  Type01,
   UniversalSearchItem,
 } from "../index_with_tw_base";
 
@@ -28,7 +28,7 @@ export const DocumentAndConversation: Story = {
   render: () => (
     <ListGroup>
       <UniversalSearchItem
-        visual={<Icon visual={Type01V2} size="md" />}
+        visual={<Icon visual={Type01} size="md" />}
         title={<span className="s-min-w-0 s-truncate">Q4 Report.pdf</span>}
         description="Summary: Key findings are consolidated in the sections below."
       />

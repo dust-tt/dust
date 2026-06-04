@@ -4,7 +4,7 @@ import {
   Card,
   ContentMessage,
   Icon,
-  Lightbulb04V2,
+  Lightbulb04,
   Markdown,
 } from "@dust-tt/sparkle";
 import type {
@@ -26,7 +26,7 @@ export function MCPAgentMemoryRetrieveActionDetails({
     <ActionDetailsWrapper
       displayContext={displayContext}
       actionName="Retrieve Agent Memory"
-      visual={Lightbulb04V2}
+      visual={Lightbulb04}
     >
       <div className="flex flex-col pt-4">
         <div className="flex flex-col gap-2">
@@ -51,7 +51,7 @@ export function MCPAgentMemoryRecordActionDetails({
     <ActionDetailsWrapper
       displayContext={displayContext}
       actionName="Record Agent Memory"
-      visual={Lightbulb04V2}
+      visual={Lightbulb04}
     >
       <div className="flex flex-col pt-4">
         <div className="flex flex-col gap-2">
@@ -88,7 +88,7 @@ export function MCPAgentMemoryEditActionDetails({
     <ActionDetailsWrapper
       displayContext={displayContext}
       actionName={toolNameText}
-      visual={Lightbulb04V2}
+      visual={Lightbulb04}
     >
       <div className="flex flex-col gap-4 pt-4">
         <div className="flex flex-col gap-2">
@@ -118,7 +118,7 @@ export function MCPAgentMemoryEraseActionDetails({
     <ActionDetailsWrapper
       displayContext={displayContext}
       actionName="Erase Agent Memory"
-      visual={Lightbulb04V2}
+      visual={Lightbulb04}
     >
       <div className="flex flex-col gap-4 pt-4">
         <div className="flex flex-col gap-2">
@@ -154,7 +154,7 @@ const MemoriesCardList = ({ memories }: { memories: string[] }) => {
       {memories.map((memory, index) => (
         <Card key={index} size="md" className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
-            <Icon visual={Lightbulb04V2} size="xs" />
+            <Icon visual={Lightbulb04} size="xs" />
             <div className="text-sm">{memory}</div>
           </div>
         </Card>

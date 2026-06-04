@@ -133,10 +133,10 @@ vi.mock("@dust-tt/sparkle", () => {
   );
 
   const Spinner = () => <div>Loading</div>;
-  const ArrowUpV2 = () => null;
+  const ArrowUp = () => null;
 
   return {
-    ArrowUpV2,
+    ArrowUp,
     Button,
     Card,
     Counter,

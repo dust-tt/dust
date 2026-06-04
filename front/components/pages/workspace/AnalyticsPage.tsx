@@ -15,7 +15,7 @@ import { useWorkspaceSubscriptions } from "@app/lib/swr/workspaces";
 import datadogLogger from "@app/logger/datadogLogger";
 import { isAPIErrorResponse } from "@app/types/error";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { BarChart01V2, Page } from "@dust-tt/sparkle";
+import { BarChart01, Page } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 export function AnalyticsPage() {
@@ -164,7 +164,7 @@ export function AnalyticsPage() {
             </div>
           </div>
         }
-        icon={BarChart01V2}
+        icon={BarChart01}
         description="Track how your team uses Dust"
       />
       <WorkspaceAnalyticsOverviewCards

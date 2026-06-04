@@ -7,7 +7,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  MessageCircle01V2,
+  MessageCircle01,
 } from "@dust-tt/sparkle";
 
 interface AgentCreatedDialogProps {
@@ -54,7 +54,7 @@ export function AgentCreatedDialog({
           }}
           rightButtonProps={{
             label: "Start chat",
-            icon: MessageCircle01V2,
+            icon: MessageCircle01,
             href: conversationRoute,
           }}
         />

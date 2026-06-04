@@ -2,7 +2,7 @@ import { LinkWrapper } from "@app/lib/platform";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Icon, LinkExternal01V2, Spinner } from "@dust-tt/sparkle";
+import { Icon, LinkExternal01, Spinner } from "@dust-tt/sparkle";
 
 interface SimilarSkillsDisplayProps {
   owner: LightWorkspaceType;
@@ -53,7 +53,7 @@ export function SimilarSkillsDisplay({
                     target="_blank"
                     className="text-muted-foreground hover:text-foreground dark:text-muted-foreground-night dark:hover:text-foreground-night"
                   >
-                    <Icon visual={LinkExternal01V2} size="xs" />
+                    <Icon visual={LinkExternal01} size="xs" />
                   </LinkWrapper>
                 </div>
                 <span className="line-clamp-1 text-xs text-muted-foreground dark:text-muted-foreground-night">

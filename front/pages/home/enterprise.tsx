@@ -6,12 +6,7 @@ import { PageMetadata } from "@app/components/home/PageMetadata";
 import TrustedBy from "@app/components/home/TrustedBy";
 import UTMButton from "@app/components/UTMButton";
 import { classNames } from "@app/lib/utils";
-import {
-  ChevronDownV2,
-  ChevronUpV2,
-  DustLogo,
-  Rocket02V2,
-} from "@dust-tt/sparkle";
+import { ChevronDown, ChevronUp, DustLogo, Rocket02 } from "@dust-tt/sparkle";
 import Image from "next/image";
 import { useRouter } from "next/router";
 import type { ReactElement, ReactNode } from "react";
@@ -63,7 +58,7 @@ function HeroSection() {
             size="md"
             label="Get started"
             href="/pricing"
-            icon={Rocket02V2}
+            icon={Rocket02}
             className="w-full xs:w-auto sm:w-auto md:w-auto"
           />
           <UTMButton
@@ -370,9 +365,9 @@ function WhatThisMeansSection() {
                   </span>
                   <span className="ml-6 flex h-6 w-6 flex-shrink-0 items-center justify-center text-muted-foreground">
                     {openIndex === index ? (
-                      <ChevronUpV2 className="h-5 w-5" />
+                      <ChevronUp className="h-5 w-5" />
                     ) : (
-                      <ChevronDownV2 className="h-5 w-5" />
+                      <ChevronDown className="h-5 w-5" />
                     )}
                   </span>
                 </button>

@@ -1,5 +1,5 @@
 import * as CollapsiblePrimitive from "@radix-ui/react-collapsible";
-import { ChevronDownV2, ChevronRightV2 } from "@sparkle/icons/v2-stroke";
+import { ChevronDown, ChevronRight } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
@@ -102,12 +102,12 @@ const CollapsibleTrigger = React.forwardRef<
             )}
           >
             <Icon
-              visual={ChevronRightV2}
+              visual={ChevronRight}
               size="sm"
               className="s-block group-data-[state=open]/col:s-hidden"
             />
             <Icon
-              visual={ChevronDownV2}
+              visual={ChevronDown}
               size="sm"
               className="s-hidden group-data-[state=open]/col:s-block"
             />

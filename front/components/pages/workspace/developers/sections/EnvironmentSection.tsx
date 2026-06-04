@@ -34,20 +34,20 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  Edit04V2,
-  Globe01V2,
-  InfoCircleV2,
+  Edit04,
+  Globe01,
+  InfoCircle,
   Input,
   Label,
   ListGroup,
   ListItem,
-  Lock01V2,
+  Lock01,
   Page,
-  PlusV2,
+  Plus,
   SliderToggle,
   Spinner,
   TextArea,
-  Trash01V2,
+  Trash01,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
@@ -419,14 +419,14 @@ export function EnvironmentSection() {
   const renderBody = () => {
     if (!isAdmin) {
       return (
-        <ContentMessage variant="info" icon={InfoCircleV2} size="lg">
+        <ContentMessage variant="info" icon={InfoCircle} size="lg">
           Only workspace admins can manage Computer environment variables.
         </ContentMessage>
       );
     }
     if (!hasSandboxAdmin) {
       return (
-        <ContentMessage variant="info" icon={InfoCircleV2} size="lg">
+        <ContentMessage variant="info" icon={InfoCircle} size="lg">
           Computer administration is not enabled for this workspace.
         </ContentMessage>
       );
@@ -438,7 +438,7 @@ export function EnvironmentSection() {
       return (
         <ContentMessage
           variant="warning"
-          icon={InfoCircleV2}
+          icon={InfoCircle}
           size="lg"
           title="Failed to load"
         >
@@ -456,7 +456,7 @@ export function EnvironmentSection() {
 
         <ContentMessage
           variant="info"
-          icon={InfoCircleV2}
+          icon={InfoCircle}
           size="lg"
           title="Choose the right kind for each value"
         >
@@ -489,7 +489,7 @@ export function EnvironmentSection() {
         <div className="flex justify-end">
           <Button
             label="Add variable"
-            icon={PlusV2}
+            icon={Plus}
             onClick={openAddDialog}
             disabled={isUpsertingWorkspaceSandboxEnvVar}
           />
@@ -546,7 +546,7 @@ export function EnvironmentSection() {
                     <Button
                       variant="outline"
                       size="mini"
-                      icon={envVar.kind === "config" ? Lock01V2 : Globe01V2}
+                      icon={envVar.kind === "config" ? Lock01 : Globe01}
                       tooltip={
                         envVar.kind === "config"
                           ? `Promote ${envVar.name} to HTTPS secret`
@@ -558,7 +558,7 @@ export function EnvironmentSection() {
                     <Button
                       variant="outline"
                       size="mini"
-                      icon={Edit04V2}
+                      icon={Edit04}
                       tooltip={`Replace value of ${envVar.name}`}
                       disabled={isAnyMutationPending}
                       onClick={() => openReplaceDialog(envVar)}
@@ -566,7 +566,7 @@ export function EnvironmentSection() {
                     <Button
                       variant="warning"
                       size="mini"
-                      icon={Trash01V2}
+                      icon={Trash01}
                       tooltip={`Delete ${envVar.name}`}
                       disabled={isAnyMutationPending}
                       onClick={() => setEnvVarToDelete(envVar)}
@@ -624,7 +624,7 @@ export function EnvironmentSection() {
                   </div>
                   <ContentMessage
                     variant={kindValue === "https_secret" ? "info" : "warning"}
-                    icon={kindValue === "https_secret" ? Lock01V2 : Globe01V2}
+                    icon={kindValue === "https_secret" ? Lock01 : Globe01}
                     size="sm"
                   >
                     {kindValue === "https_secret" ? (
@@ -741,7 +741,7 @@ export function EnvironmentSection() {
             }}
             rightButtonProps={{
               label: isReplacing ? "Replace" : "Save",
-              icon: Lock01V2,
+              icon: Lock01,
               onClick: () => {
                 void handleSubmit(onSubmit)();
               },
@@ -775,7 +775,7 @@ export function EnvironmentSection() {
                 {envVarToConfigureDomains.kind === "config" ? (
                   <ContentMessage
                     variant="warning"
-                    icon={InfoCircleV2}
+                    icon={InfoCircle}
                     title="Promotion only takes effect on next wake"
                   >
                     Running Computers keep the previous {SANDBOX_ENV_VAR_PREFIX}
@@ -811,9 +811,7 @@ export function EnvironmentSection() {
                     ? "Promote"
                     : "Save",
                 icon:
-                  envVarToConfigureDomains.kind === "config"
-                    ? Lock01V2
-                    : Globe01V2,
+                  envVarToConfigureDomains.kind === "config" ? Lock01 : Globe01,
                 onClick: () => {
                   void handleConfigureDomains();
                 },

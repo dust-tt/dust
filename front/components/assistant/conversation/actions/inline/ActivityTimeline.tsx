@@ -6,7 +6,7 @@ import {
 } from "@app/components/assistant/conversation/actions/inline/utils";
 import type { InlineActivityStep } from "@app/types/assistant/conversation";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import { ChevronRightV2, cn, Icon } from "@dust-tt/sparkle";
+import { ChevronRight, cn, Icon } from "@dust-tt/sparkle";
 import React, { useState } from "react";
 
 interface RunningToolRow {
@@ -63,7 +63,7 @@ export function ActivityTimeline({
             isCollapsed ? "rotate-0" : "rotate-90"
           )}
         >
-          <Icon size="xs" visual={ChevronRightV2} />
+          <Icon size="xs" visual={ChevronRight} />
         </span>
       </button>
 
@@ -103,7 +103,7 @@ export function ActivityTimeline({
                         {step.label}
                         <Icon
                           size="xs"
-                          visual={ChevronRightV2}
+                          visual={ChevronRight}
                           className={cn(
                             "shrink-0",
                             onActionClick ? "opacity-50" : "opacity-0"
@@ -149,7 +149,7 @@ export function ActivityTimeline({
                     {row.label}
                     <Icon
                       size="xs"
-                      visual={ChevronRightV2}
+                      visual={ChevronRight}
                       className={cn(
                         "shrink-0",
                         row.onClick ? "opacity-50" : "opacity-0"

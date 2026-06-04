@@ -10,7 +10,7 @@ import {
   Checkbox,
   ContentMessage,
   Icon,
-  LinkExternal01V2,
+  LinkExternal01,
   SearchInput,
   Sheet,
   SheetContainer,
@@ -175,7 +175,7 @@ function SlackChannelsList({
                   <div className="opacity-0 transition-opacity group-hover:opacity-100">
                     <Button
                       href={channel.sourceUrl}
-                      icon={LinkExternal01V2}
+                      icon={LinkExternal01}
                       size="xs"
                       variant="outline"
                       onClick={(e: React.MouseEvent) => e.stopPropagation()}

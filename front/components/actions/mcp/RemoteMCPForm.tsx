@@ -6,10 +6,10 @@ import { useSyncRemoteMCPServer } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   ActionIcons,
-  AlertCircleV2,
-  BookOpen01V2,
+  AlertCircle,
+  BookOpen01,
   Button,
-  CloudArrowLeftRightV2,
+  CloudArrowLeftRight,
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
@@ -63,7 +63,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
       {lastError && (
         <ContentMessage
           variant="warning"
-          icon={AlertCircleV2}
+          icon={AlertCircle}
           size="sm"
           title="Synchronization Error"
         >
@@ -86,7 +86,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
           <Button
             label={isSynchronizing ? "Syncing..." : "Sync"}
             isLoading={isSynchronizing}
-            icon={CloudArrowLeftRightV2}
+            icon={CloudArrowLeftRight}
             variant="outline"
             onClick={handleSynchronize}
             disabled={isSynchronizing}
@@ -104,7 +104,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
               toActionIconKey(iconField.value) ??
               toActionIconKey(mcpServer.icon as string) ??
               defaultKey;
-            const IconComponent = ActionIcons[selectedIconName] ?? BookOpen01V2;
+            const IconComponent = ActionIcons[selectedIconName] ?? BookOpen01;
 
             return (
               <PopoverRoot open={isPopoverOpen}>

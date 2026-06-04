@@ -1,5 +1,5 @@
 import type { PartnerFormData } from "@app/lib/api/hubspot/partnerFormSchema";
-import { CheckCircleV2 } from "@dust-tt/sparkle";
+import { CheckCircle } from "@dust-tt/sparkle";
 import { useFormContext } from "react-hook-form";
 
 export function PartnerFormThankYou() {
@@ -12,7 +12,7 @@ export function PartnerFormThankYou() {
     <div className="flex flex-col gap-6 py-8">
       <div className="flex items-center gap-4">
         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-green-100">
-          <CheckCircleV2 className="h-6 w-6 text-green-600" />
+          <CheckCircle className="h-6 w-6 text-green-600" />
         </div>
         <h2 className="text-2xl font-semibold text-foreground">
           Thank you{firstName ? `, ${firstName}` : ""} for trusting Dust!

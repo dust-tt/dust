@@ -3,11 +3,11 @@ import { describeWakeUpSchedule } from "@app/lib/utils/wakeup_description";
 import type { WakeUpType } from "@app/types/assistant/wakeups";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  ClockV2,
+  Clock,
   ContentMessageAction,
   ContentMessageInline,
   Tooltip,
-  Trash04V2,
+  Trash04,
 } from "@dust-tt/sparkle";
 
 interface WakeUpBannerProps {
@@ -32,7 +32,7 @@ export const WakeUpBanner = ({
 
   return (
     <ContentMessageInline
-      icon={ClockV2}
+      icon={Clock}
       variant="outline"
       className="mb-5 flex max-h-dvh w-full bg-background dark:bg-background-night"
     >
@@ -54,7 +54,7 @@ export const WakeUpBanner = ({
       </div>
       {isOwner && (
         <ContentMessageAction
-          icon={Trash04V2}
+          icon={Trash04}
           variant="ghost"
           size="xs"
           tooltip="Cancel wake-up"

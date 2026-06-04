@@ -49,15 +49,15 @@ import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
-  CloudArrowLeftRightV2,
+  CloudArrowLeftRight,
   NavigationList,
   NavigationListItem,
   NavigationListLabel,
-  PlusV2,
-  ShapesPlusV2,
-  TerminalV2,
+  Plus,
+  ShapesPlus,
+  Terminal,
   Tree,
-  ZapV2,
+  Zap,
 } from "@dust-tt/sparkle";
 import sortBy from "lodash/sortBy";
 import uniqBy from "lodash/uniqBy";
@@ -175,7 +175,7 @@ export default function SpaceSideBarMenu({
                       size="xs"
                       variant="ghost"
                       label="New"
-                      icon={PlusV2}
+                      icon={Plus}
                       onClick={() =>
                         openSpaceCreationModal({
                           defaultRestricted: sectionDetails.defaultRestricted,
@@ -245,19 +245,19 @@ const SYSTEM_SPACE_ITEMS: {
 }[] = [
   {
     label: "Connections",
-    visual: CloudArrowLeftRightV2,
+    visual: CloudArrowLeftRight,
     category: "managed",
     flag: null,
   },
   {
     label: "Tools",
-    visual: ShapesPlusV2,
+    visual: ShapesPlus,
     category: "actions",
     flag: null,
   },
   {
     label: "Triggers",
-    visual: ZapV2,
+    visual: Zap,
     category: "triggers",
     flag: null,
   },
@@ -672,7 +672,7 @@ const SpaceAppItem = ({
         void router.push(appPath);
       }}
       label={app.name}
-      visual={TerminalV2}
+      visual={Terminal}
       areActionsFading={false}
     />
   );

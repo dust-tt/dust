@@ -3,9 +3,9 @@ import {
   ActionIcons,
   Avatar,
   Button,
-  Edit04V2,
+  Edit04,
   IconPicker,
-  PlusV2,
+  Plus,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
@@ -13,7 +13,7 @@ import {
 import { useState } from "react";
 import { useController } from "react-hook-form";
 
-const DEFAULT_ICON = PlusV2;
+const DEFAULT_ICON = Plus;
 
 export function SkillBuilderIconSection() {
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
@@ -44,7 +44,7 @@ export function SkillBuilderIconSection() {
           <Button
             variant="outline"
             size="sm"
-            icon={Edit04V2}
+            icon={Edit04}
             type="button"
             onClick={() => setIsPopoverOpen(true)}
             className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100"

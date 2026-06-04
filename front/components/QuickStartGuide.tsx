@@ -1,8 +1,8 @@
 import { useURLSheet } from "@app/hooks/useURLSheet";
 import {
-  CloudArrowLeftRightV2,
-  FolderV2,
-  Globe01V2,
+  CloudArrowLeftRight,
+  Folder,
+  Globe01,
   Icon,
   Sheet,
   SheetContainer,
@@ -110,7 +110,7 @@ export function QuickStartGuide() {
             <div className="col-span-2 flex flex-col gap-3">
               <div className="flex items-center gap-2">
                 <Icon
-                  visual={CloudArrowLeftRightV2}
+                  visual={CloudArrowLeftRight}
                   className="text-foreground"
                 />
                 <h6 className="font-semibold">Connections</h6>
@@ -122,14 +122,14 @@ export function QuickStartGuide() {
             </div>
             <div className="col-span-2 flex flex-col gap-3">
               <div className="flex items-center gap-2">
-                <Icon visual={FolderV2} className="text-foreground" />
+                <Icon visual={Folder} className="text-foreground" />
                 <h6 className="font-semibold">Folders</h6>
               </div>
               <p>Upload files (text, pdf, csv) directly in Dust.</p>
             </div>
             <div className="col-span-2 flex flex-col gap-3">
               <div className="flex items-center gap-2">
-                <Icon visual={Globe01V2} className="text-foreground" />
+                <Icon visual={Globe01} className="text-foreground" />
                 <h6 className="font-semibold">Websites</h6>
               </div>
               <p>

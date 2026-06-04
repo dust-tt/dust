@@ -5,8 +5,8 @@ import { isAgentErrorCategory } from "@app/types/assistant/agent";
 import {
   Button,
   ContentMessage,
-  InfoCircleV2,
-  RefreshCw02V2,
+  InfoCircle,
+  RefreshCw02,
 } from "@dust-tt/sparkle";
 
 interface ErrorMessageProps {
@@ -34,7 +34,7 @@ export function ErrorMessage({ error, retryHandler }: ErrorMessageProps) {
       title={`${error.metadata?.errorTitle ?? "Something went wrong"}`}
       variant={errorIsRetryable ? "golden" : "warning"}
       className="flex flex-col gap-3"
-      icon={InfoCircleV2}
+      icon={InfoCircle}
     >
       <div className="whitespace-normal break-words">
         {error.message}
@@ -56,7 +56,7 @@ export function ErrorMessage({ error, retryHandler }: ErrorMessageProps) {
         <Button
           variant="outline"
           size="xs"
-          icon={RefreshCw02V2}
+          icon={RefreshCw02}
           label="Retry"
           onClick={retry}
           disabled={isRetrying}

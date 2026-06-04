@@ -5,7 +5,7 @@ import {
   ImageZoomDialog,
 } from "@sparkle/components/ImageZoomDialog";
 import { Spinner } from "@sparkle/components/Spinner";
-import { Download01V2, XCloseV2 } from "@sparkle/icons/v2-stroke";
+import { Download01, XClose } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import React, { useCallback, useState } from "react";
@@ -202,7 +202,7 @@ const ImagePreview = React.forwardRef<HTMLDivElement, ImagePreviewProps>(
                   <Button
                     variant="ghost"
                     size="mini"
-                    icon={XCloseV2}
+                    icon={XClose}
                     tooltip="Remove"
                     onClick={handleClose}
                   />
@@ -211,7 +211,7 @@ const ImagePreview = React.forwardRef<HTMLDivElement, ImagePreviewProps>(
                   <Button
                     variant="ghost"
                     size="mini"
-                    icon={Download01V2}
+                    icon={Download01}
                     tooltip="Download"
                     onClick={handleDownload}
                   />

@@ -16,7 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   Input,
-  User01V2,
+  User01,
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -133,7 +133,7 @@ function TaskRowAssigneeMenu({
                 }
               />
             ) : (
-              User01V2
+              User01
             )
           }
         />

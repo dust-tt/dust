@@ -2,11 +2,11 @@ import type { ConversationError } from "@app/types/assistant/conversation";
 import { isAPIErrorResponse } from "@app/types/error";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import {
-  AlertCircleV2,
+  AlertCircle,
   Button,
   Icon,
   LinkWrapper,
-  LogIn01V2,
+  LogIn01,
 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 
@@ -36,7 +36,7 @@ export function ConversationErrorDisplay({ error }: ConversationErrorProps) {
 function ConversationAccessRestricted() {
   return (
     <ErrorDisplay
-      icon={AlertCircleV2}
+      icon={AlertCircle}
       title="You don't have access to this page"
       message={["This conversation may include restricted data."]}
     />
@@ -46,7 +46,7 @@ function ConversationAccessRestricted() {
 function ConversationNotFound() {
   return (
     <ErrorDisplay
-      icon={AlertCircleV2}
+      icon={AlertCircle}
       title="Conversation Not Found"
       message="This conversation may have been deleted or moved."
     />
@@ -94,7 +94,7 @@ export function ErrorDisplay({ icon, message, title }: ErrorDisplayProps) {
         )}
       </p>
       <LinkWrapper href="/">
-        <Button variant="outline" label="Back to homepage" icon={LogIn01V2} />
+        <Button variant="outline" label="Back to homepage" icon={LogIn01} />
       </LinkWrapper>
     </div>
   );

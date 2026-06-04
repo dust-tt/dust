@@ -12,7 +12,7 @@ import {
   DataTable,
   IconButton,
   LoadingBlock,
-  XCloseV2,
+  XClose,
 } from "@dust-tt/sparkle";
 import type { CellContext, PaginationState } from "@tanstack/react-table";
 import capitalize from "lodash/capitalize";
@@ -123,7 +123,7 @@ const memberColumns = [
           <></>
         ) : (
           <IconButton
-            icon={XCloseV2}
+            icon={XClose}
             onClick={info.row.original.onRemoveMemberClick}
           />
         )}

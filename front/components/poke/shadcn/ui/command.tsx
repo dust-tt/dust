@@ -1,12 +1,7 @@
 "use client";
 
 import { cn } from "@app/components/poke/shadcn/lib/utils";
-import {
-  Dialog,
-  DialogContent,
-  LinkWrapper,
-  SearchMdV2,
-} from "@dust-tt/sparkle";
+import { Dialog, DialogContent, LinkWrapper, SearchMd } from "@dust-tt/sparkle";
 import type { DialogProps } from "@radix-ui/react-dialog";
 import { Command as CommandPrimitive } from "cmdk";
 import * as React from "react";
@@ -144,7 +139,7 @@ const CommandInput = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof CommandPrimitive.Input>
 >(({ className, ...props }, ref) => (
   <div className="flex items-center border-b px-3" cmdk-input-wrapper="">
-    <SearchMdV2 className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+    <SearchMd className="mr-2 h-4 w-4 shrink-0 opacity-50" />
     <CommandPrimitive.Input
       ref={ref}
       className={cn(

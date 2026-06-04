@@ -1,5 +1,5 @@
 import {
-  Attachment01V2,
+  Attachment01,
   Icon,
   Markdown,
   Sheet,
@@ -49,11 +49,7 @@ export function FairUsageModal({ isOpened, onClose }: FairUsageModalProps) {
           <SheetTitle>Dust's Fair Use Policy</SheetTitle>
         </SheetHeader>
         <SheetContainer>
-          <Icon
-            visual={Attachment01V2}
-            size="lg"
-            className="text-success-500"
-          />
+          <Icon visual={Attachment01} size="lg" className="text-success-500" />
           <Markdown content={FAIR_USE_CONTENT} forcedTextSize="text-sm" />
         </SheetContainer>
       </SheetContent>

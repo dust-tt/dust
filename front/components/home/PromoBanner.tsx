@@ -1,4 +1,4 @@
-import { Button, ClockV2, User01V2, XCloseV2 } from "@dust-tt/sparkle";
+import { Button, Clock, User01, XClose } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
 // =============================================================================
@@ -67,7 +67,7 @@ export function PromoBanner() {
     <div className="fixed bottom-4 right-4 z-40 max-w-[180px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg sm:max-w-[210px]">
       <Button
         variant="outline"
-        icon={XCloseV2}
+        icon={XClose}
         size="icon-xs"
         className="absolute right-1 top-1 z-10"
         onClick={() => {
@@ -88,12 +88,12 @@ export function PromoBanner() {
         <div className="text-xs font-semibold text-slate-900">{title}</div>
         <div className="mt-1 space-y-0.5 text-[11px] text-slate-600">
           <div className="flex items-center gap-1.5">
-            <ClockV2 className="h-3 w-3 shrink-0 text-slate-400" />
+            <Clock className="h-3 w-3 shrink-0 text-slate-400" />
             <span>{time}</span>
           </div>
           {host && (
             <div className="flex items-center gap-1.5">
-              <User01V2 className="h-3 w-3 shrink-0 text-slate-400" />
+              <User01 className="h-3 w-3 shrink-0 text-slate-400" />
               <span>{host}</span>
             </div>
           )}

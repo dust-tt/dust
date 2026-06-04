@@ -3,11 +3,11 @@ import React from "react";
 
 import { CHIP_COLORS, CHIP_SIZES } from "@sparkle/components/Chip";
 
-import { Chip, Users01V2 } from "../index_with_tw_base";
+import { Chip, Users01 } from "../index_with_tw_base";
 
 const ICONS = {
   none: null,
-  Users01V2: Users01V2,
+  Users01: Users01,
 } as const;
 
 const meta = {

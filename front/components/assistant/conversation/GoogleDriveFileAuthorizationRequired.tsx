@@ -15,11 +15,11 @@ import type { PickerTokenResponseType } from "@app/pages/api/w/[wId]/google_driv
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
   Button,
-  CheckCircleV2,
+  CheckCircle,
   ContentMessage,
-  File04V2,
-  LinkExternal01V2,
-  XCloseV2,
+  File04,
+  LinkExternal01,
+  XClose,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -193,7 +193,7 @@ export function GoogleDriveFileAuthorizationRequired({
     <ContentMessage
       title={isAuthorized ? "File authorized" : "Authorization required"}
       variant={isAuthorized ? "success" : "primary"}
-      icon={isAuthorized ? CheckCircleV2 : File04V2}
+      icon={isAuthorized ? CheckCircle : File04}
       className="flex w-80 min-w-[300px] flex-col gap-3 sm:min-w-[500px]"
     >
       {canCurrentUserRespond ? (
@@ -216,7 +216,7 @@ export function GoogleDriveFileAuthorizationRequired({
                 variant="outline"
                 size="xs"
                 label="Skip"
-                icon={XCloseV2}
+                icon={XClose}
                 disabled={isResolving || isOpeningPicker}
                 onClick={() => void handleSkip()}
               />
@@ -225,7 +225,7 @@ export function GoogleDriveFileAuthorizationRequired({
                   label="Open in Web App"
                   variant="highlight"
                   size="xs"
-                  icon={LinkExternal01V2}
+                  icon={LinkExternal01}
                   onClick={handleOpenInWebApp}
                 />
               ) : (
@@ -233,7 +233,7 @@ export function GoogleDriveFileAuthorizationRequired({
                   label={isButtonLoading ? "Loading..." : "Open File Picker"}
                   variant="highlight"
                   size="xs"
-                  icon={File04V2}
+                  icon={File04}
                   disabled={
                     isButtonLoading ||
                     isResolving ||
