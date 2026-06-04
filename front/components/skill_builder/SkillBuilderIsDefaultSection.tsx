@@ -1,4 +1,5 @@
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
+import { SKILL_INVOCATION_LABEL } from "@app/lib/skills/labels";
 import {
   ContentMessage,
   Dialog,
@@ -87,7 +88,9 @@ export function SkillBuilderIsDefaultSection() {
                   className="w-full"
                 >
                   The content in&nbsp;
-                  <span className="font-semibold">When to use this skill</span>
+                  <span className="font-semibold">
+                    {SKILL_INVOCATION_LABEL}
+                  </span>
                   &nbsp;may be too short for agents to clearly understand when
                   to use this skill. Consider making it more descriptive before
                   allowing discovery.

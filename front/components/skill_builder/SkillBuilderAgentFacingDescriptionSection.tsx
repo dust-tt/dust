@@ -9,6 +9,7 @@ import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuild
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
 import { useDebounceWithAbort } from "@app/hooks/useDebounce";
+import { SKILL_INVOCATION_LABEL } from "@app/lib/skills/labels";
 import { useSimilarSkills, useSkills } from "@app/lib/swr/skill_configurations";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import { Button, cn, ReverseLeftV2 } from "@dust-tt/sparkle";
@@ -189,7 +190,7 @@ export function SkillBuilderAgentFacingDescriptionSection() {
     <section className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="heading-lg font-semibold text-foreground dark:text-foreground-night">
-          When to use this skill
+          {SKILL_INVOCATION_LABEL}
         </h3>
         {descriptionDiffers && (
           <Button

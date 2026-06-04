@@ -5,6 +5,10 @@ import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import {
+  SKILL_INSTRUCTIONS_LABEL,
+  SKILL_INVOCATION_LABEL,
+} from "@app/lib/skills/labels";
 import { apiError } from "@app/logger/withlogging";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -17,8 +21,8 @@ const PostSkillSuggestionBodySchema = z.object({
   userFacingDescription: z.string().min(1, "Description is required."),
   agentFacingDescription: z
     .string()
-    .min(1, "What will this skill be used for is required."),
-  instructions: z.string().min(1, "Instructions are required."),
+    .min(1, `${SKILL_INVOCATION_LABEL} is required.`),
+  instructions: z.string().min(1, `${SKILL_INSTRUCTIONS_LABEL} are required.`),
   icon: z.string().nullable(),
   mcpServerViewIds: z.array(z.string()),
 });
