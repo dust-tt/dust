@@ -66,7 +66,7 @@ const PROD_PRODUCT_PREPAID_COMMIT = "1408c9fc-dea1-4269-bd6d-1bc0aa1f1218";
 const PROD_PRODUCT_SEAT_SUBSCRIPTION_CREDITS =
   "03faa744-c1ab-4b94-aaf1-5fdaec89e11a";
 const PROD_PRODUCT_SEAT_SUBSCRIPTION_COMMIT =
-  "TODO_PROD_PRODUCT_SEAT_SUBSCRIPTION_COMMIT";
+  "5cdb49e6-0a92-4a55-9c92-c8913b2df0d5";
 
 // --- Credit type IDs (stable across envs unless noted) ---
 
