@@ -44,30 +44,30 @@ import {
   ActionFolderIcon,
   ActionMagicIcon,
   ActionUserGroupIcon,
-  ArrowDownCircleIcon,
-  Upload01V2,
-  Attachment01V2,
+  ArrowCircleBrokenDown,
+  Upload01,
+  Attachment01,
   Avatar,
   Button,
-  MessagePlusCircleV2,
+  MessagePlusCircle,
   Chip,
-  CloudArrowDownIcon,
-  Settings01V2,
-  File02V2,
+  DownloadCloud01,
+  Settings01,
+  File02,
   DoubleIcon,
-  FolderV2,
-  ThumbsDownV2,
-  ThumbsUpV2,
+  Folder,
+  ThumbsDown,
+  ThumbsUp,
   Icon,
-  LogOut01V2,
-  MagicWand02V2,
-  SearchMdV2,
-  PlusV2,
-  RobotV2,
+  LogOut01,
+  MagicWand02,
+  SearchMd,
+  Plus,
+  Robot,
   SearchDropdownMenu,
-  SuitcaseIcon,
-  Users01V2,
-  User01V2,
+  Briefcase01,
+  Users01,
+  User01,
 } from "../index_with_tw_base";
 
 const meta = {
@@ -132,51 +132,48 @@ export const ComplexDropdown: Story = {
           <DropdownMenuLabel label="My Account" />
           <DropdownMenuGroup>
             <DropdownMenuItem
-              icon={User01V2}
+              icon={User01}
               label="Profile"
               endComponent={
-                <Button size="icon" icon={Upload01V2} variant="ghost" />
+                <Button size="icon" icon={Upload01} variant="ghost" />
               }
             />
-            <DropdownMenuItem icon={ArrowDownCircleIcon} label="Billing" />
-            <DropdownMenuItem icon={Settings01V2} label="Settings" />
-            <DropdownMenuItem icon={User01V2} label="Keyboard shortcuts" />
+            <DropdownMenuItem icon={ArrowCircleBrokenDown} label="Billing" />
+            <DropdownMenuItem icon={Settings01} label="Settings" />
+            <DropdownMenuItem icon={User01} label="Keyboard shortcuts" />
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
           <DropdownMenuGroup>
             <DropdownMenuLabel label="Team" />
-            <DropdownMenuItem icon={User01V2} label="Members" />
+            <DropdownMenuItem icon={User01} label="Members" />
             <DropdownMenuSub>
-              <DropdownMenuSubTrigger icon={User01V2} label="Invite users" />
+              <DropdownMenuSubTrigger icon={User01} label="Invite users" />
               <DropdownMenuPortal>
                 <DropdownMenuSubContent>
-                  <DropdownMenuItem icon={MagicWand02V2} label="Email" />
-                  <DropdownMenuItem
-                    icon={MessagePlusCircleV2}
-                    label="Message"
-                  />
+                  <DropdownMenuItem icon={MagicWand02} label="Email" />
+                  <DropdownMenuItem icon={MessagePlusCircle} label="Message" />
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem icon={User01V2} label="More..." />
-                  <DropdownMenuItem icon={User01V2} label="More.." />
-                  <DropdownMenuItem icon={User01V2} label="More..." />
-                  <DropdownMenuItem icon={User01V2} label="More.." />
-                  <DropdownMenuItem icon={User01V2} label="More" />
-                  <DropdownMenuItem icon={User01V2} label="More....." />
-                  <DropdownMenuItem icon={User01V2} label="More.." />
-                  <DropdownMenuItem icon={User01V2} label="More" />
-                  <DropdownMenuItem icon={User01V2} label="More...." />
+                  <DropdownMenuItem icon={User01} label="More..." />
+                  <DropdownMenuItem icon={User01} label="More.." />
+                  <DropdownMenuItem icon={User01} label="More..." />
+                  <DropdownMenuItem icon={User01} label="More.." />
+                  <DropdownMenuItem icon={User01} label="More" />
+                  <DropdownMenuItem icon={User01} label="More....." />
+                  <DropdownMenuItem icon={User01} label="More.." />
+                  <DropdownMenuItem icon={User01} label="More" />
+                  <DropdownMenuItem icon={User01} label="More...." />
                 </DropdownMenuSubContent>
               </DropdownMenuPortal>
             </DropdownMenuSub>
-            <DropdownMenuItem icon={Users01V2} label="New Team" />
+            <DropdownMenuItem icon={Users01} label="New Team" />
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
           <DropdownMenuItem icon={GithubLogo} label="GitHub" />
-          <DropdownMenuItem icon={User01V2} label="Support" />
-          <DropdownMenuItem icon={CloudArrowDownIcon} label="API" disabled />
+          <DropdownMenuItem icon={User01} label="Support" />
+          <DropdownMenuItem icon={DownloadCloud01} label="API" disabled />
           <DropdownMenuSeparator />
           <DropdownMenuItem
-            icon={LogOut01V2}
+            icon={LogOut01}
             label="Log out"
             variant="warning"
             href="/api/auth/logout"
@@ -197,12 +194,12 @@ export const WithShortcuts: Story = {
         <DropdownMenuContent className="s-w-64">
           <DropdownMenuLabel label="Create" />
           <DropdownMenuItem
-            icon={File02V2}
+            icon={File02}
             label="New File"
             endComponent={<DropdownMenuShortcut shortcut="cmd+n" />}
           />
           <DropdownMenuItem
-            icon={FolderV2}
+            icon={Folder}
             label="New Folder"
             endComponent={<DropdownMenuShortcut shortcut="cmd+shift+n" />}
           />
@@ -214,7 +211,7 @@ export const WithShortcuts: Story = {
             endComponent={<DropdownMenuShortcut shortcut="cmd+shift+p" />}
           />
           <DropdownMenuItem
-            icon={CloudArrowDownIcon}
+            icon={DownloadCloud01}
             label="Download"
             endComponent={<DropdownMenuShortcut shortcut="cmd+shift+d" />}
           />
@@ -455,7 +452,7 @@ export const WithSearchAndPicker: Story = {
       item.toLowerCase().includes(searchText.toLowerCase())
     );
 
-    const mainIcons = [FolderV2, File02V2];
+    const mainIcons = [Folder, File02];
     const extraIcons = [DriveLogo, NotionLogo, SlackLogo];
 
     const filteredAgents = [
@@ -568,7 +565,7 @@ export const WithSearchAndPicker: Story = {
           <DropdownMenuTrigger asChild>
             <Button
               label={selectedItem || "Attach"}
-              icon={Attachment01V2}
+              icon={Attachment01}
               variant="outline"
               size="sm"
             />
@@ -581,7 +578,7 @@ export const WithSearchAndPicker: Story = {
                 onChange={setSearchText}
                 name="search"
                 placeholder="Search in Dust"
-                button={<Button icon={Upload01V2} label="Upload File" />}
+                button={<Button icon={Upload01} label="Upload File" />}
               />
             }
           >
@@ -615,7 +612,7 @@ export const WithSearchAndPicker: Story = {
             ) : (
               <div className="s-flex s-h-full s-w-full s-items-center s-justify-center s-py-8">
                 <div className="s-flex s-flex-col s-items-center s-justify-center s-gap-0 s-text-center s-text-base s-font-semibold s-text-primary-400">
-                  <Icon visual={SearchMdV2} size="sm" />
+                  <Icon visual={SearchMd} size="sm" />
                   Search in Dust
                 </div>
               </div>
@@ -624,7 +621,7 @@ export const WithSearchAndPicker: Story = {
         </DropdownMenu>
         <DropdownMenu open={openAgents} onOpenChange={setOpenAgents}>
           <DropdownMenuTrigger asChild>
-            <Button icon={RobotV2} variant="outline" size="sm" isSelect />
+            <Button icon={Robot} variant="outline" size="sm" isSelect />
           </DropdownMenuTrigger>
           <DropdownMenuContent
             className="s-h-96 s-w-[380px]"
@@ -636,7 +633,7 @@ export const WithSearchAndPicker: Story = {
                 onChange={setSearchText}
                 onKeyDown={() => {}}
                 placeholder="Search Agents"
-                button={<Button icon={PlusV2} label="Create" />}
+                button={<Button icon={Plus} label="Create" />}
               />
             }
           >
@@ -668,7 +665,7 @@ export const WithSearchAndPicker: Story = {
           <DropdownMenuTrigger asChild>
             <Button
               label={selectedItem || "Add Toolset"}
-              icon={SuitcaseIcon}
+              icon={Briefcase01}
               variant="outline"
               size="sm"
             />
@@ -683,7 +680,7 @@ export const WithSearchAndPicker: Story = {
                 onChange={setSearchText}
                 onKeyDown={() => {}}
                 placeholder="Search Tools"
-                button={<Button icon={PlusV2} label="Add MCP Server" />}
+                button={<Button icon={Plus} label="Add MCP Server" />}
               />
             }
           >
@@ -727,25 +724,25 @@ export const WithStaticItems: Story = {
               <Icon
                 size="xs"
                 className="s-text-muted-foreground"
-                visual={ThumbsUpV2}
+                visual={ThumbsUp}
               />
               1
               <Icon
                 size="xs"
                 className="s-text-muted-foreground"
-                visual={ThumbsDownV2}
+                visual={ThumbsDown}
               />
             </span>
           </DropdownMenuStaticItem>
           <DropdownMenuSeparator />
           <DropdownMenuLabel label="Actions" />
           <DropdownMenuItem
-            icon={Settings01V2}
+            icon={Settings01}
             label="System Settings"
             onClick={() => console.log("Settings clicked")}
           />
           <DropdownMenuItem
-            icon={CloudArrowDownIcon}
+            icon={DownloadCloud01}
             label="Download Report"
             onClick={() => console.log("Download clicked")}
           />
@@ -817,7 +814,7 @@ export const WithTags: Story = {
               <Button
                 variant="outline"
                 label="Select Tags"
-                icon={PlusV2}
+                icon={Plus}
                 size="sm"
                 isSelect
               />
@@ -893,14 +890,14 @@ export const WithFilters: Story = {
     ];
 
     const allItems = [
-      { name: "Project Proposal.pdf", type: "documents", icon: File02V2 },
-      { name: "Q4 Report.docx", type: "documents", icon: File02V2 },
-      { name: "Team Photo.jpg", type: "images", icon: FolderV2 },
-      { name: "Logo Design.png", type: "images", icon: FolderV2 },
-      { name: "Product Demo.mp4", type: "videos", icon: FolderV2 },
-      { name: "Tutorial.mov", type: "videos", icon: FolderV2 },
-      { name: "Budget 2024.xlsx", type: "documents", icon: File02V2 },
-      { name: "Banner.svg", type: "images", icon: FolderV2 },
+      { name: "Project Proposal.pdf", type: "documents", icon: File02 },
+      { name: "Q4 Report.docx", type: "documents", icon: File02 },
+      { name: "Team Photo.jpg", type: "images", icon: Folder },
+      { name: "Logo Design.png", type: "images", icon: Folder },
+      { name: "Product Demo.mp4", type: "videos", icon: Folder },
+      { name: "Tutorial.mov", type: "videos", icon: Folder },
+      { name: "Budget 2024.xlsx", type: "documents", icon: File02 },
+      { name: "Banner.svg", type: "images", icon: Folder },
     ];
 
     const filteredItems =
@@ -917,7 +914,7 @@ export const WithFilters: Story = {
         <DropdownMenuTrigger asChild>
           <Button
             label={`Files (${filteredItems.length})`}
-            icon={FolderV2}
+            icon={Folder}
             variant="outline"
             size="sm"
             isSelect
@@ -989,7 +986,7 @@ export const WithTooltips: Story = {
                 side="right"
                 sideOffset={8}
               >
-                <DropdownMenuItem icon={Attachment01V2} label="Add Knowledge" />
+                <DropdownMenuItem icon={Attachment01} label="Add Knowledge" />
               </DropdownTooltipTrigger>
               <DropdownTooltipTrigger
                 description="This feature is disabled because you need to configure settings first."
@@ -998,7 +995,7 @@ export const WithTooltips: Story = {
               >
                 <DropdownMenuItem
                   label="Save Draft"
-                  icon={CloudArrowDownIcon}
+                  icon={DownloadCloud01}
                   disabled
                 />
               </DropdownTooltipTrigger>
@@ -1017,7 +1014,7 @@ export const WithTooltips: Story = {
                 media={
                   <div className="s-flex s-items-center s-gap-3">
                     <div className="s-flex s-h-10 s-w-10 s-items-center s-justify-center s-rounded-full s-bg-green-100">
-                      <CloudArrowDownIcon className="s-h-5 s-w-5 s-text-green-600" />
+                      <DownloadCloud01 className="s-h-5 s-w-5 s-text-green-600" />
                     </div>
                     <div>
                       <h4 className="s-text-sm s-font-medium s-text-green-800">
@@ -1032,10 +1029,7 @@ export const WithTooltips: Story = {
                 side="right"
                 sideOffset={8}
               >
-                <DropdownMenuItem
-                  icon={CloudArrowDownIcon}
-                  label="Export Data"
-                />
+                <DropdownMenuItem icon={DownloadCloud01} label="Export Data" />
               </DropdownTooltipTrigger>
               <DropdownMenuItem label="Share Report" />
             </DropdownMenuContent>
@@ -1065,7 +1059,7 @@ export const WithTooltips: Story = {
                   side="left"
                   sideOffset={8}
                 >
-                  <DropdownMenuItem icon={MagicWand02V2} label="Help Item" />
+                  <DropdownMenuItem icon={MagicWand02} label="Help Item" />
                 </DropdownTooltipTrigger>
               </DropdownMenuContent>
             </DropdownMenu>

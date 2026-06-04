@@ -11,8 +11,8 @@ import {
   SearchInput,
   SidebarLayout,
   type SidebarLayoutRef,
-  SidebarLeftCloseIcon,
-  SidebarLeftOpenIcon,
+  LayoutLeft,
+  LayoutRight,
 } from "../index_with_tw_base";
 
 const meta = {
@@ -39,7 +39,7 @@ const SampleSidebar = ({
         <Button
           variant="ghost-secondary"
           size="icon"
-          icon={isCollapsed ? SidebarLeftOpenIcon : SidebarLeftCloseIcon}
+          icon={isCollapsed ? LayoutRight : LayoutLeft}
           onClick={onToggle}
         />
       )}
@@ -133,7 +133,7 @@ const ComplexSidebar = ({
         <Button
           variant="ghost-secondary"
           size="icon"
-          icon={isCollapsed ? SidebarLeftOpenIcon : SidebarLeftCloseIcon}
+          icon={isCollapsed ? LayoutRight : LayoutLeft}
           onClick={onToggle}
         />
       )}
