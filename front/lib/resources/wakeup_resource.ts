@@ -3,9 +3,9 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
-import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
-import { ConversationModel } from "@app/lib/models/agent/conversation";
+import { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { WakeUpModel } from "@app/lib/resources/storage/models/wakeup";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
@@ -14,7 +14,6 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getNextWakeUpFireAtFromScheduleConfig } from "@app/lib/utils/wakeup_description";
-import { launchIndexConversationEsWorkflow } from "@app/temporal/es_indexation/client";
 import {
   cancelWakeUpTemporalWorkflow,
   launchOrScheduleWakeUpTemporalWorkflow,
@@ -790,27 +789,12 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
   private async triggerConversationESIndexing(
     auth: Authenticator
   ): Promise<void> {
-    if (!(await hasFeatureFlag(auth, "conversation_search_indexing"))) {
-      return;
-    }
-
-    const conversation = await ConversationModel.findOne({
-      where: {
-        id: this.conversationId,
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-      attributes: ["sId"],
-    });
-    if (!conversation) {
-      return;
-    }
-
-    const result = await launchIndexConversationEsWorkflow({
-      conversationId: conversation.sId,
-      workspaceId: auth.getNonNullableWorkspace().sId,
-    });
-    if (result.isErr()) {
-      throw result.error;
+    const conversation =
+      (
+        await ConversationResource.fetchByModelIds(auth, [this.conversationId])
+      )[0] ?? null;
+    if (conversation) {
+      await ConversationResource.triggerEsIndexing(auth, conversation.sId);
     }
   }
 
