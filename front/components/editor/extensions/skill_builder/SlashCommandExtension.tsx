@@ -30,7 +30,7 @@ import type { SuggestionOptions, SuggestionProps } from "@tiptap/suggestion";
 import { exitSuggestion, Suggestion } from "@tiptap/suggestion";
 import { forwardRef, useImperativeHandle, useMemo, useRef } from "react";
 
-const slashCommandPluginKey = new PluginKey("slashCommand");
+export const slashCommandPluginKey = new PluginKey("slashCommand");
 const capabilitiesOnlySlashCommandMetaKey =
   "skillBuilderCapabilitiesOnlySlashCommand";
 
@@ -51,6 +51,15 @@ function hasSlashCharacterAtPosition(state: EditorState, position: number) {
       "\ufffc"
     ) === "/"
   );
+}
+
+function hasAllowedSlashPrefix(state: EditorState, position: number) {
+  const $position = state.doc.resolve(position);
+  const textBefore = $position.nodeBefore?.isText
+    ? $position.nodeBefore.text
+    : null;
+
+  return !textBefore || textBefore.endsWith(" ");
 }
 
 // Define available slash commands.
@@ -338,6 +347,7 @@ export const SlashCommandExtension =
         // ending with "/" is loaded programmatically via setContent on mount.
         hasBeenFocused: false,
         capabilitiesOnlyTriggerStart: null as number | null,
+        isOpeningCapsOnly: false,
       };
     },
 
@@ -356,6 +366,7 @@ export const SlashCommandExtension =
           char: "/",
           pluginKey: slashCommandPluginKey,
           allowSpaces: true,
+          allowedPrefixes: null,
           startOfLine: false,
           items: ({ query }: { query: string }) => filterSlashCommands(query),
         },
@@ -367,6 +378,9 @@ export const SlashCommandExtension =
         openCapabilitiesSlashCommand:
           () =>
           ({ chain }) => {
+            this.storage.hasBeenFocused = true;
+            this.storage.isOpeningCapsOnly = true;
+
             const inserted = chain()
               .focus()
               .command(({ tr }) => {
@@ -404,7 +418,10 @@ export const SlashCommandExtension =
 
             return true;
           },
-          allow: () => extensionStorage.hasBeenFocused,
+          allow: ({ state, range }) =>
+            extensionStorage.hasBeenFocused &&
+            (extensionStorage.isOpeningCapsOnly ||
+              hasAllowedSlashPrefix(state, range.from)),
           command: ({ editor, range, props }) => {
             if (props.action === INSERT_KNOWLEDGE_NODE_ACTION) {
               editor
@@ -526,6 +543,7 @@ export const SlashCommandExtension =
           key: new PluginKey("skillBuilderSlashCommandCleanup"),
           view: () => ({
             update: (view) => {
+              extensionStorage.isOpeningCapsOnly = false;
               const triggerStart =
                 extensionStorage.capabilitiesOnlyTriggerStart;
 
