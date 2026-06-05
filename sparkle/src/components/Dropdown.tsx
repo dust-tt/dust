@@ -146,7 +146,13 @@ const renderIcon = (
 
   // For any component type (including exotic components), render it with Icon
   if (typeof icon === "function" || typeof icon === "object") {
-    return <Icon size={size} visual={icon as React.ComponentType} className="s-text-muted-foreground dark:s-muted-forground-night" />;
+    return (
+      <Icon
+        size={size}
+        visual={icon as React.ComponentType}
+        className="s-text-muted-foreground dark:s-muted-forground-night"
+      />
+    );
   }
 
   // For primitive values, return null
@@ -223,7 +229,13 @@ const DropdownMenuSubTrigger = React.forwardRef<
     <ItemWithLabelIconAndDescription
       label={label}
       icon={icon}
-      endComponent={<Icon size="xs" visual={ChevronRight} className="s-text-muted-foreground dark:s-muted-forground-night" />}
+      endComponent={
+        <Icon
+          size="xs"
+          visual={ChevronRight}
+          className="s-text-muted-foreground dark:s-muted-forground-night"
+        />
+      }
     >
       {children}
     </ItemWithLabelIconAndDescription>
@@ -627,13 +639,17 @@ const DropdownMenuCheckboxItem = React.forwardRef<
       ref={ref}
       className={cn(
         menuStyleClasses.item({ variant: "default" }),
-        menuStyleClasses.inset,
+        menuStyleClasses.inset
       )}
       {...props}
     >
       <span className={menuStyleClasses.subTrigger.span}>
         <DropdownMenuPrimitive.ItemIndicator>
-          <Icon size="xs" visual={Check} className="s-text-muted-foreground dark:s-muted-forground-night" />
+          <Icon
+            size="xs"
+            visual={Check}
+            className="s-text-muted-foreground dark:s-muted-forground-night"
+          />
         </DropdownMenuPrimitive.ItemIndicator>
       </span>
       <ItemWithLabelIconAndDescription
