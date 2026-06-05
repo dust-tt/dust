@@ -217,6 +217,7 @@ export const INTERNAL_ALLOWED_ICONS = [
   "HubspotLogo",
   "IntercomLogo",
   "JiraLogo",
+  "LemlistLogo",
   "LinearLogo",
   "LumaLogo",
   "MicrosoftExcelLogo",
