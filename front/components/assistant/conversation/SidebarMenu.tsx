@@ -68,7 +68,6 @@ import {
   Button,
   Checkbox,
   CheckDone01V2,
-  CheckDoubleV2,
   Chip,
   ClockV2,
   cn,
@@ -1246,7 +1245,7 @@ function UnreadConversationsSection({
 
   return (
     <NavigationListCollapsibleSection
-  label={`${label} (${totalCount})`}
+      label={`${label} (${totalCount})`}
       className="bg-background dark:bg-background-night rounded-xl border border-border dark:border-border-night p-1 mx-sidebar-side-spacing"
       action={
         shouldShowMarkAllAsReadButton ? (

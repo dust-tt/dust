@@ -344,12 +344,12 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
               </DropdownMenuSubContent>
             </DropdownMenuPortal>
           </DropdownMenuSub>
-                          <DropdownMenuItem
-                  label="Dust Academy"
-                  icon={BookOpen01V2}
-                  href="https://dust.tt/academy"
-                  target="_blank"
-                />
+          <DropdownMenuItem
+            label="Dust Academy"
+            icon={BookOpen01V2}
+            href="https://dust.tt/academy"
+            target="_blank"
+          />
 
           {isFirefox ? (
             <DropdownMenuItem
