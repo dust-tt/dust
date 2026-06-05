@@ -99,6 +99,10 @@ export const MembersUsagePaginationSchema = z.object({
     .catch(DEFAULT_MEMBERS_USAGE_PAGE_LIMIT),
   offset: z.coerce.number().int().min(0).catch(0),
   search: z.string().optional().catch(undefined),
+  // Members are ordered by name (ascending) by default, giving a stable order
+  // for pagination instead of relevance ranking.
+  orderColumn: z.enum(["name", "email"]).catch("name"),
+  orderDirection: z.enum(["asc", "desc"]).catch("asc"),
 });
 
 export type MembersUsagePaginationInput = z.infer<
@@ -393,6 +397,10 @@ export async function getMembersUsage({
     searchTerm: paginationParams.search ?? "",
     offset: paginationParams.offset,
     limit: paginationParams.limit,
+    orderBy: {
+      field: paginationParams.orderColumn,
+      direction: paginationParams.orderDirection,
+    },
   });
 
   if (usersResult.isErr()) {

@@ -44,7 +44,7 @@ import {
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
-import type { PaginationState } from "@tanstack/react-table";
+import type { PaginationState, SortingState } from "@tanstack/react-table";
 import { useCallback, useEffect, useState } from "react";
 
 function formatCredits(credits: number): string {
@@ -105,6 +105,20 @@ export function UsagePage() {
     pageIndex: 0,
     pageSize: DEFAULT_PAGE_SIZE,
   });
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: "name", desc: false },
+  ]);
+
+  // Members are sorted server-side; reset to the first page when the sort
+  // changes so the user lands on the start of the new ordering.
+  const handleSetSorting = useCallback((next: SortingState) => {
+    setSorting(next);
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+  }, []);
+
+  const sort = sorting[0];
+  const membersOrderColumn = sort?.id === "email" ? "email" : "name";
+  const membersOrderDirection = sort?.desc ? "desc" : "asc";
 
   const [showBuyCreditDialog, setShowBuyCreditDialog] = useState(false);
   const [changeSeatMember, setChangeSeatMember] =
@@ -146,6 +160,8 @@ export function UsagePage() {
       searchTerm,
       pageIndex: pagination.pageIndex,
       pageSize: pagination.pageSize,
+      orderColumn: membersOrderColumn,
+      orderDirection: membersOrderDirection,
     });
 
   const { hasAvailableSeats } = useWorkspaceSeatAvailability({
@@ -382,6 +398,8 @@ export function UsagePage() {
             pagination={pagination}
             setPagination={setPagination}
             totalRowCount={totalMembersUsage}
+            sorting={sorting}
+            setSorting={handleSetSorting}
           />
         </Page.Vertical>
 

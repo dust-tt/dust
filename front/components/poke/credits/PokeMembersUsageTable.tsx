@@ -1,6 +1,5 @@
 import { CreditStateLogsLink } from "@app/components/poke/credits/CreditStateLogsLink";
 import { ReconcileCreditStateButton } from "@app/components/poke/credits/ReconcileCreditStateButton";
-import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { getMetronomeAlertUrl } from "@app/lib/metronome/urls";
@@ -9,13 +8,41 @@ import type { UserCreditState } from "@app/types/memberships";
 import type { WorkspaceType } from "@app/types/user";
 import {
   AlertCircle,
+  ArrowDown,
+  ArrowUp,
   Chip,
   ContentMessage,
+  Icon,
   LinkWrapper,
-  Spinner,
 } from "@dust-tt/sparkle";
-import type { ColumnDef } from "@tanstack/react-table";
-import { useMemo } from "react";
+import type { ColumnDef, PaginationState } from "@tanstack/react-table";
+import { useCallback, useEffect, useMemo, useState } from "react";
+
+type SortDirection = "asc" | "desc";
+
+// Explicit, server-driven sort header for the Member (name) column. Toggling
+// updates the parent sort state directly (no reliance on react-table's
+// manual-sorting toggle), which re-queries the server.
+function MemberSortHeader({
+  direction,
+  onToggle,
+}: {
+  direction: SortDirection;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className="flex items-center gap-1 hover:text-foreground dark:hover:text-foreground-night"
+    >
+      Member
+      <Icon visual={direction === "desc" ? ArrowDown : ArrowUp} size="xs" />
+    </button>
+  );
+}
+
+const DEFAULT_PAGE_SIZE = 25;
 
 function formatCredits(credits: number): string {
   return Math.round(credits).toLocaleString("en-US");
@@ -40,15 +67,23 @@ interface PokeMembersUsageTableProps {
 function makeColumns({
   owner,
   onReconciled,
+  nameSortDirection,
+  onToggleNameSort,
 }: {
   owner: WorkspaceType;
   onReconciled: () => void;
+  nameSortDirection: SortDirection;
+  onToggleNameSort: () => void;
 }): ColumnDef<MemberUsageType>[] {
   return [
     {
       accessorKey: "name",
-      header: ({ column }) => (
-        <PokeColumnSortableHeader column={column} label="Member" />
+      enableSorting: false,
+      header: () => (
+        <MemberSortHeader
+          direction={nameSortDirection}
+          onToggle={onToggleNameSort}
+        />
       ),
       cell: ({ row }) => {
         const { name, email } = row.original;
@@ -66,29 +101,22 @@ function makeColumns({
     },
     {
       accessorKey: "seatType",
-      header: ({ column }) => (
-        <PokeColumnSortableHeader column={column} label="Seat type" />
-      ),
-      cell: ({ row }) => {
-        const { seatType } = row.original;
-        return <span>{seatType ?? "-"}</span>;
-      },
+      header: "Seat type",
+      enableSorting: false,
+      cell: ({ row }) => <span>{row.original.seatType ?? "-"}</span>,
     },
     {
       accessorKey: "consumedAwuCredits",
-      header: ({ column }) => (
-        <PokeColumnSortableHeader column={column} label="Consumed" />
+      header: "Consumed",
+      enableSorting: false,
+      cell: ({ row }) => (
+        <span>{formatCredits(row.original.consumedAwuCredits)}</span>
       ),
-      cell: ({ row }) => {
-        const { consumedAwuCredits } = row.original;
-        return <span>{formatCredits(consumedAwuCredits)}</span>;
-      },
     },
     {
       accessorKey: "spendLimitAwuCredits",
-      header: ({ column }) => (
-        <PokeColumnSortableHeader column={column} label="User cap" />
-      ),
+      header: "User cap",
+      enableSorting: false,
       cell: ({ row }) => {
         const {
           spendLimitAwuCredits,
@@ -131,9 +159,8 @@ function makeColumns({
     },
     {
       accessorKey: "memberUsageLimit",
-      header: ({ column }) => (
-        <PokeColumnSortableHeader column={column} label="Seat allowance" />
-      ),
+      header: "Seat allowance",
+      enableSorting: false,
       cell: ({ row }) => {
         const { memberUsageLimit } = row.original;
         return (
@@ -145,12 +172,8 @@ function makeColumns({
     },
     {
       accessorKey: "creditState",
-      header: ({ column }) => (
-        <PokeColumnSortableHeader column={column} label="Credit state" />
-      ),
-      filterFn: (row, id, value) => {
-        return value.includes(row.getValue(id));
-      },
+      header: "Credit state",
+      enableSorting: false,
       cell: ({ row }) => {
         const { creditState, sId } = row.original;
         return (
@@ -186,25 +209,56 @@ function makeColumns({
 }
 
 export function PokeMembersUsageTable({ owner }: PokeMembersUsageTableProps) {
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: DEFAULT_PAGE_SIZE,
+  });
+  // Only name sorting is supported (server-side). Default: name ascending.
+  const [orderDirection, setOrderDirection] = useState<SortDirection>("asc");
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+
+  // Debounce the search input, and reset to the first page on a new query.
+  useEffect(() => {
+    const id = setTimeout(() => {
+      setSearch(searchInput);
+      setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+    }, 300);
+    return () => clearTimeout(id);
+  }, [searchInput]);
+
   const {
     members,
+    totalMembers,
     isMembersUsageLoading,
     isMembersUsageError,
     mutateMembersUsage,
-  } = usePokeMembersUsage({ owner });
+  } = usePokeMembersUsage({
+    owner,
+    pageIndex: pagination.pageIndex,
+    pageSize: pagination.pageSize,
+    search,
+    orderColumn: "name",
+    orderDirection,
+  });
+
+  // Toggle name sort direction and jump back to the first page. Stable across
+  // renders (only uses functional setters), so it's safe in the columns memo.
+  const toggleNameSort = useCallback(() => {
+    setOrderDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+  }, []);
 
   const columns = useMemo(
-    () => makeColumns({ owner, onReconciled: () => void mutateMembersUsage() }),
-    [owner, mutateMembersUsage]
+    () =>
+      makeColumns({
+        owner,
+        onReconciled: () => void mutateMembersUsage(),
+        nameSortDirection: orderDirection,
+        onToggleNameSort: toggleNameSort,
+      }),
+    [owner, mutateMembersUsage, orderDirection, toggleNameSort]
   );
-
-  if (isMembersUsageLoading) {
-    return (
-      <div className="flex justify-center py-8">
-        <Spinner />
-      </div>
-    );
-  }
 
   if (isMembersUsageError) {
     return (
@@ -224,7 +278,16 @@ export function PokeMembersUsageTable({ owner }: PokeMembersUsageTableProps) {
       <span className="text-sm font-medium text-foreground dark:text-foreground-night">
         Members credit states
       </span>
-      <PokeDataTable columns={columns} data={members} />
+      <PokeDataTable
+        columns={columns}
+        data={members}
+        isLoading={isMembersUsageLoading}
+        serverSideRowCount={totalMembers}
+        pagination={pagination}
+        onPaginationChange={setPagination}
+        search={searchInput}
+        onSearchChange={setSearchInput}
+      />
     </div>
   );
 }

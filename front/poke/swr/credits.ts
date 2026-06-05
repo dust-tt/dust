@@ -223,13 +223,41 @@ export function usePokeAwuPoolSummary({
 export function usePokeMembersUsage({
   owner,
   disabled,
-}: PokeConditionalFetchProps) {
+  pageIndex,
+  pageSize,
+  search,
+  orderColumn,
+  orderDirection,
+}: PokeConditionalFetchProps & {
+  pageIndex: number;
+  pageSize: number;
+  search?: string;
+  orderColumn?: "name" | "email";
+  orderDirection?: "asc" | "desc";
+}) {
   const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetMembersUsageResponseBody> = fetcher;
 
+  const params = new URLSearchParams({
+    offset: String(pageIndex * pageSize),
+    limit: String(pageSize),
+  });
+  if (search && search.trim().length > 0) {
+    params.set("search", search.trim());
+  }
+  if (orderColumn) {
+    params.set("orderColumn", orderColumn);
+  }
+  if (orderDirection) {
+    params.set("orderDirection", orderDirection);
+  }
+
   const { data, error, isValidating, mutate } = useSWRWithDefaults(
-    disabled ? null : `/api/poke/workspaces/${owner.sId}/credits/members-usage`,
-    fetcherFn
+    disabled
+      ? null
+      : `/api/poke/workspaces/${owner.sId}/credits/members-usage?${params.toString()}`,
+    fetcherFn,
+    { revalidateOnFocus: false, keepPreviousData: true }
   );
 
   return {
