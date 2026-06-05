@@ -2,11 +2,9 @@
 // @migration-status: MIGRATED_TO_HONO
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { fetchActiveUsersMetrics } from "@app/lib/api/assistant/observability/active_users_metrics";
-import {
-  daysToDateRange,
-  timezoneSchema,
-} from "@app/lib/api/assistant/observability/utils";
+import { daysToDateRange } from "@app/lib/api/assistant/observability/utils";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
+import { timezoneSchema } from "@app/lib/api/timezone";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
