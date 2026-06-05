@@ -275,7 +275,7 @@ function SearchResults({
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="px-2">
+      <NavigationList className="px-2">
         <NavigationListCollapsibleSection
           label="Pods"
           type="collapse"
@@ -331,7 +331,7 @@ function SearchResults({
             </>
           )}
         </NavigationListCollapsibleSection>
-      </div>
+      </NavigationList>
 
       <NavigationList className="px-2">
         <NavigationListCollapsibleSection
