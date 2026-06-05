@@ -5,6 +5,7 @@ import { connectToMCPServer } from "@app/lib/actions/mcp_metadata";
 import { MCPOAuthProvider } from "@app/lib/actions/mcp_oauth_provider";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { MCPOAuthConnectionMetadataType } from "@app/lib/api/oauth/providers/mcp";
+import { validateExternalUrl } from "@app/lib/api/url_safety";
 import type { Authenticator } from "@app/lib/auth";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { apiError } from "@app/logger/withlogging";
@@ -60,15 +61,13 @@ async function handler(
 
       const { url, customHeaders } = r.data;
 
-      // Validate URL format
-      try {
-        new URL(url);
-      } catch {
+      const urlError = await validateExternalUrl(url);
+      if (urlError) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "Invalid URL format. Please provide a valid URL.",
+            message: urlError,
           },
         });
       }
