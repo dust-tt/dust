@@ -149,13 +149,9 @@ export function ManageAgentsPage() {
     };
 
     return {
-      all_custom: filteredList(
-        allAgents.filter((a) => a.scope !== "global")
-      ),
+      all_custom: filteredList(allAgents.filter((a) => a.scope !== "global")),
       editable_by_me: filteredList(allAgents.filter((a) => a.canEdit)),
-      global: filteredList(
-        allAgents.filter((a) => a.scope === "global")
-      ),
+      global: filteredList(allAgents.filter((a) => a.scope === "global")),
       archived: filteredList(
         archivedAgentConfigurations.sort((a, b) =>
           a.name.toLowerCase().localeCompare(b.name.toLowerCase())
@@ -213,7 +209,6 @@ export function ManageAgentsPage() {
 
     await mutateAgentConfigurations();
   };
-
 
   const searchBarRef = useRef<HTMLInputElement>(null);
 

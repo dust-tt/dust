@@ -212,7 +212,6 @@ export function ManageSkillsPage() {
     [handleSkillSelect, knownSkillsById, setSkillIdParam]
   );
 
-
   const searchBarRef = useRef<HTMLInputElement>(null);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
