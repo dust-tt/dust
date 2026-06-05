@@ -10,6 +10,7 @@ import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { getApprovalArgsLabel } from "@app/lib/actions/tool_approval_labels";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/tool_status";
 import type { StepContext } from "@app/lib/actions/types";
+import { isServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type { MCPToolRetryPolicyType } from "@app/lib/api/mcp";
 import { getRetryPolicyFromToolConfiguration } from "@app/lib/api/mcp";
 import { createMCPAction } from "@app/lib/api/mcp/create_mcp";
@@ -252,6 +253,9 @@ async function createActionForTool(
             conversationId: conversation.sId,
             created: Date.now(),
             inputs: action.augmentedInputs,
+            editable: isServerSideMCPToolConfiguration(actionConfiguration)
+              ? actionConfiguration.editable
+              : undefined,
             messageId: agentMessage.sId,
             stake: actionConfiguration.permission,
             userId: auth.user()?.sId,

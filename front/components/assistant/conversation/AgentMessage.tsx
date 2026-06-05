@@ -347,6 +347,7 @@ export function AgentMessage({
                 conversationId: eventPayload.data.conversationId,
                 created: eventPayload.data.created,
                 inputs: eventPayload.data.inputs,
+                editable: eventPayload.data.editable,
                 messageId: eventPayload.data.messageId,
                 metadata: eventPayload.data.metadata,
                 stake: eventPayload.data.stake,
