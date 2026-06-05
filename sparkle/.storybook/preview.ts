@@ -16,7 +16,7 @@ const preview: Preview = {
       storySort: {
         order: [
           "Assets",
-          ["IconsV2", ["Used in Product", "All Icons"], "*"],
+          ["Icons", ["Used in Product", "All Icons"], "*"],
           "Primitives",
           "Components",
           "Modules",
