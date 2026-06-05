@@ -13,19 +13,13 @@ import {
   clearMetronomePerUserCapAlert,
   clearMetronomePerUserWarningAlert,
   getMetronomeDefaultUserCapAlertForSeatType,
-  getMetronomePerUserCap,
   upsertMetronomePerUserCapAlert,
   upsertMetronomePerUserWarningAlert,
 } from "@app/lib/metronome/alerts/spend_limits";
 import { fetchPerUserAwuUsage } from "@app/lib/metronome/per_user_usage";
-import { getActiveContract } from "@app/lib/metronome/plan_type";
-import {
-  getAwuAllocationForSeatType,
-  getProductSeatTypes,
-} from "@app/lib/metronome/seat_types";
+import { getSeatAllowancesByNormalizedSeatType } from "@app/lib/metronome/seat_types";
 import { clearUserAwuWarned } from "@app/lib/metronome/user_block";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import type { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import { normalizeToPoolLimitSeatType } from "@app/types/memberships";
@@ -66,34 +60,21 @@ export class UserSpendLimitError extends Error {
 }
 
 /**
- * Resolve the seat AWU allowance for a user based on their membership seat
- * type and the active contract. Returns 0 when the contract or seat type
- * can't be resolved (e.g. free seats, no contract).
+ * Resolve the seat AWU allowance for a membership based on its seat type and
+ * the active contract. Returns 0 when the contract or seat type can't be
+ * resolved (e.g. free seats, no contract).
  */
 async function resolveUserSeatAllowance(
   auth: Authenticator,
-  user: UserResource
+  membership: MembershipResource
 ): Promise<number> {
   const workspace = auth.getNonNullableWorkspace();
-  const membership =
-    await MembershipResource.getActiveMembershipOfUserInWorkspace({
-      user,
-      workspace,
-    });
-  const normalizedSeatType = normalizeToPoolLimitSeatType(membership?.seatType);
+  const normalizedSeatType = normalizeToPoolLimitSeatType(membership.seatType);
   if (!normalizedSeatType) {
     return 0;
   }
-  const contract = await getActiveContract(workspace.sId);
-  if (!contract) {
-    return 0;
-  }
-  const productSeatTypes = await getProductSeatTypes();
-  return getAwuAllocationForSeatType(
-    contract,
-    normalizedSeatType,
-    productSeatTypes
-  );
+  const allowances = await getSeatAllowancesByNormalizedSeatType(workspace.sId);
+  return allowances[normalizedSeatType] ?? 0;
 }
 
 export async function getUserSpendLimit(
@@ -120,26 +101,21 @@ export async function getUserSpendLimit(
     );
   }
 
-  const result = await getMetronomePerUserCap({
-    metronomeCustomerId: workspace.metronomeCustomerId,
-    workspaceId: workspace.sId,
-    userId: user.sId,
-  });
-  if (result.isErr()) {
-    return new Err(
-      new UserSpendLimitError("metronome_error", result.error.message)
-    );
-  }
-
-  if (!result.value) {
+  // The override persisted on the membership is the source of truth (the
+  // Metronome alert is derived from it, with the seat allowance added).
+  const membership =
+    await MembershipResource.getActiveMembershipOfUserInWorkspace({
+      user,
+      workspace,
+    });
+  if (!membership || membership.poolCapOverrideAwuCredits === null) {
     return new Ok({ kind: "unlimited" });
   }
 
-  // The Metronome threshold includes the seat allowance. Subtract it to
-  // return the pool-only portion (what the admin entered).
-  const seatAllowance = await resolveUserSeatAllowance(auth, user);
-  const poolAwuCredits = result.value.alert.threshold - seatAllowance;
-  return new Ok({ kind: "limited", awuCredits: poolAwuCredits });
+  return new Ok({
+    kind: "limited",
+    awuCredits: membership.poolCapOverrideAwuCredits,
+  });
 }
 
 /**
@@ -254,6 +230,27 @@ export async function setUserSpendLimit(
     );
   }
 
+  const membership =
+    await MembershipResource.getActiveMembershipOfUserInWorkspace({
+      user,
+      workspace,
+    });
+  if (!membership) {
+    return new Err(
+      new UserSpendLimitError(
+        "user_not_found",
+        "Could not find an active membership for the user in this workspace."
+      )
+    );
+  }
+
+  // Persist the admin's intent first: the membership is the source of truth,
+  // the Metronome alerts below are derived enforcement (a failed sync can be
+  // retried and re-derives from this value).
+  await membership.updatePoolCapOverride(
+    limit.kind === "limited" ? limit.awuCredits : null
+  );
+
   let transitionedTo: "reached" | "resolved" | null;
 
   switch (limit.kind) {
@@ -288,13 +285,8 @@ export async function setUserSpendLimit(
       void clearUserAwuWarned(workspace.sId, user.sId);
 
       // Look up the user's seat type to find the matching default cap.
-      const membership =
-        await MembershipResource.getActiveMembershipOfUserInWorkspace({
-          user,
-          workspace,
-        });
       const normalizedSeatType = normalizeToPoolLimitSeatType(
-        membership?.seatType
+        membership.seatType
       );
 
       let defaultAlert = null;
@@ -339,7 +331,7 @@ export async function setUserSpendLimit(
     case "limited": {
       // The admin enters pool credits. Add the seat allowance to get the
       // total Metronome threshold.
-      const seatAllowance = await resolveUserSeatAllowance(auth, user);
+      const seatAllowance = await resolveUserSeatAllowance(auth, membership);
       const totalAwuCredits = limit.awuCredits + seatAllowance;
 
       const upsertResult = await upsertMetronomePerUserCapAlert({

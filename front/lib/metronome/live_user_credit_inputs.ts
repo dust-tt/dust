@@ -10,18 +10,17 @@
 // reconcile module imports the dispatcher, so the dispatcher cannot import the
 // reconcile module back.
 
-import {
-  getMetronomeDefaultUserCapAlertForSeatType,
-  getMetronomePerUserCap,
-} from "@app/lib/metronome/alerts/spend_limits";
+import { getMetronomeDefaultUserCapAlertForSeatType } from "@app/lib/metronome/alerts/spend_limits";
 import { listMetronomeSeatBalances } from "@app/lib/metronome/client";
 import { getCreditTypeAwuId } from "@app/lib/metronome/constants";
 import { fetchPerUserAwuUsage } from "@app/lib/metronome/per_user_usage";
+import { getSeatAllowancesByNormalizedSeatType } from "@app/lib/metronome/seat_types";
 import type { MetronomeSeatBalance } from "@app/lib/metronome/types";
 import type { MembershipSeatType } from "@app/types/memberships";
 import { normalizeToPoolLimitSeatType } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 // The remaining + full AWU seat balance for a user, read from the live
 // per-seat balances. Returns null when the user has no individual AWU seat
@@ -59,18 +58,26 @@ export type LiveUserCreditInputs = {
  * `expectedUserCreditState` (directly, or via the state machine context) to
  * derive the actual state — this only reads the numbers.
  *
+ * `poolCapOverrideAwuCredits` is the pool-only override persisted on the
+ * membership (`memberships.poolCapOverrideAwuCredits`) — the source of truth
+ * for per-user overrides. When set, the seat allowance is added back to get
+ * the total cap threshold; the seat-type default alert is only consulted when
+ * no override is set.
+ *
  * Surfaces Metronome read failures as `Err` so callers can fall back.
  */
 export async function fetchLiveUserCreditInputs({
   workspaceId,
   userId,
   seatType,
+  poolCapOverrideAwuCredits,
   metronomeCustomerId,
   metronomeContractId,
 }: {
   workspaceId: string;
   userId: string;
   seatType: MembershipSeatType | null;
+  poolCapOverrideAwuCredits: number | null;
   metronomeCustomerId: string;
   metronomeContractId: string | null;
 }): Promise<Result<LiveUserCreditInputs, Error>> {
@@ -98,42 +105,46 @@ export async function fetchLiveUserCreditInputs({
 
   // Resolve the effective per-user cap threshold (in AWU credits, seat
   // allowance included): the user-specific override if present, otherwise the
-  // seat-type default. `null` means no cap is configured for this user.
+  // seat-type default. `null` means no cap is configured for this user. The
+  // override is the pool-only value persisted on the membership; the seat
+  // allowance is added back to get the total threshold.
   let effectiveCapAwuCredits: number | null = null;
   let capSource: LiveUserCreditInputs["capSource"] = "none";
 
-  const overrideResult = await getMetronomePerUserCap({
-    metronomeCustomerId,
-    workspaceId,
-    userId,
-  });
-  if (overrideResult.isErr()) {
-    return new Err(
-      new Error(`Failed to read per-user cap: ${overrideResult.error.message}`)
-    );
-  }
-  if (overrideResult.value) {
-    effectiveCapAwuCredits = overrideResult.value.alert.threshold;
-    capSource = "override";
-  } else {
-    const normalizedSeatType = normalizeToPoolLimitSeatType(seatType);
+  const normalizedSeatType = normalizeToPoolLimitSeatType(seatType);
+  if (poolCapOverrideAwuCredits !== null) {
+    let seatAllowance = 0;
     if (normalizedSeatType) {
-      const defaultResult = await getMetronomeDefaultUserCapAlertForSeatType({
-        metronomeCustomerId,
-        workspaceId,
-        seatType: normalizedSeatType,
-      });
-      if (defaultResult.isErr()) {
+      try {
+        const allowances =
+          await getSeatAllowancesByNormalizedSeatType(workspaceId);
+        seatAllowance = allowances[normalizedSeatType] ?? 0;
+      } catch (err) {
         return new Err(
           new Error(
-            `Failed to read default per-user cap: ${defaultResult.error.message}`
+            `Failed to resolve seat allowance: ${normalizeError(err).message}`
           )
         );
       }
-      if (defaultResult.value) {
-        effectiveCapAwuCredits = defaultResult.value.alert.threshold;
-        capSource = "default";
-      }
+    }
+    effectiveCapAwuCredits = poolCapOverrideAwuCredits + seatAllowance;
+    capSource = "override";
+  } else if (normalizedSeatType) {
+    const defaultResult = await getMetronomeDefaultUserCapAlertForSeatType({
+      metronomeCustomerId,
+      workspaceId,
+      seatType: normalizedSeatType,
+    });
+    if (defaultResult.isErr()) {
+      return new Err(
+        new Error(
+          `Failed to read default per-user cap: ${defaultResult.error.message}`
+        )
+      );
+    }
+    if (defaultResult.value) {
+      effectiveCapAwuCredits = defaultResult.value.alert.threshold;
+      capSource = "default";
     }
   }
 

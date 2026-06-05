@@ -230,9 +230,9 @@ export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
     buildResolverKey: (p) => `${p.metronomeCustomerId}-${p.workspaceId}`,
   },
   {
-    id: "metronome_per_user_cap_thresholds",
-    label: "Metronome per-user cap thresholds",
-    fnName: "fetchPerUserCapThresholds",
+    id: "metronome_per_user_cap_alert_ids",
+    label: "Metronome per-user cap alert ids",
+    fnName: "fetchPerUserCapAlertIds",
     params: [
       {
         key: "metronomeCustomerId",

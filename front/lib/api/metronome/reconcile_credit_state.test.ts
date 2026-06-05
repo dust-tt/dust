@@ -12,12 +12,10 @@ import { reconcileWorkspaceUserCreditStates } from "./reconcile_credit_state";
 const {
   mockListMetronomeSeatBalances,
   mockFetchPerUserAwuUsage,
-  mockGetCachedPerUserCapThresholds,
   mockGetCachedDefaultCapThresholdsBySeatType,
 } = vi.hoisted(() => ({
   mockListMetronomeSeatBalances: vi.fn(),
   mockFetchPerUserAwuUsage: vi.fn(),
-  mockGetCachedPerUserCapThresholds: vi.fn(),
   mockGetCachedDefaultCapThresholdsBySeatType: vi.fn(),
 }));
 
@@ -44,7 +42,6 @@ vi.mock("@app/lib/metronome/alerts/spend_limits", async () => {
   >("@app/lib/metronome/alerts/spend_limits");
   return {
     ...actual,
-    getCachedPerUserCapThresholds: mockGetCachedPerUserCapThresholds,
     getCachedDefaultCapThresholdsBySeatType:
       mockGetCachedDefaultCapThresholdsBySeatType,
   };
@@ -69,7 +66,6 @@ function seatBalance(userId: string, balanceAwu: number, startingAwu: number) {
 beforeEach(() => {
   vi.clearAllMocks();
   mockFetchPerUserAwuUsage.mockResolvedValue(new Ok(new Map<string, number>()));
-  mockGetCachedPerUserCapThresholds.mockResolvedValue({});
   mockGetCachedDefaultCapThresholdsBySeatType.mockResolvedValue({});
 });
 

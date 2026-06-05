@@ -417,6 +417,7 @@ export async function dispatchPerUserCapResolved({
     workspace,
     userId,
     seatType: membership.seatType,
+    poolCapOverrideAwuCredits: membership.poolCapOverrideAwuCredits,
   });
 
   const result = await transitionUserCreditState(
@@ -442,10 +443,12 @@ async function resolveLiveBalanceForCapResolved({
   workspace,
   userId,
   seatType,
+  poolCapOverrideAwuCredits,
 }: {
   workspace: WorkspaceResource;
   userId: string;
   seatType: MembershipSeatType | null;
+  poolCapOverrideAwuCredits: number | null;
 }): Promise<LiveUserSeatBalance | undefined> {
   const { metronomeCustomerId } = workspace;
   if (!metronomeCustomerId) {
@@ -461,6 +464,7 @@ async function resolveLiveBalanceForCapResolved({
     workspaceId: workspace.sId,
     userId,
     seatType,
+    poolCapOverrideAwuCredits,
     metronomeCustomerId,
     metronomeContractId,
   });
