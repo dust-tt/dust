@@ -1209,7 +1209,7 @@ export class Authenticator {
     return this._attributionKey ?? null;
   }
 
-  attributionKeyId(): ModelId | null {
+  attributionKeyModelId(): ModelId | null {
     return this._attributionKey?.id ?? null;
   }
 

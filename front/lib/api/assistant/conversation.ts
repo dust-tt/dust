@@ -930,7 +930,7 @@ export async function postUserMessage(
     // this drives api_key_name in usage analytics without affecting authorization.
     const enrichedContext: UserMessageContext = {
       ...context,
-      apiKeyId: auth.attributionKeyId() ?? auth.key()?.id ?? null,
+      apiKeyId: auth.attributionKeyModelId() ?? auth.key()?.id ?? null,
       authMethod: auth.authMethod(),
     };
 
