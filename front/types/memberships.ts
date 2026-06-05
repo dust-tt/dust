@@ -193,8 +193,8 @@ export function isSpendingFromPersonalSeat(state: UserCreditState): boolean {
 // low-balance warning bands kick in. Mirrors the seat-low-balance guards in
 // `lib/metronome/user_credit_state_machine.ts` (threshold === 0.2 * allowance)
 // and `USER_AWU_WARNING_PERCENTAGE` (0.8) backing the per-user warning alerts.
-const SEAT_LOW_BALANCE_FRACTION = 0.2;
-const CAP_WARNING_FRACTION = 0.8;
+export const SEAT_LOW_BALANCE_FRACTION = 0.2;
+export const CAP_WARNING_FRACTION = 0.8;
 
 /**
  * The credit state a freshly-allocated seat should start in, derived purely
