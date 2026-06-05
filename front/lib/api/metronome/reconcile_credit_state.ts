@@ -88,6 +88,11 @@ type UserReconcileReport = {
   wasInvalid: boolean;
   corrected: boolean;
   executed: boolean;
+  // Live Metronome per-seat AWU balance for this user: `seatBalanceAwu` is the
+  // amount remaining, `seatStartingBalanceAwu` the full allocation granted for
+  // the period (e.g. 8000 for a pro seat). Both null for pool-based seats with
+  // no individual allocation. The remaining/starting ratio drives the
+  // user_seat ↔ user_seat_low_balance band.
   seatBalanceAwu: number | null;
   seatStartingBalanceAwu: number | null;
   effectiveCapAwuCredits: number | null;
@@ -445,28 +450,39 @@ export async function reconcileWorkspaceUserCreditStates({
 }): Promise<void> {
   const workspaceId = workspace.sId;
 
-  let seatBalances: MetronomeSeatBalance[];
-  let usageByUser: Map<string, number>;
+  // These return our `Result` type: handle their errors with early returns
+  // rather than throw + catch (ERR1).
+  const seatBalancesResult = await listMetronomeSeatBalances({
+    metronomeCustomerId,
+    metronomeContractId,
+  });
+  if (seatBalancesResult.isErr()) {
+    logger.error(
+      { workspaceId, err: seatBalancesResult.error },
+      "[ReconcileCreditState] Failed to load seat balances"
+    );
+    return;
+  }
+  const usageResult = await fetchPerUserAwuUsage({
+    metronomeCustomerId,
+    metronomeContractId,
+  });
+  if (usageResult.isErr()) {
+    logger.error(
+      { workspaceId, err: usageResult.error },
+      "[ReconcileCreditState] Failed to load per-user usage"
+    );
+    return;
+  }
+  const seatBalances = seatBalancesResult.value;
+  const usageByUser = usageResult.value;
+
+  // The cap-threshold caches (Metronome alert list) and the membership query
+  // (DB) can genuinely throw, so they stay wrapped — the ERR1-authorised case.
   let capOverrides: Record<string, MetronomeCapAlertInfo>;
   let defaultCaps: Record<NormalizedPoolLimitSeatType, MetronomeCapAlertInfo>;
   let memberships: MembershipResource[];
   try {
-    const seatBalancesResult = await listMetronomeSeatBalances({
-      metronomeCustomerId,
-      metronomeContractId,
-    });
-    if (seatBalancesResult.isErr()) {
-      throw seatBalancesResult.error;
-    }
-    const usageResult = await fetchPerUserAwuUsage({
-      metronomeCustomerId,
-      metronomeContractId,
-    });
-    if (usageResult.isErr()) {
-      throw usageResult.error;
-    }
-    seatBalances = seatBalancesResult.value;
-    usageByUser = usageResult.value;
     capOverrides = await getCachedPerUserCapThresholds({
       metronomeCustomerId,
       workspaceId,
@@ -481,11 +497,16 @@ export async function reconcileWorkspaceUserCreditStates({
   } catch (err) {
     logger.error(
       { workspaceId, err: normalizeError(err) },
-      "[ReconcileCreditState] Failed to load inputs for workspace user reconcile"
+      "[ReconcileCreditState] Failed to load cap thresholds or memberships"
     );
     return;
   }
 
+  // One UPDATE per drifting membership. Bounded by the workspace's seat count
+  // and gated on the `continue` above, so steady-state writes are ~zero; even
+  // the worst case (every seat drifting) is a small, infrequent loop on a
+  // rarely-used path. A bulk UPDATE-per-target-state isn't worth the
+  // complexity here (the cache sync would still have to run per-membership).
   for (const membership of memberships) {
     const userId = membership.user?.sId;
     if (!userId) {

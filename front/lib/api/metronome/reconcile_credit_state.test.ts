@@ -53,14 +53,14 @@ vi.mock("@app/lib/metronome/alerts/spend_limits", async () => {
 const METRONOME_CUSTOMER_ID = "cust_test_reconcile";
 const METRONOME_CONTRACT_ID = "ct_test_reconcile";
 
-function seatBalance(userId: string, balance: number, starting: number) {
+function seatBalance(userId: string, balanceAwu: number, startingAwu: number) {
   return {
     seat_id: userId,
     balances: [
       {
         credit_type_id: getCreditTypeAwuId(),
-        balance,
-        starting_balance: starting,
+        balance: balanceAwu,
+        starting_balance: startingAwu,
       },
     ],
   };
