@@ -1,13 +1,9 @@
+import type { PokeListGroups } from "@app/lib/api/poke/groups";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import type { GroupType } from "@app/types/groups";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
 import groupId from "./[groupId]";
-
-export type PokeListGroups = {
-  groups: GroupType[];
-};
 
 // Mounted at /api/poke/workspaces/:wId/groups.
 const app = pokeApp();

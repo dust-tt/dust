@@ -1,22 +1,10 @@
+import type { PokeGetWebhookSourceDetails } from "@app/lib/api/poke/webhook_sources";
 import { getWebhookSourceAdminDetails } from "@app/lib/api/webhook_source";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
-import type { TriggerType } from "@app/types/assistant/triggers";
-import type {
-  WebhookSourceForAdminType,
-  WebhookSourceViewForAdminType,
-} from "@app/types/triggers/webhooks";
-import type { UserType } from "@app/types/user";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export type PokeGetWebhookSourceDetails = {
-  webhookSource: WebhookSourceForAdminType;
-  views: WebhookSourceViewForAdminType[];
-  triggers: Array<TriggerType & { editorUser: UserType | null }>;
-  requestStats: { last24h: number; last7d: number; last30d: number };
-};
 
 const ParamsSchema = z.object({
   wsId: z.string(),

@@ -30,7 +30,7 @@ function PokeChartFallback() {
 }
 
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
-import type { PokeUnifiedCreditRow } from "@app/pages/api/poke/workspaces/[wId]/credits";
+import type { PokeUnifiedCreditRow } from "@app/lib/api/poke/credits";
 import type { PokeCreditsData } from "@app/poke/swr/credits";
 import { usePokeCredits } from "@app/poke/swr/credits";
 import type { SubscriptionType } from "@app/types/plan";

@@ -1,41 +1,19 @@
 import { metronomeBalanceToDisplayData } from "@app/lib/api/credits/metronome_balances";
+import type {
+  PokeListCreditsResponseBody,
+  PokeUnifiedCreditRow,
+} from "@app/lib/api/poke/credits";
 import { listMetronomeBalances } from "@app/lib/metronome/client";
 import { getCreditTypeProgrammaticUsdId } from "@app/lib/metronome/constants";
 import { isMetronomeExcessCredit } from "@app/lib/metronome/types";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import logger from "@app/logger/logger";
-import type { CreditDisplayData, CreditType } from "@app/types/credits";
+import type { CreditDisplayData } from "@app/types/credits";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
 import awuPoolSummary from "./awu-pool-summary";
 import membersUsage from "./members-usage";
-
-export type PokeCreditType = {
-  id: number;
-  createdAt: string;
-  type: CreditType;
-  initialAmountMicroUsd: number;
-  consumedAmountMicroUsd: number;
-  remainingAmountMicroUsd: number;
-  startDate: string | null;
-  expirationDate: string | null;
-  discount: number | null;
-  invoiceOrLineItemId: string | null;
-  metronomeCreditId: string | null;
-};
-
-export type PokeUnifiedCreditRow = {
-  rowKey: string;
-  internal: PokeCreditType | null;
-  metronome: CreditDisplayData | null;
-};
-
-export type PokeListCreditsResponseBody = {
-  rows: PokeUnifiedCreditRow[];
-  excessCreditsLast30DaysMicroUsd: number;
-  hasMetronome: boolean;
-};
 
 // Mounted at /api/poke/workspaces/:wId/credits.
 const app = pokeApp();
