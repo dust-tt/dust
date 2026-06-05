@@ -39,7 +39,7 @@ export function buildCreditStateTransitionLogsUrl({
 
   const params = new URLSearchParams({
     query,
-    cols: "service,@timestamp_utc",
+    cols: "@eventType,@fromState,@toState",
     messageDisplay: "inline",
     refresh_mode: "sliding",
     storage: "hot",
