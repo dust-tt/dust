@@ -73,6 +73,18 @@ struct ConversationDetailView: View {
                 }
             }
         }
+        .alert(
+            "Action failed",
+            isPresented: Binding(
+                get: { viewModel.actionError != nil },
+                set: { if !$0 { viewModel.actionError = nil } }
+            ),
+            presenting: viewModel.actionError
+        ) { _ in
+            Button("OK", role: .cancel) {}
+        } message: { error in
+            Text(error)
+        }
         .task {
             await viewModel.loadMessages()
         }

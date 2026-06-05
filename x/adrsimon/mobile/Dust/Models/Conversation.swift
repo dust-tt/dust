@@ -53,8 +53,7 @@ struct Conversation: Decodable, Identifiable, Hashable {
         self.unread = try container.decode(Bool.self, forKey: .unread)
         self.actionRequired = try container.decode(Bool.self, forKey: .actionRequired)
 
-        // `content` is array-of-arrays (message version groups) on the full listing, but a flat
-        // array of last-versions on the light/space listing (LightConversationType).
+        // Full listing returns version groups (array-of-arrays); the light/space listing is flat.
         let lastVersions: [PreviewMessage]? = if let versioned = try? container.decodeIfPresent(
             [[PreviewMessage]].self,
             forKey: .content
