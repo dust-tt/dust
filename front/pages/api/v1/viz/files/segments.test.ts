@@ -123,6 +123,7 @@ describe("/api/v1/viz/files/[...segments] security tests", () => {
         shareableFileId: 1 as unknown as ModelId,
         workspace,
         conversationSpaceId,
+        authorizedFileAccess: null,
         fs,
       })
     );

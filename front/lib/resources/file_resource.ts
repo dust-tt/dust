@@ -246,6 +246,8 @@ export class FileResource extends BaseResource<FileModel> {
         workspace: LightWorkspaceType;
         // sId of the project space the frame's conversation belongs to, if any.
         conversationSpaceId: string | null;
+        // Active allowlist for useFile() refs, if computed.
+        authorizedFileAccess: AuthorizedFileAccessAllowlist | null;
         // DustFileSystem scoped to this frame's authorized paths (conversation + pod if any).
         // Always read-only; share-token is its own authorization model.
         fs: DustFileSystem;
@@ -337,12 +339,16 @@ export class FileResource extends BaseResource<FileModel> {
       spaceId: frameSpaceId,
     });
 
+    const authorizedFileAccess =
+      await fileRes.getActiveAuthorizedFileAccessAllowlist();
+
     return new Ok({
       file: fileRes,
       workspace: renderLightWorkspaceType({ workspace }),
       shareScope: shareableFile.shareScope,
       shareableFileId: shareableFile.id,
       conversationSpaceId,
+      authorizedFileAccess,
       fs,
     });
   }
