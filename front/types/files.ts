@@ -594,6 +594,17 @@ export const FILE_FORMATS = {
   // Chrome sometimes uses video/webm for audio files, and we can still process them as audio only files
   "video/webm": { cat: "audio", exts: [".webm"], isSafeToDisplay: true },
 
+  // Fonts (binary assets used as-is by skill attachments / Frames).
+  "font/woff": { cat: "data", exts: [".woff"], isSafeToDisplay: false },
+  "font/woff2": { cat: "data", exts: [".woff2"], isSafeToDisplay: false },
+  "font/otf": { cat: "data", exts: [".otf"], isSafeToDisplay: false },
+  "font/ttf": { cat: "data", exts: [".ttf"], isSafeToDisplay: false },
+  "font/collection": {
+    cat: "data",
+    exts: [".ttc", ".otc"],
+    isSafeToDisplay: false,
+  },
+
   // Unknown.
   "application/octet-stream": {
     cat: "data",
@@ -763,6 +774,25 @@ export function isSupportedAudioContentType(
   return false;
 }
 
+export type SupportedFontContentType =
+  | "font/woff"
+  | "font/woff2"
+  | "font/otf"
+  | "font/ttf"
+  | "font/collection";
+
+export function isSupportedFontContentType(
+  contentType: string
+): contentType is SupportedFontContentType {
+  return (
+    contentType === "font/woff" ||
+    contentType === "font/woff2" ||
+    contentType === "font/otf" ||
+    contentType === "font/ttf" ||
+    contentType === "font/collection"
+  );
+}
+
 export function getFileFormatCategory(
   contentType: string
 ): FileFormatCategory | null {
@@ -842,6 +872,12 @@ const EXTENSION_CONTENT_TYPE_OVERRIDES: Record<
   ".tsv": "text/tsv",
   ".xls": "application/vnd.ms-excel",
   ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  ".woff": "font/woff",
+  ".woff2": "font/woff2",
+  ".otf": "font/otf",
+  ".ttf": "font/ttf",
+  ".ttc": "font/collection",
+  ".otc": "font/collection",
 };
 
 export function stripMimeParameters(contentType: string): string {

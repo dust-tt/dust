@@ -237,6 +237,14 @@ export const supportedAudioFileFormats = {
   "video/webm": [".webm"],
 } as const;
 
+export const supportedFontFileFormats = {
+  "font/woff": [".woff"],
+  "font/woff2": [".woff2"],
+  "font/otf": [".otf"],
+  "font/ttf": [".ttf"],
+  "font/collection": [".ttc", ".otc"],
+} as const;
+
 // Webhook trigger endpoint (skeleton) response type
 export const PostWebhookTriggerResponseSchema = z.object({
   success: z.literal(true),
@@ -248,6 +256,7 @@ export type PostWebhookTriggerResponseType = z.infer<
 type OtherContentType = keyof typeof supportedOtherFileFormats;
 type ImageContentType = keyof typeof supportedImageFileFormats;
 type AudioContentType = keyof typeof supportedAudioFileFormats;
+type FontContentType = keyof typeof supportedFontFileFormats;
 
 const supportedOtherContentTypes = Object.keys(
   supportedOtherFileFormats
@@ -258,6 +267,9 @@ const supportedImageContentTypes = Object.keys(
 const supportedAudioContentTypes = Object.keys(
   supportedAudioFileFormats
 ) as AudioContentType[];
+const supportedFontContentTypes = Object.keys(
+  supportedFontFileFormats
+) as FontContentType[];
 
 export const supportedFileExtensions = [
   ...Object.keys(supportedOtherFileFormats),
@@ -267,17 +279,20 @@ export const supportedFileExtensions = [
 export type SupportedFileContentType =
   | OtherContentType
   | ImageContentType
-  | AudioContentType;
+  | AudioContentType
+  | FontContentType;
 const supportedUploadableContentType = [
   ...supportedOtherContentTypes,
   ...supportedImageContentTypes,
   ...supportedAudioContentTypes,
+  ...supportedFontContentTypes,
 ] as SupportedFileContentType[];
 
 const SupportedContentFragmentTypeSchema = FlexibleEnumSchema<
   | keyof typeof supportedOtherFileFormats
   | keyof typeof supportedImageFileFormats
   | keyof typeof supportedAudioFileFormats
+  | keyof typeof supportedFontFileFormats
   | (typeof INTERNAL_MIME_TYPES_VALUES)[number]
   // Legacy content types still retuned by the API when rendering old messages.
   | "dust-application/slack"
@@ -287,6 +302,7 @@ const SupportedFileContentFragmentTypeSchema = FlexibleEnumSchema<
   | keyof typeof supportedOtherFileFormats
   | keyof typeof supportedImageFileFormats
   | keyof typeof supportedAudioFileFormats
+  | keyof typeof supportedFontFileFormats
 >();
 
 const FrameContentTypeSchema = z.literal("application/vnd.dust.frame");
