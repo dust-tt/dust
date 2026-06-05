@@ -36,6 +36,10 @@ enum AppConfig {
             "/api/w/\(workspaceId)/assistant/conversations/\(conversationId)/messages"
         }
 
+        static func conversationMessage(workspaceId: String, conversationId: String, messageId: String) -> String {
+            "/api/w/\(workspaceId)/assistant/conversations/\(conversationId)/messages/\(messageId)"
+        }
+
         static func conversationEvents(workspaceId: String, conversationId: String) -> String {
             "/api/w/\(workspaceId)/assistant/conversations/\(conversationId)/events"
         }

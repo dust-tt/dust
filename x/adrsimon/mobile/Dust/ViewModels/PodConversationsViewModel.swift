@@ -18,11 +18,15 @@ final class PodConversationsViewModel: ObservableObject {
     let space: Space
     private let workspaceId: String
     private let tokenProvider: TokenProvider
+    private var titleObserver: ConversationTitleObserver?
 
     init(space: Space, workspaceId: String, tokenProvider: TokenProvider) {
         self.space = space
         self.workspaceId = workspaceId
         self.tokenProvider = tokenProvider
+        self.titleObserver = ConversationTitleObserver { [weak self] conversationId, title in
+            self?.conversations.updateTitle(conversationId: conversationId, title: title)
+        }
     }
 
     func load() async {

@@ -19,7 +19,7 @@ struct Conversation: Decodable, Identifiable, Hashable {
     let sId: String
     let created: Double
     let updated: Double
-    let title: String?
+    var title: String?
     var unread: Bool
     var actionRequired: Bool
     let preview: ConversationPreview?
@@ -131,4 +131,47 @@ struct ConversationsResponse: Decodable {
     let conversations: [Conversation]
     let hasMore: Bool
     let lastValue: String?
+}
+
+extension Notification.Name {
+    static let conversationTitleDidChange = Notification.Name("ConversationTitleDidChange")
+}
+
+enum ConversationTitleNotification {
+    static let conversationIdKey = "conversationId"
+    static let titleKey = "title"
+}
+
+extension [Conversation] {
+    mutating func updateTitle(conversationId: String, title: String) {
+        guard let index = firstIndex(where: { $0.sId == conversationId }) else { return }
+        self[index].title = title
+    }
+}
+
+final class ConversationTitleObserver {
+    private var observer: NSObjectProtocol?
+
+    init(onTitleChange: @escaping @MainActor (_ conversationId: String, _ title: String) -> Void) {
+        self.observer = NotificationCenter.default.addObserver(
+            forName: .conversationTitleDidChange,
+            object: nil,
+            queue: .main
+        ) { notification in
+            guard let conversationId = notification
+                .userInfo?[ConversationTitleNotification.conversationIdKey] as? String,
+                let title = notification.userInfo?[ConversationTitleNotification.titleKey] as? String
+            else { return }
+
+            Task { @MainActor in
+                onTitleChange(conversationId, title)
+            }
+        }
+    }
+
+    deinit {
+        if let observer {
+            NotificationCenter.default.removeObserver(observer)
+        }
+    }
 }

@@ -28,6 +28,8 @@ struct AgentMessageStream {
 
     private(set) var snapshot: Snapshot
     private var thinkingBuffer = ""
+    private var lastGenerationTraceId: String?
+    private var retryThinkingBuffer: String?
     private var stepCounter = 0
 
     init(messageId: String) {
@@ -86,17 +88,52 @@ struct AgentMessageStream {
     }
 
     private mutating func applyTokens(_ tokens: GenerationTokensEvent) {
+        let traceChanged = didTraceChange(tokens.traceId)
+
         switch tokens.classification {
         case .tokens:
+            retryThinkingBuffer = nil
+            if traceChanged {
+                snapshot.content = ""
+            }
             snapshot.content += tokens.text
             snapshot.activity = .generating
         case .chainOfThought:
-            snapshot.chainOfThought = (snapshot.chainOfThought ?? "") + tokens.text
-            thinkingBuffer += tokens.text
+            if traceChanged {
+                snapshot.content = ""
+                retryThinkingBuffer = ""
+            }
+
+            if retryThinkingBuffer != nil {
+                let retryThinkingBuffer = (retryThinkingBuffer ?? "") + tokens.text
+                self.retryThinkingBuffer = retryThinkingBuffer
+
+                if let chainOfThought = snapshot.chainOfThought,
+                   chainOfThought.starts(with: retryThinkingBuffer)
+                {
+                    snapshot.activity = .thinking
+                    return
+                }
+
+                snapshot.chainOfThought = retryThinkingBuffer
+                thinkingBuffer = retryThinkingBuffer
+                self.retryThinkingBuffer = nil
+            } else {
+                snapshot.chainOfThought = (snapshot.chainOfThought ?? "") + tokens.text
+                thinkingBuffer += tokens.text
+            }
             snapshot.activity = .thinking
         case .openingDelimiter, .closingDelimiter:
             break
         }
+    }
+
+    private mutating func didTraceChange(_ traceId: String?) -> Bool {
+        // Compare against the previous generation trace, then record this one for the next token.
+        guard let traceId else { return false }
+        defer { lastGenerationTraceId = traceId }
+        guard let lastGenerationTraceId else { return false }
+        return traceId != lastGenerationTraceId
     }
 
     private mutating func finalize(status: AgentMessageStatus, from final: AgentMessage?) {
@@ -117,5 +154,6 @@ struct AgentMessageStream {
         stepCounter += 1
         snapshot.completedSteps.append(.thinking(id: "thinking-\(stepCounter)", content: text))
         thinkingBuffer = ""
+        retryThinkingBuffer = nil
     }
 }
