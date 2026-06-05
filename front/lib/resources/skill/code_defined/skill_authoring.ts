@@ -22,6 +22,8 @@ Write instructions as a practical playbook:
 - Avoid references to this conversation, today's date, transient files, or one-off user details unless the user explicitly wants them in the reusable skill.
 
 Before update_skill, call get_skill and preserve useful existing instructions. Patch only the fields that should change.
+
+The instructions may contain special tags such as nested skill, knowledge, or tool references (for example <skill ... />). These are managed in the builder, not by you. Preserve them verbatim, and prefer a targeted old_string/new_string edit when they are present so you do not drop them.
 `.trim();
 
 export const skillAuthoringSkill = {

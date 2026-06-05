@@ -14,6 +14,7 @@ import {
   RawMarkdownBlock,
   rawMarkdownBlockParsers,
 } from "@app/components/editor/extensions/skill_builder/RawMarkdownBlock";
+import { SkillNode } from "@app/components/editor/extensions/skill_builder/SkillNode";
 import { ToolNode } from "@app/components/editor/extensions/skill_builder/ToolNode";
 import { LinkExtension } from "@app/components/editor/input_bar/LinkExtension";
 import type { Extensions } from "@tiptap/core";
@@ -59,6 +60,7 @@ export function buildSkillInstructionsExtensionsForServer(): Extensions {
     BlockIdExtension,
     KnowledgeNode.configure({ readOnly: true }),
     ToolNode,
+    SkillNode,
     InstructionSuggestionExtension.configure({ showBlockHighlight: false }),
     RawMarkdownBlock,
     ...rawMarkdownBlockParsers,
