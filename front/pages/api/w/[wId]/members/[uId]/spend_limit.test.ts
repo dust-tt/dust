@@ -2,6 +2,7 @@ import * as creditStateDispatcher from "@app/lib/api/metronome/credit_state_disp
 import * as defaultUserCapAlert from "@app/lib/metronome/alerts/spend_limits";
 import * as perUserAlerts from "@app/lib/metronome/alerts/spend_limits";
 import * as perUserUsage from "@app/lib/metronome/per_user_usage";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { mockCustomerAlert } from "@app/tests/utils/mocks/metronome";
@@ -21,7 +22,6 @@ vi.mock("@app/lib/metronome/alerts/spend_limits", async () => {
     ...actual,
     upsertMetronomePerUserCapAlert: vi.fn(),
     clearMetronomePerUserCapAlert: vi.fn(),
-    getMetronomePerUserCap: vi.fn(),
     getMetronomeDefaultUserCapAlertForSeatType: vi.fn(),
   };
 });
@@ -62,9 +62,6 @@ beforeEach(() => {
   );
   vi.mocked(perUserAlerts.clearMetronomePerUserCapAlert).mockResolvedValue(
     new Ok(undefined)
-  );
-  vi.mocked(perUserAlerts.getMetronomePerUserCap).mockResolvedValue(
-    new Ok(null)
   );
   vi.mocked(perUserUsage.fetchPerUserAwuUsage).mockResolvedValue(
     new Ok(new Map())
@@ -203,7 +200,7 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
   });
 
   describe("GET", () => {
-    it("returns unlimited when no per-user alert exists", async () => {
+    it("returns unlimited when no override is persisted", async () => {
       const workspace = await makeMetronomeWorkspaceWithCustomer();
       const { req, res, user } = await createPrivateApiMockRequest({
         method: "GET",
@@ -218,28 +215,22 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
       expect(res._getJSONData()).toEqual({ kind: "unlimited" });
     });
 
-    it("returns limited with threshold when alert exists", async () => {
-      vi.mocked(perUserAlerts.getMetronomePerUserCap).mockResolvedValueOnce(
-        new Ok({
-          alert: {
-            id: TEST_ALERT_ID,
-            name: "test alert",
-            status: "enabled",
-            threshold: 2500,
-            type: "spend_threshold_reached",
-            updated_at: "2024-01-01T00:00:00Z",
-          },
-          customer_status: "ok",
-        })
-      );
-
+    it("returns limited with the override persisted on the membership", async () => {
       const workspace = await makeMetronomeWorkspaceWithCustomer();
-      const { req, res, user } = await createPrivateApiMockRequest({
+      const targetUser = await UserFactory.basic();
+      const membership = await MembershipFactory.associate(
+        workspace,
+        targetUser,
+        { role: "user" }
+      );
+      await membership.updatePoolCapOverride(2500);
+
+      const { req, res } = await createPrivateApiMockRequest({
         method: "GET",
         role: "admin",
         workspace,
       });
-      req.query.uId = user.sId;
+      req.query.uId = targetUser.sId;
 
       await handler(req, res);
 
@@ -252,9 +243,12 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
     it("clears alert + dispatches resolved for unlimited with no default", async () => {
       const workspace = await makeMetronomeWorkspaceWithCustomer();
       const targetUser = await UserFactory.basic();
-      await MembershipFactory.associate(workspace, targetUser, {
-        role: "user",
-      });
+      const membership = await MembershipFactory.associate(
+        workspace,
+        targetUser,
+        { role: "user" }
+      );
+      await membership.updatePoolCapOverride(1200);
 
       const { req, res } = await createPrivateApiMockRequest({
         method: "PUT",
@@ -288,6 +282,14 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
       ).not.toHaveBeenCalled();
       // No default → no usage fetch needed; behavior matches pre-PR-A.
       expect(perUserUsage.fetchPerUserAwuUsage).not.toHaveBeenCalled();
+
+      // The persisted override is cleared.
+      const updatedMembership =
+        await MembershipResource.getActiveMembershipOfUserInWorkspace({
+          user: targetUser,
+          workspace,
+        });
+      expect(updatedMembership?.poolCapOverrideAwuCredits).toBeNull();
     });
 
     it("clears alert + dispatches reached for unlimited when default exists and usage is over it", async () => {
@@ -424,6 +426,14 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
       expect(
         creditStateDispatcher.dispatchPerUserCapReached
       ).not.toHaveBeenCalled();
+
+      // The pool-only override is persisted on the membership.
+      const updatedMembership =
+        await MembershipResource.getActiveMembershipOfUserInWorkspace({
+          user: targetUser,
+          workspace,
+        });
+      expect(updatedMembership?.poolCapOverrideAwuCredits).toBe(1500);
     });
 
     it("dispatches reached when usage is at/above cap", async () => {

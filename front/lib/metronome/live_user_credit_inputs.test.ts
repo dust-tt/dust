@@ -6,12 +6,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   mockListMetronomeSeatBalances,
   mockFetchPerUserAwuUsage,
-  mockGetMetronomePerUserCap,
   mockGetMetronomeDefaultUserCapAlertForSeatType,
 } = vi.hoisted(() => ({
   mockListMetronomeSeatBalances: vi.fn(),
   mockFetchPerUserAwuUsage: vi.fn(),
-  mockGetMetronomePerUserCap: vi.fn(),
   mockGetMetronomeDefaultUserCapAlertForSeatType: vi.fn(),
 }));
 
@@ -38,7 +36,6 @@ vi.mock("@app/lib/metronome/alerts/spend_limits", async () => {
   >("@app/lib/metronome/alerts/spend_limits");
   return {
     ...actual,
-    getMetronomePerUserCap: mockGetMetronomePerUserCap,
     getMetronomeDefaultUserCapAlertForSeatType:
       mockGetMetronomeDefaultUserCapAlertForSeatType,
   };
@@ -66,7 +63,6 @@ function seatBalance(balanceAwu: number, startingAwu: number) {
 beforeEach(() => {
   vi.clearAllMocks();
   mockFetchPerUserAwuUsage.mockResolvedValue(new Ok(new Map<string, number>()));
-  mockGetMetronomePerUserCap.mockResolvedValue(new Ok(null));
   mockGetMetronomeDefaultUserCapAlertForSeatType.mockResolvedValue(
     new Ok(null)
   );
@@ -82,6 +78,7 @@ describe("fetchLiveUserCreditInputs", () => {
       workspaceId: "ws_test",
       userId: USER_ID,
       seatType: "max",
+      poolCapOverrideAwuCredits: null,
       metronomeCustomerId: CUSTOMER_ID,
       metronomeContractId: CONTRACT_ID,
     });
@@ -101,9 +98,6 @@ describe("fetchLiveUserCreditInputs", () => {
     mockListMetronomeSeatBalances.mockResolvedValue(
       new Ok(seatBalance(0, 40000))
     );
-    mockGetMetronomePerUserCap.mockResolvedValue(
-      new Ok({ alert: { threshold: 50000 } })
-    );
     mockFetchPerUserAwuUsage.mockResolvedValue(
       new Ok(new Map<string, number>([[USER_ID, 10000]]))
     );
@@ -112,6 +106,9 @@ describe("fetchLiveUserCreditInputs", () => {
       workspaceId: "ws_test",
       userId: USER_ID,
       seatType: "max",
+      // Pool-only override from the membership; no contract resolves for
+      // "ws_test" so the seat allowance is 0 and the total cap equals it.
+      poolCapOverrideAwuCredits: 50000,
       metronomeCustomerId: CUSTOMER_ID,
       metronomeContractId: CONTRACT_ID,
     });
@@ -134,6 +131,7 @@ describe("fetchLiveUserCreditInputs", () => {
       workspaceId: "ws_test",
       userId: USER_ID,
       seatType: "max",
+      poolCapOverrideAwuCredits: null,
       metronomeCustomerId: CUSTOMER_ID,
       metronomeContractId: CONTRACT_ID,
     });

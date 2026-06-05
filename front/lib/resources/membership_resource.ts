@@ -1477,6 +1477,19 @@ export class MembershipResource extends BaseResource<MembershipModel> {
   }
 
   /**
+   * Update the per-user pool cap override (in AWU credits, seat allowance
+   * excluded) of an active membership in place. `null` clears the override,
+   * letting the seat-type default apply. Callers are responsible for syncing
+   * the derived Metronome alerts.
+   */
+  async updatePoolCapOverride(
+    poolCapOverrideAwuCredits: number | null,
+    transaction?: Transaction
+  ): Promise<void> {
+    await this.update({ poolCapOverrideAwuCredits }, transaction);
+  }
+
+  /**
    * Schedule a seat-type change at a future date by closing the current
    * row at `scheduledAt` and inserting a future row that becomes active
    * once `scheduledAt` is reached. Both rows coexist during the window;

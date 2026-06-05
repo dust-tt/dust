@@ -1,9 +1,16 @@
 import { listMetronomeProducts } from "@app/lib/metronome/client";
 import { SEAT_TYPE_CUSTOM_FIELD_KEY } from "@app/lib/metronome/constants";
 import type { CachedContract } from "@app/lib/metronome/plan_type";
+import { getActiveContract } from "@app/lib/metronome/plan_type";
 import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
-import type { MembershipSeatType } from "@app/types/memberships";
-import { isMembershipSeatType } from "@app/types/memberships";
+import type {
+  MembershipSeatType,
+  NormalizedPoolLimitSeatType,
+} from "@app/types/memberships";
+import {
+  isMembershipSeatType,
+  NORMALIZED_POOL_LIMIT_SEAT_TYPES,
+} from "@app/types/memberships";
 import type { Subscription } from "@metronome/sdk/resources";
 
 /**
@@ -393,4 +400,30 @@ export function getAwuAllocationForSeatType(
 ): number {
   return getAwuAllocationInfoForSeatType(contract, seatType, productSeatTypes)
     .credits;
+}
+
+/**
+ * Resolve the seat AWU allowance for each normalized pool-limit seat type of
+ * the workspace's active contract. Returns an empty record when the workspace
+ * has no active contract. Used to derive total per-user cap thresholds (pool
+ * override + seat allowance) from the pool-only override persisted on
+ * memberships.
+ */
+export async function getSeatAllowancesByNormalizedSeatType(
+  workspaceId: string
+): Promise<Partial<Record<NormalizedPoolLimitSeatType, number>>> {
+  const contract = await getActiveContract(workspaceId);
+  if (!contract) {
+    return {};
+  }
+  const productSeatTypes = await getProductSeatTypes();
+  const allowances: Partial<Record<NormalizedPoolLimitSeatType, number>> = {};
+  for (const seatType of NORMALIZED_POOL_LIMIT_SEAT_TYPES) {
+    allowances[seatType] = getAwuAllocationForSeatType(
+      contract,
+      seatType,
+      productSeatTypes
+    );
+  }
+  return allowances;
 }

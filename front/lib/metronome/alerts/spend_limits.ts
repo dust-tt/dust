@@ -251,16 +251,25 @@ export type MetronomeCapAlertInfo = {
   warningAlertId: string | null;
 };
 
-async function fetchPerUserCapThresholds(args: {
+// The Metronome alert ids backing a per-user cap override, for dashboard deep
+// links. Intentionally carries no threshold: the cap value lives on the
+// membership (`poolCapOverrideAwuCredits`), and the alert's threshold can lag
+// it (e.g. after a seat-type change) until the next override write re-syncs.
+export type MetronomeCapAlertIds = {
+  alertId: string;
+  warningAlertId: string | null;
+};
+
+async function fetchPerUserCapAlertIds(args: {
   metronomeCustomerId: string;
   workspaceId: string;
-}): Promise<Record<string, MetronomeCapAlertInfo>> {
+}): Promise<Record<string, MetronomeCapAlertIds>> {
   const capPrefix = perUserAlertUniquenessKeyPrefix(args.workspaceId);
   const warningPrefix = perUserWarningAlertUniquenessKeyPrefix(
     args.workspaceId
   );
 
-  const capByUser = new Map<string, { threshold: number; alertId: string }>();
+  const capIdByUser = new Map<string, string>();
   const warningIdByUser = new Map<string, string>();
 
   // Single scan: the per-user cap and its 80% warning share the customer alert
@@ -277,10 +286,7 @@ async function fetchPerUserCapThresholds(args: {
       if (key.startsWith(capPrefix)) {
         const userId = key.slice(capPrefix.length);
         if (userId) {
-          capByUser.set(userId, {
-            threshold: entry.alert.threshold,
-            alertId: entry.alert.id,
-          });
+          capIdByUser.set(userId, entry.alert.id);
         }
       } else if (key.startsWith(warningPrefix)) {
         const userId = key.slice(warningPrefix.length);
@@ -293,26 +299,26 @@ async function fetchPerUserCapThresholds(args: {
     throw normalizeError(err);
   }
 
-  const caps: Record<string, MetronomeCapAlertInfo> = {};
-  for (const [userId, cap] of capByUser) {
+  const caps: Record<string, MetronomeCapAlertIds> = {};
+  for (const [userId, alertId] of capIdByUser) {
     caps[userId] = {
-      ...cap,
+      alertId,
       warningAlertId: warningIdByUser.get(userId) ?? null,
     };
   }
   return caps;
 }
 
-export const getCachedPerUserCapThresholds = cacheWithRedis(
-  fetchPerUserCapThresholds,
+export const getCachedPerUserCapAlertIds = cacheWithRedis(
+  fetchPerUserCapAlertIds,
   spendLimitCacheResolver,
   { ttlMs: SPEND_LIMIT_CACHE_TTL_MS }
 );
 
-const invalidateCachedPerUserCapThresholds = bestEffortInvalidateCacheWithRedis(
-  fetchPerUserCapThresholds,
+const invalidateCachedPerUserCapAlertIds = bestEffortInvalidateCacheWithRedis(
+  fetchPerUserCapAlertIds,
   spendLimitCacheResolver,
-  "members-usage per-user spend caps"
+  "members-usage per-user spend cap alert ids"
 );
 
 /**
@@ -437,7 +443,7 @@ export async function upsertMetronomePerUserCapAlert({
     },
     "[Metronome PerUserCap] Synced per-user cap alert"
   );
-  await invalidateCachedPerUserCapThresholds({
+  await invalidateCachedPerUserCapAlertIds({
     metronomeCustomerId,
     workspaceId,
   });
@@ -476,7 +482,7 @@ export async function clearMetronomePerUserCapAlert({
       "[Metronome PerUserCap] Cleared per-user cap alert"
     );
   }
-  await invalidateCachedPerUserCapThresholds({
+  await invalidateCachedPerUserCapAlertIds({
     metronomeCustomerId,
     workspaceId,
   });

@@ -3,10 +3,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { isPAYGEnabled } from "@app/lib/credits/credit_payg";
 import { getMetronomeProgrammaticCapAlertStates } from "@app/lib/metronome/alerts/programmatic_cap";
 import type { MetronomeCapAlertInfo } from "@app/lib/metronome/alerts/spend_limits";
-import {
-  getCachedDefaultCapThresholdsBySeatType,
-  getCachedPerUserCapThresholds,
-} from "@app/lib/metronome/alerts/spend_limits";
+import { getCachedDefaultCapThresholdsBySeatType } from "@app/lib/metronome/alerts/spend_limits";
 import { listMetronomeSeatBalances } from "@app/lib/metronome/client";
 import {
   awuSeatBalanceForUser,
@@ -17,6 +14,7 @@ import {
   expectedProgrammaticCreditStateFromAlerts,
   setProgrammaticCreditStateReconciled,
 } from "@app/lib/metronome/programmatic_credit_state_machine";
+import { getSeatAllowancesByNormalizedSeatType } from "@app/lib/metronome/seat_types";
 import { setUserCreditStateReconciled } from "@app/lib/metronome/user_credit_state_machine";
 import {
   expectedPoolCreditStateFromBalance,
@@ -300,6 +298,9 @@ async function reconcileUser({
     workspaceId: workspace.sId,
     userId,
     seatType,
+    // Pool-only override persisted on the membership; the live-inputs helper
+    // adds the seat allowance back to get the total threshold.
+    poolCapOverrideAwuCredits: membership.poolCapOverrideAwuCredits,
     metronomeCustomerId,
     metronomeContractId,
   });
@@ -400,16 +401,16 @@ export async function reconcileWorkspaceUserCreditStates({
   const seatBalances = seatBalancesResult.value;
   const usageByUser = usageResult.value;
 
-  // The cap-threshold caches (Metronome alert list) and the membership query
-  // (DB) can genuinely throw, so they stay wrapped — the ERR1-authorised case.
-  let capOverrides: Record<string, MetronomeCapAlertInfo>;
+  // The cap-threshold caches (Metronome alert list / contract) and the
+  // membership query (DB) can genuinely throw, so they stay wrapped — the
+  // ERR1-authorised case. The per-user overrides themselves come from the
+  // memberships (pool-only values); the seat allowances are needed to derive
+  // the total thresholds.
+  let seatAllowances: Partial<Record<NormalizedPoolLimitSeatType, number>>;
   let defaultCaps: Record<NormalizedPoolLimitSeatType, MetronomeCapAlertInfo>;
   let memberships: MembershipResource[];
   try {
-    capOverrides = await getCachedPerUserCapThresholds({
-      metronomeCustomerId,
-      workspaceId,
-    });
+    seatAllowances = await getSeatAllowancesByNormalizedSeatType(workspaceId);
     defaultCaps = await getCachedDefaultCapThresholdsBySeatType({
       metronomeCustomerId,
       workspaceId,
@@ -439,10 +440,12 @@ export async function reconcileWorkspaceUserCreditStates({
 
     const normalizedSeatType = normalizeToPoolLimitSeatType(seatType);
     const effectiveCapAwuCredits =
-      capOverrides[userId]?.threshold ??
-      (normalizedSeatType
-        ? (defaultCaps[normalizedSeatType]?.threshold ?? null)
-        : null);
+      membership.poolCapOverrideAwuCredits !== null
+        ? membership.poolCapOverrideAwuCredits +
+          (normalizedSeatType ? (seatAllowances[normalizedSeatType] ?? 0) : 0)
+        : normalizedSeatType
+          ? (defaultCaps[normalizedSeatType]?.threshold ?? null)
+          : null;
 
     const seat = awuSeatBalanceForUser(seatBalances, userId);
     const expectedState = expectedUserCreditState({
