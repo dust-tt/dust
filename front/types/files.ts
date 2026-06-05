@@ -81,6 +81,78 @@ export const fileShareScopeSchema = z.enum([
 
 export type FileShareScope = z.infer<typeof fileShareScopeSchema>;
 
+/**
+ * Allowlist of files a shared Frame may load via useFile().
+ * AuthorizedFileAccessModel stores one row per authorized file; active rows have
+ * revokedAt = null.
+ */
+export const authorizedFileAccessKindSchema = z.enum([
+  "file_id",
+  "canonical_path",
+  "unverifiable",
+]);
+
+export type AuthorizedFileAccessKind = z.infer<
+  typeof authorizedFileAccessKindSchema
+>;
+
+const authorizedFileAccessEntryBaseSchema = {
+  shareScope: fileShareScopeSchema,
+  computedByUserId: z.string(),
+  frameContentHash: z.string(),
+  allowedAt: z.string(),
+  revokedAt: z.string().nullable().optional(),
+};
+
+const authorizedFileIdAccessEntrySchema = z
+  .object({
+    kind: z.literal("file_id"),
+    ref: z.string(),
+    fileName: z.string().optional(),
+    ...authorizedFileAccessEntryBaseSchema,
+  })
+  .strict();
+
+const authorizedCanonicalPathAccessEntrySchema = z
+  .object({
+    kind: z.literal("canonical_path"),
+    ref: z.string(),
+    legacyPath: z.string().optional(),
+    fileName: z.string().optional(),
+    ...authorizedFileAccessEntryBaseSchema,
+  })
+  .strict();
+
+const authorizedUnverifiableAccessEntrySchema = z
+  .object({
+    kind: z.literal("unverifiable"),
+    ref: z.string(),
+    ...authorizedFileAccessEntryBaseSchema,
+  })
+  .strict();
+
+export const authorizedFileAccessEntrySchema = z.discriminatedUnion("kind", [
+  authorizedFileIdAccessEntrySchema,
+  authorizedCanonicalPathAccessEntrySchema,
+  authorizedUnverifiableAccessEntrySchema,
+]);
+
+export type AuthorizedFileAccessEntry = z.infer<
+  typeof authorizedFileAccessEntrySchema
+>;
+
+export function parseAuthorizedFileAccessEntry(
+  data: unknown
+): AuthorizedFileAccessEntry {
+  return authorizedFileAccessEntrySchema.parse(data);
+}
+
+export function getActiveAuthorizedFileAccessEntries(
+  entries: AuthorizedFileAccessEntry[]
+): AuthorizedFileAccessEntry[] {
+  return entries.filter((entry) => entry.revokedAt == null);
+}
+
 export interface SharingGrantType {
   id: number;
   email: string;

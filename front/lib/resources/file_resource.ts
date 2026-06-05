@@ -36,6 +36,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import {
+  AuthorizedFileAccessModel,
   ExternalViewerSessionModel,
   FileModel,
   ShareableFileModel,
@@ -518,12 +519,18 @@ export class FileResource extends BaseResource<FileModel> {
           .file(this.getCloudStoragePath(auth, "public"))
           .delete({ ignoreNotFound: true });
 
-        // Delete sharing grants before shareable file (FK constraint).
+        // Delete sharing grants and access snapshots before shareable file (FK constraint).
         const shareableFile = await FileResource.shareableFileModel.findOne({
           where: { fileId: this.id, workspaceId: this.workspaceId },
         });
         if (shareableFile) {
           await SharingGrantModel.destroy({
+            where: {
+              shareableFileId: shareableFile.id,
+              workspaceId: this.workspaceId,
+            },
+          });
+          await AuthorizedFileAccessModel.destroy({
             where: {
               shareableFileId: shareableFile.id,
               workspaceId: this.workspaceId,
