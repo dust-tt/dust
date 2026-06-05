@@ -13,6 +13,7 @@ import {
   makeProcessedMountFileName,
   normalizeAndValidateMountRelativeFilePath,
   normalizeMountParentRelativePath,
+  parseCanonicalScopedPath,
   parseProcessedFilename,
   parseScopedFilePath,
   ResolveScopedMountFilePathError,
@@ -154,6 +155,24 @@ describe("mount_path helpers", () => {
       expect(isAgentScopedPath("conversation-conv_abc/report.csv")).toBe(true);
       expect(isAgentScopedPath("conversation/report.csv")).toBe(true);
       expect(isAgentScopedPath("hello/world")).toBe(false);
+    });
+
+    it("parses canonical scoped paths into scope and relative path", () => {
+      expect(
+        parseCanonicalScopedPath(
+          "pod-pod_xyz/my folder/another folder/report.md"
+        )
+      ).toEqual({
+        scope: { kind: "canonical-pod", id: "pod_xyz" },
+        relPath: "my folder/another folder/report.md",
+      });
+      expect(
+        parseCanonicalScopedPath("conversation-conv_abc/report.csv")
+      ).toEqual({
+        scope: { kind: "canonical-conversation", id: "conv_abc" },
+        relPath: "report.csv",
+      });
+      expect(parseCanonicalScopedPath("conversation/report.csv")).toBeNull();
     });
   });
 

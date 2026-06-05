@@ -230,6 +230,33 @@ export function parseRawVizScope(rawScope: string): ParsedVizScope | null {
   return r.success ? { kind: "legacy", prefix: r.data } : null;
 }
 
+export type ParsedCanonicalScopedPath = {
+  scope:
+    | { kind: "canonical-conversation"; id: string }
+    | { kind: "canonical-pod"; id: string };
+  relPath: string;
+};
+
+/**
+ * Parse a canonical agent-visible scoped path (`conversation-{id}/...`, `pod-{id}/...`)
+ * into its scope and path relative to that mount.
+ */
+export function parseCanonicalScopedPath(
+  scopedPath: string
+): ParsedCanonicalScopedPath | null {
+  const slashIdx = scopedPath.indexOf("/");
+  const rawScope = slashIdx === -1 ? scopedPath : scopedPath.slice(0, slashIdx);
+  const parsed = parseRawVizScope(rawScope);
+  if (!parsed || parsed.kind === "legacy") {
+    return null;
+  }
+
+  return {
+    scope: parsed,
+    relPath: slashIdx === -1 ? "" : scopedPath.slice(slashIdx + 1),
+  };
+}
+
 /**
  * Parse a scoped file path like "conversation/chart.png" or "pod/report.pdf".
  * Returns null if the path is missing a valid scope prefix.

@@ -1,4 +1,9 @@
 import { useAwaitableDialog } from "@app/hooks/useAwaitableDialog";
+import type {
+  ShareFrameViewerFile,
+  ShareFrameViewerFileSourceKind,
+} from "@app/lib/api/viz/share_frame_viewer_files";
+import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import {
   useShareInteractiveContentFile,
   useSharingGrants,
@@ -21,6 +26,8 @@ import {
   ClipboardCheck,
   ContentMessage,
   ContextItem,
+  Cube01,
+  File02,
   Globe01,
   Icon,
   IconButton,
@@ -28,6 +35,7 @@ import {
   Input,
   Label,
   Lock01,
+  MessageChatSquare,
   ScrollArea,
   Sheet,
   SheetContainer,
@@ -129,19 +137,35 @@ type InviteFormValues = z.infer<typeof inviteFormSchema>;
 interface ShareFrameSheetProps {
   fileId: string;
   owner: LightWorkspaceType;
+  /** Busts share/grants cache when frame content changes (e.g. `fileId@updatedAt`). */
+  contentHash?: string | null;
 }
 
-export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
+export function ShareFrameSheet({
+  fileId,
+  owner,
+  contentHash,
+}: ShareFrameSheetProps) {
   const isMobile = useIsMobile();
   const [isOpen, setIsOpen] = useState(false);
+  const [shareBlockError, setShareBlockError] = useState<string[] | null>(null);
   const [isCopied, copyToClipboard] = useCopyToClipboard();
   const { AwaitableDialog, showDialog } = useAwaitableDialog();
 
   const { doShare, fileShare, isFileShareLoading } =
-    useShareInteractiveContentFile({ fileId, owner });
+    useShareInteractiveContentFile({
+      fileId,
+      owner,
+      cacheKey: contentHash,
+    });
 
   const { grants, isGrantsLoading, doAddGrants, doRevokeGrant } =
-    useSharingGrants({ fileId, owner, disabled: !isOpen });
+    useSharingGrants({
+      fileId,
+      owner,
+      cacheKey: contentHash,
+      disabled: !isOpen,
+    });
 
   const {
     register,
@@ -157,6 +181,7 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
   const currentScope: FileShareScope =
     fileShare?.scope ?? "workspace_and_emails";
   const shareURL = fileShare?.shareUrl ?? "";
+  const viewerFiles = fileShare?.viewerFiles ?? [];
 
   const allowedScopes = ALLOWED_SCOPES_BY_POLICY[owner.sharingPolicy];
   const availableScopeOptions = getScopeOptions(owner.sharingPolicy).filter(
@@ -214,7 +239,15 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
         icon={Upload01}
         onClick={() => setIsOpen(true)}
       />
-      <Sheet open={isOpen} onOpenChange={setIsOpen}>
+      <Sheet
+        open={isOpen}
+        onOpenChange={(open) => {
+          setIsOpen(open);
+          if (!open) {
+            setShareBlockError(null);
+          }
+        }}
+      >
         <SheetContent size="lg">
           <SheetHeader>
             <div className="flex items-center justify-between pr-10">
@@ -247,6 +280,17 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
                     with people already in your workspace.
                   </ContentMessage>
                 )}
+                {shareBlockError && shareBlockError.length > 0 && (
+                  <ContentMessage
+                    icon={InfoCircle}
+                    variant="warning"
+                    title="Some referenced files cannot be shared"
+                  >
+                    Viewers will only be able to access files you can verify.
+                    Fix or remove these references before sharing:{" "}
+                    {shareBlockError.join(", ")}
+                  </ContentMessage>
+                )}
                 <fieldset className="flex flex-col gap-2 border-none p-0">
                   <legend className="text-sm font-semibold text-foreground dark:text-foreground-night mb-2">
                     Who has access
@@ -271,7 +315,16 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
                             name="share-scope"
                             value={option.value}
                             checked={isSelected}
-                            onChange={() => doShare(option.value)}
+                            onChange={async () => {
+                              setShareBlockError(null);
+                              const result = await doShare(option.value);
+                              if (
+                                !result.success &&
+                                result.unverifiableRefs?.length
+                              ) {
+                                setShareBlockError(result.unverifiableRefs);
+                              }
+                            }}
                             className="sr-only"
                           />
                           <Icon
@@ -358,12 +411,82 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
                     )}
                   </div>
                 )}
+                <ViewerFilesSection viewerFiles={viewerFiles} />
               </div>
             )}
           </SheetContainer>
         </SheetContent>
       </Sheet>
     </>
+  );
+}
+
+const VIEWER_FILE_SOURCE_ICONS: Record<
+  ShareFrameViewerFileSourceKind,
+  typeof Cube01
+> = {
+  pod: Cube01,
+  conversation: MessageChatSquare,
+  workspace: File02,
+};
+
+function ViewerFileLine({ viewerFile }: { viewerFile: ShareFrameViewerFile }) {
+  const SourceIcon = VIEWER_FILE_SOURCE_ICONS[viewerFile.sourceKind];
+  const FileIcon = getFileTypeIcon(viewerFile.contentType, viewerFile.name);
+
+  return (
+    <li className="flex min-w-0 items-center gap-1.5 py-0.5 text-xs text-foreground dark:text-foreground-night">
+      <Icon
+        visual={FileIcon}
+        size="xs"
+        className="shrink-0 text-muted-foreground dark:text-muted-foreground-night"
+      />
+      <div className="flex min-w-0 items-center gap-1 truncate">
+        <span className="shrink-0 font-medium">{viewerFile.name}</span>
+        <span className="shrink-0 text-muted-foreground dark:text-muted-foreground-night">
+          from
+        </span>
+        <Icon
+          visual={SourceIcon}
+          size="xs"
+          className="shrink-0 text-muted-foreground dark:text-muted-foreground-night"
+        />
+        <span className="truncate">{viewerFile.sourceName}</span>
+        {viewerFile.pathInSource ? (
+          <span className="truncate text-muted-foreground dark:text-muted-foreground-night">{`in /${viewerFile.pathInSource}`}</span>
+        ) : null}
+      </div>
+    </li>
+  );
+}
+
+function ViewerFilesSection({
+  viewerFiles,
+}: {
+  viewerFiles: ShareFrameViewerFile[];
+}) {
+  if (viewerFiles.length === 0) {
+    return null;
+  }
+
+  return (
+    <fieldset className="flex flex-col gap-2 border-none p-0">
+      <legend className="text-sm font-semibold text-foreground dark:text-foreground-night">
+        Files used
+      </legend>
+      <p className="copy-xs text-muted-foreground dark:text-muted-foreground-night">
+        When shared, viewers can only access these files—not the rest of the
+        conversation or pod.
+      </p>
+      <ul className="flex flex-col gap-0">
+        {viewerFiles.map((viewerFile, index) => (
+          <ViewerFileLine
+            key={`${viewerFile.sourceKind}:${viewerFile.sourceName}:${viewerFile.name}:${index}`}
+            viewerFile={viewerFile}
+          />
+        ))}
+      </ul>
+    </fieldset>
   );
 }
 

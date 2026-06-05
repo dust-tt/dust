@@ -372,7 +372,12 @@ export function FrameRenderer({
               fileContent={fileContent ?? null}
               fileName={fileMetadata?.fileName}
             />
-            <ShareFrameSheet fileId={fileId} owner={owner} />
+            <ShareFrameSheet
+              key={contentHash ?? fileId}
+              fileId={fileId}
+              owner={owner}
+              contentHash={contentHash}
+            />
             <PinPodBannerButton
               owner={owner}
               spaceId={projectId ?? ""}

@@ -297,20 +297,29 @@ export function useFileSignedUrl({
 export function useShareInteractiveContentFile({
   fileId,
   owner,
+  cacheKey,
 }: {
   fileId: string;
   owner: LightWorkspaceType;
+  cacheKey?: string | null;
 }) {
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
 
   const fileShareFetcher: Fetcher<ShareFileResponseBody> = fetcher;
 
-  const swrKey = `/api/w/${owner.sId}/files/${fileId}/share`;
+  const swrKey = cacheKey
+    ? `/api/w/${owner.sId}/files/${fileId}/share?v=${cacheKey}`
+    : `/api/w/${owner.sId}/files/${fileId}/share`;
 
   const { data, error, mutate } = useSWRWithDefaults(swrKey, fileShareFetcher);
 
-  const doShare = async (shareScope: FileShareScope) => {
+  const doShare = async (
+    shareScope: FileShareScope
+  ): Promise<
+    | { success: true; response: ShareFileResponseBody }
+    | { success: false; message: string; unverifiableRefs?: string[] }
+  > => {
     const res = await clientFetch(`/api/w/${owner.sId}/files/${fileId}/share`, {
       method: "POST",
       headers: {
@@ -321,19 +330,30 @@ export function useShareInteractiveContentFile({
 
     if (!res.ok) {
       const errorData = await getErrorFromResponse(res);
+      const unverifiableRefs =
+        "unverifiableRefs" in errorData &&
+        Array.isArray(errorData.unverifiableRefs)
+          ? errorData.unverifiableRefs
+          : undefined;
+
       sendNotification({
         type: "error",
-        title: "Failed to share the Frame file.",
-        description: `Error: ${errorData.message}`,
+        title: "Failed to update frame sharing",
+        description: errorData.message,
       });
-      return null;
-    } else {
-      await mutate();
 
-      const response: ShareFileResponseBody = await res.json();
-
-      return response;
+      return {
+        success: false,
+        message: errorData.message,
+        unverifiableRefs,
+      };
     }
+
+    await mutate();
+
+    const response: ShareFileResponseBody = await res.json();
+
+    return { success: true, response };
   };
 
   return {
@@ -348,10 +368,12 @@ export function useShareInteractiveContentFile({
 export function useSharingGrants({
   fileId,
   owner,
+  cacheKey,
   disabled,
 }: {
   fileId: string;
   owner: LightWorkspaceType;
+  cacheKey?: string | null;
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
@@ -359,7 +381,9 @@ export function useSharingGrants({
 
   const grantsFetcher: Fetcher<{ grants: SharingGrantType[] }> = fetcher;
 
-  const swrKey = `/api/w/${owner.sId}/files/${fileId}/share/grants`;
+  const swrKey = cacheKey
+    ? `/api/w/${owner.sId}/files/${fileId}/share/grants?v=${cacheKey}`
+    : `/api/w/${owner.sId}/files/${fileId}/share/grants`;
 
   const { data, error, mutate } = useSWRWithDefaults(swrKey, grantsFetcher, {
     disabled,

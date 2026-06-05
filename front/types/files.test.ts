@@ -3,6 +3,7 @@ import {
   authorizedFileAccessEntrySchema,
   ensureFileSize,
   getActiveAuthorizedFileAccessEntries,
+  getAuthorizedFileRefLabel,
   parseAuthorizedFileAccessEntry,
   resolveFileContentType,
   resolveMaxFileSizes,
@@ -143,6 +144,32 @@ describe("getActiveAuthorizedFileAccessEntries", () => {
       active,
     ]);
     expect(getActiveAuthorizedFileAccessEntries([])).toEqual([]);
+  });
+});
+
+describe("getAuthorizedFileRefLabel", () => {
+  it("prefers fileName, then ref or path basename", () => {
+    expect(
+      getAuthorizedFileRefLabel({
+        kind: "file_id",
+        ref: "fil_abc",
+        fileName: "report.csv",
+      })
+    ).toBe("report.csv");
+
+    expect(
+      getAuthorizedFileRefLabel({
+        kind: "file_id",
+        ref: "fil_abc",
+      })
+    ).toBe("fil_abc");
+
+    expect(
+      getAuthorizedFileRefLabel({
+        kind: "canonical_path",
+        ref: "conversation-conv_123/charts/sales.png",
+      })
+    ).toBe("sales.png");
   });
 });
 

@@ -143,18 +143,6 @@ export type AuthorizedFileAccessEntry = z.infer<
   typeof authorizedFileAccessEntrySchema
 >;
 
-export function parseAuthorizedFileAccessEntry(
-  data: unknown
-): AuthorizedFileAccessEntry {
-  return authorizedFileAccessEntrySchema.parse(data);
-}
-
-export function getActiveAuthorizedFileAccessEntries(
-  entries: AuthorizedFileAccessEntry[]
-): AuthorizedFileAccessEntry[] {
-  return entries.filter((entry) => entry.revokedAt == null);
-}
-
 const authorizedFileIdRefSchema = z
   .object({
     kind: z.literal("file_id"),
@@ -179,17 +167,15 @@ export const authorizedFileRefSchema = z.discriminatedUnion("kind", [
 
 export type AuthorizedFileRef = z.infer<typeof authorizedFileRefSchema>;
 
-/** Active allowlist view derived from non-revoked DB rows. */
-export type AuthorizedFileAccessAllowlist = {
-  computedByUserId: string;
-  frameContentHash: string;
-  refs: AuthorizedFileRef[];
-};
-
-/** Result of scanning frame content before persisting rows. */
-export type ComputedAuthorizedFileAccess = AuthorizedFileAccessAllowlist & {
-  unverifiableRefs?: string[];
-};
+export function getAuthorizedFileRefLabel(ref: AuthorizedFileRef): string {
+  if (ref.fileName) {
+    return ref.fileName;
+  }
+  if (ref.kind === "file_id") {
+    return ref.ref;
+  }
+  return ref.ref.split("/").pop() ?? ref.ref;
+}
 
 export function entryToAuthorizedFileRef(
   entry: AuthorizedFileAccessEntry
@@ -213,6 +199,30 @@ export function entryToAuthorizedFileRef(
     default:
       return assertNever(entry);
   }
+}
+
+/** Active allowlist view derived from non-revoked DB rows. */
+export type AuthorizedFileAccessAllowlist = {
+  computedByUserId: string;
+  frameContentHash: string;
+  refs: AuthorizedFileRef[];
+};
+
+/** Result of scanning frame content before persisting rows. */
+export type ComputedAuthorizedFileAccess = AuthorizedFileAccessAllowlist & {
+  unverifiableRefs?: string[];
+};
+
+export function parseAuthorizedFileAccessEntry(
+  data: unknown
+): AuthorizedFileAccessEntry {
+  return authorizedFileAccessEntrySchema.parse(data);
+}
+
+export function getActiveAuthorizedFileAccessEntries(
+  entries: AuthorizedFileAccessEntry[]
+): AuthorizedFileAccessEntry[] {
+  return entries.filter((entry) => entry.revokedAt == null);
 }
 
 export type AuthorizedFileAccessShareError = Omit<DustError, "code"> & {
