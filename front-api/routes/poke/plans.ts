@@ -1,7 +1,7 @@
+import { MAX_DOCUMENT_UPSERT_SIZE_MB } from "@app/lib/data_sources";
 import { PlanModel } from "@app/lib/models/plan";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
-import { config as documentBodyParserConfig } from "@app/pages/api/v1/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/documents/[documentId]";
 import type { PlanType } from "@app/types/plan";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -86,15 +86,14 @@ app.post(
   async (ctx): HandlerResult<UpsertPokePlanResponseBody> => {
     const body = ctx.req.valid("json");
 
-    const { sizeLimit } = documentBodyParserConfig.api.bodyParser;
-    const maxSizeMb = parseInt(sizeLimit.replace("mb", ""), 10);
-
-    if (body.limits.dataSources.documents.sizeMb >= maxSizeMb) {
+    if (
+      body.limits.dataSources.documents.sizeMb >= MAX_DOCUMENT_UPSERT_SIZE_MB
+    ) {
       return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
-          message: `Document size limit must be less than ${maxSizeMb}MB.`,
+          message: `Document size limit must be less than ${MAX_DOCUMENT_UPSERT_SIZE_MB}MB.`,
         },
       });
     }

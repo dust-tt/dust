@@ -2,6 +2,7 @@
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
+import { AttachedKnowledgeSchema } from "@app/lib/api/skills/schemas";
 import { resolveAdditionalRequestedSpaceModelIds } from "@app/lib/api/skills/space_requirements";
 import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -40,14 +41,6 @@ export type PostSkillResponseBody = {
 const SkillStatusSchema = z
   .enum(["active", "archived", "suggested"])
   .optional();
-
-// Schema for attached knowledge.
-export const AttachedKnowledgeSchema = z.object({
-  dataSourceViewId: z.string(),
-  nodeId: z.string(),
-  spaceId: z.string(),
-  title: z.string(),
-});
 
 // Request body schema for POST.
 const PostSkillRequestBodySchema = z.intersection(

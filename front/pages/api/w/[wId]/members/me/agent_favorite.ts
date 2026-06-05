@@ -1,28 +1,17 @@
 // @migration-status: MIGRATED_TO_HONO
 /** @ignoreswagger */
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import { setAgentUserFavorite } from "@app/lib/api/assistant/user_relation";
+import type { PostAgentUserFavoriteResponseBody } from "@app/lib/api/assistant/user_relation";
+import {
+  PostAgentUserFavoriteRequestBodySchema,
+  setAgentUserFavorite,
+} from "@app/lib/api/assistant/user_relation";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
 import { fromError } from "zod-validation-error";
-
-export type PostAgentUserFavoriteResponseBody = {
-  agentId: string;
-  userFavorite: boolean;
-};
-
-export const PostAgentUserFavoriteRequestBodySchema = z.object({
-  agentId: z.string(),
-  userFavorite: z.boolean(),
-});
-
-export type PostAgentUserFavoriteRequestBody = z.infer<
-  typeof PostAgentUserFavoriteRequestBodySchema
->;
 
 async function handler(
   req: NextApiRequest,

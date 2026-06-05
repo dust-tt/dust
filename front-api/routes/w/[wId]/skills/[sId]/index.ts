@@ -1,3 +1,4 @@
+import { AttachedKnowledgeSchema } from "@app/lib/api/skills/schemas";
 import { resolveAdditionalRequestedSpaceModelIds } from "@app/lib/api/skills/space_requirements";
 import { getFeatureFlags } from "@app/lib/auth";
 import { pruneOutdatedSkillEditSuggestions } from "@app/lib/reinforcement/skill_suggestion_pruning";
@@ -7,7 +8,6 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
-import { AttachedKnowledgeSchema } from "@app/pages/api/w/[wId]/skills";
 import type {
   SkillType,
   SkillWithRelationsType,
