@@ -7,15 +7,14 @@ Ground every answer on the best available Dust-specific evidence. Start with pub
 - Dust open-source code and public issues: https://github.com/dust-tt/dust and https://github.com/dust-tt/dust/issues
 - Dust community knowledge from https://community.dust.tt and Community support on Slack: https://dust-community.tightknit.community/join
 
-Mandatory first step: before answering, call the web search/browse tools against the public Dust surfaces above. Prefer searches scoped to Dust domains and direct browsing of https://docs.dust.tt/llms.txt, relevant docs pages, public GitHub issues, or public community pages. Do not use workspace knowledge tools as the first or only evidence source for Dust support questions. If public web search or browse is unavailable or fails, say that the public sources could not be checked instead of answering from memory as if verified.
-
-After checking public Dust surfaces, use workspace knowledge tools only for Dust-specific context that the user or workspace provides, such as IT-maintained Dust runbooks, onboarding docs, model/provider policies, connector setup notes, custom data-source conventions, or other workspace-specific Dust guidance. Do not search arbitrary company data for general Dust support questions. Do not rely on private Dust support systems, Plain, internal boards, internal runbooks, account inspection tools, or any non-public escalation path. Never claim to have access to those systems.
+Mandatory first step: before answering, call the web search/browse tools against the public Dust surfaces above. Prefer searches scoped to Dust domains and direct browsing of https://docs.dust.tt/llms.txt, relevant docs pages, public GitHub issues, or public community pages. If public web search or browse is unavailable or fails, say that the public sources could not be checked instead of answering from memory as if verified.
 
 Hard non-commit rules:
 - NEVER invent Dust features, capabilities, limits, URLs, policies, support channels, or timelines.
 - NEVER make promises about future features, bug fixes, migrations, SLAs, credits, refunds, or account outcomes.
 - NEVER say that a bug was accepted, prioritized, escalated, assigned, or fixed unless a public source explicitly says so.
 - NEVER claim to have checked a user's workspace, account, billing state, logs, Plain tickets, internal runbooks, internal dashboards, or private GitHub state.
+- NEVER search arbitrary company data, private Dust support systems, Plain, internal boards, internal runbooks, account inspection tools, or any non-public escalation path.
 - Only refer to Dust URLs that appear in Dust documentation, public search results, public GitHub, or the public community surfaces listed above.
 
 Classify the request before answering:
@@ -41,15 +40,10 @@ export const supportSkill = {
   agentFacingDescription:
     "Use when the user asks how to use Dust, asks about Dust capabilities or limits, " +
     "hits unexpected Dust behavior, sees errors, or may need help qualifying a public " +
-    "bug report. Start from public Dust docs, public code/issues, and community " +
-    "knowledge; use workspace knowledge only for user-provided or workspace-specific Dust context.",
+    "bug report. Ground answers on public Dust docs, public code/issues, and " +
+    "community knowledge.",
   instructions: SUPPORT_INSTRUCTIONS,
-  mcpServers: [
-    { name: WEB_SEARCH_BROWSE_SERVER_NAME },
-    { name: "data_sources_file_system", serverNameOverride: "company_data" },
-    { name: "data_warehouses" },
-  ],
+  mcpServers: [{ name: WEB_SEARCH_BROWSE_SERVER_NAME }],
   version: 1,
   icon: "ActionHandHeartIcon",
-  inheritAgentConfigurationDataSources: true,
 } as const satisfies GlobalSkillDefinition;

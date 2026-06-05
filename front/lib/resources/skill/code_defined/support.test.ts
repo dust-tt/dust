@@ -17,15 +17,7 @@ describe("support code-defined skill", () => {
       sId: "support",
       name: "Dust Support",
       icon: "ActionHandHeartIcon",
-      mcpServers: [
-        { name: WEB_SEARCH_BROWSE_SERVER_NAME },
-        {
-          name: "data_sources_file_system",
-          serverNameOverride: "company_data",
-        },
-        { name: "data_warehouses" },
-      ],
-      inheritAgentConfigurationDataSources: true,
+      mcpServers: [{ name: WEB_SEARCH_BROWSE_SERVER_NAME }],
     });
     expect(support?.instructions).toContain("https://docs.dust.tt/llms.txt");
     expect(support?.instructions).toContain(
@@ -35,14 +27,7 @@ describe("support code-defined skill", () => {
     expect(support?.instructions).toContain(
       "https://dust-community.tightknit.community/join"
     );
-    expect(support?.instructions).toContain("IT-maintained Dust runbooks");
     expect(support?.instructions).toContain("Mandatory first step");
-    expect(support?.instructions).toContain(
-      "Do not use workspace knowledge tools as the first or only evidence source"
-    );
-    expect(support?.instructions).toContain(
-      "Do not search arbitrary company data for general Dust support questions"
-    );
     expect(support?.instructions).toContain("Hard non-commit rules");
     expect(support?.instructions).toContain(
       "NEVER invent Dust features, capabilities, limits, URLs, policies, support channels, or timelines"
@@ -55,7 +40,10 @@ describe("support code-defined skill", () => {
       "For unresolved public how-to questions"
     );
     expect(support?.agentFacingDescription).toContain(
-      "workspace knowledge only for user-provided or workspace-specific Dust context"
+      "Ground answers on public Dust docs, public code/issues, and community knowledge"
+    );
+    expect(support?.instructions).toContain(
+      "NEVER search arbitrary company data"
     );
     expect(support?.instructions).toContain("Do not file GitHub issues");
 
