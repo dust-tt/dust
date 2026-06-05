@@ -1565,7 +1565,6 @@ function NavigationListWithInbox({
       className="dd-privacy-mask h-full w-full overflow-y-auto"
     >
       <div className="flex flex-col gap-4">
-        {" "}
         <AnimatePresence initial={false}>
           {skillSuggestionConversations.length > 0 && (
             <motion.div

@@ -322,10 +322,10 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
                   onClick={() => void handleAskHelp()}
                 />
                 <DropdownMenuItem
-                  label="How to invite new users?"
+                  label="How do I invite new users?"
                   icon={MessageTextCircle01}
                   onClick={() =>
-                    void handleHelpSubmit("How to invite new users?", [])
+                    void handleHelpSubmit("How do I invite new users?", [])
                   }
                 />
                 <DropdownMenuItem
