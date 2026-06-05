@@ -1,6 +1,7 @@
 import type { CheckoutSeatType } from "@app/lib/api/checkout/types";
 import config from "@app/lib/api/config";
 import { getMetronomeCustomerStripeCustomerId } from "@app/lib/metronome/client";
+import { WORKSPACE_SEAT_PRODUCT_NAME } from "@app/lib/metronome/setup_common";
 import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import { isOldFreePlan } from "@app/lib/plans/plan_codes";
 import { PHONE_TRIAL_ENABLED } from "@app/lib/plans/trial/constants";
@@ -456,7 +457,7 @@ async function makeFirstPeriodInvoiceForCustomer({
       unit_amount: pricePerSeatCents,
       quantity: seatCount,
       currency,
-      description: `Workspace seat (${billingPeriod})`,
+      description: `${WORKSPACE_SEAT_PRODUCT_NAME} (${billingPeriod})`,
       invoice: invoice.id,
     });
 

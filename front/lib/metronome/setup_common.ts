@@ -224,7 +224,7 @@ export const getOverageAwuRate = (currency: SupportedCurrency) => {
 // Setup-only display names. Runtime code identifies seat-style subscriptions
 // via the `DUST_SEAT_TYPE` custom field on the product (see
 // SEAT_TYPE_CUSTOM_FIELD_KEY), not by name comparison.
-export const WORKSPACE_SEAT_PRODUCT_NAME = "Workspace Seat";
+export const WORKSPACE_SEAT_PRODUCT_NAME = "Platform Seat";
 export const PRO_SEAT_PRODUCT_NAME = "Pro Seat";
 export const MAX_SEAT_PRODUCT_NAME = "Max Seat";
 export const FREE_SEAT_PRODUCT_NAME = "Free Seat";
