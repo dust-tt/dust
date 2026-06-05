@@ -10,6 +10,7 @@ import {
 } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 
+import { KeyResource } from "@app/lib/resources/key_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getClientIp } from "@app/lib/utils/request";
 import type { NextApiRequestWithContext } from "@app/logger/withlogging";
@@ -477,18 +478,25 @@ export function withPublicAPIAuthentication<T>(
           )) ?? workspaceAuth;
       }
 
-      // If we have a system key, we can override the key name from http headers.
-      // This is only used for run_agent API call, to keep the original key name and get proper analytics.
+      // When authenticated with the workspace system key, an internal caller can
+      // pass the original API key name via header so usage is *attributed* to that
+      // key (e.g. run_agent / deep-dive sub-agents). This is attribution only: we
+      // resolve the name to a key within the same workspace and attach it as an
+      // attribution key. We never swap the authenticator's actual key, so
+      // authorization (role, caps, system-key checks) is unaffected.
       const apiKeyNameFromHeader = getApiKeyNameFromHeaders(req.headers);
       const key = workspaceAuth.key();
       if (apiKeyNameFromHeader && key && key.isSystem) {
-        workspaceAuth = workspaceAuth.exchangeKey({
-          id: key.id,
+        const attributionKey = await KeyResource.fetchByName(workspaceAuth, {
           name: apiKeyNameFromHeader,
-          isSystem: key.isSystem,
-          role: key.role,
-          monthlyCapMicroUsd: key.monthlyCapMicroUsd,
+          onlyActive: true,
         });
+        if (attributionKey && !attributionKey.isSystem) {
+          workspaceAuth = workspaceAuth.withAttributionKey({
+            id: attributionKey.id,
+            name: attributionKey.name,
+          });
+        }
       }
       setClientIpOnAuth(workspaceAuth, req);
 

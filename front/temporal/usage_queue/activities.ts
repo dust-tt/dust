@@ -311,14 +311,20 @@ export async function emitMetronomeUsageEventsActivity(
     }
   }
 
-  // Resolve API key name from the stored numeric FK.
+  // Resolve API key name from the stored numeric FK. We deliberately never surface
+  // the workspace system key ("DustSystemKey") as the API key name: sub-agent runs
+  // and other internal flows authenticate with the system key, but that is an
+  // implementation detail, not a meaningful billing attribution. In those cases we
+  // leave the API key name unset (it surfaces as "unknown" in the event).
   let apiKeyName: string | null = null;
   if (userMessage?.userContextApiKeyId) {
     const key = await KeyResource.fetchByWorkspaceAndId({
       workspace,
       id: userMessage.userContextApiKeyId,
     });
-    apiKeyName = key?.name ?? null;
+    if (key && !key.isSystem) {
+      apiKeyName = key.name;
+    }
   }
 
   // Get LLM run usages.

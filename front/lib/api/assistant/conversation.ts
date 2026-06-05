@@ -924,10 +924,13 @@ export async function postUserMessage(
       transaction: t,
     });
 
-    // Enrich context with auth data for analytics tracking.
+    // Enrich context with auth data for analytics tracking. When an attribution
+    // key is set (internal system-key calls like run_agent forward the original
+    // caller's key name), attribute usage to it instead of the request's own key;
+    // this drives api_key_name in usage analytics without affecting authorization.
     const enrichedContext: UserMessageContext = {
       ...context,
-      apiKeyId: auth.key()?.id ?? null,
+      apiKeyId: auth.attributionKeyId() ?? auth.key()?.id ?? null,
       authMethod: auth.authMethod(),
     };
 
