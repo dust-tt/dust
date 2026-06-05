@@ -450,6 +450,159 @@ describe("UserCreditStateMachine — seat_balance_exhausted", () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// remainingCapCreditsPercentage guards
+// ---------------------------------------------------------------------------
+
+describe("UserCreditStateMachine — seat_balance_exhausted with remainingCapCreditsPercentage", () => {
+  // Guard 2: cap fully exhausted (0 %) beats pool room → capped.
+  it("user_seat + pro + 0% cap remaining + pool limit > 0 → capped", async () => {
+    const membership = makeMembership("user_seat", "pro");
+    const result = await transitionUserCreditState(
+      membership,
+      { type: "seat_balance_exhausted", poolLimitAwuCredits: 5000 },
+      { ...baseCtx, seatType: "pro", remainingCapCreditsPercentage: 0 }
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("capped");
+    }
+    expect(membership.updateCreditState).toHaveBeenCalledWith(
+      "capped",
+      undefined
+    );
+    expect(mockSetUserCapBlocked).toHaveBeenCalledWith("ws_test", "u_test");
+  });
+
+  // Guard 2: same as above from user_seat_low_balance.
+  it("user_seat_low_balance + pro + 0% cap remaining + pool limit > 0 → capped", async () => {
+    const membership = makeMembership("user_seat_low_balance", "pro");
+    const result = await transitionUserCreditState(
+      membership,
+      { type: "seat_balance_exhausted", poolLimitAwuCredits: 5000 },
+      { ...baseCtx, seatType: "pro", remainingCapCreditsPercentage: 0 }
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("capped");
+    }
+    expect(membership.updateCreditState).toHaveBeenCalledWith(
+      "capped",
+      undefined
+    );
+    expect(mockSetUserCapBlocked).toHaveBeenCalledWith("ws_test", "u_test");
+  });
+
+  // Guard 3: < 20 % cap remaining → on_pool_low_balance.
+  it("user_seat + pro + 10% cap remaining → on_pool_low_balance", async () => {
+    const membership = makeMembership("user_seat", "pro");
+    const result = await transitionUserCreditState(
+      membership,
+      { type: "seat_balance_exhausted", poolLimitAwuCredits: null },
+      { ...baseCtx, seatType: "pro", remainingCapCreditsPercentage: 0.1 }
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("on_pool_low_balance");
+    }
+    expect(membership.updateCreditState).toHaveBeenCalledWith(
+      "on_pool_low_balance",
+      undefined
+    );
+    expect(mockSetUserAwuWarned).toHaveBeenCalledWith("ws_test", "u_test");
+    expect(mockSetUserCapBlocked).not.toHaveBeenCalled();
+  });
+
+  // Guard 3: boundary — exactly 19 % (just below 0.2) → on_pool_low_balance.
+  it("user_seat + pro + 19% cap remaining → on_pool_low_balance", async () => {
+    const membership = makeMembership("user_seat", "pro");
+    const result = await transitionUserCreditState(
+      membership,
+      { type: "seat_balance_exhausted", poolLimitAwuCredits: null },
+      { ...baseCtx, seatType: "pro", remainingCapCreditsPercentage: 0.19 }
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("on_pool_low_balance");
+    }
+    expect(membership.updateCreditState).toHaveBeenCalledWith(
+      "on_pool_low_balance",
+      undefined
+    );
+  });
+
+  // Guard 4: exactly 20 % is NOT < 0.2, so guard 3 does not fire → on_pool.
+  it("user_seat + pro + exactly 20% cap remaining → on_pool (not low balance)", async () => {
+    const membership = makeMembership("user_seat", "pro");
+    const result = await transitionUserCreditState(
+      membership,
+      { type: "seat_balance_exhausted", poolLimitAwuCredits: null },
+      { ...baseCtx, seatType: "pro", remainingCapCreditsPercentage: 0.2 }
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("on_pool");
+    }
+    expect(membership.updateCreditState).toHaveBeenCalledWith(
+      "on_pool",
+      undefined
+    );
+    expect(mockSetUserCapBlocked).not.toHaveBeenCalled();
+  });
+
+  // Guard 4: ample cap remaining → on_pool.
+  it("user_seat + pro + 50% cap remaining → on_pool", async () => {
+    const membership = makeMembership("user_seat", "pro");
+    const result = await transitionUserCreditState(
+      membership,
+      { type: "seat_balance_exhausted", poolLimitAwuCredits: null },
+      { ...baseCtx, seatType: "pro", remainingCapCreditsPercentage: 0.5 }
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("on_pool");
+    }
+    expect(membership.updateCreditState).toHaveBeenCalledWith(
+      "on_pool",
+      undefined
+    );
+    expect(mockSetUserCapBlocked).not.toHaveBeenCalled();
+  });
+
+  // Guard 4: null percentage (no cap configured) → on_pool (guard 3 skipped).
+  it("user_seat + pro + null cap percentage → on_pool", async () => {
+    const membership = makeMembership("user_seat", "pro");
+    const result = await transitionUserCreditState(
+      membership,
+      { type: "seat_balance_exhausted", poolLimitAwuCredits: null },
+      { ...baseCtx, seatType: "pro", remainingCapCreditsPercentage: null }
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("on_pool");
+    }
+    expect(membership.updateCreditState).toHaveBeenCalledWith(
+      "on_pool",
+      undefined
+    );
+  });
+
+  // Guard 1 (free seat) takes precedence regardless of percentage.
+  it("user_seat + free + 50% cap remaining → capped (free-seat guard wins)", async () => {
+    const membership = makeMembership("user_seat", "free");
+    const result = await transitionUserCreditState(
+      membership,
+      { type: "seat_balance_exhausted", poolLimitAwuCredits: null },
+      { ...baseCtx, seatType: "free", remainingCapCreditsPercentage: 0.5 }
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("capped");
+    }
+    expect(mockSetUserCapBlocked).toHaveBeenCalledWith("ws_test", "u_test");
+  });
+});
+
 describe("UserCreditStateMachine — seat_low_balance", () => {
   it("user_seat + max threshold + max seat → user_seat_low_balance", async () => {
     const membership = makeMembership("user_seat", "max");
