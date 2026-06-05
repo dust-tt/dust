@@ -3,7 +3,10 @@ import {
   PRO_SEAT_MONTHLY_AWU_CREDITS,
 } from "@app/lib/metronome/setup_new_pricing";
 import type { UserCreditContext } from "@app/lib/metronome/user_credit_state_machine";
-import { transitionUserCreditState } from "@app/lib/metronome/user_credit_state_machine";
+import {
+  setUserCreditStateReconciled,
+  transitionUserCreditState,
+} from "@app/lib/metronome/user_credit_state_machine";
 import type { MembershipResource } from "@app/lib/resources/membership_resource";
 import type {
   MembershipSeatType,
@@ -389,6 +392,77 @@ describe("UserCreditStateMachine — seat_low_balance", () => {
       "ws_test",
       "u_test",
       "user_seat_low_balance"
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Authoritative reconcile setter
+// ---------------------------------------------------------------------------
+
+describe("UserCreditStateMachine — setUserCreditStateReconciled", () => {
+  it("on_pool → user_seat persists and syncs the cache (no transition needed)", async () => {
+    const membership = makeMembership("on_pool", "pro");
+    const result = await setUserCreditStateReconciled(membership, "user_seat", {
+      ...baseCtx,
+      seatType: "pro",
+    });
+    expect(result).toBe("user_seat");
+    expect(membership.updateCreditState).toHaveBeenCalledWith(
+      "user_seat",
+      undefined
+    );
+    // user_seat clears both the cap block and the AWU warning.
+    expect(mockClearUserCapBlocked).toHaveBeenCalledWith("ws_test", "u_test");
+    expect(mockClearUserAwuWarned).toHaveBeenCalledWith("ws_test", "u_test");
+    expect(mockSetUserCreditState).toHaveBeenCalledWith(
+      "ws_test",
+      "u_test",
+      "user_seat"
+    );
+  });
+
+  it("is idempotent when already in the target state but re-syncs the cache", async () => {
+    const membership = makeMembership("user_seat", "pro");
+    const result = await setUserCreditStateReconciled(membership, "user_seat", {
+      ...baseCtx,
+      seatType: "pro",
+    });
+    expect(result).toBe("user_seat");
+    expect(membership.updateCreditState).not.toHaveBeenCalled();
+    expect(mockSetUserCreditState).toHaveBeenCalledWith(
+      "ws_test",
+      "u_test",
+      "user_seat"
+    );
+  });
+
+  it("migrates a legacy 'normal' row to 'on_pool'", async () => {
+    const membership = makeMembership("normal", "workspace");
+    const result = await setUserCreditStateReconciled(membership, "on_pool", {
+      ...baseCtx,
+      seatType: "workspace",
+    });
+    expect(result).toBe("on_pool");
+    expect(membership.updateCreditState).toHaveBeenCalledWith(
+      "on_pool",
+      undefined
+    );
+  });
+
+  it("forwards the provided transaction to the DB update and cache invalidator", async () => {
+    const tx = { __mock: "transaction" } as unknown as Transaction;
+    const membership = makeMembership("on_pool", "pro");
+    await setUserCreditStateReconciled(
+      membership,
+      "user_seat",
+      { ...baseCtx, seatType: "pro" },
+      { transaction: tx }
+    );
+    expect(membership.updateCreditState).toHaveBeenCalledWith("user_seat", tx);
+    expect(mockInvalidateCacheAfterCommit).toHaveBeenCalledWith(
+      tx,
+      expect.any(Function)
     );
   });
 });

@@ -371,3 +371,33 @@ export async function transitionWorkspaceCreditState(
 
   return new Ok(match.to);
 }
+
+/**
+ * Authoritatively set the workspace pool credit state to `targetState`,
+ * bypassing the event/transition graph. Used by reconciliation, which computes
+ * the expected state directly from the live AWU balance + PAYG via
+ * `expectedPoolCreditStateFromBalance`. Persists the new state and syncs the
+ * same caches the transitions do.
+ */
+export async function setWorkspacePoolCreditStateReconciled(
+  workspace: WorkspaceResource,
+  targetState: WorkspacePoolCreditState,
+  ctx: WorkspaceCreditContext,
+  { transaction }: { transaction?: Transaction } = {}
+): Promise<WorkspacePoolCreditState> {
+  const currentState = workspace.poolCreditState;
+  if (currentState !== targetState) {
+    await workspace.updatePoolCreditState(targetState, transaction);
+  }
+  syncWorkspacePoolCacheForState(targetState, ctx, transaction);
+  logger.info(
+    {
+      workspaceId: ctx.workspaceId,
+      fromState: currentState,
+      toState: targetState,
+      wasStateChanged: currentState !== targetState,
+    },
+    "[WorkspaceCreditStateMachine] State reconciled"
+  );
+  return targetState;
+}

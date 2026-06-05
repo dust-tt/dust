@@ -282,3 +282,37 @@ export async function transitionUserCreditState(
 
   return new Ok(match.to);
 }
+
+/**
+ * Authoritatively set a user's credit state to `targetState`, bypassing the
+ * event/transition graph. Used by reconciliation, which computes the expected
+ * state directly from the live source of truth (Metronome seat balance + cap +
+ * usage) — the seat↔pool dimension is not reachable from the event-driven
+ * transitions alone (e.g. nothing dispatches a user back to `user_seat` outside
+ * a billing-cycle webhook). Persists the new state (treating the legacy
+ * "normal" alias as "on_pool" so such rows migrate) and syncs the same caches
+ * the transitions do.
+ */
+export async function setUserCreditStateReconciled(
+  membership: MembershipResource,
+  targetState: UserCreditState,
+  ctx: UserCreditContext,
+  { transaction }: { transaction?: Transaction } = {}
+): Promise<UserCreditState> {
+  const rawState = membership.creditState;
+  if (rawState !== targetState) {
+    await membership.updateCreditState(targetState, transaction);
+  }
+  syncUserCapCacheForState(targetState, ctx, transaction);
+  logger.info(
+    {
+      workspaceId: ctx.workspaceId,
+      userId: ctx.userId,
+      fromState: rawState,
+      toState: targetState,
+      wasStateChanged: rawState !== targetState,
+    },
+    "[UserCreditStateMachine] State reconciled"
+  );
+  return targetState;
+}

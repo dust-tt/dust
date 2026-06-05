@@ -213,3 +213,34 @@ export async function transitionProgrammaticCreditState(
 
   return new Ok(match.to);
 }
+
+/**
+ * Authoritatively set the workspace programmatic credit state to `targetState`,
+ * bypassing the event/transition graph. Used by reconciliation, which computes
+ * the expected state directly from the cap alert evaluation via
+ * `expectedProgrammaticCreditStateFromAlerts` — simpler and less fragile than
+ * re-deriving it by replaying reset + low-balance events. Persists the new
+ * state and syncs the same caches the transitions do.
+ */
+export async function setProgrammaticCreditStateReconciled(
+  workspace: WorkspaceResource,
+  targetState: WorkspaceProgrammaticCreditState,
+  { transaction }: { transaction?: Transaction } = {}
+): Promise<WorkspaceProgrammaticCreditState> {
+  const workspaceId = workspace.sId;
+  const currentState = workspace.programmaticCreditState;
+  if (currentState !== targetState) {
+    await workspace.updateProgrammaticCreditState(targetState, transaction);
+  }
+  syncProgrammaticCacheForState(targetState, workspaceId, transaction);
+  logger.info(
+    {
+      workspaceId,
+      fromState: currentState,
+      toState: targetState,
+      wasStateChanged: currentState !== targetState,
+    },
+    "[ProgrammaticCreditStateMachine] State reconciled"
+  );
+  return targetState;
+}
