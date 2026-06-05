@@ -48,6 +48,17 @@ function makeExtra(auth: Authenticator) {
   } satisfies ToolHandlerExtra;
 }
 
+// Seed a skill directly and refresh the authenticator so it picks up the editor
+// group membership created during makeNew (create_skill does the same refresh).
+async function seedSkill(
+  auth: Authenticator,
+  overrides: Parameters<typeof SkillFactory.create>[1]
+) {
+  const skill = await SkillFactory.create(auth, overrides);
+  await auth.refresh();
+  return skill;
+}
+
 describe("skill_authoring tools", () => {
   it("creates, lists, reads, and updates a skill", async () => {
     const { authenticator, workspace } = await createResourceTest({
@@ -460,33 +471,19 @@ describe("skill_authoring tools", () => {
     expect(skill?.instructions).toBe("phase. phase. phase.");
   });
 
-  it("rejects a full replace that drops special tags", async () => {
+  it("rejects a full replace that drops a knowledge tag", async () => {
     const { authenticator } = await createResourceTest({ role: "builder" });
-
-    const createResult = await getTool(CREATE_SKILL_TOOL_NAME).handler(
-      {
-        name: "Tagged Skill",
-        userFacingDescription: "Skill with a knowledge tag.",
-        agentFacingDescription: "Use to verify special-tag preservation.",
-        instructions:
-          'Summarize the runbook. <knowledge id="data_xyz" title="Runbook" />',
-        icon: "ActionListIcon",
-      },
-      makeExtra(authenticator)
-    );
-    expect(createResult.isOk()).toBe(true);
-    if (createResult.isErr()) {
-      throw createResult.error;
-    }
-    const output = createResult.value[0];
-    if (!isSkillAuthoringResultOutput(output)) {
-      throw new Error("Expected structured skill authoring output.");
-    }
+    const originalInstructions =
+      'Summarize the runbook. <knowledge id="data_xyz" title="Runbook" />';
+    const skill = await seedSkill(authenticator, {
+      name: "Tagged Skill",
+      instructions: originalInstructions,
+    });
 
     // A full replace that omits the knowledge tag is rejected.
     const droppingResult = await getTool(UPDATE_SKILL_TOOL_NAME).handler(
       {
-        sId: output.resource.skillId,
+        sId: skill.sId,
         instructions: "Summarize the runbook in three bullet points.",
       },
       makeExtra(authenticator)
@@ -499,18 +496,13 @@ describe("skill_authoring tools", () => {
     expect(droppingResult.error.message).toContain("knowledge");
 
     // The instructions are left untouched.
-    const untouched = await SkillResource.fetchById(
-      authenticator,
-      output.resource.skillId
-    );
-    expect(untouched?.instructions).toBe(
-      'Summarize the runbook. <knowledge id="data_xyz" title="Runbook" />'
-    );
+    const untouched = await SkillResource.fetchById(authenticator, skill.sId);
+    expect(untouched?.instructions).toBe(originalInstructions);
 
     // A full replace that keeps the tag is allowed.
     const keepingResult = await getTool(UPDATE_SKILL_TOOL_NAME).handler(
       {
-        sId: output.resource.skillId,
+        sId: skill.sId,
         instructions:
           'Summarize the runbook briefly. <knowledge id="data_xyz" title="Runbook" />',
       },
@@ -523,29 +515,14 @@ describe("skill_authoring tools", () => {
     const { authenticator } = await createResourceTest({ role: "builder" });
     const originalInstructions =
       'Summarize the runbook. <knowledge id="data_xyz" title="Runbook" />';
-
-    const createResult = await getTool(CREATE_SKILL_TOOL_NAME).handler(
-      {
-        name: "Targeted Knowledge Skill",
-        userFacingDescription: "Skill with a knowledge tag.",
-        agentFacingDescription: "Use to verify targeted tag preservation.",
-        instructions: originalInstructions,
-        icon: "ActionListIcon",
-      },
-      makeExtra(authenticator)
-    );
-    expect(createResult.isOk()).toBe(true);
-    if (createResult.isErr()) {
-      throw createResult.error;
-    }
-    const output = createResult.value[0];
-    if (!isSkillAuthoringResultOutput(output)) {
-      throw new Error("Expected structured skill authoring output.");
-    }
+    const skill = await seedSkill(authenticator, {
+      name: "Targeted Knowledge Skill",
+      instructions: originalInstructions,
+    });
 
     const updateResult = await getTool(UPDATE_SKILL_TOOL_NAME).handler(
       {
-        sId: output.resource.skillId,
+        sId: skill.sId,
         old_string: '<knowledge id="data_xyz" title="Runbook" />',
         new_string: "the runbook",
       },
@@ -558,10 +535,7 @@ describe("skill_authoring tools", () => {
     }
     expect(updateResult.error.message).toContain("knowledge");
 
-    const untouched = await SkillResource.fetchById(
-      authenticator,
-      output.resource.skillId
-    );
+    const untouched = await SkillResource.fetchById(authenticator, skill.sId);
     expect(untouched?.instructions).toBe(originalInstructions);
   });
 
@@ -574,51 +548,21 @@ describe("skill_authoring tools", () => {
     });
     const skillReferenceTag =
       SkillFactory.serializeSkillReferenceTag(childSkill);
+    const originalInstructions = `Use ${skillReferenceTag} for details.`;
+    const parentSkill = await seedSkill(authenticator, {
+      name: "Parent Skill",
+      instructions: originalInstructions,
+      enableSkillReferences: true,
+      referencedSkillIds: [childSkill.sId],
+    });
 
-    const createResult = await getTool(CREATE_SKILL_TOOL_NAME).handler(
-      {
-        name: "Parent Skill",
-        userFacingDescription: "Skill that references another skill.",
-        agentFacingDescription: "Use to verify reference preservation.",
-        instructions: `Use ${skillReferenceTag} when needed.`,
-        icon: "ActionListIcon",
-      },
-      makeExtra(authenticator)
-    );
-    expect(createResult.isOk()).toBe(true);
-    if (createResult.isErr()) {
-      throw createResult.error;
-    }
-    const output = createResult.value[0];
-    if (!isSkillAuthoringResultOutput(output)) {
-      throw new Error("Expected structured skill authoring output.");
-    }
-
-    const wiringResult = await getTool(UPDATE_SKILL_TOOL_NAME).handler(
-      {
-        sId: output.resource.skillId,
-        old_string: "when needed",
-        new_string: "for details",
-      },
-      makeExtra(authenticator)
-    );
-    expect(wiringResult.isOk()).toBe(true);
-
-    const parentBeforeRemoval = await SkillResource.fetchById(
-      authenticator,
-      output.resource.skillId
-    );
-    if (!parentBeforeRemoval) {
-      throw new Error("Expected parent skill to exist.");
-    }
-    await expect(
-      parentBeforeRemoval.fetchChildSkills(authenticator)
-    ).resolves.toEqual([expect.objectContaining({ sId: childSkill.sId })]);
-    const originalInstructions = parentBeforeRemoval.instructions;
+    await expect(parentSkill.fetchChildSkills(authenticator)).resolves.toEqual([
+      expect.objectContaining({ sId: childSkill.sId }),
+    ]);
 
     const updateResult = await getTool(UPDATE_SKILL_TOOL_NAME).handler(
       {
-        sId: output.resource.skillId,
+        sId: parentSkill.sId,
         old_string: skillReferenceTag,
         new_string: "Child Skill",
       },
@@ -633,7 +577,7 @@ describe("skill_authoring tools", () => {
 
     const unchangedParent = await SkillResource.fetchById(
       authenticator,
-      output.resource.skillId
+      parentSkill.sId
     );
     if (!unchangedParent) {
       throw new Error("Expected parent skill to exist.");
@@ -648,29 +592,14 @@ describe("skill_authoring tools", () => {
     const { authenticator } = await createResourceTest({ role: "builder" });
     const originalInstructions =
       'Use <knowledge id="n1" title="Runbook" space="sp1" dsv="dsv1" hasChildren="true" /> for context.';
-
-    const createResult = await getTool(CREATE_SKILL_TOOL_NAME).handler(
-      {
-        name: "Knowledge Attributes Skill",
-        userFacingDescription: "Skill with a detailed knowledge tag.",
-        agentFacingDescription: "Use to verify knowledge tag attributes.",
-        instructions: originalInstructions,
-        icon: "ActionListIcon",
-      },
-      makeExtra(authenticator)
-    );
-    expect(createResult.isOk()).toBe(true);
-    if (createResult.isErr()) {
-      throw createResult.error;
-    }
-    const output = createResult.value[0];
-    if (!isSkillAuthoringResultOutput(output)) {
-      throw new Error("Expected structured skill authoring output.");
-    }
+    const skill = await seedSkill(authenticator, {
+      name: "Knowledge Attributes Skill",
+      instructions: originalInstructions,
+    });
 
     const updateResult = await getTool(UPDATE_SKILL_TOOL_NAME).handler(
       {
-        sId: output.resource.skillId,
+        sId: skill.sId,
         instructions: 'Use <knowledge id="n1" title="Runbook" /> for context.',
       },
       makeExtra(authenticator)
@@ -682,10 +611,7 @@ describe("skill_authoring tools", () => {
     }
     expect(updateResult.error.message).toContain("knowledge");
 
-    const untouched = await SkillResource.fetchById(
-      authenticator,
-      output.resource.skillId
-    );
+    const untouched = await SkillResource.fetchById(authenticator, skill.sId);
     expect(untouched?.instructions).toBe(originalInstructions);
   });
 
@@ -695,39 +621,21 @@ describe("skill_authoring tools", () => {
       'Use <knowledge id="n1" title="Runbook" space="sp1" dsv="dsv1" hasChildren="true" /> for context.';
     const reorderedInstructions =
       'Use <knowledge hasChildren="true" dsv="dsv1" title="Runbook" id="n1" space="sp1" /> for context.';
-
-    const createResult = await getTool(CREATE_SKILL_TOOL_NAME).handler(
-      {
-        name: "Reordered Knowledge Skill",
-        userFacingDescription: "Skill with a detailed knowledge tag.",
-        agentFacingDescription: "Use to verify knowledge tag reordering.",
-        instructions: originalInstructions,
-        icon: "ActionListIcon",
-      },
-      makeExtra(authenticator)
-    );
-    expect(createResult.isOk()).toBe(true);
-    if (createResult.isErr()) {
-      throw createResult.error;
-    }
-    const output = createResult.value[0];
-    if (!isSkillAuthoringResultOutput(output)) {
-      throw new Error("Expected structured skill authoring output.");
-    }
+    const skill = await seedSkill(authenticator, {
+      name: "Reordered Knowledge Skill",
+      instructions: originalInstructions,
+    });
 
     const updateResult = await getTool(UPDATE_SKILL_TOOL_NAME).handler(
       {
-        sId: output.resource.skillId,
+        sId: skill.sId,
         instructions: reorderedInstructions,
       },
       makeExtra(authenticator)
     );
 
     expect(updateResult.isOk()).toBe(true);
-    const updated = await SkillResource.fetchById(
-      authenticator,
-      output.resource.skillId
-    );
+    const updated = await SkillResource.fetchById(authenticator, skill.sId);
     expect(updated?.instructions).toBe(reorderedInstructions);
   });
 
@@ -735,29 +643,14 @@ describe("skill_authoring tools", () => {
     const { authenticator } = await createResourceTest({ role: "builder" });
     const originalInstructions =
       'Use <tool id="tool_1" name="Search" icon="ActionListIcon" /> for research.';
-
-    const createResult = await getTool(CREATE_SKILL_TOOL_NAME).handler(
-      {
-        name: "Tool Attributes Skill",
-        userFacingDescription: "Skill with a tool tag.",
-        agentFacingDescription: "Use to verify tool tag attributes.",
-        instructions: originalInstructions,
-        icon: "ActionListIcon",
-      },
-      makeExtra(authenticator)
-    );
-    expect(createResult.isOk()).toBe(true);
-    if (createResult.isErr()) {
-      throw createResult.error;
-    }
-    const output = createResult.value[0];
-    if (!isSkillAuthoringResultOutput(output)) {
-      throw new Error("Expected structured skill authoring output.");
-    }
+    const skill = await seedSkill(authenticator, {
+      name: "Tool Attributes Skill",
+      instructions: originalInstructions,
+    });
 
     const updateResult = await getTool(UPDATE_SKILL_TOOL_NAME).handler(
       {
-        sId: output.resource.skillId,
+        sId: skill.sId,
         instructions: 'Use <tool id="tool_1" name="Search" /> for research.',
       },
       makeExtra(authenticator)
@@ -769,10 +662,7 @@ describe("skill_authoring tools", () => {
     }
     expect(updateResult.error.message).toContain("tools");
 
-    const untouched = await SkillResource.fetchById(
-      authenticator,
-      output.resource.skillId
-    );
+    const untouched = await SkillResource.fetchById(authenticator, skill.sId);
     expect(untouched?.instructions).toBe(originalInstructions);
   });
 
@@ -785,39 +675,23 @@ describe("skill_authoring tools", () => {
     });
     const skillReferenceTag =
       SkillFactory.serializeSkillReferenceTag(childSkill);
+    // Seed a parent whose instructions mention the reference but whose links are
+    // not wired yet, mirroring a skill whose references are out of sync.
+    const parentSkill = await seedSkill(authenticator, {
+      name: "Parent Skill",
+      instructions: `Use ${skillReferenceTag} when needed.`,
+      enableSkillReferences: false,
+      referencedSkillIds: [],
+    });
 
-    const createResult = await getTool(CREATE_SKILL_TOOL_NAME).handler(
-      {
-        name: "Parent Skill",
-        userFacingDescription: "Skill that references another skill.",
-        agentFacingDescription: "Use to verify reference syncing.",
-        instructions: `Use ${skillReferenceTag} when needed.`,
-        icon: "ActionListIcon",
-      },
-      makeExtra(authenticator)
+    await expect(parentSkill.fetchChildSkills(authenticator)).resolves.toEqual(
+      []
     );
-    expect(createResult.isOk()).toBe(true);
-    if (createResult.isErr()) {
-      throw createResult.error;
-    }
-    const output = createResult.value[0];
-    if (!isSkillAuthoringResultOutput(output)) {
-      throw new Error("Expected structured skill authoring output.");
-    }
-
-    // create_skill does not wire references, so there are none yet.
-    const parentBefore = await SkillResource.fetchById(
-      authenticator,
-      output.resource.skillId
-    );
-    await expect(
-      parentBefore?.fetchChildSkills(authenticator)
-    ).resolves.toEqual([]);
 
     // A targeted edit that keeps the reference tag re-derives the references.
     const updateResult = await getTool(UPDATE_SKILL_TOOL_NAME).handler(
       {
-        sId: output.resource.skillId,
+        sId: parentSkill.sId,
         old_string: "when needed",
         new_string: "for details",
       },
@@ -827,11 +701,141 @@ describe("skill_authoring tools", () => {
 
     const parentAfter = await SkillResource.fetchById(
       authenticator,
-      output.resource.skillId
+      parentSkill.sId
     );
     await expect(parentAfter?.fetchChildSkills(authenticator)).resolves.toEqual(
       [expect.objectContaining({ sId: childSkill.sId })]
     );
+  });
+
+  it("rejects creating a skill that embeds a knowledge tag", async () => {
+    const { authenticator } = await createResourceTest({ role: "builder" });
+
+    const createResult = await getTool(CREATE_SKILL_TOOL_NAME).handler(
+      {
+        name: "Phantom Knowledge Skill",
+        userFacingDescription: "Skill that should not embed a knowledge tag.",
+        agentFacingDescription: "Use to verify create rejects special tags.",
+        instructions:
+          'Summarize the runbook. <knowledge id="data_xyz" title="Runbook" />',
+        icon: "ActionListIcon",
+      },
+      makeExtra(authenticator)
+    );
+
+    expect(createResult.isErr()).toBe(true);
+    if (createResult.isOk()) {
+      throw new Error("Expected a knowledge tag on create to be rejected.");
+    }
+    expect(createResult.error.message).toContain("special tags");
+    expect(createResult.error.message).toContain("knowledge");
+  });
+
+  it("rejects creating a skill that embeds a tool tag", async () => {
+    const { authenticator } = await createResourceTest({ role: "builder" });
+
+    const createResult = await getTool(CREATE_SKILL_TOOL_NAME).handler(
+      {
+        name: "Phantom Tool Skill",
+        userFacingDescription: "Skill that should not embed a tool tag.",
+        agentFacingDescription: "Use to verify create rejects special tags.",
+        instructions:
+          'Use <tool id="tool_1" name="Search" icon="ActionListIcon" /> for research.',
+        icon: "ActionListIcon",
+      },
+      makeExtra(authenticator)
+    );
+
+    expect(createResult.isErr()).toBe(true);
+    if (createResult.isOk()) {
+      throw new Error("Expected a tool tag on create to be rejected.");
+    }
+    expect(createResult.error.message).toContain("special tags");
+    expect(createResult.error.message).toContain("tools");
+  });
+
+  it("rejects creating a skill that embeds a nested skill reference", async () => {
+    const { authenticator } = await createResourceTest({ role: "builder" });
+    await FeatureFlagFactory.basic(authenticator, "nested_skills");
+
+    const childSkill = await SkillFactory.create(authenticator, {
+      name: "Child Skill",
+    });
+    const skillReferenceTag =
+      SkillFactory.serializeSkillReferenceTag(childSkill);
+
+    const createResult = await getTool(CREATE_SKILL_TOOL_NAME).handler(
+      {
+        name: "Phantom Reference Skill",
+        userFacingDescription: "Skill that should not embed a reference.",
+        agentFacingDescription: "Use to verify create rejects special tags.",
+        instructions: `Use ${skillReferenceTag} when needed.`,
+        icon: "ActionListIcon",
+      },
+      makeExtra(authenticator)
+    );
+
+    expect(createResult.isErr()).toBe(true);
+    if (createResult.isOk()) {
+      throw new Error("Expected a nested skill tag on create to be rejected.");
+    }
+    expect(createResult.error.message).toContain("special tags");
+    expect(createResult.error.message).toContain("nested skills");
+  });
+
+  it("rejects a full replace that adds a knowledge tag", async () => {
+    const { authenticator } = await createResourceTest({ role: "builder" });
+    const originalInstructions =
+      "Summarize the runbook in three bullet points.";
+    const skill = await seedSkill(authenticator, {
+      name: "Plain Knowledge Skill",
+      instructions: originalInstructions,
+    });
+
+    const updateResult = await getTool(UPDATE_SKILL_TOOL_NAME).handler(
+      {
+        sId: skill.sId,
+        instructions:
+          'Summarize the runbook. <knowledge id="data_xyz" title="Runbook" />',
+      },
+      makeExtra(authenticator)
+    );
+
+    expect(updateResult.isErr()).toBe(true);
+    if (updateResult.isOk()) {
+      throw new Error("Expected an added knowledge tag to be rejected.");
+    }
+    expect(updateResult.error.message).toContain("knowledge");
+
+    const untouched = await SkillResource.fetchById(authenticator, skill.sId);
+    expect(untouched?.instructions).toBe(originalInstructions);
+  });
+
+  it("rejects a targeted edit that adds a tool tag", async () => {
+    const { authenticator } = await createResourceTest({ role: "builder" });
+    const originalInstructions = "Use the search step for research.";
+    const skill = await seedSkill(authenticator, {
+      name: "Plain Tool Skill",
+      instructions: originalInstructions,
+    });
+
+    const updateResult = await getTool(UPDATE_SKILL_TOOL_NAME).handler(
+      {
+        sId: skill.sId,
+        old_string: "the search step",
+        new_string: '<tool id="tool_1" name="Search" icon="ActionListIcon" />',
+      },
+      makeExtra(authenticator)
+    );
+
+    expect(updateResult.isErr()).toBe(true);
+    if (updateResult.isOk()) {
+      throw new Error("Expected an added tool tag to be rejected.");
+    }
+    expect(updateResult.error.message).toContain("tools");
+
+    const untouched = await SkillResource.fetchById(authenticator, skill.sId);
+    expect(untouched?.instructions).toBe(originalInstructions);
   });
 
   it("rejects combining a full instructions replace with a targeted edit", async () => {

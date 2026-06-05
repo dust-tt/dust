@@ -70,51 +70,77 @@ function makeJsonText(value: unknown) {
   };
 }
 
-type SpecialTagCategory = "nested skills" | "knowledge" | "tools";
+const SPECIAL_TAG_CATEGORIES = ["nested skills", "knowledge", "tools"] as const;
+type SpecialTagCategory = (typeof SPECIAL_TAG_CATEGORIES)[number];
 
-// Skills can embed special tags in their instructions (nested skill references,
-// knowledge, tools) that the builder UI wires up. The agent only sees them as
-// opaque markup, so guard against updates dropping or altering them. Returns
-// the categories of tags present before but missing or changed after.
-function findDroppedSpecialTags(
+// Skills can embed special tags in their instructions that the builder wires up:
+// nested skill references, knowledge, and tools. The agent only ever sees them as
+// opaque markup, and the two groups follow different rules:
+//   - Nested skill references are re-derived from the instructions on every save,
+//     so the agent may freely add them (they get wired). Removing one would
+//     silently unlink a skill the builder attached, so a drop is disallowed.
+//   - Knowledge and tool tags cannot be wired from text alone; their attachments
+//     are carried over from the existing skill untouched. So adding, dropping, or
+//     altering one desyncs the markup from the real attachments, and any change is
+//     disallowed.
+// A freshly created agent skill has no attachments at all, so on create every
+// special tag is a phantom and is rejected outright (see the create handler).
+function extractSpecialTagSignatures(
+  content: string
+): Record<SpecialTagCategory, string[]> {
+  return {
+    "nested skills": extractUniqueSkillReferenceIds(content),
+    knowledge: extractKnowledgeTagSignatures(content),
+    tools: extractToolTags(content).map((tool) => serializeToolTag(tool)),
+  };
+}
+
+// Returns true if any value in `values` is absent from `from`.
+function isMissingAnySignature(values: string[], from: string[]): boolean {
+  const fromSet = new Set(from);
+  return values.some((value) => !fromSet.has(value));
+}
+
+// Returns the special tag categories present in `content`. Used on create, where
+// the skill has no attachments and so cannot carry any special tag.
+function findSpecialTagsPresent(content: string): SpecialTagCategory[] {
+  const signatures = extractSpecialTagSignatures(content);
+  return SPECIAL_TAG_CATEGORIES.filter(
+    (category) => signatures[category].length > 0
+  );
+}
+
+// Returns the special tag categories whose change between `before` and `after`
+// the agent is not allowed to make (see the rules above): a dropped nested skill
+// reference, or any added, dropped, or altered knowledge or tool tag.
+function findDisallowedSpecialTagChanges(
   before: string,
   after: string
 ): SpecialTagCategory[] {
-  const dropped: SpecialTagCategory[] = [];
-  const isMissingAny = (
-    beforeValues: string[],
-    afterValues: string[]
-  ): boolean => {
-    const afterSet = new Set(afterValues);
-    return beforeValues.some((value) => !afterSet.has(value));
-  };
+  const beforeSignatures = extractSpecialTagSignatures(before);
+  const afterSignatures = extractSpecialTagSignatures(after);
 
+  const disallowed: SpecialTagCategory[] = [];
   if (
-    isMissingAny(
-      extractUniqueSkillReferenceIds(before),
-      extractUniqueSkillReferenceIds(after)
+    isMissingAnySignature(
+      beforeSignatures["nested skills"],
+      afterSignatures["nested skills"]
     )
   ) {
-    dropped.push("nested skills");
+    disallowed.push("nested skills");
   }
-  if (
-    isMissingAny(
-      extractKnowledgeTagSignatures(before),
-      extractKnowledgeTagSignatures(after)
-    )
-  ) {
-    dropped.push("knowledge");
-  }
-  if (
-    isMissingAny(
-      extractToolTags(before).map((tool) => serializeToolTag(tool)),
-      extractToolTags(after).map((tool) => serializeToolTag(tool))
-    )
-  ) {
-    dropped.push("tools");
+  for (const category of ["knowledge", "tools"] as const) {
+    const beforeValues = beforeSignatures[category];
+    const afterValues = afterSignatures[category];
+    if (
+      isMissingAnySignature(beforeValues, afterValues) ||
+      isMissingAnySignature(afterValues, beforeValues)
+    ) {
+      disallowed.push(category);
+    }
   }
 
-  return dropped;
+  return disallowed;
 }
 
 const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
@@ -203,6 +229,20 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
     const trimmedName = name.trim();
     if (!trimmedName) {
       return new Err(new MCPError("Skill name cannot be empty."));
+    }
+
+    // A new skill has no attachments, so any special tag in the instructions
+    // would be dead markup. Keep created skills instructions-only.
+    const specialTags = findSpecialTagsPresent(instructions);
+    if (specialTags.length > 0) {
+      return new Err(
+        new MCPError(
+          `The instructions contain special tags (${specialTags.join(", ")}) ` +
+            "that are wired up in the builder, not authored as plain text. Create " +
+            "instructions-only skills; nested skills, knowledge, and tools must be " +
+            "attached in the builder."
+        )
+      );
     }
 
     const existingSkill = await SkillResource.fetchActiveByName(
@@ -390,23 +430,24 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
       resolvedInstructions = updatedContent;
     }
 
-    // Preserve builder-managed special tags. A full replace or targeted edit
-    // can drop or alter tags that wire nested skills, knowledge, and tools, so
-    // check the resolved instructions regardless of edit mode.
+    // Guard builder-managed special tags. Nested skill references re-derive from
+    // the instructions, so the agent may add them but not drop them; knowledge and
+    // tool tags cannot be wired from text, so they must stay exactly as they were.
     if (
       resolvedInstructions !== undefined &&
       resolvedInstructions !== skill.instructions
     ) {
-      const dropped = findDroppedSpecialTags(
+      const disallowed = findDisallowedSpecialTagChanges(
         skill.instructions,
         resolvedInstructions
       );
-      if (dropped.length > 0) {
+      if (disallowed.length > 0) {
         return new Err(
           new MCPError(
-            `The edit drops or alters special tags the skill depends on ` +
-              `(${dropped.join(", ")}). These tags are managed in the builder ` +
-              "and must be preserved verbatim. Keep them intact in the new instructions."
+            `The edit changes special tags the skill depends on ` +
+              `(${disallowed.join(", ")}). These tags are managed in the builder: ` +
+              "keep existing knowledge and tool tags verbatim, do not add new ones, " +
+              "and do not remove nested skill references."
           )
         );
       }
