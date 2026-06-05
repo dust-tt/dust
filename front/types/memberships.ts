@@ -167,6 +167,28 @@ export function isUserCreditState(value: unknown): value is UserCreditState {
   );
 }
 
+/**
+ * Whether a user in the given credit state is currently spending from their
+ * personal seat balance (`user_seat*`) rather than the shared workspace pool.
+ * Such users still have their own credits and are therefore unaffected by
+ * workspace pool depletion — only their own per-user cap (`capped`) can block
+ * them.
+ */
+export function isSpendingFromPersonalSeat(state: UserCreditState): boolean {
+  switch (state) {
+    case "user_seat":
+    case "user_seat_low_balance":
+      return true;
+    case "normal":
+    case "on_pool":
+    case "on_pool_low_balance":
+    case "capped":
+      return false;
+    default:
+      return assertNever(state);
+  }
+}
+
 // Fraction of the personal seat balance / per-user cap at which the
 // low-balance warning bands kick in. Mirrors the seat-low-balance guards in
 // `lib/metronome/user_credit_state_machine.ts` (threshold === 0.2 * allowance)
