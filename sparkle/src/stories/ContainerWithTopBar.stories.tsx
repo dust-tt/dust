@@ -2,11 +2,11 @@ import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
 import {
-  Bold01V2,
+  Bold01,
   Button,
   ContainerWithTopBar,
-  Italic01V2,
-  Link01V2,
+  Italic01,
+  Link01,
 } from "../index_with_tw_base";
 
 const meta = {
@@ -20,19 +20,19 @@ type Story = StoryObj<typeof meta>;
 const MockToolbar = () => (
   <div className="s-flex s-items-center s-gap-1 s-px-3 s-py-2">
     <Button
-      icon={Bold01V2}
+      icon={Bold01}
       size="icon"
       variant="ghost-secondary"
       tooltip="Bold"
     />
     <Button
-      icon={Italic01V2}
+      icon={Italic01}
       size="icon"
       variant="ghost-secondary"
       tooltip="Italic"
     />
     <Button
-      icon={Link01V2}
+      icon={Link01}
       size="icon"
       variant="ghost-secondary"
       tooltip="Link"

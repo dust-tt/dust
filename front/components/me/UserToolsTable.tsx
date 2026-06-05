@@ -19,7 +19,7 @@ import {
   Button,
   Chip,
   DataTable,
-  DotsHorizontalV2,
+  DotsHorizontal,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
@@ -176,7 +176,7 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <Button
-                icon={DotsHorizontalV2}
+                icon={DotsHorizontal}
                 size="icon"
                 variant="ghost-secondary"
                 onClick={(e) => e.stopPropagation()}

@@ -4,7 +4,7 @@ import {
   Icon,
   Spinner,
   Tooltip,
-  XCloseV2,
+  XClose,
   cn,
 } from "@dust-tt/sparkle";
 import React from "react";
@@ -144,7 +144,7 @@ const NewCitation = React.forwardRef<HTMLDivElement, NewCitationProps>(
             <Button
               variant="ghost"
               size="xmini"
-              icon={XCloseV2}
+              icon={XClose}
               onClick={(e) => {
                 e.stopPropagation();
                 onClose();

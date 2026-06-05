@@ -34,23 +34,23 @@ import type { WorkspaceType } from "@app/types/user";
 import {
   Avatar,
   Button,
-  ClockV2,
+  Clock,
   ConversationMessageContainer,
   ConversationMessageContent,
   ConversationMessageTitle,
   cn,
-  DotsHorizontalV2,
+  DotsHorizontal,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Edit04V2,
+  Edit04,
   Icon,
-  Link01V2,
+  Link01,
   Toolbar,
   Tooltip,
-  Trash01V2,
-  ZapV2,
+  Trash01,
+  Zap,
 } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
 import { EditorContent } from "@tiptap/react";
@@ -396,7 +396,7 @@ export function UserMessage({
                 >
                   {isPending && (
                     <Icon
-                      visual={ClockV2}
+                      visual={Clock}
                       size="xs"
                       className="mt-1 shrink-0 text-faint dark:text-faint-night"
                     />
@@ -469,7 +469,7 @@ export function UserMessage({
             isCurrentUser && "justify-end"
           )}
         >
-          <Icon visual={ClockV2} size="xs" />
+          <Icon visual={Clock} size="xs" />
           {`Message${pluralize(pendingMessageCount)} queued`}
         </div>
       )}
@@ -516,7 +516,7 @@ function TriggerChip({ message }: { message?: UserMessageType }) {
   return (
     <Tooltip
       label={<Label message={message} />}
-      trigger={<Icon size="xs" visual={ZapV2} className="h-3.5 w-3.5" />}
+      trigger={<Icon size="xs" visual={Zap} className="h-3.5 w-3.5" />}
     />
   );
 }
@@ -610,14 +610,14 @@ function ActionMenu({
   const actions = showActions
     ? [
         {
-          icon: Link01V2,
+          icon: Link01,
           label: "Copy message link",
           onClick: handleCopyMessageLink,
         },
         ...(canEdit
           ? [
               {
-                icon: Edit04V2,
+                icon: Edit04,
                 label: "Edit message",
                 onClick: handleEditMessage,
               },
@@ -626,7 +626,7 @@ function ActionMenu({
         ...(canDelete
           ? [
               {
-                icon: Trash01V2,
+                icon: Trash01,
                 label: "Delete message",
                 onClick: handleDeleteMessage,
               },
@@ -667,7 +667,7 @@ function ActionMenu({
             >
               <DropdownMenuTrigger asChild>
                 <Button
-                  icon={DotsHorizontalV2}
+                  icon={DotsHorizontal}
                   size="icon-xs"
                   variant="outline"
                   aria-label="Message actions"

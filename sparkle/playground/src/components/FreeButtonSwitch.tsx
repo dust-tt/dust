@@ -1,14 +1,14 @@
 import {
   AnimatedText,
   Button,
-  File02V2,
+  File02,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuPortal,
   Separator,
-  XCloseV2,
+  XClose,
   type ButtonProps,
 } from "@dust-tt/sparkle";
 import { cn } from "@sparkle/lib/utils";
@@ -327,7 +327,7 @@ export function FreeButtonSwitch<TValue extends string>({
         return [
           {
             label: "Remove from topbar",
-            icon: XCloseV2,
+            icon: XClose,
             variant: "warning",
             onClick: () => onRemoveOption(option.value),
           },
@@ -434,7 +434,7 @@ export function FreeButtonSwitch<TValue extends string>({
               variant="outline"
               size={size}
               label={hideLabels ? undefined : (activeFileLabel ?? undefined)}
-              icon={File02V2}
+              icon={File02}
               tooltip={hideLabels ? (activeFileLabel ?? undefined) : undefined}
               aria-label={activeFileLabel ?? "Add file to topbar"}
               className="s-pointer-events-none s-opacity-50"

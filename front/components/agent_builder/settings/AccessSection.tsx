@@ -13,10 +13,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  EyeOffV2,
-  EyeV2,
+  Eye,
+  EyeOff,
   SlackLogo,
-  Users01V2,
+  Users01,
 } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useState } from "react";
@@ -59,7 +59,7 @@ export function AccessSection() {
   };
 
   const getDisplayIcon = () => {
-    return scope.value === "visible" ? EyeV2 : EyeOffV2;
+    return scope.value === "visible" ? Eye : EyeOff;
   };
 
   const slackDataSource = slackProvider
@@ -74,7 +74,7 @@ export function AccessSection() {
         <Button
           variant="outline"
           size="sm"
-          icon={Users01V2}
+          icon={Users01}
           label="Editors"
           onClick={() => setIsEditorsOpen(true)}
           type="button"
@@ -104,14 +104,14 @@ export function AccessSection() {
             <DropdownMenuItem
               label="Published"
               description="Visible & usable by all members of the workspace."
-              icon={EyeV2}
+              icon={Eye}
               onClick={() => scope.onChange("visible")}
               disabled={publishingToggleDisabled}
             />
             <DropdownMenuItem
               label="Unpublished"
               description="Visible & usable by editors only."
-              icon={EyeOffV2}
+              icon={EyeOff}
               onClick={() => scope.onChange("hidden")}
               disabled={publishingToggleDisabled}
             />

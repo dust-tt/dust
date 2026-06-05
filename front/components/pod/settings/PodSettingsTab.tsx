@@ -18,18 +18,18 @@ import type { PatchPodMetadataBodyType } from "@app/types/api/internal/spaces";
 import { PatchPodMetadataBodySchema } from "@app/types/api/internal/spaces";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  ArchiveV2,
+  Archive,
   Button,
   ContentMessage,
-  Globe01V2,
+  Globe01,
   Input,
   ScrollArea,
   SearchInput,
   SliderToggle,
   TextArea,
   Tooltip,
-  Upload01V2,
-  Users01V2,
+  Upload01,
+  Users01,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useContext, useEffect, useState } from "react";
@@ -295,7 +295,7 @@ export function PodSettingsTab({
           <div className="flex flex-col border-y border-border">
             <div className="flex items-center justify-between gap-4 py-4">
               <PodSettingsOptionLabel
-                icon={Globe01V2}
+                icon={Globe01}
                 title="Open to everyone"
                 description="Anyone in the workspace can find and join the Pod."
               />
@@ -338,7 +338,7 @@ export function PodSettingsTab({
               <Button
                 label="Manage"
                 variant="outline"
-                icon={Users01V2}
+                icon={Users01}
                 onClick={onOpenMembersPanel}
               />
             )}
@@ -382,7 +382,7 @@ export function PodSettingsTab({
                   .
                 </p>
                 <Button
-                  icon={Upload01V2}
+                  icon={Upload01}
                   variant="outline"
                   label="Unarchive"
                   onClick={handleArchiveToggle}
@@ -396,7 +396,7 @@ export function PodSettingsTab({
                   intact and can still be used as a data source.
                 </p>
                 <Button
-                  icon={ArchiveV2}
+                  icon={Archive}
                   variant="warning-secondary"
                   label="Archive"
                   onClick={handleArchiveToggle}

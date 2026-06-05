@@ -7,15 +7,15 @@ import { isBuilder } from "@app/types/user";
 import {
   AnchoredPopover,
   Avatar,
-  BrainV2,
+  Brain,
   Button,
   ConfettiBackground,
   cn,
-  Globe01V2,
-  Image01V2,
-  ScanV2,
-  SearchMdV2,
-  TableV2,
+  Globe01,
+  Image01,
+  Scan,
+  SearchMd,
+  Table,
   Tooltip,
   TypingAnimation,
 } from "@dust-tt/sparkle";
@@ -42,27 +42,27 @@ const CONNECTIONS_IN_TOUR_GUIDE: ConnectorProvider[] = [
 const ACTIONS_IN_TOUR_GUIDE = [
   {
     label: "Search data",
-    icon: SearchMdV2,
+    icon: SearchMd,
   },
   {
     label: "Table query",
-    icon: TableV2,
+    icon: Table,
   },
   {
     label: "Extract data",
-    icon: ScanV2,
+    icon: Scan,
   },
   {
     label: "Image generation",
-    icon: Image01V2,
+    icon: Image01,
   },
   {
     label: "Web search and browsing",
-    icon: Globe01V2,
+    icon: Globe01,
   },
   {
     label: "Reasoning",
-    icon: BrainV2,
+    icon: Brain,
   },
 ] as const;
 

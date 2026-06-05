@@ -14,7 +14,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSearchbar,
   DropdownMenuTrigger,
-  InfoCircleV2,
+  InfoCircle,
   Spinner,
 } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
@@ -28,12 +28,7 @@ interface ProjectMessageProps {
 
 function ProjectMessage({ title, children }: ProjectMessageProps) {
   return (
-    <ContentMessage
-      title={title}
-      icon={InfoCircleV2}
-      variant="warning"
-      size="sm"
-    >
+    <ContentMessage title={title} icon={InfoCircle} variant="warning" size="sm">
       {children}
     </ContentMessage>
   );

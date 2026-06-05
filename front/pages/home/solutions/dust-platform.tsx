@@ -9,7 +9,7 @@ import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
-import { Button, Div3D, Hover3D, Rocket02V2 } from "@dust-tt/sparkle";
+import { Button, Div3D, Hover3D, Rocket02 } from "@dust-tt/sparkle";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
@@ -164,7 +164,7 @@ export default function DustPlatform() {
               variant="highlight"
               size="md"
               label="Try Dust now"
-              icon={Rocket02V2}
+              icon={Rocket02}
               onClick={withTracking(
                 TRACKING_AREAS.SOLUTIONS,
                 "platform_footer_cta_primary"

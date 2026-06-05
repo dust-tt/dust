@@ -11,7 +11,7 @@ import type {
 import { isVisualizationRPCRequest } from "@app/types/assistant/visualization";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import {
-  AlertCircleV2,
+  AlertCircle,
   Button,
   CodeBlock,
   ContentMessage,
@@ -469,7 +469,7 @@ export const VisualizationActionIframe = forwardRef<
                   <ContentMessage
                     title="Visualization failed"
                     variant="warning"
-                    icon={AlertCircleV2}
+                    icon={AlertCircle}
                     className="max-w-md"
                   >
                     <div className="mb-4 text-sm">
@@ -500,7 +500,7 @@ export const VisualizationActionIframe = forwardRef<
                   <div className="flex flex-col gap-3 text-center">
                     <div className="flex flex-col items-center gap-2 text-center">
                       <div className="flex flex-col items-center gap-2">
-                        <AlertCircleV2 className="h-8 w-8" />
+                        <AlertCircle className="h-8 w-8" />
                         <p className="heading-xl leading-7 text-foreground dark:text-foreground-night">
                           Visualization Error
                         </p>

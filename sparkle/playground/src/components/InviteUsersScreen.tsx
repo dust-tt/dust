@@ -2,7 +2,7 @@ import {
   Avatar,
   Button,
   Checkbox,
-  CheckV2,
+  Check,
   ListGroup,
   ListItem,
   SearchInput,
@@ -211,7 +211,7 @@ export function InviteUsersScreen({
                             ? "Editor"
                             : "Set as editor"
                         }
-                        icon={editorUserIds.has(user.id) ? CheckV2 : undefined}
+                        icon={editorUserIds.has(user.id) ? Check : undefined}
                         onClick={(event) => {
                           event.stopPropagation();
                           toggleEditor(user.id);

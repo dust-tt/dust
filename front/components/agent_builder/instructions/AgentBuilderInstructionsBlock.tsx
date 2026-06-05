@@ -9,9 +9,9 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import {
   Button,
   Label,
-  RefreshCw02V2,
+  RefreshCw02,
   Separator,
-  XCloseV2,
+  XClose,
 } from "@dust-tt/sparkle";
 import { format } from "date-fns/format";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
@@ -68,7 +68,7 @@ export function AgentBuilderInstructionsBlock({
           )}
           <div className="flex gap-2">
             <Button
-              icon={XCloseV2}
+              icon={XClose}
               variant="outline"
               size="sm"
               onClick={() => {
@@ -80,7 +80,7 @@ export function AgentBuilderInstructionsBlock({
             <Button
               variant="warning"
               size="sm"
-              icon={RefreshCw02V2}
+              icon={RefreshCw02}
               onClick={restoreVersion}
               label="Restore this version"
             />

@@ -3,7 +3,7 @@ import {
   LinkWrapper,
   type LinkWrapperProps,
 } from "@sparkle/components/LinkWrapper";
-import { XCloseV2 } from "@sparkle/icons/v2-stroke";
+import { XClose } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
 import React, { type ComponentType, type ReactNode } from "react";
@@ -263,7 +263,7 @@ const Chip = React.forwardRef<HTMLDivElement, ChipProps>(
         )}
         {onRemove && (
           <ChipButton
-            icon={XCloseV2}
+            icon={XClose}
             size={size === "mini" ? "xs" : "sm"}
             className={cn("-s-mr-1", closeIconVariants[color || "primary"])}
             aria-label="Remove"

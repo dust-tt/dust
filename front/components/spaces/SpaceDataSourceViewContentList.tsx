@@ -52,7 +52,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Settings01V2,
+  Settings01,
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
@@ -514,7 +514,7 @@ export const SpaceDataSourceViewContentList = ({
       isAdmin ? (
         <Button
           label="Manage Data"
-          icon={Settings01V2}
+          icon={Settings01}
           onClick={() => {
             if (systemSpace) {
               void router.push(

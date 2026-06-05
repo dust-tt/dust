@@ -13,12 +13,7 @@ import type {
 } from "@app/components/home/content/Solutions/configs/utils";
 import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
 import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCasesSection";
-import {
-  CheckCircleV2,
-  MagicWand02V2,
-  Rocket02V2,
-  Users01V2,
-} from "@dust-tt/sparkle";
+import { CheckCircle, MagicWand02, Rocket02, Users01 } from "@dust-tt/sparkle";
 
 // Config exports
 export const pageSettings: pageSettingsProps = {
@@ -75,7 +70,7 @@ export const Hero: HeroProps = {
     primary: {
       label: "Get started",
       href: "/home/pricing",
-      icon: Rocket02V2,
+      icon: Rocket02,
     },
     secondary: {
       label: "Talk to sales",
@@ -88,20 +83,20 @@ export const Benefits: BenefitsProps = {
   sectionTitle: "Amplify your engineering team's capabilities ",
   items: [
     {
-      icon: MagicWand02V2,
+      icon: MagicWand02,
       title: "Focus on building",
       description:
         "Maximize engineering time by automating documentation and support tasks.",
     },
     {
-      icon: CheckCircleV2,
+      icon: CheckCircle,
       title: "Streamline incident handling",
       description:
         "Instantly surface relevant context and solutions to resolve issues faster.",
     },
 
     {
-      icon: Users01V2,
+      icon: Users01,
       title: "Facilitate team operations",
       description: "Focus on coding, not writing updates or pull requests.",
     },

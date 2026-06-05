@@ -14,12 +14,12 @@ import type { SpaceType } from "@app/types/space";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
 import {
-  File02V2,
-  File04V2,
-  FolderV2,
-  LayersThree01V2,
-  Lock01V2,
-  MessageChatSquareV2,
+  File02,
+  File04,
+  Folder,
+  LayersThree01,
+  Lock01,
+  MessageChatSquare,
 } from "@dust-tt/sparkle";
 
 import {
@@ -33,19 +33,19 @@ export function getDocumentIcon(provider: string | null | undefined) {
   if (provider && isConnectorProvider(provider)) {
     const IconComponent = getConnectorProviderLogoWithFallback({
       provider,
-      fallback: File02V2,
+      fallback: File02,
     });
     return IconComponent;
   }
-  return File02V2;
+  return File02;
 }
 
 function getVisualForFileContentNode(node: ContentNode & { type: "document" }) {
   if (node.expandable) {
-    return File04V2;
+    return File04;
   }
 
-  return File02V2;
+  return File02;
 }
 
 export function getVisualForDataSourceViewContentNode(
@@ -72,11 +72,11 @@ export function getVisualForDataSourceViewContentNode(
 export function getVisualForContentNodeType(type: ContentNodeType) {
   switch (type) {
     case "table":
-      return LayersThree01V2;
+      return LayersThree01;
     case "folder":
-      return FolderV2;
+      return Folder;
     case "document":
-      return File02V2;
+      return File02;
     default:
       assertNever(type);
   }
@@ -87,14 +87,12 @@ export function getVisualForContentNode(node: ContentNode) {
   if (node.mimeType) {
     // Handle private channels with lock icon.
     if (CHANNEL_INTERNAL_MIME_TYPES.includes(node.mimeType)) {
-      return node.providerVisibility === "private"
-        ? Lock01V2
-        : MessageChatSquareV2;
+      return node.providerVisibility === "private" ? Lock01 : MessageChatSquare;
     }
 
     // Handle database-like content.
     if (DATABASE_INTERNAL_MIME_TYPES.includes(node.mimeType)) {
-      return LayersThree01V2;
+      return LayersThree01;
     }
 
     // Handle file-like content that isn't a document type.
@@ -106,7 +104,7 @@ export function getVisualForContentNode(node: ContentNode) {
 
     // Handle spreadsheets.
     if (SPREADSHEET_INTERNAL_MIME_TYPES.includes(node.mimeType)) {
-      return FolderV2;
+      return Folder;
     }
   }
 

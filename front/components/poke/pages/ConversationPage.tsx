@@ -22,11 +22,11 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
-  CheckV2,
-  ChevronDownV2,
+  Check,
+  ChevronDown,
   Chip,
-  ClipboardCheckV2,
-  ClipboardV2,
+  Clipboard,
+  ClipboardCheck,
   CodeBlock,
   ConversationMessage,
   DropdownMenu,
@@ -39,7 +39,7 @@ import {
   Page,
   Spinner,
   useCopyToClipboard,
-  XCloseV2,
+  XClose,
 } from "@dust-tt/sparkle";
 import { CodeBracketIcon, DocumentTextIcon } from "@heroicons/react/24/outline";
 import { useEffect, useState } from "react";
@@ -96,7 +96,7 @@ const UserMessageView = ({ message, useMarkdown }: UserMessageViewProps) => {
               onClick={() => setIsExpanded(true)}
               className="flex cursor-pointer items-center gap-1 text-sm italic text-muted-foreground hover:text-foreground dark:text-muted-foreground-night dark:hover:text-foreground-night"
             >
-              <ChevronDownV2 className="h-4 w-4" />
+              <ChevronDown className="h-4 w-4" />
               <span>Hidden System Message (click to expand)</span>
             </button>
           ) : (
@@ -106,7 +106,7 @@ const UserMessageView = ({ message, useMarkdown }: UserMessageViewProps) => {
                   onClick={() => setIsExpanded(false)}
                   className="mb-2 flex cursor-pointer items-center gap-1 text-sm italic text-muted-foreground hover:text-foreground dark:text-muted-foreground-night dark:hover:text-foreground-night"
                 >
-                  <XCloseV2 className="h-4 w-4" />
+                  <XClose className="h-4 w-4" />
                   <span>Hide System Message</span>
                 </button>
               )}
@@ -270,10 +270,10 @@ const AgentMessageView = ({
                     size="xs"
                     icon={
                       isExpanded
-                        ? ChevronDownV2
+                        ? ChevronDown
                         : a.mcpIO?.isError
-                          ? XCloseV2
-                          : CheckV2
+                          ? XClose
+                          : Check
                     }
                     className="mr-2"
                     onClick={() => toggleAction(i)}
@@ -707,7 +707,7 @@ export function ConversationPage() {
                       label={isCopiedJSON ? "Copied" : "Copy JSON"}
                       variant="outline"
                       size="xs"
-                      icon={isCopiedJSON ? ClipboardCheckV2 : ClipboardV2}
+                      icon={isCopiedJSON ? ClipboardCheck : Clipboard}
                       onClick={() =>
                         copyJSON(
                           JSON.stringify(
@@ -722,7 +722,7 @@ export function ConversationPage() {
                       label="Close"
                       variant="outline"
                       size="xs"
-                      icon={XCloseV2}
+                      icon={XClose}
                       onClick={() => {
                         setRenderError(null);
                         setRenderResult(null);

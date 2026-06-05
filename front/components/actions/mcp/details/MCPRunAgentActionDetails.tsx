@@ -49,9 +49,9 @@ import {
   Button,
   CitationGrid,
   ContentMessage,
-  LinkExternal01V2,
+  LinkExternal01,
   Markdown,
-  RobotV2,
+  Robot,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Components } from "react-markdown";
@@ -323,7 +323,7 @@ function MCPRunAgentActionDetailsDisplay({
           ? () => (
               <Avatar visual={childAgent.pictureUrl} size="xs" busy={isBusy} />
             )
-          : RobotV2
+          : Robot
       }
     >
       {displayContext === "conversation" ? (
@@ -396,7 +396,7 @@ function MCPRunAgentActionDetailsDisplay({
                     </span>
                     {conversationUrl && (
                       <Button
-                        icon={LinkExternal01V2}
+                        icon={LinkExternal01}
                         label="View full conversation"
                         variant="outline"
                         onClick={() => window.open(conversationUrl, "_blank")}

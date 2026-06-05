@@ -14,10 +14,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  Globe01V2,
+  Globe01,
   Input,
   Label,
-  Lock01V2,
+  Lock01,
   Tooltip,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useState } from "react";
@@ -204,8 +204,8 @@ function AccessSwitch({ isOpen, disabled, onChange }: AccessSwitchProps) {
       onValueChange={(value) => onChange(value === "open")}
       disabled={disabled}
     >
-      <ButtonsSwitch value="open" label="Open" icon={Globe01V2} />
-      <ButtonsSwitch value="restricted" label="Restricted" icon={Lock01V2} />
+      <ButtonsSwitch value="open" label="Open" icon={Globe01} />
+      <ButtonsSwitch value="restricted" label="Restricted" icon={Lock01} />
     </ButtonsSwitchList>
   );
 

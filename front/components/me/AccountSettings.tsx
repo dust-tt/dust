@@ -17,13 +17,13 @@ import {
   DropdownMenuPortal,
   DropdownMenuShortcut,
   DropdownMenuTrigger,
-  Edit04V2,
+  Edit04,
   Input,
   Label,
-  Moon01V2,
+  Moon01,
   Page,
   Spinner,
-  SunV2,
+  Sun,
   Tooltip,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -254,7 +254,7 @@ export function AccountSettings({ owner }: AccountSettingsProps) {
           <Button
             variant="outline"
             size="sm"
-            icon={Edit04V2}
+            icon={Edit04}
             type="button"
             onClick={() => fileInputRef.current?.click()}
             className="absolute left-1/2 top-1/2 h-10 w-10 -translate-x-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100"
@@ -292,10 +292,10 @@ export function AccountSettings({ owner }: AccountSettingsProps) {
                   variant="outline"
                   icon={
                     themeField.value === "light"
-                      ? SunV2
+                      ? Sun
                       : themeField.value === "dark"
-                        ? Moon01V2
-                        : SunV2
+                        ? Moon01
+                        : Sun
                   }
                   label={
                     themeField.value === "light"
@@ -311,17 +311,17 @@ export function AccountSettings({ owner }: AccountSettingsProps) {
               <DropdownMenuPortal>
                 <DropdownMenuContent>
                   <DropdownMenuItem
-                    icon={SunV2}
+                    icon={Sun}
                     onClick={() => themeField.onChange("light")}
                     label="Light"
                   />
                   <DropdownMenuItem
-                    icon={Moon01V2}
+                    icon={Moon01}
                     onClick={() => themeField.onChange("dark")}
                     label="Dark"
                   />
                   <DropdownMenuItem
-                    icon={SunV2}
+                    icon={Sun}
                     onClick={() => themeField.onChange("system")}
                     label="System"
                   />

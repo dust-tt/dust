@@ -13,7 +13,7 @@ import {
 import { useAppRouter } from "@app/lib/platform";
 import { getPodRoute } from "@app/lib/utils/router";
 import {
-  ArrowLeftV2,
+  ArrowLeft,
   ScrollArea,
   Sheet,
   SheetContent,
@@ -153,7 +153,7 @@ export function ConversationBranchApprovalModal({
                     owner={context.owner}
                     messageId={selectedMessage.sId}
                     virtuosoMsg={selectedMessage}
-                    closeIcon={ArrowLeftV2}
+                    closeIcon={ArrowLeft}
                     onClose={() => {
                       setSelectedMessage(null);
                       setSelectedTab("messages");

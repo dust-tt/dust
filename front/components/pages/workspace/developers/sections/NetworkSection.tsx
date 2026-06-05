@@ -18,13 +18,13 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  InfoCircleV2,
+  InfoCircle,
   Input,
   Page,
-  PlusV2,
+  Plus,
   SliderToggle,
   Spinner,
-  Trash01V2,
+  Trash01,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -120,14 +120,14 @@ export function NetworkSection() {
   const renderBody = () => {
     if (!isAdmin) {
       return (
-        <ContentMessage variant="info" icon={InfoCircleV2} size="lg">
+        <ContentMessage variant="info" icon={InfoCircle} size="lg">
           Only workspace admins can manage Computer network settings.
         </ContentMessage>
       );
     }
     if (!hasSandboxAdmin) {
       return (
-        <ContentMessage variant="info" icon={InfoCircleV2} size="lg">
+        <ContentMessage variant="info" icon={InfoCircle} size="lg">
           Computer administration is not enabled for this workspace.
         </ContentMessage>
       );
@@ -139,7 +139,7 @@ export function NetworkSection() {
       return (
         <ContentMessage
           variant="warning"
-          icon={InfoCircleV2}
+          icon={InfoCircle}
           size="lg"
           title="Failed to load"
         >
@@ -199,7 +199,7 @@ export function NetworkSection() {
           <Button
             type="submit"
             label="Add domain"
-            icon={PlusV2}
+            icon={Plus}
             disabled={!canAddDomain}
             isLoading={isUpdatingWorkspaceEgressPolicy}
             className="mt-0 sm:mt-7"
@@ -223,7 +223,7 @@ export function NetworkSection() {
                 <Button
                   variant="warning"
                   size="mini"
-                  icon={Trash01V2}
+                  icon={Trash01}
                   tooltip={`Remove ${domain}`}
                   disabled={isUpdatingWorkspaceEgressPolicy}
                   onClick={() => {

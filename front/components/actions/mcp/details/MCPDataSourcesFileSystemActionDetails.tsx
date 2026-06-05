@@ -15,10 +15,10 @@ import {
   Citation,
   CitationIcons,
   CitationTitle,
-  File02V2,
+  File02,
   Icon,
   Markdown,
-  MarkerPin01V2,
+  MarkerPin01,
 } from "@dust-tt/sparkle";
 
 export function DataSourceNodeContentDetails({
@@ -42,7 +42,7 @@ export function DataSourceNodeContentDetails({
           ? "Retrieving file content"
           : "Retrieve file content"
       }
-      visual={File02V2}
+      visual={File02}
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
         <div>
@@ -118,7 +118,7 @@ export function FilesystemPathDetails({
       actionName={
         displayContext === "conversation" ? "Locating item" : "Locate item"
       }
-      visual={MarkerPin01V2}
+      visual={MarkerPin01}
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
         <span className="text-sm font-bold text-foreground dark:text-foreground-night">

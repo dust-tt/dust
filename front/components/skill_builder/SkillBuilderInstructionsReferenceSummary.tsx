@@ -9,7 +9,7 @@ import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getSkillIcon } from "@app/lib/skill";
 import { extractToolTags } from "@app/lib/tools/format";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { AttachmentChip, Chip, cn, File02V2 } from "@dust-tt/sparkle";
+import { AttachmentChip, Chip, cn, File02 } from "@dust-tt/sparkle";
 import type { Ref } from "react";
 import { useMemo } from "react";
 
@@ -79,7 +79,7 @@ function renderReferenceSummaryItem({
         <AttachmentChip
           key={`${item.kind}:${item.id}`}
           label={item.title}
-          icon={{ visual: File02V2 }}
+          icon={{ visual: File02 }}
           color="white"
           size="xs"
           className="text-xs"

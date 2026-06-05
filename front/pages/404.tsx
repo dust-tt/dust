@@ -1,5 +1,5 @@
 import CustomErrorPage from "@app/components/pages/CustomErrorPage";
-import { LogIn01V2 } from "@dust-tt/sparkle";
+import { LogIn01 } from "@dust-tt/sparkle";
 
 // biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function Custom404() {
@@ -9,7 +9,7 @@ export default function Custom404() {
       description="Looks like this page took an unscheduled coffee break."
       href="/"
       label="Back to homepage"
-      icon={LogIn01V2}
+      icon={LogIn01}
     />
   );
 }

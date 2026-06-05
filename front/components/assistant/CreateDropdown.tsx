@@ -15,11 +15,11 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
-  File02V2,
-  FolderOpenV2,
-  MagicWand02V2,
-  PlusV2,
-  PuzzlePiece01V2,
+  File02,
+  FolderOpen,
+  MagicWand02,
+  Plus,
+  PuzzlePiece01,
   Spinner,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -45,7 +45,7 @@ export const CreateDropdown = ({
       <DropdownMenuTrigger asChild>
         <Button
           variant="primary"
-          icon={PlusV2}
+          icon={Plus}
           label="Create"
           data-gtm-label="assistantCreationButton"
           data-gtm-location={dataGtmLocation}
@@ -60,7 +60,7 @@ export const CreateDropdown = ({
         {isBuilder(owner) && <DropdownMenuLabel label="Agents" />}
         <DropdownMenuItem
           label="agent from scratch"
-          icon={File02V2}
+          icon={File02}
           onClick={withTracking(
             TRACKING_AREAS.BUILDER,
             "create_from_scratch",
@@ -72,7 +72,7 @@ export const CreateDropdown = ({
         />
         <DropdownMenuItem
           label="agent from template"
-          icon={MagicWand02V2}
+          icon={MagicWand02}
           onClick={withTracking(
             TRACKING_AREAS.BUILDER,
             "create_from_template",
@@ -84,7 +84,7 @@ export const CreateDropdown = ({
         />
         <DropdownMenuItem
           label={isUploadingYAML ? "Uploading..." : "agent from YAML"}
-          icon={isUploadingYAML ? <Spinner size="xs" /> : FolderOpenV2}
+          icon={isUploadingYAML ? <Spinner size="xs" /> : FolderOpen}
           disabled={isUploadingYAML}
           onClick={triggerYAMLUpload}
         />
@@ -93,7 +93,7 @@ export const CreateDropdown = ({
             <DropdownMenuLabel label="Skills" />
             <DropdownMenuItem
               label="skill from scratch"
-              icon={PuzzlePiece01V2}
+              icon={PuzzlePiece01}
               onClick={withTracking(
                 TRACKING_AREAS.BUILDER,
                 "create_skill",
@@ -105,7 +105,7 @@ export const CreateDropdown = ({
             />
             <DropdownMenuItem
               label="skill from existing"
-              icon={FolderOpenV2}
+              icon={FolderOpen}
               onClick={() => setIsImportSkillDialogOpen(true)}
             />
           </>

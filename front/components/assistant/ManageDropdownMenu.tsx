@@ -7,12 +7,12 @@ import {
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
-  ContactsRobotV2,
+  ContactsRobot,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  RobotV2,
+  Robot,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -30,7 +30,7 @@ export const ManageDropdownMenu = ({ owner }: ManageDropdownMenuProps) => {
         <Button
           variant="primary"
           label="Manage"
-          icon={ContactsRobotV2}
+          icon={ContactsRobot}
           size="sm"
           isSelect
           isLoading={isLoading}
@@ -40,7 +40,7 @@ export const ManageDropdownMenu = ({ owner }: ManageDropdownMenuProps) => {
       <DropdownMenuContent align="start">
         <DropdownMenuItem
           label="agents"
-          icon={RobotV2}
+          icon={Robot}
           onClick={() => {
             setIsLoading(true);
             void router.push(getAgentBuilderRoute(owner.sId, "manage"));

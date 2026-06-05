@@ -1,5 +1,5 @@
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
-import { Button, XCloseV2 } from "@dust-tt/sparkle";
+import { Button, XClose } from "@dust-tt/sparkle";
 import type React from "react";
 
 interface InteractiveContentHeaderProps {
@@ -19,7 +19,7 @@ export function InteractiveContentHeader({
           <Button
             variant="ghost"
             onClick={onClose}
-            icon={XCloseV2}
+            icon={XClose}
             className="text-element-600 hover:text-element-900 ml-auto"
           />
         )}

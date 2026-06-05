@@ -18,8 +18,8 @@ import { CURRENCY_SYMBOLS } from "@app/types/currency";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
   Button,
-  CheckCircleV2,
-  CoinsStacked03V2,
+  CheckCircle,
+  CoinsStacked03,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -34,7 +34,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-  XCircleV2,
+  XCircle,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -83,7 +83,7 @@ function CreditValue({ credits }: CreditValueProps) {
   return (
     <span className="flex items-center gap-1">
       <Icon
-        visual={CoinsStacked03V2}
+        visual={CoinsStacked03}
         size="xs"
         className="text-muted-foreground dark:text-muted-foreground-night"
       />
@@ -275,11 +275,7 @@ export function BuyAwuCreditsDialog({
       case "success":
         return (
           <div className="flex flex-col items-center justify-center gap-4 py-8">
-            <Icon
-              visual={CheckCircleV2}
-              size="lg"
-              className="text-success-500"
-            />
+            <Icon visual={CheckCircle} size="lg" className="text-success-500" />
             <div className="text-center">
               <p className="text-lg font-medium text-foreground dark:text-foreground-night">
                 Credits purchased successfully!
@@ -299,7 +295,7 @@ export function BuyAwuCreditsDialog({
       case "error":
         return (
           <div className="flex flex-col items-center justify-center gap-4 py-8">
-            <Icon visual={XCircleV2} size="lg" className="text-warning-500" />
+            <Icon visual={XCircle} size="lg" className="text-warning-500" />
             <div className="text-center">
               <p className="text-lg font-medium text-foreground dark:text-foreground-night">
                 Something went wrong
@@ -362,7 +358,7 @@ export function BuyAwuCreditsDialog({
                       {isValidAmount && (
                         <span className="flex items-center gap-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
                           {formatCredits(addedCredits)} credits
-                          <Icon visual={CoinsStacked03V2} size="xs" />
+                          <Icon visual={CoinsStacked03} size="xs" />
                         </span>
                       )}
                       <div className="ml-auto flex gap-2">
@@ -572,7 +568,7 @@ export function BuyAwuCreditsDialog({
           </DialogHeader>
           <DialogContainer>
             <div className="flex flex-col items-center justify-center gap-4 py-8">
-              <Icon visual={XCircleV2} size="lg" className="text-warning-500" />
+              <Icon visual={XCircle} size="lg" className="text-warning-500" />
               <p className="text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
                 Something went wrong while loading your top-up options. Please
                 try again in a moment, or{" "}

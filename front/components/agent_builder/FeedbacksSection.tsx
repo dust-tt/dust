@@ -20,14 +20,14 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  EyeOffV2,
-  EyeV2,
+  Eye,
+  EyeOff,
   Hoverable,
   Icon,
-  LinkExternal01V2,
+  LinkExternal01,
   Spinner,
-  ThumbsDownV2,
-  ThumbsUpV2,
+  ThumbsDown,
+  ThumbsUp,
   Timeline,
 } from "@dust-tt/sparkle";
 import { memo, useEffect, useState } from "react";
@@ -293,7 +293,7 @@ function FeedbackCard({
         <div className="flex gap-1">
           <CardActionButton
             size="icon"
-            icon={feedback.dismissed ? EyeV2 : EyeOffV2}
+            icon={feedback.dismissed ? Eye : EyeOff}
             onClick={() => toggleDismiss(!feedback.dismissed)}
             disabled={isDismissing}
             tooltip={`Mark feedback as ${feedback.dismissed ? "unseen" : "seen"}`}
@@ -301,7 +301,7 @@ function FeedbackCard({
           {conversationUrl && (
             <CardActionButton
               size="icon"
-              icon={LinkExternal01V2}
+              icon={LinkExternal01}
               href={conversationUrl ?? ""}
               disabled={!conversationUrl}
               tooltip="View conversation"
@@ -344,9 +344,7 @@ function FeedbackCard({
                   ? "text-success-800 dark:text-success-800-night"
                   : "text-info-800 dark:text-info-800-night"
               )}
-              visual={
-                feedback.thumbDirection === "up" ? ThumbsUpV2 : ThumbsDownV2
-              }
+              visual={feedback.thumbDirection === "up" ? ThumbsUp : ThumbsDown}
             />
           </div>
           <div className="flex-grow overflow-hidden">{feedback.content}</div>

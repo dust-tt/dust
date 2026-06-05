@@ -40,8 +40,8 @@ import {
   Avatar,
   Button,
   DiffBlock,
-  EyeV2,
-  FolderV2,
+  Eye,
+  Folder,
   LoadingBlock,
 } from "@dust-tt/sparkle";
 import { EditorContent, useEditor } from "@tiptap/react";
@@ -124,7 +124,7 @@ const InstructionsSuggestionCard = memo(
               <Button
                 variant="outline"
                 size="xs"
-                icon={EyeV2}
+                icon={Eye}
                 tooltip="Review in instructions"
                 onClick={() => focusOnSuggestion(agentSuggestion)}
               />
@@ -623,7 +623,7 @@ function KnowledgeSuggestionCard({
     ? CONNECTOR_UI_CONFIGURATIONS[
         dataSourceView.dataSource.connectorProvider
       ].getLogoComponent()
-    : FolderV2;
+    : Folder;
 
   const hasVisibleScope = hasNodeScope && selectedNodes.length > 0;
   const description =

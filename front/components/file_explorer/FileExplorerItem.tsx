@@ -20,15 +20,15 @@ import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_provide
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import {
   Button,
-  CloudArrowLeftRightV2,
-  DotsHorizontalV2,
-  Download01V2,
+  CloudArrowLeftRight,
+  DotsHorizontal,
+  Download01,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  FolderOpenV2,
-  FolderV2,
+  Folder,
+  FolderOpen,
   Icon,
   Spinner,
   Tooltip,
@@ -118,7 +118,7 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
         <Button
           variant="ghost"
           size="xs"
-          icon={DotsHorizontalV2}
+          icon={DotsHorizontal}
           onClick={(e: React.MouseEvent) => e.stopPropagation()}
         />
       </DropdownMenuTrigger>
@@ -126,7 +126,7 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
         {onDownload && (
           <DropdownMenuItem
             label={isDownloading ? "Downloading…" : "Download"}
-            icon={Download01V2}
+            icon={Download01}
             disabled={isDownloading}
             onClick={handleDownload}
           />
@@ -295,7 +295,7 @@ export function FileExplorerFolderCard({
       {({ surfaceClassName }) => (
         <FileExplorerItem
           kind="icon"
-          visual={FolderV2}
+          visual={Folder}
           viewMode={viewMode}
           title={node.name}
           titleClassName="font-semibold"
@@ -431,7 +431,7 @@ export function ContentNodeCard({
 }: ContentNodeCardProps) {
   const ProviderIcon = getConnectorProviderLogoWithFallback({
     provider: entry.connectorProvider,
-    fallback: CloudArrowLeftRightV2,
+    fallback: CloudArrowLeftRight,
   });
 
   return (
@@ -451,7 +451,7 @@ export function FileExplorerEmptyState() {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-3">
       <Icon
-        visual={FolderOpenV2}
+        visual={FolderOpen}
         size="lg"
         className="text-muted-foreground dark:text-muted-foreground-night"
       />

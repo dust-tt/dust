@@ -5,11 +5,11 @@ import { isDefaultActionName } from "@app/components/shared/tools_picker/types";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { MCP_SPECIFICATION } from "@app/lib/actions/utils_ui";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { BookOpen01V2 } from "@dust-tt/sparkle";
+import { BookOpen01 } from "@dust-tt/sparkle";
 
 function actionIcon(mcpServerView: MCPServerViewType | null) {
   if (!mcpServerView?.server) {
-    return BookOpen01V2;
+    return BookOpen01;
   }
 
   return getIcon(mcpServerView.server.icon);

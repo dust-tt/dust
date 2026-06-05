@@ -1,4 +1,4 @@
-import { Button, Card, Icon, Stars02V2, Spinner } from "@dust-tt/sparkle";
+import { Button, Card, Icon, Stars02, Spinner } from "@dust-tt/sparkle";
 import { type ComponentProps, type ComponentType, type ReactNode } from "react";
 
 import { TaskItem } from "./TaskItem";
@@ -39,7 +39,7 @@ export function SuggestionBox({
   status,
   workingLabel,
   title,
-  headerIcon: HeaderIcon = Stars02V2,
+  headerIcon: HeaderIcon = Stars02,
   items,
   textById = {},
   acceptItemLabel = "Accept suggestion",

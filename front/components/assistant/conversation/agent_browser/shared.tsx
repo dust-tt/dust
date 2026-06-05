@@ -9,7 +9,7 @@ import {
   Button,
   CardGrid,
   Chip,
-  DotsHorizontalV2,
+  DotsHorizontal,
   DropdownMenuItem,
   DropdownMenuLabel,
   SearchDropdownMenu,
@@ -252,7 +252,7 @@ export function SearchDropdownContent({
               <Button
                 variant="ghost"
                 size="xs"
-                icon={DotsHorizontalV2}
+                icon={DotsHorizontal}
                 onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                   e.stopPropagation();
                   onAgentMoreClick(agent.sId);

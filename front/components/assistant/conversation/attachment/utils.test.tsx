@@ -65,12 +65,12 @@ vi.mock("@dust-tt/sparkle", () => ({
   ActionBrainIcon: "ActionBrainIcon",
   ActionFrameIcon: "ActionFrameIcon",
   ActionIcons: "ActionIcons",
-  VolumeMaxV2: "VolumeMaxV2",
-  File02V2: "File02V2",
-  DoubleQuotesV2: "DoubleQuotesV2",
-  FolderV2: "FolderV2",
-  Image01V2: "Image01V2",
-  TableV2: "TableV2",
+  VolumeMax: "VolumeMax",
+  File02: "File02",
+  DoubleQuotes: "DoubleQuotes",
+  Folder: "Folder",
+  Image01: "Image01",
+  Table: "Table",
 
   // Components used by the implementation
   Icon: ({ visual, size }: { visual: unknown; size?: string }) => (
@@ -139,11 +139,11 @@ describe("IconForAttachmentCitation", () => {
     );
   });
 
-  it("renders DoubleIcon with TableV2 for connector nodeType = table", () => {
+  it("renders DoubleIcon with Table for connector nodeType = table", () => {
     render(<TestIcon provider="google_drive" nodeType="table" />);
     const el = screen.getByTestId("double-icon");
     expect(el).toBeInTheDocument();
-    expect(el).toHaveAttribute("data-main", "TableV2");
+    expect(el).toHaveAttribute("data-main", "Table");
     // Comes from our getConnectorProviderLogoWithFallback mock and ThemeContext isDark=false
     expect(el).toHaveAttribute(
       "data-secondary",
@@ -152,30 +152,30 @@ describe("IconForAttachmentCitation", () => {
     expect(el).toHaveAttribute("data-size", "md");
   });
 
-  it("renders DoubleIcon with FolderV2 for connector nodeType = folder", () => {
+  it("renders DoubleIcon with Folder for connector nodeType = folder", () => {
     render(<TestIcon provider="google_drive" nodeType="folder" />);
     const el = screen.getByTestId("double-icon");
     expect(el).toBeInTheDocument();
-    expect(el).toHaveAttribute("data-main", "FolderV2");
+    expect(el).toHaveAttribute("data-main", "Folder");
     expect(el).toHaveAttribute(
       "data-secondary",
       "ProviderLogo(google_drive,false)"
     );
   });
 
-  it("renders DoubleIcon with File02V2 for connector nodeType = other", () => {
+  it("renders DoubleIcon with File02 for connector nodeType = other", () => {
     render(<TestIcon provider="github" nodeType="file" />);
     const el = screen.getByTestId("double-icon");
     expect(el).toBeInTheDocument();
-    expect(el).toHaveAttribute("data-main", "File02V2");
+    expect(el).toHaveAttribute("data-main", "File02");
     expect(el).toHaveAttribute("data-secondary", "ProviderLogo(github,false)");
   });
 
-  it("renders DoubleIcon with File02V2 for connector nodeType = null", () => {
+  it("renders DoubleIcon with File02 for connector nodeType = null", () => {
     render(<TestIcon provider="github" nodeType="null" />);
     const el = screen.getByTestId("double-icon");
     expect(el).toBeInTheDocument();
-    expect(el).toHaveAttribute("data-main", "File02V2");
+    expect(el).toHaveAttribute("data-main", "File02");
     expect(el).toHaveAttribute("data-secondary", "ProviderLogo(github,false)");
   });
 
@@ -183,21 +183,21 @@ describe("IconForAttachmentCitation", () => {
     render(<TestIcon contentType="image/jpeg" />);
     const el = screen.getByTestId("icon");
     expect(el).toBeInTheDocument();
-    expect(el).toHaveAttribute("data-visual", "Image01V2");
+    expect(el).toHaveAttribute("data-visual", "Image01");
   });
 
   it("renders ActionVolumeUp icon for audio/* content types", () => {
     render(<TestIcon contentType="audio/wav" />);
     const el = screen.getByTestId("icon");
     expect(el).toBeInTheDocument();
-    expect(el).toHaveAttribute("data-visual", "VolumeMaxV2");
+    expect(el).toHaveAttribute("data-visual", "VolumeMax");
   });
 
   it("renders DoubleQuotes icon for pasted file content type", () => {
     render(<TestIcon contentType="application/x-pasted" />);
     const el = screen.getByTestId("icon");
     expect(el).toBeInTheDocument();
-    expect(el).toHaveAttribute("data-visual", "DoubleQuotesV2");
+    expect(el).toHaveAttribute("data-visual", "DoubleQuotes");
   });
 
   it("renders frame icon for Dust frame content type", () => {
@@ -212,10 +212,10 @@ describe("IconForAttachmentCitation", () => {
     expect(el).toHaveAttribute("data-visual", "ActionFrameIcon");
   });
 
-  it("renders default File02V2 icon when nothing matches", () => {
+  it("renders default File02 icon when nothing matches", () => {
     render(<TestIcon provider="unknown-provider" />);
     const el = screen.getByTestId("icon");
     expect(el).toBeInTheDocument();
-    expect(el).toHaveAttribute("data-visual", "File02V2");
+    expect(el).toHaveAttribute("data-visual", "File02");
   });
 });

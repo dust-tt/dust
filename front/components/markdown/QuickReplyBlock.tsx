@@ -3,7 +3,7 @@ import {
   TRACKING_AREAS,
   trackEvent,
 } from "@app/lib/tracking";
-import { Button, MessageChatSquareV2 } from "@dust-tt/sparkle";
+import { Button, MessageChatSquare } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useState } from "react";
 import { visit } from "unist-util-visit";
@@ -47,7 +47,7 @@ export function QuickReplyBlock({
         size="sm"
         variant="outline"
         label={label}
-        icon={MessageChatSquareV2}
+        icon={MessageChatSquare}
         onClick={handleClick}
         disabled={disabled || isSending}
         isLoading={isSending}

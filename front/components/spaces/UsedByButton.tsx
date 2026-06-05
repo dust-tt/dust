@@ -9,7 +9,7 @@ import { pluralize } from "@app/types/shared/utils/string_utils";
 import {
   Avatar,
   Button,
-  ChevronDownV2,
+  ChevronDown,
   cn,
   DropdownMenu,
   DropdownMenuContent,
@@ -17,8 +17,8 @@ import {
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  PuzzlePiece01V2,
-  RobotV2,
+  PuzzlePiece01,
+  Robot,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -77,7 +77,7 @@ function UsedByButtonIcon({
     <span className="mx-0.5 flex h-5 items-center justify-center gap-1.5 leading-none">
       {(hasAgents || !hasSkills) && (
         <span className="inline-flex h-5 items-center gap-1">
-          <RobotV2 className="h-4 w-4 shrink-0" />
+          <Robot className="h-4 w-4 shrink-0" />
           <span className="inline-flex h-5 items-center text-sm leading-none tabular-nums">
             {agentCount}
           </span>
@@ -85,13 +85,13 @@ function UsedByButtonIcon({
       )}
       {hasSkills && (
         <span className="inline-flex h-5 items-center gap-1">
-          <PuzzlePiece01V2 className="h-4 w-4 shrink-0" />
+          <PuzzlePiece01 className="h-4 w-4 shrink-0" />
           <span className="inline-flex h-5 items-center text-sm leading-none tabular-nums">
             {skillCount}
           </span>
         </span>
       )}
-      <ChevronDownV2
+      <ChevronDown
         className={
           showChevron
             ? "-mr-px h-4 w-4 shrink-0 text-faint"

@@ -8,13 +8,13 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
-  CoinsStacked03V2,
-  Cube01V2,
-  Hexagon01V2,
+  CoinsStacked03,
+  Cube01,
+  Hexagon01,
   Icon,
-  SeatMaxV2,
+  SeatMax,
   Spinner,
-  User01V2,
+  User01,
 } from "@dust-tt/sparkle";
 import type React from "react";
 
@@ -25,9 +25,9 @@ const SEAT_TYPE_ORDER: Record<string, number> = {
 };
 
 const SEAT_TYPE_ICONS: Record<string, React.ComponentType> = {
-  free: Hexagon01V2,
-  pro: Cube01V2,
-  max: SeatMaxV2,
+  free: Hexagon01,
+  pro: Cube01,
+  max: SeatMax,
 };
 
 function seatTypeAvatarColors(seatType: MembershipSeatType) {
@@ -203,7 +203,7 @@ export function BillingSeatsOverview({ owner }: BillingSeatsOverviewProps) {
             >
               <div className="flex items-center gap-2">
                 <Avatar
-                  icon={SEAT_TYPE_ICONS[seatType] ?? Cube01V2}
+                  icon={SEAT_TYPE_ICONS[seatType] ?? Cube01}
                   size="xs"
                   backgroundColor={avatarColors.backgroundColor}
                   iconColor={avatarColors.iconColor}
@@ -215,7 +215,7 @@ export function BillingSeatsOverview({ owner }: BillingSeatsOverviewProps) {
 
               <div className="flex flex-col gap-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
                 <div className="flex items-center gap-2">
-                  <Icon visual={User01V2} size="xs" />
+                  <Icon visual={User01} size="xs" />
                   <span>
                     {membersCount.toLocaleString()}{" "}
                     {membersCount === 1 ? "seat assigned" : "seats assigned"}
@@ -225,7 +225,7 @@ export function BillingSeatsOverview({ owner }: BillingSeatsOverviewProps) {
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Icon visual={CoinsStacked03V2} size="xs" />
+                  <Icon visual={CoinsStacked03} size="xs" />
                   <span>
                     {primaryPlan.awuCredits.toLocaleString()} credits{" "}
                     {formatAwuCreditsPeriod(primaryPlan.awuCreditsPeriod)}

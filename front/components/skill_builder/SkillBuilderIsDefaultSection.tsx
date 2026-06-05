@@ -8,7 +8,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  InfoCircleV2,
+  InfoCircle,
   SliderToggle,
   Tooltip,
 } from "@dust-tt/sparkle";
@@ -48,7 +48,7 @@ export function SkillBuilderIsDefaultSection() {
         <Tooltip
           label="This skill will be set as default. Agents with Discover Skills will be able to find and enable it on their own"
           trigger={
-            <InfoCircleV2 className="text-muted-foreground dark:text-muted-foreground-night h-4 w-4" />
+            <InfoCircle className="text-muted-foreground dark:text-muted-foreground-night h-4 w-4" />
           }
         />
       </div>
@@ -83,7 +83,7 @@ export function SkillBuilderIsDefaultSection() {
                 <ContentMessage
                   variant="golden"
                   title="Agents may not understand when to use this skill"
-                  icon={InfoCircleV2}
+                  icon={InfoCircle}
                   size="lg"
                   className="w-full"
                 >

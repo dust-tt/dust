@@ -12,13 +12,7 @@ import type {
 } from "@app/types/assistant/skill_configuration";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import type { MenuItem } from "@dust-tt/sparkle";
-import {
-  ClipboardV2,
-  DataTable,
-  Edit04V2,
-  EyeV2,
-  Trash01V2,
-} from "@dust-tt/sparkle";
+import { Clipboard, DataTable, Edit04, Eye, Trash01 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 
@@ -199,7 +193,7 @@ export function SkillsTable({
             ? [
                 {
                   label: "Edit",
-                  icon: Edit04V2,
+                  icon: Edit04,
                   disabled: !skill.canWrite,
                   onClick: (e: React.MouseEvent) => {
                     e.stopPropagation();
@@ -211,7 +205,7 @@ export function SkillsTable({
                 },
                 {
                   label: "More info",
-                  icon: EyeV2,
+                  icon: Eye,
                   onClick: (e: React.MouseEvent) => {
                     e.stopPropagation();
                     onSkillClick(skill);
@@ -220,7 +214,7 @@ export function SkillsTable({
                 },
                 {
                   label: "Customize (New)",
-                  icon: ClipboardV2,
+                  icon: Clipboard,
                   disabled: !skill.isExtendable,
                   onClick: (e: React.MouseEvent) => {
                     e.stopPropagation();
@@ -236,7 +230,7 @@ export function SkillsTable({
                 },
                 {
                   label: "Archive",
-                  icon: Trash01V2,
+                  icon: Trash01,
                   disabled: !skill.canWrite,
                   variant: "warning" as const,
                   onClick: (e: React.MouseEvent) => {

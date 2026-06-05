@@ -8,11 +8,11 @@ import {
   ContextItem,
   cn,
   EmptyCTA,
-  File02V2,
-  PlusV2,
-  ReverseLeftV2,
+  File02,
+  Plus,
+  ReverseLeft,
   Spinner,
-  XCloseV2,
+  XClose,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
@@ -152,7 +152,7 @@ export function SkillBuilderFilesSection() {
       type="button"
       onClick={onUploadClick}
       label="Upload files"
-      icon={isProcessingFiles ? Spinner : PlusV2}
+      icon={isProcessingFiles ? Spinner : Plus}
       variant="outline"
       disabled={isProcessingFiles}
     />
@@ -175,7 +175,7 @@ export function SkillBuilderFilesSection() {
             <Button
               variant="outline"
               size="sm"
-              icon={ReverseLeftV2}
+              icon={ReverseLeft}
               onClick={restoreFiles}
               label="Restore files"
             />
@@ -206,7 +206,7 @@ export function SkillBuilderFilesSection() {
                 type="button"
                 onClick={onUploadClick}
                 label="Upload files"
-                icon={PlusV2}
+                icon={Plus}
                 variant="outline"
                 disabled={isProcessingFiles}
               />
@@ -236,14 +236,14 @@ export function SkillBuilderFilesSection() {
                         {field.fileName}
                       </span>
                     }
-                    visual={<ContextItem.Visual visual={File02V2} />}
+                    visual={<ContextItem.Visual visual={File02} />}
                     hoverAction={!isDiffMode}
                     action={
                       !isDiffMode ? (
                         <Button
                           type="button"
                           variant="ghost"
-                          icon={XCloseV2}
+                          icon={XClose}
                           size="xs"
                           onClick={() => remove(originalIndex)}
                         />

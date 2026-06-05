@@ -16,12 +16,12 @@ import { useCreditPurchaseInfo, useCredits } from "@app/lib/swr/credits";
 import type { CreditDisplayData, CreditType } from "@app/types/credits";
 import type { SubscriptionType } from "@app/types/plan";
 import {
-  AlertCircleV2,
+  AlertCircle,
   Button,
   ContentMessage,
   Hoverable,
   Page,
-  ZapV2,
+  Zap,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
@@ -330,7 +330,7 @@ export function CreditsUsagePage() {
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
           title={"Programmatic Usage"}
-          icon={ZapV2}
+          icon={Zap}
           description={
             <div>
               <p>
@@ -363,7 +363,7 @@ export function CreditsUsagePage() {
             title={`You're ${totalConsumed < totalCredits ? "almost" : ""} out of credits.`}
             variant="warning"
             size="lg"
-            icon={AlertCircleV2}
+            icon={AlertCircle}
           >
             <div className="flex items-end justify-between">
               <p>Add credits to ensure uninterrupted usage.</p>
@@ -412,7 +412,7 @@ export function CreditsUsagePage() {
                 title={title}
                 variant="info"
                 size="lg"
-                icon={AlertCircleV2}
+                icon={AlertCircle}
               >
                 <div className="flex items-end justify-between">
                   <p>Complete your payment to activate your credits.</p>

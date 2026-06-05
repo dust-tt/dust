@@ -8,9 +8,9 @@ import type { LightWorkspaceType } from "@app/types/user";
 import {
   Breadcrumbs,
   type BreadcrumbsItem,
-  CloudArrowLeftRightV2,
-  ShapesPlusV2,
-  ZapV2,
+  CloudArrowLeftRight,
+  ShapesPlus,
+  Zap,
 } from "@dust-tt/sparkle";
 import React from "react";
 
@@ -75,7 +75,7 @@ export function SpaceBreadCrumbs({
           if (dataSourceView === undefined) {
             return [
               {
-                icon: CloudArrowLeftRightV2,
+                icon: CloudArrowLeftRight,
                 label: "Connections Admin",
               },
             ];
@@ -85,14 +85,14 @@ export function SpaceBreadCrumbs({
         case "actions":
           return [
             {
-              icon: ShapesPlusV2,
+              icon: ShapesPlus,
               label: "Tools",
             },
           ];
         case "triggers":
           return [
             {
-              icon: ZapV2,
+              icon: Zap,
               label: "Triggers",
             },
           ];

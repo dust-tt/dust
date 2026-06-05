@@ -3,16 +3,16 @@ import type { DataSourceViewCategory } from "@app/types/api/public/spaces";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { SpaceType } from "@app/types/space";
 import {
-  Building04V2,
-  CloudArrowLeftRightV2,
-  Cube01V2,
-  CubeOutlineV2,
-  FolderV2,
-  Globe01V2,
-  Lock01V2,
-  Server03V2,
-  TerminalV2,
-  ZapV2,
+  Building04,
+  CloudArrowLeftRight,
+  Cube01,
+  CubeOutline,
+  Folder,
+  Globe01,
+  Lock01,
+  Server03,
+  Terminal,
+  Zap,
 } from "@dust-tt/sparkle";
 import type React from "react";
 
@@ -29,18 +29,18 @@ export function getSpaceIcon(
   space: SpaceType
 ): (props: React.SVGProps<SVGSVGElement>) => React.ReactElement {
   if (space.kind === "project") {
-    return space.isRestricted ? CubeOutlineV2 : Cube01V2;
+    return space.isRestricted ? CubeOutline : Cube01;
   }
 
   if (space.isRestricted) {
-    return Lock01V2;
+    return Lock01;
   }
 
   if (space.kind === "global") {
-    return Building04V2;
+    return Building04;
   }
 
-  return Server03V2;
+  return Server03;
 }
 
 export const CATEGORY_DETAILS: {
@@ -54,19 +54,19 @@ export const CATEGORY_DETAILS: {
 } = {
   managed: {
     label: "Connected Data",
-    icon: CloudArrowLeftRightV2,
+    icon: CloudArrowLeftRight,
   },
   folder: {
     label: "Folders",
-    icon: FolderV2,
+    icon: Folder,
   },
   website: {
     label: "Websites",
-    icon: Globe01V2,
+    icon: Globe01,
   },
   apps: {
     label: "Apps",
-    icon: TerminalV2,
+    icon: Terminal,
     flag: "legacy_dust_apps",
   },
   actions: {
@@ -75,6 +75,6 @@ export const CATEGORY_DETAILS: {
   },
   triggers: {
     label: "Triggers",
-    icon: ZapV2,
+    icon: Zap,
   },
 };

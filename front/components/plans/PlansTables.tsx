@@ -18,7 +18,7 @@ import {
   Button,
   Hoverable,
   PriceTable,
-  Rocket02V2,
+  Rocket02,
   Tabs,
   TabsContent,
   TabsList,
@@ -268,7 +268,7 @@ function SeatBasedPriceTable({
               label={
                 display === "landing" ? "Start now, 14 days free" : "Start now"
               }
-              icon={Rocket02V2}
+              icon={Rocket02}
               disabled={isProcessing}
               onClick={withTracking(
                 TRACKING_AREAS.PRICING,

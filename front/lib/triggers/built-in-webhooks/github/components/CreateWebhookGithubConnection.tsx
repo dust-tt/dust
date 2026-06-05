@@ -13,7 +13,7 @@ import {
   DropdownMenuSearchbar,
   DropdownMenuTrigger,
   Label,
-  PlusV2,
+  Plus,
   Spinner,
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
@@ -179,7 +179,7 @@ export function CreateWebhookGithubConnection({
                       <Button
                         label="Add repository"
                         variant="outline"
-                        icon={PlusV2}
+                        icon={Plus}
                         size="sm"
                       />
                     </DropdownMenuTrigger>
@@ -247,7 +247,7 @@ export function CreateWebhookGithubConnection({
                       <Button
                         label="Add organization"
                         variant="outline"
-                        icon={PlusV2}
+                        icon={Plus}
                         size="sm"
                       />
                     </DropdownMenuTrigger>

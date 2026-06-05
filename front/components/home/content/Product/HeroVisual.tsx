@@ -2,7 +2,7 @@
 import { BorderBeam } from "@app/components/magicui/border-beam";
 import UTMButton from "@app/components/UTMButton";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
-import { PlayV2 } from "@dust-tt/sparkle";
+import { Play } from "@dust-tt/sparkle";
 import Image from "next/image";
 
 interface HeroVisualProps {
@@ -63,7 +63,7 @@ export function HeroVisual({ onWatch, showVideo }: HeroVisualProps) {
             variant="primary"
             size="md"
             label="Watch Dust in motion"
-            icon={PlayV2}
+            icon={Play}
             onClick={withTracking(
               TRACKING_AREAS.HOME,
               "hero_watch_video",

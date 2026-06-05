@@ -14,12 +14,12 @@ import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import type { PlanType } from "@app/types/plan";
 import {
   Button,
-  CheckV2,
-  Edit04V2,
+  Check,
+  Edit04,
   IconButton,
-  PlusV2,
+  Plus,
   Spinner,
-  XCloseV2,
+  XClose,
 } from "@dust-tt/sparkle";
 import React from "react";
 import { useSWRConfig } from "swr";
@@ -161,16 +161,13 @@ export function PlansPage() {
                   <td className="w-12 min-w-16 flex-none border px-4 py-2">
                     {plan.code === editingPlan?.code || plan.isNewPlan ? (
                       <div className="flex flex-row justify-center">
-                        <IconButton icon={CheckV2} onClick={handleSavePlan} />
-                        <IconButton
-                          icon={XCloseV2}
-                          onClick={resetEditingPlan}
-                        />
+                        <IconButton icon={Check} onClick={handleSavePlan} />
+                        <IconButton icon={XClose} onClick={resetEditingPlan} />
                       </div>
                     ) : (
                       <div className="flex flex-row justify-center">
                         <IconButton
-                          icon={Edit04V2}
+                          icon={Edit04}
                           onClick={() => setEditingPlan(plan)}
                         />
                       </div>
@@ -184,7 +181,7 @@ export function PlansPage() {
       </div>
       <div>
         <Button
-          icon={PlusV2}
+          icon={Plus}
           label="Create a new plan"
           variant="outline"
           onClick={() => createNewPlan()}

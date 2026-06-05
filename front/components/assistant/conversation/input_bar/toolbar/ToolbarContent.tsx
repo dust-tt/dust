@@ -2,14 +2,14 @@ import { calculateLinkTextAndPosition } from "@app/components/assistant/conversa
 import { useKeyboardShortcutLabel } from "@app/hooks/useKeyboardShortcutLabel";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import {
-  Bold01V2,
-  CheckDone01V2,
-  Code01V2,
-  CodeSquare01V2,
-  DoubleQuotesV2,
-  Heading01V2,
-  Italic01V2,
-  ListV2,
+  Bold01,
+  CheckDone01,
+  Code01,
+  CodeSquare01,
+  DoubleQuotes,
+  Heading01,
+  Italic01,
+  List,
   ToolbarContent,
   ToolbarIcon,
   ToolbarLink,
@@ -134,7 +134,7 @@ export function ToolBarContent({ editor }: ToolBarContentProps) {
       items: [
         <ToolbarIcon
           key="heading"
-          icon={Heading01V2}
+          icon={Heading01}
           onClick={() =>
             editor.chain().focus().toggleHeading({ level: 1 }).run()
           }
@@ -144,7 +144,7 @@ export function ToolBarContent({ editor }: ToolBarContentProps) {
         />,
         <ToolbarIcon
           key="bold"
-          icon={Bold01V2}
+          icon={Bold01}
           onClick={() => editor.chain().focus().toggleBold().run()}
           active={editor.isActive("bold")}
           tooltip={getTooltipText("Bold", boldShortcutLabel)}
@@ -152,7 +152,7 @@ export function ToolBarContent({ editor }: ToolBarContentProps) {
         />,
         <ToolbarIcon
           key="italic"
-          icon={Italic01V2}
+          icon={Italic01}
           onClick={() => editor.chain().focus().toggleItalic().run()}
           active={editor.isActive("italic")}
           tooltip={getTooltipText("Italic", italicShortcutLabel)}
@@ -184,7 +184,7 @@ export function ToolBarContent({ editor }: ToolBarContentProps) {
       items: [
         <ToolbarIcon
           key="bulleted-list"
-          icon={CheckDone01V2}
+          icon={CheckDone01}
           onClick={() => editor.chain().focus().toggleBulletList().run()}
           active={editor.isActive("bulletList")}
           tooltip={getTooltipText("Bulleted list", bulletListShortcutLabel)}
@@ -192,7 +192,7 @@ export function ToolBarContent({ editor }: ToolBarContentProps) {
         />,
         <ToolbarIcon
           key="ordered-list"
-          icon={ListV2}
+          icon={List}
           onClick={() => editor.chain().focus().toggleOrderedList().run()}
           active={editor.isActive("orderedList")}
           tooltip={getTooltipText("Ordered list", orderedListShortcutLabel)}
@@ -200,7 +200,7 @@ export function ToolBarContent({ editor }: ToolBarContentProps) {
         />,
         <ToolbarIcon
           key="blockquote"
-          icon={DoubleQuotesV2}
+          icon={DoubleQuotes}
           onClick={() => {
             if (editor.isActive("codeBlock")) {
               editor.chain().focus().toggleCodeBlock().toggleBlockquote().run();
@@ -219,7 +219,7 @@ export function ToolBarContent({ editor }: ToolBarContentProps) {
       items: [
         <ToolbarIcon
           key="inline-code"
-          icon={Code01V2}
+          icon={Code01}
           onClick={() => editor.chain().focus().toggleCode().run()}
           active={editor.isActive("code")}
           tooltip={getTooltipText("Inline code", inlineCodeShortcutLabel)}
@@ -227,7 +227,7 @@ export function ToolBarContent({ editor }: ToolBarContentProps) {
         />,
         <ToolbarIcon
           key="code-block"
-          icon={CodeSquare01V2}
+          icon={CodeSquare01}
           onClick={() => {
             if (editor.isActive("blockquote")) {
               editor.chain().focus().toggleBlockquote().toggleCodeBlock().run();

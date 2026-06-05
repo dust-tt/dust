@@ -21,8 +21,8 @@ import { getBillingCycleFromDay } from "@app/lib/client/subscription";
 import { useMetronomeUsage } from "@app/lib/swr/workspaces";
 import {
   Button,
-  ChevronLeftV2,
-  ChevronRightV2,
+  ChevronLeft,
+  ChevronRight,
   Chip,
   DropdownMenu,
   DropdownMenuContent,
@@ -446,7 +446,7 @@ export function BaseMetronomeUsageChart({
             Metronome
           </Chip>
           <Button
-            icon={ChevronLeftV2}
+            icon={ChevronLeft}
             size="xs"
             variant="ghost"
             onClick={() => setSelectedPeriod(formatPeriod(previousPeriodDate))}
@@ -457,7 +457,7 @@ export function BaseMetronomeUsageChart({
           </span>
           {canGoNext && (
             <Button
-              icon={ChevronRightV2}
+              icon={ChevronRight}
               size="xs"
               variant="ghost"
               onClick={() => setSelectedPeriod(formatPeriod(nextPeriodDate))}

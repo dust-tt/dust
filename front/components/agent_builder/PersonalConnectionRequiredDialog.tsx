@@ -15,7 +15,7 @@ import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   Chip,
-  CloudArrowLeftRightV2,
+  CloudArrowLeftRight,
   ContentMessage,
   Dialog,
   DialogContainer,
@@ -26,7 +26,7 @@ import {
   DialogTitle,
   Hoverable,
   Icon,
-  Lock01V2,
+  Lock01,
 } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -159,7 +159,7 @@ export function PersonalConnectionRequiredDialog({
         </DialogHeader>
         <DialogContainer>
           <ContentMessage
-            icon={Lock01V2}
+            icon={Lock01}
             variant="highlight"
             title="About personal tools"
           >
@@ -202,7 +202,7 @@ export function PersonalConnectionRequiredDialog({
                           <Chip color="green" label="Connected" />
                         ) : (
                           <Button
-                            icon={CloudArrowLeftRightV2}
+                            icon={CloudArrowLeftRight}
                             size="xs"
                             variant="outline"
                             label="Connect"

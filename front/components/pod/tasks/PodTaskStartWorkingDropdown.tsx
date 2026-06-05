@@ -8,15 +8,15 @@ import {
   Button,
   ButtonGroup,
   ButtonGroupDropdown,
-  CheckV2,
-  ChevronDownV2,
+  Check,
+  ChevronDown,
   DropdownMenu,
   DropdownMenuContent,
   type DropdownMenuItemProps,
   DropdownMenuTrigger,
   Icon,
-  PlayV2,
-  RobotV2,
+  Play,
+  Robot,
   TextArea,
   Tooltip,
 } from "@dust-tt/sparkle";
@@ -144,7 +144,7 @@ export function PodTaskStartWorkingDropdown({
     const check = (
       <Icon
         size="xs"
-        visual={CheckV2}
+        visual={Check}
         className="text-muted-foreground dark:text-muted-foreground-night"
       />
     );
@@ -175,7 +175,7 @@ export function PodTaskStartWorkingDropdown({
   if (isFirstOnboardingTask && !disabled) {
     return (
       <Button
-        icon={PlayV2}
+        icon={Play}
         size={triggerSize}
         variant="outline"
         className={triggerClassName}
@@ -194,7 +194,7 @@ export function PodTaskStartWorkingDropdown({
         disabledReason ?? "Can't start work on this task in this state yet."
       }
       trigger={
-        <Button icon={PlayV2} size={triggerSize} variant="outline" disabled />
+        <Button icon={Play} size={triggerSize} variant="outline" disabled />
       }
     />
   ) : (
@@ -205,7 +205,7 @@ export function PodTaskStartWorkingDropdown({
     >
       <DropdownMenuTrigger asChild>
         <Button
-          icon={PlayV2}
+          icon={Play}
           size={triggerSize}
           variant="outline"
           className={triggerClassName}
@@ -253,7 +253,7 @@ export function PodTaskStartWorkingDropdown({
                               visual={selectedStartAgent.pictureUrl}
                             />
                           )
-                        : RobotV2
+                        : Robot
                     }
                     label={selectedStartAgent?.name ?? "Agent"}
                     className="max-w-full min-w-0"
@@ -279,7 +279,7 @@ export function PodTaskStartWorkingDropdown({
                   <Button
                     variant="outline"
                     size="sm"
-                    icon={ChevronDownV2}
+                    icon={ChevronDown}
                     disabled={isStarting || !selectedStartAgent}
                     aria-label={redirectMenuLabels.ariaLabel}
                   />

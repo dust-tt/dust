@@ -12,14 +12,14 @@ import {
   Avatar,
   Button,
   Chip,
-  Settings01V2,
+  Settings01,
   ContextItem,
-  FolderV2,
+  Folder,
   Icon,
-  Edit04V2,
-  RobotV2,
+  Edit04,
+  Robot,
   SliderToggle,
-  Trash01V2,
+  Trash01,
 } from "../index_with_tw_base";
 
 const meta = {
@@ -40,11 +40,11 @@ export const ListItemExample = () => (
             <span className="s-h-3 s-w-0.5 s-bg-primary-500" />
             <div className="s-flex s-items-center s-gap-1">
               Used by: 3
-              <Icon visual={RobotV2} size="xs" />
+              <Icon visual={Robot} size="xs" />
             </div>
           </>
         }
-        visual={<Icon visual={FolderV2} size="md" />}
+        visual={<Icon visual={Folder} size="md" />}
       >
         <div className="s-py-2">
           <Chip size="xs" label="Last Sync ~7 days ago" color="green" />
@@ -80,8 +80,8 @@ export const ListItemExample = () => (
         hoverAction
         action={
           <div className="s-flex s-gap-1">
-            <Button icon={Trash01V2} variant="warning" label="Remove" />
-            <Button variant="outline" label="Edit" size="sm" icon={Edit04V2} />
+            <Button icon={Trash01} variant="warning" label="Remove" />
+            <Button variant="outline" label="Edit" size="sm" icon={Edit04} />
           </div>
         }
       >
@@ -120,7 +120,7 @@ export const ListItemExample = () => (
             variant="outline"
             label="Manage"
             size="sm"
-            icon={Settings01V2}
+            icon={Settings01}
           />
         }
         visual={
@@ -140,7 +140,7 @@ export const ListItemExample = () => (
             variant="outline"
             label="Manage"
             size="sm"
-            icon={Settings01V2}
+            icon={Settings01}
           />
         }
         visual={

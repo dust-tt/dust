@@ -27,7 +27,7 @@ import {
   ContentBlockWrapper,
   ContentMessage,
   FaviconIcon,
-  InfoCircleV2,
+  InfoCircle,
   Markdown,
   PaginatedCitationsGrid,
   Tooltip,
@@ -45,7 +45,7 @@ export function ThinkingBlock({ resource }: ThinkingBlockProps) {
         <ContentMessage
           title="Reasoning"
           variant="primary"
-          icon={InfoCircleV2}
+          icon={InfoCircle}
           size="lg"
         >
           <Markdown

@@ -15,7 +15,7 @@ import type { BuilderEmojiSuggestionsType } from "@app/types/api/internal/assist
 import type { APIError } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
-import { Avatar, Button, Edit04V2 } from "@dust-tt/sparkle";
+import { Avatar, Button, Edit04 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useController, useWatch } from "react-hook-form";
 
@@ -131,7 +131,7 @@ export function AgentBuilderAvatarSection({
         <Button
           variant="outline"
           size="sm"
-          icon={Edit04V2}
+          icon={Edit04}
           type="button"
           onClick={() => setIsAvatarModalOpen(true)}
           className="absolute left-1/2 top-1/2 h-10 w-10 -translate-x-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100"

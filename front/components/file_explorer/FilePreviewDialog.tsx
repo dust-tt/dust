@@ -8,8 +8,8 @@ import { stripMimeParameters } from "@app/types/files";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
   Button,
-  ChevronLeftV2,
-  ChevronRightV2,
+  ChevronLeft,
+  ChevronRight,
   CodeBlock,
   cn,
   DataTable,
@@ -18,7 +18,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  Download01V2,
+  Download01,
   Icon,
   Markdown,
   ScrollableDataTable,
@@ -425,7 +425,7 @@ export function FilePreviewDialog({
               <Button
                 variant="outline"
                 size="sm"
-                icon={ChevronLeftV2}
+                icon={ChevronLeft}
                 onClick={onPrev}
                 disabled={!onPrev}
                 tooltip="Previous"
@@ -433,7 +433,7 @@ export function FilePreviewDialog({
               <Button
                 variant="outline"
                 size="sm"
-                icon={ChevronRightV2}
+                icon={ChevronRight}
                 onClick={onNext}
                 disabled={!onNext}
                 tooltip="Next"
@@ -442,7 +442,7 @@ export function FilePreviewDialog({
             <Button
               variant="outline"
               size="sm"
-              icon={Download01V2}
+              icon={Download01}
               label={isDownloading ? "Downloading…" : "Download"}
               onClick={handleDownload}
               disabled={!entry || isDownloading}

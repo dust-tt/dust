@@ -1,7 +1,7 @@
 import { useFrameSharingToggle } from "@app/hooks/useFrameSharingToggle";
 import type { WorkspaceSharingPolicy, WorkspaceType } from "@app/types/user";
 import {
-  ActionFrameV2,
+  ActionFrame,
   Button,
   ContextItem,
   Dialog,
@@ -15,33 +15,33 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
-  Globe01V2,
-  Lock01V2,
-  Users01V2,
+  Globe01,
+  Lock01,
+  Users01,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 const SHARING_POLICY_OPTIONS: {
   description: string;
-  icon: typeof Lock01V2;
+  icon: typeof Lock01;
   label: string;
   value: WorkspaceSharingPolicy;
 }[] = [
   {
-    icon: Lock01V2,
+    icon: Lock01,
     label: "Workspace members only",
     description: "Frames can only be viewed by workspace members",
     value: "workspace_only",
   },
   {
-    icon: Users01V2,
+    icon: Users01,
     label: "Members + email invites",
     description:
       "Frames can be shared with workspace members or via email invite",
     value: "workspace_and_emails",
   },
   {
-    icon: Globe01V2,
+    icon: Globe01,
     label: "No restrictions",
     description:
       "Members can share Frames publicly, with the workspace, or via email invite",
@@ -87,7 +87,7 @@ export function InteractiveContentSharingToggle({
       <ContextItem
         title="Frame sharing policy"
         subElement="Control how Frames can be shared in this workspace"
-        visual={<ActionFrameV2 className="h-6 w-6" />}
+        visual={<ActionFrame className="h-6 w-6" />}
         hasSeparatorIfLast={true}
         action={
           <DropdownMenu>

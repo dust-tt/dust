@@ -4,16 +4,16 @@ import React from "react";
 import {
   Avatar,
   Button,
-  MessageCircle01V2,
-  CloudArrowLeftRightV2,
+  MessageCircle01,
+  CloudArrowLeftRight,
   ContextItem,
-  FolderV2,
-  Globe01V2,
+  Folder,
+  Globe01,
   Icon,
   Page,
-  Rocket02V2,
+  Rocket02,
 } from "../index_with_tw_base";
-import { MessageChatSquareV2 } from "@sparkle/icons/v2-stroke";
+import { MessageChatSquare } from "@sparkle/icons/v2-stroke";
 
 const meta = {
   title: "Modules/Page",
@@ -28,7 +28,7 @@ export const PageSimpleExample = () => {
       <Page.Header
         title="Title"
         description="Description"
-        icon={MessageCircle01V2}
+        icon={MessageCircle01}
       />
       <Page.P>
         Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam euismod
@@ -52,7 +52,7 @@ export const QIGExample = () => {
   return (
     <Page>
       <Page.Header
-        icon={Rocket02V2}
+        icon={Rocket02}
         title={
           <>
             Get Started: <br />
@@ -160,7 +160,7 @@ export const QIGExample = () => {
         <Page.Horizontal>
           <Page.Vertical sizing="grow">
             <div className="flex items-center gap-2">
-              <Icon visual={CloudArrowLeftRightV2} />{" "}
+              <Icon visual={CloudArrowLeftRight} />{" "}
               <Page.H variant="h6">Connections</Page.H>
             </div>
             <Page.P>
@@ -171,7 +171,7 @@ export const QIGExample = () => {
           <Page.Vertical sizing="grow">
             <Page.Horizontal>
               <div className="flex items-center gap-2">
-                <Icon visual={FolderV2} /> <Page.H variant="h6">Folders</Page.H>
+                <Icon visual={Folder} /> <Page.H variant="h6">Folders</Page.H>
               </div>
             </Page.Horizontal>
             <Page.P>Upload files (text, pdf, csv) directly in Dust.</Page.P>
@@ -179,8 +179,7 @@ export const QIGExample = () => {
           <Page.Vertical sizing="grow">
             <Page.Horizontal>
               <div className="flex items-center gap-2">
-                <Icon visual={Globe01V2} />{" "}
-                <Page.H variant="h6">Websites</Page.H>
+                <Icon visual={Globe01} /> <Page.H variant="h6">Websites</Page.H>
               </div>
             </Page.Horizontal>
             <Page.P>
@@ -200,7 +199,7 @@ export const PageExample = () => {
       <Page.Header
         title="Title"
         description="Description"
-        icon={MessageCircle01V2}
+        icon={MessageCircle01}
       />
       <Page.P>
         Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam euismod
@@ -330,7 +329,7 @@ export const AssistantBuilder = () => {
 export const HelpExample = () => {
   return (
     <Page>
-      <Page.Header title="Welcome to Agent" icon={MessageCircle01V2} />
+      <Page.Header title="Welcome to Agent" icon={MessageCircle01} />
       <Page.Layout direction="vertical" gap="xs" align="left">
         <Page.SectionHeader title="Getting started?" />
         <Page.P variant="secondary">
@@ -341,7 +340,7 @@ export const HelpExample = () => {
         <Button
           variant="primary"
           label="Hey @helper, how do I use the agent?"
-          icon={MessageChatSquareV2}
+          icon={MessageChatSquare}
         />
       </Page.Layout>
       <Page.Separator />
@@ -361,17 +360,17 @@ export const HelpExample = () => {
           <Button
             variant="outline"
             label="Hey @helper, how do I use the agent?"
-            icon={MessageChatSquareV2}
+            icon={MessageChatSquare}
           />
           <Button
             variant="outline"
             label="Hey @helper, What is agent not good at?"
-            icon={MessageChatSquareV2}
+            icon={MessageChatSquare}
           />
           <Button
             variant="outline"
             label="Hey @helper, Anything I should know?"
-            icon={MessageChatSquareV2}
+            icon={MessageChatSquare}
           />
         </Page.Layout>
       </Page.Layout>

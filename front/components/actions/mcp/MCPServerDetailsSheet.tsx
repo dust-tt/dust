@@ -15,8 +15,8 @@ import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
-  InfoCircleV2,
-  Lock01V2,
+  InfoCircle,
+  Lock01,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -27,7 +27,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-  Trash01V2,
+  Trash01,
 } from "@dust-tt/sparkle";
 import { useContext, useEffect, useMemo, useState } from "react";
 import { useFormContext } from "react-hook-form";
@@ -149,20 +149,16 @@ export function MCPServerDetailsSheet({
               onValueChange={(v) => void changeTab(v as TabType)}
             >
               <TabsList>
-                <TabsTrigger value="info" label="Info" icon={InfoCircleV2} />
+                <TabsTrigger value="info" label="Info" icon={InfoCircle} />
                 {mcpServerView?.server.availability === "manual" && (
-                  <TabsTrigger
-                    value="sharing"
-                    label="Sharing"
-                    icon={Lock01V2}
-                  />
+                  <TabsTrigger value="sharing" label="Sharing" icon={Lock01} />
                 )}
                 {mcpServerView?.server.availability === "manual" && (
                   <>
                     <div className="grow" />
                     <div className="flex h-full flex-row items-center">
                       <Button
-                        icon={Trash01V2}
+                        icon={Trash01}
                         variant="warning"
                         label={isDeleting ? "Removing..." : "Remove"}
                         size="xs"

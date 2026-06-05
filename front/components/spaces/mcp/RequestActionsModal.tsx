@@ -13,7 +13,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  PlusV2,
+  Plus,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -88,7 +88,7 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button label="Request Tool" icon={PlusV2} />
+        <Button label="Request Tool" icon={Plus} />
       </SheetTrigger>
       <SheetContent size="lg">
         <SheetHeader>

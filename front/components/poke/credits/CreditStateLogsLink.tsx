@@ -1,4 +1,4 @@
-import { ExternalLinkIcon, Icon, LinkWrapper } from "@dust-tt/sparkle";
+import { Icon, LinkExternal01, LinkWrapper } from "@dust-tt/sparkle";
 
 type CreditStateMachine = "pool" | "programmatic" | "user";
 
@@ -73,7 +73,7 @@ export function CreditStateLogsLink({
       className="inline-flex items-center gap-0.5 text-xs text-highlight-400"
     >
       <span>{label}</span>
-      <Icon visual={ExternalLinkIcon} size="xs" />
+      <Icon visual={LinkExternal01} size="xs" />
     </LinkWrapper>
   );
 }

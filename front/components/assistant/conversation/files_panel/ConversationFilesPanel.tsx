@@ -25,7 +25,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-  XCloseV2,
+  XClose,
 } from "@dust-tt/sparkle";
 import { useCallback, useMemo, useRef, useState } from "react";
 
@@ -174,7 +174,7 @@ export function ConversationFilesPanel({
                 variant="ghost"
                 size="sm"
                 onClick={closePanel}
-                icon={XCloseV2}
+                icon={XClose}
               />
             </div>
           </AppLayoutTitle>
@@ -211,7 +211,7 @@ export function ConversationFilesPanel({
                   variant="ghost"
                   size="sm"
                   onClick={closePanel}
-                  icon={XCloseV2}
+                  icon={XClose}
                 />
               </div>
             </div>

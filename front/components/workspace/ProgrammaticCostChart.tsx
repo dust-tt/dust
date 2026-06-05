@@ -22,10 +22,10 @@ import { clientFetch } from "@app/lib/egress/client";
 import { useWorkspaceProgrammaticCost } from "@app/lib/swr/workspaces";
 import {
   Button,
-  ChevronLeftV2,
-  ChevronRightV2,
+  ChevronLeft,
+  ChevronRight,
   Chip,
-  Download01V2,
+  Download01,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -585,7 +585,7 @@ export function BaseProgrammaticCostChart({
         <div className="flex items-center gap-2">
           <span>Usage cost graph</span>
           <Button
-            icon={ChevronLeftV2}
+            icon={ChevronLeft}
             size="xs"
             variant="ghost"
             onClick={handlePreviousPeriod}
@@ -597,7 +597,7 @@ export function BaseProgrammaticCostChart({
           </span>
           {canGoNext && (
             <Button
-              icon={ChevronRightV2}
+              icon={ChevronRight}
               size="xs"
               variant="ghost"
               onClick={handleNextPeriod}
@@ -605,7 +605,7 @@ export function BaseProgrammaticCostChart({
             />
           )}
           <Button
-            icon={Download01V2}
+            icon={Download01}
             size="xs"
             variant="ghost"
             onClick={handleExportCsv}

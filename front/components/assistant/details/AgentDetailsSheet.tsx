@@ -25,17 +25,17 @@ import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
 import {
-  ArrowLeftV2,
+  ArrowLeft,
   Avatar,
-  BarChart01V2,
-  Bell01V2,
-  BrainV2,
+  BarChart01,
+  Bell01,
+  Brain,
   Button,
   Chip,
   ContentMessage,
-  InfoCircleV2,
-  Lock01V2,
-  RefreshCw02V2,
+  InfoCircle,
+  Lock01,
+  RefreshCw02,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -46,7 +46,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-  Users01V2,
+  Users01,
 } from "@dust-tt/sparkle";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useCallback, useEffect, useState } from "react";
@@ -91,7 +91,7 @@ export const SCOPE_INFO: Record<
     shortLabel: string;
     label: string;
     color: "green" | "golden" | "blue" | "primary";
-    icon?: typeof Users01V2 | undefined;
+    icon?: typeof Users01 | undefined;
     text: string;
   }
 > = {
@@ -269,7 +269,7 @@ export function AgentDetailsSheet({
             <ContentMessage
               title="This agent has been archived."
               variant="warning"
-              icon={InfoCircleV2}
+              icon={InfoCircle}
               size="sm"
             >
               It is no longer active and cannot be used.
@@ -282,7 +282,7 @@ export function AgentDetailsSheet({
                     setShowRestoreModal(true);
                   }}
                   className="mt-2"
-                  icon={RefreshCw02V2}
+                  icon={RefreshCw02}
                 />
               </div>
             </ContentMessage>
@@ -335,14 +335,14 @@ export function AgentDetailsSheet({
                     <TabsTrigger
                       value="info"
                       label="Info"
-                      icon={InfoCircleV2}
+                      icon={InfoCircle}
                       onClick={() => setSelectedTab("info")}
                     />
                     {showInsightsTabs && (
                       <TabsTrigger
                         value="insights"
                         label="Insights"
-                        icon={BarChart01V2}
+                        icon={BarChart01}
                         onClick={() => setSelectedTab("insights")}
                       />
                     )}
@@ -350,7 +350,7 @@ export function AgentDetailsSheet({
                       <TabsTrigger
                         value="triggers"
                         label="Triggers"
-                        icon={Bell01V2}
+                        icon={Bell01}
                         onClick={() => setSelectedTab("triggers")}
                       />
                     )}
@@ -358,7 +358,7 @@ export function AgentDetailsSheet({
                       <TabsTrigger
                         value="editors"
                         label="Editors"
-                        icon={Users01V2}
+                        icon={Users01}
                         onClick={() => setSelectedTab("editors")}
                       />
                     )}
@@ -366,7 +366,7 @@ export function AgentDetailsSheet({
                       <TabsTrigger
                         value="agent_memory"
                         label="Memory"
-                        icon={BrainV2}
+                        icon={Brain}
                         onClick={() => setSelectedTab("agent_memory")}
                       />
                     )}
@@ -419,7 +419,7 @@ export function AgentDetailsSheet({
               )}
               {isAgentConfigurationError?.error.type ===
                 "agent_configuration_not_found" && (
-                <ContentMessage title="Not Available" icon={Lock01V2} size="md">
+                <ContentMessage title="Not Available" icon={Lock01} size="md">
                   This agent is not available.
                 </ContentMessage>
               )}
@@ -470,7 +470,7 @@ function TriggerEditView({
     <>
       <div className="flex flex-row items-center gap-2 p-5 text-sm text-foreground dark:text-foreground-night">
         <Button
-          icon={ArrowLeftV2}
+          icon={ArrowLeft}
           variant="ghost"
           size="sm"
           onClick={() => {

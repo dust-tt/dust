@@ -28,7 +28,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-  User01V2,
+  User01,
 } from "@dust-tt/sparkle";
 import type { PaginationState } from "@tanstack/react-table";
 import { useCallback, useEffect, useState } from "react";
@@ -196,7 +196,7 @@ export function MembersPage() {
       <Page.Vertical gap="lg" align="stretch">
         <Page.Header
           title="People & Security"
-          icon={User01V2}
+          icon={User01}
           description="Verify your domain, manage team members and their permissions."
         />
         <WorkspaceAccessPanel
@@ -204,7 +204,7 @@ export function MembersPage() {
           owner={owner}
           plan={plan}
         />
-        <WorkspaceSection title="Members" icon={User01V2}>
+        <WorkspaceSection title="Members" icon={User01}>
           <div className="flex flex-row gap-2">
             <SearchInput
               placeholder={

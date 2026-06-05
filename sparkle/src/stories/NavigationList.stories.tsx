@@ -13,17 +13,17 @@ import {
   NavigationListItemAction,
   NavigationListCollapsibleSection,
   NavigationListLabel,
-  Edit04V2,
-  Trash01V2,
-  DotsHorizontalV2,
-  PlusV2,
+  Edit04,
+  Trash01,
+  DotsHorizontal,
+  Plus,
   NavigationListCompactLabel,
-  MessageChatSquareV2,
-  SpaceOpenIcon,
-  SpaceClosedIcon,
-  CheckDoubleV2,
-  Maximize01V2,
-  Minimize01V2,
+  MessageChatSquare,
+  FolderOpen,
+  Folder,
+  CheckDouble,
+  Maximize01,
+  Minimize01,
 } from "../index_with_tw_base";
 import type { NavigationListItemStatus } from "../components/NavigationList";
 
@@ -61,7 +61,7 @@ export const Demo = () => {
       <DropdownMenuContent>
         <DropdownMenuItem
           label="Rename"
-          icon={Edit04V2}
+          icon={Edit04}
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -70,7 +70,7 @@ export const Demo = () => {
         />
         <DropdownMenuItem
           label="Delete"
-          icon={Trash01V2}
+          icon={Trash01}
           variant="warning"
           onClick={(e) => {
             e.preventDefault();
@@ -198,7 +198,7 @@ export const CollapsibleSection = () => {
       <DropdownMenuContent>
         <DropdownMenuItem
           label="Rename"
-          icon={Edit04V2}
+          icon={Edit04}
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -206,7 +206,7 @@ export const CollapsibleSection = () => {
         />
         <DropdownMenuItem
           label="Delete"
-          icon={Trash01V2}
+          icon={Trash01}
           variant="warning"
           onClick={(e) => {
             e.preventDefault();
@@ -231,7 +231,7 @@ export const CollapsibleSection = () => {
               </div> */}
               <Button
                 size="xmini"
-                icon={CheckDoubleV2}
+                icon={CheckDouble}
                 variant="ghost"
                 aria-label="Add new item"
                 tooltip="Mark all as read"
@@ -291,7 +291,7 @@ export const CollapsibleSection = () => {
             <>
               <Button
                 size="xmini"
-                icon={PlusV2}
+                icon={Plus}
                 variant="ghost"
                 aria-label="Add new item"
                 tooltip="New project"
@@ -302,7 +302,7 @@ export const CollapsibleSection = () => {
               />
               <Button
                 size="xmini"
-                icon={DotsHorizontalV2}
+                icon={DotsHorizontal}
                 variant="ghost"
                 aria-label="More options"
                 onClick={(e) => {
@@ -314,7 +314,7 @@ export const CollapsibleSection = () => {
           }
         >
           <NavigationListItem
-            icon={SpaceOpenIcon}
+            icon={FolderOpen}
             label="Engineering"
             count={12}
             href="#"
@@ -324,7 +324,7 @@ export const CollapsibleSection = () => {
             }}
           />
           <NavigationListItem
-            icon={SpaceOpenIcon}
+            icon={FolderOpen}
             label="Design"
             count={8}
             href="#"
@@ -334,7 +334,7 @@ export const CollapsibleSection = () => {
             }}
           />
           <NavigationListItem
-            icon={SpaceOpenIcon}
+            icon={FolderOpen}
             label="Product"
             count={5}
             href="#"
@@ -344,7 +344,7 @@ export const CollapsibleSection = () => {
             }}
           />
           <NavigationListItem
-            icon={SpaceOpenIcon}
+            icon={FolderOpen}
             label="Company"
             href="#"
             count={3}
@@ -354,7 +354,7 @@ export const CollapsibleSection = () => {
             }}
           />
           <NavigationListItem
-            icon={SpaceClosedIcon}
+            icon={Folder}
             label="Operations"
             href="#"
             hasActivity
@@ -363,7 +363,7 @@ export const CollapsibleSection = () => {
             }}
           />
           <NavigationListItem
-            icon={SpaceClosedIcon}
+            icon={Folder}
             label="SeriesB"
             href="#"
             onClick={(e) => {
@@ -371,7 +371,7 @@ export const CollapsibleSection = () => {
             }}
           />
           <NavigationListItem
-            icon={SpaceClosedIcon}
+            icon={Folder}
             label="Marketing"
             href="#"
             onClick={(e) => {
@@ -388,7 +388,7 @@ export const CollapsibleSection = () => {
             <>
               <Button
                 size="xmini"
-                icon={MessageChatSquareV2}
+                icon={MessageChatSquare}
                 variant="ghost"
                 aria-label="Add new item"
                 tooltip="New Conversation"
@@ -400,7 +400,7 @@ export const CollapsibleSection = () => {
               />
               <Button
                 size="xmini"
-                icon={DotsHorizontalV2}
+                icon={DotsHorizontal}
                 variant="ghost"
                 aria-label="Add new item"
                 onClick={(e) => {
@@ -450,7 +450,7 @@ export const CollapsibleSection = () => {
             <>
               <Button
                 size="xmini"
-                icon={PlusV2}
+                icon={Plus}
                 variant="ghost"
                 aria-label="Add new item"
                 onClick={(e) => {
@@ -461,7 +461,7 @@ export const CollapsibleSection = () => {
               />
               <Button
                 size="xmini"
-                icon={DotsHorizontalV2}
+                icon={DotsHorizontal}
                 variant="ghost"
                 aria-label="Add new item"
                 onClick={(e) => {

@@ -5,7 +5,7 @@ import {
   Avatar,
   Chip,
   ContentMessage,
-  Lock01V2,
+  Lock01,
   Separator,
   Sheet,
   SheetContent,
@@ -59,7 +59,7 @@ export function MemberDetails({ userId, onClose, owner }: MemberDetailsProps) {
             <Spinner size="lg" />
           </div>
         ) : isMembersError ? (
-          <ContentMessage title="Not Available" icon={Lock01V2} size="md">
+          <ContentMessage title="Not Available" icon={Lock01} size="md">
             This user is not available.
           </ContentMessage>
         ) : (

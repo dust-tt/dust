@@ -17,7 +17,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  InfoCircleV2,
+  InfoCircle,
   Page,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -103,7 +103,7 @@ export function SpaceLayout({ children }: SpaceLayoutProps) {
                     color="rose"
                     label="You are not a member of this space."
                     size="sm"
-                    icon={InfoCircleV2}
+                    icon={InfoCircle}
                   />
                 </div>
               )

@@ -3,11 +3,11 @@ import { P } from "@app/components/home/ContentComponents";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { appendUTMParams } from "@app/lib/utils/utm";
 import {
-  ArrowRightV2,
+  ArrowRight,
   Button,
-  CheckV2,
-  ChevronLeftV2,
-  ChevronRightV2,
+  Check,
+  ChevronLeft,
+  ChevronRight,
   cn,
   Icon,
 } from "@dust-tt/sparkle";
@@ -84,14 +84,14 @@ function TestimonialSlider({
               className="flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 text-gray-600 transition-colors hover:bg-gray-50"
               aria-label="Previous testimonial"
             >
-              <ChevronLeftV2 className="h-5 w-5" />
+              <ChevronLeft className="h-5 w-5" />
             </button>
             <button
               onClick={next}
               className="flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 text-gray-600 transition-colors hover:bg-gray-50"
               aria-label="Next testimonial"
             >
-              <ChevronRightV2 className="h-5 w-5" />
+              <ChevronRight className="h-5 w-5" />
             </button>
           </div>
         </div>
@@ -187,7 +187,7 @@ export function ChatGptEnterpriseDeepDive({
               {/* Pros */}
               <div>
                 <h3 className="mb-6 flex items-center gap-2 text-xl font-bold text-[#111418]">
-                  <Icon visual={CheckV2} className="h-6 w-6 text-green-500" />
+                  <Icon visual={Check} className="h-6 w-6 text-green-500" />
                   Why Dust Wins
                 </h3>
                 <ul className="space-y-4">
@@ -231,7 +231,7 @@ export function ChatGptEnterpriseDeepDive({
                     variant="primary"
                     size="md"
                     label="Book a demo"
-                    icon={ArrowRightV2}
+                    icon={ArrowRight}
                     onClick={withTracking(
                       TRACKING_AREAS.COMPETITIVE,
                       "chatgpt_enterprise_deep_dive_demo",

@@ -40,7 +40,7 @@ import {
 import type { WorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
 import {
-  ArrowRightV2,
+  ArrowRight,
   Avatar,
   DropdownMenu,
   DropdownMenuContent,
@@ -52,19 +52,19 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-  Edit04V2,
-  EyeOffV2,
-  EyeV2,
-  GitBranch01V2,
-  Link01V2,
-  LinkExternal01V2,
-  MessageCircle01V2,
-  PlusCircleV2,
-  PlusV2,
-  SidekickV2,
-  Trash01V2,
-  UserSquareV2,
-  XCloseV2,
+  Edit04,
+  Eye,
+  EyeOff,
+  GitBranch01,
+  Link01,
+  LinkExternal01,
+  MessageCircle01,
+  Plus,
+  PlusCircle,
+  Sidekick,
+  Trash01,
+  UserSquare,
+  XClose,
 } from "@dust-tt/sparkle";
 import type React from "react";
 import type { ReactElement } from "react";
@@ -419,20 +419,20 @@ export function ConversationMenu({
           <DropdownMenuItem
             label="Rename conversation"
             onClick={() => setShowRenameDialog(true)}
-            icon={Edit04V2}
+            icon={Edit04}
           />
           <DropdownMenuItem
             label="Branch conversation"
             onClick={() => {
               void branchConversation();
             }}
-            icon={GitBranch01V2}
+            icon={GitBranch01}
             disabled={isBranching}
           />
           <DropdownMenuSeparator />
           <DropdownMenuSub>
             <DropdownMenuSubTrigger
-              icon={ArrowRightV2}
+              icon={ArrowRight}
               label={canMoveOutOfPod ? "Move to..." : "Move to Pod"}
             />
             <DropdownMenuPortal>
@@ -441,7 +441,7 @@ export function ConversationMenu({
                 className="max-w-60"
               >
                 <DropdownMenuItem
-                  icon={PlusV2}
+                  icon={Plus}
                   label="New Pod"
                   onClick={() => setIsCreatePodModalOpen(true)}
                 />
@@ -449,7 +449,7 @@ export function ConversationMenu({
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
-                      icon={MessageCircle01V2}
+                      icon={MessageCircle01}
                       label="Personal conversations"
                       onClick={async () =>
                         moveConversationOutOfPod(conversation)
@@ -481,7 +481,7 @@ export function ConversationMenu({
           </DropdownMenuSub>
           <DropdownMenuSub>
             <DropdownMenuSubTrigger
-              icon={UserSquareV2}
+              icon={UserSquare}
               label="Participants"
               disabled={
                 !conversationParticipants?.users.length &&
@@ -496,7 +496,7 @@ export function ConversationMenu({
                     <DropdownMenuItem
                       label="Join"
                       onClick={joinConversation}
-                      icon={PlusCircleV2}
+                      icon={PlusCircle}
                     />
                     <DropdownMenuSeparator />
                   </>
@@ -539,14 +539,14 @@ export function ConversationMenu({
             <DropdownMenuItem
               label="Open in a browser tab"
               onClick={openConversationInBrowser}
-              icon={LinkExternal01V2}
+              icon={LinkExternal01}
             />
           )}
           {conversationLink && (
             <DropdownMenuItem
               label="Copy link"
               onClick={copyConversationLink}
-              icon={Link01V2}
+              icon={Link01}
             />
           )}
           {(canMakeUrlAccessible || canRestrictUrlAccess) && (
@@ -563,14 +563,14 @@ export function ConversationMenu({
                     : "workspace_members"
                 );
               }}
-              icon={canRestrictUrlAccess ? EyeOffV2 : EyeV2}
+              icon={canRestrictUrlAccess ? EyeOff : Eye}
               disabled={isUpdatingConversationUrlAccessMode}
             />
           )}
           {canTurnIntoAgent && (
             <DropdownMenuItem
               label="Convert to agent"
-              icon={SidekickV2}
+              icon={Sidekick}
               disabled={!hasHealthyProviders(providersHealth)}
               onClick={async () => {
                 const confirmed = await confirm({
@@ -594,14 +594,14 @@ export function ConversationMenu({
             <DropdownMenuItem
               label="Leave"
               onClick={() => setShowLeaveDialog(true)}
-              icon={XCloseV2}
+              icon={XClose}
             />
           )}
           {canDelete && (
             <DropdownMenuItem
               label="Delete"
               onClick={() => setShowDeleteDialog(true)}
-              icon={Trash01V2}
+              icon={Trash01}
               variant="warning"
             />
           )}

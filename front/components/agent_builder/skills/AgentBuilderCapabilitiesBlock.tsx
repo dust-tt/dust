@@ -30,12 +30,12 @@ import { useSkillWithRelations } from "@app/lib/swr/skill_configurations";
 import type { TemplateActionPreset } from "@app/types/assistant/templates";
 import {
   ActionCard,
-  BookOpen01V2,
+  BookOpen01,
   Button,
   CardGrid,
   EmptyCTA,
   Hoverable,
-  ShapesPlusV2,
+  ShapesPlus,
   Spinner,
 } from "@dust-tt/sparkle";
 import { useCallback, useState } from "react";
@@ -78,14 +78,14 @@ function ActionButtons({
         type="button"
         onClick={onClickCapability}
         label="Add capabilities"
-        icon={ShapesPlusV2}
+        icon={ShapesPlus}
         variant="primary"
       />
       <Button
         type="button"
         onClick={onClickKnowledge}
         label="Add knowledge"
-        icon={BookOpen01V2}
+        icon={BookOpen01}
         variant="outline"
       />
     </div>

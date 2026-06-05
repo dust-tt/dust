@@ -1,4 +1,4 @@
-import { AttachmentChip, DoubleQuotesV2 } from "@dust-tt/sparkle";
+import { AttachmentChip, DoubleQuotes } from "@dust-tt/sparkle";
 import { NodeViewWrapper } from "@tiptap/react";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React from "react";
@@ -36,7 +36,7 @@ export function PastedAttachmentComponent({
       >
         <AttachmentChip
           label={displayTitle}
-          icon={{ visual: DoubleQuotesV2 }}
+          icon={{ visual: DoubleQuotes }}
           color="highlight"
         />
       </div>

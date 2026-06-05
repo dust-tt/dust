@@ -5,7 +5,7 @@ import {
 } from "@app/components/assistant/conversation/plan_mode/utils";
 import { usePlanFile } from "@app/hooks/conversations/usePlanFile";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
-import { ChevronRightV2, cn, File04V2, Icon } from "@dust-tt/sparkle";
+import { ChevronRight, cn, File04, Icon } from "@dust-tt/sparkle";
 import React, { useMemo } from "react";
 
 interface PlanCardProps {
@@ -67,7 +67,7 @@ export const PlanCard = React.memo(function PlanCard({
         "hover:bg-primary-50 dark:hover:bg-primary-50-night"
       )}
     >
-      <Icon visual={File04V2} size="sm" />
+      <Icon visual={File04} size="sm" />
       <span className="heading-sm grow truncate">Plan: {title}</span>
       <ApprovalStateChip state={approvalState} />
       {progress.total > 0 && (
@@ -75,7 +75,7 @@ export const PlanCard = React.memo(function PlanCard({
           {progress.done}/{progress.total} done
         </span>
       )}
-      <Icon visual={ChevronRightV2} size="sm" />
+      <Icon visual={ChevronRight} size="sm" />
     </button>
   );
 });

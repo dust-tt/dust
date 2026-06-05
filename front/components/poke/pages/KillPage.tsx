@@ -10,19 +10,19 @@ import {
 } from "@app/poke/swr/sandbox_kill";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import {
-  AlertCircleV2,
+  AlertCircle,
   AnthropicLogo,
   Button,
-  CloudArrowLeftRightV2,
-  CreditCard01V2,
-  FireV2,
+  CloudArrowLeftRight,
+  CreditCard01,
+  Fire,
   OpenaiLogo,
-  RefreshCw02V2,
-  Settings01V2,
+  RefreshCw02,
+  Settings01,
   SliderToggle,
   Spinner,
-  Trash01V2,
-  ZapV2,
+  Trash01,
+  Zap,
 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 import { useState } from "react";
@@ -38,12 +38,12 @@ const KILL_SWITCH_DEFINITIONS: Record<KillSwitchType, KillSwitchDefinition> = {
   save_agent_configurations: {
     title: "Agent Configurations",
     description: "Disable saving of agent configurations.",
-    icon: Settings01V2,
+    icon: Settings01,
   },
   save_data_source_views: {
     title: "Data Source Views",
     description: "Disable saving of data source views.",
-    icon: CloudArrowLeftRightV2,
+    icon: CloudArrowLeftRight,
   },
   global_blacklist_anthropic: {
     title: "Anthropic Models",
@@ -59,21 +59,21 @@ const KILL_SWITCH_DEFINITIONS: Record<KillSwitchType, KillSwitchDefinition> = {
     title: "Firecrawl",
     description:
       "Disable Firecrawl for web browsing and use Spider.cloud instead.",
-    icon: FireV2,
+    icon: Fire,
   },
   global_dust_agents_fallback: {
     title: "Dust Agents Fallback Provider",
     description:
       "Force Dust and Deep Dive agents to use non-Anthropic providers.",
     note: "Use only when the latest Sonnet or Opus models are down.",
-    icon: RefreshCw02V2,
+    icon: RefreshCw02,
   },
   global_disable_metronome_billing: {
     title: "Metronome Billing",
     description:
       "Disable Metronome billing globally and fall back to legacy Stripe subscriptions.",
     note: "Workspaces with the `metronome_billing` feature flag bypass this kill switch.",
-    icon: CreditCard01V2,
+    icon: CreditCard01,
   },
 };
 
@@ -197,7 +197,7 @@ export function KillPage() {
     <main className="mx-auto max-w-4xl space-y-10 px-4 py-8 sm:px-6 lg:px-8">
       <section className="space-y-2">
         <h2 className={PANEL_HEADING_CLASSES}>
-          <ZapV2 className={PANEL_ICON_CLASSES} />
+          <Zap className={PANEL_ICON_CLASSES} />
           <span>Kill switches</span>
         </h2>
         <p className={PANEL_DESCRIPTION_CLASSES}>
@@ -268,7 +268,7 @@ export function KillPage() {
 
       <section className="space-y-2">
         <h2 className={PANEL_HEADING_CLASSES}>
-          <Trash01V2 className={PANEL_ICON_CLASSES} />
+          <Trash01 className={PANEL_ICON_CLASSES} />
           <span>Sandbox Kill Requester</span>
         </h2>
         <p className={PANEL_DESCRIPTION_CLASSES}>
@@ -283,7 +283,7 @@ export function KillPage() {
           </div>
         ) : images.length === 0 ? (
           <div className="mt-6 flex items-center gap-2 rounded-2xl border border-border bg-background p-5 text-sm text-muted-foreground dark:border-border-night dark:bg-background-night dark:text-muted-foreground-night">
-            <AlertCircleV2 className="h-4 w-4" />
+            <AlertCircle className="h-4 w-4" />
             <span>No registered sandbox images found.</span>
           </div>
         ) : (

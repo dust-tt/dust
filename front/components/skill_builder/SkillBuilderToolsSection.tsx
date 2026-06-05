@@ -15,8 +15,8 @@ import {
   CardGrid,
   Chip,
   EmptyCTA,
-  ReverseLeftV2,
-  ShapesPlusV2,
+  ReverseLeft,
+  ShapesPlus,
   Spinner,
 } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
@@ -93,7 +93,7 @@ export function SkillBuilderToolsSection({
       type="button"
       onClick={handleOpenSheet}
       label="Add tools"
-      icon={ShapesPlusV2}
+      icon={ShapesPlus}
       variant="outline"
     />
   );
@@ -119,7 +119,7 @@ export function SkillBuilderToolsSection({
             <Button
               variant="outline"
               size="sm"
-              icon={ReverseLeftV2}
+              icon={ReverseLeft}
               onClick={restoreTools}
               label="Restore tools"
             />
@@ -141,7 +141,7 @@ export function SkillBuilderToolsSection({
                   type="button"
                   onClick={handleOpenSheet}
                   label="Add tools"
-                  icon={ShapesPlusV2}
+                  icon={ShapesPlus}
                   variant="outline"
                 />
               }

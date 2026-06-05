@@ -9,7 +9,7 @@ import {
   Input,
   RadioGroup,
   RadioGroupItem,
-  XCloseV2,
+  XClose,
 } from "@dust-tt/sparkle";
 import type React from "react";
 import { useState } from "react";
@@ -141,7 +141,7 @@ export function CreateCouponForm({
     <div className="rounded-lg border bg-muted/40 p-6 dark:bg-muted-night/40">
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-lg font-semibold">Create coupon</h2>
-        <Button icon={XCloseV2} variant="ghost" size="sm" onClick={onCancel} />
+        <Button icon={XClose} variant="ghost" size="sm" onClick={onCancel} />
       </div>
 
       <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">

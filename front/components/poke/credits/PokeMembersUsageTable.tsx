@@ -8,9 +8,9 @@ import { usePokeMembersUsage } from "@app/poke/swr/credits";
 import type { UserCreditState } from "@app/types/memberships";
 import type { WorkspaceType } from "@app/types/user";
 import {
+  AlertCircle,
   Chip,
   ContentMessage,
-  ExclamationCircleIcon,
   LinkWrapper,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -210,7 +210,7 @@ export function PokeMembersUsageTable({ owner }: PokeMembersUsageTableProps) {
     return (
       <ContentMessage
         title="Failed to load members usage"
-        icon={ExclamationCircleIcon}
+        icon={AlertCircle}
         variant="warning"
       >
         Could not load per-member seat, balance and credit-state data for this

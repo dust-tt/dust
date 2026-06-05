@@ -1,7 +1,7 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
 import { InteractiveContentHeader } from "@app/components/assistant/conversation/interactive_content/InteractiveContentHeader";
-import { AlertCircleV2, ContentMessage } from "@dust-tt/sparkle";
+import { AlertCircle, ContentMessage } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React from "react";
 
@@ -23,7 +23,7 @@ export function UnsupportedContentRenderer({
       <div className="flex-1 overflow-hidden">
         <CenteredState>
           <ContentMessage
-            icon={AlertCircleV2}
+            icon={AlertCircle}
             size="md"
             title="Unsupported Content Type"
             variant="warning"

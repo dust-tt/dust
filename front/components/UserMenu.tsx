@@ -20,8 +20,8 @@ import { isOnlyAdmin, isOnlyBuilder, isOnlyUser } from "@app/types/user";
 import { datadogLogs } from "@datadog/browser-logs";
 import {
   Avatar,
-  Beaker02V2,
-  ChevronDownV2,
+  Beaker02,
+  ChevronDown,
   ChromeLogo,
   cn,
   DropdownMenu,
@@ -33,17 +33,17 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-  EyeOffV2,
-  EyeV2,
+  Eye,
+  EyeOff,
   FirefoxLogo,
   Icon,
-  Lightbulb04V2,
-  LogOut01V2,
-  MessagePlusCircleV2,
-  ShapesV2,
-  Star01V2,
-  TerminalV2,
-  User01V2,
+  Lightbulb04,
+  LogOut01,
+  MessagePlusCircle,
+  Shapes,
+  Star01,
+  Terminal,
+  User01,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
@@ -170,7 +170,7 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
             </div>
             <div className="flex-shrink-0">
               <Icon
-                visual={ChevronDownV2}
+                visual={ChevronDown}
                 className="text-muted-foreground group-hover:text-primary-400 group-active:text-primary-950 dark:text-muted-foreground-night dark:group-hover:text-foreground-night dark:group-active:text-primary-700"
               />
             </div>
@@ -190,7 +190,7 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
               <DropdownMenuLabel label="Beta" />
               <DropdownMenuItem
                 label="Exploratory features"
-                icon={Beaker02V2}
+                icon={Beaker02}
                 href={`/w/${owner.sId}/labs`}
               />
             </>
@@ -218,13 +218,13 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
             <>
               <DropdownMenuItem
                 label="Personal Settings"
-                icon={User01V2}
+                icon={User01}
                 href={`/w/${owner.sId}/me`}
               />
               {hasFeature("user_settings_v2") && (
                 <DropdownMenuItem
                   label="Personal Settings — Beta"
-                  icon={User01V2}
+                  icon={User01}
                   onSelect={() => setSettingsOpen(true)}
                 />
               )}
@@ -233,7 +233,7 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
 
           <DropdownMenuItem
             label="Sign&nbsp;out"
-            icon={LogOut01V2}
+            icon={LogOut01}
             onClick={() => {
               // Clear all conversation drafts for this user.
               clearAllDraftsFromUser();
@@ -250,7 +250,7 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
             <>
               <DropdownMenuLabel label="Advanced" />
               <DropdownMenuSub>
-                <DropdownMenuSubTrigger label="Dev Tools" icon={ShapesV2} />
+                <DropdownMenuSubTrigger label="Dev Tools" icon={Shapes} />
                 <DropdownMenuPortal>
                   <DropdownMenuSubContent>
                     {(router.pathname === "/w/[wId]/conversation/[cId]" ||
@@ -271,45 +271,45 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
                             );
                           }
                         }}
-                        icon={ShapesV2}
+                        icon={Shapes}
                       />
                     )}
                     {!isOnlyAdmin(owner) && (
                       <DropdownMenuItem
                         label="Become Admin"
                         onClick={() => forceRoleUpdate("admin")}
-                        icon={Star01V2}
+                        icon={Star01}
                       />
                     )}
                     {!isOnlyBuilder(owner) && (
                       <DropdownMenuItem
                         label="Become Builder"
                         onClick={() => forceRoleUpdate("builder")}
-                        icon={Lightbulb04V2}
+                        icon={Lightbulb04}
                       />
                     )}
                     {!isOnlyUser(owner) && (
                       <DropdownMenuItem
                         label="Become User"
                         onClick={() => forceRoleUpdate("user")}
-                        icon={User01V2}
+                        icon={User01}
                       />
                     )}
                     <DropdownMenuItem
                       label={`${privacyMask.isEnabled ? "Disable" : "Enable"} Privacy Mask`}
                       onClick={privacyMask.toggle}
-                      icon={privacyMask.isEnabled ? EyeOffV2 : EyeV2}
+                      icon={privacyMask.isEnabled ? EyeOff : Eye}
                     />
                     <DropdownMenuItem
                       label={`${devMode.isEnabled ? "Disable" : "Enable"} Dev Console`}
                       onClick={devMode.toggle}
-                      icon={TerminalV2}
+                      icon={Terminal}
                     />
                     {owner.role === "admin" && (
                       <DropdownMenuItem
                         label="Send onboarding conversation"
                         onClick={handleSendOnboarding}
-                        icon={MessagePlusCircleV2}
+                        icon={MessagePlusCircle}
                       />
                     )}
                   </DropdownMenuSubContent>
