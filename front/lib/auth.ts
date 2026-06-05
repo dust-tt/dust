@@ -96,6 +96,7 @@ export interface AuthenticatorType {
   subscriptionId: string | null;
   isByok: boolean;
   key?: KeyAuthType;
+  attributionKey?: { id: ModelId; name: string };
   clientIp?: string;
 }
 
@@ -108,6 +109,10 @@ export interface AuthenticatorType {
  */
 export class Authenticator {
   _key?: KeyAuthType;
+  // Attribution-only key reference. Records which API key a request should be
+  // *attributed* to for usage analytics, independently of `_key`. It never
+  // influences authorization (role, caps, system-key checks all read `_key`).
+  _attributionKey?: { id: ModelId; name: string };
   _role: RoleType;
   _subscription: SubscriptionResource | null;
   _user: UserResource | null;
@@ -126,6 +131,7 @@ export class Authenticator {
     authMethod,
     subscription,
     key,
+    attributionKey,
     providersHealth,
     clientIp,
   }: {
@@ -136,6 +142,7 @@ export class Authenticator {
     authMethod: AuthMethodType;
     subscription?: SubscriptionResource | null;
     key?: KeyAuthType;
+    attributionKey?: { id: ModelId; name: string };
     providersHealth?: ProvidersHealth | null;
     clientIp?: string;
   }) {
@@ -149,6 +156,7 @@ export class Authenticator {
     this._subscription = subscription || null;
     this._authMethod = authMethod;
     this._key = key;
+    this._attributionKey = attributionKey;
     this._providersHealth = providersHealth ?? null;
     this._clientIp = clientIp;
     if (user) {
@@ -1197,6 +1205,37 @@ export class Authenticator {
     return this._key ?? null;
   }
 
+  attributionKey(): { id: ModelId; name: string } | null {
+    return this._attributionKey ?? null;
+  }
+
+  attributionKeyModelId(): ModelId | null {
+    return this._attributionKey?.id ?? null;
+  }
+
+  // Returns a copy of this authenticator carrying an attribution-only key
+  // reference. Used to attribute usage to the original caller's key when an
+  // internal flow re-authenticates with the workspace system key (e.g. run_agent
+  // sub-agents). This is attribution only: `_key` is left untouched, so role,
+  // caps and system-key checks keep operating on the actual (system) key.
+  withAttributionKey(attributionKey: {
+    id: ModelId;
+    name: string;
+  }): Authenticator {
+    return new Authenticator({
+      authMethod: this._authMethod,
+      key: this._key,
+      attributionKey,
+      role: this._role,
+      groupModelIds: this._groupModelIds,
+      user: this._user,
+      subscription: this._subscription,
+      workspace: this._workspace,
+      clientIp: this._clientIp,
+      providersHealth: this._providersHealth,
+    });
+  }
+
   toJSON(): AuthenticatorType {
     const workspace = this._workspace;
     assert(workspace, "Workspace is required to serialize Authenticator");
@@ -1210,6 +1249,7 @@ export class Authenticator {
       subscriptionId: this._subscription?.sId ?? null,
       isByok: this.plan()?.isByok ?? false,
       key: this._key,
+      attributionKey: this._attributionKey,
       clientIp: this._clientIp,
     };
   }
@@ -1261,6 +1301,7 @@ export class Authenticator {
       groupModelIds: groupIds,
       subscription,
       key: authType.key,
+      attributionKey: authType.attributionKey,
       providersHealth,
       clientIp: authType.clientIp,
     });
@@ -1630,12 +1671,16 @@ export function getApiKeyNameFromHeaders(headers: {
 }
 
 export function getApiKeyNameHeader(auth: Authenticator) {
-  const key = auth.key();
-  if (!key || !key.name) {
+  // Prefer the attribution key name over the request's own key so the original
+  // caller's key name propagates transitively through nested internal system-key
+  // calls (e.g. a sub-agent that itself spawns sub-agents). Without this, a nested
+  // call would forward the system key name ("DustSystemKey") and lose attribution.
+  const name = auth.attributionKey()?.name ?? auth.key()?.name;
+  if (!name) {
     return undefined;
   }
 
   return {
-    [DustApiKeyNameHeader]: key.name,
+    [DustApiKeyNameHeader]: name,
   };
 }
