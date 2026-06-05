@@ -63,6 +63,7 @@ import type {
   AgentMCPActionType,
   AgentMCPActionWithOutputType,
 } from "@app/types/actions";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { AgentFunctionCallContentType } from "@app/types/assistant/agent_message_content";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -1210,6 +1211,37 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     return this.update({
       status,
     });
+  }
+
+  /**
+   * Resolves the (light) agent configuration that owns this action, via the
+   * action's agent message. Returns null if the agent message can't be found.
+   * Keeps the agent-message model lookup inside the resource layer.
+   */
+  async getLightAgentConfiguration(
+    auth: Authenticator
+  ): Promise<LightAgentConfigurationType | null> {
+    const agentMessage = await AgentMessageModel.findOne({
+      attributes: ["agentConfigurationId", "agentConfigurationVersion"],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        id: this.agentMessageId,
+      },
+    });
+    if (!agentMessage) {
+      return null;
+    }
+    const [agentConfiguration] = await getAgentConfigurationsWithVersion(
+      auth,
+      [
+        {
+          agentId: agentMessage.agentConfigurationId,
+          agentVersion: agentMessage.agentConfigurationVersion,
+        },
+      ],
+      { variant: "light" }
+    );
+    return agentConfiguration ?? null;
   }
 
   async markAsErrored({

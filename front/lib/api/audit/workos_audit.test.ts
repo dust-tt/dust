@@ -14,6 +14,7 @@ vi.mock("@app/lib/api/workos/organization", () => ({
 
 import {
   buildAuditLogTarget,
+  deriveAgentTriggerType,
   emitAuditLogEvent,
   isAuditLogsEnabled,
 } from "./workos_audit";
@@ -116,5 +117,42 @@ describe("emitAuditLogEvent", () => {
     expect(eventArg.metadata.long_field.length).toBe(1000);
     expect(eventArg.metadata.long_field.endsWith("...[truncated]")).toBe(true);
     expect(eventArg.metadata.short_field).toBe(shortValue);
+  });
+});
+
+describe("deriveAgentTriggerType", () => {
+  it("returns 'agent' for a run_agent sub-agent call", () => {
+    expect(
+      deriveAgentTriggerType(
+        { type: "run_agent", originMessageId: "msg" },
+        null
+      )
+    ).toBe("agent");
+  });
+
+  it("returns 'handover' for an agent_handover call", () => {
+    expect(
+      deriveAgentTriggerType(
+        { type: "agent_handover", originMessageId: "msg" },
+        null
+      )
+    ).toBe("handover");
+  });
+
+  it("returns 'trigger' when a trigger backs the conversation", () => {
+    expect(deriveAgentTriggerType(undefined, "trigger-id")).toBe("trigger");
+  });
+
+  it("returns 'user' for a plain user message", () => {
+    expect(deriveAgentTriggerType(undefined, null)).toBe("user");
+  });
+
+  it("prefers the agentic type over a trigger id", () => {
+    expect(
+      deriveAgentTriggerType(
+        { type: "run_agent", originMessageId: "msg" },
+        "trigger-id"
+      )
+    ).toBe("agent");
   });
 });

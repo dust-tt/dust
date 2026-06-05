@@ -10,6 +10,10 @@ import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { getApprovalArgsLabel } from "@app/lib/actions/tool_approval_labels";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/tool_status";
 import type { StepContext } from "@app/lib/actions/types";
+import {
+  buildAuditLogTarget,
+  emitAuditLogEventDirect,
+} from "@app/lib/api/audit/workos_audit";
 import type { MCPToolRetryPolicyType } from "@app/lib/api/mcp";
 import { getRetryPolicyFromToolConfiguration } from "@app/lib/api/mcp";
 import { createMCPAction } from "@app/lib/api/mcp/create_mcp";
@@ -220,6 +224,41 @@ async function createActionForTool(
     stepContent,
     stepContext,
   });
+
+  // The action was persisted as blocked pending human approval — emit an audit
+  // event so the approval request is traceable. Worker context, so emit direct
+  // with the agent as actor (mirrors tool.executed).
+  if (status === "blocked_validation_required") {
+    const workspace = auth.getNonNullableWorkspace();
+    void emitAuditLogEventDirect({
+      workspace,
+      action: "tool.approval_requested",
+      actor: {
+        type: "agent",
+        id: agentConfiguration.sId,
+        name: agentConfiguration.name,
+      },
+      targets: [
+        buildAuditLogTarget("workspace", workspace),
+        buildAuditLogTarget("agent", agentConfiguration),
+        buildAuditLogTarget("tool", {
+          sId: actionConfiguration.name,
+          name: actionConfiguration.originalName,
+        }),
+      ],
+      context: { location: auth.clientIp() ?? "internal" },
+      metadata: {
+        tool_name: actionConfiguration.originalName,
+        mcp_server_name: actionConfiguration.mcpServerName,
+        stake_level: actionConfiguration.permission,
+        conversation_id: conversation.sId,
+        agent_message_id: agentMessage.sId,
+        action_id: action.sId,
+        initiating_user_id: auth.user()?.sId ?? "unknown",
+        initiating_user_email: auth.user()?.email ?? "unknown",
+      },
+    });
+  }
 
   // Publish the tool params event with runIds so they're saved when workflow exits early.
   await updateResourceAndPublishEvent(auth, {
