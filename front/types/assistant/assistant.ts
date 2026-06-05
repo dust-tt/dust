@@ -151,6 +151,22 @@ export function isGlobalAgentId(sId: string): sId is GLOBAL_AGENTS_SID {
   return (Object.values(GLOBAL_AGENTS_SID) as string[]).includes(sId);
 }
 
+// Hidden helper sub-agents that are only ever invoked internally (e.g. via
+// run_agent by the Deep Dive agent). On their own they are not meaningful to
+// users, so usage they generate should be attributed to the parent agent that
+// spawned them rather than to the helper itself. Other sub-agents (real user
+// agents invoked via run_agent / agent_handover) keep their own attribution.
+export const HIDDEN_HELPER_SUB_AGENT_SIDS: ReadonlySet<string> =
+  new Set<string>([
+    GLOBAL_AGENTS_SID.DUST_TASK,
+    GLOBAL_AGENTS_SID.DUST_PLANNING,
+    GLOBAL_AGENTS_SID.DUST_BROWSER_SUMMARY,
+  ]);
+
+export function isHiddenHelperSubAgentId(sId: string): boolean {
+  return HIDDEN_HELPER_SUB_AGENT_SIDS.has(sId);
+}
+
 // If you want to show feedback buttons for global agents, add sId here.
 const GLOBAL_AGENTS_WITH_FEEDBACK = new Set<GLOBAL_AGENTS_SID>([
   GLOBAL_AGENTS_SID.DUST,

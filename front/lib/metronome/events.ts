@@ -218,6 +218,7 @@ export function buildLlmUsageEvents({
   userId,
   agentMessageId,
   agentId,
+  subAgentId,
   parentAgentMessageId,
   runKey,
   runUsages,
@@ -235,6 +236,7 @@ export function buildLlmUsageEvents({
   userId: string | null;
   agentMessageId: string;
   agentId: string | null;
+  subAgentId: string | null;
   parentAgentMessageId: string | null;
   runKey: string;
   runUsages: RunUsageType[];
@@ -295,6 +297,7 @@ export function buildLlmUsageEvents({
       agent_message_id: agentMessageId,
       conversation_id: conversationId,
       agent_id: agentId ?? "unknown",
+      sub_agent_id: subAgentId ?? "none",
       parent_agent_message_id: parentAgentMessageId ?? "none",
       provider_id: group.providerId,
       model_id: group.modelId,
@@ -346,6 +349,7 @@ export function buildToolUseEvents({
   userId,
   agentMessageId,
   agentId,
+  subAgentId,
   parentAgentMessageId,
   runKey,
   actions,
@@ -362,6 +366,7 @@ export function buildToolUseEvents({
   userId: string | null;
   agentMessageId: string;
   agentId: string | null;
+  subAgentId: string | null;
   parentAgentMessageId: string | null;
   runKey: string;
   actions: ToolAction[];
@@ -411,6 +416,7 @@ export function buildToolUseEvents({
         agent_message_id: agentMessageId,
         conversation_id: conversationId,
         agent_id: agentId ?? "unknown",
+        sub_agent_id: subAgentId ?? "none",
         parent_agent_message_id: parentAgentMessageId ?? "none",
         auth_method: authMethod ?? "unknown",
         api_key_name: apiKeyName ?? "unknown",
