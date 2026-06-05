@@ -1,4 +1,5 @@
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
+import { formatCredits } from "@app/lib/client/credits";
 import type { BillingFrequency } from "@app/lib/metronome/types";
 import {
   isMembershipSeatType,
@@ -75,10 +76,6 @@ function SeatTypeIcon({ seatType }: SeatTypeIconProps) {
     return null;
   }
   return <Icon />;
-}
-
-function formatCredits(credits: number): string {
-  return credits.toLocaleString("en-US", { maximumFractionDigits: 1 });
 }
 
 interface AwuUsageBarProps {

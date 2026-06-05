@@ -24,6 +24,7 @@ import {
   isUserMessage,
   makeInitialMessageStreamState,
 } from "@app/components/assistant/conversation/types";
+import { useCreditCostMenuItem } from "@app/components/assistant/conversation/useCreditCostMenuItem";
 import { ConfirmContext } from "@app/components/Confirm";
 import {
   CitationsContext,
@@ -39,6 +40,7 @@ import {
 import {
   useBranchConversation,
   useCancelMessage,
+  useConversationMessage,
   usePostOnboardingFollowUp,
 } from "@app/hooks/conversations";
 import { useConversationAttachments } from "@app/hooks/conversations/useConversationAttachments";
@@ -97,7 +99,12 @@ import {
   ConversationMessageContent,
   ConversationMessageTitle,
   DotsHorizontal,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
   type DropdownMenuItemProps,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
   GitBranch01,
   InfoCircle,
   InteractiveImageGrid,
@@ -260,6 +267,23 @@ export function AgentMessage({
   >([]);
   const [isCopied, copy] = useCopyToClipboard();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  // The streamed message carries a null cost: it is computed and persisted only
+  // after the agentic loop finishes, in the finalize activities. Re-fetch the
+  // message when the menu opens so a freshly-arrived message shows its cost
+  // without a reload. Falls back to the value already on the message otherwise.
+  const { message: refreshedMessage } = useConversationMessage({
+    conversationId,
+    workspaceId: owner.sId,
+    messageId: agentMessage.sId,
+    options: { disabled: !isMenuOpen || agentMessage.costCredits != null },
+  });
+  const refreshedCostCredits =
+    refreshedMessage?.type === "agent_message"
+      ? refreshedMessage.costCredits
+      : null;
+  const creditCostItem = useCreditCostMenuItem({
+    credits: refreshedCostCredits ?? agentMessage.costCredits,
+  });
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
 
@@ -889,19 +913,27 @@ export function AgentMessage({
           icon={isCopied ? ClipboardCheck : Clipboard}
           className="text-muted-foreground"
         />
-        <ButtonGroupDropdown
-          trigger={
+        <DropdownMenu onOpenChange={setIsMenuOpen}>
+          <DropdownMenuTrigger asChild>
             <Button
               variant="outline"
               size="xs"
               icon={DotsHorizontal}
               className="text-muted-foreground"
             />
-          }
-          items={dropdownItems}
-          align="end"
-          onOpenChange={setIsMenuOpen}
-        />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {creditCostItem && (
+              <>
+                <DropdownMenuItem {...creditCostItem} />
+                <DropdownMenuSeparator />
+              </>
+            )}
+            {dropdownItems.map((item, index) => (
+              <DropdownMenuItem key={index} {...item} />
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </ButtonGroup>
     );
   }
