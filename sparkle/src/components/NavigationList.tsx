@@ -134,7 +134,7 @@ const NavigationListItem = React.forwardRef<
               selected && "s-bg-stone-100 dark:s-bg-primary-200-night"
             )}
           >
-            {icon && <Icon visual={icon} size="xs" className="s-m-0.5" />}
+            {icon && <Icon visual={icon} size="xs" className="s-m-0.5 s-text-muted-foreground dark:s-text-muted-foreground" />}
             {avatar}
             {label && (
               <span

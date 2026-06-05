@@ -10,6 +10,7 @@ module.exports = {
     extend: {
       fontWeight: {
         medium: "450",
+        semibold: "550",
       },
       height: {
         175: "700px",

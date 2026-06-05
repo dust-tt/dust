@@ -12,6 +12,7 @@ module.exports = {
     extend: {
       fontWeight: {
         medium: "450",
+        semibold: "550",
       },
       containers: {
         xxxs: "16rem",
