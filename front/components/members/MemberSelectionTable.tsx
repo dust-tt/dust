@@ -24,6 +24,10 @@ export type SearchMemberType =
   | LightUserTypeWithWorkspace
   | UserTypeWithWorkspace;
 
+export type SearchMemberWithWorkspaceType =
+  | LightUserTypeWithWorkspace
+  | UserTypeWithWorkspace;
+
 export function hasFullUserAccess(
   user: SearchMemberType
 ): user is UserTypeWithWorkspace {

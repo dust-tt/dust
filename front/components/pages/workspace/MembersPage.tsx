@@ -4,7 +4,7 @@ import { InvitationsList } from "@app/components/members/InvitationsList";
 import { InviteEmailButtonWithModal } from "@app/components/members/InviteEmailButtonWithModal";
 import {
   hasFullUserAccess,
-  type SearchMemberType,
+  type SearchMemberWithWorkspaceType,
 } from "@app/components/members/MemberSelectionTable";
 import { MembersList } from "@app/components/members/MembersList";
 import { ChangeMemberModal } from "@app/components/workspace/ChangeMemberModal";
@@ -121,7 +121,7 @@ function WorkspaceMembersList({
     setSelectedMember(null);
   }, [setSelectedMember]);
 
-  const handleRowClick = useCallback((user: SearchMemberType) => {
+  const handleRowClick = useCallback((user: SearchMemberWithWorkspaceType) => {
     if (hasFullUserAccess(user)) {
       setSelectedMember(user);
     }
