@@ -172,6 +172,7 @@ type BlockedToolExecutionVariant =
   | {
       status: "blocked_validation_required";
       authorizationInfo: AuthorizationInfo | null;
+      editable?: EditableToolConfig;
     }
   | {
       status: "blocked_child_action_input_required";

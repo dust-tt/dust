@@ -3,6 +3,7 @@ import type {
   MCPValidationMetadataType,
 } from "@app/lib/actions/constants";
 import type { UserQuestion } from "@app/lib/actions/types";
+import type { EditableToolConfig } from "@app/lib/api/mcp";
 import type { OAuthProvider } from "@app/types/oauth/lib";
 
 // Identifiers scoping an event to the run context it was emitted from, mirroring the contextType
@@ -112,6 +113,7 @@ export type ToolFileAuthRequiredEvent =
 export interface AgentLoopMCPApproveExecutionEvent
   extends AgentLoopToolExecution {
   type: "tool_approve_execution";
+  editable?: EditableToolConfig;
 }
 
 export interface SandboxFunctionMCPApproveExecutionEvent
