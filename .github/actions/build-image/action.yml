@@ -141,13 +141,13 @@ runs:
           build_args+=("--build-arg DATADOG_API_KEY=${{ inputs.dd_api_key }}")
         fi
 
-        # Only set the Datadog client token for front and front-edge builds
-        if [[ "$COMPONENT" == "front" || "$COMPONENT" == "front-edge" ]]; then
+        # Set the Datadog client token + service name for any front / front-edge build,
+        if [[ "$BASE_COMPONENT" == "front" || "$BASE_COMPONENT" == "front-edge" ]]; then
           build_args+=("--build-arg NEXT_PUBLIC_DATADOG_CLIENT_TOKEN=${{ inputs.dd_client_token }}")
-          build_args+=("--build-arg NEXT_PUBLIC_DATADOG_SERVICE=$COMPONENT")
+          build_args+=("--build-arg NEXT_PUBLIC_DATADOG_SERVICE=$BASE_COMPONENT")
           build_args+=("--build-arg NEXT_PUBLIC_BUILD_DATE=$(date +%s)")
           # Upload source maps for front-sse too (same image, different DD service name)
-          if [[ "$COMPONENT" == "front" ]]; then
+          if [[ "$BASE_COMPONENT" == "front" ]]; then
             build_args+=("--build-arg DATADOG_ADDITIONAL_SERVICES=front-sse")
           fi
         fi
