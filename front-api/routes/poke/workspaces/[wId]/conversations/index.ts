@@ -1,22 +1,14 @@
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type {
-  ConversationVisibility,
-  ConversationWithoutContentType,
-} from "@app/types/assistant/conversation";
+  PokeListConversationItem,
+  PokeListConversations,
+} from "@app/lib/api/poke/conversations";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 import conversationId from "./[cId]";
-
-export type PokeListConversationItem = ConversationWithoutContentType & {
-  visibility?: ConversationVisibility;
-};
-
-export type PokeListConversations = {
-  conversations: PokeListConversationItem[];
-};
 
 const ListConversationsQuerySchema = z.object({
   agentId: z.string().optional(),

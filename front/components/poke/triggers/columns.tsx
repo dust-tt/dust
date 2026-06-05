@@ -1,8 +1,8 @@
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
+import type { TriggerWithProviderType } from "@app/lib/api/poke/triggers";
 import { clientFetch } from "@app/lib/egress/client";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { describeScheduleConfig } from "@app/lib/utils/schedule_description";
-import type { TriggerWithProviderType } from "@app/pages/api/poke/workspaces/[wId]/triggers";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { TriggerType } from "@app/types/assistant/triggers";
 import type { LightWorkspaceType } from "@app/types/user";

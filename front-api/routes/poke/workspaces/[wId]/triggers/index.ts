@@ -1,20 +1,12 @@
+import type { PokeListTriggers } from "@app/lib/api/poke/triggers";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
-import {
-  listTriggersWithProviderAndEditor,
-  type TriggerWithProviderAndEditor,
-} from "@app/lib/triggers/admin/list_with_metadata";
+import { listTriggersWithProviderAndEditor } from "@app/lib/triggers/admin/list_with_metadata";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 import tId from "./[tId]";
-
-export type TriggerWithProviderType = TriggerWithProviderAndEditor;
-
-export type PokeListTriggers = {
-  triggers: TriggerWithProviderType[];
-};
 
 const DeleteTriggerQuerySchema = z.object({
   tId: z.string(),

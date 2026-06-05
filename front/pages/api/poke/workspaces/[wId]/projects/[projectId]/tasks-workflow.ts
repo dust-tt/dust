@@ -2,6 +2,10 @@
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
+import type {
+  PokeGetProjectWorkflow,
+  PokeProjectWorkflowInfo,
+} from "@app/lib/api/poke/projects";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
@@ -12,24 +16,8 @@ import {
 } from "@app/lib/temporal";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { PodMetadataType } from "@app/types/project_metadata";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type PokeProjectWorkflowInfo = {
-  workflowId: string;
-  runId: string;
-  status: string;
-  startTime: number | null;
-  closeTime: number | null;
-};
-
-export type PokeGetProjectWorkflow = {
-  metadata: PodMetadataType | null;
-  temporalNamespace: string;
-  workflowId: string;
-  latestWorkflow: PokeProjectWorkflowInfo | null;
-};
 
 async function handler(
   req: NextApiRequest,

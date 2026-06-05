@@ -1,19 +1,10 @@
-import {
-  listProjectKnowledgeFromConnectors,
-  type ProjectKnowledgeFromConnectorItem,
-} from "@app/lib/api/projects/context";
+import type { PokeListProjectKnowledgeFromConnectors } from "@app/lib/api/poke/projects";
+import { listProjectKnowledgeFromConnectors } from "@app/lib/api/projects/context";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export type PokeProjectKnowledgeFromConnectorItem =
-  ProjectKnowledgeFromConnectorItem;
-
-export type PokeListProjectKnowledgeFromConnectors = {
-  items: PokeProjectKnowledgeFromConnectorItem[];
-};
 
 const ParamsSchema = z.object({
   projectId: z.string(),

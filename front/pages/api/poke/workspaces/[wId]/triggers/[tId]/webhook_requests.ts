@@ -1,6 +1,7 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
+import type { PokeGetWebhookRequestsResponseBody } from "@app/lib/api/poke/triggers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
@@ -11,18 +12,6 @@ import { WEBHOOK_REQUEST_TRIGGER_STATUSES } from "@app/types/assistant/triggers"
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export interface PokeGetWebhookRequestsResponseBody {
-  requests: {
-    id: number;
-    timestamp: number;
-    status: WebhookRequestTriggerStatus;
-    payload?: {
-      headers?: Record<string, string | string[]>;
-      body?: unknown;
-    };
-  }[];
-}
 
 async function handler(
   req: NextApiRequest,

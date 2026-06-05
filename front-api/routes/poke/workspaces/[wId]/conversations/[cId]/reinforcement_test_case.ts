@@ -1,7 +1,15 @@
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
-import type { AvailableTool } from "@app/lib/api/assistant/workspace_capabilities";
 import { listAvailableTools } from "@app/lib/api/assistant/workspace_capabilities";
+import type {
+  GetReinforcementTestCaseResponseBody,
+  ReinforcementTestCaseMockAction,
+  ReinforcementTestCaseMockFeedback,
+  ReinforcementTestCaseMockMessage,
+  ReinforcementTestCaseMockSkillConfig,
+  ReinforcementTestCaseMockSkillTool,
+  ReinforcementTestCaseType,
+} from "@app/lib/api/poke/conversations";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import {
@@ -17,56 +25,6 @@ import { z } from "zod";
 const ParamsSchema = z.object({
   cId: z.string(),
 });
-
-interface ReinforcementTestCaseMockAction {
-  functionCallName: string;
-  status: "succeeded" | "failed";
-  params?: Record<string, unknown>;
-  output?: string | null;
-}
-
-interface ReinforcementTestCaseMockFeedback {
-  direction: "up" | "down";
-  comment?: string;
-}
-
-interface ReinforcementTestCaseMockMessage {
-  role: "user" | "agent";
-  content: string;
-  feedback?: ReinforcementTestCaseMockFeedback;
-  actions?: ReinforcementTestCaseMockAction[];
-}
-
-interface ReinforcementTestCaseMockSkillTool {
-  name: string;
-  sId: string;
-}
-
-interface ReinforcementTestCaseMockSkillConfig {
-  name: string;
-  sId: string;
-  description?: string;
-  instructions?: string;
-  tools?: ReinforcementTestCaseMockSkillTool[];
-}
-
-interface ReinforcementTestCaseWorkspaceContext {
-  tools: AvailableTool[];
-}
-
-export interface ReinforcementTestCaseType {
-  scenarioId: string;
-  type: "analysis";
-  skillConfigs: ReinforcementTestCaseMockSkillConfig[];
-  conversation: ReinforcementTestCaseMockMessage[];
-  workspaceContext: ReinforcementTestCaseWorkspaceContext;
-  expectedToolCalls: [];
-  judgeCriteria: string;
-}
-
-export type PokeGetReinforcementTestCaseResponseBody = {
-  testCase: ReinforcementTestCaseType;
-};
 
 function serializeActionOutput(
   output: Array<{ type: string; text?: string }> | null | undefined
@@ -89,7 +47,7 @@ const app = pokeApp();
 app.get(
   "/",
   validate("param", ParamsSchema),
-  async (ctx): HandlerResult<PokeGetReinforcementTestCaseResponseBody> => {
+  async (ctx): HandlerResult<GetReinforcementTestCaseResponseBody> => {
     const auth = ctx.get("auth");
     const { cId } = ctx.req.valid("param");
 
