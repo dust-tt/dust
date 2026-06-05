@@ -385,6 +385,7 @@ export class ConversationFactory {
       rank: messageRow.rank,
       branchId: messageRow.getBranchId(),
       richMentions: [],
+      costCredits: null,
     };
 
     if (!mcpAction) {

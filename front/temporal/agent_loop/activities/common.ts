@@ -371,6 +371,7 @@ async function processEventForUnreadState(
           event.type === "agent_error" || event.type === "tool_error"
             ? "error"
             : "success",
+        costCredits: null,
       },
     });
   }
@@ -392,7 +393,9 @@ export async function updateResourceAndPublishEvent(
     modelInteractionDurationMs?: number;
   }
 ): Promise<void> {
-  // Process DB updates and unread state for all events.
+  // Process DB updates and unread state for all events. costCredits is threaded through
+  // to the agent_message_done event for the live client, but the value is computed in a
+  // later change; it is null here until the credit-cost computation lands.
   await Promise.all([
     processEventForDatabase(auth, {
       event,
@@ -401,7 +404,10 @@ export async function updateResourceAndPublishEvent(
       conversation,
       modelInteractionDurationMs,
     }),
-    processEventForUnreadState(auth, { event, conversation }),
+    processEventForUnreadState(auth, {
+      event,
+      conversation,
+    }),
   ]);
 
   // All events go through the coalescer, which handles batching logic internally.
@@ -521,6 +527,7 @@ export async function notifyWorkflowError(
     ),
     richMentions: [],
     reactions: [],
+    costCredits: null,
 
     // HACKY: These last 3 fields are not used in the workflow error case but required in the type.
     configuration: null as unknown as LightAgentConfigurationType,
