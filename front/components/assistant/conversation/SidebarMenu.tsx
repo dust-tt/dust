@@ -1258,6 +1258,7 @@ function UnreadConversationsSection({
           />
         ) : null
       }
+      actionOnHover={false}
     >
       <AnimatePresence initial={false}>
         {conversations.map((conversation) => (
