@@ -1,5 +1,5 @@
+import type { GetProvidersResponseBody } from "@app/lib/api/providers";
 import { ProviderModel } from "@app/lib/resources/storage/models/apps";
-import type { ProviderType } from "@app/types/provider";
 import { redactString } from "@app/types/shared/utils/string_utils";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsBuilder } from "@front-api/middlewares/ensure_role";
@@ -7,10 +7,6 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 import check from "./[pId]/check";
 import provider from "./[pId]/index";
 import models from "./[pId]/models";
-
-export type GetProvidersResponseBody = {
-  providers: ProviderType[];
-};
 
 function redactConfig(config: string) {
   const parsedConfig = JSON.parse(config);

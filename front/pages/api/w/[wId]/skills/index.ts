@@ -1,6 +1,11 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import type {
+  GetSkillsResponseBody,
+  GetSkillsWithRelationsResponseBody,
+  PostSkillResponseBody,
+} from "@app/lib/api/skills";
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
 import { AttachedKnowledgeSchema } from "@app/lib/api/skills/schemas";
 import { resolveAdditionalRequestedSpaceModelIds } from "@app/lib/api/skills/space_requirements";
@@ -13,8 +18,6 @@ import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import {
   SKILL_REINFORCEMENT_MODES,
-  type SkillType,
-  type SkillWithoutInstructionsAndToolsType,
   type SkillWithoutInstructionsAndToolsWithRelationsType,
   type UsedBySkillType,
 } from "@app/types/assistant/skill_configuration";
@@ -25,18 +28,6 @@ import uniq from "lodash/uniq";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
-
-export type GetSkillsResponseBody = {
-  skills: SkillWithoutInstructionsAndToolsType[];
-};
-
-export type GetSkillsWithRelationsResponseBody = {
-  skills: SkillWithoutInstructionsAndToolsWithRelationsType[];
-};
-
-export type PostSkillResponseBody = {
-  skill: SkillType;
-};
 
 const SkillStatusSchema = z
   .enum(["active", "archived", "suggested"])

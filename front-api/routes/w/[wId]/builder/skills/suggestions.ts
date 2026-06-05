@@ -1,18 +1,12 @@
-import { getSkillDescriptionSuggestion } from "@app/lib/api/skills/description_suggestion";
+import {
+  getSkillDescriptionSuggestion,
+  PostSkillSuggestionsRequestBodySchema,
+} from "@app/lib/api/skills/description_suggestion";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import { z } from "zod";
 
-const PostSkillSuggestionsRequestBodySchema = z.object({
-  instructions: z.string(),
-  agentFacingDescription: z.string(),
-  tools: z.array(z.object({ name: z.string(), description: z.string() })),
-});
-
-export type PostSkillSuggestionsRequestBody = z.infer<
-  typeof PostSkillSuggestionsRequestBodySchema
->;
+export type { PostSkillSuggestionsRequestBody } from "@app/lib/api/skills/description_suggestion";
 
 // Mounted at /api/w/:wId/builder/skills/suggestions.
 const app = workspaceApp();

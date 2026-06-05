@@ -1,13 +1,14 @@
 import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
+import type {
+  GetWorkspaceSandboxEnvVarsResponseBody,
+  PostWorkspaceSandboxEnvVarsResponseBody,
+} from "@app/lib/api/sandbox/env_vars";
 import {
   parseWorkspaceSandboxEnvVarNameForKind,
   validateEnvVarValueForKind,
 } from "@app/lib/api/sandbox/env_vars";
 import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
-import {
-  WORKSPACE_SANDBOX_ENV_VAR_KINDS,
-  type WorkspaceSandboxEnvVarType,
-} from "@app/types/sandbox/env_var";
+import { WORKSPACE_SANDBOX_ENV_VAR_KINDS } from "@app/types/sandbox/env_var";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -21,15 +22,6 @@ const PostWorkspaceSandboxEnvVarBodySchema = z.object({
   kind: z.enum(WORKSPACE_SANDBOX_ENV_VAR_KINDS).optional(),
   allowedDomains: z.array(z.string()).nullable().optional(),
 });
-
-export type GetWorkspaceSandboxEnvVarsResponseBody = {
-  envVars: WorkspaceSandboxEnvVarType[];
-};
-
-export type PostWorkspaceSandboxEnvVarsResponseBody = {
-  envVar: WorkspaceSandboxEnvVarType;
-  created: boolean;
-};
 
 // Mounted at /api/w/:wId/sandbox/env-vars.
 const app = workspaceApp();

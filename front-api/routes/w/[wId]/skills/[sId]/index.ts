@@ -1,3 +1,9 @@
+import type {
+  DeleteSkillResponseBody,
+  GetSkillResponseBody,
+  GetSkillWithRelationsResponseBody,
+  PatchSkillResponseBody,
+} from "@app/lib/api/skills";
 import { AttachedKnowledgeSchema } from "@app/lib/api/skills/schemas";
 import { resolveAdditionalRequestedSpaceModelIds } from "@app/lib/api/skills/space_requirements";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -8,10 +14,7 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
-import type {
-  SkillType,
-  SkillWithRelationsType,
-} from "@app/types/assistant/skill_configuration";
+import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
 import type { APIErrorResponse } from "@app/types/error";
 import type { ModelId } from "@app/types/shared/model_id";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -27,30 +30,6 @@ import filesRoute from "./files/[fileId]/content";
 import history from "./history";
 import reinforcement from "./reinforcement";
 import restore from "./restore";
-
-export type GetSkillResponseBody = {
-  skill: SkillType;
-};
-
-export type GetSkillWithRelationsResponseBody = {
-  skill: SkillWithRelationsType;
-};
-
-export type PatchSkillResponseBody = {
-  skill: Omit<
-    SkillType,
-    | "author"
-    | "requestedSpaceIds"
-    | "workspaceId"
-    | "createdAt"
-    | "updatedAt"
-    | "editedBy"
-  >;
-};
-
-export type DeleteSkillResponseBody = {
-  success: boolean;
-};
 
 const ParamsSchema = z.object({
   sId: z.string(),

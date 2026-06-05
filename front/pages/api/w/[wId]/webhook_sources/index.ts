@@ -4,7 +4,12 @@ import { getWebhookSourcesUsage } from "@app/lib/api/agent_triggers";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import { WEBHOOK_SERVICES } from "@app/lib/api/triggers/built-in-webhooks/services";
-import { deleteWebhookSource } from "@app/lib/api/webhook_source";
+import {
+  deleteWebhookSource,
+  type GetWebhookSourcesResponseBody,
+  type PostWebhookSourcesResponseBody,
+  PostWebhookSourcesSchema,
+} from "@app/lib/api/webhook_source";
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateSecureSecret } from "@app/lib/resources/string_ids_server";
@@ -15,28 +20,8 @@ import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { ModelId } from "@app/types/shared/model_id";
-import type {
-  WebhookSourceForAdminType,
-  WebhookSourceWithViewsAndUsageType,
-} from "@app/types/triggers/webhooks";
-import { WebhookSourcesSchema } from "@app/types/triggers/webhooks";
 import type { NextApiRequest, NextApiResponse } from "next";
-import type { z } from "zod";
 import { fromError } from "zod-validation-error";
-
-export const PostWebhookSourcesSchema = WebhookSourcesSchema;
-
-export type PostWebhookSourcesBody = z.infer<typeof PostWebhookSourcesSchema>;
-
-export type GetWebhookSourcesResponseBody = {
-  success: true;
-  webhookSourcesWithViews: WebhookSourceWithViewsAndUsageType[];
-};
-
-export type PostWebhookSourcesResponseBody = {
-  success: true;
-  webhookSource: WebhookSourceForAdminType;
-};
 
 async function handler(
   req: NextApiRequest,

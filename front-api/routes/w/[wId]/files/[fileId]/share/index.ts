@@ -1,9 +1,9 @@
 import { ensureAuthorizedFileAccessForShare } from "@app/lib/api/viz/authorized_file_access";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import type { ShareFileResponseBody } from "@app/lib/resources/file_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import type { APIErrorResponse } from "@app/types/error";
-import type { FileShareScope } from "@app/types/files";
 import {
   fileShareScopeSchema,
   isConversationFileUseCase,
@@ -16,12 +16,6 @@ import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import type { Context, TypedResponse } from "hono";
 import { z } from "zod";
-
-export type ShareFileResponseBody = {
-  scope: FileShareScope;
-  sharedAt: number;
-  shareUrl: string;
-};
 
 import grants from "./grants";
 

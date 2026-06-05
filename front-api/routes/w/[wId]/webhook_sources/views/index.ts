@@ -1,17 +1,12 @@
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import type { GetWebhookSourceViewsListResponseBody } from "@app/lib/resources/webhook_sources_view_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
-import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 import viewById from "./[viewId]";
-
-export type GetWebhookSourceViewsListResponseBody = {
-  success: boolean;
-  webhookSourceViews: WebhookSourceViewType[];
-};
 
 const GetWebhookSourceViewsQuerySchema = z.object({
   spaceIds: z.string(),

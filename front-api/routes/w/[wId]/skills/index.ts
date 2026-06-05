@@ -1,4 +1,10 @@
+import type {
+  GetSkillsResponseBody,
+  GetSkillsWithRelationsResponseBody,
+  PostSkillResponseBody,
+} from "@app/lib/api/skills";
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
+import { AttachedKnowledgeSchema } from "@app/lib/api/skills/schemas";
 import { resolveAdditionalRequestedSpaceModelIds } from "@app/lib/api/skills/space_requirements";
 import { getFeatureFlags } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -8,8 +14,6 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
 import {
   SKILL_REINFORCEMENT_MODES,
-  type SkillType,
-  type SkillWithoutInstructionsAndToolsType,
   type SkillWithoutInstructionsAndToolsWithRelationsType,
   type UsedBySkillType,
 } from "@app/types/assistant/skill_configuration";
@@ -28,29 +32,9 @@ import reinforcementDailySpend from "./reinforcement_daily_spend";
 import reinforcementSpend from "./reinforcement_spend";
 import similar from "./similar";
 
-export type GetSkillsResponseBody = {
-  skills: SkillWithoutInstructionsAndToolsType[];
-};
-
-export type GetSkillsWithRelationsResponseBody = {
-  skills: SkillWithoutInstructionsAndToolsWithRelationsType[];
-};
-
-export type PostSkillResponseBody = {
-  skill: SkillType;
-};
-
 const SkillStatusSchema = z
   .enum(["active", "archived", "suggested"])
   .optional();
-
-// Schema for attached knowledge.
-export const AttachedKnowledgeSchema = z.object({
-  dataSourceViewId: z.string(),
-  nodeId: z.string(),
-  spaceId: z.string(),
-  title: z.string(),
-});
 
 // Request body schema for POST.
 const PostSkillRequestBodySchema = z.intersection(

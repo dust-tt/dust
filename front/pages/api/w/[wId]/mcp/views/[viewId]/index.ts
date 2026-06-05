@@ -1,8 +1,9 @@
 // @migration-status: MIGRATED_TO_HONO
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type { PatchMCPServerViewResponseBody } from "@app/lib/api/mcp/views";
 import {
+  PatchMCPServerViewBodySchema,
   updateNameAndDescriptionForMCPServerViews,
   updateOAuthUseCaseForMCPServerViews,
 } from "@app/lib/api/mcp/views";
@@ -12,28 +13,7 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
 import { fromError } from "zod-validation-error";
-
-const PatchMCPServerViewBodySchema = z
-  .object({
-    oAuthUseCase: z.enum(["platform_actions", "personal_actions"]),
-  })
-  .or(
-    z.object({
-      name: z.string().nullable(),
-      description: z.string().nullable(),
-    })
-  );
-
-export type PatchMCPServerViewBody = z.infer<
-  typeof PatchMCPServerViewBodySchema
->;
-
-export type PatchMCPServerViewResponseBody = {
-  success: true;
-  serverView: MCPServerViewType;
-};
 
 async function handler(
   req: NextApiRequest,

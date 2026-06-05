@@ -2,9 +2,15 @@ import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_ap
 import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@app/lib/api/skills/description_suggestion", () => ({
-  getSkillDescriptionSuggestion: vi.fn(),
-}));
+vi.mock(
+  "@app/lib/api/skills/description_suggestion",
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import("@app/lib/api/skills/description_suggestion")
+    >()),
+    getSkillDescriptionSuggestion: vi.fn(),
+  })
+);
 
 import { getSkillDescriptionSuggestion } from "@app/lib/api/skills/description_suggestion";
 

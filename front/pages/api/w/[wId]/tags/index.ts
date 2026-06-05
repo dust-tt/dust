@@ -1,24 +1,19 @@
 // @migration-status: MIGRATED_TO_HONO
 
-/** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+/** @ignoreswagger */
+import type {
+  CreateTagResponseBody,
+  GetTagsResponseBody,
+} from "@app/lib/api/tags";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { TagType } from "@app/types/tag";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
-
-export type GetTagsResponseBody = {
-  tags: TagType[];
-};
-
-export type CreateTagResponseBody = {
-  tag: TagType;
-};
 
 const PostBodySchema = z.object({
   name: z.string(),

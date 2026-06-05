@@ -58,6 +58,15 @@ export type MCPOAuthConnectionMetadataType = z.infer<
 
 type MCPMetadataType = z.infer<typeof MCPMetadataSchema>;
 
+export type DiscoverOAuthMetadataResponseBody =
+  | {
+      oauthRequired: true;
+      connectionMetadata: MCPOAuthConnectionMetadataType;
+    }
+  | {
+      oauthRequired: false;
+    };
+
 export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
   provider: OAuthProvider = "mcp";
   requiresWorkspaceConnectionForPersonalAuth = true;

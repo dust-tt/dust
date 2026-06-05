@@ -29,6 +29,10 @@ import type {
 } from "@app/types/data_source_view";
 import assert from "assert";
 
+export type GetActionsResponseBody = {
+  actions: AgentBuilderMCPConfiguration[];
+};
+
 // We are moving resource fetch to the client side. Until we finish,
 // we will keep this duplicated version for fetching actions.
 export const getAccessibleSourcesAndAppsForActions = async (

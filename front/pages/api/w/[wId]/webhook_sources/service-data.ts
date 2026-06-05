@@ -10,18 +10,9 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { OAuthAPI } from "@app/types/oauth/oauth_api";
 import { isString } from "@app/types/shared/utils/general";
-import type {
-  WebhookProvider,
-  WebhookServiceDataForProvider,
-} from "@app/types/triggers/webhooks";
+import type { GetServiceDataResponseType } from "@app/types/triggers/webhooks";
 import { isWebhookProvider } from "@app/types/triggers/webhooks";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type GetServiceDataResponseType<
-  P extends WebhookProvider = WebhookProvider,
-> = {
-  serviceData: WebhookServiceDataForProvider<P>;
-};
 
 async function handler(
   req: NextApiRequest,

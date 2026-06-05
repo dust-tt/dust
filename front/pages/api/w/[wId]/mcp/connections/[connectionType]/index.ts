@@ -8,46 +8,22 @@ import apiConfig from "@app/lib/api/config";
 import { checkConnectionOwnership } from "@app/lib/api/oauth";
 import type { Authenticator } from "@app/lib/auth";
 import type {
+  GetConnectionsResponseBody,
   MCPServerConnectionConnectionType,
-  MCPServerConnectionType,
+  PostConnectionBodyType,
+  PostConnectionResponseBody,
 } from "@app/lib/resources/mcp_server_connection_resource";
 import {
   isMCPServerConnectionConnectionType,
   MCPServerConnectionResource,
+  PostConnectionBodySchema,
 } from "@app/lib/resources/mcp_server_connection_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { OAuthAPI } from "@app/types/oauth/oauth_api";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
 import { fromError } from "zod-validation-error";
-
-const PostConnectionOAuthBodySchema = z.object({
-  connectionId: z.string(),
-  mcpServerId: z.string(),
-});
-
-const PostConnectionCredentialsBodySchema = z.object({
-  credentialId: z.string(),
-  mcpServerId: z.string(),
-});
-
-const PostConnectionBodySchema = z.union([
-  PostConnectionOAuthBodySchema,
-  PostConnectionCredentialsBodySchema,
-]);
-
-export type PostConnectionBodyType = z.infer<typeof PostConnectionBodySchema>;
-
-export type PostConnectionResponseBody = {
-  success: boolean;
-  connection: MCPServerConnectionType;
-};
-
-export type GetConnectionsResponseBody = {
-  connections: MCPServerConnectionType[];
-};
 
 type PostConnectionAuthReference =
   | {

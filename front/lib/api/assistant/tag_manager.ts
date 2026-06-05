@@ -7,8 +7,25 @@ import { Err, Ok } from "@app/types/shared/result";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import { formatValidationErrors } from "io-ts-reporters";
+import { z } from "zod";
 
 const SEND_TAGS_FUNCTION_NAME = "send_tags";
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const GetSuggestionsResponseBodySchema = z.object({
+  suggestions: z
+    .array(
+      z.object({
+        name: z.string(),
+        agents: z.array(z.object({ sId: z.string(), name: z.string() })),
+      })
+    )
+    .nullish(),
+});
+
+export type GetSuggestionsResponseBody = z.infer<
+  typeof GetSuggestionsResponseBodySchema
+>;
 
 const WorkspaceTagSuggestionsResponseSchema = t.type({
   suggestions: t.union([

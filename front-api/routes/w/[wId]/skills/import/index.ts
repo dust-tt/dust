@@ -1,30 +1,22 @@
-import { importSkillsFromGitHub } from "@app/lib/api/skills/detection/github/import_skills";
+import type {
+  ImportSkillsRequestBody,
+  ImportSkillsResponseBody,
+} from "@app/lib/api/skills/detection/github/import_skills";
+import {
+  ImportSkillsRequestBodySchema,
+  importSkillsFromGitHub,
+} from "@app/lib/api/skills/detection/github/import_skills";
 import logger from "@app/logger/logger";
-import type { SkillType } from "@app/types/assistant/skill_configuration";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsBuilder } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import { z } from "zod";
 
 import upload from "./upload";
 
-const ImportSkillsRequestBodySchema = z.object({
-  repoUrl: z.string(),
-  names: z.array(z.string()),
-});
-
-export type ImportSkillsRequestBody = z.infer<
-  typeof ImportSkillsRequestBodySchema
->;
-
-export type ImportSkillsResponseBody = {
-  imported: SkillType[];
-  updated: SkillType[];
-  skipped: { name: string; message: string }[];
-};
+export type { ImportSkillsRequestBody, ImportSkillsResponseBody };
 
 // Mounted at /api/w/:wId/skills/import.
 const app = workspaceApp();

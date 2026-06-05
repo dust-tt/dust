@@ -1,5 +1,6 @@
 import config from "@app/lib/api/config";
 import { sendEmailWithTemplate } from "@app/lib/api/email";
+import { PostRequestFeatureAccessBodySchema } from "@app/lib/api/labs";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -8,16 +9,6 @@ import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import type { SuccessResponseBody } from "@front-api/routes/types";
 import { escape } from "html-escaper";
-import { z } from "zod";
-
-export const PostRequestFeatureAccessBodySchema = z.object({
-  emailMessage: z.string(),
-  featureName: z.string(),
-});
-
-export type PostRequestFeatureAccessBody = z.infer<
-  typeof PostRequestFeatureAccessBodySchema
->;
 
 const MAX_ACCESS_REQUESTS_PER_DAY = 30;
 

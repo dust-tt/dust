@@ -1,12 +1,9 @@
+import type { GetProvidersCheckResponseBody } from "@app/lib/api/provider_credentials";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsBuilder } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export type GetProvidersCheckResponseBody =
-  | { ok: true }
-  | { ok: false; error: string };
 
 const PostCheckBodySchema = z.object({
   config: z.object({

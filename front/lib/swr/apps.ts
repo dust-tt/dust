@@ -2,6 +2,7 @@ import type {
   GetAppsResponseBody,
   GetOrPostAppResponseBody,
 } from "@app/lib/api/apps";
+import type { GetProvidersResponseBody } from "@app/lib/api/providers";
 import type {
   GetRunBlockResponseBody,
   GetRunResponseBody,
@@ -14,7 +15,6 @@ import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import logger from "@app/logger/logger";
 import type { GetDustAppSecretsResponseBody } from "@app/pages/api/w/[wId]/dust_app_secrets";
 import type { GetKeysResponseBody } from "@app/pages/api/w/[wId]/keys";
-import type { GetProvidersResponseBody } from "@app/pages/api/w/[wId]/providers";
 import type { AppType } from "@app/types/app";
 import type { RunRunType } from "@app/types/run";
 import { normalizeError } from "@app/types/shared/utils/error_utils";

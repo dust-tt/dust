@@ -1,14 +1,11 @@
 // @migration-status: MIGRATED_TO_HONO
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import type { GetProvidersCheckResponseBody } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type GetProvidersCheckResponseBody =
-  | { ok: true }
-  | { ok: false; error: string };
 
 async function handler(
   req: NextApiRequest,

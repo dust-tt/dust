@@ -1,12 +1,14 @@
 import { useSendNotification } from "@app/hooks/useNotification";
+import type {
+  GetReinforcementDailySpendResponseBody,
+  GetSkillsSpendResponseBody,
+} from "@app/lib/api/skills";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   getReinforcementMonthlyCapMicroUsd,
   getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd,
 } from "@app/lib/reinforcement/consumption";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { GetReinforcementDailySpendResponseBody } from "@app/pages/api/w/[wId]/skills/reinforcement_daily_spend";
-import type { GetSkillsSpendResponseBody } from "@app/pages/api/w/[wId]/skills/reinforcement_spend";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useState } from "react";

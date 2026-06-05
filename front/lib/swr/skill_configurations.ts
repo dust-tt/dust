@@ -1,17 +1,19 @@
 import type { ImportFormValues } from "@app/components/skills/import/formSchema";
 import { useDebounceWithAbort } from "@app/hooks/useDebounce";
 import { useSendNotification } from "@app/hooks/useNotification";
-import type { DetectedSkillSummary } from "@app/lib/skill_detection";
-import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { GetSkillsWithRelationsResponseBody } from "@app/pages/api/w/[wId]/skills";
+import type { GetSkillHistoryResponseBody } from "@app/lib/api/assistant/skills/history";
 import type {
   GetSkillResponseBody,
+  GetSkillsWithRelationsResponseBody,
   GetSkillWithRelationsResponseBody,
-} from "@app/pages/api/w/[wId]/skills/[sId]";
-import type { GetSkillHistoryResponseBody } from "@app/pages/api/w/[wId]/skills/[sId]/history";
-import type { DetectSkillsResponseBody } from "@app/pages/api/w/[wId]/skills/detect";
-import type { ImportSkillsResponseBody } from "@app/pages/api/w/[wId]/skills/import";
-import type { GetSimilarSkillsResponseBody } from "@app/pages/api/w/[wId]/skills/similar";
+} from "@app/lib/api/skills";
+import type { ImportSkillsResponseBody } from "@app/lib/api/skills/detection/github/import_skills";
+import type { GetSimilarSkillsResponseBody } from "@app/lib/api/skills/existing_skill_checker";
+import type {
+  DetectedSkillSummary,
+  DetectSkillsResponseBody,
+} from "@app/lib/skill_detection";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
   SkillReinforcementMode,
   SkillStatus,

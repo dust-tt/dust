@@ -1,6 +1,7 @@
 // @migration-status: MIGRATED_TO_HONO
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import type { GetOAuthSetupResponseBody } from "@app/lib/api/oauth";
 import { createConnectionAndGetSetupUrl } from "@app/lib/api/oauth";
 import type { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -16,9 +17,7 @@ import { isString } from "@app/types/shared/utils/general";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-export interface GetOAuthSetupResponseBody {
-  redirectUrl: string;
-}
+export type { GetOAuthSetupResponseBody } from "@app/lib/api/oauth";
 
 async function handler(
   req: NextApiRequest,

@@ -1,4 +1,4 @@
-import type { AgentBuilderMCPConfiguration } from "@app/components/agent_builder/types";
+import type { GetActionsResponseBody } from "@app/lib/agent_builder/server_side_props_helpers";
 import {
   buildInitialActions,
   getAccessibleSourcesAndAppsForActions,
@@ -13,10 +13,6 @@ import { z } from "zod";
 const ParamsSchema = z.object({
   aId: z.string(),
 });
-
-export type GetActionsResponseBody = {
-  actions: AgentBuilderMCPConfiguration[];
-};
 
 // Mounted at /api/w/:wId/builder/assistants/:aId/actions.
 const app = workspaceApp();

@@ -5,9 +5,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import handler from "./suggestions";
 
-vi.mock("@app/lib/api/skills/description_suggestion", () => ({
-  getSkillDescriptionSuggestion: vi.fn(),
-}));
+vi.mock(
+  "@app/lib/api/skills/description_suggestion",
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import("@app/lib/api/skills/description_suggestion")
+    >()),
+    getSkillDescriptionSuggestion: vi.fn(),
+  })
+);
 
 import { getSkillDescriptionSuggestion } from "@app/lib/api/skills/description_suggestion";
 

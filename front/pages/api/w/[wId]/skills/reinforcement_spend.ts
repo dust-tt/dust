@@ -1,6 +1,7 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import type { GetSkillsSpendResponseBody } from "@app/lib/api/skills";
 import type { Authenticator } from "@app/lib/auth";
 import { getCurrentPeriod } from "@app/lib/reinforcement/billing";
 import { SelfImprovingSkillsUsageResource } from "@app/lib/resources/self_improving_skills_usage_resource";
@@ -8,12 +9,6 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type GetSkillsSpendResponseBody = {
-  // Map from skill sId to total spent in the current billing period (microUSD).
-  // Skills with no usage in the period are omitted.
-  spentMicroUsdBySkillId: Record<string, number>;
-};
 
 async function handler(
   req: NextApiRequest,

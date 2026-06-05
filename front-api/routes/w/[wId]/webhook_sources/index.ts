@@ -1,7 +1,11 @@
 import { getWebhookSourcesUsage } from "@app/lib/api/agent_triggers";
 import config from "@app/lib/api/config";
 import { WEBHOOK_SERVICES } from "@app/lib/api/triggers/built-in-webhooks/services";
-import { deleteWebhookSource } from "@app/lib/api/webhook_source";
+import {
+  deleteWebhookSource,
+  type GetWebhookSourcesResponseBody,
+  type PostWebhookSourcesResponseBody,
+} from "@app/lib/api/webhook_source";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateSecureSecret } from "@app/lib/resources/string_ids_server";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
@@ -9,10 +13,6 @@ import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_v
 import { buildWebhookUrl } from "@app/lib/webhook_source";
 import logger from "@app/logger/logger";
 import type { ModelId } from "@app/types/shared/model_id";
-import type {
-  WebhookSourceForAdminType,
-  WebhookSourceWithViewsAndUsageType,
-} from "@app/types/triggers/webhooks";
 import { WebhookSourcesSchema } from "@app/types/triggers/webhooks";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
@@ -22,16 +22,6 @@ import { validate } from "@front-api/middlewares/validator";
 import webhookSourceById from "./[webhookSourceId]";
 import serviceData from "./service-data";
 import views from "./views";
-
-export type GetWebhookSourcesResponseBody = {
-  success: true;
-  webhookSourcesWithViews: WebhookSourceWithViewsAndUsageType[];
-};
-
-export type PostWebhookSourcesResponseBody = {
-  success: true;
-  webhookSource: WebhookSourceForAdminType;
-};
 
 // Mounted at /api/w/:wId/webhook_sources.
 const app = workspaceApp();

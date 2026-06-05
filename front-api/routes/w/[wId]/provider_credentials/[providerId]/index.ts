@@ -3,26 +3,21 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
-import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
+import type { ProviderCredentialResponseBody } from "@app/lib/resources/provider_credential_resource";
+import {
+  ProviderCredentialBodySchema,
+  ProviderCredentialResource,
+} from "@app/lib/resources/provider_credential_resource";
 import { BYOK_MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
-import type { ProviderCredentialType } from "@app/types/provider_credential";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
-const ProviderCredentialBodySchema = z.object({
-  apiKey: z.string(),
-});
-
 const ProviderCredentialParamsSchema = z.object({
   providerId: z.enum(BYOK_MODEL_PROVIDER_IDS),
 });
-
-export type ProviderCredentialResponseBody = {
-  providerCredential: ProviderCredentialType;
-};
 
 // Mounted at /api/w/:wId/provider_credentials/:providerId.
 const app = workspaceApp();

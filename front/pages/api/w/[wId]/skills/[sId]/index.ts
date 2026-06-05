@@ -1,6 +1,12 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import type {
+  DeleteSkillResponseBody,
+  GetSkillResponseBody,
+  GetSkillWithRelationsResponseBody,
+  PatchSkillResponseBody,
+} from "@app/lib/api/skills";
 import { AttachedKnowledgeSchema } from "@app/lib/api/skills/schemas";
 import { resolveAdditionalRequestedSpaceModelIds } from "@app/lib/api/skills/space_requirements";
 import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
@@ -12,10 +18,7 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  SkillType,
-  SkillWithRelationsType,
-} from "@app/types/assistant/skill_configuration";
+import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { ModelId } from "@app/types/shared/model_id";
 import { isString } from "@app/types/shared/utils/general";
@@ -23,30 +26,6 @@ import uniq from "lodash/uniq";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
-
-export type GetSkillResponseBody = {
-  skill: SkillType;
-};
-
-export type GetSkillWithRelationsResponseBody = {
-  skill: SkillWithRelationsType;
-};
-
-export type PatchSkillResponseBody = {
-  skill: Omit<
-    SkillType,
-    | "author"
-    | "requestedSpaceIds"
-    | "workspaceId"
-    | "createdAt"
-    | "updatedAt"
-    | "editedBy"
-  >;
-};
-
-export type DeleteSkillResponseBody = {
-  success: boolean;
-};
 
 // Request body schema for PATCH.
 const PatchSkillRequestBodySchema = z.object({

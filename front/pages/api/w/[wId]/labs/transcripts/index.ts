@@ -3,13 +3,13 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
+import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/lib/api/labs/transcripts";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { LabsTranscriptsConfigurationType } from "@app/types/labs";
 import {
   isCredentialProvider,
   isProviderWithDefaultWorkspaceConfiguration,
@@ -19,9 +19,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
-export type GetLabsTranscriptsConfigurationResponseBody = {
-  configuration: LabsTranscriptsConfigurationType | null;
-};
+export type { GetLabsTranscriptsConfigurationResponseBody };
 
 // Define provider type separately for better reuse
 export const acceptableTranscriptProvidersCodec = z.enum([

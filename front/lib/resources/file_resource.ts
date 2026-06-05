@@ -113,6 +113,19 @@ const FRAME_CONTENT_TYPES = new Set([
   frameSlideshowContentType,
 ]);
 
+export interface FileUploadedRequestResponseBody {
+  file: FileType & {
+    /** Scoped mount path when the file is on GCS (same shape as `GCSMountEntryBase.path`). */
+    path: string | null;
+  };
+}
+
+export type ShareFileResponseBody = {
+  scope: FileShareScope;
+  sharedAt: number;
+  shareUrl: string;
+};
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface FileResource extends ReadonlyAttributesType<FileModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging

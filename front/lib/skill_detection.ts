@@ -13,6 +13,10 @@ export type DetectedSkillSummary = {
   existingSkillId: string | null;
 };
 
+export type DetectSkillsResponseBody = {
+  skills: DetectedSkillSummary[];
+};
+
 export function isImportableSkillStatus(status: DetectedSkillStatus): boolean {
   return status === "ready" || status === "skill_already_exists";
 }

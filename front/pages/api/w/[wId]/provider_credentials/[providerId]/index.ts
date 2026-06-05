@@ -7,29 +7,20 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
+import type { ProviderCredentialResponseBody } from "@app/lib/resources/provider_credential_resource";
+import {
+  ProviderCredentialBodySchema,
+  ProviderCredentialResource,
+} from "@app/lib/resources/provider_credential_resource";
 import { apiError } from "@app/logger/withlogging";
 import { BYOK_MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { ProviderCredentialType } from "@app/types/provider_credential";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
-
-const ProviderCredentialBodySchema = z.object({
-  apiKey: z.string(),
-});
-
-export type ProviderCredentialBody = z.infer<
-  typeof ProviderCredentialBodySchema
->;
 
 const ProviderCredentialParamsSchema = z.object({
   providerId: z.enum(BYOK_MODEL_PROVIDER_IDS),
 });
-
-export type ProviderCredentialResponseBody = {
-  providerCredential: ProviderCredentialType;
-};
 
 async function handler(
   req: NextApiRequest,

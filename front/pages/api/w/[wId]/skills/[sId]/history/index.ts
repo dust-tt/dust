@@ -1,20 +1,16 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
+import type { GetSkillHistoryResponseBody } from "@app/lib/api/assistant/skills/history";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { apiError } from "@app/logger/withlogging";
 import { GetSkillHistoryQuerySchema } from "@app/types/api/internal/skill";
-import type { SkillWithVersionType } from "@app/types/assistant/skill_configuration";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
-
-export type GetSkillHistoryResponseBody = {
-  history: SkillWithVersionType[];
-};
 
 async function handler(
   req: NextApiRequest,

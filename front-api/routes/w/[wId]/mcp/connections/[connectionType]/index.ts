@@ -7,10 +7,12 @@ import type { Authenticator } from "@app/lib/auth";
 import type {
   MCPServerConnectionConnectionType,
   MCPServerConnectionType,
+  PostConnectionBodyType,
 } from "@app/lib/resources/mcp_server_connection_resource";
 import {
   isMCPServerConnectionConnectionType,
   MCPServerConnectionResource,
+  PostConnectionBodySchema,
 } from "@app/lib/resources/mcp_server_connection_resource";
 import logger from "@app/logger/logger";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
@@ -23,26 +25,9 @@ import { z } from "zod";
 
 import connection from "./[cId]";
 
-const PostConnectionOAuthBodySchema = z.object({
-  connectionId: z.string(),
-  mcpServerId: z.string(),
-});
-
-const PostConnectionCredentialsBodySchema = z.object({
-  credentialId: z.string(),
-  mcpServerId: z.string(),
-});
-
-const PostConnectionBodySchema = z.union([
-  PostConnectionOAuthBodySchema,
-  PostConnectionCredentialsBodySchema,
-]);
-
 const ParamsSchema = z.object({
   connectionType: z.string(),
 });
-
-export type PostConnectionBodyType = z.infer<typeof PostConnectionBodySchema>;
 
 // Wire shape: ctx.json serializes Date to ISO string, so the response type
 // must reflect that to satisfy HandlerResult<T>.

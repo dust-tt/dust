@@ -1,35 +1,15 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
-import { MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import type { PatchMCPServerToolsPermissionsResponseBody } from "@app/lib/api/mcp";
+import { UpdateMCPToolSettingsBodySchema } from "@app/lib/api/mcp_schemas";
 import type { Authenticator } from "@app/lib/auth";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
 import { fromError } from "zod-validation-error";
-
-export type PatchMCPServerToolsPermissionsResponseBody = {
-  success: boolean;
-};
-
-const UpdateMCPToolSettingsBodySchema = z
-  .object({
-    permission: z.enum(MCP_TOOL_STAKE_LEVELS).optional(),
-    enabled: z.boolean().optional(),
-  })
-  .refine(
-    (data) => data.permission !== undefined || data.enabled !== undefined,
-    {
-      message: "At least one of 'permission' or 'enabled' must be provided.",
-    }
-  );
-
-export type UpdateMCPToolSettingsBodyType = z.infer<
-  typeof UpdateMCPToolSettingsBodySchema
->;
 
 async function handler(
   req: NextApiRequest,

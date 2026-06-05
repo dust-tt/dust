@@ -1,7 +1,7 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type { GetMCPServerViewsListResponseBody } from "@app/lib/api/mcp";
 import {
   oauthProviderRequiresWorkspaceConnectionForPersonalAuth,
   withWorkspaceConnectionRequirement,
@@ -25,11 +25,6 @@ const GetMCPViewsRequestSchema = z.object({
   spaceIds: z.array(z.string()),
   availabilities: z.array(MCPViewsRequestAvailabilitySchema),
 });
-
-export type GetMCPServerViewsListResponseBody = {
-  success: boolean;
-  serverViews: MCPServerViewType[];
-};
 
 // We don't allow to fetch "auto_hidden_builder".
 function isAllowedAvailability(

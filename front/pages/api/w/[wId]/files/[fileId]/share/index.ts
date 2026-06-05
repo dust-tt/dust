@@ -4,10 +4,10 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import { ensureAuthorizedFileAccessForShare } from "@app/lib/api/viz/authorized_file_access";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import type { ShareFileResponseBody } from "@app/lib/resources/file_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { FileShareScope } from "@app/types/files";
 import {
   fileShareScopeSchema,
   isConversationFileUseCase,
@@ -21,12 +21,6 @@ import { z } from "zod";
 const ShareFileRequestBodySchema = z.object({
   shareScope: fileShareScopeSchema,
 });
-
-export type ShareFileResponseBody = {
-  scope: FileShareScope;
-  sharedAt: number;
-  shareUrl: string;
-};
 
 async function handler(
   req: NextApiRequest,

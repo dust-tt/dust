@@ -6,6 +6,7 @@ import type {
   UpsertFileToDataSourceResponseBody,
 } from "@app/lib/api/files/upsert";
 import { clientFetch } from "@app/lib/egress/client";
+import type { ShareFileResponseBody } from "@app/lib/resources/file_resource";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import {
   emptyArray,
@@ -13,7 +14,6 @@ import {
   useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
-import type { ShareFileResponseBody } from "@app/pages/api/w/[wId]/files/[fileId]/share";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type {
   FileShareScope,
