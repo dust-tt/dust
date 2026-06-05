@@ -244,6 +244,7 @@ const NavigationListLabel = React.forwardRef<
     className={cn(
       "s-flex s-items-center s-justify-between s-gap-2 s-pt-4 s-pb-2 s-px-2 s-whitespace-nowrap s-overflow-hidden s-text-ellipsis",
       "s-text-sm",
+      "s-bg-sidebar-background dark:s-bg-sidebar-background-night",
       "s-text-muted-foreground dark:s-text-muted-foreground-night",
       isSticky &&
         "s-sticky s-top-0 s-z-10 s-border-border dark:s-border-border-night",
