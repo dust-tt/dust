@@ -12,7 +12,11 @@ import type {
   MembershipSeatType,
   UserCreditState,
 } from "@app/types/memberships";
-import { expectedUserCreditState } from "@app/types/memberships";
+import {
+  CAP_WARNING_FRACTION,
+  expectedUserCreditState,
+  SEAT_LOW_BALANCE_FRACTION,
+} from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -271,7 +275,7 @@ const TRANSITIONS: UserCreditTransition[] = [
     guard: (ctx) =>
       ctx.seatType !== "free" &&
       ctx.remainingCapCreditsPercentage != null &&
-      ctx.remainingCapCreditsPercentage < 0.2,
+      ctx.remainingCapCreditsPercentage < 1 - CAP_WARNING_FRACTION,
     to: "on_pool_low_balance",
   },
   // 4. Paid seats with ≥ 20 % of cap remaining, with pool limit > 0 or null (unlimited) → on_pool
@@ -292,7 +296,8 @@ const TRANSITIONS: UserCreditTransition[] = [
     event: "seat_low_balance",
     guard: (ctx, event) =>
       event.type === "seat_low_balance" &&
-      event.threshold === 0.2 * MAX_SEAT_MONTHLY_AWU_CREDITS &&
+      event.threshold ===
+        SEAT_LOW_BALANCE_FRACTION * MAX_SEAT_MONTHLY_AWU_CREDITS &&
       (ctx.seatType === "max" || ctx.seatType === "max_yearly"),
     to: "user_seat_low_balance",
   },
