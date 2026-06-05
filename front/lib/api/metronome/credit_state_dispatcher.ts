@@ -1,3 +1,4 @@
+import { recalculatePerUserCapAlertForSeatChange } from "@app/lib/api/membership";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { isPAYGEnabled } from "@app/lib/credits/credit_payg";
@@ -216,6 +217,16 @@ export async function dispatchSeatBalanceResolved({
     );
     return;
   }
+
+  // A deferred seat change may have just taken effect (the future membership
+  // row became active). Re-derive the per-user cap alert from the membership's
+  // pool cap override and the current seat allowance — a no-op when the user
+  // has no override or the threshold is unchanged.
+  await recalculatePerUserCapAlertForSeatChange({
+    workspace: lightWorkspace,
+    membership,
+    userId,
+  });
 
   const result = await transitionUserCreditState(
     membership,

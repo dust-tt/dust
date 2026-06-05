@@ -1530,6 +1530,9 @@ export class MembershipResource extends BaseResource<MembershipModel> {
           origin: this.origin,
           seatType: newSeatType,
           firstUsedAt: this.firstUsedAt,
+          // The pool cap override survives the seat change: it's the
+          // pool-only portion, independent of the seat allowance.
+          poolCapOverrideAwuCredits: this.poolCapOverrideAwuCredits,
         },
         { transaction }
       );

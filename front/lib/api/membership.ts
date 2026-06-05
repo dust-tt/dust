@@ -6,10 +6,15 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import type { AuditLogActor } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
+import {
+  upsertMetronomePerUserCapAlert,
+  upsertMetronomePerUserWarningAlert,
+} from "@app/lib/metronome/alerts/spend_limits";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import {
   getDefaultSeatTypeForContract,
   getProductSeatTypes,
+  getSeatAllowancesByNormalizedSeatType,
 } from "@app/lib/metronome/seat_types";
 import {
   classifySeatChange,
@@ -33,6 +38,7 @@ import type {
   MembershipRoleType,
   MembershipSeatType,
 } from "@app/types/memberships";
+import { normalizeToPoolLimitSeatType } from "@app/types/memberships";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type {
@@ -408,6 +414,118 @@ export async function updateMembershipRoleAndTrack({
 }
 
 /**
+ * Re-sync the Metronome per-user cap alert after a seat-type change, for
+ * users carrying a pool cap override. The override itself (pool-only,
+ * persisted on the membership as `poolCapOverrideAwuCredits`) is unchanged —
+ * only the seat-allowance portion of the alert threshold
+ * (seatAllowance + poolCapOverride) moves with the new seat type, so the
+ * total is recomputed from the membership's current state. Idempotent: the
+ * upsert is a no-op when the threshold is unchanged.
+ *
+ * Best-effort: failures are logged but do not block the seat change (the
+ * next override write or reconcile re-derives the alert from the DB value).
+ */
+export async function recalculatePerUserCapAlertForSeatChange({
+  workspace,
+  membership,
+  userId,
+}: {
+  workspace: LightWorkspaceType;
+  membership: MembershipResource;
+  userId: string;
+}): Promise<void> {
+  const { metronomeCustomerId } = workspace;
+  if (!metronomeCustomerId) {
+    return;
+  }
+
+  // No override → the user follows the per-seat-type default alerts, which
+  // already fan out per user; nothing to recalculate.
+  const poolCapOverrideAwuCredits = membership.poolCapOverrideAwuCredits;
+  if (poolCapOverrideAwuCredits === null) {
+    return;
+  }
+
+  // Seat allowance for the *new* (current) seat type; 0 when the seat type
+  // carries no allowance — same convention as `setUserSpendLimit`.
+  const normalizedSeatType = normalizeToPoolLimitSeatType(membership.seatType);
+  let newAllowanceAwuCredits = 0;
+  if (normalizedSeatType) {
+    try {
+      const allowances = await getSeatAllowancesByNormalizedSeatType(
+        workspace.sId
+      );
+      newAllowanceAwuCredits = allowances[normalizedSeatType] ?? 0;
+    } catch (err) {
+      logger.error(
+        {
+          workspaceId: workspace.sId,
+          userId,
+          seatType: membership.seatType,
+          err,
+        },
+        "[Membership] Failed to resolve seat allowance for per-user cap recalculation"
+      );
+      return;
+    }
+  }
+
+  const newThresholdAwuCredits =
+    newAllowanceAwuCredits + poolCapOverrideAwuCredits;
+
+  const upsertResult = await upsertMetronomePerUserCapAlert({
+    metronomeCustomerId,
+    workspaceId: workspace.sId,
+    userId,
+    awuCredits: newThresholdAwuCredits,
+  });
+  if (upsertResult.isErr()) {
+    logger.error(
+      {
+        workspaceId: workspace.sId,
+        userId,
+        seatType: membership.seatType,
+        newThresholdAwuCredits,
+        err: upsertResult.error,
+      },
+      "[Membership] Failed to recalculate per-user cap alert after seat change"
+    );
+    return;
+  }
+
+  // Also update the companion 80% warning alert.
+  const warningResult = await upsertMetronomePerUserWarningAlert({
+    metronomeCustomerId,
+    workspaceId: workspace.sId,
+    userId,
+    capAwuCredits: newThresholdAwuCredits,
+  });
+  if (warningResult.isErr()) {
+    logger.warn(
+      {
+        workspaceId: workspace.sId,
+        userId,
+        newThresholdAwuCredits,
+        err: warningResult.error,
+      },
+      "[Membership] Failed to recalculate per-user warning alert after seat change"
+    );
+  }
+
+  logger.info(
+    {
+      workspaceId: workspace.sId,
+      userId,
+      seatType: membership.seatType,
+      poolCapOverrideAwuCredits,
+      newAllowanceAwuCredits,
+      newThresholdAwuCredits,
+    },
+    "[Membership] Recalculated per-user cap alert after seat change"
+  );
+}
+
+/**
  * Update a membership's seat type and re-sync Metronome accordingly. All
  * Metronome state changes (including scheduling decisions) flow through
  * `syncSeatCount`, which classifies the transition generically based on
@@ -553,6 +671,13 @@ export async function updateMembershipSeatAndTrack({
         workspace,
         newSeatType,
         author,
+      });
+      // Re-sync the per-user cap alert: the seat-allowance portion of the
+      // threshold changed with the seat type, the pool override didn't.
+      await recalculatePerUserCapAlertForSeatChange({
+        workspace,
+        membership,
+        userId: user.sId,
       });
       resultingActiveSeatType = newSeatType;
       break;
