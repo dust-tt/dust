@@ -3,7 +3,11 @@ import {
   findMetronomeAlert,
   upsertMetronomeAlert,
 } from "@app/lib/metronome/alerts";
-import { getCreditTypeAwuId } from "@app/lib/metronome/constants";
+import {
+  CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
+  CONTRACT_CREDIT_TYPE_POOL,
+  getCreditTypeAwuId,
+} from "@app/lib/metronome/constants";
 import {
   bestEffortInvalidateCacheWithRedis,
   cacheWithRedis,
@@ -48,6 +52,13 @@ export async function upsertMetronomeBalanceThresholdAlert({
     credit_type_id: getCreditTypeAwuId(),
     customer_id: metronomeCustomerId,
     uniqueness_key: balanceThresholdAlertUniquenessKey(workspaceId),
+    custom_field_filters: [
+      {
+        entity: "ContractCredit",
+        key: CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
+        value: CONTRACT_CREDIT_TYPE_POOL,
+      },
+    ],
   });
   if (upsertResult.isErr()) {
     return new Err(upsertResult.error);
