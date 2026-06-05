@@ -209,6 +209,86 @@ export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
     ],
     buildResolverKey: (p) => `slack_users_${p.mcpServerId}`,
   },
+  {
+    id: "metronome_balance_threshold",
+    label: "Metronome balance threshold",
+    fnName: "fetchWorkspaceBalanceThreshold",
+    params: [
+      {
+        key: "metronomeCustomerId",
+        label: "Metronome Customer ID",
+        type: "string",
+        placeholder: "e.g. 550e8400-e29b-41d4-a716-446655440000",
+      },
+      {
+        key: "workspaceId",
+        label: "Workspace sId",
+        type: "string",
+        placeholder: "e.g. abc123",
+      },
+    ],
+    buildResolverKey: (p) => `${p.metronomeCustomerId}-${p.workspaceId}`,
+  },
+  {
+    id: "metronome_per_user_cap_thresholds",
+    label: "Metronome per-user cap thresholds",
+    fnName: "fetchPerUserCapThresholds",
+    params: [
+      {
+        key: "metronomeCustomerId",
+        label: "Metronome Customer ID",
+        type: "string",
+        placeholder: "e.g. 550e8400-e29b-41d4-a716-446655440000",
+      },
+      {
+        key: "workspaceId",
+        label: "Workspace sId",
+        type: "string",
+        placeholder: "e.g. abc123",
+      },
+    ],
+    buildResolverKey: (p) => `${p.metronomeCustomerId}-${p.workspaceId}`,
+  },
+  {
+    id: "metronome_default_cap_thresholds_by_seat_type",
+    label: "Metronome default cap thresholds by seat type",
+    fnName: "fetchDefaultCapThresholdsBySeatType",
+    params: [
+      {
+        key: "metronomeCustomerId",
+        label: "Metronome Customer ID",
+        type: "string",
+        placeholder: "e.g. 550e8400-e29b-41d4-a716-446655440000",
+      },
+      {
+        key: "workspaceId",
+        label: "Workspace sId",
+        type: "string",
+        placeholder: "e.g. abc123",
+      },
+    ],
+    buildResolverKey: (p) => `${p.metronomeCustomerId}-${p.workspaceId}`,
+  },
+  {
+    id: "metronome_workspace_alert_ids",
+    label: "Metronome workspace alert IDs",
+    fnName: "fetchWorkspaceMetronomeAlertIds",
+    params: [
+      {
+        key: "metronomeCustomerId",
+        label: "Metronome Customer ID",
+        type: "string",
+        placeholder: "e.g. 550e8400-e29b-41d4-a716-446655440000",
+      },
+      {
+        key: "workspaceId",
+        label: "Workspace sId",
+        type: "string",
+        placeholder: "e.g. abc123",
+      },
+    ],
+    buildResolverKey: (p) => `${p.metronomeCustomerId}-${p.workspaceId}`,
+  },
 ];
 
 export function getCacheResourceById(
