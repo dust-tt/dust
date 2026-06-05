@@ -1,11 +1,13 @@
-import { getAuthenticatorFromWorkOSClaims } from "@app/lib/api/mcp_server/authenticator";
+import {
+  getAuthenticatorFromWorkOSClaims,
+  type McpAuthenticator,
+} from "@app/lib/api/mcp_server/authenticator";
 import {
   getMcpResourceMetadataUrl,
   getMcpResourceServerUrl,
   getWorkOSAuthKitDomain,
   normalizeOAuthUrl,
 } from "@app/lib/api/mcp_server/urls";
-import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { Context } from "hono";
@@ -22,7 +24,7 @@ export type McpServerAuthUser = JWTPayload & { sub: string };
 export type McpServerAuthVariables = {
   mcpUser: McpServerAuthUser;
   mcpAuthInfo: AuthInfo;
-  mcpAuth: Authenticator;
+  mcpAuth: McpAuthenticator;
 };
 
 function tokenScopes(payload: JWTPayload): string[] {
