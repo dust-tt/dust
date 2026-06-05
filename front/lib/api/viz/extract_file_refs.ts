@@ -1,5 +1,5 @@
-// Ported to front/lib/api/viz/extract_file_refs.ts — keep both copies in sync until deduped into a shared package.
-import logger from "@viz/app/lib/logger";
+// Ported from viz/app/lib/parseFileRefs.ts — keep both copies in sync until deduped into a shared package.
+import logger from "@app/logger/logger";
 import ts from "typescript";
 
 export type FileRef =
