@@ -1227,6 +1227,8 @@ export const ConversationViewer = ({
             setLimitReachedCode?.("pool_credits_exhausted");
           } else if (result.error.type === "user_cap_reached_error") {
             setLimitReachedCode?.("user_credits_exhausted");
+          } else if (result.error.type === "no_seat_error") {
+            setLimitReachedCode?.("no_seat");
           } else {
             sendNotification({
               title: result.error.title,
