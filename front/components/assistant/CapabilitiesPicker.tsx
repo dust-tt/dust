@@ -1,6 +1,5 @@
 import { CreateMCPServerDialog } from "@app/components/actions/mcp/create/CreateMCPServerDialog";
-import { MCPServerDetails } from "@app/components/actions/mcp/MCPServerDetails";
-import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
+import { CapabilityDetailsSheets } from "@app/components/shared/CapabilityDetailsSheets";
 import {
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
@@ -15,10 +14,7 @@ import {
   useAvailableMCPServers,
   useMCPServerViewsFromSpaces,
 } from "@app/lib/swr/mcp_servers";
-import {
-  useSkills,
-  useSkillWithRelations,
-} from "@app/lib/swr/skill_configurations";
+import { useSkills } from "@app/lib/swr/skill_configurations";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import {
@@ -26,10 +22,7 @@ import {
   TRACKING_AREAS,
   trackEvent,
 } from "@app/lib/tracking";
-import type {
-  SkillWithoutInstructionsAndToolsType,
-  SkillWithRelationsType,
-} from "@app/types/assistant/skill_configuration";
+import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { UserType, WorkspaceType } from "@app/types/user";
@@ -336,15 +329,11 @@ export function CapabilitiesPicker({
   const [pendingServerToAdd, setPendingServerToAdd] =
     useState<MCPServerType | null>(null);
 
-  // Detail sheet state
-  const [selectedSkillForDetails, setSelectedSkillForDetails] =
-    useState<SkillWithRelationsType | null>(null);
+  const [selectedSkillIdForDetails, setSelectedSkillIdForDetails] = useState<
+    string | null
+  >(null);
   const [selectedServerViewForDetails, setSelectedServerViewForDetails] =
     useState<MCPServerViewType | null>(null);
-
-  const { fetchSkillWithRelations } = useSkillWithRelations(owner, {
-    onSuccess: ({ skill }) => setSelectedSkillForDetails(skill),
-  });
 
   const shouldFetchToolsData =
     isOpen || isClosing || isSettingUpServer || !!pendingServerToAdd;
@@ -650,7 +639,7 @@ export function CapabilitiesPicker({
               items={capabilityPickerItems}
               onItemSelect={selectCapabilityPickerItem}
               onSkillDetails={(skillId) => {
-                void fetchSkillWithRelations(skillId);
+                setSelectedSkillIdForDetails(skillId);
                 setIsOpen(false);
               }}
               onToolDetails={(serverView) => {
@@ -708,21 +697,13 @@ export function CapabilitiesPicker({
         />
       )}
 
-      {user && (
-        <SkillDetailsSheet
-          skill={selectedSkillForDetails}
-          onClose={() => setSelectedSkillForDetails(null)}
-          owner={owner}
-          user={user}
-        />
-      )}
-
-      <MCPServerDetails
+      <CapabilityDetailsSheets
         owner={owner}
-        mcpServerView={selectedServerViewForDetails}
-        isOpen={!!selectedServerViewForDetails}
-        onClose={() => setSelectedServerViewForDetails(null)}
-        readOnly
+        user={user}
+        selectedSkillId={selectedSkillIdForDetails}
+        selectedMCPServerView={selectedServerViewForDetails}
+        onCloseSkill={() => setSelectedSkillIdForDetails(null)}
+        onCloseTool={() => setSelectedServerViewForDetails(null)}
       />
     </>
   );

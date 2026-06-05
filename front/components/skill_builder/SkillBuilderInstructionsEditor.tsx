@@ -9,6 +9,7 @@ import {
   SkillInstructionsEditorContent,
   useSkillInstructionsEditor,
 } from "@app/components/editor/SkillInstructionsEditor";
+import { CapabilityDetailsSheets } from "@app/components/shared/CapabilityDetailsSheets";
 import { SKILL_BUILDER_INSTRUCTIONS_BLUR_EVENT } from "@app/components/skill_builder/events";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import type {
@@ -40,7 +41,7 @@ import type { Editor } from "@tiptap/react";
 import type { Config } from "dompurify";
 import DOMPurify from "dompurify";
 import debounce from "lodash/debounce";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
 const INSTRUCTIONS_FIELD_NAME = "instructions";
@@ -268,8 +269,18 @@ export function SkillBuilderInstructionsEditor({
   const referencedSkillIdsRef = useRef<
     SkillBuilderFormData["referencedSkillIds"]
   >([]);
-  const { owner, skillId, selectedSuggestionId, setAcceptInstructionEdits } =
-    useSkillBuilderContext();
+  const {
+    owner,
+    user,
+    skillId,
+    selectedSuggestionId,
+    setAcceptInstructionEdits,
+  } = useSkillBuilderContext();
+  const [selectedSkillIdForDetails, setSelectedSkillIdForDetails] = useState<
+    string | null
+  >(null);
+  const [selectedServerViewForDetails, setSelectedServerViewForDetails] =
+    useState<MCPServerViewType | null>(null);
   const { hasFeature } = useFeatureFlags();
   const hasReinforcementFeature =
     hasFeature("reinforced_agents") && hasFeature("reinforcement_ui");
@@ -496,6 +507,17 @@ export function SkillBuilderInstructionsEditor({
     [onReferencedSkillIdsChange, onReferencedSkillsChange]
   );
 
+  const handleSkillDetails = useCallback(
+    (skill: SlashCommandSkillSuggestion) => {
+      setSelectedSkillIdForDetails(skill.sId);
+    },
+    []
+  );
+
+  const handleToolDetails = useCallback((tool: MCPServerViewType) => {
+    setSelectedServerViewForDetails(tool);
+  }, []);
+
   const { suggestions, isSuggestionsLoading } = useSkillSuggestions({
     skillId,
     states: ["pending"],
@@ -512,8 +534,10 @@ export function SkillBuilderInstructionsEditor({
     skillReferences: {
       currentSkillId: skillId,
       enableSkillReferences,
+      onSkillDetails: handleSkillDetails,
       onSelectSkill: handleSelectSkillReference,
       onSelectTool: handleSelectToolReference,
+      onToolDetails: handleToolDetails,
       owner,
     },
     onUpdate: handleUpdate,
@@ -878,30 +902,41 @@ export function SkillBuilderInstructionsEditor({
   ]);
 
   return (
-    <div className="space-y-1 p-px">
-      <div className="group relative overflow-hidden rounded-xl">
-        <SkillInstructionsEditorContent
-          editor={editor}
-          isReadOnly={hasSuggestions}
-        />
-        {enableSkillReferences && (
-          <SkillBuilderInstructionsReferenceSummary
-            attachedKnowledge={attachedKnowledgeField.value}
-            containerRef={instructionReferenceSummaryRef}
-            hasError={displayError}
-            instructions={instructionsField.value ?? ""}
-            onReferenceClick={handleReferenceClick}
-            referencedSkills={referencedSkills}
-            tools={tools}
+    <>
+      <div className="space-y-1 p-px">
+        <div className="group relative overflow-hidden rounded-xl">
+          <SkillInstructionsEditorContent
+            editor={editor}
+            isReadOnly={hasSuggestions}
           />
+          {enableSkillReferences && (
+            <SkillBuilderInstructionsReferenceSummary
+              attachedKnowledge={attachedKnowledgeField.value}
+              containerRef={instructionReferenceSummaryRef}
+              hasError={displayError}
+              instructions={instructionsField.value ?? ""}
+              onReferenceClick={handleReferenceClick}
+              referencedSkills={referencedSkills}
+              tools={tools}
+            />
+          )}
+        </div>
+
+        {instructionsFieldState.error && (
+          <div className="dark:text-warning-night ml-2 text-xs text-warning">
+            {instructionsFieldState.error.message}
+          </div>
         )}
       </div>
 
-      {instructionsFieldState.error && (
-        <div className="dark:text-warning-night ml-2 text-xs text-warning">
-          {instructionsFieldState.error.message}
-        </div>
-      )}
-    </div>
+      <CapabilityDetailsSheets
+        owner={owner}
+        user={user}
+        selectedSkillId={selectedSkillIdForDetails}
+        selectedMCPServerView={selectedServerViewForDetails}
+        onCloseSkill={() => setSelectedSkillIdForDetails(null)}
+        onCloseTool={() => setSelectedServerViewForDetails(null)}
+      />
+    </>
   );
 }

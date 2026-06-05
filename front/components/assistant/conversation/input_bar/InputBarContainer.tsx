@@ -18,6 +18,7 @@ import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
 import useHandleMentions from "@app/components/editor/input_bar/useHandleMentions";
 import useUrlHandler from "@app/components/editor/input_bar/useUrlHandler";
 import { getIcon } from "@app/components/resources/resources_icons";
+import { CapabilityDetailsSheets } from "@app/components/shared/CapabilityDetailsSheets";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useVoiceTranscriberService } from "@app/hooks/useVoiceTranscriberService";
@@ -265,6 +266,14 @@ const InputBarContainer = ({
   const onSelectRef = useRef<
     ((capability: InputBarSlashSuggestionCapability) => void) | undefined
   >(undefined);
+  const onDetailsRef = useRef<
+    ((capability: InputBarSlashSuggestionCapability) => void) | undefined
+  >(undefined);
+  const [selectedSkillIdForDetails, setSelectedSkillIdForDetails] = useState<
+    string | null
+  >(null);
+  const [selectedServerViewForDetails, setSelectedServerViewForDetails] =
+    useState<MCPServerViewType | null>(null);
   selectedMCPServerViewIdsRef.current = selectedMCPServerViewIds;
   shouldEnableSlashSuggestionRef.current = shouldEnableSlashSuggestion;
 
@@ -483,6 +492,19 @@ const InputBarContainer = ({
     queueMicrotask(() => editorRef.current?.commands.focus());
   };
 
+  onDetailsRef.current = (capability: InputBarSlashSuggestionCapability) => {
+    switch (capability.kind) {
+      case "skill":
+        setSelectedSkillIdForDetails(capability.skill.sId);
+        break;
+      case "tool":
+        setSelectedServerViewForDetails(capability.serverView);
+        break;
+      default:
+        assertNeverAndIgnore(capability);
+    }
+  };
+
   // Current space is taken from the conversation (if already set) or from the space prop (if provided).
   const spaceId = conversation?.spaceId ?? space?.sId ?? undefined;
 
@@ -500,6 +522,7 @@ const InputBarContainer = ({
     slashSuggestion: {
       enabledRef: shouldEnableSlashSuggestionRef,
       onSelectRef,
+      onDetailsRef,
       selectedMCPServerViewIdsRef,
     },
     placeholderOverride: disableInput ? submitBlockMessage : placeholder,
@@ -1093,6 +1116,15 @@ const InputBarContainer = ({
 
   return (
     <>
+      <CapabilityDetailsSheets
+        owner={owner}
+        user={user}
+        selectedSkillId={selectedSkillIdForDetails}
+        selectedMCPServerView={selectedServerViewForDetails}
+        onCloseSkill={() => setSelectedSkillIdForDetails(null)}
+        onCloseTool={() => setSelectedServerViewForDetails(null)}
+      />
+
       {isCompact && (
         <div
           className={cn(
