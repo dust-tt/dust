@@ -1,3 +1,4 @@
+import { timezoneSchema } from "@app/lib/api/assistant/observability/utils";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -44,10 +45,9 @@ export const timeWindowSchema = {
     .describe(
       "End date (YYYY-MM-DD), inclusive. Provide together with startDate."
     ),
-  timezone: z
-    .string()
-    .optional()
-    .describe("IANA timezone used to resolve the window. Defaults to UTC."),
+  timezone: timezoneSchema.describe(
+    "IANA timezone used to resolve the window. Defaults to UTC."
+  ),
 };
 
 // Shared filter fragment for message-based usage tools.
