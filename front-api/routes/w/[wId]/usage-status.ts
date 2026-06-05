@@ -6,6 +6,7 @@ import {
   isWorkspaceProgrammaticWarned,
 } from "@app/lib/metronome/user_block";
 import type { WorkspacePoolCreditState } from "@app/types/credits";
+import { isCreditPricedPlan } from "@app/types/plan";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
@@ -27,8 +28,10 @@ app.get(
     const workspace = auth.getNonNullableWorkspace();
     const user = auth.getNonNullableUser();
 
+    const plan = auth.plan();
+    const isCreditPriced = plan && isCreditPricedPlan(plan);
     // Workspaces not on Metronome billing have no usage status to report.
-    if (!workspace.metronomeCustomerId) {
+    if (!workspace.metronomeCustomerId || !isCreditPriced) {
       return ctx.json({
         awuStatus: "normal",
         poolCreditState: "active",
