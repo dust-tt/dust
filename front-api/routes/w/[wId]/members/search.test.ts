@@ -91,8 +91,11 @@ describe("GET /api/w/:wId/members/search", () => {
     const data = await response.json();
     expect(data.total).toBe(1);
     expect(data.members).toHaveLength(1);
-    expect(data.members[0].id).toBe(user.id);
-    expect(data.members[0].workspace.role).toBe("user");
+    expect(data.members[0].sId).toBe(user.sId);
+    // Non-admin users still get workspace info (role), but not sensitive user fields.
+    expect(data.members[0].workspace).toBeDefined();
+    expect(data.members[0].email).toBeUndefined();
+    expect(data.members[0].id).toBeUndefined();
   });
 
   it("handles search by term", async () => {
@@ -205,6 +208,122 @@ describe("GET /api/w/:wId/members/search", () => {
     const data = await response.json();
     expect(data.total).toBe(0);
     expect(data.members).toHaveLength(0);
+  });
+
+  it("returns only light user fields for non-admin users", async () => {
+    const { workspace, user } = await setup("user");
+
+    const response = await honoApp.request(searchUrl(workspace.sId));
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    const member = data.members[0];
+
+    // Light fields are present.
+    expect(member.sId).toBe(user.sId);
+    expect(member.firstName).toBe(user.firstName);
+    expect(member.lastName).toBe(user.lastName);
+    expect(member.fullName).toBeDefined();
+    expect(member).toHaveProperty("image");
+
+    // Workspace info (role) is still present for non-admins.
+    expect(member.workspace).toBeDefined();
+
+    // Admin-only user fields are absent.
+    expect(member.email).toBeUndefined();
+    expect(member.id).toBeUndefined();
+    expect(member.provider).toBeUndefined();
+    expect(member.username).toBeUndefined();
+  });
+
+  it("allows non-admin users to search by term", async () => {
+    const { workspace } = await setup("user");
+
+    const users = await Promise.all([UserFactory.basic(), UserFactory.basic()]);
+
+    await Promise.all(
+      users.map((u) =>
+        MembershipFactory.associate(workspace, u, { role: "user" })
+      )
+    );
+
+    const response = await honoApp.request(
+      searchUrl(workspace.sId, { searchTerm: users[0].email })
+    );
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.total).toBe(1);
+    expect(data.members).toHaveLength(1);
+    expect(data.members[0].sId).toBe(users[0].sId);
+    // Non-admin should not see email.
+    expect(data.members[0].email).toBeUndefined();
+  });
+
+  it("allows non-admin users to filter with buildersOnly", async () => {
+    const { workspace } = await setup("builder");
+
+    const users = await Promise.all([
+      UserFactory.basic(),
+      UserFactory.basic(),
+      UserFactory.basic(),
+    ]);
+
+    await Promise.all([
+      MembershipFactory.associate(workspace, users[0], { role: "admin" }),
+      MembershipFactory.associate(workspace, users[1], { role: "builder" }),
+      MembershipFactory.associate(workspace, users[2], { role: "user" }),
+    ]);
+
+    const response = await honoApp.request(
+      searchUrl(workspace.sId, {
+        buildersOnly: "true",
+        offset: "0",
+        limit: "25",
+      })
+    );
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    // The caller (builder) + users[0] (admin) + users[1] (builder) = 3.
+    expect(data.total).toBe(3);
+    expect(data.members).toHaveLength(3);
+    // Non-admin still gets workspace (with role), but not sensitive user fields.
+    for (const member of data.members) {
+      expect(member.workspace).toBeDefined();
+      expect(member.email).toBeUndefined();
+    }
+  });
+
+  it("paginates correctly for non-admin users", async () => {
+    const { workspace } = await setup("user");
+
+    const users = await Promise.all(
+      Array(5)
+        .fill(null)
+        .map(() => UserFactory.basic())
+    );
+
+    await Promise.all(
+      users.map((u) =>
+        MembershipFactory.associate(workspace, u, { role: "user" })
+      )
+    );
+
+    const response = await honoApp.request(
+      searchUrl(workspace.sId, { limit: "3", offset: "0" })
+    );
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    // 5 created + 1 from setup = 6 total.
+    expect(data.total).toBe(6);
+    expect(data.members).toHaveLength(3);
+    // Every member should have light shape (no sensitive user fields, but workspace is present).
+    for (const member of data.members) {
+      expect(member.workspace).toBeDefined();
+      expect(member.email).toBeUndefined();
+    }
   });
 
   it("filters to only builders and admins when buildersOnly=true", async () => {

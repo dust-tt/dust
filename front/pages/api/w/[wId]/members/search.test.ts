@@ -87,8 +87,138 @@ describe("GET /api/w/[wId]/members/search", () => {
     const data = res._getJSONData();
     expect(data.total).toBe(1);
     expect(data.members).toHaveLength(1);
-    expect(data.members[0].id).toBe(user.id);
-    expect(data.members[0].workspace.role).toBe("user");
+    expect(data.members[0].sId).toBe(user.sId);
+    // Non-admin users still get workspace info (role), but not sensitive user fields.
+    expect(data.members[0].workspace).toBeDefined();
+    expect(data.members[0].email).toBeUndefined();
+    expect(data.members[0].id).toBeUndefined();
+  });
+
+  it("returns only light user fields for non-admin users", async () => {
+    const { req, res, user } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "user",
+    });
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+    const member = data.members[0];
+
+    // Light fields are present.
+    expect(member.sId).toBe(user.sId);
+    expect(member.firstName).toBe(user.firstName);
+    expect(member.lastName).toBe(user.lastName);
+    expect(member.fullName).toBeDefined();
+    expect(member).toHaveProperty("image");
+
+    // Workspace info (role) is still present for non-admins.
+    expect(member.workspace).toBeDefined();
+
+    // Admin-only user fields are absent.
+    expect(member.email).toBeUndefined();
+    expect(member.id).toBeUndefined();
+    expect(member.provider).toBeUndefined();
+    expect(member.username).toBeUndefined();
+  });
+
+  it("allows non-admin users to search by term", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "user",
+    });
+
+    const users = await Promise.all([UserFactory.basic(), UserFactory.basic()]);
+
+    await Promise.all(
+      users.map((user) =>
+        MembershipFactory.associate(workspace, user, { role: "user" })
+      )
+    );
+
+    req.query.searchTerm = users[0].email;
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+    expect(data.total).toBe(1);
+    expect(data.members).toHaveLength(1);
+    expect(data.members[0].sId).toBe(users[0].sId);
+    // Non-admin should not see email.
+    expect(data.members[0].email).toBeUndefined();
+  });
+
+  it("allows non-admin users to filter with buildersOnly", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "builder",
+    });
+
+    const users = await Promise.all([
+      UserFactory.basic(),
+      UserFactory.basic(),
+      UserFactory.basic(),
+    ]);
+
+    await Promise.all([
+      MembershipFactory.associate(workspace, users[0], { role: "admin" }),
+      MembershipFactory.associate(workspace, users[1], { role: "builder" }),
+      MembershipFactory.associate(workspace, users[2], { role: "user" }),
+    ]);
+
+    req.query.buildersOnly = "true";
+    req.query.offset = "0";
+    req.query.limit = "25";
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+    // The caller (builder) + users[0] (admin) + users[1] (builder) = 3.
+    expect(data.total).toBe(3);
+    expect(data.members).toHaveLength(3);
+    // Non-admin still gets workspace (with role), but not sensitive user fields.
+    data.members.forEach((member: any) => {
+      expect(member.workspace).toBeDefined();
+      expect(member.email).toBeUndefined();
+    });
+  });
+
+  it("paginates correctly for non-admin users", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "user",
+    });
+
+    const users = await Promise.all(
+      Array(5)
+        .fill(null)
+        .map(() => UserFactory.basic())
+    );
+
+    await Promise.all(
+      users.map((user) =>
+        MembershipFactory.associate(workspace, user, { role: "user" })
+      )
+    );
+
+    req.query.limit = "3";
+    req.query.offset = "0";
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+    // 5 created + 1 from createPrivateApiMockRequest = 6 total.
+    expect(data.total).toBe(6);
+    expect(data.members).toHaveLength(3);
+    // Every member should have light shape (no sensitive user fields, but workspace is present).
+    data.members.forEach((member: any) => {
+      expect(member.workspace).toBeDefined();
+      expect(member.email).toBeUndefined();
+    });
   });
 
   it("returns 405 for non-GET methods", async () => {

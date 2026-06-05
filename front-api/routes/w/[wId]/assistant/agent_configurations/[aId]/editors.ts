@@ -5,7 +5,8 @@ import {
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { UserType } from "@app/types/user";
+import type { LightUserType, UserType } from "@app/types/user";
+import { toLightUser } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -16,12 +17,12 @@ const ParamsSchema = z.object({
   aId: z.string(),
 });
 
-export type GetAgentEditorsResponseBody = {
+export type AgentEditorsResponseBody = {
   editors: UserType[];
 };
 
-export type PatchAgentEditorsResponseBody = {
-  editors: UserType[];
+type AgentEditorsLightResponseBody = {
+  editors: LightUserType[];
 };
 
 const PatchAgentEditorsRequestBodySchema = z
@@ -46,7 +47,11 @@ const app = workspaceApp();
 app.get(
   "/",
   validate("param", ParamsSchema),
-  async (ctx): HandlerResult<GetAgentEditorsResponseBody> => {
+  async (
+    ctx
+  ): HandlerResult<
+    AgentEditorsResponseBody | AgentEditorsLightResponseBody
+  > => {
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("param");
 
@@ -119,7 +124,16 @@ app.get(
     }
 
     const members = await editorGroup.getActiveMembers(auth);
-    return ctx.json({ editors: members.map((m) => m.toJSON()) });
+    const memberUsers = members.map((m) => m.toJSON());
+
+    // biome-ignore lint/plugin/noDirectRoleCheck: non-admins get a response with sensitive fields (email, provider, lastLoginAt etc) stripped away
+    if (auth.isAdmin()) {
+      return ctx.json({ editors: memberUsers });
+    }
+
+    return ctx.json({
+      editors: memberUsers.map(toLightUser),
+    });
   }
 );
 
@@ -127,7 +141,11 @@ app.patch(
   "/",
   validate("param", ParamsSchema),
   validate("json", PatchAgentEditorsRequestBodySchema),
-  async (ctx): HandlerResult<PatchAgentEditorsResponseBody> => {
+  async (
+    ctx
+  ): HandlerResult<
+    AgentEditorsResponseBody | AgentEditorsLightResponseBody
+  > => {
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("param");
 
@@ -316,7 +334,16 @@ app.patch(
     }
 
     const updatedMembers = await editorGroup.getActiveMembers(auth);
-    return ctx.json({ editors: updatedMembers.map((m) => m.toJSON()) });
+    const updatedEditors = updatedMembers.map((m) => m.toJSON());
+
+    // biome-ignore lint/plugin/noDirectRoleCheck: non-admins get a response with sensitive fields (email, provider, lastLoginAt etc) stripped away
+    if (auth.isAdmin()) {
+      return ctx.json({ editors: updatedEditors });
+    }
+
+    return ctx.json({
+      editors: updatedEditors.map(toLightUser),
+    });
   }
 );
 
