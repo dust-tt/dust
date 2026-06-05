@@ -547,12 +547,14 @@ function UpdateConnectionOAuthModal({
 
 interface DataSourceDeletionModalProps {
   dataSource: DataSourceType;
+  isDeletable: boolean;
   isOpen: boolean;
   onClose: () => void;
   owner: LightWorkspaceType;
 }
 function DataSourceDeletionModal({
   dataSource,
+  isDeletable,
   isOpen,
   onClose,
   owner,
@@ -621,15 +623,31 @@ function DataSourceDeletionModal({
               title={`Deleting ${connectorConfiguration.name} connection`}
             />
           </div>
-          <div className="mb-4 mt-8 w-full rounded-lg bg-info-50 p-3">
-            <div className="flex items-center gap-2 font-medium text-info-800">
-              <Icon visual={InformationCircleIcon} />
-              Important
+          {isDeletable ? (
+            <div className="mb-4 mt-8 w-full rounded-lg bg-info-50 p-3">
+              <div className="flex items-center gap-2 font-medium text-info-800">
+                <Icon visual={InformationCircleIcon} />
+                Important
+              </div>
+              <div className="p-4 text-sm text-info-900">
+                <b>Deleting</b> will break Agents using this data.
+              </div>
             </div>
-            <div className="p-4 text-sm text-info-900">
-              <b>Deleting</b> will break Agents using this data.
-            </div>
-          </div>
+          ) : (
+            <ContentMessage
+              className="mb-4 mt-8"
+              title="Connection removal requires support"
+              variant="warning"
+              icon={InformationCircleIcon}
+            >
+              Removing a connection permanently deletes its synced data and may
+              break agents or spaces that rely on it. Contact{" "}
+              <Hoverable href="mailto:support@dust.tt" variant="highlight">
+                support@dust.tt
+              </Hoverable>{" "}
+              to be assisted with the removal of this connection.
+            </ContentMessage>
+          )}
         </div>
         <div className="flex flex-col gap-2 border-t pb-4 pt-4">
           <Page.SectionHeader title="Connection Owner" />
@@ -646,48 +664,50 @@ function DataSourceDeletionModal({
             </div>
           </div>
         </div>
-        <div className="flex items-center justify-center">
-          <Dialog>
-            <DialogTrigger>
-              <Button
-                label="Delete Connection"
-                icon={Lock01}
-                variant="warning"
-              />
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Are you sure?</DialogTitle>
-              </DialogHeader>
-              {isLoading ? (
-                <div className="flex justify-center py-8">
-                  <Spinner variant="dark" size="md" />
-                </div>
-              ) : (
-                <>
-                  <DialogContainer>
-                    The changes you are about to make will break existing agents
-                    using {connectorConfiguration.name}. Are you sure you want
-                    to continue?
-                  </DialogContainer>
-                  <DialogFooter
-                    leftButtonProps={{
-                      label: "Cancel",
-                      variant: "outline",
-                    }}
-                    rightButtonProps={{
-                      label: "Delete",
-                      variant: "warning",
-                      onClick: async () => {
-                        await handleDelete();
-                      },
-                    }}
-                  />
-                </>
-              )}
-            </DialogContent>
-          </Dialog>
-        </div>
+        {isDeletable && (
+          <div className="flex items-center justify-center">
+            <Dialog>
+              <DialogTrigger>
+                <Button
+                  label="Delete Connection"
+                  icon={Lock01}
+                  variant="warning"
+                />
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Are you sure?</DialogTitle>
+                </DialogHeader>
+                {isLoading ? (
+                  <div className="flex justify-center py-8">
+                    <Spinner variant="dark" size="md" />
+                  </div>
+                ) : (
+                  <>
+                    <DialogContainer>
+                      The changes you are about to make will break existing
+                      agents using {connectorConfiguration.name}. Are you sure
+                      you want to continue?
+                    </DialogContainer>
+                    <DialogFooter
+                      leftButtonProps={{
+                        label: "Cancel",
+                        variant: "outline",
+                      }}
+                      rightButtonProps={{
+                        label: "Delete",
+                        variant: "warning",
+                        onClick: async () => {
+                          await handleDelete();
+                        },
+                      }}
+                    />
+                  </>
+                )}
+              </DialogContent>
+            </Dialog>
+          </div>
+        )}
       </>
     </DataSourceManagementModal>
   );
@@ -1015,16 +1035,14 @@ export function ConnectorPermissionsModal({
                         onClick={() => setModalToShow("private_integration")}
                       />
                     )}
-                  {isDeletable && (
-                    <Button
-                      label="Delete connection"
-                      variant="warning"
-                      icon={Trash01}
-                      onClick={() => {
-                        setModalToShow("deletion");
-                      }}
-                    />
-                  )}
+                  <Button
+                    label="Delete connection"
+                    variant="warning"
+                    icon={Trash01}
+                    onClick={() => {
+                      setModalToShow("deletion");
+                    }}
+                  />
                 </div>
               </SheetHeader>
 
@@ -1223,6 +1241,7 @@ export function ConnectorPermissionsModal({
         isOpen={modalToShow === "deletion"}
         onClose={() => closeModal(false)}
         dataSource={dataSource}
+        isDeletable={Boolean(isDeletable)}
         owner={owner}
       />
       <ConnectorDataUpdatedModal
