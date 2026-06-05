@@ -6,8 +6,8 @@ import {
 import {
   buildAgentAnalyticsBaseQuery,
   daysToDateRange,
-  timezoneSchema,
 } from "@app/lib/api/assistant/observability/utils";
+import { timezoneSchema } from "@app/lib/api/timezone";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";

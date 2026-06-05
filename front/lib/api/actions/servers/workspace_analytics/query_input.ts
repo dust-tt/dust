@@ -1,4 +1,4 @@
-import { timezoneSchema } from "@app/lib/api/assistant/observability/utils";
+import { isValidTimezone, timezoneSchema } from "@app/lib/api/timezone";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -88,7 +88,7 @@ export function resolveTimeWindow(
   defaultPeriod: AnalyticsPeriod = "this_month"
 ): Result<ResolvedTimeWindow, string> {
   const timezone = input.timezone ?? "UTC";
-  if (!moment.tz.zone(timezone)) {
+  if (!isValidTimezone(timezone)) {
     return new Err(`Invalid timezone: ${timezone}`);
   }
 

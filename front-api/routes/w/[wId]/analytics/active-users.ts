@@ -1,10 +1,8 @@
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import type { ActiveUsersMetricsPoint } from "@app/lib/api/assistant/observability/active_users_metrics";
 import { fetchActiveUsersMetrics } from "@app/lib/api/assistant/observability/active_users_metrics";
-import {
-  daysToDateRange,
-  timezoneSchema,
-} from "@app/lib/api/assistant/observability/utils";
+import { daysToDateRange } from "@app/lib/api/assistant/observability/utils";
+import { timezoneSchema } from "@app/lib/api/timezone";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";

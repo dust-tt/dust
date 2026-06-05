@@ -4,10 +4,8 @@ import type {
   UsageMetricsInterval,
 } from "@app/lib/api/assistant/observability/messages_metrics";
 import { fetchMessageMetrics } from "@app/lib/api/assistant/observability/messages_metrics";
-import {
-  buildAgentAnalyticsBaseQuery,
-  timezoneSchema,
-} from "@app/lib/api/assistant/observability/utils";
+import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
+import { timezoneSchema } from "@app/lib/api/timezone";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
