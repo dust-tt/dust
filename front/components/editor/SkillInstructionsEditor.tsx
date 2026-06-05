@@ -101,6 +101,8 @@ interface SkillInstructionsSkillReferencesOptions {
   enableSkillReferences: boolean;
   onSelectSkill?: (skill: SlashCommandSkillSuggestion) => void;
   onSelectTool?: (tool: MCPServerViewType) => void;
+  onSkillDetails?: (skill: SlashCommandSkillSuggestion) => void;
+  onToolDetails?: (tool: MCPServerViewType) => void;
   owner?: LightWorkspaceType;
 }
 
@@ -119,12 +121,16 @@ function buildSkillInstructionsEditableExtensions({
   includeSkillSuggestions,
   onSelectSkill,
   onSelectTool,
+  onSkillDetails,
+  onToolDetails,
   owner,
 }: {
   currentSkillId?: string | null;
   includeSkillSuggestions: boolean;
   onSelectSkill?: (skill: SlashCommandSkillSuggestion) => void;
   onSelectTool?: (tool: MCPServerViewType) => void;
+  onSkillDetails?: (skill: SlashCommandSkillSuggestion) => void;
+  onToolDetails?: (tool: MCPServerViewType) => void;
   owner?: LightWorkspaceType;
 }) {
   return [
@@ -133,6 +139,8 @@ function buildSkillInstructionsEditableExtensions({
       includeSkillSuggestions,
       onSelectSkill,
       onSelectTool,
+      onSkillDetails,
+      onToolDetails,
       owner,
     }),
     AgentInstructionDiffExtension,
@@ -160,6 +168,8 @@ export function useSkillInstructionsEditor({
   const currentSkillId = skillReferences?.currentSkillId ?? null;
   const onSelectSkill = skillReferences?.onSelectSkill;
   const onSelectTool = skillReferences?.onSelectTool;
+  const onSkillDetails = skillReferences?.onSkillDetails;
+  const onToolDetails = skillReferences?.onToolDetails;
   const owner = skillReferences?.owner;
   const includeSkillSuggestions = enableSkillReferences && !!owner;
   const editableExtensions = useMemo(
@@ -169,6 +179,8 @@ export function useSkillInstructionsEditor({
         includeSkillSuggestions,
         onSelectSkill,
         onSelectTool,
+        onSkillDetails,
+        onToolDetails,
         owner,
       }),
     [
@@ -176,6 +188,8 @@ export function useSkillInstructionsEditor({
       includeSkillSuggestions,
       onSelectSkill,
       onSelectTool,
+      onSkillDetails,
+      onToolDetails,
       owner,
     ]
   );

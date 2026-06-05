@@ -186,11 +186,13 @@ export function buildSkillBuilderSlashCommandItems({
 interface SkillBuilderSlashCommandDropdownProps
   extends Pick<
     SuggestionProps<SlashCommand>,
-    "clientRect" | "command" | "items" | "query"
+    "clientRect" | "command" | "editor" | "items" | "query" | "range"
   > {
   currentSkillId?: string | null;
   includeSkillSuggestions: boolean;
   onClose: () => void;
+  onSkillDetails?: (skill: SlashCommandSkillSuggestion) => void;
+  onToolDetails?: (tool: MCPServerViewType) => void;
   owner?: LightWorkspaceType;
   showCapabilitiesOnly: boolean;
 }
@@ -209,10 +211,14 @@ const SkillBuilderSlashCommandDropdownWithSkills = forwardRef<
       clientRect,
       command,
       currentSkillId,
+      editor,
       items,
       onClose,
+      onSkillDetails,
+      onToolDetails,
       owner,
       query,
+      range,
       showCapabilitiesOnly,
     },
     ref
@@ -279,6 +285,24 @@ const SkillBuilderSlashCommandDropdownWithSkills = forwardRef<
           isCapabilitiesLoading ? "Loading capabilities…" : "No commands found"
         }
         onClose={onClose}
+        onItemDetails={
+          onSkillDetails || onToolDetails
+            ? (item) => {
+                if (item.data?.skill) {
+                  editor.chain().focus().deleteRange(range).run();
+                  onSkillDetails?.(item.data.skill);
+                  onClose();
+                  return;
+                }
+
+                if (item.data?.tool) {
+                  editor.chain().focus().deleteRange(range).run();
+                  onToolDetails?.(item.data.tool.view);
+                  onClose();
+                }
+              }
+            : undefined
+        }
         size="wide"
       />
     );
@@ -319,8 +343,10 @@ SkillBuilderSlashCommandDropdown.displayName =
 export interface SlashCommandExtensionOptions {
   currentSkillId?: string | null;
   includeSkillSuggestions: boolean;
+  onSkillDetails?: (skill: SlashCommandSkillSuggestion) => void;
   onSelectSkill?: (skill: SlashCommandSkillSuggestion) => void;
   onSelectTool?: (tool: MCPServerViewType) => void;
+  onToolDetails?: (tool: MCPServerViewType) => void;
   owner?: LightWorkspaceType;
   suggestion: Partial<SuggestionOptions>;
 }
@@ -355,8 +381,10 @@ export const SlashCommandExtension =
       return {
         currentSkillId: null,
         includeSkillSuggestions: false,
+        onSkillDetails: undefined,
         onSelectSkill: undefined,
         onSelectTool: undefined,
+        onToolDetails: undefined,
         owner: undefined,
         suggestion: {
           char: "/",
@@ -482,6 +510,8 @@ export const SlashCommandExtension =
                       includeSkillSuggestions:
                         extensionOptions.includeSkillSuggestions,
                       onClose: closeSuggestionDropdown,
+                      onSkillDetails: extensionOptions.onSkillDetails,
+                      onToolDetails: extensionOptions.onToolDetails,
                       owner: extensionOptions.owner,
                       showCapabilitiesOnly:
                         props.range.from ===
@@ -506,6 +536,8 @@ export const SlashCommandExtension =
                   includeSkillSuggestions:
                     extensionOptions.includeSkillSuggestions,
                   onClose: closeSuggestionDropdown,
+                  onSkillDetails: extensionOptions.onSkillDetails,
+                  onToolDetails: extensionOptions.onToolDetails,
                   owner: extensionOptions.owner,
                   showCapabilitiesOnly:
                     props.range.from ===

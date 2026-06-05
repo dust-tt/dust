@@ -46,6 +46,9 @@ export interface InputBarSlashSuggestionExtensionOptions {
   onSelectRef: RefObject<
     ((capability: InputBarSlashSuggestionCapability) => void) | undefined
   >;
+  onDetailsRef?: RefObject<
+    ((capability: InputBarSlashSuggestionCapability) => void) | undefined
+  >;
   selectedMCPServerViewIdsRef: RefObject<Set<string>>;
   onActiveChangeRef?: RefObject<((active: boolean) => void) | undefined>;
 }
@@ -70,6 +73,7 @@ export const InputBarSlashSuggestionExtension =
         owner: undefined,
         enabledRef: { current: false },
         onSelectRef: { current: undefined },
+        onDetailsRef: { current: undefined },
         selectedMCPServerViewIdsRef: { current: new Set<string>() },
       };
     },
@@ -133,6 +137,7 @@ export const InputBarSlashSuggestionExtension =
                   props: {
                     ...props,
                     onClose: closeSuggestionDropdown,
+                    onDetailsRef: extensionOptions.onDetailsRef,
                     owner,
                     selectedMCPServerViewIdsRef:
                       extensionOptions.selectedMCPServerViewIdsRef,
@@ -156,6 +161,7 @@ export const InputBarSlashSuggestionExtension =
                 component?.updateProps({
                   ...props,
                   onClose: closeSuggestionDropdown,
+                  onDetailsRef: extensionOptions.onDetailsRef,
                   owner,
                   selectedMCPServerViewIdsRef:
                     extensionOptions.selectedMCPServerViewIdsRef,

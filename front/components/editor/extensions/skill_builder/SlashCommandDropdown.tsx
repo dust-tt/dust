@@ -1,7 +1,9 @@
 import type { SlashCommandSkillSuggestion } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {
+  Button,
   cn,
+  DotsHorizontal,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -67,6 +69,7 @@ export interface SlashCommandDropdownProps
   header?: string;
   listMaxHeightClassName?: `max-h-${string}`;
   onClose?: () => void;
+  onItemDetails?: (item: SlashCommand) => void;
   showScrollFade?: boolean;
   size?: "default" | "wide";
 }
@@ -88,6 +91,7 @@ export const SlashCommandDropdown = forwardRef<
       header,
       listMaxHeightClassName = DEFAULT_LIST_MAX_HEIGHT_CLASS_NAME,
       onClose,
+      onItemDetails,
       showScrollFade = false,
       size = "default",
     },
@@ -287,6 +291,9 @@ export const SlashCommandDropdown = forwardRef<
                       items[index - 1]?.sectionLabel !== item.sectionLabel
                         ? item.sectionLabel
                         : undefined;
+                    const canShowDetails =
+                      !!onItemDetails &&
+                      !!(item.data?.skill || item.data?.tool);
                     const menuItem = (
                       <DropdownMenuItem
                         icon={item.icon}
@@ -294,13 +301,28 @@ export const SlashCommandDropdown = forwardRef<
                         label={item.label}
                         description={item.description}
                         truncateText
+                        endComponent={
+                          canShowDetails ? (
+                            <Button
+                              icon={DotsHorizontal}
+                              variant="outline"
+                              size="mini"
+                              className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                onItemDetails?.(item);
+                              }}
+                            />
+                          ) : undefined
+                        }
                         onClick={() => selectItem(index)}
                         onMouseEnter={() => setSelectedIndex(index)}
-                        className={
-                          index === selectedIndex
-                            ? "bg-muted-background dark:bg-muted-night [transition-duration:0ms]"
-                            : ""
-                        }
+                        className={cn(
+                          "group",
+                          index === selectedIndex &&
+                            "bg-muted-background dark:bg-muted-night [transition-duration:0ms]"
+                        )}
                       />
                     );
 

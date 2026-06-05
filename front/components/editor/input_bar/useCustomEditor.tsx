@@ -209,6 +209,9 @@ export interface CustomEditorProps {
     onSelectRef: React.RefObject<
       ((capability: InputBarSlashSuggestionCapability) => void) | undefined
     >;
+    onDetailsRef?: React.RefObject<
+      ((capability: InputBarSlashSuggestionCapability) => void) | undefined
+    >;
     selectedMCPServerViewIdsRef: React.RefObject<Set<string>>;
   };
   // Override the default editor placeholder (e.g. to show a blocked-state reason).
@@ -352,6 +355,7 @@ export const buildEditorExtensions = ({
         owner,
         enabledRef: slashSuggestion.enabledRef,
         onSelectRef: slashSuggestion.onSelectRef,
+        onDetailsRef: slashSuggestion.onDetailsRef,
         selectedMCPServerViewIdsRef:
           slashSuggestion.selectedMCPServerViewIdsRef,
         onActiveChangeRef: onSuggestionActiveChangeRef,

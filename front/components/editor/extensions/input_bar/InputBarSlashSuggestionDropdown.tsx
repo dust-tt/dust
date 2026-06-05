@@ -86,15 +86,28 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
   SlashCommandDropdownRef,
   Pick<
     SuggestionProps<InputBarSlashSuggestionCapability>,
-    "clientRect" | "command" | "query"
+    "clientRect" | "command" | "editor" | "query" | "range"
   > & {
     onClose: () => void;
+    onDetailsRef?: RefObject<
+      ((capability: InputBarSlashSuggestionCapability) => void) | undefined
+    >;
     owner: LightWorkspaceType;
     selectedMCPServerViewIdsRef: RefObject<Set<string>>;
   }
 >(
   (
-    { clientRect, command, query, onClose, owner, selectedMCPServerViewIdsRef },
+    {
+      clientRect,
+      command,
+      editor,
+      query,
+      range,
+      onClose,
+      onDetailsRef,
+      owner,
+      selectedMCPServerViewIdsRef,
+    },
     ref
   ) => {
     const dropdownRef = useRef<SlashCommandDropdownRef>(null);
@@ -191,6 +204,25 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
         header="Capabilities"
         listMaxHeightClassName={LIST_MAX_HEIGHT_CLASS_NAME}
         onClose={onClose}
+        onItemDetails={
+          onDetailsRef
+            ? (item) => {
+                const capability = filteredCapabilities.find((capability) =>
+                  capability.kind === "skill"
+                    ? capability.skill.sId === item.id
+                    : capability.serverView.sId === item.id
+                );
+
+                if (!capability) {
+                  return;
+                }
+
+                editor.chain().focus().deleteRange(range).run();
+                onDetailsRef.current?.(capability);
+                onClose();
+              }
+            : undefined
+        }
         showScrollFade
         size="wide"
       />
