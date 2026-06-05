@@ -75,7 +75,7 @@ app.get(
     const validUserIds = new Set(memberships.map((m) => m.userId));
     const filteredUsers = users.filter((user) => validUserIds.has(user.id));
 
-    // biome-ignore lint/plugin/noDirectRoleCheck: non-admins get a response with sensitive fields (email, provider, lastLoginAt etc) stripped away
+    // biome-ignore lint/plugin/noDirectRoleCheck: non-admins receive only minimal essential user data (LightUserType)
     if (auth.isAdmin()) {
       return ctx.json({
         users: filteredUsers.map((user) => user.toJSON()),

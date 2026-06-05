@@ -88,7 +88,7 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const members = await editorGroup.getActiveMembers(auth);
   const memberUsers = members.map((m) => m.toJSON());
 
-  // biome-ignore lint/plugin/noDirectRoleCheck: non-admins get a response with sensitive fields (email, provider, lastLoginAt etc) stripped away
+  // biome-ignore lint/plugin/noDirectRoleCheck: non-admins receive only minimal essential user data (LightUserType)
   if (auth.isAdmin()) {
     return ctx.json({ editors: memberUsers });
   }
@@ -265,7 +265,7 @@ app.patch(
     const updatedMembers = await editorGroup.getActiveMembers(auth);
     const updatedEditors = updatedMembers.map((m) => m.toJSON());
 
-    // biome-ignore lint/plugin/noDirectRoleCheck: non-admins get a response with sensitive fields (email, provider, lastLoginAt etc) stripped away
+    // biome-ignore lint/plugin/noDirectRoleCheck: non-admins receive only minimal essential user data (LightUserType)
     if (auth.isAdmin()) {
       return ctx.json({ editors: updatedEditors });
     }

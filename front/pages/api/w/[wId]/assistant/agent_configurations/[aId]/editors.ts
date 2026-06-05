@@ -130,7 +130,7 @@ async function handler(
       const members = await editorGroup.getActiveMembers(auth);
       const memberUsers = members.map((m) => m.toJSON());
 
-      // Non-admins get a response with sensitive fields (email, provider, lastLoginAt etc) stripped away.
+      // Non-admins receive only minimal essential user data (LightUserType).
       if (auth.isAdmin()) {
         return res.status(200).json({ editors: memberUsers });
       }
@@ -286,7 +286,7 @@ async function handler(
       const updatedMembers = await editorGroup.getActiveMembers(auth);
       const updatedEditors = updatedMembers.map((m) => m.toJSON());
 
-      // Non-admins get a response with sensitive fields (email, provider, lastLoginAt etc) stripped away.
+      // Non-admins receive only minimal essential user data (LightUserType).
       if (auth.isAdmin()) {
         return res.status(200).json({ editors: updatedEditors });
       }

@@ -107,12 +107,13 @@ export type UserTypeWithWorkspace = UserType & {
 };
 
 /**
- * Minimal user representation returned by user-listing endpoints for non-admin
- * callers. Admin callers receive the full `UserType` or `UserTypeWithWorkspace`.
+ * Minimal essential user representation returned by user-listing endpoints for
+ * non-admin callers. Admin callers receive the full `UserType` or
+ * `UserTypeWithWorkspace`.
  */
 export type LightUserType = Pick<
   UserType,
-  "sId" | "firstName" | "lastName" | "fullName" | "image"
+  "sId" | "firstName" | "lastName" | "fullName" | "image" | "email"
 >;
 
 export type LightUserTypeWithWorkspace = LightUserType & {
@@ -126,6 +127,7 @@ export function toLightUser(user: UserType): LightUserType {
     lastName: user.lastName,
     fullName: user.fullName,
     image: user.image,
+    email: user.email,
   };
 }
 
