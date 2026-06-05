@@ -220,7 +220,18 @@ describe("SlashCommandExtension", () => {
 
     editor.commands.openCapabilitiesSlashCommand();
 
-    expect(editor.getText()).toBe("Italic text/");
+    expect(editor.getText()).toBe("Italic text /");
+    expect(slashCommandPluginKey.getState(editor.state)?.active).toBe(true);
+  });
+
+  it("opens capabilities after regular text", () => {
+    const editor = createEditor();
+    editor.commands.setContent("<p>regular text</p>");
+    editor.commands.focus("end");
+
+    editor.commands.openCapabilitiesSlashCommand();
+
+    expect(editor.getText()).toBe("regular text /");
     expect(slashCommandPluginKey.getState(editor.state)?.active).toBe(true);
   });
 

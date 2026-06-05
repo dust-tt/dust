@@ -53,13 +53,12 @@ function hasSlashCharacterAtPosition(state: EditorState, position: number) {
   );
 }
 
-function hasAllowedSlashPrefix(state: EditorState, position: number) {
-  const $position = state.doc.resolve(position);
-  const textBefore = $position.nodeBefore?.isText
-    ? $position.nodeBefore.text
+function shouldInsertSlashBoundarySpace(state: EditorState) {
+  const textBefore = state.selection.$from.nodeBefore?.isText
+    ? state.selection.$from.nodeBefore.text
     : null;
 
-  return !textBefore || textBefore.endsWith(" ");
+  return !!textBefore && !textBefore.endsWith(" ");
 }
 
 // Define available slash commands.
@@ -347,7 +346,6 @@ export const SlashCommandExtension =
         // ending with "/" is loaded programmatically via setContent on mount.
         hasBeenFocused: false,
         capabilitiesOnlyTriggerStart: null as number | null,
-        isOpeningCapabilitiesOnly: false,
       };
     },
 
@@ -366,7 +364,6 @@ export const SlashCommandExtension =
           char: "/",
           pluginKey: slashCommandPluginKey,
           allowSpaces: true,
-          allowedPrefixes: null,
           startOfLine: false,
           items: ({ query }: { query: string }) => filterSlashCommands(query),
         },
@@ -379,7 +376,11 @@ export const SlashCommandExtension =
           () =>
           ({ chain }) => {
             this.storage.hasBeenFocused = true;
-            this.storage.isOpeningCapabilitiesOnly = true;
+            const triggerText = shouldInsertSlashBoundarySpace(
+              this.editor.state
+            )
+              ? " /"
+              : "/";
 
             const inserted = chain()
               .focus()
@@ -387,7 +388,7 @@ export const SlashCommandExtension =
                 tr.setMeta(capabilitiesOnlySlashCommandMetaKey, true);
                 return true;
               })
-              .insertContent("/")
+              .insertContent(triggerText)
               .run();
 
             return inserted;
@@ -418,10 +419,7 @@ export const SlashCommandExtension =
 
             return true;
           },
-          allow: ({ state, range }) =>
-            extensionStorage.hasBeenFocused &&
-            (extensionStorage.isOpeningCapabilitiesOnly ||
-              hasAllowedSlashPrefix(state, range.from)),
+          allow: () => extensionStorage.hasBeenFocused,
           command: ({ editor, range, props }) => {
             if (props.action === INSERT_KNOWLEDGE_NODE_ACTION) {
               editor
@@ -543,7 +541,6 @@ export const SlashCommandExtension =
           key: new PluginKey("skillBuilderSlashCommandCleanup"),
           view: () => ({
             update: (view) => {
-              extensionStorage.isOpeningCapabilitiesOnly = false;
               const triggerStart =
                 extensionStorage.capabilitiesOnlyTriggerStart;
 
