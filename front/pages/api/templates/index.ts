@@ -1,17 +1,10 @@
 // @migration-status: MIGRATED_TO_HONO
 /** @ignoreswagger */
+import type { FetchAssistantTemplatesResponse } from "@app/lib/resources/template_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type AssistantTemplateListType = ReturnType<
-  TemplateResource["toListJSON"]
->;
-
-export interface FetchAssistantTemplatesResponse {
-  templates: AssistantTemplateListType[];
-}
 
 async function handler(
   req: NextApiRequest,

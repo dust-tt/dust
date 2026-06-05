@@ -6,9 +6,9 @@ import { buildSharedTemplateAttributes } from "@app/lib/api/poke/templates";
 import { config as regionConfig } from "@app/lib/api/regions/config";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
+import type { AssistantTemplateListType } from "@app/lib/resources/template_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { AssistantTemplateListType } from "@app/pages/api/templates";
 import {
   CreateTemplateFormSchema,
   isTemplateTagCodeArray,
