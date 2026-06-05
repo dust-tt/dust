@@ -25,7 +25,8 @@ instruction self-editing, or org-shared knowledge.
 | Scope          | Per-workspace, one profile per (user, workspace)                                                       |
 | Reach          | All active agents in real conversations, incl. custom, **default-on except Slack**                     |
 | Controls       | None in v1 (no builder opt-out, no admin toggle). This is a platform-level user memory layer.           |
-| Writes         | Bidirectional from day 0: users and agents update the same profile/memory surface.                      |
+| Writes         | Bidirectional from day 0: users and agents update memory through the same surfaced system.              |
+| Tooling        | Keep the existing `memory_tool` and extend it with explicit `user_memory` / `agent_memory` scopes.      |
 | Multi-user     | Inject the triggering poster's profile                                                                 |
 | Privacy policy | Dust conversation sharing is user responsibility; Slack-originated runs are excluded by default        |
 | UI             | Section in the account settings page (`AccountSettings.tsx`)                                           |
@@ -49,9 +50,11 @@ This keeps the product model simple:
 - Future automatic behavior improves the same memory object instead of introducing a second
   persistence mechanism.
 
-Agent writes happen through a tool. The tool follows the existing tool-permission model:
-if updating memory is not considered low-stake, the user is asked for permission before the
-write. This keeps v1 bidirectional without adding a second "suggestions" system.
+Agent writes happen through the existing `memory_tool`, extended with an explicit scope:
+`user_memory` for cross-agent profile context, `agent_memory` for agent-specific memory.
+The tool follows the existing tool-permission model: if updating memory is not considered
+low-stake, the user is asked for permission before the write. This keeps v1 bidirectional
+without adding a second "suggestions" system or a second memory tool.
 
 Fully auto-built memory remains a harder problem:
 
@@ -81,7 +84,8 @@ should improve the same memory object, not create a second one.
 1. **v1: Bidirectional Profile / Memory**
    - One per-workspace memory surface for stable user context.
    - User-editable in account settings.
-   - Agent-writable through a tool that updates the same underlying store.
+   - Agent-writable through the existing `memory_tool`, extended with
+     `user_memory` / `agent_memory` scopes.
    - Permission is requested through the existing tool-permission model when the write is
      not low-stake.
    - Default-on for real Dust conversations, disabled for Slack-originated runs.
@@ -106,13 +110,32 @@ Despite the table name, this is the single per-user, per-workspace profile/memor
 - 2000 chars enforced server-side.
 
 **Alternatives rejected:** `user_metadata` (no typed columns for the roadmap; viable
-fallback if agent-writable memory is dropped). A separate `agent_memories` layer for this
-use case is rejected because it would create two memory systems for the same user-facing
-problem. Existing agent-keyed memory concepts can still inform the write/grooming workflow,
-but the user should inspect and edit one profile/memory surface.
+fallback if agent-writable memory is dropped). A separate user-memory tool is rejected
+because it would create two memory tools for the same user-facing problem. Instead, keep
+the existing `memory_tool` and make scope explicit: `user_memory` for cross-agent profile
+context, `agent_memory` for agent-specific memory.
 `profile.md` in a Computer (shared computer is multi-person so wrong privacy scope, only
 reaches computer-enabled agents, pull-based read is unreliable; revisit as a future
 convergence, see Dependencies).
+
+### Relationship with Agent Memory
+
+This should not create a competing memory system. The product model is one memory tool
+with explicit scopes:
+
+- `user_memory`: per `(workspace, user)`, shared across agents. Stores stable user context
+  and preferences.
+- `agent_memory`: per `(workspace, user, agent)`, scoped to a specific agent's relationship
+  with the user.
+
+The existing `memory_tool` is extended to choose/write the right scope. Instructions should
+tell it to avoid recording low-value or overly specific memories. There is no hard
+guarantee the model will always classify scope correctly, so scope must be visible and
+editable after the fact.
+
+Precedence should be explicit: agent instructions win over memory; `user_memory` provides
+broad personalization; `agent_memory` provides agent-specific context. If `user_memory` and
+`agent_memory` conflict, the narrower `agent_memory` should usually win for that agent.
 
 ### Injection
 
@@ -183,9 +206,8 @@ Behind feature flag `user_profile`, used as the rollout kill switch. Emit StatsD
 - `GET /api/w/[wId]/me/profile`
 - `PUT /api/w/[wId]/me/profile`, zod `content: z.string().max(2000)`.
 - `DELETE /api/w/[wId]/me/profile`
-- Agent writes go through a memory-update tool, reuse the existing tool-permission model,
-  and update the same row through `UserProfileResource` with `source` / `updatedByUserId`
-  attribution.
+- Agent writes go through the existing `memory_tool`, reuse the existing tool-permission
+  model, and update the scoped memory row with `source` / `updatedByUserId` attribution.
 - `AccountSettings.tsx`: `TextArea` + char counter; SWR `useUserProfile` / `useUpdateUserProfile`;
   transparency help text (see Security).
 
