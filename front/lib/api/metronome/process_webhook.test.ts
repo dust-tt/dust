@@ -413,6 +413,64 @@ describe("processMetronomeWebhook — contract.start", () => {
 
     expect(restoreWorkspaceAfterSubscription).toHaveBeenCalledTimes(1);
   });
+
+  it("leaves the subscription alone for a superseded contract's stale start (its sub row is ended)", async () => {
+    // Two switch_contract calls in a row: the first staged a pending sub on
+    // OLD_CONTRACT_ID, the second superseded it — ending that pending row and
+    // staging NEW_CONTRACT_ID, which then activated. A late, stale
+    // contract.start for OLD_CONTRACT_ID must NOT swap the active sub back onto
+    // the superseded (and Metronome-sunset) contract.
+    const supersededPlan = await PlanFactory.enterprise(ENT_PLAN_CODE);
+    const workspace = await setupMetronomeWorkspace(NEW_CONTRACT_ID);
+    const workspaceModelId = (await WorkspaceResource.fetchById(workspace.sId))!
+      .id;
+    // The superseded contract's subscription row, ended by the second switch.
+    await SubscriptionResource.makeNew(
+      {
+        sId: generateRandomModelSId(),
+        workspaceId: workspaceModelId,
+        planId: supersededPlan.id,
+        status: "ended",
+        startDate: new Date(),
+        endDate: new Date(),
+        stripeSubscriptionId: null,
+        metronomeContractId: OLD_CONTRACT_ID,
+      },
+      renderPlanFromModel({ plan: supersededPlan })
+    );
+
+    vi.mocked(getMetronomeContractById).mockResolvedValue(
+      new Ok({
+        id: OLD_CONTRACT_ID,
+        customer_id: METRONOME_CUSTOMER_ID,
+        starting_at: new Date().toISOString(),
+        custom_fields: { [PLAN_CODE_CUSTOM_FIELD_KEY]: ENT_PLAN_CODE },
+      } as never)
+    );
+
+    const result = await processMetronomeWebhook({
+      event: contractEvent("contract.start", OLD_CONTRACT_ID) as never,
+      workspace,
+    });
+    expect(result.isOk()).toBe(true);
+
+    // Active sub still points at the winning contract — no swap onto the
+    // superseded one.
+    const refreshed = await WorkspaceResource.fetchById(workspace.sId);
+    const activeSub = await SubscriptionResource.fetchActiveByWorkspaceModelId(
+      refreshed!.id
+    );
+    expect(activeSub!.metronomeContractId).toBe(NEW_CONTRACT_ID);
+    expect(activeSub!.status).toBe("active");
+
+    // The superseded row stays ended; nothing reactivated it.
+    const supersededSub = await SubscriptionResource.fetchByMetronomeContractId(
+      refreshed!,
+      OLD_CONTRACT_ID
+    );
+    expect(supersededSub!.status).toBe("ended");
+    expect(restoreWorkspaceAfterSubscription).not.toHaveBeenCalled();
+  });
 });
 
 describe("processMetronomeWebhook — contract.end", () => {

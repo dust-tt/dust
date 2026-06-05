@@ -11,6 +11,7 @@ import {
   ceilToHourISO,
   editMetronomeContract,
   floorToHourISO,
+  getMetronomeContractById,
   listMetronomePackages,
 } from "@app/lib/metronome/client";
 import {
@@ -423,6 +424,44 @@ export async function switchContract({
     }
     startingAtDate = new Date(requestedStartMs);
     swapAt = "next-hour";
+
+    // Reject backdating before the current active contract's start. A new
+    // contract starting before the active one fully shadows it, but the
+    // overlap-sunset pass in `provisionMetronomeContract` only ends contracts
+    // that start at or before the new one — so the active contract would stay
+    // live and overlap the new one (Metronome also can't end a contract before
+    // it begins). Rather than archive an already-billed contract here, refuse
+    // the switch and let the operator archive the active contract manually.
+    const activeContractId = currentSubscription?.metronomeContractId ?? null;
+    if (activeContractId) {
+      const activeContractResult = await getMetronomeContractById({
+        metronomeCustomerId,
+        metronomeContractId: activeContractId,
+      });
+      if (activeContractResult.isErr()) {
+        return new Err(
+          new SwitchContractError(
+            "metronome_api_error",
+            `Failed to fetch the active Metronome contract ${activeContractId}: ` +
+              `${activeContractResult.error.message}`
+          )
+        );
+      }
+      const activeStartMs = Date.parse(activeContractResult.value.starting_at);
+      const alignedStartMs = new Date(ceilToHourISO(startingAtDate)).getTime();
+      if (alignedStartMs < activeStartMs) {
+        return new Err(
+          new SwitchContractError(
+            "invalid_request",
+            `startingAt (${startingAtDate.toISOString()}) is before the current ` +
+              `active contract's start (${activeContractResult.value.starting_at}). ` +
+              "Backdating a switch before the active contract would create " +
+              "overlapping contracts. Archive the active contract manually " +
+              "before backdating."
+          )
+        );
+      }
+    }
   } else {
     startingAtDate = new Date();
     swapAt = "current-hour";
