@@ -1,0 +1,26 @@
+front/pages/api/w/[wId]/mcp/discover_oauth_metadata.ts
+  s_9bbc73dd439254::t_a306f1e3e76591 64-65,70
+  s_9bbc73dd439254::t_e17cbafc26416f 8
+front/lib/api/url_safety.ts
+  s_9bbc73dd439254::t_49e5f40b8230d7 1-57,59-69,73-79
+  s_9bbc73dd439254::t_7ebc5427974069 58,70-72
+front-api/routes/w/[wId]/mcp/discover_oauth_metadata.ts
+  s_9bbc73dd439254::t_8fd3ab06fdbda7 5
+  s_9bbc73dd439254::t_9002c09dec4fc1 46-47,52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "a9b9dffedcb00ee392fe51109772858ec4b764e2",
+  "prompts": {},
+  "sessions": {
+    "s_9bbc73dd439254": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "df844bd1-404e-4be9-9d95-15806bbc9d79",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Zeid Marouf <4321056+zmarouf@users.noreply.github.com>"
+    }
+  }
+}
