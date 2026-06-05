@@ -523,6 +523,7 @@ const InputBarContainer = ({
       enabledRef: shouldEnableSlashSuggestionRef,
       onSelectRef,
       onDetailsRef,
+      onSkillDetails: setSelectedSkillIdForDetails,
       selectedMCPServerViewIdsRef,
     },
     placeholderOverride: disableInput ? submitBlockMessage : placeholder,
@@ -1225,6 +1226,7 @@ const InputBarContainer = ({
                     label={getMcpServerViewDisplayName(msv)}
                     icon={getIcon(msv.server.icon)}
                     className="m-0.5 hidden bg-background text-foreground dark:bg-background-night dark:text-foreground-night xs:flex"
+                    onClick={() => setSelectedServerViewForDetails(msv)}
                     onRemove={() => {
                       onMCPServerViewDeselect(msv);
                     }}
@@ -1233,6 +1235,7 @@ const InputBarContainer = ({
                     size="xs"
                     icon={getIcon(msv.server.icon)}
                     className="m-0.5 flex bg-background text-foreground dark:bg-background-night dark:text-foreground-night xs:hidden"
+                    onClick={() => setSelectedServerViewForDetails(msv)}
                     onRemove={() => {
                       onMCPServerViewDeselect(msv);
                     }}
