@@ -156,7 +156,7 @@ export async function ensureAuthorizedFileAccessForShare(
   return new Ok(authorized);
 }
 
-export type VizFileAuthorizationMode = "legacy" | "authorized" | "denied";
+export type VizFileAuthorizationMode = "authorized" | "denied";
 
 export type AllowlistedScopedVizFile = {
   contentType: string;
@@ -209,7 +209,6 @@ export async function readAllowlistedScopedVizFile({
 
 /**
  * Gate viz file serving against the frame's stored allowlist.
- * Returns "legacy" when no allowlist exists yet (pre-backfill frames).
  */
 export async function assertVizFileAuthorized({
   authorizedFileAccess,
@@ -223,7 +222,7 @@ export async function assertVizFileAuthorized({
   frameContent: string;
 }): Promise<VizFileAuthorizationMode> {
   if (!authorizedFileAccess || authorizedFileAccess.refs.length === 0) {
-    return "legacy";
+    return "denied";
   }
 
   if (isAllowlistStale(authorizedFileAccess, frameContent)) {

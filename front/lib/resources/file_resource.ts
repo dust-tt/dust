@@ -233,9 +233,7 @@ export class FileResource extends BaseResource<FileModel> {
     shareScope: FileShareScope;
     shareableFileId: ModelId;
     workspace: LightWorkspaceType;
-    conversationSpaceId: string | null;
     authorizedFileAccess: AuthorizedFileAccessAllowlist | null;
-    fs: DustFileSystem;
   } | null> {
     const r = await this.fetchByShareToken(token);
     if (r.isErr()) {
@@ -263,13 +261,8 @@ export class FileResource extends BaseResource<FileModel> {
         shareScope: FileShareScope;
         shareableFileId: ModelId;
         workspace: LightWorkspaceType;
-        // sId of the project space the frame's conversation belongs to, if any.
-        conversationSpaceId: string | null;
         // Active allowlist for useFile() refs, if computed.
         authorizedFileAccess: AuthorizedFileAccessAllowlist | null;
-        // DustFileSystem scoped to this frame's authorized paths (conversation + pod if any).
-        // Always read-only; share-token is its own authorization model.
-        fs: DustFileSystem;
       },
       DustError
     >
@@ -308,25 +301,17 @@ export class FileResource extends BaseResource<FileModel> {
       return new Err(new DustError("file_not_found", "File not found"));
     }
 
-    // auth is needed both to verify the conversation still exists and to build the
-    // DustFileSystem for subsequent file-serving operations.
-    const auth = await Authenticator.internalBuilderForWorkspace(workspace.sId);
-
-    // Check if associated conversation still exist (not soft-deleted).
-    let conversationSpaceId: string | null = null;
+    // Verify the associated conversation still exists (not soft-deleted).
     if (
       fileRes.useCase === "conversation" &&
       fileRes.useCaseMetadata?.conversationId
     ) {
-      const conversationId = fileRes.useCaseMetadata.conversationId;
-
-      // Share token access bypasses normal space restrictions. We only need to verify the
-      // conversation exists, but internalBuilderForWorkspace only has global group
-      // access and can't see agents from other groups that this conversation might reference.
-      // Skip permission filtering since share token provides its own authorization.
+      const auth = await Authenticator.internalBuilderForWorkspace(
+        workspace.sId
+      );
       const conversation = await ConversationResource.fetchById(
         auth,
-        conversationId,
+        fileRes.useCaseMetadata.conversationId,
         { dangerouslySkipPermissionFiltering: true }
       );
       if (!conversation) {
@@ -334,29 +319,7 @@ export class FileResource extends BaseResource<FileModel> {
           new DustError("conversation_not_found", "Conversation not found")
         );
       }
-
-      // Derive the project space sId from the conversation's spaceId.
-      if (conversation.spaceId) {
-        conversationSpaceId = SpaceResource.modelIdToSId({
-          id: conversation.spaceId,
-          workspaceId: workspace.id,
-        });
-      }
     }
-
-    // Build a DustFileSystem covering all paths this frame is authorised to serve.
-    // conversationId: from file metadata (covers both conversationId and sourceConversationId).
-    // spaceId: from file metadata (project-scoped frames) or derived from the conversation's space.
-    const frameConversationId =
-      fileRes.useCaseMetadata?.conversationId ??
-      fileRes.useCaseMetadata?.sourceConversationId ??
-      null;
-    const frameSpaceId =
-      fileRes.useCaseMetadata?.spaceId ?? conversationSpaceId;
-    const fs = DustFileSystem.forShareToken(auth, {
-      conversationId: frameConversationId,
-      spaceId: frameSpaceId,
-    });
 
     const authorizedFileAccess =
       await fileRes.getActiveAuthorizedFileAccessAllowlist();
@@ -366,9 +329,7 @@ export class FileResource extends BaseResource<FileModel> {
       workspace: renderLightWorkspaceType({ workspace }),
       shareScope: shareableFile.shareScope,
       shareableFileId: shareableFile.id,
-      conversationSpaceId,
       authorizedFileAccess,
-      fs,
     });
   }
 

@@ -2,17 +2,11 @@
 
 import { extractAndVerifyVizAccessTokenFromHeader } from "@app/lib/api/viz/access_tokens";
 import { assertVizFileAuthorized } from "@app/lib/api/viz/authorized_file_access";
-import {
-  canAccessFileInConversation,
-  canAccessFileInProject,
-} from "@app/lib/api/viz/file_access";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { isInteractiveContentType } from "@app/types/files";
-import type { Result } from "@app/types/shared/result";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 import { unauthedApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -48,7 +42,6 @@ app.get("/:fileId", validate("param", ParamsSchema), async (ctx) => {
   }
   const tokenPayload = tokenRes.value;
 
-  // Get file info using the fileToken from the access token.
   const result = await FileResource.fetchByShareTokenWithContent(
     tokenPayload.fileToken
   );
@@ -82,7 +75,6 @@ app.get("/:fileId", validate("param", ParamsSchema), async (ctx) => {
     authorizedFileAccess,
   } = result;
 
-  // If current share scope differs from token scope, reject. It means share scope changed.
   if (shareScope !== tokenPayload.shareScope) {
     return apiError(ctx, {
       status_code: 404,
@@ -93,7 +85,6 @@ app.get("/:fileId", validate("param", ParamsSchema), async (ctx) => {
     });
   }
 
-  // Only allow conversation Frame files.
   if (
     !frameFile.isInteractiveContent ||
     !isInteractiveContentType(frameFile.contentType)
@@ -107,7 +98,6 @@ app.get("/:fileId", validate("param", ParamsSchema), async (ctx) => {
     });
   }
 
-  // Check if file is safe to display.
   if (!frameFile.isSafeToDisplay()) {
     return apiError(ctx, {
       status_code: 400,
@@ -118,7 +108,6 @@ app.get("/:fileId", validate("param", ParamsSchema), async (ctx) => {
     });
   }
 
-  // If file is shared publicly, ensure workspace allows it.
   if (
     shareScope === "public" &&
     !workspace.canShareInteractiveContentPublicly
@@ -132,20 +121,6 @@ app.get("/:fileId", validate("param", ParamsSchema), async (ctx) => {
     });
   }
 
-  // Frame must have a conversation context or a project context
-  const frameConversationId = frameFile.useCaseMetadata?.conversationId;
-  const frameSpaceId = frameFile.useCaseMetadata?.spaceId;
-  if (!frameConversationId && !frameSpaceId) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Frame missing conversation context or project context.",
-      },
-    });
-  }
-
-  // Load the requested file within the same workspace context.
   const owner = renderLightWorkspaceType({ workspace });
 
   const targetFile = await FileResource.unsafeFetchByIdInWorkspace(
@@ -165,49 +140,11 @@ app.get("/:fileId", validate("param", ParamsSchema), async (ctx) => {
     owner,
     frameContent,
   });
-  switch (authorizationMode) {
-    case "denied":
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: { type: "file_not_found", message: "File not found." },
-      });
-    case "legacy": {
-      let hasAccessRes: Result<true, Error>;
-      if (frameConversationId) {
-        hasAccessRes = await canAccessFileInConversation(owner, {
-          file: targetFile,
-          requestedConversationId: frameConversationId,
-        });
-      } else if (frameSpaceId) {
-        hasAccessRes = await canAccessFileInProject(owner, {
-          file: targetFile,
-          requestedProjectId: frameSpaceId,
-        });
-      } else {
-        throw new Error(
-          "Invalid file context: both conversationId and spaceId are missing"
-        );
-      }
-
-      if (hasAccessRes.isErr()) {
-        logger.error(
-          {
-            erroor: hasAccessRes.error,
-          },
-          "Error checking file access in conversation"
-        );
-
-        return apiError(ctx, {
-          status_code: 404,
-          api_error: { type: "file_not_found", message: "File not found." },
-        });
-      }
-      break;
-    }
-    case "authorized":
-      break;
-    default:
-      return assertNever(authorizationMode);
+  if (authorizationMode === "denied") {
+    return apiError(ctx, {
+      status_code: 404,
+      api_error: { type: "file_not_found", message: "File not found." },
+    });
   }
 
   const readStream = targetFile.getSharedReadStream(owner, "original");

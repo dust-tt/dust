@@ -16,7 +16,6 @@ import type { FileResource } from "@app/lib/resources/file_resource";
 import type { AllSupportedFileContentType } from "@app/types/files";
 import { extensionsForContentType } from "@app/types/files";
 import { Err, Ok, type Result } from "@app/types/shared/result";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 import path from "path";
 import { z } from "zod";
 
@@ -369,61 +368,6 @@ export function resolveCanonicalScopedPath(
     }
     default:
       return null;
-  }
-}
-
-export type BuildCanonicalScopedPathError =
-  | { code: "missing_conversation_context" }
-  | { code: "missing_pod_context" }
-  | { code: "conversation_context_mismatch" }
-  | { code: "pod_context_mismatch" };
-
-/**
- * Build the canonical scoped path from a parsed viz URL scope + relative path.
- * Used by viz file-serving endpoints; enforces frame-context match on canonical scopes.
- */
-export function buildCanonicalScopedPathFromVizScope(
-  scope: ParsedVizScope,
-  normalizedRel: string,
-  frameContext: FrameScopedPathContext
-): Result<string, BuildCanonicalScopedPathError> {
-  switch (scope.kind) {
-    case "canonical-conversation": {
-      if (scope.id !== frameContext.conversationId) {
-        return new Err({ code: "conversation_context_mismatch" });
-      }
-      return new Ok(
-        `${SCOPED_PREFIX_CONVERSATION}${scope.id}/${normalizedRel}`
-      );
-    }
-
-    case "canonical-pod": {
-      if (scope.id !== frameContext.spaceId) {
-        return new Err({ code: "pod_context_mismatch" });
-      }
-      return new Ok(`${SCOPED_PREFIX_POD}${scope.id}/${normalizedRel}`);
-    }
-
-    case "legacy": {
-      if (scope.prefix === "conversation") {
-        if (!frameContext.conversationId) {
-          return new Err({ code: "missing_conversation_context" });
-        }
-        return new Ok(
-          `${SCOPED_PREFIX_CONVERSATION}${frameContext.conversationId}/${normalizedRel}`
-        );
-      }
-
-      if (!frameContext.spaceId) {
-        return new Err({ code: "missing_pod_context" });
-      }
-      return new Ok(
-        `${SCOPED_PREFIX_POD}${frameContext.spaceId}/${normalizedRel}`
-      );
-    }
-
-    default:
-      return assertNever(scope);
   }
 }
 

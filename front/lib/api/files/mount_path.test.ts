@@ -1,5 +1,4 @@
 import {
-  buildCanonicalScopedPathFromVizScope,
   disambiguateFileName,
   getBaseMountPathForWorkspace,
   getConversationFilePath,
@@ -213,61 +212,6 @@ describe("mount_path helpers", () => {
           spaceId: null,
         })
       ).toBeNull();
-    });
-  });
-
-  describe("buildCanonicalScopedPathFromVizScope", () => {
-    const frameContext = {
-      conversationId: "conv_abc",
-      spaceId: "pod_xyz",
-    };
-
-    it("builds canonical conversation paths when ids match", () => {
-      const result = buildCanonicalScopedPathFromVizScope(
-        { kind: "canonical-conversation", id: "conv_abc" },
-        "report.csv",
-        frameContext
-      );
-      expect(result.isOk()).toBe(true);
-      if (result.isOk()) {
-        expect(result.value).toBe("conversation-conv_abc/report.csv");
-      }
-    });
-
-    it("rejects canonical conversation paths when ids mismatch", () => {
-      const result = buildCanonicalScopedPathFromVizScope(
-        { kind: "canonical-conversation", id: "conv_other" },
-        "report.csv",
-        frameContext
-      );
-      expect(result.isErr()).toBe(true);
-      if (result.isErr()) {
-        expect(result.error.code).toBe("conversation_context_mismatch");
-      }
-    });
-
-    it("builds legacy conversation paths from frame context", () => {
-      const result = buildCanonicalScopedPathFromVizScope(
-        { kind: "legacy", prefix: "conversation" },
-        "report.csv",
-        frameContext
-      );
-      expect(result.isOk()).toBe(true);
-      if (result.isOk()) {
-        expect(result.value).toBe("conversation-conv_abc/report.csv");
-      }
-    });
-
-    it("returns missing_pod_context when legacy pod path has no space", () => {
-      const result = buildCanonicalScopedPathFromVizScope(
-        { kind: "legacy", prefix: "pod" },
-        "report.csv",
-        { conversationId: "conv_abc", spaceId: null }
-      );
-      expect(result.isErr()).toBe(true);
-      if (result.isErr()) {
-        expect(result.error.code).toBe("missing_pod_context");
-      }
     });
   });
 
