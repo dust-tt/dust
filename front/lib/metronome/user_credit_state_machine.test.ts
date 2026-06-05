@@ -214,7 +214,7 @@ describe("UserCreditStateMachine — seat_balance_exhausted", () => {
     const membership = makeMembership("user_seat", "free");
     const result = await transitionUserCreditState(
       membership,
-      { type: "seat_balance_exhausted" },
+      { type: "seat_balance_exhausted", poolLimitAwuCredits: null },
       { ...baseCtx, seatType: "free" }
     );
     expect(result.isOk()).toBe(true);
@@ -238,7 +238,7 @@ describe("UserCreditStateMachine — seat_balance_exhausted", () => {
     const membership = makeMembership("user_seat_low_balance", "free");
     const result = await transitionUserCreditState(
       membership,
-      { type: "seat_balance_exhausted" },
+      { type: "seat_balance_exhausted", poolLimitAwuCredits: null },
       { ...baseCtx, seatType: "free" }
     );
     expect(result.isOk()).toBe(true);
@@ -257,11 +257,11 @@ describe("UserCreditStateMachine — seat_balance_exhausted", () => {
     );
   });
 
-  it("user_seat + pro seat → on_pool", async () => {
+  it("user_seat + pro seat + pool limit > 0 → on_pool", async () => {
     const membership = makeMembership("user_seat", "pro");
     const result = await transitionUserCreditState(
       membership,
-      { type: "seat_balance_exhausted" },
+      { type: "seat_balance_exhausted", poolLimitAwuCredits: 5000 },
       { ...baseCtx, seatType: "pro" }
     );
     expect(result.isOk()).toBe(true);
@@ -281,11 +281,56 @@ describe("UserCreditStateMachine — seat_balance_exhausted", () => {
     );
   });
 
-  it("user_seat_low_balance + max seat → on_pool", async () => {
+  it("user_seat + pro seat + pool limit null (unlimited) → on_pool", async () => {
+    const membership = makeMembership("user_seat", "pro");
+    const result = await transitionUserCreditState(
+      membership,
+      { type: "seat_balance_exhausted", poolLimitAwuCredits: null },
+      { ...baseCtx, seatType: "pro" }
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("on_pool");
+    }
+    expect(membership.updateCreditState).toHaveBeenCalledWith(
+      "on_pool",
+      undefined
+    );
+    expect(mockSetUserCreditState).toHaveBeenCalledWith(
+      "ws_test",
+      "u_test",
+      "on_pool"
+    );
+  });
+
+  it("user_seat + pro seat + pool limit = 0 → capped", async () => {
+    const membership = makeMembership("user_seat", "pro");
+    const result = await transitionUserCreditState(
+      membership,
+      { type: "seat_balance_exhausted", poolLimitAwuCredits: 0 },
+      { ...baseCtx, seatType: "pro" }
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("capped");
+    }
+    expect(membership.updateCreditState).toHaveBeenCalledWith(
+      "capped",
+      undefined
+    );
+    expect(mockSetUserCapBlocked).toHaveBeenCalledWith("ws_test", "u_test");
+    expect(mockSetUserCreditState).toHaveBeenCalledWith(
+      "ws_test",
+      "u_test",
+      "capped"
+    );
+  });
+
+  it("user_seat_low_balance + max seat + pool limit null → on_pool", async () => {
     const membership = makeMembership("user_seat_low_balance", "max");
     const result = await transitionUserCreditState(
       membership,
-      { type: "seat_balance_exhausted" },
+      { type: "seat_balance_exhausted", poolLimitAwuCredits: null },
       { ...baseCtx, seatType: "max" }
     );
     expect(result.isOk()).toBe(true);

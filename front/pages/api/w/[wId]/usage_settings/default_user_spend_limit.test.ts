@@ -97,7 +97,7 @@ describe("/api/w/[wId]/usage_settings/default_user_spend_limit", () => {
       expect(res._getJSONData()).toEqual({ awuCredits: 25_000 });
     });
 
-    it("returns 200 with awuCredits=null when no default is configured", async () => {
+    it("returns 200 with plan default when no default is configured (pro plan → 0)", async () => {
       vi.mocked(businessLayer.getDefaultUserSpendLimit).mockResolvedValueOnce(
         new Err(new DefaultUserSpendLimitError("not_found", "no default"))
       );
@@ -112,7 +112,7 @@ describe("/api/w/[wId]/usage_settings/default_user_spend_limit", () => {
       await handler(req, res);
 
       expect(res._getStatusCode()).toBe(200);
-      expect(res._getJSONData()).toEqual({ awuCredits: null });
+      expect(res._getJSONData()).toEqual({ awuCredits: 0 });
     });
 
     it("returns 502 on Metronome errors", async () => {

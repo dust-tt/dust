@@ -116,6 +116,22 @@ export function isProOrBusinessPlanCode(plan?: PlanType) {
 }
 
 /**
+ * Returns the implicit default pool credit limit for a plan when no explicit
+ * limit has been configured in Metronome.
+ *
+ *   - Enterprise plans → `null` (unlimited pool access)
+ *   - Everything else (business, pro, free) → `0` (no pool access)
+ */
+export function getPlanDefaultPoolLimitAwuCredits(
+  planCode: string
+): number | null {
+  if (isEnterprisePlanPrefix(planCode)) {
+    return null;
+  }
+  return 0;
+}
+
+/**
  * `isUpgraded` returns true if the plan has access to all features of Dust, including large
  * language models (meaning it's either a paid plan or free plan with (eg friends and family, or
  * free trial plan)).

@@ -43,12 +43,13 @@ export type UserCreditEvent =
    */
   | { type: "admin_raised_user_cap" }
   /**
-   * This user's personal seat balance is exhausted. Paid seats fall back to
-   * the workspace pool (`on_pool`); free seats cannot use the pool and are
-   * transitioned to `capped`. The guard on each transition decides which
-   * branch applies based on `ctx.seatType`.
+   * This user's personal seat balance is exhausted. The user's effective pool
+   * limit determines the next state:
+   *   - free seats → always `capped` (no pool access)
+   *   - paid seats with `poolLimitAwuCredits === 0` → `capped`
+   *   - paid seats with `poolLimitAwuCredits > 0` or `null` (unlimited) → `on_pool`
    */
-  | { type: "seat_balance_exhausted" }
+  | { type: "seat_balance_exhausted"; poolLimitAwuCredits: number | null }
   /**
    * This user's personal seat balance crossed a low-balance warning threshold
    * (balance > 0). Moves `user_seat` → `user_seat_low_balance`.
@@ -154,8 +155,10 @@ const TRANSITIONS: UserCreditTransition[] = [
     to: "on_pool",
   },
 
-  // Seat balance exhausted. Order matters: free check first (guard wins on
-  // first match), paid fallback second.
+  // Seat balance exhausted. Order matters: most specific guard first.
+  //  1. Free seats → always capped (no pool access).
+  //  2. Paid seats with pool limit = 0 → capped (no pool budget).
+  //  3. Paid seats with pool limit > 0 or null (unlimited) → on_pool.
   {
     from: ["user_seat", "user_seat_low_balance", "capped"],
     event: "seat_balance_exhausted",
@@ -163,9 +166,21 @@ const TRANSITIONS: UserCreditTransition[] = [
     to: "capped",
   },
   {
+    from: ["user_seat", "user_seat_low_balance", "capped"],
+    event: "seat_balance_exhausted",
+    guard: (ctx, event) =>
+      ctx.seatType !== "free" &&
+      event.type === "seat_balance_exhausted" &&
+      event.poolLimitAwuCredits === 0,
+    to: "capped",
+  },
+  {
     from: ["user_seat", "user_seat_low_balance", "on_pool"],
     event: "seat_balance_exhausted",
-    guard: (ctx) => ctx.seatType !== "free",
+    guard: (ctx, event) =>
+      ctx.seatType !== "free" &&
+      event.type === "seat_balance_exhausted" &&
+      event.poolLimitAwuCredits !== 0,
     to: "on_pool",
   },
 

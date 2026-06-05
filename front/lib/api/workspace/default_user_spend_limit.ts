@@ -120,7 +120,6 @@ export async function setDefaultUserSpendLimit(
   }
 ): Promise<Result<DefaultUserSpendLimit, DefaultUserSpendLimitError>> {
   if (
-    // TODO: allow O, not reason not to.
     !Number.isInteger(poolAwuCredits) ||
     poolAwuCredits < MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS ||
     poolAwuCredits > MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS
