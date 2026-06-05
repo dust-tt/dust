@@ -607,7 +607,7 @@ export const PEOPLE: Record<string, TeamMember> = {
     title: "Solution Engineer",
     image: "https://ca.slack-edge.com/T050RH73H9P-U0B5PBQBJG7-dec9667095f7-512",
     linkedIn: "https://www.linkedin.com/in/matthieu-haguenauer/",
-    github: "",
+    github: "https://github.com/matthieuhaguen",
   },
 };
 
