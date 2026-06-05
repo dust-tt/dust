@@ -1,31 +1,34 @@
-import type {
-  CheckoutBillingPeriod,
-  CheckoutSeatType,
+import {
+  CheckoutBillingPeriodSchema,
+  CheckoutSeatTypeSchema,
 } from "@app/lib/api/checkout/types";
 import { runOnRedisCache } from "@app/lib/api/redis";
 import logger from "@app/logger/logger";
+import { z } from "zod";
 
 const REDIS_ORIGIN = "checkout_payment_status";
 
 export type CheckoutPaymentStatus = "pending" | "succeeded" | "failed";
 
-export type CheckoutPayment = {
-  status: CheckoutPaymentStatus;
-  workspaceId: string;
-  contractId: string;
-  userId: string;
-  targetUserId: string;
-  seatType: CheckoutSeatType;
-  billingPeriod: CheckoutBillingPeriod;
-  currency: "usd" | "eur";
-  initialAmountCents: number;
-  couponCode?: string;
-  couponRedemptionId?: string;
-  uniquenessKey: string;
-  createdAtMs: number;
-  invoiceId?: string;
-  errorMessage?: string;
-};
+export const CheckoutPaymentSchema = z.object({
+  status: z.enum(["pending", "succeeded", "failed"]),
+  workspaceId: z.string(),
+  contractId: z.string(),
+  userId: z.string(),
+  targetUserId: z.string(),
+  seatType: CheckoutSeatTypeSchema,
+  billingPeriod: CheckoutBillingPeriodSchema,
+  currency: z.enum(["usd", "eur"]),
+  initialAmountCents: z.number(),
+  couponCode: z.string().optional(),
+  couponRedemptionId: z.string().optional(),
+  uniquenessKey: z.string(),
+  createdAtMs: z.number(),
+  invoiceId: z.string().optional(),
+  errorMessage: z.string().optional(),
+});
+
+export type CheckoutPayment = z.infer<typeof CheckoutPaymentSchema>;
 
 // 1 hour: matches a generous bound on the webhook delivery / UI polling
 const TTL_SECONDS = 60 * 60;
@@ -63,15 +66,15 @@ export async function getCheckoutPaymentStatus({
     if (!raw) {
       return null;
     }
-    try {
-      return JSON.parse(raw) as CheckoutPayment;
-    } catch (err) {
+    const parsed = CheckoutPaymentSchema.safeParse(JSON.parse(raw));
+    if (!parsed.success) {
       logger.warn(
-        { workspaceId, contractId, err },
-        "[Checkout Payment Status] Failed to parse stored payment"
+        { workspaceId, contractId },
+        "[Checkout Payment Status] Stored payment failed schema validation"
       );
       return null;
     }
+    return parsed.data;
   });
 }
 
@@ -85,12 +88,11 @@ async function updatePayment(
     if (!raw) {
       return null;
     }
-    let current: CheckoutPayment;
-    try {
-      current = JSON.parse(raw) as CheckoutPayment;
-    } catch {
+    const parsedCurrent = CheckoutPaymentSchema.safeParse(JSON.parse(raw));
+    if (!parsedCurrent.success) {
       return null;
     }
+    const current = parsedCurrent.data;
     // Idempotency: if already succeeded, do not overwrite.
     if (current.status === "succeeded") {
       return current;
@@ -154,12 +156,11 @@ export async function recordCheckoutPaymentSyncFailure({
     if (!raw) {
       return;
     }
-    let current: CheckoutPayment;
-    try {
-      current = JSON.parse(raw) as CheckoutPayment;
-    } catch {
+    const parsedCurrent = CheckoutPaymentSchema.safeParse(JSON.parse(raw));
+    if (!parsedCurrent.success) {
       return;
     }
+    const current = parsedCurrent.data;
     const updated: CheckoutPayment = {
       ...current,
       status: "failed",

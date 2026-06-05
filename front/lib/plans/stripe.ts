@@ -1,3 +1,4 @@
+import type { CheckoutSeatType } from "@app/lib/api/checkout/types";
 import config from "@app/lib/api/config";
 import { getMetronomeCustomerStripeCustomerId } from "@app/lib/metronome/client";
 import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
@@ -298,7 +299,7 @@ export const createEmbeddedMetronomeSetupCheckoutSession = async ({
   pricePerSeatCents?: number;
   couponCode?: string;
   user: UserType;
-  seatType?: "pro" | "max";
+  seatType?: CheckoutSeatType;
   targetUserId?: string;
 }): Promise<{ clientSecret: string; sessionId: string }> => {
   const stripe = getStripeClient();
