@@ -6,12 +6,3 @@ main = "./worker/poke.ts"
 directory = "./dist/poke"
 not_found_handling = "none"
 binding = "ASSETS"
-
-# Custom domain poke.bleeding-edge.dust.tt (bound via Cloudflare dashboard).
-[env.bleeding-edge]
-name = "poke-bleeding-edge-dust-tt"
-
-[env.bleeding-edge.assets]
-directory = "./dist/poke"
-not_found_handling = "none"
-binding = "ASSETS"

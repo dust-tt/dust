@@ -219,8 +219,6 @@ jobs:
         build,
         deploy-app,
         deploy-poke,
-        deploy-app-bleeding-edge,
-        deploy-poke-bleeding-edge,
         ensure-sandbox-images,
       ]
     if: ${{ !failure() && !cancelled() && (needs.ensure-sandbox-images.result == 'success' || needs.ensure-sandbox-images.result == 'skipped') }}
@@ -331,28 +329,6 @@ jobs:
     with:
       app: "poke"
       env: ${{ inputs.component == 'front-edge' && 'edge' || 'prod' }}
-      region: "us"
-      thread_ts: ${{ needs.notify-start.outputs.thread_ts }}
-    secrets: inherit
-
-  deploy-app-bleeding-edge:
-    if: inputs.component == 'front' && inputs.deploy_spa_app
-    needs: [notify-start]
-    uses: ./.github/workflows/deploy-spa.yaml
-    with:
-      app: "app"
-      env: "bleeding-edge"
-      region: "us"
-      thread_ts: ${{ needs.notify-start.outputs.thread_ts }}
-    secrets: inherit
-
-  deploy-poke-bleeding-edge:
-    if: inputs.component == 'front' && inputs.deploy_spa_poke
-    needs: [notify-start]
-    uses: ./.github/workflows/deploy-spa.yaml
-    with:
-      app: "poke"
-      env: "bleeding-edge"
       region: "us"
       thread_ts: ${{ needs.notify-start.outputs.thread_ts }}
     secrets: inherit
