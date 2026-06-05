@@ -2,7 +2,7 @@
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { pluginManager } from "@app/lib/api/poke/plugin_manager";
-import type { PluginResponse } from "@app/lib/api/poke/types";
+import type { PokeRunPluginResponseBody } from "@app/lib/api/poke/plugins/run";
 import { fetchPluginResource } from "@app/lib/api/poke/utils";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -34,10 +34,6 @@ const RunPluginParamsSchema = z.object({
   resourceId: z.string().optional(),
   workspaceId: z.string().optional(),
 });
-
-export interface PokeRunPluginResponseBody {
-  result: PluginResponse;
-}
 
 async function handler(
   req: NextApiRequest,

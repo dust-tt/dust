@@ -1,10 +1,10 @@
-import { clientFetch } from "@app/lib/egress/client";
-import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { GetPokeSearchItemsResponseBody } from "@app/pages/api/poke/search";
+import type { GetPokeSearchItemsResponseBody } from "@app/lib/api/poke/search";
 import type {
   GetPokeWorkspacesResponseBody,
   PokeWorkspaceType,
-} from "@app/pages/api/poke/workspaces";
+} from "@app/lib/api/poke/workspaces";
+import { clientFetch } from "@app/lib/egress/client";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeItemBase } from "@app/types/poke";
 import type { RegionType } from "@app/types/region";
 import { SUPPORTED_REGIONS } from "@app/types/region";

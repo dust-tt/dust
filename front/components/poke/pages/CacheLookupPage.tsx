@@ -1,8 +1,5 @@
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import type {
-  RedisCacheResult,
-  RedisInstance,
-} from "@app/pages/api/poke/cache";
+import type { RedisCacheResult, RedisInstance } from "@app/lib/api/poke/cache";
 import {
   usePokeCacheInvalidate,
   usePokeCacheLookup,

@@ -1,17 +1,15 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
+import type { GetProductionChecksResponseBody } from "@app/lib/api/poke/production_checks";
 import { getCheckSummaries } from "@app/lib/api/poke/production_checks";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { CheckSummary } from "@app/types/production_checks";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-export type GetProductionChecksResponseBody = {
-  checks: CheckSummary[];
-};
+export type { GetProductionChecksResponseBody };
 
 async function handler(
   req: NextApiRequest,

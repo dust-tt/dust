@@ -1,16 +1,15 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
-import { getRegisteredImages } from "@app/lib/api/sandbox/image";
+import {
+  getRegisteredImages,
+  type SandboxKillImagesResponseBody,
+} from "@app/lib/api/sandbox/image";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export interface SandboxKillImagesResponseBody {
-  images: Array<{ baseImage: string; version: string }>;
-}
 
 async function handler(
   req: NextApiRequest,

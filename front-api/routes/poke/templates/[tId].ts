@@ -1,4 +1,5 @@
 import { USED_MODEL_CONFIGS } from "@app/components/providers/model_configs";
+import type { PokeFetchAssistantTemplateResponse } from "@app/lib/api/poke/templates";
 import { buildSharedTemplateAttributes } from "@app/lib/api/poke/templates";
 import { config as regionConfig } from "@app/lib/api/regions/config";
 import { TemplateResource } from "@app/lib/resources/template_resource";
@@ -14,10 +15,6 @@ import { validate } from "@front-api/middlewares/validator";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import { z } from "zod";
-
-export type PokeFetchAssistantTemplateResponse = ReturnType<
-  TemplateResource["toJSON"]
->;
 
 interface PokeCreateTemplateResponseBody {
   success: boolean;

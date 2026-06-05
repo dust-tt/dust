@@ -1,14 +1,10 @@
+import type { GetProductionChecksResponseBody } from "@app/lib/api/poke/production_checks";
 import { getCheckSummaries } from "@app/lib/api/poke/production_checks";
-import type { CheckSummary } from "@app/types/production_checks";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
 import checkName from "./[checkName]";
 import run from "./run";
-
-export type GetProductionChecksResponseBody = {
-  checks: CheckSummary[];
-};
 
 // Mounted at /api/poke/production-checks.
 const app = pokeApp();

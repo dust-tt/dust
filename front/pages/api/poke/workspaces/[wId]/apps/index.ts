@@ -1,17 +1,15 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
+import type { PokeListApps } from "@app/lib/api/poke/apps";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { AppType } from "@app/types/app";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-export type PokeListApps = {
-  apps: AppType[];
-};
+export type { PokeListApps };
 
 async function handler(
   req: NextApiRequest,

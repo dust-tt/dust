@@ -10,6 +10,19 @@ import type {
 } from "@app/types/assistant/templates";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 
+export type PokeFetchAssistantTemplateResponse = ReturnType<
+  TemplateResource["toJSON"]
+>;
+
+export interface PokeCreateTemplateResponseBody {
+  success: boolean;
+}
+
+export type PullTemplatesResponseBody = {
+  success: true;
+  count: number;
+};
+
 /**
  * Shared subset of `TemplateModel` attributes that the poke create and
  * update endpoints both write. Each endpoint adds its own extras

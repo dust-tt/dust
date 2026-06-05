@@ -1,18 +1,22 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { GetDataSourcePermissionsResponseBody } from "@app/lib/api/data_sources/managed_permissions";
+import type {
+  GetPokeNoWorkspaceAuthContextResponseType,
+  GetPokeWorkspaceAuthContextResponseType,
+} from "@app/lib/api/poke/auth_context";
+import type {
+  GetPokeCouponRedemptionsResponseBody,
+  GetPokeCouponsResponseBody,
+} from "@app/lib/api/poke/coupons";
+import type { GetPokeFeaturesResponseBody } from "@app/lib/api/poke/features";
+import type { GetPokeMetronomePackagesResponseBody } from "@app/lib/api/poke/metronome";
+import type { GetPokePlansResponseBody } from "@app/lib/api/poke/plans";
+import type { PostPokeStripeCustomerCurrencyResponseBody } from "@app/lib/api/poke/stripe_customers";
+import type { GetRegionResponseType } from "@app/lib/api/regions/config";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { isRegionRedirect } from "@app/lib/swr/workspaces";
-import type { GetPokeNoWorkspaceAuthContextResponseType } from "@app/pages/api/poke/auth-context";
-import type { GetPokeCouponRedemptionsResponseBody } from "@app/pages/api/poke/coupons/[couponId]/redemptions";
-import type { GetPokeCouponsResponseBody } from "@app/pages/api/poke/coupons/index";
-import type { GetPokeMetronomePackagesResponseBody } from "@app/pages/api/poke/metronome/packages";
-import type { GetPokePlansResponseBody } from "@app/pages/api/poke/plans";
-import type { GetRegionResponseType } from "@app/pages/api/poke/region";
-import type { PostPokeStripeCustomerCurrencyResponseBody } from "@app/pages/api/poke/stripe/customers/currency";
-import type { GetPokeWorkspaceAuthContextResponseType } from "@app/pages/api/poke/workspaces/[wId]/auth-context";
-import type { GetPokeFeaturesResponseBody } from "@app/pages/api/poke/workspaces/[wId]/features";
 import type { ConnectorPermission } from "@app/types/connectors/connectors_api";
 import type { DataSourceType } from "@app/types/data_source";
 import {

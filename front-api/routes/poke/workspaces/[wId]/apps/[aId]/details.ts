@@ -1,20 +1,14 @@
 import config from "@app/lib/api/config";
+import type { PokeGetAppDetails } from "@app/lib/api/poke/apps";
 import { getSpecification } from "@app/lib/api/run";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { cleanSpecificationFromCore } from "@app/lib/specification";
 import logger from "@app/logger/logger";
-import type { AppType, SpecificationType } from "@app/types/app";
 import { CoreAPI } from "@app/types/core/core_api";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export type PokeGetAppDetails = {
-  app: AppType;
-  specification: SpecificationType;
-  specificationHashes: string[] | null;
-};
 
 const DetailsQuerySchema = z.object({
   hash: z.string().optional(),

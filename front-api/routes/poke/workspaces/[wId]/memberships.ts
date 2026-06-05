@@ -1,15 +1,9 @@
+import type { PokeGetMemberships } from "@app/lib/api/poke/memberships";
 import { getMembers } from "@app/lib/api/workspace";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { getMembershipInvitationUrl } from "@app/lib/utils/invitation_token";
-import type { MembershipInvitationTypeWithLink } from "@app/types/membership_invitation";
-import type { UserTypeWithWorkspaces } from "@app/types/user";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
-
-export type PokeGetMemberships = {
-  members: UserTypeWithWorkspaces[];
-  pendingInvitations: MembershipInvitationTypeWithLink[];
-};
 
 // Mounted at /api/poke/workspaces/:wId/memberships.
 const app = pokeApp();

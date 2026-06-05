@@ -1,5 +1,5 @@
 import { pluginManager } from "@app/lib/api/poke/plugin_manager";
-import type { PluginResponse } from "@app/lib/api/poke/types";
+import type { PokeRunPluginResponseBody } from "@app/lib/api/poke/plugins/run";
 import { fetchPluginResource } from "@app/lib/api/poke/utils";
 import { Authenticator } from "@app/lib/auth";
 import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
@@ -27,10 +27,6 @@ const RunPluginQuerySchema = z.object({
 const ParamsSchema = z.object({
   pluginId: z.string(),
 });
-
-export interface PokeRunPluginResponseBody {
-  result: PluginResponse;
-}
 
 // Mounted at /api/poke/plugins/:pluginId/run.
 //

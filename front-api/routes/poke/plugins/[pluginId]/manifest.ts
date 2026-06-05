@@ -1,17 +1,9 @@
 import { pluginManager } from "@app/lib/api/poke/plugin_manager";
-import type {
-  PluginArgs,
-  PluginManifest,
-  SupportedResourceType,
-} from "@app/types/poke/plugins";
+import type { PokeGetPluginDetailsResponseBody } from "@app/lib/api/poke/plugins/manifest";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export interface PokeGetPluginDetailsResponseBody {
-  manifest: PluginManifest<PluginArgs, SupportedResourceType>;
-}
 
 const ParamsSchema = z.object({
   pluginId: z.string(),

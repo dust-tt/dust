@@ -1,17 +1,15 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
+import type { GetPokeSearchItemsResponseBody } from "@app/lib/api/poke/search";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { searchPokeResources } from "@app/lib/poke/search";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { PokeItemBase } from "@app/types/poke";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-export type GetPokeSearchItemsResponseBody = {
-  results: PokeItemBase[];
-};
+export type { GetPokeSearchItemsResponseBody };
 
 async function handler(
   req: NextApiRequest,

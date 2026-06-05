@@ -1,6 +1,11 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
+import type {
+  DeletePokeCacheResponseBody,
+  GetPokeCacheResponseBody,
+  RedisCacheResult,
+} from "@app/lib/api/poke/cache";
 import { runOnRedis, runOnRedisCache } from "@app/lib/api/redis";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -13,25 +18,6 @@ import {
 } from "@app/types/shared/cache_resource_registry";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export interface RedisCacheResult {
-  value: unknown | null;
-  ttlSeconds: number;
-}
-
-export type RedisInstance = "cache" | "stream";
-
-export type GetPokeCacheResponseBody = {
-  key: string;
-  cacheRedis: RedisCacheResult;
-  streamRedis: RedisCacheResult;
-};
-
-export type DeletePokeCacheResponseBody = {
-  key: string;
-  redisInstance: RedisInstance;
-  deleted: true;
-};
 
 async function handler(
   req: NextApiRequest,

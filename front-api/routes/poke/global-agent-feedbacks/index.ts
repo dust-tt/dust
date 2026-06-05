@@ -1,12 +1,7 @@
-import type { GlobalAgentFeedbackItem } from "@app/lib/api/poke/global_agent_feedbacks";
+import type { GetGlobalAgentFeedbacksResponseBody } from "@app/lib/api/poke/global_agent_feedbacks";
 import { listGlobalAgentFeedbacks } from "@app/lib/api/poke/global_agent_feedbacks";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
-
-export interface GetGlobalAgentFeedbacksResponseBody {
-  feedbacks: GlobalAgentFeedbackItem[];
-  hasMore: boolean;
-}
 
 // Mounted at /api/poke/global-agent-feedbacks. pokeAuth is applied by the
 // parent poke sub-app.

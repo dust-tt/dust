@@ -1,7 +1,7 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
-import type { WorkspaceDatasourceRetrievalData } from "@app/lib/api/assistant/observability/datasource_retrieval";
+import type { PokeGetWorkspaceDatasourceRetrievalResponse } from "@app/lib/api/assistant/observability/datasource_retrieval";
 import { fetchWorkspaceDatasourceRetrievalMetrics } from "@app/lib/api/assistant/observability/datasource_retrieval";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
@@ -16,11 +16,6 @@ import { fromError } from "zod-validation-error";
 const QuerySchema = z.object({
   days: z.coerce.number().positive().optional().default(DEFAULT_PERIOD_DAYS),
 });
-
-export type PokeGetWorkspaceDatasourceRetrievalResponse = {
-  datasources: WorkspaceDatasourceRetrievalData[];
-  total: number;
-};
 
 async function handler(
   req: NextApiRequest,

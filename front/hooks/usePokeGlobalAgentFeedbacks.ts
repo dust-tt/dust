@@ -1,5 +1,5 @@
+import type { GetGlobalAgentFeedbacksResponseBody } from "@app/lib/api/poke/global_agent_feedbacks";
 import { emptyArray, useFetcher } from "@app/lib/swr/swr";
-import type { GetGlobalAgentFeedbacksResponseBody } from "@app/pages/api/poke/global-agent-feedbacks";
 import type { Fetcher } from "swr";
 import useSWR from "swr";
 

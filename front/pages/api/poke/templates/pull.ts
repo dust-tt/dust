@@ -1,6 +1,7 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
+import type { PullTemplatesResponseBody } from "@app/lib/api/poke/templates";
 import { pullTemplatesFromMainRegion } from "@app/lib/api/poke/templates";
 import { config } from "@app/lib/api/regions/config";
 import { Authenticator } from "@app/lib/auth";
@@ -8,11 +9,6 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type PullTemplatesResponseBody = {
-  success: true;
-  count: number;
-};
 
 async function handler(
   req: NextApiRequest,

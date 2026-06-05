@@ -1,7 +1,7 @@
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
+import type { PokeGetWorkspaceDatasourceRetrievalResponse } from "@app/lib/api/assistant/observability/datasource_retrieval";
+import type { PokeGetWorkspaceInfo } from "@app/lib/api/poke/workspace_info";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { PokeGetWorkspaceDatasourceRetrievalResponse } from "@app/pages/api/poke/workspaces/[wId]/observability/datasource-retrieval";
-import type { PokeGetWorkspaceInfo } from "@app/pages/api/poke/workspaces/[wId]/workspace-info";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import type { Fetcher } from "swr";
 

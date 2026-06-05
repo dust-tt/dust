@@ -1,5 +1,5 @@
 import { pluginManager } from "@app/lib/api/poke/plugin_manager";
-import type { PluginListItem } from "@app/lib/api/poke/types";
+import type { PokeListPluginsForScopeResponseBody } from "@app/lib/api/poke/plugins/list";
 import { fetchPluginResource } from "@app/lib/api/poke/utils";
 import { Authenticator } from "@app/lib/auth";
 import { isSupportedResourceType } from "@app/types/poke/plugins";
@@ -10,10 +10,6 @@ import { z } from "zod";
 
 import pluginId from "./[pluginId]";
 import runs from "./runs";
-
-export interface PokeListPluginsForScopeResponseBody {
-  plugins: PluginListItem[];
-}
 
 const ListPluginsQuerySchema = z.object({
   resourceType: z.string().refine(isSupportedResourceType, {

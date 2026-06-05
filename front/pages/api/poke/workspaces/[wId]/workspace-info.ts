@@ -3,15 +3,13 @@
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import {
   getPokeWorkspaceInfo,
-  type PokeWorkspaceInfo,
+  type PokeGetWorkspaceInfo,
 } from "@app/lib/api/poke/workspace_info";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type PokeGetWorkspaceInfo = PokeWorkspaceInfo;
 
 async function handler(
   req: NextApiRequest,

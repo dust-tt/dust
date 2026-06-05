@@ -1,18 +1,12 @@
+import {
+  PostPokeStripeCustomerCurrencyBodySchema,
+  type PostPokeStripeCustomerCurrencyResponseBody,
+} from "@app/lib/api/poke/stripe_customers";
 import { resolveCurrencyFromStripe } from "@app/lib/plans/billing_currency";
 import { getStripeCustomer } from "@app/lib/plans/stripe";
-import type { SupportedCurrency } from "@app/types/currency";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import { z } from "zod";
-
-const PostPokeStripeCustomerCurrencyBodySchema = z.object({
-  stripeCustomerId: z.string().min(1, "Required"),
-});
-
-export type PostPokeStripeCustomerCurrencyResponseBody = {
-  currency: SupportedCurrency;
-};
 
 // Mounted at /api/poke/stripe/customers/currency.
 const app = pokeApp();

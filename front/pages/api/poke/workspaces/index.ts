@@ -1,6 +1,7 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
+import type { GetPokeWorkspacesResponseBody } from "@app/lib/api/poke/workspaces";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
@@ -18,21 +19,9 @@ import { isDomain, isEmailValid } from "@app/lib/utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { SubscriptionType } from "@app/types/plan";
-import type { LightWorkspaceType } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
 import type { FindOptions, Order, WhereOptions } from "sequelize";
 import { Op } from "sequelize";
-
-export type PokeWorkspaceType = LightWorkspaceType & {
-  createdAt: string;
-  subscription: SubscriptionType;
-  membersCount: number;
-};
-
-export type GetPokeWorkspacesResponseBody = {
-  workspaces: PokeWorkspaceType[];
-};
 
 async function handler(
   req: NextApiRequest,

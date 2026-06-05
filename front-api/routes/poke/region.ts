@@ -1,13 +1,9 @@
+import type { GetRegionResponseType } from "@app/lib/api/regions/config";
 import { config } from "@app/lib/api/regions/config";
 import type { RegionType } from "@app/types/region";
 import { SUPPORTED_REGIONS } from "@app/types/region";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
-
-export type GetRegionResponseType = {
-  region: RegionType;
-  regionUrls: Record<RegionType, string>;
-};
 
 // Mounted at /api/poke/region. pokeAuth is applied by the parent poke sub-app.
 const app = pokeApp();

@@ -2,7 +2,7 @@
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { pluginManager } from "@app/lib/api/poke/plugin_manager";
-import type { PluginListItem } from "@app/lib/api/poke/types";
+import type { PokeListPluginsForScopeResponseBody } from "@app/lib/api/poke/plugins/list";
 import { fetchPluginResource } from "@app/lib/api/poke/utils";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -10,10 +10,6 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isSupportedResourceType } from "@app/types/poke/plugins";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export interface PokeListPluginsForScopeResponseBody {
-  plugins: PluginListItem[];
-}
 
 async function handler(
   req: NextApiRequest,

@@ -1,6 +1,11 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
+import type {
+  GetPokePlansResponseBody,
+  UpsertPokePlanResponseBody,
+} from "@app/lib/api/poke/plans";
+import { PlanTypeSchema } from "@app/lib/api/poke/plans";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { PlanModel } from "@app/lib/models/plan";
@@ -11,65 +16,7 @@ import { config as documentBodyParserConfig } from "@app/pages/api/v1/w/[wId]/sp
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { PlanType } from "@app/types/plan";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
 import { fromError } from "zod-validation-error";
-
-export const PlanTypeSchema = z.object({
-  code: z.string(),
-  name: z.string(),
-  limits: z.object({
-    assistant: z.object({
-      isSlackBotAllowed: z.boolean(),
-      maxMessages: z.number(),
-      maxMessagesTimeframe: z.enum(["day", "lifetime"]),
-      isDeepDiveAllowed: z.boolean(),
-    }),
-    capabilities: z.object({
-      images: z.object({
-        maxImagesPerWeek: z.number(),
-      }),
-    }),
-    connections: z.object({
-      isConfluenceAllowed: z.boolean(),
-      isSlackAllowed: z.boolean(),
-      isNotionAllowed: z.boolean(),
-      isGoogleDriveAllowed: z.boolean(),
-      isGithubAllowed: z.boolean(),
-      isIntercomAllowed: z.boolean(),
-      isWebCrawlerAllowed: z.boolean(),
-      isSalesforceAllowed: z.boolean(),
-    }),
-    dataSources: z.object({
-      count: z.number(),
-      documents: z.object({
-        count: z.number(),
-        sizeMb: z.number(),
-      }),
-    }),
-    users: z.object({
-      maxUsers: z.number(),
-      maxFreeUsers: z.number(),
-      maxLifetimeFreeUsers: z.number(),
-      isSSOAllowed: z.boolean(),
-      isSCIMAllowed: z.boolean(),
-    }),
-    vaults: z.object({
-      maxVaults: z.number(),
-    }),
-    canUseProduct: z.boolean(),
-  }),
-  trialPeriodDays: z.number(),
-  isByok: z.boolean(),
-  isAuditLogsAllowed: z.boolean(),
-});
-
-export type UpsertPokePlanResponseBody = {
-  plan: PlanType;
-};
-
-export type GetPokePlansResponseBody = {
-  plans: PlanType[];
-};
 
 async function handler(
   req: NextApiRequest,

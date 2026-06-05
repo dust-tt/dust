@@ -1,24 +1,18 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
+import {
+  PostPokeStripeCustomerCurrencyBodySchema,
+  type PostPokeStripeCustomerCurrencyResponseBody,
+} from "@app/lib/api/poke/stripe_customers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { resolveCurrencyFromStripe } from "@app/lib/plans/billing_currency";
 import { getStripeCustomer } from "@app/lib/plans/stripe";
 import { apiError } from "@app/logger/withlogging";
-import type { SupportedCurrency } from "@app/types/currency";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
 import { fromError } from "zod-validation-error";
-
-const PostPokeStripeCustomerCurrencyBodySchema = z.object({
-  stripeCustomerId: z.string().min(1, "Required"),
-});
-
-export type PostPokeStripeCustomerCurrencyResponseBody = {
-  currency: SupportedCurrency;
-};
 
 async function handler(
   req: NextApiRequest,

@@ -11,7 +11,7 @@ import {
   PokeFormTextArea,
   PokeFormUpload,
 } from "@app/components/poke/shadcn/ui/form";
-import type { PokeGetPluginDetailsResponseBody } from "@app/pages/api/poke/plugins/[pluginId]/manifest";
+import type { PokeGetPluginDetailsResponseBody } from "@app/lib/api/poke/plugins/manifest";
 import type { AsyncEnumValues, EnumValues } from "@app/types/poke/plugins";
 import { createZodSchemaFromArgs } from "@app/types/poke/plugins";
 import { Button, Checkbox, SliderToggle } from "@dust-tt/sparkle";
