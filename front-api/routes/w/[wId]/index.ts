@@ -1,3 +1,4 @@
+import { listActiveAgentsUsingNonRegionalModels } from "@app/lib/api/assistant/workspace_capabilities";
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
@@ -7,6 +8,7 @@ import { renameWorkspace } from "@app/lib/api/workspace";
 import { hasFeatureFlag } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import logger from "@app/logger/logger";
 import { EmbeddingProviderSchema } from "@app/types/assistant/models/embedding";
 import { ModelProviderIdSchema } from "@app/types/assistant/models/providers";
 import type { WorkspaceType } from "@app/types/user";
@@ -328,6 +330,27 @@ app.post(
 
       owner.ssoEnforced = body.ssoEnforced;
     } else if ("regionalModelsOnly" in body) {
+      if (body.regionalModelsOnly) {
+        const incompatibleAgentIds =
+          await listActiveAgentsUsingNonRegionalModels(auth);
+        if (incompatibleAgentIds.length > 0) {
+          logger.warn(
+            {
+              workspaceId: owner.sId,
+              incompatibleAgentIds,
+            },
+            "Blocked enabling regionalModelsOnly: active agents use non-regional models."
+          );
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: `${incompatibleAgentIds.length} active agent(s) use a non-regional model. Update them first.`,
+            },
+          });
+        }
+      }
+
       await workspace.updateWorkspaceSettings({
         regionalModelsOnly: body.regionalModelsOnly,
       });
