@@ -28,6 +28,12 @@ export type SearchMemberWithWorkspaceType =
   | LightUserTypeWithWorkspace
   | UserTypeWithWorkspace;
 
+export function isFullUserType(
+  user: SearchMemberType
+): user is UserTypeWithWorkspace {
+  return "lastLoginAt" in user;
+}
+
 export function hasWorkspaceInfo(
   user: SearchMemberType
 ): user is LightUserTypeWithWorkspace | UserTypeWithWorkspace {

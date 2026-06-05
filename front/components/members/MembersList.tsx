@@ -1,4 +1,7 @@
-import type { SearchMemberWithWorkspaceType } from "@app/components/members/MemberSelectionTable";
+import {
+  isFullUserType,
+  type SearchMemberWithWorkspaceType,
+} from "@app/components/members/MemberSelectionTable";
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
 import assert from "@app/lib/utils/assert";
 import type { SearchMembersAdminResponseBody } from "@app/pages/api/w/[wId]/members/search";
@@ -45,6 +48,7 @@ function getTableRows({
   currentUserId: string;
 }): RowData[] {
   return allUsers.map((user) => {
+    const fullUser = isFullUserType(user);
     return {
       icon: user.image ?? "",
       name: user.fullName,
@@ -52,14 +56,12 @@ function getTableRows({
       email: user.email ?? "",
       role: user.workspace.role ?? "none",
       status:
-        "lastLoginAt" in user && user.lastLoginAt === null
-          ? "Unregistered"
-          : "Active",
+        fullUser && user.lastLoginAt === null ? "Unregistered" : "Active",
       groups: user.workspace.groups ?? [],
       isCurrentUser: user.sId === currentUserId,
       onClick: () => onClick(user),
       onRemoveMemberClick: () => onRemoveMemberClick?.(user),
-      origin: "origin" in user ? user.origin : undefined,
+      origin: fullUser ? user.origin : undefined,
     };
   });
 }
