@@ -1239,6 +1239,88 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
     ]);
   },
 
+  get_message_body: async (
+    {
+      messageId,
+      preferredContentType = "text",
+      startChar = 0,
+      endChar,
+      sharedMailboxAddress,
+    },
+    { authInfo }
+  ) => {
+    const accessToken = authInfo?.token;
+    if (!accessToken) {
+      return new Err(new MCPError("Authentication required"));
+    }
+
+    const basePath = getMailboxBasePath(sharedMailboxAddress);
+    const encodedId = encodeURIComponent(messageId);
+
+    const params = new URLSearchParams();
+    params.append("$select", "id,subject,from,receivedDateTime,body");
+
+    const fetchHeaders: Record<string, string> = {};
+    if (preferredContentType === "text") {
+      fetchHeaders["Prefer"] = 'outlook.body-content-type="text"';
+    }
+
+    const response = await fetchFromOutlook(
+      `${basePath}/messages/${encodedId}?${params.toString()}`,
+      accessToken,
+      { method: "GET", headers: fetchHeaders }
+    );
+
+    if (!response.ok) {
+      const errorText = await getErrorText(response);
+      if (response.status === 404) {
+        return new Err(
+          new MCPError(`Message not found: ${messageId}`, { tracked: false })
+        );
+      }
+      return new Err(
+        new MCPError(
+          `Failed to get message body: ${response.status} ${response.statusText} - ${errorText}`
+        )
+      );
+    }
+
+    const message = (await response.json()) as OutlookMessage;
+    const rawBody = message.body?.content ?? "";
+    const actualContentType = message.body?.contentType ?? preferredContentType;
+    const totalLength = rawBody.length;
+
+    const MAX_CHUNK = 50_000;
+    const chunkEnd = Math.min(
+      endChar !== undefined ? endChar : startChar + MAX_CHUNK,
+      totalLength
+    );
+    const bodySlice = rawBody.slice(startChar, chunkEnd);
+    const moreAvailable = chunkEnd < totalLength;
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text: JSON.stringify(
+          {
+            messageId: message.id,
+            subject: message.subject,
+            from: message.from,
+            receivedDateTime: message.receivedDateTime,
+            contentType: actualContentType,
+            bodyLength: totalLength,
+            startChar,
+            endChar: chunkEnd,
+            moreAvailable,
+            body: bodySlice,
+          },
+          null,
+          2
+        ),
+      },
+    ]);
+  },
+
   get_contacts: async (
     { search, top = 20, skip = 0, select },
     { authInfo }

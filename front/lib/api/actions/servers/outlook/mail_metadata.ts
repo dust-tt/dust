@@ -9,7 +9,7 @@ export const OUTLOOK_TOOL_NAME = "outlook" as const;
 export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
   get_messages: {
     description:
-      "Get messages from Outlook inbox. Supports search queries to filter messages and filter by folder name.",
+      "Get message metadata and previews from Outlook. Returns subject, sender, date, and a short bodyPreview snippet (~255 chars) — NOT the full body. If the task requires reading the actual content of any email, you MUST call get_message_body for each message after this call.",
     schema: {
       search: z
         .string()
@@ -292,6 +292,46 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
     displayLabels: {
       running: "Moving messages",
       done: "Move messages",
+    },
+  },
+  get_message_body: {
+    description:
+      "Get the full body of a single Outlook message. ALWAYS call this after get_messages whenever the task requires reading email content — get_messages only returns a short preview. For large emails, use startChar/endChar to read in chunks and repeat until moreAvailable is false.",
+    schema: {
+      messageId: z
+        .string()
+        .describe("The ID of the message (from get_messages)"),
+      preferredContentType: z
+        .enum(["text", "html"])
+        .optional()
+        .describe(
+          "Preferred body content type. Use 'text' (default) to get plain text — Microsoft Graph will convert HTML emails automatically. Use 'html' to get the raw HTML."
+        ),
+      startChar: z
+        .number()
+        .optional()
+        .describe(
+          "Character offset to start reading from (0-indexed). Defaults to 0."
+        ),
+      endChar: z
+        .number()
+        .optional()
+        .describe(
+          "Character offset to stop reading at (exclusive). Defaults to the full body, capped at 50 000 characters per call."
+        ),
+      sharedMailboxAddress: z
+        .string()
+        .optional()
+        .describe(
+          "The email address of the shared mailbox to access (e.g. 'support@company.com'). " +
+            "Leave empty to access your own mailbox. " +
+            "Note: the shared mailbox address must be known in advance — there is no API to auto-discover it."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Fetching message body",
+      done: "Fetch message body",
     },
   },
   get_contacts: {
