@@ -250,6 +250,14 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
         .describe(
           "Whether to save the sent email to the Sent Items folder. Defaults to true."
         ),
+      sharedMailboxAddress: z
+        .string()
+        .optional()
+        .describe(
+          "The email address of the shared mailbox to send from (e.g. 'support@company.com'). " +
+            "Leave empty to send from your own mailbox. " +
+            "Note: the shared mailbox address must be known in advance — there is no API to auto-discover it."
+        ),
     },
     stake: "high",
     displayLabels: {
@@ -396,7 +404,7 @@ export const OUTLOOK_MAIL_SERVER = {
       provider: "microsoft_tools",
       supported_use_cases: ["personal_actions", "platform_actions"],
       scope:
-        "Mail.ReadWrite.Shared Mail.Send Contacts.ReadWrite Contacts.ReadWrite.Shared User.Read SensitivityLabel.Read offline_access",
+        "Mail.ReadWrite.Shared Mail.Send Mail.Send.Shared Contacts.ReadWrite Contacts.ReadWrite.Shared User.Read SensitivityLabel.Read offline_access",
       availableScopes: [
         {
           value: "Mail.ReadWrite",
@@ -415,6 +423,14 @@ export const OUTLOOK_MAIL_SERVER = {
           value: "Mail.Send",
           label: "Send mail",
           description: "Send emails on behalf of the signed-in user.",
+          required: true,
+          impliedBy: "Mail.Send.Shared",
+        },
+        {
+          value: "Mail.Send.Shared",
+          label: "Send mail from shared mailboxes",
+          description: "Send emails from shared and delegated mailboxes.",
+          fallbackScope: "Mail.Send",
         },
         {
           value: "Contacts.ReadWrite",
