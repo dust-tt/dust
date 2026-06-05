@@ -16,6 +16,7 @@ import { DEFAULT_ALERT_UNIQUENESS_KEYS } from "@app/lib/metronome/alerts/default
 import { getMetronomeClient } from "@app/lib/metronome/client";
 import {
   CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
+  CONTRACT_CREDIT_TYPE_POOL,
   CREDIT_TYPE_USD_ID,
   DEV_CREDIT_TYPE_AWU_ID,
   PLAN_CODE_CUSTOM_FIELD_KEY,
@@ -1521,7 +1522,7 @@ const POOL_CONTRACT_CREDIT_FILTER: NonNullable<
 >[number] = {
   entity: "ContractCredit",
   key: CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
-  value: "pool",
+  value: CONTRACT_CREDIT_TYPE_POOL,
 };
 
 // Default alerts applied to all customers (no `customer_id` set on create):
