@@ -171,10 +171,5 @@ export const FreePlanUpgradeFormSchema = z.object({
 export type FreePlanUpgradeFormType = z.infer<typeof FreePlanUpgradeFormSchema>;
 
 export type CheckoutUrlResult =
-  | { mode: "hosted"; checkoutUrl: string; plan: PlanType }
-  | {
-      mode: "embedded";
-      clientSecret: string;
-      sessionId: string;
-      plan: PlanType;
-    };
+  | { mode: "hosted"; checkoutUrl: string }
+  | { mode: "embedded"; clientSecret: string; sessionId: string };
