@@ -1056,6 +1056,7 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
       contentType = "text",
       body,
       saveToSentItems = true,
+      sharedMailboxAddress,
     },
     { authInfo }
   ) => {
@@ -1063,6 +1064,8 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
     if (!accessToken) {
       return new Err(new MCPError("Authentication required"));
     }
+
+    const basePath = getMailboxBasePath(sharedMailboxAddress);
 
     const message: Record<string, unknown> = {
       subject,
@@ -1074,6 +1077,12 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
         emailAddress: { address: email },
       })),
     };
+
+    if (sharedMailboxAddress) {
+      message.from = {
+        emailAddress: { address: sharedMailboxAddress },
+      };
+    }
 
     if (cc && cc.length > 0) {
       message.ccRecipients = cc.map((email) => ({
@@ -1093,16 +1102,20 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
       }));
     }
 
-    const response = await fetchFromOutlook("/me/sendMail", accessToken, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        message,
-        saveToSentItems,
-      }),
-    });
+    const response = await fetchFromOutlook(
+      `${basePath}/sendMail`,
+      accessToken,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message,
+          saveToSentItems,
+        }),
+      }
+    );
 
     if (!response.ok) {
       const errorText = await getErrorText(response);
