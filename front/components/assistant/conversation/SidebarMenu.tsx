@@ -275,7 +275,7 @@ function SearchResults({
 
   return (
     <div className="h-full overflow-y-auto">
-      <NavigationList className="px-2">
+      <div className="px-2">
         <NavigationListCollapsibleSection
           label="Pods"
           type="collapse"
@@ -331,12 +331,11 @@ function SearchResults({
             </>
           )}
         </NavigationListCollapsibleSection>
-      </NavigationList>
+      </div>
 
       <NavigationList className="px-2">
         <NavigationListCollapsibleSection
           label="Conversations"
-          defaultOpen
           action={
             <>
               <DropdownMenu modal={false}>
@@ -1247,15 +1246,14 @@ function UnreadConversationsSection({
 
   return (
     <NavigationListCollapsibleSection
-      label={`${label} (${totalCount})`}
-      className="bg-background dark:bg-background-night rounded-xl border border-border dark:border-border-night px-1 py-2 mx-sidebar-side-spacing"
+  label={`${label} (${totalCount})`}
+      className="bg-background dark:bg-background-night rounded-xl border border-border dark:border-border-night p-1 mx-sidebar-side-spacing"
       action={
         shouldShowMarkAllAsReadButton ? (
           <Button
             size="xmini"
-            variant="ghost"
-            icon={CheckDoubleV2}
-            tooltip="Mark all as read"
+            variant="ghost-secondary"
+            label="Mark as read"
             onClick={() => onMarkAllAsRead(conversations.map((c) => c.sId))}
             isLoading={isMarkingAllAsRead}
           />
@@ -1563,7 +1561,7 @@ function NavigationListWithInbox({
   return (
     <div
       ref={scrollContainerRef}
-      className="dd-privacy-mask h-full w-full overflow-y-auto"
+      className="dd-privacy-mask h-full w-full overflow-y-auto flex flex-col gap-4"
     >
       <AnimatePresence initial={false}>
         {skillSuggestionConversations.length > 0 && (
@@ -1620,7 +1618,6 @@ function NavigationListWithInbox({
       <NavigationList className="px-2">
         <NavigationListCollapsibleSection
           label="Conversations"
-          defaultOpen
           action={
             <>
               <DropdownMenu modal={false}>

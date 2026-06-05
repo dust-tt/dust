@@ -64,7 +64,7 @@ export const AssistantCard = React.forwardRef<
     return (
       <Card
         ref={ref}
-        size="md"
+        size="sm"
         className={cn("s-flex s-flex-col s-gap-3", className)}
         onClick={onClick}
         onContextMenu={onContextMenu}
@@ -79,7 +79,7 @@ export const AssistantCard = React.forwardRef<
             <h3>
               <TruncatedText
                 lineClamp={1}
-                className="s-heading-base s-overflow-hidden s-text-ellipsis s-break-all notranslate"
+                className="s-text-sm s-font-medium s-overflow-hidden s-text-ellipsis s-break-all notranslate"
               >
                 {title}
               </TruncatedText>

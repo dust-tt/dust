@@ -126,8 +126,7 @@ const NavigationListItem = React.forwardRef<
           <div
             className={cn(
               "s-peer/menu-button",
-
-              "s-text-primary dark:s-text-primary-night",
+              "s-text-primary dark:s-text-primary-night s-font-medium",
               "s-box-border s-flex s-items-center s-w-full s-gap-1.5 s-cursor-pointer s-select-none",
               "s-items-center s-outline-none s-rounded-lg s-text-sm s-p-2 s-transition-colors",
               "data-[disabled]:s-pointer-events-none",
@@ -294,6 +293,7 @@ interface NavigationListCollapsibleSectionProps
   label: string;
   icon?: React.ComponentType;
   action?: React.ReactNode;
+  actionOnHover?: boolean;
   defaultOpen?: boolean;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -341,6 +341,7 @@ const NavigationListCollapsibleSection = React.forwardRef<
       label,
       icon,
       action,
+      actionOnHover = true,
       children,
       className,
       type = "static",
@@ -384,7 +385,12 @@ const NavigationListCollapsibleSection = React.forwardRef<
 
     const actionElement = action && (
       <div
-        className={cn("s-flex s-gap-1 s-transition-opacity")}
+        className={cn(
+          "s-flex s-gap-1 s-transition-opacity",
+          actionOnHover
+            ? "[@media(hover:hover)]:s-opacity-0 hover:s-opacity-100 group-has-[:focus-visible]/menu-item:s-opacity-100 group-hover/menu-item:s-opacity-100"
+            : "s-opacity-100"
+        )}
         onClick={(e) => {
           e.stopPropagation();
         }}
@@ -442,7 +448,7 @@ const NavigationListCollapsibleSection = React.forwardRef<
     if (type === "static") {
       return (
         <div ref={ref} className={className} {...props}>
-          <div className="s-group/menu-item s-relative s-flex s-flex-1 s-items-center s-justify-start s-gap-2 s-pl-2 s-py-1.5">
+          <div className="s-group/menu-item s-relative s-flex s-flex-1 s-items-center s-justify-start s-gap-2 s-pl-2 s-py-1.5 s-font-medium">
             {labelElement}
             {actionElement}
           </div>
@@ -460,7 +466,7 @@ const NavigationListCollapsibleSection = React.forwardRef<
 
     return (
       <Collapsible ref={ref} className={className} {...collapsibleProps}>
-        <div className="s-group/menu-item s-relative s-flex s-flex-1 s-items-center s-text-sm s-justify-start s-gap-2 s-pl-2 s-py-1.5 s-text-muted-foreground dark:s-text-muted-foreground-night">
+        <div className="s-group/menu-item s-relative s-flex s-flex-1 s-items-center s-text-sm s-font-medium s-justify-start s-gap-2 s-pl-2 s-py-1.5 s-text-muted-foreground dark:s-text-muted-foreground-night">
           <CollapsibleTrigger hideChevron>{label}</CollapsibleTrigger>
           {actionElement}
         </div>

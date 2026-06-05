@@ -261,7 +261,7 @@ Tree.Item = React.forwardRef<
                   <div
                     ref={labelRef}
                     className={cn(
-                      "s-font-regular s-truncate s-text-sm s-text-foreground dark:s-text-foreground-night",
+                      "s-font-medium s-truncate s-text-sm s-text-foreground dark:s-text-foreground-night",
                       labelClassName
                     )}
                   >
@@ -279,7 +279,7 @@ Tree.Item = React.forwardRef<
             <div
               ref={labelRef}
               className={cn(
-                "s-font-regular s-truncate s-text-sm s-text-foreground dark:s-text-foreground-night",
+                "s-font-medium s-truncate s-text-sm s-text-foreground dark:s-text-foreground-night",
                 labelClassName
               )}
             >

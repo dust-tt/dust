@@ -9,6 +9,9 @@ module.exports = {
     "./components/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
+    fontWeight: {
+      medium: "450",
+    },
     extend: {
       containers: {
         xxxs: "16rem",

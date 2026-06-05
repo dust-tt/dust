@@ -7,6 +7,9 @@ module.exports = {
   prefix: "s-",
   content: ["./src/**/*.{html,js,ts,jsx,tsx}"],
   theme: {
+    fontWeight: {
+      medium: "450",
+    },
     extend: {
       height: {
         175: "700px",
