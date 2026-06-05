@@ -163,19 +163,28 @@ interface SidebarMockProps {
 }
 
 function SidebarMock({ integrationName }: SidebarMockProps) {
-  // Hidden on mobile to keep the chat area wide. The static rows here are
-  // intentional copy that read like real Dust conversation titles for the
-  // target partner.
+  // Hidden on mobile to keep the chat area wide. Matches the real Dust app
+  // sidebar layout: Work/Spaces tabs at the top, then a static conversation
+  // list. No "+ New conversation" CTA — the real product surfaces "+ New"
+  // inline next to the search box, which we omit here for visual density.
   return (
     <aside className="hidden w-56 shrink-0 flex-col border-r border-border bg-muted/10 p-3 md:flex">
-      <button
-        type="button"
-        className="flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/30"
-        aria-hidden
-      >
-        <span className="text-base leading-none">+</span>
-        New conversation
-      </button>
+      <div className="flex items-center gap-2">
+        <span className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium text-foreground">
+          <span
+            aria-hidden
+            className="inline-block h-3.5 w-3.5 rounded bg-foreground/80"
+          />
+          Work
+        </span>
+        <span className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-muted-foreground">
+          <span
+            aria-hidden
+            className="inline-block h-3.5 w-3.5 rounded border border-border"
+          />
+          Spaces
+        </span>
+      </div>
 
       <div className="mt-4 space-y-0.5">
         <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -254,14 +263,20 @@ function AgentHeader({
       initial={prefersReducedMotion ? false : { opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.35, delay: delaySeconds }}
-      className="mb-3 flex items-center gap-2 text-sm font-medium text-foreground"
+      className="mb-2"
     >
-      <DustLogoSquare className="h-4 w-4 shrink-0" />
-      <span>Dust</span>
-      <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-xs text-green-700">
-        <Icon visual={CheckCircle} size="xs" />
-        Completed in {completedInSeconds}s
-      </span>
+      {/* Top line: avatar + agent name, matches the real Dust conversation
+          header where the agent's name renders next to its small avatar. */}
+      <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+        <DustLogoSquare className="h-4 w-4 shrink-0" />
+        <span>dust</span>
+      </div>
+      {/* Second line: subtle "Completed in N sec" status. No green pill — the
+          real app renders this as a small muted clickable row underneath the
+          agent name. */}
+      <div className="ml-5 text-xs text-muted-foreground">
+        Completed in {completedInSeconds} sec
+      </div>
     </motion.div>
   );
 }
@@ -410,26 +425,29 @@ function FollowUpSuggestion({
   );
 }
 
-// Persistent input bar at the bottom of the chat area. Styled to match the
-// real Dust InputBar — rounded-2xl muted-background card with an agent
-// picker chip on the left and a primary send button on the right. Always
-// visible, never animated.
+// Persistent input bar at the bottom of the chat area. Matches the real Dust
+// InputBar: agent picker chip on the left (DustLogoSquare avatar + agent
+// name), placeholder text, and a blue circular send button on the right.
+// Always visible, never animated.
 function PersistentInputBar() {
   return (
     <div className="border-t border-border bg-muted/10 p-3 md:p-4">
       <div
         aria-hidden
-        className="flex items-center gap-2 rounded-2xl border border-border bg-muted-background px-3 py-2.5"
+        className="flex flex-col gap-2 rounded-2xl border border-border bg-muted-background px-3 py-2.5"
       >
-        <span className="inline-flex items-center gap-1 rounded-md bg-foreground/10 px-2 py-0.5 text-xs font-medium text-foreground">
-          @dust
-        </span>
-        <span className="flex-1 select-none truncate text-sm text-muted-foreground">
+        <span className="select-none truncate text-sm text-muted-foreground">
           Ask a follow-up…
         </span>
-        <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-foreground/85 text-white">
-          <Icon visual={ArrowUp} size="xs" />
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-md bg-foreground/[0.06] px-1.5 py-0.5 text-xs font-medium text-foreground">
+            <DustLogoSquare className="h-3.5 w-3.5 shrink-0" />
+            dust
+          </span>
+          <span className="ml-auto inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-500 text-white">
+            <Icon visual={ArrowUp} size="xs" />
+          </span>
+        </div>
       </div>
     </div>
   );

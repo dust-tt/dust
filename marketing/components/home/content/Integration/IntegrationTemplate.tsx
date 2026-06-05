@@ -155,22 +155,24 @@ export default function IntegrationTemplate({
           />
         )}
 
-        {/* Tools Section (if MCP server with tools) */}
-        {integration.tools.length > 0 && (
+        {/* Benefits Section (NEW): 1-3 JTBD cards. Suppressed when the legacy
+            `enrichment.useCases` is present (rendered by UseCasesSection below).
+            Comes BEFORE the Tools section so the page leads with buyer-facing
+            "What you can do" before drilling into the per-action reference. */}
+        {benefits.length > 0 && (
           <div className="container px-2">
-            <ToolsSection
-              tools={integration.tools}
+            <IntegrationBenefitsSection
+              benefits={benefits}
               integrationName={integration.name}
             />
           </div>
         )}
 
-        {/* Benefits Section (NEW): 1-3 JTBD cards. Suppressed when the legacy
-            `enrichment.useCases` is present (rendered by UseCasesSection below). */}
-        {benefits.length > 0 && (
+        {/* Tools Section (if MCP server with tools) */}
+        {integration.tools.length > 0 && (
           <div className="container px-2">
-            <IntegrationBenefitsSection
-              benefits={benefits}
+            <ToolsSection
+              tools={integration.tools}
               integrationName={integration.name}
             />
           </div>
