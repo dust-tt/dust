@@ -2,10 +2,7 @@ import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { InvitationsList } from "@app/components/members/InvitationsList";
 import { InviteEmailButtonWithModal } from "@app/components/members/InviteEmailButtonWithModal";
-import {
-  hasFullUserAccess,
-  type SearchMemberWithWorkspaceType,
-} from "@app/components/members/MemberSelectionTable";
+import { type SearchMemberWithWorkspaceType } from "@app/components/members/MemberSelectionTable";
 import { MembersList } from "@app/components/members/MembersList";
 import { ChangeMemberModal } from "@app/components/workspace/ChangeMemberModal";
 import WorkspaceAccessPanel from "@app/components/workspace/WorkspaceAccessPanel";
@@ -121,7 +118,8 @@ function WorkspaceMembersList({
   }, [setSelectedMember]);
 
   const handleRowClick = useCallback((user: SearchMemberWithWorkspaceType) => {
-    if (hasFullUserAccess(user)) {
+    // This page is admin-only so members are always full UserTypeWithWorkspace.
+    if ("lastLoginAt" in user) {
       setSelectedMember(user);
     }
   }, []);

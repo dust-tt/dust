@@ -86,7 +86,7 @@ async function handler(
       const validUserIds = new Set(memberships.map((m) => m.userId));
       const filteredUsers = users.filter((user) => validUserIds.has(user.id));
 
-      // Non-admins get a response with sensitive fields (email, provider, lastLoginAt etc) stripped away.
+      // Non-admins get a response with sensitive fields (provider, lastLoginAt etc) stripped away.
       if (auth.isAdmin()) {
         return res.status(200).json({
           users: filteredUsers.map((user) => user.toJSON()),

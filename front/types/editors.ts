@@ -11,7 +11,7 @@ export const editorUserSchema = z.object({
     .nullable()
     .optional(),
   username: z.string().optional(),
-  email: z.string().optional(),
+  email: z.string(),
   firstName: z.string(),
   lastName: z.string().nullable(),
   lastLoginAt: z.number().nullable().optional(),

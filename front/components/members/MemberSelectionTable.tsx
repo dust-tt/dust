@@ -28,12 +28,6 @@ export type SearchMemberWithWorkspaceType =
   | LightUserTypeWithWorkspace
   | UserTypeWithWorkspace;
 
-export function hasFullUserAccess(
-  user: SearchMemberType
-): user is UserTypeWithWorkspace {
-  return "email" in user;
-}
-
 export function hasWorkspaceInfo(
   user: SearchMemberType
 ): user is LightUserTypeWithWorkspace | UserTypeWithWorkspace {
@@ -53,7 +47,7 @@ function getMemberTableRows(members: SearchMemberType[]): MemberRowData[] {
     sId: user.sId,
     fullName: user.fullName,
     image: user.image ?? "",
-    email: hasFullUserAccess(user) ? user.email : undefined,
+    email: user.email,
   }));
 }
 

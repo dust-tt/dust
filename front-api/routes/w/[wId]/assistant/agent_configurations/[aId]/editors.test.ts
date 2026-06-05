@@ -94,8 +94,8 @@ describe("GET /api/w/:wId/assistant/agent_configurations/:aId/editors", () => {
     expect(data.editors).toHaveLength(1);
     expect(data.editors[0].sId).toBe(agentOwner.sId);
 
-    // Non-admin should not see sensitive fields.
-    expect(data.editors[0].email).toBeUndefined();
+    // Non-admin should see email but not other sensitive fields.
+    expect(data.editors[0].email).toBeDefined();
     expect(data.editors[0].id).toBeUndefined();
     expect(data.editors[0].provider).toBeUndefined();
     expect(data.editors[0].username).toBeUndefined();
@@ -186,8 +186,8 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/editors", () => 
     const editorIds = data.editors.map((e: { sId: string }) => e.sId);
     expect(editorIds).toContain(agentOwner.sId);
     expect(editorIds).toContain(newEditor.sId);
-    // Non-admin should not see email.
-    expect(data.editors[0].email).toBeUndefined();
+    // Non-admin should see email.
+    expect(data.editors[0].email).toBeDefined();
   });
 
   it("editor should successfully remove another editor", async () => {

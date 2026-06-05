@@ -88,9 +88,9 @@ describe("GET /api/w/[wId]/members/search", () => {
     expect(data.total).toBe(1);
     expect(data.members).toHaveLength(1);
     expect(data.members[0].sId).toBe(user.sId);
-    // Non-admin users still get workspace info (role), but not sensitive user fields.
+    // Non-admin users still get workspace info (role) and email, but not other sensitive user fields.
     expect(data.members[0].workspace).toBeDefined();
-    expect(data.members[0].email).toBeUndefined();
+    expect(data.members[0].email).toBeDefined();
     expect(data.members[0].id).toBeUndefined();
   });
 
@@ -116,8 +116,8 @@ describe("GET /api/w/[wId]/members/search", () => {
     // Workspace info (role) is still present for non-admins.
     expect(member.workspace).toBeDefined();
 
-    // Admin-only user fields are absent.
-    expect(member.email).toBeUndefined();
+    // Email is present for non-admins, but other admin-only user fields are absent.
+    expect(member.email).toBeDefined();
     expect(member.id).toBeUndefined();
     expect(member.provider).toBeUndefined();
     expect(member.username).toBeUndefined();
@@ -146,8 +146,8 @@ describe("GET /api/w/[wId]/members/search", () => {
     expect(data.total).toBe(1);
     expect(data.members).toHaveLength(1);
     expect(data.members[0].sId).toBe(users[0].sId);
-    // Non-admin should not see email.
-    expect(data.members[0].email).toBeUndefined();
+    // Non-admin should see email.
+    expect(data.members[0].email).toBeDefined();
   });
 
   it("allows non-admin users to filter with buildersOnly", async () => {
@@ -179,10 +179,10 @@ describe("GET /api/w/[wId]/members/search", () => {
     // The caller (builder) + users[0] (admin) + users[1] (builder) = 3.
     expect(data.total).toBe(3);
     expect(data.members).toHaveLength(3);
-    // Non-admin still gets workspace (with role), but not sensitive user fields.
+    // Non-admin still gets workspace (with role) and email, but not other sensitive user fields.
     data.members.forEach((member: any) => {
       expect(member.workspace).toBeDefined();
-      expect(member.email).toBeUndefined();
+      expect(member.email).toBeDefined();
     });
   });
 
@@ -214,10 +214,10 @@ describe("GET /api/w/[wId]/members/search", () => {
     // 5 created + 1 from createPrivateApiMockRequest = 6 total.
     expect(data.total).toBe(6);
     expect(data.members).toHaveLength(3);
-    // Every member should have light shape (no sensitive user fields, but workspace is present).
+    // Every member should have light shape (email + workspace present, other sensitive fields absent).
     data.members.forEach((member: any) => {
       expect(member.workspace).toBeDefined();
-      expect(member.email).toBeUndefined();
+      expect(member.email).toBeDefined();
     });
   });
 
