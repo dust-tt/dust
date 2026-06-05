@@ -45,6 +45,8 @@ import type { InboundEmailDkimResult } from "./inbound_auth";
 const REDIS_ORIGIN: RedisUsageTagsType = "email_context";
 const EMAIL_REPLY_CONTEXT_PREFIX = "email-reply-context";
 const EMAIL_REPLY_CONTEXT_TTL_SECONDS = 3 * 60 * 60; // 3 hours
+// Same-email multi-workspace routing is rare and mostly specific to Dust, so a
+// single hardcoded priority workspace is enough for now.
 const EMAIL_PRIORITY_WORKSPACE_IDS = ["0ec9852c2f"] as const;
 
 /**
