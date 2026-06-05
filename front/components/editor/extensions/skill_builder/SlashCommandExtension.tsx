@@ -186,7 +186,7 @@ export function buildSkillBuilderSlashCommandItems({
 interface SkillBuilderSlashCommandDropdownProps
   extends Pick<
     SuggestionProps<SlashCommand>,
-    "clientRect" | "command" | "items" | "query"
+    "clientRect" | "command" | "editor" | "items" | "query" | "range"
   > {
   currentSkillId?: string | null;
   includeSkillSuggestions: boolean;
@@ -211,12 +211,14 @@ const SkillBuilderSlashCommandDropdownWithSkills = forwardRef<
       clientRect,
       command,
       currentSkillId,
+      editor,
       items,
       onClose,
       onSkillDetails,
       onToolDetails,
       owner,
       query,
+      range,
       showCapabilitiesOnly,
     },
     ref
@@ -287,12 +289,14 @@ const SkillBuilderSlashCommandDropdownWithSkills = forwardRef<
           onSkillDetails || onToolDetails
             ? (item) => {
                 if (item.data?.skill) {
+                  editor.chain().focus().deleteRange(range).run();
                   onSkillDetails?.(item.data.skill);
                   onClose();
                   return;
                 }
 
                 if (item.data?.tool) {
+                  editor.chain().focus().deleteRange(range).run();
                   onToolDetails?.(item.data.tool.view);
                   onClose();
                 }

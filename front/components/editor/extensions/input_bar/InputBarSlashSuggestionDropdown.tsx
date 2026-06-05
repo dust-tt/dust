@@ -86,7 +86,7 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
   SlashCommandDropdownRef,
   Pick<
     SuggestionProps<InputBarSlashSuggestionCapability>,
-    "clientRect" | "command" | "query"
+    "clientRect" | "command" | "editor" | "query" | "range"
   > & {
     onClose: () => void;
     onDetailsRef?: RefObject<
@@ -100,7 +100,9 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
     {
       clientRect,
       command,
+      editor,
       query,
+      range,
       onClose,
       onDetailsRef,
       owner,
@@ -215,6 +217,7 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
                   return;
                 }
 
+                editor.chain().focus().deleteRange(range).run();
                 onDetailsRef.current?.(capability);
                 onClose();
               }
