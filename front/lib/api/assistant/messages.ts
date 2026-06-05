@@ -844,9 +844,6 @@ async function renderSingleAgentMessage(
 
   const created = message.createdAt.getTime();
   const completedTs = agentMessage.completedAt?.getTime() ?? null;
-  // costCredits is computed once at the end of the agentic loop and persisted on the agent message
-  // (see computeAndStoreAgentMessageCredits). Older messages predating this have a null value.
-  const costCredits = agentMessage.costCredits ?? null;
   const renderedMessage = {
     id: message.id,
     agentMessageId: agentMessage.id,
@@ -873,7 +870,7 @@ async function renderSingleAgentMessage(
     completionDurationMs: getCompletionDuration(created, completedTs, actions),
     reactions: reactionsByMessageId[message.id] ?? [],
     prunedContext: agentMessage.prunedContext ?? false,
-    costCredits,
+    costCredits: agentMessage.costCredits ?? null,
   } satisfies AgentMessageType;
 
   if (viewType === "full") {
