@@ -11,6 +11,7 @@ import type {
   ScrapeResponse,
 } from "@mendable/firecrawl-js";
 import FirecrawlApp, { FirecrawlError } from "@mendable/firecrawl-js";
+import { z } from "zod";
 
 const credentials = dustManagedServiceCredentials();
 
@@ -222,16 +223,22 @@ type SpiderScrapeResult = {
 
 type SpiderScrapeResponse = SpiderScrapeResult | SpiderScrapeResult[];
 
-type ExaContentsResult = {
-  url?: string;
-  text?: string;
-  title?: string;
-  extras?: { links?: string[] };
-};
-
-type ExaContentsResponse = {
-  results?: ExaContentsResult[];
-};
+const ExaContentsResponseSchema = z.object({
+  results: z
+    .array(
+      z.object({
+        url: z.string().optional(),
+        text: z.string().optional(),
+        title: z.string().optional(),
+        extras: z
+          .object({
+            links: z.array(z.string()).optional(),
+          })
+          .optional(),
+      })
+    )
+    .optional(),
+});
 
 const normalizeSpiderScrapeResult = (
   json: SpiderScrapeResponse
@@ -684,7 +691,19 @@ const browseUrlExa = async (
       url,
     };
   }
-  const result = (json as ExaContentsResponse).results?.[0];
+  const parsed = ExaContentsResponseSchema.safeParse(json);
+  if (!parsed.success) {
+    logger.error(
+      { url, error: parsed.error },
+      "[Exa] Invalid response format from Exa"
+    );
+    return {
+      error: "Invalid response format from Exa",
+      status: 500,
+      url,
+    };
+  }
+  const result = parsed.data.results?.[0];
 
   if (!result) {
     logger.error({ url, status: res.status }, "[Exa] Empty scrape response");
