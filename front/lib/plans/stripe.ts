@@ -1,3 +1,4 @@
+import type { CheckoutSeatType } from "@app/lib/api/checkout/types";
 import config from "@app/lib/api/config";
 import { getMetronomeCustomerStripeCustomerId } from "@app/lib/metronome/client";
 import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
@@ -286,6 +287,8 @@ export const createEmbeddedMetronomeSetupCheckoutSession = async ({
   pricePerSeatCents,
   couponCode,
   user,
+  seatType,
+  targetUserId,
 }: {
   allowedPaymentMethods?: SupportedPaymentMethod[];
   metronomePackageAlias: string;
@@ -296,6 +299,8 @@ export const createEmbeddedMetronomeSetupCheckoutSession = async ({
   pricePerSeatCents?: number;
   couponCode?: string;
   user: UserType;
+  seatType?: CheckoutSeatType;
+  targetUserId?: string;
 }): Promise<{ clientSecret: string; sessionId: string }> => {
   const stripe = getStripeClient();
 
@@ -314,6 +319,12 @@ export const createEmbeddedMetronomeSetupCheckoutSession = async ({
   }
   if (couponCode) {
     metadata.couponCode = couponCode;
+  }
+  if (seatType) {
+    metadata.seatType = seatType;
+  }
+  if (targetUserId) {
+    metadata.targetUserId = targetUserId;
   }
 
   const session = await stripe.checkout.sessions.create({

@@ -323,6 +323,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Skip injecting the OpenAI formatting meta prompt entirely (no markdown/paragraph style guidance)",
     stage: "dust_only",
   },
+  metronome_cp_checkout: {
+    description:
+      "Enable the Metronome-owned payment-gated checkout flow for Business plan activation (replaces direct Stripe charge).",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
