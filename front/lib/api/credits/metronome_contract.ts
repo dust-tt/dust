@@ -87,18 +87,25 @@ export async function getMetronomeContractSummary(
     ? new Date(contract.ending_before).getTime()
     : null;
 
-  const productSeatTypes = await getProductSeatTypes();
-  const soldSeatTypes = getSeatSubscriptionsFromContract(
-    contract,
-    productSeatTypes
-  );
-  const hasPersonalCreditSeats = [...soldSeatTypes.keys()].some(isSeatBased);
+  // `hasContractSeatSubscription` short-circuits on MAU/seat-less contracts
+  // before touching the product map; only resolve seat types (and the cached
+  // product map) when the contract actually sells seats.
+  const hasSeatSubscription = await hasContractSeatSubscription(contract);
+  let hasPersonalCreditSeats = false;
+  if (hasSeatSubscription) {
+    const productSeatTypes = await getProductSeatTypes();
+    const soldSeatTypes = getSeatSubscriptionsFromContract(
+      contract,
+      productSeatTypes
+    );
+    hasPersonalCreditSeats = [...soldSeatTypes.keys()].some(isSeatBased);
+  }
 
   return new Ok({
     planFamily,
     mauTiers,
     contractEndingAtMs,
-    hasSeatSubscription: await hasContractSeatSubscription(contract),
+    hasSeatSubscription,
     hasPersonalCreditSeats,
   });
 }
