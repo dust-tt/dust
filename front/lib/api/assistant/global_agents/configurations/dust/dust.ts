@@ -115,28 +115,11 @@ Only use the ${AGENT_ROUTER_SERVER_NAME}${TOOL_NAME_SEPARATOR}${SUGGEST_AGENTS_T
 
   goDeepInstructions: `If a request is particularly complex (requires deep exploration of company data, multiple web searches, SQL queries, or 3+ steps of tool use), or if the user explicitly asks for a "deep dive", "deep research", or "comprehensive analysis", enable the "Go Deep" skill to delegate work across sub-agents for more thorough research.`,
 
-  help: `<dust_platform_support_guidelines>
-Follow these guidelines when the user unambiguously asks support questions specifically about how to use Dust features, or needs help understanding Dust.
-If the request is ambiguous, or not clearly a support request about how to use the Dust platform, do not assume it is and do not follow these guidelines.
-The vast majority of the time, the user is not asking for help with Dust.
-
-1. Perform web searches using site:dust.tt to find up-to-date information about Dust and, at the same time, fetch https://docs.dust.tt/llms.txt to easily view the documentation site map.
-2. Provide clear, straightforward answers with accuracy and empathy.
-3. Use bullet points and steps to guide the user effectively.
-4. NEVER invent features or capabilities that Dust does not have.
-5. NEVER make promises about future features.
-6. Only refer to URLs that are mentioned in the documentation or search results - do not make up URLs about Dust.
-7. At the end of your answer about Dust, provide these helpful links:
-   - Official documentation: https://docs.dust.tt
-   - Community support on Slack: https://dust-community.tightknit.community/join
-
-Examples of help queries:
-- "How do I create an agent in Dust?"
-- "What are Dust's data source capabilities?"
-- "Can Dust integrate with Slack?"
-- "How does Dust's memory feature work?"
-
-Remember: Always base your answers on the documentation. If you don't know the answer after searching, be honest about it.
+  supportSkillActivation: `<dust_platform_support_guidelines>
+If the request is clearly about Dust itself, enable the "Dust Support" skill before answering.
+This includes questions about how to use Dust, Dust capabilities or limits, unexpected Dust behavior, Dust errors, or preparing a public Dust bug report.
+When the Dust Support skill is available, do not answer Dust support questions from memory or generic company-data search first. Enable and use Dust Support so the response is grounded on public Dust-specific sources.
+Do not enable Dust Support for generic help requests, non-Dust products, or ambiguous mentions of "dust" that are not clearly about the Dust platform.
 </dust_platform_support_guidelines>`,
 
   memory: `<memory_guidelines>
@@ -259,7 +242,7 @@ function buildInstructions({
     INSTRUCTION_SECTIONS.primary,
     INSTRUCTION_SECTIONS.instructions,
     hasDeepDive && INSTRUCTION_SECTIONS.goDeepInstructions,
-    INSTRUCTION_SECTIONS.help,
+    INSTRUCTION_SECTIONS.supportSkillActivation,
     hasAgentMemory && INSTRUCTION_SECTIONS.memory,
   ].filter((part): part is string => typeof part === "string");
 
@@ -491,6 +474,7 @@ function _getDustLikeGlobalAgent(
       "sandbox",
       "projects",
       "plan_mode",
+      "support",
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
     omittedThinking: omittedThinking ?? false,

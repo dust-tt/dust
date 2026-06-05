@@ -10,6 +10,7 @@ import {
   type GlobalSkillDefinition,
 } from "@app/lib/resources/skill/code_defined/shared";
 import { skillAuthoringSkill } from "@app/lib/resources/skill/code_defined/skill_authoring";
+import { supportSkill } from "@app/lib/resources/skill/code_defined/support";
 import { xlsxSkill } from "@app/lib/resources/skill/code_defined/xlsx";
 import type { AllSkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 import { serializeSkillTag } from "@app/lib/skills/format";
@@ -22,6 +23,7 @@ const GLOBAL_SKILLS_ARRAY = ensureUniqueSIds([
   pptxSkill,
   projectsSkill,
   skillAuthoringSkill,
+  supportSkill,
   xlsxSkill,
 ] as const);
 
