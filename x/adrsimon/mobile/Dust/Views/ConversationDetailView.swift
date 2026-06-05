@@ -59,7 +59,7 @@ struct ConversationDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .principal) {
-                Text(conversation.title ?? "New conversation")
+                Text(viewModel.conversationTitle ?? "New conversation")
                     .sparkleCopySm()
                     .foregroundStyle(Color.dustForeground)
                     .lineLimit(1)

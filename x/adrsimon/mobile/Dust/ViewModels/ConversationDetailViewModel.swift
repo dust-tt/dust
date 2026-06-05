@@ -3,6 +3,37 @@ import os
 
 private let logger = Logger(subsystem: AppConfig.bundleId, category: "ConversationDetail")
 
+private enum StreamingReconnect {
+    static let nanosecondsPerSecond: UInt64 = 1_000_000_000
+    static let initialRetryDelayNs: UInt64 = 1_000_000_000 // 1s
+    static let maxRetryDelayNs: UInt64 = 30_000_000_000 // 30s
+    static let cleanReconnectDelayNs: UInt64 = 250_000_000 // 250ms
+}
+
+private struct StreamEventCursor {
+    private(set) var lastEventId: String?
+    private var seenEventIds = Set<String>()
+
+    mutating func shouldProcess(eventId: String) -> Bool {
+        guard !eventId.isEmpty else { return true }
+        guard !seenEventIds.contains(eventId) else { return false }
+        seenEventIds.insert(eventId)
+        lastEventId = eventId
+        return true
+    }
+}
+
+private func nextReconnectDelayNs(shouldBackOff: Bool, retryDelayNs: inout UInt64) -> UInt64 {
+    if shouldBackOff {
+        let delayNs = retryDelayNs
+        retryDelayNs = min(retryDelayNs * 2, StreamingReconnect.maxRetryDelayNs)
+        return delayNs
+    }
+
+    retryDelayNs = StreamingReconnect.initialRetryDelayNs
+    return StreamingReconnect.cleanReconnectDelayNs
+}
+
 @MainActor
 // swiftlint:disable:next type_body_length
 final class ConversationDetailViewModel: ObservableObject {
@@ -15,6 +46,7 @@ final class ConversationDetailViewModel: ObservableObject {
     @Published var state: State = .loading
     @Published var messages: [ConversationMessage] = []
     @Published var hasMore = false
+    @Published var conversationTitle: String?
 
     /// Live reduction of the currently streaming agent message (nil when not streaming).
     @Published var turn: AgentMessageStream?
@@ -69,6 +101,7 @@ final class ConversationDetailViewModel: ObservableObject {
 
     init(conversation: Conversation, workspaceId: String, tokenProvider: TokenProvider) {
         self.conversation = conversation
+        self.conversationTitle = conversation.title
         self.workspaceId = workspaceId
         self.tokenProvider = tokenProvider
     }
@@ -147,8 +180,8 @@ final class ConversationDetailViewModel: ObservableObject {
     private func startConversationEvents() {
         conversationEventsTask?.cancel()
         conversationEventsTask = Task { [weak self, workspaceId, conversationId = conversation.sId, tokenProvider] in
-            var retryDelay: UInt64 = 1_000_000_000 // 1s
-            let maxDelay: UInt64 = 30_000_000_000 // 30s
+            var retryDelayNs = StreamingReconnect.initialRetryDelayNs
+            var cursor = StreamEventCursor()
 
             while !Task.isCancelled {
                 let endpoint = AppConfig.Endpoints.conversationEvents(
@@ -158,33 +191,37 @@ final class ConversationDetailViewModel: ObservableObject {
 
                 let stream = StreamingService.eventStream(
                     endpoint: endpoint,
-                    tokenProvider: tokenProvider
+                    tokenProvider: tokenProvider,
+                    lastEventId: cursor.lastEventId
                 )
 
                 let decoder = JSONDecoder()
+                var shouldBackOff = false
 
                 do {
                     for try await payload in stream {
                         guard !Task.isCancelled else { return }
-                        retryDelay = 1_000_000_000 // reset on success
                         guard let data = payload.data(using: .utf8) else { continue }
 
                         do {
                             let envelope = try decoder.decode(ConversationEventEnvelope.self, from: data)
+                            guard cursor.shouldProcess(eventId: envelope.eventId) else { continue }
+                            retryDelayNs = StreamingReconnect.initialRetryDelayNs
                             await self?.handleConversationEvent(envelope.data)
                         } catch {
-                            logger.debug("Skipping unhandled conversation event: \(error)")
+                            logger.error("Skipping malformed conversation event: \(error)")
                         }
                     }
                 } catch {
                     if Task.isCancelled { return }
+                    shouldBackOff = true
                     logger.error(
-                        "Conversation events stream error: \(error), retrying in \(retryDelay / 1_000_000_000)s"
+                        "Conversation events stream error: \(error), retrying in \(retryDelayNs / StreamingReconnect.nanosecondsPerSecond)s"
                     )
                 }
 
-                try? await Task.sleep(for: .nanoseconds(retryDelay))
-                retryDelay = min(retryDelay * 2, maxDelay)
+                let delayNs = nextReconnectDelayNs(shouldBackOff: shouldBackOff, retryDelayNs: &retryDelayNs)
+                try? await Task.sleep(for: .nanoseconds(delayNs))
             }
         }
     }
@@ -192,8 +229,10 @@ final class ConversationDetailViewModel: ObservableObject {
     private func handleConversationEvent(_ event: ConversationEventData) async {
         switch event {
         case let .agentMessageNew(newEvent):
-            insertMessageIfNew(.agent(newEvent.message))
-            startMessageStream(for: newEvent.message.sId)
+            let inserted = insertMessageIfNew(.agent(newEvent.message))
+            if inserted || isAgentMessageStreaming(id: newEvent.message.sId) {
+                startMessageStream(for: newEvent.message.sId)
+            }
 
         case let .userMessageNew(newEvent):
             removeOptimisticUserMessage()
@@ -204,15 +243,88 @@ final class ConversationDetailViewModel: ObservableObject {
                 msg.visibility = "visible"
             }
 
-        case .agentMessageDone, .conversationTitle, .unknown:
+        case let .agentMessageDone(event):
+            await handleAgentMessageDone(event)
+
+        case let .conversationTitle(event):
+            handleConversationTitle(event.title)
+
+        case .unknown:
             break
         }
     }
 
-    private func insertMessageIfNew(_ msg: ConversationMessage) {
-        guard !messages.contains(where: { $0.id == msg.id }) else { return }
+    @discardableResult
+    private func insertMessageIfNew(_ msg: ConversationMessage) -> Bool {
+        guard !messages.contains(where: { $0.id == msg.id }) else { return false }
         messages.append(msg)
         messages.sort(by: ConversationMessage.byRank)
+        return true
+    }
+
+    private func isAgentMessageStreaming(id: String) -> Bool {
+        messages.contains {
+            guard case let .agent(msg) = $0 else { return false }
+            return msg.sId == id && msg.isStreaming
+        }
+    }
+
+    private func handleConversationTitle(_ title: String) {
+        conversationTitle = title
+        NotificationCenter.default.post(
+            name: .conversationTitleDidChange,
+            object: nil,
+            userInfo: [
+                ConversationTitleNotification.conversationIdKey: conversation.sId,
+                ConversationTitleNotification.titleKey: title,
+            ]
+        )
+    }
+
+    private func handleAgentMessageDone(_ event: AgentMessageDoneEventData) async {
+        guard shouldHandleAgentMessageDone(event) else { return }
+
+        let fallbackStatus = fallbackAgentMessageStatus(fromDoneStatus: event.status)
+        let activeSnapshot = turn?.snapshot.messageId == event.messageId ? turn?.snapshot : nil
+        cancelMessageStreamIfCurrent(messageId: event.messageId)
+
+        if let activeSnapshot {
+            commitTurn(activeSnapshot, status: fallbackStatus, clearTurn: true)
+        } else if let fallbackStatus {
+            updateAgentMessage(id: event.messageId) { msg in
+                msg.status = fallbackStatus
+            }
+        }
+
+        do {
+            let message = try await ConversationService.fetchMessage(
+                workspaceId: workspaceId,
+                conversationId: event.conversationId,
+                messageId: event.messageId,
+                tokenProvider: tokenProvider
+            )
+            upsertMessage(message)
+        } catch {
+            logger.error("Failed to fetch completed agent message \(event.messageId): \(error)")
+        }
+    }
+
+    private func shouldHandleAgentMessageDone(_ event: AgentMessageDoneEventData) -> Bool {
+        if streamingMessageId == event.messageId { return true }
+        if turn?.snapshot.messageId == event.messageId { return true }
+        return isAgentMessageStreaming(id: event.messageId)
+    }
+
+    private func fallbackAgentMessageStatus(fromDoneStatus status: String) -> AgentMessageStatus? {
+        status == "error" ? .failed : nil
+    }
+
+    private func cancelMessageStreamIfCurrent(messageId: String) {
+        guard streamingMessageId == messageId else { return }
+        streamGeneration += 1
+        messageStreamTask?.cancel()
+        messageStreamTask = nil
+        streamingMessageId = nil
     }
 
     // MARK: - Optimistic User Message
@@ -259,8 +371,9 @@ final class ConversationDetailViewModel: ObservableObject {
         }
     }
 
+    // swiftlint:disable:next cyclomatic_complexity
     private func startMessageStream(for messageId: String) {
-        if streamingMessageId == messageId { return }
+        if streamingMessageId == messageId, messageStreamTask != nil { return }
 
         messageStreamTask?.cancel()
         streamGeneration += 1
@@ -271,49 +384,116 @@ final class ConversationDetailViewModel: ObservableObject {
         lastError = nil
 
         messageStreamTask = Task { [weak self, workspaceId, conversationId = conversation.sId, tokenProvider] in
-            let endpoint = AppConfig.Endpoints.messageEvents(
-                workspaceId: workspaceId,
-                conversationId: conversationId,
-                messageId: messageId
-            )
-
-            let stream = StreamingService.eventStream(
-                endpoint: endpoint,
-                tokenProvider: tokenProvider
-            )
-
             let decoder = JSONDecoder()
+            var retryDelayNs = StreamingReconnect.initialRetryDelayNs
+            var cursor = StreamEventCursor()
+            var isTerminated = false
 
-            do {
-                for try await payload in stream {
-                    guard !Task.isCancelled else { break }
-                    guard let data = payload.data(using: .utf8) else { continue }
+            while !Task.isCancelled, !isTerminated {
+                let endpoint = AppConfig.Endpoints.messageEvents(
+                    workspaceId: workspaceId,
+                    conversationId: conversationId,
+                    messageId: messageId
+                )
 
-                    do {
-                        let envelope = try decoder.decode(SSEEnvelope.self, from: data)
-                        await self?.reduce(envelope.data, messageId: messageId)
-                    } catch {
-                        logger.debug("Skipping unhandled message event: \(error)")
+                let stream = StreamingService.eventStream(
+                    endpoint: endpoint,
+                    tokenProvider: tokenProvider,
+                    lastEventId: cursor.lastEventId
+                )
+
+                var didProcessEvent = false
+                var shouldBackOff = false
+
+                do {
+                    for try await payload in stream {
+                        guard !Task.isCancelled else { break }
+                        guard let data = payload.data(using: .utf8) else { continue }
+
+                        do {
+                            let envelope = try decoder.decode(SSEEnvelope.self, from: data)
+                            guard cursor.shouldProcess(eventId: envelope.eventId) else { continue }
+                            retryDelayNs = StreamingReconnect.initialRetryDelayNs
+
+                            let finished = await self?.reduce(envelope.data, messageId: messageId) ?? false
+                            didProcessEvent = true
+                            if finished {
+                                isTerminated = true
+                                break
+                            }
+                        } catch {
+                            logger.error("Skipping malformed message event for \(messageId): \(error)")
+                        }
                     }
-                }
-            } catch {
-                if !Task.isCancelled {
+                } catch {
+                    if Task.isCancelled { break }
+                    shouldBackOff = true
                     logger.error("Message stream error for \(messageId): \(error)")
                 }
+
+                guard !Task.isCancelled, !isTerminated else { break }
+
+                await self?.commitPartialTurn(messageId: messageId, generation: currentGeneration)
+
+                if !shouldBackOff, !didProcessEvent {
+                    let terminal = await self?.refreshMessageIfTerminal(
+                        messageId: messageId,
+                        conversationId: conversationId,
+                        generation: currentGeneration
+                    ) ?? true
+                    if terminal {
+                        isTerminated = true
+                        break
+                    }
+                    shouldBackOff = true
+                }
+
+                let delayNs = nextReconnectDelayNs(shouldBackOff: shouldBackOff, retryDelayNs: &retryDelayNs)
+                try? await Task.sleep(for: .nanoseconds(delayNs))
             }
 
-            // Stream ended — only clean up if we're still the active generation and not
-            // blocked (approval/auth keep their turn alive until the user resolves them).
             guard let self else { return }
-            if streamGeneration == currentGeneration, blockedState == nil {
-                turn = nil
-                streamingMessageId = nil
+            if streamGeneration == currentGeneration, isTerminated {
+                // Terminal events clear the turn through the reducer; this only drops the task reference
+                // for the generation that actually finished.
+                messageStreamTask = nil
             }
         }
     }
 
+    /// Returns true when the current stream loop should stop.
+    /// Stale generations stop immediately; fetch errors return false so the caller retries with backoff.
+    private func refreshMessageIfTerminal(messageId: String, conversationId: String, generation: UInt64) async -> Bool {
+        guard streamGeneration == generation else { return true }
+
+        do {
+            let message = try await ConversationService.fetchMessage(
+                workspaceId: workspaceId,
+                conversationId: conversationId,
+                messageId: messageId,
+                tokenProvider: tokenProvider
+            )
+            upsertMessage(message)
+
+            guard case let .agent(agentMsg) = message else { return false }
+            guard !agentMsg.isStreaming else { return false }
+
+            if streamingMessageId == messageId {
+                blockedState = nil
+                turn = nil
+                streamingMessageId = nil
+                messageStreamTask = nil
+            }
+            return true
+        } catch {
+            logger.error("Failed to refresh idle stream message \(messageId): \(error)")
+            return false
+        }
+    }
+
     /// Blocking events seed `blockedState`; everything else drives the reducer.
-    private func reduce(_ event: StreamingEventData, messageId: String) {
+    @discardableResult
+    private func reduce(_ event: StreamingEventData, messageId: String) -> Bool {
         switch event {
         case let .toolApproveExecution(event):
             blockedState = .approval(ToolApprovalInfo(
@@ -321,18 +501,21 @@ final class ConversationDetailViewModel: ObservableObject {
                 fallbackMessageId: messageId,
                 fallbackConversationId: conversation.sId
             ))
+            return false
 
         case let .toolPersonalAuthRequired(event):
             blockedState = .personalAuth(
                 provider: event.authError.provider,
                 toolName: event.authError.toolName
             )
+            return false
 
         case let .toolFileAuthRequired(event):
             blockedState = .fileAuth(
                 fileName: event.fileAuthError.fileName,
                 toolName: event.fileAuthError.toolName
             )
+            return false
 
         case let .toolAskUserQuestion(event):
             blockedState = .userQuestion(UserQuestionInfo(
@@ -340,26 +523,50 @@ final class ConversationDetailViewModel: ObservableObject {
                 fallbackMessageId: messageId,
                 fallbackConversationId: conversation.sId
             ))
+            return false
 
         default:
             turn?.apply(event)
             if let snapshot = turn?.snapshot, snapshot.isFinished {
-                commitFinishedTurn(snapshot)
+                commitTurn(snapshot, clearTurn: true)
+                return true
             }
+            return false
         }
     }
 
-    private func commitFinishedTurn(_ snapshot: AgentMessageStream.Snapshot) {
+    private func commitPartialTurn(messageId: String, generation: UInt64) {
+        guard streamGeneration == generation,
+              let snapshot = turn?.snapshot,
+              snapshot.messageId == messageId
+        else { return }
+
+        commitTurn(snapshot, clearTurn: false)
+    }
+
+    private func commitTurn(
+        _ snapshot: AgentMessageStream.Snapshot,
+        status fallbackStatus: AgentMessageStatus? = nil,
+        clearTurn: Bool
+    ) {
         updateAgentMessage(id: snapshot.messageId) { msg in
-            msg.content = snapshot.content.isEmpty ? msg.content : snapshot.content
-            msg.chainOfThought = snapshot.chainOfThought
+            if !snapshot.content.isEmpty {
+                msg.content = snapshot.content
+            }
+            if clearTurn || snapshot.chainOfThought != nil {
+                msg.chainOfThought = snapshot.chainOfThought
+            }
             if let files = snapshot.generatedFiles { msg.generatedFiles = files }
             if let citations = snapshot.citations { msg.citations = citations }
-            if let status = snapshot.status { msg.status = status }
+            if let status = snapshot.status ?? fallbackStatus { msg.status = status }
         }
-        lastError = snapshot.error
-        turn = nil
-        streamingMessageId = nil
+        if clearTurn {
+            lastError = snapshot.error
+            blockedState = nil
+            turn = nil
+            streamingMessageId = nil
+            messageStreamTask = nil
+        }
     }
 
     private func updateUserMessage(id: String, mutate: (inout UserMessage) -> Void) {
@@ -380,6 +587,15 @@ final class ConversationDetailViewModel: ObservableObject {
         messages[index] = .agent(agentMsg)
     }
 
+    private func upsertMessage(_ msg: ConversationMessage) {
+        guard let index = messages.firstIndex(where: { $0.id == msg.id }) else {
+            insertMessageIfNew(msg)
+            return
+        }
+        messages[index] = msg
+        messages.sort(by: ConversationMessage.byRank)
+    }
+
     // MARK: - Tool Approval
 
     func validateAction(approved: ActionApproval) async {
@@ -397,6 +613,7 @@ final class ConversationDetailViewModel: ObservableObject {
                 tokenProvider: tokenProvider
             )
             blockedState = nil
+            startMessageStream(for: info.messageId)
         } catch {
             logger.error("Failed to validate action: \(error)")
         }
@@ -417,6 +634,7 @@ final class ConversationDetailViewModel: ObservableObject {
                 tokenProvider: tokenProvider
             )
             blockedState = nil
+            startMessageStream(for: info.messageId)
         } catch {
             logger.error("Failed to answer question: \(error)")
         }
@@ -443,9 +661,9 @@ final class ConversationDetailViewModel: ObservableObject {
                 return
             }
 
-            // Find the message this action belongs to and ensure we're tracking it
+            // Find the message this action belongs to and ensure we're tracking it.
             if let messageId = action.messageId, streamingMessageId == nil {
-                streamingMessageId = messageId
+                startMessageStream(for: messageId)
             }
 
             if let mapped = mapBlockedState(from: action) {
