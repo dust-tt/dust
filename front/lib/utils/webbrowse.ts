@@ -15,6 +15,7 @@ import FirecrawlApp, { FirecrawlError } from "@mendable/firecrawl-js";
 const credentials = dustManagedServiceCredentials();
 
 const SPIDER_API_BASE_URL = "https://api.spider.cloud";
+const EXA_API_BASE_URL = "https://api.exa.ai";
 
 const BINARY_CONTENT_TYPE_PREFIXES = [
   "image/",
@@ -220,6 +221,17 @@ type SpiderScrapeResult = {
 };
 
 type SpiderScrapeResponse = SpiderScrapeResult | SpiderScrapeResult[];
+
+type ExaContentsResult = {
+  url?: string;
+  text?: string;
+  title?: string;
+  extras?: { links?: string[] };
+};
+
+type ExaContentsResponse = {
+  results?: ExaContentsResult[];
+};
 
 const normalizeSpiderScrapeResult = (
   json: SpiderScrapeResponse
@@ -595,6 +607,116 @@ const browseUrlSpider = async (
 };
 
 /**
+ * Exa-based alternative to browse a single URL.
+ *
+ * This uses Exa's /contents endpoint and maps its response to the
+ * same BrowseScrape*Response types used by the Firecrawl implementation.
+ *
+ * NOTE: Screenshot capture is not supported by Exa and screenshotMode is ignored.
+ */
+const browseUrlExa = async (
+  url: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  format: "markdown" | "html" = "markdown",
+  options?: {
+    // Currently ignored for Exa; kept for signature parity.
+    screenshotMode?: "none" | "viewport" | "fullPage";
+    links?: boolean;
+  }
+): Promise<BrowseScrapeSuccessResponse | BrowseScrapeErrorResponse> => {
+  if (!credentials.EXA_API_KEY) {
+    throw new Error("util/webbrowse: a DUST_MANAGED_EXA_API_KEY is required");
+  }
+
+  let res: Response;
+  try {
+    res = await clientFetch(`${EXA_API_BASE_URL}/contents`, {
+      method: "POST",
+      headers: {
+        "x-api-key": credentials.EXA_API_KEY,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        urls: [url],
+        text: true,
+        ...(options?.links ? { extras: { links: true } } : {}),
+      }),
+    });
+  } catch (error) {
+    logger.error(
+      {
+        error,
+        url,
+      },
+      "[Exa] Network or fetch error while scraping URL"
+    );
+    return {
+      error: `Unexpected network error: ${errorToString(error)}`,
+      status: 500,
+      url,
+    };
+  }
+  let json: unknown;
+
+  if (!res.ok) {
+    logger.error({ url, status: res.status }, "[Exa] Scrape request failed");
+    return {
+      error: `Exa scrape request failed with status ${res.status}`,
+      status: res.status,
+      url,
+    };
+  }
+
+  try {
+    json = await res.json();
+  } catch (error) {
+    logger.error(
+      {
+        error,
+        url,
+        status: res.status,
+      },
+      "[Exa] Failed to parse JSON response"
+    );
+    return {
+      error: `Failed to parse Exa response: ${errorToString(error)}`,
+      status: res.status || 500,
+      url,
+    };
+  }
+  const result = (json as ExaContentsResponse).results?.[0];
+
+  if (!result) {
+    logger.error({ url, status: res.status }, "[Exa] Empty scrape response");
+    return {
+      error: "No content found in Exa response",
+      status: 500,
+      url,
+    };
+  }
+  if (!result.text) {
+    logger.error(
+      { url, status: res.status },
+      "[Exa] No text content in response"
+    );
+    return {
+      error: "No text content found in Exa response",
+      status: 500,
+      url,
+    };
+  }
+
+  return {
+    markdown: result.text,
+    links: options?.links ? result.extras?.links : undefined,
+    title: result.title,
+    description: undefined,
+    status: 200,
+    url: result.url ?? url,
+  };
+};
+
+/**
  * Processes multiple URLs concurrently in chunks
  */
 export const browseUrls = async (
@@ -604,7 +726,7 @@ export const browseUrls = async (
   options?: {
     screenshotMode?: "none" | "viewport" | "fullPage";
     links?: boolean;
-    provider?: "firecrawl" | "spider";
+    provider?: "firecrawl" | "spider" | "exa";
   }
 ): Promise<Array<BrowseScrapeSuccessResponse | BrowseScrapeErrorResponse>> => {
   const provider = options?.provider ?? "firecrawl";
@@ -620,6 +742,9 @@ export const browseUrls = async (
       logger.info({ url, provider }, "Browsing URL");
       if (provider === "spider") {
         return browseUrlSpider(url, format, options);
+      }
+      if (provider === "exa") {
+        return browseUrlExa(url, format, options);
       }
       return browseUrlFirecrawl(url, format, options);
     },

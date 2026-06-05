@@ -312,6 +312,14 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable the new user settings v2 experience",
     stage: "dust_only",
   },
+  exa_search: {
+    description: "Use Exa as web search provider",
+    stage: "dust_only",
+  },
+  exa_browse: {
+    description: "Use Exa as web browse provider",
+    stage: "dust_only",
+  },
   force_us_api_url: {
     description:
       "Force the SPA to use the regional API subdomain (us-api/eu-api.dust.tt) " +

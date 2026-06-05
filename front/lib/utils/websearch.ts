@@ -13,6 +13,7 @@ const credentials = dustManagedServiceCredentials();
 
 const SERPAPI_BASE_URL = "https://serpapi.com";
 const SERPER_BASE_URL = "https://google.serper.dev";
+const EXA_BASE_URL = "https://api.exa.ai";
 
 export type BaseWebSearchParams = {
   query: string;
@@ -38,6 +39,11 @@ export type FirecrawlParams = {
   api_key?: string;
 };
 
+export type ExaParams = {
+  provider: "exa";
+  api_key?: string;
+};
+
 const serpapiDefaultOptions = {
   provider: "serpapi",
   engine: "google",
@@ -46,7 +52,7 @@ const serpapiDefaultOptions = {
 } satisfies Omit<BaseWebSearchParams & SerpapiParams, "query">;
 
 export type SearchParams = BaseWebSearchParams &
-  (SerpapiParams | SerperParams | FirecrawlParams);
+  (SerpapiParams | SerperParams | FirecrawlParams | ExaParams);
 
 export type SearchResultItem = {
   title: string;
@@ -219,6 +225,61 @@ const firecrawlSearch = async ({
   return new Ok(results);
 };
 
+const exaSearch = async ({
+  query,
+  num,
+  api_key,
+}: BaseWebSearchParams & ExaParams): Promise<Result<SearchResponse, Error>> => {
+  const exaApiKey = api_key ?? credentials.EXA_API_KEY;
+
+  if (!exaApiKey) {
+    return new Err(
+      new Error("utils/websearch: a DUST_MANAGED_EXA_API_KEY is required")
+    );
+  }
+  let res: Response;
+  try {
+    // eslint-disable-next-line no-restricted-globals
+    res = await fetch(`${EXA_BASE_URL}/search`, {
+      method: "POST",
+      headers: {
+        "x-api-key": exaApiKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        query,
+        numResults: num ?? 10,
+        contents: { highlights: true },
+      }),
+    });
+  } catch (error: any) {
+    logger.error({ error }, "Unexpected error on Exa search");
+    return new Err(normalizeError(error));
+  }
+
+  if (res.ok) {
+    const json = await res.json();
+    if (!("results" in json) || !Array.isArray(json.results)) {
+      return new Ok([]);
+    }
+
+    const results: SearchResultItem[] = json.results.map((result: any) => ({
+      title: result.title ?? result.url ?? "Untitled result",
+      link: result.url,
+      snippet: result.highlights?.[0] ?? "",
+    }));
+
+    return new Ok(results);
+  }
+
+  logger.error(
+    { status: res.status, statusText: res.statusText },
+    "Bad request on Exa"
+  );
+
+  return new Err(new Error(`Bad request on Exa: ${res.statusText}`));
+};
+
 /**
  * Make a web search using SerpAPI, Serper or Firecrawl
  * @param {SearchParams} params
@@ -239,6 +300,9 @@ export const webSearch = async (
     }
     case "firecrawl": {
       return firecrawlSearch(params);
+    }
+    case "exa": {
+      return exaSearch(params);
     }
     default:
       assertNever(provider);
