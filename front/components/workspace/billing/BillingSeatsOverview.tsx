@@ -224,13 +224,15 @@ export function BillingSeatsOverview({ owner }: BillingSeatsOverviewProps) {
                       : ""}
                   </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Icon visual={CoinsStacked03} size="xs" />
-                  <span>
-                    {primaryPlan.awuCredits.toLocaleString()} credits{" "}
-                    {formatAwuCreditsPeriod(primaryPlan.awuCreditsPeriod)}
-                  </span>
-                </div>
+                {primaryPlan.awuCredits > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Icon visual={CoinsStacked03} size="xs" />
+                    <span>
+                      {primaryPlan.awuCredits.toLocaleString()} credits{" "}
+                      {formatAwuCreditsPeriod(primaryPlan.awuCreditsPeriod)}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           );
