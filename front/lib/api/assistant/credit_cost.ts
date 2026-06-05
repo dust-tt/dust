@@ -27,16 +27,16 @@ export function computeAgentMessageCredits({
   actions: CreditActionMinimalInput[];
   isFreeUsage?: boolean;
 }): number | null {
+  if (isFreeUsage) {
+    return 0;
+  }
+
   const finalActions = actions.filter((a) =>
     isToolExecutionStatusFinal(a.status)
   );
 
   if (runUsages.length === 0 && finalActions.length === 0) {
     return null;
-  }
-
-  if (isFreeUsage) {
-    return 0;
   }
 
   return (
