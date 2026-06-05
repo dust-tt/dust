@@ -10,9 +10,19 @@ import mainLogger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
 import { safeSubstring } from "@app/types/shared/utils/string_utils";
 import { Storage } from "@google-cloud/storage";
+import { ApplicationFailure } from "@temporalio/common";
 import { fromError } from "zod-validation-error";
 
 const { DUST_UPSERT_QUEUE_BUCKET, SERVICE_ACCOUNT } = process.env;
+
+// Core rejects some documents with a deterministic, data-shaped error: the accumulated section
+// prefixes exceed half of `max_chunk_size` and the document cannot be tokenized (see
+// core/src/data_sources/splitter.rs). This is surfaced as a generic `internal_server_error` whose
+// message embeds the underlying tokenization failure, so we match on the message text. Such a
+// document will fail identically on every attempt, so retrying only burns worker capacity.
+function isNonRetryableUpsertError(message: string): boolean {
+  return message.includes("Could not tokenize the provided document");
+}
 
 function cleanUtf8Content(content: string): string {
   // Early exit if no \uD sequences found.
@@ -133,6 +143,15 @@ export async function upsertDocumentActivity(
       Date.now() - upsertTimestamp,
       []
     );
+
+    // A document that cannot be tokenized is unprocessable and will fail identically on every
+    // retry, so we fail the activity permanently instead of letting Temporal retry it forever.
+    if (isNonRetryableUpsertError(upsertRes.error.message)) {
+      throw ApplicationFailure.nonRetryable(
+        `Upsert error: ${upsertRes.error.message}`,
+        "upsert_queue_upsert_document_error"
+      );
+    }
 
     const error: WorkflowError = {
       __is_dust_error: true,
