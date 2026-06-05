@@ -412,6 +412,32 @@ export class MembershipResource extends BaseResource<MembershipModel> {
   }
 
   /**
+   * Returns the most recently ended membership row for a user in a workspace,
+   * only if it ended within the last 24 hours. Used to detect a deferred seat
+   * change that just took effect. Returns `null` if no row ended recently
+   * (avoids matching stale historical rows from older seat changes).
+   */
+  static async getRecentlyEndedMembershipOfUserInWorkspace({
+    user,
+    workspace,
+  }: {
+    user: UserResource;
+    workspace: LightWorkspaceType;
+  }): Promise<MembershipResource | null> {
+    const oneDayAgoMs = 24 * 60 * 60 * 1000;
+    const cutoff = new Date(Date.now() - oneDayAgoMs);
+    const row = await this.model.findOne({
+      where: {
+        userId: user.id,
+        workspaceId: workspace.id,
+        endAt: { [Op.lte]: new Date(), [Op.gte]: cutoff },
+      },
+      order: [["endAt", "DESC"]],
+    });
+    return row ? new MembershipResource(this.model, row.get()) : null;
+  }
+
+  /**
    * Returns true when the user has *any* prior membership row in the
    * workspace — current, future-scheduled, or revoked. Used to enforce
    * that `"free"` is a one-shot starter tier: it can only be assigned at

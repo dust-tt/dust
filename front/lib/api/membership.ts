@@ -422,7 +422,7 @@ export async function updateMembershipRoleAndTrack({
  *
  * Best-effort: failures are logged but do not block the seat change.
  */
-async function recalculatePerUserCapAlertForSeatChange({
+export async function recalculatePerUserCapAlertForSeatChange({
   workspace,
   userId,
   previousSeatType,

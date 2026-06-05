@@ -1,3 +1,4 @@
+import { recalculatePerUserCapAlertForSeatChange } from "@app/lib/api/membership";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { isPAYGEnabled } from "@app/lib/credits/credit_payg";
@@ -107,6 +108,26 @@ export async function dispatchSeatBalanceResolved({
       "[CreditStateDispatcher] dispatchSeatBalanceResolved: no active membership, skipping"
     );
     return;
+  }
+
+  // If the user's seat type changed (deferred seat switch just took effect),
+  // recalculate their per-user cap alert so the pool limit portion stays
+  // correct despite the new seat allowance.
+  const previousMembership =
+    await MembershipResource.getRecentlyEndedMembershipOfUserInWorkspace({
+      user,
+      workspace: lightWorkspace,
+    });
+  if (
+    previousMembership &&
+    previousMembership.seatType !== membership.seatType
+  ) {
+    await recalculatePerUserCapAlertForSeatChange({
+      workspace: lightWorkspace,
+      userId,
+      previousSeatType: previousMembership.seatType,
+      newSeatType: membership.seatType,
+    });
   }
 
   const result = await transitionUserCreditState(
