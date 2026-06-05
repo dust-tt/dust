@@ -37,6 +37,7 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import mainLogger from "@app/logger/logger";
 import logger from "@app/logger/logger";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
+import { isHiddenHelperSubAgentId } from "@app/types/assistant/assistant";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
 import { createHash } from "crypto";
@@ -277,8 +278,38 @@ export async function emitMetronomeUsageEventsActivity(
   // Use updatedAt — this is when the agent message finished (not when it was created).
   const timestamp = agentMessage.updatedAt.toISOString();
   const authMethod = userMessage?.userContextAuthMethod ?? null;
-  const agentId = agentMessage.agentConfigurationId ?? null;
   const messageStatus = agentMessage.status ?? "unknown";
+
+  // Attribute usage to the parent (triggering) agent only for *hidden helper*
+  // sub-agents (e.g. the dust-task / dust-planning runs spawned by "go deep").
+  // These run in their own child conversation under the workspace system key and
+  // are not meaningful to users on their own, so surfacing them by their own name
+  // (e.g. "dust-task") is confusing — we attribute their usage to the user-facing
+  // parent agent that spawned them instead. Other sub-agents (real user agents
+  // invoked via run_agent / agent_handover) keep their own attribution.
+  let agentId = agentMessage.agentConfigurationId ?? null;
+  // When we override agentId to the parent, keep the original (child) agent id
+  // around as sub_agent_id so it can still be recovered from the event if needed.
+  let subAgentId: string | null = null;
+  if (
+    isSubAgentMessage &&
+    parentAgentMessageId &&
+    agentId &&
+    isHiddenHelperSubAgentId(agentId)
+  ) {
+    const parentAgentMessageRow = await MessageModel.findOne({
+      where: { sId: parentAgentMessageId, workspaceId: workspace.id },
+      include: [
+        { model: AgentMessageModel, as: "agentMessage", required: true },
+      ],
+    });
+    const parentAgentId =
+      parentAgentMessageRow?.agentMessage?.agentConfigurationId ?? null;
+    if (parentAgentId) {
+      subAgentId = agentId;
+      agentId = parentAgentId;
+    }
+  }
 
   // Resolve API key name from the stored numeric FK.
   let apiKeyName: string | null = null;
@@ -343,6 +374,7 @@ export async function emitMetronomeUsageEventsActivity(
     userId,
     agentMessageId,
     agentId,
+    subAgentId,
     parentAgentMessageId,
     runKey,
     runUsages,
@@ -361,6 +393,7 @@ export async function emitMetronomeUsageEventsActivity(
     userId,
     agentMessageId,
     agentId,
+    subAgentId,
     parentAgentMessageId,
     runKey,
     actions: toolActions,
