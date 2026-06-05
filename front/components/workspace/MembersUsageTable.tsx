@@ -228,11 +228,12 @@ const nameColumn: ColumnDef<RowData, string> = {
     >
       <div>
         <div>{info.row.original.name}</div>
-        {info.row.original.email && (
-          <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-            {info.row.original.email}
-          </div>
-        )}
+        {info.row.original.email &&
+          info.row.original.email !== info.row.original.name && (
+            <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+              {info.row.original.email}
+            </div>
+          )}
       </div>
     </DataTable.CellContent>
   ),

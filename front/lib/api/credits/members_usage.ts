@@ -498,7 +498,9 @@ export async function getMembersUsage({
     return [
       {
         sId: userId,
-        name: u.name,
+        // Prefer the first/last name; fall back to the `name` column (which can
+        // be the email for users provisioned without a display name).
+        name: u.fullName() || u.name,
         email: u.email ?? null,
         image: u.imageUrl ?? null,
         seatType: membership.seatType ?? null,

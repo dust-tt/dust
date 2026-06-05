@@ -7,9 +7,9 @@ type CreditStateMachine = "pool" | "programmatic" | "user";
 // Kept as literals here so this client component doesn't import the server-only
 // state-machine modules.
 const TRANSITION_LOG_MESSAGE: Record<CreditStateMachine, string> = {
-  pool: "[WorkspaceCreditStateMachine] Transition applied",
-  programmatic: "[ProgrammaticCreditStateMachine] Transition applied",
-  user: "[UserCreditStateMachine] Transition applied",
+  pool: "[WorkspaceCreditStateMachine]",
+  programmatic: "[ProgrammaticCreditStateMachine]",
+  user: "[UserCreditStateMachine]",
 };
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;

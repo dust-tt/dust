@@ -3,6 +3,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const inMemoryCache = vi.hoisted(() => new Map<string, string>());
 const deletedKeys = vi.hoisted(() => [] as string[]);
+const mockEsSearchUsers = vi.hoisted(() => vi.fn());
+
+// Elasticsearch isn't available in unit tests; mock the search layer so we can
+// control the returned order and capture the arguments `searchUsers` forwards.
+vi.mock("@app/lib/user_search/search", () => ({
+  searchUsers: mockEsSearchUsers,
+}));
 
 vi.mock("@app/lib/utils/cache", () => ({
   cacheWithRedis: vi
@@ -80,10 +87,11 @@ vi.mock("@app/lib/utils/cache", () => ({
 }));
 
 import { Authenticator } from "@app/lib/auth";
-import type { UserResource } from "@app/lib/resources/user_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
 
 function getCacheKeyForWorkOSUserId(workOSUserId: string): string {
@@ -99,6 +107,48 @@ describe("UserResource", () => {
     workspace = await WorkspaceFactory.basic();
     user = await UserFactory.basic();
     auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+  });
+
+  describe("searchUsers", () => {
+    beforeEach(() => {
+      mockEsSearchUsers.mockReset();
+    });
+
+    it("forwards orderBy and returns users in the order Elasticsearch returned", async () => {
+      const alice = await UserFactory.basic();
+      const bob = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, alice, { role: "user" });
+      await MembershipFactory.associate(workspace, bob, { role: "user" });
+
+      // Elasticsearch returns bob before alice (e.g. name descending); the
+      // resource must forward the sort and preserve this order — its own DB
+      // re-fetch (an `IN` query) does not guarantee ordering.
+      mockEsSearchUsers.mockResolvedValue(
+        new Ok({
+          users: [
+            { user_id: bob.sId, email: "b@example.com", full_name: "Bob" },
+            { user_id: alice.sId, email: "a@example.com", full_name: "Alice" },
+          ],
+          total: 2,
+        })
+      );
+
+      const result = await UserResource.searchUsers(auth, {
+        searchTerm: "",
+        offset: 0,
+        limit: 10,
+        orderBy: { field: "name", direction: "desc" },
+      });
+
+      expect(mockEsSearchUsers).toHaveBeenCalledWith(
+        expect.objectContaining({
+          orderBy: { field: "name", direction: "desc" },
+        })
+      );
+      expect(result.isOk()).toBe(true);
+      const users = result.isOk() ? result.value.users : [];
+      expect(users.map((u) => u.sId)).toEqual([bob.sId, alice.sId]);
+    });
   });
 
   describe("caching behavior", () => {
