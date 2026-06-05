@@ -79,17 +79,48 @@ export class FileStorage {
    */
 
   async uploadFileToBucket(file: formidable.File, destPath: string) {
-    const gcsFile = this.file(destPath);
-    const fileStream = fs.createReadStream(file.filepath);
+    // Stream-based uploads via pipeline() + createWriteStream() bypass the
+    // SDK's built-in retryOptions, so we need application-level retry.
+    // Since the source is a local file we can safely re-create the read stream.
+    for (let attempt = 1; attempt <= GCS_COPY_MAX_RETRIES; attempt++) {
+      try {
+        const gcsFile = this.file(destPath);
+        const fileStream = fs.createReadStream(file.filepath);
 
-    await pipeline(
-      fileStream,
-      gcsFile.createWriteStream({
-        metadata: {
-          contentType: file.mimetype ?? undefined,
-        },
-      })
-    );
+        await pipeline(
+          fileStream,
+          gcsFile.createWriteStream({
+            metadata: {
+              contentType: file.mimetype ?? undefined,
+            },
+          })
+        );
+
+        return;
+      } catch (err) {
+        if (
+          attempt === GCS_COPY_MAX_RETRIES ||
+          !isRetryableGCSError(err as ApiError)
+        ) {
+          throw err;
+        }
+
+        const delayMs = GCS_COPY_BASE_DELAY_MS * attempt ** 2;
+
+        logger.warn(
+          {
+            error: normalizeError(err),
+            destPath,
+            attempt,
+            maxRetries: GCS_COPY_MAX_RETRIES,
+            delayMs,
+          },
+          "GCS file upload failed (stream), retrying."
+        );
+
+        await setTimeoutAsync(delayMs);
+      }
+    }
   }
 
   async uploadRawContentToBucket({
