@@ -51,6 +51,10 @@ const useEditorService = (editor: Editor | null) => {
       insertText: (text: string) => {
         editor?.chain().focus().insertContent(text).run();
       },
+      // Append text at the end of the document (always at the end, regardless of cursor position).
+      appendText: (text: string) => {
+        editor?.chain().focus("end").insertContent(text).run();
+      },
       // Insert mention helper function.
       insertMention: ({
         type,

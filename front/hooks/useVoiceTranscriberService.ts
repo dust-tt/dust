@@ -1,6 +1,14 @@
 /// <reference types="chrome" />
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  hasWebkitAudioContext,
+  quackingVoiceTranscriptService,
+  startLevelMeteringInterval,
+  useElapsedSeconds,
+  type VoiceTranscriberService,
+  type VoiceTranscriberStatus,
+} from "@app/hooks/utils/voice";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   isBrowserExtension,
@@ -22,26 +30,12 @@ const MAXIMUM_FILE_SIZE_FOR_INPUT_BAR_IN_BYTES = 1200 * 1024;
 
 const MICROPHONE_POPUP_TIMEOUT_MS = 60_000; // 1 minute
 
-type VoiceTranscriberStatus =
-  | "idle"
-  | "authorizing_microphone"
-  | "recording"
-  | "transcribing";
-
 interface UseVoiceTranscriberServiceParams {
   owner: LightWorkspaceType;
   onTranscribeDelta?: (delta: string) => void;
   onTranscribeComplete?: (transcript: AugmentedMessage[]) => void;
   onError?: (error: Error) => void;
   fileUploaderService: FileUploaderService;
-}
-
-export interface VoiceTranscriberService {
-  status: VoiceTranscriberStatus;
-  level: number;
-  elapsedSeconds: number;
-  startRecording: () => Promise<void>;
-  stopRecording: () => Promise<void>;
 }
 
 export function useVoiceTranscriberService({
@@ -53,7 +47,7 @@ export function useVoiceTranscriberService({
 }: UseVoiceTranscriberServiceParams): VoiceTranscriberService {
   const [status, setStatus] = useState<VoiceTranscriberStatus>("idle");
   const [level, setLevel] = useState(0);
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const elapsedSeconds = useElapsedSeconds(status);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -111,27 +105,11 @@ export function useVoiceTranscriberService({
         analyserRef.current = analyser;
         sourceNodeRef.current = source;
 
-        const buffer = new Uint8Array(analyser.frequencyBinCount);
-        const tick = () => {
-          const a = analyserRef.current;
-          if (!a) {
-            return;
-          }
-
-          a.getByteTimeDomainData(buffer);
-          // Compute RMS level from time-domain data. Normalize to [0, 1].
-          let sumSquares = 0;
-          for (let i = 0; i < buffer.length; i++) {
-            const v = (buffer[i] - 128) / 128; // [-1, 1]
-            sumSquares += v * v;
-          }
-          const rms = Math.sqrt(sumSquares / buffer.length); // ~0..1
-          // Map RMS to a smoother visual level with light bias to show activity.
-          const visual = Math.max(0, Math.min(1, (rms - 0.02) / 0.3));
-
-          setLevel(visual);
-        };
-        intervalRef.current = setInterval(tick, 250);
+        intervalRef.current = startLevelMeteringInterval(
+          analyser,
+          analyserRef,
+          setLevel
+        );
       } catch {
         // If metering fails (unsupported), we silently ignore.
         audioContextRef.current = null;
@@ -149,25 +127,6 @@ export function useVoiceTranscriberService({
       stopTracks(streamRef.current);
     };
   }, [stopLevelMetering]);
-
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
-
-    if (status === "recording") {
-      interval = setInterval(() => {
-        setElapsedSeconds((prev) => prev + 1);
-      }, 1000);
-    } else {
-      // Reset timer when not recording.
-      setElapsedSeconds(0);
-    }
-
-    return () => {
-      if (interval) {
-        clearInterval(interval);
-      }
-    };
-  }, [status]);
 
   const startRecording = useCallback(async () => {
     if (status === "recording" || status === "authorizing_microphone") {
@@ -323,14 +282,6 @@ export function useVoiceTranscriberService({
 
 // Helpers ---------------------------------------------------------------------
 
-const quackingVoiceTranscriptService: VoiceTranscriberService = {
-  status: "idle",
-  level: 0,
-  elapsedSeconds: 0,
-  startRecording: () => Promise.resolve(),
-  stopRecording: () => Promise.resolve(),
-};
-
 const stopTracks = (stream: MediaStream | null) => {
   if (!stream) {
     return;
@@ -485,14 +436,6 @@ const createRecorder = (
   };
   return recorder;
 };
-
-// Type guard to check for prefixed webkitAudioContext without unsafe casts.
-function hasWebkitAudioContext(
-  w: Window & typeof globalThis
-  // @ts-expect-error - Type 'Window' is not assignable to type 'Window & typeof globalThis'.
-): w is Window & { webkitAudioContext: typeof AudioContext } {
-  return "webkitAudioContext" in w;
-}
 
 // There is no built-in SSE support in the Fetch API for POST, so we manually parse the stream.
 const readSSEFromPostRequest = async ({

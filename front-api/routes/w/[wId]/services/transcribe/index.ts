@@ -11,6 +11,7 @@ import { apiError } from "@front-api/middlewares/utils";
 import type { HttpBindings } from "@hono/node-server";
 import formidable from "formidable";
 import { stream } from "hono/streaming";
+import getToken from "./get-token";
 
 export type PostTranscribeResponseBody = { text: string };
 
@@ -149,5 +150,7 @@ app.post("/", async (ctx) => {
     }
   });
 });
+
+app.route("/get-token", getToken);
 
 export default app;
