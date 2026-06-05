@@ -337,12 +337,14 @@ export async function processEventForDatabase(
       break;
   }
 
-  if (TERMINAL_AGENT_MESSAGE_EVENT_TYPES.includes(event.type)) {
-    await ConversationResource.setIsRunningAgentLoop(auth, {
-      conversation,
-      isRunningAgentLoop: false,
-    });
+  if (!TERMINAL_AGENT_MESSAGE_EVENT_TYPES.includes(event.type)) {
+    return;
   }
+
+  await ConversationResource.setIsRunningAgentLoop(auth, {
+    conversation,
+    isRunningAgentLoop: false,
+  });
 }
 
 // Process unread state for agent events before publishing to Redis.
@@ -371,7 +373,6 @@ async function processEventForUnreadState(
           event.type === "agent_error" || event.type === "tool_error"
             ? "error"
             : "success",
-        costCredits: null,
       },
     });
   }
@@ -393,22 +394,22 @@ export async function updateResourceAndPublishEvent(
     modelInteractionDurationMs?: number;
   }
 ): Promise<void> {
-  // Process DB updates and unread state for all events. costCredits is threaded through
-  // to the agent_message_done event for the live client, but the value is computed in a
-  // later change; it is null here until the credit-cost computation lands.
-  await Promise.all([
-    processEventForDatabase(auth, {
-      event,
-      agentMessage,
-      step,
-      conversation,
-      modelInteractionDurationMs,
-    }),
-    processEventForUnreadState(auth, {
-      event,
-      conversation,
-    }),
-  ]);
+  // Persist the DB updates first, then publish the terminal done event. The credit cost is
+  // computed and persisted later, in the finalize activities (see finalize.ts), so it is
+  // intentionally not carried on the terminal events here — clients read it from the messages /
+  // conversation API on their next revalidation.
+  await processEventForDatabase(auth, {
+    event,
+    agentMessage,
+    step,
+    conversation,
+    modelInteractionDurationMs,
+  });
+
+  await processEventForUnreadState(auth, {
+    event,
+    conversation,
+  });
 
   // All events go through the coalescer, which handles batching logic internally.
   const key = `${conversation.sId}-${event.messageId}-${step}`;
