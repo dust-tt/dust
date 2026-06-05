@@ -680,10 +680,14 @@ const InputBarContainer = ({
 
   const voiceLiveTranscriberService = useVoiceLiveTranscriberService({
     owner,
+    onPartialTranscript: (text) => {
+      editorService.setVoicePartialText(text);
+    },
     onTranscribeDelta: (text) => {
-      editorService.appendText(text);
+      editorService.commitVoicePartialText(text);
     },
     onTranscribeComplete: () => {
+      editorService.finalizeVoicePartial();
       if (isCompactRef.current) {
         void submitCompactVoiceMessageRef.current?.();
       }

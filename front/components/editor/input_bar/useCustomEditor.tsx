@@ -12,6 +12,7 @@ import { SkillNode } from "@app/components/editor/extensions/input_bar/SkillNode
 import { URLDetectionExtension } from "@app/components/editor/extensions/input_bar/URLDetectionExtension";
 import { URLStorageExtension } from "@app/components/editor/extensions/input_bar/URLStorageExtension";
 import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
+import { VoicePartialNode } from "@app/components/editor/extensions/VoicePartialExtension";
 import { BlockquoteExtension } from "@app/components/editor/input_bar/BlockquoteExtension";
 import { cleanupPastedHTML } from "@app/components/editor/input_bar/cleanupPastedHTML";
 import { emojiPluginKey } from "@app/components/editor/input_bar/emojiSuggestion";
@@ -54,6 +55,97 @@ const useEditorService = (editor: Editor | null) => {
       // Append text at the end of the document (always at the end, regardless of cursor position).
       appendText: (text: string) => {
         editor?.chain().focus("end").insertContent(text).run();
+      },
+      // Insert or update the animated voicePartial node at the end of the document.
+      // Called on each partial transcript while voice recording is active.
+      setVoicePartialText: (text: string) => {
+        if (!editor) {
+          return;
+        }
+        let partialPos: number | null = null;
+        editor.state.doc.descendants((node, pos) => {
+          if (node.type.name === "voicePartial" && partialPos === null) {
+            partialPos = pos;
+            return false;
+          }
+          return true;
+        });
+        if (partialPos !== null) {
+          const p = partialPos;
+          editor
+            .chain()
+            .command(({ tr }) => {
+              tr.setNodeMarkup(p, undefined, { text });
+              return true;
+            })
+            .run();
+        } else {
+          editor
+            .chain()
+            .focus("end")
+            .insertContent({ type: "voicePartial", attrs: { text } })
+            .run();
+        }
+      },
+      // Replace the voicePartial node with the committed plain text.
+      // Called when the transcription engine finalizes a segment.
+      commitVoicePartialText: (committedText: string) => {
+        if (!editor) {
+          return;
+        }
+        let found = false;
+        editor.state.doc.descendants((node, pos) => {
+          if (node.type.name === "voicePartial" && !found) {
+            found = true;
+            const nodeSize = node.nodeSize;
+            editor
+              .chain()
+              .command(({ tr }) => {
+                if (committedText) {
+                  tr.replaceWith(
+                    pos,
+                    pos + nodeSize,
+                    editor.schema.text(committedText)
+                  );
+                } else {
+                  tr.delete(pos, pos + nodeSize);
+                }
+                return true;
+              })
+              .run();
+            return false;
+          }
+          return true;
+        });
+        if (!found && committedText) {
+          editor.chain().focus("end").insertContent(committedText).run();
+        }
+      },
+      // Convert any pending voicePartial node to plain text in place.
+      // Called when recording stops to finalize whatever partial was last shown.
+      finalizeVoicePartial: () => {
+        if (!editor) {
+          return;
+        }
+        editor.state.doc.descendants((node, pos) => {
+          if (node.type.name === "voicePartial") {
+            const text = node.attrs.text as string;
+            const nodeSize = node.nodeSize;
+            editor
+              .chain()
+              .command(({ tr }) => {
+                if (text) {
+                  tr.replaceWith(pos, pos + nodeSize, editor.schema.text(text));
+                } else {
+                  tr.delete(pos, pos + nodeSize);
+                }
+                return true;
+              })
+              .run();
+            return false;
+          }
+          return true;
+        });
       },
       // Insert mention helper function.
       insertMention: ({
@@ -333,6 +425,7 @@ export const buildEditorExtensions = ({
       }),
     }),
     SkillNode,
+    VoicePartialNode,
     createEmojiExtension({ onActiveChange: notifySuggestionActiveChange }),
     Placeholder.configure({
       placeholder: ({ node }) => {
