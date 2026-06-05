@@ -127,7 +127,7 @@ export function useUpdateWorkspaceRegionalModelsOnly({
           sendNotification({
             type: "error",
             title: "Update failed",
-            description: "Failed to update regional models setting.",
+            description: "Some active agents may not be eligible for regional models.",
           });
           return false;
         }
