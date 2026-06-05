@@ -16,6 +16,7 @@ import {
   dispatchSeatLowBalance,
   syncPoolCreditStateFromBalance,
 } from "@app/lib/api/metronome/credit_state_dispatcher";
+import { reconcileWorkspaceUserCreditStates } from "@app/lib/api/metronome/reconcile_credit_state";
 import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import { Authenticator } from "@app/lib/auth";
@@ -1220,6 +1221,21 @@ export async function processMetronomeWebhook({
       await syncPoolCreditStateFromBalance({
         workspace,
         metronomeCustomerId: customerId,
+      });
+
+      // Reconcile per-user credit states against the new contract's live
+      // per-seat balances. Seats were synced to this contract at provision
+      // time (`syncContractQuantities` → `syncSeatCount`), but that path does
+      // not touch per-user credit states; now that the contract is active the
+      // balances are live, so this lands each user in the right seat↔pool
+      // state. Without it, a switch that changes seat allocations (e.g. moving
+      // onto a business plan) leaves users stuck in their previous state.
+      // Mirrors the pool reconcile above; pass the new contract id directly
+      // since the subscription swap below may not have happened yet.
+      await reconcileWorkspaceUserCreditStates({
+        workspace: renderLightWorkspaceType({ workspace }),
+        metronomeCustomerId: customerId,
+        metronomeContractId: contractId,
       });
 
       // Read the PLAN_CODE custom field to know which plan to swap the
