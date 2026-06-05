@@ -1,4 +1,9 @@
 export const WHITELISTABLE_FEATURES_CONFIG = {
+  live_speech_to_text: {
+    description:
+      "Enable real-time speech-to-text in the input bar via ElevenLabs WebSocket streaming",
+    stage: "dust_only",
+  },
   advanced_notion_management: {
     description:
       "Advanced features for Notion workspace management shown to admins",
