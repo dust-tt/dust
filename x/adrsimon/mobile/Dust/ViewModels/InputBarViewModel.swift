@@ -309,7 +309,10 @@ final class InputBarViewModel: ObservableObject {
             if let transcriptionError = speechService.error {
                 error = transcriptionError
             } else {
-                messageText = speechService.transcribedText
+                let transcribed = speechService.transcribedText
+                if !transcribed.isEmpty {
+                    messageText = messageText.isEmpty ? transcribed : messageText + " " + transcribed
+                }
             }
             speechService.transcribedText = ""
         }
@@ -363,7 +366,6 @@ final class InputBarViewModel: ObservableObject {
             let result = try await operation()
             isSending = false
             messageText = ""
-            selectedAgent = nil
             attachments = []
             selectedCapabilities = []
             selectedKnowledgeItems = []
