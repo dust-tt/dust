@@ -1255,6 +1255,7 @@ function UnreadConversationsSection({
             label="Mark as read"
             onClick={() => onMarkAllAsRead(conversations.map((c) => c.sId))}
             isLoading={isMarkingAllAsRead}
+            className="font-medium"
           />
         ) : null
       }
