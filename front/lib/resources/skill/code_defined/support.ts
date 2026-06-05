@@ -2,8 +2,6 @@ import { WEB_SEARCH_BROWSE_SERVER_NAME } from "@app/lib/api/actions/servers/web_
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 
 const SUPPORT_INSTRUCTIONS = `
-Use this skill when the user asks for help with Dust itself, asks how to use a Dust feature, asks about Dust capabilities or limits, or reports unexpected Dust behavior.
-
 Ground every answer on the best available Dust-specific evidence. Start with public Dust surfaces:
 - Dust documentation: https://docs.dust.tt and the documentation map at https://docs.dust.tt/llms.txt
 - Dust open-source code and public issues: https://github.com/dust-tt/dust and https://github.com/dust-tt/dust/issues

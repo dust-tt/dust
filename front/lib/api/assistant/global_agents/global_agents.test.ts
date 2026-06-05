@@ -54,16 +54,13 @@ describe("getGlobalAgents custom model agents", () => {
 
     expect(agents).toHaveLength(1);
     expect(agents[0].instructions).toContain(
-      'If the request is clearly about Dust itself, enable the "Dust Support" skill before answering.'
+      'For clear Dust platform support requests, enable the "Dust Support" skill before answering.'
     );
     expect(agents[0].instructions).toContain(
-      "This includes questions about how to use Dust"
+      "This includes Dust usage, capabilities, limits"
     );
     expect(agents[0].instructions).toContain(
-      "Enable and use Dust Support so the response is grounded on public Dust-specific sources."
-    );
-    expect(agents[0].instructions).toContain(
-      "Do not enable Dust Support for generic help requests"
+      'Do not enable it for generic help requests, non-Dust products, or ambiguous mentions of "dust".'
     );
     expect(agents[0].instructions).not.toContain(
       "https://dust-community.tightknit.community/join"

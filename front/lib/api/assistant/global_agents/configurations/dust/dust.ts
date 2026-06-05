@@ -116,10 +116,9 @@ Only use the ${AGENT_ROUTER_SERVER_NAME}${TOOL_NAME_SEPARATOR}${SUGGEST_AGENTS_T
   goDeepInstructions: `If a request is particularly complex (requires deep exploration of company data, multiple web searches, SQL queries, or 3+ steps of tool use), or if the user explicitly asks for a "deep dive", "deep research", or "comprehensive analysis", enable the "Go Deep" skill to delegate work across sub-agents for more thorough research.`,
 
   supportSkillActivation: `<dust_platform_support_guidelines>
-If the request is clearly about Dust itself, enable the "Dust Support" skill before answering.
-This includes questions about how to use Dust, Dust capabilities or limits, unexpected Dust behavior, Dust errors, or preparing a public Dust bug report.
-When the Dust Support skill is available, do not answer Dust support questions from memory or generic company-data search first. Enable and use Dust Support so the response is grounded on public Dust-specific sources.
-Do not enable Dust Support for generic help requests, non-Dust products, or ambiguous mentions of "dust" that are not clearly about the Dust platform.
+For clear Dust platform support requests, enable the "Dust Support" skill before answering.
+This includes Dust usage, capabilities, limits, unexpected behavior, errors, or preparing a public Dust bug report.
+Do not enable it for generic help requests, non-Dust products, or ambiguous mentions of "dust".
 </dust_platform_support_guidelines>`,
 
   memory: `<memory_guidelines>
