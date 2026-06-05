@@ -93,7 +93,10 @@ export function Navigation({
             side="left"
             className="flex w-full max-w-xs flex-1 bg-sidebar-background dark:bg-sidebar-background-night"
           >
-            <SheetHeader className="bg-sidebar-background dark:bg-sidebar-background-night p-0" hideButton={true}>
+            <SheetHeader
+              className="bg-sidebar-background dark:bg-sidebar-background-night p-0"
+              hideButton={true}
+            >
               <VisuallyHidden>
                 <SheetTitle className="hidden" />
               </VisuallyHidden>
