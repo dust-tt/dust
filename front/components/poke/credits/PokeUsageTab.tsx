@@ -4,10 +4,14 @@ import { PokeMembersUsageTable } from "@app/components/poke/credits/PokeMembersU
 import { ReconcileCreditStateButton } from "@app/components/poke/credits/ReconcileCreditStateButton";
 import type {
   PokeCreditUsageConfig,
-  PokeProgrammaticAlertIds,
+  PokeProgrammaticAlerts,
   PokeStripeSubscriptionWire,
 } from "@app/lib/api/poke/workspace_info";
-import type { DefaultMetronomeAlertIds } from "@app/lib/metronome/alerts/default_alerts";
+import type { DefaultMetronomeAlerts } from "@app/lib/metronome/alerts/default_alerts";
+import type {
+  MetronomeAlertRef,
+  MetronomeAlertStatus,
+} from "@app/lib/metronome/alerts/types";
 import { getMetronomeAlertUrl } from "@app/lib/metronome/urls";
 import { usePokeAwuPoolSummary } from "@app/poke/swr/credits";
 import type {
@@ -21,9 +25,7 @@ import {
   AlertCircle,
   Chip,
   ContentMessage,
-  Icon,
   LinkExternal01,
-  LinkWrapper,
   Spinner,
 } from "@dust-tt/sparkle";
 
@@ -34,37 +36,60 @@ interface PokeUsageTabProps {
   poolCreditState: WorkspacePoolCreditState;
   programmaticCreditState: WorkspaceProgrammaticCreditState;
   creditUsageConfig: PokeCreditUsageConfig | null;
-  poolAlertId: string | null;
-  programmaticAlertIds: PokeProgrammaticAlertIds;
-  usageCapAlertId: string | null;
-  defaultAlertIds: DefaultMetronomeAlertIds;
+  poolAlert: MetronomeAlertRef | null;
+  programmaticAlerts: PokeProgrammaticAlerts;
+  usageCapAlert: MetronomeAlertRef | null;
+  defaultAlerts: DefaultMetronomeAlerts;
 }
 
 function formatCredits(credits: number): string {
   return Math.round(credits).toLocaleString("en-US");
 }
 
-// A deep-link to a Metronome alert: an optional label plus an external-link
-// icon. Renders nothing when the alert id is unknown (alert not configured).
-function AlertLink({
-  alertId,
-  label,
-}: {
-  alertId: string | null;
-  label?: string;
-}) {
-  if (!alertId) {
+// Maps a Metronome alert's evaluation status to a Chip color and readable
+// label. `in_alarm` (breached) reads red; `ok` (resolved) green; `evaluating`
+// (pending) amber; `null` (unknown) neutral.
+function alertStatusChip(status: MetronomeAlertStatus): {
+  color: "rose" | "success" | "warning" | "info";
+  label: string;
+} {
+  switch (status) {
+    case "in_alarm":
+      return { color: "rose", label: "in alarm" };
+    case "ok":
+      return { color: "success", label: "ok" };
+    case "evaluating":
+      return { color: "warning", label: "evaluating" };
+    case null:
+      return { color: "info", label: "unknown" };
+    default:
+      assertNeverAndIgnore(status);
+      return { color: "info", label: "unknown" };
+  }
+}
+
+interface AlertChipProps {
+  alert: MetronomeAlertRef | null;
+  label: string;
+}
+
+// A clickable badge deep-linking to a Metronome alert, labelled with the alert
+// name and its current evaluation status and colored by that status. Renders
+// nothing when the alert is unknown (not configured).
+function AlertChip({ alert, label }: AlertChipProps) {
+  if (!alert) {
     return null;
   }
+  const { color, label: statusLabel } = alertStatusChip(alert.status);
   return (
-    <LinkWrapper
-      href={getMetronomeAlertUrl(alertId)}
+    <Chip
+      size="xs"
+      color={color}
+      label={`${label}: ${statusLabel}`}
+      icon={LinkExternal01}
+      href={getMetronomeAlertUrl(alert.id)}
       target="_blank"
-      className="inline-flex items-center gap-0.5 text-xs text-highlight-400"
-    >
-      {label ? <span>{label}</span> : null}
-      <Icon visual={LinkExternal01} size="xs" />
-    </LinkWrapper>
+    />
   );
 }
 
@@ -97,16 +122,16 @@ interface PokeCreditStatesCardProps {
   owner: WorkspaceType;
   poolCreditState: WorkspacePoolCreditState;
   programmaticCreditState: WorkspaceProgrammaticCreditState;
-  poolAlertId: string | null;
-  programmaticAlertIds: PokeProgrammaticAlertIds;
+  poolAlert: MetronomeAlertRef | null;
+  programmaticAlerts: PokeProgrammaticAlerts;
 }
 
 function PokeCreditStatesCard({
   owner,
   poolCreditState,
   programmaticCreditState,
-  poolAlertId,
-  programmaticAlertIds,
+  poolAlert,
+  programmaticAlerts,
 }: PokeCreditStatesCardProps) {
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-border p-4 dark:border-border-night">
@@ -123,7 +148,7 @@ function PokeCreditStatesCard({
             color={creditStateChipColor(poolCreditState)}
             label={poolCreditState}
           />
-          <AlertLink alertId={poolAlertId} label="balance alert" />
+          <AlertChip alert={poolAlert} label="balance alert" />
           <CreditStateLogsLink machine="pool" workspaceId={owner.sId} />
           <ReconcileCreditStateButton owner={owner} target="pool" />
         </div>
@@ -136,14 +161,11 @@ function PokeCreditStatesCard({
             color={creditStateChipColor(programmaticCreditState)}
             label={programmaticCreditState}
           />
-          <AlertLink alertId={programmaticAlertIds.cap} label="cap alert" />
-          <AlertLink
-            alertId={programmaticAlertIds.warning}
-            label="warning (80%)"
-          />
-          <AlertLink alertId={programmaticAlertIds.low} label="low (-100)" />
-          <AlertLink
-            alertId={programmaticAlertIds.critical}
+          <AlertChip alert={programmaticAlerts.cap} label="cap alert" />
+          <AlertChip alert={programmaticAlerts.warning} label="warning (80%)" />
+          <AlertChip alert={programmaticAlerts.low} label="low (-100)" />
+          <AlertChip
+            alert={programmaticAlerts.critical}
             label="critical (-10)"
           />
           <CreditStateLogsLink machine="programmatic" workspaceId={owner.sId} />
@@ -156,12 +178,12 @@ function PokeCreditStatesCard({
 
 interface PokeCreditConfigCardProps {
   creditUsageConfig: PokeCreditUsageConfig | null;
-  usageCapAlertId: string | null;
+  usageCapAlert: MetronomeAlertRef | null;
 }
 
 function PokeCreditConfigCard({
   creditUsageConfig,
-  usageCapAlertId,
+  usageCapAlert,
 }: PokeCreditConfigCardProps) {
   const paygEnabled = creditUsageConfig?.paygEnabled ?? false;
   const usageCapCredits = creditUsageConfig?.usageCapCredits ?? null;
@@ -192,7 +214,7 @@ function PokeCreditConfigCard({
             {hasUsageCap ? (
               <>
                 {formatCredits(usageCapCredits)} credits
-                <AlertLink alertId={usageCapAlertId} label="alert" />
+                <AlertChip alert={usageCapAlert} label="alert" />
               </>
             ) : (
               "disabled"
@@ -213,16 +235,14 @@ function PokeCreditConfigCard({
 }
 
 interface PokeDefaultAlertsCardProps {
-  defaultAlertIds: DefaultMetronomeAlertIds;
+  defaultAlerts: DefaultMetronomeAlerts;
 }
 
 // Account-wide default alerts (created by the Metronome setup script, shared
 // across all customers). Hidden entirely when none resolve (setup not run in
 // this environment).
-function PokeDefaultAlertsCard({
-  defaultAlertIds,
-}: PokeDefaultAlertsCardProps) {
-  const hasAny = Object.values(defaultAlertIds).some((id) => id !== null);
+function PokeDefaultAlertsCard({ defaultAlerts }: PokeDefaultAlertsCardProps) {
+  const hasAny = Object.values(defaultAlerts).some((alert) => alert !== null);
   if (!hasAny) {
     return null;
   }
@@ -236,24 +256,18 @@ function PokeDefaultAlertsCard({
           <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
             Pool balance
           </span>
-          <AlertLink alertId={defaultAlertIds.poolEmpty} label="empty (0)" />
-          <AlertLink alertId={defaultAlertIds.poolLow} label="low (100)" />
-          <AlertLink
-            alertId={defaultAlertIds.poolCritical}
-            label="critical (10)"
-          />
+          <AlertChip alert={defaultAlerts.poolEmpty} label="empty (0)" />
+          <AlertChip alert={defaultAlerts.poolLow} label="low (100)" />
+          <AlertChip alert={defaultAlerts.poolCritical} label="critical (10)" />
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
             Seat balance
           </span>
-          <AlertLink alertId={defaultAlertIds.seatEmpty} label="empty (0)" />
-          <AlertLink
-            alertId={defaultAlertIds.seatLowMax}
-            label="low · max (8k)"
-          />
-          <AlertLink
-            alertId={defaultAlertIds.seatLowPro}
+          <AlertChip alert={defaultAlerts.seatEmpty} label="empty (0)" />
+          <AlertChip alert={defaultAlerts.seatLowMax} label="low · max (8k)" />
+          <AlertChip
+            alert={defaultAlerts.seatLowPro}
             label="low · pro (1.6k)"
           />
         </div>
@@ -347,10 +361,10 @@ export function PokeUsageTab({
   poolCreditState,
   programmaticCreditState,
   creditUsageConfig,
-  poolAlertId,
-  programmaticAlertIds,
-  usageCapAlertId,
-  defaultAlertIds,
+  poolAlert,
+  programmaticAlerts,
+  usageCapAlert,
+  defaultAlerts,
 }: PokeUsageTabProps) {
   // Billing cycle start day from Stripe subscription, fallback to Dust
   // subscription (mirrors CreditsDataTable).
@@ -371,14 +385,14 @@ export function PokeUsageTab({
         owner={owner}
         poolCreditState={poolCreditState}
         programmaticCreditState={programmaticCreditState}
-        poolAlertId={poolAlertId}
-        programmaticAlertIds={programmaticAlertIds}
+        poolAlert={poolAlert}
+        programmaticAlerts={programmaticAlerts}
       />
       <PokeCreditConfigCard
         creditUsageConfig={creditUsageConfig}
-        usageCapAlertId={usageCapAlertId}
+        usageCapAlert={usageCapAlert}
       />
-      <PokeDefaultAlertsCard defaultAlertIds={defaultAlertIds} />
+      <PokeDefaultAlertsCard defaultAlerts={defaultAlerts} />
       <PokeCreditPoolCard owner={owner} />
       <PokeMembersUsageTable owner={owner} />
       {billingCycleStartDay && (

@@ -1,3 +1,5 @@
+import type { MetronomeAlertRef } from "@app/lib/metronome/alerts/types";
+
 // Uniqueness keys for the account-wide "default" alerts created by
 // `scripts/metronome_setup.ts` (no `customer_id`, so they apply to every
 // customer). Single source of truth shared between the setup script and the
@@ -14,4 +16,7 @@ export const DEFAULT_ALERT_UNIQUENESS_KEYS = {
 
 type DefaultAlertSlot = keyof typeof DEFAULT_ALERT_UNIQUENESS_KEYS;
 
-export type DefaultMetronomeAlertIds = Record<DefaultAlertSlot, string | null>;
+export type DefaultMetronomeAlerts = Record<
+  DefaultAlertSlot,
+  MetronomeAlertRef | null
+>;
