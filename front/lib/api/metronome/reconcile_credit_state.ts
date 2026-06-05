@@ -6,17 +6,17 @@ import type { MetronomeCapAlertInfo } from "@app/lib/metronome/alerts/spend_limi
 import {
   getCachedDefaultCapThresholdsBySeatType,
   getCachedPerUserCapThresholds,
-  getMetronomeDefaultUserCapAlertForSeatType,
-  getMetronomePerUserCap,
 } from "@app/lib/metronome/alerts/spend_limits";
 import { listMetronomeSeatBalances } from "@app/lib/metronome/client";
-import { getCreditTypeAwuId } from "@app/lib/metronome/constants";
+import {
+  awuSeatBalanceForUser,
+  fetchLiveUserCreditInputs,
+} from "@app/lib/metronome/live_user_credit_inputs";
 import { fetchPerUserAwuUsage } from "@app/lib/metronome/per_user_usage";
 import {
   expectedProgrammaticCreditStateFromAlerts,
   setProgrammaticCreditStateReconciled,
 } from "@app/lib/metronome/programmatic_credit_state_machine";
-import type { MetronomeSeatBalance } from "@app/lib/metronome/types";
 import { setUserCreditStateReconciled } from "@app/lib/metronome/user_credit_state_machine";
 import {
   expectedPoolCreditStateFromBalance,
@@ -109,22 +109,6 @@ export type ReconcileCreditStateReport =
 // comparing the persisted state with the expected one (see USER_CREDIT_STATES).
 function normalizeUserCreditState(state: UserCreditState): UserCreditState {
   return state === "normal" ? "on_pool" : state;
-}
-
-// The remaining + full AWU seat balance for a user, read from the live
-// per-seat balances. Returns null when the user has no individual AWU seat
-// allocation (pool-based seat), so callers treat them as spending from the pool.
-function awuSeatBalanceForUser(
-  seatBalances: MetronomeSeatBalance[],
-  userId: string
-): { balanceAwu: number; startingBalanceAwu: number } | null {
-  const awuCreditTypeId = getCreditTypeAwuId();
-  const seat = seatBalances.find((b) => b.seat_id === userId);
-  const awu = seat?.balances.find((b) => b.credit_type_id === awuCreditTypeId);
-  if (!awu) {
-    return null;
-  }
-  return { balanceAwu: awu.balance, startingBalanceAwu: awu.starting_balance };
 }
 
 /**
@@ -312,84 +296,23 @@ async function reconcileUser({
   const seatType = membership.seatType;
   const metronomeContractId = auth.subscription()?.metronomeContractId ?? null;
 
-  // Live per-user seat balance (the seat↔pool dimension's source of truth).
-  let seatBalanceAwu: number | null = null;
-  let seatStartingBalanceAwu: number | null = null;
-  if (metronomeContractId) {
-    const seatBalancesResult = await listMetronomeSeatBalances({
-      metronomeCustomerId,
-      metronomeContractId,
-    });
-    if (seatBalancesResult.isErr()) {
-      return new Err(
-        new Error(
-          `Failed to read seat balances: ${seatBalancesResult.error.message}`
-        )
-      );
-    }
-    const seat = awuSeatBalanceForUser(seatBalancesResult.value, userId);
-    if (seat) {
-      seatBalanceAwu = seat.balanceAwu;
-      seatStartingBalanceAwu = seat.startingBalanceAwu;
-    }
-  }
-
-  // Resolve the effective per-user cap threshold (in AWU credits, seat
-  // allowance included): the user-specific override if present, otherwise the
-  // seat-type default. `null` means no cap is configured for this user.
-  let effectiveCapAwuCredits: number | null = null;
-  let capSource: "override" | "default" | "none" = "none";
-
-  const overrideResult = await getMetronomePerUserCap({
-    metronomeCustomerId,
+  const liveResult = await fetchLiveUserCreditInputs({
     workspaceId: workspace.sId,
     userId,
+    seatType,
+    metronomeCustomerId,
+    metronomeContractId,
   });
-  if (overrideResult.isErr()) {
-    return new Err(
-      new Error(`Failed to read per-user cap: ${overrideResult.error.message}`)
-    );
+  if (liveResult.isErr()) {
+    return liveResult;
   }
-  if (overrideResult.value) {
-    effectiveCapAwuCredits = overrideResult.value.alert.threshold;
-    capSource = "override";
-  } else {
-    const normalizedSeatType = normalizeToPoolLimitSeatType(seatType);
-    if (normalizedSeatType) {
-      const defaultResult = await getMetronomeDefaultUserCapAlertForSeatType({
-        metronomeCustomerId,
-        workspaceId: workspace.sId,
-        seatType: normalizedSeatType,
-      });
-      if (defaultResult.isErr()) {
-        return new Err(
-          new Error(
-            `Failed to read default per-user cap: ${defaultResult.error.message}`
-          )
-        );
-      }
-      if (defaultResult.value) {
-        effectiveCapAwuCredits = defaultResult.value.alert.threshold;
-        capSource = "default";
-      }
-    }
-  }
-
-  // Consumption is only needed for the cap bands (capped / on_pool_low_balance),
-  // which require a configured cap; skip the fetch otherwise.
-  let consumedAwuCredits: number | null = null;
-  if (effectiveCapAwuCredits !== null && metronomeContractId) {
-    const usageResult = await fetchPerUserAwuUsage({
-      metronomeCustomerId,
-      metronomeContractId,
-    });
-    if (usageResult.isErr()) {
-      return new Err(
-        new Error(`Failed to read per-user usage: ${usageResult.error.message}`)
-      );
-    }
-    consumedAwuCredits = usageResult.value.get(userId) ?? 0;
-  }
+  const {
+    seatBalanceAwu,
+    seatStartingBalanceAwu,
+    effectiveCapAwuCredits,
+    capSource,
+    consumedAwuCredits,
+  } = liveResult.value;
 
   const expectedState = expectedUserCreditState({
     seatType,

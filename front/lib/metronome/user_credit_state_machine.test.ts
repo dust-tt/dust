@@ -203,6 +203,107 @@ describe("UserCreditStateMachine — transitions", () => {
       "on_pool"
     );
   });
+
+  it("capped + per_user_cap_resolved with personal seat balance → user_seat", async () => {
+    const membership = makeMembership("capped", "max");
+    const result = await transitionUserCreditState(
+      membership,
+      { type: "per_user_cap_resolved" },
+      {
+        ...baseCtx,
+        seatType: "max",
+        liveBalance: {
+          seatBalanceAwu: 40000,
+          seatStartingBalanceAwu: 40000,
+          perUserCapAwuCredits: null,
+          consumedAwuCredits: null,
+        },
+      }
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("user_seat");
+    }
+    expect(membership.updateCreditState).toHaveBeenCalledWith(
+      "user_seat",
+      undefined
+    );
+    expect(mockClearUserCapBlocked).toHaveBeenCalledWith("ws_test", "u_test");
+    expect(mockSetUserCreditState).toHaveBeenCalledWith(
+      "ws_test",
+      "u_test",
+      "user_seat"
+    );
+  });
+
+  it("capped + per_user_cap_resolved with a low personal balance → user_seat_low_balance", async () => {
+    const membership = makeMembership("capped", "max");
+    const result = await transitionUserCreditState(
+      membership,
+      { type: "per_user_cap_resolved" },
+      {
+        ...baseCtx,
+        seatType: "max",
+        liveBalance: {
+          seatBalanceAwu: 5000,
+          seatStartingBalanceAwu: 40000,
+          perUserCapAwuCredits: null,
+          consumedAwuCredits: null,
+        },
+      }
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("user_seat_low_balance");
+    }
+    expect(membership.updateCreditState).toHaveBeenCalledWith(
+      "user_seat_low_balance",
+      undefined
+    );
+  });
+
+  it("capped + per_user_cap_resolved with an exhausted seat and pool room → on_pool", async () => {
+    const membership = makeMembership("capped", "max");
+    const result = await transitionUserCreditState(
+      membership,
+      { type: "per_user_cap_resolved" },
+      {
+        ...baseCtx,
+        seatType: "max",
+        liveBalance: {
+          seatBalanceAwu: 0,
+          seatStartingBalanceAwu: 40000,
+          perUserCapAwuCredits: 50000,
+          consumedAwuCredits: 10000,
+        },
+      }
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("on_pool");
+    }
+    expect(membership.updateCreditState).toHaveBeenCalledWith(
+      "on_pool",
+      undefined
+    );
+  });
+
+  it("capped + per_user_cap_resolved without a live balance → on_pool (default)", async () => {
+    const membership = makeMembership("capped", "max");
+    const result = await transitionUserCreditState(
+      membership,
+      { type: "per_user_cap_resolved" },
+      { ...baseCtx, seatType: "max" }
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("on_pool");
+    }
+    expect(membership.updateCreditState).toHaveBeenCalledWith(
+      "on_pool",
+      undefined
+    );
+  });
 });
 
 // ---------------------------------------------------------------------------
