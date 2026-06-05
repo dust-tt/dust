@@ -514,6 +514,10 @@ export function SkillBuilderInstructionsEditor({
     []
   );
 
+  const handleSkillNodeDetails = useCallback((skillId: string) => {
+    setSelectedSkillIdForDetails(skillId);
+  }, []);
+
   const handleToolDetails = useCallback((tool: MCPServerViewType) => {
     setSelectedServerViewForDetails(tool);
   }, []);
@@ -535,9 +539,11 @@ export function SkillBuilderInstructionsEditor({
       currentSkillId: skillId,
       enableSkillReferences,
       onSkillDetails: handleSkillDetails,
+      onSkillNodeDetails: handleSkillNodeDetails,
       onSelectSkill: handleSelectSkillReference,
       onSelectTool: handleSelectToolReference,
       onToolDetails: handleToolDetails,
+      onToolNodeDetails: handleToolDetails,
       owner,
     },
     onUpdate: handleUpdate,

@@ -102,7 +102,9 @@ interface SkillInstructionsSkillReferencesOptions {
   onSelectSkill?: (skill: SlashCommandSkillSuggestion) => void;
   onSelectTool?: (tool: MCPServerViewType) => void;
   onSkillDetails?: (skill: SlashCommandSkillSuggestion) => void;
+  onSkillNodeDetails?: (skillId: string) => void;
   onToolDetails?: (tool: MCPServerViewType) => void;
+  onToolNodeDetails?: (tool: MCPServerViewType) => void;
   owner?: LightWorkspaceType;
 }
 
@@ -169,7 +171,9 @@ export function useSkillInstructionsEditor({
   const onSelectSkill = skillReferences?.onSelectSkill;
   const onSelectTool = skillReferences?.onSelectTool;
   const onSkillDetails = skillReferences?.onSkillDetails;
+  const onSkillNodeDetails = skillReferences?.onSkillNodeDetails;
   const onToolDetails = skillReferences?.onToolDetails;
+  const onToolNodeDetails = skillReferences?.onToolNodeDetails;
   const owner = skillReferences?.owner;
   const includeSkillSuggestions = enableSkillReferences && !!owner;
   const editableExtensions = useMemo(
@@ -198,8 +202,16 @@ export function useSkillInstructionsEditor({
     () =>
       buildSkillInstructionsExtensions(isReadOnly, editableExtensions, {
         enableSkillReferences,
+        onSkillNodeDetails,
+        onToolNodeDetails,
       }),
-    [editableExtensions, enableSkillReferences, isReadOnly]
+    [
+      editableExtensions,
+      enableSkillReferences,
+      isReadOnly,
+      onSkillNodeDetails,
+      onToolNodeDetails,
+    ]
   );
 
   // Track if initial content has been set

@@ -13,6 +13,7 @@ import {
 } from "@app/components/editor/extensions/skill_builder/RawMarkdownBlock";
 import { ToolNodeWithView } from "@app/components/editor/extensions/skill_builder/ToolNodeWithView";
 import { LinkExtension } from "@app/components/editor/input_bar/LinkExtension";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { markdownStyles } from "@dust-tt/sparkle";
 import type { Extensions } from "@tiptap/core";
 import { Markdown } from "@tiptap/markdown";
@@ -22,6 +23,8 @@ export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
 
 interface BuildSkillInstructionsExtensionsOptions {
   enableSkillReferences?: boolean;
+  onSkillNodeDetails?: (skillId: string) => void;
+  onToolNodeDetails?: (tool: MCPServerViewType) => void;
 }
 
 /**
@@ -35,6 +38,8 @@ export function buildSkillInstructionsExtensions(
   editableExtensions: Extensions = [],
   {
     enableSkillReferences = false,
+    onSkillNodeDetails,
+    onToolNodeDetails,
   }: BuildSkillInstructionsExtensionsOptions = {}
 ): Extensions {
   const baseExtensions: Extensions = [
@@ -98,7 +103,9 @@ export function buildSkillInstructionsExtensions(
   ];
 
   if (enableSkillReferences) {
-    baseExtensions.push(ToolNodeWithView);
+    baseExtensions.push(
+      ToolNodeWithView.configure({ onToolDetails: onToolNodeDetails })
+    );
   }
 
   baseExtensions.push(
@@ -108,7 +115,9 @@ export function buildSkillInstructionsExtensions(
   );
 
   if (enableSkillReferences) {
-    baseExtensions.push(SkillNode);
+    baseExtensions.push(
+      SkillNode.configure({ onSkillDetails: onSkillNodeDetails })
+    );
   }
 
   if (!isReadOnly) {
