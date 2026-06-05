@@ -7,11 +7,9 @@ import {
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
 import {
-  CoinsStacked03,
   Cube01,
   DataTable,
   Hexagon01,
-  Icon,
   LoadingBlock,
   type MenuItem,
   SeatMax,
@@ -313,12 +311,7 @@ const billingFrequencyColumn: ColumnDef<RowData, string> = {
 
 const consumedAwuCreditsColumn: ColumnDef<RowData, string> = {
   id: "consumedAwuCredits" as const,
-  header: () => (
-    <span className="flex items-center gap-1.5">
-      <Icon visual={CoinsStacked03} size="xs" />
-      Credits usage
-    </span>
-  ),
+  header: () => <span>Credits usage</span>,
   accessorFn: (row) => row.consumedAwuCredits.toString(),
   cell: (info: Info) => (
     <div className="w-full pr-3">

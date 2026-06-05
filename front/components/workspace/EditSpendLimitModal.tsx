@@ -8,7 +8,6 @@ import type { WorkspaceType } from "@app/types/user";
 import {
   AlertCircle,
   Avatar,
-  CoinsStacked03,
   ContentMessage,
   Dialog,
   DialogContainer,
@@ -16,7 +15,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  Icon,
   Input,
   RadioGroup,
   RadioGroupItem,
@@ -247,9 +245,6 @@ export function EditSpendLimitModal({
               {kind === "override" && (
                 <div className="flex flex-col gap-1.5 pl-6">
                   <div className="relative">
-                    <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground dark:text-muted-foreground-night">
-                      <Icon visual={CoinsStacked03} size="xs" />
-                    </div>
                     <Input
                       id="spend-credit-limit-input"
                       type="text"
@@ -258,13 +253,16 @@ export function EditSpendLimitModal({
                       placeholder="1000"
                       value={creditsInput}
                       onChange={(e) => handleCreditsChange(e.target.value)}
-                      className="pl-8"
                       isError={validationMessage !== null}
                       message={validationMessage ?? undefined}
                       messageStatus={
                         validationMessage !== null ? "error" : undefined
                       }
+                      className="pr-16 text-right"
                     />
+                    <span className="copy-sm pointer-events-none absolute right-3 top-0 flex h-9 items-center text-muted-foreground dark:text-muted-foreground-night">
+                      credits
+                    </span>
                   </div>
                 </div>
               )}
