@@ -270,7 +270,12 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
           </div>
         </DropdownMenuTrigger>
 
-        <DropdownMenuContent side="top" align="end" sideOffset={8} className="w-56">
+        <DropdownMenuContent
+          side="top"
+          align="end"
+          sideOffset={8}
+          className="w-56"
+        >
           {hasMultipleWorkspaces && (
             <>
               <DropdownMenuLabel label="Workspace" />

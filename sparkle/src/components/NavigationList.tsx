@@ -12,8 +12,8 @@ import {
   LinkWrapper,
   type LinkWrapperProps,
 } from "@sparkle/components/LinkWrapper";
-import { TypingAnimation } from "@sparkle/components/TypingAnimation";
 import { ScrollArea, ScrollBar } from "@sparkle/components/ScrollArea";
+import { TypingAnimation } from "@sparkle/components/TypingAnimation";
 import {
   ChevronDown,
   ChevronUp,
@@ -131,7 +131,7 @@ const NavigationListItem = React.forwardRef<
               "s-items-center s-outline-none s-rounded-lg s-text-sm s-p-2 s-transition-colors",
               "data-[disabled]:s-pointer-events-none",
               "hover:s-bg-stone-100 dark:hover:s-bg-primary-200-night",
-              selected && "s-bg-stone-100 dark:s-bg-primary-200-night",
+              selected && "s-bg-stone-100 dark:s-bg-primary-200-night"
             )}
           >
             {icon && <Icon visual={icon} size="xs" className="s-m-0.5" />}
