@@ -47,6 +47,12 @@ export type UserCreditContext = {
    * to `on_pool`. Absent for events that don't carry balance data.
    */
   liveBalance?: LiveUserSeatBalance;
+  /**
+   * Fraction of the user's per-user cap credits still remaining (0–1).
+   * Required by guards on `seat_balance_exhausted` for paid seats to decide
+   * whether to land on `on_pool`, `on_pool_low_balance`, or `capped`.
+   */
+  remainingCapCreditsPercentage?: number | null;
 };
 
 export type UserCreditEvent =
@@ -239,26 +245,36 @@ const TRANSITIONS: UserCreditTransition[] = [
     event: "per_user_cap_resolved",
     to: "on_pool",
   },
-
   // Seat balance exhausted. Order matters: most specific guard first.
   //  1. Free seats → always capped (no pool access).
-  //  2. Paid seats with pool limit = 0 → capped (no pool budget).
-  //  3. Paid seats with pool limit > 0 or null (unlimited) → on_pool.
   {
     from: ["user_seat", "user_seat_low_balance", "capped"],
     event: "seat_balance_exhausted",
     guard: (ctx) => ctx.seatType === "free",
     to: "capped",
   },
+  // 2. Paid seats whose per-user cap is also exhausted (0 % remaining) or with pool limit = 0 → capped (no pool budget).
   {
     from: ["user_seat", "user_seat_low_balance", "capped"],
     event: "seat_balance_exhausted",
     guard: (ctx, event) =>
       ctx.seatType !== "free" &&
       event.type === "seat_balance_exhausted" &&
-      event.poolLimitAwuCredits === 0,
+      (event.poolLimitAwuCredits === 0 ||
+        ctx.remainingCapCreditsPercentage === 0),
     to: "capped",
   },
+  // 3. Paid seats with < 20 % of cap remaining → on_pool_low_balance.
+  {
+    from: ["user_seat", "user_seat_low_balance"],
+    event: "seat_balance_exhausted",
+    guard: (ctx) =>
+      ctx.seatType !== "free" &&
+      ctx.remainingCapCreditsPercentage != null &&
+      ctx.remainingCapCreditsPercentage < 0.2,
+    to: "on_pool_low_balance",
+  },
+  // 4. Paid seats with ≥ 20 % of cap remaining, with pool limit > 0 or null (unlimited) → on_pool
   {
     from: ["user_seat", "user_seat_low_balance", "on_pool"],
     event: "seat_balance_exhausted",

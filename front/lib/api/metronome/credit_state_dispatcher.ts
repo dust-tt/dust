@@ -1,3 +1,4 @@
+import { fetchRemainingCapCreditsPercentageForUser } from "@app/lib/api/credits/members_usage";
 import { recalculatePerUserCapAlertForSeatChange } from "@app/lib/api/membership";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
@@ -168,11 +169,24 @@ export async function dispatchSeatBalanceExhausted({
     userId,
     seatType: membership.seatType,
   });
+  const remainingCapCreditsPercentage =
+    await fetchRemainingCapCreditsPercentageForUser({
+      metronomeCustomerId: workspace.metronomeCustomerId,
+      workspaceId: workspace.sId,
+      userId,
+      seatType: membership.seatType,
+      poolCapOverrideAwuCredits: membership.poolCapOverrideAwuCredits,
+    });
 
   const result = await transitionUserCreditState(
     membership,
     { type: "seat_balance_exhausted", poolLimitAwuCredits },
-    { workspaceId: workspace.sId, userId, seatType: membership.seatType }
+    {
+      workspaceId: workspace.sId,
+      userId,
+      seatType: membership.seatType,
+      remainingCapCreditsPercentage,
+    }
   );
   if (result.isErr()) {
     logger.warn(
