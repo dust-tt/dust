@@ -102,11 +102,15 @@ ENV CONTENTFUL_ACCESS_TOKEN=$CONTENTFUL_ACCESS_TOKEN
 # Fake PostgreSQL URI is needed because Sequelize validates the connection string
 # during module initialization (imported by `next build`), but doesn't actually connect
 # DATADOG_API_KEY is used to conditionally enable source map generation and upload to Datadog
-RUN --mount=type=cache,id=next-cache,target=/app/front/.next/cache \
+RUN --mount=type=cache,id=next-cache-v2,target=/app/front/.next/cache \
   BUILD_WITH_SOURCE_MAPS=${DATADOG_API_KEY:+true} \
   FRONT_DATABASE_URI="postgres://fake:fake@localhost:5432/fake" \
   NODE_OPTIONS="--max-old-space-size=8192" \
   npm run build -- --no-lint && \
+  if [ ! -d .next/standalone ]; then \
+  echo "ERROR: next build did not emit .next/standalone (output:standalone). Likely a corrupt next-cache mount; bump the --mount id to reset it."; \
+  exit 1; \
+  fi && \
   if [ -n "$DATADOG_API_KEY" ] && [ -n "$NEXT_PUBLIC_DATADOG_SERVICE" ]; then \
   export DATADOG_SITE=datadoghq.eu DATADOG_API_KEY=$DATADOG_API_KEY; \
   npx --yes @datadog/datadog-ci sourcemaps upload ./.next/static \
