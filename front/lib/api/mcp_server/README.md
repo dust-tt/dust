@@ -16,7 +16,7 @@ HTTP entrypoints live in `front-api/routes/mcp/`. This folder holds the auth and
 |---|---|
 | HTTP routing and wiring | `front-api/routes/mcp/` |
 | OAuth metadata discovery | `front-api/routes/mcp/well-known.ts` |
-| Tool definitions | `server.ts` |
+| Tool definitions | `tools/` (registered from `server.ts`; grouped under `tools/agents/`, `tools/conversations/`, `tools/pods/`, `tools/search/`, `tools/files/`) |
 | Token verification | `auth.ts` |
 | User + workspace resolution from the token | `authenticator.ts` |
 | How tools access per-request auth | `context.ts` |
@@ -32,7 +32,7 @@ HTTP entrypoints live in `front-api/routes/mcp/`. This folder holds the auth and
 
 ## Adding a tool
 
-Add it in `server.ts`. Use `getAuthenticatorFromMcpContext()` to access the scoped auth inside handlers. MCP clients cache tool lists — reconnect after adding or renaming tools.
+Add a file under `tools/` and register it in `tools/index.ts`. Use `getAuthenticatorFromMcpContext()` to access the scoped auth inside handlers. MCP clients cache tool lists — reconnect after adding or renaming tools.
 
 ## Local dev & config
 

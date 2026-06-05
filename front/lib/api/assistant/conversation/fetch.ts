@@ -75,8 +75,19 @@ export const getLightConversation = async (
   auth: Authenticator,
   conversationId: string,
   includeDeleted: boolean = false,
-  branchId: string | null = null
-) => _getConversation(auth, conversationId, includeDeleted, branchId, "light");
+  branchId: string | null = null,
+  lastInteractionsToFetchToolOutputContentFor: number | null = null,
+  messagePagination?: { limit: number; lastRank: number | null }
+) =>
+  _getConversation(
+    auth,
+    conversationId,
+    includeDeleted,
+    branchId,
+    "light",
+    lastInteractionsToFetchToolOutputContentFor,
+    messagePagination
+  );
 
 async function _getConversation<V extends "light" | "full">(
   auth: Authenticator,
