@@ -274,7 +274,7 @@ function SearchResults({
 
   return (
     <div className="h-full overflow-y-auto">
-      <NavigationList className="px-2 flex-shrink-0">
+      <NavigationList className="px-2">
         <NavigationListCollapsibleSection
           label="Pods"
           type="collapse"
@@ -1561,9 +1561,9 @@ function NavigationListWithInbox({
   return (
     <div
       ref={scrollContainerRef}
-      className="dd-privacy-mask h-full w-full overflow-y-auto flex flex-col gap-4"
+      className="dd-privacy-mask h-full w-full overflow-y-auto"
     >
-      <AnimatePresence initial={false}>
+     <div className="flex flex-col gap-4"> <AnimatePresence initial={false}>
         {skillSuggestionConversations.length > 0 && (
           <motion.div
             key="skill-suggestions"
@@ -1667,7 +1667,7 @@ function NavigationListWithInbox({
         >
           {conversationsContent}
         </NavigationListCollapsibleSection>
-      </NavigationList>
+      </NavigationList></div>
     </div>
   );
 }
