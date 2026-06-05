@@ -23,7 +23,7 @@ export type AnalyticsPeriod = (typeof ANALYTICS_PERIODS)[number];
 
 // Shared time-window input fragment. Either a relative `period` or an explicit
 // startDate/endDate range; explicit dates win.
-export const timeWindowSchema = {
+export const timeWindowSchemaShape = {
   period: z
     .enum(ANALYTICS_PERIODS)
     .optional()
@@ -50,6 +50,8 @@ export const timeWindowSchema = {
   ),
 };
 
+export const timeWindowInputSchema = z.object(timeWindowSchemaShape);
+
 // Shared filter fragment for message-based usage tools.
 export const usageFilterSchema = {
   source: z
@@ -69,12 +71,7 @@ export const usageFilterSchema = {
     .describe("Restrict to messages from these user sIds."),
 };
 
-export type TimeWindowInput = {
-  period?: AnalyticsPeriod;
-  startDate?: string;
-  endDate?: string;
-  timezone?: string;
-};
+export type TimeWindowInput = z.input<typeof timeWindowInputSchema>;
 
 export type ResolvedTimeWindow = {
   startDate: string;
