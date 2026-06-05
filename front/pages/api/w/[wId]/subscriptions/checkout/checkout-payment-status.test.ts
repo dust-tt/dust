@@ -4,13 +4,11 @@ import { describe, expect, it, vi } from "vitest";
 
 import handler from "./checkout-payment-status";
 
-const MOCK_SETUP_SESSION_ID = "cs_test_setup_session_123";
 const MOCK_CONTRACT_ID = "contract_abc";
 
 const mockPendingPayment: CheckoutPayment = {
   status: "pending",
   workspaceId: "ws_test",
-  setupSessionId: MOCK_SETUP_SESSION_ID,
   contractId: MOCK_CONTRACT_ID,
   userId: "user_123",
   targetUserId: "user_123",
@@ -18,7 +16,7 @@ const mockPendingPayment: CheckoutPayment = {
   billingPeriod: "monthly",
   currency: "usd",
   initialAmountCents: 3000,
-  uniquenessKey: `checkout-payment-ws_test-${MOCK_SETUP_SESSION_ID}`,
+  uniquenessKey: `checkout-payment-ws_test-${MOCK_CONTRACT_ID}`,
   createdAtMs: 1717497600000,
 };
 
@@ -34,7 +32,7 @@ describe("GET /api/w/[wId]/subscriptions/checkout/checkout-payment-status", () =
       method: "GET",
       role: "user",
     });
-    req.query = { ...req.query, setup_session_id: MOCK_SETUP_SESSION_ID };
+    req.query = { ...req.query, contract_id: MOCK_CONTRACT_ID };
 
     await handler(req, res);
 
@@ -46,14 +44,14 @@ describe("GET /api/w/[wId]/subscriptions/checkout/checkout-payment-status", () =
       method: "POST",
       role: "admin",
     });
-    req.query = { ...req.query, setup_session_id: MOCK_SETUP_SESSION_ID };
+    req.query = { ...req.query, contract_id: MOCK_CONTRACT_ID };
 
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(405);
   });
 
-  it("returns 400 when setup_session_id is missing", async () => {
+  it("returns 400 when contract_id is missing", async () => {
     const { req, res } = await createPrivateApiMockRequest({
       method: "GET",
       role: "admin",
@@ -72,7 +70,7 @@ describe("GET /api/w/[wId]/subscriptions/checkout/checkout-payment-status", () =
       method: "GET",
       role: "admin",
     });
-    req.query = { ...req.query, setup_session_id: MOCK_SETUP_SESSION_ID };
+    req.query = { ...req.query, contract_id: MOCK_CONTRACT_ID };
 
     await handler(req, res);
 
@@ -87,14 +85,14 @@ describe("GET /api/w/[wId]/subscriptions/checkout/checkout-payment-status", () =
       method: "GET",
       role: "admin",
     });
-    req.query = { ...req.query, setup_session_id: MOCK_SETUP_SESSION_ID };
+    req.query = { ...req.query, contract_id: MOCK_CONTRACT_ID };
 
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(200);
     const { checkoutPayment } = res._getJSONData();
     expect(checkoutPayment.status).toBe("pending");
-    expect(checkoutPayment.setupSessionId).toBe(MOCK_SETUP_SESSION_ID);
+    expect(checkoutPayment.contractId).toBe(MOCK_CONTRACT_ID);
     expect(checkoutPayment.seatType).toBe("pro");
     expect(checkoutPayment.billingPeriod).toBe("monthly");
   });
@@ -110,7 +108,7 @@ describe("GET /api/w/[wId]/subscriptions/checkout/checkout-payment-status", () =
       method: "GET",
       role: "admin",
     });
-    req.query = { ...req.query, setup_session_id: MOCK_SETUP_SESSION_ID };
+    req.query = { ...req.query, contract_id: MOCK_CONTRACT_ID };
 
     await handler(req, res);
 
@@ -120,20 +118,20 @@ describe("GET /api/w/[wId]/subscriptions/checkout/checkout-payment-status", () =
     expect(checkoutPayment.invoiceId).toBe("in_test_invoice");
   });
 
-  it("passes the correct workspaceId and setupSessionId to getCheckoutPaymentStatus", async () => {
+  it("passes the correct workspaceId and contractId to getCheckoutPaymentStatus", async () => {
     vi.mocked(getCheckoutPaymentStatus).mockResolvedValue(null);
 
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "GET",
       role: "admin",
     });
-    req.query = { ...req.query, setup_session_id: MOCK_SETUP_SESSION_ID };
+    req.query = { ...req.query, contract_id: MOCK_CONTRACT_ID };
 
     await handler(req, res);
 
     expect(getCheckoutPaymentStatus).toHaveBeenCalledWith({
       workspaceId: workspace.sId,
-      setupSessionId: MOCK_SETUP_SESSION_ID,
+      contractId: MOCK_CONTRACT_ID,
     });
   });
 });

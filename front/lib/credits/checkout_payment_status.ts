@@ -12,7 +12,6 @@ export type CheckoutPaymentStatus = "pending" | "succeeded" | "failed";
 export type CheckoutPayment = {
   status: CheckoutPaymentStatus;
   workspaceId: string;
-  setupSessionId: string;
   contractId: string;
   userId: string;
   targetUserId: string;
@@ -31,8 +30,8 @@ export type CheckoutPayment = {
 // 1 hour: matches a generous bound on the webhook delivery / UI polling
 const TTL_SECONDS = 60 * 60;
 
-function redisKey(workspaceId: string, setupSessionId: string): string {
-  return `checkout_payment:${workspaceId}:${setupSessionId}`;
+function redisKey(workspaceId: string, contractId: string): string {
+  return `checkout_payment:${workspaceId}:${contractId}`;
 }
 
 export async function setCheckoutPaymentPending(
@@ -45,7 +44,7 @@ export async function setCheckoutPaymentPending(
   };
   await runOnRedisCache({ origin: REDIS_ORIGIN }, async (cli) => {
     await cli.set(
-      redisKey(input.workspaceId, input.setupSessionId),
+      redisKey(input.workspaceId, input.contractId),
       JSON.stringify(payment),
       { EX: TTL_SECONDS }
     );
@@ -54,13 +53,13 @@ export async function setCheckoutPaymentPending(
 
 export async function getCheckoutPaymentStatus({
   workspaceId,
-  setupSessionId,
+  contractId,
 }: {
   workspaceId: string;
-  setupSessionId: string;
+  contractId: string;
 }): Promise<CheckoutPayment | null> {
   return runOnRedisCache({ origin: REDIS_ORIGIN }, async (cli) => {
-    const raw = await cli.get(redisKey(workspaceId, setupSessionId));
+    const raw = await cli.get(redisKey(workspaceId, contractId));
     if (!raw) {
       return null;
     }
@@ -68,7 +67,7 @@ export async function getCheckoutPaymentStatus({
       return JSON.parse(raw) as CheckoutPayment;
     } catch (err) {
       logger.warn(
-        { workspaceId, setupSessionId, err },
+        { workspaceId, contractId, err },
         "[Checkout Payment Status] Failed to parse stored payment"
       );
       return null;
@@ -76,17 +75,13 @@ export async function getCheckoutPaymentStatus({
   });
 }
 
-// Update the stored payment if (and only if) the contractId matches what was
-// written at payment time. Mismatched contracts indicate stale webhook
-// deliveries and must be ignored.
-async function updatePaymentIfContractMatches(
+async function updatePayment(
   workspaceId: string,
-  setupSessionId: string,
   contractId: string,
   apply: (current: CheckoutPayment) => CheckoutPayment
 ): Promise<CheckoutPayment | null> {
   return runOnRedisCache({ origin: REDIS_ORIGIN }, async (cli) => {
-    const raw = await cli.get(redisKey(workspaceId, setupSessionId));
+    const raw = await cli.get(redisKey(workspaceId, contractId));
     if (!raw) {
       return null;
     }
@@ -96,81 +91,66 @@ async function updatePaymentIfContractMatches(
     } catch {
       return null;
     }
-    if (current.contractId !== contractId) {
-      return null;
-    }
     // Idempotency: if already succeeded, do not overwrite.
     if (current.status === "succeeded") {
       return current;
     }
     const updated = apply(current);
-    await cli.set(
-      redisKey(workspaceId, setupSessionId),
-      JSON.stringify(updated),
-      { EX: TTL_SECONDS }
-    );
+    await cli.set(redisKey(workspaceId, contractId), JSON.stringify(updated), {
+      EX: TTL_SECONDS,
+    });
     return updated;
   });
 }
 
 export async function markCheckoutPaymentSucceeded({
   workspaceId,
-  setupSessionId,
   contractId,
   invoiceId,
 }: {
   workspaceId: string;
-  setupSessionId: string;
   contractId: string;
   invoiceId: string;
 }): Promise<CheckoutPayment | null> {
-  return updatePaymentIfContractMatches(
-    workspaceId,
-    setupSessionId,
-    contractId,
-    (current) => ({ ...current, status: "succeeded", invoiceId })
-  );
+  return updatePayment(workspaceId, contractId, (current) => ({
+    ...current,
+    status: "succeeded",
+    invoiceId,
+  }));
 }
 
 export async function markCheckoutPaymentFailed({
   workspaceId,
-  setupSessionId,
   contractId,
   errorMessage,
   invoiceId,
 }: {
   workspaceId: string;
-  setupSessionId: string;
   contractId: string;
   errorMessage: string;
   invoiceId?: string;
 }): Promise<CheckoutPayment | null> {
-  return updatePaymentIfContractMatches(
-    workspaceId,
-    setupSessionId,
-    contractId,
-    (current) => ({
-      ...current,
-      status: "failed",
-      errorMessage,
-      invoiceId: invoiceId ?? current.invoiceId,
-    })
-  );
+  return updatePayment(workspaceId, contractId, (current) => ({
+    ...current,
+    status: "failed",
+    errorMessage,
+    invoiceId: invoiceId ?? current.invoiceId,
+  }));
 }
 
 // Used when the Metronome call fails synchronously (no webhook will fire).
 // Unconditional overwrite of the entry we just wrote.
 export async function recordCheckoutPaymentSyncFailure({
   workspaceId,
-  setupSessionId,
+  contractId,
   errorMessage,
 }: {
   workspaceId: string;
-  setupSessionId: string;
+  contractId: string;
   errorMessage: string;
 }): Promise<void> {
   await runOnRedisCache({ origin: REDIS_ORIGIN }, async (cli) => {
-    const raw = await cli.get(redisKey(workspaceId, setupSessionId));
+    const raw = await cli.get(redisKey(workspaceId, contractId));
     if (!raw) {
       return;
     }
@@ -185,10 +165,8 @@ export async function recordCheckoutPaymentSyncFailure({
       status: "failed",
       errorMessage,
     };
-    await cli.set(
-      redisKey(workspaceId, setupSessionId),
-      JSON.stringify(updated),
-      { EX: TTL_SECONDS }
-    );
+    await cli.set(redisKey(workspaceId, contractId), JSON.stringify(updated), {
+      EX: TTL_SECONDS,
+    });
   });
 }

@@ -42,20 +42,20 @@ async function handler(
     });
   }
 
-  const { setup_session_id } = req.query;
-  if (!isString(setup_session_id) || setup_session_id === "") {
+  const { contract_id } = req.query;
+  if (!isString(contract_id) || contract_id === "") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Missing required query parameter: setup_session_id.",
+        message: "Missing required query parameter: contract_id.",
       },
     });
   }
 
   const checkoutPayment = await getCheckoutPaymentStatus({
     workspaceId: auth.getNonNullableWorkspace().sId,
-    setupSessionId: setup_session_id,
+    contractId: contract_id,
   });
 
   return res.status(200).json({ checkoutPayment });

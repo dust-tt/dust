@@ -18,20 +18,20 @@ app.get(
   async (ctx): HandlerResult<GetCheckoutPaymentStatusResponseBody> => {
     const auth = ctx.get("auth");
 
-    const setupSessionId = ctx.req.query("setup_session_id");
-    if (!setupSessionId) {
+    const contractId = ctx.req.query("contract_id");
+    if (!contractId) {
       return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
-          message: "Missing required query parameter: setup_session_id.",
+          message: "Missing required query parameter: contract_id.",
         },
       });
     }
 
     const checkoutPayment = await getCheckoutPaymentStatus({
       workspaceId: auth.getNonNullableWorkspace().sId,
-      setupSessionId,
+      contractId,
     });
 
     return ctx.json({ checkoutPayment });

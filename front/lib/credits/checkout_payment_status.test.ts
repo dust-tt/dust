@@ -27,7 +27,6 @@ import {
 
 const BASE_INPUT = {
   workspaceId: "ws_test",
-  setupSessionId: "cs_test_123",
   contractId: "contract_abc",
   userId: "user_1",
   targetUserId: "user_2",
@@ -35,7 +34,7 @@ const BASE_INPUT = {
   billingPeriod: "monthly" as const,
   currency: "usd" as const,
   initialAmountCents: 3000,
-  uniquenessKey: "checkout-payment-ws_test-cs_test_123",
+  uniquenessKey: "checkout-payment-ws_test-contract_abc",
 };
 
 describe("checkout_payment_status Redis helpers", () => {
@@ -49,13 +48,12 @@ describe("checkout_payment_status Redis helpers", () => {
 
       const result = await getCheckoutPaymentStatus({
         workspaceId: BASE_INPUT.workspaceId,
-        setupSessionId: BASE_INPUT.setupSessionId,
+        contractId: BASE_INPUT.contractId,
       });
 
       expect(result).not.toBeNull();
       expect(result!.status).toBe("pending");
       expect(result!.workspaceId).toBe(BASE_INPUT.workspaceId);
-      expect(result!.setupSessionId).toBe(BASE_INPUT.setupSessionId);
       expect(result!.contractId).toBe(BASE_INPUT.contractId);
       expect(result!.seatType).toBe("pro");
       expect(result!.billingPeriod).toBe("monthly");
@@ -64,21 +62,20 @@ describe("checkout_payment_status Redis helpers", () => {
       expect(typeof result!.createdAtMs).toBe("number");
     });
 
-    it("keys entries by workspaceId + setupSessionId", async () => {
+    it("keys entries by workspaceId + contractId", async () => {
       await setCheckoutPaymentPending(BASE_INPUT);
       await setCheckoutPaymentPending({
         ...BASE_INPUT,
-        setupSessionId: "cs_other",
         contractId: "contract_other",
       });
 
       const first = await getCheckoutPaymentStatus({
         workspaceId: BASE_INPUT.workspaceId,
-        setupSessionId: BASE_INPUT.setupSessionId,
+        contractId: BASE_INPUT.contractId,
       });
       const second = await getCheckoutPaymentStatus({
         workspaceId: BASE_INPUT.workspaceId,
-        setupSessionId: "cs_other",
+        contractId: "contract_other",
       });
 
       expect(first!.contractId).toBe("contract_abc");
@@ -90,7 +87,7 @@ describe("checkout_payment_status Redis helpers", () => {
     it("returns null when no entry exists", async () => {
       const result = await getCheckoutPaymentStatus({
         workspaceId: "ws_test",
-        setupSessionId: "cs_nonexistent",
+        contractId: "contract_nonexistent",
       });
       expect(result).toBeNull();
     });
@@ -102,7 +99,6 @@ describe("checkout_payment_status Redis helpers", () => {
 
       const result = await markCheckoutPaymentSucceeded({
         workspaceId: BASE_INPUT.workspaceId,
-        setupSessionId: BASE_INPUT.setupSessionId,
         contractId: BASE_INPUT.contractId,
         invoiceId: "in_invoice_1",
       });
@@ -112,7 +108,7 @@ describe("checkout_payment_status Redis helpers", () => {
 
       const stored = await getCheckoutPaymentStatus({
         workspaceId: BASE_INPUT.workspaceId,
-        setupSessionId: BASE_INPUT.setupSessionId,
+        contractId: BASE_INPUT.contractId,
       });
       expect(stored!.status).toBe("succeeded");
     });
@@ -120,30 +116,10 @@ describe("checkout_payment_status Redis helpers", () => {
     it("returns null when no entry exists", async () => {
       const result = await markCheckoutPaymentSucceeded({
         workspaceId: "ws_test",
-        setupSessionId: "cs_nonexistent",
-        contractId: "contract_abc",
+        contractId: "contract_nonexistent",
         invoiceId: "in_1",
       });
       expect(result).toBeNull();
-    });
-
-    it("ignores update when contractId does not match (stale webhook)", async () => {
-      await setCheckoutPaymentPending(BASE_INPUT);
-
-      const result = await markCheckoutPaymentSucceeded({
-        workspaceId: BASE_INPUT.workspaceId,
-        setupSessionId: BASE_INPUT.setupSessionId,
-        contractId: "contract_stale",
-        invoiceId: "in_stale",
-      });
-
-      expect(result).toBeNull();
-
-      const stored = await getCheckoutPaymentStatus({
-        workspaceId: BASE_INPUT.workspaceId,
-        setupSessionId: BASE_INPUT.setupSessionId,
-      });
-      expect(stored!.status).toBe("pending");
     });
 
     it("is idempotent: second success does not overwrite the first", async () => {
@@ -151,14 +127,12 @@ describe("checkout_payment_status Redis helpers", () => {
 
       await markCheckoutPaymentSucceeded({
         workspaceId: BASE_INPUT.workspaceId,
-        setupSessionId: BASE_INPUT.setupSessionId,
         contractId: BASE_INPUT.contractId,
         invoiceId: "in_first",
       });
 
       const second = await markCheckoutPaymentSucceeded({
         workspaceId: BASE_INPUT.workspaceId,
-        setupSessionId: BASE_INPUT.setupSessionId,
         contractId: BASE_INPUT.contractId,
         invoiceId: "in_second",
       });
@@ -168,7 +142,7 @@ describe("checkout_payment_status Redis helpers", () => {
 
       const stored = await getCheckoutPaymentStatus({
         workspaceId: BASE_INPUT.workspaceId,
-        setupSessionId: BASE_INPUT.setupSessionId,
+        contractId: BASE_INPUT.contractId,
       });
       expect(stored!.invoiceId).toBe("in_first");
     });
@@ -180,7 +154,6 @@ describe("checkout_payment_status Redis helpers", () => {
 
       const result = await markCheckoutPaymentFailed({
         workspaceId: BASE_INPUT.workspaceId,
-        setupSessionId: BASE_INPUT.setupSessionId,
         contractId: BASE_INPUT.contractId,
         errorMessage: "Card declined",
       });
@@ -194,7 +167,6 @@ describe("checkout_payment_status Redis helpers", () => {
 
       const result = await markCheckoutPaymentFailed({
         workspaceId: BASE_INPUT.workspaceId,
-        setupSessionId: BASE_INPUT.setupSessionId,
         contractId: BASE_INPUT.contractId,
         errorMessage: "Insufficient funds",
         invoiceId: "in_failed",
@@ -203,47 +175,26 @@ describe("checkout_payment_status Redis helpers", () => {
       expect(result!.invoiceId).toBe("in_failed");
     });
 
-    it("ignores update when contractId does not match", async () => {
-      await setCheckoutPaymentPending(BASE_INPUT);
-
-      const result = await markCheckoutPaymentFailed({
-        workspaceId: BASE_INPUT.workspaceId,
-        setupSessionId: BASE_INPUT.setupSessionId,
-        contractId: "contract_stale",
-        errorMessage: "stale",
-      });
-
-      expect(result).toBeNull();
-
-      const stored = await getCheckoutPaymentStatus({
-        workspaceId: BASE_INPUT.workspaceId,
-        setupSessionId: BASE_INPUT.setupSessionId,
-      });
-      expect(stored!.status).toBe("pending");
-    });
-
     it("does not overwrite a succeeded entry", async () => {
       await setCheckoutPaymentPending(BASE_INPUT);
       await markCheckoutPaymentSucceeded({
         workspaceId: BASE_INPUT.workspaceId,
-        setupSessionId: BASE_INPUT.setupSessionId,
         contractId: BASE_INPUT.contractId,
         invoiceId: "in_1",
       });
 
       const result = await markCheckoutPaymentFailed({
         workspaceId: BASE_INPUT.workspaceId,
-        setupSessionId: BASE_INPUT.setupSessionId,
         contractId: BASE_INPUT.contractId,
         errorMessage: "late failure",
       });
 
-      // updatePaymentIfContractMatches guards on status === "succeeded".
+      // updatePayment guards on status === "succeeded".
       expect(result!.status).toBe("succeeded");
 
       const stored = await getCheckoutPaymentStatus({
         workspaceId: BASE_INPUT.workspaceId,
-        setupSessionId: BASE_INPUT.setupSessionId,
+        contractId: BASE_INPUT.contractId,
       });
       expect(stored!.status).toBe("succeeded");
     });
@@ -255,13 +206,13 @@ describe("checkout_payment_status Redis helpers", () => {
 
       await recordCheckoutPaymentSyncFailure({
         workspaceId: BASE_INPUT.workspaceId,
-        setupSessionId: BASE_INPUT.setupSessionId,
+        contractId: BASE_INPUT.contractId,
         errorMessage: "Metronome call failed",
       });
 
       const stored = await getCheckoutPaymentStatus({
         workspaceId: BASE_INPUT.workspaceId,
-        setupSessionId: BASE_INPUT.setupSessionId,
+        contractId: BASE_INPUT.contractId,
       });
       expect(stored!.status).toBe("failed");
       expect(stored!.errorMessage).toBe("Metronome call failed");
@@ -271,7 +222,7 @@ describe("checkout_payment_status Redis helpers", () => {
       await expect(
         recordCheckoutPaymentSyncFailure({
           workspaceId: "ws_test",
-          setupSessionId: "cs_nonexistent",
+          contractId: "contract_nonexistent",
           errorMessage: "error",
         })
       ).resolves.toBeUndefined();
