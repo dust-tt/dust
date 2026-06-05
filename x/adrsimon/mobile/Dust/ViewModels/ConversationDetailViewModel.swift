@@ -58,6 +58,8 @@ final class ConversationDetailViewModel: ObservableObject {
     @Published var lastError: ErrorInfo?
     /// Whether a validate-action request is in-flight.
     @Published var isValidatingAction = false
+    /// Set when a validate/answer request fails, surfaced as an alert.
+    @Published var actionError: String?
 
     var streamingPhase: AgentStreamingPhase {
         if let blockedState { return blockedState.asPhase }
@@ -616,6 +618,7 @@ final class ConversationDetailViewModel: ObservableObject {
             startMessageStream(for: info.messageId)
         } catch {
             logger.error("Failed to validate action: \(error)")
+            actionError = error.localizedDescription
         }
     }
 
@@ -637,6 +640,7 @@ final class ConversationDetailViewModel: ObservableObject {
             startMessageStream(for: info.messageId)
         } catch {
             logger.error("Failed to answer question: \(error)")
+            actionError = error.localizedDescription
         }
     }
 

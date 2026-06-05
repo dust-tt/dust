@@ -122,6 +122,7 @@ struct AgentMessage: Codable, Identifiable {
     let configuration: AgentConfiguration
     var generatedFiles: [GeneratedFile]?
     var citations: [String: CitationReference]?
+    var error: StreamingError?
 
     var id: String {
         sId
@@ -171,7 +172,12 @@ enum ToolStake: String, Decodable {
 
 enum ErrorCategory: String, Decodable {
     case retryableModelError = "retryable_model_error"
+    case contextWindowExceeded = "context_window_exceeded"
+    case emptyContent = "empty_content"
+    case providerInternalError = "provider_internal_error"
     case streamError = "stream_error"
+    case unknownError = "unknown_error"
+    case invalidResponseFormatConfiguration = "invalid_response_format_configuration"
 }
 
 struct ToolApprovalInfo: Equatable {
@@ -280,7 +286,7 @@ struct ErrorInfo: Equatable {
     let messageId: String
 
     var isRetryable: Bool {
-        category == .retryableModelError || category == .streamError
+        category == .retryableModelError || category == .streamError || category == .emptyContent
     }
 
     init(from error: StreamingError, messageId: String) {

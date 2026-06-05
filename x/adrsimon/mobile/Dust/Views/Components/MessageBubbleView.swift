@@ -137,6 +137,11 @@ struct AgentMessageBubble: View {
         message.isStreaming ? streamingRender : cache.rendered(for: rawContent)
     }
 
+    /// Falls back to the message's own error when there was no live `agent_error` event.
+    private var effectiveError: ErrorInfo? {
+        lastError ?? message.error.map { ErrorInfo(from: $0, messageId: message.sId) }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             if !hideHeader {
@@ -208,7 +213,7 @@ struct AgentMessageBubble: View {
                 }
             }
 
-            if message.status == .failed, let error = lastError {
+            if message.status == .failed, let error = effectiveError {
                 ErrorCardView(error: error, onRetry: { onRetry?(message.sId) })
             }
         }

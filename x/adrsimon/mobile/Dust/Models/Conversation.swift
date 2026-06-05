@@ -53,8 +53,16 @@ struct Conversation: Decodable, Identifiable, Hashable {
         self.unread = try container.decode(Bool.self, forKey: .unread)
         self.actionRequired = try container.decode(Bool.self, forKey: .actionRequired)
 
-        let content = try container.decodeIfPresent([[PreviewMessage]].self, forKey: .content)
-        self.preview = content.map { $0.compactMap(\.last) }.flatMap(ConversationPreview.init(content:))
+        // Full listing returns version groups (array-of-arrays); the light/space listing is flat.
+        let lastVersions: [PreviewMessage]? = if let versioned = try? container.decodeIfPresent(
+            [[PreviewMessage]].self,
+            forKey: .content
+        ) {
+            versioned.compactMap(\.last)
+        } else {
+            try container.decodeIfPresent([PreviewMessage].self, forKey: .content)
+        }
+        self.preview = lastVersions.flatMap(ConversationPreview.init(content:))
     }
 }
 

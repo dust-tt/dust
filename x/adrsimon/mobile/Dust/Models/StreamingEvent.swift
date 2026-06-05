@@ -321,13 +321,13 @@ enum ToolInputValue: Decodable, Equatable {
     }
 }
 
-struct StreamingError: Decodable {
+struct StreamingError: Codable {
     let code: String?
     let message: String
     let metadata: StreamingErrorMetadata?
 }
 
-struct StreamingErrorMetadata: Decodable {
+struct StreamingErrorMetadata: Codable {
     let category: String?
     let errorTitle: String?
 }
