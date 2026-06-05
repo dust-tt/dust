@@ -6,42 +6,37 @@ import {
 
 import type { BenefitCard, BenefitCardColor } from "../types";
 
-// Tailwind class pairs for the colored icon badge on each card. The Sparkle
-// palette exposes these `bg-X-50` / `text-X-600` pairs for the marketing
-// pages; matching the existing palette per [GEN1].
-const COLOR_CLASSES: Record<
+// `iconColor` + `backgroundColor` token pairs passed to ResourceAvatar so the
+// benefit card icons share the same visual language as the tool-call chips
+// and any other place Dust renders an Action icon. Each pair includes the
+// `dark:` variant so the marketing page stays consistent in dark mode.
+const COLOR_TOKENS: Record<
   BenefitCardColor,
-  { bg: string; ring: string; iconText: string }
+  { iconColor: string; backgroundColor: string }
 > = {
   blue: {
-    bg: "bg-blue-50",
-    ring: "ring-blue-100",
-    iconText: "text-blue-600",
+    iconColor: "text-blue-600 dark:text-blue-400",
+    backgroundColor: "bg-blue-50 dark:bg-blue-900/30",
   },
   green: {
-    bg: "bg-green-50",
-    ring: "ring-green-100",
-    iconText: "text-green-600",
+    iconColor: "text-green-600 dark:text-green-400",
+    backgroundColor: "bg-green-50 dark:bg-green-900/30",
   },
   golden: {
-    bg: "bg-golden-50",
-    ring: "ring-golden-100",
-    iconText: "text-golden-700",
+    iconColor: "text-golden-700 dark:text-golden-300",
+    backgroundColor: "bg-golden-50 dark:bg-golden-900/30",
   },
   rose: {
-    bg: "bg-rose-50",
-    ring: "ring-rose-100",
-    iconText: "text-rose-600",
+    iconColor: "text-rose-600 dark:text-rose-400",
+    backgroundColor: "bg-rose-50 dark:bg-rose-900/30",
   },
   pink: {
-    bg: "bg-pink-50",
-    ring: "ring-pink-100",
-    iconText: "text-pink-600",
+    iconColor: "text-pink-600 dark:text-pink-400",
+    backgroundColor: "bg-pink-50 dark:bg-pink-900/30",
   },
   violet: {
-    bg: "bg-violet-50",
-    ring: "ring-violet-100",
-    iconText: "text-violet-600",
+    iconColor: "text-violet-600 dark:text-violet-400",
+    backgroundColor: "bg-violet-50 dark:bg-violet-900/30",
   },
 };
 
@@ -60,12 +55,8 @@ export function IntegrationBenefitsSection({
 
   return (
     <div className="py-12 md:py-16">
-      {/* Heading mirrors the legacy `UseCasesSection` per [GEN1]. The H2
-          "What you can do with X" is already used by `ToolsSection` further
-          down the page, so this section uses the buyer-focused phrasing
-          instead. */}
       <H2 className="mb-8 text-center text-2xl font-semibold text-foreground md:text-3xl">
-        How teams use {integrationName} with Dust
+        What you can do with {integrationName}
       </H2>
 
       <div
@@ -91,17 +82,19 @@ interface BenefitCardViewProps {
 
 function BenefitCardView({ benefit }: BenefitCardViewProps) {
   const IconComponent = getIcon(benefit.icon);
-  const colorClasses = COLOR_CLASSES[benefit.color];
+  const tokens = COLOR_TOKENS[benefit.color];
 
   return (
     <div className="flex flex-col rounded-2xl border border-border bg-white p-6 transition-all hover:border-foreground/20">
-      <div
-        className={`mb-4 flex h-10 w-10 items-center justify-center rounded-xl ring-1 ${colorClasses.bg} ${colorClasses.ring}`}
-      >
+      <div className="mb-4">
+        {/* ResourceAvatar's iconColor + backgroundColor props are the canonical
+            way to render a colored Action icon in Dust — keeps us in sync
+            with how the same icons render in the in-app chat and elsewhere. */}
         <ResourceAvatar
           icon={IconComponent}
-          size="xs"
-          className={colorClasses.iconText}
+          size="md"
+          iconColor={tokens.iconColor}
+          backgroundColor={tokens.backgroundColor}
         />
       </div>
 
