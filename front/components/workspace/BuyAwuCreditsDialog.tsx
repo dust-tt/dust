@@ -19,7 +19,6 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
   Button,
   CheckCircle,
-  CoinsStacked03,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -80,16 +79,7 @@ interface CreditValueProps {
 }
 
 function CreditValue({ credits }: CreditValueProps) {
-  return (
-    <span className="flex items-center gap-1">
-      <Icon
-        visual={CoinsStacked03}
-        size="xs"
-        className="text-muted-foreground dark:text-muted-foreground-night"
-      />
-      {formatCredits(credits)}
-    </span>
-  );
+  return <span>{formatCredits(credits)}</span>;
 }
 
 interface SummaryRowProps {
@@ -358,7 +348,6 @@ export function BuyAwuCreditsDialog({
                       {isValidAmount && (
                         <span className="flex items-center gap-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
                           {formatCredits(addedCredits)} credits
-                          <Icon visual={CoinsStacked03} size="xs" />
                         </span>
                       )}
                       <div className="ml-auto flex gap-2">

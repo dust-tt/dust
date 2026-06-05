@@ -31,7 +31,6 @@ import {
   AlertCircle,
   ArrowUp,
   Button,
-  CoinsStacked03,
   ContentMessage,
   DropdownMenu,
   DropdownMenuContent,
@@ -42,7 +41,6 @@ import {
   PieChart01,
   SearchInput,
   Spinner,
-  Tooltip,
 } from "@dust-tt/sparkle";
 import type { PaginationState, SortingState } from "@tanstack/react-table";
 import { useCallback, useEffect, useState } from "react";
@@ -52,45 +50,6 @@ function formatCredits(credits: number): string {
 }
 
 const DEFAULT_PAGE_SIZE = 25;
-
-interface CreditPoolUsageBarProps {
-  totalCredits: number;
-  consumedCredits: number;
-}
-
-function CreditPoolUsageBar({
-  totalCredits,
-  consumedCredits,
-}: CreditPoolUsageBarProps) {
-  const consumedPercentage =
-    totalCredits > 0
-      ? Math.min((consumedCredits / totalCredits) * 100, 100)
-      : 0;
-
-  return (
-    <Page.Vertical gap="xs" align="stretch">
-      <div
-        className="flex h-2 w-full overflow-hidden rounded-full bg-muted-foreground/10 dark:bg-muted-foreground-night/10"
-        role="progressbar"
-        aria-label="Workspace Credits Pool usage"
-        aria-valuenow={Math.round(consumedPercentage)}
-        aria-valuemin={0}
-        aria-valuemax={100}
-      >
-        <Tooltip
-          tooltipTriggerAsChild
-          label={`${formatCredits(consumedCredits)} credits consumed`}
-          trigger={
-            <div
-              className="h-full shrink-0 bg-highlight transition-all dark:bg-highlight-night"
-              style={{ width: `${consumedPercentage}%` }}
-            />
-          }
-        />
-      </div>
-    </Page.Vertical>
-  );
-}
 
 export function UsagePage() {
   const owner = useWorkspace();
@@ -234,56 +193,7 @@ export function UsagePage() {
           </Page.P>
         </Page.Vertical>
 
-        <Page.Vertical gap="sm" align="stretch">
-          <div className="flex items-center justify-between">
-            <span className="text-[16px] font-medium leading-[24px] tracking-[-0.32px] text-foreground dark:text-foreground-night">
-              Workspace Credits Pool
-            </span>
-            {!isAwuPoolSummaryLoading && (
-              <div className="flex flex-col items-end gap-0.5">
-                <span className="flex items-center gap-1.5 text-[18px] font-semibold leading-[26px] tracking-[-0.36px] text-foreground dark:text-foreground-night">
-                  <Icon
-                    visual={CoinsStacked03}
-                    size="sm"
-                    className="text-muted-foreground dark:text-muted-foreground-night"
-                  />
-                  {formatCredits(totalConsumedCredits)} /{" "}
-                  {formatCredits(initialTotalCredits)}
-                </span>
-                <div className="flex items-center gap-2">
-                  {overageCredits !== null && overageCredits > 0 && (
-                    <span className="text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
-                      {formatCredits(overageCredits)} overage credits.
-                    </span>
-                  )}
-                  {isEnterprise ? (
-                    <Tooltip
-                      tooltipTriggerAsChild
-                      label="Contact your Dust sales representative to top up."
-                      trigger={
-                        <button
-                          className="flex items-center gap-1 text-xs font-medium text-highlight-500 opacity-50 dark:text-highlight-500-night"
-                          disabled
-                        >
-                          <Icon visual={ArrowUp} size="xs" />
-                          Top up
-                        </button>
-                      }
-                    />
-                  ) : (
-                    <button
-                      className="flex cursor-pointer items-center gap-1 text-xs font-medium text-highlight-500 dark:text-highlight-500-night"
-                      onClick={() => setShowBuyCreditDialog(true)}
-                    >
-                      <Icon visual={ArrowUp} size="xs" />
-                      Top up
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-
+        <Page.Vertical gap="xs" align="stretch">
           {isAwuPoolSummaryError && (
             <ContentMessage
               title="Failed to load Workspace Credits Pool"
@@ -295,17 +205,43 @@ export function UsagePage() {
             </ContentMessage>
           )}
 
-          {!isAwuPoolSummaryLoading && !isAwuPoolSummaryError && (
-            <CreditPoolUsageBar
-              totalCredits={initialTotalCredits}
-              consumedCredits={totalConsumedCredits}
-            />
-          )}
-
           {isAwuPoolSummaryLoading && (
             <div className="flex justify-center py-8">
               <Spinner />
             </div>
+          )}
+
+          {!isAwuPoolSummaryLoading && !isAwuPoolSummaryError && (
+            <>
+              <div className="flex items-baseline gap-1">
+                <span className="heading-mono-4xl text-foreground dark:text-foreground-night">
+                  {formatCredits(totalConsumedCredits)}
+                </span>
+                <span className="copy-sm text-muted-foreground dark:text-muted-foreground-night">
+                  /{formatCredits(initialTotalCredits)}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                {overageCredits !== null && overageCredits > 0 && (
+                  <span className="copy-sm text-muted-foreground dark:text-muted-foreground-night">
+                    {formatCredits(overageCredits)} overage credits
+                  </span>
+                )}
+                {isEnterprise ? (
+                  <span className="copy-sm text-muted-foreground dark:text-muted-foreground-night">
+                    Contact your Dust sales representative to buy credits
+                  </span>
+                ) : (
+                  <Button
+                    label="Top up"
+                    icon={ArrowUp}
+                    size="xs"
+                    variant="ghost"
+                    onClick={() => setShowBuyCreditDialog(true)}
+                  />
+                )}
+              </div>
+            </>
           )}
         </Page.Vertical>
 

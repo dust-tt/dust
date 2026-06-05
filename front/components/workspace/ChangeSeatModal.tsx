@@ -19,7 +19,6 @@ import {
   ButtonGroup,
   Card,
   Chip,
-  CoinsStacked03,
   Cube01,
   Dialog,
   DialogContainer,
@@ -155,7 +154,6 @@ function SeatCard({
       </div>
       {info.awuCredits > 0 && (
         <div className="flex items-center gap-2 text-muted-foreground dark:text-muted-foreground-night">
-          <CoinsStacked03 className="size-4" />
           <span className="text-xs">{formatAwuCredits(info)}</span>
         </div>
       )}

@@ -8,7 +8,6 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
-  CoinsStacked03,
   Cube01,
   Hexagon01,
   Icon,
@@ -226,7 +225,6 @@ export function BillingSeatsOverview({ owner }: BillingSeatsOverviewProps) {
                 </div>
                 {primaryPlan.awuCredits > 0 && (
                   <div className="flex items-center gap-2">
-                    <Icon visual={CoinsStacked03} size="xs" />
                     <span>
                       {primaryPlan.awuCredits.toLocaleString()} credits{" "}
                       {formatAwuCreditsPeriod(primaryPlan.awuCreditsPeriod)}

@@ -6,13 +6,7 @@ import {
   MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
   MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
 } from "@app/types/credits";
-import {
-  CoinsStacked03,
-  Icon,
-  Input,
-  Page,
-  SettingsList,
-} from "@dust-tt/sparkle";
+import { Input, Page, SettingsList } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
 interface UsageSettingsCardProps {
@@ -76,9 +70,6 @@ export function UsageSettingsCard({ workspaceId }: UsageSettingsCardProps) {
           description="Define the pool credit limit for users in your workspace. This limit is added on top of each seat's built-in allowance."
           action={
             <div className="relative w-32">
-              <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground dark:text-muted-foreground-night">
-                <Icon visual={CoinsStacked03} size="xs" />
-              </div>
               <Input
                 type="text"
                 inputMode="numeric"
@@ -89,8 +80,11 @@ export function UsageSettingsCard({ workspaceId }: UsageSettingsCardProps) {
                 }
                 onBlur={() => void handleCommitDefaultLimit()}
                 disabled={isDefaultLimitInputDisabled}
-                className="pl-8 text-right"
+                className="pr-16 text-right"
               />
+              <span className="copy-sm pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground dark:text-muted-foreground-night">
+                credits
+              </span>
             </div>
           }
         />
