@@ -274,7 +274,7 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
           side="top"
           align="end"
           sideOffset={8}
-          className="w-56"
+          className="w-60"
         >
           {hasMultipleWorkspaces && (
             <>
