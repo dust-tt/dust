@@ -347,14 +347,14 @@ const Header = () => {
       <link rel="icon" type="image/png" href={faviconPath} />
       <link
         rel="preload"
-        href="/static/fonts/Geist[wght].woff2"
+        href="/static/fonts/GeistVariable.woff2"
         as="font"
         type="font/woff2"
         crossOrigin="anonymous"
       />
       <link
         rel="preload"
-        href="/static/fonts/GeistMono[wght].woff2"
+        href="/static/fonts/GeistMonoVariable.woff2"
         as="font"
         type="font/woff2"
         crossOrigin="anonymous"
