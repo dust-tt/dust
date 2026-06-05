@@ -764,7 +764,7 @@ export function AgentSidebarMenu({
     );
 
     return (
-      <NavigationList className="px-2">
+      <NavigationList className="px-2 flex-shrink-0">
         <NavigationListCollapsibleSection
           label={showCount ? `Pods (${podCountInSummary})` : "Pods"}
           type="collapse"
