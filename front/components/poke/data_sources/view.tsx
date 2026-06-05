@@ -6,6 +6,7 @@ import {
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import type { CheckStuckResponseBody } from "@app/lib/api/data_sources/check_stuck";
 import { isWebhookBasedProvider } from "@app/lib/connector_providers";
 import { clientFetch } from "@app/lib/egress/client";
 import {
@@ -13,7 +14,6 @@ import {
   formatTimestampToFriendlyDate,
   timeAgoFrom,
 } from "@app/lib/utils";
-import type { CheckStuckResponseBody } from "@app/pages/api/poke/workspaces/[wId]/data_sources/[dsId]/check-stuck";
 import type { InternalConnectorType } from "@app/types/connectors/connectors_api";
 import type { CoreAPIDataSource } from "@app/types/core/data_source";
 import type { DataSourceType } from "@app/types/data_source";

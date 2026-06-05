@@ -6,12 +6,12 @@ import {
   getCursorPaginationParams,
   SortingParamsCodec,
 } from "@app/lib/api/pagination";
+import type { PokeGetDataSourceViewContentNodes } from "@app/lib/api/poke/data_source_views";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { apiError } from "@app/logger/withlogging";
 import { ContentNodesViewTypeCodec } from "@app/types/connectors/content_nodes";
-import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -24,13 +24,6 @@ const GetContentNodesOrChildrenRequestBody = z.object({
   viewType: ContentNodesViewTypeCodec,
   sorting: SortingParamsCodec.optional(),
 });
-
-export type PokeGetDataSourceViewContentNodes = {
-  nodes: DataSourceViewContentNode[];
-  total: number;
-  totalIsAccurate: boolean;
-  nextPageCursor: string | null;
-};
 
 // This endpoints serves two purposes:
 // 1. Fetch content nodes for a given data source view.

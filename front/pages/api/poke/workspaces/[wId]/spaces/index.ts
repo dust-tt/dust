@@ -1,17 +1,13 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
+import type { PokeListSpaces } from "@app/lib/api/poke/spaces";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { SpaceType } from "@app/types/space";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type PokeListSpaces = {
-  spaces: SpaceType[];
-};
 
 async function handler(
   req: NextApiRequest,
