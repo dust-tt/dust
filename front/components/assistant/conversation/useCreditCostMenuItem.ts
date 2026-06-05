@@ -5,26 +5,17 @@ import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
 import { ActionCreditCoinsIcon } from "@dust-tt/sparkle";
 
 const CREDIT_COST_COPY = {
-  conversation: {
-    label: "Conversation credit cost",
-    tooltip:
-      "Total credits used for the conversation: intelligence, tools, and retries. Sub-agent costs are tracked separately.",
-  },
-  message: {
-    label: "Message credit cost",
-    tooltip:
-      "Credits used for this message: intelligence, tools. Sub-agent costs are tracked separately. Retries are surfaced only in the total conversation cost.",
-  },
+  label: "Message credit cost",
+  tooltip:
+    "Credits used for this message: intelligence, tools. Sub-agent costs are tracked separately.",
 };
 
 interface UseCreditCostMenuItemProps {
   credits: number | null | undefined;
-  scope: "conversation" | "message";
 }
 
 export function useCreditCostMenuItem({
   credits,
-  scope,
 }: UseCreditCostMenuItemProps): DropdownMenuItemProps | null {
   const { subscription } = useAuth();
 
@@ -36,7 +27,7 @@ export function useCreditCostMenuItem({
     return null;
   }
 
-  const { label, tooltip } = CREDIT_COST_COPY[scope];
+  const { label, tooltip } = CREDIT_COST_COPY;
 
   return {
     label,

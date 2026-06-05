@@ -278,7 +278,6 @@ export function AgentMessage({
       : null;
   const creditCostItem = useCreditCostMenuItem({
     credits: refreshedCostCredits ?? agentMessage.costCredits,
-    scope: "message",
   });
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
