@@ -1,8 +1,8 @@
 import config from "@app/lib/api/config";
+import type { GetDocumentsResponseBody } from "@app/lib/api/poke/data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
-import type { DocumentType } from "@app/types/document";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -17,11 +17,6 @@ const ParamsSchema = z.object({
   dsId: z.string(),
 });
 
-export type PokeGetDocumentsResponseBody = {
-  documents: DocumentType[];
-  total: number;
-};
-
 // Mounted at /api/poke/workspaces/:wId/data_sources/:dsId/documents.
 const app = pokeApp();
 
@@ -29,7 +24,7 @@ app.get(
   "/",
   validate("param", ParamsSchema),
   validate("query", QuerySchema),
-  async (ctx): HandlerResult<PokeGetDocumentsResponseBody> => {
+  async (ctx): HandlerResult<GetDocumentsResponseBody> => {
     const auth = ctx.get("auth");
     const { dsId } = ctx.req.valid("param");
     const { limit, offset } = ctx.req.valid("query");

@@ -75,18 +75,6 @@ describe("POST /api/w/[wId]/subscriptions", () => {
     const data = res._getJSONData();
     expect(data.mode).toEqual("hosted");
     expect(data.checkoutUrl).toEqual(TEST_CHECKOUT_URL);
-    expect(data.plan).toEqual(
-      expect.objectContaining({
-        code: expect.any(String),
-        name: expect.any(String),
-        limits: expect.objectContaining({
-          users: expect.objectContaining({
-            maxUsers: expect.any(Number),
-          }),
-          dataSources: expect.any(Object),
-        }),
-      })
-    );
   });
 
   it("handles yearly billing period for legacy subscription when metronome billing is killed", async () => {
@@ -109,7 +97,6 @@ describe("POST /api/w/[wId]/subscriptions", () => {
     const data = res._getJSONData();
     expect(data.mode).toEqual("hosted");
     expect(data.checkoutUrl).toEqual(TEST_CHECKOUT_URL);
-    expect(data.plan).toBeDefined();
   });
 
   it("returns embedded clientSecret and sessionId by default", async () => {
@@ -129,12 +116,6 @@ describe("POST /api/w/[wId]/subscriptions", () => {
     expect(data.mode).toEqual("embedded");
     expect(data.clientSecret).toEqual(TEST_CLIENT_SECRET);
     expect(data.sessionId).toEqual(TEST_SESSION_ID);
-    expect(data.plan).toEqual(
-      expect.objectContaining({
-        code: expect.any(String),
-        name: expect.any(String),
-      })
-    );
   });
 
   it("returns embedded clientSecret when metronome_billing flag overrides the kill switch", async () => {

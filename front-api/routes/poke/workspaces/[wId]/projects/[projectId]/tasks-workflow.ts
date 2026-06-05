@@ -1,30 +1,18 @@
 import config from "@app/lib/api/config";
+import type {
+  PokeGetProjectWorkflow,
+  PokeProjectWorkflowInfo,
+} from "@app/lib/api/poke/projects";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import {
   describeTemporalWorkflow,
   getTemporalClientForFrontNamespace,
 } from "@app/lib/temporal";
-import type { PodMetadataType } from "@app/types/project_metadata";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export type PokeProjectWorkflowInfo = {
-  workflowId: string;
-  runId: string;
-  status: string;
-  startTime: number | null;
-  closeTime: number | null;
-};
-
-export type PokeGetProjectWorkflow = {
-  metadata: PodMetadataType | null;
-  temporalNamespace: string;
-  workflowId: string;
-  latestWorkflow: PokeProjectWorkflowInfo | null;
-};
 
 const ParamsSchema = z.object({
   projectId: z.string(),

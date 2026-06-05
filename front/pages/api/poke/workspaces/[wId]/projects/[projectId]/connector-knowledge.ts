@@ -2,10 +2,8 @@
 // @migration-status: MIGRATED_TO_HONO
 
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
-import {
-  listProjectKnowledgeFromConnectors,
-  type ProjectKnowledgeFromConnectorItem,
-} from "@app/lib/api/projects/context";
+import type { PokeListProjectKnowledgeFromConnectors } from "@app/lib/api/poke/projects";
+import { listProjectKnowledgeFromConnectors } from "@app/lib/api/projects/context";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -13,13 +11,6 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type PokeProjectKnowledgeFromConnectorItem =
-  ProjectKnowledgeFromConnectorItem;
-
-export type PokeListProjectKnowledgeFromConnectors = {
-  items: PokeProjectKnowledgeFromConnectorItem[];
-};
 
 async function handler(
   req: NextApiRequest,

@@ -1,20 +1,10 @@
+import type { PokeGetTriggerExecutionStats } from "@app/lib/api/poke/triggers";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export type PokeGetTriggerExecutionStats = {
-  statusBreakdown: Record<string, number>;
-  dailyVolume: Array<{
-    date: string;
-    succeeded: number;
-    failed: number;
-    notMatched: number;
-    rateLimited: number;
-  }>;
-};
 
 const ParamsSchema = z.object({
   tId: z.string(),

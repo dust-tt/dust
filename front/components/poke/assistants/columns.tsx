@@ -1,8 +1,8 @@
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import config from "@app/lib/api/config";
+import type { PokeAgentConfigurationType } from "@app/lib/api/poke/agent_configurations";
 import { clientFetch } from "@app/lib/egress/client";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type { PokeAgentConfigurationType } from "@app/pages/api/poke/workspaces/[wId]/agent_configurations";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Download01,

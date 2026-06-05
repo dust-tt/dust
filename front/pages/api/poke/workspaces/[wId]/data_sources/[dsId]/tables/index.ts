@@ -2,20 +2,15 @@
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
+import type { GetTablesResponseBody } from "@app/lib/api/poke/data_sources";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { CoreAPITable } from "@app/types/core/core_api";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type GetTablesResponseBody = {
-  tables: Array<CoreAPITable>;
-  total: number;
-};
 
 async function handler(
   req: NextApiRequest,

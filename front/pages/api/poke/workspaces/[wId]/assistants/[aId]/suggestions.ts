@@ -1,18 +1,14 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
+import type { PokeListSuggestions } from "@app/lib/api/poke/agent_configurations";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
-import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type PokeListSuggestions = {
-  suggestions: AgentSuggestionType[];
-};
 
 async function handler(
   req: NextApiRequest,

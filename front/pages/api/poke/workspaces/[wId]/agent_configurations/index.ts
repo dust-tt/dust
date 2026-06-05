@@ -3,23 +3,17 @@
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getAuthors } from "@app/lib/api/assistant/editors";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
+import type {
+  PokeAgentConfigurationType,
+  PokeGetAgentConfigurationsResponseBody,
+} from "@app/lib/api/poke/agent_configurations";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { UserType } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
-
-export type PokeAgentConfigurationType = LightAgentConfigurationType & {
-  versionAuthor?: UserType | null;
-};
-
-export type PokeGetAgentConfigurationsResponseBody = {
-  agentConfigurations: PokeAgentConfigurationType[];
-};
 
 const GetAgentConfigurationsQuerySchema = z.object({
   view: z.enum(["admin_internal", "archived"]),

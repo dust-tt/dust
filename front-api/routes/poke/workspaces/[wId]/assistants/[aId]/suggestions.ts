@@ -1,13 +1,9 @@
+import type { PokeListSuggestions } from "@app/lib/api/poke/agent_configurations";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
-import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export type PokeListSuggestions = {
-  suggestions: AgentSuggestionType[];
-};
 
 const DeleteSuggestionQuerySchema = z.object({
   sId: z.string(),

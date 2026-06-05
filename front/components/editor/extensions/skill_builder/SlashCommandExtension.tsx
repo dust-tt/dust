@@ -1,16 +1,14 @@
 import {
   getSkillSlashCommandItem,
-  matchesSlashCommandQuery,
-  SELECT_SKILL_SLASH_COMMAND_ACTION,
-  type SlashCommandSkillSuggestion,
-  sortSlashCommandMatches,
-} from "@app/components/editor/extensions/shared/SlashCommandSkillItems";
-import {
   getToolSlashCommandItem,
   getToolSlashCommandLabel,
+  matchesSlashCommandCapabilityQuery,
+  SELECT_SKILL_SLASH_COMMAND_ACTION,
   SELECT_TOOL_SLASH_COMMAND_ACTION,
+  type SlashCommandSkillSuggestion,
   type SlashCommandToolSuggestion,
-} from "@app/components/editor/extensions/shared/SlashCommandToolItems";
+  sortSlashCommandCapabilityMatches,
+} from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import type {
   SlashCommand,
   SlashCommandDropdownRef,
@@ -30,7 +28,7 @@ import type { SuggestionOptions, SuggestionProps } from "@tiptap/suggestion";
 import { exitSuggestion, Suggestion } from "@tiptap/suggestion";
 import { forwardRef, useImperativeHandle, useMemo, useRef } from "react";
 
-const slashCommandPluginKey = new PluginKey("slashCommand");
+export const slashCommandPluginKey = new PluginKey("slashCommand");
 const capabilitiesOnlySlashCommandMetaKey =
   "skillBuilderCapabilitiesOnlySlashCommand";
 
@@ -51,6 +49,14 @@ function hasSlashCharacterAtPosition(state: EditorState, position: number) {
       "\ufffc"
     ) === "/"
   );
+}
+
+function shouldInsertSlashBoundarySpace(state: EditorState) {
+  const textBefore = state.selection.$from.nodeBefore?.isText
+    ? state.selection.$from.nodeBefore.text
+    : null;
+
+  return !!textBefore && !textBefore.endsWith(" ");
 }
 
 // Define available slash commands.
@@ -110,13 +116,13 @@ function filterSkillBuilderSlashCommandCapabilities({
 }): SkillBuilderSlashCommandCapability[] {
   const normalizedQuery = query.trim().toLowerCase();
 
-  return sortSlashCommandMatches({
+  return sortSlashCommandCapabilityMatches({
     normalizedQuery,
     items: [
       ...skills
         .filter((skill) => skill.sId !== currentSkillId)
         .filter((skill) =>
-          matchesSlashCommandQuery({
+          matchesSlashCommandCapabilityQuery({
             label: skill.name,
             query: normalizedQuery,
           })
@@ -128,7 +134,7 @@ function filterSkillBuilderSlashCommandCapabilities({
         })),
       ...tools
         .filter((tool) =>
-          matchesSlashCommandQuery({
+          matchesSlashCommandCapabilityQuery({
             label: getToolSlashCommandLabel(tool),
             query: normalizedQuery,
           })
@@ -367,13 +373,20 @@ export const SlashCommandExtension =
         openCapabilitiesSlashCommand:
           () =>
           ({ chain }) => {
+            this.storage.hasBeenFocused = true;
+            const triggerText = shouldInsertSlashBoundarySpace(
+              this.editor.state
+            )
+              ? " /"
+              : "/";
+
             const inserted = chain()
               .focus()
               .command(({ tr }) => {
                 tr.setMeta(capabilitiesOnlySlashCommandMetaKey, true);
                 return true;
               })
-              .insertContent("/")
+              .insertContent(triggerText)
               .run();
 
             return inserted;

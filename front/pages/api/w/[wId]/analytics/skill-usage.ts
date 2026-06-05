@@ -4,11 +4,9 @@
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import type { SkillUsagePoint } from "@app/lib/api/assistant/observability/skill_usage";
 import { fetchSkillUsageMetrics } from "@app/lib/api/assistant/observability/skill_usage";
-import {
-  buildAgentAnalyticsBaseQuery,
-  timezoneSchema,
-} from "@app/lib/api/assistant/observability/utils";
+import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { timezoneSchema } from "@app/lib/api/timezone";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";

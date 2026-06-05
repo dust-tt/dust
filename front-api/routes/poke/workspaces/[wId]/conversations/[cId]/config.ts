@@ -1,16 +1,11 @@
 import config from "@app/lib/api/config";
+import type { PokeGetConversationConfig } from "@app/lib/api/poke/conversations";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export type PokeGetConversationConfig = {
-  conversationDataSourceId: string | null;
-  langfuseUiBaseUrl: string | null;
-  temporalWorkspace: string;
-};
 
 const ParamsSchema = z.object({
   cId: z.string(),

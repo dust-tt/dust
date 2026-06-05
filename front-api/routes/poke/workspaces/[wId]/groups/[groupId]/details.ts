@@ -1,16 +1,10 @@
+import type { PokeGetGroupDetails } from "@app/lib/api/poke/groups";
 import { getGroupMembersWithWorkspaces } from "@app/lib/api/workspace";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import type { GroupType } from "@app/types/groups";
-import type { UserTypeWithWorkspaces } from "@app/types/user";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export type PokeGetGroupDetails = {
-  members: UserTypeWithWorkspaces[];
-  group: GroupType;
-};
 
 const ParamsSchema = z.object({
   groupId: z.string(),

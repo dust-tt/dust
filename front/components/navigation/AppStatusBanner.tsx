@@ -7,6 +7,7 @@ import {
 } from "@app/lib/plans/plan_codes";
 import { useAppStatus } from "@app/lib/swr/useAppStatus";
 import { useWorkspaceUsageStatus } from "@app/lib/swr/user";
+import { useMetronomeContract } from "@app/lib/swr/workspaces";
 import { DEFAULT_EMBEDDING_PROVIDER_ID } from "@app/types/assistant/models/embedding";
 import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
 import type { SubscriptionType } from "@app/types/plan";
@@ -217,7 +218,23 @@ function UsageStatusBanner({ owner }: UsageStatusBannerProps) {
   // blocked) or when it has run into pay-as-you-go overage.
   const isPoolDepleted = poolCreditState === "depleted";
   const isPoolOverage = poolCreditState === "overage";
-  const showPoolBanner = isAdmin(owner) && (isPoolDepleted || isPoolOverage);
+
+  // When the contract sells seats that carry personal credits (pro/max/free),
+  // those users spend their own credits before the shared pool and keep working
+  // even when the pool is depleted/in overage (mirrors the personal-seat
+  // carve-out in `isUserBlocked`). The pool banner's "out of credits / agents
+  // blocked" message would be misleading there, so we suppress it. Only fetch
+  // the contract (a Metronome API call) when the banner would otherwise show.
+  const poolStateWouldBanner =
+    isAdmin(owner) && (isPoolDepleted || isPoolOverage);
+  const { contract, isMetronomeContractLoading } = useMetronomeContract({
+    workspaceId: owner.sId,
+    disabled: !poolStateWouldBanner,
+  });
+  const showPoolBanner =
+    poolStateWouldBanner &&
+    !isMetronomeContractLoading &&
+    !contract?.hasPersonalCreditSeats;
   const showAwuBanner = awuStatus !== "normal";
   const showProgrammaticBanner =
     isAdmin(owner) && programmaticCreditStatus !== "active";

@@ -136,10 +136,10 @@ export function WorkspacePage() {
     metronomeCustomerId,
     pendingSubscription,
     poolCreditState,
-    poolAlertId,
-    programmaticAlertIds,
-    usageCapAlertId,
-    defaultAlertIds,
+    poolAlert,
+    programmaticAlerts,
+    usageCapAlert,
+    defaultAlerts,
     programmaticCreditState,
     stripeSubscription,
     stripeCustomerId,
@@ -351,10 +351,10 @@ export function WorkspacePage() {
                   poolCreditState={poolCreditState}
                   programmaticCreditState={programmaticCreditState}
                   creditUsageConfig={creditUsageConfig}
-                  poolAlertId={poolAlertId}
-                  programmaticAlertIds={programmaticAlertIds}
-                  usageCapAlertId={usageCapAlertId}
-                  defaultAlertIds={defaultAlertIds}
+                  poolAlert={poolAlert}
+                  programmaticAlerts={programmaticAlerts}
+                  usageCapAlert={usageCapAlert}
+                  defaultAlerts={defaultAlerts}
                 />
               </TabsContent>
             )}

@@ -229,11 +229,11 @@ export default function SkillBuilder({
               specific needs before saving.
             </ContentMessage>
           )}
+          <SkillBuilderAgentFacingDescriptionSection />
+          <SkillBuilderInstructionsSection />
           <SkillBuilderRequestedSpacesSection
             initialRequestedSpaceIds={skill?.requestedSpaceIds}
           />
-          <SkillBuilderAgentFacingDescriptionSection />
-          <SkillBuilderInstructionsSection />
           {hasFeature("sandbox_tools") && <SkillBuilderFilesSection />}
           {!enableSkillReferences && (
             <SkillBuilderToolsSection extendedSkill={extendedSkill} />

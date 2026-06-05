@@ -9,7 +9,9 @@ import type {
   ToolLatencyView,
 } from "@app/lib/api/assistant/observability/tool_latency";
 import type { PostAgentUserFavoriteRequestBody } from "@app/lib/api/assistant/user_relation";
+import type { GetMemberResponseBody } from "@app/lib/api/user";
 import { clientFetch } from "@app/lib/egress/client";
+import type { FetchAssistantTemplatesResponse } from "@app/lib/resources/template_resource";
 import {
   emptyArray,
   getErrorFromResponse,
@@ -18,7 +20,6 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import { BROWSER_TIMEZONE } from "@app/lib/swr/workspaces";
-import type { FetchAssistantTemplatesResponse } from "@app/pages/api/templates";
 import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import type { GetAgentMcpConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/mcp_configurations";
@@ -38,7 +39,6 @@ import type { GetUsageMetricsResponse } from "@app/pages/api/w/[wId]/assistant/a
 import type { GetVersionMarkersResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/version-markers";
 import type { GetAgentUsageResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/usage";
 import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/pages/api/w/[wId]/assistant/builder/slack/channels_linked_with_agent";
-import type { GetMemberResponseBody } from "@app/pages/api/w/[wId]/members/[uId]";
 import type {
   AgentConfigurationType,
   AgentsGetViewType,

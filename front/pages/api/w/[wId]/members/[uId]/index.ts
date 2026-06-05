@@ -10,6 +10,10 @@ import {
   revokeAndTrackMembership,
   updateMembershipRoleAndTrack,
 } from "@app/lib/api/membership";
+import type {
+  GetMemberResponseBody,
+  PostMemberResponseBody,
+} from "@app/lib/api/user";
 import { getUserForWorkspace } from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -20,28 +24,7 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isMembershipRoleType } from "@app/types/memberships";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { RoleType, UserTypeWithWorkspaces } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type GetMemberResponseBody = {
-  member: {
-    id: string;
-    username: string;
-    email: string;
-    firstName: string;
-    lastName: string | null;
-    fullName: string;
-    image: string | null;
-    revoked: boolean;
-    role: RoleType;
-    startAt: string | null;
-    endAt: string | null;
-  };
-};
-
-export type PostMemberResponseBody = {
-  member: UserTypeWithWorkspaces;
-};
 
 async function handler(
   req: NextApiRequest,

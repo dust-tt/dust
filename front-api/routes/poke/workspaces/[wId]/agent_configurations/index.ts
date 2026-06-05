@@ -1,7 +1,9 @@
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getAuthors } from "@app/lib/api/assistant/editors";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
-import type { UserType } from "@app/types/user";
+import type {
+  PokeAgentConfigurationType,
+  PokeGetAgentConfigurationsResponseBody,
+} from "@app/lib/api/poke/agent_configurations";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -9,14 +11,6 @@ import { z } from "zod";
 
 import agentId from "./[aId]";
 import importRoute from "./import";
-
-export type PokeAgentConfigurationType = LightAgentConfigurationType & {
-  versionAuthor?: UserType | null;
-};
-
-export type PokeGetAgentConfigurationsResponseBody = {
-  agentConfigurations: PokeAgentConfigurationType[];
-};
 
 const ListAgentConfigurationsQuerySchema = z.object({
   view: z.enum(["admin_internal", "archived"]),

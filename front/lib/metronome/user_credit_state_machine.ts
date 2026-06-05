@@ -12,6 +12,7 @@ import type {
   MembershipSeatType,
   UserCreditState,
 } from "@app/types/memberships";
+import { expectedUserCreditState } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -21,11 +22,31 @@ import {
   PRO_SEAT_MONTHLY_AWU_CREDITS,
 } from "./setup_new_pricing";
 
+/**
+ * Live per-user balance snapshot used to resolve the seat↔pool band when a
+ * per-user cap resolves. Fields mirror the inputs of `expectedUserCreditState`.
+ * `null` fields mean "unknown" (e.g. pool-based seat with no individual
+ * allocation, or no configured cap), handled the same way as in reconciliation.
+ */
+export type LiveUserSeatBalance = {
+  seatBalanceAwu: number | null;
+  seatStartingBalanceAwu: number | null;
+  perUserCapAwuCredits: number | null;
+  consumedAwuCredits: number | null;
+};
+
 export type UserCreditContext = {
   workspaceId: string;
   userId: string;
   /** Seat type of the membership — required by guards on seat-balance transitions. */
   seatType?: MembershipSeatType | null;
+  /**
+   * Live balance snapshot. When present, the `per_user_cap_resolved` transition
+   * recomputes the correct seat↔pool band from it (user_seat /
+   * user_seat_low_balance / on_pool / on_pool_low_balance) instead of defaulting
+   * to `on_pool`. Absent for events that don't carry balance data.
+   */
+  liveBalance?: LiveUserSeatBalance;
 };
 
 export type UserCreditEvent =
@@ -79,6 +100,21 @@ type UserCreditTransition = {
   guard?: UserCreditGuard;
   to: UserCreditState;
 };
+
+// Seat↔pool band a user should land in when their per-user cap resolves,
+// derived from the live balance snapshot carried in the context. Used by the
+// guards on the `per_user_cap_resolved` transitions below (mirroring how the
+// `seat_balance_exhausted` guards branch on seat type / pool limit). Without a
+// snapshot we can't distinguish seat from pool, so default to the pool.
+function targetAfterCapResolved(ctx: UserCreditContext): UserCreditState {
+  if (!ctx.liveBalance) {
+    return "on_pool";
+  }
+  return expectedUserCreditState({
+    seatType: ctx.seatType ?? null,
+    ...ctx.liveBalance,
+  });
+}
 
 function syncUserCapCacheForState(
   state: UserCreditState,
@@ -149,8 +185,57 @@ const TRANSITIONS: UserCreditTransition[] = [
     event: "admin_raised_user_cap",
     to: "on_pool",
   },
+  // per_user_cap_resolved: the cap dimension cleared, so re-derive the seat↔pool
+  // band from the live balance snapshot and route to it via guards (same shape
+  // as the seat_balance_exhausted transitions below). A seat-based user who
+  // still has personal balance lands back in `user_seat` /
+  // `user_seat_low_balance`; otherwise they spend from the pool. The unguarded
+  // entry last is the default — also the no-snapshot case (reconcile / billing
+  // webhooks correct it later).
   {
-    from: ["on_pool", "on_pool_low_balance", "capped"],
+    from: [
+      "user_seat",
+      "user_seat_low_balance",
+      "on_pool",
+      "on_pool_low_balance",
+      "capped",
+    ],
+    event: "per_user_cap_resolved",
+    guard: (ctx) => targetAfterCapResolved(ctx) === "user_seat",
+    to: "user_seat",
+  },
+  {
+    from: [
+      "user_seat",
+      "user_seat_low_balance",
+      "on_pool",
+      "on_pool_low_balance",
+      "capped",
+    ],
+    event: "per_user_cap_resolved",
+    guard: (ctx) => targetAfterCapResolved(ctx) === "user_seat_low_balance",
+    to: "user_seat_low_balance",
+  },
+  {
+    from: [
+      "user_seat",
+      "user_seat_low_balance",
+      "on_pool",
+      "on_pool_low_balance",
+      "capped",
+    ],
+    event: "per_user_cap_resolved",
+    guard: (ctx) => targetAfterCapResolved(ctx) === "on_pool_low_balance",
+    to: "on_pool_low_balance",
+  },
+  {
+    from: [
+      "user_seat",
+      "user_seat_low_balance",
+      "on_pool",
+      "on_pool_low_balance",
+      "capped",
+    ],
     event: "per_user_cap_resolved",
     to: "on_pool",
   },

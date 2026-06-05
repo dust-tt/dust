@@ -687,7 +687,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "agent_builder_copilot"
   | "agent_builder_copilot_builders"
   | "agent_builder_shrink_wrap"
-  | "skill_authoring_tool"
   | "custom_model_feature"
   | "anthropic_vertex_fallback"
   | "audit_logs"

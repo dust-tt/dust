@@ -2,6 +2,7 @@
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
+import type { PokeGetConversationConfig } from "@app/lib/api/poke/conversations";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -10,12 +11,6 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type PokeGetConversationConfig = {
-  conversationDataSourceId: string | null;
-  langfuseUiBaseUrl: string | null;
-  temporalWorkspace: string;
-};
 
 async function handler(
   req: NextApiRequest,

@@ -1,19 +1,11 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import type { PokeGetTriggerDetails } from "@app/lib/api/poke/triggers";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
-import type { TriggerType } from "@app/types/assistant/triggers";
-import type { UserType } from "@app/types/user";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export type PokeGetTriggerDetails = {
-  trigger: TriggerType;
-  agent: LightAgentConfigurationType;
-  editorUser: UserType | null;
-};
 
 const ParamsSchema = z.object({
   tId: z.string(),

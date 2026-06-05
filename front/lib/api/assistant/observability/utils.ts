@@ -1,17 +1,6 @@
 import { contextOriginFilter } from "@app/lib/api/assistant/observability/context_origin";
 import type { estypes } from "@elastic/elasticsearch";
 import moment from "moment-timezone";
-import { z } from "zod";
-
-const VALID_TIMEZONES = new Set(moment.tz.names());
-
-export const timezoneSchema = z
-  .string()
-  .optional()
-  .default("UTC")
-  .refine((tz) => VALID_TIMEZONES.has(tz), {
-    message: "Invalid IANA timezone",
-  });
 
 export function daysToDateRange(
   days: number,

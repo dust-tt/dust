@@ -9,6 +9,7 @@ import {
 import { listMetronomeBalances } from "@app/lib/metronome/client";
 import { getCreditTypeAwuId } from "@app/lib/metronome/constants";
 import { invalidateWorkspacePoolCredits } from "@app/lib/metronome/credit_balance";
+import { fetchLiveUserCreditInputs } from "@app/lib/metronome/live_user_credit_inputs";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import { transitionProgrammaticCreditState } from "@app/lib/metronome/programmatic_credit_state_machine";
 import {
@@ -20,6 +21,7 @@ import {
   clearWorkspaceProgrammaticWarned,
   setWorkspaceProgrammaticWarned,
 } from "@app/lib/metronome/user_block";
+import type { LiveUserSeatBalance } from "@app/lib/metronome/user_credit_state_machine";
 import { transitionUserCreditState } from "@app/lib/metronome/user_credit_state_machine";
 import type { WorkspaceCreditEvent } from "@app/lib/metronome/workspace_credit_state_machine";
 import { transitionWorkspaceCreditState } from "@app/lib/metronome/workspace_credit_state_machine";
@@ -404,15 +406,78 @@ export async function dispatchPerUserCapResolved({
     return new Ok(undefined);
   }
 
+  // Resolving the per-user cap only clears the cap dimension; the seat↔pool band
+  // the user lands in depends on their live balance. Read it from Metronome and
+  // pass it into the transition context so the state machine picks the correct
+  // band (a seat-based user with personal balance left → `user_seat` /
+  // `user_seat_low_balance`; otherwise the pool). When the live read isn't
+  // available the transition defaults to `on_pool` and the reconcile / billing
+  // webhooks correct it later.
+  const liveBalance = await resolveLiveBalanceForCapResolved({
+    workspace,
+    userId,
+    seatType: membership.seatType,
+  });
+
   const result = await transitionUserCreditState(
     membership,
     { type: "per_user_cap_resolved" },
-    { workspaceId: workspace.sId, userId }
+    {
+      workspaceId: workspace.sId,
+      userId,
+      seatType: membership.seatType,
+      liveBalance,
+    }
   );
   if (result.isErr()) {
     return result;
   }
   return new Ok(undefined);
+}
+
+// Read the live per-user balance snapshot used to resolve the seat↔pool band on
+// cap resolution. Returns `undefined` when there's no Metronome customer or the
+// live read fails — the transition then defaults to `on_pool`.
+async function resolveLiveBalanceForCapResolved({
+  workspace,
+  userId,
+  seatType,
+}: {
+  workspace: WorkspaceResource;
+  userId: string;
+  seatType: MembershipSeatType | null;
+}): Promise<LiveUserSeatBalance | undefined> {
+  const { metronomeCustomerId } = workspace;
+  if (!metronomeCustomerId) {
+    return undefined;
+  }
+
+  const subscription = await SubscriptionResource.fetchActiveByWorkspaceModelId(
+    workspace.id
+  );
+  const metronomeContractId = subscription?.metronomeContractId ?? null;
+
+  const liveResult = await fetchLiveUserCreditInputs({
+    workspaceId: workspace.sId,
+    userId,
+    seatType,
+    metronomeCustomerId,
+    metronomeContractId,
+  });
+  if (liveResult.isErr()) {
+    logger.warn(
+      { workspaceId: workspace.sId, userId, seatType, err: liveResult.error },
+      "[CreditStateDispatcher] per_user_cap_resolved: live balance read failed, defaulting to on_pool"
+    );
+    return undefined;
+  }
+
+  return {
+    seatBalanceAwu: liveResult.value.seatBalanceAwu,
+    seatStartingBalanceAwu: liveResult.value.seatStartingBalanceAwu,
+    perUserCapAwuCredits: liveResult.value.effectiveCapAwuCredits,
+    consumedAwuCredits: liveResult.value.consumedAwuCredits,
+  };
 }
 
 export async function dispatchPoolExhausted({

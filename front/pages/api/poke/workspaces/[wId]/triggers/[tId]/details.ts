@@ -2,22 +2,14 @@
 // @migration-status: MIGRATED_TO_HONO
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
+import type { PokeGetTriggerDetails } from "@app/lib/api/poke/triggers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
-import type { TriggerType } from "@app/types/assistant/triggers";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { UserType } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type PokeGetTriggerDetails = {
-  trigger: TriggerType;
-  agent: LightAgentConfigurationType;
-  editorUser: UserType | null;
-};
 
 async function handler(
   req: NextApiRequest,

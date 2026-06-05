@@ -2,6 +2,10 @@
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { isMetronomeBillingEnabled } from "@app/lib/api/subscription";
+import {
+  createCheckoutUrl,
+  PostSubscriptionRequestBody,
+} from "@app/lib/api/subscription/checkout_url";
 import type { Authenticator } from "@app/lib/auth";
 import { scheduleMetronomeContractEnd } from "@app/lib/metronome/client";
 import {
@@ -27,11 +31,6 @@ type PatchSubscriptionResponseBody = {
 export type GetSubscriptionsResponseBody = {
   subscriptions: SubscriptionType[];
 };
-
-export const PostSubscriptionRequestBody = z.object({
-  billingPeriod: z.enum(["monthly", "yearly"]),
-  couponCode: z.string().optional(),
-});
 
 export const PatchSubscriptionRequestBody = z.object({
   action: z.enum(["cancel_free_trial", "pay_now", "upgrade_to_business"]),
@@ -91,22 +90,27 @@ async function handler(
       }
 
       try {
-        const useMetronomeBilling = await isMetronomeBillingEnabled(auth);
-        const owner = auth.getNonNullableWorkspace();
-        const user = auth.getNonNullableUser().toJSON();
-        const subscription = auth.getNonNullableSubscriptionResource();
+        const { billingPeriod, couponCode, seatType, targetUserId } =
+          bodyValidation.data;
 
-        const checkoutUrlResult = await subscription.getCheckoutUrlForUpgrade(
-          owner,
-          user,
-          bodyValidation.data.billingPeriod,
-          {
-            useMetronomeBilling,
-            couponCode: bodyValidation.data.couponCode,
-          }
-        );
+        const result = await createCheckoutUrl(auth, {
+          billingPeriod,
+          couponCode,
+          seatType,
+          targetUserId,
+        });
+        if (result.isErr()) {
+          const message =
+            result.error.type === "already_on_pro_plan"
+              ? "Workspace is already subscribed to a Pro or Business plan."
+              : "seatType and targetUserId are required for CP checkout.";
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: { type: "invalid_request_error", message },
+          });
+        }
 
-        return res.status(200).json(checkoutUrlResult);
+        return res.status(200).json(result.value);
       } catch (error) {
         logger.error({ error }, "Error while subscribing workspace to plan");
         return apiError(req, res, {

@@ -340,7 +340,19 @@ export const createEmbeddedMetronomeSetupCheckoutSession = async ({
       enabled: true,
     },
     redirect_on_completion: "if_required",
-    return_url: `${config.getAppUrl()}/w/${owner.sId}/subscription/checkout?billingPeriod=${billingPeriod}&setup_session_id={CHECKOUT_SESSION_ID}`,
+    return_url: (() => {
+      const params = new URLSearchParams({
+        billingPeriod,
+        setup_session_id: "{CHECKOUT_SESSION_ID}",
+      });
+      if (seatType) {
+        params.set("seatType", seatType);
+      }
+      if (targetUserId) {
+        params.set("targetUserId", targetUserId);
+      }
+      return `${config.getAppUrl()}/w/${owner.sId}/subscription/checkout?${params.toString()}`;
+    })(),
     consent_collection: {
       terms_of_service: "required",
     },

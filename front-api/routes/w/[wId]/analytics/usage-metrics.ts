@@ -4,10 +4,8 @@ import type {
   UsageMetricsInterval,
 } from "@app/lib/api/assistant/observability/messages_metrics";
 import { fetchMessageMetrics } from "@app/lib/api/assistant/observability/messages_metrics";
-import {
-  buildAgentAnalyticsBaseQuery,
-  timezoneSchema,
-} from "@app/lib/api/assistant/observability/utils";
+import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
+import { timezoneSchema } from "@app/lib/api/timezone";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";

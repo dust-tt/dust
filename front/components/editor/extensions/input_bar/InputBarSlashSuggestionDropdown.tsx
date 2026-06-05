@@ -1,18 +1,15 @@
 import {
   getSkillSlashCommandItem,
-  matchesSlashCommandQuery,
-  sortSlashCommandMatches,
-} from "@app/components/editor/extensions/shared/SlashCommandSkillItems";
+  getToolSlashCommandItem,
+  getToolSlashCommandLabel,
+  matchesSlashCommandCapabilityQuery,
+  sortSlashCommandCapabilityMatches,
+} from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import type {
   SlashCommand,
   SlashCommandDropdownRef,
 } from "@app/components/editor/extensions/skill_builder/SlashCommandDropdown";
 import { SlashCommandDropdown } from "@app/components/editor/extensions/skill_builder/SlashCommandDropdown";
-import {
-  getMcpServerViewDescription,
-  getMcpServerViewDisplayName,
-} from "@app/lib/actions/mcp_helper";
-import { getAvatar } from "@app/lib/actions/mcp_icons";
 import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useMCPServerViewsFromSpaces } from "@app/lib/swr/mcp_servers";
@@ -53,7 +50,7 @@ export function filterInputBarSlashSuggestions({
   })[] = [
     ...skills
       .filter((skill) =>
-        matchesSlashCommandQuery({
+        matchesSlashCommandCapabilityQuery({
           label: skill.name,
           query: normalizedQuery,
         })
@@ -67,19 +64,19 @@ export function filterInputBarSlashSuggestions({
       .filter((serverView) => isJITMCPServerView(serverView))
       .filter((serverView) => !selectedMCPServerViewIds.has(serverView.sId))
       .filter((serverView) =>
-        matchesSlashCommandQuery({
-          label: getMcpServerViewDisplayName(serverView),
+        matchesSlashCommandCapabilityQuery({
+          label: getToolSlashCommandLabel(serverView),
           query: normalizedQuery,
         })
       )
       .map((serverView) => ({
         kind: "tool" as const,
         serverView,
-        sortName: getMcpServerViewDisplayName(serverView).toLowerCase(),
+        sortName: getToolSlashCommandLabel(serverView).toLowerCase(),
       })),
   ];
 
-  return sortSlashCommandMatches({
+  return sortSlashCommandCapabilityMatches({
     items: capabilities,
     normalizedQuery,
   }).map(({ sortName: _sortName, ...capability }) => capability);
@@ -134,26 +131,8 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
           switch (capability.kind) {
             case "skill":
               return [getSkillSlashCommandItem(capability.skill)];
-            case "tool": {
-              const description = getMcpServerViewDescription(
-                capability.serverView
-              );
-
-              return [
-                {
-                  action: "select-tool",
-                  description,
-                  icon: () => getAvatar(capability.serverView.server),
-                  id: capability.serverView.sId,
-                  label: getMcpServerViewDisplayName(capability.serverView),
-                  tooltip: description
-                    ? {
-                        description,
-                      }
-                    : undefined,
-                },
-              ];
-            }
+            case "tool":
+              return [getToolSlashCommandItem(capability.serverView)];
             default:
               assertNeverAndIgnore(capability);
               return [];

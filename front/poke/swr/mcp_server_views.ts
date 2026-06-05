@@ -1,5 +1,5 @@
+import type { PokeListMCPServerViews } from "@app/lib/api/poke/mcp_server_views";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { PokeListMCPServerViews } from "@app/pages/api/poke/workspaces/[wId]/mcp/views";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import type { Fetcher } from "swr";
 

@@ -4,11 +4,9 @@
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import type { ActiveUsersMetricsPoint } from "@app/lib/api/assistant/observability/active_users_metrics";
 import { fetchActiveUsersMetrics } from "@app/lib/api/assistant/observability/active_users_metrics";
-import {
-  daysToDateRange,
-  timezoneSchema,
-} from "@app/lib/api/assistant/observability/utils";
+import { daysToDateRange } from "@app/lib/api/assistant/observability/utils";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { timezoneSchema } from "@app/lib/api/timezone";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";

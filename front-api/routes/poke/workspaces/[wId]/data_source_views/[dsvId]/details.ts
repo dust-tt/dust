@@ -1,14 +1,10 @@
+import type { PokeGetDataSourceViewDetails } from "@app/lib/api/poke/data_source_views";
 import { dataSourceViewToPokeJSON } from "@app/lib/poke/utils";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import type { PokeDataSourceViewType } from "@app/types/poke";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export type PokeGetDataSourceViewDetails = {
-  dataSourceView: PokeDataSourceViewType;
-};
 
 const ParamsSchema = z.object({
   dsvId: z.string(),
