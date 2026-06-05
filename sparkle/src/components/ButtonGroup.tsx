@@ -81,16 +81,9 @@ const ButtonGroup = React.forwardRef<HTMLDivElement, ButtonGroupProps>(
 
 ButtonGroup.displayName = "ButtonGroup";
 
-// Distributive Omit: DropdownMenuItemProps is a mutually-exclusive union, and a
-// plain Omit would collapse it to its common keys. Separators are not supported
-// here — use the dropdown primitives directly if you need one between items.
-type DistributiveOmit<T, K extends PropertyKey> = T extends unknown
-  ? Omit<T, K>
-  : never;
-
 interface ButtonGroupDropdownProps {
   trigger: React.ReactElement;
-  items: DistributiveOmit<DropdownMenuItemProps, "separatorAfter">[];
+  items: DropdownMenuItemProps[];
   align?: "start" | "center" | "end";
   onOpenChange?: (open: boolean) => void;
 }

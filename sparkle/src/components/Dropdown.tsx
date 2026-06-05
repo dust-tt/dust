@@ -519,7 +519,6 @@ export type DropdownMenuItemProps = MutuallyExclusiveProps<
     itemId?: string;
     variant?: ItemVariantType;
     tooltip?: React.ReactNode;
-    separatorAfter?: boolean;
   } & Omit<LinkWrapperProps, "children" | "className">,
   LabelAndIconProps & {
     description?: string;
@@ -552,7 +551,6 @@ const DropdownMenuItem = React.forwardRef<
       prefetch,
       endComponent,
       tooltip,
-      separatorAfter,
       ...props
     },
     ref
@@ -617,15 +615,6 @@ const DropdownMenuItem = React.forwardRef<
     ) : (
       item
     );
-
-    if (separatorAfter) {
-      return (
-        <>
-          {itemWithTooltip}
-          <DropdownMenuSeparator />
-        </>
-      );
-    }
 
     return itemWithTooltip;
   }
