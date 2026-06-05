@@ -30,7 +30,7 @@ import type { SuggestionOptions, SuggestionProps } from "@tiptap/suggestion";
 import { exitSuggestion, Suggestion } from "@tiptap/suggestion";
 import { forwardRef, useImperativeHandle, useMemo, useRef } from "react";
 
-const slashCommandPluginKey = new PluginKey("slashCommand");
+export const slashCommandPluginKey = new PluginKey("slashCommand");
 const capabilitiesOnlySlashCommandMetaKey =
   "skillBuilderCapabilitiesOnlySlashCommand";
 
@@ -51,6 +51,14 @@ function hasSlashCharacterAtPosition(state: EditorState, position: number) {
       "\ufffc"
     ) === "/"
   );
+}
+
+function shouldInsertSlashBoundarySpace(state: EditorState) {
+  const textBefore = state.selection.$from.nodeBefore?.isText
+    ? state.selection.$from.nodeBefore.text
+    : null;
+
+  return !!textBefore && !textBefore.endsWith(" ");
 }
 
 // Define available slash commands.
@@ -367,13 +375,20 @@ export const SlashCommandExtension =
         openCapabilitiesSlashCommand:
           () =>
           ({ chain }) => {
+            this.storage.hasBeenFocused = true;
+            const triggerText = shouldInsertSlashBoundarySpace(
+              this.editor.state
+            )
+              ? " /"
+              : "/";
+
             const inserted = chain()
               .focus()
               .command(({ tr }) => {
                 tr.setMeta(capabilitiesOnlySlashCommandMetaKey, true);
                 return true;
               })
-              .insertContent("/")
+              .insertContent(triggerText)
               .run();
 
             return inserted;
