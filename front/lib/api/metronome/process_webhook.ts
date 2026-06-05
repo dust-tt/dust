@@ -24,6 +24,7 @@ import {
   syncPoolCreditStateFromBalance,
 } from "@app/lib/api/metronome/credit_state_dispatcher";
 import { reconcileWorkspaceUserCreditStates } from "@app/lib/api/metronome/reconcile_credit_state";
+import { syncMetronomeSeatCountForWorkspace } from "@app/lib/api/metronome/seat_sync";
 import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import { Authenticator } from "@app/lib/auth";
@@ -308,6 +309,17 @@ async function stampCommitCreditType({
     `[Metronome Webhook] ${eventType}: stamped DUST_CONTRACT_CREDIT_TYPE=pool on commit`
   );
   return new Ok(undefined);
+}
+
+// Returns true when the credit is an individual AWU seat credit — i.e. the
+// per-user recurring credit that backs a Pro/Max seat allocation. Used to
+// decide whether a segment event should trigger a seat sync + user credit state
+// reconciliation.
+function isSeatAwuCredit(credit: Credit): boolean {
+  return (
+    credit.subscription_config?.allocation === "INDIVIDUAL" &&
+    credit.access_schedule?.credit_type?.id === getCreditTypeAwuId()
+  );
 }
 
 // Reconcile the workspace pool credit state from a commit/credit segment or
@@ -1157,7 +1169,6 @@ export async function processMetronomeWebhook({
     case "contract.archive":
     case "contract.create":
     case "credit.archive":
-    case "credit.segment.end":
     case "invoice.billing_provider_error":
     case "invoice.finalized":
       break;
@@ -1390,6 +1401,23 @@ export async function processMetronomeWebhook({
           metronomeCustomerId,
           commitOrCredit: creditResult.value,
         });
+
+        // A new seat segment starting means a seat type was activated (e.g.
+        // a planned Pro→Max upgrade takes effect). Re-sync the seat count so
+        // the per-user allocation is reassigned and each user's credit state
+        // reflects the new seat type.
+        if (
+          event.type === "credit.segment.start" &&
+          isSeatAwuCredit(creditResult.value)
+        ) {
+          await syncMetronomeSeatCountForWorkspace({
+            workspace: renderLightWorkspaceType({ workspace }),
+          });
+          logger.info(
+            { metronomeCustomerId, creditId, workspaceId: workspace.sId },
+            "[Metronome Webhook] credit.segment.start: seat credit activated, seat sync triggered"
+          );
+        }
       }
 
       if (event.type === "credit.segment.start") {
@@ -1410,6 +1438,34 @@ export async function processMetronomeWebhook({
         if (grantResult.isErr()) {
           return grantResult;
         }
+      }
+      break;
+    }
+
+    case "credit.segment.end": {
+      const { customer_id: metronomeCustomerId, credit_id: creditId } = event;
+
+      const creditResult = await getMetronomeCredit({
+        metronomeCustomerId,
+        creditId,
+      });
+      if (creditResult.isErr()) {
+        return new Err(
+          new ProcessMetronomeWebhookError(
+            "processing_failed",
+            `Error fetching credit: ${creditResult.error.message}`
+          )
+        );
+      }
+
+      if (creditResult.value && isSeatAwuCredit(creditResult.value)) {
+        await syncMetronomeSeatCountForWorkspace({
+          workspace: renderLightWorkspaceType({ workspace }),
+        });
+        logger.info(
+          { metronomeCustomerId, creditId, workspaceId: workspace.sId },
+          "[Metronome Webhook] credit.segment.end: seat credit deactivated, seat sync triggered"
+        );
       }
       break;
     }
