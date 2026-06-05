@@ -156,12 +156,14 @@ export class ProcessMetronomeWebhookError extends Error {
  *   - everything else (incl. customer-level credits) → "pool" (counted)
  */
 async function stampContractCreditType({
+  workspaceId,
   customerId,
   contractId,
   creditId,
   creditCustomFields,
   eventType,
 }: {
+  workspaceId: string;
   customerId: string;
   contractId: string | null | undefined;
   creditId: string;
@@ -183,7 +185,13 @@ async function stampContractCreditType({
     });
     if (contractResult.isErr()) {
       logger.error(
-        { customerId, contractId, creditId, error: contractResult.error },
+        {
+          workspaceId,
+          customerId,
+          contractId,
+          creditId,
+          error: contractResult.error,
+        },
         `[Metronome Webhook] ${eventType}: failed to fetch contract for stamping`
       );
       return new Err(
@@ -197,7 +205,7 @@ async function stampContractCreditType({
     const credit = contractResult.value.credits?.find((c) => c.id === creditId);
     if (!credit) {
       logger.info(
-        { customerId, contractId, creditId },
+        { workspaceId, customerId, contractId, creditId },
         `[Metronome Webhook] ${eventType}: credit not found on contract, skipping stamp`
       );
       return new Ok(undefined);
@@ -234,7 +242,7 @@ async function stampContractCreditType({
     );
   }
   logger.info(
-    { customerId, contractId, creditId, value, eventType },
+    { workspaceId, customerId, contractId, creditId, value, eventType },
     `[Metronome Webhook] ${eventType}: stamped DUST_CONTRACT_CREDIT_TYPE`
   );
   return new Ok(undefined);
@@ -289,6 +297,7 @@ async function handleFreeCreditSegmentGrant({
   if (contractResult.isErr()) {
     logger.error(
       {
+        workspaceId: workspace.sId,
         metronomeCustomerId,
         contractId,
         creditId,
@@ -307,7 +316,7 @@ async function handleFreeCreditSegmentGrant({
   const credit = contractResult.value.credits?.find((c) => c.id === creditId);
   if (!credit) {
     logger.info(
-      { metronomeCustomerId, contractId, creditId },
+      { workspaceId: workspace.sId, metronomeCustomerId, contractId, creditId },
       "[Metronome Webhook] credit.segment.start: credit not found on contract, ignoring"
     );
     return new Ok(undefined);
@@ -316,6 +325,7 @@ async function handleFreeCreditSegmentGrant({
   if (!isMetronomeFreeCredit(credit)) {
     logger.info(
       {
+        workspaceId: workspace.sId,
         metronomeCustomerId,
         creditId,
         productId: credit.product.id,
@@ -1045,6 +1055,7 @@ export async function processMetronomeWebhook({
         "[Metronome Webhook] credit.create: handler entered"
       );
       const stampResult = await stampContractCreditType({
+        workspaceId: workspace.sId,
         customerId: event.customer_id,
         contractId: event.contract_id ?? null,
         creditId: event.credit_id,
@@ -1072,7 +1083,13 @@ export async function processMetronomeWebhook({
       } = event.properties;
       if (paymentStatus === "paid") {
         logger.info(
-          { customerId, contractId, invoiceId, paymentStatus },
+          {
+            workspaceId: workspace.sId,
+            customerId,
+            contractId,
+            invoiceId,
+            paymentStatus,
+          },
           "[Metronome Webhook] Payment-gated commit paid"
         );
         // Resolve the AWU purchase attempt the UI is polling for. The
@@ -1086,6 +1103,7 @@ export async function processMetronomeWebhook({
       } else if (paymentStatus === "failed") {
         logger.warn(
           {
+            workspaceId: workspace.sId,
             customerId,
             contractId,
             invoiceId,
@@ -1105,6 +1123,7 @@ export async function processMetronomeWebhook({
         // pending; the terminal "paid" / "failed" event will follow.
         logger.info(
           {
+            workspaceId: workspace.sId,
             customerId,
             contractId,
             invoiceId,
@@ -1524,7 +1543,7 @@ export async function processMetronomeWebhook({
 
     default:
       logger.info(
-        { eventType: event.type },
+        { eventType: event.type, workspaceId: workspace.sId },
         "[Metronome Webhook] Unhandled event type"
       );
       break;
