@@ -274,7 +274,7 @@ function SearchResults({
 
   return (
     <div className="h-full overflow-y-auto">
-      <NavigationList className="px-2">
+      <NavigationList className="px-2 flex-shrink-0">
         <NavigationListCollapsibleSection
           label="Pods"
           type="collapse"

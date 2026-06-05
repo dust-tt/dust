@@ -13,6 +13,7 @@ import {
   type LinkWrapperProps,
 } from "@sparkle/components/LinkWrapper";
 import { TypingAnimation } from "@sparkle/components/TypingAnimation";
+import { ScrollArea, ScrollBar } from "@sparkle/components/ScrollArea";
 import {
   ChevronDown,
   ChevronUp,
@@ -22,14 +23,25 @@ import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
 import * as React from "react";
 
+interface NavigationListProps {
+  viewportRef?: React.RefObject<HTMLDivElement>;
+}
+
 const NavigationList = React.forwardRef<
   React.ElementRef<typeof ScrollAreaPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root>
->(({ className, children }, ref) => {
+  React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root> &
+    NavigationListProps
+>(({ className, children, viewportRef, ...props }, ref) => {
   return (
-    <div ref={ref} className={cn("s-flex s-flex-col s-gap-0.5", className)}>
-      {children}
-    </div>
+    <ScrollArea
+      ref={ref}
+      viewportRef={viewportRef}
+      className={className}
+      {...props}
+    >
+      <div className="s-flex s-flex-col s-gap-0.5">{children}</div>
+      <ScrollBar />
+    </ScrollArea>
   );
 });
 NavigationList.displayName = "NavigationList";
