@@ -236,7 +236,9 @@ export function SkillBuilderRequestedSpacesSection({
             Spaces and Pods
           </h3>
           <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            Set what knowledge and capabilities the skill can access.
+            Choose which spaces and Pods this skill can access. The skill can
+            use their knowledge and capabilities, and only users with access to
+            all selected spaces and Pods can use it.
           </p>
         </div>
         <Button
@@ -250,9 +252,9 @@ export function SkillBuilderRequestedSpacesSection({
       {nonGlobalSpacesWithRestrictions.length > 0 && (
         <div className="mb-4 w-full">
           <ContentMessage variant="golden" size="lg">
-            Based on your selection of spaces, Pods, knowledge, and
-            capabilities, this skill can only be used by users with access
-            to:&nbsp;
+            This skill can access knowledge and capabilities from these spaces
+            and Pods, and only users with access to all of them can use
+            it:&nbsp;
             <strong>
               {nonGlobalSpacesWithRestrictions
                 .map((space) => space.name)
