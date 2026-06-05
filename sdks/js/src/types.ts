@@ -3346,6 +3346,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "HubspotLogo"
   | "IntercomLogo"
   | "JiraLogo"
+  | "LemlistLogo"
   | "LinearLogo"
   | "LumaLogo"
   | "MicrosoftExcelLogo"
