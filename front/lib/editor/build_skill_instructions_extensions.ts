@@ -24,7 +24,7 @@ export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
 interface BuildSkillInstructionsExtensionsOptions {
   enableSkillReferences?: boolean;
   onSkillNodeDetails?: (skillId: string) => void;
-  onToolNodeDetails?: (tool: MCPServerViewType) => void;
+  onToolDetails?: (tool: MCPServerViewType) => void;
 }
 
 /**
@@ -39,7 +39,7 @@ export function buildSkillInstructionsExtensions(
   {
     enableSkillReferences = false,
     onSkillNodeDetails,
-    onToolNodeDetails,
+    onToolDetails,
   }: BuildSkillInstructionsExtensionsOptions = {}
 ): Extensions {
   const baseExtensions: Extensions = [
@@ -103,9 +103,7 @@ export function buildSkillInstructionsExtensions(
   ];
 
   if (enableSkillReferences) {
-    baseExtensions.push(
-      ToolNodeWithView.configure({ onToolDetails: onToolNodeDetails })
-    );
+    baseExtensions.push(ToolNodeWithView.configure({ onToolDetails }));
   }
 
   baseExtensions.push(
