@@ -64,4 +64,14 @@ describe("/subtle1 PostHog proxy", () => {
 
     expect(response.status).toBe(502);
   });
+
+  it("returns 502 instead of an unhandled 500 when the upstream fetch fails", async () => {
+    fetchSpy.mockRejectedValue(new TypeError("fetch failed"));
+
+    const response = await honoApp.request("/subtle1/e/", { method: "POST" });
+
+    expect(response.status).toBe(502);
+    const body = await response.json();
+    expect(body.error.type).toBe("service_unavailable");
+  });
 });
