@@ -1,11 +1,12 @@
-import { H2, P } from "@app/components/home/ContentComponents";
+import { P } from "@app/components/home/ContentComponents";
 import { getIcon } from "@app/components/resources/resources_icons";
 import {
-  ArrowUpIcon,
-  CheckCircleIcon,
+  ArrowUp,
+  CheckCircle,
   ConversationMessageContainer,
   ConversationMessageContent,
   cn,
+  DustLogoSquare,
   Icon,
   Tooltip,
 } from "@dust-tt/sparkle";
@@ -13,9 +14,13 @@ import { motion, useReducedMotion } from "framer-motion";
 
 import type { ChatStoryline, IntegrationBase } from "../types";
 
-// Tunable animation timings. Total runtime is roughly 4-5s on first mount.
-// All durations are in seconds because framer-motion's `transition.duration`
-// expects seconds (not ms) — kept that way to match its API.
+// Tunable animation timings for the agent's *conversation* (user prompt →
+// agent reply chain). The chrome around the conversation (top bar, sidebar,
+// input bar) is intentionally static — those are always visible to convey
+// "this is the Dust app", not "this is loading right now".
+//
+// Durations are in seconds because framer-motion's `transition.duration`
+// expects seconds (not ms).
 const TIMING = {
   userBubbleDelaySeconds: 0.15,
   agentHeaderDelaySeconds: 0.9,
@@ -24,7 +29,6 @@ const TIMING = {
   responseIntroExtraSeconds: 0.45,
   sectionStaggerSeconds: 0.7,
   followUpExtraSeconds: 0.4,
-  inputBarExtraSeconds: 0.35,
   bubbleDurationSeconds: 0.45,
 };
 
@@ -38,8 +42,7 @@ export function IntegrationChatMockupSection({
   storyline,
 }: IntegrationChatMockupSectionProps) {
   // Respect reduced-motion preferences: skip all animation, render the
-  // chat fully revealed. Required by accessibility and per [GEN1] — other
-  // marketing pages with motion already honor this.
+  // chat fully revealed.
   const prefersReducedMotion = useReducedMotion();
 
   const toolCallAnimationEndSeconds =
@@ -49,7 +52,6 @@ export function IntegrationChatMockupSection({
   const responseIntroDelaySeconds =
     toolCallAnimationEndSeconds + TIMING.responseIntroExtraSeconds;
 
-  // Each response section staggers in *after* the intro.
   const sectionBaseDelaySeconds =
     responseIntroDelaySeconds + TIMING.bubbleDurationSeconds + 0.1;
 
@@ -58,68 +60,73 @@ export function IntegrationChatMockupSection({
     storyline.responseSections.length * TIMING.sectionStaggerSeconds +
     TIMING.followUpExtraSeconds;
 
-  const inputBarDelaySeconds =
-    followUpDelaySeconds + TIMING.inputBarExtraSeconds;
-
   return (
     <div className="bg-muted/40 py-12 md:py-16">
-      <div className="mx-auto max-w-3xl px-4">
-        <H2 className="mb-2 text-center text-2xl font-semibold text-foreground md:text-3xl">
-          See it in action with {integration.name}
-        </H2>
-        <P size="md" className="mb-8 text-center text-muted-foreground">
-          A peek at how a Dust agent uses the {integration.name} tools to get
-          things done.
-        </P>
+      <div className="mx-auto max-w-5xl px-4">
+        {/* The whole mockup is wrapped in a card with Dust-app-style chrome:
+            a top bar, a left sidebar (hidden on mobile), the chat area on
+            the right, and a persistent input bar at the bottom of the chat
+            area. It reads as a screenshot of the real product. */}
+        <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
+          <TopBar integrationName={integration.name} />
 
-        <div className="rounded-2xl border border-border bg-white p-4 shadow-sm md:p-6">
-          <UserBubble
-            text={storyline.userPrompt}
-            prefersReducedMotion={!!prefersReducedMotion}
-          />
+          <div className="flex">
+            <SidebarMock integrationName={integration.name} />
 
-          <div className="mt-6">
-            <AgentHeader
-              completedInSeconds={storyline.completedInSeconds}
-              delaySeconds={
-                prefersReducedMotion ? 0 : TIMING.agentHeaderDelaySeconds
-              }
-              prefersReducedMotion={!!prefersReducedMotion}
-            />
+            <main className="flex min-w-0 flex-1 flex-col">
+              <div className="flex-1 space-y-4 p-4 md:p-6">
+                <UserBubble
+                  text={storyline.userPrompt}
+                  prefersReducedMotion={!!prefersReducedMotion}
+                />
 
-            <ToolCallsStrip
-              integration={integration}
-              toolCalls={storyline.toolCalls}
-              startDelaySeconds={
-                prefersReducedMotion ? 0 : TIMING.toolCallStartSeconds
-              }
-              prefersReducedMotion={!!prefersReducedMotion}
-            />
+                <div>
+                  <AgentHeader
+                    completedInSeconds={storyline.completedInSeconds}
+                    delaySeconds={
+                      prefersReducedMotion ? 0 : TIMING.agentHeaderDelaySeconds
+                    }
+                    prefersReducedMotion={!!prefersReducedMotion}
+                  />
 
-            <AgentResponseBubble
-              storyline={storyline}
-              introDelaySeconds={
-                prefersReducedMotion ? 0 : responseIntroDelaySeconds
-              }
-              sectionsBaseDelaySeconds={
-                prefersReducedMotion ? 0 : sectionBaseDelaySeconds
-              }
-              prefersReducedMotion={!!prefersReducedMotion}
-            />
+                  <ToolCallsStrip
+                    integration={integration}
+                    toolCalls={storyline.toolCalls}
+                    startDelaySeconds={
+                      prefersReducedMotion ? 0 : TIMING.toolCallStartSeconds
+                    }
+                    prefersReducedMotion={!!prefersReducedMotion}
+                  />
 
-            {storyline.followUpPrompt && (
-              <FollowUpSuggestion
-                text={storyline.followUpPrompt}
-                delaySeconds={prefersReducedMotion ? 0 : followUpDelaySeconds}
-                prefersReducedMotion={!!prefersReducedMotion}
-              />
-            )}
+                  <AgentResponseBubble
+                    storyline={storyline}
+                    introDelaySeconds={
+                      prefersReducedMotion ? 0 : responseIntroDelaySeconds
+                    }
+                    sectionsBaseDelaySeconds={
+                      prefersReducedMotion ? 0 : sectionBaseDelaySeconds
+                    }
+                    prefersReducedMotion={!!prefersReducedMotion}
+                  />
+
+                  {storyline.followUpPrompt && (
+                    <FollowUpSuggestion
+                      text={storyline.followUpPrompt}
+                      delaySeconds={
+                        prefersReducedMotion ? 0 : followUpDelaySeconds
+                      }
+                      prefersReducedMotion={!!prefersReducedMotion}
+                    />
+                  )}
+                </div>
+              </div>
+
+              {/* Persistent input bar: NOT animated. Always visible so the
+                  mockup reads as a real product surface, not a loading
+                  artifact. */}
+              <PersistentInputBar />
+            </main>
           </div>
-
-          <InputBar
-            delaySeconds={prefersReducedMotion ? 0 : inputBarDelaySeconds}
-            prefersReducedMotion={!!prefersReducedMotion}
-          />
         </div>
 
         <P
@@ -129,6 +136,76 @@ export function IntegrationChatMockupSection({
           Example agent output — not a live session.
         </P>
       </div>
+    </div>
+  );
+}
+
+interface TopBarProps {
+  integrationName: string;
+}
+
+function TopBar({ integrationName }: TopBarProps) {
+  return (
+    <div className="flex items-center gap-3 border-b border-border bg-muted/20 px-4 py-2.5">
+      <DustLogoSquare className="h-5 w-5 shrink-0" />
+      <span className="text-sm font-medium text-foreground">
+        Dust · My workspace
+      </span>
+      <span className="ml-auto truncate text-xs text-muted-foreground">
+        {integrationName} recap
+      </span>
+    </div>
+  );
+}
+
+interface SidebarMockProps {
+  integrationName: string;
+}
+
+function SidebarMock({ integrationName }: SidebarMockProps) {
+  // Hidden on mobile to keep the chat area wide. The static rows here are
+  // intentional copy that read like real Dust conversation titles for the
+  // target partner.
+  return (
+    <aside className="hidden w-56 shrink-0 flex-col border-r border-border bg-muted/10 p-3 md:flex">
+      <button
+        type="button"
+        className="flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/30"
+        aria-hidden
+      >
+        <span className="text-base leading-none">+</span>
+        New conversation
+      </button>
+
+      <div className="mt-4 space-y-0.5">
+        <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          Recent
+        </div>
+        <SidebarItem label={`${integrationName} weekly recap`} active />
+        <SidebarItem label="Pipeline analysis" />
+        <SidebarItem label="Account research" />
+        <SidebarItem label="Quarterly review" />
+      </div>
+    </aside>
+  );
+}
+
+interface SidebarItemProps {
+  label: string;
+  active?: boolean;
+}
+
+function SidebarItem({ label, active = false }: SidebarItemProps) {
+  return (
+    <div
+      className={cn(
+        "truncate rounded-md px-2 py-1.5 text-xs transition-colors",
+        active
+          ? "bg-foreground/10 font-medium text-foreground"
+          : "text-muted-foreground"
+      )}
+    >
+      {label}
     </div>
   );
 }
@@ -179,9 +256,10 @@ function AgentHeader({
       transition={{ duration: 0.35, delay: delaySeconds }}
       className="mb-3 flex items-center gap-2 text-sm font-medium text-foreground"
     >
+      <DustLogoSquare className="h-4 w-4 shrink-0" />
       <span>Dust</span>
       <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-xs text-green-700">
-        <Icon visual={CheckCircleIcon} size="xs" />
+        <Icon visual={CheckCircle} size="xs" />
         Completed in {completedInSeconds}s
       </span>
     </motion.div>
@@ -226,7 +304,7 @@ function ToolCallsStrip({
                   <Icon visual={PartnerIcon} size="xs" />
                   {toolName}
                   <Icon
-                    visual={CheckCircleIcon}
+                    visual={CheckCircle}
                     size="xs"
                     className="text-green-600"
                   />
@@ -332,26 +410,27 @@ function FollowUpSuggestion({
   );
 }
 
-interface InputBarProps {
-  delaySeconds: number;
-  prefersReducedMotion: boolean;
-}
-
-function InputBar({ delaySeconds, prefersReducedMotion }: InputBarProps) {
+// Persistent input bar at the bottom of the chat area. Styled to match the
+// real Dust InputBar — rounded-2xl muted-background card with an agent
+// picker chip on the left and a primary send button on the right. Always
+// visible, never animated.
+function PersistentInputBar() {
   return (
-    <motion.div
-      initial={prefersReducedMotion ? false : { opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.35, delay: delaySeconds }}
-      aria-hidden
-      className="mt-6 flex items-center gap-2 rounded-2xl border border-border bg-muted/30 px-3 py-2.5"
-    >
-      <span className="flex-1 select-none text-sm text-muted-foreground">
-        Ask a follow-up…
-      </span>
-      <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-foreground/80 text-white">
-        <Icon visual={ArrowUpIcon} size="xs" />
-      </span>
-    </motion.div>
+    <div className="border-t border-border bg-muted/10 p-3 md:p-4">
+      <div
+        aria-hidden
+        className="flex items-center gap-2 rounded-2xl border border-border bg-muted-background px-3 py-2.5"
+      >
+        <span className="inline-flex items-center gap-1 rounded-md bg-foreground/10 px-2 py-0.5 text-xs font-medium text-foreground">
+          @dust
+        </span>
+        <span className="flex-1 select-none truncate text-sm text-muted-foreground">
+          Ask a follow-up…
+        </span>
+        <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-foreground/85 text-white">
+          <Icon visual={ArrowUp} size="xs" />
+        </span>
+      </div>
+    </div>
   );
 }
