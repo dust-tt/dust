@@ -905,7 +905,7 @@ export function AgentSidebarMenu({
         <div className="flex h-0 min-h-full w-full">
           <div className="flex w-full flex-col">
             {isMultiSelect ? (
-              <div className="z-50 flex justify-between gap-2 border-b border-border-dark/60 p-2 dark:border-border-dark/60">
+              <div className="z-50 flex justify-between gap-2 border-b border-border-dark/60 p-2 dark:border-border-dark/60 mb-4">
                 <div className="flex gap-2">
                   <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild>
