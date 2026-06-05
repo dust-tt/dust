@@ -1002,6 +1002,9 @@
  *         userFavorite:
  *           type: boolean
  *           description: Whether the agent is a user favorite (agent mentions only)
+ *         canEdit:
+ *           type: boolean
+ *           description: Whether the current user can edit the agent (agent mentions only)
  *     PrivateFeatureFlags:
  *       type: object
  *       description: Workspace feature flags response.

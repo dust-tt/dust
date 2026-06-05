@@ -89,7 +89,7 @@ export function useMentionSuggestions({
 
   return {
     suggestions: data?.suggestions ?? [],
-    isLoading: !error && !data,
+    isLoading: !disabled && !error && !data,
     isError: !!error,
     mutate,
   };

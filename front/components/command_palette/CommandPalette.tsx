@@ -8,18 +8,19 @@ import { useCommandPalette } from "@app/components/command_palette/CommandPalett
 import type { CommandPaletteItem } from "@app/components/command_palette/CommandPaletteSearchPhase";
 import { CommandPaletteSearchPhase } from "@app/components/command_palette/CommandPaletteSearchPhase";
 import { SkillDetailsSheetById } from "@app/components/command_palette/SkillDetailsSheetById";
+import { filterAndSortEditorSuggestionAgents } from "@app/lib/mentions/editor/suggestion";
 import { useAppRouter } from "@app/lib/platform";
-import { useAgentConfigurations } from "@app/lib/swr/assistants";
+import { useMentionSuggestions } from "@app/lib/swr/mentions";
 import { useSkills } from "@app/lib/swr/skill_configurations";
 import { useSpaces } from "@app/lib/swr/spaces";
-import { filterAndSortAgents, subFilter } from "@app/lib/utils";
+import { subFilter } from "@app/lib/utils";
 import {
   getAgentBuilderRoute,
   getConversationRoute,
   getPodRoute,
   getSkillBuilderRoute,
 } from "@app/lib/utils/router";
-import { compareAgentsForSort } from "@app/types/assistant/assistant";
+import { isRichAgentMention } from "@app/types/assistant/mentions";
 import { isProjectType } from "@app/types/space";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { Dialog, DialogContent } from "@dust-tt/sparkle";
@@ -46,13 +47,26 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
   const [agentDetailsId, setAgentDetailsId] = useState<string | null>(null);
   const [skillDetailsId, setSkillDetailsId] = useState<string | null>(null);
 
-  // Fetch agents and skills only when the palette is open.
-  const { agentConfigurations, isAgentConfigurationsLoading } =
-    useAgentConfigurations({
-      workspaceId: owner.sId,
-      agentsGetView: "list",
-      disabled: !isOpen,
-    });
+  // Fetch agents only when the palette is open.
+  const {
+    suggestions,
+    isLoading: isSuggestionsLoading,
+    mutate: mutateSuggestions,
+  } = useMentionSuggestions({
+    workspaceId: owner.sId,
+    conversationId: null,
+    select: { agents: true, users: false },
+    disabled: !isOpen,
+  });
+  const agentSuggestions = useMemo(
+    () =>
+      suggestions.filter(isRichAgentMention).map((s) => ({
+        ...s,
+        isParticipant: false as const,
+        lastActivityAt: 0,
+      })),
+    [suggestions]
+  );
 
   const { skills, isSkillsLoading } = useSkills({
     owner,
@@ -100,10 +114,11 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
 
   const allFilteredAgents = useMemo(
     () =>
-      debouncedQuery
-        ? filterAndSortAgents(agentConfigurations, debouncedQuery)
-        : [...agentConfigurations].sort(compareAgentsForSort),
-    [agentConfigurations, debouncedQuery]
+      filterAndSortEditorSuggestionAgents(
+        debouncedQuery.toLowerCase(),
+        agentSuggestions
+      ),
+    [agentSuggestions, debouncedQuery]
   );
 
   const allFilteredPods = useMemo(() => {
@@ -144,21 +159,19 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
   );
 
   const isLoading =
-    isAgentConfigurationsLoading ||
-    isSkillsLoading ||
-    isSpacesLoading ||
-    isDebouncing;
+    isSuggestionsLoading || isSkillsLoading || isSpacesLoading || isDebouncing;
 
   // Reset state when dialog opens/closes.
   useEffect(() => {
     if (isOpen) {
+      void mutateSuggestions();
       setSearchQuery("");
       setDebouncedQuery("");
       setPhase("search");
       setSelectedIndex(0);
       setSelectedItem(null);
     }
-  }, [isOpen]);
+  }, [isOpen, mutateSuggestions]);
 
   const executeAction = useCallback(
     (item: CommandPaletteItem, action: CommandPaletteAction) => {
@@ -168,20 +181,20 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
         case "chat_with":
           if (item.kind === "agent") {
             void router.push(
-              getConversationRoute(owner.sId, "new", `agent=${item.agent.sId}`)
+              getConversationRoute(owner.sId, "new", `agent=${item.agent.id}`)
             );
           }
           break;
         case "view_details":
           if (item.kind === "agent") {
-            setAgentDetailsId(item.agent.sId);
+            setAgentDetailsId(item.agent.id);
           } else if (item.kind === "skill") {
             setSkillDetailsId(item.skill.sId);
           }
           break;
         case "edit":
           if (item.kind === "agent") {
-            void router.push(getAgentBuilderRoute(owner.sId, item.agent.sId));
+            void router.push(getAgentBuilderRoute(owner.sId, item.agent.id));
           } else if (item.kind === "skill") {
             void router.push(getSkillBuilderRoute(owner.sId, item.skill.sId));
           }

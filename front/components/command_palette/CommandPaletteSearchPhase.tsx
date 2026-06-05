@@ -6,21 +6,21 @@ import {
 } from "@app/components/command_palette/CommandPaletteItems";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { getSpaceIcon } from "@app/lib/spaces";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { RichAgentMentionInConversation } from "@app/types/assistant/mentions";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { PodType } from "@app/types/space";
 import { Avatar, Icon, SearchInput } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef } from "react";
 
 export type CommandPaletteItem =
-  | { kind: "agent"; agent: LightAgentConfigurationType }
+  | { kind: "agent"; agent: RichAgentMentionInConversation }
   | { kind: "pod"; pod: PodType }
   | { kind: "skill"; skill: SkillWithoutInstructionsAndToolsType };
 
 interface CommandPaletteSearchPhaseProps {
   searchQuery: string;
   onSearchQueryChange: (query: string) => void;
-  agents: LightAgentConfigurationType[];
+  agents: RichAgentMentionInConversation[];
   pods: PodType[];
   skills: SkillWithoutInstructionsAndToolsType[];
   hasMoreAgents: boolean;
@@ -34,7 +34,7 @@ interface CommandPaletteSearchPhaseProps {
 }
 
 function getFlatItems(
-  agents: LightAgentConfigurationType[],
+  agents: RichAgentMentionInConversation[],
   pods: PodType[],
   skills: SkillWithoutInstructionsAndToolsType[]
 ): CommandPaletteItem[] {
@@ -161,7 +161,7 @@ export function CommandPaletteSearchPhase({
             <ItemTitle>Agents</ItemTitle>
             {agents.map((agent, i) => (
               <ItemRow
-                key={agent.sId}
+                key={agent.id}
                 ref={(el) => {
                   itemRefs.current[i] = el;
                 }}
@@ -171,7 +171,7 @@ export function CommandPaletteSearchPhase({
               >
                 <Avatar visual={agent.pictureUrl} size="xs" />
                 <div className="flex min-w-0 items-center gap-1.5">
-                  <span className="shrink-0 font-medium">@{agent.name}</span>
+                  <span className="shrink-0 font-medium">@{agent.label}</span>
                   <span className="shrink-0 text-muted-foreground dark:text-muted-foreground-night">
                     -
                   </span>

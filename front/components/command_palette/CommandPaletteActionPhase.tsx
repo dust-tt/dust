@@ -37,7 +37,7 @@ interface ActionDefinition {
 function canEdit(item: ActionPhaseItem): boolean {
   switch (item.kind) {
     case "agent":
-      return item.agent.canEdit;
+      return item.agent.canEdit ?? false;
     case "skill":
       return item.skill.canWrite;
   }
@@ -117,7 +117,7 @@ export function CommandPaletteActionPhase({
   }
 
   const itemName =
-    item.kind === "agent" ? `@${item.agent.name}` : item.skill.name;
+    item.kind === "agent" ? `@${item.agent.label}` : item.skill.name;
 
   const itemAvatar =
     item.kind === "agent" ? (

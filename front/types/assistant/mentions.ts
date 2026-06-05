@@ -55,6 +55,7 @@ interface BaseRichMention {
 export interface RichAgentMention extends BaseRichMention {
   type: "agent";
   userFavorite?: boolean;
+  canEdit?: boolean;
 }
 
 export interface RichAgentMentionInConversation extends RichAgentMention {
@@ -145,6 +146,7 @@ export function toRichAgentMentionType(
     pictureUrl: agentConfiguration.pictureUrl,
     description: agentConfiguration.description,
     userFavorite: agentConfiguration.userFavorite,
+    canEdit: agentConfiguration.canEdit,
   };
 }
 
