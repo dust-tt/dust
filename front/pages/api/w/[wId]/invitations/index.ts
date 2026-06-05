@@ -1,37 +1,20 @@
 // @migration-status: MIGRATED_TO_HONO
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { handleMembershipInvitations } from "@app/lib/api/invitation";
+import type {
+  GetWorkspaceInvitationsResponseBody,
+  PostInvitationResponseBody,
+} from "@app/lib/api/invitation";
+import {
+  handleMembershipInvitations,
+  PostInvitationRequestBodySchema,
+} from "@app/lib/api/invitation";
 import type { Authenticator } from "@app/lib/auth";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { MembershipInvitationType } from "@app/types/membership_invitation";
-import { ActiveRoleSchema } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
 import { fromError } from "zod-validation-error";
-
-export type GetWorkspaceInvitationsResponseBody = {
-  invitations: MembershipInvitationType[];
-};
-
-export const PostInvitationRequestBodySchema = z.array(
-  z.object({
-    email: z.string(),
-    role: ActiveRoleSchema,
-  })
-);
-
-export type PostInvitationRequestBody = z.infer<
-  typeof PostInvitationRequestBodySchema
->;
-
-export type PostInvitationResponseBody = {
-  success: boolean;
-  email: string;
-  error_message?: string;
-}[];
 
 async function handler(
   req: NextApiRequest,

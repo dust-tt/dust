@@ -5,11 +5,11 @@ import { classNames } from "@app/lib/utils";
 import type { ContentNode } from "@app/types/connectors/connectors_api";
 import type { APIError } from "@app/types/error";
 import {
-  BracketsV2,
+  Brackets,
   Button,
-  CheckDone01V2,
+  CheckDone01,
   IconButton,
-  LinkExternal01V2,
+  LinkExternal01,
   type NotificationType,
   SearchInput,
   Spinner,
@@ -309,7 +309,7 @@ function ContentNodeTreeChildren({
                 {n.sourceUrl && (
                   <Button
                     href={n.sourceUrl}
-                    icon={LinkExternal01V2}
+                    icon={LinkExternal01}
                     size="xs"
                     variant="outline"
                   />
@@ -317,7 +317,7 @@ function ContentNodeTreeChildren({
                 {onDocumentViewClick && (
                   <IconButton
                     size="xs"
-                    icon={BracketsV2}
+                    icon={Brackets}
                     onClick={() => {
                       if (n.type === "document") {
                         onDocumentViewClick(n.internalId);
@@ -369,7 +369,7 @@ function ContentNodeTreeChildren({
             </div>
 
             <Button
-              icon={CheckDone01V2}
+              icon={CheckDone01}
               label={selectAllClicked ? "Unselect All" : "Select All"}
               size="sm"
               className="m-1"

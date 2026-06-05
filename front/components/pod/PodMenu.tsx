@@ -28,12 +28,12 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-  Edit04V2,
-  EyeOffV2,
-  Link01V2,
-  Star01V2,
-  UserSquareV2,
-  XCloseV2,
+  Edit04,
+  EyeOff,
+  Link01,
+  Star01,
+  UserSquare,
+  XClose,
 } from "@dust-tt/sparkle";
 import type React from "react";
 import type { ReactElement } from "react";
@@ -253,14 +253,14 @@ export function PodMenu({
           <DropdownMenuLabel label="My settings" />
           <DropdownMenuItem
             label={isStarred ? "Remove from starred" : "Add to starred"}
-            icon={Star01V2}
+            icon={Star01}
             onClick={() => void starPod(!isStarred)}
           />
           {canLeave && (
             <DropdownMenuItem
               label="Leave"
               onClick={openLeaveDialog}
-              icon={XCloseV2}
+              icon={XClose}
             />
           )}
           <PodNotificationMenu
@@ -274,12 +274,12 @@ export function PodMenu({
             <DropdownMenuItem
               label="Rename"
               onClick={() => setShowRenameDialog(true)}
-              icon={Edit04V2}
+              icon={Edit04}
             />
           )}
           <DropdownMenuSub>
             <DropdownMenuSubTrigger
-              icon={UserSquareV2}
+              icon={UserSquare}
               disabled={!podInfo?.members?.length}
               label="Member list"
             />
@@ -309,7 +309,7 @@ export function PodMenu({
             <DropdownMenuItem
               label="Archive"
               onClick={archivePod}
-              icon={EyeOffV2}
+              icon={EyeOff}
               variant="warning"
             />
           )}
@@ -320,7 +320,7 @@ export function PodMenu({
               <DropdownMenuItem
                 label="Copy link"
                 onClick={copyPodLink}
-                icon={Link01V2}
+                icon={Link01}
               />
             </>
           )}

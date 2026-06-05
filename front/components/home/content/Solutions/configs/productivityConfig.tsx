@@ -12,12 +12,7 @@ import type {
 } from "@app/components/home/content/Solutions/configs/utils";
 import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
 import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCasesSection";
-import {
-  CheckCircleV2,
-  MagicWand02V2,
-  Rocket02V2,
-  Users01V2,
-} from "@dust-tt/sparkle";
+import { CheckCircle, MagicWand02, Rocket02, Users01 } from "@dust-tt/sparkle";
 
 // Config exports
 export const pageSettings: pageSettingsProps = {
@@ -74,7 +69,7 @@ export const Hero: HeroProps = {
     primary: {
       label: "Get started",
       href: "/home/pricing",
-      icon: Rocket02V2,
+      icon: Rocket02,
     },
     secondary: {
       label: "Talk to sales",
@@ -87,19 +82,19 @@ export const Benefits: BenefitsProps = {
   sectionTitle: "Supercharge your personal productivity and growth",
   items: [
     {
-      icon: MagicWand02V2,
+      icon: MagicWand02,
       title: "Focus on impact",
       description:
         "Maximize your time by automating note-taking and content processing.",
     },
     {
-      icon: CheckCircleV2,
+      icon: CheckCircle,
       title: "Enhance clarity",
       description:
         "Instantly transform complex information into clear, actionable insights.",
     },
     {
-      icon: Users01V2,
+      icon: Users01,
       title: "Accelerate growth",
       description:
         "Turn every interaction into a learning opportunity with personalized guidance.",

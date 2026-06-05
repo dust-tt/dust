@@ -4,7 +4,7 @@ import { BLUR_EVENT_NAME } from "@app/components/agent_builder/instructions/cons
 import { getDescriptionSuggestion } from "@app/components/agent_builder/settings/utils";
 import { BaseFormFieldSection } from "@app/components/shared/BaseFormFieldSection";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { Button, Input, Spinner, Stars02V2 } from "@dust-tt/sparkle";
+import { Button, Input, Spinner, Stars02 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
 
@@ -117,7 +117,7 @@ export function AgentBuilderDescriptionSection({
             {...registerProps}
           />
           <Button
-            icon={isGenerating ? () => <Spinner size="xs" /> : Stars02V2}
+            icon={isGenerating ? () => <Spinner size="xs" /> : Stars02}
             variant="outline"
             size="xs"
             className="absolute right-0 top-1/2 mr-1 h-7 w-7 -translate-y-1/2 rounded-lg p-0"

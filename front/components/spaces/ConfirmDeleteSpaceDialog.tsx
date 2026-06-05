@@ -12,7 +12,7 @@ import {
   DialogTitle,
   DialogTrigger,
   Spinner,
-  Trash01V2,
+  Trash01,
 } from "@dust-tt/sparkle";
 
 interface ConfirmDeleteSpaceDialogProps {
@@ -47,7 +47,7 @@ export function ConfirmDeleteSpaceDialog({
       <DialogTrigger asChild>
         <div className="flex w-full flex-col items-end">
           <Button
-            icon={Trash01V2}
+            icon={Trash01}
             size="xs"
             variant="warning"
             label="Delete space"

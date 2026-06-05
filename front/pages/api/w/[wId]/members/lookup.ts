@@ -7,7 +7,8 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { UserType } from "@app/types/user";
+import type { LightUserType, UserType } from "@app/types/user";
+import { toLightUser } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
@@ -17,13 +18,25 @@ const MembersLookupQuerySchema = z.object({
   ids: z.union([z.coerce.number(), z.array(z.coerce.number())]),
 });
 
+// The lookup endpoint is queried by numeric ModelId, so the response must
+// include `id` so callers can correlate results back to the requested ids.
+export type LightLookupUserType = LightUserType & { id: number };
+
 export type MembersLookupResponseBody = {
+  users: LightLookupUserType[];
+};
+
+export type MembersLookupAdminResponseBody = {
   users: UserType[];
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<MembersLookupResponseBody>>,
+  res: NextApiResponse<
+    WithAPIErrorResponse<
+      MembersLookupResponseBody | MembersLookupAdminResponseBody
+    >
+  >,
   auth: Authenticator
 ): Promise<void> {
   switch (req.method) {
@@ -73,8 +86,18 @@ async function handler(
       const validUserIds = new Set(memberships.map((m) => m.userId));
       const filteredUsers = users.filter((user) => validUserIds.has(user.id));
 
+      // Non-admins receive only minimal essential user data (LightUserType).
+      if (auth.isAdmin()) {
+        return res.status(200).json({
+          users: filteredUsers.map((user) => user.toJSON()),
+        });
+      }
+
       return res.status(200).json({
-        users: filteredUsers.map((user) => user.toJSON()),
+        users: filteredUsers.map((user) => ({
+          ...toLightUser(user.toJSON()),
+          id: user.id,
+        })),
       });
     }
 

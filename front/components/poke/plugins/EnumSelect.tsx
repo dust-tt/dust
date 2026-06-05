@@ -10,7 +10,7 @@ import {
 import { PokeFormControl } from "@app/components/poke/shadcn/ui/form";
 import type { AsyncEnumValues, EnumValues } from "@app/types/poke/plugins";
 import {
-  ChevronDownV2,
+  ChevronDown,
   cn,
   PopoverContent,
   PopoverRoot,
@@ -59,7 +59,7 @@ export function EnumSelect({
             )}
           >
             {title}
-            <ChevronDownV2 className="opacity-50" />
+            <ChevronDown className="opacity-50" />
           </PokeButton>
         </PokeFormControl>
       </PopoverTrigger>

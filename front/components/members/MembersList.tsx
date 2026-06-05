@@ -1,18 +1,18 @@
+import {
+  isFullUserType,
+  type SearchMemberWithWorkspaceType,
+} from "@app/components/members/MemberSelectionTable";
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
 import assert from "@app/lib/utils/assert";
-import type { SearchMembersResponseBody } from "@app/pages/api/w/[wId]/members/search";
+import type { SearchMembersAdminResponseBody } from "@app/pages/api/w/[wId]/members/search";
 import type { MembershipOriginType } from "@app/types/memberships";
-import type {
-  RoleType,
-  UserType,
-  UserTypeWithWorkspace,
-} from "@app/types/user";
+import type { RoleType, UserType } from "@app/types/user";
 import {
   Chip,
   DataTable,
   IconButton,
   LoadingBlock,
-  XCloseV2,
+  XClose,
 } from "@dust-tt/sparkle";
 import type { CellContext, PaginationState } from "@tanstack/react-table";
 import capitalize from "lodash/capitalize";
@@ -42,32 +42,35 @@ function getTableRows({
   onRemoveMemberClick,
   currentUserId,
 }: {
-  allUsers: UserTypeWithWorkspace[];
-  onClick: (user: UserTypeWithWorkspace) => void;
-  onRemoveMemberClick?: (user: UserTypeWithWorkspace) => void;
+  allUsers: SearchMemberWithWorkspaceType[];
+  onClick: (user: SearchMemberWithWorkspaceType) => void;
+  onRemoveMemberClick?: (user: SearchMemberWithWorkspaceType) => void;
   currentUserId: string;
 }): RowData[] {
-  return allUsers.map((user) => ({
-    icon: user.image ?? "",
-    name: user.fullName,
-    userId: user.sId,
-    email: user.email ?? "",
-    role: user.workspace.role,
-    status: user.lastLoginAt === null ? "Unregistered" : "Active",
-    groups: user.workspace.groups ?? [],
-    isCurrentUser: user.sId === currentUserId,
-    onClick: () => onClick(user),
-    onRemoveMemberClick: () => onRemoveMemberClick?.(user),
-    origin: user.origin,
-  }));
+  return allUsers.map((user) => {
+    const fullUser = isFullUserType(user);
+    return {
+      icon: user.image ?? "",
+      name: user.fullName,
+      userId: user.sId,
+      email: user.email ?? "",
+      role: user.workspace.role ?? "none",
+      status: fullUser && user.lastLoginAt === null ? "Unregistered" : "Active",
+      groups: user.workspace.groups ?? [],
+      isCurrentUser: user.sId === currentUserId,
+      onClick: () => onClick(user),
+      onRemoveMemberClick: () => onRemoveMemberClick?.(user),
+      origin: fullUser ? user.origin : undefined,
+    };
+  });
 }
 
 type MembersData = {
-  members: UserTypeWithWorkspace[];
+  members: SearchMemberWithWorkspaceType[];
   totalMembersCount: number;
   isLoading: boolean;
   mutateRegardlessOfQueryParams:
-    | KeyedMutator<SearchMembersResponseBody>
+    | KeyedMutator<SearchMembersAdminResponseBody>
     | (() => void);
 };
 
@@ -123,7 +126,7 @@ const memberColumns = [
           <></>
         ) : (
           <IconButton
-            icon={XCloseV2}
+            icon={XClose}
             onClick={info.row.original.onRemoveMemberClick}
           />
         )}
@@ -161,8 +164,8 @@ const memberColumns = [
 interface MembersListProps {
   currentUser: UserType | null;
   membersData: MembersData;
-  onRowClick: (user: UserTypeWithWorkspace) => void;
-  onRemoveMemberClick?: (user: UserTypeWithWorkspace) => void;
+  onRowClick: (user: SearchMemberWithWorkspaceType) => void;
+  onRemoveMemberClick?: (user: SearchMemberWithWorkspaceType) => void;
   showColumns: ("name" | "email" | "role" | "remove" | "status" | "groups")[];
   pagination?: PaginationState;
   setPagination?: (pagination: PaginationState) => void;

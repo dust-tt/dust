@@ -1,6 +1,6 @@
 import { getSkillIcon } from "@app/lib/skill";
 import { UNAVAILABLE_SKILL_LABEL } from "@app/lib/skills/format";
-import { AlertCircleV2, Chip, Tooltip } from "@dust-tt/sparkle";
+import { AlertCircle, Chip, Tooltip } from "@dust-tt/sparkle";
 import { NodeViewWrapper } from "@tiptap/react";
 
 const UNAVAILABLE_SKILL_TOOLTIP_LABEL =
@@ -29,7 +29,7 @@ export function SkillNodeComponent({ node }: SkillNodeComponentProps) {
             <span className="inline-flex">
               <Chip
                 label={UNAVAILABLE_SKILL_LABEL}
-                icon={AlertCircleV2}
+                icon={AlertCircle}
                 color="warning"
                 size="xs"
               />

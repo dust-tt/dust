@@ -12,6 +12,7 @@ import type {
 } from "@app/lib/api/analytics/programmatic_cost";
 import type { WindowSize } from "@app/lib/api/analytics/time_utils";
 import type { AwuPoolSummaryResponseBody } from "@app/lib/api/credits/awu_pool_summary";
+import type { GetMembersUsageResponseBody } from "@app/lib/api/credits/members_usage";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeListCreditsResponseBody } from "@app/pages/api/poke/workspaces/[wId]/credits";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
@@ -150,6 +151,7 @@ export function usePokeAwuUsage({
   selectedPeriod,
   billingCycleStartDay,
   windowSize,
+  includeFreeUsage,
   disabled,
 }: PokeConditionalFetchProps & {
   groupBy?: AwuUsageGroupByType;
@@ -157,6 +159,7 @@ export function usePokeAwuUsage({
   selectedPeriod?: string;
   billingCycleStartDay: number;
   windowSize?: WindowSize;
+  includeFreeUsage?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetAwuUsageResponse> = fetcher;
@@ -174,6 +177,9 @@ export function usePokeAwuUsage({
   }
   if (windowSize) {
     queryParams.set("windowSize", windowSize);
+  }
+  if (includeFreeUsage) {
+    queryParams.set("includeFreeUsage", "true");
   }
   const queryString = queryParams.toString();
   const key = `/api/poke/workspaces/${owner.sId}/analytics/awu-usage?${queryString}`;
@@ -211,5 +217,55 @@ export function usePokeAwuPoolSummary({
     isAwuPoolSummaryError: error,
     isAwuPoolSummaryValidating: isValidating,
     mutateAwuPoolSummary: mutate,
+  };
+}
+
+export function usePokeMembersUsage({
+  owner,
+  disabled,
+  pageIndex,
+  pageSize,
+  search,
+  orderColumn,
+  orderDirection,
+}: PokeConditionalFetchProps & {
+  pageIndex: number;
+  pageSize: number;
+  search?: string;
+  orderColumn?: "name" | "email";
+  orderDirection?: "asc" | "desc";
+}) {
+  const { fetcher } = useFetcher();
+  const fetcherFn: Fetcher<GetMembersUsageResponseBody> = fetcher;
+
+  const params = new URLSearchParams({
+    offset: String(pageIndex * pageSize),
+    limit: String(pageSize),
+  });
+  if (search && search.trim().length > 0) {
+    params.set("search", search.trim());
+  }
+  if (orderColumn) {
+    params.set("orderColumn", orderColumn);
+  }
+  if (orderDirection) {
+    params.set("orderDirection", orderDirection);
+  }
+
+  const { data, error, isValidating, mutate } = useSWRWithDefaults(
+    disabled
+      ? null
+      : `/api/poke/workspaces/${owner.sId}/credits/members-usage?${params.toString()}`,
+    fetcherFn,
+    { revalidateOnFocus: false, keepPreviousData: true }
+  );
+
+  return {
+    members: data?.members ?? emptyArray(),
+    totalMembers: data?.total ?? 0,
+    isMembersUsageLoading: !error && !data && !disabled,
+    isMembersUsageError: error,
+    isMembersUsageValidating: isValidating,
+    mutateMembersUsage: mutate,
   };
 }

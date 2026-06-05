@@ -12,8 +12,8 @@ import {
   DialogHeader,
   DialogTitle,
   Icon,
-  Rocket02V2,
-  Users01V2,
+  Rocket02,
+  Users01,
 } from "@dust-tt/sparkle";
 import { useEffect, useRef } from "react";
 
@@ -100,7 +100,7 @@ export function EnterpriseChoiceModal({
               className="group flex flex-1 flex-col items-center rounded-2xl border border-gray-200 px-5 py-6 text-center transition-all hover:border-blue-300 hover:bg-blue-50 hover:shadow-md"
             >
               <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 transition-colors group-hover:bg-blue-200">
-                <Icon visual={Rocket02V2} className="text-blue-600" />
+                <Icon visual={Rocket02} className="text-blue-600" />
               </div>
               <span className="text-base font-semibold text-gray-900">
                 Start a free trial
@@ -114,7 +114,7 @@ export function EnterpriseChoiceModal({
               className="group flex flex-1 flex-col items-center rounded-2xl border border-gray-200 px-5 py-6 text-center transition-all hover:border-emerald-300 hover:bg-emerald-50 hover:shadow-md"
             >
               <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 transition-colors group-hover:bg-emerald-200">
-                <Icon visual={Users01V2} className="text-emerald-600" />
+                <Icon visual={Users01} className="text-emerald-600" />
               </div>
               <span className="text-base font-semibold text-gray-900">
                 Schedule a demo

@@ -1,29 +1,29 @@
 import {
   ActionCardBlock,
-  Download01V2,
-  ArrowRightV2,
+  Download01,
+  ArrowRight,
   AttachmentChip,
-  Attachment01V2,
+  Attachment01,
   Avatar,
-  ZapV2,
+  Zap,
   Button,
   ButtonsSwitch,
   ButtonsSwitchList,
-  CheckV2,
+  Check,
   Dialog,
   DialogContainer,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  File02V2,
-  LinkExternal01V2,
+  File02,
+  LinkExternal01,
   Icon,
-  Image01V2,
+  Image01,
   ImageZoomDialog,
   Input,
   Markdown,
-  DotsHorizontalV2,
+  DotsHorizontal,
   NotionLogo,
   Sheet,
   SheetContainer,
@@ -33,7 +33,7 @@ import {
   SheetHeader,
   SheetTitle,
   SlackLogo,
-  TableV2,
+  Table,
 } from "@dust-tt/sparkle";
 import { ActionCardState, BreadcrumbsItem } from "@dust-tt/sparkle";
 import {
@@ -466,16 +466,16 @@ export function ConversationView({
   ) => {
     switch (icon) {
       case "table":
-        return TableV2;
+        return Table;
       case "slack":
         return SlackLogo;
       case "notion":
         return NotionLogo;
       case "image":
-        return Image01V2;
+        return Image01;
       case "document":
       default:
-        return File02V2;
+        return File02;
     }
   };
 
@@ -503,7 +503,7 @@ export function ConversationView({
               <AttachmentChip
                 key={attachment.id}
                 label={attachment.label}
-                icon={{ visual: File02V2 }}
+                icon={{ visual: File02 }}
               />
             ))}
           </div>
@@ -575,7 +575,7 @@ export function ConversationView({
                   status="ready"
                   workingLabel="Creating tasks..."
                   title={box.title}
-                  headerIcon={box.variant === "created" ? CheckV2 : undefined}
+                  headerIcon={box.variant === "created" ? Check : undefined}
                   items={visibleItems.map((item) => {
                     const groupUser = item.groupUserId
                       ? getUserByOwnerId(item.groupUserId)
@@ -606,7 +606,7 @@ export function ConversationView({
                     box.variant === "created" ? "outline" : undefined
                   }
                   acceptAllIcon={
-                    box.variant === "created" ? ArrowRightV2 : undefined
+                    box.variant === "created" ? ArrowRight : undefined
                   }
                   rejectAllLabel={
                     box.variant === "created" ? "Dismiss" : "Reject all"
@@ -650,7 +650,7 @@ export function ConversationView({
     const infoChip =
       currentGroup.infoChip?.icon === "bolt" ? (
         <span className="s-translate-y-0.5 s-text-muted-foreground dark:s-text-muted-foreground-night">
-          <Icon size="xs" visual={ZapV2} />
+          <Icon size="xs" visual={Zap} />
         </span>
       ) : undefined;
 
@@ -1017,13 +1017,13 @@ export function ConversationView({
                     <Button
                       variant="outline"
                       size="icon-xs"
-                      icon={Download01V2}
+                      icon={Download01}
                       tooltip="Download"
                     />
                     <Button
                       variant="outline"
                       size="icon-xs"
-                      icon={LinkExternal01V2}
+                      icon={LinkExternal01}
                       tooltip="Open in tab"
                     />
                   </div>

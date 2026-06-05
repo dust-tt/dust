@@ -2,13 +2,13 @@ import { KeyboardHints } from "@app/components/command_palette/CommandPaletteIte
 import type { CommandPaletteItem } from "@app/components/command_palette/CommandPaletteSearchPhase";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import {
-  ArrowLeftV2,
+  ArrowLeft,
   Avatar,
   cn,
-  Edit04V2,
-  EyeV2,
+  Edit04,
+  Eye,
   Icon,
-  MessageCircle01V2,
+  MessageCircle01,
 } from "@dust-tt/sparkle";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
@@ -31,7 +31,7 @@ interface ActionDefinition {
   action: CommandPaletteAction;
   label: string;
   description: string;
-  icon: typeof EyeV2;
+  icon: typeof Eye;
 }
 
 function canEdit(item: ActionPhaseItem): boolean {
@@ -56,21 +56,21 @@ export function CommandPaletteActionPhase({
         action: "chat_with",
         label: "New conversation",
         description: "Open a new conversation",
-        icon: MessageCircle01V2,
+        icon: MessageCircle01,
       });
     }
     result.push({
       action: "view_details",
       label: "Details",
       description: "View description and settings",
-      icon: EyeV2,
+      icon: Eye,
     });
     if (canEdit(item)) {
       result.push({
         action: "edit",
         label: "Edit",
         description: "Change instructions and settings",
-        icon: Edit04V2,
+        icon: Edit04,
       });
     }
     return result;
@@ -143,7 +143,7 @@ export function CommandPaletteActionPhase({
         )}
         onClick={onBack}
       >
-        <Icon visual={ArrowLeftV2} size="sm" />
+        <Icon visual={ArrowLeft} size="sm" />
         {itemAvatar}
         <span className="font-medium text-foreground dark:text-foreground-night">
           {itemName}

@@ -23,12 +23,12 @@ import { asDisplayName, pluralize } from "@app/types/shared/utils/string_utils";
 import {
   Button,
   ContentMessage,
-  File02V2,
-  File04V2,
-  FolderTableV2,
-  LayersThree01V2,
-  Lock01V2,
-  MessageChatSquareV2,
+  File02,
+  File04,
+  FolderTable,
+  LayersThree01,
+  Lock01,
+  MessageChatSquare,
   Tree,
 } from "@dust-tt/sparkle";
 import { useMemo } from "react";
@@ -40,7 +40,7 @@ const getVisualForSourceItem = (
   source: DataSourceFilterItem["selectedSources"][0]
 ) => {
   if (source.type === "data_source") {
-    return File02V2;
+    return File02;
   }
 
   if (source.type === "node") {
@@ -48,19 +48,19 @@ const getVisualForSourceItem = (
     if (source.mimeType) {
       if (CHANNEL_INTERNAL_MIME_TYPES.includes(source.mimeType)) {
         return source.providerVisibility === "private"
-          ? Lock01V2
-          : MessageChatSquareV2;
+          ? Lock01
+          : MessageChatSquare;
       }
       if (DATABASE_INTERNAL_MIME_TYPES.includes(source.mimeType)) {
-        return LayersThree01V2;
+        return LayersThree01;
       }
 
       if (FILE_INTERNAL_MIME_TYPES.includes(source.mimeType)) {
-        return source.expandable ? File04V2 : File02V2;
+        return source.expandable ? File04 : File02;
       }
 
       if (SPREADSHEET_INTERNAL_MIME_TYPES.includes(source.mimeType)) {
-        return FolderTableV2;
+        return FolderTable;
       }
     }
 
@@ -68,11 +68,11 @@ const getVisualForSourceItem = (
       try {
         return getVisualForContentNodeType(source.nodeType);
       } catch {
-        return File02V2;
+        return File02;
       }
     }
   }
-  return File02V2;
+  return File02;
 };
 
 const groupSourcesByDataSource = (sources: DataSourceBuilderTreeItemType[]) => {

@@ -40,7 +40,7 @@ import {
   Button,
   ContentMessage,
   cn,
-  InfoCircleV2,
+  InfoCircle,
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
@@ -221,7 +221,7 @@ export default function SkillBuilder({
             <ContentMessage
               title="This is a generated skill suggestion"
               variant="primary"
-              icon={InfoCircleV2}
+              icon={InfoCircle}
               size="lg"
             >
               This skill was automatically generated based on your workspace's

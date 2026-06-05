@@ -1,7 +1,7 @@
 import type { Meta } from "@storybook/react";
 import React from "react";
 
-import { File02V2, PaginatedCitationsGrid } from "../index_with_tw_base";
+import { File02, PaginatedCitationsGrid } from "../index_with_tw_base";
 
 const meta = {
   title: "Modules/PaginatedCitationsGrid",
@@ -14,7 +14,7 @@ function makeCitationItems(items: number) {
   return Array.from({ length: items }, (_, idx) => ({
     title: `test ${idx + 1}`,
     href: "empty",
-    icon: <File02V2 />,
+    icon: <File02 />,
   }));
 }
 

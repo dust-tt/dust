@@ -5,7 +5,7 @@ import {
   createSelectionColumn,
   DataTable,
   SearchInput,
-  Users01V2,
+  Users01,
 } from "@dust-tt/sparkle";
 import type {
   CellContext,
@@ -116,7 +116,7 @@ export function GroupSelectionTable({
           className: "w-full",
         },
         cell: (info: CellContext<GroupRowData, unknown>) => (
-          <DataTable.CellContent icon={Users01V2}>
+          <DataTable.CellContent icon={Users01}>
             {info.row.original.name}
           </DataTable.CellContent>
         ),

@@ -3,7 +3,7 @@ import type { LegendItem } from "@app/components/charts/ChartLegend";
 import { ChartLegend } from "@app/components/charts/ChartLegend";
 import {
   Button,
-  Maximize01V2,
+  Maximize01,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -60,7 +60,7 @@ export function ChartContainer({
             {additionalControls}
             {isAllowFullScreen && (
               <Button
-                icon={Maximize01V2}
+                icon={Maximize01}
                 variant="ghost"
                 size="xs"
                 onClick={() => setIsFullscreen(true)}

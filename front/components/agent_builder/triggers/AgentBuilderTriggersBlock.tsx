@@ -21,7 +21,7 @@ import {
   EmptyCTA,
   Hoverable,
   Spinner,
-  ZapV2,
+  Zap,
 } from "@dust-tt/sparkle";
 import uniqBy from "lodash/uniqBy";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
@@ -229,7 +229,7 @@ export function AgentBuilderTriggersBlock({
           <Button
             label="Add triggers"
             type="button"
-            icon={ZapV2}
+            icon={Zap}
             onClick={handleAddTrigger}
           />
         )
@@ -246,7 +246,7 @@ export function AgentBuilderTriggersBlock({
               <Button
                 label="Add triggers"
                 type="button"
-                icon={ZapV2}
+                icon={Zap}
                 onClick={handleAddTrigger}
               />
             }

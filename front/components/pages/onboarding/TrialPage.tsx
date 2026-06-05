@@ -1,7 +1,7 @@
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { useKillSwitches } from "@app/lib/swr/kill";
-import { Button, CheckV2, DustLogoSquare, Icon, Page } from "@dust-tt/sparkle";
+import { Button, Check, DustLogoSquare, Icon, Page } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React from "react";
 
@@ -60,7 +60,7 @@ export function TrialPage() {
                 {freePlanFeatures.map((feature, index) => (
                   <li key={index} className="flex items-center gap-3">
                     <Icon
-                      visual={CheckV2}
+                      visual={Check}
                       size="sm"
                       className="text-primary-500"
                     />
@@ -105,11 +105,7 @@ export function TrialPage() {
             <ul className="flex flex-col gap-4">
               {legacyFeatures.map((feature, index) => (
                 <li key={index} className="flex items-center gap-3">
-                  <Icon
-                    visual={CheckV2}
-                    size="sm"
-                    className="text-primary-500"
-                  />
+                  <Icon visual={Check} size="sm" className="text-primary-500" />
                   <span className="text-foreground dark:text-foreground-night">
                     {feature}
                   </span>

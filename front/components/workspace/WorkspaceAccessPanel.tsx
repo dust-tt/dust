@@ -17,13 +17,13 @@ import {
   Chip,
   DataTable,
   EmptyCTA,
-  Globe01V2,
+  Globe01,
   IconButton,
   LoadingBlock,
   Page,
-  PlusV2,
+  Plus,
   Separator,
-  XCloseV2,
+  XClose,
 } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
 import type { Organization } from "@workos-inc/node";
@@ -102,7 +102,7 @@ function DomainVerification({
   owner,
 }: DomainVerificationProps) {
   return (
-    <WorkspaceSection icon={Globe01V2} title="Domain Verification">
+    <WorkspaceSection icon={Globe01} title="Domain Verification">
       <Page.P variant="secondary">
         Verify your company domains to enable Single Sign-On (SSO), automatic
         workspace enrollment for team members, and secure connections to your
@@ -116,7 +116,7 @@ function DomainVerification({
             <Button
               label="Add Domain"
               variant="primary"
-              icon={PlusV2}
+              icon={Plus}
               href={addDomainLink}
             />
           }
@@ -216,7 +216,7 @@ function DomainVerificationTable({
         cell: ({ row }: CellContext<DomainRowData, string>) => {
           return (
             <IconButton
-              icon={XCloseV2}
+              icon={XClose}
               size="xs"
               variant="ghost"
               onClick={() => handleDeleteDomain(row.original.domain)}
@@ -248,7 +248,7 @@ function DomainVerificationTable({
             label="Add Domain"
             variant="primary"
             href={addDomainLink}
-            icon={PlusV2}
+            icon={Plus}
           />
         </div>
       )}

@@ -1,12 +1,12 @@
 import {
   Avatar,
   Button,
-  CheckV2,
+  Check,
   Collapsible,
   CollapsibleContent,
   ConversationListItem,
   Icon,
-  InboxIcon,
+  Inbox01,
   ListGroup,
   ReplySection,
   SearchInput,
@@ -555,7 +555,7 @@ export function InboxView({
       {label}
       <Button
         label={actionLabel}
-        icon={CheckV2}
+        icon={Check}
         size="sm"
         variant="ghost-secondary"
         onClick={(e) => {
@@ -606,7 +606,7 @@ export function InboxView({
       return (
         <div className="s-flex s-flex-1 s-flex-col s-items-center s-justify-center s-gap-2">
           <div className="s-flex s-flex-col s-items-center s-justify-center s-gap-1 s-text-foreground dark:s-text-foreground-night">
-            <Icon size="md" visual={InboxIcon} />
+            <Icon size="md" visual={Inbox01} />
             <h2 className="s-heading-xl">Inbox</h2>
           </div>
           <p className="s-text-center s-text-lg s-text-muted-foreground dark:s-text-muted-foreground-night">
@@ -624,7 +624,7 @@ export function InboxView({
           {renderConversationsToolbar()}
           <div className="s-flex s-flex-1 s-flex-col s-items-center s-justify-center s-gap-2">
             <div className="s-flex s-flex-col s-items-center s-justify-center s-gap-1 s-text-foreground dark:s-text-foreground-night">
-              <Icon size="md" visual={InboxIcon} />
+              <Icon size="md" visual={Inbox01} />
               <h2 className="s-heading-xl">Inbox</h2>
             </div>
             <p className="s-text-center s-text-lg s-text-muted-foreground dark:s-text-muted-foreground-night">
@@ -722,7 +722,7 @@ export function InboxView({
       return (
         <div className="s-flex s-flex-1 s-flex-col s-items-center s-justify-center s-gap-2">
           <div className="s-flex s-flex-col s-items-center s-justify-center s-gap-1 s-text-foreground dark:s-text-foreground-night">
-            <Icon size="md" visual={InboxIcon} />
+            <Icon size="md" visual={Inbox01} />
             <h2 className="s-heading-xl">All tasks done</h2>
           </div>
           <p className="s-text-center s-text-lg s-text-muted-foreground dark:s-text-muted-foreground-night">
@@ -751,7 +751,7 @@ export function InboxView({
           {renderTasksToolbar()}
           <div className="s-flex s-flex-1 s-flex-col s-items-center s-justify-center s-gap-2">
             <div className="s-flex s-flex-col s-items-center s-justify-center s-gap-1 s-text-foreground dark:s-text-foreground-night">
-              <Icon size="md" visual={InboxIcon} />
+              <Icon size="md" visual={Inbox01} />
               <h2 className="s-heading-xl">All tasks done</h2>
             </div>
             <p className="s-text-center s-text-lg s-text-muted-foreground dark:s-text-muted-foreground-night">

@@ -12,14 +12,14 @@ import { getBillingCycleFromDay } from "@app/lib/client/subscription";
 import {
   ceilToMidnightUTC,
   floorToMidnightUTC,
-  listMetronomeBalances,
   listMetronomeUsage,
   listMetronomeUsageWithGroups,
 } from "@app/lib/metronome/client";
 import {
-  getCreditTypeAwuId,
   getMetricLlmProviderCostAwuId,
+  getMetricLlmProviderCostAwuNonFreeId,
   getMetricToolInvocationsId,
+  getMetricToolInvocationsNonFreeId,
   USAGE_TYPE_FREE,
   USAGE_TYPE_GROUP_KEY,
   USAGE_TYPE_USER,
@@ -28,8 +28,6 @@ import {
   isToolCategory,
   TOOL_CATEGORY_AWU_WEIGHTS,
 } from "@app/lib/metronome/events";
-import type { MetronomeBalance } from "@app/lib/metronome/types";
-import { isMetronomeExcessCredit } from "@app/lib/metronome/types";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
@@ -37,8 +35,10 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { z } from "zod";
 
-// All-usage AWU chart. Covers user + programmatic + free usage and is
-// denominated in AWU credits (never USD). The AWU metric's cost_awu values
+// All-usage AWU chart. Covers billable (non-free) usage — i.e. user +
+// programmatic, excluding free usage — unless the query opts into free usage
+// via `includeFreeUsage` (Poke only). Denominated in AWU credits (never USD).
+// The AWU metric's cost_awu values
 // already include the Dust markup (applied at event time), so no markup is
 // applied here, and credit balances are returned as whole AWU credits.
 const AWU_USAGE_GROUP_BY_KEYS = [
@@ -97,6 +97,14 @@ export const AwuUsageQuerySchema = z.object({
   selectedPeriod: z.string().optional(),
   billingCycleStartDay: z.coerce.number().min(1).max(31),
   windowSize: z.enum(["HOUR", "FOUR_HOURS", "DAY"]).optional().default("DAY"),
+  // When true, the chart also covers free usage (using the all-usage metrics
+  // rather than the non-free ones). Defaults to false: the workspace usage
+  // page only ever shows billable (non-free) usage; only Poke opts in.
+  includeFreeUsage: z
+    .enum(["true", "false"])
+    .optional()
+    .default("false")
+    .transform((v) => v === "true"),
 });
 
 export type AwuUsageQuery = z.infer<typeof AwuUsageQuerySchema>;
@@ -110,9 +118,6 @@ export interface AwuUsagePointGroup {
 export interface AwuUsagePoint {
   timestamp: number;
   groups: AwuUsagePointGroup[];
-  totalInitialCredits: number;
-  totalConsumedCredits: number;
-  totalRemainingCredits: number;
 }
 
 export interface AwuUsageAvailableGroup {
@@ -133,77 +138,6 @@ export type AwuUsageError =
       eventProperty: string;
     }
   | { type: "internal_error"; message: string };
-
-interface ParsedBalance {
-  initialAmountCredits: number;
-  balanceCredits: number;
-  intervals: { start: number; end: number }[];
-}
-
-// Credit totals per timestamp, expressed in whole AWU credits (no USD scaling).
-export function calculateAwuCreditTotalsFromBalances(
-  balances: MetronomeBalance[],
-  timestamps: number[]
-): Map<
-  number,
-  {
-    totalInitialCredits: number;
-    totalConsumedCredits: number;
-    totalRemainingCredits: number;
-  }
-> {
-  const parsed: ParsedBalance[] = balances.map((entry) => {
-    const items = entry.access_schedule?.schedule_items ?? [];
-    let initialAmountCredits = 0;
-    const intervals: { start: number; end: number }[] = [];
-
-    for (const item of items) {
-      initialAmountCredits += item.amount;
-      intervals.push({
-        start: new Date(item.starting_at).getTime(),
-        end: new Date(item.ending_before).getTime(),
-      });
-    }
-
-    return {
-      initialAmountCredits,
-      balanceCredits: entry.balance ?? 0,
-      intervals,
-    };
-  });
-
-  const result = new Map<
-    number,
-    {
-      totalInitialCredits: number;
-      totalConsumedCredits: number;
-      totalRemainingCredits: number;
-    }
-  >();
-
-  for (const timestamp of timestamps) {
-    let totalInitialCredits = 0;
-    let totalRemainingCredits = 0;
-
-    for (const b of parsed) {
-      const isActive = b.intervals.some(
-        (iv) => timestamp >= iv.start && timestamp < iv.end
-      );
-      if (isActive) {
-        totalInitialCredits += b.initialAmountCredits;
-        totalRemainingCredits += b.balanceCredits;
-      }
-    }
-
-    result.set(timestamp, {
-      totalInitialCredits,
-      totalConsumedCredits: totalInitialCredits - totalRemainingCredits,
-      totalRemainingCredits,
-    });
-  }
-
-  return result;
-}
 
 // LLM (cost_awu) query config per grouping. cost_awu is already AWU credits.
 function getLlmQueryConfig(groupBy: AwuUsageGroupByType): {
@@ -428,15 +362,21 @@ export async function getAwuUsage(
     return new Err({ type: "metronome_not_configured" });
   }
 
-  const awuMetricId = getMetricLlmProviderCostAwuId();
-
   const {
     groupBy,
     groupByCount,
     selectedPeriod,
     billingCycleStartDay,
     windowSize,
+    includeFreeUsage,
   } = query;
+
+  const awuMetricId = includeFreeUsage
+    ? getMetricLlmProviderCostAwuId()
+    : getMetricLlmProviderCostAwuNonFreeId();
+  const toolInvocationsMetricId = includeFreeUsage
+    ? getMetricToolInvocationsId()
+    : getMetricToolInvocationsNonFreeId();
 
   const referenceDate = selectedPeriod ? new Date(selectedPeriod) : new Date();
   if (selectedPeriod) {
@@ -456,8 +396,6 @@ export async function getAwuUsage(
   const endingBefore = rangeEnd.toISOString();
 
   const timestamps = getTimestampsForWindow(rangeStart, rangeEnd, windowSize);
-
-  const balancesPromise = listMetronomeBalances(metronomeCustomerId);
 
   const groupValues: Record<string, Map<number, number>> = {};
   const availableGroups: AwuUsageAvailableGroup[] = [];
@@ -509,7 +447,7 @@ export async function getAwuUsage(
       toolCfg
         ? listMetronomeUsageWithGroups({
             customerId: metronomeCustomerId,
-            billableMetricId: getMetricToolInvocationsId(),
+            billableMetricId: toolInvocationsMetricId,
             startingOn,
             endingBefore,
             windowSize: metronomeApiWindowSize,
@@ -605,26 +543,6 @@ export async function getAwuUsage(
     }
   }
 
-  const balancesResult = await balancesPromise;
-  if (balancesResult.isErr()) {
-    logger.error(
-      { error: balancesResult.error, metronomeCustomerId },
-      "[Metronome] Failed to fetch AWU balances for credit overlay"
-    );
-  }
-  const awuCreditTypeId = getCreditTypeAwuId();
-  const balances = balancesResult.isOk()
-    ? balancesResult.value.filter(
-        (entry) =>
-          entry.access_schedule?.credit_type?.id === awuCreditTypeId &&
-          !isMetronomeExcessCredit(entry)
-      )
-    : [];
-  const creditTotalsMap = calculateAwuCreditTotalsFromBalances(
-    balances,
-    timestamps
-  );
-
   const cumulatedValues: Record<string, number> = {};
   for (const key of Object.keys(groupValues)) {
     cumulatedValues[key] = 0;
@@ -663,13 +581,9 @@ export async function getAwuUsage(
       });
     }
 
-    const credit = creditTotalsMap.get(timestamp);
     return {
       timestamp,
       groups,
-      totalInitialCredits: credit?.totalInitialCredits ?? 0,
-      totalConsumedCredits: credit?.totalConsumedCredits ?? 0,
-      totalRemainingCredits: credit?.totalRemainingCredits ?? 0,
     };
   });
 

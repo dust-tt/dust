@@ -3,7 +3,7 @@ import {
   useUsageNotifications,
 } from "@app/lib/swr/usage_settings";
 import {
-  CoinsStacked03V2,
+  CoinsStacked03,
   Icon,
   Input,
   Page,
@@ -79,7 +79,7 @@ export function UsageNotificationsCard({
           action={
             <div className="relative w-32">
               <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground dark:text-muted-foreground-night">
-                <Icon visual={CoinsStacked03V2} size="xs" />
+                <Icon visual={CoinsStacked03} size="xs" />
               </div>
               <Input
                 type="text"

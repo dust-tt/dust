@@ -22,8 +22,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  EyeV2,
-  MessagePlusCircleV2,
+  Eye,
+  MessagePlusCircle,
 } from "@dust-tt/sparkle";
 import React from "react";
 
@@ -72,13 +72,13 @@ export const MentionDropdown = React.forwardRef<
         <DropdownMenuContent side="bottom" align="start">
           <DropdownMenuItem
             onClick={handleAgentStartConversation}
-            icon={MessagePlusCircleV2}
+            icon={MessagePlusCircle}
             label={`New conversation with @${mention.label}`}
           />
           {clientType !== "extension" && (
             <DropdownMenuItem
               onClick={handleAgentSeeDetails}
-              icon={EyeV2}
+              icon={Eye}
               label={`About @${mention.label}`}
             />
           )}

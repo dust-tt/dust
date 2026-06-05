@@ -28,10 +28,10 @@ import type { MembershipSeatType } from "@app/types/memberships";
 import { isCreditPricedPlan } from "@app/types/plan";
 import { isAdmin } from "@app/types/user";
 import {
-  AlertCircleV2,
-  ArrowUpV2,
+  AlertCircle,
+  ArrowUp,
   Button,
-  CoinsStacked03V2,
+  CoinsStacked03,
   ContentMessage,
   DropdownMenu,
   DropdownMenuContent,
@@ -39,12 +39,12 @@ import {
   DropdownMenuTrigger,
   Icon,
   Page,
-  PieChart01V2,
+  PieChart01,
   SearchInput,
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
-import type { PaginationState } from "@tanstack/react-table";
+import type { PaginationState, SortingState } from "@tanstack/react-table";
 import { useCallback, useEffect, useState } from "react";
 
 function formatCredits(credits: number): string {
@@ -105,6 +105,20 @@ export function UsagePage() {
     pageIndex: 0,
     pageSize: DEFAULT_PAGE_SIZE,
   });
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: "name", desc: false },
+  ]);
+
+  // Members are sorted server-side; reset to the first page when the sort
+  // changes so the user lands on the start of the new ordering.
+  const handleSetSorting = useCallback((next: SortingState) => {
+    setSorting(next);
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+  }, []);
+
+  const sort = sorting[0];
+  const membersOrderColumn = sort?.id === "email" ? "email" : "name";
+  const membersOrderDirection = sort?.desc ? "desc" : "asc";
 
   const [showBuyCreditDialog, setShowBuyCreditDialog] = useState(false);
   const [changeSeatMember, setChangeSeatMember] =
@@ -146,6 +160,8 @@ export function UsagePage() {
       searchTerm,
       pageIndex: pagination.pageIndex,
       pageSize: pagination.pageSize,
+      orderColumn: membersOrderColumn,
+      orderDirection: membersOrderDirection,
     });
 
   const { hasAvailableSeats } = useWorkspaceSeatAvailability({
@@ -208,7 +224,7 @@ export function UsagePage() {
       <div className="flex flex-col items-stretch gap-10 pb-20">
         <Page.Vertical gap="xs">
           <Icon
-            visual={PieChart01V2}
+            visual={PieChart01}
             className="text-muted-foreground dark:text-muted-foreground-night"
             size="lg"
           />
@@ -227,7 +243,7 @@ export function UsagePage() {
               <div className="flex flex-col items-end gap-0.5">
                 <span className="flex items-center gap-1.5 text-[18px] font-semibold leading-[26px] tracking-[-0.36px] text-foreground dark:text-foreground-night">
                   <Icon
-                    visual={CoinsStacked03V2}
+                    visual={CoinsStacked03}
                     size="sm"
                     className="text-muted-foreground dark:text-muted-foreground-night"
                   />
@@ -249,7 +265,7 @@ export function UsagePage() {
                           className="flex items-center gap-1 text-xs font-medium text-highlight-500 opacity-50 dark:text-highlight-500-night"
                           disabled
                         >
-                          <Icon visual={ArrowUpV2} size="xs" />
+                          <Icon visual={ArrowUp} size="xs" />
                           Top up
                         </button>
                       }
@@ -259,7 +275,7 @@ export function UsagePage() {
                       className="flex cursor-pointer items-center gap-1 text-xs font-medium text-highlight-500 dark:text-highlight-500-night"
                       onClick={() => setShowBuyCreditDialog(true)}
                     >
-                      <Icon visual={ArrowUpV2} size="xs" />
+                      <Icon visual={ArrowUp} size="xs" />
                       Top up
                     </button>
                   )}
@@ -271,7 +287,7 @@ export function UsagePage() {
           {isAwuPoolSummaryError && (
             <ContentMessage
               title="Failed to load Workspace Credits Pool"
-              icon={AlertCircleV2}
+              icon={AlertCircle}
               variant="warning"
             >
               An error occurred while loading your Workspace Credits Pool data.
@@ -382,6 +398,8 @@ export function UsagePage() {
             pagination={pagination}
             setPagination={setPagination}
             totalRowCount={totalMembersUsage}
+            sorting={sorting}
+            setSorting={handleSetSorting}
           />
         </Page.Vertical>
 

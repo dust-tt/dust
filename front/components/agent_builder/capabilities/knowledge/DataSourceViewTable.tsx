@@ -15,7 +15,7 @@ import {
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
 import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
-import { FolderV2, Spinner } from "@dust-tt/sparkle";
+import { Folder, Spinner } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
 export function DataSourceViewTable({
@@ -68,7 +68,7 @@ export function DataSourceViewTable({
           const icon = provider
             ? (connectorProvider?.getLogoComponent(isDark) ??
               CATEGORY_DETAILS[dsv.category].icon)
-            : FolderV2;
+            : Folder;
 
           return {
             id: dsv.sId,

@@ -67,7 +67,9 @@ export const SKILL_AUTHORING_TOOLS_METADATA = createToolsRecord({
       "or make a targeted edit with `old_string`/`new_string` (preferred for small changes). " +
       "A targeted edit is an exact string replacement (not a regular expression) and replaces " +
       "every occurrence of `old_string`; by default `old_string` must match exactly once. " +
-      "These two modes are mutually exclusive.",
+      "These two modes are mutually exclusive. The instructions may contain special tags " +
+      "(nested skill, knowledge, or tool references like `<skill .../>`) that the builder " +
+      "manages: preserve them verbatim, and prefer a targeted edit when they are present.",
     schema: {
       sId: z.string().describe("The custom skill id to update."),
       name: z.string().optional().describe("New skill name."),

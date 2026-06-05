@@ -7,7 +7,7 @@ import type {
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
-  ClockRewindV2,
+  ClockRewind,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuLabel,
@@ -106,7 +106,7 @@ export function SkillVersionHistory({
       <DropdownMenuTrigger asChild>
         <Button
           variant="outline"
-          icon={ClockRewindV2}
+          icon={ClockRewind}
           size="sm"
           label={triggerLabel}
           isSelect

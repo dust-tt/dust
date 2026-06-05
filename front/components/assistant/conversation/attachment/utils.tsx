@@ -30,14 +30,14 @@ import type { ConnectorProvider } from "@app/types/data_source";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import {
   DoubleIcon,
-  DoubleQuotesV2,
+  DoubleQuotes,
   FaviconIcon,
-  File02V2,
-  FolderV2,
+  File02,
+  Folder,
   Icon,
-  Image01V2,
-  TableV2,
-  VolumeMaxV2,
+  Image01,
+  Table,
+  VolumeMax,
 } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
@@ -101,11 +101,7 @@ export const IconForAttachmentCitation = ({
     });
 
     const mainIcon =
-      nodeType === "table"
-        ? TableV2
-        : nodeType === "folder"
-          ? FolderV2
-          : File02V2;
+      nodeType === "table" ? Table : nodeType === "folder" ? Folder : File02;
     return (
       <DoubleIcon
         mainIcon={mainIcon}
@@ -118,14 +114,14 @@ export const IconForAttachmentCitation = ({
   if (contentType) {
     const isImageType = contentType.startsWith("image/");
     if (isImageType) {
-      return <Icon visual={Image01V2} size={size} />;
+      return <Icon visual={Image01} size={size} />;
     }
     const isAudioType = contentType.startsWith("audio/");
     if (isAudioType) {
-      return <Icon visual={VolumeMaxV2} size={size} />;
+      return <Icon visual={VolumeMax} size={size} />;
     }
     if (isPastedFile(contentType)) {
-      return <Icon visual={DoubleQuotesV2} size={size} />;
+      return <Icon visual={DoubleQuotes} size={size} />;
     }
   }
 
@@ -135,7 +131,7 @@ export const IconForAttachmentCitation = ({
   ) {
     return (
       <DoubleIcon
-        mainIcon={File02V2}
+        mainIcon={File02}
         secondaryIcon={getIcon(iconName)}
         size={size}
       />
@@ -147,7 +143,7 @@ export const IconForAttachmentCitation = ({
     return <Icon visual={FileIcon} size={size} />;
   }
 
-  return <Icon visual={File02V2} size={size} />;
+  return <Icon visual={File02} size={size} />;
 };
 
 export function contentFragmentToAttachmentCitation(

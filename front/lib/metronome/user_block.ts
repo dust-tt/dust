@@ -37,7 +37,10 @@ import {
   isWorkspaceProgrammaticCreditState,
 } from "@app/types/credits";
 import type { UserCreditState } from "@app/types/memberships";
-import { isUserCreditState } from "@app/types/memberships";
+import {
+  isSpendingFromPersonalSeat,
+  isUserCreditState,
+} from "@app/types/memberships";
 
 export type UserBlockedReason = "credits_exhausted" | "user_cap_reached";
 
@@ -268,32 +271,48 @@ export async function isUserBlocked(
       ])
   );
 
-  if (isBlockFlag(userCap) && isBlockFlag(poolDepleted)) {
-    return deriveBlockedReason({
-      userCapBlocked: userCap === BLOCKED_FLAG,
-      workspacePoolDepleted: poolDepleted === BLOCKED_FLAG,
-    });
-  }
+  let userCapBlocked: boolean;
+  let workspacePoolDepleted: boolean;
 
-  logger.info(
-    {
+  if (isBlockFlag(userCap) && isBlockFlag(poolDepleted)) {
+    userCapBlocked = userCap === BLOCKED_FLAG;
+    workspacePoolDepleted = poolDepleted === BLOCKED_FLAG;
+  } else {
+    logger.info(
+      {
+        workspaceId,
+        userId,
+        userCapCacheHit: isBlockFlag(userCap),
+        workspacePoolCacheHit: isBlockFlag(poolDepleted),
+      },
+      "[MetronomeUserBlock] Cache miss during user blocked check, falling back to DB"
+    );
+
+    const state = await getUserBlockedStateFromDb({ workspaceId, userId });
+    await syncCachedBlockedState({
       workspaceId,
       userId,
-      userCapCacheHit: isBlockFlag(userCap),
-      workspacePoolCacheHit: isBlockFlag(poolDepleted),
-    },
-    "[MetronomeUserBlock] Cache miss during user blocked check, falling back to DB"
-  );
+      userCapBlocked: state.userCapBlocked,
+      workspacePoolDepleted: state.workspacePoolDepleted,
+    });
 
-  const state = await getUserBlockedStateFromDb({ workspaceId, userId });
-  await syncCachedBlockedState({
-    workspaceId,
-    userId,
-    userCapBlocked: state.userCapBlocked,
-    workspacePoolDepleted: state.workspacePoolDepleted,
-  });
+    userCapBlocked = state.userCapBlocked;
+    workspacePoolDepleted = state.workspacePoolDepleted;
+  }
 
-  return deriveBlockedReason(state);
+  // A user spending from their personal seat balance (`user_seat` /
+  // `user_seat_low_balance`) still has their own credits, so workspace pool
+  // depletion must not block them — only their per-user cap can. We only need
+  // the per-user credit state when the pool is depleted, since otherwise it
+  // cannot change the outcome.
+  if (workspacePoolDepleted) {
+    const userCreditState = await getUserCreditState(workspaceId, userId);
+    if (isSpendingFromPersonalSeat(userCreditState)) {
+      workspacePoolDepleted = false;
+    }
+  }
+
+  return deriveBlockedReason({ userCapBlocked, workspacePoolDepleted });
 }
 
 // Per-user credit state (fine-grained state mirroring memberships.creditState).

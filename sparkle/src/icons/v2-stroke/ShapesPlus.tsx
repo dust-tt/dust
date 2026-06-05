@@ -10,34 +10,43 @@ const SvgShapesPlus = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 24 24"
     {...props}
   >
-    <g transform="translate(1.991 2.011)">
-      <path
-        d="M4.15016 1.14626C4.34534 0.951083 4.66191 0.951254 4.8572 1.14626L7.8611 4.15016C8.05636 4.34543 8.05636 4.66193 7.8611 4.8572L4.8572 7.8611C4.66193 8.05636 4.34543 8.05636 4.15016 7.8611L1.14626 4.8572C0.951254 4.66191 0.951081 4.34534 1.14626 4.15016L4.15016 1.14626Z"
-        stroke="currentColor"
-        strokeWidth="2"
-      />
-    </g>
-    <circle
-      cx="17.864"
-      cy="6.484"
-      r="3.134"
-      stroke="currentColor"
-      strokeWidth="2"
-    />
-    <rect
-      x="2.01"
-      y="13.7"
-      width="8.312"
-      height="8.294"
-      rx="3"
-      stroke="currentColor"
-      strokeWidth="2"
-    />
     <path
       stroke="currentColor"
-      strokeWidth="1.911"
-      strokeLinecap="round"
-      d="M13.318 17.65h8.685M17.66 13.307v8.686"
+      strokeWidth={2}
+      d="M6.143 3.158a.5.5 0 0 1 .707 0l3.004 3.004a.5.5 0 0 1 0 .707L6.85 9.873a.5.5 0 0 1-.707 0L3.139 6.87a.5.5 0 0 1 0-.707z"
+    />
+    <circle
+      cx={17.866}
+      cy={6.481}
+      r={3.134}
+      stroke="currentColor"
+      strokeWidth={2}
+    />
+    <rect
+      width={6.312}
+      height={6.294}
+      x={3.009}
+      y={14.698}
+      stroke="currentColor"
+      strokeWidth={2}
+      rx={2}
+    />
+    <rect
+      width={8.685}
+      height={1.911}
+      x={13.315}
+      y={16.693}
+      fill="currentColor"
+      rx={0.956}
+    />
+    <rect
+      width={8.686}
+      height={1.911}
+      x={18.677}
+      y={13.306}
+      fill="currentColor"
+      rx={0.955}
+      transform="rotate(90 18.677 13.306)"
     />
   </svg>
 );

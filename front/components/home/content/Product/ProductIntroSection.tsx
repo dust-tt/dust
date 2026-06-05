@@ -2,7 +2,7 @@
 import { H1, P } from "@app/components/home/ContentComponents";
 import { HeroVisual } from "@app/components/home/content/Product/HeroVisual";
 import TrustedBy from "@app/components/home/TrustedBy";
-import { Button, Rocket02V2 } from "@dust-tt/sparkle";
+import { Button, Rocket02 } from "@dust-tt/sparkle";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -30,7 +30,7 @@ export function ProductIntroSection() {
                 variant="highlight"
                 size="md"
                 label="Try Dust Now"
-                icon={Rocket02V2}
+                icon={Rocket02}
               />
             </Link>
             <Link href="/home/contact" shallow={true}>

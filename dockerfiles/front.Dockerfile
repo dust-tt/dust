@@ -98,39 +98,44 @@ ENV NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL=$NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL
 ENV CONTENTFUL_SPACE_ID=$CONTENTFUL_SPACE_ID
 ENV CONTENTFUL_ACCESS_TOKEN=$CONTENTFUL_ACCESS_TOKEN
 
+# Provide git metadata as env constants so `datadog-ci sourcemaps upload` does not
+# try to spawn git (not installed in the slim base) for repo URL / commit lookups.
+ENV DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust
+ENV DD_GIT_COMMIT_SHA=$COMMIT_HASH_LONG
+
 # Build Next.js application and sitemap (front-nextjs only)
 # Fake PostgreSQL URI is needed because Sequelize validates the connection string
 # during module initialization (imported by `next build`), but doesn't actually connect
 # DATADOG_API_KEY is used to conditionally enable source map generation and upload to Datadog
-RUN --mount=type=cache,id=next-cache,target=/app/front/.next/cache \
+RUN --mount=type=cache,id=next-cache-v2,target=/app/front/.next/cache \
   BUILD_WITH_SOURCE_MAPS=${DATADOG_API_KEY:+true} \
   FRONT_DATABASE_URI="postgres://fake:fake@localhost:5432/fake" \
   NODE_OPTIONS="--max-old-space-size=8192" \
   npm run build -- --no-lint && \
+  if [ ! -d .next/standalone ]; then \
+  echo "ERROR: next build did not emit .next/standalone (output:standalone). Likely a corrupt next-cache mount; bump the --mount id to reset it."; \
+  exit 1; \
+  fi && \
   if [ -n "$DATADOG_API_KEY" ] && [ -n "$NEXT_PUBLIC_DATADOG_SERVICE" ]; then \
   export DATADOG_SITE=datadoghq.eu DATADOG_API_KEY=$DATADOG_API_KEY; \
   npx --yes @datadog/datadog-ci sourcemaps upload ./.next/static \
   --minified-path-prefix=/_next/static/ \
-  --repository-url=https://github.com/dust-tt/dust \
   --project-path=front \
   --release-version=$COMMIT_HASH \
   --service=$NEXT_PUBLIC_DATADOG_SERVICE-browser && \
   npx --yes @datadog/datadog-ci sourcemaps upload ./.next/server \
   --minified-path-prefix=/app/front/.next/server/ \
-  --repository-url=https://github.com/dust-tt/dust \
   --project-path=front \
   --release-version=$COMMIT_HASH \
   --service=$NEXT_PUBLIC_DATADOG_SERVICE && \
   for svc in $DATADOG_ADDITIONAL_SERVICES; do \
   npx --yes @datadog/datadog-ci sourcemaps upload ./.next/static \
   --minified-path-prefix=/_next/static/ \
-  --repository-url=https://github.com/dust-tt/dust \
   --project-path=front \
   --release-version=$COMMIT_HASH \
   --service=${svc}-browser && \
   npx --yes @datadog/datadog-ci sourcemaps upload ./.next/server \
   --minified-path-prefix=/app/front/.next/server/ \
-  --repository-url=https://github.com/dust-tt/dust \
   --project-path=front \
   --release-version=$COMMIT_HASH \
   --service=${svc} || exit 1; \
@@ -143,8 +148,14 @@ RUN --mount=type=cache,id=next-cache,target=/app/front/.next/cache \
 FROM base-deps AS workers-build
 
 ARG COMMIT_HASH
+ARG COMMIT_HASH_LONG
 ARG DATADOG_API_KEY
 ARG NEXT_PUBLIC_DATADOG_SERVICE
+
+# Provide git metadata as env constants so `datadog-ci sourcemaps upload` does not
+# try to spawn git (not installed in the slim base) for repo URL / commit lookups.
+ENV DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust
+ENV DD_GIT_COMMIT_SHA=$COMMIT_HASH_LONG
 
 # Build temporal workers and esbuild workers (workers only)
 RUN FRONT_DATABASE_URI="postgres://fake:fake@localhost:5432/fake" npm run build:temporal-bundles
@@ -156,7 +167,6 @@ RUN if [ -n "$DATADOG_API_KEY" ] && [ -n "$NEXT_PUBLIC_DATADOG_SERVICE" ]; then 
   DATADOG_API_KEY=$DATADOG_API_KEY \
   npx --yes @datadog/datadog-ci sourcemaps upload ./dist \
   --minified-path-prefix=/app/front/dist/ \
-  --repository-url=https://github.com/dust-tt/dust \
   --project-path=front \
   --release-version=$COMMIT_HASH \
   --service=$NEXT_PUBLIC_DATADOG_SERVICE; \
@@ -284,13 +294,15 @@ ENV DD_GIT_COMMIT_SHA=${COMMIT_HASH_LONG}
 CMD ["node", "--enable-source-maps", "--require", "dd-trace/init", "dist/start_worker.js"]
 
 # Front-api build stage — produces /app/front/.next used at runtime by Next.js handler,
-# plus the esbuild-bundled Hono server at /app/front-api/dist/server.js.
-# Intentionally does NOT upload source maps (front-nextjs-build does that for the same SHA),
-# and does NOT use Next.js standalone output (server.ts loads Next.js as a library).
+# plus the esbuild-bundled Hono server at /app/front-api/dist/server.js. Uploads source
+# maps for that bundle to Datadog under <service>-api (front-nextjs uploads cover only
+# .next/server and .next/static paths, not this bundle).
+# Does NOT use Next.js standalone output (server.ts loads Next.js as a library).
 FROM base-deps AS front-api-build
 
 ARG COMMIT_HASH
 ARG COMMIT_HASH_LONG
+ARG DATADOG_API_KEY
 ARG NEXT_PUBLIC_VIZ_URL
 ARG NEXT_PUBLIC_DUST_API_URL
 ARG NEXT_PUBLIC_DUST_STATIC_WEBSITE_URL
@@ -324,8 +336,26 @@ ENV NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER=$NEXT_PUBLIC_NOVU_APPLICATION_IDENTI
 ENV NEXT_PUBLIC_NOVU_API_URL=$NEXT_PUBLIC_NOVU_API_URL
 ENV NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL=$NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL
 
+# Provide git metadata as env constants so `datadog-ci sourcemaps upload` does not
+# try to spawn git (not installed in the slim base) for repo URL / commit lookups.
+ENV DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust
+ENV DD_GIT_COMMIT_SHA=$COMMIT_HASH_LONG
+
 WORKDIR /app/front-api
-RUN npm run build
+
+# Build the Hono server bundle and upload its source maps to Datadog so prod stack
+# traces from /app/front-api/dist/server.js symbolicate. Map files are kept in the
+# runtime image and consumed via --enable-source-maps in the runtime CMD.
+RUN npm run build && \
+  if [ -n "$DATADOG_API_KEY" ] && [ -n "$NEXT_PUBLIC_DATADOG_SERVICE" ]; then \
+  DATADOG_SITE=datadoghq.eu \
+  DATADOG_API_KEY=$DATADOG_API_KEY \
+  npx --yes @datadog/datadog-ci sourcemaps upload ./dist \
+  --minified-path-prefix=/app/front-api/dist/ \
+  --project-path=front-api \
+  --release-version=$COMMIT_HASH \
+  --service=$NEXT_PUBLIC_DATADOG_SERVICE-api; \
+  fi
 
 # Front-api runtime image — Hono server with Next.js fallback (strangler shim).
 FROM node:24.14.0-slim AS front-api
@@ -383,4 +413,4 @@ ENV DD_VERSION=${COMMIT_HASH}
 ENV DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust/
 ENV DD_GIT_COMMIT_SHA=${COMMIT_HASH_LONG}
 
-CMD ["node", "--require", "dd-trace/init", "dist/server.js"]
+CMD ["node", "--enable-source-maps", "--require", "dd-trace/init", "dist/server.js"]

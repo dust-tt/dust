@@ -7,13 +7,13 @@ import {
   isInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getToolCallDisplayLabel } from "@app/lib/actions/tool_display_labels";
-import { ShapesPlusV2 } from "@dust-tt/sparkle";
+import { ShapesPlus } from "@dust-tt/sparkle";
 
 function getPendingToolCallVisual(functionCallName: string) {
   const separatorIndex = functionCallName.lastIndexOf(TOOL_NAME_SEPARATOR);
 
   if (separatorIndex === -1) {
-    return ShapesPlusV2;
+    return ShapesPlus;
   }
 
   const serverName = functionCallName.slice(0, separatorIndex);
@@ -32,7 +32,7 @@ function getPendingToolCallVisual(functionCallName: string) {
     }
   }
 
-  return ShapesPlusV2;
+  return ShapesPlus;
 }
 
 interface PendingToolCallDetailsProps {

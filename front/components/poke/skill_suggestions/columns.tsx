@@ -3,7 +3,7 @@ import { clientFetch } from "@app/lib/egress/client";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Chip, IconButton, Trash01V2 } from "@dust-tt/sparkle";
+import { Chip, IconButton, Trash01 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
 const MAX_ANALYSIS_LENGTH = 80;
@@ -264,7 +264,7 @@ export function makeColumnsForSkillSuggestions(
         const suggestion = row.original;
         return (
           <IconButton
-            icon={Trash01V2}
+            icon={Trash01}
             size="xs"
             variant="outline"
             onClick={async () => {

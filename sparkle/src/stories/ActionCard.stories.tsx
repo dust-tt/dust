@@ -2,8 +2,8 @@ import type { Meta } from "@storybook/react";
 import React from "react";
 
 import { ActionCard, Hoverable } from "@sparkle/components";
-import { PlanetV2 } from "@sparkle/icons/v2-stroke";
-import { BookOpen01V2, SearchMdV2, TerminalV2 } from "@sparkle/icons/v2-stroke";
+import { Planet } from "@sparkle/icons/v2-stroke";
+import { BookOpen01, SearchMd, Terminal } from "@sparkle/icons/v2-stroke";
 
 const meta: Meta<typeof ActionCard> = {
   title: "Modules/ActionCard",
@@ -17,7 +17,7 @@ export const Examples = () => (
     {/* Not added - default md size */}
     <div className="s-w-80">
       <ActionCard
-        icon={BookOpen01V2}
+        icon={BookOpen01}
         cardContainerClassName="s-h-36"
         label="Image Generation"
         description="Agent can generate images (GPT Image 1)."
@@ -35,7 +35,7 @@ export const Examples = () => (
     <div className="s-w-80">
       <ActionCard
         cardContainerClassName="s-h-36"
-        icon={TerminalV2}
+        icon={Terminal}
         label="Reasoning"
         description={
           <>
@@ -70,7 +70,7 @@ export const DiffStatus = () => (
   <div className="s-flex s-gap-3">
     <div className="s-w-80">
       <ActionCard
-        icon={SearchMdV2}
+        icon={SearchMd}
         cardContainerClassName="s-h-36"
         label="Web Search"
         description="Search & browse the web for up-to-date information."
@@ -80,7 +80,7 @@ export const DiffStatus = () => (
     </div>
     <div className="s-w-80">
       <ActionCard
-        icon={PlanetV2}
+        icon={Planet}
         cardContainerClassName="s-h-36"
         label="Code Interpreter"
         description="Run code snippets in a sandboxed environment."

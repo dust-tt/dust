@@ -7,20 +7,21 @@ import {
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
 import {
-  CoinsStacked03V2,
-  Cube01V2,
+  CoinsStacked03,
+  Cube01,
   DataTable,
-  Hexagon01V2,
+  Hexagon01,
   Icon,
   LoadingBlock,
   type MenuItem,
-  SeatMaxV2,
+  SeatMax,
   Tooltip,
 } from "@dust-tt/sparkle";
 import type {
   CellContext,
   ColumnDef,
   PaginationState,
+  SortingState,
 } from "@tanstack/react-table";
 import type React from "react";
 import { useMemo } from "react";
@@ -47,9 +48,9 @@ type Info = CellContext<RowData, string>;
 const SEAT_TYPE_ICONS: Partial<
   Record<MembershipSeatType, React.ComponentType>
 > = {
-  max: SeatMaxV2,
-  pro: Cube01V2,
-  free: Hexagon01V2,
+  max: SeatMax,
+  pro: Cube01,
+  free: Hexagon01,
 };
 
 // Yearly seat types are billed yearly but render in the table identically to
@@ -218,6 +219,7 @@ function AwuUsageBar({
 const nameColumn: ColumnDef<RowData, string> = {
   id: "name" as const,
   header: "Name",
+  enableSorting: true,
   accessorFn: (row) => row.name,
   cell: (info: Info) => (
     <DataTable.CellContent
@@ -226,11 +228,12 @@ const nameColumn: ColumnDef<RowData, string> = {
     >
       <div>
         <div>{info.row.original.name}</div>
-        {info.row.original.email && (
-          <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-            {info.row.original.email}
-          </div>
-        )}
+        {info.row.original.email &&
+          info.row.original.email !== info.row.original.name && (
+            <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+              {info.row.original.email}
+            </div>
+          )}
       </div>
     </DataTable.CellContent>
   ),
@@ -239,6 +242,7 @@ const nameColumn: ColumnDef<RowData, string> = {
 const seatTypeColumn: ColumnDef<RowData, string> = {
   id: "seatType" as const,
   header: "Seat",
+  enableSorting: false,
   accessorFn: (row) => row.seatType ?? "",
   cell: (info: Info) => {
     const seatType = info.row.original.seatType;
@@ -275,6 +279,7 @@ const seatTypeColumn: ColumnDef<RowData, string> = {
 const billingFrequencyColumn: ColumnDef<RowData, string> = {
   id: "billingFrequency" as const,
   header: "Period",
+  enableSorting: false,
   accessorFn: (row) => row.billingFrequency ?? "",
   cell: (info: Info) => {
     const freq = info.row.original.billingFrequency;
@@ -310,7 +315,7 @@ const consumedAwuCreditsColumn: ColumnDef<RowData, string> = {
   id: "consumedAwuCredits" as const,
   header: () => (
     <span className="flex items-center gap-1.5">
-      <Icon visual={CoinsStacked03V2} size="xs" />
+      <Icon visual={CoinsStacked03} size="xs" />
       Credits usage
     </span>
   ),
@@ -332,14 +337,15 @@ const consumedAwuCreditsColumn: ColumnDef<RowData, string> = {
   meta: {
     className: "w-64",
   },
-  enableSorting: true,
-  sortingFn: (a, b) =>
-    a.original.consumedAwuCredits - b.original.consumedAwuCredits,
+  // Consumed is computed per-page from Metronome usage, not a server-sortable
+  // field, so it can't participate in server-side sorting.
+  enableSorting: false,
 };
 
 const actionsColumn: ColumnDef<RowData, string> = {
   id: "actions" as const,
   header: "",
+  enableSorting: false,
   accessorKey: "actions",
   cell: (info: Info) => (
     <DataTable.MoreButton menuItems={info.row.original.menuItems} />
@@ -381,6 +387,8 @@ interface MembersUsageTableProps {
   pagination: PaginationState;
   setPagination: (pagination: PaginationState) => void;
   totalRowCount: number;
+  sorting: SortingState;
+  setSorting: (sorting: SortingState) => void;
 }
 
 export function MembersUsageTable({
@@ -393,6 +401,8 @@ export function MembersUsageTable({
   pagination,
   setPagination,
   totalRowCount,
+  sorting,
+  setSorting,
 }: MembersUsageTableProps) {
   // Name/email search is handled server-side; only filter by seat type here.
   const filtered = useMemo(
@@ -477,6 +487,9 @@ export function MembersUsageTable({
       pagination={pagination}
       setPagination={setPagination}
       totalRowCount={totalRowCount}
+      sorting={sorting}
+      setSorting={setSorting}
+      isServerSideSorting
     />
   );
 }

@@ -14,6 +14,25 @@ type UpsertMetronomeAlertParams = V1.AlertCreateParams & {
   uniqueness_key: string;
 };
 
+// Extract the id of the alert that already holds a uniqueness key from a
+// Metronome 409 conflict error. The SDK surfaces the response body on `.error`,
+// which carries `conflicting_id` for uniqueness-key conflicts. Narrowed with
+// `in`/`typeof` guards so we never cast.
+function conflictingAlertIdFromError(err: unknown): string | null {
+  if (
+    typeof err === "object" &&
+    err !== null &&
+    "error" in err &&
+    typeof err.error === "object" &&
+    err.error !== null &&
+    "conflicting_id" in err.error &&
+    typeof err.error.conflicting_id === "string"
+  ) {
+    return err.error.conflicting_id;
+  }
+  return null;
+}
+
 export async function findMetronomeAlert({
   metronomeCustomerId,
   uniquenessKey,
@@ -65,6 +84,20 @@ export async function upsertMetronomeAlert(
     const created = await createMetronomeAlert(params);
     return new Ok({ alertId: created.data.id });
   } catch (err) {
+    // A uniqueness-key 409 means another alert still holds this key — typically
+    // one archived previously without releasing the key, which
+    // `findMetronomeAlert` (ENABLED/DISABLED only) doesn't surface. Archive the
+    // conflicting alert (releasing the key) and retry the create once.
+    const conflictingId = conflictingAlertIdFromError(err);
+    if (conflictingId) {
+      try {
+        await archiveMetronomeAlert({ id: conflictingId });
+        const created = await createMetronomeAlert(params);
+        return new Ok({ alertId: created.data.id });
+      } catch (retryErr) {
+        return new Err(normalizeError(retryErr));
+      }
+    }
     return new Err(normalizeError(err));
   }
 }

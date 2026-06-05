@@ -4,7 +4,7 @@ import React from "react";
 import {
   Icon,
   KeyboardShortcut,
-  RobotV2,
+  Robot,
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -50,7 +50,7 @@ export const TooltipWithManual = () => (
       }}
     >
       <TooltipTrigger>
-        <Icon visual={RobotV2} size="xs" />
+        <Icon visual={Robot} size="xs" />
       </TooltipTrigger>
       <TooltipContent side="right" sideOffset={50}>
         This is a tooltip with a very long label that should wrap onto multiple

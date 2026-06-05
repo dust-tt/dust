@@ -9,7 +9,7 @@ import {
   CollapsibleTrigger,
   cn,
   Markdown,
-  TerminalV2,
+  Terminal,
 } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
@@ -125,7 +125,7 @@ export function MCPSandboxActionDetails({
     <ActionDetailsWrapper
       displayContext={displayContext}
       actionName={actionName}
-      visual={TerminalV2}
+      visual={Terminal}
     >
       {displayContext === "conversation" ? (
         <ConversationView {...viewProps} />

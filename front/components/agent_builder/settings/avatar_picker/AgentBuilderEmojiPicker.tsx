@@ -10,8 +10,8 @@ import {
   Button,
   ColorPicker,
   EmojiPicker,
-  FaceSmileV2,
-  PaintV2,
+  FaceSmile,
+  Paint,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
@@ -81,11 +81,7 @@ const AgentBuilderEmojiPicker = React.forwardRef<
       <div className="flex flex-row gap-2">
         <PopoverRoot>
           <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              icon={FaceSmileV2}
-              label="Pick an Emoji"
-            />
+            <Button variant="outline" icon={FaceSmile} label="Pick an Emoji" />
           </PopoverTrigger>
           <PopoverContent fullWidth>
             <EmojiPicker
@@ -106,7 +102,7 @@ const AgentBuilderEmojiPicker = React.forwardRef<
 
         <PopoverRoot>
           <PopoverTrigger asChild>
-            <Button variant="outline" icon={PaintV2} label="Pick a color" />
+            <Button variant="outline" icon={Paint} label="Pick a color" />
           </PopoverTrigger>
           <PopoverContent mountPortal={false} className="w-fit">
             <ColorPicker

@@ -32,7 +32,7 @@ import {
   Breadcrumbs,
   type BreadcrumbsItem,
   Button,
-  CloudArrowLeftRightV2,
+  CloudArrowLeftRight,
   cn,
   SearchInput,
   Separator,
@@ -302,7 +302,7 @@ export const DataSourceBuilderSelector = ({
           </div>
           <div>
             <Button
-              icon={CloudArrowLeftRightV2}
+              icon={CloudArrowLeftRight}
               label="Connect data"
               variant="primary"
               onClick={handleConnectDataClick}

@@ -17,7 +17,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import { isLightAgentMessageWithActionsType } from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
-import { AnimatedText, CheckV2, XCircleV2 } from "@dust-tt/sparkle";
+import { AnimatedText, Check, XCircle } from "@dust-tt/sparkle";
 
 interface InlineActivityStepsProps {
   agentMessage: LightAgentMessageType | LightAgentMessageWithActionsType;
@@ -197,7 +197,7 @@ export function InlineActivitySteps({
     completedSteps.length > 0 &&
     agentMessage.status !== "gracefully_stopped"
       ? {
-          icon: agentMessage.status === "cancelled" ? XCircleV2 : CheckV2,
+          icon: agentMessage.status === "cancelled" ? XCircle : Check,
           label: agentMessage.status === "cancelled" ? "Cancelled" : "Done",
         }
       : undefined;

@@ -15,7 +15,7 @@ import {
   Icon,
   ScrollArea,
   SearchInput,
-  SpaceClosedV2,
+  SpaceClosed,
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
@@ -150,7 +150,7 @@ function FileCards({
                         label="Saved to Pod"
                         trigger={
                           <span className="inline-flex">
-                            <Icon visual={SpaceClosedV2} size="md" />
+                            <Icon visual={SpaceClosed} size="md" />
                           </span>
                         }
                       />
@@ -196,7 +196,7 @@ function FileCards({
                       trigger={
                         <span className="inline-flex">
                           <Icon
-                            visual={SpaceClosedV2}
+                            visual={SpaceClosed}
                             size="md"
                             className="text-muted-foreground dark:text-muted-foreground-night"
                           />

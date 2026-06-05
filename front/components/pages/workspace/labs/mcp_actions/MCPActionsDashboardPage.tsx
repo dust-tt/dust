@@ -12,12 +12,12 @@ import {
   Breadcrumbs,
   Button,
   Chip,
-  CodeSquare01V2,
+  CodeSquare01,
   ContextItem,
   Icon,
-  LinkExternal01V2,
+  LinkExternal01,
   Page,
-  RobotV2,
+  Robot,
   Spinner,
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo } from "react";
@@ -86,7 +86,7 @@ export function MCPActionsDashboardPage() {
           <Page>
             <Page.Header
               title="MCP Actions Dashboard"
-              icon={CodeSquare01V2}
+              icon={CodeSquare01}
               description="Monitor and track MCP (Model Context Protocol) actions executed by your agents."
             />
 
@@ -127,7 +127,7 @@ export function MCPActionsDashboardPage() {
                             <Button
                               size="sm"
                               variant="outline"
-                              icon={LinkExternal01V2}
+                              icon={LinkExternal01}
                               onClick={() => handleAgentSelect(agent.sId)}
                               label="View Actions"
                             />
@@ -144,7 +144,7 @@ export function MCPActionsDashboardPage() {
                   ) : (
                     <ContextItem
                       title="No Active Agents Found"
-                      visual={<Icon visual={RobotV2} />}
+                      visual={<Icon visual={Robot} />}
                     >
                       <ContextItem.Description description="No active agents found in this workspace. Agents must be active to execute MCP actions." />
                     </ContextItem>

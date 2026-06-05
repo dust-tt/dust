@@ -261,7 +261,7 @@ describe("setDefaultUserSpendLimit", () => {
     });
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-    for (const awuCredits of [0, -1, 1_000_001, 1.5]) {
+    for (const awuCredits of [-1, 1_000_001, 1.5]) {
       const result = await setDefaultUserSpendLimit(auth, {
         awuCredits,
         auditContext: AUDIT_CONTEXT,

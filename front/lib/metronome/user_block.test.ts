@@ -105,6 +105,49 @@ describe("isUserBlocked", () => {
     expect(blocked).toBeNull();
   });
 
+  it("does not block a 'user_seat' user when the pool is depleted", async () => {
+    redisValues.set("metronome:user_cap:ws_test:u_test", "0");
+    redisValues.set("metronome:pool_depleted:ws_test", "1");
+    redisValues.set("metronome:user_credit_state:ws_test:u_test", "user_seat");
+
+    const blocked = await isUserBlocked("ws_test", "u_test");
+
+    expect(blocked).toBeNull();
+  });
+
+  it("does not block a 'user_seat_low_balance' user when the pool is depleted", async () => {
+    redisValues.set("metronome:user_cap:ws_test:u_test", "0");
+    redisValues.set("metronome:pool_depleted:ws_test", "1");
+    redisValues.set(
+      "metronome:user_credit_state:ws_test:u_test",
+      "user_seat_low_balance"
+    );
+
+    const blocked = await isUserBlocked("ws_test", "u_test");
+
+    expect(blocked).toBeNull();
+  });
+
+  it("blocks an 'on_pool' user when the pool is depleted", async () => {
+    redisValues.set("metronome:user_cap:ws_test:u_test", "0");
+    redisValues.set("metronome:pool_depleted:ws_test", "1");
+    redisValues.set("metronome:user_credit_state:ws_test:u_test", "on_pool");
+
+    const blocked = await isUserBlocked("ws_test", "u_test");
+
+    expect(blocked).toBe("credits_exhausted");
+  });
+
+  it("still blocks a capped 'user_seat' user via their per-user cap when the pool is depleted", async () => {
+    redisValues.set("metronome:user_cap:ws_test:u_test", "1");
+    redisValues.set("metronome:pool_depleted:ws_test", "1");
+    redisValues.set("metronome:user_credit_state:ws_test:u_test", "user_seat");
+
+    const blocked = await isUserBlocked("ws_test", "u_test");
+
+    expect(blocked).toBe("user_cap_reached");
+  });
+
   it("falls back to DB on cold cache and repopulates both flags", async () => {
     mockFetchWorkspaceById.mockResolvedValue({
       sId: "ws_test",

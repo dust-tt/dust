@@ -6,10 +6,10 @@ import { dateToHumanReadable } from "@app/types/shared/utils/date_utils";
 import {
   Button,
   Chip,
-  ClipboardCheckV2,
-  ClipboardV2,
+  Clipboard,
+  ClipboardCheck,
   CodeBlock,
-  LinkExternal01V2,
+  LinkExternal01,
   Page,
   Spinner,
   useCopyToClipboard,
@@ -135,7 +135,7 @@ export function FramePage() {
                     label="View"
                     variant="ghost"
                     size="xs"
-                    icon={LinkExternal01V2}
+                    icon={LinkExternal01}
                     href={`/poke/${owner.sId}/conversation/${file.useCaseMetadata.conversationId}`}
                   />
                 </div>
@@ -154,7 +154,7 @@ export function FramePage() {
                   label={isCopiedMetadata ? "Copied!" : "Copy"}
                   variant="ghost"
                   size="xs"
-                  icon={isCopiedMetadata ? ClipboardCheckV2 : ClipboardV2}
+                  icon={isCopiedMetadata ? ClipboardCheck : Clipboard}
                   onClick={() =>
                     copyMetadata(JSON.stringify(file.useCaseMetadata, null, 2))
                   }
@@ -206,7 +206,7 @@ export function FramePage() {
                         label={isCopiedShareUrl ? "Copied!" : "Copy"}
                         variant="ghost"
                         size="xs"
-                        icon={isCopiedShareUrl ? ClipboardCheckV2 : ClipboardV2}
+                        icon={isCopiedShareUrl ? ClipboardCheck : Clipboard}
                         onClick={() => copyShareUrl(shareInfo.shareUrl)}
                       />
                     </div>
@@ -326,7 +326,7 @@ export function FramePage() {
                 label={isCopiedContent ? "Copied!" : "Copy Content"}
                 variant="ghost"
                 size="xs"
-                icon={isCopiedContent ? ClipboardCheckV2 : ClipboardV2}
+                icon={isCopiedContent ? ClipboardCheck : Clipboard}
                 onClick={() => copyContent(content)}
               />
             </div>

@@ -23,11 +23,11 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  FolderOpenV2,
+  FolderOpen,
   Page,
-  PlusV2,
+  Plus,
   SearchInput,
-  SearchMdV2,
+  SearchMd,
   Spinner,
   Tabs,
   TabsList,
@@ -38,7 +38,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 const SKILL_SEARCH_TAB = {
   id: "search",
   label: "Searching across all skills",
-  icon: SearchMdV2,
+  icon: SearchMd,
   description: "Searching across all skills.",
 } as const;
 
@@ -293,7 +293,7 @@ export function ManageSkillsPage() {
             />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button label="Create skill" icon={PlusV2} isSelect />
+                <Button label="Create skill" icon={Plus} isSelect />
               </DropdownMenuTrigger>
               <DropdownMenuContent>
                 <DropdownMenuItem
@@ -303,7 +303,7 @@ export function ManageSkillsPage() {
                 />
                 <DropdownMenuItem
                   label="From existing"
-                  icon={FolderOpenV2}
+                  icon={FolderOpen}
                   onClick={() => setIsImportDialogOpen(true)}
                 />
               </DropdownMenuContent>

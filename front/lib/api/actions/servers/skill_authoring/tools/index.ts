@@ -1,3 +1,4 @@
+import { extractKnowledgeTagSignatures } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeConstants";
 import {
   isCustomResourceIconType,
   isInternalAllowedIcon,
@@ -21,6 +22,8 @@ import { pruneOutdatedSkillEditSuggestions } from "@app/lib/reinforcement/skill_
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { extractUniqueSkillReferenceIds } from "@app/lib/skills/format";
+import { extractToolTags, serializeToolTag } from "@app/lib/tools/format";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -65,6 +68,79 @@ function makeJsonText(value: unknown) {
     type: "text" as const,
     text: JSON.stringify(value, null, 2),
   };
+}
+
+const SPECIAL_TAG_CATEGORIES = ["nested skills", "knowledge", "tools"] as const;
+type SpecialTagCategory = (typeof SPECIAL_TAG_CATEGORIES)[number];
+
+// Skills can embed special tags in their instructions that the builder wires up:
+// nested skill references, knowledge, and tools. The agent only ever sees them as
+// opaque markup, and the two groups follow different rules:
+//   - Nested skill references are re-derived from the instructions on every save,
+//     so the agent may freely add them (they get wired). Removing one would
+//     silently unlink a skill the builder attached, so a drop is disallowed.
+//   - Knowledge and tool tags cannot be wired from text alone; their attachments
+//     are carried over from the existing skill untouched. So adding, dropping, or
+//     altering one desyncs the markup from the real attachments, and any change is
+//     disallowed.
+// A freshly created agent skill has no attachments at all, so on create every
+// special tag is a phantom and is rejected outright (see the create handler).
+function extractSpecialTagSignatures(
+  content: string
+): Record<SpecialTagCategory, string[]> {
+  return {
+    "nested skills": extractUniqueSkillReferenceIds(content),
+    knowledge: extractKnowledgeTagSignatures(content),
+    tools: extractToolTags(content).map((tool) => serializeToolTag(tool)),
+  };
+}
+
+// Returns true if any value in `values` is absent from `from`.
+function isMissingAnySignature(values: string[], from: string[]): boolean {
+  const fromSet = new Set(from);
+  return values.some((value) => !fromSet.has(value));
+}
+
+// Returns the special tag categories present in `content`. Used on create, where
+// the skill has no attachments and so cannot carry any special tag.
+function findSpecialTagsPresent(content: string): SpecialTagCategory[] {
+  const signatures = extractSpecialTagSignatures(content);
+  return SPECIAL_TAG_CATEGORIES.filter(
+    (category) => signatures[category].length > 0
+  );
+}
+
+// Returns the special tag categories whose change between `before` and `after`
+// the agent is not allowed to make (see the rules above): a dropped nested skill
+// reference, or any added, dropped, or altered knowledge or tool tag.
+function findDisallowedSpecialTagChanges(
+  before: string,
+  after: string
+): SpecialTagCategory[] {
+  const beforeSignatures = extractSpecialTagSignatures(before);
+  const afterSignatures = extractSpecialTagSignatures(after);
+
+  const disallowed: SpecialTagCategory[] = [];
+  if (
+    isMissingAnySignature(
+      beforeSignatures["nested skills"],
+      afterSignatures["nested skills"]
+    )
+  ) {
+    disallowed.push("nested skills");
+  }
+  for (const category of ["knowledge", "tools"] as const) {
+    const beforeValues = beforeSignatures[category];
+    const afterValues = afterSignatures[category];
+    if (
+      isMissingAnySignature(beforeValues, afterValues) ||
+      isMissingAnySignature(afterValues, beforeValues)
+    ) {
+      disallowed.push(category);
+    }
+  }
+
+  return disallowed;
 }
 
 const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
@@ -153,6 +229,20 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
     const trimmedName = name.trim();
     if (!trimmedName) {
       return new Err(new MCPError("Skill name cannot be empty."));
+    }
+
+    // A new skill has no attachments, so any special tag in the instructions
+    // would be dead markup. Keep created skills instructions-only.
+    const specialTags = findSpecialTagsPresent(instructions);
+    if (specialTags.length > 0) {
+      return new Err(
+        new MCPError(
+          `The instructions contain special tags (${specialTags.join(", ")}) ` +
+            "that are wired up in the builder, not authored as plain text. Create " +
+            "instructions-only skills; nested skills, knowledge, and tools must be " +
+            "attached in the builder."
+        )
+      );
     }
 
     const existingSkill = await SkillResource.fetchActiveByName(
@@ -340,6 +430,29 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
       resolvedInstructions = updatedContent;
     }
 
+    // Guard builder-managed special tags. Nested skill references re-derive from
+    // the instructions, so the agent may add them but not drop them; knowledge and
+    // tool tags cannot be wired from text, so they must stay exactly as they were.
+    if (
+      resolvedInstructions !== undefined &&
+      resolvedInstructions !== skill.instructions
+    ) {
+      const disallowed = findDisallowedSpecialTagChanges(
+        skill.instructions,
+        resolvedInstructions
+      );
+      if (disallowed.length > 0) {
+        return new Err(
+          new MCPError(
+            `The edit changes special tags the skill depends on ` +
+              `(${disallowed.join(", ")}). These tags are managed in the builder: ` +
+              "keep existing knowledge and tool tags verbatim, do not add new ones, " +
+              "and do not remove nested skill references."
+          )
+        );
+      }
+    }
+
     const trimmedName = name !== undefined ? name.trim() : skill.name;
     if (!trimmedName) {
       return new Err(new MCPError("Skill name cannot be empty."));
@@ -360,6 +473,14 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
     );
     const attachedKnowledge = await skill.getAttachedKnowledge(auth);
 
+    // When the instructions change, re-derive the referenced skills from the new
+    // text so the nested-skill links stay in sync with the tags (the builder UI
+    // does the same). Leave them untouched when the instructions are unchanged.
+    const referencedSkillIds =
+      resolvedInstructions !== undefined
+        ? extractUniqueSkillReferenceIds(resolvedInstructions)
+        : undefined;
+
     await skill.updateSkill(auth, {
       agentFacingDescription:
         agentFacingDescription ?? skill.agentFacingDescription,
@@ -374,6 +495,7 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
       name: trimmedName,
       requestedSpaceIds: skill.requestedSpaceIds,
       enableSkillReferences,
+      referencedSkillIds,
       userFacingDescription:
         userFacingDescription ?? skill.userFacingDescription,
     });

@@ -15,11 +15,11 @@ import { isSubscriptionMetronomeBilled } from "@app/types/plan";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
-  CalendarV2,
-  ClockRewindV2,
+  Calendar,
+  ClockRewind,
   Icon,
   Spinner,
-  Upload01V2,
+  Upload01,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -161,19 +161,19 @@ export function BillingOverview({ owner, subscription }: BillingOverviewProps) {
           <div className="flex flex-col gap-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
             {subscriptionEndLabel && (
               <div className="flex items-center gap-2 font-semibold text-foreground dark:text-foreground-night">
-                <Icon visual={CalendarV2} size="xs" />
+                <Icon visual={Calendar} size="xs" />
                 <span>Subscription end: {subscriptionEndLabel}</span>
               </div>
             )}
             <div className="flex items-center gap-2">
-              <Icon visual={ClockRewindV2} size="xs" />
+              <Icon visual={ClockRewind} size="xs" />
               <span>
                 Frequency: {formatBillingPeriod(invoice.billingPeriod)}
               </span>
             </div>
             {!isCancellationScheduled && (
               <div className="flex items-center gap-2">
-                <Icon visual={CalendarV2} size="xs" />
+                <Icon visual={Calendar} size="xs" />
                 <span>
                   Next billing date:{" "}
                   {formatTimestampToFriendlyDate(
@@ -184,7 +184,7 @@ export function BillingOverview({ owner, subscription }: BillingOverviewProps) {
               </div>
             )}
             <div className="flex items-center gap-2">
-              <Icon visual={Upload01V2} size="xs" />
+              <Icon visual={Upload01} size="xs" />
               <span>
                 Amount:{" "}
                 {getPriceAsString({

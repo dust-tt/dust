@@ -16,10 +16,10 @@ import {
   Breadcrumbs,
   Button,
   Chip,
-  CodeSquare01V2,
+  CodeSquare01,
   ContextItem,
   Icon,
-  LinkExternal01V2,
+  LinkExternal01,
   Page,
   Pagination,
   Spinner,
@@ -152,7 +152,7 @@ export function AgentMCPActionsPage() {
           <Page>
             <Page.Header
               title={`MCP Actions for ${agent.name}`}
-              icon={CodeSquare01V2}
+              icon={CodeSquare01}
               description={`View all MCP actions executed by the ${agent.name} agent.`}
             />
 
@@ -208,7 +208,7 @@ export function AgentMCPActionsPage() {
                           <ContextItem
                             key={action.sId}
                             title={action.functionCallName || "Unknown Action"}
-                            visual={<Icon visual={CodeSquare01V2} />}
+                            visual={<Icon visual={CodeSquare01} />}
                             action={
                               <div className="flex items-center gap-2">
                                 <Chip
@@ -227,7 +227,7 @@ export function AgentMCPActionsPage() {
                                   <Button
                                     size="xs"
                                     variant="outline"
-                                    icon={LinkExternal01V2}
+                                    icon={LinkExternal01}
                                     onClick={() =>
                                       handleConversationLink(
                                         action.conversationId,
@@ -261,7 +261,7 @@ export function AgentMCPActionsPage() {
                     ) : (
                       <ContextItem
                         title="No Actions Found"
-                        visual={<Icon visual={CodeSquare01V2} />}
+                        visual={<Icon visual={CodeSquare01} />}
                       >
                         <ContextItem.Description description="No MCP actions have been executed by this agent yet." />
                       </ContextItem>

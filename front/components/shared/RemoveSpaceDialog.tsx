@@ -7,7 +7,7 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { getSkillAvatarIcon, getSkillIcon } from "@app/lib/skill";
 import { getSpaceName } from "@app/lib/spaces";
 import type { SpaceType } from "@app/types/space";
-import { Chip, File02V2, Icon, ShapesPlusV2 } from "@dust-tt/sparkle";
+import { Chip, File02, Icon, ShapesPlus } from "@dust-tt/sparkle";
 import React, { useContext } from "react";
 
 function getActionDisplayName(
@@ -44,7 +44,7 @@ function getActionChipIcon(
     (view) => view.sId === action.configuration.mcpServerViewId
   );
   if (!mcpServerView?.server) {
-    return ShapesPlusV2;
+    return ShapesPlus;
   }
 
   return getIcon(mcpServerView.server.icon);
@@ -106,7 +106,7 @@ export function useRemoveSpaceConfirm({
       ...knowledge.map((k) => ({
         id: k.nodeId,
         name: k.title,
-        icon: <Icon visual={File02V2} size="xs" />,
+        icon: <Icon visual={File02} size="xs" />,
       })),
       ...skills.map((skill) => ({
         id: skill.sId,
@@ -188,7 +188,7 @@ export function useBlockedSkillSpaceRemovalConfirm({
                 key={`knowledge-${knowledgeItem.nodeId}`}
                 size="xs"
                 color="primary"
-                icon={File02V2}
+                icon={File02}
                 label={knowledgeItem.title}
               />
             ))}

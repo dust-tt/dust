@@ -10,7 +10,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
   Icon,
-  InfoCircleV2,
+  InfoCircle,
   Input,
   Label,
   Tooltip,
@@ -129,7 +129,7 @@ export function RemoteMCPServerConfigurationSection({
               <Tooltip
                 trigger={
                   <Icon
-                    visual={InfoCircleV2}
+                    visual={InfoCircle}
                     size="xs"
                     className="text-gray-400"
                   />

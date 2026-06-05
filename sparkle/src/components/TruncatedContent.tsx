@@ -1,5 +1,5 @@
 import { Button } from "@sparkle/components/Button";
-import { ChevronDownV2, ChevronUpV2 } from "@sparkle/icons/v2-stroke";
+import { ChevronDown, ChevronUp } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
 import React, { useEffect, useRef, useState } from "react";
@@ -95,8 +95,8 @@ export function TruncatedContent({
                 variant === "light"
                   ? undefined
                   : isCollapsed
-                    ? ChevronDownV2
-                    : ChevronUpV2
+                    ? ChevronDown
+                    : ChevronUp
               }
               onClick={handleToggle}
               className={buttonClassName}

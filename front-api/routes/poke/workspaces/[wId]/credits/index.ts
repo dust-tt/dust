@@ -9,6 +9,7 @@ import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
 import awuPoolSummary from "./awu-pool-summary";
+import membersUsage from "./members-usage";
 
 export type PokeCreditType = {
   id: number;
@@ -142,5 +143,6 @@ app.get("/", async (ctx): HandlerResult<PokeListCreditsResponseBody> => {
 });
 
 app.route("/awu-pool-summary", awuPoolSummary);
+app.route("/members-usage", membersUsage);
 
 export default app;

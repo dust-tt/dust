@@ -50,12 +50,12 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
 import {
   Button,
-  CheckDone01V2,
-  CloudArrowLeftRightV2,
+  CheckDone01,
+  CloudArrowLeftRight,
   cn,
-  FolderV2,
-  Globe01V2,
-  InfoCircleV2,
+  Folder,
+  Globe01,
+  InfoCircle,
   SearchInputWithPopover,
   Tree,
 } from "@dust-tt/sparkle";
@@ -601,7 +601,7 @@ export function DataSourceViewsSelector({
           <Tree.Item
             key="connected"
             label="Connected Data"
-            visual={CloudArrowLeftRightV2}
+            visual={CloudArrowLeftRight}
             type="node"
             defaultCollapsed={
               !searchResult ||
@@ -652,7 +652,7 @@ export function DataSourceViewsSelector({
           <Tree.Item
             key="folders"
             label="Folders"
-            visual={FolderV2}
+            visual={Folder}
             type="node"
             defaultCollapsed={
               !searchResult || !isFolder(searchResult.dataSourceView.dataSource)
@@ -683,7 +683,7 @@ export function DataSourceViewsSelector({
             <Tree.Item
               key="websites"
               label="Websites"
-              visual={Globe01V2}
+              visual={Globe01}
               type="node"
               defaultCollapsed={
                 !searchResult ||
@@ -725,7 +725,7 @@ function LimitedSearchContentMessage({
       return {
         title: "Search results are partial due to the large amount of data.",
         variant: "golden",
-        icon: InfoCircleV2,
+        icon: InfoCircle,
         className: "w-full",
         size: "lg",
       };
@@ -1003,7 +1003,7 @@ export function DataSourceViewSelector({
                     ? "Unselect All"
                     : "Select All"
               }
-              icon={CheckDone01V2}
+              icon={CheckDone01}
               onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                 e.stopPropagation();
                 handleSelectAll();

@@ -3,6 +3,7 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { UserType } from "@app/types/user";
+import { toLightUser } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -33,11 +34,7 @@ export type PatchSkillEditorsRequestBody = z.infer<
   typeof PatchSkillEditorsRequestBodySchema
 >;
 
-export interface GetSkillEditorsResponseBody {
-  editors: UserType[];
-}
-
-export interface PatchSkillEditorsResponseBody {
+export interface SkillEditorsResponseBody {
   editors: UserType[];
 }
 
@@ -91,7 +88,14 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const members = await editorGroup.getActiveMembers(auth);
   const memberUsers = members.map((m) => m.toJSON());
 
-  return ctx.json({ editors: memberUsers });
+  // biome-ignore lint/plugin/noDirectRoleCheck: non-admins receive only minimal essential user data (LightUserType)
+  if (auth.isAdmin()) {
+    return ctx.json({ editors: memberUsers });
+  }
+
+  return ctx.json({
+    editors: memberUsers.map(toLightUser),
+  });
 });
 
 app.patch(
@@ -259,9 +263,15 @@ app.patch(
     }
 
     const updatedMembers = await editorGroup.getActiveMembers(auth);
+    const updatedEditors = updatedMembers.map((m) => m.toJSON());
+
+    // biome-ignore lint/plugin/noDirectRoleCheck: non-admins receive only minimal essential user data (LightUserType)
+    if (auth.isAdmin()) {
+      return ctx.json({ editors: updatedEditors });
+    }
 
     return ctx.json({
-      editors: updatedMembers.map((m) => m.toJSON()),
+      editors: updatedEditors.map(toLightUser),
     });
   }
 );

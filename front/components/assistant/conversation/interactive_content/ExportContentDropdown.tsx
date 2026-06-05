@@ -5,7 +5,7 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { datadogLogs } from "@datadog/browser-logs";
 import {
   Button,
-  Download01V2,
+  Download01,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -73,7 +73,7 @@ export function ExportContentDropdown({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
-          icon={Download01V2}
+          icon={Download01}
           isSelect
           label={isMobile ? undefined : exportLabel}
           tooltip={isMobile ? exportLabel : undefined}

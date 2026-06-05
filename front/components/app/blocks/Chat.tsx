@@ -19,7 +19,7 @@ import {
   CollapsibleTrigger,
   Input,
   Label,
-  XCloseV2,
+  XClose,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -284,7 +284,7 @@ export default function Chat({
                           onClick={() => handleRemoveStop(i)}
                           className="ml-1 flex cursor-pointer items-center"
                         >
-                          <XCloseV2 />
+                          <XClose />
                         </span>
                       </div>
                     )

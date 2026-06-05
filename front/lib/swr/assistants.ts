@@ -8,6 +8,7 @@ import type {
   ToolLatencyRow,
   ToolLatencyView,
 } from "@app/lib/api/assistant/observability/tool_latency";
+import type { PostAgentUserFavoriteRequestBody } from "@app/lib/api/assistant/user_relation";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   emptyArray,
@@ -38,7 +39,6 @@ import type { GetVersionMarkersResponse } from "@app/pages/api/w/[wId]/assistant
 import type { GetAgentUsageResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/usage";
 import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/pages/api/w/[wId]/assistant/builder/slack/channels_linked_with_agent";
 import type { GetMemberResponseBody } from "@app/pages/api/w/[wId]/members/[uId]";
-import type { PostAgentUserFavoriteRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_favorite";
 import type {
   AgentConfigurationType,
   AgentsGetViewType,

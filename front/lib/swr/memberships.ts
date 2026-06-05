@@ -1,21 +1,23 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { GetMembersUsageResponseBody } from "@app/lib/api/credits/members_usage";
+import type { GetWorkspaceInvitationsResponseBody } from "@app/lib/api/invitation";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { debounce } from "@app/lib/utils/debounce";
-import type { GetWorkspaceInvitationsResponseBody } from "@app/pages/api/w/[wId]/invitations";
 import type { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
 import type {
   GetUserSpendLimitResponseBody,
   PutUserSpendLimitResponseBody,
 } from "@app/pages/api/w/[wId]/members/[uId]/spend_limit";
 import type { MembersLookupResponseBody } from "@app/pages/api/w/[wId]/members/lookup";
-import type { SearchMembersResponseBody } from "@app/pages/api/w/[wId]/members/search";
 import type { GroupKind } from "@app/types/groups";
 import { isGroupKind } from "@app/types/groups";
 import type { MembershipSeatType } from "@app/types/memberships";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import type { LightWorkspaceType } from "@app/types/user";
+import type {
+  LightUserTypeWithWorkspace,
+  LightWorkspaceType,
+} from "@app/types/user";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Fetcher } from "swr";
 import { mutate } from "swr";
@@ -118,7 +120,9 @@ export function useWorkspaceInvitations(
   };
 }
 
-export function useSearchMembers({
+export function useSearchMembers<
+  T extends LightUserTypeWithWorkspace = LightUserTypeWithWorkspace,
+>({
   workspaceId,
   searchTerm,
   pageIndex,
@@ -136,7 +140,10 @@ export function useSearchMembers({
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
-  const searchMembersFetcher: Fetcher<SearchMembersResponseBody> = fetcher;
+  const searchMembersFetcher: Fetcher<{
+    members: T[];
+    total: number;
+  }> = fetcher;
   const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(searchTerm);
 
@@ -231,12 +238,16 @@ export function useMembersUsage({
   searchTerm = "",
   pageIndex,
   pageSize,
+  orderColumn,
+  orderDirection,
   disabled,
 }: {
   workspaceId: string;
   searchTerm?: string;
   pageIndex: number;
   pageSize: number;
+  orderColumn?: "name" | "email";
+  orderDirection?: "asc" | "desc";
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
@@ -254,6 +265,12 @@ export function useMembersUsage({
   });
   if (debouncedSearchTerm.trim().length > 0) {
     searchParams.set("search", debouncedSearchTerm.trim());
+  }
+  if (orderColumn) {
+    searchParams.set("orderColumn", orderColumn);
+  }
+  if (orderDirection) {
+    searchParams.set("orderDirection", orderDirection);
   }
 
   const { data, error } = useSWRWithDefaults(

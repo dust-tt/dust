@@ -49,7 +49,8 @@ describe("credit_state_dispatcher per-user caps", () => {
     });
 
     expect(transitionUserCreditState).toHaveBeenCalledWith(
-      expect.objectContaining({ seatType: "pro", creditState: "on_pool" }),
+      // createMembership seeds pro/max seats at user_seat (their initial state).
+      expect.objectContaining({ seatType: "pro", creditState: "user_seat" }),
       { type: "per_user_cap_reached" },
       { workspaceId: workspaceType.sId, userId: user.sId }
     );
@@ -76,7 +77,8 @@ describe("credit_state_dispatcher per-user caps", () => {
     });
 
     expect(transitionUserCreditState).toHaveBeenCalledWith(
-      expect.objectContaining({ seatType: "max", creditState: "on_pool" }),
+      // createMembership seeds pro/max seats at user_seat (their initial state).
+      expect.objectContaining({ seatType: "max", creditState: "user_seat" }),
       { type: "per_user_cap_resolved" },
       { workspaceId: workspaceType.sId, userId: user.sId }
     );

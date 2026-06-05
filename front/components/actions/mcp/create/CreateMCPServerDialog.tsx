@@ -41,7 +41,7 @@ import { validateOAuthCredentials } from "@app/types/oauth/lib";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  AlertCircleV2,
+  AlertCircle,
   ContentMessage,
   Dialog,
   DialogContent,
@@ -541,7 +541,7 @@ export function CreateMCPServerDialog({
               {serverError && (
                 <ContentMessage
                   variant="warning"
-                  icon={AlertCircleV2}
+                  icon={AlertCircle}
                   size="lg"
                   title={
                     serverError.isRemoteServerError

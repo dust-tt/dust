@@ -22,7 +22,7 @@ import type { LightWorkspaceType } from "@app/types/user";
 import {
   AttachmentChip,
   Chip,
-  File02V2,
+  File02,
   Separator,
   Spinner,
   Tooltip,
@@ -159,7 +159,7 @@ export function SkillInfoTab({
               <AttachmentChip
                 key={file.fileId}
                 label={file.fileName}
-                icon={{ visual: File02V2 }}
+                icon={{ visual: File02 }}
                 color="primary"
                 size="xs"
               />

@@ -8,7 +8,7 @@ import {
   Card,
   ContentMessage,
   DataTable,
-  InfoCircleV2,
+  InfoCircle,
   Spinner,
 } from "@dust-tt/sparkle";
 import { KeyIcon, PencilIcon } from "@heroicons/react/20/solid";
@@ -109,7 +109,7 @@ export function SecretSection({
       <ConfigurationSectionContainer title="Select a Secret">
         <ContentMessage
           title="Failed to load secrets"
-          icon={InfoCircleV2}
+          icon={InfoCircle}
           variant="warning"
           size="sm"
         >

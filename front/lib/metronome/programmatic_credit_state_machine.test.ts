@@ -1,4 +1,7 @@
-import { transitionProgrammaticCreditState } from "@app/lib/metronome/programmatic_credit_state_machine";
+import {
+  expectedProgrammaticCreditStateFromAlerts,
+  transitionProgrammaticCreditState,
+} from "@app/lib/metronome/programmatic_credit_state_machine";
 import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { WorkspaceProgrammaticCreditState } from "@app/types/credits";
 import type { Transaction } from "sequelize";
@@ -247,5 +250,47 @@ describe("ProgrammaticCreditStateMachine — side effects", () => {
       tx,
       expect.any(Function)
     );
+  });
+});
+
+describe("expectedProgrammaticCreditStateFromAlerts", () => {
+  it("returns depleted when the cap alert is in alarm (regardless of others)", () => {
+    expect(
+      expectedProgrammaticCreditStateFromAlerts({
+        capInAlarm: true,
+        criticalInAlarm: true,
+        lowInAlarm: true,
+      })
+    ).toBe("depleted");
+  });
+
+  it("returns active_critical_balance when only critical is in alarm", () => {
+    expect(
+      expectedProgrammaticCreditStateFromAlerts({
+        capInAlarm: false,
+        criticalInAlarm: true,
+        lowInAlarm: true,
+      })
+    ).toBe("active_critical_balance");
+  });
+
+  it("returns active_low_balance when only low is in alarm", () => {
+    expect(
+      expectedProgrammaticCreditStateFromAlerts({
+        capInAlarm: false,
+        criticalInAlarm: false,
+        lowInAlarm: true,
+      })
+    ).toBe("active_low_balance");
+  });
+
+  it("returns active when no alert is in alarm", () => {
+    expect(
+      expectedProgrammaticCreditStateFromAlerts({
+        capInAlarm: false,
+        criticalInAlarm: false,
+        lowInAlarm: false,
+      })
+    ).toBe("active");
   });
 });

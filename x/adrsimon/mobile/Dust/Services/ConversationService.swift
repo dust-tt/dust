@@ -52,6 +52,25 @@ enum ConversationService {
         return try await APIClient.authenticatedGet(query, tokenProvider: tokenProvider, snakeCase: false)
     }
 
+    static func fetchMessage(
+        workspaceId: String,
+        conversationId: String,
+        messageId: String,
+        tokenProvider: TokenProvider
+    ) async throws -> ConversationMessage {
+        let endpoint = AppConfig.Endpoints.conversationMessage(
+            workspaceId: workspaceId,
+            conversationId: conversationId,
+            messageId: messageId
+        )
+        let response: ConversationMessageResponse = try await APIClient.authenticatedGet(
+            endpoint,
+            tokenProvider: tokenProvider,
+            snakeCase: false
+        )
+        return response.message
+    }
+
     static func createConversation(
         workspaceId: String,
         request: CreateConversationRequest,
@@ -253,6 +272,10 @@ enum ConversationService {
     }
 
     private struct EmptyRequest: Encodable {}
+
+    private struct ConversationMessageResponse: Decodable {
+        let message: ConversationMessage
+    }
 
     private static func buildQuery(endpoint: String, params: [String: String]) -> String {
         var components = URLComponents()

@@ -19,7 +19,7 @@ mcpApp.all("/", mcpServerAuthMiddleware, async (c) => {
   const user = c.get("mcpUser");
   const auth = c.get("mcpAuth");
   logger.info(
-    { userId: user.sub, workspaceId: auth.workspace()?.sId },
+    { userId: user.sub, workspaceId: auth.workspace().sId },
     "[dust-mcp-server] Inbound request"
   );
 

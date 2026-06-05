@@ -1,19 +1,19 @@
 import { frameContentType, frameSlideshowContentType } from "@app/types/files";
 import {
-  ActionFrameV2,
+  ActionFrame,
   BigQueryLogo,
-  BracketsV2,
+  Brackets,
   ConfluenceLogo,
   DriveLogo,
   DustLogoSquare,
-  File02V2,
+  File02,
   GithubLogo,
   GongLogo,
   GoogleDocLogo,
   GooglePdfLogo,
   GoogleSlideLogo,
   GoogleSpreadsheetLogo,
-  Image01V2,
+  Image01,
   IntercomLogo,
   MicrosoftExcelLogo,
   MicrosoftLogo,
@@ -23,9 +23,9 @@ import {
   SalesforceLogo,
   SlackLogo,
   SnowflakeLogo,
-  TableV2,
-  Type01V2,
-  VolumeMaxV2,
+  Table,
+  Type01,
+  VolumeMax,
   ZendeskLogo,
 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
@@ -94,22 +94,22 @@ const FILE_TYPE_MAPPINGS: FileTypeMapping[] = [
     extensions: ["xls", "xlsx"],
   },
   {
-    icon: TableV2,
+    icon: Table,
     mimeTypes: ["text/csv", "text/tab-separated-values"],
     extensions: ["csv", "tsv"],
   },
   {
-    icon: Type01V2,
+    icon: Type01,
     mimeTypes: ["text/plain"],
     extensions: ["txt"],
   },
   {
-    icon: BracketsV2,
+    icon: Brackets,
     mimeTypes: ["text/markdown", "application/json"],
     extensions: ["md", "markdown", "json"],
   },
   {
-    icon: ActionFrameV2,
+    icon: ActionFrame,
     mimeTypes: [frameContentType, frameSlideshowContentType],
     extensions: [".js", ".jsx", ".ts", ".tsx"],
   },
@@ -129,10 +129,10 @@ export function getFileTypeIcon(
 ): ComponentType {
   // Check prefix-based content types first
   if (contentType.startsWith("image/")) {
-    return Image01V2;
+    return Image01;
   }
   if (contentType.startsWith("audio/")) {
-    return VolumeMaxV2;
+    return VolumeMax;
   }
 
   // Internal Dust types (Notion, BigQuery, Slack, etc.) – use colored provider logos
@@ -170,5 +170,5 @@ export function getFileTypeIcon(
     }
   }
 
-  return File02V2;
+  return File02;
 }

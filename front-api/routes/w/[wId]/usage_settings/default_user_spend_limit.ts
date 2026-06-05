@@ -7,6 +7,7 @@ import {
   getDefaultUserSpendLimit,
   setDefaultUserSpendLimit,
 } from "@app/lib/api/workspace/default_user_spend_limit";
+import { getPlanDefaultPoolLimitAwuCredits } from "@app/lib/plans/plan_codes";
 import {
   MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
   MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
@@ -106,7 +107,12 @@ app.get(
     const result = await getDefaultUserSpendLimit(auth);
     if (result.isErr()) {
       if (result.error.type === "not_found") {
-        return ctx.json({ awuCredits: null });
+        const planCode = auth
+          .getNonNullableSubscriptionResource()
+          .getPlan().code;
+        return ctx.json({
+          awuCredits: getPlanDefaultPoolLimitAwuCredits(planCode),
+        });
       }
       return apiError(ctx, mapErrorToApiError(result.error));
     }

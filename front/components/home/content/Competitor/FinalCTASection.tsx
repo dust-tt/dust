@@ -4,7 +4,7 @@ import {
   P,
 } from "@app/components/home/ContentComponents";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
-import { Button, Rocket02V2 } from "@dust-tt/sparkle";
+import { Button, Rocket02 } from "@dust-tt/sparkle";
 
 import type { FinalCTAConfig } from "./types";
 
@@ -34,7 +34,7 @@ export function FinalCTASection({
             variant="highlight"
             size="md"
             label={config.primaryCTA.label}
-            icon={Rocket02V2}
+            icon={Rocket02}
             href={config.primaryCTA.href}
             onClick={withTracking(
               TRACKING_AREAS.HOME,

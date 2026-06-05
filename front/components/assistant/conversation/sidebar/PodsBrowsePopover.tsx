@@ -8,7 +8,7 @@ import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
   Chip,
-  DotsHorizontalV2,
+  DotsHorizontal,
   Icon,
   LoadingBlock,
   PopoverContent,
@@ -98,7 +98,7 @@ export function PodsBrowsePopover({ owner }: PodsBrowsePopoverProps) {
     <div>
       <PopoverRoot open={isOpen} onOpenChange={setIsOpen} modal>
         <PopoverTrigger asChild>
-          <Button size="xs" icon={DotsHorizontalV2} variant="ghost" />
+          <Button size="xs" icon={DotsHorizontal} variant="ghost" />
         </PopoverTrigger>
         <PopoverContent
           className="flex w-80 max-h-[--radix-popover-content-available-height] flex-col p-0"

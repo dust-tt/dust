@@ -11,7 +11,8 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { UserSchema } from "@app/types/user";
+import type { LightUserType } from "@app/types/user";
+import { toLightUser, UserSchema } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
@@ -34,25 +35,22 @@ export type PatchAgentEditorsRequestBody = z.infer<
   typeof PatchAgentEditorsRequestBodySchema
 >;
 
-export const GetAgentEditorsResponseBodySchema = z.object({
+export const AgentEditorsResponseBodySchema = z.object({
   editors: z.array(UserSchema),
 });
-export type GetAgentEditorsResponseBody = z.infer<
-  typeof GetAgentEditorsResponseBodySchema
+export type AgentEditorsResponseBody = z.infer<
+  typeof AgentEditorsResponseBodySchema
 >;
 
-export const PatchAgentEditorsResponseBodySchema = z.object({
-  editors: z.array(UserSchema),
-});
-export type PatchAgentEditorsResponseBody = z.infer<
-  typeof PatchAgentEditorsResponseBodySchema
->;
+export type AgentEditorsLightResponseBody = {
+  editors: LightUserType[];
+};
 
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorResponse<
-      GetAgentEditorsResponseBody | PatchAgentEditorsResponseBody
+      AgentEditorsResponseBody | AgentEditorsLightResponseBody
     >
   >,
   auth: Authenticator
@@ -132,7 +130,14 @@ async function handler(
       const members = await editorGroup.getActiveMembers(auth);
       const memberUsers = members.map((m) => m.toJSON());
 
-      return res.status(200).json({ editors: memberUsers });
+      // Non-admins receive only minimal essential user data (LightUserType).
+      if (auth.isAdmin()) {
+        return res.status(200).json({ editors: memberUsers });
+      }
+
+      return res.status(200).json({
+        editors: memberUsers.map(toLightUser),
+      });
     }
 
     case "PATCH": {
@@ -279,9 +284,15 @@ async function handler(
 
       // Refetch members to return the updated list
       const updatedMembers = await editorGroup.getActiveMembers(auth);
+      const updatedEditors = updatedMembers.map((m) => m.toJSON());
+
+      // Non-admins receive only minimal essential user data (LightUserType).
+      if (auth.isAdmin()) {
+        return res.status(200).json({ editors: updatedEditors });
+      }
 
       return res.status(200).json({
-        editors: updatedMembers.map((m) => m.toJSON()),
+        editors: updatedEditors.map(toLightUser),
       });
     }
 

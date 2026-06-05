@@ -2,7 +2,7 @@ import { LandingEmailSignup } from "@app/components/home/content/Landing/Landing
 import { OpenDustButton } from "@app/components/home/OpenDustButton";
 import { DUST_HAS_SESSION, hasSessionIndicator } from "@app/lib/cookies";
 import { TRACKING_AREAS } from "@app/lib/tracking";
-import { CheckV2, Icon } from "@dust-tt/sparkle";
+import { Check, Icon } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 import { useCookies } from "react-cookie";
 
@@ -65,7 +65,7 @@ export function EmailCTASection({
           <div className="mt-6 flex flex-wrap items-center justify-center gap-4 text-sm text-blue-100">
             {trustBadges.map((badge, index) => (
               <div key={index} className="flex items-center gap-1.5">
-                <Icon visual={CheckV2} className="h-4 w-4 text-emerald-400" />
+                <Icon visual={Check} className="h-4 w-4 text-emerald-400" />
                 <span>{badge}</span>
               </div>
             ))}

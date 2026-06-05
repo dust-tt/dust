@@ -15,7 +15,7 @@ import type {
 } from "@app/types/data_source_view";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { SpaceType } from "@app/types/space";
-import { FolderV2 } from "@dust-tt/sparkle";
+import { Folder } from "@dust-tt/sparkle";
 
 export function pathToString(path: string[]): string {
   return path.join("/");
@@ -323,7 +323,7 @@ export function getVisualForTreeItem(
   switch (item.type) {
     case "root":
       // Root doesn't have a specific visual, use a default folder icon
-      return FolderV2;
+      return Folder;
 
     case "space":
       return getSpaceIcon(item.space);
@@ -341,12 +341,12 @@ export function getVisualForTreeItem(
 
         return connectorProvider.getLogoComponent(isDark);
       }
-      return FolderV2;
+      return Folder;
 
     case "node":
       return getVisualForDataSourceViewContentNode(item.node);
 
     default:
-      return FolderV2;
+      return Folder;
   }
 }

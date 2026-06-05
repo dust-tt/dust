@@ -3,7 +3,7 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
-  ClockRewindV2,
+  ClockRewind,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuLabel,
@@ -114,7 +114,7 @@ export function AgentInstructionsHistory({
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost-secondary"
-          icon={ClockRewindV2}
+          icon={ClockRewind}
           size="icon"
           tooltip="Compare with previous versions"
           isSelect

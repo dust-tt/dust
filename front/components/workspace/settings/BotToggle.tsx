@@ -11,10 +11,10 @@ import { Err, Ok } from "@app/types/shared/result";
 import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  BookOpen01V2,
+  BookOpen01,
   Button,
   ContextItem,
-  RefreshCw02V2,
+  RefreshCw02,
   SliderToggle,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -134,7 +134,7 @@ export function BotToggle({
               rel="noopener noreferrer"
               className="text-action-400 hover:text-action-500 text-sm"
             >
-              <BookOpen01V2 className="h-4 w-4" />
+              <BookOpen01 className="h-4 w-4" />
             </a>
           )}
         </div>
@@ -149,7 +149,7 @@ export function BotToggle({
               variant="outline"
               label="Reconnect"
               size="xs"
-              icon={RefreshCw02V2}
+              icon={RefreshCw02}
               onClick={async () => {
                 const cRes = await setupOAuthConnection({
                   owner,

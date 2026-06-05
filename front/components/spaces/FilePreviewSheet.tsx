@@ -30,11 +30,11 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
-  ClipboardCheckV2,
-  ClipboardV2,
+  Clipboard,
+  ClipboardCheck,
   CodeBlock,
-  Download01V2,
-  LinkExternal01V2,
+  Download01,
+  LinkExternal01,
   Markdown,
   Sheet,
   SheetContainer,
@@ -469,14 +469,14 @@ export function FilePreviewSheet({
                       tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
                       variant="outline"
                       size="icon-xs"
-                      icon={isCopied ? ClipboardCheckV2 : ClipboardV2}
+                      icon={isCopied ? ClipboardCheck : Clipboard}
                       onClick={() => copy(processedContent?.text ?? "")}
                     />
                   )}
                   <Button
                     variant="outline"
                     size="icon-xs"
-                    icon={Download01V2}
+                    icon={Download01}
                     tooltip="Download"
                     onClick={handleDownload}
                   />
@@ -484,7 +484,7 @@ export function FilePreviewSheet({
                     <Button
                       variant="outline"
                       size="icon-xs"
-                      icon={LinkExternal01V2}
+                      icon={LinkExternal01}
                       tooltip="Open in browser"
                       onClick={handleOpenInBrowser}
                     />

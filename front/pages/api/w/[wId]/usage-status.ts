@@ -13,6 +13,7 @@ import {
 import { apiError } from "@app/logger/withlogging";
 import type { WorkspacePoolCreditState } from "@app/types/credits";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import { isCreditPricedPlan } from "@app/types/plan";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export type ProgrammaticCreditStatus = "active" | "warned" | "depleted";
@@ -43,8 +44,10 @@ async function handler(
   const workspace = auth.getNonNullableWorkspace();
   const user = auth.getNonNullableUser();
 
+  const plan = auth.plan();
+  const isCreditPriced = plan && isCreditPricedPlan(plan);
   // Workspaces not on Metronome billing have no usage status to report.
-  if (!workspace.metronomeCustomerId) {
+  if (!workspace.metronomeCustomerId || !isCreditPriced) {
     return res.status(200).json({
       awuStatus: "normal",
       poolCreditState: "active",

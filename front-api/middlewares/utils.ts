@@ -124,6 +124,10 @@ export const unhandledErrorHandler: ErrorHandler = (err, ctx) => {
         name: error.name,
         message: error.message || "unknown",
         stack: error.stack,
+        // `TypeError: fetch failed` and similar wrappers carry the real reason
+        // (ECONNREFUSED, ENOTFOUND, timeouts, ...) on `cause` — log it so these
+        // are diagnosable from the message alone.
+        ...(error.cause ? { cause: error.cause } : {}),
         ...(sequelizeDetails ? { sequelizeDetails } : {}),
       },
       error_stack: error.stack,

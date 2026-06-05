@@ -48,7 +48,7 @@ import type { PodType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
-  CloudArrowLeftRightV2,
+  CloudArrowLeftRight,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -60,10 +60,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   EmptyCTA,
-  FolderV2,
-  Pin02V2,
+  Folder,
+  Pin02,
   Tooltip,
-  UploadCloud02V2,
+  UploadCloud02,
 } from "@dust-tt/sparkle";
 import type React from "react";
 import {
@@ -105,17 +105,17 @@ function AttachKnowledgeDropdown({
       </DropdownMenuTrigger>
       <DropdownMenuContent>
         <DropdownMenuItem
-          icon={CloudArrowLeftRightV2}
+          icon={CloudArrowLeftRight}
           label="From Company Data"
           onClick={onShowCompanyDataClick}
         />
         <DropdownMenuItem
-          icon={FolderV2}
+          icon={Folder}
           label="New folder"
           onClick={onCreateFolderClick}
         />
         <DropdownMenuItem
-          icon={UploadCloud02V2}
+          icon={UploadCloud02}
           label="Upload file"
           onClick={onUploadFileClick}
         />
@@ -279,7 +279,7 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
       return [
         {
           label: pinned ? "Unpin from banner" : "Pin as Pod banner",
-          icon: Pin02V2,
+          icon: Pin02,
           onClick: (e) => {
             e.stopPropagation();
             void togglePin(entry.path, { fileName: entry.fileName });

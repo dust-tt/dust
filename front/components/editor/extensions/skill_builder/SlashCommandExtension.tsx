@@ -21,7 +21,7 @@ import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useSkills } from "@app/lib/swr/skill_configurations";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Attachment01V2 } from "@dust-tt/sparkle";
+import { Attachment01 } from "@dust-tt/sparkle";
 import { Extension } from "@tiptap/core";
 import { type EditorState, Plugin, PluginKey } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
@@ -58,7 +58,7 @@ const SLASH_COMMANDS: SlashCommand[] = [
   {
     id: "add-knowledge",
     action: INSERT_KNOWLEDGE_NODE_ACTION,
-    icon: Attachment01V2,
+    icon: Attachment01,
     label: "Attach knowledge",
     tooltip: {
       description: "Use company knowledge for context.",

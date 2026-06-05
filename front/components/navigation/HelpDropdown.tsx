@@ -10,18 +10,18 @@ import type { AgentMention, MentionType } from "@app/types/assistant/mentions";
 import { isAgentMention } from "@app/types/assistant/mentions";
 import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
 import {
-  BookOpen01V2,
+  BookOpen01,
   Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
-  File02V2,
-  HeartV2,
-  Lightbulb04V2,
-  MessageChatSquareV2,
-  MessageCircle01V2,
+  File02,
+  Heart,
+  Lightbulb04,
+  MessageChatSquare,
+  MessageCircle01,
   SlackLogo,
 } from "@dust-tt/sparkle";
 import { useCallback, useContext } from "react";
@@ -118,7 +118,7 @@ export function HelpDropdown({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" label="Help" icon={HeartV2} isSelect />
+        <Button variant="outline" label="Help" icon={Heart} isSelect />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         onCloseAutoFocus={(e) => {
@@ -129,7 +129,7 @@ export function HelpDropdown({
         <DropdownMenuLabel label="Learn about Dust" />
         <DropdownMenuItem
           label="Quickstart Guide"
-          icon={Lightbulb04V2}
+          icon={Lightbulb04}
           onClick={() =>
             router.push(
               {
@@ -143,13 +143,13 @@ export function HelpDropdown({
         />
         <DropdownMenuItem
           label="Guides & Documentation"
-          icon={File02V2}
+          icon={File02}
           href="https://docs.dust.tt"
           target="_blank"
         />
         <DropdownMenuItem
           label="Dust Academy"
-          icon={BookOpen01V2}
+          icon={BookOpen01}
           href="https://dust.tt/academy"
           target="_blank"
         />
@@ -163,24 +163,24 @@ export function HelpDropdown({
         <DropdownMenuItem
           label="Ask @help"
           description="Ask anything about Dust"
-          icon={MessageChatSquareV2}
+          icon={MessageChatSquare}
           onClick={() => void handleAskHelp()}
         />
         <DropdownMenuItem
           label="How to invite new users?"
-          icon={MessageCircle01V2}
+          icon={MessageCircle01}
           onClick={() => void handleHelpSubmit("How to invite new users?", [])}
         />
         <DropdownMenuItem
           label="How to use agents in Slack workflow?"
-          icon={MessageCircle01V2}
+          icon={MessageCircle01}
           onClick={() =>
             void handleHelpSubmit("How to use agents in Slack workflow?", [])
           }
         />
         <DropdownMenuItem
           label="How to manage billing?"
-          icon={MessageCircle01V2}
+          icon={MessageCircle01}
           onClick={() => void handleHelpSubmit("How to manage billing?", [])}
         />
       </DropdownMenuContent>

@@ -51,10 +51,10 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import {
-  ArrowUpV2,
-  Attachment01V2,
+  ArrowUp,
+  Attachment01,
   Button,
-  Camera01V2,
+  Camera01,
   Chip,
   cn,
   DropdownMenu,
@@ -62,15 +62,15 @@ import {
   DropdownMenuItem,
   DropdownMenuShortcut,
   DropdownMenuTrigger,
-  FilePlus03V2,
-  Globe01V2,
-  PlusV2,
+  FilePlus03,
+  Globe01,
+  Plus,
   Toolbar,
   TooltipContent,
   TooltipProvider,
   TooltipRoot,
   TooltipTrigger,
-  Type01V2,
+  Type01,
   VoicePicker,
 } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
@@ -1236,7 +1236,7 @@ const InputBarContainer = ({
                   <div className="flex items-center">
                     <Button
                       variant="ghost-secondary"
-                      icon={Type01V2}
+                      icon={Type01}
                       size={buttonSize}
                       className={cn("flex", !isMobile && "hidden")}
                       onClick={() => setIsToolbarOpen(!isToolbarOpen)}
@@ -1295,7 +1295,7 @@ const InputBarContainer = ({
                     <DropdownMenuTrigger asChild>
                       <Button
                         variant="ghost-secondary"
-                        icon={PlusV2}
+                        icon={Plus}
                         size={buttonSize}
                         disabled={disableInput}
                       />
@@ -1303,7 +1303,7 @@ const InputBarContainer = ({
                     <DropdownMenuContent align="end">
                       {actions.includes("attachment") && (
                         <DropdownMenuItem
-                          icon={Attachment01V2}
+                          icon={Attachment01}
                           label="Attach knowledge"
                           onClick={() => {
                             setIsCaptureDropdownOpen(false);
@@ -1314,7 +1314,7 @@ const InputBarContainer = ({
                       {captureActions && (
                         <>
                           <DropdownMenuItem
-                            icon={Globe01V2}
+                            icon={Globe01}
                             label="Attach page content"
                             disabled={
                               disableInput ||
@@ -1330,7 +1330,7 @@ const InputBarContainer = ({
                             }
                           />
                           <DropdownMenuItem
-                            icon={Camera01V2}
+                            icon={Camera01}
                             label="Take screenshot"
                             disabled={
                               disableInput ||
@@ -1349,7 +1349,7 @@ const InputBarContainer = ({
                           />
                           {captureActions.onSavePageToPod && (
                             <DropdownMenuItem
-                              icon={FilePlus03V2}
+                              icon={FilePlus03}
                               label="Save page to Pod"
                               disabled={
                                 disableInput ||
@@ -1442,7 +1442,7 @@ const InputBarContainer = ({
                       isSubmitting &&
                       voiceTranscriberService.status !== "transcribing"
                     }
-                    icon={ArrowUpV2}
+                    icon={ArrowUp}
                     variant={isSubmitBlocked ? "ghost-secondary" : "highlight"}
                     disabled={isSubmitDisabled}
                     onClick={async (e: React.MouseEvent<HTMLButtonElement>) => {

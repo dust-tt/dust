@@ -19,16 +19,16 @@ import {
   ButtonGroup,
   Card,
   Chip,
-  CoinsStacked03V2,
-  Cube01V2,
+  CoinsStacked03,
+  Cube01,
   Dialog,
   DialogContainer,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  Hexagon01V2,
-  SeatMaxV2,
+  Hexagon01,
+  SeatMax,
 } from "@dust-tt/sparkle";
 import { useEffect, useRef, useState } from "react";
 
@@ -36,13 +36,13 @@ import { useEffect, useRef, useState } from "react";
 // (`SeatTypeInfo.name`) so adding a new seat tier only requires tagging the
 // product in Metronome — no code change here.
 const SEAT_TYPE_ICONS: Record<MembershipSeatType, React.ComponentType> = {
-  free: Hexagon01V2,
-  pro: Cube01V2,
-  pro_yearly: Cube01V2,
-  max: SeatMaxV2,
-  max_yearly: SeatMaxV2,
-  workspace: Cube01V2,
-  workspace_yearly: Cube01V2,
+  free: Hexagon01,
+  pro: Cube01,
+  pro_yearly: Cube01,
+  max: SeatMax,
+  max_yearly: SeatMax,
+  workspace: Cube01,
+  workspace_yearly: Cube01,
 };
 
 // Display order when multiple seat tiers are returned by the endpoint. Seat
@@ -155,7 +155,7 @@ function SeatCard({
       </div>
       {info.awuCredits > 0 && (
         <div className="flex items-center gap-2 text-muted-foreground dark:text-muted-foreground-night">
-          <CoinsStacked03V2 className="size-4" />
+          <CoinsStacked03 className="size-4" />
           <span className="text-xs">{formatAwuCredits(info)}</span>
         </div>
       )}

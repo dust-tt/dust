@@ -23,7 +23,7 @@ import {
   Button,
   Checkbox,
   cn,
-  MessageChatSquareV2,
+  MessageChatSquare,
   Tooltip,
   TypingAnimation,
 } from "@dust-tt/sparkle";
@@ -195,7 +195,7 @@ export function EditableTaskItem({ task }: EditableTaskItemProps) {
               trigger={
                 <div className="relative shrink-0">
                   <Button
-                    icon={MessageChatSquareV2}
+                    icon={MessageChatSquare}
                     size="xs"
                     variant="outline"
                     onClick={() => {

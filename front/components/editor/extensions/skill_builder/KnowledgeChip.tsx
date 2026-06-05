@@ -2,7 +2,7 @@ import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_provide
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { isFolder, isWebsite } from "@app/lib/data_sources";
 import type { DataSourceViewContentNode } from "@app/lib/swr/search";
-import { AlertCircleV2, AttachmentChip, DoubleIcon } from "@dust-tt/sparkle";
+import { AlertCircle, AttachmentChip, DoubleIcon } from "@dust-tt/sparkle";
 import type React from "react";
 
 type KnowledgeNode = Omit<
@@ -65,7 +65,7 @@ export function KnowledgeErrorChip({
   return (
     <AttachmentChip
       label={title}
-      icon={{ visual: AlertCircleV2 }}
+      icon={{ visual: AlertCircle }}
       target="_blank"
       color="white"
       onRemove={onRemove}

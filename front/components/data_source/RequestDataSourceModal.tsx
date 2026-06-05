@@ -11,7 +11,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  PlusV2,
+  Plus,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -94,7 +94,7 @@ export function RequestDataSourceModal({
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button label="Request" icon={PlusV2} />
+        <Button label="Request" icon={Plus} />
       </SheetTrigger>
       <SheetContent size="lg">
         <SheetHeader>

@@ -12,12 +12,7 @@ import type {
 } from "@app/components/home/content/Solutions/configs/utils";
 import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
 import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCasesSection";
-import {
-  CheckCircleV2,
-  MagicWand02V2,
-  Rocket02V2,
-  Users01V2,
-} from "@dust-tt/sparkle";
+import { CheckCircle, MagicWand02, Rocket02, Users01 } from "@dust-tt/sparkle";
 
 // Config exports
 export const pageSettings: pageSettingsProps = {
@@ -70,7 +65,7 @@ export const Hero: HeroProps = {
     primary: {
       label: "Get started",
       href: "/home/pricing",
-      icon: Rocket02V2,
+      icon: Rocket02,
     },
     secondary: {
       label: "Talk to sales",
@@ -83,19 +78,19 @@ export const Benefits: BenefitsProps = {
   sectionTitle: "Transform HR operations into strategic impact",
   items: [
     {
-      icon: MagicWand02V2,
+      icon: MagicWand02,
       title: "Scale HR knowledge",
       description:
         "Turn policies into instant answers, enabling employee self-service.",
     },
     {
-      icon: CheckCircleV2,
+      icon: CheckCircle,
       title: "Save HR time",
       description:
         "Automate routine tasks to invest more time in people development.",
     },
     {
-      icon: Users01V2,
+      icon: Users01,
       title: "Support managers",
       description:
         "Deploy consistent coaching and feedback across all management levels.",

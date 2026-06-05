@@ -9,6 +9,7 @@ const sparkleVersionAckLabel = "sparkle-version-ack";
 const sseAckLabel = "sse-ack";
 const skipMigrationCheckLabel = "skip-migration-check";
 const sandboxImageAckLabel = "sandbox-image-ack";
+const auditLogAckLabel = "audit-log-ack";
 
 const REMOVE_INDEX_WARNING =
   "\n\nBefore deleting an index, make sure it is actually not used by running:" +
@@ -448,6 +449,98 @@ function checkHonoMigrationSync() {
   }
 }
 
+const AUDIT_SCHEMAS_PREFIX = "front/admin/audit_log_schemas/";
+const AUDIT_VERSION_MAP_REPO_PATH = "front/lib/api/audit/schema_versions.json";
+const AUDIT_VERSION_MAP_LOCAL_PATH = "lib/api/audit/schema_versions.json";
+
+// Parses a schema_versions.json blob into an action -> version map. Returns an
+// empty map for missing/unparseable content (e.g. the base ref before the file
+// existed) so callers can treat unknown actions as "no prior version".
+function parseVersionMap(content: string | null | undefined): {
+  [action: string]: number;
+} {
+  if (!content) {
+    return {};
+  }
+  try {
+    const parsed = JSON.parse(content);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function failAuditSchemaVersions(violations: string[]) {
+  fail(
+    "Audit log schema(s) changed but the version in " +
+      `\`${AUDIT_VERSION_MAP_REPO_PATH}\` was not bumped:\n` +
+      violations.map((v) => `- ${v}`).join("\n") +
+      "\n\nRun `npx tsx front/admin/register_audit_log_schemas.ts --execute " +
+      "--changed` to register the updated schema(s) with WorkOS, then commit " +
+      "the regenerated `schema_versions.json` in this PR. WorkOS validates " +
+      "each event against the version we send, so a stale version causes " +
+      "validation failures once deployed.\n\nIf the change is a no-op that " +
+      `WorkOS treats as identical (no new version created), add the ` +
+      `\`${auditLogAckLabel}\` label to override.`
+  );
+}
+
+function warnAuditSchemaVersions(violations: string[]) {
+  warn(
+    "Audit log schema(s) changed without a version bump, and the " +
+      `\`${auditLogAckLabel}\` label is set:\n` +
+      violations.map((v) => `- ${v}`).join("\n") +
+      "\nEnsure WorkOS genuinely treats the change as identical."
+  );
+}
+
+// When a schema file under `front/admin/audit_log_schemas/` changes, its
+// version in `schema_versions.json` must be bumped (WorkOS bumps it when the
+// registration script re-registers a changed schema). We compare the version
+// on this branch against the base ref; a missing or non-incremented version
+// means the registration step was skipped.
+async function checkAuditSchemaVersions(changedActions: string[]) {
+  let headMap: { [action: string]: number };
+  try {
+    headMap = parseVersionMap(
+      fs.readFileSync(AUDIT_VERSION_MAP_LOCAL_PATH, "utf8")
+    );
+  } catch {
+    // Version map unreadable — the vitest consistency test covers presence;
+    // nothing to diff against here.
+    return;
+  }
+
+  // Danger runs with cwd=`front/`; `danger.git.*` paths are repo-root relative.
+  const versionDiff = await danger.git.diffForFile(AUDIT_VERSION_MAP_REPO_PATH);
+  // If the map wasn't touched in this PR, the base equals head, so any changed
+  // schema will correctly read as "not incremented".
+  const baseMap = versionDiff ? parseVersionMap(versionDiff.before) : headMap;
+
+  const violations: string[] = [];
+  for (const action of changedActions) {
+    const headVersion = headMap[action];
+    const baseVersion = baseMap[action];
+    if (typeof headVersion !== "number") {
+      violations.push(`\`${action}\` has no entry in schema_versions.json`);
+    } else if (typeof baseVersion === "number" && headVersion <= baseVersion) {
+      violations.push(
+        `\`${action}\` is still at v${headVersion} (schema changed but version not incremented)`
+      );
+    }
+  }
+
+  if (violations.length === 0) {
+    return;
+  }
+
+  if (hasLabel(auditLogAckLabel)) {
+    warnAuditSchemaVersions(violations);
+  } else {
+    failAuditSchemaVersions(violations);
+  }
+}
+
 async function checkDiffFiles() {
   const diffFiles = danger.git.modified_files
     .concat(danger.git.created_files)
@@ -576,6 +669,20 @@ async function checkDiffFiles() {
   );
   if (modifiedSseSharedModels.length > 0) {
     checkSSESharedModelsLabel();
+  }
+
+  // Audit log schema changes must ship with a bumped version in
+  // schema_versions.json (deletions don't need a bump, so use add/modify only).
+  const changedSchemaFiles = danger.git.modified_files
+    .concat(danger.git.created_files)
+    .filter(
+      (path) => path.startsWith(AUDIT_SCHEMAS_PREFIX) && path.endsWith(".json")
+    );
+  if (changedSchemaFiles.length > 0) {
+    const changedActions = changedSchemaFiles.map((path) =>
+      path.slice(AUDIT_SCHEMAS_PREFIX.length).replace(/\.json$/, "")
+    );
+    await checkAuditSchemaVersions(changedActions);
   }
 
   // Hono migration sync check (self-gates on diff contents).

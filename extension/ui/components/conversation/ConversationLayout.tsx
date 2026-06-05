@@ -4,10 +4,10 @@ import { SidebarBanners } from "@app/components/navigation/AppStatusBanner";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import {
-  ArrowLeftV2,
+  ArrowLeft,
   BarHeader,
   Button,
-  Menu01V2,
+  Menu01,
   Sheet,
   SheetContent,
   SheetHeader,
@@ -62,14 +62,14 @@ export const ConversationLayout = ({
             {backHref ? (
               <Button
                 variant="ghost"
-                icon={ArrowLeftV2}
+                icon={ArrowLeft}
                 onClick={() => navigate(backHref)}
                 tooltip="Go back to Pod homepage"
               />
             ) : (
               <Button
                 variant="ghost"
-                icon={Menu01V2}
+                icon={Menu01}
                 onClick={() => setSidebarOpen(true)}
               />
             )}

@@ -15,7 +15,7 @@ import type { WorkspaceType } from "@app/types/user";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { isConnectorsAPIError } from "@dust-tt/client";
 import {
-  BookOpen01V2,
+  BookOpen01,
   Button,
   Chip,
   Icon,
@@ -320,7 +320,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
                 target="_blank"
                 rel="noopener noreferrer"
                 variant="outline"
-                icon={BookOpen01V2}
+                icon={BookOpen01}
               />
 
               {connectorUIConfiguration.limitations && (

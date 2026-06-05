@@ -14,10 +14,8 @@ const STATIC_ALLOWED_ORIGINS = [
   "https://office-addins.dust.tt",
   // Poke SPA (backoffice).
   "https://poke.dust.tt",
-  "https://poke.bleeding-edge.dust.tt",
   // Main app (front-spa).
   "https://app.dust.tt",
-  "https://bleeding-edge.dust.tt",
   // Next.js server (landing page, OAuth, API routes).
   "https://dust.tt",
   "https://eu.dust.tt",

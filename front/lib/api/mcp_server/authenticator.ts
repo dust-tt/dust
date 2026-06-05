@@ -4,10 +4,17 @@ import {
   WorkOSJwtPayloadSchema,
 } from "@app/lib/api/workos";
 import { Authenticator } from "@app/lib/auth";
+import type { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import type { WorkspaceType } from "@app/types/user";
 import { isLeft } from "fp-ts/lib/Either";
+
+export interface McpAuthenticator extends Authenticator {
+  workspace(): WorkspaceType;
+  user(): UserResource;
+}
 
 export type McpAuthenticatorError =
   | "organization_missing"
@@ -33,7 +40,7 @@ function getOrganizationId(payload: WorkOSJwtPayload): string | null {
 
 export async function getAuthenticatorFromWorkOSClaims(
   payload: McpServerAuthUser
-): Promise<Result<Authenticator, McpAuthenticatorError>> {
+): Promise<Result<McpAuthenticator, McpAuthenticatorError>> {
   const workOSToken = parseWorkOSJwtPayload(payload);
   if (!workOSToken) {
     return new Err("invalid_token_payload");
@@ -67,9 +74,9 @@ export async function getAuthenticatorFromWorkOSClaims(
   }
 
   const auth = authResult.value;
-  if (!auth.user() || auth.role() === "none") {
+  if (!auth.workspace() || !auth.user() || auth.role() === "none") {
     return new Err("not_a_member");
   }
 
-  return new Ok(auth);
+  return new Ok(auth as McpAuthenticator);
 }

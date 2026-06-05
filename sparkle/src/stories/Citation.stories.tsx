@@ -11,15 +11,15 @@ import {
   CitationImage,
   CitationIndex,
   CitationTitle,
-  File02V2,
-  LinkExternal01V2,
+  File02,
+  LinkExternal01,
   FaviconIcon,
-  Globe01V2,
+  Globe01,
   Icon,
   NotionLogo,
   Popover,
   SlackLogo,
-  TableV2,
+  Table,
 } from "../index_with_tw_base";
 
 const meta = {
@@ -63,7 +63,7 @@ export const CitationsExample = () => (
       </Citation>
       <Citation onClick={() => alert("Card clicked")} className="s-w-48">
         <CitationIcons>
-          <Icon visual={TableV2} size="sm" />
+          <Icon visual={Table} size="sm" />
         </CitationIcons>
         <CitationTitle>extract_financa.csv</CitationTitle>
       </Citation>
@@ -118,7 +118,7 @@ export const CitationsExample = () => (
         action={<CitationClose onClick={() => alert("Close clicked")} />}
       >
         <CitationIcons>
-          <Icon visual={TableV2} size="sm" />
+          <Icon visual={Table} size="sm" />
         </CitationIcons>
         <CitationTitle>extract_financa.csv</CitationTitle>
       </Citation>
@@ -128,7 +128,7 @@ export const CitationsExample = () => (
         action={<CitationClose onClick={() => alert("Close clicked")} />}
       >
         <CitationIcons>
-          <Icon visual={Globe01V2} size="sm" />
+          <Icon visual={Globe01} size="sm" />
         </CitationIcons>
         <CitationTitle>Linkedin, Edouard Wautier</CitationTitle>
       </Citation>
@@ -154,7 +154,7 @@ export const CitationsExample = () => (
             <CitationTitle>Hello</CitationTitle>
             <Button
               variant={"ghost"}
-              icon={LinkExternal01V2}
+              icon={LinkExternal01}
               className="s-absolute s-right-2 s-top-2"
             />
           </>
@@ -180,7 +180,7 @@ export const CitationsExample = () => (
       <Citation onClick={() => alert("Close action clicked")}>
         <CitationIcons>
           <CitationIndex>3</CitationIndex>
-          <Icon visual={File02V2} size="sm" />
+          <Icon visual={File02} size="sm" />
         </CitationIcons>
         <CitationTitle>Hello</CitationTitle>
       </Citation>

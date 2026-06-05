@@ -8,7 +8,8 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
-import type { UserType } from "@app/types/user";
+import type { LightUserType, UserType } from "@app/types/user";
+import { toLightUser } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
@@ -33,19 +34,19 @@ export type PatchSkillEditorsRequestBody = z.infer<
   typeof PatchSkillEditorsRequestBodySchema
 >;
 
-export interface GetSkillEditorsResponseBody {
+export interface SkillEditorsResponseBody {
   editors: UserType[];
 }
 
-export interface PatchSkillEditorsResponseBody {
-  editors: UserType[];
+export interface SkillEditorsLightResponseBody {
+  editors: LightUserType[];
 }
 
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorResponse<
-      GetSkillEditorsResponseBody | PatchSkillEditorsResponseBody
+      SkillEditorsResponseBody | SkillEditorsLightResponseBody
     >
   >,
   auth: Authenticator
@@ -89,7 +90,14 @@ async function handler(
       const members = await editorGroup.getActiveMembers(auth);
       const memberUsers = members.map((m) => m.toJSON());
 
-      return res.status(200).json({ editors: memberUsers });
+      // Non-admins receive only minimal essential user data (LightUserType).
+      if (auth.isAdmin()) {
+        return res.status(200).json({ editors: memberUsers });
+      }
+
+      return res.status(200).json({
+        editors: memberUsers.map(toLightUser),
+      });
     }
 
     case "PATCH": {
@@ -261,9 +269,15 @@ async function handler(
       }
 
       const updatedMembers = await editorGroup.getActiveMembers(auth);
+      const updatedEditors = updatedMembers.map((m) => m.toJSON());
+
+      // Non-admins receive only minimal essential user data (LightUserType).
+      if (auth.isAdmin()) {
+        return res.status(200).json({ editors: updatedEditors });
+      }
 
       return res.status(200).json({
-        editors: updatedMembers.map((m) => m.toJSON()),
+        editors: updatedEditors.map(toLightUser),
       });
     }
 

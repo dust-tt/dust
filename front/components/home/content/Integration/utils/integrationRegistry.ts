@@ -109,6 +109,8 @@ const MCP_CATEGORY_MAP: Record<string, IntegrationCategory> = {
   vanta: "security",
   // AI
   openai_usage: "ai",
+  // Transcripts
+  fathom: "transcripts",
 };
 
 // Category mapping for remote MCP servers (by name, lowercased)
@@ -119,6 +121,7 @@ const REMOTE_MCP_CATEGORY_MAP: Record<string, IntegrationCategory> = {
   supabase: "development",
   guru: "productivity",
   granola: "transcripts",
+  praiz: "transcripts",
   intercom: "support",
   attio: "crm",
   gitlab: "development",

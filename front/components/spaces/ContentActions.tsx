@@ -24,12 +24,12 @@ import {
 import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  Edit04V2,
-  EyeV2,
-  File04V2,
-  LinkExternal01V2,
+  Edit04,
+  Eye,
+  File04,
+  LinkExternal01,
   type MenuItem,
-  Trash01V2,
+  Trash01,
 } from "@dust-tt/sparkle";
 import capitalize from "lodash/capitalize";
 import type { MouseEvent as ReactMouseEvent, RefObject } from "react";
@@ -201,7 +201,7 @@ export const getMenuItems = (
     actions.push({
       kind: "item",
       label: "Edit",
-      icon: Edit04V2,
+      icon: Edit04,
       onClick: (e: ReactMouseEvent) => {
         e.stopPropagation();
         contentActionsRef.current?.callAction(
@@ -215,7 +215,7 @@ export const getMenuItems = (
     actions.push({
       kind: "item",
       label: "Delete",
-      icon: Trash01V2,
+      icon: Trash01,
       onClick: (e: ReactMouseEvent) => {
         e.stopPropagation();
 
@@ -283,7 +283,7 @@ export const getMenuItems = (
     actions.push({
       kind: "item",
       label: "Copy DataSource ID",
-      icon: File04V2,
+      icon: File04,
       onClick: (e: ReactMouseEvent) => {
         e.stopPropagation();
         void navigator.clipboard.writeText(dataSourceView.dataSource.sId);
@@ -307,7 +307,7 @@ const makeViewSourceUrlContentAction = (
   return {
     kind: "item",
     label,
-    icon: LinkExternal01V2,
+    icon: LinkExternal01,
     disabled: contentNode.sourceUrl === null,
     onClick: (e: ReactMouseEvent) => {
       e.stopPropagation();
@@ -326,7 +326,7 @@ const makeViewRawContentAction = (
   return {
     kind: "item",
     label: "View raw content",
-    icon: EyeV2,
+    icon: Eye,
     onClick: (e: ReactMouseEvent) => {
       e.stopPropagation();
       setQueryParam(router, "documentId", contentNode.internalId);

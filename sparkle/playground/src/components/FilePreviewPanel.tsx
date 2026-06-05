@@ -1,9 +1,9 @@
 import {
-  Download01V2,
+  Download01,
   Button,
   ButtonsSwitch,
   ButtonsSwitchList,
-  LinkExternal01V2,
+  LinkExternal01,
   Icon,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -70,13 +70,13 @@ export function FilePreviewPanel({
             <Button
               variant="outline"
               size="icon-xs"
-              icon={Download01V2}
+              icon={Download01}
               tooltip="Download"
             />
             <Button
               variant="outline"
               size="icon-xs"
-              icon={LinkExternal01V2}
+              icon={LinkExternal01}
               tooltip="Open in tab"
             />
           </div>

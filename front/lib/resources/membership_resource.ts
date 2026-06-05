@@ -19,6 +19,7 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger, { auditLog } from "@app/logger/logger";
 import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/client";
 import {
+  initialCreditStateForSeatType,
   isMembershipSeatType,
   type MembershipOriginType,
   type MembershipRoleType,
@@ -1030,6 +1031,11 @@ export class MembershipResource extends BaseResource<MembershipModel> {
         role,
         origin,
         seatType,
+        // Optimistic initial state from the seat type (pro/max → user_seat) so a
+        // new seat user isn't stuck at the "on_pool" DB default during the seat
+        // sync's debounce window; the post-sync reconcile refines it from the
+        // live Metronome balance.
+        creditState: initialCreditStateForSeatType(seatType),
         firstUsedAt: origin === "provisioned" ? null : new Date(),
       },
       { transaction }

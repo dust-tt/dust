@@ -1,12 +1,12 @@
 import {
-  BracketsV2,
-  CodeSquare01V2,
-  FolderV2,
+  Brackets,
+  CodeSquare01,
+  Folder,
   GooglePdfLogo,
   MicrosoftExcelLogo,
   MicrosoftPowerpointLogo,
   MicrosoftWordLogo,
-  Type01V2,
+  Type01,
 } from "@dust-tt/sparkle";
 import React from "react";
 
@@ -288,13 +288,13 @@ function getIconForFileType(
     case "csv":
       return MicrosoftExcelLogo;
     case "frame":
-      return BracketsV2;
+      return Brackets;
     case "pptx":
       return MicrosoftPowerpointLogo;
     case "txt":
-      return Type01V2;
+      return Type01;
     case "md":
-      return CodeSquare01V2;
+      return CodeSquare01;
     default:
       return GooglePdfLogo;
   }
@@ -475,7 +475,7 @@ export function getDataSourceIcon(
   item: DataSource
 ): React.ComponentType<{ className?: string }> | undefined {
   if (isDataSourceFolder(item)) {
-    return FolderV2;
+    return Folder;
   }
 
   return (

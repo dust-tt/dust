@@ -7,8 +7,8 @@ import type { LightWorkspaceType } from "@app/types/user";
 import {
   SafeSuspense,
   safeLazy,
-  ThumbsDownV2,
-  ThumbsUpV2,
+  ThumbsDown,
+  ThumbsUp,
   ValueCard,
 } from "@dust-tt/sparkle";
 
@@ -62,11 +62,11 @@ export function AgentFeedback({
               {allowReactions && agentAnalytics?.feedbacks ? (
                 <>
                   <div className="flex flex-row items-center">
-                    <ThumbsUpV2 className="w-7 pr-2 text-gray-400 dark:text-muted-foreground-night" />
+                    <ThumbsUp className="w-7 pr-2 text-gray-400 dark:text-muted-foreground-night" />
                     <div>{agentAnalytics.feedbacks.positiveFeedbacks}</div>
                   </div>
                   <div className="flex flex-row items-center">
-                    <ThumbsDownV2 className="w-7 pr-2 text-gray-400 dark:text-muted-foreground-night" />
+                    <ThumbsDown className="w-7 pr-2 text-gray-400 dark:text-muted-foreground-night" />
                     <div>{agentAnalytics.feedbacks.negativeFeedbacks}</div>
                   </div>
                 </>

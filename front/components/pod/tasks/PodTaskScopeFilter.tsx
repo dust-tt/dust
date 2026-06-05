@@ -19,7 +19,7 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
-  EyeV2,
+  Eye,
 } from "@dust-tt/sparkle";
 
 export function PodTaskScopeFilter() {
@@ -56,7 +56,7 @@ export function PodTaskScopeFilter() {
             type="button"
             size="sm"
             variant="outline"
-            icon={EyeV2}
+            icon={Eye}
             isSelect
             label={isMobile ? undefined : periodLabel}
             tooltip={isMobile ? periodLabel : undefined}

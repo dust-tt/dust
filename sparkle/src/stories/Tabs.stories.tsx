@@ -3,9 +3,9 @@ import React from "react";
 
 import {
   Button,
-  Settings01V2,
-  CommandV2,
-  Lightbulb04V2,
+  Settings01,
+  Command,
+  Lightbulb04,
   Tabs,
   TabsContent,
   TabsList,
@@ -26,14 +26,10 @@ export const Default: Story = {
     <div className="s-w-80">
       <Tabs defaultValue="account">
         <TabsList className="s-px-2">
-          <TabsTrigger value="account" label="Hello" icon={CommandV2} />
-          <TabsTrigger value="password" label="World" icon={Lightbulb04V2} />
+          <TabsTrigger value="account" label="Hello" icon={Command} />
+          <TabsTrigger value="password" label="World" icon={Lightbulb04} />
           <div className="s-grow" />
-          <TabsTrigger
-            value="settings"
-            icon={Settings01V2}
-            tooltip="Settings"
-          />
+          <TabsTrigger value="settings" icon={Settings01} tooltip="Settings" />
         </TabsList>
         <TabsContent value="account">Hello</TabsContent>
         <TabsContent value="password">World</TabsContent>
@@ -48,12 +44,12 @@ export const WithMultipleTabs: Story = {
     <div className="s-w-[100%]">
       <Tabs defaultValue="tab1">
         <TabsList className="s-px-2">
-          <TabsTrigger value="tab1" label="Tab 1" icon={CommandV2} />
-          <TabsTrigger value="tab2" label="Tab 2" icon={Lightbulb04V2} />
-          <TabsTrigger value="tab3" label="Tab 3" icon={Settings01V2} />
-          <TabsTrigger value="tab4" label="Tab 4" icon={CommandV2} />
-          <TabsTrigger value="tab5" label="Tab 5" icon={Lightbulb04V2} />
-          <TabsTrigger value="tab6" label="Tab 6" icon={Settings01V2} />
+          <TabsTrigger value="tab1" label="Tab 1" icon={Command} />
+          <TabsTrigger value="tab2" label="Tab 2" icon={Lightbulb04} />
+          <TabsTrigger value="tab3" label="Tab 3" icon={Settings01} />
+          <TabsTrigger value="tab4" label="Tab 4" icon={Command} />
+          <TabsTrigger value="tab5" label="Tab 5" icon={Lightbulb04} />
+          <TabsTrigger value="tab6" label="Tab 6" icon={Settings01} />
           <div className="s-grow" />
           <Button label="Hello" />
         </TabsList>

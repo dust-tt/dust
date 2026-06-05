@@ -8,7 +8,7 @@ import {
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
-  ChevronDownV2,
+  ChevronDown,
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
@@ -20,10 +20,10 @@ import {
   DropdownMenuTrigger,
   Input,
   Label,
-  ListSelectV2,
+  ListSelect,
   SliderToggle,
   TextArea,
-  XCloseV2,
+  XClose,
 } from "@dust-tt/sparkle";
 import type { useForm } from "react-hook-form";
 import { Controller, useWatch } from "react-hook-form";
@@ -150,14 +150,14 @@ export function CreateWebhookSourceFormContent({
                       <Button
                         label={dropDownLabel}
                         variant="outline"
-                        icon={ChevronDownV2}
+                        icon={ChevronDown}
                       />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="w-72" align="start">
                       <div className="flex gap-2 p-2">
                         <Button
                           label="Select all"
-                          icon={ListSelectV2}
+                          icon={ListSelect}
                           variant="primary"
                           size="xs"
                           onClick={handleSelectAll}
@@ -165,7 +165,7 @@ export function CreateWebhookSourceFormContent({
                         />
                         <Button
                           label="Unselect all"
-                          icon={XCloseV2}
+                          icon={XClose}
                           variant="primary"
                           size="xs"
                           onClick={handleUnselectAll}
@@ -304,7 +304,7 @@ export function CreateWebhookSourceFormContent({
                             variant="outline"
                             // biome-ignore lint/plugin/noCssImportant: legacy [GEN12] — needs cleanup
                             className="!mt-0"
-                            icon={ChevronDownV2}
+                            icon={ChevronDown}
                           />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>

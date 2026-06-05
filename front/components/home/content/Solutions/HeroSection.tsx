@@ -1,7 +1,7 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { Grid, H1, H3, P } from "@app/components/home/ContentComponents";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
-import { Button, Div3D, Hover3D, Rocket02V2 } from "@dust-tt/sparkle";
+import { Button, Div3D, Hover3D, Rocket02 } from "@dust-tt/sparkle";
 import Link from "next/link";
 import type { FC } from "react";
 
@@ -75,7 +75,7 @@ export const HeroSection: FC<HeroSectionProps> = ({
                     variant="highlight"
                     size="md"
                     label={ctaButtons.primary.label}
-                    icon={Rocket02V2}
+                    icon={Rocket02}
                     onClick={withTracking(
                       TRACKING_AREAS.SOLUTIONS,
                       `${trackingPrefix}_cta_primary`

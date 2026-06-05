@@ -7,7 +7,7 @@ import type { StripePricingData } from "@app/types/stripe/pricing";
 import {
   Button,
   Checkbox,
-  CheckCircleV2,
+  CheckCircle,
   ContentMessage,
   Dialog,
   DialogContainer,
@@ -18,11 +18,11 @@ import {
   DialogTitle,
   Hoverable,
   Icon,
-  InfoCircleV2,
+  InfoCircle,
   Input,
-  LinkExternal01V2,
+  LinkExternal01,
   Spinner,
-  XCircleV2,
+  XCircle,
 } from "@dust-tt/sparkle";
 import { useCallback, useMemo, useState } from "react";
 
@@ -181,11 +181,7 @@ export function BuyCreditDialog({
       case "success":
         return (
           <div className="flex flex-col items-center justify-center gap-4 py-8">
-            <Icon
-              visual={CheckCircleV2}
-              size="lg"
-              className="text-success-500"
-            />
+            <Icon visual={CheckCircle} size="lg" className="text-success-500" />
             <div className="text-center">
               <p className="text-lg font-medium text-foreground dark:text-foreground-night">
                 Credits purchased successfully!
@@ -206,7 +202,7 @@ export function BuyCreditDialog({
         return (
           <div className="flex flex-col items-center justify-center gap-4 py-8">
             <Icon
-              visual={LinkExternal01V2}
+              visual={LinkExternal01}
               size="lg"
               className="text-primary dark:text-primary-night"
             />
@@ -225,7 +221,7 @@ export function BuyCreditDialog({
       case "error":
         return (
           <div className="flex flex-col items-center justify-center gap-4 py-8">
-            <Icon visual={XCircleV2} size="lg" className="text-warning-500" />
+            <Icon visual={XCircle} size="lg" className="text-warning-500" />
             <div className="text-center">
               <p className="text-lg font-medium text-foreground dark:text-foreground-night">
                 Something went wrong
@@ -246,7 +242,7 @@ export function BuyCreditDialog({
             {showPaygCapWarning && (
               <ContentMessage
                 variant="info"
-                icon={InfoCircleV2}
+                icon={InfoCircle}
                 title="You still have pay-as-you-go capacity"
               >
                 You're still under {PAYG_CAP_WARNING_THRESHOLD_PERCENT}% of your

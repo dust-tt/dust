@@ -3,7 +3,7 @@ import type { IconOnlyButtonProps } from "@sparkle/components/Button";
 import type { CardVariantType } from "@sparkle/components/Card";
 import { Card, CardActionButton } from "@sparkle/components/Card";
 import { TruncatedText } from "@sparkle/components/TruncatedText";
-import { DotsHorizontalV2 } from "@sparkle/icons/v2-stroke";
+import { DotsHorizontal } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import React from "react";
 
@@ -26,12 +26,7 @@ export const AssistantCardMore = React.forwardRef<
   AssistantCardMore
 >(({ ...props }, ref) => {
   return (
-    <CardActionButton
-      size="icon"
-      ref={ref}
-      icon={DotsHorizontalV2}
-      {...props}
-    />
+    <CardActionButton size="icon" ref={ref} icon={DotsHorizontal} {...props} />
   );
 });
 AssistantCardMore.displayName = "AssistantCardMore";

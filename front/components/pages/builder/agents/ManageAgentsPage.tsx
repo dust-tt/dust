@@ -29,12 +29,12 @@ import { isAdmin } from "@app/types/user";
 import {
   Button,
   Chip,
-  ContactsRobotV2,
-  ListSelectV2,
+  ContactsRobot,
+  ListSelect,
   Page,
-  PlusV2,
+  Plus,
   SearchInput,
-  SearchMdV2,
+  SearchMd,
   Spinner,
   Tabs,
   TabsList,
@@ -67,13 +67,13 @@ export const AGENT_MANAGER_TABS = [
   {
     id: "search",
     label: "Active",
-    icon: SearchMdV2,
+    icon: SearchMd,
     description: "Active agents matching your search",
   },
   {
     id: "search_archived",
     label: "Archived",
-    icon: SearchMdV2,
+    icon: SearchMd,
     description: "Archived agents matching your search",
   },
 ] as const;
@@ -292,7 +292,7 @@ export function ManageAgentsPage() {
             onClose={() => setDetailedAgentId(null)}
           />
           <div className="flex w-full flex-col gap-8 pb-4 pt-2 lg:pt-8">
-            <Page.Header title="Manage Agents" icon={ContactsRobotV2} />
+            <Page.Header title="Manage Agents" icon={ContactsRobot} />
             <Page.Vertical gap="md" align="stretch">
               <div className="flex flex-row gap-2">
                 <SearchInput
@@ -310,7 +310,7 @@ export function ManageAgentsPage() {
                     {isAdmin(owner) && (
                       <Button
                         variant="outline"
-                        icon={ListSelectV2}
+                        icon={ListSelect}
                         label="Batch edit"
                         onClick={() => {
                           setIsBatchEdit(true);
@@ -423,7 +423,7 @@ export function ManageAgentsPage() {
                       <EmptyCallToAction
                         href={`/w/${owner.sId}/builder/agents/create`}
                         label="Create an agent"
-                        icon={PlusV2}
+                        icon={Plus}
                         data-gtm-label="assistantCreationButton"
                         data-gtm-location="assistantsWorkspace"
                       />

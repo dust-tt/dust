@@ -50,6 +50,38 @@ export type WorkspaceCreditEvent =
 const LOW_BALANCE_THRESHOLD_AWU = 100;
 const CRITICAL_BALANCE_THRESHOLD_AWU = 10;
 
+/**
+ * The canonical pool credit state implied purely by the current AWU balance
+ * and whether PAYG is enabled. This mirrors what `syncPoolCreditStateFromBalance`
+ * produces by dispatching `credits_added` / `pool_exhausted` through the
+ * machine, expressed as a pure function so callers can *check* whether the
+ * persisted `workspace.poolCreditState` has drifted from reality without
+ * mutating anything.
+ *
+ *   balance <= 0            -> overage (PAYG on) / depleted (PAYG off)
+ *   0 < balance <= 10       -> active_critical_balance
+ *   10 < balance <= 100     -> active_low_balance
+ *   balance > 100           -> active
+ */
+export function expectedPoolCreditStateFromBalance({
+  balanceAwu,
+  paygEnabled,
+}: {
+  balanceAwu: number;
+  paygEnabled: boolean;
+}): WorkspacePoolCreditState {
+  if (balanceAwu <= 0) {
+    return paygEnabled ? "overage" : "depleted";
+  }
+  if (balanceAwu <= CRITICAL_BALANCE_THRESHOLD_AWU) {
+    return "active_critical_balance";
+  }
+  if (balanceAwu <= LOW_BALANCE_THRESHOLD_AWU) {
+    return "active_low_balance";
+  }
+  return "active";
+}
+
 type WorkspaceCreditGuard = (
   ctx: WorkspaceCreditContext,
   event: WorkspaceCreditEvent
@@ -338,4 +370,34 @@ export async function transitionWorkspaceCreditState(
   );
 
   return new Ok(match.to);
+}
+
+/**
+ * Authoritatively set the workspace pool credit state to `targetState`,
+ * bypassing the event/transition graph. Used by reconciliation, which computes
+ * the expected state directly from the live AWU balance + PAYG via
+ * `expectedPoolCreditStateFromBalance`. Persists the new state and syncs the
+ * same caches the transitions do.
+ */
+export async function setWorkspacePoolCreditStateReconciled(
+  workspace: WorkspaceResource,
+  targetState: WorkspacePoolCreditState,
+  ctx: WorkspaceCreditContext,
+  { transaction }: { transaction?: Transaction } = {}
+): Promise<WorkspacePoolCreditState> {
+  const currentState = workspace.poolCreditState;
+  if (currentState !== targetState) {
+    await workspace.updatePoolCreditState(targetState, transaction);
+  }
+  syncWorkspacePoolCacheForState(targetState, ctx, transaction);
+  logger.info(
+    {
+      workspaceId: ctx.workspaceId,
+      fromState: currentState,
+      toState: targetState,
+      wasStateChanged: currentState !== targetState,
+    },
+    "[WorkspaceCreditStateMachine] State reconciled"
+  );
+  return targetState;
 }

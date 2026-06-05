@@ -10,10 +10,10 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import {
   ActionCard,
-  Bell01V2,
+  Bell01,
   Button,
   CardGrid,
-  ClockV2,
+  Clock,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -21,7 +21,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  PlusV2,
+  Plus,
   Spinner,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
@@ -46,9 +46,9 @@ function getTriggerDescription(trigger: TriggerType): string {
 function getTriggerIcon(trigger: TriggerType) {
   switch (trigger.kind) {
     case "schedule":
-      return ClockV2;
+      return Clock;
     case "webhook":
-      return Bell01V2;
+      return Bell01;
     default:
       assertNever(trigger);
   }
@@ -121,7 +121,7 @@ export function AgentTriggersTab({
         <h3 className="text-sm font-semibold">My triggers</h3>
         <Button
           label="Add trigger"
-          icon={PlusV2}
+          icon={Plus}
           variant="outline"
           size="sm"
           onClick={onAddTrigger}

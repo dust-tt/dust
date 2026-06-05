@@ -179,6 +179,7 @@ export function createPlaceholderAgentMessage({
     richMentions: [],
     completionDurationMs: null,
     reactions: [],
+    costCredits: null,
 
     streaming: {
       agentState: "placeholder",

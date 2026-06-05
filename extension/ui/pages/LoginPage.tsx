@@ -1,11 +1,4 @@
-import {
-  Button,
-  cn,
-  DustLogo,
-  LogIn01V2,
-  Page,
-  Spinner,
-} from "@dust-tt/sparkle";
+import { Button, cn, DustLogo, LogIn01, Page, Spinner } from "@dust-tt/sparkle";
 import { useExtensionAuth } from "@extension/ui/components/auth/AuthProvider";
 import { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -81,7 +74,7 @@ export const LoginPage = () => {
             {authError && authError.code === "user_not_found" && (
               <Link to="https://dust.tt/home">
                 <Button
-                  icon={LogIn01V2}
+                  icon={LogIn01}
                   variant="primary"
                   label="Sign up"
                   onClick={() => {
@@ -96,7 +89,7 @@ export const LoginPage = () => {
             )}
 
             <Button
-              icon={LogIn01V2}
+              icon={LogIn01}
               variant="primary"
               label="Sign in"
               onClick={() => handleLogin()}
@@ -139,7 +132,7 @@ export const LoginPage = () => {
           />
           <div className="text-center">Then</div>
           <Button
-            icon={LogIn01V2}
+            icon={LogIn01}
             variant="primary"
             label="Sign in"
             onClick={() => handleLogin()}
@@ -173,7 +166,7 @@ export const LoginPage = () => {
               />
               <div className="text-center">Then</div>
               <Button
-                icon={LogIn01V2}
+                icon={LogIn01}
                 variant="primary"
                 label="Sign in"
                 onClick={() => handleLogin()}

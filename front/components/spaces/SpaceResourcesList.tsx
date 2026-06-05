@@ -40,15 +40,15 @@ import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
 import {
   Button,
   Chip,
-  CloudArrowLeftRightV2,
-  Cube01V2,
+  CloudArrowLeftRight,
+  Cube01,
   cn,
   DataTable,
-  Edit04V2,
+  Edit04,
   type MenuItem,
-  Settings01V2,
+  Settings01,
   Spinner,
-  Trash01V2,
+  Trash01,
 } from "@dust-tt/sparkle";
 import type { ColumnDef, SortingState } from "@tanstack/react-table";
 import type { ParsedUrlQuery } from "querystring";
@@ -191,7 +191,7 @@ function getTableColumns(
             <Button
               variant="primary"
               size="xs"
-              icon={CloudArrowLeftRightV2}
+              icon={CloudArrowLeftRight}
               disabled={disabled}
               onClick={buttonOnClick}
               label={isLoading ? "Connecting..." : "Connect"}
@@ -203,7 +203,7 @@ function getTableColumns(
         <DataTable.CellContent>
           <Button
             variant="outline"
-            icon={Settings01V2}
+            icon={Settings01}
             disabled={disabled}
             onClick={buttonOnClick}
             label={isAdmin ? "Manage" : "View"}
@@ -383,7 +383,7 @@ export const SpaceResourcesList = ({
           menuItems.push({
             label: "Edit",
             kind: "item",
-            icon: Edit04V2,
+            icon: Edit04,
             onClick: (e) => {
               e.stopPropagation();
               setSelectedDataSourceView(dataSourceView);
@@ -394,7 +394,7 @@ export const SpaceResourcesList = ({
             menuItems.push({
               label: "Use from API",
               kind: "item",
-              icon: Cube01V2,
+              icon: Cube01,
               onClick: (e) => {
                 e.stopPropagation();
                 setSelectedDataSourceView(dataSourceView);
@@ -404,7 +404,7 @@ export const SpaceResourcesList = ({
           }
           menuItems.push({
             label: "Delete",
-            icon: Trash01V2,
+            icon: Trash01,
             kind: "item",
             variant: "warning",
             onClick: (e) => {

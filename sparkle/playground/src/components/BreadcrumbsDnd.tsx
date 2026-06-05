@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@sparkle/components/Dropdown";
 import { Icon } from "@sparkle/components/Icon";
-import { ChevronRightV2 } from "@sparkle/icons/v2-stroke";
+import { ChevronRight } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib";
 import { cva } from "class-variance-authority";
 import type { ComponentType } from "react";
@@ -272,7 +272,7 @@ export function Breadcrumbs({
             />
             {index === itemsShown.length - 1 ? null : (
               <Icon
-                visual={ChevronRightV2}
+                visual={ChevronRight}
                 className="s-text-faint"
                 size={size === "xs" ? "xs" : "sm"}
               />
@@ -376,7 +376,7 @@ export function BreadcrumbSeparator({ className }: { className?: string }) {
   return (
     <Icon
       aria-hidden="true"
-      visual={ChevronRightV2}
+      visual={ChevronRight}
       className={cn("s-text-faint dark:s-text-faint-night", className)}
       size="sm"
     />

@@ -22,6 +22,42 @@ export type ProgrammaticCreditEvent =
   /** Cap reset (new billing period or cap removed/raised). */
   | { type: "programmatic_cap_reset" };
 
+/**
+ * The canonical programmatic credit state implied purely by which of the
+ * monthly-cap spend-threshold alerts are currently in alarm. This mirrors what
+ * the webhook routing produces by dispatching `programmatic_cap_reached` /
+ * `programmatic_low_balance` / `programmatic_cap_reset` through the machine,
+ * expressed as a pure function so callers can *check* whether the persisted
+ * `workspace.programmaticCreditState` has drifted from reality without mutating
+ * anything.
+ *
+ *   cap in alarm        -> depleted
+ *   critical in alarm   -> active_critical_balance
+ *   low in alarm        -> active_low_balance
+ *   none in alarm (or
+ *   no cap configured)  -> active
+ */
+export function expectedProgrammaticCreditStateFromAlerts({
+  capInAlarm,
+  criticalInAlarm,
+  lowInAlarm,
+}: {
+  capInAlarm: boolean;
+  criticalInAlarm: boolean;
+  lowInAlarm: boolean;
+}): WorkspaceProgrammaticCreditState {
+  if (capInAlarm) {
+    return "depleted";
+  }
+  if (criticalInAlarm) {
+    return "active_critical_balance";
+  }
+  if (lowInAlarm) {
+    return "active_low_balance";
+  }
+  return "active";
+}
+
 type ProgrammaticCreditGuard = (event: ProgrammaticCreditEvent) => boolean;
 
 type ProgrammaticCreditTransition = {
@@ -176,4 +212,35 @@ export async function transitionProgrammaticCreditState(
   );
 
   return new Ok(match.to);
+}
+
+/**
+ * Authoritatively set the workspace programmatic credit state to `targetState`,
+ * bypassing the event/transition graph. Used by reconciliation, which computes
+ * the expected state directly from the cap alert evaluation via
+ * `expectedProgrammaticCreditStateFromAlerts` — simpler and less fragile than
+ * re-deriving it by replaying reset + low-balance events. Persists the new
+ * state and syncs the same caches the transitions do.
+ */
+export async function setProgrammaticCreditStateReconciled(
+  workspace: WorkspaceResource,
+  targetState: WorkspaceProgrammaticCreditState,
+  { transaction }: { transaction?: Transaction } = {}
+): Promise<WorkspaceProgrammaticCreditState> {
+  const workspaceId = workspace.sId;
+  const currentState = workspace.programmaticCreditState;
+  if (currentState !== targetState) {
+    await workspace.updateProgrammaticCreditState(targetState, transaction);
+  }
+  syncProgrammaticCacheForState(targetState, workspaceId, transaction);
+  logger.info(
+    {
+      workspaceId,
+      fromState: currentState,
+      toState: targetState,
+      wasStateChanged: currentState !== targetState,
+    },
+    "[ProgrammaticCreditStateMachine] State reconciled"
+  );
+  return targetState;
 }

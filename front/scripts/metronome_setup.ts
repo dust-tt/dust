@@ -12,6 +12,7 @@
  * Requires: METRONOME_API_KEY env var
  */
 
+import { DEFAULT_ALERT_UNIQUENESS_KEYS } from "@app/lib/metronome/alerts/default_alerts";
 import { getMetronomeClient } from "@app/lib/metronome/client";
 import {
   CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
@@ -1530,8 +1531,7 @@ const ALERTS: AlertDef[] = [
     name: "Default: Empty contract credit + commit balance (AWU)",
     alert_type: "low_remaining_contract_credit_and_commit_balance_reached",
     threshold: 0,
-    uniqueness_key:
-      "default-low-contract-credit-and-commit-balance-zero-awu-pooled",
+    uniqueness_key: DEFAULT_ALERT_UNIQUENESS_KEYS.poolEmpty,
     credit_type: "AWU",
     custom_field_filters: [POOL_CONTRACT_CREDIT_FILTER],
   },
@@ -1539,8 +1539,7 @@ const ALERTS: AlertDef[] = [
     name: "Default: Low balance 100 credits (AWU)",
     alert_type: "low_remaining_contract_credit_and_commit_balance_reached",
     threshold: 100,
-    uniqueness_key:
-      "default-low-contract-credit-and-commit-balance-100-awu-pooled",
+    uniqueness_key: DEFAULT_ALERT_UNIQUENESS_KEYS.poolLow,
     credit_type: "AWU",
     custom_field_filters: [POOL_CONTRACT_CREDIT_FILTER],
   },
@@ -1548,8 +1547,7 @@ const ALERTS: AlertDef[] = [
     name: "Default: Critical balance 10 credits (AWU)",
     alert_type: "low_remaining_contract_credit_and_commit_balance_reached",
     threshold: 10,
-    uniqueness_key:
-      "default-low-contract-credit-and-commit-balance-10-awu-pooled",
+    uniqueness_key: DEFAULT_ALERT_UNIQUENESS_KEYS.poolCritical,
     credit_type: "AWU",
     custom_field_filters: [POOL_CONTRACT_CREDIT_FILTER],
   },
@@ -1561,7 +1559,7 @@ const ALERTS: AlertDef[] = [
     name: "Default: Empty seat balance (AWU)",
     alert_type: "low_remaining_seat_balance_reached",
     threshold: 0,
-    uniqueness_key: "default-low-seat-balance-zero-awu",
+    uniqueness_key: DEFAULT_ALERT_UNIQUENESS_KEYS.seatEmpty,
     credit_type: "AWU",
     seat_filter: { seat_group_key: "user_id" },
   },
@@ -1570,7 +1568,7 @@ const ALERTS: AlertDef[] = [
     name: `Default: Low seat balance max seats (${0.2 * MAX_SEAT_MONTHLY_AWU_CREDITS} AWU)`,
     alert_type: "low_remaining_seat_balance_reached",
     threshold: 0.2 * MAX_SEAT_MONTHLY_AWU_CREDITS,
-    uniqueness_key: "default-low-seat-balance-8000-awu",
+    uniqueness_key: DEFAULT_ALERT_UNIQUENESS_KEYS.seatLowMax,
     credit_type: "AWU",
     seat_filter: { seat_group_key: "user_id" },
   },
@@ -1579,7 +1577,7 @@ const ALERTS: AlertDef[] = [
     name: `Default: Low seat balance pro seats (${0.2 * PRO_SEAT_MONTHLY_AWU_CREDITS} AWU)`,
     alert_type: "low_remaining_seat_balance_reached",
     threshold: 0.2 * PRO_SEAT_MONTHLY_AWU_CREDITS,
-    uniqueness_key: "default-low-seat-balance-1600-awu",
+    uniqueness_key: DEFAULT_ALERT_UNIQUENESS_KEYS.seatLowPro,
     credit_type: "AWU",
     seat_filter: { seat_group_key: "user_id" },
   },

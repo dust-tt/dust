@@ -1,7 +1,7 @@
 import { useOpenAuditLogsPortal } from "@app/lib/swr/workos";
 import type { AuditLogsPortal } from "@app/pages/api/w/[wId]/audit-logs";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Button, File04V2, Page } from "@dust-tt/sparkle";
+import { Button, File04, Page } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 import { WorkspaceSection } from "./WorkspaceSection";
@@ -26,7 +26,7 @@ export function AuditLogsSection({ owner }: AuditLogsSectionProps) {
   };
 
   return (
-    <WorkspaceSection title="Audit Logs" icon={File04V2}>
+    <WorkspaceSection title="Audit Logs" icon={File04}>
       <div className="flex w-full flex-row items-center gap-2">
         <div className="flex-1">
           <Page.P variant="secondary">

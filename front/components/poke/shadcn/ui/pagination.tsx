@@ -1,4 +1,4 @@
-import { ArrowLeftV2, ArrowRightV2, IconButton } from "@dust-tt/sparkle";
+import { ArrowLeft, ArrowRight, IconButton } from "@dust-tt/sparkle";
 import type { Table } from "@tanstack/react-table";
 
 interface DataTablePaginationProps<TData> {
@@ -11,7 +11,11 @@ export function PokeDataTablePagination<TData>({
   return (
     <div className="flex items-center justify-between px-2">
       <div className="flex-1 text-sm text-muted-foreground">
-        Total of {table.getFilteredRowModel().rows.length} row(s).
+        Total of{" "}
+        {table.options.manualPagination
+          ? table.getRowCount()
+          : table.getFilteredRowModel().rows.length}{" "}
+        row(s).
       </div>
       <div className="flex items-center space-x-6 lg:space-x-8">
         <div className="font-sm flex w-[100px] items-center justify-center text-sm">
@@ -20,13 +24,13 @@ export function PokeDataTablePagination<TData>({
         </div>
         <div className="flex items-center space-x-2">
           <IconButton
-            icon={ArrowLeftV2}
+            icon={ArrowLeft}
             className="h-8 w-8 p-0"
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
           />
           <IconButton
-            icon={ArrowRightV2}
+            icon={ArrowRight}
             className="h-8 w-8 p-0"
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}

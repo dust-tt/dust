@@ -1,5 +1,5 @@
 import { Icon } from "@sparkle/components/Icon";
-import { InfoCircleV2 } from "@sparkle/icons/v2-stroke";
+import { InfoCircle } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
 import React, { forwardRef } from "react";
@@ -127,9 +127,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
               messageVariant({ status: messageStatus })
             )}
           >
-            {messageStatus === "info" && (
-              <Icon visual={InfoCircleV2} size="xs" />
-            )}
+            {messageStatus === "info" && <Icon visual={InfoCircle} size="xs" />}
             {message}
           </div>
         )}

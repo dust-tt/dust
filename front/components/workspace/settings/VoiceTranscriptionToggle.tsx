@@ -1,6 +1,6 @@
 import { useVoiceTranscriptionToggle } from "@app/hooks/useVoiceTranscriptionToggle";
 import type { WorkspaceType } from "@app/types/user";
-import { ContextItem, Microphone01V2, SliderToggle } from "@dust-tt/sparkle";
+import { ContextItem, Microphone01, SliderToggle } from "@dust-tt/sparkle";
 
 export function VoiceTranscriptionToggle({ owner }: { owner: WorkspaceType }) {
   const { isEnabled, isChanging, doToggleVoiceTranscription } =
@@ -10,7 +10,7 @@ export function VoiceTranscriptionToggle({ owner }: { owner: WorkspaceType }) {
     <ContextItem
       title="Voice transcription"
       subElement="Allow voice transcription in Dust conversations"
-      visual={<Microphone01V2 className="h-6 w-6" />}
+      visual={<Microphone01 className="h-6 w-6" />}
       hasSeparatorIfLast={true}
       action={
         <SliderToggle

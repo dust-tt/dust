@@ -94,6 +94,35 @@ export function normalizeToPoolLimitSeatType(
   }
 }
 
+/**
+ * Whether a seat type carries an individual (per-user) credit allocation the
+ * user spends from before falling back to the workspace pool. Pro and max seats
+ * do; free seats also have a personal allocation (a fixed lifetime grant) — the
+ * only difference is free seats have no pool fallback, so once exhausted they are
+ * `capped` rather than `on_pool`. Workspace seats have no individual allocation
+ * (they spend straight from the shared pool).
+ */
+export function isSeatBased(
+  seatType: MembershipSeatType | null | undefined
+): boolean {
+  if (!seatType) {
+    return false;
+  }
+  switch (seatType) {
+    case "free":
+    case "pro":
+    case "pro_yearly":
+    case "max":
+    case "max_yearly":
+      return true;
+    case "workspace":
+    case "workspace_yearly":
+      return false;
+    default:
+      return assertNever(seatType);
+  }
+}
+
 // Per-user credit state on a membership. Models where a user sits in the
 // personal-credits → workspace-pool → cap progression. Only the per-user
 // dimension lives here; the workspace-level pool state lives separately on
@@ -136,4 +165,122 @@ export function isUserCreditState(value: unknown): value is UserCreditState {
     typeof value === "string" &&
     USER_CREDIT_STATES.includes(value as UserCreditState)
   );
+}
+
+/**
+ * Whether a user in the given credit state is currently spending from their
+ * personal seat balance (`user_seat*`) rather than the shared workspace pool.
+ * Such users still have their own credits and are therefore unaffected by
+ * workspace pool depletion — only their own per-user cap (`capped`) can block
+ * them.
+ */
+export function isSpendingFromPersonalSeat(state: UserCreditState): boolean {
+  switch (state) {
+    case "user_seat":
+    case "user_seat_low_balance":
+      return true;
+    case "normal":
+    case "on_pool":
+    case "on_pool_low_balance":
+    case "capped":
+      return false;
+    default:
+      return assertNever(state);
+  }
+}
+
+// Fraction of the personal seat balance / per-user cap at which the
+// low-balance warning bands kick in. Mirrors the seat-low-balance guards in
+// `lib/metronome/user_credit_state_machine.ts` (threshold === 0.2 * allowance)
+// and `USER_AWU_WARNING_PERCENTAGE` (0.8) backing the per-user warning alerts.
+const SEAT_LOW_BALANCE_FRACTION = 0.2;
+const CAP_WARNING_FRACTION = 0.8;
+
+/**
+ * The credit state a freshly-allocated seat should start in, derived purely
+ * from the seat type (assumes a full, unspent balance):
+ *   - seat-based (pro/max/free): `user_seat` — they spend personal credits first.
+ *   - workspace (pool-based): `on_pool` — no personal allocation, straight to
+ *     the shared pool.
+ *
+ * Used to initialize the state at membership creation; the authoritative
+ * reconcile from live Metronome balances refines it afterwards.
+ */
+export function initialCreditStateForSeatType(
+  seatType: MembershipSeatType | null | undefined
+): UserCreditState {
+  return isSeatBased(seatType) ? "user_seat" : "on_pool";
+}
+
+/**
+ * Compute the credit state a user *should* be in from the live source of
+ * truth, across both dimensions of `UserCreditState`:
+ *   - the cap dimension (`capped`): consumption reached the effective per-user
+ *     cap (seat allowance + pool limit). This is the hard block, evaluated
+ *     first — if consumption reached the cap, the personal seat is necessarily
+ *     exhausted too.
+ *   - the seat↔pool dimension: a seat-based user with personal balance left is
+ *     `user_seat` (or `user_seat_low_balance` at ≤20% remaining); once the
+ *     personal balance is exhausted — or for pool-based seats that never had
+ *     one — they spend from the workspace pool (`on_pool`, or
+ *     `on_pool_low_balance` at ≥80% of the cap). Free seats are the exception:
+ *     they are seat-based but have no pool fallback, so an exhausted free seat
+ *     is `capped`.
+ *
+ * `seatBalanceAwu` / `seatStartingBalanceAwu` come from the live Metronome
+ * per-seat balance (`listMetronomeSeatBalances`); `null` means the user has no
+ * individual seat allocation (pool-based seat), so they are treated as
+ * spending from the pool. `perUserCapAwuCredits` / `consumedAwuCredits` are
+ * `null` when no cap is configured or usage is unknown, in which case the cap
+ * bands are skipped.
+ */
+export function expectedUserCreditState({
+  seatType,
+  seatBalanceAwu,
+  seatStartingBalanceAwu,
+  perUserCapAwuCredits,
+  consumedAwuCredits,
+}: {
+  seatType: MembershipSeatType | null | undefined;
+  seatBalanceAwu: number | null;
+  seatStartingBalanceAwu: number | null;
+  perUserCapAwuCredits: number | null;
+  consumedAwuCredits: number | null;
+}): UserCreditState {
+  const capKnown = perUserCapAwuCredits !== null && consumedAwuCredits !== null;
+
+  // Hard block first: consumption reached the per-user cap.
+  if (capKnown && consumedAwuCredits >= perUserCapAwuCredits) {
+    return "capped";
+  }
+
+  // Seat-based user (pro/max/free) with a known personal balance.
+  if (isSeatBased(seatType) && seatBalanceAwu !== null) {
+    if (seatBalanceAwu > 0) {
+      // Still spending personal credits.
+      if (
+        seatStartingBalanceAwu !== null &&
+        seatBalanceAwu <= SEAT_LOW_BALANCE_FRACTION * seatStartingBalanceAwu
+      ) {
+        return "user_seat_low_balance";
+      }
+      return "user_seat";
+    }
+    // Personal balance exhausted. Free seats have no pool fallback, so they are
+    // capped; pro/max fall through to the workspace-pool bands below.
+    if (normalizeToPoolLimitSeatType(seatType) === null) {
+      return "capped";
+    }
+  }
+
+  // Otherwise spending from the workspace pool (pool-based seat, or pro/max
+  // whose personal balance is exhausted). Surface the 80% cap warning when
+  // applicable.
+  if (
+    capKnown &&
+    consumedAwuCredits >= CAP_WARNING_FRACTION * perUserCapAwuCredits
+  ) {
+    return "on_pool_low_balance";
+  }
+  return "on_pool";
 }

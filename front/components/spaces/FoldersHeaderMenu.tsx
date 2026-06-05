@@ -10,12 +10,12 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  File04V2,
-  PlusV2,
-  Settings01V2,
-  TableV2,
+  File04,
+  Plus,
+  Settings01,
+  Table,
   Tooltip,
-  UploadCloud02V2,
+  UploadCloud02,
 } from "@dust-tt/sparkle";
 import type { RefObject } from "react";
 import { useState } from "react";
@@ -102,7 +102,7 @@ const AddDataDropDownButton = ({
         <Button
           size="sm"
           label="Add data"
-          icon={PlusV2}
+          icon={Plus}
           variant="primary"
           isSelect
           disabled={!canWriteInSpace}
@@ -111,21 +111,21 @@ const AddDataDropDownButton = ({
       {canWriteInSpace && (
         <DropdownMenuContent>
           <DropdownMenuItem
-            icon={File04V2}
+            icon={File04}
             onClick={() => {
               contentActionsRef.current?.callAction("DocumentUploadOrEdit");
             }}
             label="Create a document"
           />
           <DropdownMenuItem
-            icon={TableV2}
+            icon={Table}
             onClick={() => {
               contentActionsRef.current?.callAction("TableUploadOrEdit");
             }}
             label="Create a table"
           />
           <DropdownMenuItem
-            icon={UploadCloud02V2}
+            icon={UploadCloud02}
             onClick={() => {
               contentActionsRef.current?.callAction("MultipleFilesUpload");
             }}
@@ -166,7 +166,7 @@ const EditFolderButton = ({
       <Button
         size="sm"
         label="Edit folder"
-        icon={Settings01V2}
+        icon={Settings01}
         variant="primary"
         onClick={() => {
           setShowEditFolderModal(true);

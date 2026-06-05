@@ -7,7 +7,7 @@ import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant
 import { useAuth } from "@app/lib/auth/AuthContext";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
-  ArrowUpV2,
+  ArrowUp,
   Button,
   Card,
   Counter,
@@ -365,7 +365,7 @@ export function UserAnswerRequired({
           isLoading={isSkipSubmitting}
         />
         <Button
-          icon={ArrowUpV2}
+          icon={ArrowUp}
           variant="highlight"
           size="sm"
           isLoading={isAnswerSubmitting}

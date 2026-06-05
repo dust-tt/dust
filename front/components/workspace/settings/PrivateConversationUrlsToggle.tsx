@@ -1,6 +1,6 @@
 import { usePrivateConversationUrlsToggle } from "@app/hooks/usePrivateConversationUrlsToggle";
 import type { WorkspaceType } from "@app/types/user";
-import { ContextItem, Lock01V2, SliderToggle } from "@dust-tt/sparkle";
+import { ContextItem, Lock01, SliderToggle } from "@dust-tt/sparkle";
 
 interface PrivateConversationUrlsToggleProps {
   owner: WorkspaceType;
@@ -16,7 +16,7 @@ export function PrivateConversationUrlsToggle({
     <ContextItem
       title="Private conversation URLs by default"
       subElement="Restrict conversation URL access to participants only by default"
-      visual={<Lock01V2 className="h-6 w-6" />}
+      visual={<Lock01 className="h-6 w-6" />}
       hasSeparatorIfLast={true}
       action={
         <SliderToggle

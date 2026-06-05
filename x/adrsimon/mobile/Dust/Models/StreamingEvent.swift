@@ -57,6 +57,7 @@ struct AgentMessageNewEvent: Decodable {
 
 struct AgentMessageDoneEventData: Decodable {
     let created: Double
+    let conversationId: String
     let configurationId: String
     let messageId: String
     let status: String
@@ -157,6 +158,7 @@ struct GenerationTokensEvent: Decodable {
     let messageId: String
     let text: String
     let classification: TokenClassification
+    let traceId: String?
 }
 
 struct AgentActionSuccessEvent: Decodable {
@@ -319,13 +321,13 @@ enum ToolInputValue: Decodable, Equatable {
     }
 }
 
-struct StreamingError: Decodable {
+struct StreamingError: Codable {
     let code: String?
     let message: String
     let metadata: StreamingErrorMetadata?
 }
 
-struct StreamingErrorMetadata: Decodable {
+struct StreamingErrorMetadata: Codable {
     let category: String?
     let errorTitle: String?
 }

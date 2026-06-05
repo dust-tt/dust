@@ -1,10 +1,12 @@
-import { handleMembershipInvitations } from "@app/lib/api/invitation";
-import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import type {
   GetWorkspaceInvitationsResponseBody,
   PostInvitationResponseBody,
-} from "@app/pages/api/w/[wId]/invitations/index";
-import { PostInvitationRequestBodySchema } from "@app/pages/api/w/[wId]/invitations/index";
+} from "@app/lib/api/invitation";
+import {
+  handleMembershipInvitations,
+  PostInvitationRequestBodySchema,
+} from "@app/lib/api/invitation";
+import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";

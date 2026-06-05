@@ -15,9 +15,9 @@ import {
 import { ScrollArea, ScrollBar } from "@sparkle/components/ScrollArea";
 import { TypingAnimation } from "@sparkle/components/TypingAnimation";
 import {
-  ChevronDownV2,
-  ChevronUpV2,
-  DotsHorizontalV2,
+  ChevronDown,
+  ChevronUp,
+  DotsHorizontal,
 } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
@@ -222,7 +222,7 @@ const NavigationListItemAction = React.forwardRef<
       )}
       {...props}
     >
-      <Button size="xmini" icon={DotsHorizontalV2} variant="ghost" />
+      <Button size="xmini" icon={DotsHorizontal} variant="ghost" />
     </div>
   );
 });
@@ -388,7 +388,7 @@ const NavigationListCollapsibleSection = React.forwardRef<
         className={cn(
           "s-flex s-gap-1 s-transition-opacity",
           actionOnHover
-            ? "[@media(hover:hover)]:s-opacity-0 hover:s-opacity-100 group-has-[:focus-visible]/menu-item:s-opacity-100 group-hover/menu-item:s-opacity-100"
+            ? "[@media(hover:hover)_and_(pointer:fine)]:s-opacity-0 hover:s-opacity-100 group-has-[:focus-visible]/menu-item:s-opacity-100 group-hover/menu-item:s-opacity-100"
             : "s-opacity-100"
         )}
         onClick={(e) => {
@@ -420,7 +420,7 @@ const NavigationListCollapsibleSection = React.forwardRef<
               {isShowingAll ? (
                 <Button
                   size="xs"
-                  icon={ChevronUpV2}
+                  icon={ChevronUp}
                   variant="ghost-secondary"
                   label="Hide"
                   onClick={() => setIsShowingAll(false)}
@@ -428,7 +428,7 @@ const NavigationListCollapsibleSection = React.forwardRef<
               ) : (
                 <Button
                   size="xs"
-                  icon={ChevronDownV2}
+                  icon={ChevronDown}
                   variant="ghost-secondary"
                   label="Show all"
                   isCounter={overflowCount !== undefined && overflowCount > 0}

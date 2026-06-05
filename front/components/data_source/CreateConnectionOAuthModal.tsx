@@ -2,9 +2,9 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
 import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
 import {
-  BookOpen01V2,
+  BookOpen01,
   Button,
-  CloudArrowLeftRightV2,
+  CloudArrowLeftRight,
   Hoverable,
   Page,
   Sheet,
@@ -73,7 +73,7 @@ export function CreateConnectionOAuthModal({
                 variant="outline"
                 href={connectorUIConfiguration.guideLink ?? ""}
                 target="_blank"
-                icon={BookOpen01V2}
+                icon={BookOpen01}
               />
               {connectorProviderConfiguration.connectorProvider ===
                 "google_drive" && (
@@ -138,7 +138,7 @@ export function CreateConnectionOAuthModal({
                   <Button
                     variant="highlight"
                     size="md"
-                    icon={CloudArrowLeftRightV2}
+                    icon={CloudArrowLeftRight}
                     onClick={() => {
                       setIsLoading(true);
                       onConfirm(extraConfig);

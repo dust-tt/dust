@@ -16,12 +16,13 @@ const preview: Preview = {
       storySort: {
         order: [
           "Assets",
+          ["Icons", ["Used in Product", "All Icons"], "*"],
           "Primitives",
           "Components",
           "Modules",
           "Styles",
           "Example",
-        ], // Define your order here
+        ],
       },
     },
     themes: {

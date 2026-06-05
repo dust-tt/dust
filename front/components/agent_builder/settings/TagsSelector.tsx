@@ -14,7 +14,7 @@ import {
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  PlusV2,
+  Plus,
   Spinner,
 } from "@dust-tt/sparkle";
 import type { KeyboardEvent } from "react";
@@ -144,7 +144,7 @@ export const TagsSelector = ({
         >
           <DropdownMenuTrigger asChild>
             <Button
-              icon={PlusV2}
+              icon={Plus}
               variant="outline"
               label="Add"
               isSelect
@@ -166,7 +166,7 @@ export const TagsSelector = ({
               {showCreateOption && (
                 <DropdownMenuItem
                   label={`Create "${searchText.trim()}"`}
-                  icon={PlusV2}
+                  icon={Plus}
                   onClick={() => handleCreateTag(searchText.trim())}
                 />
               )}

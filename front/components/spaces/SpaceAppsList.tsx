@@ -11,13 +11,7 @@ import type { AppType } from "@app/types/app";
 import { isString } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
-import {
-  Button,
-  DataTable,
-  PlusV2,
-  Spinner,
-  TerminalV2,
-} from "@dust-tt/sparkle";
+import { Button, DataTable, Plus, Spinner, Terminal } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import sortBy from "lodash/sortBy";
 import type { ParsedUrlQuery } from "querystring";
@@ -100,7 +94,7 @@ export const SpaceAppsList = ({
         category: "apps",
         name: app.name,
         description: app.description ?? "",
-        icon: TerminalV2,
+        icon: Terminal,
         workspaceId: owner.sId,
         onClick: () => onSelect(app.sId),
       })) || [],
@@ -141,7 +135,7 @@ export const SpaceAppsList = ({
         <Button
           label="New App"
           variant="primary"
-          icon={PlusV2}
+          icon={Plus}
           size="sm"
           onClick={() => {
             setIsCreateAppModalOpened(true);
