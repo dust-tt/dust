@@ -1,16 +1,27 @@
 import type { SlashCommand } from "@app/components/editor/extensions/skill_builder/SlashCommandDropdown";
+import {
+  getMcpServerViewDescription,
+  getMcpServerViewDisplayName,
+} from "@app/lib/actions/mcp_helper";
+import { getAvatar } from "@app/lib/actions/mcp_icons";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 
 export const SELECT_SKILL_SLASH_COMMAND_ACTION = "select-skill";
+export const SELECT_TOOL_SLASH_COMMAND_ACTION = "select-tool";
 
 export type SlashCommandSkillSuggestion = Pick<
   SkillWithoutInstructionsAndToolsType,
   "icon" | "name" | "requestedSpaceIds" | "sId" | "userFacingDescription"
 >;
 
-export function matchesSlashCommandQuery({
+export type SlashCommandToolSuggestion = MCPServerViewType & {
+  label?: string;
+};
+
+export function matchesSlashCommandCapabilityQuery({
   label,
   query,
 }: {
@@ -24,13 +35,9 @@ export function matchesSlashCommandQuery({
   return subFilter(query, label.toLowerCase());
 }
 
-export function sortSlashCommandMatches<T extends { sortName: string }>({
-  items,
-  normalizedQuery,
-}: {
-  items: T[];
-  normalizedQuery: string;
-}): T[] {
+export function sortSlashCommandCapabilityMatches<
+  T extends { sortName: string },
+>({ items, normalizedQuery }: { items: T[]; normalizedQuery: string }): T[] {
   return items.toSorted((a, b) => {
     if (normalizedQuery.length > 0) {
       return (
@@ -43,29 +50,8 @@ export function sortSlashCommandMatches<T extends { sortName: string }>({
   });
 }
 
-export function filterSkillsForSlashSuggestions({
-  query,
-  skills,
-}: {
-  query: string;
-  skills: SlashCommandSkillSuggestion[];
-}): SlashCommandSkillSuggestion[] {
-  const normalizedQuery = query.trim().toLowerCase();
-
-  return sortSlashCommandMatches({
-    normalizedQuery,
-    items: skills
-      .filter((skill) =>
-        matchesSlashCommandQuery({
-          label: skill.name,
-          query: normalizedQuery,
-        })
-      )
-      .map((skill) => ({
-        skill,
-        sortName: skill.name.toLowerCase(),
-      })),
-  }).map(({ skill }) => skill);
+export function getToolSlashCommandLabel(tool: SlashCommandToolSuggestion) {
+  return tool.label ?? getMcpServerViewDisplayName(tool);
 }
 
 export function getSkillSlashCommandItem(
@@ -85,6 +71,36 @@ export function getSkillSlashCommandItem(
     tooltip: skill.userFacingDescription
       ? {
           description: skill.userFacingDescription,
+        }
+      : undefined,
+  };
+}
+
+export function getToolSlashCommandItem(
+  tool: SlashCommandToolSuggestion,
+  { sectionLabel }: { sectionLabel?: string } = {}
+): SlashCommand {
+  const name = getToolSlashCommandLabel(tool);
+  const description = getMcpServerViewDescription(tool);
+
+  return {
+    action: SELECT_TOOL_SLASH_COMMAND_ACTION,
+    data: {
+      tool: {
+        icon: tool.server.icon,
+        id: tool.sId,
+        name,
+        view: tool,
+      },
+    },
+    description,
+    icon: () => getAvatar(tool.server),
+    id: tool.sId,
+    label: name,
+    sectionLabel,
+    tooltip: description
+      ? {
+          description,
         }
       : undefined,
   };

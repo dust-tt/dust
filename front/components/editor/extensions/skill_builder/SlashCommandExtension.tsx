@@ -1,16 +1,14 @@
 import {
   getSkillSlashCommandItem,
-  matchesSlashCommandQuery,
-  SELECT_SKILL_SLASH_COMMAND_ACTION,
-  type SlashCommandSkillSuggestion,
-  sortSlashCommandMatches,
-} from "@app/components/editor/extensions/shared/SlashCommandSkillItems";
-import {
   getToolSlashCommandItem,
   getToolSlashCommandLabel,
+  matchesSlashCommandCapabilityQuery,
+  SELECT_SKILL_SLASH_COMMAND_ACTION,
   SELECT_TOOL_SLASH_COMMAND_ACTION,
+  type SlashCommandSkillSuggestion,
   type SlashCommandToolSuggestion,
-} from "@app/components/editor/extensions/shared/SlashCommandToolItems";
+  sortSlashCommandCapabilityMatches,
+} from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import type {
   SlashCommand,
   SlashCommandDropdownRef,
@@ -118,13 +116,13 @@ function filterSkillBuilderSlashCommandCapabilities({
 }): SkillBuilderSlashCommandCapability[] {
   const normalizedQuery = query.trim().toLowerCase();
 
-  return sortSlashCommandMatches({
+  return sortSlashCommandCapabilityMatches({
     normalizedQuery,
     items: [
       ...skills
         .filter((skill) => skill.sId !== currentSkillId)
         .filter((skill) =>
-          matchesSlashCommandQuery({
+          matchesSlashCommandCapabilityQuery({
             label: skill.name,
             query: normalizedQuery,
           })
@@ -136,7 +134,7 @@ function filterSkillBuilderSlashCommandCapabilities({
         })),
       ...tools
         .filter((tool) =>
-          matchesSlashCommandQuery({
+          matchesSlashCommandCapabilityQuery({
             label: getToolSlashCommandLabel(tool),
             query: normalizedQuery,
           })
