@@ -88,7 +88,10 @@ describe("GET /api/w/[wId]/members/search", () => {
     expect(data.total).toBe(1);
     expect(data.members).toHaveLength(1);
     expect(data.members[0].sId).toBe(user.sId);
-    expect(data.members[0].workspace).toBeUndefined();
+    // Non-admin users still get workspace info (role), but not sensitive user fields.
+    expect(data.members[0].workspace).toBeDefined();
+    expect(data.members[0].email).toBeUndefined();
+    expect(data.members[0].id).toBeUndefined();
   });
 
   it("returns only light user fields for non-admin users", async () => {
@@ -110,8 +113,10 @@ describe("GET /api/w/[wId]/members/search", () => {
     expect(member.fullName).toBeDefined();
     expect(member).toHaveProperty("image");
 
-    // Admin-only fields are absent.
-    expect(member.workspace).toBeUndefined();
+    // Workspace info (role) is still present for non-admins.
+    expect(member.workspace).toBeDefined();
+
+    // Admin-only user fields are absent.
     expect(member.email).toBeUndefined();
     expect(member.id).toBeUndefined();
     expect(member.provider).toBeUndefined();
@@ -174,9 +179,10 @@ describe("GET /api/w/[wId]/members/search", () => {
     // The caller (builder) + users[0] (admin) + users[1] (builder) = 3.
     expect(data.total).toBe(3);
     expect(data.members).toHaveLength(3);
-    // Non-admin should not see workspace.role.
+    // Non-admin still gets workspace (with role), but not sensitive user fields.
     data.members.forEach((member: any) => {
-      expect(member.workspace).toBeUndefined();
+      expect(member.workspace).toBeDefined();
+      expect(member.email).toBeUndefined();
     });
   });
 
@@ -208,9 +214,9 @@ describe("GET /api/w/[wId]/members/search", () => {
     // 5 created + 1 from createPrivateApiMockRequest = 6 total.
     expect(data.total).toBe(6);
     expect(data.members).toHaveLength(3);
-    // Every member should have light shape only.
+    // Every member should have light shape (no sensitive user fields, but workspace is present).
     data.members.forEach((member: any) => {
-      expect(member.workspace).toBeUndefined();
+      expect(member.workspace).toBeDefined();
       expect(member.email).toBeUndefined();
     });
   });
