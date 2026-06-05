@@ -23,13 +23,12 @@ type SortDirection = "asc" | "desc";
 // Explicit, server-driven sort header for the Member (name) column. Toggling
 // updates the parent sort state directly (no reliance on react-table's
 // manual-sorting toggle), which re-queries the server.
-function MemberSortHeader({
-  direction,
-  onToggle,
-}: {
+interface MemberSortHeaderProps {
   direction: SortDirection;
   onToggle: () => void;
-}) {
+}
+
+function MemberSortHeader({ direction, onToggle }: MemberSortHeaderProps) {
   return (
     <button
       type="button"
@@ -90,7 +89,7 @@ function makeColumns({
         return (
           <div className="flex flex-col">
             <span className="font-medium">{name}</span>
-            {email && (
+            {email && email !== name && (
               <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
                 {email}
               </span>
