@@ -10,7 +10,12 @@ import handler from "./edit-text";
 vi.mock("@app/lib/api/files/client_executable", () => ({
   editClientExecutableFile: vi.fn().mockResolvedValue({
     isErr: () => false,
-    value: { fileResource: {}, replacementCount: 1, warnings: [] },
+    value: {
+      fileResource: {},
+      replacementCount: 1,
+      warnings: [],
+      referencedFilesChangeNotice: null,
+    },
   }),
 }));
 

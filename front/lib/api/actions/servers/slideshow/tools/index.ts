@@ -108,7 +108,12 @@ export function createSlideshowTools(
         return new Err(new MCPError(result.error.message, { tracked: false }));
       }
 
-      const { fileResource, replacementCount, warnings } = result.value;
+      const {
+        fileResource,
+        replacementCount,
+        warnings,
+        referencedFilesChangeNotice,
+      } = result.value;
 
       const pluralS = replacementCount === 1 ? "" : "s";
       let responseText =
@@ -116,6 +121,9 @@ export function createSlideshowTools(
         `${replacementCount} replacement${pluralS}`;
 
       responseText += formatValidationWarningsForLLM(warnings);
+      if (referencedFilesChangeNotice) {
+        responseText += referencedFilesChangeNotice;
+      }
 
       if (_meta?.progressToken) {
         const notification: MCPProgressNotificationType =

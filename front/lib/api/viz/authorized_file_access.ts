@@ -9,10 +9,13 @@ import { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { streamToBuffer } from "@app/lib/utils/streams";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
-import type {
-  AuthorizedFileAccessAllowlist,
-  AuthorizedFileAccessShareError,
-  ComputedAuthorizedFileAccess,
+import {
+  type AuthorizedFileAccessAllowlist,
+  type AuthorizedFileAccessShareError,
+  type AuthorizedFileRef,
+  type ComputedAuthorizedFileAccess,
+  type FileShareScope,
+  getAuthorizedFileRefLabel,
 } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -29,6 +32,63 @@ function unverifiableFrameFileRefsShareError(
     code: "invalid_request_error",
     message: `Frame references files that cannot be verified: ${unverifiableRefs.join(", ")}`,
     unverifiableRefs,
+  };
+}
+
+function authorizedFileRefKey(ref: AuthorizedFileRef): string {
+  return `${ref.kind}:${ref.ref}`;
+}
+
+export function diffAuthorizedFileRefs(
+  previousRefs: readonly AuthorizedFileRef[],
+  nextRefs: readonly AuthorizedFileRef[]
+): { added: AuthorizedFileRef[]; removed: AuthorizedFileRef[] } {
+  const previousKeys = new Set(previousRefs.map(authorizedFileRefKey));
+  const nextKeys = new Set(nextRefs.map(authorizedFileRefKey));
+
+  return {
+    added: nextRefs.filter(
+      (ref) => !previousKeys.has(authorizedFileRefKey(ref))
+    ),
+    removed: previousRefs.filter(
+      (ref) => !nextKeys.has(authorizedFileRefKey(ref))
+    ),
+  };
+}
+
+export function formatPublicShareReferencedFilesChangeNoticeForLLM(
+  added: AuthorizedFileRef[]
+): string | null {
+  if (added.length === 0) {
+    return null;
+  }
+
+  return [
+    "\n\nPublic share notice:",
+    "This frame is shared publicly and now references new files via useFile().",
+    "Let the user know viewers with the public link may gain access to additional source files.",
+    `New references: ${added.map(getAuthorizedFileRefLabel).join(", ")}`,
+  ].join("\n");
+}
+
+export async function fetchShareableFileAllowlistState(
+  frameFile: FileResource
+): Promise<{
+  shareScope: FileShareScope;
+  refs: AuthorizedFileRef[];
+} | null> {
+  const shareableFile = await FileResource.shareableFileModel.findOne({
+    where: { fileId: frameFile.id, workspaceId: frameFile.workspaceId },
+  });
+  if (!shareableFile) {
+    return null;
+  }
+
+  const active = await frameFile.getActiveAuthorizedFileAccessAllowlist();
+
+  return {
+    shareScope: shareableFile.shareScope,
+    refs: active?.refs ?? [],
   };
 }
 

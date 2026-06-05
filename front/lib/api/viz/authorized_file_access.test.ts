@@ -1,7 +1,10 @@
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import {
   assertVizFileAuthorized,
+  diffAuthorizedFileRefs,
   ensureAuthorizedFileAccessForShare,
+  fetchShareableFileAllowlistState,
+  formatPublicShareReferencedFilesChangeNoticeForLLM,
   readAllowlistedScopedVizFile,
   reverifyAuthorAccess,
 } from "@app/lib/api/viz/authorized_file_access";
@@ -857,5 +860,109 @@ describe("reverifyAuthorAccess", () => {
         workspace
       )
     ).toBe(false);
+  });
+});
+
+describe("public share referenced files change notice", () => {
+  it("diffAuthorizedFileRefs reports added and removed refs", () => {
+    const previous = [
+      { kind: "file_id" as const, ref: "fil_OLD0000001", fileName: "old.txt" },
+    ];
+    const next = [
+      { kind: "file_id" as const, ref: "fil_NEW0000001", fileName: "new.txt" },
+      {
+        kind: "canonical_path" as const,
+        ref: "conversation-conv_123/report.csv",
+        fileName: "report.csv",
+      },
+    ];
+
+    expect(diffAuthorizedFileRefs(previous, next)).toEqual({
+      added: [
+        { kind: "file_id", ref: "fil_NEW0000001", fileName: "new.txt" },
+        {
+          kind: "canonical_path",
+          ref: "conversation-conv_123/report.csv",
+          fileName: "report.csv",
+        },
+      ],
+      removed: [
+        { kind: "file_id", ref: "fil_OLD0000001", fileName: "old.txt" },
+      ],
+    });
+  });
+
+  it("formats a notice when new references are added", () => {
+    const notice = formatPublicShareReferencedFilesChangeNoticeForLLM([
+      { kind: "file_id", ref: "fil_NEW0000001", fileName: "data.txt" },
+    ]);
+
+    expect(notice).toContain("Public share notice");
+    expect(notice).toContain("Let the user know");
+    expect(notice).toContain("New references: data.txt");
+  });
+
+  it("returns null when references are only removed", () => {
+    expect(formatPublicShareReferencedFilesChangeNoticeForLLM([])).toBeNull();
+  });
+
+  it("fetchShareableFileAllowlistState returns the active allowlist refs", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+    });
+
+    const dataFile = await FileFactory.create(auth, null, {
+      contentType: "text/plain",
+      fileName: "data.txt",
+      fileSize: 10,
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: conversation.sId },
+    });
+
+    const frameFile = await FileFactory.create(auth, null, {
+      contentType: frameContentType,
+      fileName: "Frame.tsx",
+      fileSize: 100,
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: conversation.sId },
+    });
+
+    await frameFile.setShareScope(auth, "public");
+
+    const shareableFile = await FileResource.shareableFileModel.findOne({
+      where: { fileId: frameFile.id, workspaceId: frameFile.workspaceId },
+    });
+    expect(shareableFile).not.toBeNull();
+    await AuthorizedFileAccessModel.create({
+      workspaceId: frameFile.workspaceId,
+      shareableFileId: shareableFile!.id,
+      kind: "file_id",
+      ref: dataFile.sId,
+      fileName: "data.txt",
+      legacyPath: null,
+      shareScope: shareableFile!.shareScope,
+      computedByUserId: auth.user()!.sId,
+      frameContentHash: "hash",
+      allowedAt: new Date(),
+      revokedAt: null,
+    });
+
+    const state = await fetchShareableFileAllowlistState(frameFile);
+
+    expect(state).toEqual({
+      shareScope: "public",
+      refs: [
+        {
+          kind: "file_id",
+          ref: dataFile.sId,
+          fileName: "data.txt",
+        },
+      ],
+    });
   });
 });
