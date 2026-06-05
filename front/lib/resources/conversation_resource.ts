@@ -82,6 +82,7 @@ import type {
   WhereOptions,
 } from "sequelize";
 import { col, fn, literal, Op, QueryTypes, Sequelize, where } from "sequelize";
+import { z } from "zod";
 
 export type FetchConversationOptions = {
   includeDeleted?: boolean;
@@ -698,16 +699,18 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         conversationId: this.id,
-        agentMessageId: { [Op.ne]: null },
       },
       raw: true,
     });
 
     // Aggregate results come back as strings from Postgres; parse defensively.
-    const aggregate = row as unknown as {
-      total: string | number | null;
-      billableCount: string | number | null;
-    } | null;
+    const AggregateSchema = z
+      .object({
+        total: z.union([z.string(), z.number()]).nullable(),
+        billableCount: z.union([z.string(), z.number()]).nullable(),
+      })
+      .nullable();
+    const aggregate = AggregateSchema.parse(row);
 
     if (!aggregate || Number(aggregate.billableCount ?? 0) === 0) {
       return null;
