@@ -1,16 +1,12 @@
 import config from "@app/lib/api/config";
+import type { PokeGetDocument } from "@app/lib/api/poke/data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
-import type { CoreAPIDocument } from "@app/types/core/data_source";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export type PokeGetDocument = {
-  document: CoreAPIDocument;
-};
 
 const QuerySchema = z.object({
   documentId: z.string(),

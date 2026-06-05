@@ -1,13 +1,9 @@
+import type { PokeListDataSources } from "@app/lib/api/poke/data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import type { DataSourceType } from "@app/types/data_source";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
 import dsId from "./[dsId]";
-
-export type PokeListDataSources = {
-  data_sources: DataSourceType[];
-};
 
 // Mounted at /api/poke/workspaces/:wId/data_sources.
 const app = pokeApp();

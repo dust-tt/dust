@@ -1,13 +1,9 @@
+import type { PokeListSpaces } from "@app/lib/api/poke/spaces";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import type { SpaceType } from "@app/types/space";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
 import spaceId from "./[spaceId]";
-
-export type PokeListSpaces = {
-  spaces: SpaceType[];
-};
 
 // Mounted at /api/poke/workspaces/:wId/spaces.
 const app = pokeApp();
