@@ -1,4 +1,4 @@
-import { type SearchMemberWithWorkspaceType } from "@app/components/members/MemberSelectionTable";
+import type { SearchMemberWithWorkspaceType } from "@app/components/members/MemberSelectionTable";
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
 import assert from "@app/lib/utils/assert";
 import type { SearchMembersAdminResponseBody } from "@app/pages/api/w/[wId]/members/search";
