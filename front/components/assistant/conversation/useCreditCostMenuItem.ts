@@ -34,7 +34,6 @@ export function useCreditCostMenuItem({
     icon: ActionCreditCoinsIcon,
     endComponent: formatCredits(credits),
     tooltip,
-    separatorAfter: true,
     className:
       "cursor-default font-normal text-muted-foreground hover:bg-transparent focus:bg-transparent dark:text-muted-foreground-night dark:hover:bg-transparent dark:focus:bg-transparent",
     onSelect: (e) => e.preventDefault(),

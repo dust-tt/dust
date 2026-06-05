@@ -99,7 +99,12 @@ import {
   ConversationMessageContent,
   ConversationMessageTitle,
   DotsHorizontal,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
   type DropdownMenuItemProps,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
   GitBranch01,
   InfoCircle,
   InteractiveImageGrid,
@@ -857,7 +862,7 @@ export function AgentMessage({
 
   // Add copy button or split button with dropdown (hover only)
   if (shouldShowMessageActions) {
-    let dropdownItems: DropdownMenuItemProps[] = [
+    const dropdownItems: DropdownMenuItemProps[] = [
       {
         label: "Copy message link",
         icon: Link01,
@@ -898,10 +903,6 @@ export function AgentMessage({
       });
     }
 
-    if (creditCostItem) {
-      dropdownItems = [creditCostItem, ...dropdownItems];
-    }
-
     hoverButtons.push(
       <ButtonGroup key="split-button-group">
         <Button
@@ -912,19 +913,27 @@ export function AgentMessage({
           icon={isCopied ? ClipboardCheck : Clipboard}
           className="text-muted-foreground"
         />
-        <ButtonGroupDropdown
-          trigger={
+        <DropdownMenu onOpenChange={setIsMenuOpen}>
+          <DropdownMenuTrigger asChild>
             <Button
               variant="outline"
               size="xs"
               icon={DotsHorizontal}
               className="text-muted-foreground"
             />
-          }
-          items={dropdownItems}
-          align="end"
-          onOpenChange={setIsMenuOpen}
-        />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {creditCostItem && (
+              <>
+                <DropdownMenuItem {...creditCostItem} />
+                <DropdownMenuSeparator />
+              </>
+            )}
+            {dropdownItems.map((item, index) => (
+              <DropdownMenuItem key={index} {...item} />
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </ButtonGroup>
     );
   }
