@@ -33,7 +33,6 @@ import {
   ChevronDown,
   ChromeLogo,
   cn,
-  DocumentIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -46,7 +45,7 @@ import {
   Eye,
   EyeOff,
   FirefoxLogo,
-  HeartIcon,
+  Heart,
   Icon,
   Lightbulb04,
   LogOut01,
@@ -281,7 +280,7 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
           )}
 
           <DropdownMenuSub>
-            <DropdownMenuSubTrigger label="Help" icon={HeartIcon} />
+            <DropdownMenuSubTrigger label="Help" icon={Heart} />
             <DropdownMenuPortal>
               <DropdownMenuSubContent>
                 <DropdownMenuLabel label="Learn about Dust" />
@@ -301,7 +300,7 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
                 />
                 <DropdownMenuItem
                   label="Guides & Documentation"
-                  icon={DocumentIcon}
+                  icon={BookOpen01}
                   href="https://docs.dust.tt"
                   target="_blank"
                 />
