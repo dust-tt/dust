@@ -1,4 +1,3 @@
-import { P } from "@app/components/home/ContentComponents";
 import { getIcon } from "@app/components/resources/resources_icons";
 import {
   ArrowUp,
@@ -28,7 +27,6 @@ const TIMING = {
   toolCallStaggerSeconds: 0.25,
   responseIntroExtraSeconds: 0.45,
   sectionStaggerSeconds: 0.7,
-  followUpExtraSeconds: 0.4,
   bubbleDurationSeconds: 0.45,
 };
 
@@ -55,11 +53,6 @@ export function IntegrationChatMockupSection({
   const sectionBaseDelaySeconds =
     responseIntroDelaySeconds + TIMING.bubbleDurationSeconds + 0.1;
 
-  const followUpDelaySeconds =
-    sectionBaseDelaySeconds +
-    storyline.responseSections.length * TIMING.sectionStaggerSeconds +
-    TIMING.followUpExtraSeconds;
-
   return (
     <div className="bg-muted/40 py-12 md:py-16">
       <div className="mx-auto max-w-5xl px-4">
@@ -68,7 +61,7 @@ export function IntegrationChatMockupSection({
             the right, and a persistent input bar at the bottom of the chat
             area. It reads as a screenshot of the real product. */}
         <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
-          <TopBar integrationName={integration.name} />
+          <TopBar />
 
           <div className="flex">
             <SidebarMock integrationName={integration.name} />
@@ -108,16 +101,6 @@ export function IntegrationChatMockupSection({
                     }
                     prefersReducedMotion={!!prefersReducedMotion}
                   />
-
-                  {storyline.followUpPrompt && (
-                    <FollowUpSuggestion
-                      text={storyline.followUpPrompt}
-                      delaySeconds={
-                        prefersReducedMotion ? 0 : followUpDelaySeconds
-                      }
-                      prefersReducedMotion={!!prefersReducedMotion}
-                    />
-                  )}
                 </div>
               </div>
 
@@ -128,31 +111,17 @@ export function IntegrationChatMockupSection({
             </main>
           </div>
         </div>
-
-        <P
-          size="xs"
-          className="mt-4 text-center text-xs text-muted-foreground/70"
-        >
-          Example agent output — not a live session.
-        </P>
       </div>
     </div>
   );
 }
 
-interface TopBarProps {
-  integrationName: string;
-}
-
-function TopBar({ integrationName }: TopBarProps) {
+function TopBar() {
   return (
     <div className="flex items-center gap-3 border-b border-border bg-muted/20 px-4 py-2.5">
       <DustLogoSquare className="h-5 w-5 shrink-0" />
       <span className="text-sm font-medium text-foreground">
         Dust · My workspace
-      </span>
-      <span className="ml-auto truncate text-xs text-muted-foreground">
-        {integrationName} recap
       </span>
     </div>
   );
@@ -164,29 +133,12 @@ interface SidebarMockProps {
 
 function SidebarMock({ integrationName }: SidebarMockProps) {
   // Hidden on mobile to keep the chat area wide. Matches the real Dust app
-  // sidebar layout: Work/Spaces tabs at the top, then a static conversation
-  // list. No "+ New conversation" CTA — the real product surfaces "+ New"
-  // inline next to the search box, which we omit here for visual density.
+  // conversation list layout. No top tabs or "+ New conversation" CTA — those
+  // would only read right with the exact app icons, which we don't replicate
+  // pixel-perfectly here.
   return (
     <aside className="hidden w-56 shrink-0 flex-col border-r border-border bg-muted/10 p-3 md:flex">
-      <div className="flex items-center gap-2">
-        <span className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium text-foreground">
-          <span
-            aria-hidden
-            className="inline-block h-3.5 w-3.5 rounded bg-foreground/80"
-          />
-          Work
-        </span>
-        <span className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-muted-foreground">
-          <span
-            aria-hidden
-            className="inline-block h-3.5 w-3.5 rounded border border-border"
-          />
-          Spaces
-        </span>
-      </div>
-
-      <div className="mt-4 space-y-0.5">
+      <div className="space-y-0.5">
         <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
           Recent
         </div>
@@ -402,29 +354,6 @@ function AgentResponseBubble({
   );
 }
 
-interface FollowUpSuggestionProps {
-  text: string;
-  delaySeconds: number;
-  prefersReducedMotion: boolean;
-}
-
-function FollowUpSuggestion({
-  text,
-  delaySeconds,
-  prefersReducedMotion,
-}: FollowUpSuggestionProps) {
-  return (
-    <motion.div
-      initial={prefersReducedMotion ? false : { opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: delaySeconds }}
-      className="mt-3 ml-1 text-sm italic text-muted-foreground"
-    >
-      {text}
-    </motion.div>
-  );
-}
-
 // Persistent input bar at the bottom of the chat area. Matches the real Dust
 // InputBar: agent picker chip on the left (DustLogoSquare avatar + agent
 // name), placeholder text, and a blue circular send button on the right.
@@ -444,7 +373,7 @@ function PersistentInputBar() {
             <DustLogoSquare className="h-3.5 w-3.5 shrink-0" />
             dust
           </span>
-          <span className="ml-auto inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-500 text-white">
+          <span className="ml-auto inline-flex h-7 w-8 shrink-0 items-center justify-center rounded-md bg-blue-500 text-white">
             <Icon visual={ArrowUp} size="xs" />
           </span>
         </div>
