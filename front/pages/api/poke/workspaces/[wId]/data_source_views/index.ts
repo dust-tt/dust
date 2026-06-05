@@ -2,21 +2,12 @@
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { listDataSourceViewsWithUsage } from "@app/lib/api/data_source_view";
+import type { PokeListDataSourceViews } from "@app/lib/api/poke/data_source_views";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
-import type { AgentsUsageType } from "@app/types/data_source";
-import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type DataSourceViewWithUsage = DataSourceViewType & {
-  usage: AgentsUsageType | null;
-};
-
-export type PokeListDataSourceViews = {
-  data_source_views: DataSourceViewWithUsage[];
-};
 
 async function handler(
   req: NextApiRequest,

@@ -1,11 +1,11 @@
 import type { CursorPaginationParams } from "@app/lib/api/pagination";
-import { createUseInfiniteContentNodes } from "@app/lib/swr/data_source_views";
-import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
   DataSourceViewWithUsage,
+  PokeGetDataSourceViewContentNodes,
   PokeListDataSourceViews,
-} from "@app/pages/api/poke/workspaces/[wId]/data_source_views";
-import type { PokeGetDataSourceViewContentNodes } from "@app/pages/api/poke/workspaces/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/content-nodes";
+} from "@app/lib/api/poke/data_source_views";
+import { createUseInfiniteContentNodes } from "@app/lib/swr/data_source_views";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
 import type { DataSourceViewType } from "@app/types/data_source_view";

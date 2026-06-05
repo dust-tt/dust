@@ -1,6 +1,7 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
+import type { PokeGetSpaceDetails } from "@app/lib/api/poke/spaces";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -9,16 +10,8 @@ import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_res
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { PokeSpaceType } from "@app/types/poke";
-import type { PodMetadataType } from "@app/types/project_metadata";
 import type { UserTypeWithWorkspaces } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type PokeGetSpaceDetails = {
-  members: Record<string, UserTypeWithWorkspaces[]>;
-  metadata: PodMetadataType | null;
-  space: PokeSpaceType;
-};
 
 async function handler(
   req: NextApiRequest,

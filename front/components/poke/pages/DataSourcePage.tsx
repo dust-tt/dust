@@ -7,13 +7,13 @@ import {
   PokeAlertDescription,
 } from "@app/components/poke/shadcn/ui/alert";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import type { FeaturesType } from "@app/lib/api/poke/data_sources";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter, useRequiredPathParam } from "@app/lib/platform";
 import { decodeSqids, timeAgoFrom } from "@app/lib/utils";
-import type { FeaturesType } from "@app/pages/api/poke/workspaces/[wId]/data_sources/[dsId]/details";
 import { usePokeDocuments, usePokeTables } from "@app/poke/swr";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeDataSourceDetails } from "@app/poke/swr/data_source_details";

@@ -2,6 +2,10 @@
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
+import type {
+  FeaturesType,
+  PokeGetDataSourceDetails,
+} from "@app/lib/api/poke/data_sources";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -11,41 +15,11 @@ import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { InternalConnectorType } from "@app/types/connectors/connectors_api";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
-import type { SlackAutoReadPattern } from "@app/types/connectors/slack";
 import { isSlackAutoReadPatterns } from "@app/types/connectors/slack";
 import { CoreAPI } from "@app/types/core/core_api";
-import type { CoreAPIDataSource } from "@app/types/core/data_source";
-import type { DataSourceType } from "@app/types/data_source";
-import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import type { NextApiRequest, NextApiResponse } from "next";
-export type FeaturesType = {
-  slackBotEnabled: boolean;
-  googleDrivePdfEnabled: boolean;
-  googleDriveLargeFilesEnabled: boolean;
-  microsoftPdfEnabled: boolean;
-  microsoftLargeFilesEnabled: boolean;
-  googleDriveCsvEnabled: boolean;
-  microsoftCsvEnabled: boolean;
-  githubCodeSyncEnabled: boolean;
-  githubUseProxyEnabled: boolean;
-  autoReadChannelPatterns: SlackAutoReadPattern[];
-};
-
-export type PokeGetDataSourceDetails = {
-  dataSource: DataSourceType;
-  dataSourceViews: DataSourceViewType[];
-  coreDataSource: CoreAPIDataSource;
-  connector: InternalConnectorType | null;
-  features: FeaturesType;
-  temporalWorkspace: string;
-  temporalRunningWorkflows: {
-    workflowId: string;
-    runId: string;
-    status: string;
-  }[];
-};
 
 async function handler(
   req: NextApiRequest,
