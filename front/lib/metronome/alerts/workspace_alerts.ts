@@ -66,10 +66,7 @@ async function fetchWorkspaceMetronomeAlerts({
       ][]
     ).map(
       ([slot, key]) =>
-        [
-          key,
-          (ref: MetronomeAlertRef) => (alerts.default[slot] = ref),
-        ] as const
+        [key, (ref: MetronomeAlertRef) => (alerts.default[slot] = ref)] as const
     ),
   ]);
 
