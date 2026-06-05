@@ -1,43 +1,19 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import type {
+  DeletePodTaskResponseBody,
+  PatchPodTaskResponseBody,
+} from "@app/lib/api/projects/tasks";
+import { PatchProjectTaskBodySchema } from "@app/lib/api/projects/tasks";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import { Authenticator } from "@app/lib/auth";
 import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { POD_TASK_STATUSES, type PodTaskType } from "@app/types/project_task";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
-
-const PatchProjectTaskBodySchema = z
-  .object({
-    text: z
-      .string()
-      .min(1, "Text cannot be empty.")
-      .max(256, "Text must be at most 256 characters.")
-      .optional(),
-    status: z.enum(POD_TASK_STATUSES).optional(),
-    assigneeUserId: z.union([z.string().min(1), z.null()]).optional(),
-  })
-  .refine(
-    (data) =>
-      data.text !== undefined ||
-      data.status !== undefined ||
-      data.assigneeUserId !== undefined,
-    {
-      message:
-        "At least one of text, status, or assigneeUserId must be provided.",
-    }
-  );
-
-export interface PatchPodTaskResponseBody {
-  task: PodTaskType;
-}
-
-export type DeletePodTaskResponseBody = never;
 
 async function handler(
   req: NextApiRequest,

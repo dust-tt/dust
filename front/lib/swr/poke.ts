@@ -1,4 +1,5 @@
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { GetDataSourcePermissionsResponseBody } from "@app/lib/api/data_sources/managed_permissions";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
@@ -12,7 +13,6 @@ import type { GetRegionResponseType } from "@app/pages/api/poke/region";
 import type { PostPokeStripeCustomerCurrencyResponseBody } from "@app/pages/api/poke/stripe/customers/currency";
 import type { GetPokeWorkspaceAuthContextResponseType } from "@app/pages/api/poke/workspaces/[wId]/auth-context";
 import type { GetPokeFeaturesResponseBody } from "@app/pages/api/poke/workspaces/[wId]/features";
-import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/permissions";
 import type { ConnectorPermission } from "@app/types/connectors/connectors_api";
 import type { DataSourceType } from "@app/types/data_source";
 import {

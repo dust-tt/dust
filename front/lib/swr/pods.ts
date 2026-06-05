@@ -6,6 +6,30 @@ import {
 import { usePodConversationsSummary } from "@app/hooks/conversations";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { useSendNotification } from "@app/hooks/useNotification";
+import type {
+  FileSystemEntry,
+  GetSpaceFilesResponseBody,
+} from "@app/lib/api/file_system/types";
+import type {
+  GetProjectContextResponseBody,
+  PostProjectContextContentNodeResponseBody as PostPodContextContentNodeResponseBody,
+} from "@app/lib/api/projects/context";
+import type {
+  GetPodMetadataResponseBody,
+  PatchPodMetadataResponseBody,
+} from "@app/lib/api/projects/metadata";
+import type {
+  GetUserPodNotificationPreferenceResponseBody,
+  PatchUserPodNotificationPreferenceResponseBody,
+  PostUserPodStarResponseBody,
+} from "@app/lib/api/projects/preferences";
+import type {
+  GetPodTasksResponseBody,
+  PatchPodTaskResponseBody,
+  PostPodTaskResponseBody,
+  PostStartPodTaskResponseBody,
+} from "@app/lib/api/projects/tasks";
+import type { CheckNameResponseBody } from "@app/lib/api/spaces";
 import { clientFetch } from "@app/lib/egress/client";
 import { flattenPodTasksWithStableAssigneeOrder } from "@app/lib/project_task/display_order";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
@@ -17,30 +41,6 @@ import {
 } from "@app/lib/swr/swr";
 import type { PostSeedInitialPodTasksResponseBody } from "@app/pages/api/w/[wId]/pods/[podId]/tasks/seed";
 import type { GetWorkspacePodTaskResponseBody } from "@app/pages/api/w/[wId]/project_tasks/[taskSId]/index";
-import type {
-  FileSystemEntry,
-  GetSpaceFilesResponseBody,
-} from "@app/pages/api/w/[wId]/spaces/[spaceId]/files";
-import type {
-  GetProjectContextResponseBody,
-  PostProjectContextContentNodeResponseBody as PostPodContextContentNodeResponseBody,
-} from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_context";
-import type {
-  GetPodMetadataResponseBody,
-  PatchPodMetadataResponseBody,
-} from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_metadata";
-import type {
-  GetUserPodNotificationPreferenceResponseBody,
-  PatchUserPodNotificationPreferenceResponseBody,
-} from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_notification_preferences";
-import type { PatchPodTaskResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_tasks/[taskId]/index";
-import type { PostStartPodTaskResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_tasks/[taskId]/start";
-import type {
-  GetPodTasksResponseBody,
-  PostPodTaskResponseBody,
-} from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_tasks/index";
-import type { PostUserPodStarResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/star";
-import type { CheckNameResponseBody } from "@app/pages/api/w/[wId]/spaces/check-name";
 import type { ContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
 import type { PatchPodMetadataBodyType } from "@app/types/api/internal/spaces";
 import type {

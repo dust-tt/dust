@@ -13,6 +13,10 @@ import type {
   PostTriggersRequestBody,
 } from "@app/lib/api/assistant/configuration/triggers";
 import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
+import type {
+  GetContentNodesOrChildrenRequestBodyType,
+  GetDataSourceViewContentNodes,
+} from "@app/lib/api/data_source_view";
 import { clientFetch } from "@app/lib/egress/client";
 import type { AdditionalConfigurationType } from "@app/lib/models/agent/actions/mcp";
 import type { FetcherWithBodyFn } from "@app/lib/swr/fetcher";
@@ -23,10 +27,6 @@ import {
 } from "@app/lib/tracking";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import datadogLogger from "@app/logger/datadogLogger";
-import type {
-  GetContentNodesOrChildrenRequestBodyType,
-  GetDataSourceViewContentNodes,
-} from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/content-nodes";
 import type {
   DataSourcesConfigurationsCodecType,
   PostOrPatchAgentConfigurationRequestBody,

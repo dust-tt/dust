@@ -1,7 +1,10 @@
 import config from "@app/lib/api/config";
+import type {
+  GetDataSourceConfigurationResponseBody,
+  PatchDataSourceConfigurationResponseBody,
+} from "@app/lib/api/data_sources";
 import { isWebsite } from "@app/lib/data_sources";
 import logger from "@app/logger/logger";
-import type { ConnectorConfiguration } from "@app/types/connectors/configuration";
 import {
   ConnectorsAPI,
   UpdateConnectorConfigurationTypeSchema,
@@ -13,13 +16,6 @@ import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { withDataSource } from "@front-api/middlewares/with_data_source";
 import { withSpace } from "@front-api/middlewares/with_space";
-
-export type GetDataSourceConfigurationResponseBody = {
-  configuration: ConnectorConfiguration;
-};
-
-export type PatchDataSourceConfigurationResponseBody =
-  GetDataSourceConfigurationResponseBody;
 
 // Mounted at /api/w/:wId/spaces/:spaceId/data_sources/:dsId/configuration.
 // Only Slack and Webcrawler connectors have configurations; Slack is set from

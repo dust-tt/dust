@@ -1,11 +1,11 @@
 import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
 import { usePinPodBanner } from "@app/hooks/usePinPodBanner";
 import { useScopedPodUiPreferences } from "@app/hooks/useScopedUIPreferences";
+import type { RichSpaceType } from "@app/lib/api/spaces";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useFileContent } from "@app/lib/swr/files";
 import { usePodFiles } from "@app/lib/swr/pods";
 import logger from "@app/logger/logger";
-import type { RichSpaceType } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,

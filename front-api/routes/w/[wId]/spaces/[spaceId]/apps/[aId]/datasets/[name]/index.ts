@@ -1,11 +1,11 @@
 import config from "@app/lib/api/config";
+import type { GetDatasetResponseBody } from "@app/lib/api/datasets";
 import { getDatasetHash } from "@app/lib/api/datasets";
 import { checkDatasetData } from "@app/lib/datasets";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DatasetModel } from "@app/lib/resources/storage/models/apps";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
-import type { DatasetType } from "@app/types/dataset";
 import type { APIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -16,8 +16,6 @@ import { withSpace } from "@front-api/middlewares/with_space";
 import type { Context, TypedResponse } from "hono";
 
 import { PostDatasetRequestBodySchema } from "../schemas";
-
-export type GetDatasetResponseBody = { dataset: DatasetType };
 
 // Mounted under /api/w/:wId/spaces/:spaceId/apps/:aId/datasets/:name.
 const app = workspaceApp();

@@ -1,22 +1,15 @@
 import config from "@app/lib/api/config";
 import { getContentNodeFromCoreNode } from "@app/lib/api/content_nodes";
+import type { SearchTablesResponseBody } from "@app/lib/api/data_source_view";
 import { getCursorPaginationParams } from "@app/lib/api/pagination";
 import logger from "@app/logger/logger";
-import type { SearchWarningCode } from "@app/types/core/core_api";
 import { CoreAPI } from "@app/types/core/core_api";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/utils";
-import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { withDataSourceView } from "@front-api/middlewares/with_data_source_view";
 import { withSpace } from "@front-api/middlewares/with_space";
-
-export type SearchTablesResponseBody = {
-  tables: DataSourceViewContentNode[];
-  nextPageCursor: string | null;
-  warningCode: SearchWarningCode | null;
-};
 
 // Mounted under
 // /api/w/:wId/spaces/:spaceId/data_source_views/:dsvId/tables/search.

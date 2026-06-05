@@ -4,7 +4,9 @@ import { AppResource } from "@app/lib/resources/app_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
+import type { AppType, SpecificationType } from "@app/types/app";
 import { CoreAPI } from "@app/types/core/core_api";
+import type { RunType } from "@app/types/run";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -12,6 +14,44 @@ import type { LightWorkspaceType } from "@app/types/user";
 type AppDeploymentCheck = {
   appId: string;
   appHash: string;
+};
+
+export type GetAppsResponseBody = {
+  apps: AppType[];
+};
+
+export type PostAppResponseBody = {
+  app: AppType;
+};
+
+export type GetOrPostAppResponseBody = {
+  app: AppType;
+};
+
+export type GetRunsResponseBody = {
+  runs: RunType[];
+  total: number;
+};
+
+export type PostRunsResponseBody = {
+  run: RunType;
+};
+
+export type GetRunResponseBody = {
+  run: RunType;
+  spec: SpecificationType;
+};
+
+export type GetRunBlockResponseBody = {
+  run: RunType | null;
+};
+
+export type PostRunCancelResponseBody = {
+  success: boolean;
+};
+
+export type GetRunStatusResponseBody = {
+  run: RunType | null;
 };
 
 export async function softDeleteApp(

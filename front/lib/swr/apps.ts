@@ -1,16 +1,20 @@
+import type {
+  GetAppsResponseBody,
+  GetOrPostAppResponseBody,
+} from "@app/lib/api/apps";
+import type {
+  GetRunBlockResponseBody,
+  GetRunResponseBody,
+  GetRunStatusResponseBody,
+  GetRunsResponseBody,
+  PostRunCancelResponseBody,
+} from "@app/lib/api/run";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import logger from "@app/logger/logger";
 import type { GetDustAppSecretsResponseBody } from "@app/pages/api/w/[wId]/dust_app_secrets";
 import type { GetKeysResponseBody } from "@app/pages/api/w/[wId]/keys";
 import type { GetProvidersResponseBody } from "@app/pages/api/w/[wId]/providers";
-import type { GetAppsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps";
-import type { GetOrPostAppResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]";
-import type { GetRunsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/runs";
-import type { GetRunResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/runs/[runId]";
-import type { GetRunBlockResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/runs/[runId]/blocks/[type]/[name]";
-import type { PostRunCancelResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/runs/[runId]/cancel";
-import type { GetRunStatusResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/runs/[runId]/status";
 import type { AppType } from "@app/types/app";
 import type { RunRunType } from "@app/types/run";
 import { normalizeError } from "@app/types/shared/utils/error_utils";

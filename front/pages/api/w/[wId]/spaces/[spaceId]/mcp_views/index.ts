@@ -3,7 +3,6 @@
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { sendMCPGlobalSharingReconfigurationEmail } from "@app/lib/api/email";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {
   oauthProviderRequiresWorkspaceConnectionForPersonalAuth,
   withWorkspaceConnectionRequirement,
@@ -12,7 +11,14 @@ import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import { getActiveAdminEmails } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
-import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import type {
+  GetMCPServerViewsResponseBody,
+  PostMCPServerViewResponseBody,
+} from "@app/lib/resources/mcp_server_view_resource";
+import {
+  MCPServerViewResource,
+  PostMCPServerViewQueryParamsSchema,
+} from "@app/lib/resources/mcp_server_view_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -25,27 +31,11 @@ import type { SpaceKind } from "@app/types/space";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
-export type GetMCPServerViewsResponseBody = {
-  success: boolean;
-  serverViews: MCPServerViewType[];
-};
-
-export type PostMCPServerViewResponseBody = {
-  success: boolean;
-  serverView: MCPServerViewType;
-};
-
 const GetQueryParamsSchema = z.object({
   availability: z
     .enum(["manual", "auto", "auto_hidden_builder", "all"])
     .optional(),
 });
-
-const PostQueryParamsSchema = z.object({
-  mcpServerId: z.string(),
-});
-
-export type PostMCPServersQueryParams = z.infer<typeof PostQueryParamsSchema>;
 
 async function notifyWorkspaceAdminsAboutAffectedAgents(
   auth: Authenticator,
@@ -206,7 +196,7 @@ async function handler(
       });
     }
     case "POST": {
-      const r = PostQueryParamsSchema.safeParse(req.body);
+      const r = PostMCPServerViewQueryParamsSchema.safeParse(req.body);
 
       if (!r.success) {
         return apiError(req, res, {

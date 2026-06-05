@@ -3,6 +3,8 @@
  * @ignoreswagger
  */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import type { PostUserPodStarResponseBody } from "@app/lib/api/projects/preferences";
+import { PostUserPodStarBodySchema } from "@app/lib/api/projects/preferences";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
@@ -10,19 +12,7 @@ import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
 import { fromError } from "zod-validation-error";
-
-export type PostUserPodStarResponseBody = {
-  sId: string;
-  spaceId: string;
-  userId: string;
-  isStarred: boolean;
-};
-
-const PostUserPodStarBodySchema = z.object({
-  starred: z.boolean(),
-});
 
 async function handler(
   req: NextApiRequest,

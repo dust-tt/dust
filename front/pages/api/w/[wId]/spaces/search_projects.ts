@@ -2,21 +2,17 @@
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getPaginationParams } from "@app/lib/api/pagination";
-import { enrichProjectsWithMetadata } from "@app/lib/api/projects/list";
+import {
+  enrichProjectsWithMetadata,
+  type SearchProjectsResponseBody,
+} from "@app/lib/api/projects/list";
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
-import type { PodType } from "@app/types/space";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type SearchProjectsResponseBody = {
-  spaces: Array<PodType & { isMember: boolean }>;
-  hasMore: boolean;
-  lastValue: string | null;
-};
 
 async function handler(
   req: NextApiRequest,

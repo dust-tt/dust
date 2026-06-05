@@ -8,6 +8,7 @@ import {
 } from "@app/lib/actions/mcp_helper";
 import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
+  GetMCPServerViewsNotActivatedResponseBody,
   MCPServerType,
   MCPServerTypeWithViews,
   MCPServerViewType,
@@ -18,6 +19,7 @@ import type {
   MCPServerConnectionConnectionType,
   MCPServerConnectionType,
 } from "@app/lib/resources/mcp_server_connection_resource";
+import type { GetMCPServerViewsResponseBody } from "@app/lib/resources/mcp_server_view_resource";
 import { useSpaceInfo, useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
@@ -46,8 +48,6 @@ import type {
   PatchMCPServerViewBody,
   PatchMCPServerViewResponseBody,
 } from "@app/pages/api/w/[wId]/mcp/views/[viewId]";
-import type { GetMCPServerViewsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/mcp_views";
-import type { GetMCPServerViewsNotActivatedResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/mcp_views/not_activated";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isAPIErrorResponse } from "@app/types/error";
 import { setupOAuthConnection } from "@app/types/oauth/client/setup";

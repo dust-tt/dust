@@ -1,20 +1,17 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import type { ListTablesResponseBody } from "@app/lib/api/data_source_view";
 import { getFlattenedContentNodesOfViewTypeForDataSourceView } from "@app/lib/api/data_source_view";
 import { getCursorPaginationParams } from "@app/lib/api/pagination";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-export type ListTablesResponseBody = {
-  tables: DataSourceViewContentNode[];
-  nextPageCursor: string | null;
-};
+export type { ListTablesResponseBody };
 
 async function handler(
   req: NextApiRequest,

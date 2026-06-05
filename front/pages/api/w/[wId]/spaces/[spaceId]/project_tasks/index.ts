@@ -1,6 +1,11 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import type {
+  GetPodTasksResponseBody,
+  PostPodTaskResponseBody,
+} from "@app/lib/api/projects/tasks";
+import { PostPodTaskBodySchema } from "@app/lib/api/projects/tasks";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -21,7 +26,6 @@ import {
 import type { ModelId } from "@app/types/shared/model_id";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
 
 function parseSingleQueryValue(
   value: NextApiRequest["query"][string] | undefined
@@ -52,26 +56,6 @@ function parseProjectTasksPeopleMode(
     return "mine";
   }
   return "all";
-}
-
-export interface GetPodTasksResponseBody {
-  tasks: PodTaskType[];
-  lastReadAt: string | null;
-  viewerUserId: string | null;
-}
-
-const PostPodTaskBodySchema = z.object({
-  text: z
-    .string()
-    .trim()
-    .min(1, "Text is required.")
-    .max(256, "Text must be at most 256 characters."),
-  /** Omit to assign to the current user; pass `null` for unassigned (or the sole assignable member if the pod has exactly one). */
-  assigneeUserId: z.union([z.string().min(1), z.null()]).optional(),
-});
-
-export interface PostPodTaskResponseBody {
-  task: PodTaskType;
 }
 
 async function handler(

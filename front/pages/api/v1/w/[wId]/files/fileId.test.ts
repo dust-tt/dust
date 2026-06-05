@@ -45,7 +45,8 @@ vi.mock("@app/lib/api/files/upsert", () => ({
     .mockResolvedValue({ isErr: () => false }),
 }));
 
-vi.mock("@app/lib/api/data_sources", () => ({
+vi.mock("@app/lib/api/data_sources", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@app/lib/api/data_sources")>()),
   getOrCreateConversationDataSourceFromFile: vi.fn().mockResolvedValue({
     isErr: () => false,
     value: { id: "test_data_source" },

@@ -1,3 +1,7 @@
+import type {
+  GetPodMetadataResponseBody,
+  PatchPodMetadataResponseBody,
+} from "@app/lib/api/projects/metadata";
 import { validatePinnedFramePath } from "@app/lib/api/projects/pinned_frame";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import {
@@ -6,20 +10,11 @@ import {
   stopProjectTodoWorkflow,
 } from "@app/temporal/project_task/client";
 import { PatchPodMetadataBodySchema } from "@app/types/api/internal/spaces";
-import type { PodMetadataType } from "@app/types/project_metadata";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { withSpace } from "@front-api/middlewares/with_space";
-
-export type GetPodMetadataResponseBody = {
-  projectMetadata: PodMetadataType | null;
-};
-
-export type PatchPodMetadataResponseBody = {
-  projectMetadata: PodMetadataType;
-};
 
 // Mounted under /api/w/:wId/spaces/:spaceId/project_metadata. All routes
 // require the space to be a project; this is checked inline per handler.

@@ -5,6 +5,7 @@ import { PodSettingsOptionLabel } from "@app/components/pod/settings/PodSettings
 import { SuggestedTasksGenerationTile } from "@app/components/pod/settings/SuggestedTasksGenerationTile";
 import { usePodConversationsSummary } from "@app/hooks/conversations";
 import { useArchivePod } from "@app/hooks/useArchivePod";
+import type { RichSpaceType } from "@app/lib/api/spaces";
 import {
   useCheckPodName,
   usePodMetadata,
@@ -13,7 +14,6 @@ import {
 import { useSpaceInfo, useUpdateSpace } from "@app/lib/swr/spaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { areOpenPodsAllowed } from "@app/lib/workspace_policies";
-import type { RichSpaceType } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
 import type { PatchPodMetadataBodyType } from "@app/types/api/internal/spaces";
 import { PatchPodMetadataBodySchema } from "@app/types/api/internal/spaces";
 import type { LightWorkspaceType } from "@app/types/user";

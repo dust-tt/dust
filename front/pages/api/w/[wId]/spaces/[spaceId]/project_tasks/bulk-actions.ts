@@ -1,39 +1,17 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import type { BulkActionsResponse } from "@app/lib/api/projects/tasks";
+import { BulkActionsBodySchema } from "@app/lib/api/projects/tasks";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { POD_TASK_STATUSES } from "@app/types/project_task";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
 import { fromError } from "zod-validation-error";
-
-export type BulkActionsResponse = {
-  success: boolean;
-};
-
-const BulkActionsBodySchema = z.discriminatedUnion("action", [
-  z.object({
-    action: z.literal("set_status"),
-    taskIds: z.array(z.string().min(1)).min(1).max(200),
-    status: z.enum(POD_TASK_STATUSES),
-  }),
-  z.object({
-    action: z.literal("approve_agent_suggestion"),
-    taskIds: z.array(z.string().min(1)).min(1).max(200),
-  }),
-  z.object({
-    action: z.literal("reject_agent_suggestion"),
-    taskIds: z.array(z.string().min(1)).min(1).max(200),
-  }),
-]);
-
-export type BulkActionsBody = z.infer<typeof BulkActionsBodySchema>;
 
 async function handler(
   req: NextApiRequest,

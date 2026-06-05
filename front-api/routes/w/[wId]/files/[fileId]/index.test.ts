@@ -5,7 +5,8 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@app/lib/api/data_sources", () => ({
+vi.mock("@app/lib/api/data_sources", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@app/lib/api/data_sources")>()),
   getOrCreateConversationDataSourceFromFile: vi.fn().mockResolvedValue({
     isErr: () => false,
     value: {

@@ -1,22 +1,13 @@
-import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
 import {
-  getCursorPaginationParams,
-  SortingParamsCodec,
-} from "@app/lib/api/pagination";
-import { ContentNodesViewTypeCodec } from "@app/types/connectors/content_nodes";
+  GetContentNodesOrChildrenRequestBody as ContentNodesBody,
+  getContentNodesForDataSourceView,
+} from "@app/lib/api/data_source_view";
+import { getCursorPaginationParams } from "@app/lib/api/pagination";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { withDataSourceView } from "@front-api/middlewares/with_data_source_view";
 import { withSpace } from "@front-api/middlewares/with_space";
-import { z } from "zod";
-
-const ContentNodesBody = z.object({
-  internalIds: z.array(z.string().nullable()).optional(),
-  parentId: z.string().optional(),
-  viewType: ContentNodesViewTypeCodec,
-  sorting: SortingParamsCodec.optional(),
-});
 
 // Mounted under
 // /api/w/:wId/spaces/:spaceId/data_source_views/:dsvId/content-nodes.

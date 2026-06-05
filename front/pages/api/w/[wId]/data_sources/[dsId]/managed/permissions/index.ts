@@ -2,6 +2,10 @@
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
+import type {
+  GetDataSourcePermissionsResponseBody,
+  SetDataSourcePermissionsResponseBody,
+} from "@app/lib/api/data_sources/managed_permissions";
 import {
   getManagedDataSourcePermissions,
   ManagedPermissionsQuerySchema,
@@ -10,11 +14,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  ConnectorPermission,
-  ContentNode,
-  ContentNodeWithParent,
-} from "@app/types/connectors/connectors_api";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -30,16 +29,6 @@ const SetConnectorPermissionsRequestBodySchema = z.object({
     })
   ),
 });
-
-export type GetDataSourcePermissionsResponseBody<
-  T extends ConnectorPermission = ConnectorPermission,
-> = {
-  resources: (T extends "read" ? ContentNodeWithParent : ContentNode)[];
-};
-
-export type SetDataSourcePermissionsResponseBody = {
-  success: true;
-};
 
 async function handler(
   req: NextApiRequest,

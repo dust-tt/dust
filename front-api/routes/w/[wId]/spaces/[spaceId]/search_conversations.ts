@@ -1,3 +1,4 @@
+import type { SearchConversationsResponseBody } from "@app/lib/api/projects/search";
 import { searchProjectConversations } from "@app/lib/api/projects/search";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
@@ -8,10 +9,6 @@ import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { withSpace } from "@front-api/middlewares/with_space";
 import { z } from "zod";
-
-export type SearchConversationsResponseBody = {
-  conversations: ConversationWithoutContentType[];
-};
 
 const SEMANTIC_SEARCH_SCORE_CUTOFF = 0.1;
 

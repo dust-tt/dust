@@ -41,6 +41,38 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { Op } from "sequelize";
+import { z } from "zod";
+
+/** GET: project context (file-backed + content-node fragments). */
+export type GetProjectContextResponseBody = {
+  attachments: ConversationAttachmentType[];
+};
+
+export const PostProjectContextContentNodeItemSchema = z.object({
+  title: z.string().min(1, "title is required"),
+  nodeId: z.string().min(1, "nodeId is required"),
+  nodeDataSourceViewId: z.string().min(1, "nodeDataSourceViewId is required"),
+  url: z.string().nullable().optional(),
+  supersededContentFragmentId: z.string().nullable().optional(),
+});
+
+export const PostProjectContextContentNodeBodySchema = z.object({
+  items: z.array(PostProjectContextContentNodeItemSchema),
+});
+
+export type PostProjectContextContentNodeFragment = {
+  sId: string;
+  title: string;
+  contentType: string;
+  nodeId: string;
+  nodeDataSourceViewId: string;
+  nodeType: ContentNodeType;
+};
+
+export type PostProjectContextContentNodeResponseBody = {
+  contentFragments: PostProjectContextContentNodeFragment[];
+  errors: Array<{ index: number; message: string }>;
+};
 
 /**
  * Folder internal id under which conversation transcripts are indexed in the dust_project

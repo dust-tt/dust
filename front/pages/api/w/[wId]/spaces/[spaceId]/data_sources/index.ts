@@ -7,8 +7,11 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
+import type { PostSpaceDataSourceResponseBody } from "@app/lib/api/data_sources";
 import {
   createDataSourceWithoutProvider,
+  PostDataSourceRequestBodySchema,
+  type PostDataSourceWithProviderRequestBodySchema,
   registerSlackWebhookRouterEntry,
 } from "@app/lib/api/data_sources";
 import { checkConnectionOwnership } from "@app/lib/api/oauth";
@@ -35,16 +38,10 @@ import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import { DEFAULT_EMBEDDING_PROVIDER_ID } from "@app/types/assistant/models/embedding";
-import {
-  ConnectorConfigurationTypeSchema,
-  ConnectorsAPI,
-} from "@app/types/connectors/connectors_api";
+import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { WebCrawlerConfigurationTypeSchema } from "@app/types/connectors/webcrawler";
 import { CoreAPI, EMBEDDING_CONFIGS } from "@app/types/core/core_api";
 import { DEFAULT_QDRANT_CLUSTER } from "@app/types/core/data_source";
-import type { DataSourceType } from "@app/types/data_source";
-import { CONNECTOR_PROVIDERS } from "@app/types/data_source";
-import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { PlanType } from "@app/types/plan";
 import type { LLMCredentialsType } from "@app/types/provider_credential";
@@ -52,36 +49,8 @@ import { sendUserOperationMessage } from "@app/types/shared/user_operation";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WorkspaceType } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
+import type { z } from "zod";
 import { fromError } from "zod-validation-error";
-
-export const PostDataSourceWithProviderRequestBodySchema = z.object({
-  provider: z.enum(CONNECTOR_PROVIDERS),
-  name: z.string().optional(),
-  configuration: ConnectorConfigurationTypeSchema,
-  connectionId: z.string().optional(), // Required for some providers
-  relatedCredentialId: z.string().optional(), // Required for private integrations
-  extraConfig: z.record(z.string(), z.string()).optional(), // Used by slack private integrations
-});
-
-const PostDataSourceWithoutProviderRequestBodySchema = z.object({
-  name: z.string(),
-  description: z.string().nullable(),
-});
-
-const PostDataSourceRequestBodySchema = z.union([
-  PostDataSourceWithoutProviderRequestBodySchema,
-  PostDataSourceWithProviderRequestBodySchema,
-]);
-
-export type PostDataSourceRequestBody = z.infer<
-  typeof PostDataSourceRequestBodySchema
->;
-
-export type PostSpaceDataSourceResponseBody = {
-  dataSource: DataSourceType;
-  dataSourceView: DataSourceViewType;
-};
 
 async function handler(
   req: NextApiRequest,
@@ -157,9 +126,7 @@ async function handler(
           res,
         });
       } else {
-        const body = bodyValidation.data as z.infer<
-          typeof PostDataSourceWithoutProviderRequestBodySchema
-        >;
+        const body = bodyValidation.data;
         const r = await createDataSourceWithoutProvider(auth, {
           plan,
           owner,

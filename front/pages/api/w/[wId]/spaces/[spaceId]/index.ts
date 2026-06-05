@@ -189,6 +189,11 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
+import type {
+  GetSpaceResponseBody,
+  PatchSpaceResponseBody,
+  SpaceCategoryInfo,
+} from "@app/lib/api/spaces";
 import { softDeleteSpaceAndLaunchScrubWorkflow } from "@app/lib/api/spaces";
 import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
@@ -201,42 +206,12 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import { PatchSpaceRequestBodySchema } from "@app/types/api/internal/spaces";
 import { DATA_SOURCE_VIEW_CATEGORIES } from "@app/types/api/public/spaces";
-import type { AgentsUsageType } from "@app/types/data_source";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
-import type { SpaceType } from "@app/types/space";
 import type { SpaceUserType } from "@app/types/user";
 import uniqBy from "lodash/uniqBy";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
-
-export type SpaceCategoryInfo = {
-  usage: AgentsUsageType;
-  count: number;
-};
-
-export type RichSpaceType = SpaceType & {
-  categories: { [key: string]: SpaceCategoryInfo };
-  canWrite: boolean;
-  canRead: boolean;
-  isMember: boolean;
-  members: SpaceUserType[];
-  isEditor: boolean;
-  // Useful in case of projects
-  description: string | null;
-  archivedAt: number | null;
-  /** Background todo suggestions from project activity (project spaces only). */
-  todoGenerationEnabled: boolean;
-  lastTodoAnalysisAt: number | null;
-  pinnedFramePath: string | null;
-};
-export type GetSpaceResponseBody = {
-  space: RichSpaceType;
-};
-
-export type PatchSpaceResponseBody = {
-  space: SpaceType;
-};
 
 async function handler(
   req: NextApiRequest,

@@ -11,10 +11,10 @@ import { usePodUnreadConversationIds } from "@app/hooks/conversations";
 import type { PodConversationListFilter } from "@app/hooks/conversations/usePodConversations";
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
 import { useSearchPodConversations } from "@app/hooks/useSearchPodConversations";
+import type { GetSpaceResponseBody } from "@app/lib/api/spaces";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import { useAppRouter } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type { GetSpaceResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
 import type {
   ConversationWithoutContentType,
   LightConversationType,

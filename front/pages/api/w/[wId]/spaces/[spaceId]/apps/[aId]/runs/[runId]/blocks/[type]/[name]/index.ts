@@ -1,5 +1,7 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
+
+import type { GetRunBlockResponseBody } from "@app/lib/api/apps";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
@@ -10,17 +12,13 @@ import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { BlockType, RunType } from "@app/types/run";
+import type { BlockType } from "@app/types/run";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export const config = {
   api: {
     responseLimit: "8mb",
   },
-};
-
-export type GetRunBlockResponseBody = {
-  run: RunType | null;
 };
 
 async function handler(

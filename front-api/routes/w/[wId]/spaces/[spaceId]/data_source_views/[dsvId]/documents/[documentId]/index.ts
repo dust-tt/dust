@@ -1,7 +1,7 @@
 import config from "@app/lib/api/config";
+import type { GetDataSourceViewDocumentResponseBody } from "@app/lib/api/data_source_view";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
-import type { CoreAPIDocument } from "@app/types/core/data_source";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -13,10 +13,6 @@ import { z } from "zod";
 const ParamsSchema = z.object({
   documentId: z.string(),
 });
-
-export type GetDataSourceViewDocumentResponseBody = {
-  document: CoreAPIDocument;
-};
 
 // Mounted under
 // /api/w/:wId/spaces/:spaceId/data_source_views/:dsvId/documents/:documentId.

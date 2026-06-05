@@ -1,15 +1,10 @@
-import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type { GetMCPServerViewsNotActivatedResponseBody } from "@app/lib/api/mcp";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { withSpace } from "@front-api/middlewares/with_space";
 import differenceWith from "lodash/differenceWith";
-
-export type GetMCPServerViewsNotActivatedResponseBody = {
-  success: boolean;
-  serverViews: MCPServerViewType[];
-};
 
 // Mounted under /api/w/:wId/spaces/:spaceId/mcp_views/not_activated.
 const app = workspaceApp();

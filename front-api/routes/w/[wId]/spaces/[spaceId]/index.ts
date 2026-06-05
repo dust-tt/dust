@@ -4,6 +4,11 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
+import type {
+  GetSpaceResponseBody,
+  PatchSpaceResponseBody,
+  SpaceCategoryInfo,
+} from "@app/lib/api/spaces";
 import { softDeleteSpaceAndLaunchScrubWorkflow } from "@app/lib/api/spaces";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -13,7 +18,6 @@ import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_res
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { PatchSpaceRequestBodySchema } from "@app/types/api/internal/spaces";
 import { DATA_SOURCE_VIEW_CATEGORIES } from "@app/types/api/public/spaces";
-import type { AgentsUsageType } from "@app/types/data_source";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SpaceType } from "@app/types/space";
 import type { SpaceUserType } from "@app/types/user";
@@ -40,35 +44,6 @@ import projectTasks from "./project_tasks";
 import searchConversations from "./search_conversations";
 import star from "./star";
 import webhookSourceViews from "./webhook_source_views";
-
-export type SpaceCategoryInfo = {
-  usage: AgentsUsageType;
-  count: number;
-};
-
-export type RichSpaceType = SpaceType & {
-  categories: { [key: string]: SpaceCategoryInfo };
-  canWrite: boolean;
-  canRead: boolean;
-  isMember: boolean;
-  members: SpaceUserType[];
-  isEditor: boolean;
-  // Useful in case of projects
-  description: string | null;
-  archivedAt: number | null;
-  /** Background todo suggestions from project activity (project spaces only). */
-  todoGenerationEnabled: boolean;
-  lastTodoAnalysisAt: number | null;
-  pinnedFramePath: string | null;
-};
-
-export type GetSpaceResponseBody = {
-  space: RichSpaceType;
-};
-
-export type PatchSpaceResponseBody = {
-  space: SpaceType;
-};
 
 export type DeleteSpaceResponseBody = {
   space: SpaceType;

@@ -22,6 +22,7 @@ import logger from "@app/logger/logger";
 import type { CoreAPIDataSourceDocumentSection } from "@app/types/core/data_source";
 import type {
   AllSupportedFileContentType,
+  FileType,
   FileUseCase,
 } from "@app/types/files";
 import {
@@ -40,6 +41,20 @@ import {
   isSupportedPlainTextContentType,
   // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 } from "@dust-tt/client";
+
+export interface UpsertFileToDataSourceRequestBody {
+  fileId: string;
+  upsertArgs?:
+    | Pick<UpsertDocumentArgs, "document_id" | "title" | "tags">
+    | Pick<
+        UpsertTableArgs,
+        "name" | "title" | "description" | "tags" | "tableId"
+      >;
+}
+
+export interface UpsertFileToDataSourceResponseBody {
+  file: FileType;
+}
 
 // Upload to dataSource
 const upsertDocumentToDatasource: ProcessingFunction = async (

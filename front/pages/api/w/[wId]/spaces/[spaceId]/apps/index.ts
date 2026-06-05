@@ -1,5 +1,9 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
+import type {
+  GetAppsResponseBody,
+  PostAppResponseBody,
+} from "@app/lib/api/apps";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
@@ -9,18 +13,10 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { AppType } from "@app/types/app";
 import { APP_NAME_REGEXP } from "@app/types/app";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type GetAppsResponseBody = {
-  apps: AppType[];
-};
-export type PostAppResponseBody = {
-  app: AppType;
-};
 
 async function handler(
   req: NextApiRequest,

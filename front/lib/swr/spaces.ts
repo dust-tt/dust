@@ -1,8 +1,22 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import type {
+  GetDataSourceViewResponseBody,
+  GetSpaceDataSourceViewsResponseBody,
+} from "@app/lib/api/data_source_view";
+import type { PostSpaceDataSourceResponseBody } from "@app/lib/api/data_sources";
+import type {
   CursorPaginationParams,
   SortingParams,
 } from "@app/lib/api/pagination";
+import type { SpacesLookupResponseBody } from "@app/lib/api/projects/lookup";
+import type {
+  GetSpaceResponseBody,
+  GetSpacesResponseBody,
+  PatchSpaceResponseBody,
+  PostSpaceRequestBodyType,
+  PostSpacesResponseBody,
+} from "@app/lib/api/spaces";
+import type { PatchSpaceMembersRequestBodyType } from "@app/lib/api/spaces/members";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { clientFetch } from "@app/lib/egress/client";
 import { getSpaceName } from "@app/lib/spaces";
@@ -17,20 +31,6 @@ import type {
   DataSourceContentNode,
   PostWorkspaceSearchResponseBody,
 } from "@app/pages/api/w/[wId]/search";
-import type {
-  GetSpacesResponseBody,
-  PostSpaceRequestBodyType,
-  PostSpacesResponseBody,
-} from "@app/pages/api/w/[wId]/spaces";
-import type {
-  GetSpaceResponseBody,
-  PatchSpaceResponseBody,
-} from "@app/pages/api/w/[wId]/spaces/[spaceId]";
-import type { GetSpaceDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views";
-import type { GetDataSourceViewResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]";
-import type { PostSpaceDataSourceResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
-import type { PatchSpaceMembersRequestBodyType } from "@app/pages/api/w/[wId]/spaces/[spaceId]/members";
-import type { SpacesLookupResponseBody } from "@app/pages/api/w/[wId]/spaces/projects-lookup";
 import type { DataSourceViewCategoryWithoutApps } from "@app/types/api/public/spaces";
 import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
 import type { SearchWarningCode } from "@app/types/core/core_api";

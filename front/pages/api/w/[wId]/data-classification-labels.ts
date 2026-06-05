@@ -3,6 +3,7 @@
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import {
+  type DataClassificationLabelsResponseBody,
   getMicrosoftSensitivityLabels,
   type MicrosoftSensitivityLabel,
   parseAllowedLabelsConfig,
@@ -50,11 +51,6 @@ function resolveSourceErrorToApiError(
 // Re-exported so existing consumers (`components/shared/labels/types.ts`)
 // keep importing from the route file.
 export type { MicrosoftSensitivityLabel };
-
-export type DataClassificationLabelsResponseBody = {
-  labels: MicrosoftSensitivityLabel[];
-  allowedLabels: MicrosoftAllowedLabel[];
-};
 
 const SourceSchema = z
   .object({

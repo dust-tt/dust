@@ -4,7 +4,15 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import { enrichProjectsWithMetadata } from "@app/lib/api/projects/list";
-import { createSpaceAndGroup } from "@app/lib/api/spaces";
+import type {
+  GetSpacesResponseBody,
+  PostSpaceRequestBodyType,
+  PostSpacesResponseBody,
+} from "@app/lib/api/spaces";
+import {
+  createSpaceAndGroup,
+  PostSpaceRequestBodySchema,
+} from "@app/lib/api/spaces";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { areOpenPodsAllowed } from "@app/lib/workspace_policies";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -13,40 +21,15 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import { z } from "zod";
 import spaceId from "./[spaceId]";
 import checkName from "./check-name";
 import projectsLookup from "./projects-lookup";
 import searchProjects from "./search_projects";
 
-const PostSpaceRequestBodySchema = z.intersection(
-  z.object({
-    isRestricted: z.boolean(),
-    name: z.string(),
-    spaceKind: z.enum(["regular", "project"]),
-  }),
-  z.discriminatedUnion("managementMode", [
-    z.object({
-      memberIds: z.array(z.string()),
-      managementMode: z.literal("manual"),
-    }),
-    z.object({
-      groupIds: z.array(z.string()),
-      managementMode: z.literal("group"),
-    }),
-  ])
-);
-
-export type PostSpaceRequestBodyType = z.infer<
-  typeof PostSpaceRequestBodySchema
->;
-
-export type GetSpacesResponseBody = {
-  spaces: (SpaceType | PodType)[];
-};
-
-export type PostSpacesResponseBody = {
-  space: SpaceType;
+export type {
+  GetSpacesResponseBody,
+  PostSpaceRequestBodyType,
+  PostSpacesResponseBody,
 };
 
 // Mounted under /api/w/:wId/spaces. workspaceAuth is applied by the parent

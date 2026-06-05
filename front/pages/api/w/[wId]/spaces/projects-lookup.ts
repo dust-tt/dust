@@ -1,22 +1,20 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { enrichProjectsWithMetadata } from "@app/lib/api/projects/list";
+import {
+  enrichProjectsWithMetadata,
+  type SpacesLookupResponseBody,
+} from "@app/lib/api/projects/list";
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { PodType } from "@app/types/space";
 import type { NextApiRequest, NextApiResponse } from "next";
 import z from "zod";
 
 const SpacesLookupQuerySchema = z.object({
   ids: z.union([z.string(), z.array(z.string())]),
 });
-
-export type SpacesLookupResponseBody = {
-  spaces: PodType[];
-};
 
 async function handler(
   req: NextApiRequest,

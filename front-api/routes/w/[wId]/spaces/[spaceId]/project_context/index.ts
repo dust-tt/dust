@@ -1,50 +1,21 @@
-import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import {
   addContentNodeToProject,
+  type GetProjectContextResponseBody,
   listProjectContextAttachments,
+  PostProjectContextContentNodeBodySchema,
+  type PostProjectContextContentNodeFragment,
+  type PostProjectContextContentNodeResponseBody,
 } from "@app/lib/api/projects/context";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type { ContentNodeType } from "@app/types/core/content_node";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { withSpace } from "@front-api/middlewares/with_space";
-import { z } from "zod";
 
 import contentNodes from "./content_nodes";
 import files from "./files";
-
-export type GetProjectContextResponseBody = {
-  attachments: ConversationAttachmentType[];
-};
-
-export type PostProjectContextContentNodeResponseBody = {
-  contentFragments: PostProjectContextContentNodeFragment[];
-  errors: Array<{ index: number; message: string }>;
-};
-
-const PostProjectContextContentNodeItemSchema = z.object({
-  title: z.string().min(1, "title is required"),
-  nodeId: z.string().min(1, "nodeId is required"),
-  nodeDataSourceViewId: z.string().min(1, "nodeDataSourceViewId is required"),
-  url: z.string().nullable().optional(),
-  supersededContentFragmentId: z.string().nullable().optional(),
-});
-
-const PostProjectContextContentNodeBodySchema = z.object({
-  items: z.array(PostProjectContextContentNodeItemSchema),
-});
-
-export type PostProjectContextContentNodeFragment = {
-  sId: string;
-  title: string;
-  contentType: string;
-  nodeId: string;
-  nodeDataSourceViewId: string;
-  nodeType: ContentNodeType;
-};
 
 /** Lowercase + strip separators so "Hello World 4" matches query "helloworld". */
 function normalizeAttachmentSearchKey(s: string): string {

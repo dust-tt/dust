@@ -1,4 +1,5 @@
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { GetWebhookSourceViewsResponseBody } from "@app/lib/api/webhook_source";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   emptyArray,
@@ -7,7 +8,6 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { GetWebhookRequestsResponseBody } from "@app/lib/triggers/webhook";
-import type { GetWebhookSourceViewsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/webhook_source_views";
 import type {
   GetWebhookSourcesResponseBody,
   PostWebhookSourcesBody,

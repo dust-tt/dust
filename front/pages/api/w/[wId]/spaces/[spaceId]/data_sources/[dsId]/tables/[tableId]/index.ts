@@ -3,6 +3,7 @@
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { upsertTable } from "@app/lib/api/data_sources";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
+import type { PatchTableResponseBody } from "@app/lib/api/tables";
 import { deleteTable } from "@app/lib/api/tables";
 import type { Authenticator } from "@app/lib/auth";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -13,10 +14,6 @@ import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
-
-export type PatchTableResponseBody = {
-  table?: { table_id: string };
-};
 
 async function handler(
   req: NextApiRequest,

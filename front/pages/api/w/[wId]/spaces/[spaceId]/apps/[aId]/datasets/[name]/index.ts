@@ -2,7 +2,11 @@
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
-import { getDatasetHash } from "@app/lib/api/datasets";
+import type { GetDatasetResponseBody } from "@app/lib/api/datasets";
+import {
+  getDatasetHash,
+  PostDatasetRequestBodySchema,
+} from "@app/lib/api/datasets";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { checkDatasetData } from "@app/lib/datasets";
@@ -12,14 +16,9 @@ import { DatasetModel } from "@app/lib/resources/storage/models/apps";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import { CoreAPI } from "@app/types/core/core_api";
-import type { DatasetType } from "@app/types/dataset";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
-
-import { PostDatasetRequestBodySchema } from "..";
-
-export type GetDatasetResponseBody = { dataset: DatasetType };
 
 async function handler(
   req: NextApiRequest,

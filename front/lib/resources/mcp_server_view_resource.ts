@@ -51,6 +51,7 @@ import type {
   Transaction,
 } from "sequelize";
 import { Op } from "sequelize";
+import { z } from "zod";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -66,6 +67,24 @@ export type MCPServerViewCreationResult = {
   view: MCPServerViewResource;
   affectedAgents?: AffectedAgent[];
 };
+
+export type GetMCPServerViewsResponseBody = {
+  success: boolean;
+  serverViews: MCPServerViewType[];
+};
+
+export type PostMCPServerViewResponseBody = {
+  success: boolean;
+  serverView: MCPServerViewType;
+};
+
+export const PostMCPServerViewQueryParamsSchema = z.object({
+  mcpServerId: z.string(),
+});
+
+export type PostMCPServersQueryParams = z.infer<
+  typeof PostMCPServerViewQueryParamsSchema
+>;
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel> {

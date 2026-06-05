@@ -1,6 +1,6 @@
+import type { GetRunResponseBody } from "@app/lib/api/apps";
 import { AppResource } from "@app/lib/resources/app_resource";
-import type { AppType, SpecificationType } from "@app/types/app";
-import type { RunType } from "@app/types/run";
+import type { AppType } from "@app/types/app";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -16,11 +16,6 @@ const ParamsSchema = z.object({
 import blocks from "./blocks";
 import cancel from "./cancel";
 import status from "./status";
-
-export type GetRunResponseBody = {
-  run: RunType;
-  spec: SpecificationType;
-};
 
 // Mounted under /api/w/:wId/spaces/:spaceId/apps/:aId/runs/:runId.
 const app = workspaceApp();

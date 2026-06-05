@@ -1,7 +1,7 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type { GetMCPServerViewsNotActivatedResponseBody } from "@app/lib/api/mcp";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -11,11 +11,6 @@ import type { WithAPIErrorResponse } from "@app/types/error";
 import { removeNulls } from "@app/types/shared/utils/general";
 import differenceWith from "lodash/differenceWith";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type GetMCPServerViewsNotActivatedResponseBody = {
-  success: boolean;
-  serverViews: MCPServerViewType[];
-};
 
 async function handler(
   req: NextApiRequest,

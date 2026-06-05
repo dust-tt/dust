@@ -1,7 +1,6 @@
+import type { PostDocumentResponseBody } from "@app/lib/api/data_sources";
 import { upsertDocument } from "@app/lib/api/data_sources";
 import { PostDataSourceDocumentRequestBodySchema } from "@app/types/api/public/data_sources";
-import type { CoreAPILightDocument } from "@app/types/core/data_source";
-import type { DocumentType } from "@app/types/document";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -10,10 +9,6 @@ import { withDataSource } from "@front-api/middlewares/with_data_source";
 import { withSpace } from "@front-api/middlewares/with_space";
 
 import documentId from "./[documentId]";
-
-export type PostDocumentResponseBody = {
-  document: DocumentType | CoreAPILightDocument;
-};
 
 // Mounted under /api/w/:wId/spaces/:spaceId/data_sources/:dsId/documents.
 const app = workspaceApp();

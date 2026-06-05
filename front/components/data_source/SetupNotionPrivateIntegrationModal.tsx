@@ -1,5 +1,5 @@
+import type { GetNotionWebhookConfigResponseBody } from "@app/lib/api/data_sources/managed_notion";
 import { clientFetch } from "@app/lib/egress/client";
-import type { GetNotionWebhookConfigResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/notion/webhook_config";
 import type { DataSourceType } from "@app/types/data_source";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { NotificationType } from "@dust-tt/sparkle";

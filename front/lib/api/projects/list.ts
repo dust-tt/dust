@@ -3,6 +3,16 @@ import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_res
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { PodType, SpaceType } from "@app/types/space";
 
+export type SpacesLookupResponseBody = {
+  spaces: PodType[];
+};
+
+export type SearchProjectsResponseBody = {
+  spaces: Array<PodType & { isMember: boolean }>;
+  hasMore: boolean;
+  lastValue: string | null;
+};
+
 /**
  * Spaces the user is a member of, with project metadata loaded, excluding
  * archived projects.
