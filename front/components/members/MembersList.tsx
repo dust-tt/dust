@@ -55,8 +55,7 @@ function getTableRows({
       userId: user.sId,
       email: user.email ?? "",
       role: user.workspace.role ?? "none",
-      status:
-        fullUser && user.lastLoginAt === null ? "Unregistered" : "Active",
+      status: fullUser && user.lastLoginAt === null ? "Unregistered" : "Active",
       groups: user.workspace.groups ?? [],
       isCurrentUser: user.sId === currentUserId,
       onClick: () => onClick(user),
