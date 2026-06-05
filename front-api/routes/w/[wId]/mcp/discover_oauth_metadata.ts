@@ -2,6 +2,7 @@ import { getDefaultRemoteMCPServerByURL } from "@app/lib/actions/mcp_internal_ac
 import { connectToMCPServer } from "@app/lib/actions/mcp_metadata";
 import { MCPOAuthProvider } from "@app/lib/actions/mcp_oauth_provider";
 import type { MCPOAuthConnectionMetadataType } from "@app/lib/api/oauth/providers/mcp";
+import { validateExternalUrl } from "@app/lib/api/url_safety";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { headersArrayToRecord } from "@app/types/shared/utils/http_headers";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -42,14 +43,13 @@ app.post(
     const auth = ctx.get("auth");
     const { url, customHeaders } = ctx.req.valid("json");
 
-    try {
-      new URL(url);
-    } catch {
+    const urlError = await validateExternalUrl(url);
+    if (urlError) {
       return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
-          message: "Invalid URL format. Please provide a valid URL.",
+          message: urlError,
         },
       });
     }
