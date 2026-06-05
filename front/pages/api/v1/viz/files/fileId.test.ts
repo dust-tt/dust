@@ -1,4 +1,8 @@
+import type { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { generateVizAccessToken } from "@app/lib/api/viz/access_tokens";
+import * as authorizedFileAccessModule from "@app/lib/api/viz/authorized_file_access";
+import { computeFrameContentHash } from "@app/lib/api/viz/authorized_file_access_policy";
+import * as fileAccessModule from "@app/lib/api/viz/file_access";
 import { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -8,16 +12,30 @@ import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import { frameContentType } from "@app/types/files";
+import {
+  type AuthorizedFileAccessAllowlist,
+  frameContentType,
+} from "@app/types/files";
+import type { ModelId } from "@app/types/shared/model_id";
+import { Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { PublicPostConversationsRequestBody } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createMocks } from "node-mocks-http";
-import { Readable } from "stream";
+import { PassThrough, Readable } from "stream";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import publicConversationsHandler from "../../w/[wId]/assistant/conversations/index";
 import handler from "./[fileId]";
+
+function makeMockFs(): DustFileSystem {
+  return {
+    stat: vi
+      .fn()
+      .mockResolvedValue(new Ok({ contentType: "text/plain", sizeBytes: 100 })),
+    read: vi.fn().mockResolvedValue(new Ok(new PassThrough())),
+  } as unknown as DustFileSystem;
+}
 
 // Mock the rate limiter functions.
 vi.mock("@app/lib/utils/rate_limiter", () => ({
@@ -46,6 +64,44 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
     workspace = setup.workspace;
     auth = setup.authenticator;
   });
+
+  function mockFetchByShareToken(
+    frameFile: FileResource,
+    opts: {
+      content?: string;
+      shareScope?: "public" | "workspace";
+      conversationSpaceId?: string | null;
+      authorizedFileAccess?: AuthorizedFileAccessAllowlist | null;
+      fs?: DustFileSystem;
+    } = {}
+  ) {
+    const {
+      content = "<html>Frame content</html>",
+      shareScope = "public",
+      conversationSpaceId = null,
+      authorizedFileAccess = null,
+      fs = makeMockFs(),
+    } = opts;
+
+    let resolvedAllowlist = authorizedFileAccess;
+    if (authorizedFileAccess) {
+      resolvedAllowlist = {
+        ...authorizedFileAccess,
+        frameContentHash: computeFrameContentHash(content),
+      };
+    }
+
+    vi.spyOn(FileResource, "fetchByShareTokenWithContent").mockResolvedValue({
+      file: frameFile,
+      content,
+      shareScope,
+      shareableFileId: 1 as unknown as ModelId,
+      workspace,
+      conversationSpaceId,
+      authorizedFileAccess: resolvedAllowlist,
+      fs,
+    });
+  }
 
   it("should only allow access to files from the same conversation as the frame (usecase: 'conversation')", async () => {
     // Create a real conversation
@@ -99,12 +155,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
       },
     });
 
-    vi.spyOn(FileResource, "fetchByShareTokenWithContent").mockResolvedValue({
-      file: frameFile,
-      content: "<html>Frame content</html>",
-      shareScope: "public",
-      conversationSpaceId: null,
-    });
+    mockFetchByShareToken(frameFile);
 
     vi.spyOn(FileResource.prototype, "getSharedReadStream").mockReturnValue(
       // Mocked stream content.
@@ -169,12 +220,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
       },
     });
 
-    vi.spyOn(FileResource, "fetchByShareTokenWithContent").mockResolvedValue({
-      file: frameFile,
-      content: "<html>Frame content</html>",
-      shareScope: "public",
-      conversationSpaceId: null,
-    });
+    mockFetchByShareToken(frameFile);
 
     vi.spyOn(FileResource.prototype, "getSharedReadStream").mockReturnValue(
       // Mocked stream content.
@@ -240,13 +286,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
       },
     });
 
-    vi.spyOn(FileResource, "fetchByShareTokenWithContent").mockResolvedValue({
-      file: frameFile,
-      content: "<html>Frame content</html>",
-      // Current share scope is now 'workspace'.
-      shareScope: "workspace",
-      conversationSpaceId: null,
-    });
+    mockFetchByShareToken(frameFile, { shareScope: "workspace" });
 
     vi.spyOn(FileResource.prototype, "getSharedReadStream").mockReturnValue(
       // Mocked stream content.
@@ -316,12 +356,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
       },
     });
 
-    vi.spyOn(FileResource, "fetchByShareTokenWithContent").mockResolvedValue({
-      file: frameFile,
-      content: "<html>Frame content</html>",
-      shareScope: "public",
-      conversationSpaceId: null,
-    });
+    mockFetchByShareToken(frameFile);
 
     await handler(req, res);
 
@@ -401,12 +436,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
         headers: { authorization: `Bearer ${accessToken}` },
       });
 
-      vi.spyOn(FileResource, "fetchByShareTokenWithContent").mockResolvedValue({
-        file: frameFile,
-        content: "<html>Frame content</html>",
-        shareScope: "public",
-        conversationSpaceId: null,
-      });
+      mockFetchByShareToken(frameFile);
 
       vi.spyOn(FileResource.prototype, "getSharedReadStream").mockReturnValue(
         Readable.from(["File content"])
@@ -464,12 +494,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
         headers: { authorization: `Bearer ${accessToken}` },
       });
 
-      vi.spyOn(FileResource, "fetchByShareTokenWithContent").mockResolvedValue({
-        file: frameFile,
-        content: "<html>Frame content</html>",
-        shareScope: "public",
-        conversationSpaceId: null,
-      });
+      mockFetchByShareToken(frameFile);
 
       vi.spyOn(FileResource.prototype, "getSharedReadStream").mockReturnValue(
         Readable.from(["File content"])
@@ -521,12 +546,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
         headers: { authorization: `Bearer ${accessToken}` },
       });
 
-      vi.spyOn(FileResource, "fetchByShareTokenWithContent").mockResolvedValue({
-        file: frameFile,
-        content: "<html>Frame content</html>",
-        shareScope: "public",
-        conversationSpaceId: null,
-      });
+      mockFetchByShareToken(frameFile);
 
       await handler(req, res);
 
@@ -587,12 +607,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
         headers: { authorization: `Bearer ${accessToken}` },
       });
 
-      vi.spyOn(FileResource, "fetchByShareTokenWithContent").mockResolvedValue({
-        file: frameFile,
-        content: "<html>Frame content</html>",
-        shareScope: "public",
-        conversationSpaceId: null,
-      });
+      mockFetchByShareToken(frameFile);
 
       await handler(req, res);
 
@@ -657,12 +672,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
       },
     });
 
-    vi.spyOn(FileResource, "fetchByShareTokenWithContent").mockResolvedValue({
-      file: frameFile,
-      content: "<html>Frame content</html>",
-      shareScope: "public",
-      conversationSpaceId: null,
-    });
+    mockFetchByShareToken(frameFile);
 
     await handler(req, res);
 
@@ -721,12 +731,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
       },
     });
 
-    vi.spyOn(FileResource, "fetchByShareTokenWithContent").mockResolvedValue({
-      file: frameFile,
-      content: "<html>Frame content</html>",
-      shareScope: "public",
-      conversationSpaceId: null,
-    });
+    mockFetchByShareToken(frameFile);
 
     await handler(req, res);
 
@@ -988,12 +993,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
         headers: { authorization: `Bearer ${accessToken}` },
       });
 
-      vi.spyOn(FileResource, "fetchByShareTokenWithContent").mockResolvedValue({
-        file: frameFile,
-        content: "<html>Frame content</html>",
-        shareScope: "public",
-        conversationSpaceId: null,
-      });
+      mockFetchByShareToken(frameFile);
 
       vi.spyOn(FileResource.prototype, "getSharedReadStream").mockReturnValue(
         Readable.from(["Sub-conversation file content"])
@@ -1127,12 +1127,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
         headers: { authorization: `Bearer ${accessToken}` },
       });
 
-      vi.spyOn(FileResource, "fetchByShareTokenWithContent").mockResolvedValue({
-        file: frameFile,
-        content: "<html>Frame content</html>",
-        shareScope: "public",
-        conversationSpaceId: null,
-      });
+      mockFetchByShareToken(frameFile);
 
       vi.spyOn(FileResource.prototype, "getSharedReadStream").mockReturnValue(
         Readable.from(["Sub-conversation file content"])
@@ -1142,6 +1137,154 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
 
       // Should fail - file from unrelated conversation.
       expect(res._getStatusCode()).toBe(404);
+    });
+  });
+
+  describe("authorized file access allowlist", () => {
+    it("should serve an allowlisted file_id ref", async () => {
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+        messagesCreatedAt: [new Date()],
+      });
+
+      const frameFile = await FileFactory.create(auth, null, {
+        contentType: frameContentType,
+        fileName: "frame.html",
+        fileSize: 1000,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: conversation.sId },
+      });
+
+      const targetFile = await FileFactory.create(auth, null, {
+        contentType: "text/plain",
+        fileName: "target.txt",
+        fileSize: 500,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: conversation.sId },
+      });
+
+      const frameShareInfo = await frameFile.getShareInfo();
+      const fileToken = frameShareInfo?.shareUrl.split("/").at(-1);
+      if (!fileToken) {
+        throw new Error("No file token found");
+      }
+
+      const accessToken = generateVizAccessToken({
+        contentType: frameContentType,
+        fileToken,
+        workspaceId: workspace.sId,
+        shareScope: "public",
+      });
+
+      const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+        method: "GET",
+        query: { fileId: targetFile.sId },
+        headers: { authorization: `Bearer ${accessToken}` },
+      });
+
+      const frameContent = `<html>useFile("${targetFile.sId}")</html>`;
+      mockFetchByShareToken(frameFile, {
+        content: frameContent,
+        authorizedFileAccess: {
+          computedByUserId: auth.user()!.sId,
+          frameContentHash: computeFrameContentHash(frameContent),
+          refs: [
+            { kind: "file_id", ref: targetFile.sId, fileName: "target.txt" },
+          ],
+        },
+      });
+
+      vi.spyOn(
+        authorizedFileAccessModule,
+        "reverifyAuthorAccess"
+      ).mockResolvedValue(true);
+      const legacyAccessSpy = vi.spyOn(
+        fileAccessModule,
+        "canAccessFileInConversation"
+      );
+
+      vi.spyOn(FileResource.prototype, "getSharedReadStream").mockReturnValue(
+        Readable.from(["File content"])
+      );
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(200);
+      expect(legacyAccessSpy).not.toHaveBeenCalled();
+    });
+
+    it("should reject a file_id ref that is not on the allowlist", async () => {
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+        messagesCreatedAt: [new Date()],
+      });
+
+      const frameFile = await FileFactory.create(auth, null, {
+        contentType: frameContentType,
+        fileName: "frame.html",
+        fileSize: 1000,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: conversation.sId },
+      });
+
+      const allowedFile = await FileFactory.create(auth, null, {
+        contentType: "text/plain",
+        fileName: "allowed.txt",
+        fileSize: 500,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: conversation.sId },
+      });
+
+      const targetFile = await FileFactory.create(auth, null, {
+        contentType: "text/plain",
+        fileName: "target.txt",
+        fileSize: 500,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: conversation.sId },
+      });
+
+      const frameShareInfo = await frameFile.getShareInfo();
+      const fileToken = frameShareInfo?.shareUrl.split("/").at(-1);
+      if (!fileToken) {
+        throw new Error("No file token found");
+      }
+
+      const accessToken = generateVizAccessToken({
+        contentType: frameContentType,
+        fileToken,
+        workspaceId: workspace.sId,
+        shareScope: "public",
+      });
+
+      const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+        method: "GET",
+        query: { fileId: targetFile.sId },
+        headers: { authorization: `Bearer ${accessToken}` },
+      });
+
+      const frameContent = `<html>useFile("${allowedFile.sId}")</html>`;
+      mockFetchByShareToken(frameFile, {
+        content: frameContent,
+        authorizedFileAccess: {
+          computedByUserId: auth.user()!.sId,
+          frameContentHash: computeFrameContentHash(frameContent),
+          refs: [
+            { kind: "file_id", ref: allowedFile.sId, fileName: "allowed.txt" },
+          ],
+        },
+      });
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(404);
+      expect(res._getJSONData()).toEqual({
+        error: { type: "file_not_found", message: "File not found." },
+      });
     });
   });
 });

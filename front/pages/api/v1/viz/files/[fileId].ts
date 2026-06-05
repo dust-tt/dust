@@ -2,6 +2,7 @@
 /* eslint-disable dust/enforce-client-types-in-public-api */
 
 import { extractAndVerifyVizAccessTokenFromHeader } from "@app/lib/api/viz/access_tokens";
+import { assertVizFileAuthorized } from "@app/lib/api/viz/authorized_file_access";
 import {
   canAccessFileInConversation,
   canAccessFileInProject,
@@ -14,6 +15,7 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isInteractiveContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 import assert from "assert";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -90,7 +92,12 @@ async function handler(
     });
   }
 
-  const { file: frameFile, shareScope } = result;
+  const {
+    file: frameFile,
+    content: frameContent,
+    shareScope,
+    authorizedFileAccess,
+  } = result;
 
   // If current share scope differs from token scope, reject. It means share scope changed.
   if (shareScope !== tokenPayload.shareScope) {
@@ -169,36 +176,56 @@ async function handler(
     });
   }
 
-  let hasAccessRes: Result<true, Error>;
-  if (frameConversationId) {
-    hasAccessRes = await canAccessFileInConversation(owner, {
-      file: targetFile,
-      requestedConversationId: frameConversationId,
-    });
-  } else if (frameSpaceId) {
-    hasAccessRes = await canAccessFileInProject(owner, {
-      file: targetFile,
-      requestedProjectId: frameSpaceId,
-    });
-  } else {
-    assert(
-      false,
-      "Invalid file context: both conversationId and spaceId are missing"
-    );
-  }
+  const authorizationMode = await assertVizFileAuthorized({
+    authorizedFileAccess,
+    requestedRef: fileId,
+    owner,
+    frameContent,
+  });
+  switch (authorizationMode) {
+    case "denied":
+      return apiError(req, res, {
+        status_code: 404,
+        api_error: { type: "file_not_found", message: "File not found." },
+      });
+    case "legacy": {
+      let hasAccessRes: Result<true, Error>;
+      if (frameConversationId) {
+        hasAccessRes = await canAccessFileInConversation(owner, {
+          file: targetFile,
+          requestedConversationId: frameConversationId,
+        });
+      } else if (frameSpaceId) {
+        hasAccessRes = await canAccessFileInProject(owner, {
+          file: targetFile,
+          requestedProjectId: frameSpaceId,
+        });
+      } else {
+        assert(
+          false,
+          "Invalid file context: both conversationId and spaceId are missing"
+        );
+      }
 
-  if (hasAccessRes.isErr()) {
-    logger.error(
-      {
-        erroor: hasAccessRes.error,
-      },
-      "Error checking file access in conversation"
-    );
+      if (hasAccessRes.isErr()) {
+        logger.error(
+          {
+            erroor: hasAccessRes.error,
+          },
+          "Error checking file access in conversation"
+        );
 
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: { type: "file_not_found", message: "File not found." },
-    });
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: { type: "file_not_found", message: "File not found." },
+        });
+      }
+      break;
+    }
+    case "authorized":
+      break;
+    default:
+      return assertNever(authorizationMode);
   }
 
   const readStream = targetFile.getSharedReadStream(owner, "original");
