@@ -17,6 +17,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 interface UseVoiceLiveTranscriberServiceParams {
   owner: LightWorkspaceType;
+  // Called on each partial transcript — insert or update the pending animated node.
+  onPartialTranscript?: (text: string) => void;
+  // Called when the engine commits a segment — replace the animated node with plain text.
   onTranscribeDelta?: (text: string) => void;
   onTranscribeComplete?: () => void;
   onError?: (error: Error) => void;
@@ -24,13 +27,30 @@ interface UseVoiceLiveTranscriberServiceParams {
 
 export type VoiceLiveTranscriberService = VoiceTranscriberService;
 
-function float32ToInt16(input: Float32Array): Int16Array {
-  const output = new Int16Array(input.length);
-  for (let i = 0; i < input.length; i++) {
-    const s = Math.max(-1, Math.min(1, input[i]));
-    output[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+// AudioWorklet processor: converts float32 PCM to int16 and transfers the buffer
+// to the main thread. Runs on the dedicated audio-rendering thread (not main thread).
+const PCM_WORKLET_CODE = `
+class PCMProcessor extends AudioWorkletProcessor {
+  process(inputs) {
+    const input = inputs[0];
+    if (input && input[0]) {
+      const float32 = input[0];
+      const int16 = new Int16Array(float32.length);
+      for (let i = 0; i < float32.length; i++) {
+        const s = Math.max(-1, Math.min(1, float32[i]));
+        int16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+      }
+      this.port.postMessage(int16.buffer, [int16.buffer]);
+    }
+    return true;
   }
-  return output;
+}
+registerProcessor('pcm-processor', PCMProcessor);
+`;
+
+function createPCMWorkletURL(): string {
+  const blob = new Blob([PCM_WORKLET_CODE], { type: "application/javascript" });
+  return URL.createObjectURL(blob);
 }
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
@@ -40,6 +60,7 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 
 export function useVoiceLiveTranscriberService({
   owner,
+  onPartialTranscript,
   onTranscribeDelta,
   onTranscribeComplete,
   onError,
@@ -50,11 +71,13 @@ export function useVoiceLiveTranscriberService({
 
   const streamRef = useRef<MediaStream | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
-  const processorRef = useRef<ScriptProcessorNode | null>(null);
+  const processorRef = useRef<AudioWorkletNode | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const levelIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Keep latest callbacks in refs so the stable SDK closures always see fresh values.
+  const onPartialTranscriptRef = useRef(onPartialTranscript);
+  onPartialTranscriptRef.current = onPartialTranscript;
   const onTranscribeDeltaRef = useRef(onTranscribeDelta);
   onTranscribeDeltaRef.current = onTranscribeDelta;
   const onErrorRef = useRef(onError);
@@ -86,6 +109,10 @@ export function useVoiceLiveTranscriberService({
     setLevel(0);
   }, []);
 
+  const handlePartialTranscript = useCallback(({ text }: { text: string }) => {
+    onPartialTranscriptRef.current?.(text);
+  }, []);
+
   const handleCommittedTranscript = useCallback(
     ({ text }: { text: string }) => {
       onTranscribeDeltaRef.current?.(text);
@@ -109,6 +136,7 @@ export function useVoiceLiveTranscriberService({
     audioFormat: AudioFormat.PCM_16000,
     sampleRate: 16000,
     commitStrategy: CommitStrategy.VAD,
+    onPartialTranscript: handlePartialTranscript,
     onCommittedTranscript: handleCommittedTranscript,
     onError: handleError,
   });
@@ -170,20 +198,19 @@ export function useVoiceLiveTranscriberService({
         setLevel
       );
 
-      // ScriptProcessorNode captures raw PCM and forwards it to Scribe.
-      // eslint-disable-next-line deprecation/deprecation
-      const processor = audioContext.createScriptProcessor(4096, 1, 1);
-      processorRef.current = processor;
-      source.connect(processor);
-      // ScriptProcessorNode must be connected to destination to fire onaudioprocess.
-      processor.connect(audioContext.destination);
+      // AudioWorkletNode captures raw PCM on the audio thread and posts int16 buffers
+      // to the main thread, which forwards them to Scribe.
+      const workletUrl = createPCMWorkletURL();
+      await audioContext.audioWorklet.addModule(workletUrl);
+      URL.revokeObjectURL(workletUrl);
 
-      processor.onaudioprocess = (e) => {
-        const inputData = e.inputBuffer.getChannelData(0);
-        const int16 = float32ToInt16(inputData);
-        const b64 = arrayBufferToBase64(int16.buffer as ArrayBuffer);
+      const workletNode = new AudioWorkletNode(audioContext, "pcm-processor");
+      workletNode.port.onmessage = (event: MessageEvent<ArrayBuffer>) => {
+        const b64 = arrayBufferToBase64(event.data);
         scribeRef.current.sendAudio(b64, { sampleRate: 16000 });
       };
+      source.connect(workletNode);
+      processorRef.current = workletNode;
 
       setStatus("recording");
     } catch (err) {
