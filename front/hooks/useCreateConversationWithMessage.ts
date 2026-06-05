@@ -1,11 +1,11 @@
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import type { PostConversationsResponseBody } from "@app/lib/api/assistant/conversation/types";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useClientType } from "@app/lib/context/clientType";
 import { clientFetch } from "@app/lib/egress/client";
 import { useFetcher } from "@app/lib/swr/swr";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { PostConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
 import type {
   InternalPostConversationsRequestBodySchema,
   SupportedContentNodeContentType,

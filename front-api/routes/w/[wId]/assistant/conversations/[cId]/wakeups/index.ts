@@ -1,6 +1,6 @@
+import type { GetConversationWakeUpsResponseBody } from "@app/lib/api/assistant/conversation/wakeups";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
-import type { WakeUpType } from "@app/types/assistant/wakeups";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -12,10 +12,6 @@ import wakeup from "./[wuId]";
 const ParamsSchema = z.object({
   cId: z.string(),
 });
-
-export type GetConversationWakeUpsResponseBody = {
-  wakeUps: WakeUpType[];
-};
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/wakeups.
 const app = workspaceApp();

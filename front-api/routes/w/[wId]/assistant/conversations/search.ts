@@ -1,17 +1,9 @@
+import type { SearchConversationsResponseBody } from "@app/lib/api/assistant/conversation/search";
 import { getPaginationParams } from "@app/lib/api/pagination";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
-
-export type SearchConversationsResponseBody = {
-  conversations: Array<
-    ConversationWithoutContentType & { spaceName: string | null }
-  >;
-  hasMore: boolean;
-  lastValue: string | null;
-};
 
 // Mounted at /api/w/:wId/assistant/conversations/search.
 const app = workspaceApp();

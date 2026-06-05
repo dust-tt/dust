@@ -129,6 +129,10 @@ import {
 } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
+import type {
+  GetConversationsResponseBody,
+  PostConversationsResponseBody,
+} from "@app/lib/api/assistant/conversation/types";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getPaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
@@ -140,27 +144,12 @@ import { extractUniqueSkillIds } from "@app/lib/skills/format";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import { InternalPostConversationsRequestBodySchema } from "@app/types/api/internal/assistant";
-import type {
-  ConversationListItemType,
-  ConversationType,
-  UserMessageType,
-} from "@app/types/assistant/conversation";
+import type { UserMessageType } from "@app/types/assistant/conversation";
 import { ConversationError } from "@app/types/assistant/conversation";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
-
-export type GetConversationsResponseBody = {
-  conversations: ConversationListItemType[];
-  hasMore: boolean;
-  lastValue: string | null;
-};
-export type PostConversationsResponseBody = {
-  conversation: ConversationType;
-  message?: UserMessageType;
-  contentFragments: ContentFragmentType[];
-};
 
 function isConversationNotFoundError(err: unknown): err is ConversationError {
   return (

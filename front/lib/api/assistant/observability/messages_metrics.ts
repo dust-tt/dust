@@ -214,3 +214,25 @@ export async function fetchMessageMetrics<K extends readonly (keyof Metrics)[]>(
 
   return new Ok(points);
 }
+
+export type GetErrorRateResponse = {
+  points: Pick<
+    MessageMetricsPoint,
+    "timestamp" | "count" | "failedMessages" | "errorRate"
+  >[];
+};
+
+export type GetLatencyResponse = {
+  points: Pick<
+    MessageMetricsPoint,
+    "timestamp" | "count" | "avgLatencyMs" | "percentilesLatencyMs"
+  >[];
+};
+
+export type GetUsageMetricsResponse = {
+  interval: UsageMetricsInterval;
+  points: Pick<
+    MessageMetricsPoint,
+    "timestamp" | "count" | "conversations" | "activeUsers"
+  >[];
+};

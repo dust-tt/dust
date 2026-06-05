@@ -128,6 +128,11 @@ import { isSidekickConversation } from "@app/lib/api/actions/servers/helpers";
 import { postUserMessage } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
+import type {
+  FetchConversationMessagesResponse,
+  LegacyFetchConversationMessagesResponse,
+  PostMessagesResponseBody,
+} from "@app/lib/api/assistant/messages";
 import { fetchConversationMessages } from "@app/lib/api/assistant/messages";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getPaginationParams } from "@app/lib/api/pagination";
@@ -140,12 +145,6 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import { apiError } from "@app/logger/withlogging";
 import { InternalPostMessagesRequestBodySchema } from "@app/types/api/internal/assistant";
-import type {
-  AgentMessageType,
-  LegacyLightMessageType,
-  LightMessageType,
-  UserMessageType,
-} from "@app/types/assistant/conversation";
 import { isUserMessageType } from "@app/types/assistant/conversation";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import { isContentFragmentType } from "@app/types/content_fragment";
@@ -153,25 +152,6 @@ import type { WithAPIErrorResponse } from "@app/types/error";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
-
-export type PostMessagesResponseBody = {
-  message: UserMessageType;
-  contentFragments: ContentFragmentType[];
-  agentMessages: AgentMessageType[];
-};
-
-// TODO remove after monday 2025-12-01 (once everyone has likely reloaded their browser)
-interface LegacyFetchConversationMessagesResponse {
-  hasMore: boolean;
-  lastValue: number | null;
-  messages: LegacyLightMessageType[];
-}
-
-export interface FetchConversationMessagesResponse {
-  hasMore: boolean;
-  lastValue: number | null;
-  messages: LightMessageType[];
-}
 
 async function handler(
   req: NextApiRequest,

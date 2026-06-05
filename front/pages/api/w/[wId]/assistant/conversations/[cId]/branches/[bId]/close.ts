@@ -1,6 +1,9 @@
 // @migration-status: MIGRATED_TO_HONO
 /** @ignoreswagger */
-import { closeConversationBranch } from "@app/lib/api/assistant/conversation/branches";
+import {
+  type CloseConversationBranchResponse,
+  closeConversationBranch,
+} from "@app/lib/api/assistant/conversation/branches";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
@@ -8,11 +11,6 @@ import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type CloseConversationBranchResponse = {
-  closedBranchId: string;
-  conversationDeleted: boolean;
-};
 
 async function handler(
   req: NextApiRequest,

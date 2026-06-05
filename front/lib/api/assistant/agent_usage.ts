@@ -7,12 +7,21 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getAssistantUsageData } from "@app/lib/workspace_usage";
 import { launchMentionsCountWorkflow } from "@app/temporal/mentions_count_queue/client";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { AgentUsageSchema } from "@app/types/assistant/agent";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { estypes } from "@elastic/elasticsearch";
 import keyBy from "lodash/keyBy";
 import type { RedisClientType } from "redis";
+import { z } from "zod";
+
+export const GetAgentUsageResponseBodySchema = z.object({
+  agentUsage: AgentUsageSchema.nullable(),
+});
+export type GetAgentUsageResponseBody = z.infer<
+  typeof GetAgentUsageResponseBodySchema
+>;
 
 // Ranking of agents is done over a 30 days period.
 const RANKING_USAGE_DAYS = 30;

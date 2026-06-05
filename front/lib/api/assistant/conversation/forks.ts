@@ -54,6 +54,12 @@ export type CreateConversationForkErrorCode =
   | "invalid_request_error"
   | "unauthorized";
 
+export type PostConversationForkResponseBody = {
+  conversationId: string;
+  parentConversationTitle: string | null;
+  spaceId: string | null;
+};
+
 type CarriedAttachment = {
   carriedAttachment:
     | ContentFragmentInputWithFileIdType

@@ -1,8 +1,9 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
+import type { FetchConversationToolsResponse } from "@app/lib/api/assistant/conversation/tools";
+import { ConversationToolActionRequestSchema } from "@app/lib/api/assistant/conversation/tools";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -10,21 +11,7 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
 import { fromError } from "zod-validation-error";
-
-export type FetchConversationToolsResponse = {
-  tools: MCPServerViewType[];
-};
-
-const ConversationToolActionRequestSchema = z.object({
-  action: z.enum(["add", "delete"]),
-  mcp_server_view_id: z.string(),
-});
-
-export type ConversationToolActionRequest = z.infer<
-  typeof ConversationToolActionRequestSchema
->;
 
 async function handler(
   req: NextApiRequest,

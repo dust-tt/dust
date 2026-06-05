@@ -52,6 +52,7 @@ import { useDeleteAgentMessage } from "@app/hooks/useDeleteAgentMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useRetryMessage } from "@app/hooks/useRetryMessage";
 import { CONTEXT_WINDOW_DOC_URL } from "@app/lib/api/assistant/errors";
+import type { FetchConversationMessageResponseLight } from "@app/lib/api/assistant/messages";
 import config from "@app/lib/api/config";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
@@ -62,7 +63,6 @@ import { getConversationRoute } from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import { getNextWakeUpFireAtFromScheduleConfig } from "@app/lib/utils/wakeup_description";
 import datadogLogger from "@app/logger/datadogLogger";
-import type { FetchConversationMessageResponseLight } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages/[mId]";
 import {
   canShowAgentConversationActions,
   isGlobalAgentId,

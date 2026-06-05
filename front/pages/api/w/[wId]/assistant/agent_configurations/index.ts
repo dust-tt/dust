@@ -117,6 +117,10 @@
  *         description: Unauthorized
  */
 import { getAgentsUsage } from "@app/lib/api/assistant/agent_usage";
+import type {
+  GetAgentConfigurationsResponseBody,
+  PostAgentConfigurationResponseBody,
+} from "@app/lib/api/assistant/configuration";
 import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/configuration/create_or_upgrade";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getAgentsEditors } from "@app/lib/api/assistant/editors";
@@ -131,26 +135,10 @@ import {
   GetAgentConfigurationsQuerySchema,
   PostOrPatchAgentConfigurationRequestBodySchema,
 } from "@app/types/api/internal/agent_configuration";
-import { LightAgentConfigurationSchema } from "@app/types/assistant/agent";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import keyBy from "lodash/keyBy";
 import omit from "lodash/omit";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
-
-export const GetAgentConfigurationsResponseBodySchema = z.object({
-  agentConfigurations: z.array(LightAgentConfigurationSchema),
-});
-export type GetAgentConfigurationsResponseBody = z.infer<
-  typeof GetAgentConfigurationsResponseBodySchema
->;
-
-export const PostAgentConfigurationResponseBodySchema = z.object({
-  agentConfiguration: LightAgentConfigurationSchema,
-});
-export type PostAgentConfigurationResponseBody = z.infer<
-  typeof PostAgentConfigurationResponseBodySchema
->;
 
 async function handler(
   req: NextApiRequest,

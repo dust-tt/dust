@@ -23,6 +23,10 @@ import { asDisplayName } from "@app/types/shared/utils/string_utils";
 
 import { createConversation, postUserMessage } from "./conversation";
 
+export type PostSendOnboardingResponseBody = {
+  conversationId: string | null;
+};
+
 function getOnboardingAvailableTools(): Array<{
   sId: string;
   name: string;

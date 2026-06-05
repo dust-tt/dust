@@ -1,5 +1,7 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
+
+import type { GetBySpacesSummaryResponseBody } from "@app/lib/api/assistant/conversation/spaces";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { listNonArchivedMemberSpacesWithMetadata } from "@app/lib/api/projects/list";
 import type { Authenticator } from "@app/lib/auth";
@@ -8,16 +10,7 @@ import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_
 import { apiError } from "@app/logger/withlogging";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { PodListItemType } from "@app/types/space";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type GetBySpacesSummaryResponseBody = {
-  summary: Array<{
-    space: PodListItemType;
-    unreadConversations: ConversationWithoutContentType[];
-    nonParticipantUnreadConversations: ConversationWithoutContentType[];
-  }>;
-};
 
 export function sortSpacesSummary<T extends { id: number }>(
   spaces: T[],

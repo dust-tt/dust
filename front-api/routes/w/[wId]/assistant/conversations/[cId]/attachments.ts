@@ -1,4 +1,4 @@
-import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
+import type { GetConversationAttachmentsResponseBody } from "@app/lib/api/assistant/conversation/attachments";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
@@ -10,10 +10,6 @@ import { z } from "zod";
 const ParamsSchema = z.object({
   cId: z.string(),
 });
-
-export type GetConversationAttachmentsResponseBody = {
-  attachments: ConversationAttachmentType[];
-};
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/attachments.
 const app = workspaceApp();

@@ -91,6 +91,10 @@ import {
   softDeleteUserMessageAndReplies,
 } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import type {
+  FetchConversationMessageResponse,
+  FetchConversationMessageResponseLight,
+} from "@app/lib/api/assistant/messages";
 import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -108,14 +112,6 @@ import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type FetchConversationMessageResponse = {
-  message: MessageType;
-};
-
-export type FetchConversationMessageResponseLight = {
-  message: LightMessageType;
-};
 
 async function handler(
   req: NextApiRequest,

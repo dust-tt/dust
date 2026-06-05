@@ -484,6 +484,15 @@ export type RenderedOpenBranch = {
   messages: LightMessageType[];
 };
 
+export type GetConversationOpenBranchResponse = {
+  branch: RenderedOpenBranch | null;
+};
+
+export type CloseConversationBranchResponse = {
+  closedBranchId: string;
+  conversationDeleted: boolean;
+};
+
 export async function getMostRecentOpenBranchForConversation(
   auth: Authenticator,
   {

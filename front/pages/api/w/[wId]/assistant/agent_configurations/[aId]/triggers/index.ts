@@ -1,6 +1,12 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import {
+  DeleteTriggersRequestBodyCodec,
+  type GetTriggersResponseBody,
+  PatchTriggersRequestBodyCodec,
+  PostTriggersRequestBodyCodec,
+} from "@app/lib/api/assistant/configuration/triggers";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
@@ -8,48 +14,9 @@ import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import {
-  FullTriggerSchema,
-  TriggerSchema,
-} from "@app/types/assistant/triggers";
+import { TriggerSchema } from "@app/types/assistant/triggers";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
-
-export const GetTriggersResponseBodySchema = z.object({
-  triggers: z.array(
-    FullTriggerSchema.and(
-      z.object({
-        isEditor: z.boolean(),
-        editorName: z.string().optional(),
-      })
-    )
-  ),
-});
-export type GetTriggersResponseBody = z.infer<
-  typeof GetTriggersResponseBodySchema
->;
-
-const DeleteTriggersRequestBodyCodec = z.object({
-  triggerIds: z.array(z.string()),
-});
-export type DeleteTriggersRequestBody = z.infer<
-  typeof DeleteTriggersRequestBodyCodec
->;
-
-const PatchTriggersRequestBodyCodec = z.object({
-  triggers: z.array(z.object({ sId: z.string() }).and(TriggerSchema)),
-});
-export type PatchTriggersRequestBody = z.infer<
-  typeof PatchTriggersRequestBodyCodec
->;
-
-const PostTriggersRequestBodyCodec = z.object({
-  triggers: z.array(TriggerSchema),
-});
-export type PostTriggersRequestBody = z.infer<
-  typeof PostTriggersRequestBodyCodec
->;
 
 // Helper type guard for decoded trigger data from TriggerSchema
 function isWebhookTriggerData(trigger: {

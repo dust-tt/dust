@@ -174,3 +174,11 @@ export async function fetchContextOriginDailyBreakdown(
 
   return new Ok(points);
 }
+
+export type GetContextOriginResponse = {
+  total: number;
+  buckets: {
+    origin: string;
+    count: number;
+  }[];
+};

@@ -4,6 +4,11 @@ import {
   getAgentConfiguration,
   updateAgentPermissions,
 } from "@app/lib/api/assistant/configuration/agent";
+import type {
+  AgentEditorsLightResponseBody,
+  AgentEditorsResponseBody,
+} from "@app/lib/api/assistant/configuration/editors";
+import { PatchAgentEditorsRequestBodySchema } from "@app/lib/api/assistant/configuration/editors";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -11,40 +16,8 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { LightUserType } from "@app/types/user";
-import { toLightUser, UserSchema } from "@app/types/user";
+import { toLightUser } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
-
-export const PatchAgentEditorsRequestBodySchema = z
-  .object({
-    addEditorIds: z.array(z.string()).optional(),
-    removeEditorIds: z.array(z.string()).optional(),
-  })
-  .refine(
-    (body) =>
-      (body.addEditorIds instanceof Array && body.addEditorIds.length > 0) ||
-      (body.removeEditorIds instanceof Array &&
-        body.removeEditorIds.length > 0),
-    {
-      message:
-        "Either addEditorIds or removeEditorIds must be provided and contain at least one ID.",
-    }
-  );
-export type PatchAgentEditorsRequestBody = z.infer<
-  typeof PatchAgentEditorsRequestBodySchema
->;
-
-export const AgentEditorsResponseBodySchema = z.object({
-  editors: z.array(UserSchema),
-});
-export type AgentEditorsResponseBody = z.infer<
-  typeof AgentEditorsResponseBodySchema
->;
-
-export type AgentEditorsLightResponseBody = {
-  editors: LightUserType[];
-};
 
 async function handler(
   req: NextApiRequest,

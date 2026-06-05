@@ -1,5 +1,5 @@
 import { useCompactConversation } from "@app/hooks/conversations";
-import type { GetConversationContextUsageResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/context-usage";
+import type { GetConversationContextUsageResponse } from "@app/lib/api/assistant/conversation/context_usage";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   ContentMessageAction,

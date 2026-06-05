@@ -1,6 +1,6 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
-import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
+import type { GetConversationAttachmentsResponseBody } from "@app/lib/api/assistant/conversation/attachments";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
@@ -10,10 +10,6 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type GetConversationAttachmentsResponseBody = {
-  attachments: ConversationAttachmentType[];
-};
 
 async function handler(
   req: NextApiRequest,

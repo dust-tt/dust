@@ -137,3 +137,8 @@ export async function fetchSkillExecutionMetrics(
 
   return new Ok({ byVersion, bySource });
 }
+
+export type GetSkillExecutionResponse = {
+  byVersion: SkillExecutionByVersion[];
+  bySource: SkillExecutionBySource[];
+};

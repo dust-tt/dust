@@ -1,20 +1,14 @@
+import type { GetBySpacesSummaryResponseBody } from "@app/lib/api/assistant/conversation/spaces";
 import { listNonArchivedMemberSpacesWithMetadata } from "@app/lib/api/projects/list";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import type { PodListItemType } from "@app/types/space";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
 import spaceId from "./[spaceId]";
 
-export type GetBySpacesSummaryResponseBody = {
-  summary: Array<{
-    space: PodListItemType;
-    unreadConversations: ConversationWithoutContentType[];
-    nonParticipantUnreadConversations: ConversationWithoutContentType[];
-  }>;
-};
+export type { GetBySpacesSummaryResponseBody };
 
 export function sortSpacesSummary<T extends { id: number }>(
   spaces: T[],

@@ -1,31 +1,18 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
+import type { FetchConversationSkillsResponse } from "@app/lib/api/assistant/conversation/skills";
+import { ConversationSkillActionRequestSchema } from "@app/lib/api/assistant/conversation/skills";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { SkillType } from "@app/types/assistant/skill_configuration";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
 import { fromError } from "zod-validation-error";
-
-export type FetchConversationSkillsResponse = {
-  skills: SkillType[];
-};
-
-const ConversationSkillActionRequestSchema = z.object({
-  action: z.enum(["add", "delete"]),
-  skillId: z.string(),
-});
-
-export type ConversationSkillActionRequest = z.infer<
-  typeof ConversationSkillActionRequestSchema
->;
 
 async function handler(
   req: NextApiRequest,

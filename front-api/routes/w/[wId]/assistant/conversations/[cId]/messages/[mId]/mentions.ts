@@ -1,3 +1,4 @@
+import type { PostMentionActionResponseBody } from "@app/lib/api/assistant/conversation/mentions";
 import {
   dismissMention,
   validateUserMention,
@@ -8,10 +9,6 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export type PostMentionActionResponseBody = {
-  success: boolean;
-};
 
 const ParamsSchema = z.object({
   cId: z.string(),

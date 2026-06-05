@@ -128,6 +128,11 @@
 import { deleteOrLeaveConversation } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { updateConversationTitle } from "@app/lib/api/assistant/conversation/title";
+import type {
+  GetConversationResponseBody,
+  PatchConversationResponseBody,
+} from "@app/lib/api/assistant/conversation/types";
+import { PatchConversationsRequestBodySchema } from "@app/lib/api/assistant/conversation/types";
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
@@ -141,44 +146,12 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { ConversationError } from "@app/types/assistant/conversation";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
 import { fromError } from "zod-validation-error";
-
-const PatchConversationsRequestBodySchema = z.union([
-  z.object({
-    title: z.string(),
-  }),
-  z.object({
-    read: z.boolean(),
-  }),
-  z.object({
-    spaceId: z.string(),
-  }),
-  z.object({
-    accessMode: z.enum(["participants_only", "workspace_members"]),
-  }),
-  z.object({
-    removeFromProject: z.literal(true),
-  }),
-]);
-
-export type PatchConversationsRequestBody = z.infer<
-  typeof PatchConversationsRequestBodySchema
->;
-
-export type GetConversationResponseBody = {
-  conversation: ConversationWithoutContentType;
-};
-
-export type PatchConversationResponseBody = {
-  success: boolean;
-};
 
 async function handler(
   req: NextApiRequest,

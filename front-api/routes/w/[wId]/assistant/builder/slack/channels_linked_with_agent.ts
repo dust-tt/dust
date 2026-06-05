@@ -1,23 +1,12 @@
+import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/lib/api/assistant/builder/slack/channels_linked_with_agent";
 import config from "@app/lib/api/config";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
-import type { ConnectorProvider, DataSourceType } from "@app/types/data_source";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsBuilder } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
-
-export type GetSlackChannelsLinkedWithAgentResponseBody = {
-  provider: Extract<ConnectorProvider, "slack" | "slack_bot">;
-  slackChannels: {
-    slackChannelId: string;
-    slackChannelName: string;
-    agentConfigurationId: string;
-    autoRespondWithoutMention: boolean;
-  }[];
-  slackDataSource?: DataSourceType;
-};
 
 // Mounted at /api/w/:wId/assistant/builder/slack/channels_linked_with_agent.
 const app = workspaceApp();

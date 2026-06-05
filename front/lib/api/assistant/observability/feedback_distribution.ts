@@ -130,3 +130,7 @@ export async function fetchFeedbackDistribution(
 
   return new Ok(points);
 }
+
+export type GetFeedbackDistributionResponse = {
+  points: FeedbackDistributionPoint[];
+};

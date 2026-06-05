@@ -1,7 +1,7 @@
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { PatchAgentTagsRequestBody } from "@app/lib/api/assistant/configuration/agent_tags";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { PatchAgentTagsRequestBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/tags";
 import type { GetTagsResponseBody } from "@app/pages/api/w/[wId]/tags";
 import type { GetSuggestionsResponseBody } from "@app/pages/api/w/[wId]/tags/suggest_from_agents";
 import type { GetTagsUsageResponseBody } from "@app/pages/api/w/[wId]/tags/usage";

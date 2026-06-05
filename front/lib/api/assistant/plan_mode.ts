@@ -2,7 +2,15 @@ import { PLAN_MODE_SKELETON } from "@app/lib/api/actions/servers/plan_mode/metad
 import type { Authenticator } from "@app/lib/auth";
 import { executeWithLock } from "@app/lib/lock";
 import { FileResource } from "@app/lib/resources/file_resource";
-import type { PlanModeApproval } from "@app/types/files";
+import type { FileType, PlanModeApproval } from "@app/types/files";
+
+export type PlanApprovalState = "draft" | "pending" | "approved";
+
+export type GetConversationPlanModeResponseBody = {
+  planFile: FileType | null;
+  content: string | null;
+  approvalState: PlanApprovalState;
+};
 
 // Conversation-scoped lock for all plan-mode operations. One plan per conversation, so a single
 // lock keyed on conversation sId serializes create/edit/approve/close and prevents races (e.g.

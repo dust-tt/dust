@@ -6,13 +6,12 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { setupAgentOwner } from "@app/tests/utils/AgentOwnerFactory";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
-import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { LightWorkspaceType } from "@app/types/user";
 import { describe, expect, it } from "vitest";
@@ -44,21 +43,6 @@ const TEST_AGENT_PARAMS = {
   skills: [],
   additionalRequestedSpaceIds: [],
 };
-
-export async function setupAgentOwner(
-  workspace: LightWorkspaceType,
-  agentOwnerRole: "admin" | "builder" | "user"
-) {
-  const agentOwner = await UserFactory.basic();
-  await MembershipFactory.associate(workspace, agentOwner, {
-    role: agentOwnerRole,
-  });
-  const agentOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
-    agentOwner.sId,
-    workspace.sId
-  );
-  return { agentOwner, agentOwnerAuth };
-}
 
 async function setupTestAgents(
   workspace: LightWorkspaceType,
