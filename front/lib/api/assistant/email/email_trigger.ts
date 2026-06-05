@@ -45,7 +45,7 @@ import type { InboundEmailDkimResult } from "./inbound_auth";
 const REDIS_ORIGIN: RedisUsageTagsType = "email_context";
 const EMAIL_REPLY_CONTEXT_PREFIX = "email-reply-context";
 const EMAIL_REPLY_CONTEXT_TTL_SECONDS = 3 * 60 * 60; // 3 hours
-const EMAIL_PRIORITY_WORKSPACE_SIDS = ["0ec9852c2f"] as const;
+const EMAIL_PRIORITY_WORKSPACE_IDS = ["0ec9852c2f"] as const;
 
 /**
  * Data needed to reply to an email after agent message completion.
@@ -525,7 +525,7 @@ export async function userAndWorkspaceFromEmail({
 
   // Pick the best workspace: prefer priority workspaces, then paying plans,
   // then upgraded free plans, then fall back to the most recently created workspace.
-  const priorityWorkspace = EMAIL_PRIORITY_WORKSPACE_SIDS.map((workspaceId) =>
+  const priorityWorkspace = EMAIL_PRIORITY_WORKSPACE_IDS.map((workspaceId) =>
     eligibleWorkspaceModels.find(
       (workspaceModel) => workspaceModel.sId === workspaceId
     )
