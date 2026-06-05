@@ -2,6 +2,10 @@
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { metronomeBalanceToDisplayData } from "@app/lib/api/credits/metronome_balances";
+import type {
+  PokeListCreditsResponseBody,
+  PokeUnifiedCreditRow,
+} from "@app/lib/api/poke/credits";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { listMetronomeBalances } from "@app/lib/metronome/client";
@@ -10,35 +14,9 @@ import { isMetronomeExcessCredit } from "@app/lib/metronome/types";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { CreditDisplayData, CreditType } from "@app/types/credits";
+import type { CreditDisplayData } from "@app/types/credits";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type PokeCreditType = {
-  id: number;
-  createdAt: string;
-  type: CreditType;
-  initialAmountMicroUsd: number;
-  consumedAmountMicroUsd: number;
-  remainingAmountMicroUsd: number;
-  startDate: string | null;
-  expirationDate: string | null;
-  discount: number | null;
-  invoiceOrLineItemId: string | null;
-  metronomeCreditId: string | null;
-};
-
-export type PokeUnifiedCreditRow = {
-  rowKey: string;
-  internal: PokeCreditType | null;
-  metronome: CreditDisplayData | null;
-};
-
-export type PokeListCreditsResponseBody = {
-  rows: PokeUnifiedCreditRow[];
-  excessCreditsLast30DaysMicroUsd: number;
-  hasMetronome: boolean;
-};
 
 async function handler(
   req: NextApiRequest,

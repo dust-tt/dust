@@ -1,20 +1,14 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
+import type { PokeListWebhookSources } from "@app/lib/api/poke/webhook_sources";
 import { listWebhookSourcesWithCounts } from "@app/lib/api/webhook_source";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
-import type { WebhookSourceType } from "@app/types/triggers/webhooks";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type PokeListWebhookSources = {
-  webhookSources: Array<
-    WebhookSourceType & { viewCount: number; triggerCount: number }
-  >;
-};
 
 async function handler(
   req: NextApiRequest,

@@ -1,5 +1,5 @@
+import type { PokeGetGroupDetails } from "@app/lib/api/poke/groups";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { PokeGetGroupDetails } from "@app/pages/api/poke/workspaces/[wId]/groups/[groupId]/details";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher } from "swr";
 

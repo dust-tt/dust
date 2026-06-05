@@ -1,7 +1,7 @@
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import { TYPE_COLORS } from "@app/components/workspace/CreditsList";
+import type { PokeUnifiedCreditRow } from "@app/lib/api/poke/credits";
 import { getMetronomeCommitOrCreditUrl } from "@app/lib/metronome/urls";
-import type { PokeUnifiedCreditRow } from "@app/pages/api/poke/workspaces/[wId]/credits";
 import { dateToHumanReadable } from "@app/types/shared/utils/date_utils";
 import { Chip, LinkWrapper } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
