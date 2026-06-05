@@ -99,7 +99,7 @@ export const SuggestedTaskItem = memo(function SuggestedTaskItem({
         <div
           className={cn(
             "shrink-0 transition-opacity",
-            "[@media(hover:hover)]:opacity-0 group-hover/suggestion-item:opacity-100 group-focus-within/suggestion-item:opacity-100"
+            "[@media(hover:hover)_and_(pointer:fine)]:opacity-0 group-hover/suggestion-item:opacity-100 group-focus-within/suggestion-item:opacity-100"
           )}
         >
           <Button

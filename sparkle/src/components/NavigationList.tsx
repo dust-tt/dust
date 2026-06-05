@@ -473,7 +473,7 @@ const NavigationListCollapsibleSection = React.forwardRef<
         className={cn(
           "s-m-1.5 s-flex s-gap-1 s-pr-0.5 s-transition-opacity",
           actionOnHover
-            ? "[@media(hover:hover)]:s-opacity-0 hover:s-opacity-100 group-has-[:focus-visible]/menu-item:s-opacity-100 group-hover/menu-item:s-opacity-100"
+            ? "[@media(hover:hover)_and_(pointer:fine)]:s-opacity-0 hover:s-opacity-100 group-has-[:focus-visible]/menu-item:s-opacity-100 group-hover/menu-item:s-opacity-100"
             : "s-opacity-100"
         )}
         onClick={(e) => {
