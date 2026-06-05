@@ -1,16 +1,16 @@
 import config from "@app/lib/api/config";
+import type {
+  FeaturesType,
+  PokeGetDataSourceDetails,
+} from "@app/lib/api/poke/data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { getTemporalClientForConnectorsNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import type { InternalConnectorType } from "@app/types/connectors/connectors_api";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
-import type { SlackAutoReadPattern } from "@app/types/connectors/slack";
 import { isSlackAutoReadPatterns } from "@app/types/connectors/slack";
 import { CoreAPI } from "@app/types/core/core_api";
-import type { CoreAPIDataSource } from "@app/types/core/data_source";
-import type { DataSourceType } from "@app/types/data_source";
-import type { DataSourceViewType } from "@app/types/data_source_view";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -20,33 +20,6 @@ import { z } from "zod";
 const ParamsSchema = z.object({
   dsId: z.string(),
 });
-
-export type FeaturesType = {
-  slackBotEnabled: boolean;
-  googleDrivePdfEnabled: boolean;
-  googleDriveLargeFilesEnabled: boolean;
-  microsoftPdfEnabled: boolean;
-  microsoftLargeFilesEnabled: boolean;
-  googleDriveCsvEnabled: boolean;
-  microsoftCsvEnabled: boolean;
-  githubCodeSyncEnabled: boolean;
-  githubUseProxyEnabled: boolean;
-  autoReadChannelPatterns: SlackAutoReadPattern[];
-};
-
-export type PokeGetDataSourceDetails = {
-  dataSource: DataSourceType;
-  dataSourceViews: DataSourceViewType[];
-  coreDataSource: CoreAPIDataSource;
-  connector: InternalConnectorType | null;
-  features: FeaturesType;
-  temporalWorkspace: string;
-  temporalRunningWorkflows: {
-    workflowId: string;
-    runId: string;
-    status: string;
-  }[];
-};
 
 // Mounted at /api/poke/workspaces/:wId/data_sources/:dsId/details.
 const app = pokeApp();

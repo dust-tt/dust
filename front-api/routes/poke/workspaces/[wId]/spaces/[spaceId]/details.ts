@@ -1,20 +1,13 @@
+import type { PokeGetSpaceDetails } from "@app/lib/api/poke/spaces";
 import { getMembers } from "@app/lib/api/workspace";
 import { spaceToPokeJSON } from "@app/lib/poke/utils";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import type { PokeSpaceType } from "@app/types/poke";
-import type { PodMetadataType } from "@app/types/project_metadata";
 import type { UserTypeWithWorkspaces } from "@app/types/user";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export type PokeGetSpaceDetails = {
-  members: Record<string, UserTypeWithWorkspaces[]>;
-  metadata: PodMetadataType | null;
-  space: PokeSpaceType;
-};
 
 const ParamsSchema = z.object({
   spaceId: z.string(),

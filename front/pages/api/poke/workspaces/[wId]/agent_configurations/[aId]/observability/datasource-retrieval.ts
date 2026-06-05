@@ -2,9 +2,9 @@
 // @migration-status: MIGRATED_TO_HONO
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import type { DatasourceRetrievalData } from "@app/lib/api/assistant/observability/datasource_retrieval";
 import { fetchDatasourceRetrievalMetrics } from "@app/lib/api/assistant/observability/datasource_retrieval";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
+import type { PokeGetDatasourceRetrievalResponse } from "@app/lib/api/poke/agent_configurations";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
@@ -17,11 +17,6 @@ import { fromError } from "zod-validation-error";
 const QuerySchema = z.object({
   days: z.coerce.number().positive().optional().default(DEFAULT_PERIOD_DAYS),
 });
-
-export type PokeGetDatasourceRetrievalResponse = {
-  datasources: DatasourceRetrievalData[];
-  total: number;
-};
 
 async function handler(
   req: NextApiRequest,

@@ -27,10 +27,6 @@ const PostSkillSuggestionBodySchema = z.object({
   mcpServerViewIds: z.array(z.string()),
 });
 
-export type PostSkillSuggestionBodyType = z.infer<
-  typeof PostSkillSuggestionBodySchema
->;
-
 export type PostPokeSkillSuggestionResponseBody = {
   skill: SkillType;
 };

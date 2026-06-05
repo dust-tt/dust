@@ -3,27 +3,17 @@
 import { listsAgentConfigurationVersions } from "@app/lib/api/assistant/configuration/agent";
 import { getAuthors, getEditors } from "@app/lib/api/assistant/editors";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
+import type { PokeGetAgentDetails } from "@app/lib/api/poke/agent_configurations";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
-import type { SpaceType } from "@app/types/space";
-import type { UserType } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type PokeGetAgentDetails = {
-  agentConfigurations: AgentConfigurationType[];
-  authors: UserType[];
-  lastVersionEditors: UserType[];
-  spaces: SpaceType[];
-  skillsByVersion: Record<number, SkillType[]>;
-};
 
 async function handler(
   req: NextApiRequest,

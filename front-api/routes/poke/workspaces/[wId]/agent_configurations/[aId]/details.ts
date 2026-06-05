@@ -1,24 +1,14 @@
 import { listsAgentConfigurationVersions } from "@app/lib/api/assistant/configuration/agent";
 import { getAuthors, getEditors } from "@app/lib/api/assistant/editors";
+import type { PokeGetAgentDetails } from "@app/lib/api/poke/agent_configurations";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
-import type { SpaceType } from "@app/types/space";
-import type { UserType } from "@app/types/user";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export type PokeGetAgentDetails = {
-  agentConfigurations: AgentConfigurationType[];
-  authors: UserType[];
-  lastVersionEditors: UserType[];
-  spaces: SpaceType[];
-  skillsByVersion: Record<number, SkillType[]>;
-};
 
 const ParamsSchema = z.object({
   aId: z.string(),

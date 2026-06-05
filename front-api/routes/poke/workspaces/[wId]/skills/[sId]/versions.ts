@@ -1,13 +1,9 @@
+import type { PokeGetSkillVersions } from "@app/lib/api/poke/skills";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import type { SkillWithVersionType } from "@app/types/assistant/skill_configuration";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export type PokeGetSkillVersions = {
-  versions: SkillWithVersionType[];
-};
 
 const ParamsSchema = z.object({
   sId: z.string(),
