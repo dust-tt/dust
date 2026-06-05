@@ -127,7 +127,8 @@ export function useUpdateWorkspaceRegionalModelsOnly({
           sendNotification({
             type: "error",
             title: "Update failed",
-            description: "Some active agents may not be eligible for regional models.",
+            description:
+              "Some active agents may not be eligible for regional models.",
           });
           return false;
         }
