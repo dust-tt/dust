@@ -88,7 +88,7 @@ describe("GET /api/w/[wId]/members/search", () => {
     expect(data.total).toBe(1);
     expect(data.members).toHaveLength(1);
     expect(data.members[0].sId).toBe(user.sId);
-    // Non-admin users still get workspace info (role) and email, but not other sensitive user fields.
+    // Non-admin users receive minimal essential user data plus workspace info.
     expect(data.members[0].workspace).toBeDefined();
     expect(data.members[0].email).toBeDefined();
     expect(data.members[0].id).toBeUndefined();
@@ -116,7 +116,7 @@ describe("GET /api/w/[wId]/members/search", () => {
     // Workspace info (role) is still present for non-admins.
     expect(member.workspace).toBeDefined();
 
-    // Email is present for non-admins, but other admin-only user fields are absent.
+    // Non-admins receive only minimal essential fields; admin-only fields are absent.
     expect(member.email).toBeDefined();
     expect(member.id).toBeUndefined();
     expect(member.provider).toBeUndefined();
@@ -146,7 +146,7 @@ describe("GET /api/w/[wId]/members/search", () => {
     expect(data.total).toBe(1);
     expect(data.members).toHaveLength(1);
     expect(data.members[0].sId).toBe(users[0].sId);
-    // Non-admin should see email.
+    // Non-admin receives minimal essential data including email.
     expect(data.members[0].email).toBeDefined();
   });
 
@@ -179,7 +179,7 @@ describe("GET /api/w/[wId]/members/search", () => {
     // The caller (builder) + users[0] (admin) + users[1] (builder) = 3.
     expect(data.total).toBe(3);
     expect(data.members).toHaveLength(3);
-    // Non-admin still gets workspace (with role) and email, but not other sensitive user fields.
+    // Non-admin receives minimal essential user data plus workspace info.
     data.members.forEach((member: any) => {
       expect(member.workspace).toBeDefined();
       expect(member.email).toBeDefined();
@@ -214,7 +214,7 @@ describe("GET /api/w/[wId]/members/search", () => {
     // 5 created + 1 from createPrivateApiMockRequest = 6 total.
     expect(data.total).toBe(6);
     expect(data.members).toHaveLength(3);
-    // Every member should have light shape (email + workspace present, other sensitive fields absent).
+    // Every member should have light shape (minimal essential data + workspace).
     data.members.forEach((member: any) => {
       expect(member.workspace).toBeDefined();
       expect(member.email).toBeDefined();

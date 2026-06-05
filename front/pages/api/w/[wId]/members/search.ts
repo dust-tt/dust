@@ -87,7 +87,7 @@ async function handler(
         query
       );
 
-      // Non-admins get a response with sensitive fields (provider, lastLoginAt etc) stripped away.
+      // Non-admins receive only minimal essential user data (LightUserType).
       if (auth.isAdmin()) {
         return res.status(200).json({ members, total });
       }

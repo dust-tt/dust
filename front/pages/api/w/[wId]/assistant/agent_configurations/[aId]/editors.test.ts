@@ -116,7 +116,7 @@ describe("GET /api/w/[wId]/assistant/agent_configurations/[aId]/editors", () => 
     expect(data.editors).toHaveLength(1);
     expect(data.editors[0].sId).toBe(agentOwner.sId);
 
-    // Non-admin should see email but not other sensitive fields.
+    // Non-admin receives only minimal essential fields; admin-only fields are absent.
     expect(data.editors[0].email).toBeDefined();
     expect(data.editors[0].id).toBeUndefined();
     expect(data.editors[0].provider).toBeUndefined();
@@ -214,7 +214,7 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/editors", () =
     const editorIds = data.editors.map((e: { sId: string }) => e.sId);
     expect(editorIds).toContain(agentOwner.sId);
     expect(editorIds).toContain(newEditor.sId);
-    // Non-admin should see email.
+    // Non-admin receives minimal essential data including email.
     expect(data.editors[0].email).toBeDefined();
   });
 

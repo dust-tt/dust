@@ -72,7 +72,7 @@ app.get(
       query
     );
 
-    // biome-ignore lint/plugin/noDirectRoleCheck: non-admins get a response with sensitive fields (provider, lastLoginAt etc) stripped away
+    // biome-ignore lint/plugin/noDirectRoleCheck: non-admins receive only minimal essential user data (LightUserType)
     if (auth.isAdmin()) {
       return ctx.json({ members, total });
     }
