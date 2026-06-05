@@ -2,9 +2,17 @@
 // @migration-status: MIGRATED_TO_HONO
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
-import type { AvailableTool } from "@app/lib/api/assistant/workspace_capabilities";
 import { listAvailableTools } from "@app/lib/api/assistant/workspace_capabilities";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
+import type {
+  GetReinforcementTestCaseResponseBody,
+  ReinforcementTestCaseMockAction,
+  ReinforcementTestCaseMockFeedback,
+  ReinforcementTestCaseMockMessage,
+  ReinforcementTestCaseMockSkillConfig,
+  ReinforcementTestCaseMockSkillTool,
+  ReinforcementTestCaseType,
+} from "@app/lib/api/poke/conversations";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
@@ -18,56 +26,6 @@ import type { WithAPIErrorResponse } from "@app/types/error";
 import type { ModelId } from "@app/types/shared/model_id";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-interface ReinforcementTestCaseMockAction {
-  functionCallName: string;
-  status: "succeeded" | "failed";
-  params?: Record<string, unknown>;
-  output?: string | null;
-}
-
-interface ReinforcementTestCaseMockFeedback {
-  direction: "up" | "down";
-  comment?: string;
-}
-
-interface ReinforcementTestCaseMockMessage {
-  role: "user" | "agent";
-  content: string;
-  feedback?: ReinforcementTestCaseMockFeedback;
-  actions?: ReinforcementTestCaseMockAction[];
-}
-
-interface ReinforcementTestCaseMockSkillTool {
-  name: string;
-  sId: string;
-}
-
-interface ReinforcementTestCaseMockSkillConfig {
-  name: string;
-  sId: string;
-  description?: string;
-  instructions?: string;
-  tools?: ReinforcementTestCaseMockSkillTool[];
-}
-
-interface ReinforcementTestCaseWorkspaceContext {
-  tools: AvailableTool[];
-}
-
-export interface ReinforcementTestCaseType {
-  scenarioId: string;
-  type: "analysis";
-  skillConfigs: ReinforcementTestCaseMockSkillConfig[];
-  conversation: ReinforcementTestCaseMockMessage[];
-  workspaceContext: ReinforcementTestCaseWorkspaceContext;
-  expectedToolCalls: [];
-  judgeCriteria: string;
-}
-
-export type GetReinforcementTestCaseResponseBody = {
-  testCase: ReinforcementTestCaseType;
-};
 
 function serializeActionOutput(
   output: Array<{ type: string; text?: string }> | null | undefined

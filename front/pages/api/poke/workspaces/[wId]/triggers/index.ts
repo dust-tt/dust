@@ -1,22 +1,14 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
+import type { PokeListTriggers } from "@app/lib/api/poke/triggers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
-import {
-  listTriggersWithProviderAndEditor,
-  type TriggerWithProviderAndEditor,
-} from "@app/lib/triggers/admin/list_with_metadata";
+import { listTriggersWithProviderAndEditor } from "@app/lib/triggers/admin/list_with_metadata";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type TriggerWithProviderType = TriggerWithProviderAndEditor;
-
-export type PokeListTriggers = {
-  triggers: TriggerWithProviderType[];
-};
 
 async function handler(
   req: NextApiRequest,

@@ -1,6 +1,6 @@
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
+import type { PokeProjectKnowledgeFromConnectorItem } from "@app/lib/api/poke/projects";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type { PokeProjectKnowledgeFromConnectorItem } from "@app/pages/api/poke/workspaces/[wId]/projects/[projectId]/connector-knowledge";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Chip, LinkWrapper, Tooltip } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";

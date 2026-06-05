@@ -1,21 +1,13 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
-import {
-  listAllProjectsWithAdminMetadata,
-  type ProjectWithAdminMetadata,
-} from "@app/lib/api/projects/list";
+import type { PokeListProjects } from "@app/lib/api/poke/projects";
+import { listAllProjectsWithAdminMetadata } from "@app/lib/api/projects/list";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type PokeProjectType = ProjectWithAdminMetadata;
-
-export type PokeListProjects = {
-  projects: PokeProjectType[];
-};
 
 async function handler(
   req: NextApiRequest,
