@@ -1,4 +1,4 @@
-import { useWorkspace } from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
 import { Spinner } from "@dust-tt/sparkle";
@@ -6,10 +6,18 @@ import { useEffect } from "react";
 
 export function ManageSubscriptionPage() {
   const owner = useWorkspace();
+  const { subscription } = useAuth();
   const router = useAppRouter();
 
   useEffect(() => {
     async function redirectToStripePortal() {
+      // Guard: trial users or users without a Stripe subscription
+      // should not access the portal, redirect back to subscription page.
+      if (subscription.trialing || !subscription.stripeSubscriptionId) {
+        await router.push(`/w/${owner.sId}/subscription`);
+        return;
+      }
+
       const res = await clientFetch("/api/stripe/portal", {
         method: "POST",
         headers: {
@@ -34,7 +42,12 @@ export function ManageSubscriptionPage() {
     }
 
     void redirectToStripePortal();
-  }, [owner.sId, router]);
+  }, [
+    owner.sId,
+    subscription.trialing,
+    subscription.stripeSubscriptionId,
+    router,
+  ]);
 
   return (
     <div className="flex h-dvh w-full items-center justify-center">
