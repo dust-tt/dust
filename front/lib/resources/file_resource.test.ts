@@ -1,8 +1,12 @@
+import { computeFrameContentHash } from "@app/lib/api/viz/authorized_file_access_policy";
 import { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
-import { FileModel } from "@app/lib/resources/storage/models/files";
+import {
+  AuthorizedFileAccessModel,
+  FileModel,
+} from "@app/lib/resources/storage/models/files";
 import { copyContent } from "@app/lib/utils/files";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
@@ -1128,6 +1132,73 @@ describe("FileResource", () => {
 
       // Only canonical write, no mount path write.
       expect(allUploadCalls).toHaveLength(1);
+    });
+  });
+
+  describe("authorized file access", () => {
+    it("refreshAuthorizedFileAccess revokes prior rows and persists the refreshed allowlist", async () => {
+      const { authenticator: auth } = await createResourceTest({});
+
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+        messagesCreatedAt: [new Date()],
+      });
+
+      const frameFile = await FileFactory.create(auth, null, {
+        contentType: frameContentType,
+        fileName: "Frame.tsx",
+        fileSize: 100,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: conversation.sId },
+      });
+
+      const shareableFile = await FileResource.shareableFileModel.findOne({
+        where: { fileId: frameFile.id, workspaceId: frameFile.workspaceId },
+      });
+      expect(shareableFile).not.toBeNull();
+
+      const existingAllowedAt = new Date("2026-01-01T00:00:00.000Z");
+      await AuthorizedFileAccessModel.create({
+        workspaceId: frameFile.workspaceId,
+        shareableFileId: shareableFile!.id,
+        kind: "file_id",
+        ref: "fil_OLDREF0001",
+        fileName: null,
+        legacyPath: null,
+        shareScope: shareableFile!.shareScope,
+        computedByUserId: auth.user()!.sId,
+        frameContentHash: "old-hash",
+        allowedAt: existingAllowedAt,
+        revokedAt: null,
+      });
+
+      vi.spyOn(FileResource.prototype, "getSharedReadStream").mockReturnValue(
+        Readable.from([Buffer.from('useFile("fil_ABCDEFGHIJ");', "utf-8")])
+      );
+      vi.spyOn(FileResource, "fetchById").mockResolvedValue(null);
+
+      const refreshed = await frameFile.refreshAuthorizedFileAccess(auth);
+
+      expect(refreshed.frameContentHash).toBe(
+        computeFrameContentHash('useFile("fil_ABCDEFGHIJ");')
+      );
+      expect(refreshed.unverifiableRefs).toEqual(["fil_ABCDEFGHIJ"]);
+
+      const rows = await AuthorizedFileAccessModel.findAll({
+        where: {
+          shareableFileId: shareableFile!.id,
+          workspaceId: frameFile.workspaceId,
+        },
+        order: [["allowedAt", "ASC"]],
+      });
+
+      expect(rows).toHaveLength(2);
+      expect(rows[0]?.revokedAt).not.toBeNull();
+      expect(rows[0]?.ref).toBe("fil_OLDREF0001");
+      expect(rows[1]?.revokedAt).toBeNull();
+      expect(rows[1]?.kind).toBe("unverifiable");
+      expect(rows[1]?.ref).toBe("fil_ABCDEFGHIJ");
     });
   });
 });

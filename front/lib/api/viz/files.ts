@@ -1,3 +1,4 @@
+import { MAX_CONVERSATION_DEPTH } from "@app/lib/api/assistant/conversation/constants";
 import { Authenticator } from "@app/lib/auth";
 import {
   ConversationModel,
@@ -7,7 +8,6 @@ import {
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { MAX_CONVERSATION_DEPTH } from "@app/pages/api/v1/w/[wId]/assistant/conversations";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
