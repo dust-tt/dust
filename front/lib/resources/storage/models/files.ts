@@ -335,7 +335,7 @@ AuthorizedFileAccessModel.init(
       allowNull: false,
     },
     ref: {
-      type: DataTypes.STRING,
+      type: DataTypes.STRING(4096),
       allowNull: false,
     },
     fileName: {
@@ -344,7 +344,7 @@ AuthorizedFileAccessModel.init(
       defaultValue: null,
     },
     legacyPath: {
-      type: DataTypes.STRING,
+      type: DataTypes.STRING(4096),
       allowNull: true,
       defaultValue: null,
     },
