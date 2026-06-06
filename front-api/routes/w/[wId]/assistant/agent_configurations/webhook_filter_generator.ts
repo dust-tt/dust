@@ -1,4 +1,5 @@
 import { getWebhookFilterGeneration } from "@app/lib/api/assistant/configuration/triggers/webhook_filter";
+import type { PostWebhookFilterGeneratorResponseBody } from "@app/lib/api/assistant/configuration/triggers/webhook_filter_generator";
 import {
   WEBHOOK_PRESETS,
   WEBHOOK_PROVIDERS,
@@ -8,10 +9,6 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export type PostWebhookFilterGeneratorResponseBody = {
-  filter: string;
-};
 
 const PostWebhookFilterGeneratorRequestBodySchema = z.object({
   naturalDescription: z.string(),

@@ -1,6 +1,6 @@
+import type { GetAgentUsageResponseBody } from "@app/lib/api/assistant/agent_usage";
 import { getAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import type { AgentUsageType } from "@app/types/assistant/agent";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -10,10 +10,6 @@ import { z } from "zod";
 const ParamsSchema = z.object({
   aId: z.string(),
 });
-
-export type GetAgentUsageResponseBody = {
-  agentUsage: AgentUsageType | null;
-};
 
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/usage.
 const app = workspaceApp();

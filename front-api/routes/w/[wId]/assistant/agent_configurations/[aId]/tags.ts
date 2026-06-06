@@ -1,17 +1,13 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import type { PatchAgentTagsResponseBody } from "@app/lib/api/assistant/configuration/agent_tags";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type { TagType } from "@app/types/tag";
 import { isBuilder } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export type PatchAgentTagsResponseBody = {
-  tags: TagType[];
-};
 
 const ParamsSchema = z.object({
   aId: z.string(),

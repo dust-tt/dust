@@ -1,4 +1,5 @@
 import config from "@app/lib/api/config";
+import type { GetOrPostManagedDataSourceConfigResponseBody } from "@app/lib/api/data_sources/managed_config";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
@@ -7,10 +8,6 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export type GetOrPostManagedDataSourceConfigResponseBody = {
-  configValue: string;
-};
 
 const PostManagedDataSourceConfigRequestBodySchema = z.object({
   configValue: z.string(),

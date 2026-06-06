@@ -1,6 +1,6 @@
+import type { GetDataSourceUsageResponseBody } from "@app/lib/api/agent_data_sources";
 import { getDataSourceUsage } from "@app/lib/api/agent_data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import type { AgentsUsageType } from "@app/types/data_source";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -10,10 +10,6 @@ import { z } from "zod";
 const ParamsSchema = z.object({
   dsId: z.string(),
 });
-
-export type GetDataSourceUsageResponseBody = {
-  usage: AgentsUsageType;
-};
 
 // Mounted at /api/w/:wId/data_sources/:dsId/usage.
 const app = workspaceApp();

@@ -1,4 +1,8 @@
 import { getAgentsUsage } from "@app/lib/api/assistant/agent_usage";
+import type {
+  GetAgentConfigurationsResponseBody,
+  PostAgentConfigurationResponseBody,
+} from "@app/lib/api/assistant/configuration";
 import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/configuration/create_or_upgrade";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getAgentsEditors } from "@app/lib/api/assistant/editors";
@@ -10,21 +14,12 @@ import {
   GetAgentConfigurationsQuerySchema,
   PostOrPatchAgentConfigurationRequestBodySchema,
 } from "@app/types/api/internal/agent_configuration";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import keyBy from "lodash/keyBy";
 import omit from "lodash/omit";
-
-export type GetAgentConfigurationsResponseBody = {
-  agentConfigurations: LightAgentConfigurationType[];
-};
-
-export type PostAgentConfigurationResponseBody = {
-  agentConfiguration: LightAgentConfigurationType;
-};
 
 import agent from "./[aId]";
 import batchUpdateScope from "./batch_update_scope";

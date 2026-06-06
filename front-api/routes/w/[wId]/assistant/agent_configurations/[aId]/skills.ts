@@ -1,6 +1,6 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import type { GetAgentSkillsResponseBody } from "@app/lib/api/assistant/configuration/skills";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import type { SkillType } from "@app/types/assistant/skill_configuration";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -10,10 +10,6 @@ import { z } from "zod";
 const ParamsSchema = z.object({
   aId: z.string(),
 });
-
-export type GetAgentSkillsResponseBody = {
-  skills: SkillType[];
-};
 
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/skills.
 const app = workspaceApp();
