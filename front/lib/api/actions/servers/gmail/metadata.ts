@@ -2,6 +2,7 @@ import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_
 import { z } from "zod";
 
 export const GMAIL_TOOL_NAME = "gmail" as const;
+export const GMAIL_SEND_MAIL_TOOL_NAME = "send_mail" as const;
 
 export const GMAIL_TOOLS_METADATA = [
   {

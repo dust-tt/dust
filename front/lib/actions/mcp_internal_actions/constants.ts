@@ -1581,6 +1581,15 @@ export function isInternalMCPServerName(
   );
 }
 
+export function isInternalMCPToolName<N extends InternalMCPServerNameType>(
+  serverName: N,
+  toolName: string
+): toolName is InternalMCPToolNameType<N> {
+  return INTERNAL_MCP_SERVERS[serverName].metadata.tools.some(
+    (tool) => tool.name === toolName
+  );
+}
+
 export function isValidInternalMCPServerId(
   workspaceModelId: ModelId,
   sId: string
