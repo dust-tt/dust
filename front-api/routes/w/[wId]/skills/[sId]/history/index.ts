@@ -1,7 +1,7 @@
+import type { GetSkillHistoryResponseBody } from "@app/lib/api/assistant/skills/history";
 import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { GetSkillHistoryQuerySchema } from "@app/types/api/internal/skill";
-import type { SkillWithVersionType } from "@app/types/assistant/skill_configuration";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -12,10 +12,6 @@ import { fromError } from "zod-validation-error";
 const ParamsSchema = z.object({
   sId: z.string(),
 });
-
-export type GetSkillHistoryResponseBody = {
-  history: SkillWithVersionType[];
-};
 
 // Mounted at /api/w/:wId/skills/:sId/history.
 const app = workspaceApp();

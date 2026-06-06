@@ -1,14 +1,10 @@
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
+import type { GetTriggerEstimationResponseBody } from "@app/lib/triggers/trigger_usage_estimation";
 import { computeFilteredWebhookTriggerForecast } from "@app/lib/triggers/trigger_usage_estimation";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export type GetTriggerEstimationResponseBody = {
-  matchingCount: number;
-  totalCount: number;
-};
 
 const GetTriggerEstimationQuerySchema = z.object({
   filter: z.string().optional(),

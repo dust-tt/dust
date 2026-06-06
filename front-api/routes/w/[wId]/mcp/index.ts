@@ -1,5 +1,5 @@
 import { isRemoteMCPServerError } from "@app/lib/actions/mcp_errors";
-import type { MCPServerType, MCPServerTypeWithViews } from "@app/lib/api/mcp";
+import type { GetMCPServersResponseBody } from "@app/lib/api/mcp";
 import {
   createInternalMCPServer,
   createRemoteMCPServer,
@@ -23,16 +23,6 @@ import requests from "./requests";
 import results from "./results";
 import usage from "./usage";
 import views from "./views";
-
-export type GetMCPServersResponseBody = {
-  success: true;
-  servers: MCPServerTypeWithViews[];
-};
-
-export type CreateMCPServerResponseBody = {
-  success: true;
-  server: MCPServerType;
-};
 
 const CustomHeadersSchema = z
   .array(z.object({ key: z.string(), value: z.string() }))

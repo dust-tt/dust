@@ -3,15 +3,11 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import type { GetTagsUsageResponseBody } from "@app/lib/resources/tags_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { TagTypeWithUsage } from "@app/types/tag";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type GetTagsUsageResponseBody = {
-  tags: TagTypeWithUsage[];
-};
 
 async function handler(
   req: NextApiRequest,

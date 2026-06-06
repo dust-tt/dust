@@ -131,22 +131,17 @@ import {
 import { addFileToProject } from "@app/lib/api/projects/context";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import type { FileVersion } from "@app/lib/resources/file_resource";
+import type {
+  FileUploadedRequestResponseBody,
+  FileVersion,
+} from "@app/lib/resources/file_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { FileType } from "@app/types/files";
 import { isConversationFileUseCase } from "@app/types/files";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export interface FileUploadedRequestResponseBody {
-  file: FileType & {
-    /** Scoped mount path when the file is on GCS (same shape as `GCSMountEntryBase.path`). */
-    path: string | null;
-  };
-}
 
 export const config = {
   api: {

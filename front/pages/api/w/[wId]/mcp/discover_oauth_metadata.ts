@@ -4,7 +4,7 @@ import { getDefaultRemoteMCPServerByURL } from "@app/lib/actions/mcp_internal_ac
 import { connectToMCPServer } from "@app/lib/actions/mcp_metadata";
 import { MCPOAuthProvider } from "@app/lib/actions/mcp_oauth_provider";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import type { MCPOAuthConnectionMetadataType } from "@app/lib/api/oauth/providers/mcp";
+import type { DiscoverOAuthMetadataResponseBody } from "@app/lib/api/oauth/providers/mcp";
 import { validateExternalUrl } from "@app/lib/api/url_safety";
 import type { Authenticator } from "@app/lib/auth";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
@@ -13,15 +13,6 @@ import type { WithAPIErrorResponse } from "@app/types/error";
 import { headersArrayToRecord } from "@app/types/shared/utils/http_headers";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
-
-export type DiscoverOAuthMetadataResponseBody =
-  | {
-      oauthRequired: true;
-      connectionMetadata: MCPOAuthConnectionMetadataType;
-    }
-  | {
-      oauthRequired: false;
-    };
 
 const PostBodySchema = z.object({
   url: z.string(),

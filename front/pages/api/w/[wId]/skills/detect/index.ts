@@ -9,17 +9,16 @@ import { initGitHubRepoClient } from "@app/lib/api/skills/detection/github/githu
 import { getWorkspaceLevelGitHubAccessToken } from "@app/lib/api/skills/detection/github/github_auth";
 import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import type { DetectedSkillSummary } from "@app/lib/skill_detection";
+import type {
+  DetectedSkillSummary,
+  DetectSkillsResponseBody,
+} from "@app/lib/skill_detection";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type DetectSkillsResponseBody = {
-  skills: DetectedSkillSummary[];
-};
 
 async function handler(
   req: NextApiRequest,

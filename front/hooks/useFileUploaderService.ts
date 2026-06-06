@@ -1,9 +1,9 @@
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { FileUploadRequestResponseBody } from "@app/lib/api/files/upload_metadata";
 import { clientFetch } from "@app/lib/egress/client";
+import type { FileUploadedRequestResponseBody } from "@app/lib/resources/file_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { FileUploadRequestResponseBody } from "@app/pages/api/w/[wId]/files";
-import type { FileUploadedRequestResponseBody } from "@app/pages/api/w/[wId]/files/[fileId]";
 import { isAPIErrorResponse } from "@app/types/error";
 import type {
   FileUseCase,

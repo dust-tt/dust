@@ -1,6 +1,6 @@
 import type { AgentBuilderMCPConfigurationWithId } from "@app/components/agent_builder/types";
+import type { GetActionsResponseBody } from "@app/lib/agent_builder/server_side_props_helpers";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { GetActionsResponseBody } from "@app/pages/api/w/[wId]/builder/assistants/[aId]/actions";
 import uniqueId from "lodash/uniqueId";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";

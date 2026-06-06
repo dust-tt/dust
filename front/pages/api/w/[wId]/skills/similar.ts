@@ -1,6 +1,7 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import type { GetSimilarSkillsResponseBody } from "@app/lib/api/skills/existing_skill_checker";
 import { getSimilarSkills } from "@app/lib/api/skills/existing_skill_checker";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
@@ -8,10 +9,6 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type GetSimilarSkillsResponseBody = {
-  similar_skills: string[];
-};
 
 async function handler(
   req: NextApiRequest,

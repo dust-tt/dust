@@ -2,6 +2,11 @@
 
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import {
+  type GetLabsTranscriptsConfigurationByIdResponseBody,
+  PatchLabsTranscriptsConfigurationBodySchema,
+  type PatchTranscriptsConfiguration,
+} from "@app/lib/api/labs/transcripts";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -15,23 +20,13 @@ import {
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isProviderWithDefaultWorkspaceConfiguration } from "@app/types/oauth/lib";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
-export type GetLabsTranscriptsConfigurationResponseBody = {
-  configuration: LabsTranscriptsConfigurationResource | null;
-};
+export type GetLabsTranscriptsConfigurationResponseBody =
+  GetLabsTranscriptsConfigurationByIdResponseBody;
 
-export const PatchLabsTranscriptsConfigurationBodySchema = z.object({
-  agentConfigurationId: z.string().optional(),
-  // `isActive` is deprecated in favor of `status`, kept for backward compatibility.
-  isActive: z.boolean().optional(),
-  status: z.enum(["active", "disabled"]).optional(),
-  dataSourceViewId: z.string().nullable().optional(),
-});
-export type PatchTranscriptsConfiguration = z.infer<
-  typeof PatchLabsTranscriptsConfigurationBodySchema
->;
+export type { PatchTranscriptsConfiguration };
+export { PatchLabsTranscriptsConfigurationBodySchema };
 
 async function handler(
   req: NextApiRequest,

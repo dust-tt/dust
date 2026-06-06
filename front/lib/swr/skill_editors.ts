@@ -1,11 +1,11 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
-import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
   PatchSkillEditorsRequestBody,
   SkillEditorsLightResponseBody,
   SkillEditorsResponseBody,
-} from "@app/pages/api/w/[wId]/skills/[sId]/editors";
+} from "@app/lib/api/skills/editors";
+import { clientFetch } from "@app/lib/egress/client";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback } from "react";

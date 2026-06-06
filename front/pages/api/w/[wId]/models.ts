@@ -2,6 +2,7 @@
 
 /** @ignoreswagger */
 import { USED_MODEL_CONFIGS } from "@app/components/providers/model_configs";
+import type { GetEnabledModelsResponseType } from "@app/lib/api/assistant/models";
 import { getWhitelistedProviders } from "@app/lib/api/assistant/models";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { config as regionConfig } from "@app/lib/api/regions/config";
@@ -10,13 +11,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
-import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type GetEnabledModelsResponseType = {
-  models: ModelConfigurationType[];
-};
 
 async function handler(
   req: NextApiRequest,

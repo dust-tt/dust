@@ -2,6 +2,7 @@
 
 /** @ignoreswagger */
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
+import type { GetSuggestionsResponseBody } from "@app/lib/api/assistant/tag_manager";
 import { getWorkspaceTagSuggestions } from "@app/lib/api/assistant/tag_manager";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -10,7 +11,6 @@ import type { WithAPIErrorResponse } from "@app/types/error";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { isAdmin } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
 
 const DEFAULT_SUGGESTIONS = [
   "Writing",
@@ -34,22 +34,6 @@ const DEFAULT_SUGGESTIONS = [
   "Quality",
   "Product",
 ];
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const GetSuggestionsResponseBodySchema = z.object({
-  suggestions: z
-    .array(
-      z.object({
-        name: z.string(),
-        agents: z.array(z.object({ sId: z.string(), name: z.string() })),
-      })
-    )
-    .nullish(),
-});
-
-export type GetSuggestionsResponseBody = z.infer<
-  typeof GetSuggestionsResponseBodySchema
->;
 
 async function handler(
   req: NextApiRequest,

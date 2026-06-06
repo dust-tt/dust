@@ -3,6 +3,10 @@
 /** @ignoreswagger */
 import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import type {
+  GetWorkspaceSandboxEnvVarsResponseBody,
+  PostWorkspaceSandboxEnvVarsResponseBody,
+} from "@app/lib/api/sandbox/env_vars";
 import {
   parseWorkspaceSandboxEnvVarNameForKind,
   validateEnvVarValueForKind,
@@ -12,10 +16,7 @@ import { hasFeatureFlag } from "@app/lib/auth";
 import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import {
-  WORKSPACE_SANDBOX_ENV_VAR_KINDS,
-  type WorkspaceSandboxEnvVarType,
-} from "@app/types/sandbox/env_var";
+import { WORKSPACE_SANDBOX_ENV_VAR_KINDS } from "@app/types/sandbox/env_var";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
@@ -25,15 +26,6 @@ const PostWorkspaceSandboxEnvVarBodySchema = z.object({
   kind: z.enum(WORKSPACE_SANDBOX_ENV_VAR_KINDS).optional(),
   allowedDomains: z.array(z.string()).nullable().optional(),
 });
-
-export type GetWorkspaceSandboxEnvVarsResponseBody = {
-  envVars: WorkspaceSandboxEnvVarType[];
-};
-
-export type PostWorkspaceSandboxEnvVarsResponseBody = {
-  envVar: WorkspaceSandboxEnvVarType;
-  created: boolean;
-};
 
 async function handler(
   req: NextApiRequest,

@@ -79,3 +79,47 @@ export const MCPServerViewSchema = z.object({
   editedByUser: EditedByUserSchema.nullable(),
   toolsMetadata: z.array(ToolsMetadataSchema).optional(),
 });
+
+export const PostRequestActionsAccessBodySchema = z.object({
+  emailMessage: z.string(),
+  mcpServerViewId: z.string(),
+});
+
+export const PatchMCPServerBodySchema = z
+  .object({
+    icon: z.string(),
+  })
+  .or(
+    z
+      .object({
+        sharedSecret: z.string().optional(),
+        customHeaders: z
+          .array(z.object({ key: z.string(), value: z.string() }))
+          .nullable()
+          .optional(),
+      })
+      .refine(
+        (data) =>
+          data.sharedSecret !== undefined || data.customHeaders !== undefined,
+        {
+          message: "Either sharedSecret or customHeaders must be provided",
+        }
+      )
+  )
+  .or(
+    z.object({
+      meta: z.record(z.string(), z.string()).nullable(),
+    })
+  );
+
+export const UpdateMCPToolSettingsBodySchema = z
+  .object({
+    permission: z.enum(MCP_TOOL_STAKE_LEVELS).optional(),
+    enabled: z.boolean().optional(),
+  })
+  .refine(
+    (data) => data.permission !== undefined || data.enabled !== undefined,
+    {
+      message: "At least one of 'permission' or 'enabled' must be provided.",
+    }
+  );

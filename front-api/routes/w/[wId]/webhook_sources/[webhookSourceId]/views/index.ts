@@ -1,6 +1,6 @@
+import type { GetWebhookSourceViewsForSourceResponseBody as GetWebhookSourceViewsResponseBody } from "@app/lib/api/webhook_source";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
-import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -9,11 +9,6 @@ import { z } from "zod";
 const ParamsSchema = z.object({
   webhookSourceId: z.string(),
 });
-
-export type GetWebhookSourceViewsResponseBody = {
-  success: true;
-  views: WebhookSourceViewType[];
-};
 
 // Mounted at /api/w/:wId/webhook_sources/:webhookSourceId/views.
 const app = workspaceApp();

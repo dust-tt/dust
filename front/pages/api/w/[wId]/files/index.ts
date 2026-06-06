@@ -56,6 +56,7 @@
  */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { isUploadSupportedForContentType } from "@app/lib/api/files/processing";
+import type { FileUploadRequestResponseBody } from "@app/lib/api/files/upload_metadata";
 import { buildEffectiveUseCaseMetadata } from "@app/lib/api/files/upload_metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -64,7 +65,6 @@ import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { FileTypeWithUploadUrl } from "@app/types/files";
 import { ensureFileSize, isSupportedFileContentType } from "@app/types/files";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
@@ -135,10 +135,6 @@ const FileUploadUrlRequestSchema = z.discriminatedUnion("useCase", [
     useCaseMetadata: z.object({ skillId: z.string() }).optional(),
   }),
 ]);
-
-export interface FileUploadRequestResponseBody {
-  file: FileTypeWithUploadUrl;
-}
 
 async function handler(
   req: NextApiRequest,

@@ -1,5 +1,5 @@
 import { fetchRemoteServerMetaDataByServerId } from "@app/lib/actions/mcp_metadata";
-import type { MCPServerType } from "@app/lib/api/mcp";
+import type { SyncMCPServerResponseBody } from "@app/lib/api/mcp";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
@@ -11,11 +11,6 @@ import { z } from "zod";
 const ParamsSchema = z.object({
   serverId: z.string(),
 });
-
-export type SyncMCPServerResponseBody = {
-  success: boolean;
-  server: MCPServerType;
-};
 
 // Mounted at /api/w/:wId/mcp/:serverId/sync. Admin-only — refreshes the cached
 // metadata for a remote MCP server.

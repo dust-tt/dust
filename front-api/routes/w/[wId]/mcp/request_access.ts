@@ -1,6 +1,7 @@
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import config from "@app/lib/api/config";
 import { sendEmailWithTemplate } from "@app/lib/api/email";
+import { PostRequestActionsAccessBodySchema } from "@app/lib/api/mcp_schemas";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
@@ -8,16 +9,8 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { escape } from "html-escaper";
-import { z } from "zod";
 
-export const PostRequestActionsAccessBodySchema = z.object({
-  emailMessage: z.string(),
-  mcpServerViewId: z.string(),
-});
-
-export type PostRequestActionsAccessBody = z.infer<
-  typeof PostRequestActionsAccessBodySchema
->;
+export type { PostRequestActionsAccessBody } from "@app/lib/api/mcp";
 
 const MAX_ACCESS_REQUESTS_PER_DAY = 30;
 

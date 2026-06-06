@@ -4,10 +4,6 @@ import { isString } from "@app/types/shared/utils/general";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 
-export type GetSimilarSkillsResponseBody = {
-  similar_skills: string[];
-};
-
 // Mounted at /api/w/:wId/skills/similar.
 const app = workspaceApp();
 

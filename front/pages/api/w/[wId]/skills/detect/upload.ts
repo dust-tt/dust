@@ -5,9 +5,11 @@ import { detectSkillsFromUploadedFiles } from "@app/lib/api/skills/detection/fil
 import { MAX_ZIP_SIZE_BYTES } from "@app/lib/api/skills/detection/zip/detect_skills";
 import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import type { DetectedSkillSummary } from "@app/lib/skill_detection";
+import type {
+  DetectedSkillSummary,
+  DetectSkillsResponseBody,
+} from "@app/lib/skill_detection";
 import { apiError } from "@app/logger/withlogging";
-import type { DetectSkillsResponseBody } from "@app/pages/api/w/[wId]/skills/detect";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import formidable from "formidable";

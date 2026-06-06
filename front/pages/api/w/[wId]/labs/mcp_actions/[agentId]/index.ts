@@ -4,24 +4,15 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agen
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
+import type { GetMCPActionsResult } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { AgentMCPActionType } from "@app/types/actions";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import assert from "assert";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
-
-export type GetMCPActionsResult = {
-  actions: (AgentMCPActionType & {
-    conversationId: string;
-    messageId: string;
-  })[];
-  nextCursor: string | null;
-  totalCount: number;
-};
 
 const GetMCPActionsQuerySchema = z.object({
   agentId: z.string(),

@@ -34,6 +34,7 @@ import type {
   WhereOptions,
 } from "sequelize";
 import { Op } from "sequelize";
+import { z } from "zod";
 
 type MCPServerConnectionResourceFindOptions =
   ResourceFindOptions<MCPServerConnectionModel> & {
@@ -600,3 +601,29 @@ export interface MCPServerConnectionType {
   remoteMCPServerId: string | null;
   internalMCPServerId: string | null;
 }
+
+const PostConnectionOAuthBodySchema = z.object({
+  connectionId: z.string(),
+  mcpServerId: z.string(),
+});
+
+const PostConnectionCredentialsBodySchema = z.object({
+  credentialId: z.string(),
+  mcpServerId: z.string(),
+});
+
+export const PostConnectionBodySchema = z.union([
+  PostConnectionOAuthBodySchema,
+  PostConnectionCredentialsBodySchema,
+]);
+
+export type PostConnectionBodyType = z.infer<typeof PostConnectionBodySchema>;
+
+export type PostConnectionResponseBody = {
+  success: boolean;
+  connection: MCPServerConnectionType;
+};
+
+export type GetConnectionsResponseBody = {
+  connections: MCPServerConnectionType[];
+};

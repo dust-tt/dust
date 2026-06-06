@@ -1,18 +1,16 @@
 // @migration-status: MIGRATED_TO_HONO
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import type { GetWebhookSourceViewsForSourceResponseBody } from "@app/lib/api/webhook_source";
 import type { Authenticator } from "@app/lib/auth";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-export type GetWebhookSourceViewsResponseBody = {
-  success: true;
-  views: WebhookSourceViewType[];
-};
+export type GetWebhookSourceViewsResponseBody =
+  GetWebhookSourceViewsForSourceResponseBody;
 
 async function handler(
   req: NextApiRequest,

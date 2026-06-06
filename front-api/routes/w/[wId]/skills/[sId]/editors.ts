@@ -1,8 +1,12 @@
+import type {
+  PatchSkillEditorsRequestBody,
+  SkillEditorsResponseBody,
+} from "@app/lib/api/skills/editors";
+import { PatchSkillEditorsRequestBodySchema } from "@app/lib/api/skills/editors";
 import type { GroupResource } from "@app/lib/resources/group_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { UserType } from "@app/types/user";
 import { toLightUser } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
@@ -10,33 +14,11 @@ import { validate } from "@front-api/middlewares/validator";
 import type { Context } from "hono";
 import { z } from "zod";
 
+export type { PatchSkillEditorsRequestBody, SkillEditorsResponseBody };
+
 const ParamsSchema = z.object({
   sId: z.string(),
 });
-
-const PatchSkillEditorsRequestBodySchema = z
-  .object({
-    addEditorIds: z.array(z.string()).optional(),
-    removeEditorIds: z.array(z.string()).optional(),
-  })
-  .refine(
-    (body) =>
-      (body.addEditorIds instanceof Array && body.addEditorIds.length > 0) ||
-      (body.removeEditorIds instanceof Array &&
-        body.removeEditorIds.length > 0),
-    {
-      message:
-        "Either addEditorIds or removeEditorIds must be provided and contain at least one ID.",
-    }
-  );
-
-export type PatchSkillEditorsRequestBody = z.infer<
-  typeof PatchSkillEditorsRequestBodySchema
->;
-
-export interface SkillEditorsResponseBody {
-  editors: UserType[];
-}
 
 // Resolve :sId into a skill + its editor group. Returns either the loaded
 // resources or a Response describing the failure — keeps the validation

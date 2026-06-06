@@ -7,6 +7,10 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import type {
+  GetWorkspaceEgressPolicyResponseBody,
+  PutWorkspaceEgressPolicyResponseBody,
+} from "@app/lib/api/sandbox/egress_policy";
 import {
   readWorkspacePolicy,
   writeWorkspacePolicy,
@@ -15,17 +19,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { EgressPolicy } from "@app/types/sandbox/egress_policy";
 import { parseEgressPolicy } from "@app/types/sandbox/egress_policy";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type GetWorkspaceEgressPolicyResponseBody = {
-  policy: EgressPolicy;
-};
-
-export type PutWorkspaceEgressPolicyResponseBody = {
-  policy: EgressPolicy;
-};
 
 async function handler(
   req: NextApiRequest,

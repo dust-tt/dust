@@ -5,24 +5,17 @@ import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
+import type {
+  DeleteWorkspaceSandboxEnvVarResponseBody,
+  PatchWorkspaceSandboxEnvVarResponseBody,
+} from "@app/lib/resources/workspace_sandbox_env_var_resource";
 import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import {
-  WORKSPACE_SANDBOX_ENV_VAR_KINDS,
-  type WorkspaceSandboxEnvVarType,
-} from "@app/types/sandbox/env_var";
+import { WORKSPACE_SANDBOX_ENV_VAR_KINDS } from "@app/types/sandbox/env_var";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
-
-export type DeleteWorkspaceSandboxEnvVarResponseBody = {
-  success: true;
-};
-
-export type PatchWorkspaceSandboxEnvVarResponseBody = {
-  envVar: WorkspaceSandboxEnvVarType;
-};
 
 const PatchWorkspaceSandboxEnvVarBodySchema = z.object({
   kind: z.enum(WORKSPACE_SANDBOX_ENV_VAR_KINDS).optional(),

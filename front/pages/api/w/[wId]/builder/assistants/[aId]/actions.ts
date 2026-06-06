@@ -1,6 +1,6 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
-import type { AgentBuilderMCPConfiguration } from "@app/components/agent_builder/types";
+import type { GetActionsResponseBody } from "@app/lib/agent_builder/server_side_props_helpers";
 import {
   buildInitialActions,
   getAccessibleSourcesAndAppsForActions,
@@ -11,10 +11,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type GetActionsResponseBody = {
-  actions: AgentBuilderMCPConfiguration[];
-};
 
 async function handler(
   req: NextApiRequest,

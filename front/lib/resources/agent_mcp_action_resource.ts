@@ -84,6 +84,15 @@ import type {
 import { Op } from "sequelize";
 import { AgentStepContentModel } from "../models/agent/agent_step_content";
 
+export type GetMCPActionsResult = {
+  actions: (AgentMCPActionType & {
+    conversationId: string;
+    messageId: string;
+  })[];
+  nextCursor: string | null;
+  totalCount: number;
+};
+
 // Batch size for fetching output items to avoid loading too many large rows at once.
 const OUTPUT_ITEMS_BATCH_SIZE = 32;
 

@@ -1,6 +1,6 @@
 import { DataSourceViewsSpaceSelector } from "@app/components/data_source_view/DataSourceViewsSpaceSelector";
+import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/lib/api/labs/transcripts";
 import { useUpdateTranscriptsConfiguration } from "@app/lib/swr/labs";
-import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
 import type {
   DataSourceViewSelectionConfigurations,
   DataSourceViewType,

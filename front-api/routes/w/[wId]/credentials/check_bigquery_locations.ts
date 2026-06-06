@@ -1,19 +1,11 @@
-import { CheckBigQueryCredentialsSchema } from "@app/types/oauth/lib";
+import type { PostCheckBigQueryLocationsResponseBody } from "@app/lib/api/oauth";
+import { PostCheckBigQueryRegionsRequestBodySchema } from "@app/lib/api/oauth";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { BigQuery } from "@google-cloud/bigquery";
-import { z } from "zod";
-
-const PostCheckBigQueryRegionsRequestBodySchema = z.object({
-  credentials: CheckBigQueryCredentialsSchema,
-});
-
-export type PostCheckBigQueryLocationsResponseBody = {
-  locations: Record<string, string[]>;
-};
 
 const app = workspaceApp();
 

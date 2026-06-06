@@ -1,18 +1,12 @@
 import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
+import type { PatchWorkspaceSandboxEnvVarResponseBody } from "@app/lib/resources/workspace_sandbox_env_var_resource";
 import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
-import {
-  WORKSPACE_SANDBOX_ENV_VAR_KINDS,
-  type WorkspaceSandboxEnvVarType,
-} from "@app/types/sandbox/env_var";
+import { WORKSPACE_SANDBOX_ENV_VAR_KINDS } from "@app/types/sandbox/env_var";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import type { SuccessResponseBody } from "@front-api/routes/types";
 import { z } from "zod";
-
-export type PatchWorkspaceSandboxEnvVarResponseBody = {
-  envVar: WorkspaceSandboxEnvVarType;
-};
 
 const PatchWorkspaceSandboxEnvVarBodySchema = z.object({
   kind: z.enum(WORKSPACE_SANDBOX_ENV_VAR_KINDS).optional(),

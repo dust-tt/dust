@@ -3,22 +3,13 @@ import { checkConnectionOwnership } from "@app/lib/api/oauth";
 import { WEBHOOK_SERVICES } from "@app/lib/api/triggers/built-in-webhooks/services";
 import logger from "@app/logger/logger";
 import { OAuthAPI } from "@app/types/oauth/oauth_api";
-import type {
-  WebhookProvider,
-  WebhookServiceDataForProvider,
-} from "@app/types/triggers/webhooks";
+import type { GetServiceDataResponseType } from "@app/types/triggers/webhooks";
 import { isWebhookProvider } from "@app/types/triggers/webhooks";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export type GetServiceDataResponseType<
-  P extends WebhookProvider = WebhookProvider,
-> = {
-  serviceData: WebhookServiceDataForProvider<P>;
-};
 
 const GetServiceDataQuerySchema = z.object({
   connectionId: z.string().min(1, "connectionId is required"),

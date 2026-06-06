@@ -2,7 +2,10 @@
 // @migration-status: MIGRATED_TO_HONO
 import { isRemoteMCPServerError } from "@app/lib/actions/mcp_errors";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import type { MCPServerType, MCPServerTypeWithViews } from "@app/lib/api/mcp";
+import type {
+  CreateMCPServerResponseBody,
+  GetMCPServersResponseBody,
+} from "@app/lib/api/mcp";
 import {
   createInternalMCPServer,
   createRemoteMCPServer,
@@ -12,16 +15,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
-
-export type GetMCPServersResponseBody = {
-  success: true;
-  servers: MCPServerTypeWithViews[];
-};
-
-export type CreateMCPServerResponseBody = {
-  success: true;
-  server: MCPServerType;
-};
 
 const CustomHeadersSchema = z
   .array(z.object({ key: z.string(), value: z.string() }))

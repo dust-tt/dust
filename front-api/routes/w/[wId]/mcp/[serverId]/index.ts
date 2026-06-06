@@ -3,8 +3,16 @@ import {
   getServerTypeAndIdFromSId,
   requiresBearerTokenConfiguration,
 } from "@app/lib/actions/mcp_helper";
-import type { MCPServerType, MCPServerTypeWithViews } from "@app/lib/api/mcp";
+import type {
+  DeleteMCPServerResponseBody,
+  GetMCPServerResponseBody,
+  MCPServerType,
+  MCPServerTypeWithViews,
+  PatchMCPServerBody,
+  PatchMCPServerResponseBody,
+} from "@app/lib/api/mcp";
 import { withWorkspaceConnectionRequirement } from "@app/lib/api/mcp_oauth_prerequisites";
+import { PatchMCPServerBodySchema } from "@app/lib/api/mcp_schemas";
 import type { Authenticator } from "@app/lib/auth";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
@@ -23,48 +31,6 @@ import { z } from "zod";
 
 import sync from "./sync";
 import tools from "./tools";
-
-const PatchMCPServerBodySchema = z
-  .object({
-    icon: z.string(),
-  })
-  .or(
-    z
-      .object({
-        sharedSecret: z.string().optional(),
-        customHeaders: z
-          .array(z.object({ key: z.string(), value: z.string() }))
-          .nullable()
-          .optional(),
-      })
-      .refine(
-        (data) =>
-          data.sharedSecret !== undefined || data.customHeaders !== undefined,
-        {
-          message: "Either sharedSecret or customHeaders must be provided",
-        }
-      )
-  )
-  .or(
-    z.object({
-      meta: z.record(z.string(), z.string()).nullable(),
-    })
-  );
-
-export type PatchMCPServerBody = z.infer<typeof PatchMCPServerBodySchema>;
-
-export type GetMCPServerResponseBody = {
-  server: MCPServerTypeWithViews;
-};
-
-export type PatchMCPServerResponseBody = {
-  success: true;
-  server: MCPServerType;
-};
-
-export type DeleteMCPServerResponseBody = {
-  deleted: boolean;
-};
 
 const ParamsSchema = z.object({
   serverId: z.string(),

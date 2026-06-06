@@ -1,5 +1,6 @@
-import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type { PatchMCPServerViewResponseBody } from "@app/lib/api/mcp/views";
 import {
+  PatchMCPServerViewBodySchema,
   updateNameAndDescriptionForMCPServerViews,
   updateOAuthUseCaseForMCPServerViews,
 } from "@app/lib/api/mcp/views";
@@ -12,26 +13,6 @@ import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import type { Context } from "hono";
 import { z } from "zod";
-
-const PatchMCPServerViewBodySchema = z
-  .object({
-    oAuthUseCase: z.enum(["platform_actions", "personal_actions"]),
-  })
-  .or(
-    z.object({
-      name: z.string().nullable(),
-      description: z.string().nullable(),
-    })
-  );
-
-export type PatchMCPServerViewBody = z.infer<
-  typeof PatchMCPServerViewBodySchema
->;
-
-export type PatchMCPServerViewResponseBody = {
-  success: true;
-  serverView: MCPServerViewType;
-};
 
 const ParamsSchema = z.object({
   viewId: z.string(),

@@ -1,3 +1,7 @@
+import {
+  type GetLabsTranscriptsConfigurationResponseBody as GetResponseBody,
+  PatchLabsTranscriptsConfigurationBodySchema,
+} from "@app/lib/api/labs/transcripts";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
@@ -7,25 +11,12 @@ import {
   stopRetrieveTranscriptsWorkflow,
 } from "@app/temporal/labs/transcripts/client";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
-import type { LabsTranscriptsConfigurationType } from "@app/types/labs";
 import { isProviderWithDefaultWorkspaceConfiguration } from "@app/types/oauth/lib";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import type { Context } from "hono";
 import { z } from "zod";
-
-export const PatchLabsTranscriptsConfigurationBodySchema = z.object({
-  agentConfigurationId: z.string().optional(),
-  // `isActive` is deprecated in favor of `status`, kept for backward compatibility.
-  isActive: z.boolean().optional(),
-  status: z.enum(["active", "disabled"]).optional(),
-  dataSourceViewId: z.string().nullable().optional(),
-});
-
-type GetResponseBody = {
-  configuration: LabsTranscriptsConfigurationType | null;
-};
 
 const NOT_FOUND_ERROR: APIErrorWithContentfulStatusCode = {
   status_code: 404,

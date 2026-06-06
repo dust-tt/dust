@@ -1,16 +1,12 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
-import type { MCPServersUsageByAgent } from "@app/lib/api/agent_actions";
 import { getToolsUsage } from "@app/lib/api/agent_actions";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import type { GetMCPServersUsageResponseBody } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type GetMCPServersUsageResponseBody = {
-  usage: MCPServersUsageByAgent;
-};
 
 async function handler(
   req: NextApiRequest,
