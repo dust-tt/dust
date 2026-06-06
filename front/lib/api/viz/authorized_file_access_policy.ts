@@ -1,5 +1,8 @@
 import { legacyScopedPathsMatch } from "@app/lib/api/files/mount_path";
-import type { AuthorizedFileAccessAllowlist } from "@app/types/files";
+import type {
+  AuthorizedFileAccessAllowlist,
+  FileShareScope,
+} from "@app/types/files";
 
 const FNV_OFFSET_BASIS_64 = BigInt("0xcbf29ce484222325");
 const FNV_PRIME_64 = BigInt("0x100000001b3");
@@ -24,6 +27,13 @@ export function isAllowlistStale(
     authorizedFileAccess.frameContentHash !==
     computeFrameContentHash(currentContent)
   );
+}
+
+export function isAllowlistShareScopeStale(
+  persistedShareScope: FileShareScope,
+  currentShareScope: FileShareScope
+): boolean {
+  return persistedShareScope !== currentShareScope;
 }
 
 export function isAuthorizedFileRef(

@@ -1854,6 +1854,25 @@ export class FileResource extends BaseResource<FileModel> {
     return FileResource.allowlistFromActiveRows(rows);
   }
 
+  async getActiveAuthorizedFileAccessShareScope(): Promise<FileShareScope | null> {
+    const shareableFile = await this.getShareableFile();
+    const row = await FileResource.authorizedFileAccessModel.findOne({
+      where: {
+        shareableFileId: shareableFile.id,
+        workspaceId: this.workspaceId,
+        revokedAt: null,
+      },
+      attributes: ["shareScope"],
+    });
+
+    return row?.shareScope ?? null;
+  }
+
+  async getShareScope(): Promise<FileShareScope> {
+    const shareableFile = await this.getShareableFile();
+    return shareableFile.shareScope;
+  }
+
   async persistAuthorizedFileAccess(
     computed: ComputedAuthorizedFileAccess,
     allowedAt: Date = new Date()

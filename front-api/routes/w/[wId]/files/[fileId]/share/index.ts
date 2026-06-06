@@ -1,3 +1,4 @@
+import { ensureAuthorizedFileAccessForShare } from "@app/lib/api/viz/authorized_file_access";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -7,6 +8,7 @@ import {
   fileShareScopeSchema,
   isConversationFileUseCase,
   isInteractiveContentType,
+  isUnverifiableFrameFileRefsShareError,
 } from "@app/types/files";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -79,6 +81,28 @@ app.post(
     const { shareScope } = ctx.req.valid("json");
 
     await file.setShareScope(auth, shareScope);
+
+    const allowlistResult = await ensureAuthorizedFileAccessForShare(
+      auth,
+      file
+    );
+    if (allowlistResult.isErr()) {
+      const allowlistError = allowlistResult.error;
+      return apiError(ctx, {
+        status_code:
+          allowlistError.code === "invalid_request_error" ? 400 : 500,
+        api_error: {
+          type:
+            allowlistError.code === "invalid_request_error"
+              ? "invalid_request_error"
+              : "internal_server_error",
+          message: allowlistError.message,
+          ...(isUnverifiableFrameFileRefsShareError(allowlistError)
+            ? { unverifiableRefs: allowlistError.unverifiableRefs }
+            : {}),
+        },
+      });
+    }
 
     const shareInfo = await file.getShareInfo();
     if (!shareInfo) {
