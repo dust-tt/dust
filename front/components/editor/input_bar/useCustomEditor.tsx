@@ -212,6 +212,7 @@ export interface CustomEditorProps {
     onDetailsRef?: React.RefObject<
       ((capability: InputBarSlashSuggestionCapability) => void) | undefined
     >;
+    onSkillDetails?: (skillId: string) => void;
     selectedMCPServerViewIdsRef: React.RefObject<Set<string>>;
   };
   // Override the default editor placeholder (e.g. to show a blocked-state reason).
@@ -331,7 +332,9 @@ export const buildEditorExtensions = ({
         onActiveChange: notifySuggestionActiveChange,
       }),
     }),
-    SkillNode,
+    SkillNode.configure({
+      onSkillDetails: slashSuggestion?.onSkillDetails,
+    }),
     createEmojiExtension({ onActiveChange: notifySuggestionActiveChange }),
     Placeholder.configure({
       placeholder: ({ node }) => {

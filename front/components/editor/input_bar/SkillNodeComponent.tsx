@@ -15,9 +15,13 @@ interface SkillNodeComponentProps {
       skillUnavailable?: boolean;
     };
   };
+  onDetails?: (skillId: string) => void;
 }
 
-export function SkillNodeComponent({ node }: SkillNodeComponentProps) {
+export function SkillNodeComponent({
+  node,
+  onDetails,
+}: SkillNodeComponentProps) {
   if (node.attrs.skillUnavailable === true) {
     return (
       <NodeViewWrapper className="inline-flex align-middle">
@@ -42,6 +46,9 @@ export function SkillNodeComponent({ node }: SkillNodeComponentProps) {
 
   const skillIcon = node.attrs.skillIcon ?? null;
   const skillName = node.attrs.skillName ?? "Skill";
+  const skillId = node.attrs.skillId;
+  const handleClick =
+    skillId && onDetails ? () => onDetails(skillId) : undefined;
 
   return (
     <NodeViewWrapper className="inline-flex align-middle">
@@ -49,6 +56,7 @@ export function SkillNodeComponent({ node }: SkillNodeComponentProps) {
         label={skillName}
         icon={getSkillIcon(skillIcon)}
         color="white"
+        onClick={handleClick}
         size="xs"
       />
     </NodeViewWrapper>

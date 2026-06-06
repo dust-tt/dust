@@ -102,6 +102,7 @@ interface SkillInstructionsSkillReferencesOptions {
   onSelectSkill?: (skill: SlashCommandSkillSuggestion) => void;
   onSelectTool?: (tool: MCPServerViewType) => void;
   onSkillDetails?: (skill: SlashCommandSkillSuggestion) => void;
+  onSkillNodeDetails?: (skillId: string) => void;
   onToolDetails?: (tool: MCPServerViewType) => void;
   owner?: LightWorkspaceType;
 }
@@ -169,6 +170,7 @@ export function useSkillInstructionsEditor({
   const onSelectSkill = skillReferences?.onSelectSkill;
   const onSelectTool = skillReferences?.onSelectTool;
   const onSkillDetails = skillReferences?.onSkillDetails;
+  const onSkillNodeDetails = skillReferences?.onSkillNodeDetails;
   const onToolDetails = skillReferences?.onToolDetails;
   const owner = skillReferences?.owner;
   const includeSkillSuggestions = enableSkillReferences && !!owner;
@@ -198,8 +200,16 @@ export function useSkillInstructionsEditor({
     () =>
       buildSkillInstructionsExtensions(isReadOnly, editableExtensions, {
         enableSkillReferences,
+        onSkillNodeDetails,
+        onToolDetails,
       }),
-    [editableExtensions, enableSkillReferences, isReadOnly]
+    [
+      editableExtensions,
+      enableSkillReferences,
+      isReadOnly,
+      onSkillNodeDetails,
+      onToolDetails,
+    ]
   );
 
   // Track if initial content has been set

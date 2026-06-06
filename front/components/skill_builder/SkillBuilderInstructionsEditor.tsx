@@ -535,6 +535,7 @@ export function SkillBuilderInstructionsEditor({
       currentSkillId: skillId,
       enableSkillReferences,
       onSkillDetails: handleSkillDetails,
+      onSkillNodeDetails: setSelectedSkillIdForDetails,
       onSelectSkill: handleSelectSkillReference,
       onSelectTool: handleSelectToolReference,
       onToolDetails: handleToolDetails,
