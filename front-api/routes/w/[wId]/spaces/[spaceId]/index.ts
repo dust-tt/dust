@@ -19,7 +19,6 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { PatchSpaceRequestBodySchema } from "@app/types/api/internal/spaces";
 import { DATA_SOURCE_VIEW_CATEGORIES } from "@app/types/api/public/spaces";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import type { SpaceType } from "@app/types/space";
 import type { SpaceUserType } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -44,10 +43,6 @@ import projectTasks from "./project_tasks";
 import searchConversations from "./search_conversations";
 import star from "./star";
 import webhookSourceViews from "./webhook_source_views";
-
-export type DeleteSpaceResponseBody = {
-  space: SpaceType;
-};
 
 // Mounted under /api/w/:wId/spaces/:spaceId. The bare `/` handles GET, PATCH,
 // and DELETE on the space resource itself. Per-space sub-resource sub-apps
@@ -261,7 +256,7 @@ app.patch(
 app.delete(
   "/",
   withSpace({ requireCanReadOrAdministrate: true }),
-  async (ctx): HandlerResult<DeleteSpaceResponseBody> => {
+  async (ctx): HandlerResult<PatchSpaceResponseBody> => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");
 

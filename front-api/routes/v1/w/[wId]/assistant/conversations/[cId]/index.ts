@@ -1,4 +1,5 @@
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import type { PatchConversationResponseBody } from "@app/lib/api/assistant/conversation/types";
 import { addBackwardCompatibleConversationFields } from "@app/lib/api/v1/backward_compatibility";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import {
@@ -20,10 +21,6 @@ import files from "./files";
 import mentions from "./mentions";
 import messages from "./messages";
 import tools from "./tools";
-
-export type PatchConversationResponseBody = {
-  success: boolean;
-};
 
 const ParamsSchema = z.object({
   cId: z.string(),

@@ -1,19 +1,14 @@
+import type {
+  GetSuggestionsResponseBody,
+  PatchSuggestionResponseBody,
+} from "@app/lib/api/assistant/agent_suggestion";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
-import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export type GetSuggestionsResponseBody = {
-  suggestions: AgentSuggestionType[];
-};
-
-export type PatchSuggestionResponseBody = {
-  suggestions: AgentSuggestionType[];
-};
 
 const PatchSuggestionRequestBodySchema = z.object({
   suggestionIds: z.array(z.string()).min(1),

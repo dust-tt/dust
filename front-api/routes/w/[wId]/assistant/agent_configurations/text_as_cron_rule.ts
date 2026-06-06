@@ -1,3 +1,4 @@
+import type { PostTextAsCronRuleResponseBody } from "@app/lib/api/assistant/configuration/triggers";
 import {
   GENERIC_ERROR_MESSAGE,
   generateScheduleRule,
@@ -10,17 +11,6 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export type PostTextAsCronRuleResponseBody =
-  | { type?: "cron"; cronRule: string; timezone: string }
-  | {
-      type: "interval";
-      intervalDays: number;
-      dayOfWeek: number | null;
-      hour: number;
-      minute: number;
-      timezone: string;
-    };
 
 function scheduleConfigToResponse(
   config: ScheduleConfig

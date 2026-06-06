@@ -2,6 +2,7 @@ import {
   importSkillsFromFiles,
   isImportConflictStrategy,
 } from "@app/lib/api/skills/detection/files/import_skills";
+import type { ImportSkillsResponseBody } from "@app/lib/api/skills/detection/github/import_skills";
 import { MAX_ZIP_SIZE_BYTES } from "@app/lib/api/skills/detection/zip/detect_skills";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
@@ -17,12 +18,6 @@ import { z } from "zod";
 
 export type GetPublicSkillsResponseBody = {
   skills: SkillType[];
-};
-
-export type ImportSkillsResponseBody = {
-  imported: SkillType[];
-  updated: SkillType[];
-  skipped: { name: string; message: string }[];
 };
 
 const GetSkillsQuerySchema = z.object({

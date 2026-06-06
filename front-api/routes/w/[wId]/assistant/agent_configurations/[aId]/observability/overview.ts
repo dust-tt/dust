@@ -1,5 +1,6 @@
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import type { GetAgentOverviewResponseBody } from "@app/lib/api/assistant/observability/overview";
 import { fetchAgentOverview } from "@app/lib/api/assistant/observability/overview";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -8,20 +9,6 @@ import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
-
-export type GetAgentOverviewResponseBody = {
-  activeUsers: number;
-  mentions: {
-    messageCount: number;
-    conversationCount: number;
-    timePeriodSec: number;
-  };
-  feedbacks: {
-    positiveFeedbacks: number;
-    negativeFeedbacks: number;
-    timePeriodSec: number;
-  };
-};
 
 const ParamsSchema = z.object({
   aId: z.string(),

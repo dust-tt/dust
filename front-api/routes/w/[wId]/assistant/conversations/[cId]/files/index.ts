@@ -1,8 +1,6 @@
+import type { GetConversationFilesResponseBody } from "@app/lib/api/assistant/conversation/files";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import {
-  type FileSystemEntry,
-  SCOPED_PREFIX_CONVERSATION,
-} from "@app/lib/api/file_system/types";
+import { SCOPED_PREFIX_CONVERSATION } from "@app/lib/api/file_system/types";
 import { enrichListWithFileResourceIds } from "@app/lib/api/files/file_system_ops";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -17,10 +15,6 @@ import thumbnail from "./thumbnail";
 const ParamsSchema = z.object({
   cId: z.string(),
 });
-
-export type GetConversationFilesResponseBody = {
-  files: FileSystemEntry[];
-};
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/files.
 const app = workspaceApp();

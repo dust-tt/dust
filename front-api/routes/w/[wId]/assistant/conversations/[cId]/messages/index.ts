@@ -2,6 +2,7 @@ import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_re
 import { isSidekickConversation } from "@app/lib/api/actions/servers/helpers";
 import { postUserMessage } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import type { PostMessagesResponseBody } from "@app/lib/api/assistant/messages";
 import { fetchConversationMessages } from "@app/lib/api/assistant/messages";
 import { getPaginationParams } from "@app/lib/api/pagination";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -12,10 +13,8 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import { InternalPostMessagesRequestBodySchema } from "@app/types/api/internal/assistant";
 import type {
-  AgentMessageType,
   LegacyLightMessageType,
   LightMessageType,
-  UserMessageType,
 } from "@app/types/assistant/conversation";
 import { isUserMessageType } from "@app/types/assistant/conversation";
 import type { ContentFragmentType } from "@app/types/content_fragment";
@@ -33,12 +32,6 @@ import message from "./[mId]";
 const ParamsSchema = z.object({
   cId: z.string(),
 });
-
-export type PostMessagesResponseBody = {
-  message: UserMessageType;
-  contentFragments: ContentFragmentType[];
-  agentMessages: AgentMessageType[];
-};
 
 // TODO remove after monday 2025-12-01 (once everyone has likely reloaded their browser)
 interface LegacyFetchConversationMessagesResponse {

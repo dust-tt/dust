@@ -1,15 +1,11 @@
 import config from "@app/lib/api/config";
+import type { GetDataSourcePermissionsResponseBody } from "@app/lib/api/data_sources/managed_permissions";
 import {
   getManagedDataSourcePermissions,
   ManagedPermissionsQuerySchema,
 } from "@app/lib/api/data_sources/managed_permissions";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
-import type {
-  ConnectorPermission,
-  ContentNode,
-  ContentNodeWithParent,
-} from "@app/types/connectors/connectors_api";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -18,12 +14,6 @@ import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import type { SuccessResponseBody } from "@front-api/routes/types";
 import { z } from "zod";
-
-export type GetDataSourcePermissionsResponseBody<
-  T extends ConnectorPermission = ConnectorPermission,
-> = {
-  resources: (T extends "read" ? ContentNodeWithParent : ContentNode)[];
-};
 
 const SetConnectorPermissionsRequestBodySchema = z.object({
   resources: z.array(

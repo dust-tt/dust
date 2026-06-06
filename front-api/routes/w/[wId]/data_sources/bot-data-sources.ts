@@ -1,14 +1,8 @@
+import type { GetBotDataSourcesResponseBody } from "@app/lib/api/data_sources/bot_data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import type { DataSourceType } from "@app/types/data_source";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
-
-export type GetBotDataSourcesResponseBody = {
-  slackBotDataSource: DataSourceType | null;
-  microsoftBotDataSource: DataSourceType | null;
-  discordBotDataSource: DataSourceType | null;
-};
 
 // Mounted at /api/w/:wId/data_sources/bot-data-sources.
 const app = workspaceApp();

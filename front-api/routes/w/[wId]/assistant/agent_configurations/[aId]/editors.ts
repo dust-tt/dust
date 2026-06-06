@@ -2,10 +2,13 @@ import {
   getAgentConfiguration,
   updateAgentPermissions,
 } from "@app/lib/api/assistant/configuration/agent";
+import type {
+  AgentEditorsLightResponseBody,
+  AgentEditorsResponseBody,
+} from "@app/lib/api/assistant/configuration/editors";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { LightUserType, UserType } from "@app/types/user";
 import { toLightUser } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -16,14 +19,6 @@ import { z } from "zod";
 const ParamsSchema = z.object({
   aId: z.string(),
 });
-
-export type AgentEditorsResponseBody = {
-  editors: UserType[];
-};
-
-type AgentEditorsLightResponseBody = {
-  editors: LightUserType[];
-};
 
 const PatchAgentEditorsRequestBodySchema = z
   .object({
