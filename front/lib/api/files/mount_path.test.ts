@@ -1,16 +1,22 @@
 import {
+  buildCanonicalScopedPathFromVizScope,
   disambiguateFileName,
   getBaseMountPathForWorkspace,
   getConversationFilePath,
   getConversationFilesBasePath,
   getPodFilesBasePath,
   getProjectFilesBasePath,
+  isAgentScopedPath,
+  isCanonicalScopedPath,
+  isLegacyScopedPath,
+  legacyScopedPathsMatch,
   makeProcessedMountFileName,
   normalizeAndValidateMountRelativeFilePath,
   normalizeMountParentRelativePath,
   parseProcessedFilename,
   parseScopedFilePath,
   ResolveScopedMountFilePathError,
+  resolveCanonicalScopedPath,
   resolveMountFilePath,
   resolveMountFileSourcePath,
   resolveMoveSourcePath,
@@ -122,6 +128,140 @@ describe("mount_path helpers", () => {
 
     it("returns null when nothing follows pods/", () => {
       expect(toProjectMountFilePath("w/ws1/pods/")).toBeNull();
+    });
+  });
+
+  describe("scoped path classification", () => {
+    it("detects canonical scoped paths", () => {
+      expect(isCanonicalScopedPath("conversation-conv_abc/report.csv")).toBe(
+        true
+      );
+      expect(isCanonicalScopedPath("pod-pod_xyz/data.csv")).toBe(true);
+      expect(isCanonicalScopedPath("conversation-/file.csv")).toBe(false);
+      expect(isCanonicalScopedPath("conversation/file.csv")).toBe(false);
+    });
+
+    it("detects legacy scoped paths", () => {
+      expect(isLegacyScopedPath("conversation/report.csv")).toBe(true);
+      expect(isLegacyScopedPath("pod/data.csv")).toBe(true);
+      expect(isLegacyScopedPath("project/data.csv")).toBe(true);
+      expect(isLegacyScopedPath("conversation-conv_abc/report.csv")).toBe(
+        false
+      );
+    });
+
+    it("detects any agent scoped path", () => {
+      expect(isAgentScopedPath("conversation-conv_abc/report.csv")).toBe(true);
+      expect(isAgentScopedPath("conversation/report.csv")).toBe(true);
+      expect(isAgentScopedPath("hello/world")).toBe(false);
+    });
+  });
+
+  describe("resolveCanonicalScopedPath", () => {
+    const frameContext = {
+      conversationId: "conv_abc",
+      spaceId: "pod_xyz",
+    };
+
+    it("passes through canonical paths unchanged", () => {
+      expect(
+        resolveCanonicalScopedPath(
+          "conversation-conv_abc/chart.png",
+          frameContext
+        )
+      ).toBe("conversation-conv_abc/chart.png");
+    });
+
+    it("resolves legacy conversation paths under frame context", () => {
+      expect(
+        resolveCanonicalScopedPath("conversation/chart.png", frameContext)
+      ).toBe("conversation-conv_abc/chart.png");
+    });
+
+    it("resolves legacy pod and project paths under frame context", () => {
+      expect(resolveCanonicalScopedPath("pod/data.csv", frameContext)).toBe(
+        "pod-pod_xyz/data.csv"
+      );
+      expect(resolveCanonicalScopedPath("project/data.csv", frameContext)).toBe(
+        "pod-pod_xyz/data.csv"
+      );
+    });
+
+    it("returns null when frame context is missing", () => {
+      expect(
+        resolveCanonicalScopedPath("conversation/chart.png", {
+          conversationId: null,
+          spaceId: null,
+        })
+      ).toBeNull();
+    });
+  });
+
+  describe("buildCanonicalScopedPathFromVizScope", () => {
+    const frameContext = {
+      conversationId: "conv_abc",
+      spaceId: "pod_xyz",
+    };
+
+    it("builds canonical conversation paths when ids match", () => {
+      const result = buildCanonicalScopedPathFromVizScope(
+        { kind: "canonical-conversation", id: "conv_abc" },
+        "report.csv",
+        frameContext
+      );
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toBe("conversation-conv_abc/report.csv");
+      }
+    });
+
+    it("rejects canonical conversation paths when ids mismatch", () => {
+      const result = buildCanonicalScopedPathFromVizScope(
+        { kind: "canonical-conversation", id: "conv_other" },
+        "report.csv",
+        frameContext
+      );
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.code).toBe("conversation_context_mismatch");
+      }
+    });
+
+    it("builds legacy conversation paths from frame context", () => {
+      const result = buildCanonicalScopedPathFromVizScope(
+        { kind: "legacy", prefix: "conversation" },
+        "report.csv",
+        frameContext
+      );
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toBe("conversation-conv_abc/report.csv");
+      }
+    });
+
+    it("returns missing_pod_context when legacy pod path has no space", () => {
+      const result = buildCanonicalScopedPathFromVizScope(
+        { kind: "legacy", prefix: "pod" },
+        "report.csv",
+        { conversationId: "conv_abc", spaceId: null }
+      );
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.code).toBe("missing_pod_context");
+      }
+    });
+  });
+
+  describe("legacyScopedPathsMatch", () => {
+    it("matches exact legacy paths and project/pod aliases", () => {
+      expect(legacyScopedPathsMatch("pod/data.csv", "pod/data.csv")).toBe(true);
+      expect(legacyScopedPathsMatch("pod/data.csv", "project/data.csv")).toBe(
+        true
+      );
+      expect(
+        legacyScopedPathsMatch("pod/data.csv", "conversation/data.csv")
+      ).toBe(false);
+      expect(legacyScopedPathsMatch(undefined, "pod/data.csv")).toBe(false);
     });
   });
 

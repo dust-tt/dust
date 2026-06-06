@@ -1,41 +1,12 @@
-// Ported from viz/app/lib/parseFileRefs.ts — keep both copies in sync until deduped into a shared package.
+// Ported from viz/app/lib/parseFileRefs.ts — keep classification in sync with
+// `isAgentScopedPath` in front/lib/api/files/mount_path.ts until deduped into a shared package.
+import { isAgentScopedPath } from "@app/lib/api/files/mount_path";
 import logger from "@app/logger/logger";
 import ts from "typescript";
 
 export type FileRef =
   | { type: "fileId"; fileId: string }
   | { type: "path"; scopedPath: string };
-
-// Mirrors front's `parseRawVizScope` contract. Canonical scopes are `${PREFIX}-{id}/...`;
-// the bare prefixes are legacy forms still emitted by older frame code.
-const SCOPED_PREFIX_CONVERSATION = "conversation";
-const SCOPED_PREFIX_POD = "pod";
-const SCOPED_PREFIX_PROJECT = "project";
-
-function isScopedPath(value: string): boolean {
-  const slashIdx = value.indexOf("/");
-  if (slashIdx <= 0) {
-    return false;
-  }
-  const prefix = value.slice(0, slashIdx);
-
-  // Canonical, portable scopes are what frame code is instructed to use, e.g.
-  // `conversation-{conversationId}/report.csv` or `pod-{podId}/notes.md`. This mirrors the
-  // server contract in front's `parseRawVizScope`: the id after the prefix must be non-empty.
-  if (
-    prefix.startsWith(`${SCOPED_PREFIX_CONVERSATION}-`) ||
-    prefix.startsWith(`${SCOPED_PREFIX_POD}-`)
-  ) {
-    return !prefix.endsWith("-");
-  }
-
-  // Legacy bare prefixes, still used by older frame code.
-  return (
-    prefix === SCOPED_PREFIX_CONVERSATION ||
-    prefix === SCOPED_PREFIX_POD ||
-    prefix === SCOPED_PREFIX_PROJECT
-  );
-}
 
 export function extractFileRefs(code: string): FileRef[] {
   const refs = new Map<string, FileRef>();
@@ -47,7 +18,7 @@ export function extractFileRefs(code: string): FileRef[] {
 
     if (/^fil_[a-zA-Z0-9]{10,}$/.test(value)) {
       refs.set(value, { type: "fileId", fileId: value });
-    } else if (isScopedPath(value)) {
+    } else if (isAgentScopedPath(value)) {
       refs.set(value, { type: "path", scopedPath: value });
     }
   };
