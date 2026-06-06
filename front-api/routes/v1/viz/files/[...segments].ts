@@ -5,6 +5,11 @@ import {
   parseRawVizScope,
 } from "@app/lib/api/files/mount_path";
 import { extractAndVerifyVizAccessTokenFromHeader } from "@app/lib/api/viz/access_tokens";
+import {
+  assertVizFileAuthorized,
+  readAllowlistedScopedVizFile,
+  resolveAllowlistedCanonicalPath,
+} from "@app/lib/api/viz/authorized_file_access";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
@@ -13,6 +18,7 @@ import { unauthedApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import path from "path";
+import type { Readable } from "stream";
 import { z } from "zod";
 
 const ParamsSchema = z.object({
@@ -61,16 +67,26 @@ app.get("/:scope/:rel{.+}", validate("param", ParamsSchema), async (ctx) => {
   }
   const tokenPayload = tokenRes.value;
 
-  // Get file info and build the DustFileSystem scoped to this frame's authorized paths.
-  const result = await FileResource.fetchByShareToken(tokenPayload.fileToken);
-  if (result.isErr()) {
+  // Get frame metadata, content (for allowlist hash), and scoped file system.
+  const result = await FileResource.fetchByShareTokenWithContent(
+    tokenPayload.fileToken
+  );
+  if (!result) {
     return apiError(ctx, {
       status_code: 404,
       api_error: { type: "file_not_found", message: "File not found." },
     });
   }
 
-  const { file: frameFile, shareScope, conversationSpaceId, fs } = result.value;
+  const {
+    file: frameFile,
+    content: frameContent,
+    shareScope,
+    conversationSpaceId,
+    authorizedFileAccess,
+    fs,
+    workspace: owner,
+  } = result;
 
   // If current share scope differs from token scope, reject. It means share scope changed.
   if (shareScope !== tokenPayload.shareScope) {
@@ -124,76 +140,124 @@ app.get("/:scope/:rel{.+}", validate("param", ParamsSchema), async (ctx) => {
     });
   }
 
-  const canonicalPathResult = buildCanonicalScopedPathFromVizScope(
-    scope,
-    normalizedRel,
-    {
-      conversationId:
-        frameFile.useCaseMetadata?.conversationId ??
-        frameFile.useCaseMetadata?.sourceConversationId ??
-        null,
-      spaceId: frameFile.useCaseMetadata?.spaceId ?? conversationSpaceId,
-    }
-  );
-  if (canonicalPathResult.isErr()) {
-    switch (canonicalPathResult.error.code) {
-      case "missing_conversation_context":
-        return apiError(ctx, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Frame has no conversation context for this path.",
-          },
-        });
-      case "missing_pod_context":
-        return apiError(ctx, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Frame has no project context for this path.",
-          },
-        });
-      case "conversation_context_mismatch":
-        return apiError(ctx, {
-          status_code: 403,
-          api_error: {
-            type: "workspace_auth_error",
-            message:
-              "Access denied: conversation ID does not match frame context.",
-          },
-        });
-      case "pod_context_mismatch":
-        return apiError(ctx, {
-          status_code: 403,
-          api_error: {
-            type: "workspace_auth_error",
-            message: "Access denied: pod ID does not match frame context.",
-          },
-        });
-      default:
-        return assertNever(canonicalPathResult.error);
-    }
-  }
-  const canonicalScopedPath = canonicalPathResult.value;
+  const requestedRef = `${rawScope}/${normalizedRel}`;
 
-  const statResult = await fs.stat(canonicalScopedPath);
-  if (statResult.isErr() || !statResult.value) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: { type: "file_not_found", message: "File not found." },
-    });
-  }
-  const { contentType } = statResult.value;
-
-  const readResult = await fs.read(canonicalScopedPath);
-  if (readResult.isErr() || !readResult.value) {
+  const authorizationMode = await assertVizFileAuthorized({
+    authorizedFileAccess,
+    requestedRef,
+    owner,
+    frameContent,
+  });
+  if (authorizationMode === "denied") {
     return apiError(ctx, {
       status_code: 404,
       api_error: { type: "file_not_found", message: "File not found." },
     });
   }
 
-  const nodeStream = readResult.value;
+  let canonicalScopedPath: string;
+  if (authorizationMode === "authorized" && authorizedFileAccess) {
+    const allowlistedPath = resolveAllowlistedCanonicalPath(
+      authorizedFileAccess,
+      requestedRef
+    );
+    if (!allowlistedPath) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: { type: "file_not_found", message: "File not found." },
+      });
+    }
+    canonicalScopedPath = allowlistedPath;
+  } else {
+    const canonicalPathResult = buildCanonicalScopedPathFromVizScope(
+      scope,
+      normalizedRel,
+      {
+        conversationId:
+          frameFile.useCaseMetadata?.conversationId ??
+          frameFile.useCaseMetadata?.sourceConversationId ??
+          null,
+        spaceId: frameFile.useCaseMetadata?.spaceId ?? conversationSpaceId,
+      }
+    );
+    if (canonicalPathResult.isErr()) {
+      switch (canonicalPathResult.error.code) {
+        case "missing_conversation_context":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Frame has no conversation context for this path.",
+            },
+          });
+        case "missing_pod_context":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Frame has no project context for this path.",
+            },
+          });
+        case "conversation_context_mismatch":
+          return apiError(ctx, {
+            status_code: 403,
+            api_error: {
+              type: "workspace_auth_error",
+              message:
+                "Access denied: conversation ID does not match frame context.",
+            },
+          });
+        case "pod_context_mismatch":
+          return apiError(ctx, {
+            status_code: 403,
+            api_error: {
+              type: "workspace_auth_error",
+              message: "Access denied: pod ID does not match frame context.",
+            },
+          });
+        default:
+          return assertNever(canonicalPathResult.error);
+      }
+    }
+    canonicalScopedPath = canonicalPathResult.value;
+  }
+
+  let contentType: string;
+  let nodeStream: Readable;
+
+  if (authorizationMode === "authorized" && authorizedFileAccess) {
+    const allowlistedFileResult = await readAllowlistedScopedVizFile({
+      authorizedFileAccess,
+      canonicalScopedPath,
+      workspace: owner,
+    });
+    if (allowlistedFileResult.isErr()) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: { type: "file_not_found", message: "File not found." },
+      });
+    }
+    contentType = allowlistedFileResult.value.contentType;
+    nodeStream = allowlistedFileResult.value.stream;
+  } else {
+    const statResult = await fs.stat(canonicalScopedPath);
+    if (statResult.isErr() || !statResult.value) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: { type: "file_not_found", message: "File not found." },
+      });
+    }
+    contentType = statResult.value.contentType;
+
+    const readResult = await fs.read(canonicalScopedPath);
+    if (readResult.isErr() || !readResult.value) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: { type: "file_not_found", message: "File not found." },
+      });
+    }
+    nodeStream = readResult.value;
+  }
   const webStream = new ReadableStream({
     start(controller) {
       nodeStream.on("data", (chunk) => controller.enqueue(chunk));

@@ -1,6 +1,8 @@
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import {
+  assertVizFileAuthorized,
   ensureAuthorizedFileAccessForShare,
+  readAllowlistedScopedVizFile,
   reverifyAuthorAccess,
 } from "@app/lib/api/viz/authorized_file_access";
 import {
@@ -8,6 +10,7 @@ import {
   isAllowlistShareScopeStale,
   isAllowlistStale,
   isAuthorizedFileRef,
+  resolveAllowlistedCanonicalPath,
 } from "@app/lib/api/viz/authorized_file_access_policy";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { AuthorizedFileAccessModel } from "@app/lib/resources/storage/models/files";
@@ -600,6 +603,167 @@ describe("ensureAuthorizedFileAccessForShare", () => {
     });
     expect(rows).toHaveLength(1);
     expect(rows[0]?.ref).toBe("fil_OLDREF0001");
+  });
+});
+
+describe("resolveAllowlistedCanonicalPath", () => {
+  it("returns the stored canonical ref for direct and legacy aliases", () => {
+    const allowlist = makeAllowlist({
+      refs: [
+        {
+          kind: "canonical_path",
+          ref: "conversation-conv_123/chart.png",
+          legacyPath: "conversation/chart.png",
+        },
+      ],
+    });
+
+    expect(
+      resolveAllowlistedCanonicalPath(
+        allowlist,
+        "conversation-conv_123/chart.png"
+      )
+    ).toBe("conversation-conv_123/chart.png");
+    expect(
+      resolveAllowlistedCanonicalPath(allowlist, "conversation/chart.png")
+    ).toBe("conversation-conv_123/chart.png");
+    expect(
+      resolveAllowlistedCanonicalPath(allowlist, "conversation/other.png")
+    ).toBeNull();
+  });
+});
+
+describe("readAllowlistedScopedVizFile", () => {
+  it("reads via the authoring user's scoped file system", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+
+    const canonicalPath = "pod-vlt_otherPod/chart.png";
+    const allowlist = makeAllowlist({
+      computedByUserId: auth.user()!.sId,
+      refs: [
+        { kind: "canonical_path", ref: canonicalPath, fileName: "chart.png" },
+      ],
+    });
+
+    const mockFs = {
+      stat: vi
+        .fn()
+        .mockResolvedValue(
+          new Ok({ contentType: "image/png", sizeBytes: 100 })
+        ),
+      read: vi.fn().mockResolvedValue(new Ok(Readable.from(["png-bytes"]))),
+    };
+
+    vi.spyOn(DustFileSystem, "fromScopedPath").mockResolvedValue(
+      new Ok(mockFs as unknown as DustFileSystem)
+    );
+
+    const result = await readAllowlistedScopedVizFile({
+      authorizedFileAccess: allowlist,
+      canonicalScopedPath: canonicalPath,
+      workspace,
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(result.isOk() && result.value.contentType).toBe("image/png");
+    expect(mockFs.stat).toHaveBeenCalledWith(canonicalPath);
+    expect(mockFs.read).toHaveBeenCalledWith(canonicalPath);
+  });
+});
+
+describe("assertVizFileAuthorized", () => {
+  it("returns legacy when the allowlist is empty or missing", async () => {
+    const { workspace } = await createResourceTest({});
+
+    expect(
+      await assertVizFileAuthorized({
+        authorizedFileAccess: null,
+        requestedRef: "fil_ABCDEFGHIJ",
+        owner: workspace,
+        frameContent: "export default function Frame() {}",
+      })
+    ).toBe("legacy");
+
+    expect(
+      await assertVizFileAuthorized({
+        authorizedFileAccess: makeAllowlist({ refs: [] }),
+        requestedRef: "fil_ABCDEFGHIJ",
+        owner: workspace,
+        frameContent: "export default function Frame() {}",
+      })
+    ).toBe("legacy");
+  });
+
+  it("returns denied when frame content changed since the allowlist was computed", async () => {
+    const { workspace } = await createResourceTest({});
+
+    const frameContent = 'useFile("fil_ALLOWED01");';
+    const allowlist = makeAllowlist({
+      frameContentHash: computeFrameContentHash(frameContent),
+      refs: [{ kind: "file_id", ref: "fil_ALLOWED01" }],
+    });
+
+    expect(
+      await assertVizFileAuthorized({
+        authorizedFileAccess: allowlist,
+        requestedRef: "fil_ALLOWED01",
+        owner: workspace,
+        frameContent: `${frameContent}// edited`,
+      })
+    ).toBe("denied");
+  });
+
+  it("returns denied when the ref is not allowlisted", async () => {
+    const { workspace } = await createResourceTest({});
+
+    const frameContent = 'useFile("fil_ALLOWED01");';
+    const allowlist = makeAllowlist({
+      frameContentHash: computeFrameContentHash(frameContent),
+      refs: [{ kind: "file_id", ref: "fil_ALLOWED01" }],
+    });
+
+    expect(
+      await assertVizFileAuthorized({
+        authorizedFileAccess: allowlist,
+        requestedRef: "fil_DENIED0001",
+        owner: workspace,
+        frameContent,
+      })
+    ).toBe("denied");
+  });
+
+  it("returns authorized when the ref is allowlisted and author still has access", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+    });
+
+    const dataFile = await FileFactory.create(auth, null, {
+      contentType: "text/plain",
+      fileName: "data.txt",
+      fileSize: 10,
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: conversation.sId },
+    });
+
+    const frameContent = `useFile("${dataFile.sId}");`;
+    const allowlist = makeAllowlist({
+      computedByUserId: auth.user()!.sId,
+      frameContentHash: computeFrameContentHash(frameContent),
+      refs: [{ kind: "file_id", ref: dataFile.sId, fileName: "data.txt" }],
+    });
+
+    expect(
+      await assertVizFileAuthorized({
+        authorizedFileAccess: allowlist,
+        requestedRef: dataFile.sId,
+        owner: workspace,
+        frameContent,
+      })
+    ).toBe("authorized");
   });
 });
 

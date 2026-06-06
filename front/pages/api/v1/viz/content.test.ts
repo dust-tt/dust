@@ -1,14 +1,27 @@
+import type { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { generateVizAccessToken } from "@app/lib/api/viz/access_tokens";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { frameContentType } from "@app/types/files";
+import type { ModelId } from "@app/types/shared/model_id";
+import { Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createMocks } from "node-mocks-http";
+import { PassThrough } from "stream";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import handler from "./content";
+
+function makeMockFs(): DustFileSystem {
+  return {
+    stat: vi
+      .fn()
+      .mockResolvedValue(new Ok({ contentType: "text/plain", sizeBytes: 100 })),
+    read: vi.fn().mockResolvedValue(new Ok(new PassThrough())),
+  } as unknown as DustFileSystem;
+}
 
 describe("/api/v1/viz/content endpoint tests", () => {
   let workspace: LightWorkspaceType;
@@ -24,6 +37,32 @@ describe("/api/v1/viz/content endpoint tests", () => {
     workspace = w;
     auth = a;
   });
+
+  function mockFetchByShareToken(
+    frameFile: FileResource,
+    opts: {
+      content?: string;
+      shareScope?: "public" | "workspace";
+      conversationSpaceId?: string | null;
+    } = {}
+  ) {
+    const {
+      content = "<html><h1>Interactive Frame</h1></html>",
+      shareScope = "public",
+      conversationSpaceId = null,
+    } = opts;
+
+    vi.spyOn(FileResource, "fetchByShareTokenWithContent").mockResolvedValue({
+      file: frameFile,
+      content,
+      shareScope,
+      shareableFileId: 1 as unknown as ModelId,
+      workspace,
+      conversationSpaceId,
+      authorizedFileAccess: null,
+      fs: makeMockFs(),
+    });
+  }
 
   it("should return frame content with valid JWT access token", async () => {
     const frameFile = await FileFactory.create(auth, null, {
@@ -55,12 +94,7 @@ describe("/api/v1/viz/content endpoint tests", () => {
       },
     });
 
-    vi.spyOn(FileResource, "fetchByShareTokenWithContent").mockResolvedValue({
-      file: frameFile,
-      content: "<html><h1>Interactive Frame</h1></html>",
-      shareScope: "public",
-      conversationSpaceId: null,
-    });
+    mockFetchByShareToken(frameFile);
 
     await handler(req, res);
 
@@ -271,11 +305,9 @@ describe("/api/v1/viz/content endpoint tests", () => {
       },
     });
 
-    vi.spyOn(FileResource, "fetchByShareTokenWithContent").mockResolvedValue({
-      file: frameFile,
+    mockFetchByShareToken(frameFile, {
       content: "<html><h1>Workspace Frame</h1></html>",
       shareScope: "workspace",
-      conversationSpaceId: null,
     });
 
     await handler(req, res);

@@ -216,24 +216,28 @@ export class FileResource extends BaseResource<FileModel> {
     file: FileResource;
     content: string;
     shareScope: FileShareScope;
+    shareableFileId: ModelId;
+    workspace: LightWorkspaceType;
     conversationSpaceId: string | null;
+    authorizedFileAccess: AuthorizedFileAccessAllowlist | null;
+    fs: DustFileSystem;
   } | null> {
     const r = await this.fetchByShareToken(token);
     if (r.isErr()) {
       return null;
     }
 
-    const { file, shareScope, workspace, conversationSpaceId } = r.value;
-    const content = await file.getFileContent(workspace, "original");
+    const content = await r.value.file.getFileContent(
+      r.value.workspace,
+      "original"
+    );
     if (!content) {
       return null;
     }
 
     return {
-      file,
+      ...r.value,
       content,
-      shareScope,
-      conversationSpaceId,
     };
   }
 

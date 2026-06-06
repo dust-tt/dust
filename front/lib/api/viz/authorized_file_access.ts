@@ -17,6 +17,9 @@ import type {
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { Readable } from "stream";
+
+export { resolveAllowlistedCanonicalPath } from "@app/lib/api/viz/authorized_file_access_policy";
 
 function unverifiableFrameFileRefsShareError(
   unverifiableRefs: string[]
@@ -91,6 +94,92 @@ export async function ensureAuthorizedFileAccessForShare(
   await frameFile.persistAuthorizedFileAccess(authorized);
 
   return new Ok(authorized);
+}
+
+export type VizFileAuthorizationMode = "legacy" | "authorized" | "denied";
+
+export type AllowlistedScopedVizFile = {
+  contentType: string;
+  stream: Readable;
+};
+
+/**
+ * Read an allowlisted scoped path under the authoring user's access.
+ * Share-token mounts only cover the frame context; cross-pod refs need this path.
+ */
+export async function readAllowlistedScopedVizFile({
+  authorizedFileAccess,
+  canonicalScopedPath,
+  workspace,
+}: {
+  authorizedFileAccess: AuthorizedFileAccessAllowlist;
+  canonicalScopedPath: string;
+  workspace: LightWorkspaceType;
+}): Promise<Result<AllowlistedScopedVizFile, void>> {
+  const userId = authorizedFileAccess.computedByUserId;
+
+  const auth = await Authenticator.fromUserIdAndWorkspaceId(
+    userId,
+    workspace.sId
+  );
+
+  const fsResult = await DustFileSystem.fromScopedPath(
+    auth,
+    canonicalScopedPath
+  );
+  if (fsResult.isErr()) {
+    return new Err(undefined);
+  }
+
+  const statResult = await fsResult.value.stat(canonicalScopedPath);
+  if (statResult.isErr() || !statResult.value) {
+    return new Err(undefined);
+  }
+
+  const readResult = await fsResult.value.read(canonicalScopedPath);
+  if (readResult.isErr() || !readResult.value) {
+    return new Err(undefined);
+  }
+
+  return new Ok({
+    contentType: statResult.value.contentType,
+    stream: readResult.value,
+  });
+}
+
+/**
+ * Gate viz file serving against the frame's stored allowlist.
+ * Returns "legacy" when no allowlist exists yet (pre-backfill frames).
+ */
+export async function assertVizFileAuthorized({
+  authorizedFileAccess,
+  requestedRef,
+  owner,
+  frameContent,
+}: {
+  authorizedFileAccess: AuthorizedFileAccessAllowlist | null;
+  requestedRef: string;
+  owner: LightWorkspaceType;
+  frameContent: string;
+}): Promise<VizFileAuthorizationMode> {
+  if (!authorizedFileAccess || authorizedFileAccess.refs.length === 0) {
+    return "legacy";
+  }
+
+  if (isAllowlistStale(authorizedFileAccess, frameContent)) {
+    return "denied";
+  }
+
+  if (!isAuthorizedFileRef(authorizedFileAccess, requestedRef)) {
+    return "denied";
+  }
+
+  const hasAccess = await reverifyAuthorAccess(
+    authorizedFileAccess,
+    requestedRef,
+    owner
+  );
+  return hasAccess ? "authorized" : "denied";
 }
 
 export async function reverifyAuthorAccess(

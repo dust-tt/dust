@@ -57,3 +57,24 @@ export function isAuthorizedFileRef(
 
   return false;
 }
+
+/** Canonical scoped path to read when a request matches an allowlisted entry. */
+export function resolveAllowlistedCanonicalPath(
+  authorizedFileAccess: AuthorizedFileAccessAllowlist,
+  requestedRef: string
+): string | null {
+  for (const r of authorizedFileAccess.refs) {
+    if (r.kind !== "canonical_path") {
+      continue;
+    }
+
+    if (
+      r.ref === requestedRef ||
+      legacyScopedPathsMatch(r.legacyPath, requestedRef)
+    ) {
+      return r.ref;
+    }
+  }
+
+  return null;
+}
