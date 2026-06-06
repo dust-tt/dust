@@ -74,7 +74,12 @@ export async function* runToolWithStreaming(
   | ToolPausedEvent,
   void
 > {
-  const { toolConfiguration, status, augmentedInputs: inputs } = action;
+  const { toolConfiguration, status, augmentedInputs, userEditedInputs } =
+    action;
+  const inputs = {
+    ...augmentedInputs,
+    ...(userEditedInputs ?? {}),
+  };
 
   const signal = options?.signal;
 

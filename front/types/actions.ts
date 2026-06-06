@@ -19,6 +19,7 @@ export type AgentMCPActionType = {
   functionCallId: string;
 
   params: Record<string, unknown>;
+  userEditedInputs?: Record<string, unknown> | null;
   citationsAllocated: number;
   status: ToolExecutionStatus;
   step: number;
