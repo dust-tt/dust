@@ -3,6 +3,7 @@ import {
   createMetronomeAlert,
   listMetronomeAlerts,
 } from "@app/lib/metronome/client";
+import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -69,19 +70,58 @@ export async function upsertMetronomeAlert(
     uniquenessKey: params.uniqueness_key,
   });
   if (findResult.isErr()) {
+    logger.error(
+      {
+        customerId: params.customer_id,
+        uniquenessKey: params.uniqueness_key,
+        err: findResult.error,
+      },
+      "[Metronome Alert] upsert: failed to list/find existing alert"
+    );
     return new Err(findResult.error);
   }
   const existing = findResult.value;
 
   if (existing && existing.alert.threshold === params.threshold) {
+    logger.info(
+      {
+        customerId: params.customer_id,
+        uniquenessKey: params.uniqueness_key,
+        alertId: existing.alert.id,
+        threshold: params.threshold,
+      },
+      "[Metronome Alert] upsert: reusing existing alert at requested threshold"
+    );
     return new Ok({ alertId: existing.alert.id });
   }
+
+  logger.info(
+    {
+      customerId: params.customer_id,
+      uniquenessKey: params.uniqueness_key,
+      existingAlertId: existing?.alert.id ?? null,
+      existingThreshold: existing?.alert.threshold ?? null,
+      newThreshold: params.threshold,
+    },
+    existing
+      ? "[Metronome Alert] upsert: archiving existing alert (threshold changed) and recreating"
+      : "[Metronome Alert] upsert: creating new alert"
+  );
 
   try {
     if (existing) {
       await archiveMetronomeAlert({ id: existing.alert.id });
     }
     const created = await createMetronomeAlert(params);
+    logger.info(
+      {
+        customerId: params.customer_id,
+        uniquenessKey: params.uniqueness_key,
+        alertId: created.data.id,
+        threshold: params.threshold,
+      },
+      "[Metronome Alert] upsert: created alert"
+    );
     return new Ok({ alertId: created.data.id });
   } catch (err) {
     // A uniqueness-key 409 means another alert still holds this key — typically
@@ -90,14 +130,59 @@ export async function upsertMetronomeAlert(
     // conflicting alert (releasing the key) and retry the create once.
     const conflictingId = conflictingAlertIdFromError(err);
     if (conflictingId) {
+      logger.warn(
+        {
+          customerId: params.customer_id,
+          uniquenessKey: params.uniqueness_key,
+          conflictingAlertId: conflictingId,
+          threshold: params.threshold,
+        },
+        "[Metronome Alert] upsert: uniqueness_key conflict (409); archiving conflicting alert and retrying create"
+      );
       try {
         await archiveMetronomeAlert({ id: conflictingId });
         const created = await createMetronomeAlert(params);
+        logger.info(
+          {
+            customerId: params.customer_id,
+            uniquenessKey: params.uniqueness_key,
+            alertId: created.data.id,
+            conflictingAlertId: conflictingId,
+            threshold: params.threshold,
+          },
+          "[Metronome Alert] upsert: recreated alert after releasing conflicting uniqueness_key"
+        );
         return new Ok({ alertId: created.data.id });
       } catch (retryErr) {
+        logger.error(
+          {
+            customerId: params.customer_id,
+            uniquenessKey: params.uniqueness_key,
+            conflictingAlertId: conflictingId,
+            threshold: params.threshold,
+            err: normalizeError(retryErr),
+          },
+          "[Metronome Alert] upsert: retry after archiving conflicting alert failed"
+        );
         return new Err(normalizeError(retryErr));
       }
     }
+    // No conflicting_id on the error: log the raw error so a uniqueness-key
+    // conflict whose shape we don't yet recognize is still visible in the logs
+    // (instead of being swallowed into a generic "metronome_error").
+    logger.error(
+      {
+        customerId: params.customer_id,
+        uniquenessKey: params.uniqueness_key,
+        threshold: params.threshold,
+        err: normalizeError(err),
+        rawError:
+          typeof err === "object" && err !== null && "error" in err
+            ? err.error
+            : undefined,
+      },
+      "[Metronome Alert] upsert: create failed (no conflicting_id surfaced)"
+    );
     return new Err(normalizeError(err));
   }
 }

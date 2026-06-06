@@ -60,6 +60,10 @@ export async function getDefaultUserSpendLimit(
 ): Promise<Result<DefaultUserSpendLimit, DefaultUserSpendLimitError>> {
   const workspace = auth.getNonNullableWorkspace();
   if (!workspace.metronomeCustomerId) {
+    logger.info(
+      { workspaceId: workspace.sId },
+      "[DefaultUserSpendLimit] get: workspace is not on Metronome billing"
+    );
     return new Err(
       new DefaultUserSpendLimitError(
         "workspace_not_metronome_billed",
@@ -70,6 +74,15 @@ export async function getDefaultUserSpendLimit(
 
   const contract = await getActiveContract(workspace.sId);
   const productSeatTypes = contract ? await getProductSeatTypes() : null;
+  logger.info(
+    {
+      workspaceId: workspace.sId,
+      metronomeCustomerId: workspace.metronomeCustomerId,
+      hasContract: Boolean(contract),
+      productSeatTypeCount: productSeatTypes?.size ?? 0,
+    },
+    "[DefaultUserSpendLimit] get: resolved contract and product seat types"
+  );
 
   // Try each normalized seat type until we find one with an alert configured.
   for (const seatType of NORMALIZED_POOL_LIMIT_SEAT_TYPES) {
@@ -79,6 +92,15 @@ export async function getDefaultUserSpendLimit(
       seatType,
     });
     if (result.isErr()) {
+      logger.error(
+        {
+          workspaceId: workspace.sId,
+          metronomeCustomerId: workspace.metronomeCustomerId,
+          seatType,
+          err: result.error,
+        },
+        "[DefaultUserSpendLimit] get: failed to read default per-user cap alert from Metronome"
+      );
       return new Err(
         new DefaultUserSpendLimitError("metronome_error", result.error.message)
       );
@@ -89,10 +111,30 @@ export async function getDefaultUserSpendLimit(
         contract && productSeatTypes
           ? getAwuAllocationForSeatType(contract, seatType, productSeatTypes)
           : 0;
-      return new Ok({ awuCredits: totalThreshold - seatAllowance });
+      const poolAwuCredits = totalThreshold - seatAllowance;
+      logger.info(
+        {
+          workspaceId: workspace.sId,
+          metronomeCustomerId: workspace.metronomeCustomerId,
+          seatType,
+          alertId: result.value.alert.id,
+          totalThreshold,
+          seatAllowance,
+          poolAwuCredits,
+        },
+        "[DefaultUserSpendLimit] get: resolved default pool limit from cap alert"
+      );
+      return new Ok({ awuCredits: poolAwuCredits });
     }
   }
 
+  logger.info(
+    {
+      workspaceId: workspace.sId,
+      metronomeCustomerId: workspace.metronomeCustomerId,
+    },
+    "[DefaultUserSpendLimit] get: no default per-user cap alert configured for any seat type"
+  );
   return new Err(
     new DefaultUserSpendLimitError(
       "not_found",
@@ -124,6 +166,15 @@ export async function setDefaultUserSpendLimit(
     poolAwuCredits < MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS ||
     poolAwuCredits > MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS
   ) {
+    logger.info(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        poolAwuCredits,
+        min: MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
+        max: MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
+      },
+      "[DefaultUserSpendLimit] set: rejected out-of-range threshold"
+    );
     return new Err(
       new DefaultUserSpendLimitError(
         "invalid_threshold",
@@ -134,6 +185,10 @@ export async function setDefaultUserSpendLimit(
 
   const workspace = auth.getNonNullableWorkspace();
   if (!workspace.metronomeCustomerId) {
+    logger.info(
+      { workspaceId: workspace.sId },
+      "[DefaultUserSpendLimit] set: workspace is not on Metronome billing"
+    );
     return new Err(
       new DefaultUserSpendLimitError(
         "workspace_not_metronome_billed",
@@ -143,8 +198,21 @@ export async function setDefaultUserSpendLimit(
   }
   const { metronomeCustomerId } = workspace;
 
+  logger.info(
+    {
+      workspaceId: workspace.sId,
+      metronomeCustomerId,
+      poolAwuCredits,
+    },
+    "[DefaultUserSpendLimit] set: starting default per-user spend limit update"
+  );
+
   const contract = await getActiveContract(workspace.sId);
   if (!contract) {
+    logger.error(
+      { workspaceId: workspace.sId, metronomeCustomerId },
+      "[DefaultUserSpendLimit] set: no active contract found for workspace"
+    );
     return new Err(
       new DefaultUserSpendLimitError(
         "contract_not_found",
@@ -169,6 +237,30 @@ export async function setDefaultUserSpendLimit(
     }
   }
 
+  logger.info(
+    {
+      workspaceId: workspace.sId,
+      metronomeCustomerId,
+      productSeatTypeCount: productSeatTypes.size,
+      contractSeatTypes: [...seatSubscriptions.keys()],
+      normalizedSeatTypes: [...normalizedSeatTypes],
+    },
+    "[DefaultUserSpendLimit] set: resolved seat types from contract"
+  );
+
+  if (normalizedSeatTypes.size === 0) {
+    // No seat alert will be created, so the limit would silently not apply.
+    // Surface this loudly rather than returning a success that does nothing.
+    logger.error(
+      {
+        workspaceId: workspace.sId,
+        metronomeCustomerId,
+        contractSeatTypes: [...seatSubscriptions.keys()],
+      },
+      "[DefaultUserSpendLimit] set: contract has no pool-limit seat types; no cap alert will be created"
+    );
+  }
+
   // Read previous pool limit for audit metadata (best-effort).
   const previousResult = await getDefaultUserSpendLimit(auth);
   const previousAwuCredits = previousResult.isOk()
@@ -184,6 +276,18 @@ export async function setDefaultUserSpendLimit(
     );
     const totalThreshold = seatAllowance + poolAwuCredits;
 
+    logger.info(
+      {
+        workspaceId: workspace.sId,
+        metronomeCustomerId,
+        seatType,
+        seatAllowance,
+        poolAwuCredits,
+        totalThreshold,
+      },
+      "[DefaultUserSpendLimit] set: computed cap threshold for seat type (seatAllowance + poolAwuCredits)"
+    );
+
     const upsertResult = await upsertMetronomeDefaultUserCapAlertForSeatType({
       metronomeCustomerId,
       workspaceId: workspace.sId,
@@ -191,6 +295,18 @@ export async function setDefaultUserSpendLimit(
       awuCredits: totalThreshold,
     });
     if (upsertResult.isErr()) {
+      logger.error(
+        {
+          workspaceId: workspace.sId,
+          metronomeCustomerId,
+          seatType,
+          seatAllowance,
+          poolAwuCredits,
+          totalThreshold,
+          err: upsertResult.error,
+        },
+        "[DefaultUserSpendLimit] set: failed to upsert default per-user cap alert"
+      );
       return new Err(
         new DefaultUserSpendLimitError(
           "metronome_error",
@@ -220,6 +336,17 @@ export async function setDefaultUserSpendLimit(
       );
     }
   }
+
+  logger.info(
+    {
+      workspaceId: workspace.sId,
+      metronomeCustomerId,
+      previousAwuCredits,
+      poolAwuCredits,
+      seatTypesUpdated: [...normalizedSeatTypes],
+    },
+    "[DefaultUserSpendLimit] set: default per-user spend limit update succeeded"
+  );
 
   void emitAuditLogEvent({
     auth,
