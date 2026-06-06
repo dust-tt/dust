@@ -2,6 +2,12 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { fetchUserFromSession } from "@app/lib/iam/users";
 import type { AcademyIdentifier } from "@app/types/academy";
 
+export interface CourseProgressData {
+  completedChapterSlugs: string[];
+  attemptedChapterSlugs: string[];
+  lastAttemptAt: string;
+}
+
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

@@ -1,5 +1,5 @@
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
-import type { AvailableSkill } from "@app/lib/api/assistant/observability/skill_usage";
+import type { GetWorkspaceSkillsResponse } from "@app/lib/api/assistant/observability/skill_usage";
 import { fetchAvailableSkills } from "@app/lib/api/assistant/observability/skill_usage";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -11,10 +11,6 @@ import { z } from "zod";
 const QuerySchema = z.object({
   days: z.coerce.number().positive().optional().default(DEFAULT_PERIOD_DAYS),
 });
-
-export type GetWorkspaceSkillsResponse = {
-  skills: AvailableSkill[];
-};
 
 // Mounted at /api/w/:wId/analytics/skills.
 const app = workspaceApp();

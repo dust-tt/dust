@@ -1,4 +1,7 @@
-import type { AwuPurchaseInfo } from "@app/lib/credits/awu_purchase";
+import type {
+  GetAwuPurchaseInfoResponseBody,
+  PostAwuPurchaseResponseBody,
+} from "@app/lib/credits/awu_purchase";
 import {
   getAwuPurchaseInfo,
   purchaseAwuCredits,
@@ -12,15 +15,9 @@ import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
-export type GetAwuPurchaseInfoResponseBody = AwuPurchaseInfo;
-
 const PostAwuPurchaseBody = z.object({
   amountCredits: z.number().int().positive(),
 });
-
-export type PostAwuPurchaseResponseBody = {
-  amountCredits: number;
-};
 
 // Mounted at /api/w/:wId/subscriptions/awu-purchase.
 const app = workspaceApp();

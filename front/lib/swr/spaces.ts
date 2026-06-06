@@ -10,6 +10,10 @@ import type {
 } from "@app/lib/api/pagination";
 import type { SpacesLookupResponseBody } from "@app/lib/api/projects/lookup";
 import type {
+  DataSourceContentNode,
+  PostWorkspaceSearchResponseBody,
+} from "@app/lib/api/search";
+import type {
   GetSpaceResponseBody,
   GetSpacesResponseBody,
   PatchSpaceResponseBody,
@@ -27,10 +31,6 @@ import {
   useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
-import type {
-  DataSourceContentNode,
-  PostWorkspaceSearchResponseBody,
-} from "@app/pages/api/w/[wId]/search";
 import type { DataSourceViewCategoryWithoutApps } from "@app/types/api/public/spaces";
 import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
 import type { SearchWarningCode } from "@app/types/core/core_api";

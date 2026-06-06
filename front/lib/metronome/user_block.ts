@@ -44,6 +44,14 @@ import {
 
 export type UserBlockedReason = "credits_exhausted" | "user_cap_reached";
 
+export type ProgrammaticCreditStatus = "active" | "warned" | "depleted";
+
+export type GetWorkspaceUsageStatusResponseBody = {
+  awuStatus: "normal" | "warned" | "blocked";
+  poolCreditState: WorkspacePoolCreditState;
+  programmaticCreditStatus: ProgrammaticCreditStatus;
+};
+
 const REDIS_ORIGIN = "metronome_limit" as const;
 const BLOCKED_FLAG = "1";
 const NOT_BLOCKED_FLAG = "0";

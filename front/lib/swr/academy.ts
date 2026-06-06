@@ -1,7 +1,7 @@
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { CourseProgressData } from "@app/lib/api/academy_api";
 import { clientFetch } from "@app/lib/egress/client";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { CourseProgressData } from "@app/pages/api/marketing/academy/progress/courses";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Fetcher } from "swr";
 import { useSWRConfig } from "swr";

@@ -1,17 +1,13 @@
 // @migration-status: MIGRATED_TO_HONO
 /** @ignoreswagger */
 import config from "@app/lib/api/config";
+import type { GetProfilerResponse } from "@app/lib/api/debug/profiler";
 import { profileCPU, profileHeap } from "@app/lib/api/debug/profiler";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export interface GetProfilerResponse {
-  cpu: string;
-  heap: string;
-}
 
 // biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default async function handler(

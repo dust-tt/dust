@@ -182,3 +182,11 @@ export type GetContextOriginResponse = {
     count: number;
   }[];
 };
+
+export type GetWorkspaceContextOriginResponse = {
+  total: number;
+  buckets: {
+    origin: string;
+    count: number;
+  }[];
+};

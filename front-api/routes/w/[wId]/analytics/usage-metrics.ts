@@ -1,8 +1,5 @@
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
-import type {
-  MessageMetricsPoint,
-  UsageMetricsInterval,
-} from "@app/lib/api/assistant/observability/messages_metrics";
+import type { GetWorkspaceUsageMetricsResponse } from "@app/lib/api/assistant/observability/messages_metrics";
 import { fetchMessageMetrics } from "@app/lib/api/assistant/observability/messages_metrics";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { timezoneSchema } from "@app/lib/api/timezone";
@@ -18,14 +15,6 @@ const QuerySchema = z.object({
   interval: z.enum(["day", "week"]).optional().default("day"),
   timezone: timezoneSchema,
 });
-
-export type GetWorkspaceUsageMetricsResponse = {
-  interval: UsageMetricsInterval;
-  points: Pick<
-    MessageMetricsPoint,
-    "timestamp" | "count" | "conversations" | "activeUsers"
-  >[];
-};
 
 // Mounted at /api/w/:wId/analytics/usage-metrics.
 const app = workspaceApp();

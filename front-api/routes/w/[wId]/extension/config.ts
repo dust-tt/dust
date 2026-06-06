@@ -1,10 +1,7 @@
+import type { GetExtensionConfigResponseBody } from "@app/lib/resources/extension";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
-
-export type GetExtensionConfigResponseBody = {
-  blacklistedDomains: string[];
-};
 
 // Mounted at /api/w/:wId/extension/config.
 const app = workspaceApp();

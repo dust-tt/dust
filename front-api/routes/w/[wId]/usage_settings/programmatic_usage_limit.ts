@@ -1,6 +1,10 @@
 /** @ignoreswagger */
 
 import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
+import type {
+  GetProgrammaticUsageLimitResponseBody,
+  PutProgrammaticUsageLimitResponseBody,
+} from "@app/lib/api/credits/programmatic_usage_limit";
 import {
   getProgrammaticUsageLimit,
   syncProgrammaticUsageLimit,
@@ -14,14 +18,6 @@ import { z } from "zod";
 const UpdateProgrammaticUsageLimitBodySchema = z.object({
   monthlyCapCredits: z.number().int().nonnegative().nullable(),
 });
-
-export type GetProgrammaticUsageLimitResponseBody = {
-  monthlyCapCredits: number | null;
-};
-
-export type PutProgrammaticUsageLimitResponseBody = {
-  monthlyCapCredits: number | null;
-};
 
 // Mounted at /api/w/:wId/usage_settings/programmatic_usage_limit.
 const app = workspaceApp();

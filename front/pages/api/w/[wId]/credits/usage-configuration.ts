@@ -1,36 +1,20 @@
 // @migration-status: MIGRATED_TO_HONO
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import type {
+  GetCreditUsageConfigurationResponseBody,
+  PatchCreditUsageConfigurationResponseBody,
+} from "@app/lib/api/credits/balance_threshold_alert";
 import {
   getWorkspaceBalanceThreshold,
+  PatchCreditUsageConfigurationRequestBody,
   syncMetronomeBalanceThresholdAlert,
 } from "@app/lib/api/credits/balance_threshold_alert";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
 import { fromError } from "zod-validation-error";
-
-export type CreditUsageConfigurationBody = {
-  // Credit balance (in AWU credits) below which workspace admins are emailed.
-  // `null` means no threshold is configured (the warning is off). Derived from
-  // the workspace's Metronome balance-threshold alert.
-  balanceThresholdCredits: number | null;
-};
-
-export type GetCreditUsageConfigurationResponseBody = {
-  configuration: CreditUsageConfigurationBody;
-};
-
-export type PatchCreditUsageConfigurationResponseBody = {
-  configuration: CreditUsageConfigurationBody;
-};
-
-export const PatchCreditUsageConfigurationRequestBody = z.object({
-  // 0 (or null) clears the threshold; a positive value enables the alert.
-  balanceThresholdCredits: z.number().int().min(0).nullable(),
-});
 
 async function handler(
   req: NextApiRequest,

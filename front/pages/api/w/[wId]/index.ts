@@ -7,6 +7,10 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import type {
+  GetWorkspaceResponseBody,
+  PostWorkspaceResponseBody,
+} from "@app/lib/api/workspace";
 import { renameWorkspace } from "@app/lib/api/workspace";
 import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -16,19 +20,10 @@ import { apiError } from "@app/logger/withlogging";
 import { EmbeddingProviderSchema } from "@app/types/assistant/models/embedding";
 import { ModelProviderIdSchema } from "@app/types/assistant/models/providers";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { WorkspaceType } from "@app/types/user";
 import { escape } from "html-escaper";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
-
-export type PostWorkspaceResponseBody = {
-  workspace: WorkspaceType;
-};
-
-export type GetWorkspaceResponseBody = {
-  workspace: WorkspaceType;
-};
 
 const WorkspaceNameUpdateBodySchema = z.object({
   name: z.string(),

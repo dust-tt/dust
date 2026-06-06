@@ -1,6 +1,6 @@
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { ConfirmContext } from "@app/components/Confirm";
-import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]";
+import type { FetchAgentTemplateResponse } from "@app/lib/resources/template_resource";
 import type {
   MultiActionPreset,
   TemplateActionPreset,

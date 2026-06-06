@@ -1,8 +1,8 @@
 import { fetchRevokedWorkspace } from "@app/lib/api/user";
+import type { GetWorkspaceLookupResponseBody } from "@app/lib/api/workspace";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
-import type { LightWorkspaceType } from "@app/types/user";
 import { sessionApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -10,12 +10,6 @@ import { z } from "zod";
 
 import { sessionAuth } from "../middlewares/session_auth";
 import { validate } from "../middlewares/validator";
-
-export type GetWorkspaceLookupResponseBody = {
-  workspace: LightWorkspaceType;
-  status: "auto-join-disabled" | "revoked";
-  workspaceVerifiedDomain: string | null;
-};
 
 const GetWorkspaceLookupQuerySchema = z.object({
   flow: z.enum(["no-auto-join", "revoked"]),

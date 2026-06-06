@@ -1,3 +1,4 @@
+import type { GetProvisioningStatusResponseBody } from "@app/lib/api/workspace";
 import {
   ADMIN_GROUP_NAME,
   BUILDER_GROUP_NAME,
@@ -5,11 +6,6 @@ import {
 } from "@app/lib/resources/group_resource";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
-
-export type GetProvisioningStatusResponseBody = {
-  hasAdminGroup: boolean;
-  hasBuilderGroup: boolean;
-};
 
 // Mounted at /api/w/:wId/provisioning-status.
 const app = workspaceApp();

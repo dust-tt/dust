@@ -1,6 +1,7 @@
 import { MetronomeSubscriptionPanel } from "@app/components/pages/workspace/subscription/MetronomeSubscriptionPanel";
 import { SubscriptionPlanCards } from "@app/components/plans/SubscriptionPlanCards";
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { PatchSubscriptionRequestBody } from "@app/lib/api/subscription";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { getPriceAsString } from "@app/lib/client/subscription";
 import { useSubmitFunction } from "@app/lib/client/utils";
@@ -18,7 +19,6 @@ import {
   useWorkspaceSeatsCount,
 } from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
-import type { PatchSubscriptionRequestBody } from "@app/pages/api/w/[wId]/subscriptions";
 import type {
   BillingPeriod,
   SubscriptionPerSeatPricing,

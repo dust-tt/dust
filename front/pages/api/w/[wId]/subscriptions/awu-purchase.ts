@@ -2,7 +2,10 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import type { AwuPurchaseInfo } from "@app/lib/credits/awu_purchase";
+import type {
+  GetAwuPurchaseInfoResponseBody,
+  PostAwuPurchaseResponseBody,
+} from "@app/lib/credits/awu_purchase";
 import {
   getAwuPurchaseInfo,
   purchaseAwuCredits,
@@ -16,15 +19,9 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
-export type GetAwuPurchaseInfoResponseBody = AwuPurchaseInfo;
-
 const PostAwuPurchaseBody = z.object({
   amountCredits: z.number().int().positive(),
 });
-
-export type PostAwuPurchaseResponseBody = {
-  amountCredits: number;
-};
 
 async function handler(
   req: NextApiRequest,

@@ -1,3 +1,7 @@
+import type {
+  GetWorkspaceUsageStatusResponseBody,
+  ProgrammaticCreditStatus,
+} from "@app/lib/metronome/user_block";
 import {
   getWorkspaceCreditPoolStatus,
   getWorkspaceProgrammaticCreditStatus,
@@ -5,18 +9,9 @@ import {
   isUserBlocked,
   isWorkspaceProgrammaticWarned,
 } from "@app/lib/metronome/user_block";
-import type { WorkspacePoolCreditState } from "@app/types/credits";
 import { isCreditPricedPlan } from "@app/types/plan";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
-
-export type ProgrammaticCreditStatus = "active" | "warned" | "depleted";
-
-export type GetWorkspaceUsageStatusResponseBody = {
-  awuStatus: "normal" | "warned" | "blocked";
-  poolCreditState: WorkspacePoolCreditState;
-  programmaticCreditStatus: ProgrammaticCreditStatus;
-};
 
 // Mounted at /api/w/:wId/usage-status.
 const app = workspaceApp();

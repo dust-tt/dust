@@ -1,15 +1,15 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { GetMembersUsageResponseBody } from "@app/lib/api/credits/members_usage";
 import type { GetWorkspaceInvitationsResponseBody } from "@app/lib/api/invitation";
-import { clientFetch } from "@app/lib/egress/client";
-import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import { debounce } from "@app/lib/utils/debounce";
-import type { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
+import type { MembersLookupResponseBody } from "@app/lib/api/members";
 import type {
   GetUserSpendLimitResponseBody,
   PutUserSpendLimitResponseBody,
-} from "@app/pages/api/w/[wId]/members/[uId]/spend_limit";
-import type { MembersLookupResponseBody } from "@app/pages/api/w/[wId]/members/lookup";
+} from "@app/lib/api/users/spend_limit";
+import type { GetMembersResponseBody } from "@app/lib/api/workspace";
+import { clientFetch } from "@app/lib/egress/client";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { debounce } from "@app/lib/utils/debounce";
 import type { GroupKind } from "@app/types/groups";
 import { isGroupKind } from "@app/types/groups";
 import type { MembershipSeatType } from "@app/types/memberships";

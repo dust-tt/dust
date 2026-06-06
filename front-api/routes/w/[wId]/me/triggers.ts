@@ -1,17 +1,9 @@
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
+import type { GetUserTriggersResponseBody } from "@app/lib/api/assistant/configuration/triggers";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
-import type { TriggerType } from "@app/types/assistant/triggers";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
-
-export type GetUserTriggersResponseBody = {
-  triggers: (TriggerType & {
-    isEditor: boolean;
-    agentName: string;
-    agentPictureUrl: string;
-  })[];
-};
 
 // Mounted at /api/w/:wId/me/triggers.
 const app = workspaceApp();

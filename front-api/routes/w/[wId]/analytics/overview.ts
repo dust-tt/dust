@@ -1,6 +1,7 @@
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
+import type { GetWorkspaceAnalyticsOverviewResponse } from "@app/lib/api/workspace/analytics";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { estypes } from "@elastic/elasticsearch";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -13,11 +14,6 @@ import { fromError } from "zod-validation-error";
 const QuerySchema = z.object({
   days: z.coerce.number().positive().optional().default(DEFAULT_PERIOD_DAYS),
 });
-
-export type GetWorkspaceAnalyticsOverviewResponse = {
-  totalMembers: number;
-  activeUsers: number;
-};
 
 type OverviewAggs = {
   unique_users?: estypes.AggregationsCardinalityAggregate;

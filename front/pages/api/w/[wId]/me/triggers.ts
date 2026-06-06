@@ -2,22 +2,14 @@
 
 /** @ignoreswagger */
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
+import type { GetUserTriggersResponseBody } from "@app/lib/api/assistant/configuration/triggers";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import type { TriggerType } from "@app/types/assistant/triggers";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export interface GetUserTriggersResponseBody {
-  triggers: (TriggerType & {
-    isEditor: boolean;
-    agentName: string;
-    agentPictureUrl: string;
-  })[];
-}
 
 async function handler(
   req: NextApiRequest,

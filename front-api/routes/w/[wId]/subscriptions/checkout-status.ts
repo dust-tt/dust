@@ -1,15 +1,9 @@
+import type { GetCheckoutStatusResponseBody } from "@app/lib/api/subscription";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-type CheckoutStatus =
-  | { status: "success" }
-  | { status: "error"; message: string }
-  | { status: "pending" };
-
-export type GetCheckoutStatusResponseBody = CheckoutStatus;
 
 const GetCheckoutStatusQuerySchema = z.object({
   session_id: z.string(),

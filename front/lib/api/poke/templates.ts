@@ -1,8 +1,10 @@
 import { config } from "@app/lib/api/regions/config";
-import type { FetchAssistantTemplatesResponse } from "@app/lib/resources/template_resource";
+import type {
+  FetchAgentTemplateResponse,
+  FetchAssistantTemplatesResponse,
+} from "@app/lib/resources/template_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import logger from "@app/logger/logger";
-import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type { ModelConfig } from "@app/types/assistant/models/types";
 import type {
   CreateTemplateFormType,

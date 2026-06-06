@@ -19,6 +19,10 @@ export interface ActiveUsersMetricsPoint {
   memberCount: number;
 }
 
+export type GetWorkspaceActiveUsersResponse = {
+  points: ActiveUsersMetricsPoint[];
+};
+
 interface UserBucket {
   key: string;
   doc_count: number;

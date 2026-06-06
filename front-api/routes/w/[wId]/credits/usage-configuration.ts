@@ -1,32 +1,16 @@
+import type {
+  GetCreditUsageConfigurationResponseBody,
+  PatchCreditUsageConfigurationResponseBody,
+} from "@app/lib/api/credits/balance_threshold_alert";
 import {
   getWorkspaceBalanceThreshold,
+  PatchCreditUsageConfigurationRequestBody,
   syncMetronomeBalanceThresholdAlert,
 } from "@app/lib/api/credits/balance_threshold_alert";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import { z } from "zod";
-
-export type CreditUsageConfigurationBody = {
-  // Credit balance (in AWU credits) below which workspace admins are emailed.
-  // `null` means no threshold is configured (the warning is off). Derived from
-  // the workspace's Metronome balance-threshold alert.
-  balanceThresholdCredits: number | null;
-};
-
-export type GetCreditUsageConfigurationResponseBody = {
-  configuration: CreditUsageConfigurationBody;
-};
-
-export type PatchCreditUsageConfigurationResponseBody = {
-  configuration: CreditUsageConfigurationBody;
-};
-
-export const PatchCreditUsageConfigurationRequestBody = z.object({
-  // 0 (or null) clears the threshold; a positive value enables the alert.
-  balanceThresholdCredits: z.number().int().min(0).nullable(),
-});
 
 // Mounted at /api/w/:wId/credits/usage-configuration.
 const app = workspaceApp();

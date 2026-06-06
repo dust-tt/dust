@@ -1,6 +1,6 @@
+import type { GetMembersResponseBody } from "@app/lib/api/workspace";
 import { getMembers } from "@app/lib/api/workspace";
 import type { MembershipsPaginationParams } from "@app/lib/resources/membership_resource";
-import type { UserTypeWithWorkspaces } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -15,12 +15,6 @@ import search from "./search";
 
 export const DEFAULT_PAGE_LIMIT = 50;
 export const MAX_PAGE_LIMIT = 150;
-
-export type GetMembersResponseBody = {
-  members: UserTypeWithWorkspaces[];
-  total: number;
-  nextPageUrl?: string;
-};
 
 const MembersPaginationSchema = z.object({
   limit: z.coerce

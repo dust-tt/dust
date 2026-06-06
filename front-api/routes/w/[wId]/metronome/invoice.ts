@@ -7,35 +7,16 @@ import {
   getProductMauTierIds,
   getProductWorkspaceSeatId,
 } from "@app/lib/metronome/constants";
+import type {
+  GetMetronomeInvoiceResponseBody,
+  MetronomeInvoiceSummary,
+} from "@app/lib/metronome/invoice";
 import type { SupportedCurrency } from "@app/types/currency";
 import type { BillingPeriod } from "@app/types/plan";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
-
-export type MetronomeInvoiceSummary = {
-  currency: SupportedCurrency;
-  billingPeriod: BillingPeriod;
-  currentPeriodStartMs: number;
-  currentPeriodEndMs: number;
-  estimatedAmountCents: number;
-  mau: number | null;
-  /** Pro: effective per-seat unit price from the seat line item. */
-  seatUnitPriceCents: number | null;
-  /** Enterprise simple MAU: effective unit price from the MAU line item. */
-  mauUnitPriceCents: number | null;
-  /**
-   * Enterprise tiered MAU: effective per-tier unit prices, indexed by tier
-   * position (same order as getProductMauTierIds()). `null` at a position
-   * means that tier is not present on this contract / not charged this period.
-   */
-  mauTierUnitPricesCents: Array<number | null> | null;
-};
-
-export type GetMetronomeInvoiceResponseBody = {
-  invoice: MetronomeInvoiceSummary | null;
-};
 
 function creditTypeIdToCurrency(
   creditTypeId: string

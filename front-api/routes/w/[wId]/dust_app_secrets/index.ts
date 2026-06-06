@@ -1,3 +1,7 @@
+import type {
+  GetDustAppSecretsResponseBody,
+  PostDustAppSecretsResponseBody,
+} from "@app/lib/api/dust_app_secrets";
 import {
   getDustAppSecret,
   getDustAppSecrets,
@@ -5,7 +9,6 @@ import {
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
-import type { DustAppSecretType } from "@app/types/dust_app_secret";
 import { encrypt } from "@app/types/shared/utils/encryption";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import {
@@ -17,14 +20,6 @@ import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 import nameRoute from "./[name]";
-
-export type GetDustAppSecretsResponseBody = {
-  secrets: DustAppSecretType[];
-};
-
-export type PostDustAppSecretsResponseBody = {
-  secret: DustAppSecretType;
-};
 
 const PostDustAppSecretBodySchema = z.object({
   name: z.string(),

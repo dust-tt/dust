@@ -4,9 +4,10 @@
 import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import {
-  type DefaultUserSpendLimit,
   type DefaultUserSpendLimitError,
+  type GetDefaultUserSpendLimitResponseBody,
   getDefaultUserSpendLimit,
+  type PutDefaultUserSpendLimitResponseBody,
   setDefaultUserSpendLimit,
 } from "@app/lib/api/workspace/default_user_spend_limit";
 import type { Authenticator } from "@app/lib/auth";
@@ -29,12 +30,6 @@ const UpdateDefaultUserSpendLimitBodySchema = z.object({
     .min(MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS)
     .max(MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS),
 });
-
-export type GetDefaultUserSpendLimitResponseBody = {
-  awuCredits: number | null;
-};
-
-export type PutDefaultUserSpendLimitResponseBody = DefaultUserSpendLimit;
 
 function mapErrorToHttp(
   req: NextApiRequest,

@@ -3,6 +3,10 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import type {
+  GetWorkspaceUsageStatusResponseBody,
+  ProgrammaticCreditStatus,
+} from "@app/lib/metronome/user_block";
 import {
   getWorkspaceCreditPoolStatus,
   getWorkspaceProgrammaticCreditStatus,
@@ -11,18 +15,9 @@ import {
   isWorkspaceProgrammaticWarned,
 } from "@app/lib/metronome/user_block";
 import { apiError } from "@app/logger/withlogging";
-import type { WorkspacePoolCreditState } from "@app/types/credits";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isCreditPricedPlan } from "@app/types/plan";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type ProgrammaticCreditStatus = "active" | "warned" | "depleted";
-
-export type GetWorkspaceUsageStatusResponseBody = {
-  awuStatus: "normal" | "warned" | "blocked";
-  poolCreditState: WorkspacePoolCreditState;
-  programmaticCreditStatus: ProgrammaticCreditStatus;
-};
 
 async function handler(
   req: NextApiRequest,

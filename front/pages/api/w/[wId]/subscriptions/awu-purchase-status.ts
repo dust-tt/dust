@@ -2,15 +2,11 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import type { AwuPurchaseAttempt } from "@app/lib/credits/awu_purchase_status";
+import type { GetAwuPurchaseStatusResponseBody } from "@app/lib/credits/awu_purchase_status";
 import { getAwuPurchaseAttempt } from "@app/lib/credits/awu_purchase_status";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type GetAwuPurchaseStatusResponseBody = {
-  attempt: AwuPurchaseAttempt | null;
-};
 
 async function handler(
   req: NextApiRequest,

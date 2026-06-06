@@ -2,15 +2,12 @@
 
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import type { GetSlackNotificationResponseBody } from "@app/lib/api/me/slack_notifications";
 import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type GetSlackNotificationResponseBody = {
-  canConfigure: boolean;
-};
 
 async function handler(
   req: NextApiRequest,

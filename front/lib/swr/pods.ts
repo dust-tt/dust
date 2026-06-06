@@ -25,6 +25,7 @@ import type {
 } from "@app/lib/api/projects/preferences";
 import type {
   GetPodTasksResponseBody,
+  GetWorkspacePodTaskResponseBody,
   PatchPodTaskResponseBody,
   PostPodTaskResponseBody,
   PostStartPodTaskResponseBody,
@@ -32,6 +33,7 @@ import type {
 import type { CheckNameResponseBody } from "@app/lib/api/spaces";
 import { clientFetch } from "@app/lib/egress/client";
 import { flattenPodTasksWithStableAssigneeOrder } from "@app/lib/project_task/display_order";
+import type { PostSeedInitialPodTasksResponseBody } from "@app/lib/project_task/seed_initial_pod_tasks";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import {
   emptyArray,
@@ -39,8 +41,6 @@ import {
   useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
-import type { PostSeedInitialPodTasksResponseBody } from "@app/pages/api/w/[wId]/pods/[podId]/tasks/seed";
-import type { GetWorkspacePodTaskResponseBody } from "@app/pages/api/w/[wId]/project_tasks/[taskSId]/index";
 import type { ContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
 import type { PatchPodMetadataBodyType } from "@app/types/api/internal/spaces";
 import type {

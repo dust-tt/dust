@@ -1,3 +1,4 @@
+import type { GeoLocationResponse } from "@app/lib/geo/country-detection";
 import { resolveCountryCode } from "@app/lib/geo/country-detection";
 import { isGDPRCountry } from "@app/lib/geo/eu-detection";
 import { getClientIp } from "@app/lib/utils/request";
@@ -5,12 +6,6 @@ import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { unauthedApp } from "@front-api/middlewares/ctx";
 import { getConnInfo } from "@hono/node-server/conninfo";
-
-export type GeoLocationResponse = {
-  isGDPR: boolean;
-  countryCode?: string;
-  dev?: boolean;
-};
 
 // Mounted at /api/geo/location. No workspace auth — top-level route.
 const app = unauthedApp();

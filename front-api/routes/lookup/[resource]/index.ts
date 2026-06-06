@@ -1,12 +1,25 @@
 import config from "@app/lib/api/config";
+import type {
+  InvitationsLookupRequestBodyType,
+  InvitationsLookupResponse,
+  ShareTokenLookupRequestBodyType,
+  ShareTokenLookupResponse,
+  UserLookupRequestBodyType,
+  UserLookupResponse,
+  WorkspaceLookupRequestBodyType,
+  WorkspaceLookupResponse,
+} from "@app/lib/api/regions/lookup";
 import {
   handleLookupInvitations,
   handleLookupWorkspace,
   hasEmailLocalRegionAffinity,
+  InvitationsLookupSchema,
+  ShareTokenLookupSchema,
+  UserLookupSchema,
+  WorkspaceLookupSchema,
 } from "@app/lib/api/regions/lookup";
 import { getBearerToken } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
-import type { PendingInvitationOption } from "@app/types/membership_invitation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { createHono } from "@front-api/lib/hono";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -14,22 +27,15 @@ import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
-export type WorkspaceLookupResponse = {
-  workspace: {
-    sId: string;
-  } | null;
-};
-
-export type UserLookupResponse = {
-  exists: boolean;
-};
-
-export type InvitationsLookupResponse = {
-  pendingInvitations: PendingInvitationOption[];
-};
-
-export type ShareTokenLookupResponse = {
-  exists: boolean;
+export type {
+  InvitationsLookupRequestBodyType,
+  InvitationsLookupResponse,
+  ShareTokenLookupRequestBodyType,
+  ShareTokenLookupResponse,
+  UserLookupRequestBodyType,
+  UserLookupResponse,
+  WorkspaceLookupRequestBodyType,
+  WorkspaceLookupResponse,
 };
 
 type LookupResponseBody =
@@ -37,38 +43,6 @@ type LookupResponseBody =
   | WorkspaceLookupResponse
   | InvitationsLookupResponse
   | ShareTokenLookupResponse;
-
-const ExternalUserCodec = z.object({
-  email: z.string(),
-  email_verified: z.boolean(),
-});
-
-const UserLookupSchema = z.object({
-  user: ExternalUserCodec,
-});
-
-const WorkspaceLookupSchema = z.object({
-  workspace: z.string(),
-});
-
-const InvitationsLookupSchema = z.object({
-  email: z.string(),
-});
-
-const ShareTokenLookupSchema = z.object({
-  token: z.string(),
-});
-
-export type UserLookupRequestBodyType = z.infer<typeof UserLookupSchema>;
-export type WorkspaceLookupRequestBodyType = z.infer<
-  typeof WorkspaceLookupSchema
->;
-export type InvitationsLookupRequestBodyType = z.infer<
-  typeof InvitationsLookupSchema
->;
-export type ShareTokenLookupRequestBodyType = z.infer<
-  typeof ShareTokenLookupSchema
->;
 
 const ResourceParamSchema = z.object({
   resource: z.enum(["user", "workspace", "invitations", "share-token"]),

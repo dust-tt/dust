@@ -77,6 +77,15 @@ import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import { Op } from "sequelize";
 import type Stripe from "stripe";
 
+export type GetSubscriptionPricingResponseBody = {
+  perSeatPricing: SubscriptionPerSeatPricing | null;
+};
+
+export type GetSubscriptionStatusResponseBody = {
+  shouldRedirect: boolean;
+  redirectUrl: string | null;
+};
+
 const DEFAULT_PLAN_WHEN_NO_SUBSCRIPTION: PlanAttributes = FREE_NO_PLAN_DATA;
 const FREE_NO_PLAN_SUBSCRIPTION_ID = -1;
 

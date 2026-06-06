@@ -2,18 +2,13 @@
 
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import type { GetWelcomeResponseBody } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import type { EmailProviderType } from "@app/lib/utils/email_provider_detection";
 import { detectEmailProvider } from "@app/lib/utils/email_provider_detection";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type GetWelcomeResponseBody = {
-  isFirstAdmin: boolean;
-  emailProvider: EmailProviderType;
-};
 
 async function handler(
   req: NextApiRequest,

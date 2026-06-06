@@ -71,6 +71,10 @@
  *         description: User not found
  */
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
+import type {
+  GetUserResponseBody,
+  PostUserMetadataResponseBody,
+} from "@app/lib/api/user";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { getSubscriberHash } from "@app/lib/notifications";
@@ -83,14 +87,9 @@ import type { WithAPIErrorResponse } from "@app/types/error";
 import { isFavoritePlatform } from "@app/types/favorite_platforms";
 import { isJobType } from "@app/types/job_type";
 import { sendUserOperationMessage } from "@app/types/shared/user_operation";
-import type { UserTypeWithWorkspaces } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
-
-export type PostUserMetadataResponseBody = {
-  success: boolean;
-};
 
 const PatchUserBodySchema = z.object({
   firstName: z.string(),
@@ -101,10 +100,6 @@ const PatchUserBodySchema = z.object({
   emailProvider: z.string().optional(),
   workspaceId: z.string().optional(),
 });
-
-export type GetUserResponseBody = {
-  user: UserTypeWithWorkspaces & { subscriberHash: string | null };
-};
 
 async function handler(
   req: NextApiRequest,

@@ -5,6 +5,7 @@ import type { Authenticator } from "@app/lib/auth";
 import {
   downloadAndUploadToolFile,
   getToolAccessToken,
+  ToolUploadRequestBodySchema,
 } from "@app/lib/search/tools/search";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -14,23 +15,6 @@ import type { NextApiRequest, NextApiResponse } from "next";
 interface ToolUploadResponseBody {
   file: FileType;
 }
-
-import { z } from "zod";
-
-const ToolUploadRequestBodySchema = z.object({
-  serverViewId: z.string().min(1, "serverViewId is required"),
-  externalId: z.string().min(1, "externalId is required"),
-  conversationId: z.string().optional(), // TODO(seb): remove after the next extension release + a few days.
-  useCase: z.enum(["conversation", "project_context"]).default("conversation"),
-  useCaseMetadata: z.object({
-    conversationId: z.string().optional(),
-    spaceId: z.string().optional(),
-  }),
-  serverName: z.string().optional(),
-  serverIcon: z.string().optional(),
-});
-
-export type ToolUploadRequestBody = z.infer<typeof ToolUploadRequestBodySchema>;
 
 async function handler(
   req: NextApiRequest,

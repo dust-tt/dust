@@ -48,6 +48,22 @@ import type {
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { Readable } from "stream";
+import { z } from "zod";
+
+export const ToolUploadRequestBodySchema = z.object({
+  serverViewId: z.string().min(1, "serverViewId is required"),
+  externalId: z.string().min(1, "externalId is required"),
+  conversationId: z.string().optional(), // TODO(seb): remove after the next extension release + a few days.
+  useCase: z.enum(["conversation", "project_context"]).default("conversation"),
+  useCaseMetadata: z.object({
+    conversationId: z.string().optional(),
+    spaceId: z.string().optional(),
+  }),
+  serverName: z.string().optional(),
+  serverIcon: z.string().optional(),
+});
+
+export type ToolUploadRequestBody = z.infer<typeof ToolUploadRequestBodySchema>;
 
 const SEARCHABLE_TOOLS = {
   github: { search: githubSearch, download: githubDownload },

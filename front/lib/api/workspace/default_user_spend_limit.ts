@@ -32,6 +32,12 @@ export type DefaultUserSpendLimit = {
   awuCredits: number;
 };
 
+export type GetDefaultUserSpendLimitResponseBody = {
+  awuCredits: number | null;
+};
+
+export type PutDefaultUserSpendLimitResponseBody = DefaultUserSpendLimit;
+
 export type DefaultUserSpendLimitErrorType =
   | "workspace_not_metronome_billed"
   | "metronome_error"

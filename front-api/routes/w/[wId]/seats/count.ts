@@ -1,11 +1,8 @@
+import type { GetWorkspaceSeatsCountResponseBody } from "@app/lib/api/workspace";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
-
-export type GetWorkspaceSeatsCountResponseBody = {
-  seatsCount: number;
-};
 
 // Mounted at /api/w/:wId/seats/count.
 const app = workspaceApp();

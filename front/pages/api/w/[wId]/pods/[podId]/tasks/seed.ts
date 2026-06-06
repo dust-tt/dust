@@ -3,17 +3,13 @@
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import type { PostSeedInitialPodTasksResponseBody } from "@app/lib/project_task/seed_initial_pod_tasks";
 import { seedInitialPodTasks } from "@app/lib/project_task/seed_initial_pod_tasks";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { PodTaskType } from "@app/types/project_task";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type PostSeedInitialPodTasksResponseBody = {
-  tasks: PodTaskType[];
-};
 
 async function handler(
   req: NextApiRequest,

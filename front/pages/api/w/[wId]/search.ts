@@ -1,6 +1,10 @@
 // @migration-status: MIGRATED_TO_HONO
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import type {
+  DataSourceContentNode,
+  PostWorkspaceSearchResponseBody,
+} from "@app/lib/api/search";
 import { handleSearch, SearchRequestBody } from "@app/lib/api/search";
 import { initSSEResponse } from "@app/lib/api/sse";
 import type { Authenticator } from "@app/lib/auth";
@@ -8,25 +12,11 @@ import { streamToolFiles } from "@app/lib/search/tools/search";
 import type { ToolSearchResult } from "@app/lib/search/tools/types";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { ContentNodeWithParent } from "@app/types/connectors/connectors_api";
 import type { SearchWarningCode } from "@app/types/core/core_api";
-import type { DataSourceType } from "@app/types/data_source";
-import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
-
-export type DataSourceContentNode = ContentNodeWithParent & {
-  dataSource: DataSourceType;
-  dataSourceViews: DataSourceViewType[];
-};
-export type PostWorkspaceSearchResponseBody = {
-  nodes: DataSourceContentNode[];
-  warningCode: SearchWarningCode | null;
-  nextPageCursor: string | null;
-  resultsCount: number | null;
-};
 
 interface UnifiedSearchStreamChunk {
   knowledgeResults?: {

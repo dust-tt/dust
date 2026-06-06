@@ -1,5 +1,5 @@
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
-import type { AvailableTool } from "@app/lib/api/assistant/observability/tool_usage";
+import type { GetWorkspaceToolsResponse } from "@app/lib/api/assistant/observability/tool_usage";
 import {
   fetchAvailableTools,
   resolveToolDisplayNames,
@@ -14,10 +14,6 @@ import { z } from "zod";
 const QuerySchema = z.object({
   days: z.coerce.number().positive().optional().default(DEFAULT_PERIOD_DAYS),
 });
-
-export type GetWorkspaceToolsResponse = {
-  tools: AvailableTool[];
-};
 
 // Mounted at /api/w/:wId/analytics/tools.
 const app = workspaceApp();

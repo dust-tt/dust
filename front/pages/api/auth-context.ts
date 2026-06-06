@@ -1,5 +1,6 @@
 // @migration-status: MIGRATED_TO_HONO
 
+import type { GetNoWorkspaceAuthContextResponseType } from "@app/lib/api/auth_context";
 /** @ignoreswagger */
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { getWorkspaceRegionRedirect } from "@app/lib/api/regions/lookup";
@@ -7,13 +8,7 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { fetchUserFromSession } from "@app/lib/iam/users";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { UserType } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type GetNoWorkspaceAuthContextResponseType = {
-  user: UserType;
-  defaultWorkspaceId: string | null;
-};
 
 async function handler(
   req: NextApiRequest,

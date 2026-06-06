@@ -2,6 +2,7 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
+import type { PickerTokenResponseType } from "@app/lib/api/google_drive";
 import { getOAuthConnectionAccessToken } from "@app/lib/api/oauth_access_token";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
@@ -16,13 +17,6 @@ const RequestBodySchema = z.object({
   // The MCP server ID (e.g., "google_drive") - used to look up the OAuth connection
   mcpServerId: z.string().min(1, "mcpServerId is required"),
 });
-
-export interface PickerTokenResponseType {
-  accessToken: string;
-  clientId: string;
-  developerKey: string;
-  appId: string; // Project number extracted from clientId
-}
 
 async function handler(
   req: NextApiRequest,

@@ -12,6 +12,14 @@ import {
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
+export type GetProgrammaticUsageLimitResponseBody = {
+  monthlyCapCredits: number | null;
+};
+
+export type PutProgrammaticUsageLimitResponseBody = {
+  monthlyCapCredits: number | null;
+};
+
 /**
  * Read the workspace's programmatic usage monthly cap.
  *

@@ -2,12 +2,15 @@
 
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import type {
+  MembersLookupAdminResponseBody,
+  MembersLookupResponseBody,
+} from "@app/lib/api/members";
 import type { Authenticator } from "@app/lib/auth";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { LightUserType, UserType } from "@app/types/user";
 import { toLightUser } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
@@ -17,18 +20,6 @@ const MEMBERS_LOOKUP_MAX_IDS = 50;
 const MembersLookupQuerySchema = z.object({
   ids: z.union([z.coerce.number(), z.array(z.coerce.number())]),
 });
-
-// The lookup endpoint is queried by numeric ModelId, so the response must
-// include `id` so callers can correlate results back to the requested ids.
-export type LightLookupUserType = LightUserType & { id: number };
-
-export type MembersLookupResponseBody = {
-  users: LightLookupUserType[];
-};
-
-export type MembersLookupAdminResponseBody = {
-  users: UserType[];
-};
 
 async function handler(
   req: NextApiRequest,

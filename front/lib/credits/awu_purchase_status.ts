@@ -19,6 +19,10 @@ export type AwuPurchaseAttempt = {
   errorMessage?: string;
 };
 
+export type GetAwuPurchaseStatusResponseBody = {
+  attempt: AwuPurchaseAttempt | null;
+};
+
 // 1 hour: matches a generous bound on the webhook delivery / UI polling
 // window. The UI polls for ~minutes; this TTL gives us margin for retries
 // and Stripe-side delays without leaving stale entries lying around.

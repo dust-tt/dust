@@ -1,3 +1,4 @@
+import type { GetPendingInvitationsLookupResponseBody } from "@app/lib/api/invitation";
 import { fetchInvitationsFromOtherRegion } from "@app/lib/api/regions/lookup";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
@@ -9,10 +10,6 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 
 import { sessionAuth } from "../middlewares/session_auth";
-
-export type GetPendingInvitationsLookupResponseBody = {
-  pendingInvitations: PendingInvitationOption[];
-};
 
 export const invitationsApp = sessionApp();
 

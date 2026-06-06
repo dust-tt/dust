@@ -2,19 +2,16 @@
 
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import type { GetGroupsResponseBody } from "@app/lib/api/groups";
 import type { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { GroupKind, GroupType } from "@app/types/groups";
+import type { GroupKind } from "@app/types/groups";
 import { GroupKindCodec } from "@app/types/groups";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
-
-export type GetGroupsResponseBody = {
-  groups: GroupType[];
-};
 
 const GetGroupsQuerySchema = z.object({
   kind: z.union([GroupKindCodec, z.array(GroupKindCodec)]).optional(),
