@@ -63,9 +63,13 @@ export async function* runToolWithStreaming(
 
   const signal = options?.signal;
 
-  // Inputs as issued in the run context.
+  // Inputs as issued in the run context. For agent-loop runs, user-edited inputs (if any)
+  // override the augmented inputs.
   const inputs = isAgentLoopRunContext(runContext)
-    ? runContext.action.augmentedInputs
+    ? {
+        ...runContext.action.augmentedInputs,
+        ...(runContext.action.userEditedInputs ?? {}),
+      }
     : runContext.action.inputs;
 
   const localLogger = logger.child({

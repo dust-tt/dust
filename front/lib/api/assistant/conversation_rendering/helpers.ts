@@ -140,9 +140,42 @@ export type Step = {
   actions: {
     call: FunctionCallType;
     result: FunctionMessageTypeModel;
+    toolInputEditMessages: UserMessageTypeModel[];
     enabledSkillMessages: UserMessageTypeModel[];
   }[];
 };
+
+function formatToolInputValueForModel(value: unknown): string {
+  return JSON.stringify(value);
+}
+
+function renderToolInputEditMessagesForAction(
+  action: AgentMCPActionWithOutputType
+): UserMessageTypeModel[] {
+  if (!action.userEditedInputs) {
+    return [];
+  }
+
+  const editedInputLines = Object.entries(action.userEditedInputs).map(
+    ([key, value]) => `- ${key}: ${formatToolInputValueForModel(value)}`
+  );
+  if (editedInputLines.length === 0) {
+    return [];
+  }
+
+  return [
+    {
+      role: "user",
+      name: "system",
+      content: [
+        {
+          type: "text",
+          text: `<dust_system>\nThe user edited the inputs of this pending tool call before approving it.\n\nThe tool was executed with these user-edited input values:\n${editedInputLines.join("\n")}\n\nThe tool result above corresponds to the edited inputs.\n</dust_system>`,
+        },
+      ],
+    },
+  ];
+}
 
 function renderEnabledSkillMessagesForAction(
   action: AgentMCPActionWithOutputType,
@@ -298,6 +331,7 @@ export async function getSteps(
       result: await renderActionForMultiActionsModel(auth, action, model, {
         conversationId,
       }),
+      toolInputEditMessages: renderToolInputEditMessagesForAction(action),
       enabledSkillMessages: renderEnabledSkillMessagesForAction(action, {
         enabledSkillById,
       }),
@@ -305,7 +339,12 @@ export async function getSteps(
     { concurrency: RENDER_ACTIONS_CONCURRENCY }
   );
 
-  for (const { action, result, enabledSkillMessages } of renderedActions) {
+  for (const {
+    action,
+    result,
+    toolInputEditMessages,
+    enabledSkillMessages,
+  } of renderedActions) {
     const stepIndex = action.step;
     stepByStepIndex[stepIndex] = stepByStepIndex[stepIndex] || emptyStep();
     stepByStepIndex[stepIndex].actions.push({
@@ -315,6 +354,7 @@ export async function getSteps(
         arguments: JSON.stringify(action.params),
       },
       result,
+      toolInputEditMessages,
       enabledSkillMessages,
     });
   }
@@ -386,6 +426,7 @@ export async function getSteps(
                   function_call_id: functionCall.id,
                   content: "Error: tool execution failed",
                 },
+                toolInputEditMessages: [],
                 enabledSkillMessages: [],
               });
             }
