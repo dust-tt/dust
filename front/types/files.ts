@@ -1,6 +1,7 @@
 // Types.
 import { z } from "zod";
 
+import { assertNever } from "./shared/utils/assert_never";
 import { removeNulls } from "./shared/utils/general";
 import type { UserType } from "./user";
 
@@ -151,6 +152,66 @@ export function getActiveAuthorizedFileAccessEntries(
   entries: AuthorizedFileAccessEntry[]
 ): AuthorizedFileAccessEntry[] {
   return entries.filter((entry) => entry.revokedAt == null);
+}
+
+const authorizedFileIdRefSchema = z
+  .object({
+    kind: z.literal("file_id"),
+    ref: z.string(),
+    fileName: z.string().optional(),
+  })
+  .strict();
+
+const authorizedCanonicalPathRefSchema = z
+  .object({
+    kind: z.literal("canonical_path"),
+    ref: z.string(),
+    legacyPath: z.string().optional(),
+    fileName: z.string().optional(),
+  })
+  .strict();
+
+export const authorizedFileRefSchema = z.discriminatedUnion("kind", [
+  authorizedFileIdRefSchema,
+  authorizedCanonicalPathRefSchema,
+]);
+
+export type AuthorizedFileRef = z.infer<typeof authorizedFileRefSchema>;
+
+/** Active allowlist view derived from non-revoked DB rows. */
+export type AuthorizedFileAccessAllowlist = {
+  computedByUserId: string;
+  frameContentHash: string;
+  refs: AuthorizedFileRef[];
+};
+
+/** Result of scanning frame content before persisting rows. */
+export type ComputedAuthorizedFileAccess = AuthorizedFileAccessAllowlist & {
+  unverifiableRefs?: string[];
+};
+
+export function entryToAuthorizedFileRef(
+  entry: AuthorizedFileAccessEntry
+): AuthorizedFileRef | null {
+  switch (entry.kind) {
+    case "unverifiable":
+      return null;
+    case "file_id":
+      return {
+        kind: "file_id",
+        ref: entry.ref,
+        ...(entry.fileName ? { fileName: entry.fileName } : {}),
+      };
+    case "canonical_path":
+      return {
+        kind: "canonical_path",
+        ref: entry.ref,
+        ...(entry.legacyPath ? { legacyPath: entry.legacyPath } : {}),
+        ...(entry.fileName ? { fileName: entry.fileName } : {}),
+      };
+    default:
+      return assertNever(entry);
+  }
 }
 
 export interface SharingGrantType {

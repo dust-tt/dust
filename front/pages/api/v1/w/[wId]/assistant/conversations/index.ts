@@ -7,6 +7,7 @@ import {
   postNewContentFragment,
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
+import { MAX_CONVERSATION_DEPTH } from "@app/lib/api/assistant/conversation/constants";
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import {
@@ -60,7 +61,7 @@ import { PublicPostConversationsRequestBodySchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
-export const MAX_CONVERSATION_DEPTH = 4;
+export { MAX_CONVERSATION_DEPTH };
 
 /**
  * @swagger
