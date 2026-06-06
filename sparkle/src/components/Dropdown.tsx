@@ -44,7 +44,7 @@ export const menuStyleClasses = {
   ),
   item: cva(
     cn(
-      "s-relative s-flex s-gap-2 s-cursor-pointer s-select-none s-items-center s-outline-none s-rounded-md s-heading-sm s-transition-colors s-duration-300 data-[disabled]:s-pointer-events-none",
+      "s-relative s-flex s-gap-2 s-cursor-pointer s-select-none s-items-center s-outline-none s-rounded-lg s-heading-sm s-transition-colors data-[disabled]:s-pointer-events-none",
       "data-[disabled]:s-text-primary-400 dark:data-[disabled]:s-text-primary-400-night"
     ),
     {
@@ -147,7 +147,13 @@ const renderIcon = (
 
   // For any component type (including exotic components), render it with Icon
   if (typeof icon === "function" || typeof icon === "object") {
-    return <Icon size={size} visual={icon as React.ComponentType} />;
+    return (
+      <Icon
+        size={size}
+        visual={icon as React.ComponentType}
+        className="s-text-muted-foreground dark:s-muted-forground-night"
+      />
+    );
   }
 
   // For primitive values, return null
@@ -224,7 +230,13 @@ const DropdownMenuSubTrigger = React.forwardRef<
     <ItemWithLabelIconAndDescription
       label={label}
       icon={icon}
-      endComponent={<Icon size="xs" visual={ChevronRight} />}
+      endComponent={
+        <Icon
+          size="xs"
+          visual={ChevronRight}
+          className="s-text-muted-foreground dark:s-muted-forground-night"
+        />
+      }
     >
       {children}
     </ItemWithLabelIconAndDescription>
@@ -642,14 +654,17 @@ const DropdownMenuCheckboxItem = React.forwardRef<
       ref={ref}
       className={cn(
         menuStyleClasses.item({ variant: "default" }),
-        menuStyleClasses.inset,
-        className
+        menuStyleClasses.inset
       )}
       {...props}
     >
       <span className={menuStyleClasses.subTrigger.span}>
         <DropdownMenuPrimitive.ItemIndicator>
-          <Icon size="xs" visual={Check} />
+          <Icon
+            size="xs"
+            visual={Check}
+            className="s-text-muted-foreground dark:s-muted-forground-night"
+          />
         </DropdownMenuPrimitive.ItemIndicator>
       </span>
       <ItemWithLabelIconAndDescription

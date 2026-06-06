@@ -10,6 +10,10 @@ module.exports = {
   ],
   theme: {
     extend: {
+      fontWeight: {
+        medium: "450",
+        semibold: "550",
+      },
       containers: {
         xxxs: "16rem",
       },

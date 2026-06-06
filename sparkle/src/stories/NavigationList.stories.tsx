@@ -223,7 +223,6 @@ export const CollapsibleSection = () => {
         <NavigationListCollapsibleSection
           label="Inbox"
           className="s-border-b s-border-t s-border-border s-bg-background/50 s-px-2 s-pb-2 dark:s-bg-background-night/50"
-          actionOnHover={false}
           action={
             <>
               {/* <div className="s-heading-xs s-h-5 s-cursor-pointer s-px-2 s-text-muted-foreground hover:s-text-foreground">

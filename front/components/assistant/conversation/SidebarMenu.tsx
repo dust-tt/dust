@@ -68,7 +68,6 @@ import {
   Button,
   Checkbox,
   CheckDone01,
-  CheckDouble,
   Chip,
   Clock,
   cn,
@@ -287,7 +286,7 @@ function SearchResults({
                 size="xs"
                 icon={Plus}
                 label="New"
-                variant="ghost"
+                variant="ghost-secondary"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -320,7 +319,7 @@ function SearchResults({
               {hasMorePods && (
                 <div className="flex justify-center py-2">
                   <Button
-                    variant="ghost"
+                    variant="ghost-secondary"
                     size="xs"
                     label={isLoadingMorePods ? "Loading..." : "Show more"}
                     onClick={handleShowMorePods}
@@ -336,7 +335,6 @@ function SearchResults({
       <NavigationList className="px-2">
         <NavigationListCollapsibleSection
           label="Conversations"
-          defaultOpen
           action={
             <>
               <DropdownMenu modal={false}>
@@ -391,7 +389,7 @@ function SearchResults({
           {hasMorePrivateConversations && (
             <div className="flex justify-center py-2">
               <Button
-                variant="ghost"
+                variant="ghost-secondary"
                 size="xs"
                 label={
                   isLoadingMorePrivateConversations ? "Loading..." : "Show more"
@@ -766,7 +764,7 @@ export function AgentSidebarMenu({
     );
 
     return (
-      <NavigationList className="px-2">
+      <NavigationList className="px-2 flex-shrink-0">
         <NavigationListCollapsibleSection
           label={showCount ? `Pods (${podCountInSummary})` : "Pods"}
           type="collapse"
@@ -782,7 +780,7 @@ export function AgentSidebarMenu({
                   size="xs"
                   icon={Plus}
                   label="New"
-                  variant="ghost"
+                  variant="ghost-secondary"
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -907,7 +905,7 @@ export function AgentSidebarMenu({
         <div className="flex h-0 min-h-full w-full">
           <div className="flex w-full flex-col">
             {isMultiSelect ? (
-              <div className="z-50 flex justify-between gap-2 border-b border-border-dark/60 p-2 dark:border-border-dark/60">
+              <div className="z-50 flex justify-between gap-2 border-b border-border-dark/60 p-2 dark:border-border-dark/60 mb-4">
                 <div className="flex gap-2">
                   <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild>
@@ -964,7 +962,7 @@ export function AgentSidebarMenu({
                 />
               </div>
             ) : (
-              <div className="z-50 flex justify-end gap-2 p-2">
+              <div className="z-50 flex justify-end gap-2 p-sidebar-side-spacing">
                 <div className="flex-1">
                   <SidebarSearch
                     titleFilter={titleFilter}
@@ -1248,21 +1246,20 @@ function UnreadConversationsSection({
   return (
     <NavigationListCollapsibleSection
       label={`${label} (${totalCount})`}
-      className="border-b border-t border-border bg-background/50 px-2 pb-2 dark:border-border-night dark:bg-background-night/50"
-      defaultOpen
-      actionOnHover={false}
+      className="bg-background dark:bg-background-night rounded-xl border border-border dark:border-border-night p-1 mx-sidebar-side-spacing"
       action={
         shouldShowMarkAllAsReadButton ? (
           <Button
             size="xmini"
-            variant="ghost"
-            icon={CheckDouble}
-            tooltip="Mark all as read"
+            variant="ghost-secondary"
+            label="Mark as read"
             onClick={() => onMarkAllAsRead(conversations.map((c) => c.sId))}
             isLoading={isMarkingAllAsRead}
+            hasLighterFont
           />
         ) : null
       }
+      actionOnHover={false}
     >
       <AnimatePresence initial={false}>
         {conversations.map((conversation) => (
@@ -1311,11 +1308,7 @@ const ConversationList = ({
   return (
     <ConversationListContainer>
       {dateLabel !== "Today" && (
-        <NavigationListLabel
-          label={dateLabel}
-          isSticky
-          className="bg-muted-background dark:bg-muted-background-night"
-        />
+        <NavigationListLabel label={dateLabel} isSticky />
       )}
 
       {conversations.map((conversation) => (
@@ -1571,112 +1564,117 @@ function NavigationListWithInbox({
       ref={scrollContainerRef}
       className="dd-privacy-mask h-full w-full overflow-y-auto"
     >
-      <AnimatePresence initial={false}>
-        {skillSuggestionConversations.length > 0 && (
-          <motion.div
-            key="skill-suggestions"
-            style={GRID_STYLE}
-            animate={GRID_ANIMATE}
-            exit={GRID_EXIT}
-            transition={{ duration: 0.2, ease: "easeOut" }}
+      <div className="flex flex-col gap-4">
+        <AnimatePresence initial={false}>
+          {skillSuggestionConversations.length > 0 && (
+            <motion.div
+              key="skill-suggestions"
+              style={GRID_STYLE}
+              animate={GRID_ANIMATE}
+              exit={GRID_EXIT}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+            >
+              <div className="overflow-hidden">
+                <UnreadConversationsSection
+                  label="Skill suggestions"
+                  conversations={skillSuggestionConversations}
+                  isMultiSelect={isMultiSelect}
+                  isMarkingAllAsRead={isMarkingAllAsRead}
+                  titleFilter={titleFilter}
+                  onMarkAllAsRead={markAllAsRead}
+                  selectedConversations={selectedConversations}
+                  toggleConversationSelection={toggleConversationSelection}
+                  activeConversationId={activeConversationId}
+                  owner={owner}
+                />
+              </div>
+            </motion.div>
+          )}
+          {inboxConversations.length > 0 && (
+            <motion.div
+              key="inbox"
+              style={GRID_STYLE}
+              animate={{ gridTemplateRows: "1fr" }}
+              exit={{ gridTemplateRows: "0fr" }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+            >
+              <div className="overflow-hidden">
+                <UnreadConversationsSection
+                  label="Inbox"
+                  conversations={inboxConversations}
+                  isMultiSelect={isMultiSelect}
+                  isMarkingAllAsRead={isMarkingAllAsRead}
+                  titleFilter={titleFilter}
+                  onMarkAllAsRead={markAllAsRead}
+                  selectedConversations={selectedConversations}
+                  toggleConversationSelection={toggleConversationSelection}
+                  activeConversationId={activeConversationId}
+                  owner={owner}
+                />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        {starredSection}
+        {podsSection}
+        <NavigationList className="px-2">
+          <NavigationListCollapsibleSection
+            label="Conversations"
+            action={
+              <>
+                <DropdownMenu modal={false}>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      size="xmini"
+                      icon={DotsHorizontal}
+                      variant="ghost"
+                      aria-label="Conversations options"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
+                    />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    onFocusOutside={(e) => e.preventDefault()}
+                  >
+                    <DropdownMenuLabel label="Conversations" />
+                    <DropdownMenuItem
+                      label={
+                        hideTriggeredConversations
+                          ? "Show triggered"
+                          : "Hide triggered"
+                      }
+                      icon={hideTriggeredConversations ? Zap : ZapOff}
+                      disabled={!hasTriggeredConversations}
+                      onClick={() =>
+                        setHideTriggeredConversations(
+                          !hideTriggeredConversations
+                        )
+                      }
+                    />
+                    <DropdownMenuItem
+                      label="Edit history"
+                      icon={CheckDone01}
+                      onClick={toggleMultiSelect}
+                      disabled={conversations.length === 0}
+                    />
+                    <DropdownMenuItem
+                      label="Clear history"
+                      variant="warning"
+                      icon={Trash01}
+                      onClick={() => setShowDeleteDialog("all")}
+                      disabled={conversations.length === 0}
+                    />
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            }
           >
-            <div className="overflow-hidden">
-              <UnreadConversationsSection
-                label="Skill suggestions"
-                conversations={skillSuggestionConversations}
-                isMultiSelect={isMultiSelect}
-                isMarkingAllAsRead={isMarkingAllAsRead}
-                titleFilter={titleFilter}
-                onMarkAllAsRead={markAllAsRead}
-                selectedConversations={selectedConversations}
-                toggleConversationSelection={toggleConversationSelection}
-                activeConversationId={activeConversationId}
-                owner={owner}
-              />
-            </div>
-          </motion.div>
-        )}
-        {inboxConversations.length > 0 && (
-          <motion.div
-            key="inbox"
-            style={GRID_STYLE}
-            animate={{ gridTemplateRows: "1fr" }}
-            exit={{ gridTemplateRows: "0fr" }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
-          >
-            <div className="overflow-hidden">
-              <UnreadConversationsSection
-                label="Inbox"
-                conversations={inboxConversations}
-                isMultiSelect={isMultiSelect}
-                isMarkingAllAsRead={isMarkingAllAsRead}
-                titleFilter={titleFilter}
-                onMarkAllAsRead={markAllAsRead}
-                selectedConversations={selectedConversations}
-                toggleConversationSelection={toggleConversationSelection}
-                activeConversationId={activeConversationId}
-                owner={owner}
-              />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      {starredSection}
-      {podsSection}
-      <NavigationList className="px-2">
-        <NavigationListCollapsibleSection
-          label="Conversations"
-          defaultOpen
-          action={
-            <>
-              <DropdownMenu modal={false}>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    size="xmini"
-                    icon={DotsHorizontal}
-                    variant="ghost"
-                    aria-label="Conversations options"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }}
-                  />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent onFocusOutside={(e) => e.preventDefault()}>
-                  <DropdownMenuLabel label="Conversations" />
-                  <DropdownMenuItem
-                    label={
-                      hideTriggeredConversations
-                        ? "Show triggered"
-                        : "Hide triggered"
-                    }
-                    icon={hideTriggeredConversations ? Zap : ZapOff}
-                    disabled={!hasTriggeredConversations}
-                    onClick={() =>
-                      setHideTriggeredConversations(!hideTriggeredConversations)
-                    }
-                  />
-                  <DropdownMenuItem
-                    label="Edit history"
-                    icon={CheckDone01}
-                    onClick={toggleMultiSelect}
-                    disabled={conversations.length === 0}
-                  />
-                  <DropdownMenuItem
-                    label="Clear history"
-                    variant="warning"
-                    icon={Trash01}
-                    onClick={() => setShowDeleteDialog("all")}
-                    disabled={conversations.length === 0}
-                  />
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </>
-          }
-        >
-          {conversationsContent}
-        </NavigationListCollapsibleSection>
-      </NavigationList>
+            {conversationsContent}
+          </NavigationListCollapsibleSection>
+        </NavigationList>
+      </div>
     </div>
   );
 }

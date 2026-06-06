@@ -20,35 +20,8 @@ import {
   DotsHorizontal,
 } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
-import { cva, type VariantProps } from "class-variance-authority";
+import { cva } from "class-variance-authority";
 import * as React from "react";
-
-const NavigationListItemStyles = cva(
-  cn(
-    "s-box-border s-flex s-items-center s-w-full s-gap-1.5 s-cursor-pointer s-select-none",
-    "s-items-center s-outline-none s-rounded-xl s-text-sm s-px-3 s-py-2 s-transition-colors s-duration-300",
-    "data-[disabled]:s-pointer-events-none",
-    "data-[disabled]:s-text-muted-foreground dark:data-[disabled]:s-text-muted-foreground-night",
-    "hover:s-text-foreground dark:hover:s-text-foreground-night",
-    "hover:s-bg-primary-100 dark:hover:s-bg-primary-200-night"
-  ),
-  {
-    variants: {
-      state: {
-        active: "active:s-bg-primary-150 dark:active:s-bg-primary-200-night",
-        selected: cn(
-          "s-text-foreground dark:s-text-foreground-night",
-          "s-bg-primary-100 dark:s-bg-primary-200-night"
-        ),
-        unselected:
-          "s-text-muted-foreground dark:s-text-muted-foreground-night",
-      },
-    },
-    defaultVariants: {
-      state: "unselected",
-    },
-  }
-);
 
 interface NavigationListProps {
   viewportRef?: React.RefObject<HTMLDivElement>;
@@ -63,7 +36,7 @@ const NavigationList = React.forwardRef<
     <ScrollArea
       ref={ref}
       viewportRef={viewportRef}
-      className={cn(className, "s-transition-all s-duration-300")}
+      className={className}
       {...props}
     >
       <div className="s-flex s-flex-col s-gap-0.5">{children}</div>
@@ -118,14 +91,6 @@ const NavigationListItem = React.forwardRef<
     },
     ref
   ) => {
-    const [isPressed, setIsPressed] = React.useState(false);
-
-    const handleMouseDown = (event: React.MouseEvent) => {
-      if (!(event.target as HTMLElement).closest(".button-class")) {
-        setIsPressed(true);
-      }
-    };
-
     const getStatusDotColor = () => {
       switch (status) {
         case "unread":
@@ -161,21 +126,21 @@ const NavigationListItem = React.forwardRef<
           <div
             className={cn(
               "s-peer/menu-button",
-              NavigationListItemStyles({
-                state: selected
-                  ? "selected"
-                  : isPressed
-                    ? "active"
-                    : "unselected",
-              })
+              "s-text-primary dark:s-text-primary-night s-font-medium",
+              "s-box-border s-flex s-items-center s-w-full s-gap-1.5 s-cursor-pointer s-select-none",
+              "s-items-center s-outline-none s-rounded-lg s-text-sm s-p-2 s-transition-colors",
+              "data-[disabled]:s-pointer-events-none",
+              "hover:s-bg-stone-100 dark:hover:s-bg-primary-200-night",
+              selected && "s-bg-stone-100 dark:s-bg-primary-200-night"
             )}
-            onMouseLeave={() => {
-              setIsPressed(false);
-            }}
-            onMouseDown={handleMouseDown}
-            onMouseUp={() => setIsPressed(false)}
           >
-            {icon && <Icon visual={icon} size="xs" className="s-m-0.5" />}
+            {icon && (
+              <Icon
+                visual={icon}
+                size="xs"
+                className="s-m-0.5 s-text-muted-foreground dark:s-text-muted-foreground-night"
+              />
+            )}
             {avatar}
             {label && (
               <span
@@ -244,19 +209,22 @@ NavigationListItem.displayName = "NavigationListItem";
 interface NavigationListItemActionProps
   extends React.HTMLAttributes<HTMLDivElement> {
   showOnHover?: boolean;
+  forceVisible?: boolean;
 }
 
 const NavigationListItemAction = React.forwardRef<
   HTMLDivElement,
   NavigationListItemActionProps
->(({ className, ...props }, ref) => {
+>(({ className, forceVisible, ...props }, ref) => {
   return (
     <div
       ref={ref}
       data-sidebar="menu-action"
       className={cn(
-        "s-absolute s-right-2 s-top-1.5 s-opacity-0 s-transition-opacity",
-        "s-opacity-0 group-focus-within/menu-item:s-opacity-100 group-hover/menu-item:s-opacity-100",
+        "s-absolute s-right-2 s-top-1.5 s-transition-opacity",
+        forceVisible
+          ? "s-opacity-100"
+          : "s-opacity-0 group-focus-within/menu-item:s-opacity-100 group-hover/menu-item:s-opacity-100",
         className
       )}
       {...props}
@@ -267,46 +235,26 @@ const NavigationListItemAction = React.forwardRef<
 });
 NavigationListItemAction.displayName = "NavigationListItemAction";
 
-const variantStyles = cva("", {
-  variants: {
-    variant: {
-      primary: "s-text-foreground dark:s-text-foreground-night",
-      secondary: "s-text-muted-foreground dark:s-text-muted-foreground-night",
-    },
-    isSticky: {
-      true: cn(
-        "s-sticky s-top-0 s-z-10 s-bg-background dark:s-bg-muted-background-night",
-        "s-border-border dark:s-border-border-night"
-      ),
-    },
-  },
-  defaultVariants: {
-    variant: "primary",
-    isSticky: false,
-  },
-});
-
-const labelStyles = cva(
-  "s-flex s-items-center s-justify-between s-gap-2 s-pt-4 s-pb-2 s-pr-2 s-heading-xs s-whitespace-nowrap s-overflow-hidden s-text-ellipsis"
-);
-
 interface NavigationListLabelProps
-  extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof variantStyles> {
+  extends React.HTMLAttributes<HTMLDivElement> {
   label: string;
   action?: React.ReactNode;
+  isSticky?: boolean;
 }
 
 const NavigationListLabel = React.forwardRef<
   HTMLDivElement,
   NavigationListLabelProps
->(({ className, variant, label, isSticky, action, ...props }, ref) => (
+>(({ className, label, isSticky, action, ...props }, ref) => (
   <div
     ref={ref}
     className={cn(
-      labelStyles(),
-      variantStyles({ variant, isSticky }),
-      "s-pl-3",
+      "s-flex s-items-center s-justify-between s-gap-2 s-pt-4 s-pb-2 s-px-2 s-whitespace-nowrap s-overflow-hidden s-text-ellipsis",
+      "s-text-sm",
+      "s-bg-sidebar-background dark:s-bg-sidebar-background-night",
+      "s-text-muted-foreground dark:s-text-muted-foreground-night",
+      isSticky &&
+        "s-sticky s-top-0 s-z-10 s-border-border dark:s-border-border-night",
       className
     )}
     {...props}
@@ -320,27 +268,10 @@ const NavigationListLabel = React.forwardRef<
 
 NavigationListLabel.displayName = "NavigationListLabel";
 
-const variantCompactStyles = cva(
-  "s-flex s-px-2 s-py-1 s-pl-3 s-text-[10px] s-font-semibold s-text-foreground dark:s-text-foreground-night s-pt-3 s-uppercase s-whitespace-nowrap s-overflow-hidden s-text-ellipsis",
-  {
-    variants: {
-      isSticky: {
-        true: cn(
-          "s-sticky s-top-0 s-z-10 s-bg-muted-background dark:s-bg-muted-background-night",
-          "s-border-border dark:s-border-border-night"
-        ),
-      },
-    },
-    defaultVariants: {
-      isSticky: false,
-    },
-  }
-);
-
 interface NavigationListCompactLabelProps
-  extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof variantCompactStyles> {
+  extends React.HTMLAttributes<HTMLDivElement> {
   label: string;
+  isSticky?: boolean;
 }
 
 const NavigationListCompactLabel = React.forwardRef<
@@ -349,7 +280,12 @@ const NavigationListCompactLabel = React.forwardRef<
 >(({ className, label, isSticky, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn(variantCompactStyles({ isSticky }), className)}
+    className={cn(
+      "s-flex s-px-2 s-py-1 s-pl-3 s-text-[10px] s-font-semibold s-text-faint dark:s-text-faint-night s-pt-3 s-uppercase s-whitespace-nowrap s-overflow-hidden s-text-ellipsis",
+      isSticky &&
+        "s-sticky s-top-0 s-z-10 s-bg-muted-background dark:s-bg-muted-background-night s-border-border dark:s-border-border-night",
+      className
+    )}
     {...props}
   >
     <div className="s-flex s-items-center s-gap-1 s-overflow-hidden s-text-ellipsis">
@@ -369,8 +305,7 @@ interface NavigationListCollapsibleSectionProps
   defaultOpen?: boolean;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
-  type?: "static" | "collapse" | "collapseAndScroll";
-  variant?: "primary" | "secondary";
+  type?: "static" | "collapse";
   children: React.ReactNode;
   /** Number of children to show when partially collapsed. undefined = show all (current behavior). */
   visibleItems?: number;
@@ -382,30 +317,24 @@ interface NavigationListCollapsibleSectionProps
 
 const collapseableStyles = cva(
   cn(
-    "s-py-2 s-px-2.5 s-w-full s-flex-1 s-text-left s-w-full",
-    "s-heading-xs s-whitespace-nowrap s-overflow-hidden s-text-ellipsis",
+    "s-w-full s-flex-1 s-text-left s-w-full",
+    "s-text-muted-foreground dark:s-text-muted-foreground-night",
+    "s-text-sm s-whitespace-nowrap s-overflow-hidden s-text-ellipsis",
     "s-select-none",
-    "s-outline-none s-rounded-xl s-transition-colors s-duration-300",
-    "data-[disabled]:s-pointer-events-none",
-    "data-[disabled]:s-text-muted-foreground dark:data-[disabled]:s-text-muted-foreground-night"
+    "s-outline-none s-rounded-xl",
+    "data-[disabled]:s-pointer-events-none"
   ),
   {
     variants: {
-      variant: {
-        primary: "s-text-foreground dark:s-text-foreground-night",
-        secondary: "s-text-muted-foreground dark:s-text-muted-foreground-night",
-      },
       isCollapsible: {
         true: cn(
-          "s-cursor-pointer s-mb-0.5",
-          "hover:s-text-foreground dark:hover:s-text-foreground-night",
-          "hover:s-bg-primary-100 dark:hover:s-bg-primary-200-night"
+          "s-cursor-pointer s-mb-0.5"
+          // "hover:s-bg-primary-100 dark:hover:s-bg-primary-200-night"
         ),
         false: "",
       },
     },
     defaultVariants: {
-      variant: "primary",
       isCollapsible: false,
     },
   }
@@ -424,7 +353,6 @@ const NavigationListCollapsibleSection = React.forwardRef<
       children,
       className,
       type = "static",
-      variant = "primary",
       defaultOpen,
       open,
       onOpenChange,
@@ -451,12 +379,7 @@ const NavigationListCollapsibleSection = React.forwardRef<
 
     const isCollapsible = type !== "static";
     const labelElement = (
-      <div
-        className={cn(
-          "notranslate",
-          collapseableStyles({ variant, isCollapsible })
-        )}
-      >
+      <div className={cn("notranslate", collapseableStyles({ isCollapsible }))}>
         {icon ? (
           <span className="s-flex s-items-center s-gap-1.5">
             <Icon visual={icon} size="xs" />
@@ -471,7 +394,7 @@ const NavigationListCollapsibleSection = React.forwardRef<
     const actionElement = action && (
       <div
         className={cn(
-          "s-m-1.5 s-flex s-gap-1 s-pr-0.5 s-transition-opacity",
+          "s-flex s-gap-1 s-transition-opacity",
           actionOnHover
             ? "[@media(hover:hover)_and_(pointer:fine)]:s-opacity-0 hover:s-opacity-100 group-has-[:focus-visible]/menu-item:s-opacity-100 group-hover/menu-item:s-opacity-100"
             : "s-opacity-100"
@@ -533,7 +456,7 @@ const NavigationListCollapsibleSection = React.forwardRef<
     if (type === "static") {
       return (
         <div ref={ref} className={className} {...props}>
-          <div className="s-group/menu-item s-relative s-mt-2 s-flex s-flex-1 s-items-center s-justify-start s-gap-1">
+          <div className="s-group/menu-item s-relative s-flex s-flex-1 s-items-center s-justify-start s-gap-2 s-pl-2 s-py-1.5 s-font-medium">
             {labelElement}
             {actionElement}
           </div>
@@ -549,28 +472,10 @@ const NavigationListCollapsibleSection = React.forwardRef<
       ...props,
     };
 
-    if (type === "collapseAndScroll") {
-      return (
-        <Collapsible ref={ref} className={className} {...collapsibleProps}>
-          <div className="s-group/menu-item s-relative s-mt-2 s-flex s-flex-1 s-items-center s-justify-start s-gap-1">
-            <CollapsibleTrigger hideChevron>{labelElement}</CollapsibleTrigger>
-            {actionElement}
-          </div>
-          <CollapsibleContent>
-            <ScrollArea>
-              {renderedContent}
-              <ScrollBar />
-            </ScrollArea>
-          </CollapsibleContent>
-        </Collapsible>
-      );
-    }
-
-    // type === "collapse" (default collapsible behavior)
     return (
       <Collapsible ref={ref} className={className} {...collapsibleProps}>
-        <div className="s-group/menu-item s-relative s-mt-2 s-flex s-flex-1 s-items-center s-justify-start s-gap-1">
-          <CollapsibleTrigger hideChevron>{labelElement}</CollapsibleTrigger>
+        <div className="s-group/menu-item s-relative s-flex s-flex-1 s-items-center s-text-sm s-font-medium s-justify-start s-gap-2 s-pl-2 s-py-1.5 s-text-muted-foreground dark:s-text-muted-foreground-night">
+          <CollapsibleTrigger hideChevron>{label}</CollapsibleTrigger>
           {actionElement}
         </div>
         <CollapsibleContent>{renderedContent}</CollapsibleContent>

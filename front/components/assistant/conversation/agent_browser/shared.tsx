@@ -85,7 +85,6 @@ type AgentGridProps = {
   handleAssistantClick: (agent: LightAgentConfigurationType) => void;
   handleMoreClick: (agentId: string) => void;
   owner: WorkspaceType;
-  iconSize?: "sm" | "md";
   canGetMore?: boolean;
 };
 
@@ -94,7 +93,6 @@ export const AgentGrid = ({
   handleAssistantClick,
   handleMoreClick,
   owner,
-  iconSize = "md",
   canGetMore = true,
 }: AgentGridProps) => {
   // Context menu state
@@ -165,7 +163,7 @@ export const AgentGrid = ({
                 setContextMenuAgent(agent);
                 setContextMenuPosition({ x: e.clientX, y: e.clientY });
               }}
-              iconSize={iconSize}
+              iconSize="sm"
               action={
                 canGetMore && (
                   <AssistantCardMore
