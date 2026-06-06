@@ -977,7 +977,7 @@ export async function processMetronomeWebhook({
         break;
       }
       const threshold = event.properties.threshold;
-      if (!threshold) {
+      if (threshold === null || threshold === undefined) {
         break;
       }
       if (threshold === 0) {
