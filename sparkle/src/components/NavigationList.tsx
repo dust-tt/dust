@@ -138,7 +138,7 @@ const NavigationListItem = React.forwardRef<
               <Icon
                 visual={icon}
                 size="xs"
-                className="s-m-0.5 s-text-muted-foreground dark:s-text-muted-foreground"
+                className="s-m-0.5 s-text-muted-foreground dark:s-text-muted-foreground-night"
               />
             )}
             {avatar}
