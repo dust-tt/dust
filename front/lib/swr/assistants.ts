@@ -31,7 +31,10 @@ import type { GetVersionMarkersResponse } from "@app/lib/api/assistant/observabi
 import type { PostAgentUserFavoriteRequestBody } from "@app/lib/api/assistant/user_relation";
 import type { GetMemberResponseBody } from "@app/lib/api/user";
 import { clientFetch } from "@app/lib/egress/client";
-import type { FetchAssistantTemplatesResponse } from "@app/lib/resources/template_resource";
+import type {
+  FetchAgentTemplateResponse,
+  FetchAssistantTemplatesResponse,
+} from "@app/lib/resources/template_resource";
 import {
   emptyArray,
   getErrorFromResponse,
@@ -40,7 +43,6 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import { BROWSER_TIMEZONE } from "@app/lib/swr/workspaces";
-import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type {
   AgentConfigurationType,
   AgentsGetViewType,

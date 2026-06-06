@@ -19,6 +19,7 @@ import {
   WorkspaceResource,
 } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type { EmailProviderType } from "@app/lib/utils/email_provider_detection";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { launchDeleteWorkspaceWorkflow } from "@app/poke/temporal/client";
@@ -34,6 +35,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { md5 } from "@app/types/shared/utils/encryption";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type {
+  LightUserTypeWithWorkspace,
   LightWorkspaceType,
   RoleType,
   UserTypeWithWorkspace,
@@ -42,6 +44,7 @@ import type {
   WorkspaceType,
 } from "@app/types/user";
 import { ACTIVE_ROLES, isBuilder } from "@app/types/user";
+import type { WorkspaceDomain } from "@app/types/workspace";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
@@ -730,3 +733,55 @@ export async function findWorkspaceByWorkOSOrganizationId(
 
   return renderLightWorkspaceType({ workspace });
 }
+
+export type GetWorkspaceLookupResponseBody = {
+  workspace: LightWorkspaceType;
+  status: "auto-join-disabled" | "revoked";
+  workspaceVerifiedDomain: string | null;
+};
+
+export type GetSeatAvailabilityResponseBody = {
+  hasAvailableSeats: boolean;
+};
+
+export type GetMembersResponseBody = {
+  members: UserTypeWithWorkspaces[];
+  total: number;
+  nextPageUrl?: string;
+};
+
+export type GetWorkspaceSeatsCountResponseBody = {
+  seatsCount: number;
+};
+
+export type GetWorkspaceVerifiedDomainsResponseBody = {
+  verifiedDomains: WorkspaceDomain[];
+};
+
+export type GetProvisioningStatusResponseBody = {
+  hasAdminGroup: boolean;
+  hasBuilderGroup: boolean;
+};
+
+export type GetWelcomeResponseBody = {
+  isFirstAdmin: boolean;
+  emailProvider: EmailProviderType;
+};
+
+export type PostWorkspaceResponseBody = {
+  workspace: WorkspaceType;
+};
+
+export type GetWorkspaceResponseBody = {
+  workspace: WorkspaceType;
+};
+
+export type SearchMembersResponseBody = {
+  members: LightUserTypeWithWorkspace[];
+  total: number;
+};
+
+export type SearchMembersAdminResponseBody = {
+  members: UserTypeWithWorkspace[];
+  total: number;
+};

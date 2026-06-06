@@ -2,16 +2,16 @@
 
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import type {
+  SearchMembersAdminResponseBody,
+  SearchMembersResponseBody,
+} from "@app/lib/api/workspace";
 import { searchMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { GROUP_KINDS } from "@app/types/groups";
-import type {
-  LightUserTypeWithWorkspace,
-  UserTypeWithWorkspace,
-} from "@app/types/user";
 import { toLightUserWithWorkspace } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
@@ -30,16 +30,6 @@ const SearchMembersQuerySchema = z.object({
     .transform((v) => v === "true")
     .optional(),
 });
-
-export type SearchMembersResponseBody = {
-  members: LightUserTypeWithWorkspace[];
-  total: number;
-};
-
-export type SearchMembersAdminResponseBody = {
-  members: UserTypeWithWorkspace[];
-  total: number;
-};
 
 async function handler(
   req: NextApiRequest,

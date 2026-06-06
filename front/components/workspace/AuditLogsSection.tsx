@@ -1,5 +1,5 @@
+import type { AuditLogsPortal } from "@app/lib/api/audit/workos_audit";
 import { useOpenAuditLogsPortal } from "@app/lib/swr/workos";
-import type { AuditLogsPortal } from "@app/pages/api/w/[wId]/audit-logs";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Button, File04, Page } from "@dust-tt/sparkle";
 import { useState } from "react";

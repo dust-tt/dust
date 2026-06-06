@@ -3,6 +3,7 @@
 // counterparts (front-api/routes/...) so there is a single source of truth.
 import type { PodTaskType } from "@app/types/project_task";
 import { POD_TASK_STATUSES } from "@app/types/project_task";
+import type { PodType } from "@app/types/space";
 import { z } from "zod";
 
 export const PatchProjectTaskBodySchema = z
@@ -81,4 +82,10 @@ export interface GetPodTasksResponseBody {
 
 export interface PostPodTaskResponseBody {
   task: PodTaskType;
+}
+
+export interface GetWorkspacePodTaskResponseBody {
+  task: PodTaskType;
+  /** Pod space (same shape as entries in `GET /api/w/{wId}/spaces` for pods). */
+  space: PodType;
 }

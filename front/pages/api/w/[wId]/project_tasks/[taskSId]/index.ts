@@ -2,6 +2,7 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { enrichProjectsWithMetadata } from "@app/lib/api/projects/list";
+import type { GetWorkspacePodTaskResponseBody } from "@app/lib/api/projects/tasks";
 import type { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -15,14 +16,7 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { PodTaskType } from "@app/types/project_task";
 import { isString } from "@app/types/shared/utils/general";
-import type { PodType } from "@app/types/space";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export interface GetWorkspacePodTaskResponseBody {
-  task: PodTaskType;
-  /** Pod space (same shape as entries in `GET /api/w/{wId}/spaces` for pods). */
-  space: PodType;
-}
 
 async function handler(
   req: NextApiRequest,

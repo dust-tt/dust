@@ -1,6 +1,9 @@
 import { getCronTimezoneGeneration } from "@app/lib/api/assistant/configuration/triggers/cron_timezone";
 import type { Authenticator } from "@app/lib/auth";
-import type { ScheduleConfig } from "@app/types/assistant/triggers";
+import type {
+  ScheduleConfig,
+  TriggerType,
+} from "@app/types/assistant/triggers";
 import {
   FullTriggerSchema,
   TriggerSchema,
@@ -8,6 +11,14 @@ import {
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { z } from "zod";
+
+export interface GetUserTriggersResponseBody {
+  triggers: (TriggerType & {
+    isEditor: boolean;
+    agentName: string;
+    agentPictureUrl: string;
+  })[];
+}
 
 export const GetTriggersResponseBodySchema = z.object({
   triggers: z.array(

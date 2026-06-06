@@ -2,6 +2,7 @@
 
 /** @ignoreswagger */
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
+import type { GetWorkspaceContextOriginResponse } from "@app/lib/api/assistant/observability/context_origin";
 import { fetchContextOriginBreakdown } from "@app/lib/api/assistant/observability/context_origin";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -15,14 +16,6 @@ import { fromError } from "zod-validation-error";
 const QuerySchema = z.object({
   days: z.coerce.number().positive().optional().default(DEFAULT_PERIOD_DAYS),
 });
-
-export type GetWorkspaceContextOriginResponse = {
-  total: number;
-  buckets: {
-    origin: string;
-    count: number;
-  }[];
-};
 
 async function handler(
   req: NextApiRequest,

@@ -1,12 +1,8 @@
-import type { AwuPurchaseAttempt } from "@app/lib/credits/awu_purchase_status";
+import type { GetAwuPurchaseStatusResponseBody } from "@app/lib/credits/awu_purchase_status";
 import { getAwuPurchaseAttempt } from "@app/lib/credits/awu_purchase_status";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
-
-export type GetAwuPurchaseStatusResponseBody = {
-  attempt: AwuPurchaseAttempt | null;
-};
 
 // Mounted at /api/w/:wId/subscriptions/awu-purchase-status.
 const app = workspaceApp();

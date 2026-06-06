@@ -1,10 +1,9 @@
+import type { FetchAgentTemplateResponse } from "@app/lib/resources/template_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import { createHono } from "@front-api/lib/hono";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export type FetchAgentTemplateResponse = ReturnType<TemplateResource["toJSON"]>;
 
 const ParamsSchema = z.object({
   tId: z.string(),

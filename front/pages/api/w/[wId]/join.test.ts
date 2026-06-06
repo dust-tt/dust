@@ -8,7 +8,8 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import handler from "./join";
 
 // Mock region redirect to always return null (same region).
-vi.mock("@app/lib/api/regions/lookup", () => ({
+vi.mock("@app/lib/api/regions/lookup", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@app/lib/api/regions/lookup")>()),
   getWorkspaceRegionRedirect: vi.fn().mockResolvedValue(null),
 }));
 

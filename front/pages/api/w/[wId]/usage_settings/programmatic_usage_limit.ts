@@ -3,6 +3,10 @@
 
 import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import type {
+  GetProgrammaticUsageLimitResponseBody,
+  PutProgrammaticUsageLimitResponseBody,
+} from "@app/lib/api/credits/programmatic_usage_limit";
 import {
   getProgrammaticUsageLimit,
   syncProgrammaticUsageLimit,
@@ -17,14 +21,6 @@ import { fromError } from "zod-validation-error";
 const UpdateProgrammaticUsageLimitBodySchema = z.object({
   monthlyCapCredits: z.number().int().nonnegative().nullable(),
 });
-
-export type GetProgrammaticUsageLimitResponseBody = {
-  monthlyCapCredits: number | null;
-};
-
-export type PutProgrammaticUsageLimitResponseBody = {
-  monthlyCapCredits: number | null;
-};
 
 async function handler(
   req: NextApiRequest,

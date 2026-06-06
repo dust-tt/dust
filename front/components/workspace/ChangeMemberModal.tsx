@@ -1,9 +1,9 @@
 import { ROLES_DATA } from "@app/components/members/Roles";
 import { RoleDropDown } from "@app/components/members/RolesDropDown";
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { SearchMembersAdminResponseBody } from "@app/lib/api/workspace";
 import { handleMembersRoleChange } from "@app/lib/client/members";
 import { useProvisioningStatus } from "@app/lib/swr/workos";
-import type { SearchMembersAdminResponseBody } from "@app/pages/api/w/[wId]/members/search";
 import type {
   ActiveRoleType,
   LightWorkspaceType,

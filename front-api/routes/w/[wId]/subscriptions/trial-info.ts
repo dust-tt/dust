@@ -1,11 +1,8 @@
+import type { GetSubscriptionTrialInfoResponseBody } from "@app/lib/api/subscription";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
-
-export type GetSubscriptionTrialInfoResponseBody = {
-  trialDaysRemaining: number | null;
-};
 
 // Mounted at /api/w/:wId/subscriptions/trial-info.
 const app = workspaceApp();

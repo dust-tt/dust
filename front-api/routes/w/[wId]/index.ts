@@ -4,6 +4,7 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
+import type { GetWorkspaceResponseBody } from "@app/lib/api/workspace";
 import { renameWorkspace } from "@app/lib/api/workspace";
 import { hasFeatureFlag } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -11,7 +12,6 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import { EmbeddingProviderSchema } from "@app/types/assistant/models/embedding";
 import { ModelProviderIdSchema } from "@app/types/assistant/models/providers";
-import type { WorkspaceType } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -274,10 +274,6 @@ app.use(
 
 // === Default auth for everything else.
 app.use("*", workspaceAuth());
-
-interface GetWorkspaceResponseBody {
-  workspace: WorkspaceType;
-}
 
 app.get(
   "/",

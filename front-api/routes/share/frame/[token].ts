@@ -1,4 +1,5 @@
 import config from "@app/lib/api/config";
+import type { GetShareFrameMetadataResponseBody } from "@app/lib/api/files/share";
 import { config as regionConfig } from "@app/lib/api/regions/config";
 import { lookupShareToken } from "@app/lib/api/regions/lookup";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -10,15 +11,6 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export interface GetShareFrameMetadataResponseBody {
-  requiresEmailVerification: boolean;
-  shareUrl: string;
-  title: string;
-  vizUrl: string;
-  workspaceId: string;
-  workspaceName: string;
-}
 
 const ParamsSchema = z.object({
   token: z.string(),

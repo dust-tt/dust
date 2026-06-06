@@ -1,3 +1,4 @@
+import type { AuditLogsPortalResponse } from "@app/lib/api/audit/workos_audit";
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
@@ -17,10 +18,6 @@ import { z } from "zod";
 const PostAuditLogsRequestBodySchema = z.object({
   portal: z.enum(["view_logs", "configure_export"]),
 });
-
-export type AuditLogsPortalResponse = {
-  portalUrl: string;
-};
 
 // Mounted at /api/w/:wId/audit-logs.
 const app = workspaceApp();

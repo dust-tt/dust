@@ -1,17 +1,12 @@
 // @migration-status: MIGRATED_TO_HONO
 
 /** @ignoreswagger */
+import type { GeoLocationResponse } from "@app/lib/geo/country-detection";
 import { resolveCountryCode } from "@app/lib/geo/country-detection";
 import { isGDPRCountry } from "@app/lib/geo/eu-detection";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type GeoLocationResponse = {
-  isGDPR: boolean;
-  countryCode?: string;
-  dev?: boolean;
-};
 
 // biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default async function handler(

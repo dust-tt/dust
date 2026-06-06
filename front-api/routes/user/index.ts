@@ -1,3 +1,7 @@
+import type {
+  GetUserResponseBody,
+  PostUserMetadataResponseBody,
+} from "@app/lib/api/user";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { getSubscriberHash } from "@app/lib/notifications";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -7,7 +11,6 @@ import logger from "@app/logger/logger";
 import { isFavoritePlatform } from "@app/types/favorite_platforms";
 import { isJobType } from "@app/types/job_type";
 import { sendUserOperationMessage } from "@app/types/shared/user_operation";
-import type { UserTypeWithWorkspaces } from "@app/types/user";
 import { sessionApp } from "@front-api/middlewares/ctx";
 import { sessionAuth } from "@front-api/middlewares/session_auth";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -16,14 +19,6 @@ import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 import metadata from "./metadata";
-
-export type GetUserResponseBody = {
-  user: UserTypeWithWorkspaces & { subscriberHash: string | null };
-};
-
-export type PostUserMetadataResponseBody = {
-  success: boolean;
-};
 
 const PatchUserBodySchema = z.object({
   firstName: z.string(),

@@ -2,6 +2,7 @@
 
 /** @ignoreswagger */
 import config from "@app/lib/api/config";
+import type { GetShareFrameMetadataResponseBody } from "@app/lib/api/files/share";
 import { config as regionConfig } from "@app/lib/api/regions/config";
 import { lookupShareToken } from "@app/lib/api/regions/lookup";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -11,15 +12,6 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isInteractiveContentType } from "@app/types/files";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export interface GetShareFrameMetadataResponseBody {
-  requiresEmailVerification: boolean;
-  shareUrl: string;
-  title: string;
-  vizUrl: string;
-  workspaceId: string;
-  workspaceName: string;
-}
 
 async function handler(
   req: NextApiRequest,

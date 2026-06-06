@@ -3,11 +3,14 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
+import type {
+  GetKeysResponseBody,
+  PostKeysResponseBody,
+} from "@app/lib/api/keys";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
-import type { KeyType } from "@app/types/key";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -17,14 +20,6 @@ import { z } from "zod";
 import keyId from "./[id]";
 
 const MAX_API_KEY_CREATION_PER_DAY = 30;
-
-export type GetKeysResponseBody = {
-  keys: KeyType[];
-};
-
-export type PostKeysResponseBody = {
-  key: KeyType;
-};
 
 const CreateKeyPostBodySchema = z.object({
   name: z.string(),

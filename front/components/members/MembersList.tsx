@@ -3,8 +3,8 @@ import {
   type SearchMemberWithWorkspaceType,
 } from "@app/components/members/MemberSelectionTable";
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
+import type { SearchMembersAdminResponseBody } from "@app/lib/api/workspace";
 import assert from "@app/lib/utils/assert";
-import type { SearchMembersAdminResponseBody } from "@app/pages/api/w/[wId]/members/search";
 import type { MembershipOriginType } from "@app/types/memberships";
 import type { RoleType, UserType } from "@app/types/user";
 import {

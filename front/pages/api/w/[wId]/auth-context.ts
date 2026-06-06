@@ -1,5 +1,6 @@
 // @migration-status: MIGRATED_TO_HONO
 /** @ignoreswagger */
+import type { GetWorkspaceAuthContextResponseType } from "@app/lib/api/auth_context";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import {
@@ -11,24 +12,8 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { isWorkspaceEligibleForTrial } from "@app/lib/plans/trial";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { SubscriptionType } from "@app/types/plan";
-import type { ProvidersHealth } from "@app/types/provider_credential";
-import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { isString } from "@app/types/shared/utils/general";
-import type { LightWorkspaceType, UserType } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type GetWorkspaceAuthContextResponseType = {
-  user: UserType;
-  workspace: LightWorkspaceType;
-  subscription: SubscriptionType;
-  isAdmin: boolean;
-  isBuilder: boolean;
-  featureFlags: WhitelistableFeature[];
-  isEligibleForTrial?: boolean;
-  vizUrl: string;
-  providersHealth: ProvidersHealth | null;
-};
 
 async function handler(
   req: NextApiRequest,

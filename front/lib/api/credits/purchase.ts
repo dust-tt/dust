@@ -24,6 +24,11 @@ import { isSupportedCurrency } from "@app/types/currency";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { StripePricingData } from "@app/types/stripe/pricing";
+import { z } from "zod";
+
+export const PostCreditPurchaseRequestBody = z.object({
+  amountDollars: z.number().positive(),
+});
 
 export type CreditPurchaseInfo = {
   isEnterprise: boolean;
@@ -33,6 +38,8 @@ export type CreditPurchaseInfo = {
   creditPurchaseLimits: CreditPurchaseLimits | null;
   billingCycleStartDay: number | null;
 };
+
+export type GetCreditPurchaseInfoResponseBody = CreditPurchaseInfo;
 
 export class CreditPurchaseInfoError extends Error {
   constructor(readonly type: "subscription_not_found" | "internal") {

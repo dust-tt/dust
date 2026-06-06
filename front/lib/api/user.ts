@@ -15,6 +15,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import type {
   LightWorkspaceType,
   RoleType,
+  UserMetadataType,
   UserType,
   UserTypeWithExtensionWorkspaces,
   UserTypeWithWorkspaces,
@@ -41,6 +42,22 @@ export type GetMemberResponseBody = {
 
 export type PostMemberResponseBody = {
   member: UserTypeWithWorkspaces;
+};
+
+export type GetUserResponseBody = {
+  user: UserTypeWithWorkspaces & { subscriberHash: string | null };
+};
+
+export type PostUserMetadataResponseBody = {
+  success: boolean;
+};
+
+export type GetUserMetadataResponseBody = {
+  metadata: UserMetadataType | null;
+};
+
+export type PostUserMetadataKeyResponseBody = {
+  metadata: UserMetadataType;
 };
 
 /**

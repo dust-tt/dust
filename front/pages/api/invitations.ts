@@ -2,6 +2,7 @@
 
 /** @ignoreswagger */
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
+import type { GetPendingInvitationsLookupResponseBody } from "@app/lib/api/invitation";
 import { fetchInvitationsFromOtherRegion } from "@app/lib/api/regions/lookup";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getUserFromSession } from "@app/lib/iam/session";
@@ -12,10 +13,6 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { PendingInvitationOption } from "@app/types/membership_invitation";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type GetPendingInvitationsLookupResponseBody = {
-  pendingInvitations: PendingInvitationOption[];
-};
 
 async function handler(
   req: NextApiRequest,

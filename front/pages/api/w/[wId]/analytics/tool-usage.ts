@@ -2,7 +2,7 @@
 
 /** @ignoreswagger */
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
-import type { ToolUsagePoint } from "@app/lib/api/assistant/observability/tool_usage";
+import type { GetWorkspaceToolUsageResponse } from "@app/lib/api/assistant/observability/tool_usage";
 import { fetchToolUsageMetrics } from "@app/lib/api/assistant/observability/tool_usage";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -19,10 +19,6 @@ const QuerySchema = z.object({
   serverName: z.string().optional(),
   timezone: timezoneSchema,
 });
-
-export type GetWorkspaceToolUsageResponse = {
-  points: ToolUsagePoint[];
-};
 
 async function handler(
   req: NextApiRequest,

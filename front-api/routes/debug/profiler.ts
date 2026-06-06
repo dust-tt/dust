@@ -1,14 +1,10 @@
 import config from "@app/lib/api/config";
+import type { GetProfilerResponse } from "@app/lib/api/debug/profiler";
 import { profileCPU, profileHeap } from "@app/lib/api/debug/profiler";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types/shared/utils/general";
 import { createHono } from "@front-api/lib/hono";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
-
-export interface GetProfilerResponse {
-  cpu: string;
-  heap: string;
-}
 
 // Mounted at /api/debug/profiler.
 const app = createHono();

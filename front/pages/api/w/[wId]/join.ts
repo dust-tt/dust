@@ -5,12 +5,12 @@ import { getWorkspaceRegionRedirect } from "@app/lib/api/regions/lookup";
 import { fetchUsersFromWorkOSWithEmails } from "@app/lib/api/workos/user";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import type { GetJoinResponseBody, OnboardingType } from "@app/lib/signup";
 import { getSignInUrl } from "@app/lib/signup";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
-import type { LightWorkspaceType } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 /**
@@ -31,18 +31,6 @@ import type { NextApiRequest, NextApiResponse } from "next";
  *      -> you're redirected to this page from trying to join a workspace and the workspace has a verified domain.
  *      -> the workspace needs to have a verified domain with auto-join enabled.
  */
-
-export type OnboardingType =
-  | "email_invite"
-  | "domain_conversation_link"
-  | "domain_invite_link";
-
-export type GetJoinResponseBody = {
-  onboardingType: OnboardingType;
-  workspace: LightWorkspaceType;
-  signInUrl: string;
-  userExists: boolean;
-};
 
 type GetJoinErrorBody = {
   redirectUrl: string;

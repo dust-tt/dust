@@ -1,5 +1,6 @@
 // @migration-status: MIGRATED_TO_HONO
 /** @ignoreswagger */
+import type { AuditLogsPortalResponse } from "@app/lib/api/audit/workos_audit";
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
@@ -14,12 +15,6 @@ import { WorkOSPortalIntent } from "@app/lib/types/workos";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type AuditLogsPortal = "view_logs" | "configure_export";
-
-export type AuditLogsPortalResponse = {
-  portalUrl: string;
-};
 
 async function handler(
   req: NextApiRequest,

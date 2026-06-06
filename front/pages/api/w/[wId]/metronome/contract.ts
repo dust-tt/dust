@@ -1,32 +1,29 @@
 // @migration-status: MIGRATED_TO_HONO
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import type { MetronomeContractSummary } from "@app/lib/api/credits/metronome_contract";
+import type {
+  GetMetronomeContractResponseBody,
+  MetronomeContractSummary,
+} from "@app/lib/api/credits/metronome_contract";
 import {
   applyContractLifecycleAction,
   getMetronomeContractSummary,
+  PatchMetronomeContractRequestBody,
 } from "@app/lib/api/credits/metronome_contract";
 import type { Authenticator } from "@app/lib/auth";
 import type { ContractLifecycleError } from "@app/lib/metronome/contract_lifecycle";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
-export type { MetronomeContractSummary };
-
-export type GetMetronomeContractResponseBody = {
-  contract: MetronomeContractSummary | null;
-};
+export type { GetMetronomeContractResponseBody, MetronomeContractSummary };
 
 type PatchMetronomeContractResponseBody = {
   success: boolean;
 };
 
-export const PatchMetronomeContractRequestBody = z.object({
-  action: z.enum(["cancel", "reactivate"]),
-});
+export { PatchMetronomeContractRequestBody };
 
 function lifecycleErrorToApi(
   req: NextApiRequest,

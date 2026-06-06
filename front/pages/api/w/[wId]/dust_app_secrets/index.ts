@@ -1,6 +1,10 @@
 // @migration-status: MIGRATED_TO_HONO
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import type {
+  GetDustAppSecretsResponseBody,
+  PostDustAppSecretsResponseBody,
+} from "@app/lib/api/dust_app_secrets";
 import {
   getDustAppSecret,
   getDustAppSecrets,
@@ -10,18 +14,9 @@ import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { DustAppSecretType } from "@app/types/dust_app_secret";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { encrypt } from "@app/types/shared/utils/encryption";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type GetDustAppSecretsResponseBody = {
-  secrets: DustAppSecretType[];
-};
-
-export type PostDustAppSecretsResponseBody = {
-  secret: DustAppSecretType;
-};
 
 async function handler(
   req: NextApiRequest,

@@ -1,5 +1,5 @@
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
-import type { ActiveUsersMetricsPoint } from "@app/lib/api/assistant/observability/active_users_metrics";
+import type { GetWorkspaceActiveUsersResponse } from "@app/lib/api/assistant/observability/active_users_metrics";
 import { fetchActiveUsersMetrics } from "@app/lib/api/assistant/observability/active_users_metrics";
 import { daysToDateRange } from "@app/lib/api/assistant/observability/utils";
 import { timezoneSchema } from "@app/lib/api/timezone";
@@ -13,10 +13,6 @@ const QuerySchema = z.object({
   days: z.coerce.number().positive().optional().default(DEFAULT_PERIOD_DAYS),
   timezone: timezoneSchema,
 });
-
-export type GetWorkspaceActiveUsersResponse = {
-  points: ActiveUsersMetricsPoint[];
-};
 
 // Mounted at /api/w/:wId/analytics/active-users.
 const app = workspaceApp();

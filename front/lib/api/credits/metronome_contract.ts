@@ -16,6 +16,15 @@ import { isSeatBased } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { z } from "zod";
+
+export type GetMetronomeContractResponseBody = {
+  contract: MetronomeContractSummary | null;
+};
+
+export const PatchMetronomeContractRequestBody = z.object({
+  action: z.enum(["cancel", "reactivate"]),
+});
 
 export type MetronomeContractSummary = {
   planFamily: "pro" | "enterprise";

@@ -4,16 +4,12 @@
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { CouponRedemptionResource } from "@app/lib/resources/coupon_redemption_resource";
+import type { GetCouponValidateResponseBody } from "@app/lib/resources/coupon_resource";
 import { CouponResource } from "@app/lib/resources/coupon_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { CouponType } from "@app/types/coupon";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type GetCouponValidateResponseBody = {
-  coupon: CouponType;
-};
 
 async function handler(
   req: NextApiRequest,

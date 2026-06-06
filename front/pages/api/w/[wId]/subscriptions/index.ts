@@ -1,7 +1,15 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
+
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { isMetronomeBillingEnabled } from "@app/lib/api/subscription";
+import type {
+  GetSubscriptionsResponseBody,
+  PostSubscriptionResponseBody,
+} from "@app/lib/api/subscription";
+import {
+  isMetronomeBillingEnabled,
+  PatchSubscriptionRequestBody,
+} from "@app/lib/api/subscription";
 import {
   createCheckoutUrl,
   PostSubscriptionRequestBody,
@@ -16,25 +24,13 @@ import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { CheckoutUrlResult, SubscriptionType } from "@app/types/plan";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
 import { fromError } from "zod-validation-error";
-
-export type PostSubscriptionResponseBody = CheckoutUrlResult;
 
 type PatchSubscriptionResponseBody = {
   success: boolean;
 };
-
-export type GetSubscriptionsResponseBody = {
-  subscriptions: SubscriptionType[];
-};
-
-export const PatchSubscriptionRequestBody = z.object({
-  action: z.enum(["cancel_free_trial", "pay_now", "upgrade_to_business"]),
-});
 
 async function handler(
   req: NextApiRequest,

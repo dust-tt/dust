@@ -13,6 +13,12 @@ import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 
+export type AuditLogsPortal = "view_logs" | "configure_export";
+
+export type AuditLogsPortalResponse = {
+  portalUrl: string;
+};
+
 export const AUDIT_ACTIONS = [
   // Existing Tier 1 events.
   "user.login",

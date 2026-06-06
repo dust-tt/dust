@@ -236,3 +236,11 @@ export type GetUsageMetricsResponse = {
     "timestamp" | "count" | "conversations" | "activeUsers"
   >[];
 };
+
+export type GetWorkspaceUsageMetricsResponse = {
+  interval: UsageMetricsInterval;
+  points: Pick<
+    MessageMetricsPoint,
+    "timestamp" | "count" | "conversations" | "activeUsers"
+  >[];
+};

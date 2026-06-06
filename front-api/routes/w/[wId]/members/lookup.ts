@@ -1,6 +1,9 @@
+import type {
+  MembersLookupAdminResponseBody,
+  MembersLookupResponseBody,
+} from "@app/lib/api/members";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import type { LightUserType, UserType } from "@app/types/user";
 import { toLightUser } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -17,18 +20,6 @@ const MEMBERS_LOOKUP_MAX_IDS = 50;
 const MembersLookupQuerySchema = z.object({
   ids: z.union([z.coerce.number(), z.array(z.coerce.number())]),
 });
-
-// The lookup endpoint is queried by numeric ModelId, so the response must
-// include `id` so callers can correlate results back to the requested ids.
-type LightLookupUserType = LightUserType & { id: number };
-
-export type MembersLookupResponseBody = {
-  users: LightLookupUserType[];
-};
-
-type MembersLookupAdminResponseBody = {
-  users: UserType[];
-};
 
 // Mounted at /api/w/:wId/members/lookup.
 const app = workspaceApp();

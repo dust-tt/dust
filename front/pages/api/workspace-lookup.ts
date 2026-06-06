@@ -3,6 +3,7 @@
 /** @ignoreswagger */
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { fetchRevokedWorkspace } from "@app/lib/api/user";
+import type { GetWorkspaceLookupResponseBody } from "@app/lib/api/workspace";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -10,14 +11,7 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
-import type { LightWorkspaceType } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type GetWorkspaceLookupResponseBody = {
-  workspace: LightWorkspaceType;
-  status: "auto-join-disabled" | "revoked";
-  workspaceVerifiedDomain: string | null;
-};
 
 async function handler(
   req: NextApiRequest,

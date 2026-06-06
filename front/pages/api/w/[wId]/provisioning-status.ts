@@ -2,6 +2,7 @@
 
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import type { GetProvisioningStatusResponseBody } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import {
   ADMIN_GROUP_NAME,
@@ -11,11 +12,6 @@ import {
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type GetProvisioningStatusResponseBody = {
-  hasAdminGroup: boolean;
-  hasBuilderGroup: boolean;
-};
 
 async function handler(
   req: NextApiRequest,

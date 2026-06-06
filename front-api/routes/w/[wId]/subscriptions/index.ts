@@ -1,4 +1,11 @@
-import { isMetronomeBillingEnabled } from "@app/lib/api/subscription";
+import type {
+  GetSubscriptionsResponseBody,
+  PostSubscriptionResponseBody,
+} from "@app/lib/api/subscription";
+import {
+  isMetronomeBillingEnabled,
+  PatchSubscriptionRequestBody,
+} from "@app/lib/api/subscription";
 import {
   createCheckoutUrl,
   PostSubscriptionRequestBody,
@@ -10,14 +17,12 @@ import {
 } from "@app/lib/plans/stripe";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import logger from "@app/logger/logger";
-import type { CheckoutUrlResult, SubscriptionType } from "@app/types/plan";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import { z } from "zod";
 
 import awuPurchase from "./awu-purchase";
 import awuPurchaseStatus from "./awu-purchase-status";
@@ -27,19 +32,9 @@ import pricing from "./pricing";
 import status from "./status";
 import trialInfo from "./trial-info";
 
-export type GetSubscriptionsResponseBody = {
-  subscriptions: SubscriptionType[];
-};
-
-export type PostSubscriptionResponseBody = CheckoutUrlResult;
-
 export type PatchSubscriptionResponseBody = {
   success: boolean;
 };
-
-const PatchSubscriptionRequestBody = z.object({
-  action: z.enum(["cancel_free_trial", "pay_now", "upgrade_to_business"]),
-});
 
 // Mounted under /api/w/:wId/subscriptions. The bare `/` handles GET, POST,
 // and PATCH on the workspace's subscription itself; admin-only.

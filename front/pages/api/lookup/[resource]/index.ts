@@ -2,79 +2,35 @@
 
 /** @ignoreswagger */
 import config from "@app/lib/api/config";
+import type {
+  InvitationsLookupResponse,
+  ShareTokenLookupResponse,
+  UserLookupResponse,
+  WorkspaceLookupResponse,
+} from "@app/lib/api/regions/lookup";
 import {
   handleLookupInvitations,
   handleLookupWorkspace,
   hasEmailLocalRegionAffinity,
+  InvitationsLookupSchema,
+  ShareTokenLookupSchema,
+  UserLookupSchema,
+  WorkspaceLookupSchema,
 } from "@app/lib/api/regions/lookup";
 import { getBearerToken } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { PendingInvitationOption } from "@app/types/membership_invitation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
-
-export type WorkspaceLookupResponse = {
-  workspace: {
-    sId: string;
-  } | null;
-};
-
-export type UserLookupResponse = {
-  exists: boolean;
-};
-
-export type InvitationsLookupResponse = {
-  pendingInvitations: PendingInvitationOption[];
-};
-
-export type ShareTokenLookupResponse = {
-  exists: boolean;
-};
-
-const ExternalUserCodec = z.object({
-  email: z.string(),
-  email_verified: z.boolean(),
-});
 
 type LookupResponseBody =
   | UserLookupResponse
   | WorkspaceLookupResponse
   | InvitationsLookupResponse
   | ShareTokenLookupResponse;
-
-const UserLookupSchema = z.object({
-  user: ExternalUserCodec,
-});
-
-const WorkspaceLookupSchema = z.object({
-  workspace: z.string(),
-});
-
-const InvitationsLookupSchema = z.object({
-  email: z.string(),
-});
-
-const ShareTokenLookupSchema = z.object({
-  token: z.string(),
-});
-
-export type UserLookupRequestBodyType = z.infer<typeof UserLookupSchema>;
-
-export type WorkspaceLookupRequestBodyType = z.infer<
-  typeof WorkspaceLookupSchema
->;
-
-export type InvitationsLookupRequestBodyType = z.infer<
-  typeof InvitationsLookupSchema
->;
-
-export type ShareTokenLookupRequestBodyType = z.infer<
-  typeof ShareTokenLookupSchema
->;
 
 const ResourceType = z.enum([
   "user",

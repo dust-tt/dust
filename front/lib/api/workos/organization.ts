@@ -21,6 +21,11 @@ import {
 import assert from "assert";
 import uniqueId from "lodash/uniqueId";
 
+export interface GetWorkspaceDomainsResponseBody {
+  addDomainLink?: string;
+  domains: Organization["domains"];
+}
+
 export async function getOrCreateWorkOSOrganization(
   workspace: LightWorkspaceType,
   { domain }: { domain?: string } = {}

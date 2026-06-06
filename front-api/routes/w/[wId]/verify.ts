@@ -1,4 +1,5 @@
 import { resolveCountryCode } from "@app/lib/geo/country-detection";
+import type { GetVerifyResponseBody } from "@app/lib/plans/trial/index";
 import { isWorkspaceEligibleForTrial } from "@app/lib/plans/trial/index";
 import { getClientIp } from "@app/lib/utils/request";
 import logger from "@app/logger/logger";
@@ -10,11 +11,6 @@ import type { Country } from "react-phone-number-input";
 import { isSupportedCountry } from "react-phone-number-input";
 
 const DEFAULT_COUNTRY: Country = "US";
-
-export type GetVerifyResponseBody = {
-  isEligibleForTrial: boolean;
-  initialCountryCode: Country;
-};
 
 async function detectCountryFromIP(ctx: Context): Promise<Country> {
   try {

@@ -46,6 +46,18 @@ export interface SearchMembersPaginationParams {
   limit: number;
 }
 
+export interface GetUserApprovalsResponseBody {
+  approvals: {
+    mcpServerId: string;
+    toolNames: string[];
+    serverName: string;
+  }[];
+}
+
+export interface DeleteUserApprovalsResponseBody {
+  success: boolean;
+}
+
 const USER_METADATA_COMMA_SEPARATOR = ",";
 const USER_METADATA_COMMA_REPLACEMENT = "DUST_COMMA";
 const TOOLS_VALIDATION_WILDCARD = "*";

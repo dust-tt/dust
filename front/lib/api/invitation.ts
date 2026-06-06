@@ -18,7 +18,10 @@ import { getMembershipInvitationUrl } from "@app/lib/utils/invitation_token";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
-import type { MembershipInvitationType } from "@app/types/membership_invitation";
+import type {
+  MembershipInvitationType,
+  PendingInvitationOption,
+} from "@app/types/membership_invitation";
 import type { SubscriptionType } from "@app/types/plan";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -44,6 +47,14 @@ const EMAIL_CONCURRENCY = 8;
 
 export type GetWorkspaceInvitationsResponseBody = {
   invitations: MembershipInvitationType[];
+};
+
+export type GetPendingInvitationsLookupResponseBody = {
+  pendingInvitations: PendingInvitationOption[];
+};
+
+export type GetPendingInvitationsResponseBody = {
+  pendingInvitations: PendingInvitationOption[];
 };
 
 export const PostInvitationRequestBodySchema = z.array(

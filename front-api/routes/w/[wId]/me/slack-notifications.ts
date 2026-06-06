@@ -1,11 +1,8 @@
+import type { GetSlackNotificationResponseBody } from "@app/lib/api/me/slack_notifications";
 import { getFeatureFlags } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
-
-export type GetSlackNotificationResponseBody = {
-  canConfigure: boolean;
-};
 
 // Mounted at /api/w/:wId/me/slack-notifications.
 const app = workspaceApp();

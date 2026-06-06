@@ -1,7 +1,10 @@
+import type {
+  GetUserMetadataResponseBody,
+  PostUserMetadataKeyResponseBody as PostUserMetadataResponseBody,
+} from "@app/lib/api/user";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { APIErrorResponse } from "@app/types/error";
-import type { UserMetadataType } from "@app/types/user";
 import { sessionApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -9,14 +12,6 @@ import { validate } from "@front-api/middlewares/validator";
 import type { Context, TypedResponse } from "hono";
 import { Op } from "sequelize";
 import { z } from "zod";
-
-export type GetUserMetadataResponseBody = {
-  metadata: UserMetadataType | null;
-};
-
-export type PostUserMetadataResponseBody = {
-  metadata: UserMetadataType;
-};
 
 const PostUserMetadataBodySchema = z.object({
   value: z.string(),

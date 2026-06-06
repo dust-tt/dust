@@ -5,6 +5,7 @@ import {
 } from "@app/hooks/useMetronomeContractLifecycleAction";
 import { useSendNotification } from "@app/hooks/useNotification";
 import config from "@app/lib/api/config";
+import type { PatchSubscriptionRequestBody } from "@app/lib/api/subscription";
 import { getPriceAsString } from "@app/lib/client/subscription";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
@@ -21,7 +22,6 @@ import {
   useWorkspaceSeatsCount,
 } from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
-import type { PatchSubscriptionRequestBody } from "@app/pages/api/w/[wId]/subscriptions";
 import type { BillingPeriod, SubscriptionType } from "@app/types/plan";
 import { isSubscriptionMetronomeBilled } from "@app/types/plan";
 import type { LightWorkspaceType } from "@app/types/user";

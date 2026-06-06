@@ -1,5 +1,5 @@
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
-import type { SkillUsagePoint } from "@app/lib/api/assistant/observability/skill_usage";
+import type { GetWorkspaceSkillUsageResponse } from "@app/lib/api/analytics/workspace_analytics";
 import { fetchSkillUsageMetrics } from "@app/lib/api/assistant/observability/skill_usage";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { timezoneSchema } from "@app/lib/api/timezone";
@@ -14,10 +14,6 @@ const QuerySchema = z.object({
   skillName: z.string().optional(),
   timezone: timezoneSchema,
 });
-
-export type GetWorkspaceSkillUsageResponse = {
-  points: SkillUsagePoint[];
-};
 
 // Mounted at /api/w/:wId/analytics/skill-usage.
 const app = workspaceApp();

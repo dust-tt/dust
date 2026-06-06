@@ -2,15 +2,12 @@
 
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import type { GetSubscriptionTrialInfoResponseBody } from "@app/lib/api/subscription";
 import type { Authenticator } from "@app/lib/auth";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type GetSubscriptionTrialInfoResponseBody = {
-  trialDaysRemaining: number | null;
-};
 
 async function handler(
   req: NextApiRequest,

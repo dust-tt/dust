@@ -3,6 +3,7 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
+import type { GetWorkspaceDomainsResponseBody } from "@app/lib/api/workos/organization";
 import {
   generateWorkOSAdminPortalUrl,
   getOrCreateWorkOSOrganization,
@@ -14,17 +15,11 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import type { Organization } from "@workos-inc/node";
 import { z } from "zod";
 
 const DeleteWorkspaceDomainRequestBodySchema = z.object({
   domain: z.string(),
 });
-
-export interface GetWorkspaceDomainsResponseBody {
-  addDomainLink?: string;
-  domains: Organization["domains"];
-}
 
 // Mounted at /api/w/:wId/domains.
 const app = workspaceApp();

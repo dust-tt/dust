@@ -1,13 +1,11 @@
+import type { PostSeedInitialPodTasksResponseBody } from "@app/lib/project_task/seed_initial_pod_tasks";
 import { seedInitialPodTasks } from "@app/lib/project_task/seed_initial_pod_tasks";
-import type { PodTaskType } from "@app/types/project_task";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { withSpace } from "@front-api/middlewares/with_space";
 
-export type PostSeedInitialPodTasksResponseBody = {
-  tasks: PodTaskType[];
-};
+export type { PostSeedInitialPodTasksResponseBody };
 
 // Mounted under /api/w/:wId/pods/:podId/tasks/seed.
 const app = workspaceApp();

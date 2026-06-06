@@ -10,6 +10,10 @@ import {
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
+export type PostSeedInitialPodTasksResponseBody = {
+  tasks: PodTaskType[];
+};
+
 export type SeedInitialPodTasksErrorCode =
   | "not_a_project"
   | "already_seeded"

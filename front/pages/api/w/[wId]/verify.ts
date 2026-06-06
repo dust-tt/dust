@@ -4,6 +4,7 @@
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { resolveCountryCode } from "@app/lib/geo/country-detection";
+import type { GetVerifyResponseBody } from "@app/lib/plans/trial/index";
 import { isWorkspaceEligibleForTrial } from "@app/lib/plans/trial/index";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
@@ -15,11 +16,6 @@ import type { Country } from "react-phone-number-input";
 import { isSupportedCountry } from "react-phone-number-input";
 
 const DEFAULT_COUNTRY: Country = "US";
-
-export type GetVerifyResponseBody = {
-  isEligibleForTrial: boolean;
-  initialCountryCode: Country;
-};
 
 async function detectCountryFromIP(req: IncomingMessage): Promise<Country> {
   try {

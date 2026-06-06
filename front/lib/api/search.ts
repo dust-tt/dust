@@ -30,6 +30,13 @@ export type DataSourceContentNode = ContentNodeWithParent & {
   dataSourceViews: DataSourceViewType[];
 };
 
+export type PostWorkspaceSearchResponseBody = {
+  nodes: DataSourceContentNode[];
+  warningCode: SearchWarningCode | null;
+  nextPageCursor: string | null;
+  resultsCount: number | null;
+};
+
 export type SearchResult = {
   nodes: DataSourceContentNode[];
   warningCode: SearchWarningCode | null;

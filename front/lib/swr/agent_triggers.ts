@@ -1,6 +1,7 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import type {
   GetTriggersResponseBody,
+  GetUserTriggersResponseBody,
   PatchTriggersRequestBody,
   PostTextAsCronRuleRequestBody,
   PostTextAsCronRuleResponseBody,
@@ -19,7 +20,6 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { GetTriggerEstimationResponseBody } from "@app/lib/triggers/trigger_usage_estimation";
-import type { GetUserTriggersResponseBody } from "@app/pages/api/w/[wId]/me/triggers";
 import type { ScheduleConfig } from "@app/types/assistant/triggers";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";

@@ -3,10 +3,10 @@ import { getWorkspaceRegionRedirect } from "@app/lib/api/regions/lookup";
 import { fetchUsersFromWorkOSWithEmails } from "@app/lib/api/workos/user";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import type { GetJoinResponseBody, OnboardingType } from "@app/lib/signup";
 import { getSignInUrl } from "@app/lib/signup";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { isString } from "@app/types/shared/utils/general";
-import type { LightWorkspaceType } from "@app/types/user";
 import { createHono } from "@front-api/lib/hono";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -15,18 +15,6 @@ import { z } from "zod";
 const ParamsSchema = z.object({
   wId: z.string(),
 });
-
-type OnboardingType =
-  | "email_invite"
-  | "domain_conversation_link"
-  | "domain_invite_link";
-
-interface GetJoinResponseBody {
-  onboardingType: OnboardingType;
-  workspace: LightWorkspaceType;
-  signInUrl: string;
-  userExists: boolean;
-}
 
 interface GetJoinErrorBody {
   redirectUrl: string;

@@ -6,6 +6,7 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import type { GetWorkspaceDomainsResponseBody } from "@app/lib/api/workos/organization";
 import {
   generateWorkOSAdminPortalUrl,
   getOrCreateWorkOSOrganization,
@@ -16,15 +17,9 @@ import { WorkOSPortalIntent } from "@app/lib/types/workos";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { Organization } from "@workos-inc/node";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
-
-export interface GetWorkspaceDomainsResponseBody {
-  addDomainLink?: string;
-  domains: Organization["domains"];
-}
 
 const DeleteWorkspaceDomainRequestBodySchema = z.object({
   domain: z.string(),

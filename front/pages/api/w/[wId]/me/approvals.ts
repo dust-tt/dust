@@ -7,23 +7,15 @@ import type { Authenticator } from "@app/lib/auth";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import type {
+  DeleteUserApprovalsResponseBody,
+  GetUserApprovalsResponseBody,
+} from "@app/lib/resources/user_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export interface GetUserApprovalsResponseBody {
-  approvals: {
-    mcpServerId: string;
-    toolNames: string[];
-    serverName: string;
-  }[];
-}
-
-export interface DeleteUserApprovalsResponseBody {
-  success: boolean;
-}
 
 async function handler(
   req: NextApiRequest,

@@ -2,18 +2,12 @@
 
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import type { GetCheckoutStatusResponseBody } from "@app/lib/api/subscription";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-type CheckoutStatus =
-  | { status: "success" }
-  | { status: "error"; message: string }
-  | { status: "pending" };
-
-export type GetCheckoutStatusResponseBody = CheckoutStatus;
 
 async function handler(
   req: NextApiRequest,

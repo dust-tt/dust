@@ -6,6 +6,7 @@ import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/age
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
+import type { GetWorkspaceTopAgentsResponse } from "@app/lib/api/workspace/analytics";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -18,18 +19,6 @@ const QuerySchema = z.object({
   days: z.coerce.number().positive().optional().default(DEFAULT_PERIOD_DAYS),
   limit: z.coerce.number().positive().max(100).optional().default(25),
 });
-
-export type WorkspaceTopAgentRow = {
-  agentId: string;
-  name: string;
-  pictureUrl: string | null;
-  messageCount: number;
-  userCount: number;
-};
-
-export type GetWorkspaceTopAgentsResponse = {
-  agents: WorkspaceTopAgentRow[];
-};
 
 type TopAgentsAggs = {
   by_agent?: estypes.AggregationsMultiBucketAggregateBase<{

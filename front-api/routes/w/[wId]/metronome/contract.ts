@@ -1,7 +1,8 @@
-import type { MetronomeContractSummary } from "@app/lib/api/credits/metronome_contract";
+import type { GetMetronomeContractResponseBody } from "@app/lib/api/credits/metronome_contract";
 import {
   applyContractLifecycleAction,
   getMetronomeContractSummary,
+  PatchMetronomeContractRequestBody,
 } from "@app/lib/api/credits/metronome_contract";
 import type { ContractLifecycleError } from "@app/lib/metronome/contract_lifecycle";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -9,19 +10,10 @@ import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import type { Context } from "hono";
-import { z } from "zod";
-
-export type GetMetronomeContractResponseBody = {
-  contract: MetronomeContractSummary | null;
-};
 
 type PatchMetronomeContractResponseBody = {
   success: boolean;
 };
-
-export const PatchMetronomeContractRequestBody = z.object({
-  action: z.enum(["cancel", "reactivate"]),
-});
 
 function lifecycleErrorToApi(ctx: Context, err: ContractLifecycleError) {
   return apiError(ctx, {

@@ -1,5 +1,5 @@
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
-import type { ToolUsagePoint } from "@app/lib/api/assistant/observability/tool_usage";
+import type { GetWorkspaceToolUsageResponse } from "@app/lib/api/assistant/observability/tool_usage";
 import { fetchToolUsageMetrics } from "@app/lib/api/assistant/observability/tool_usage";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { timezoneSchema } from "@app/lib/api/timezone";
@@ -14,10 +14,6 @@ const QuerySchema = z.object({
   serverName: z.string().optional(),
   timezone: timezoneSchema,
 });
-
-export type GetWorkspaceToolUsageResponse = {
-  points: ToolUsagePoint[];
-};
 
 // Mounted at /api/w/:wId/analytics/tool-usage.
 const app = workspaceApp();

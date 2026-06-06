@@ -2,6 +2,7 @@
 
 /** @ignoreswagger */
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
+import type { GetWorkspaceTopUsersResponse } from "@app/lib/api/analytics/workspace_analytics";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
@@ -18,18 +19,6 @@ const QuerySchema = z.object({
   days: z.coerce.number().positive().optional().default(DEFAULT_PERIOD_DAYS),
   limit: z.coerce.number().positive().max(100).optional().default(25),
 });
-
-export type WorkspaceTopUserRow = {
-  userId: string;
-  name: string;
-  imageUrl: string | null;
-  messageCount: number;
-  agentCount: number;
-};
-
-export type GetWorkspaceTopUsersResponse = {
-  users: WorkspaceTopUserRow[];
-};
 
 type TopUsersAggs = {
   by_user?: estypes.AggregationsMultiBucketAggregateBase<{
