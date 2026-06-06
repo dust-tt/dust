@@ -32,7 +32,7 @@ function unverifiableFrameFileRefsShareError(
   };
 }
 
-async function readFrameFileContent(
+export async function readFrameFileContent(
   auth: Authenticator,
   frameFile: FileResource
 ): Promise<string | null> {
