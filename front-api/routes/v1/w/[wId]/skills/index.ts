@@ -73,8 +73,6 @@ const app = createHono<PublicApiCtx & { Bindings: HttpBindings }>();
  *         description: Unauthorized. Invalid or missing authentication token.
  *       404:
  *         description: Workspace not found.
- *       405:
- *         description: Method not supported.
  *   post:
  *     summary: Import skills from uploaded files
  *     description: Imports skills from uploaded files or ZIP archives into the workspace.
@@ -144,8 +142,6 @@ const app = createHono<PublicApiCtx & { Bindings: HttpBindings }>();
  *         description: Unauthorized. Invalid or missing authentication token.
  *       404:
  *         description: Workspace not found.
- *       405:
- *         description: Method not supported.
  */
 app.get(
   "/",

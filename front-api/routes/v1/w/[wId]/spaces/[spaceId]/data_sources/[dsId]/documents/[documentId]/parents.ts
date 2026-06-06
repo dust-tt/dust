@@ -71,8 +71,6 @@ import { z } from "zod";
  *         description: Internal Server Error.
  *       404:
  *         description: Data source or workspace not found.
- *       405:
- *         description: Method not supported.
  */
 const app = publicApiApp();
 

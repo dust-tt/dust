@@ -75,8 +75,6 @@
  *         description: Invalid request query parameters
  *       403:
  *         description: Requires an API key with admin scope
- *       405:
- *         description: Method not supported
  */
 
 import {

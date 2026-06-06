@@ -4,10 +4,11 @@ import { createSwaggerSpec } from "next-swagger-doc";
 
 const app = createHono();
 
-// `next-swagger-doc` resolves `apiFolder` against `process.cwd()`. The
-// Hono server runs from `front-api/`, so we point at the sibling `front`
-// project's API folder to scan the same files as the Next route.
-const API_FOLDER = "../front/pages/api/v1";
+// `next-swagger-doc` resolves `apiFolder` against `process.cwd()`. The Hono
+// server runs from `front-api/`, so we scan our own public API routes for the
+// `@swagger` JSDoc annotations (and the shared component schemas defined in
+// `routes/v1/w/[wId]/swagger_schemas.ts`).
+const API_FOLDER = "./routes/v1";
 
 app.get("/", (ctx) => {
   try {

@@ -115,8 +115,6 @@ const app = publicApiApp();
  *         description: Bad request
  *       401:
  *         description: Unauthorized
- *       405:
- *         description: Method not allowed
  *   post:
  *     summary: Search for nodes in the workspace
  *     description: Search for nodes in the workspace
@@ -171,8 +169,6 @@ const app = publicApiApp();
  *         description: Unauthorized
  *       404:
  *         description: Space not found
- *       405:
- *         description: Method not allowed
  */
 app.get("/", async (ctx) => {
   const auth = ctx.get("auth");

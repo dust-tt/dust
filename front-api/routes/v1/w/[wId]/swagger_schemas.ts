@@ -1,0 +1,954 @@
+/**
+ * @swagger
+ * components:
+ *   securitySchemes:
+ *     BearerAuth:
+ *       type: http
+ *       scheme: bearer
+ *       description: Your DUST API key is a Bearer token.
+ *   schemas:
+ *     User:
+ *       type: object
+ *       properties:
+ *         sId:
+ *           type: string
+ *           description: Unique string identifier for the user
+ *           example: "0ec9852c2f"
+ *         id:
+ *           type: integer
+ *           example: 12345
+ *         createdAt:
+ *           type: integer
+ *           example: 1625097600
+ *         username:
+ *           type: string
+ *           description: User's chosen username
+ *           example: "johndoe"
+ *         email:
+ *           type: string
+ *           description: User's email address
+ *           example: "john.doe@example.com"
+ *         firstName:
+ *           type: string
+ *           description: User's first name
+ *           example: "John"
+ *         lastName:
+ *           type: string
+ *           description: User's last name
+ *           example: "Doe"
+ *         fullName:
+ *           type: string
+ *           description: User's full name
+ *           example: "John Doe"
+ *         provider:
+ *           type: string
+ *           description: Authentication provider used by the user
+ *           example: "google"
+ *         image:
+ *           type: string
+ *           description: URL of the user's profile image
+ *           example: "https://example.com/profile/johndoe.jpg"
+ *     Workspace:
+ *       type: object
+ *       required:
+ *         - regionalModelsOnly
+ *       properties:
+ *         id:
+ *           type: integer
+ *           example: 67890
+ *         sId:
+ *           type: string
+ *           description: Unique string identifier for the workspace
+ *           example: "dQFf9l5FQY"
+ *         name:
+ *           type: string
+ *           description: Name of the workspace
+ *           example: "My Awesome Workspace"
+ *         role:
+ *           type: string
+ *           description: User's role in the workspace
+ *           example: "admin"
+ *         segmentation:
+ *           type: string
+ *           nullable: true
+ *           description: Segmentation information for the workspace
+ *           example: "enterprise"
+ *         flags:
+ *           type: array
+ *           items:
+ *             type: string
+ *             description: Feature flags enabled for the workspace
+ *           example: ["advanced_analytics", "beta_features"]
+ *         ssoEnforced:
+ *           type: boolean
+ *           example: true
+ *         regionalModelsOnly:
+ *           type: boolean
+ *           description: When true, only models whose regionalAvailability includes the workspace's region are usable.
+ *           example: false
+ *         whiteListedProviders:
+ *           type: array
+ *           items:
+ *             type: string
+ *             description: List of allowed authentication providers
+ *           example: ["google", "github"]
+ *         defaultEmbeddingProvider:
+ *           type: string
+ *           nullable: true
+ *           description: Default provider for embeddings in the workspace
+ *           example: "openai"
+ *     Context:
+ *       type: object
+ *       required:
+ *         - username
+ *         - timezone
+ *       properties:
+ *         username:
+ *           type: string
+ *           description: Username in the current context
+ *           example: "johndoe123"
+ *         timezone:
+ *           type: string
+ *           description: User's timezone
+ *           example: "America/New_York"
+ *         fullName:
+ *           type: string
+ *           description: User's full name in the current context
+ *           example: "John Doe"
+ *         email:
+ *           type: string
+ *           description: User's email in the current context
+ *           example: "john.doe@example.com"
+ *         profilePictureUrl:
+ *           type: string
+ *           description: URL of the user's profile picture
+ *           example: "https://example.com/profiles/johndoe123.jpg"
+ *         agenticMessageData:
+ *           type: object
+ *           properties:
+ *             type:
+ *               type: string
+ *               enum:
+ *                 - run_agent
+ *                 - agent_handover
+ *               description: Type of the agentic message
+ *             originMessageId:
+ *               type: string
+ *               description: ID of the origin message
+ *               example: "2b8e4f6a0c"
+ *     AgentConfiguration:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *           example: 12345
+ *         sId:
+ *           type: string
+ *           description: Unique string identifier for the agent configuration
+ *           example: "7f3a9c2b1e"
+ *         version:
+ *           type: integer
+ *           example: 2
+ *         versionCreatedAt:
+ *           type: string
+ *           nullable: true
+ *           description: Timestamp of when the version was created
+ *           example: "2023-06-15T14:30:00Z"
+ *         versionAuthorId:
+ *           type: string
+ *           nullable: true
+ *           description: ID of the user who created this version
+ *           example: "0ec9852c2f"
+ *         name:
+ *           type: string
+ *           description: Name of the agent configuration
+ *           example: "Customer Support Agent"
+ *         description:
+ *           type: string
+ *           description: Description of the agent configuration
+ *           example: "An AI agent designed to handle customer support inquiries"
+ *         instructions:
+ *           type: string
+ *           nullable: true
+ *           description: Instructions for the agent
+ *           example: "Always greet the customer politely and try to resolve their issue efficiently."
+ *         pictureUrl:
+ *           type: string
+ *           description: URL of the agent's picture
+ *           example: "https://example.com/agent-images/support-agent.png"
+ *         status:
+ *           type: string
+ *           description: Current status of the agent configuration
+ *           example: "active"
+ *         scope:
+ *           type: string
+ *           description: Scope of the agent configuration
+ *           example: "workspace"
+ *         userFavorite:
+ *           type: boolean
+ *           description: Status of the user favorite for this configuration
+ *           example: true
+ *         model:
+ *           type: object
+ *           properties:
+ *             providerId:
+ *               type: string
+ *               description: ID of the model provider
+ *               example: "openai"
+ *             modelId:
+ *               type: string
+ *               description: ID of the specific model
+ *               example: "gpt-4"
+ *             temperature:
+ *               type: number
+ *               example: 0.7
+ *         actions:
+ *           type: array
+ *           example: []
+ *         maxStepsPerRun:
+ *           type: integer
+ *           example: 10
+ *         templateId:
+ *           type: string
+ *           nullable: true
+ *           description: ID of the template used for this configuration
+ *           example: "b4e2f1a9c7"
+ *     Conversation:
+ *       type: object
+ *       properties:
+ *         conversation:
+ *           type: object
+ *           properties:
+ *             id:
+ *               type: integer
+ *               example: 67890
+ *             created:
+ *               type: integer
+ *               example: 1625097600
+ *             sId:
+ *               type: string
+ *               description: Unique string identifier for the conversation
+ *               example: "3d8f6a2c1b"
+ *             owner:
+ *               $ref: '#/components/schemas/Workspace'
+ *             title:
+ *               type: string
+ *               description: Title of the conversation
+ *               example: "Customer Inquiry #1234"
+ *             visibility:
+ *               type: string
+ *               description: Visibility setting of the conversation
+ *               example: "private"
+ *             content:
+ *               type: array
+ *               items:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                       example: 1
+ *                     sId:
+ *                       type: string
+ *                       description: Unique string identifier for the message
+ *                       example: "9e7d5c3a1f"
+ *                     type:
+ *                       type: string
+ *                       description: Type of the message
+ *                       example: "human"
+ *                     visibility:
+ *                       type: string
+ *                       description: Visibility setting of the message
+ *                       example: "visible"
+ *                     version:
+ *                       type: integer
+ *                       example: 1
+ *                     created:
+ *                       type: integer
+ *                       example: 1625097700
+ *                     user:
+ *                       $ref: '#/components/schemas/User'
+ *                     mentions:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/Mention'
+ *                     content:
+ *                       type: string
+ *                       description: Content of the message
+ *                       example: "Hello, I need help with my order."
+ *                     context:
+ *                       $ref: '#/components/schemas/Context'
+ *                     agentMessageId:
+ *                       type: integer
+ *                       example: 1
+ *                     parentMessageId:
+ *                       type: string
+ *                       description: ID of the parent message
+ *                       example: "2b8e4f6a0c"
+ *                     status:
+ *                       type: string
+ *                       description: Status of the message
+ *                       example: "completed"
+ *                     actions:
+ *                       type: array
+ *                       example: []
+ *                     chainOfThought:
+ *                       type: string
+ *                       nullable: true
+ *                       description: Chain of thought for the message
+ *                       example: "The user is asking about their order. I should first greet them and then ask for their order number."
+ *                     rawContents:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           step:
+ *                             type: integer
+ *                             example: 1
+ *                           content:
+ *                             type: string
+ *                             description: Content for each step
+ *                             example: "Hello! I'd be happy to help you with your order. Could you please provide your order number?"
+ *                     error:
+ *                       type: string
+ *                       nullable: true
+ *                       description: Error message, if any
+ *                       example: null
+ *                     configuration:
+ *                       $ref: '#/components/schemas/AgentConfiguration'
+ *     Mention:
+ *       type: object
+ *       properties:
+ *         configurationId:
+ *           type: string
+ *           description: ID of the mentioned agent configuration
+ *           example: "7f3a9c2b1e"
+ *     RichMention:
+ *       type: object
+ *       description: A rich mention suggestion containing detailed information about an agent or user
+ *       required:
+ *         - id
+ *         - type
+ *         - label
+ *         - pictureUrl
+ *         - description
+ *       properties:
+ *         id:
+ *           type: string
+ *           description: Unique identifier for the mention (agent sId or user sId)
+ *           example: "7f3a9c2b1e"
+ *         type:
+ *           type: string
+ *           enum: [agent, user]
+ *           description: Type of the mention
+ *           example: "agent"
+ *         label:
+ *           type: string
+ *           description: Display label for the mention
+ *           example: "My Assistant"
+ *         pictureUrl:
+ *           type: string
+ *           description: URL of the profile picture
+ *           example: "https://example.com/avatar.png"
+ *         description:
+ *           type: string
+ *           description: Description of the mention (agent description or user email)
+ *           example: "A helpful AI assistant"
+ *         userFavorite:
+ *           type: boolean
+ *           nullable: true
+ *           description: Whether the agent is marked as a favorite by the user (only for agent mentions)
+ *           example: true
+ *     Message:
+ *       type: object
+ *       required:
+ *         - content
+ *         - mentions
+ *       properties:
+ *         content:
+ *           type: string
+ *           description: The content of the message. Should not be empty.
+ *           example: "This is my message"
+ *         mentions:
+ *           type: array
+ *           description: Empty array is accepted but won't trigger any agent.
+ *           items:
+ *             $ref: '#/components/schemas/Mention'
+ *         context:
+ *           $ref: '#/components/schemas/Context'
+ *     ContentFragment:
+ *       type: object
+ *       required:
+ *         - title
+ *       properties:
+ *         title:
+ *           type: string
+ *           description: The title of the content fragment
+ *           example: "My content fragment"
+ *         content:
+ *           type: string
+ *           description: The content of the content fragment (optional if `fileId` is set)
+ *           example: "This is my content fragment extracted text"
+ *         contentType:
+ *           type: string
+ *           description: The content type of the content fragment (optional if `fileId` is set)
+ *           example: "text/plain"
+ *         url:
+ *           type: string
+ *           description: The URL of the content fragment
+ *           example: "https://example.com/content"
+ *         fileId:
+ *           type: string
+ *           description: The id of the previously uploaded file (optional if `content` and `contentType` are set)
+ *           example: fil_123456
+ *         path:
+ *           type: string
+ *           nullable: true
+ *           description: Path of this file inside the sandbox conversation mount.
+ *           example: conversation/report.csv
+ *         skipFileProcessing:
+ *           type: boolean
+ *           description: Whether upload-time file processing was skipped.
+ *         nodeId:
+ *           type: string
+ *           description: The id of the content node (optional if `content` and `contentType` are set)
+ *           example: node_123456
+ *         nodeDataSourceViewId:
+ *           type: string
+ *           description: The id of the data source view (optional if `content` and `contentType` are set)
+ *           example: dsv_123456
+ *         context:
+ *           $ref: '#/components/schemas/Context'
+ *     Space:
+ *       type: object
+ *       properties:
+ *         sId:
+ *           type: string
+ *           description: Unique string identifier for the space
+ *         name:
+ *           type: string
+ *           description: Name of the space
+ *         kind:
+ *           type: string
+ *           enum: [regular, global, system, public]
+ *           description: The kind of the space
+ *         groupIds:
+ *           type: array
+ *           items:
+ *             type: string
+ *           description: List of group IDs that have access to the space
+ *     Datasource:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *           description: Unique identifier for the datasource
+ *           example: 12345
+ *         createdAt:
+ *           type: integer
+ *           description: Timestamp of when the datasource was created
+ *           example: 1625097600
+ *         name:
+ *           type: string
+ *           description: Name of the datasource
+ *           example: "Customer Knowledge Base"
+ *         description:
+ *           type: string
+ *           description: Description of the datasource
+ *           example: "Contains all customer-related information and FAQs"
+ *         dustAPIProjectId:
+ *           type: string
+ *           description: ID of the associated Dust API project
+ *           example: "5e9d8c7b6a"
+ *         connectorId:
+ *           type: string
+ *           description: ID of the connector used for this datasource
+ *           example: "1f3e5d7c9b"
+ *         connectorProvider:
+ *           type: string
+ *           description: Provider of the connector (e.g., 'webcrawler')
+ *           example: "webcrawler"
+ *         assistantDefaultSelected:
+ *           type: boolean
+ *           description: Whether this datasource is selected by default for agents
+ *           example: true
+ *     Table:
+ *       type: object
+ *       properties:
+ *         name:
+ *           type: string
+ *           description: Name of the table
+ *           example: "Roi data"
+ *           deprecated: true
+ *         title:
+ *           type: string
+ *           description: Title of the table
+ *           example: "ROI Data"
+ *         table_id:
+ *           type: string
+ *           description: Unique identifier for the table
+ *           example: "1234f4567c"
+ *         description:
+ *           type: string
+ *           description: Description of the table
+ *           example: "roi data for Q1"
+ *         mime_type:
+ *           type: string
+ *           description: MIME type of the table
+ *           example: "text/csv"
+ *         schema:
+ *           type: array
+ *           description: Array of column definitions
+ *           items:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 description: Name of the column
+ *                 example: "roi"
+ *               value_type:
+ *                 type: string
+ *                 description: Data type of the column
+ *                 enum: [text, int, float, bool, date]
+ *                 example: "int"
+ *               possible_values:
+ *                 type: array
+ *                 description: Array of possible values for the column (null if unrestricted)
+ *                 items:
+ *                   type: string
+ *                 nullable: true
+ *                 example: ["1", "2", "3"]
+ *         timestamp:
+ *           type: number
+ *           description: Unix timestamp of table creation/modification
+ *           example: 1732810375150
+ *         tags:
+ *           type: array
+ *           description: Array of tags associated with the table
+ *           items:
+ *             type: string
+ *         parent_id:
+ *           type: string
+ *           description: ID of the table parent
+ *           items:
+ *             type: string
+ *           example: "1234f4567c"
+ *         parents:
+ *           type: array
+ *           description: Array of parent table IDs
+ *           items:
+ *             type: string
+ *           example: ["1234f4567c"]
+ *     DatasourceView:
+ *       type: object
+ *       properties:
+ *         category:
+ *           type: string
+ *           enum: [managed, folder, website, apps]
+ *           description: The category of the data source view
+ *         createdAt:
+ *           type: number
+ *           description: Timestamp of when the data source view was created
+ *         dataSource:
+ *           $ref: '#/components/schemas/Datasource'
+ *         editedByUser:
+ *           type: object
+ *           description: The user who last edited the data source view
+ *           properties:
+ *             fullName:
+ *               type: string
+ *               description: Full name of the user
+ *             editedAt:
+ *               type: number
+ *               description: Timestamp of when the data source view was last edited by the user
+ *         id:
+ *           type: number
+ *           description: Unique identifier for the data source view
+ *         kind:
+ *           type: string
+ *           enum: [default, custom]
+ *           description: The kind of the data source view
+ *         parentsIn:
+ *           type: array
+ *           items:
+ *             type: string
+ *           description: List of IDs included in this view, null if complete data source is taken
+ *           nullable: true
+ *         sId:
+ *           type: string
+ *           description: Unique string identifier for the data source view
+ *         updatedAt:
+ *           type: number
+ *           description: Timestamp of when the data source view was last updated
+ *         spaceId:
+ *           type: string
+ *           description: ID of the space containing the data source view
+ *     SkillSourceMetadata:
+ *       type: object
+ *       properties:
+ *         repoUrl:
+ *           type: string
+ *           description: URL of the source repository, when applicable
+ *           example: "https://github.com/dust-tt/skills"
+ *         filePath:
+ *           type: string
+ *           description: Path to the source skill file
+ *           example: "support/SKILL.md"
+ *     Skill:
+ *       type: object
+ *       properties:
+ *         sId:
+ *           type: string
+ *           description: Unique string identifier for the skill
+ *           example: "skill_abc123"
+ *         createdAt:
+ *           type: number
+ *           nullable: true
+ *           description: Timestamp of when the skill was created
+ *         updatedAt:
+ *           type: number
+ *           nullable: true
+ *           description: Timestamp of when the skill was last updated
+ *         editedBy:
+ *           type: integer
+ *           nullable: true
+ *           description: Numeric identifier of the last editor
+ *         status:
+ *           type: string
+ *           enum: [active, archived, suggested]
+ *           description: Current status of the skill
+ *           example: "active"
+ *         name:
+ *           type: string
+ *           description: Name of the skill
+ *           example: "Customer Support"
+ *         agentFacingDescription:
+ *           type: string
+ *           description: Description shown to agents when selecting or using the skill
+ *           example: "Use this skill to answer customer support questions."
+ *         userFacingDescription:
+ *           type: string
+ *           description: Description shown to workspace users
+ *           example: "Answers support questions with the right workspace context."
+ *         icon:
+ *           type: string
+ *           nullable: true
+ *           description: Icon identifier for the skill
+ *           example: "ActionRobotIcon"
+ *         source:
+ *           type: string
+ *           nullable: true
+ *           enum: [web_app, github, api, local_file]
+ *           description: Source used to create or import the skill
+ *         sourceMetadata:
+ *           type: object
+ *           nullable: true
+ *           allOf:
+ *             - $ref: '#/components/schemas/SkillSourceMetadata'
+ *         reinforcement:
+ *           type: string
+ *           enum: [auto, "on", "off"]
+ *           description: Reinforcement setting for the skill
+ *         lastReinforcementAnalysisAt:
+ *           type: string
+ *           nullable: true
+ *           description: Timestamp of the last reinforcement analysis, when available
+ *         requestedSpaceIds:
+ *           type: array
+ *           items:
+ *             type: string
+ *           description: Space identifiers the skill needs access to
+ *         fileAttachments:
+ *           type: array
+ *           items:
+ *             type: object
+ *             properties:
+ *               fileId:
+ *                 type: string
+ *                 description: Unique string identifier for the attached file
+ *               fileName:
+ *                 type: string
+ *                 description: Name of the attached file
+ *         canWrite:
+ *           type: boolean
+ *           description: Whether the authenticated actor can edit the skill
+ *         isExtendable:
+ *           type: boolean
+ *           description: Whether this skill can be extended by another skill
+ *         isDefault:
+ *           type: boolean
+ *           description: Whether this skill is enabled by default
+ *         extendedSkillId:
+ *           type: string
+ *           nullable: true
+ *           description: Identifier of the extended skill, when applicable
+ *         instructions:
+ *           type: string
+ *           nullable: true
+ *           description: Instructions used by the agent when running the skill
+ *         instructionsHtml:
+ *           type: string
+ *           nullable: true
+ *           description: HTML representation of the skill instructions
+ *         tools:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/MCPServerView'
+ *     Run:
+ *       type: object
+ *       properties:
+ *         run_id:
+ *           type: string
+ *           description: The ID of the run
+ *           example: "4a2c6e8b0d"
+ *         app_id:
+ *           type: string
+ *           description: The ID of the app
+ *           example: "9f1d3b5a7c"
+ *         status:
+ *           type: object
+ *           properties:
+ *             run:
+ *               type: string
+ *               description: The status of the run
+ *               example: "succeeded"
+ *             build:
+ *               type: string
+ *               description: The status of the build
+ *               example: "succeeded"
+ *         results:
+ *           type: object
+ *           description: The results of the run
+ *           example: {}
+ *         specification_hash:
+ *           type: string
+ *           description: The hash of the app specification
+ *           example: "8c0a4e6d2f"
+ *         traces:
+ *           type: array
+ *           items:
+ *             type: array
+ *             items:
+ *               type: object
+ *               properties:
+ *                 timestamp:
+ *                   type: number
+ *                   description: The timestamp of the trace
+ *                   example: 1234567890
+ *                 trace:
+ *                   type: object
+ *                   description: The trace
+ *                   example: {}
+ *     Document:
+ *       type: object
+ *       properties:
+ *         data_source_id:
+ *           type: string
+ *           example: "3b7d9f1e5a"
+ *         created:
+ *           type: number
+ *           example: 1625097600
+ *         document_id:
+ *           type: string
+ *           example: "2c4a6e8d0f"
+ *         title:
+ *           type: string
+ *           description: Title of the document
+ *           example: "Customer Support FAQ"
+ *         mime_type:
+ *           type: string
+ *           description: MIME type of the table
+ *           example: "text/md"
+ *         timestamp:
+ *           type: number
+ *           example: 1625097600
+ *         tags:
+ *           type: array
+ *           items:
+ *             type: string
+ *           example: ["customer_support", "faq"]
+ *         parent_id:
+ *           type: string
+ *           description: ID of the document parent
+ *           items:
+ *             type: string
+ *           example: "1234f4567c"
+ *         parents:
+ *           type: array
+ *           items:
+ *             type: string
+ *           example: ["7b9d1f3e5a", "2c4a6e8d0f"]
+ *         source_url:
+ *           type: string
+ *           nullable: true
+ *           example: "https://example.com/support/article1"
+ *         hash:
+ *           type: string
+ *           example: "a1b2c3d4e5"
+ *         text_size:
+ *           type: number
+ *           example: 1024
+ *         chunk_count:
+ *           type: number
+ *           example: 5
+ *         chunks:
+ *           type: array
+ *           items:
+ *             type: object
+ *           example: [
+ *             {
+ *               "chunk_id": "9f1d3b5a7c",
+ *               "text": "This is the first chunk of the document.",
+ *               "embedding": [0.1, 0.2, 0.3, 0.4]
+ *             },
+ *             {
+ *               "chunk_id": "4a2c6e8b0d",
+ *               "text": "This is the second chunk of the document.",
+ *               "embedding": [0.5, 0.6, 0.7, 0.8]
+ *             }
+ *           ]
+ *         text:
+ *           type: string
+ *           example: "This is the full text content of the document. It contains multiple paragraphs and covers various topics related to customer support."
+ *         token_count:
+ *           type: number
+ *           nullable: true
+ *           example: 150
+ *     MCPServerView:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *           description: Unique identifier for the MCP server view
+ *           example: 123
+ *         sId:
+ *           type: string
+ *           description: Unique string identifier for the MCP server view
+ *           example: "mcp_sv_abc123"
+ *         name:
+ *           type: string
+ *           nullable: true
+ *           description: Custom name for the MCP server view (null if not set)
+ *           example: "My Custom MCP Server"
+ *         description:
+ *           type: string
+ *           nullable: true
+ *           description: Custom description for the MCP server view (null if not set)
+ *           example: "This MCP server handles customer data operations"
+ *         createdAt:
+ *           type: number
+ *           description: Unix timestamp of when the MCP server view was created
+ *           example: 1625097600
+ *         updatedAt:
+ *           type: number
+ *           description: Unix timestamp of when the MCP server view was last updated
+ *           example: 1625184000
+ *         spaceId:
+ *           type: string
+ *           description: ID of the space containing the MCP server view
+ *           example: "spc_xyz789"
+ *         serverType:
+ *           type: string
+ *           enum: ["remote", "internal"]
+ *           description: Type of the MCP server
+ *           example: "remote"
+ *         server:
+ *           type: object
+ *           properties:
+ *             sId:
+ *               type: string
+ *               description: Unique string identifier for the MCP server
+ *               example: "mcp_srv_def456"
+ *             name:
+ *               type: string
+ *               description: Name of the MCP server
+ *               example: "Customer Data Server"
+ *             version:
+ *               type: string
+ *               description: Version of the MCP server
+ *               example: "1.0.0"
+ *             description:
+ *               type: string
+ *               description: Description of the MCP server
+ *               example: "Handles customer data operations and queries"
+ *             icon:
+ *               type: string
+ *               description: Icon identifier for the MCP server
+ *               example: "database"
+ *             authorization:
+ *               type: object
+ *               nullable: true
+ *               properties:
+ *                 provider:
+ *                   type: string
+ *                   description: OAuth provider for authorization
+ *                   example: "github"
+ *                 supported_use_cases:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                     enum: ["platform_actions", "personal_actions"]
+ *                   description: Supported use cases for the authorization
+ *                   example: ["platform_actions"]
+ *                 scope:
+ *                   type: string
+ *                   description: OAuth scope required
+ *                   example: "repo:read"
+ *             tools:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   name:
+ *                     type: string
+ *                     description: Name of the tool
+ *                     example: "query_customers"
+ *                   description:
+ *                     type: string
+ *                     description: Description of what the tool does
+ *                     example: "Query customer database for information"
+ *                   inputSchema:
+ *                     type: object
+ *                     description: JSON Schema for the tool's input parameters
+ *                     example: {"type": "object", "properties": {"customerId": {"type": "string"}}}
+ *             availability:
+ *               type: string
+ *               description: Availability status of the MCP server
+ *               example: "production"
+ *             allowMultipleInstances:
+ *               type: boolean
+ *               description: Whether multiple instances of this server can be created
+ *               example: false
+ *             documentationUrl:
+ *               type: string
+ *               nullable: true
+ *               description: URL to the server's documentation
+ *               example: "https://docs.example.com/mcp-server"
+ *         oAuthUseCase:
+ *           type: string
+ *           nullable: true
+ *           enum: ["platform_actions", "personal_actions"]
+ *           description: OAuth use case for the MCP server view
+ *           example: "platform_actions"
+ *         editedByUser:
+ *           type: object
+ *           nullable: true
+ *           description: Information about the user who last edited the MCP server view
+ *           properties:
+ *             editedAt:
+ *               type: number
+ *               nullable: true
+ *               description: Unix timestamp of when the edit occurred
+ *               example: 1625184000
+ *             fullName:
+ *               type: string
+ *               nullable: true
+ *               description: Full name of the editor
+ *               example: "John Doe"
+ *             imageUrl:
+ *               type: string
+ *               nullable: true
+ *               description: Profile image URL of the editor
+ *               example: "https://example.com/profile/johndoe.jpg"
+ */
