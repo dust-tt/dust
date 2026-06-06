@@ -1,3 +1,8 @@
+import type {
+  DeletePokeCacheResponseBody,
+  GetPokeCacheResponseBody,
+  RedisCacheResult,
+} from "@app/lib/api/poke/cache";
 import { runOnRedis, runOnRedisCache } from "@app/lib/api/redis";
 import logger from "@app/logger/logger";
 import {
@@ -9,25 +14,6 @@ import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import type { Context } from "hono";
-
-export interface RedisCacheResult {
-  value: unknown | null;
-  ttlSeconds: number;
-}
-
-export type RedisInstance = "cache" | "stream";
-
-export type GetPokeCacheResponseBody = {
-  key: string;
-  cacheRedis: RedisCacheResult;
-  streamRedis: RedisCacheResult;
-};
-
-export type DeletePokeCacheResponseBody = {
-  key: string;
-  redisInstance: RedisInstance;
-  deleted: true;
-};
 
 // Mounted at /api/poke/cache. pokeAuth is applied by the parent poke sub-app.
 const app = pokeApp();

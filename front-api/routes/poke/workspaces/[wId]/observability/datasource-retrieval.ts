@@ -1,18 +1,13 @@
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import {
   fetchWorkspaceDatasourceRetrievalMetrics,
-  type WorkspaceDatasourceRetrievalData,
+  type PokeGetWorkspaceDatasourceRetrievalResponse,
 } from "@app/lib/api/assistant/observability/datasource_retrieval";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
-
-export type PokeGetWorkspaceDatasourceRetrievalResponse = {
-  datasources: WorkspaceDatasourceRetrievalData[];
-  total: number;
-};
 
 const QuerySchema = z.object({
   days: z.coerce.number().positive().optional().default(DEFAULT_PERIOD_DAYS),

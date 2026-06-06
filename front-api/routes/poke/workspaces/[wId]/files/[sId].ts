@@ -1,25 +1,10 @@
 import { readInteractiveContentFile } from "@app/lib/api/files/read";
-import type {
-  FileShareScope,
-  FileTypeWithMetadata,
-  SharingGrantType,
-} from "@app/types/files";
+import type { GetPokeFileResponseBody } from "@app/lib/api/poke/files";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export interface GetPokeFileResponseBody {
-  content: string;
-  file: FileTypeWithMetadata;
-  shareInfo: {
-    scope: FileShareScope;
-    sharedAt: number;
-    shareUrl: string;
-  } | null;
-  sharingGrants: SharingGrantType[];
-}
 
 const ParamsSchema = z.object({
   sId: z.string(),

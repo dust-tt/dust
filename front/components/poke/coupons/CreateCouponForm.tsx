@@ -1,6 +1,6 @@
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { CreatePokeCouponResponseBody } from "@app/lib/api/poke/coupons";
 import { clientFetch } from "@app/lib/egress/client";
-import type { CreatePokeCouponResponseBody } from "@app/pages/api/poke/coupons/index";
 import type { CouponDiscountType } from "@app/types/coupon";
 import { CreateCouponBodySchema } from "@app/types/coupon";
 import { isString } from "@app/types/shared/utils/general";

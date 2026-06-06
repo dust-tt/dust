@@ -1,24 +1,14 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
+import type { GetPokeWorkspaceAuthContextResponseType } from "@app/lib/api/poke/auth_context";
 import { getWorkspaceRegionRedirect } from "@app/lib/api/regions/lookup";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { SubscriptionType } from "@app/types/plan";
 import { isString } from "@app/types/shared/utils/general";
-import type { LightWorkspaceType, UserType } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type GetPokeWorkspaceAuthContextResponseType = {
-  user: UserType;
-  workspace: LightWorkspaceType;
-  subscription: SubscriptionType;
-  isAdmin: true; // Superusers have admin privileges
-  isBuilder: true; // Superusers have builder privileges
-  isSuperUser: true;
-};
 
 async function handler(
   req: NextApiRequest,

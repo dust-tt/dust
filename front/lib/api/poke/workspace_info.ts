@@ -86,6 +86,8 @@ export type PokeWorkspaceInfo = {
   workosEnvironmentId: string;
 };
 
+export type PokeGetWorkspaceInfo = PokeWorkspaceInfo;
+
 /**
  * Assembles the workspace-info payload shown in the poke admin UI: every
  * subscription, billing config (Stripe + Metronome with cross-lookup),

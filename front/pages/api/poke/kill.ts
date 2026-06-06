@@ -1,25 +1,18 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
+import type { GetKillSwitchesResponseBody } from "@app/lib/api/poke/kill";
+import { KillSwitchTypeSchema } from "@app/lib/api/poke/kill";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import type { KillSwitchType } from "@app/lib/poke/types";
 import { isKillSwitchType } from "@app/lib/poke/types";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
-export type GetKillSwitchesResponseBody = {
-  killSwitches: KillSwitchType[];
-};
-
-const KillSwitchTypeSchema = z.object({
-  enabled: z.boolean(),
-  type: z.string(),
-});
+export type { GetKillSwitchesResponseBody };
 
 async function handler(
   req: NextApiRequest,

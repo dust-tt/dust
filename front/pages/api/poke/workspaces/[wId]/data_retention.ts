@@ -1,8 +1,8 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
+import type { PokeGetDataRetentionResponseBody } from "@app/lib/api/poke/data_retention";
 import { Authenticator } from "@app/lib/auth";
-import type { DataRetentionConfig } from "@app/lib/data_retention";
 import {
   getAgentsDataRetention,
   getConversationsDataRetention,
@@ -13,9 +13,7 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-export type PokeGetDataRetentionResponseBody = {
-  data: DataRetentionConfig;
-};
+export type { PokeGetDataRetentionResponseBody };
 
 async function handler(
   req: NextApiRequest,

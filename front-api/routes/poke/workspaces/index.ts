@@ -1,3 +1,4 @@
+import type { GetPokeWorkspacesResponseBody } from "@app/lib/api/poke/workspaces";
 import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
 import { getPlanCodeSortPriority } from "@app/lib/plans/plan_codes";
@@ -12,9 +13,7 @@ import { WorkspaceVerificationAttemptResource } from "@app/lib/resources/workspa
 import { isDomain, isEmailValid } from "@app/lib/utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-import type { SubscriptionType } from "@app/types/plan";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import type { LightWorkspaceType } from "@app/types/user";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -23,15 +22,10 @@ import { Op } from "sequelize";
 
 import wId from "./[wId]";
 
-export type PokeWorkspaceType = LightWorkspaceType & {
-  createdAt: string;
-  subscription: SubscriptionType;
-  membersCount: number;
-};
-
-export type GetPokeWorkspacesResponseBody = {
-  workspaces: PokeWorkspaceType[];
-};
+export type {
+  GetPokeWorkspacesResponseBody,
+  PokeWorkspaceType,
+} from "@app/lib/api/poke/workspaces";
 
 // Note: the parent poke/index.ts already applies pokeAuth (super-user gate).
 // This sub-router handles the workspace LIST endpoint (GET /) and mounts the

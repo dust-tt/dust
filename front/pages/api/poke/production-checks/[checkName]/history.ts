@@ -1,6 +1,7 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
+import type { GetCheckHistoryResponseBody } from "@app/lib/api/poke/production_checks";
 import {
   getCheckHistoryRuns,
   getRegisteredCheck,
@@ -9,13 +10,10 @@ import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { CheckHistoryRun } from "@app/types/production_checks";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-export type GetCheckHistoryResponseBody = {
-  runs: CheckHistoryRun[];
-};
+export type { GetCheckHistoryResponseBody };
 
 async function handler(
   req: NextApiRequest,

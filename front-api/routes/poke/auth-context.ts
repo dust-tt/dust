@@ -1,11 +1,6 @@
-import type { UserType } from "@app/types/user";
+import type { GetPokeNoWorkspaceAuthContextResponseType } from "@app/lib/api/poke/auth_context";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
-
-export type GetPokeNoWorkspaceAuthContextResponseType = {
-  user: UserType;
-  isSuperUser: true;
-};
 
 // Mounted at /api/poke/auth-context. pokeAuth is applied by the parent poke
 // sub-app, so ctx.get("auth") is always available here and the user is a

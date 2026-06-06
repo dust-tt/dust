@@ -1,13 +1,9 @@
+import type { GetPokeSearchItemsResponseBody } from "@app/lib/api/poke/search";
 import { searchPokeResources } from "@app/lib/poke/search";
-import type { PokeItemBase } from "@app/types/poke";
 import { isString } from "@app/types/shared/utils/general";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
-
-export type GetPokeSearchItemsResponseBody = {
-  results: PokeItemBase[];
-};
 
 // Mounted at /api/poke/search. pokeAuth is applied by the parent poke sub-app.
 const app = pokeApp();

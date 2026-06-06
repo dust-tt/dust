@@ -2,26 +2,16 @@
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { pluginManager } from "@app/lib/api/poke/plugin_manager";
+import type { PokeGetPluginAsyncArgsResponseBody } from "@app/lib/api/poke/plugins/async_args";
 import { fetchPluginResource } from "@app/lib/api/poke/utils";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type {
-  AsyncEnumValues,
-  EnumValues,
-  SupportedResourceType,
-} from "@app/types/poke/plugins";
+import type { SupportedResourceType } from "@app/types/poke/plugins";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
-
-export interface PokeGetPluginAsyncArgsResponseBody {
-  asyncArgs: Record<
-    string,
-    string | number | boolean | AsyncEnumValues | EnumValues
-  >;
-}
 
 const asyncArgsSchema = z.object({
   pluginId: z.string(),

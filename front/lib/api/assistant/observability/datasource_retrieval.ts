@@ -442,3 +442,8 @@ export type GetDatasourceRetrievalResponse = {
   datasources: DatasourceRetrievalData[];
   total: number;
 };
+
+export type PokeGetWorkspaceDatasourceRetrievalResponse = {
+  datasources: WorkspaceDatasourceRetrievalData[];
+  total: number;
+};

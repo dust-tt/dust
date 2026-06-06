@@ -1,17 +1,13 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
+import type { GetPokeMetronomePackagesResponseBody } from "@app/lib/api/poke/metronome";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import type { MetronomePackageSummary } from "@app/lib/metronome/client";
 import { listMetronomePackages } from "@app/lib/metronome/client";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type GetPokeMetronomePackagesResponseBody = {
-  packages: MetronomePackageSummary[];
-};
 
 async function handler(
   req: NextApiRequest,

@@ -1,9 +1,9 @@
-import { clientFetch } from "@app/lib/egress/client";
-import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
   GetPokeCacheResponseBody,
   RedisInstance,
-} from "@app/pages/api/poke/cache";
+} from "@app/lib/api/poke/cache";
+import { clientFetch } from "@app/lib/egress/client";
+import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { useState } from "react";
 import type { Fetcher } from "swr";
 

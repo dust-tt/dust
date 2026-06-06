@@ -3,11 +3,13 @@ import type {
   GetDocumentsResponseBody,
   GetTablesResponseBody,
 } from "@app/lib/api/poke/data_sources";
+import type {
+  PokeFetchAssistantTemplateResponse,
+  PullTemplatesResponseBody,
+} from "@app/lib/api/poke/templates";
 import { clientFetch } from "@app/lib/egress/client";
 import type { FetchAssistantTemplatesResponse } from "@app/lib/resources/template_resource";
 import { emptyArray, useFetcher } from "@app/lib/swr/swr";
-import type { PokeFetchAssistantTemplateResponse } from "@app/pages/api/poke/templates/[tId]";
-import type { PullTemplatesResponseBody } from "@app/pages/api/poke/templates/pull";
 import { useCallback, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 import useSWR from "swr";

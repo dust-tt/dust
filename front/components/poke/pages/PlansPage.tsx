@@ -7,9 +7,9 @@ import {
   useEditingPlan,
 } from "@app/components/poke/plans/form";
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { PlanTypeSchema } from "@app/lib/api/poke/plans";
 import { clientFetch } from "@app/lib/egress/client";
 import { usePokePlans } from "@app/lib/swr/poke";
-import type { PlanTypeSchema } from "@app/pages/api/poke/plans";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import type { PlanType } from "@app/types/plan";
 import {

@@ -1,11 +1,9 @@
 import {
   getPokeWorkspaceInfo,
-  type PokeWorkspaceInfo,
+  type PokeGetWorkspaceInfo,
 } from "@app/lib/api/poke/workspace_info";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
-
-export type PokeGetWorkspaceInfo = PokeWorkspaceInfo;
 
 // Mounted at /api/poke/workspaces/:wId/workspace-info.
 const app = pokeApp();

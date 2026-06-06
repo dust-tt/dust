@@ -1,5 +1,6 @@
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
+import { AppTypeSchema, ImportAppBody } from "@app/lib/api/poke/apps";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -8,40 +9,8 @@ import { apiError } from "@app/logger/withlogging";
 import type { AppType } from "@app/types/app";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
 
-export const AppTypeSchema = z.object({
-  sId: z.string(),
-  name: z.string(),
-  description: z.string().nullable(),
-  savedSpecification: z.string().nullable(),
-  savedConfig: z.string().nullable(),
-  savedRun: z.string().nullable(),
-  dustAPIProjectId: z.string(),
-  datasets: z
-    .array(
-      z.object({
-        name: z.string(),
-        description: z.string().nullable(),
-        schema: z
-          .array(
-            z.object({
-              type: z.enum(["string", "number", "boolean", "json"]),
-              description: z.string().nullable(),
-              key: z.string(),
-            })
-          )
-          .nullish(),
-        data: z.array(z.record(z.string(), z.any())).nullish(),
-      })
-    )
-    .optional(),
-  coreSpecifications: z.record(z.string(), z.string()).optional(),
-});
-
-export const ImportAppBody = z.object({
-  app: AppTypeSchema,
-});
+export { AppTypeSchema, ImportAppBody };
 
 /**
  * @ignoreswagger

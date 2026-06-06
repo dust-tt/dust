@@ -1,7 +1,7 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
-import type { GlobalAgentFeedbackItem } from "@app/lib/api/poke/global_agent_feedbacks";
+import type { GetGlobalAgentFeedbacksResponseBody } from "@app/lib/api/poke/global_agent_feedbacks";
 import { listGlobalAgentFeedbacks } from "@app/lib/api/poke/global_agent_feedbacks";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -9,11 +9,6 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export interface GetGlobalAgentFeedbacksResponseBody {
-  feedbacks: GlobalAgentFeedbackItem[];
-  hasMore: boolean;
-}
 
 async function handler(
   req: NextApiRequest,

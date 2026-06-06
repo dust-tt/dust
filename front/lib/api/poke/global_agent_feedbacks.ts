@@ -49,6 +49,11 @@ export interface ListGlobalAgentFeedbacksResult {
   hasMore: boolean;
 }
 
+export interface GetGlobalAgentFeedbacksResponseBody {
+  feedbacks: GlobalAgentFeedbackItem[];
+  hasMore: boolean;
+}
+
 /**
  * Aggregate global-agent feedback rows across all workspaces for the poke
  * super-admin review tool. Returns up to `PAGE_SIZE` rows, enriched with the

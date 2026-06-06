@@ -2,6 +2,7 @@
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
+import type { PokeGetAppDetails } from "@app/lib/api/poke/apps";
 import { getSpecification } from "@app/lib/api/run";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -9,17 +10,12 @@ import { AppResource } from "@app/lib/resources/app_resource";
 import { cleanSpecificationFromCore } from "@app/lib/specification";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { AppType, SpecificationType } from "@app/types/app";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-export type PokeGetAppDetails = {
-  app: AppType;
-  specification: SpecificationType;
-  specificationHashes: string[] | null;
-};
+export type { PokeGetAppDetails };
 
 async function handler(
   req: NextApiRequest,

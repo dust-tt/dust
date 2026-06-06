@@ -2,29 +2,14 @@
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { readInteractiveContentFile } from "@app/lib/api/files/read";
+import type { GetPokeFileResponseBody } from "@app/lib/api/poke/files";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type {
-  FileShareScope,
-  FileTypeWithMetadata,
-  SharingGrantType,
-} from "@app/types/files";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export interface GetPokeFileResponseBody {
-  content: string;
-  file: FileTypeWithMetadata;
-  shareInfo: {
-    scope: FileShareScope;
-    sharedAt: number;
-    shareUrl: string;
-  } | null;
-  sharingGrants: SharingGrantType[];
-}
 
 async function handler(
   req: NextApiRequest,

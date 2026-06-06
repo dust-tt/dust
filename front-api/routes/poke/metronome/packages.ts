@@ -1,13 +1,7 @@
-import {
-  listMetronomePackages,
-  type MetronomePackageSummary,
-} from "@app/lib/metronome/client";
+import type { GetPokeMetronomePackagesResponseBody } from "@app/lib/api/poke/metronome";
+import { listMetronomePackages } from "@app/lib/metronome/client";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
-
-export type GetPokeMetronomePackagesResponseBody = {
-  packages: MetronomePackageSummary[];
-};
 
 // Mounted at /api/poke/metronome/packages. pokeAuth is applied by the parent
 // poke sub-app.

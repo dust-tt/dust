@@ -1,19 +1,12 @@
 import { pluginManager } from "@app/lib/api/poke/plugin_manager";
+import type { PokeGetPluginAsyncArgsResponseBody } from "@app/lib/api/poke/plugins/async_args";
 import { fetchPluginResource } from "@app/lib/api/poke/utils";
 import { Authenticator } from "@app/lib/auth";
-import type { AsyncEnumValues, EnumValues } from "@app/types/poke/plugins";
 import { supportedResourceTypes } from "@app/types/poke/plugins";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export interface PokeGetPluginAsyncArgsResponseBody {
-  asyncArgs: Record<
-    string,
-    string | number | boolean | AsyncEnumValues | EnumValues
-  >;
-}
 
 const AsyncArgsQuerySchema = z.object({
   resourceType: z.enum(supportedResourceTypes),

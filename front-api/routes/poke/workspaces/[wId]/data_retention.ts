@@ -1,5 +1,5 @@
+import type { PokeGetDataRetentionResponseBody } from "@app/lib/api/poke/data_retention";
 import {
-  type DataRetentionConfig,
   getAgentsDataRetention,
   getConversationsDataRetention,
   getWorkspaceDataRetention,
@@ -7,9 +7,7 @@ import {
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
-export type PokeGetDataRetentionResponseBody = {
-  data: DataRetentionConfig;
-};
+export type { PokeGetDataRetentionResponseBody };
 
 // Mounted at /api/poke/workspaces/:wId/data_retention.
 const app = pokeApp();
