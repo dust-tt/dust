@@ -1,4 +1,5 @@
 import {
+  baseUniquenessKey,
   clearMetronomeAlert,
   findMetronomeAlert,
   upsertMetronomeAlert,
@@ -181,10 +182,14 @@ export async function listMetronomePerUserCapsForWorkspace({
       alert_statuses: ["ENABLED"],
     })) {
       const key = entry.alert.uniqueness_key;
-      if (!key || !key.startsWith(prefix)) {
+      if (!key) {
         continue;
       }
-      const userId = key.slice(prefix.length);
+      const baseKey = baseUniquenessKey(key);
+      if (!baseKey.startsWith(prefix)) {
+        continue;
+      }
+      const userId = baseKey.slice(prefix.length);
       if (!userId) {
         continue;
       }
@@ -216,10 +221,14 @@ export async function listMetronomePerUserWarningAlertsForWorkspace({
       alert_statuses: ["ENABLED"],
     })) {
       const key = entry.alert.uniqueness_key;
-      if (!key || !key.startsWith(prefix)) {
+      if (!key) {
         continue;
       }
-      const userId = key.slice(prefix.length);
+      const baseKey = baseUniquenessKey(key);
+      if (!baseKey.startsWith(prefix)) {
+        continue;
+      }
+      const userId = baseKey.slice(prefix.length);
       if (!userId) {
         continue;
       }
@@ -279,10 +288,11 @@ async function fetchPerUserCapAlertIds(args: {
       customer_id: args.metronomeCustomerId,
       alert_statuses: ["ENABLED"],
     })) {
-      const key = entry.alert.uniqueness_key;
-      if (!key) {
+      const rawKey = entry.alert.uniqueness_key;
+      if (!rawKey) {
         continue;
       }
+      const key = baseUniquenessKey(rawKey);
       if (key.startsWith(capPrefix)) {
         const userId = key.slice(capPrefix.length);
         if (userId) {
@@ -348,7 +358,7 @@ async function fetchDefaultCapThresholdsBySeatType(args: {
 
   const capBySeat = new Map<
     NormalizedPoolLimitSeatType,
-    { threshold: number; alertId: string }
+    { threshold: number; alertId: string; enabled: boolean }
   >();
   const warningIdBySeat = new Map<NormalizedPoolLimitSeatType, string>();
 
@@ -359,16 +369,23 @@ async function fetchDefaultCapThresholdsBySeatType(args: {
       customer_id: args.metronomeCustomerId,
       alert_statuses: ["ENABLED", "DISABLED"],
     })) {
-      const key = entry.alert.uniqueness_key;
-      if (!key) {
+      const rawKey = entry.alert.uniqueness_key;
+      if (!rawKey) {
         continue;
       }
+      const key = baseUniquenessKey(rawKey);
+      const enabled = entry.alert.status === "enabled";
       const capSeat = capKeyToSeat.get(key);
       if (capSeat) {
-        capBySeat.set(capSeat, {
-          threshold: entry.alert.threshold,
-          alertId: entry.alert.id,
-        });
+        // Prefer an enabled generation over a disabled one for the same seat.
+        const current = capBySeat.get(capSeat);
+        if (!current || (enabled && !current.enabled)) {
+          capBySeat.set(capSeat, {
+            threshold: entry.alert.threshold,
+            alertId: entry.alert.id,
+            enabled,
+          });
+        }
         continue;
       }
       const warningSeat = warningKeyToSeat.get(key);
@@ -383,7 +400,8 @@ async function fetchDefaultCapThresholdsBySeatType(args: {
   const caps = {} as Record<NormalizedPoolLimitSeatType, MetronomeCapAlertInfo>;
   for (const [seatType, cap] of capBySeat) {
     caps[seatType] = {
-      ...cap,
+      threshold: cap.threshold,
+      alertId: cap.alertId,
       warningAlertId: warningIdBySeat.get(seatType) ?? null,
     };
   }

@@ -10,6 +10,7 @@ import type {
 import {
   isMembershipSeatType,
   NORMALIZED_POOL_LIMIT_SEAT_TYPES,
+  normalizeToPoolLimitSeatType,
 } from "@app/types/memberships";
 import type { Subscription } from "@metronome/sdk/resources";
 
@@ -403,6 +404,35 @@ export function getAwuAllocationForSeatType(
 }
 
 /**
+ * AWU allowance for a normalized pool-limit seat type (e.g. `"pro"`). Monthly
+ * and yearly variants of a tier share the same allowance, so this resolves the
+ * normalized type to whichever variant the contract actually sells and reads
+ * its allowance — a direct `getAwuAllocationForSeatType(contract, "pro", ...)`
+ * returns 0 on a contract that only sells `"pro_yearly"`. Returns 0 when no
+ * matching seat is sold.
+ */
+export function getAwuAllocationForNormalizedSeatType(
+  contract: CachedContract,
+  normalizedSeatType: NormalizedPoolLimitSeatType,
+  productSeatTypes: Map<string, MembershipSeatType>
+): number {
+  const seatSubscriptions = getSeatSubscriptionsFromContract(
+    contract,
+    productSeatTypes
+  );
+  for (const actualSeatType of seatSubscriptions.keys()) {
+    if (normalizeToPoolLimitSeatType(actualSeatType) === normalizedSeatType) {
+      return getAwuAllocationForSeatType(
+        contract,
+        actualSeatType,
+        productSeatTypes
+      );
+    }
+  }
+  return 0;
+}
+
+/**
  * Resolve the seat AWU allowance for each normalized pool-limit seat type of
  * the workspace's active contract. Returns an empty record when the workspace
  * has no active contract. Used to derive total per-user cap thresholds (pool
@@ -419,7 +449,7 @@ export async function getSeatAllowancesByNormalizedSeatType(
   const productSeatTypes = await getProductSeatTypes();
   const allowances: Partial<Record<NormalizedPoolLimitSeatType, number>> = {};
   for (const seatType of NORMALIZED_POOL_LIMIT_SEAT_TYPES) {
-    allowances[seatType] = getAwuAllocationForSeatType(
+    allowances[seatType] = getAwuAllocationForNormalizedSeatType(
       contract,
       seatType,
       productSeatTypes

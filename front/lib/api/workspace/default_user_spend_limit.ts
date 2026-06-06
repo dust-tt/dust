@@ -11,7 +11,7 @@ import {
 } from "@app/lib/metronome/alerts/spend_limits";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import {
-  getAwuAllocationForSeatType,
+  getAwuAllocationForNormalizedSeatType,
   getProductSeatTypes,
   getSeatSubscriptionsFromContract,
 } from "@app/lib/metronome/seat_types";
@@ -109,7 +109,11 @@ export async function getDefaultUserSpendLimit(
       const totalThreshold = result.value.alert.threshold;
       const seatAllowance =
         contract && productSeatTypes
-          ? getAwuAllocationForSeatType(contract, seatType, productSeatTypes)
+          ? getAwuAllocationForNormalizedSeatType(
+              contract,
+              seatType,
+              productSeatTypes
+            )
           : 0;
       const poolAwuCredits = totalThreshold - seatAllowance;
       logger.info(
@@ -269,7 +273,7 @@ export async function setDefaultUserSpendLimit(
 
   // Create per-seat-type alerts.
   for (const seatType of normalizedSeatTypes) {
-    const seatAllowance = getAwuAllocationForSeatType(
+    const seatAllowance = getAwuAllocationForNormalizedSeatType(
       contract,
       seatType,
       productSeatTypes
