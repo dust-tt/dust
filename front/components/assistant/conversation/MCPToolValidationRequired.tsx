@@ -1,9 +1,13 @@
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
+import {
+  EditableToolValidation,
+  isEditableToolValidationSupported,
+} from "@app/components/assistant/conversation/editable_tool_validation/EditableToolValidation";
+import type { ValidationRequiredToolExecution } from "@app/components/assistant/conversation/editable_tool_validation/types";
 import { ToolValidationDetails } from "@app/components/assistant/conversation/ToolValidationDetails";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { useValidateAction } from "@app/hooks/useValidateAction";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
-import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import {
   POD_MANAGER_SERVER_NAME,
   UPDATE_MEMBERS_TOOL_NAME,
@@ -20,7 +24,7 @@ import {
 } from "@app/lib/api/actions/servers/pod_tasks/types";
 import { WAKEUPS_SERVER_NAME } from "@app/lib/api/actions/servers/wakeups/metadata";
 import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
-import { useAuth } from "@app/lib/auth/AuthContext";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
@@ -139,7 +143,7 @@ const MCP_TOOL_OVERRIDES: Partial<
 interface MCPToolValidationRequiredProps {
   triggeringUser: UserType | null;
   owner: LightWorkspaceType;
-  blockedAction: BlockedToolExecution;
+  blockedAction: ValidationRequiredToolExecution;
   conversationId?: string | null;
 }
 
@@ -150,6 +154,7 @@ export function MCPToolValidationRequired({
   conversationId,
 }: MCPToolValidationRequiredProps) {
   const { user } = useAuth();
+  const { hasFeature } = useFeatureFlags();
   const [neverAskAgain, setNeverAskAgain] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -179,11 +184,14 @@ export function MCPToolValidationRequired({
     ? getIcon(blockedAction.metadata.icon)
     : undefined;
 
-  const handleValidation = async (approved: MCPValidationOutputType) => {
+  const handleValidationStart = () => {
     // Stop pulsing immediately when the user takes an action.
     stopPulsingAction(blockedAction.actionId);
-
     setErrorMessage(null);
+  };
+
+  const handleValidation = async (approved: MCPValidationOutputType) => {
+    handleValidationStart();
 
     const result = await validateAction({
       validationRequest: blockedAction,
@@ -276,6 +284,39 @@ export function MCPToolValidationRequired({
 
   const title = getTitle();
   const alwaysAllowLabel = getAlwaysAllowLabel();
+  // Always-allow is only offered for lower-stake tools (the effective stake can
+  // be overridden per tool/agent).
+  const canAlwaysAllow =
+    blockedAction.stake === "low" || blockedAction.stake === "medium";
+  const shouldUseEditableToolValidation =
+    canCurrentUserRespond &&
+    hasFeature("editable_tool_inputs") &&
+    isEditableToolValidationSupported(blockedAction);
+
+  if (shouldUseEditableToolValidation) {
+    return (
+      <>
+        <EditableToolValidation
+          blockedAction={blockedAction}
+          alwaysAllowLabel={canAlwaysAllow ? alwaysAllowLabel : null}
+          owner={owner}
+          isPulsing={isPulsing}
+          isValidating={isValidating}
+          onActionCompleted={() => {
+            removeCompletedAction(blockedAction.actionId);
+            setNeverAskAgain(false);
+          }}
+          onError={setErrorMessage}
+          onValidationStart={handleValidationStart}
+        />
+        {errorMessage && (
+          <div className="mt-2 text-sm font-medium text-warning-800 dark:text-warning-800-night">
+            {errorMessage}
+          </div>
+        )}
+      </>
+    );
+  }
 
   return (
     <ContentMessage
@@ -298,47 +339,49 @@ export function MCPToolValidationRequired({
               {errorMessage}
             </div>
           )}
-          <div className="flex flex-col gap-3 sm:mt-3">
-            {(blockedAction.stake === "low" ||
-              blockedAction.stake === "medium") && (
-              <Label
-                htmlFor="never-ask-again"
-                className="flex w-fit cursor-pointer flex-row items-center gap-2 py-1 pr-2 text-xs"
-              >
-                <Checkbox
-                  id="never-ask-again"
-                  checked={neverAskAgain}
-                  onCheckedChange={(check) => {
-                    setNeverAskAgain(!!check);
-                  }}
+
+          <>
+            <div className="flex flex-col gap-3 sm:mt-3">
+              {canAlwaysAllow && (
+                <Label
+                  htmlFor="never-ask-again"
+                  className="flex w-fit cursor-pointer flex-row items-center gap-2 py-1 pr-2 text-xs"
+                >
+                  <Checkbox
+                    id="never-ask-again"
+                    checked={neverAskAgain}
+                    onCheckedChange={(check) => {
+                      setNeverAskAgain(!!check);
+                    }}
+                  />
+                  <span className="text-normal font-normal">
+                    {alwaysAllowLabel}
+                  </span>
+                </Label>
+              )}
+              <div className="hidden sm:block sm:flex-grow" />
+              <div className="flex flex-row gap-3 self-end">
+                <Button
+                  label="Decline"
+                  variant="outline"
+                  size="xs"
+                  icon={XClose}
+                  disabled={isValidating}
+                  isPulsing={isPulsing}
+                  onClick={() => void handleValidation("rejected")}
                 />
-                <span className="text-normal font-normal">
-                  {alwaysAllowLabel}
-                </span>
-              </Label>
-            )}
-            <div className="hidden sm:block sm:flex-grow" />
-            <div className="flex flex-row gap-3 self-end">
-              <Button
-                label="Decline"
-                variant="outline"
-                size="xs"
-                icon={XClose}
-                disabled={isValidating}
-                isPulsing={isPulsing}
-                onClick={() => void handleValidation("rejected")}
-              />
-              <Button
-                label="Allow"
-                variant="highlight"
-                size="xs"
-                icon={Check}
-                disabled={isValidating}
-                isPulsing={isPulsing}
-                onClick={() => void handleValidation("approved")}
-              />
+                <Button
+                  label="Allow"
+                  variant="highlight"
+                  size="xs"
+                  icon={Check}
+                  disabled={isValidating}
+                  isPulsing={isPulsing}
+                  onClick={() => void handleValidation("approved")}
+                />
+              </div>
             </div>
-          </div>
+          </>
         </>
       ) : (
         <div className="font-sm whitespace-normal break-words text-foreground dark:text-foreground-night">
