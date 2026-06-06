@@ -71,10 +71,27 @@ async function resolveUserSeatAllowance(
   const workspace = auth.getNonNullableWorkspace();
   const normalizedSeatType = normalizeToPoolLimitSeatType(membership.seatType);
   if (!normalizedSeatType) {
+    logger.info(
+      {
+        workspaceId: workspace.sId,
+        seatType: membership.seatType,
+      },
+      "[Metronome PerUserCap] seat type does not map to a pool-limit seat type; seat allowance is 0"
+    );
     return 0;
   }
   const allowances = await getSeatAllowancesByNormalizedSeatType(workspace.sId);
-  return allowances[normalizedSeatType] ?? 0;
+  const seatAllowance = allowances[normalizedSeatType] ?? 0;
+  logger.info(
+    {
+      workspaceId: workspace.sId,
+      seatType: membership.seatType,
+      normalizedSeatType,
+      seatAllowance,
+    },
+    "[Metronome PerUserCap] resolved seat AWU allowance for membership"
+  );
+  return seatAllowance;
 }
 
 export async function getUserSpendLimit(
@@ -202,6 +219,10 @@ export async function setUserSpendLimit(
 ): Promise<Result<SetUserSpendLimitResponse, UserSpendLimitError>> {
   const workspace = auth.getNonNullableWorkspace();
   if (!workspace.metronomeCustomerId) {
+    logger.info(
+      { workspaceId: workspace.sId, userId },
+      "[Metronome PerUserCap] set: workspace is not on Metronome billing"
+    );
     return new Err(
       new UserSpendLimitError(
         "workspace_not_metronome_billed",
@@ -210,8 +231,23 @@ export async function setUserSpendLimit(
     );
   }
 
+  logger.info(
+    {
+      workspaceId: workspace.sId,
+      metronomeCustomerId: workspace.metronomeCustomerId,
+      userId,
+      kind: limit.kind,
+      awuCredits: limit.kind === "limited" ? limit.awuCredits : null,
+    },
+    "[Metronome PerUserCap] set: starting per-user spend limit update"
+  );
+
   const user = await getUserForWorkspace(auth, { userId });
   if (!user) {
+    logger.info(
+      { workspaceId: workspace.sId, userId },
+      "[Metronome PerUserCap] set: user not found in workspace"
+    );
     return new Err(
       new UserSpendLimitError(
         "user_not_found",
@@ -261,6 +297,15 @@ export async function setUserSpendLimit(
         userId: user.sId,
       });
       if (clearResult.isErr()) {
+        logger.error(
+          {
+            workspaceId: workspace.sId,
+            metronomeCustomerId: workspace.metronomeCustomerId,
+            userId: user.sId,
+            err: clearResult.error,
+          },
+          "[Metronome PerUserCap] set(unlimited): failed to clear per-user cap alert"
+        );
         return new Err(
           new UserSpendLimitError("metronome_error", clearResult.error.message)
         );
@@ -297,6 +342,16 @@ export async function setUserSpendLimit(
           seatType: normalizedSeatType,
         });
         if (defaultResult.isErr()) {
+          logger.error(
+            {
+              workspaceId: workspace.sId,
+              metronomeCustomerId: workspace.metronomeCustomerId,
+              userId: user.sId,
+              seatType: normalizedSeatType,
+              err: defaultResult.error,
+            },
+            "[Metronome PerUserCap] set(unlimited): failed to read default cap alert for seat type"
+          );
           return new Err(
             new UserSpendLimitError(
               "metronome_error",
