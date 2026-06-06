@@ -151,7 +151,7 @@ const renderIcon = (
       <Icon
         size={size}
         visual={icon as React.ComponentType}
-        className="s-text-muted-foreground dark:s-muted-forground-night"
+        className="s-text-muted-foreground dark:s-muted-foreground-night"
       />
     );
   }
@@ -234,7 +234,7 @@ const DropdownMenuSubTrigger = React.forwardRef<
         <Icon
           size="xs"
           visual={ChevronRight}
-          className="s-text-muted-foreground dark:s-muted-forground-night"
+          className="s-text-muted-foreground dark:s-muted-foreground-night"
         />
       }
     >
@@ -663,7 +663,7 @@ const DropdownMenuCheckboxItem = React.forwardRef<
           <Icon
             size="xs"
             visual={Check}
-            className="s-text-muted-foreground dark:s-muted-forground-night"
+            className="s-text-muted-foreground dark:s-muted-foreground-night"
           />
         </DropdownMenuPrimitive.ItemIndicator>
       </span>
