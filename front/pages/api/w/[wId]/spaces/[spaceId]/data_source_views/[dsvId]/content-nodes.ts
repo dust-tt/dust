@@ -1,38 +1,27 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
+import type {
+  GetContentNodesOrChildrenRequestBodyType,
+  GetDataSourceViewContentNodes,
+} from "@app/lib/api/data_source_view";
 import {
-  getCursorPaginationParams,
-  SortingParamsCodec,
-} from "@app/lib/api/pagination";
+  GetContentNodesOrChildrenRequestBody,
+  getContentNodesForDataSourceView,
+} from "@app/lib/api/data_source_view";
+import { getCursorPaginationParams } from "@app/lib/api/pagination";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { apiError } from "@app/logger/withlogging";
-import { ContentNodesViewTypeCodec } from "@app/types/connectors/content_nodes";
-import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
-const GetContentNodesOrChildrenRequestBody = z.object({
-  internalIds: z.array(z.string().nullable()).optional(),
-  parentId: z.string().optional(),
-  viewType: ContentNodesViewTypeCodec,
-  sorting: SortingParamsCodec.optional(),
-});
-export type GetContentNodesOrChildrenRequestBodyType = z.infer<
-  typeof GetContentNodesOrChildrenRequestBody
->;
-
-export type GetDataSourceViewContentNodes = {
-  nodes: DataSourceViewContentNode[];
-  total: number;
-  totalIsAccurate: boolean;
-  nextPageCursor: string | null;
+export type {
+  GetContentNodesOrChildrenRequestBodyType,
+  GetDataSourceViewContentNodes,
 };
 
 // This endpoints serves two purposes:

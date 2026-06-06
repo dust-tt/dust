@@ -1,16 +1,14 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import type { GetDataSourceViewsResponseBody } from "@app/lib/api/data_source_view";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-export type GetDataSourceViewsResponseBody = {
-  dataSourceViews: DataSourceViewType[];
-};
+export type { GetDataSourceViewsResponseBody };
 
 async function handler(
   req: NextApiRequest,

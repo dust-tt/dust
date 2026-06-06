@@ -1,27 +1,10 @@
+import { BulkActionsBodySchema } from "@app/lib/api/projects/tasks";
 import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
-import { POD_TASK_STATUSES } from "@app/types/project_task";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { withSpace } from "@front-api/middlewares/with_space";
-import { z } from "zod";
-
-const BulkActionsBodySchema = z.discriminatedUnion("action", [
-  z.object({
-    action: z.literal("set_status"),
-    taskIds: z.array(z.string().min(1)).min(1).max(200),
-    status: z.enum(POD_TASK_STATUSES),
-  }),
-  z.object({
-    action: z.literal("approve_agent_suggestion"),
-    taskIds: z.array(z.string().min(1)).min(1).max(200),
-  }),
-  z.object({
-    action: z.literal("reject_agent_suggestion"),
-    taskIds: z.array(z.string().min(1)).min(1).max(200),
-  }),
-]);
 
 // Mounted under /api/w/:wId/spaces/:spaceId/project_tasks/bulk-actions.
 const app = workspaceApp();

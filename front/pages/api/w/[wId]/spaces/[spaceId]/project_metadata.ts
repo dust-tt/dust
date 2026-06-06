@@ -1,6 +1,10 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import type {
+  GetPodMetadataResponseBody,
+  PatchPodMetadataResponseBody,
+} from "@app/lib/api/projects/metadata";
 import { validatePinnedFramePath } from "@app/lib/api/projects/pinned_frame";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -14,16 +18,7 @@ import {
 } from "@app/temporal/project_task/client";
 import { PatchPodMetadataBodySchema } from "@app/types/api/internal/spaces";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { PodMetadataType } from "@app/types/project_metadata";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type GetPodMetadataResponseBody = {
-  projectMetadata: PodMetadataType | null;
-};
-
-export type PatchPodMetadataResponseBody = {
-  projectMetadata: PodMetadataType;
-};
 
 async function handler(
   req: NextApiRequest,

@@ -7,7 +7,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import handler from "./index";
 
 // Mock the data sources functions to avoid actual upserting
-vi.mock("@app/lib/api/data_sources", () => ({
+vi.mock("@app/lib/api/data_sources", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@app/lib/api/data_sources")>()),
   getOrCreateConversationDataSourceFromFile: vi.fn().mockResolvedValue({
     isErr: () => false,
     value: {

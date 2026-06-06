@@ -8,6 +8,7 @@ import type {
   CursorPaginationParams,
   SortingParams,
 } from "@app/lib/api/pagination";
+import { SortingParamsCodec } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -15,17 +16,24 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { PatchDataSourceViewType } from "@app/types/api/public/spaces";
 import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
+import { ContentNodesViewTypeCodec } from "@app/types/connectors/content_nodes";
 import type { CoreAPIContentNode } from "@app/types/core/content_node";
-import type { CoreAPIDatasourceViewFilter } from "@app/types/core/core_api";
+import type {
+  CoreAPIDatasourceViewFilter,
+  SearchWarningCode,
+} from "@app/types/core/core_api";
 import { CoreAPI } from "@app/types/core/core_api";
-import type { AgentsUsageType } from "@app/types/data_source";
+import type { CoreAPIDocument } from "@app/types/core/data_source";
+import type { AgentsUsageType, ConnectorType } from "@app/types/data_source";
 import type {
   DataSourceViewContentNode,
+  DataSourceViewsWithDetails,
   DataSourceViewType,
 } from "@app/types/data_source_view";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { z } from "zod";
 
 const DEFAULT_PAGINATION_LIMIT = 1000;
 const CORE_MAX_PAGE_SIZE = 1000;
@@ -363,3 +371,66 @@ export async function listDataSourceViewsWithUsage(
     { concurrency: 4 }
   );
 }
+
+// Contract types for the data source view API endpoints. These are the
+// request/response body shapes shared between the Next handlers under
+// `pages/api/.../data_source_views/*` and their Hono counterparts under
+// `front-api/routes/.../data_source_views/*`.
+
+export type GetDataSourceViewsResponseBody = {
+  dataSourceViews: DataSourceViewType[];
+};
+
+export type GetSpaceDataSourceViewsResponseBody<
+  IncludeDetails extends boolean = boolean,
+> = {
+  dataSourceViews: IncludeDetails extends true
+    ? DataSourceViewsWithDetails[]
+    : DataSourceViewType[];
+};
+
+export type PostSpaceDataSourceViewsResponseBody = {
+  dataSourceView: DataSourceViewType;
+};
+
+export type GetDataSourceViewResponseBody = {
+  dataSourceView: DataSourceViewType;
+  connector: ConnectorType | null;
+};
+
+export type PatchDataSourceViewResponseBody = {
+  dataSourceView: DataSourceViewType;
+  connector: ConnectorType | null;
+};
+
+export const GetContentNodesOrChildrenRequestBody = z.object({
+  internalIds: z.array(z.string().nullable()).optional(),
+  parentId: z.string().optional(),
+  viewType: ContentNodesViewTypeCodec,
+  sorting: SortingParamsCodec.optional(),
+});
+export type GetContentNodesOrChildrenRequestBodyType = z.infer<
+  typeof GetContentNodesOrChildrenRequestBody
+>;
+
+export type GetDataSourceViewContentNodes = {
+  nodes: DataSourceViewContentNode[];
+  total: number;
+  totalIsAccurate: boolean;
+  nextPageCursor: string | null;
+};
+
+export type GetDataSourceViewDocumentResponseBody = {
+  document: CoreAPIDocument;
+};
+
+export type ListTablesResponseBody = {
+  tables: DataSourceViewContentNode[];
+  nextPageCursor: string | null;
+};
+
+export type SearchTablesResponseBody = {
+  tables: DataSourceViewContentNode[];
+  nextPageCursor: string | null;
+  warningCode: SearchWarningCode | null;
+};

@@ -8,6 +8,8 @@
  * sandbox mount point, backward-compat aliases, and per-mount permissions.
  */
 
+import type { GCSMountDirectoryEntry } from "@app/lib/api/files/gcs_mount/files";
+
 export type FileSystemMountKind = "conversation" | "pod";
 
 /** Canonical scoped-path prefixes (include the trailing dash). */
@@ -92,3 +94,11 @@ export class DustFileSystemError extends Error {
     this.name = "DustFileSystemError";
   }
 }
+
+export type GetSpaceFilesResponseBody = {
+  files: FileSystemEntry[];
+};
+
+export type PostSpaceFolderResponseBody = {
+  folder: GCSMountDirectoryEntry;
+};

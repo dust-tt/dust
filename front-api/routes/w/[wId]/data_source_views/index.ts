@@ -1,13 +1,9 @@
+import type { GetDataSourceViewsResponseBody } from "@app/lib/api/data_source_view";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import type { DataSourceViewType } from "@app/types/data_source_view";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
 import tags from "./tags";
-
-export type GetDataSourceViewsResponseBody = {
-  dataSourceViews: DataSourceViewType[];
-};
 
 // Mounted under /api/w/:wId/data_source_views.
 const app = workspaceApp();

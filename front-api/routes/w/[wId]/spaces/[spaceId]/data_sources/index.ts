@@ -4,8 +4,14 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import config from "@app/lib/api/config";
+import type {
+  PostDataSourceRequestBody,
+  PostSpaceDataSourceResponseBody,
+} from "@app/lib/api/data_sources";
 import {
   createDataSourceWithoutProvider,
+  PostDataSourceRequestBodySchema,
+  PostDataSourceWithProviderRequestBodySchema,
   registerSlackWebhookRouterEntry,
 } from "@app/lib/api/data_sources";
 import { checkConnectionOwnership } from "@app/lib/api/oauth";
@@ -30,16 +36,10 @@ import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
 import logger from "@app/logger/logger";
 import { DEFAULT_EMBEDDING_PROVIDER_ID } from "@app/types/assistant/models/embedding";
-import {
-  ConnectorConfigurationTypeSchema,
-  ConnectorsAPI,
-} from "@app/types/connectors/connectors_api";
+import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { WebCrawlerConfigurationTypeSchema } from "@app/types/connectors/webcrawler";
 import { CoreAPI, EMBEDDING_CONFIGS } from "@app/types/core/core_api";
 import { DEFAULT_QDRANT_CLUSTER } from "@app/types/core/data_source";
-import type { DataSourceType } from "@app/types/data_source";
-import { CONNECTOR_PROVIDERS } from "@app/types/data_source";
-import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { PlanType } from "@app/types/plan";
 import type { LLMCredentialsType } from "@app/types/provider_credential";
 import { sendUserOperationMessage } from "@app/types/shared/user_operation";
@@ -51,37 +51,17 @@ import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { withSpace } from "@front-api/middlewares/with_space";
 import type { Context } from "hono";
-import { z } from "zod";
+import type { z } from "zod";
 import { fromError } from "zod-validation-error";
 
 import dsId from "./[dsId]";
 
-export const PostDataSourceWithProviderRequestBodySchema = z.object({
-  provider: z.enum(CONNECTOR_PROVIDERS),
-  name: z.string().optional(),
-  configuration: ConnectorConfigurationTypeSchema,
-  connectionId: z.string().optional(),
-  relatedCredentialId: z.string().optional(),
-  extraConfig: z.record(z.string(), z.string()).optional(),
-});
-
-const PostDataSourceWithoutProviderRequestBodySchema = z.object({
-  name: z.string(),
-  description: z.string().nullable(),
-});
-
-const PostDataSourceRequestBodySchema = z.union([
-  PostDataSourceWithoutProviderRequestBodySchema,
+export type { PostDataSourceRequestBody, PostSpaceDataSourceResponseBody };
+// Contract types and schemas are owned by `@app/lib/api/data_sources` and
+// re-exported here to preserve this module's public surface.
+export {
+  PostDataSourceRequestBodySchema,
   PostDataSourceWithProviderRequestBodySchema,
-]);
-
-export type PostDataSourceRequestBody = z.infer<
-  typeof PostDataSourceRequestBodySchema
->;
-
-export type PostSpaceDataSourceResponseBody = {
-  dataSource: DataSourceType;
-  dataSourceView: DataSourceViewType;
 };
 
 // Mounted under /api/w/:wId/spaces/:spaceId/data_sources.

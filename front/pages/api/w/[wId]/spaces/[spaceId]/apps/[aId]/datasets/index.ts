@@ -2,7 +2,14 @@
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
-import { getDatasets } from "@app/lib/api/datasets";
+import type {
+  GetDatasetsResponseBody,
+  PostDatasetResponseBody,
+} from "@app/lib/api/datasets";
+import {
+  getDatasets,
+  PostDatasetRequestBodySchema,
+} from "@app/lib/api/datasets";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { checkDatasetData } from "@app/lib/datasets";
@@ -12,34 +19,9 @@ import { DatasetModel } from "@app/lib/resources/storage/models/apps";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import { CoreAPI } from "@app/types/core/core_api";
-import type { DatasetType } from "@app/types/dataset";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
 import { fromError } from "zod-validation-error";
-
-export type GetDatasetsResponseBody = {
-  datasets: DatasetType[];
-};
-
-export type PostDatasetResponseBody = {
-  dataset: DatasetType;
-};
-
-export const PostDatasetRequestBodySchema = z.object({
-  dataset: z.object({
-    name: z.string(),
-    description: z.string().nullable(),
-    data: z.array(z.record(z.string(), z.any())),
-  }),
-  schema: z.array(
-    z.object({
-      key: z.string(),
-      type: z.enum(["string", "number", "boolean", "json"]),
-      description: z.string().nullable(),
-    })
-  ),
-});
 
 async function handler(
   req: NextApiRequest,

@@ -1,11 +1,10 @@
 import apiConfig from "@app/lib/api/config";
+import type { PatchDocumentResponseBody } from "@app/lib/api/data_sources";
 import { upsertDocument } from "@app/lib/api/data_sources";
 import { isManaged, isWebsite } from "@app/lib/data_sources";
 import logger from "@app/logger/logger";
 import { PostDataSourceDocumentRequestBodySchema } from "@app/types/api/public/data_sources";
 import { CoreAPI } from "@app/types/core/core_api";
-import type { CoreAPILightDocument } from "@app/types/core/data_source";
-import type { DocumentType } from "@app/types/document";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -17,10 +16,6 @@ import { z } from "zod";
 const ParamsSchema = z.object({
   documentId: z.string(),
 });
-
-export type PatchDocumentResponseBody = {
-  document: DocumentType | CoreAPILightDocument;
-};
 
 // Mounted at /api/w/:wId/spaces/:spaceId/data_sources/:dsId/documents/:documentId.
 const app = workspaceApp();

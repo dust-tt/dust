@@ -1,25 +1,16 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import type { PostStartPodTaskResponseBody } from "@app/lib/api/projects/tasks";
+import { PostStartPodTaskBodySchema } from "@app/lib/api/projects/tasks";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { startAgentForProjectTask } from "@app/lib/project_task/start_agent";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { APIErrorType, WithAPIErrorResponse } from "@app/types/error";
-import type { PodTaskType } from "@app/types/project_task";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
-
-export interface PostStartPodTaskResponseBody {
-  task: PodTaskType;
-}
-
-const PostStartPodTaskBodySchema = z.object({
-  customMessage: z.string().optional(),
-  agentConfigurationId: z.string().optional(),
-});
 
 async function handler(
   req: NextApiRequest,

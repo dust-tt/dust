@@ -1,5 +1,5 @@
+import type { SpaceCategoryInfo } from "@app/lib/api/spaces";
 import { getSpaceName } from "@app/lib/spaces";
-import type { SpaceCategoryInfo } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
 import type { SpaceType } from "@app/types/space";
 import {
   Button,

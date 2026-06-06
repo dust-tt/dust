@@ -1,6 +1,6 @@
 import config from "@app/lib/api/config";
+import type { GetDataSourceViewTableResponseBody } from "@app/lib/api/tables";
 import logger from "@app/logger/logger";
-import type { CoreAPITable } from "@app/types/core/core_api";
 import { CoreAPI } from "@app/types/core/core_api";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -13,10 +13,6 @@ import { z } from "zod";
 const ParamsSchema = z.object({
   tableId: z.string(),
 });
-
-export type GetDataSourceViewTableResponseBody = {
-  table: CoreAPITable;
-};
 
 // Mounted under
 // /api/w/:wId/spaces/:spaceId/data_source_views/:dsvId/tables/:tableId.

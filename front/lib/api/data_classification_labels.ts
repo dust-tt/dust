@@ -18,6 +18,11 @@ export type MicrosoftSensitivityLabel = {
   name: string;
 };
 
+export type DataClassificationLabelsResponseBody = {
+  labels: MicrosoftSensitivityLabel[];
+  allowedLabels: MicrosoftAllowedLabel[];
+};
+
 const AllowedLabelsConfigSchema = z.array(z.string());
 
 export function parseAllowedLabelsConfig(

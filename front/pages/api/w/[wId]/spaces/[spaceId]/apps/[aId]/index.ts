@@ -1,5 +1,6 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
+import type { GetOrPostAppResponseBody } from "@app/lib/api/apps";
 import { softDeleteApp } from "@app/lib/api/apps";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
@@ -7,16 +8,11 @@ import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { AppType } from "@app/types/app";
 import { APP_NAME_REGEXP } from "@app/types/app";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
-
-export type GetOrPostAppResponseBody = {
-  app: AppType;
-};
 
 const PatchAppBodySchema = z.object({
   name: z.string(),

@@ -1,6 +1,5 @@
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { sendMCPGlobalSharingReconfigurationEmail } from "@app/lib/api/email";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {
   oauthProviderRequiresWorkspaceConnectionForPersonalAuth,
   withWorkspaceConnectionRequirement,
@@ -8,6 +7,10 @@ import {
 import { getActiveAdminEmails } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
+import type {
+  GetMCPServerViewsResponseBody,
+  PostMCPServerViewResponseBody,
+} from "@app/lib/resources/mcp_server_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -24,16 +27,6 @@ import { withSpace } from "@front-api/middlewares/with_space";
 import { z } from "zod";
 import svId from "./[svId]";
 import notActivated from "./not_activated";
-
-export type GetMCPServerViewsResponseBody = {
-  success: boolean;
-  serverViews: MCPServerViewType[];
-};
-
-export type PostMCPServerViewResponseBody = {
-  success: boolean;
-  serverView: MCPServerViewType;
-};
 
 const GetQueryParamsSchema = z.object({
   availability: z

@@ -3,6 +3,10 @@ import {
   getDataSourcesUsageByCategory,
   getDataSourceViewsUsageByCategory,
 } from "@app/lib/api/agent_data_sources";
+import type {
+  GetSpaceDataSourceViewsResponseBody,
+  PostSpaceDataSourceViewsResponseBody,
+} from "@app/lib/api/data_source_view";
 import { augmentDataSourceWithConnectorDetails } from "@app/lib/api/data_sources";
 import { isManaged, isWebsite } from "@app/lib/data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -10,10 +14,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { ContentSchema } from "@app/types/api/internal/spaces";
 import type { DataSourceViewCategory } from "@app/types/api/public/spaces";
-import type {
-  DataSourceViewsWithDetails,
-  DataSourceViewType,
-} from "@app/types/data_source_view";
+import type { DataSourceViewsWithDetails } from "@app/types/data_source_view";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -21,18 +22,6 @@ import { validate } from "@front-api/middlewares/validator";
 import { withSpace } from "@front-api/middlewares/with_space";
 
 import dsvId from "./[dsvId]";
-
-export type GetSpaceDataSourceViewsResponseBody<
-  IncludeDetails extends boolean = boolean,
-> = {
-  dataSourceViews: IncludeDetails extends true
-    ? DataSourceViewsWithDetails[]
-    : DataSourceViewType[];
-};
-
-export type PostSpaceDataSourceViewsResponseBody = {
-  dataSourceView: DataSourceViewType;
-};
 
 // Mounted under /api/w/:wId/spaces/:spaceId/data_source_views.
 const app = workspaceApp();

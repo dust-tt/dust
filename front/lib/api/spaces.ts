@@ -36,9 +36,78 @@ import {
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { PodType, SpaceType } from "@app/types/space";
+import type { SpaceUserType } from "@app/types/user";
 import assert from "assert";
 import uniq from "lodash/uniq";
 import { Op } from "sequelize";
+import { z } from "zod";
+
+// Contract types and schemas for the spaces API endpoints (shared between the
+// Next handlers under `pages/api/w/[wId]/spaces` and their Hono counterparts).
+
+export const PostSpaceRequestBodySchema = z.intersection(
+  z.object({
+    isRestricted: z.boolean(),
+    name: z.string(),
+    spaceKind: z.enum(["regular", "project"]),
+  }),
+  z.discriminatedUnion("managementMode", [
+    z.object({
+      memberIds: z.array(z.string()),
+      managementMode: z.literal("manual"),
+    }),
+    z.object({
+      groupIds: z.array(z.string()),
+      managementMode: z.literal("group"),
+    }),
+  ])
+);
+
+export type PostSpaceRequestBodyType = z.infer<
+  typeof PostSpaceRequestBodySchema
+>;
+
+export type GetSpacesResponseBody = {
+  spaces: (SpaceType | PodType)[];
+};
+
+export type PostSpacesResponseBody = {
+  space: SpaceType;
+};
+
+export type SpaceCategoryInfo = {
+  usage: AgentsUsageType;
+  count: number;
+};
+
+export type RichSpaceType = SpaceType & {
+  categories: { [key: string]: SpaceCategoryInfo };
+  canWrite: boolean;
+  canRead: boolean;
+  isMember: boolean;
+  members: SpaceUserType[];
+  isEditor: boolean;
+  // Useful in case of projects
+  description: string | null;
+  archivedAt: number | null;
+  /** Background todo suggestions from project activity (project spaces only). */
+  todoGenerationEnabled: boolean;
+  lastTodoAnalysisAt: number | null;
+  pinnedFramePath: string | null;
+};
+
+export type GetSpaceResponseBody = {
+  space: RichSpaceType;
+};
+
+export type PatchSpaceResponseBody = {
+  space: SpaceType;
+};
+
+export type CheckNameResponseBody = {
+  available: boolean;
+};
 
 export async function softDeleteSpaceAndLaunchScrubWorkflow(
   auth: Authenticator,

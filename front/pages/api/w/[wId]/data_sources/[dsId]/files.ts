@@ -2,9 +2,9 @@
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type {
-  UpsertDocumentArgs,
-  UpsertTableArgs,
-} from "@app/lib/api/data_sources";
+  UpsertFileToDataSourceRequestBody,
+  UpsertFileToDataSourceResponseBody,
+} from "@app/lib/api/files/upsert";
 import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -14,19 +14,10 @@ import type { APIErrorType, WithAPIErrorResponse } from "@app/types/error";
 import type { FileType } from "@app/types/files";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-export interface UpsertFileToDataSourceRequestBody {
-  fileId: string;
-  upsertArgs?:
-    | Pick<UpsertDocumentArgs, "document_id" | "title" | "tags">
-    | Pick<
-        UpsertTableArgs,
-        "name" | "title" | "description" | "tags" | "tableId"
-      >;
-}
-
-export interface UpsertFileToDataSourceResponseBody {
-  file: FileType;
-}
+export type {
+  UpsertFileToDataSourceRequestBody,
+  UpsertFileToDataSourceResponseBody,
+};
 
 async function handler(
   req: NextApiRequest,

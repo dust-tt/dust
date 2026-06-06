@@ -30,6 +30,10 @@ const DISABLE_QUERIES = false;
 
 export type DataSourcesUsageByAgent = Record<ModelId, AgentsUsageType | null>;
 
+export type GetDataSourceUsageResponseBody = {
+  usage: AgentsUsageType;
+};
+
 const AGENT_CONFIG_PATH =
   '"agent_mcp_server_configuration->agent_configuration"';
 

@@ -3,6 +3,7 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
+import { PatchSpaceMembersRequestBodySchema } from "@app/lib/api/spaces/members";
 import { notifyProjectMembersAdded } from "@app/lib/notifications/workflows/project-added-as-member";
 import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
 import { areOpenPodsAllowed } from "@app/lib/workspace_policies";
@@ -12,30 +13,8 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { withSpace } from "@front-api/middlewares/with_space";
-import { z } from "zod";
 
-const PatchSpaceMembersRequestBodySchema = z.intersection(
-  z.object({
-    isRestricted: z.boolean(),
-    name: z.string(),
-  }),
-  z.discriminatedUnion("managementMode", [
-    z.object({
-      memberIds: z.array(z.string()),
-      managementMode: z.literal("manual"),
-      editorIds: z.array(z.string()),
-    }),
-    z.object({
-      groupIds: z.array(z.string()),
-      managementMode: z.literal("group"),
-      editorGroupIds: z.array(z.string()),
-    }),
-  ])
-);
-
-export type PatchSpaceMembersRequestBodyType = z.infer<
-  typeof PatchSpaceMembersRequestBodySchema
->;
+export type { PatchSpaceMembersRequestBodyType } from "@app/lib/api/spaces/members";
 
 // Mounted at /api/w/:wId/spaces/:spaceId/members.
 const app = workspaceApp();

@@ -1,3 +1,7 @@
+import type {
+  GetRunsResponseBody,
+  PostRunsResponseBody,
+} from "@app/lib/api/apps";
 import config from "@app/lib/api/config";
 import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
@@ -9,7 +13,6 @@ import logger from "@app/logger/logger";
 import { credentialsFromProviders } from "@app/types/api/credentials";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { APIErrorResponse } from "@app/types/error";
-import type { RunType } from "@app/types/run";
 import { isString } from "@app/types/shared/utils/general";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { sessionAuth } from "@front-api/middlewares/session_auth";
@@ -19,15 +22,6 @@ import { withSpace } from "@front-api/middlewares/with_space";
 import type { Context, TypedResponse } from "hono";
 
 import runId from "./[runId]";
-
-export type GetRunsResponseBody = {
-  runs: RunType[];
-  total: number;
-};
-
-export type PostRunsResponseBody = {
-  run: RunType;
-};
 
 // Mounted under /api/w/:wId/spaces/:spaceId/apps/:aId/runs.
 const app = workspaceApp();

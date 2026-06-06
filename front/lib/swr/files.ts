@@ -1,6 +1,10 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { usePeriodicRefresh } from "@app/hooks/usePeriodicRefresh";
 import config from "@app/lib/api/config";
+import type {
+  UpsertFileToDataSourceRequestBody,
+  UpsertFileToDataSourceResponseBody,
+} from "@app/lib/api/files/upsert";
 import { clientFetch } from "@app/lib/egress/client";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import {
@@ -9,10 +13,6 @@ import {
   useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
-import type {
-  UpsertFileToDataSourceRequestBody,
-  UpsertFileToDataSourceResponseBody,
-} from "@app/pages/api/w/[wId]/data_sources/[dsId]/files";
 import type { ShareFileResponseBody } from "@app/pages/api/w/[wId]/files/[fileId]/share";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type {

@@ -1,5 +1,9 @@
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import type { FileSystemEntry } from "@app/lib/api/file_system/types";
+import type {
+  FileSystemEntry,
+  GetSpaceFilesResponseBody,
+  PostSpaceFolderResponseBody,
+} from "@app/lib/api/file_system/types";
 import { SCOPED_PREFIX_POD } from "@app/lib/api/file_system/types";
 import { enrichListWithFileResourceIds } from "@app/lib/api/files/file_system_ops";
 import { isGCSMountDirectoryAlreadyExistsError } from "@app/lib/api/files/gcs_mount/errors";
@@ -15,14 +19,6 @@ import { withSpace } from "@front-api/middlewares/with_space";
 import rel from "./[...rel]";
 
 export type { FileSystemEntry, GCSMountDirectoryEntry };
-
-export type GetSpaceFilesResponseBody = {
-  files: FileSystemEntry[];
-};
-
-export type PostSpaceFolderResponseBody = {
-  folder: GCSMountDirectoryEntry;
-};
 
 // Mounted under /api/w/:wId/spaces/:spaceId/files.
 const app = workspaceApp();

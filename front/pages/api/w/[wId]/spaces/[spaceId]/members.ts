@@ -7,6 +7,7 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
+import { PatchSpaceMembersRequestBodySchema } from "@app/lib/api/spaces/members";
 import type { Authenticator } from "@app/lib/auth";
 import { notifyProjectMembersAdded } from "@app/lib/notifications/workflows/project-added-as-member";
 import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
@@ -18,35 +19,11 @@ import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { SpaceType } from "@app/types/space";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
 interface PatchSpaceMembersResponseBody {
   space: SpaceType;
 }
-
-const PatchSpaceMembersRequestBodySchema = z.intersection(
-  z.object({
-    isRestricted: z.boolean(),
-    name: z.string(),
-  }),
-  z.discriminatedUnion("managementMode", [
-    z.object({
-      memberIds: z.array(z.string()),
-      managementMode: z.literal("manual"),
-      editorIds: z.array(z.string()),
-    }),
-    z.object({
-      groupIds: z.array(z.string()),
-      managementMode: z.literal("group"),
-      editorGroupIds: z.array(z.string()),
-    }),
-  ])
-);
-
-export type PatchSpaceMembersRequestBodyType = z.infer<
-  typeof PatchSpaceMembersRequestBodySchema
->;
 
 export async function handler(
   req: NextApiRequest,

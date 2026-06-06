@@ -1,5 +1,10 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
+
+import type {
+  GetRunsResponseBody,
+  PostRunsResponseBody,
+} from "@app/lib/api/apps";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
@@ -16,17 +21,7 @@ import { apiError } from "@app/logger/withlogging";
 import { credentialsFromProviders } from "@app/types/api/credentials";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { RunType } from "@app/types/run";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type GetRunsResponseBody = {
-  runs: RunType[];
-  total: number;
-};
-
-export type PostRunsResponseBody = {
-  run: RunType;
-};
 
 async function handler(
   req: NextApiRequest,

@@ -1,6 +1,8 @@
+import type {
+  GetDatasetResponseBody,
+  GetDatasetsResponseBody,
+} from "@app/lib/api/datasets";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { GetDatasetsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/datasets";
-import type { GetDatasetResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/datasets/[name]";
 import type { AppType } from "@app/types/app";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher } from "swr";

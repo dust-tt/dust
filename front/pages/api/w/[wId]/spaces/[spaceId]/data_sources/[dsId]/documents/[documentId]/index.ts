@@ -2,6 +2,7 @@
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
+import type { PatchDocumentResponseBody } from "@app/lib/api/data_sources";
 import { upsertDocument } from "@app/lib/api/data_sources";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -12,8 +13,6 @@ import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import { PostDataSourceDocumentRequestBodySchema } from "@app/types/api/public/data_sources";
 import { CoreAPI } from "@app/types/core/core_api";
-import type { CoreAPILightDocument } from "@app/types/core/data_source";
-import type { DocumentType } from "@app/types/document";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
@@ -26,10 +25,6 @@ export const config = {
       sizeLimit: "16mb",
     },
   },
-};
-
-export type PatchDocumentResponseBody = {
-  document: DocumentType | CoreAPILightDocument;
 };
 
 async function handler(

@@ -1,11 +1,14 @@
 import config from "@app/lib/api/config";
+import type {
+  GetDataSourceViewResponseBody,
+  PatchDataSourceViewResponseBody,
+} from "@app/lib/api/data_source_view";
 import { handlePatchDataSourceView } from "@app/lib/api/data_source_view";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import logger from "@app/logger/logger";
 import { PatchDataSourceViewSchema } from "@app/types/api/public/spaces";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import type { ConnectorType } from "@app/types/data_source";
-import type { DataSourceViewType } from "@app/types/data_source_view";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -17,16 +20,6 @@ import { withSpace } from "@front-api/middlewares/with_space";
 import contentNodes from "./content-nodes";
 import documents from "./documents";
 import tables from "./tables";
-
-export type GetDataSourceViewResponseBody = {
-  dataSourceView: DataSourceViewType;
-  connector: ConnectorType | null;
-};
-
-export type PatchDataSourceViewResponseBody = {
-  dataSourceView: DataSourceViewType;
-  connector: ConnectorType | null;
-};
 
 // Mounted under /api/w/:wId/spaces/:spaceId/data_source_views/:dsvId.
 const app = workspaceApp();

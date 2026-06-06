@@ -2,26 +2,16 @@
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
+import type { PostTagSearchResponseBody } from "@app/lib/api/data_source_view_tags";
+import { PostTagSearchBodySchema } from "@app/lib/api/data_source_view_tags";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { CoreAPISearchTagsResponse } from "@app/types/core/core_api";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
 import { fromError } from "zod-validation-error";
-
-export const PostTagSearchBodySchema = z.object({
-  query: z.string(),
-  queryType: z.enum(["exact", "prefix", "match"]),
-  dataSourceViewIds: z.array(z.string()),
-});
-
-export type PostTagSearchBody = z.infer<typeof PostTagSearchBodySchema>;
-
-export type PostTagSearchResponseBody = CoreAPISearchTagsResponse;
 
 async function handler(
   req: NextApiRequest,

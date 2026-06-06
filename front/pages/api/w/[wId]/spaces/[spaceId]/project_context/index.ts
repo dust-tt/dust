@@ -1,51 +1,22 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
-import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import {
   addContentNodeToProject,
+  type GetProjectContextResponseBody,
   listProjectContextAttachments,
+  PostProjectContextContentNodeBodySchema,
+  type PostProjectContextContentNodeFragment,
+  type PostProjectContextContentNodeResponseBody,
 } from "@app/lib/api/projects/context";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
-import type { ContentNodeType } from "@app/types/core/content_node";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
-
-/** GET: project context (file-backed + content-node fragments). */
-export type GetProjectContextResponseBody = {
-  attachments: ConversationAttachmentType[];
-};
-
-const PostProjectContextContentNodeItemSchema = z.object({
-  title: z.string().min(1, "title is required"),
-  nodeId: z.string().min(1, "nodeId is required"),
-  nodeDataSourceViewId: z.string().min(1, "nodeDataSourceViewId is required"),
-  url: z.string().nullable().optional(),
-  supersededContentFragmentId: z.string().nullable().optional(),
-});
-
-const PostProjectContextContentNodeBodySchema = z.object({
-  items: z.array(PostProjectContextContentNodeItemSchema),
-});
-
-export type PostProjectContextContentNodeFragment = {
-  sId: string;
-  title: string;
-  contentType: string;
-  nodeId: string;
-  nodeDataSourceViewId: string;
-  nodeType: ContentNodeType;
-};
-
-export type PostProjectContextContentNodeResponseBody = {
-  contentFragments: PostProjectContextContentNodeFragment[];
-  errors: Array<{ index: number; message: string }>;
-};
 
 const ProjectContextQuerySchema = z.object({
   spaceId: z.string(),

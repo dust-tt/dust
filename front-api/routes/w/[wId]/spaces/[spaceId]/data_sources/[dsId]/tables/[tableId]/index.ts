@@ -1,4 +1,5 @@
 import { upsertTable } from "@app/lib/api/data_sources";
+import type { PatchTableResponseBody } from "@app/lib/api/tables";
 import { deleteTable } from "@app/lib/api/tables";
 import { PatchDataSourceTableRequestBodySchema } from "@app/types/api/public/data_sources";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -13,10 +14,6 @@ import { z } from "zod";
 const ParamsSchema = z.object({
   tableId: z.string(),
 });
-
-export type PatchTableResponseBody = {
-  table?: { table_id: string };
-};
 
 // Mounted at /api/w/:wId/spaces/:spaceId/data_sources/:dsId/tables/:tableId.
 const app = workspaceApp();

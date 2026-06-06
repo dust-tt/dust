@@ -1,9 +1,9 @@
 import { updateConnectorConnectionId } from "@app/components/data_source/ConnectorPermissionsModal";
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { PostDataSourceRequestBody } from "@app/lib/api/data_sources";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useConnectorConfig, useToggleChatBot } from "@app/lib/swr/connectors";
-import type { PostDataSourceRequestBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
 import type { ConnectorProvider, DataSourceType } from "@app/types/data_source";
 import { setupOAuthConnection } from "@app/types/oauth/client/setup";
 import type { OAuthProvider, OAuthUseCase } from "@app/types/oauth/lib";

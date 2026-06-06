@@ -111,6 +111,10 @@ import {
   getDataSourceViewsUsageByCategory,
 } from "@app/lib/api/agent_data_sources";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import type {
+  GetSpaceDataSourceViewsResponseBody,
+  PostSpaceDataSourceViewsResponseBody,
+} from "@app/lib/api/data_source_view";
 import { augmentDataSourceWithConnectorDetails } from "@app/lib/api/data_sources";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -122,24 +126,13 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import { ContentSchema } from "@app/types/api/internal/spaces";
 import type { DataSourceViewCategory } from "@app/types/api/public/spaces";
-import type {
-  DataSourceViewsWithDetails,
-  DataSourceViewType,
-} from "@app/types/data_source_view";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
-export type GetSpaceDataSourceViewsResponseBody<
-  IncludeDetails extends boolean = boolean,
-> = {
-  dataSourceViews: IncludeDetails extends true
-    ? DataSourceViewsWithDetails[]
-    : DataSourceViewType[];
-};
-
-type PostSpaceDataSourceViewsResponseBody = {
-  dataSourceView: DataSourceViewType;
+export type {
+  GetSpaceDataSourceViewsResponseBody,
+  PostSpaceDataSourceViewsResponseBody,
 };
 
 const PostDataSourceViewSchema = ContentSchema;

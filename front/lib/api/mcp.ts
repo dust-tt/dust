@@ -162,3 +162,8 @@ export type MCPServerTypeWithViews = MCPServerType & {
 };
 
 export type DeveloperSecretSelectionType = "required" | "optional";
+
+export type GetMCPServerViewsNotActivatedResponseBody = {
+  success: boolean;
+  serverViews: MCPServerViewType[];
+};

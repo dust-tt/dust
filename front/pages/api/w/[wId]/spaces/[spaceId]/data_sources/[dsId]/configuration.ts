@@ -2,6 +2,10 @@
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
+import type {
+  GetDataSourceConfigurationResponseBody,
+  PatchDataSourceConfigurationResponseBody,
+} from "@app/lib/api/data_sources";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { isWebsite } from "@app/lib/data_sources";
@@ -9,7 +13,6 @@ import type { DataSourceResource } from "@app/lib/resources/data_source_resource
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { ConnectorConfiguration } from "@app/types/connectors/configuration";
 import {
   ConnectorsAPI,
   UpdateConnectorConfigurationTypeSchema,
@@ -17,13 +20,6 @@ import {
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
-
-export type GetDataSourceConfigurationResponseBody = {
-  configuration: ConnectorConfiguration;
-};
-
-export type PatchDataSourceConfigurationResponseBody =
-  GetDataSourceConfigurationResponseBody;
 
 async function handler(
   req: NextApiRequest,

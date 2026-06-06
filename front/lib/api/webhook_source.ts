@@ -20,10 +20,26 @@ import type {
   WebhookSourceForAdminType,
   WebhookSourceType,
   WebhookSourceViewForAdminType,
+  WebhookSourceViewType,
 } from "@app/types/triggers/webhooks";
 import type { UserType } from "@app/types/user";
 import assert from "assert";
 import type { Transaction } from "sequelize";
+import { z } from "zod";
+
+export type GetWebhookSourceViewsResponseBody = {
+  success: boolean;
+  webhookSourceViews: WebhookSourceViewType[];
+};
+
+export type PostWebhookSourceViewResponseBody = {
+  success: boolean;
+  webhookSourceView: WebhookSourceViewType;
+};
+
+export const PostWebhookSourceViewBodySchema = z.object({
+  webhookSourceId: z.string(),
+});
 
 /**
  * Deletes a webhook source and all related entities (views, triggers, requests).

@@ -10,6 +10,14 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
 
+export type PatchTableResponseBody = {
+  table?: { table_id: string };
+};
+
+export type GetDataSourceViewTableResponseBody = {
+  table: CoreAPITable;
+};
+
 type NotFoundError = {
   type: "table_not_found" | "file_not_found";
   message: string;

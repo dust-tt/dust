@@ -108,30 +108,23 @@
  */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import type {
+  GetUserPodNotificationPreferenceResponseBody,
+  PatchUserPodNotificationPreferenceResponseBody,
+} from "@app/lib/api/projects/preferences";
+import { PatchUserPodNotificationPreferenceBodySchema } from "@app/lib/api/projects/preferences";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import {
-  NOTIFICATION_CONDITION_OPTIONS,
-  type UserPodNotificationPreference,
-} from "@app/types/notification_preferences";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
 
-export type GetUserPodNotificationPreferenceResponseBody = {
-  userProjectNotificationPreference: UserPodNotificationPreference | null;
+export type {
+  GetUserPodNotificationPreferenceResponseBody,
+  PatchUserPodNotificationPreferenceResponseBody,
 };
-
-export type PatchUserPodNotificationPreferenceResponseBody = {
-  userProjectNotificationPreference: UserPodNotificationPreference | null;
-};
-
-const PatchUserProjectNotificationPreferenceBodySchema = z.object({
-  preference: z.enum(NOTIFICATION_CONDITION_OPTIONS),
-});
 
 async function handler(
   req: NextApiRequest,
@@ -178,7 +171,7 @@ async function handler(
 
     case "PATCH": {
       const bodyValidation =
-        PatchUserProjectNotificationPreferenceBodySchema.safeParse(req.body);
+        PatchUserPodNotificationPreferenceBodySchema.safeParse(req.body);
 
       if (!bodyValidation.success) {
         const errorMessage = bodyValidation.error.errors
