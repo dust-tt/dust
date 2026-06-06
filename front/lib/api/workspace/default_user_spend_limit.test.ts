@@ -54,7 +54,7 @@ vi.mock("@app/lib/metronome/seat_types", async () => {
     ...actual,
     getProductSeatTypes: vi.fn(),
     getSeatSubscriptionsFromContract: vi.fn(),
-    getAwuAllocationForSeatType: vi.fn(),
+    getAwuAllocationForNormalizedSeatType: vi.fn(),
   };
 });
 
@@ -97,7 +97,9 @@ beforeEach(() => {
   vi.mocked(seatTypes.getSeatSubscriptionsFromContract).mockReturnValue(
     FAKE_SEAT_SUBSCRIPTIONS
   );
-  vi.mocked(seatTypes.getAwuAllocationForSeatType).mockReturnValue(8000);
+  vi.mocked(seatTypes.getAwuAllocationForNormalizedSeatType).mockReturnValue(
+    8000
+  );
 });
 
 describe("getDefaultUserSpendLimit", () => {
