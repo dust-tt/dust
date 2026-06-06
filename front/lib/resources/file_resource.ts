@@ -88,6 +88,14 @@ import type { ModelStaticWorkspaceAware } from "./storage/wrappers/workspace_mod
 
 export type FileVersion = "processed" | "original" | "public";
 
+function sanitizeFileName(raw: string): string {
+  // Normalize the user-visible file name to NFC. GCS object names are byte-exact and macOS
+  // uploads commonly arrive in NFD, which breaks lookups when consumers (e.g. LLMs) echo paths
+  // back in NFC. Normalizing on the way in keeps mount paths stable.
+  // Replace "/" so the name can never be mistaken for a GCS path separator.
+  return raw.normalize("NFC").replace(/\//g, "_");
+}
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface FileResource extends ReadonlyAttributesType<FileModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -106,12 +114,9 @@ export class FileResource extends BaseResource<FileModel> {
   static async makeNew(
     blob: Omit<CreationAttributes<FileModel>, "status" | "sId" | "version">
   ) {
-    // Normalize the user-visible file name to NFC. GCS object names are byte-exact and macOS
-    // uploads commonly arrive in NFD, which breaks lookups when consumers (e.g. LLMs) echo paths
-    // back in NFC. Normalizing on the way in keeps mount paths stable.
     const key = await FileResource.model.create({
       ...blob,
-      fileName: blob.fileName.normalize("NFC"),
+      fileName: sanitizeFileName(blob.fileName),
       status: "created",
       version: 0,
     });
@@ -1346,12 +1351,12 @@ export class FileResource extends BaseResource<FileModel> {
   }
 
   rename(newFileName: string) {
-    return this.update({ fileName: newFileName.normalize("NFC") });
+    return this.update({ fileName: sanitizeFileName(newFileName) });
   }
 
   renameMountFile(newFileName: string, newMountFilePath: string) {
     return this.update({
-      fileName: newFileName.normalize("NFC"),
+      fileName: sanitizeFileName(newFileName),
       mountFilePath: newMountFilePath,
     });
   }
@@ -1368,7 +1373,7 @@ export class FileResource extends BaseResource<FileModel> {
     destUseCaseMetadata?: FileUseCaseMetadata;
   }) {
     return this.update({
-      fileName: destFileName.normalize("NFC"),
+      fileName: sanitizeFileName(destFileName),
       mountFilePath: destMountFilePath,
       useCase: destUseCase,
       useCaseMetadata: destUseCaseMetadata ?? null,
