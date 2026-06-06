@@ -3,5 +3,5 @@
 
 /* SPA uses #root instead of Next.js #__next - ensure full height */
 #root {
-  @apply h-full;
+  @apply h-dvh;
 }
