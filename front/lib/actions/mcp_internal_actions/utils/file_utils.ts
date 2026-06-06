@@ -7,12 +7,11 @@ import {
   isFileAttachmentType,
   makeFileAttachment,
 } from "@app/lib/api/assistant/conversation/attachments";
+import { DustFileSystem } from "@app/lib/api/file_system";
 import {
-  DustFileSystem,
-  SCOPED_PREFIX_CONVERSATION,
-  SCOPED_PREFIX_POD,
-} from "@app/lib/api/file_system";
-import { parseScopedFilePath } from "@app/lib/api/files/mount_path";
+  isCanonicalScopedPath,
+  parseScopedFilePath,
+} from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -22,19 +21,6 @@ import { isContentFragmentType } from "@app/types/content_fragment";
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import { PassThrough } from "stream";
-
-/**
- * Returns true for canonical scoped paths produced by the new DustFileSystem
- * (e.g. `conversation-{id}/file.txt`, `pod-{id}/data.csv`).
- * These are distinct from legacy paths (`conversation/file.txt`, `pod/file.txt`)
- * and from raw file IDs (`fil_xxx`).
- */
-function isCanonicalScopedPath(scopedPath: string): boolean {
-  return (
-    scopedPath.startsWith(SCOPED_PREFIX_CONVERSATION) ||
-    scopedPath.startsWith(SCOPED_PREFIX_POD)
-  );
-}
 
 export function sanitizeFilename(filename: string): string {
   return filename

@@ -1,16 +1,14 @@
 /* eslint-disable dust/enforce-client-types-in-public-api */
 
 import {
-  SCOPED_PREFIX_CONVERSATION,
-  SCOPED_PREFIX_POD,
-} from "@app/lib/api/file_system/types";
-import { parseRawVizScope } from "@app/lib/api/files/mount_path";
+  buildCanonicalScopedPathFromVizScope,
+  parseRawVizScope,
+} from "@app/lib/api/files/mount_path";
 import { extractAndVerifyVizAccessTokenFromHeader } from "@app/lib/api/viz/access_tokens";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { isString } from "@app/types/shared/utils/general";
 import { unauthedApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -126,16 +124,36 @@ app.get("/:scope/:rel{.+}", validate("param", ParamsSchema), async (ctx) => {
     });
   }
 
-  // Derive the canonical scoped path and verify the requested resource is
-  // within the frame's authorised scope.
-  let canonicalScopedPath: string;
-  switch (scope.kind) {
-    case "canonical-conversation": {
-      // scope.id is guaranteed non-empty by parseRawVizScope.
-      const frameConversationId =
+  const canonicalPathResult = buildCanonicalScopedPathFromVizScope(
+    scope,
+    normalizedRel,
+    {
+      conversationId:
         frameFile.useCaseMetadata?.conversationId ??
-        frameFile.useCaseMetadata?.sourceConversationId;
-      if (scope.id !== frameConversationId) {
+        frameFile.useCaseMetadata?.sourceConversationId ??
+        null,
+      spaceId: frameFile.useCaseMetadata?.spaceId ?? conversationSpaceId,
+    }
+  );
+  if (canonicalPathResult.isErr()) {
+    switch (canonicalPathResult.error.code) {
+      case "missing_conversation_context":
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Frame has no conversation context for this path.",
+          },
+        });
+      case "missing_pod_context":
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Frame has no project context for this path.",
+          },
+        });
+      case "conversation_context_mismatch":
         return apiError(ctx, {
           status_code: 403,
           api_error: {
@@ -144,16 +162,7 @@ app.get("/:scope/:rel{.+}", validate("param", ParamsSchema), async (ctx) => {
               "Access denied: conversation ID does not match frame context.",
           },
         });
-      }
-      canonicalScopedPath = `${SCOPED_PREFIX_CONVERSATION}${scope.id}/${normalizedRel}`;
-      break;
-    }
-
-    case "canonical-pod": {
-      // scope.id is guaranteed non-empty by parseRawVizScope.
-      const framePodId =
-        frameFile.useCaseMetadata?.spaceId ?? conversationSpaceId;
-      if (scope.id !== framePodId) {
+      case "pod_context_mismatch":
         return apiError(ctx, {
           status_code: 403,
           api_error: {
@@ -161,52 +170,11 @@ app.get("/:scope/:rel{.+}", validate("param", ParamsSchema), async (ctx) => {
             message: "Access denied: pod ID does not match frame context.",
           },
         });
-      }
-      canonicalScopedPath = `${SCOPED_PREFIX_POD}${scope.id}/${normalizedRel}`;
-      break;
+      default:
+        return assertNever(canonicalPathResult.error);
     }
-
-    case "legacy": {
-      if (scope.prefix === "conversation") {
-        const conversationId =
-          frameFile.useCaseMetadata?.conversationId ??
-          frameFile.useCaseMetadata?.sourceConversationId;
-        if (!isString(conversationId)) {
-          return apiError(ctx, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: "Frame has no conversation context for this path.",
-            },
-          });
-        }
-        // TODO(FILE SYSTEM): Files created by sub-agents live under their own sub-conversation
-        // directory and won't be found here. The MCP server needs to define how to expose them
-        // (e.g. flattening into the parent conversation directory at listing time) before this
-        // endpoint can serve them.
-        canonicalScopedPath = `${SCOPED_PREFIX_CONVERSATION}${conversationId}/${normalizedRel}`;
-      } else {
-        // "project": project-scoped frames have spaceId directly. Conversation-scoped frames
-        // that live in a project space get conversationSpaceId resolved by fetchByShareToken.
-        const projectId =
-          frameFile.useCaseMetadata?.spaceId ?? conversationSpaceId;
-        if (!isString(projectId)) {
-          return apiError(ctx, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: "Frame has no project context for this path.",
-            },
-          });
-        }
-        canonicalScopedPath = `${SCOPED_PREFIX_POD}${projectId}/${normalizedRel}`;
-      }
-      break;
-    }
-
-    default:
-      assertNever(scope);
   }
+  const canonicalScopedPath = canonicalPathResult.value;
 
   const statResult = await fs.stat(canonicalScopedPath);
   if (statResult.isErr() || !statResult.value) {
