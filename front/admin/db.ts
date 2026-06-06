@@ -85,6 +85,7 @@ import { CreditModel } from "@app/lib/resources/storage/models/credits";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import {
+  AuthorizedFileAccessModel,
   ExternalViewerSessionModel,
   FileModel,
   ShareableFileModel,
@@ -163,6 +164,7 @@ export function loadAllModels() {
     KeyModel,
     FileModel,
     ShareableFileModel,
+    AuthorizedFileAccessModel,
     SharingGrantModel,
     ExternalViewerSessionModel,
     DustAppSecretModel,
