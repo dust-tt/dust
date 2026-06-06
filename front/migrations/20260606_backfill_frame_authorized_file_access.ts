@@ -63,6 +63,7 @@ async function findWorkspaceModelIdsWithPendingFrames(
       FROM shareable_files sf
       INNER JOIN files f ON f."id" = sf."fileId"
       WHERE f."status" = 'ready'
+        AND sf."sharedBy" IS NOT NULL
         AND f."contentType" IN (:frameContentTypes)
         ${pendingFramesSqlFilter(force)}
       ORDER BY sf."workspaceId" ASC
@@ -86,6 +87,7 @@ async function workspaceHasPendingFrames(
       INNER JOIN files f ON f."id" = sf."fileId"
       WHERE sf."workspaceId" = :workspaceId
         AND f."status" = 'ready'
+        AND sf."sharedBy" IS NOT NULL
         AND f."contentType" IN (:frameContentTypes)
         ${pendingFramesSqlFilter(force)}
       LIMIT 1
@@ -425,6 +427,7 @@ async function backfillWorkspace(
     const where: Record<string, unknown> = {
       workspaceId: workspace.id,
       id: { [Op.gt]: cursorId },
+      sharedBy: { [Op.not]: null },
     };
 
     const shareableFiles = await ShareableFileModel.findAll({

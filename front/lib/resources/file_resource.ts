@@ -1909,7 +1909,7 @@ export class FileResource extends BaseResource<FileModel> {
         ...baseRow,
         kind: ref.kind,
         ref: ref.ref,
-        fileName: ref.fileName ?? null,
+        fileName: ref.fileName ? ref.fileName.substring(0, 64) : null,
         legacyPath:
           ref.kind === "canonical_path" ? (ref.legacyPath ?? null) : null,
       })),
