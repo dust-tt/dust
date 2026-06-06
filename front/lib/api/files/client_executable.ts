@@ -7,6 +7,7 @@ import {
   getFileContent,
   getUpdatedContentAndOccurrences,
 } from "@app/lib/api/files/utils";
+import { uploadFrameContent } from "@app/lib/api/viz/upload_frame_content";
 import type { Authenticator } from "@app/lib/auth";
 import { executeWithLock } from "@app/lib/lock";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -127,7 +128,13 @@ export async function createClientExecutableFile(
     });
 
     // Upload content directly.
-    await fileResource.uploadContent(auth, content);
+    const uploadResult = await uploadFrameContent(auth, fileResource, content);
+    if (uploadResult.isErr()) {
+      return new Err({
+        message: uploadResult.error.message,
+        tracked: uploadResult.error.code === "internal_error",
+      });
+    }
 
     return new Ok({ fileResource, warnings });
   } catch (error) {
@@ -242,8 +249,18 @@ export async function editClientExecutableFile(
         warnings.push(...tailwindValidation.error);
       }
 
-      // Upload the updated content (version is incremented inside uploadContent).
-      await fileResource.uploadContent(auth, updatedContent);
+      // Upload the updated content (version is incremented inside uploadFrameContent).
+      const uploadResult = await uploadFrameContent(
+        auth,
+        fileResource,
+        updatedContent
+      );
+      if (uploadResult.isErr()) {
+        return new Err({
+          message: uploadResult.error.message,
+          tracked: uploadResult.error.code === "internal_error",
+        });
+      }
 
       return new Ok({ fileResource, replacementCount: occurrences, warnings });
     });

@@ -17,6 +17,7 @@ import {
   processAndUpsertToDataSource,
 } from "@app/lib/api/files/upsert";
 import { getFileContent } from "@app/lib/api/files/utils";
+import { uploadFrameContent } from "@app/lib/api/viz/upload_frame_content";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
@@ -393,16 +394,15 @@ async function rewriteCopiedInteractiveContentAttachmentIds(
         return;
       }
 
-      try {
-        await file.uploadContent(auth, updatedContent);
-      } catch (error) {
+      const uploadResult = await uploadFrameContent(auth, file, updatedContent);
+      if (uploadResult.isErr()) {
         logger.error(
           {
             workspaceId: auth.getNonNullableWorkspace().sId,
             parentConversationId,
             childConversationId,
             copiedFileId: file.sId,
-            error,
+            error: uploadResult.error,
           },
           "Failed to rewrite copied interactive content file ids in forked conversation."
         );

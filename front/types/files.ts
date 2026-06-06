@@ -1,4 +1,5 @@
 // Types.
+import type { DustError } from "@app/lib/error";
 import { z } from "zod";
 
 import { assertNever } from "./shared/utils/assert_never";
@@ -212,6 +213,24 @@ export function entryToAuthorizedFileRef(
     default:
       return assertNever(entry);
   }
+}
+
+export type AuthorizedFileAccessShareError = Omit<DustError, "code"> & {
+  code: "invalid_request_error" | "internal_error";
+  unverifiableRefs?: string[];
+};
+
+export function isUnverifiableFrameFileRefsShareError(
+  error: AuthorizedFileAccessShareError
+): error is AuthorizedFileAccessShareError & {
+  code: "invalid_request_error";
+  unverifiableRefs: string[];
+} {
+  return (
+    error.code === "invalid_request_error" &&
+    Array.isArray(error.unverifiableRefs) &&
+    error.unverifiableRefs.length > 0
+  );
 }
 
 export interface SharingGrantType {
