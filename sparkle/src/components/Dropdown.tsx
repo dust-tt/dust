@@ -134,11 +134,13 @@ interface ItemWithLabelIconAndDescriptionProps {
   children?: React.ReactNode;
   truncate?: boolean;
   endComponent?: React.ReactNode;
+  variant?: ItemVariantType;
 }
 
 const renderIcon = (
   icon: React.ComponentType | React.ReactNode,
-  size: "xs" | "sm" = "xs"
+  size: "xs" | "sm" = "xs",
+  variant?: ItemVariantType
 ) => {
   // If it's a React element (already rendered), return it as is
   if (React.isValidElement(icon)) {
@@ -151,7 +153,11 @@ const renderIcon = (
       <Icon
         size={size}
         visual={icon as React.ComponentType}
-        className="s-text-muted-foreground dark:s-text-muted-foreground-night"
+        className={
+          variant === "warning"
+            ? undefined
+            : "s-text-muted-foreground dark:s-text-muted-foreground-night"
+        }
       />
     );
   }
@@ -169,6 +175,7 @@ const ItemWithLabelIconAndDescription = <
   truncate,
   children,
   endComponent,
+  variant,
 }: T) => {
   return (
     <>
@@ -185,7 +192,7 @@ const ItemWithLabelIconAndDescription = <
                   : "s-grid-cols-[1fr]"
           )}
         >
-          {renderIcon(icon, "sm")}
+          {renderIcon(icon, "sm", variant)}
           <div className={cn("s-flex s-flex-col", truncate && "s-truncate")}>
             <span className={cn(truncate ? "s-truncate" : "s-line-clamp-3")}>
               {label}
@@ -610,6 +617,7 @@ const DropdownMenuItem = React.forwardRef<
               description={description}
               truncate={truncateText}
               endComponent={endComponent}
+              variant={variant}
             >
               {children}
             </ItemWithLabelIconAndDescription>
