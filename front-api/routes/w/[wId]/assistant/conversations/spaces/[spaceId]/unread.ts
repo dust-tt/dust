@@ -1,3 +1,4 @@
+import type { GetSpaceUnreadConversationsResponseBody } from "@app/lib/api/assistant/conversation/spaces";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -9,10 +10,6 @@ import { z } from "zod";
 const ParamsSchema = z.object({
   spaceId: z.string(),
 });
-
-export type GetSpaceUnreadConversationsResponseBody = {
-  unreadConversationIds: string[];
-};
 
 // Mounted at /api/w/:wId/assistant/conversations/spaces/:spaceId/unread.
 const app = workspaceApp();

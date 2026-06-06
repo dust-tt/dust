@@ -1,12 +1,9 @@
+import type { PostSendOnboardingResponseBody } from "@app/lib/api/assistant/onboarding";
 import { createOnboardingConversationIfNeeded } from "@app/lib/api/assistant/onboarding";
 import { isString } from "@app/types/shared/utils/general";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
-
-export type PostSendOnboardingResponseBody = {
-  conversationId: string | null;
-};
 
 // Mounted at /api/w/:wId/assistant/conversations/send-onboarding.
 const app = workspaceApp();

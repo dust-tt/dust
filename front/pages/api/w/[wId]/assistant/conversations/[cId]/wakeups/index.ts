@@ -38,19 +38,17 @@
  *         description: Unauthorized
  */
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
+import type { GetConversationWakeUpsResponseBody } from "@app/lib/api/assistant/conversation/wakeups";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { WakeUpType } from "@app/types/assistant/wakeups";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-export type GetConversationWakeUpsResponseBody = {
-  wakeUps: WakeUpType[];
-};
+export type { GetConversationWakeUpsResponseBody };
 
 async function handler(
   req: NextApiRequest,

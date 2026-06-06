@@ -4,6 +4,8 @@ import {
   GENERIC_ERROR_MESSAGE,
   generateScheduleRule,
   INVALID_TIMEZONE_MESSAGE,
+  PostTextAsCronRuleRequestBodySchema,
+  type PostTextAsCronRuleResponseBody,
   TOO_FREQUENT_MESSAGE,
 } from "@app/lib/api/assistant/configuration/triggers";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -12,19 +14,6 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 import type { ScheduleConfig } from "@app/types/assistant/triggers";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
-
-// Backward-compatible: cron responses include cronRule, interval responses include interval fields.
-export type PostTextAsCronRuleResponseBody =
-  | { type?: "cron"; cronRule: string; timezone: string }
-  | {
-      type: "interval";
-      intervalDays: number;
-      dayOfWeek: number | null;
-      hour: number;
-      minute: number;
-      timezone: string;
-    };
 
 function scheduleConfigToResponse(
   config: ScheduleConfig
@@ -45,15 +34,6 @@ function scheduleConfigToResponse(
     timezone: config.timezone,
   };
 }
-
-const PostTextAsCronRuleRequestBodySchema = z.object({
-  naturalDescription: z.string(),
-  defaultTimezone: z.string(),
-});
-
-export type PostTextAsCronRuleRequestBody = z.infer<
-  typeof PostTextAsCronRuleRequestBodySchema
->;
 
 async function handler(
   req: NextApiRequest,

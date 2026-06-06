@@ -1,5 +1,7 @@
 // @migration-status: MIGRATED_TO_HONO
 /** @ignoreswagger */
+
+import type { PostConversationForkResponseBody } from "@app/lib/api/assistant/conversation/forks";
 import { createConversationFork } from "@app/lib/api/assistant/conversation/forks";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -14,12 +16,6 @@ import { fromError } from "zod-validation-error";
 const PostConversationForkBodySchema = z.object({
   sourceMessageId: z.string().optional(),
 });
-
-export type PostConversationForkResponseBody = {
-  conversationId: string;
-  parentConversationTitle: string | null;
-  spaceId: string | null;
-};
 
 async function handler(
   req: NextApiRequest,

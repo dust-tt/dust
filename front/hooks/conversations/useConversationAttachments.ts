@@ -1,5 +1,5 @@
+import type { GetConversationAttachmentsResponseBody } from "@app/lib/api/assistant/conversation/attachments";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { GetConversationAttachmentsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/attachments";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";

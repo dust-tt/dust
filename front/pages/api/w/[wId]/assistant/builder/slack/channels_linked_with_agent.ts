@@ -1,5 +1,6 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
+import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/lib/api/assistant/builder/slack/channels_linked_with_agent";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -7,20 +8,8 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
-import type { ConnectorProvider, DataSourceType } from "@app/types/data_source";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type GetSlackChannelsLinkedWithAgentResponseBody = {
-  provider: Extract<ConnectorProvider, "slack" | "slack_bot">;
-  slackChannels: {
-    slackChannelId: string;
-    slackChannelName: string;
-    agentConfigurationId: string;
-    autoRespondWithoutMention: boolean;
-  }[];
-  slackDataSource?: DataSourceType;
-};
 
 async function handler(
   req: NextApiRequest,

@@ -1,7 +1,10 @@
 // @migration-status: MIGRATED_TO_HONO
 /** @ignoreswagger */
+
+import type { PostMentionActionResponseBody } from "@app/lib/api/assistant/conversation/mentions";
 import {
   dismissMention,
+  PostMentionActionRequestBodySchema,
   validateUserMention,
 } from "@app/lib/api/assistant/conversation/mentions";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -11,22 +14,7 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
 import { fromError } from "zod-validation-error";
-
-const PostMentionActionRequestBodySchema = z.object({
-  type: z.enum(["agent", "user"]),
-  id: z.string(),
-  action: z.enum(["approved", "rejected", "dismissed"]),
-});
-
-export type PostMentionActionRequestBody = z.infer<
-  typeof PostMentionActionRequestBodySchema
->;
-
-export type PostMentionActionResponseBody = {
-  success: boolean;
-};
 
 async function handler(
   req: NextApiRequest,

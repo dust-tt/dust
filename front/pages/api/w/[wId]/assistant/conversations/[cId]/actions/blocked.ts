@@ -1,6 +1,6 @@
 // @migration-status: MIGRATED_TO_HONO
 /** @ignoreswagger */
-import type { BlockedToolExecution } from "@app/lib/actions/mcp";
+import type { GetBlockedActionsResponseType } from "@app/lib/api/assistant/conversation/blocked_actions";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
@@ -10,9 +10,7 @@ import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-export type GetBlockedActionsResponseType = {
-  blockedActions: BlockedToolExecution[];
-};
+export type { GetBlockedActionsResponseType };
 
 async function handler(
   req: NextApiRequest,

@@ -1,6 +1,6 @@
+import type { GetConversationSandboxResponseBody } from "@app/lib/api/assistant/conversation/sandbox";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
-import type { SandboxStatus } from "@app/lib/resources/storage/models/sandbox";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -10,10 +10,6 @@ import { z } from "zod";
 const ParamsSchema = z.object({
   cId: z.string(),
 });
-
-export type GetConversationSandboxResponseBody = {
-  sandboxStatus: SandboxStatus | null;
-};
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/sandbox.
 const app = workspaceApp();

@@ -75,6 +75,10 @@ export type ConversationAttachmentType =
 /** Same item shape as GET `/assistant/conversations/[cId]/attachments` and GET project context. */
 export type ContextAttachmentItem = ConversationAttachmentType;
 
+export type GetConversationAttachmentsResponseBody = {
+  attachments: ConversationAttachmentType[];
+};
+
 export function isFileAttachmentType(
   attachment: ConversationAttachmentType
 ): attachment is FileAttachmentType {

@@ -4,8 +4,8 @@
  */
 
 import {
+  type GetConversationOpenBranchResponse,
   getMostRecentOpenBranchForConversation,
-  type RenderedOpenBranch,
 } from "@app/lib/api/assistant/conversation/branches";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -14,10 +14,6 @@ import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type GetConversationOpenBranchResponse = {
-  branch: RenderedOpenBranch | null;
-};
 
 async function handler(
   req: NextApiRequest,

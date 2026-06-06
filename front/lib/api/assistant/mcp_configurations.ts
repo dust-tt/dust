@@ -12,6 +12,14 @@ export type AgentMcpConfigurationSummary = z.infer<
   typeof AgentMcpConfigurationSummarySchema
 >;
 
+export const GetAgentMcpConfigurationsResponseBodySchema = z.object({
+  configurations: z.array(AgentMcpConfigurationSummarySchema),
+});
+
+export type GetAgentMcpConfigurationsResponseBody = z.infer<
+  typeof GetAgentMcpConfigurationsResponseBodySchema
+>;
+
 export async function listAgentMcpConfigurationsForAgent(params: {
   workspaceId: number;
   agentConfigurationId: string;

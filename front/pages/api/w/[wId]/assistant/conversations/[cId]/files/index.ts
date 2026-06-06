@@ -1,5 +1,6 @@
 // @migration-status: MIGRATED_TO_HONO
 /** @ignoreswagger */
+import type { GetConversationFilesResponseBody } from "@app/lib/api/assistant/conversation/files";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import {
@@ -15,10 +16,6 @@ import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export type { FileSystemEntry };
-
-export type GetConversationFilesResponseBody = {
-  files: FileSystemEntry[];
-};
 
 async function handler(
   req: NextApiRequest,

@@ -437,3 +437,8 @@ export async function fetchWorkspaceDatasourceRetrievalMetrics(
 
   return new Ok(data);
 }
+
+export type GetDatasourceRetrievalResponse = {
+  datasources: DatasourceRetrievalData[];
+  total: number;
+};

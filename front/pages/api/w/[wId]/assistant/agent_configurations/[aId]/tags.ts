@@ -1,41 +1,17 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
+
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import type { PatchAgentTagsResponseBody } from "@app/lib/api/assistant/configuration/agent_tags";
+import { PatchAgentTagsRequestBodySchema } from "@app/lib/api/assistant/configuration/agent_tags";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { TagSchema } from "@app/types/tag";
 import { isBuilder } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
-
-export const PatchAgentTagsRequestBodySchema = z
-  .object({
-    addTagIds: z.array(z.string()).optional(),
-    removeTagIds: z.array(z.string()).optional(),
-  })
-  .refine(
-    (body) =>
-      (body.addTagIds?.length ?? 0) > 0 || (body.removeTagIds?.length ?? 0) > 0,
-    {
-      message:
-        "Either addTagIds or removeTagIds must be provided and contain at least one ID.",
-    }
-  );
-
-export type PatchAgentTagsRequestBody = z.infer<
-  typeof PatchAgentTagsRequestBodySchema
->;
-
-export const PatchAgentTagsResponseBodySchema = z.object({
-  tags: z.array(TagSchema),
-});
-export type PatchAgentTagsResponseBody = z.infer<
-  typeof PatchAgentTagsResponseBodySchema
->;
 
 async function handler(
   req: NextApiRequest,

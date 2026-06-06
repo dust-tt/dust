@@ -145,3 +145,7 @@ export async function fetchToolExecutionMetrics(
 
   return new Ok(byVersion);
 }
+
+export type GetToolExecutionResponse = {
+  byVersion: ToolExecutionByVersion[];
+};

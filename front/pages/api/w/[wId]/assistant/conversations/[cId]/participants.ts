@@ -84,22 +84,16 @@
  *         description: Unauthorized
  */
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
+import type { FetchConversationParticipantsResponse } from "@app/lib/api/assistant/participants";
 import { fetchConversationParticipants } from "@app/lib/api/assistant/participants";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  ConversationParticipantsType,
-  UserMessageType,
-} from "@app/types/assistant/conversation";
+import type { UserMessageType } from "@app/types/assistant/conversation";
 import { ConversationError } from "@app/types/assistant/conversation";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type FetchConversationParticipantsResponse = {
-  participants: ConversationParticipantsType;
-};
 
 async function handler(
   req: NextApiRequest,

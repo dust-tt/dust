@@ -2,6 +2,7 @@
 // @migration-status: MIGRATED_TO_HONO
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import type { GetAgentSummaryResponseBody } from "@app/lib/api/assistant/observability/summary";
 import { generateAgentObservabilitySummary } from "@app/lib/api/assistant/observability/summary";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -12,10 +13,6 @@ import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
-
-export type GetAgentSummaryResponseBody = {
-  summaryText: string;
-};
 
 const QuerySchema = z.object({
   days: z.coerce.number().positive().optional().default(DEFAULT_PERIOD_DAYS),

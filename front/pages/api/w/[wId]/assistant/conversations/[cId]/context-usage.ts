@@ -1,20 +1,14 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
+import type { GetConversationContextUsageResponse } from "@app/lib/api/assistant/conversation/context_usage";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { SupportedModel } from "@app/types/assistant/models/types";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type GetConversationContextUsageResponse = {
-  model: SupportedModel | null;
-  contextUsage: number | null;
-  contextSize: number | null;
-};
 
 const PENDING_CONTEXT_USAGE_RESPONSE: GetConversationContextUsageResponse = {
   model: null,

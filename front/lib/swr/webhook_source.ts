@@ -6,7 +6,7 @@ import {
   useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
-import type { GetWebhookRequestsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/triggers/[tId]/webhook_requests";
+import type { GetWebhookRequestsResponseBody } from "@app/lib/triggers/webhook";
 import type { GetWebhookSourceViewsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/webhook_source_views";
 import type {
   GetWebhookSourcesResponseBody,

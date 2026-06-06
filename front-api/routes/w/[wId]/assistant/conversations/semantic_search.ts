@@ -1,23 +1,15 @@
+import type { SemanticSearchConversationsResponseBody } from "@app/lib/api/assistant/conversation/semantic_search";
+import {
+  SEMANTIC_SEARCH_SCORE_CUTOFF,
+  SearchQuerySchema,
+} from "@app/lib/api/assistant/conversation/semantic_search";
 import { searchProjectConversations } from "@app/lib/api/projects/search";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import { z } from "zod";
-
-export type SemanticSearchConversationsResponseBody = {
-  conversations: Array<ConversationWithoutContentType & { spaceName: string }>;
-};
-
-const SEMANTIC_SEARCH_SCORE_CUTOFF = 0.25;
-
-const SearchQuerySchema = z.object({
-  query: z.string().min(1, "Query is required"),
-  limit: z.coerce.number().int().min(1).max(100).optional().default(10),
-});
 
 // Mounted at /api/w/:wId/assistant/conversations/semantic_search.
 const app = workspaceApp();

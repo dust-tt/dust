@@ -21,6 +21,10 @@ import { Err, Ok } from "@app/types/shared/result";
 import { formatUserFullName } from "@app/types/user";
 import { Op } from "sequelize";
 
+export type FetchConversationParticipantsResponse = {
+  participants: ConversationParticipantsType;
+};
+
 async function fetchAllUsersById(userIds: ModelId[]) {
   const users = await UserResource.fetchByModelIds(userIds);
 

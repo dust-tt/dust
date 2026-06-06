@@ -1,51 +1,19 @@
+import type {
+  GetSkillSuggestionsResponseBody,
+  PatchSkillSuggestionResponseBody,
+} from "@app/lib/api/assistant/skills/suggestions";
+import {
+  GetSkillSuggestionsQuerySchema,
+  PatchSkillSuggestionRequestBodySchema,
+} from "@app/lib/api/assistant/skills/suggestions";
 import { postSkillSuggestionStatusUpdate } from "@app/lib/reinforcement/aggregate_suggestions";
 import { hasReinforcementEnabled } from "@app/lib/reinforcement/workspace_check";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
-import { SkillSuggestionSchema } from "@app/types/suggestions/skill_suggestion";
 import { skillApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import { z } from "zod";
-
-const StateSchema = z.enum(["pending", "approved", "rejected", "outdated"]);
-
-const GetSkillSuggestionsQuerySchema = z.object({
-  // Hono returns query params as strings; accept comma-separated or repeated.
-  states: z
-    .preprocess((v) => (typeof v === "string" ? [v] : v), z.array(StateSchema))
-    .optional(),
-  kind: z.enum(["edit"]).optional(),
-  limit: z.string().optional(),
-});
-
-export type GetSkillSuggestionsQuery = z.infer<
-  typeof GetSkillSuggestionsQuerySchema
->;
-
-export const GetSkillSuggestionsResponseBodySchema = z.object({
-  suggestions: z.array(SkillSuggestionSchema),
-});
-export type GetSkillSuggestionsResponseBody = z.infer<
-  typeof GetSkillSuggestionsResponseBodySchema
->;
-
-const PatchSkillSuggestionRequestBodySchema = z.object({
-  suggestionIds: z.array(z.string()).min(1),
-  state: z.enum(["approved", "rejected", "outdated"]),
-});
-
-export type PatchSkillSuggestionRequestBody = z.infer<
-  typeof PatchSkillSuggestionRequestBodySchema
->;
-
-export const PatchSkillSuggestionResponseBodySchema = z.object({
-  suggestions: z.array(SkillSuggestionSchema),
-});
-export type PatchSkillSuggestionResponseBody = z.infer<
-  typeof PatchSkillSuggestionResponseBodySchema
->;
 
 // Mounted at /api/w/:wId/assistant/skills/:sId/suggestions.
 // The `skill` context variable is set by the parent skills/[sId]/index.ts

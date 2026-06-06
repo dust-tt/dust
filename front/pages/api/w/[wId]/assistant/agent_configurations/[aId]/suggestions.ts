@@ -1,5 +1,13 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
+import type {
+  GetSuggestionsResponseBody,
+  PatchSuggestionResponseBody,
+} from "@app/lib/api/assistant/agent_suggestion";
+import {
+  GetSuggestionsQuerySchema,
+  PatchSuggestionRequestBodySchema,
+} from "@app/lib/api/assistant/agent_suggestion";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -7,48 +15,7 @@ import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_res
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
-import { AgentSuggestionSchema } from "@app/types/suggestions/agent_suggestion";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
-
-const PatchSuggestionRequestBodySchema = z.object({
-  suggestionIds: z.array(z.string()).min(1),
-  state: z.enum(["approved", "rejected", "outdated"]),
-});
-
-export type PatchSuggestionRequestBody = z.infer<
-  typeof PatchSuggestionRequestBodySchema
->;
-
-export const PatchSuggestionResponseBodySchema = z.object({
-  suggestions: z.array(AgentSuggestionSchema),
-});
-export type PatchSuggestionResponseBody = z.infer<
-  typeof PatchSuggestionResponseBodySchema
->;
-
-const StateSchema = z.enum(["pending", "approved", "rejected", "outdated"]);
-
-// Next.js serializes single query param values as string, multiple as array.
-const stringOrArrayToArray = z.preprocess(
-  (v) => (typeof v === "string" ? [v] : v),
-  z.array(StateSchema)
-);
-
-const GetSuggestionsQuerySchema = z.object({
-  states: stringOrArrayToArray.optional(),
-  kind: z.enum(["instructions", "tools", "skills", "model"]).optional(),
-  limit: z.string().optional(),
-});
-
-export type GetSuggestionsQuery = z.infer<typeof GetSuggestionsQuerySchema>;
-
-export const GetSuggestionsResponseBodySchema = z.object({
-  suggestions: z.array(AgentSuggestionSchema),
-});
-export type GetSuggestionsResponseBody = z.infer<
-  typeof GetSuggestionsResponseBodySchema
->;
 
 async function handler(
   req: NextApiRequest,

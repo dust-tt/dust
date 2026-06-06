@@ -3,11 +3,14 @@ import {
   REQUEST_PLAN_APPROVAL_TOOL_NAME,
 } from "@app/lib/api/actions/servers/plan_mode/metadata";
 import { getLightConversation } from "@app/lib/api/assistant/conversation/fetch";
+import type {
+  GetConversationPlanModeResponseBody,
+  PlanApprovalState,
+} from "@app/lib/api/assistant/plan_mode";
 import { findActivePlanFile } from "@app/lib/api/assistant/plan_mode";
 import { getFileContent } from "@app/lib/api/files/utils";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import type { FileType } from "@app/types/files";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -17,14 +20,6 @@ import { z } from "zod";
 const ParamsSchema = z.object({
   cId: z.string(),
 });
-
-export type PlanApprovalState = "draft" | "pending" | "approved";
-
-export type GetConversationPlanModeResponseBody = {
-  planFile: FileType | null;
-  content: string | null;
-  approvalState: PlanApprovalState;
-};
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/plan_mode.
 const app = workspaceApp();

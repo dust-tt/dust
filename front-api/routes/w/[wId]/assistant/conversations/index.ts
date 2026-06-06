@@ -5,6 +5,10 @@ import {
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import type {
+  GetConversationsResponseBody,
+  PostConversationsResponseBody,
+} from "@app/lib/api/assistant/conversation/types";
 import { getPaginationParams } from "@app/lib/api/pagination";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -13,11 +17,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { extractUniqueSkillIds } from "@app/lib/skills/format";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { InternalPostConversationsRequestBodySchema } from "@app/types/api/internal/assistant";
-import type {
-  ConversationListItemType,
-  ConversationType,
-  UserMessageType,
-} from "@app/types/assistant/conversation";
+import type { UserMessageType } from "@app/types/assistant/conversation";
 import { ConversationError } from "@app/types/assistant/conversation";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
@@ -33,18 +33,6 @@ import search from "./search";
 import semanticSearch from "./semantic_search";
 import sendOnboarding from "./send-onboarding";
 import spaces from "./spaces";
-
-export type GetConversationsResponseBody = {
-  conversations: ConversationListItemType[];
-  hasMore: boolean;
-  lastValue: string | null;
-};
-
-export type PostConversationsResponseBody = {
-  conversation: ConversationType;
-  message?: UserMessageType;
-  contentFragments: ContentFragmentType[];
-};
 
 // Normalize spaceId: undefined -> null for backward compatibility (users who
 // haven't refreshed their browser may send undefined). Applied via preprocess

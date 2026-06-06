@@ -1,18 +1,14 @@
 // @migration-status: MIGRATED_TO_HONO
 /** @ignoreswagger */
+import type { GetConversationSandboxResponseBody } from "@app/lib/api/assistant/conversation/sandbox";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
-import type { SandboxStatus } from "@app/lib/resources/storage/models/sandbox";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type GetConversationSandboxResponseBody = {
-  sandboxStatus: SandboxStatus | null;
-};
 
 async function handler(
   req: NextApiRequest,

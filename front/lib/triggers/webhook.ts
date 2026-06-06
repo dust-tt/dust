@@ -41,6 +41,18 @@ import { isString, removeNulls } from "@app/types/shared/utils/general";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 
+export interface GetWebhookRequestsResponseBody {
+  requests: Array<{
+    id: number;
+    timestamp: number;
+    status: WebhookRequestTriggerStatus;
+    payload?: {
+      headers?: Record<string, string | string[]>;
+      body?: unknown;
+    };
+  }>;
+}
+
 /**
  * To avoid storing sensitive information, only these headers are allowed to be stored in GCS.
  */

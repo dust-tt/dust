@@ -56,21 +56,15 @@
  *       405:
  *         description: Method not supported
  */
+import type { FetchConversationMessageActionResponse } from "@app/lib/api/assistant/messages";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { AgentMCPActionWithOutputType } from "@app/types/actions";
-import type { AgentMessageStatus } from "@app/types/assistant/conversation";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type FetchConversationMessageActionResponse = {
-  action: AgentMCPActionWithOutputType;
-  messageStatus: AgentMessageStatus;
-};
 
 async function handler(
   req: NextApiRequest,

@@ -8,6 +8,10 @@ import {
 } from "@app/lib/api/actions/servers/plan_mode/metadata";
 import { getLightConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
+import type {
+  GetConversationPlanModeResponseBody,
+  PlanApprovalState,
+} from "@app/lib/api/assistant/plan_mode";
 import { findActivePlanFile } from "@app/lib/api/assistant/plan_mode";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getFileContent } from "@app/lib/api/files/utils";
@@ -16,17 +20,8 @@ import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_reso
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { FileType } from "@app/types/files";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type PlanApprovalState = "draft" | "pending" | "approved";
-
-export type GetConversationPlanModeResponseBody = {
-  planFile: FileType | null;
-  content: string | null;
-  approvalState: PlanApprovalState;
-};
 
 async function handler(
   req: NextApiRequest,

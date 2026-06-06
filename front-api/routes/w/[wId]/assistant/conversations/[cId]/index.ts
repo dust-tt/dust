@@ -1,5 +1,9 @@
 import { deleteOrLeaveConversation } from "@app/lib/api/assistant/conversation";
 import { updateConversationTitle } from "@app/lib/api/assistant/conversation/title";
+import type {
+  GetConversationResponseBody,
+  PatchConversationResponseBody,
+} from "@app/lib/api/assistant/conversation/types";
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
@@ -10,7 +14,6 @@ import {
   moveConversationToProject,
 } from "@app/lib/api/projects/conversations";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { ConversationError } from "@app/types/assistant/conversation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
@@ -19,14 +22,6 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export type GetConversationResponseBody = {
-  conversation: ConversationWithoutContentType;
-};
-
-export type PatchConversationResponseBody = {
-  success: boolean;
-};
 
 import actions from "./actions";
 import attachments from "./attachments";

@@ -1,23 +1,15 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import {
-  AgentMcpConfigurationSummarySchema,
-  listAgentMcpConfigurationsForAgent,
-} from "@app/lib/api/assistant/mcp_configurations";
+import type { GetAgentMcpConfigurationsResponseBody } from "@app/lib/api/assistant/mcp_configurations";
+import { listAgentMcpConfigurationsForAgent } from "@app/lib/api/assistant/mcp_configurations";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
 
-export const GetAgentMcpConfigurationsResponseBodySchema = z.object({
-  configurations: z.array(AgentMcpConfigurationSummarySchema),
-});
-export type GetAgentMcpConfigurationsResponseBody = z.infer<
-  typeof GetAgentMcpConfigurationsResponseBodySchema
->;
+export type { GetAgentMcpConfigurationsResponseBody };
 
 async function handler(
   req: NextApiRequest,
