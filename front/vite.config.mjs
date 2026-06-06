@@ -10,7 +10,6 @@ export default defineConfig({
     setupFiles: "./vite.setup.ts",
     globalSetup: "./vite.globalSetup.ts",
     passWithNoTests: true,
-    include: ["**/*.{test,spec}.{ts,tsx}"],
     exclude: ["**/node_modules/**", "**/dist/**"],
     maxConcurrency: 20,
 
