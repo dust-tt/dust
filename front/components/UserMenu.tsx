@@ -328,20 +328,20 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
                   }
                 />
                 <DropdownMenuItem
-                  label="How to use agents in Slack workflow?"
+                  label="How do I use agents in Slack workflow?"
                   icon={MessageTextCircle01}
                   onClick={() =>
                     void handleHelpSubmit(
-                      "How to use agents in Slack workflow?",
+                      "How do I use agents in Slack workflow?",
                       []
                     )
                   }
                 />
                 <DropdownMenuItem
-                  label="How to manage billing?"
+                  label="How do I manage billing?"
                   icon={MessageTextCircle01}
                   onClick={() =>
-                    void handleHelpSubmit("How to manage billing?", [])
+                    void handleHelpSubmit("How do I manage billing?", [])
                   }
                 />
               </DropdownMenuSubContent>
