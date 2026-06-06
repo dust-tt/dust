@@ -35,7 +35,7 @@ import {
 import {
   canAccessFileInConversation,
   canAccessFileInProject,
-} from "@app/lib/api/viz/files";
+} from "@app/lib/api/viz/file_access";
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import {

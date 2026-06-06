@@ -4,7 +4,7 @@ import { extractAndVerifyVizAccessTokenFromHeader } from "@app/lib/api/viz/acces
 import {
   canAccessFileInConversation,
   canAccessFileInProject,
-} from "@app/lib/api/viz/files";
+} from "@app/lib/api/viz/file_access";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";

@@ -1,8 +1,5 @@
-import {
-  DustFileSystem,
-  LEGACY_PREFIX_PROJECT,
-  SCOPED_PREFIX_POD,
-} from "@app/lib/api/file_system";
+import { DustFileSystem } from "@app/lib/api/file_system";
+import { resolveCanonicalScopedPath } from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { Err, Ok, type Result } from "@app/types/shared/result";
@@ -22,12 +19,12 @@ export async function validatePinnedFramePath(
     return new Ok(null);
   }
 
-  // Normalize legacy path formats to the canonical pod-{spaceId}/... format.
-  let normalizedPath = pinnedFramePath;
-  if (pinnedFramePath.startsWith(`${LEGACY_PREFIX_PROJECT}/`)) {
-    normalizedPath = `${SCOPED_PREFIX_POD}${space.sId}/${pinnedFramePath.slice(`${LEGACY_PREFIX_PROJECT}/`.length)}`;
-  } else if (pinnedFramePath.startsWith("pod/")) {
-    normalizedPath = `${SCOPED_PREFIX_POD}${space.sId}/${pinnedFramePath.slice("pod/".length)}`;
+  const normalizedPath = resolveCanonicalScopedPath(pinnedFramePath, {
+    conversationId: null,
+    spaceId: space.sId,
+  });
+  if (!normalizedPath) {
+    return new Err(new Error("Invalid pinned frame path."));
   }
 
   const fsResult = await DustFileSystem.forPod(auth, space);
