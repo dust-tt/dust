@@ -1,4 +1,5 @@
-// Ported to front/lib/api/viz/extract_file_refs.ts — keep both copies in sync until deduped into a shared package.
+// Ported to front/lib/api/viz/extract_file_refs.ts — keep `isScopedPath` in sync with
+// `isAgentScopedPath` in front/lib/api/files/mount_path.ts until deduped into a shared package.
 import logger from "@viz/app/lib/logger";
 import ts from "typescript";
 
