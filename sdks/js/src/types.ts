@@ -764,6 +764,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "user_settings_v2"
   | "metronome_cp_checkout"
   | "admin_governance"
+  | "editable_tool_inputs"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;

@@ -1,4 +1,5 @@
 import type { LightServerSideMCPToolConfigurationType } from "@app/lib/actions/mcp";
+import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -329,13 +330,19 @@ export class ConversationFactory {
       workspace,
       conversation,
       agentConfig,
+      parentMessageId = null,
+      rank = 0,
       mcpAction,
     }: {
       workspace: WorkspaceType;
       conversation: ConversationType | ConversationWithoutContentType;
       agentConfig: LightAgentConfigurationType;
+      parentMessageId?: ModelId | null;
+      rank?: number;
       mcpAction?: {
         toolConfiguration: LightServerSideMCPToolConfigurationType;
+        status?: ToolExecutionStatus;
+        augmentedInputs?: Record<string, unknown>;
       };
     }
   ): Promise<{
@@ -353,9 +360,9 @@ export class ConversationFactory {
 
     const messageRow = await MessageModel.create({
       sId: generateRandomModelSId(),
-      rank: 0,
+      rank,
       conversationId: conversation.id,
-      parentId: null,
+      parentId: parentMessageId,
       agentMessageId: agentMessageRow.id,
       workspaceId: workspace.id,
     });
@@ -392,7 +399,11 @@ export class ConversationFactory {
       return { messageRow, agentMessage };
     }
 
-    const { toolConfiguration } = mcpAction;
+    const {
+      toolConfiguration,
+      status = "running",
+      augmentedInputs = {},
+    } = mcpAction;
 
     const stepContent = await AgentStepContentResource.createNewVersion({
       workspaceId: workspace.id,
@@ -404,7 +415,7 @@ export class ConversationFactory {
         type: "function_call",
         value: {
           name: toolConfiguration.name,
-          arguments: "{}",
+          arguments: JSON.stringify(augmentedInputs),
           id: generateRandomModelSId(),
         },
       },
@@ -415,10 +426,10 @@ export class ConversationFactory {
       { conversation, stepContent },
       {
         agentMessageId: agentMessage.agentMessageId,
-        augmentedInputs: {},
+        augmentedInputs,
         citationsAllocated: 0,
         mcpServerConfigurationId: toolConfiguration.sId,
-        status: "running",
+        status,
         stepContext: {
           citationsCount: 0,
           citationsOffset: 0,

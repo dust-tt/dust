@@ -22,6 +22,7 @@ import { z } from "zod";
 import actions from "./actions";
 import answerQuestion from "./answer-question";
 import edit from "./edit";
+import editAndValidateAction from "./edit-and-validate-action";
 import events from "./events";
 import feedbacks from "./feedbacks";
 import mentions from "./mentions";
@@ -306,6 +307,7 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
 app.route("/actions", actions);
 app.route("/answer-question", answerQuestion);
 app.route("/edit", edit);
+app.route("/edit-and-validate-action", editAndValidateAction);
 app.route("/events", events);
 app.route("/feedbacks", feedbacks);
 app.route("/mentions", mentions);
