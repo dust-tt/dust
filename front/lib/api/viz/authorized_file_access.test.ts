@@ -5,6 +5,7 @@ import {
 } from "@app/lib/api/viz/authorized_file_access";
 import {
   computeFrameContentHash,
+  isAllowlistShareScopeStale,
   isAllowlistStale,
   isAuthorizedFileRef,
 } from "@app/lib/api/viz/authorized_file_access_policy";
@@ -62,6 +63,14 @@ describe("isAllowlistStale", () => {
 
     expect(isAllowlistStale(allowlist, content)).toBe(false);
     expect(isAllowlistStale(allowlist, `${content}// edited`)).toBe(true);
+  });
+});
+
+describe("isAllowlistShareScopeStale", () => {
+  it("detects when share scope changed", () => {
+    expect(isAllowlistShareScopeStale("workspace", "workspace")).toBe(false);
+    expect(isAllowlistShareScopeStale("workspace", "public")).toBe(true);
+    expect(isAllowlistShareScopeStale("emails_only", "public")).toBe(true);
   });
 });
 
@@ -389,6 +398,80 @@ describe("ensureAuthorizedFileAccessForShare", () => {
       },
     });
     expect(rows).toHaveLength(0);
+  });
+
+  it("recomputes when share scope changed but frame content is unchanged", async () => {
+    const { authenticator: auth } = await createResourceTest({
+      role: "admin",
+    });
+
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+    });
+
+    const dataFile = await FileFactory.create(auth, null, {
+      contentType: "text/plain",
+      fileName: "data.txt",
+      fileSize: 10,
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: conversation.sId },
+    });
+
+    const frameContent = `useFile("${dataFile.sId}");`;
+    const frameFile = await FileFactory.create(auth, null, {
+      contentType: frameContentType,
+      fileName: "Frame.tsx",
+      fileSize: 100,
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: conversation.sId },
+    });
+
+    const shareableFile = await FileResource.shareableFileModel.findOne({
+      where: { fileId: frameFile.id, workspaceId: frameFile.workspaceId },
+    });
+    expect(shareableFile).not.toBeNull();
+    const initialShareScope = shareableFile!.shareScope;
+
+    await AuthorizedFileAccessModel.create({
+      workspaceId: frameFile.workspaceId,
+      shareableFileId: shareableFile!.id,
+      kind: "file_id",
+      ref: dataFile.sId,
+      fileName: "data.txt",
+      legacyPath: null,
+      shareScope: initialShareScope,
+      computedByUserId: auth.user()!.sId,
+      frameContentHash: computeFrameContentHash(frameContent),
+      allowedAt: new Date(),
+      revokedAt: null,
+    });
+
+    await frameFile.setShareScope(auth, "public");
+
+    vi.spyOn(FileResource.prototype, "getSharedReadStream").mockReturnValue(
+      Readable.from([Buffer.from(frameContent, "utf-8")])
+    );
+
+    const result = await ensureAuthorizedFileAccessForShare(auth, frameFile);
+
+    expect(result.isOk()).toBe(true);
+
+    const rows = await AuthorizedFileAccessModel.findAll({
+      where: {
+        shareableFileId: shareableFile!.id,
+        workspaceId: frameFile.workspaceId,
+        revokedAt: null,
+      },
+    });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.shareScope).toBe("public");
+    expect(rows[0]?.ref).toBe(dataFile.sId);
+    expect(rows[0]?.frameContentHash).toBe(
+      computeFrameContentHash(frameContent)
+    );
   });
 
   it("skips recompute when the active allowlist matches current content", async () => {

@@ -1,6 +1,7 @@
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { legacyScopedPathsMatch } from "@app/lib/api/files/mount_path";
 import {
+  isAllowlistShareScopeStale,
   isAllowlistStale,
   isAuthorizedFileRef,
 } from "@app/lib/api/viz/authorized_file_access_policy";
@@ -64,7 +65,14 @@ export async function ensureAuthorizedFileAccessForShare(
   }
 
   const active = await frameFile.getActiveAuthorizedFileAccessAllowlist();
-  const needsRecompute = !active || isAllowlistStale(active, frameContent);
+  const activeShareScope =
+    await frameFile.getActiveAuthorizedFileAccessShareScope();
+  const currentShareScope = await frameFile.getShareScope();
+  const needsRecompute =
+    !active ||
+    isAllowlistStale(active, frameContent) ||
+    (activeShareScope !== null &&
+      isAllowlistShareScopeStale(activeShareScope, currentShareScope));
 
   if (!needsRecompute) {
     return new Ok(active);
