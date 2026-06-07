@@ -333,17 +333,14 @@ export function useUpdateMemberSeatType({
 
       const body = await res.json();
       const isDeferred = !!body?.scheduledSeatChangeAt;
-      sendNotification({
-        type: "success",
-        title: isDeferred ? "Seat change scheduled" : "Seat updated",
-        description: isDeferred
-          ? `${memberName}'s seat will change to ${seatType} at the next credit refresh.`
-          : isCancellingScheduledChange
-            ? `${memberName}'s scheduled seat change has been cancelled.`
-            : hasSeatPool
-              ? `${memberName}'s seat has been updated to ${seatType}. The seat pool will be provisioned shortly.`
-              : `${memberName}'s seat has been updated to ${seatType}.`,
+      const notification = getSeatUpdateNotification({
+        seatType,
+        isDeferred,
+        isCancellingScheduledChange,
+        hasSeatPool,
+        memberName,
       });
+      sendNotification({ type: "success", ...notification });
 
       await invalidateMembersUsage(workspaceId);
       return true;
@@ -352,6 +349,39 @@ export function useUpdateMemberSeatType({
   );
 
   return { doUpdateSeatType };
+}
+
+function getSeatUpdateNotification({
+  seatType,
+  isDeferred,
+  isCancellingScheduledChange,
+  hasSeatPool,
+  memberName,
+}: {
+  seatType: MembershipSeatType;
+  isDeferred: boolean;
+  isCancellingScheduledChange: boolean;
+  hasSeatPool: boolean;
+  memberName: string;
+}): { title: string; description: string } {
+  if (seatType === "none") {
+    return {
+      title: isDeferred ? "Seat removal scheduled" : "Seat removed",
+      description: isDeferred
+        ? `${memberName}'s seat will be removed at the next billing period. They keep full access until then.`
+        : `${memberName}'s seat has been removed.`,
+    };
+  }
+  return {
+    title: isDeferred ? "Seat change scheduled" : "Seat updated",
+    description: isDeferred
+      ? `${memberName}'s seat will change to ${seatType} at the next credit refresh.`
+      : isCancellingScheduledChange
+        ? `${memberName}'s scheduled seat change has been cancelled.`
+        : hasSeatPool
+          ? `${memberName}'s seat has been updated to ${seatType}. The seat pool will be provisioned shortly.`
+          : `${memberName}'s seat has been updated to ${seatType}.`,
+  };
 }
 
 function spendLimitUrl(workspaceId: string, memberId: string): string {
