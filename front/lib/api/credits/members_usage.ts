@@ -11,6 +11,8 @@ import {
   listMetronomePerUserCapsForWorkspace,
   listMetronomePerUserWarningAlertsForWorkspace,
 } from "@app/lib/metronome/alerts/spend_limits";
+import { listMetronomeSeatBalances } from "@app/lib/metronome/client";
+import { getCreditTypeAwuId } from "@app/lib/metronome/constants";
 import {
   fetchPerUserAwuUsage,
   getCachedPerUserAwuUsage,
@@ -52,6 +54,13 @@ export type MemberUsageType = {
   // Per-user AWU allocation granted by the seat (in credits). Null when the
   // user has no seat or the seat carries no allocation.
   memberUsageLimit: number | null;
+  // Live Metronome per-seat AWU balance remaining (the amount Metronome has
+  // not yet drained from the seat grant). Null when the user has no individual
+  // seat allocation (pool-based seat) or seat balances couldn't be read. This
+  // is the same signal the seat-balance alerts fire on, so it can differ from
+  // `memberUsageLimit - consumedFromAllowanceAwuCredits` when usage isn't fully
+  // drawn from the seat grant.
+  seatBalanceAwu: number | null;
   // Total user AWU consumption for the period, regardless of whether it
   // was covered by the seat allocation or overflowed into the workspace
   // pool.
@@ -216,6 +225,41 @@ async function fetchSeatDataForMembersTable({
       metronomeContractId,
     });
   }
+}
+
+// Live per-seat AWU balance remaining, keyed by userId. Degrades to an empty
+// map on any read failure so the members table still renders (the column just
+// shows "-"). Mirrors how the seat-balance alerts read the same source.
+async function fetchSeatBalancesForMembersTable({
+  metronomeCustomerId,
+  metronomeContractId,
+}: {
+  metronomeCustomerId: string | null;
+  metronomeContractId: string | null;
+}): Promise<Map<string, number>> {
+  if (!metronomeCustomerId || !metronomeContractId) {
+    return new Map();
+  }
+  const result = await listMetronomeSeatBalances({
+    metronomeCustomerId,
+    metronomeContractId,
+  });
+  if (result.isErr()) {
+    logger.warn(
+      { err: result.error, metronomeCustomerId },
+      "[MembersUsage] Failed to fetch seat balances, degrading to empty map"
+    );
+    return new Map();
+  }
+  const awuCreditTypeId = getCreditTypeAwuId();
+  const balanceByUserId = new Map<string, number>();
+  for (const seat of result.value) {
+    const awu = seat.balances.find((b) => b.credit_type_id === awuCreditTypeId);
+    if (awu) {
+      balanceByUserId.set(seat.seat_id, awu.balance);
+    }
+  }
+  return balanceByUserId;
 }
 
 async function fetchPerUserCapAlertIdsUncached({
@@ -484,10 +528,14 @@ export async function getMembersUsage({
   auth,
   paginationParams,
   includeAlertLinks = false,
+  includeSeatBalance = false,
 }: {
   auth: Authenticator;
   paginationParams: MembersUsagePaginationInput;
   includeAlertLinks?: boolean;
+  // Live per-seat balance read (an extra Metronome call). Poke-only — the
+  // customer usage page doesn't surface it, so it stays off there.
+  includeSeatBalance?: boolean;
 }): Promise<GetMembersUsageResponseBody> {
   const workspace = auth.getNonNullableWorkspace();
   const subscription = auth.subscription();
@@ -520,6 +568,7 @@ export async function getMembersUsage({
     membershipsResult,
     perUserTotalConsumedCredits,
     seatDataByUserId,
+    seatBalanceByUserId,
     perUserSpendLimits,
   ] = await Promise.all([
     MembershipResource.getActiveMemberships({ workspace, users }),
@@ -531,6 +580,12 @@ export async function getMembersUsage({
       metronomeCustomerId: metronomeCustomerId ?? null,
       metronomeContractId,
     }),
+    includeSeatBalance
+      ? fetchSeatBalancesForMembersTable({
+          metronomeCustomerId: metronomeCustomerId ?? null,
+          metronomeContractId,
+        })
+      : Promise.resolve(new Map<string, number>()),
     fetchEffectivePerUserSpendLimits({
       metronomeCustomerId: metronomeCustomerId ?? null,
       workspaceId: workspace.sId,
@@ -618,6 +673,8 @@ export async function getMembersUsage({
         image: u.imageUrl ?? null,
         seatType: membership.seatType ?? null,
         memberUsageLimit: awuAllocation > 0 ? awuAllocation : null,
+        seatBalanceAwu:
+          awuAllocation > 0 ? (seatBalanceByUserId.get(userId) ?? null) : null,
         consumedAwuCredits: totalConsumedCredits,
         consumedFromAllowanceAwuCredits,
         consumedFromPoolAwuCredits,

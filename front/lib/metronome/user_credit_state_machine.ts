@@ -371,8 +371,9 @@ export async function transitionUserCreditState(
       {
         workspaceId: ctx.workspaceId,
         userId: ctx.userId,
-        currentState,
+        fromState: currentState,
         event,
+        eventType: event.type,
       },
       "[UserCreditStateMachine] No matching transition - skipping"
     );
@@ -395,6 +396,7 @@ export async function transitionUserCreditState(
       userId: ctx.userId,
       fromState: rawState,
       toState: match.to,
+      event,
       eventType: event.type,
       wasStateChanged: rawState !== match.to,
     },

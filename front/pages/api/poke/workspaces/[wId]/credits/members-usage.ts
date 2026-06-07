@@ -68,6 +68,7 @@ async function handler(
     auth,
     paginationParams: paginationRes.data,
     includeAlertLinks: true,
+    includeSeatBalance: true,
   });
 
   return res.status(200).json(body);

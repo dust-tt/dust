@@ -23,6 +23,7 @@ app.get(
       auth,
       paginationParams: ctx.req.valid("query"),
       includeAlertLinks: true,
+      includeSeatBalance: true,
     });
     return ctx.json(body);
   }
