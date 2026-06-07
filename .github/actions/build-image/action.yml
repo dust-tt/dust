@@ -152,8 +152,10 @@ runs:
           fi
         fi
 
-        # Only set Contentful credentials for front and front-edge builds (needed for ISR)
-        if [[ "$COMPONENT" == "front" || "$COMPONENT" == "front-edge" ]]; then
+        # Only set Contentful credentials for front and front-edge builds (needed for ISR),
+        # and for marketing / marketing-edge (which currently builds from front/ and renders
+        # the same Contentful-backed pages).
+        if [[ "$COMPONENT" == "front" || "$COMPONENT" == "front-edge" || "$COMPONENT" == "marketing" || "$COMPONENT" == "marketing-edge" ]]; then
           if [[ -n "${{ inputs.contentful_space_id }}" ]]; then
             build_args+=("--build-arg CONTENTFUL_SPACE_ID=${{ inputs.contentful_space_id }}")
           fi

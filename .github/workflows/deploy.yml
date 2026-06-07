@@ -21,6 +21,8 @@ on:
         options:
           - front
           - front-edge
+          - marketing
+          - marketing-edge
           - connectors
           - core
           - front-sse
@@ -62,7 +64,7 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: "deploy_${{ inputs.component }}${{ inputs.component == 'front-edge' && format('_{0}', github.run_id) || '' }}"
+  group: "deploy_${{ inputs.component }}${{ (inputs.component == 'front-edge' || inputs.component == 'marketing-edge') && format('_{0}', github.run_id) || '' }}"
   cancel-in-progress: false
 
 jobs:
@@ -78,7 +80,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check if deployment is from main branch
-        if: ${{ github.ref != 'refs/heads/main' && inputs.component != 'front-edge' }}
+        if: ${{ github.ref != 'refs/heads/main' && inputs.component != 'front-edge' && inputs.component != 'marketing-edge' }}
         run: |
           echo "Error: Deployments for ${{ inputs.component }} are only allowed from the main branch"
           exit 1
