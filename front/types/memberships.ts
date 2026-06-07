@@ -123,6 +123,7 @@ export function isSeatBased(
     case "max":
     case "max_yearly":
       return true;
+    case "none":
     case "workspace":
     case "workspace_yearly":
       return false;
