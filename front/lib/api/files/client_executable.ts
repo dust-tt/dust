@@ -7,6 +7,11 @@ import {
   getFileContent,
   getUpdatedContentAndOccurrences,
 } from "@app/lib/api/files/utils";
+import {
+  diffAuthorizedFileRefs,
+  fetchShareableFileAllowlistState,
+  formatPublicShareReferencedFilesChangeNoticeForLLM,
+} from "@app/lib/api/viz/authorized_file_access";
 import { uploadFrameContent } from "@app/lib/api/viz/upload_frame_content";
 import type { Authenticator } from "@app/lib/auth";
 import { executeWithLock } from "@app/lib/lock";
@@ -177,6 +182,7 @@ export async function editClientExecutableFile(
       fileResource: FileResource;
       replacementCount: number;
       warnings: ValidationWarning[];
+      referencedFilesChangeNotice: string | null;
     },
     { tracked: boolean; message: string }
   >
@@ -249,6 +255,9 @@ export async function editClientExecutableFile(
         warnings.push(...tailwindValidation.error);
       }
 
+      const beforeShareState =
+        await fetchShareableFileAllowlistState(fileResource);
+
       // Upload the updated content (version is incremented inside uploadFrameContent).
       const uploadResult = await uploadFrameContent(
         auth,
@@ -262,7 +271,25 @@ export async function editClientExecutableFile(
         });
       }
 
-      return new Ok({ fileResource, replacementCount: occurrences, warnings });
+      let referencedFilesChangeNotice: string | null = null;
+      if (beforeShareState?.shareScope === "public") {
+        const afterShareState =
+          await fetchShareableFileAllowlistState(fileResource);
+        referencedFilesChangeNotice =
+          formatPublicShareReferencedFilesChangeNoticeForLLM(
+            diffAuthorizedFileRefs(
+              beforeShareState.refs,
+              afterShareState?.refs ?? []
+            ).added
+          );
+      }
+
+      return new Ok({
+        fileResource,
+        replacementCount: occurrences,
+        warnings,
+        referencedFilesChangeNotice,
+      });
     });
   } catch (error) {
     return new Err({
