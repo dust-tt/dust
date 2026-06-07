@@ -374,9 +374,13 @@ AuthorizedFileAccessModel.init(
     modelName: "authorized_file_access",
     sequelize: frontSequelize,
     indexes: [
+      { fields: ["workspaceId"], concurrently: true },
+      { fields: ["shareableFileId"], concurrently: true },
       {
-        fields: ["workspaceId", "shareableFileId"],
+        fields: ["shareableFileId"],
         where: { revokedAt: null },
+        name: "authorized_file_accesses_shareable_file_id_non_revoked",
+        concurrently: true,
       },
     ],
   }
