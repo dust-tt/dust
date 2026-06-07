@@ -8,11 +8,10 @@ import {
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
 import {
+  AlertCircle,
   Cube01,
   DataTable,
-  AlertCircle,
   Hexagon01,
-  Icon,
   LoadingBlock,
   type MenuItem,
   SeatMax,

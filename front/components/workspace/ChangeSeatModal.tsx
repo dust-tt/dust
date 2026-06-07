@@ -14,6 +14,7 @@ import {
 } from "@app/types/memberships";
 import type { WorkspaceType } from "@app/types/user";
 import {
+  AlertCircle,
   Avatar,
   Button,
   ButtonGroup,
@@ -26,7 +27,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  AlertCircle,
   Hexagon01,
   SeatMax,
 } from "@dust-tt/sparkle";
