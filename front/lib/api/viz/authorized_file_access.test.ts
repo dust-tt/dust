@@ -675,7 +675,7 @@ describe("readAllowlistedScopedVizFile", () => {
 });
 
 describe("assertVizFileAuthorized", () => {
-  it("returns legacy when the allowlist is empty or missing", async () => {
+  it("returns denied when the allowlist is empty or missing", async () => {
     const { workspace } = await createResourceTest({});
 
     expect(
@@ -685,7 +685,7 @@ describe("assertVizFileAuthorized", () => {
         owner: workspace,
         frameContent: "export default function Frame() {}",
       })
-    ).toBe("legacy");
+    ).toBe("denied");
 
     expect(
       await assertVizFileAuthorized({
@@ -694,7 +694,7 @@ describe("assertVizFileAuthorized", () => {
         owner: workspace,
         frameContent: "export default function Frame() {}",
       })
-    ).toBe("legacy");
+    ).toBe("denied");
   });
 
   it("returns denied when frame content changed since the allowlist was computed", async () => {

@@ -1,4 +1,3 @@
-import type { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { generateVizAccessToken } from "@app/lib/api/viz/access_tokens";
 import * as authorizedFileAccessModule from "@app/lib/api/viz/authorized_file_access";
 import { computeFrameContentHash } from "@app/lib/api/viz/authorized_file_access_policy";
@@ -12,7 +11,7 @@ import {
   frameContentType,
 } from "@app/types/files";
 import type { ModelId } from "@app/types/shared/model_id";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createMocks } from "node-mocks-http";
@@ -35,26 +34,6 @@ vi.mock("@app/lib/plans/usage/seats", () => ({
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-/** Returns a minimal DustFileSystem-compatible mock. */
-function makeMockFs({
-  found = true,
-}: {
-  found?: boolean;
-} = {}): DustFileSystem {
-  return {
-    stat: vi
-      .fn()
-      .mockResolvedValue(
-        found
-          ? new Ok({ contentType: "image/png", sizeBytes: 100 })
-          : new Ok(null)
-      ),
-    read: vi
-      .fn()
-      .mockResolvedValue(found ? new Ok(new PassThrough()) : new Ok(null)),
-  } as unknown as DustFileSystem;
-}
 
 describe("/api/v1/viz/files/[...segments] security tests", () => {
   let workspace: LightWorkspaceType;
@@ -106,6 +85,26 @@ describe("/api/v1/viz/files/[...segments] security tests", () => {
    * token lookup. WorkspaceResource.fetchByModelId still runs against the real
    * DB (frameFile.workspaceId points to the test workspace created in beforeEach).
    */
+  const FRAME_CONTENT_FOR_ALLOWLIST = "export default function Frame() {}";
+
+  function allowlistForCanonicalPath(
+    canonicalPath: string,
+    legacyPath?: string
+  ): AuthorizedFileAccessAllowlist {
+    return {
+      computedByUserId: auth.user()!.sId,
+      frameContentHash: computeFrameContentHash(FRAME_CONTENT_FOR_ALLOWLIST),
+      refs: [
+        {
+          kind: "canonical_path",
+          ref: canonicalPath,
+          ...(legacyPath ? { legacyPath } : {}),
+          fileName: canonicalPath.split("/").pop() ?? canonicalPath,
+        },
+      ],
+    };
+  }
+
   function mockAllowlistedFileRead() {
     return vi
       .spyOn(authorizedFileAccessModule, "readAllowlistedScopedVizFile")
@@ -117,23 +116,32 @@ describe("/api/v1/viz/files/[...segments] security tests", () => {
       );
   }
 
-  const FRAME_CONTENT_FOR_ALLOWLIST = "export default function Frame() {}";
+  function mockAuthorizedScopedPathAccess(
+    frameFile: FileResource,
+    canonicalPath: string,
+    legacyPath?: string
+  ) {
+    mockFetchByShareToken(frameFile, {
+      authorizedFileAccess: allowlistForCanonicalPath(
+        canonicalPath,
+        legacyPath
+      ),
+    });
+    vi.spyOn(
+      authorizedFileAccessModule,
+      "assertVizFileAuthorized"
+    ).mockResolvedValue("authorized");
+    mockAllowlistedFileRead();
+  }
 
   function mockFetchByShareToken(
     frameFile: FileResource,
     opts: {
       shareScope?: "public" | "workspace";
-      conversationSpaceId?: string | null;
       authorizedFileAccess?: AuthorizedFileAccessAllowlist | null;
-      fs?: DustFileSystem;
     } = {}
   ) {
-    const {
-      shareScope = "public",
-      conversationSpaceId = null,
-      authorizedFileAccess = null,
-      fs = makeMockFs({ found: true }),
-    } = opts;
+    const { shareScope = "public", authorizedFileAccess = null } = opts;
 
     let resolvedAllowlist = authorizedFileAccess;
     if (authorizedFileAccess) {
@@ -149,11 +157,8 @@ describe("/api/v1/viz/files/[...segments] security tests", () => {
       shareScope,
       shareableFileId: 1 as unknown as ModelId,
       workspace,
-      conversationSpaceId,
       authorizedFileAccess: resolvedAllowlist,
-      fs,
     });
-    return fs;
   }
 
   // -------------------------------------------------------------------------
@@ -346,11 +351,7 @@ describe("/api/v1/viz/files/[...segments] security tests", () => {
     });
   });
 
-  // -------------------------------------------------------------------------
-  // Legacy conversation scope
-  // -------------------------------------------------------------------------
-
-  it("should serve a file for a legacy conversation-scoped path", async () => {
+  it("should return 404 when frame has no authorized file access allowlist", async () => {
     const conversation = await ConversationFactory.create(auth, {
       agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
       messagesCreatedAt: [new Date()],
@@ -370,79 +371,13 @@ describe("/api/v1/viz/files/[...segments] security tests", () => {
 
     await handler(req, res);
 
-    expect(res._getStatusCode()).toBe(200);
-  });
-
-  it("should resolve conversationId from sourceConversationId for promoted frames", async () => {
-    const conversation = await ConversationFactory.create(auth, {
-      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
-      messagesCreatedAt: [new Date()],
-    });
-
-    // Promoted frame: spaceId + sourceConversationId, no conversationId.
-    const { frameFile, accessToken } = await makeFrameAndToken({
-      spaceId: "vlt_someSpaceId",
-      sourceConversationId: conversation.sId,
-    });
-
-    mockFetchByShareToken(frameFile);
-
-    const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
-      method: "GET",
-      query: { segments: ["conversation", "chart.png"] },
-      headers: { authorization: `Bearer ${accessToken}` },
-    });
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(200);
-  });
-
-  it("should reject when frame has no conversation context for a legacy conversation path", async () => {
-    const { frameFile, accessToken } = await makeFrameAndToken({}); // No conversationId.
-
-    mockFetchByShareToken(frameFile);
-
-    const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
-      method: "GET",
-      query: { segments: ["conversation", "chart.png"] },
-      headers: { authorization: `Bearer ${accessToken}` },
-    });
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(400);
+    expect(res._getStatusCode()).toBe(404);
     expect(res._getJSONData()).toEqual({
-      error: {
-        type: "invalid_request_error",
-        message: "Frame has no conversation context for this path.",
-      },
+      error: { type: "file_not_found", message: "File not found." },
     });
   });
 
-  // -------------------------------------------------------------------------
-  // Legacy project scope
-  // -------------------------------------------------------------------------
-
-  it("should serve a file for a project-scoped frame (spaceId in metadata)", async () => {
-    const { frameFile, accessToken } = await makeFrameAndToken({
-      spaceId: "vlt_someSpaceId",
-    });
-
-    mockFetchByShareToken(frameFile);
-
-    const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
-      method: "GET",
-      query: { segments: ["pod", "chart.png"] },
-      headers: { authorization: `Bearer ${accessToken}` },
-    });
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(200);
-  });
-
-  it("should serve a file via conversationSpaceId when frame has no spaceId in metadata", async () => {
+  it("should return 404 when the allowlisted scoped file does not exist", async () => {
     const conversation = await ConversationFactory.create(auth, {
       agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
       messagesCreatedAt: [new Date()],
@@ -452,68 +387,21 @@ describe("/api/v1/viz/files/[...segments] security tests", () => {
       conversationId: conversation.sId,
     });
 
-    // conversationSpaceId is resolved by fetchByShareTokenWithContent from the conversation's space.
+    const canonicalPath = `conversation-${conversation.sId}/missing.png`;
     mockFetchByShareToken(frameFile, {
-      conversationSpaceId: "vlt_derivedSpaceId",
+      authorizedFileAccess: allowlistForCanonicalPath(
+        canonicalPath,
+        "conversation/missing.png"
+      ),
     });
-
-    const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
-      method: "GET",
-      query: { segments: ["pod", "chart.png"] },
-      headers: { authorization: `Bearer ${accessToken}` },
-    });
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(200);
-  });
-
-  it("should reject a legacy project path when frame has no project context", async () => {
-    const conversation = await ConversationFactory.create(auth, {
-      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
-      messagesCreatedAt: [new Date()],
-    });
-
-    const { frameFile, accessToken } = await makeFrameAndToken({
-      conversationId: conversation.sId,
-    });
-
-    // No spaceId in metadata and no conversationSpaceId.
-    mockFetchByShareToken(frameFile, { conversationSpaceId: null });
-
-    const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
-      method: "GET",
-      query: { segments: ["pod", "chart.png"] },
-      headers: { authorization: `Bearer ${accessToken}` },
-    });
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(400);
-    expect(res._getJSONData()).toEqual({
-      error: {
-        type: "invalid_request_error",
-        message: "Frame has no project context for this path.",
-      },
-    });
-  });
-
-  // -------------------------------------------------------------------------
-  // File not found via the FS
-  // -------------------------------------------------------------------------
-
-  it("should return 404 when the scoped file does not exist", async () => {
-    const conversation = await ConversationFactory.create(auth, {
-      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
-      messagesCreatedAt: [new Date()],
-    });
-
-    const { frameFile, accessToken } = await makeFrameAndToken({
-      conversationId: conversation.sId,
-    });
-
-    // fs.stat returns Ok(null) → file not found.
-    mockFetchByShareToken(frameFile, { fs: makeMockFs({ found: false }) });
+    vi.spyOn(
+      authorizedFileAccessModule,
+      "assertVizFileAuthorized"
+    ).mockResolvedValue("authorized");
+    vi.spyOn(
+      authorizedFileAccessModule,
+      "readAllowlistedScopedVizFile"
+    ).mockResolvedValue(new Err(undefined));
 
     const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
       method: "GET",
@@ -543,7 +431,10 @@ describe("/api/v1/viz/files/[...segments] security tests", () => {
       conversationId: conversation.sId,
     });
 
-    mockFetchByShareToken(frameFile);
+    mockAuthorizedScopedPathAccess(
+      frameFile,
+      `conversation-${conversation.sId}/chart.png`
+    );
 
     const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
       method: "GET",
@@ -558,7 +449,7 @@ describe("/api/v1/viz/files/[...segments] security tests", () => {
     expect(res._getStatusCode()).toBe(200);
   });
 
-  it("should reject a canonical conversation path when the ID does not match the frame", async () => {
+  it("should reject a canonical conversation path that is not allowlisted", async () => {
     const conversation = await ConversationFactory.create(auth, {
       agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
       messagesCreatedAt: [new Date()],
@@ -568,39 +459,40 @@ describe("/api/v1/viz/files/[...segments] security tests", () => {
       conversationId: conversation.sId,
     });
 
-    mockFetchByShareToken(frameFile);
+    mockAuthorizedScopedPathAccess(
+      frameFile,
+      `conversation-${conversation.sId}/allowed.png`
+    );
 
     const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
       method: "GET",
-      // Intentionally wrong conversation ID.
       query: { segments: ["conversation-different_conv_id", "chart.png"] },
       headers: { authorization: `Bearer ${accessToken}` },
     });
 
     await handler(req, res);
 
-    expect(res._getStatusCode()).toBe(403);
+    expect(res._getStatusCode()).toBe(404);
     expect(res._getJSONData()).toEqual({
-      error: {
-        type: "workspace_auth_error",
-        message: "Access denied: conversation ID does not match frame context.",
-      },
+      error: { type: "file_not_found", message: "File not found." },
     });
   });
 
-  it("should resolve sourceConversationId for canonical conversation paths on promoted frames", async () => {
+  it("should serve an allowlisted canonical conversation path on promoted frames", async () => {
     const conversation = await ConversationFactory.create(auth, {
       agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
       messagesCreatedAt: [new Date()],
     });
 
-    // Promoted frame: only sourceConversationId, no conversationId.
     const { frameFile, accessToken } = await makeFrameAndToken({
       spaceId: "vlt_someSpaceId",
       sourceConversationId: conversation.sId,
     });
 
-    mockFetchByShareToken(frameFile);
+    mockAuthorizedScopedPathAccess(
+      frameFile,
+      `conversation-${conversation.sId}/chart.png`
+    );
 
     const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
       method: "GET",
@@ -625,7 +517,7 @@ describe("/api/v1/viz/files/[...segments] security tests", () => {
       spaceId: podId,
     });
 
-    mockFetchByShareToken(frameFile);
+    mockAuthorizedScopedPathAccess(frameFile, `pod-${podId}/data.csv`);
 
     const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
       method: "GET",
@@ -638,18 +530,17 @@ describe("/api/v1/viz/files/[...segments] security tests", () => {
     expect(res._getStatusCode()).toBe(200);
   });
 
-  it("should resolve pod ID from conversationSpaceId for a canonical pod path", async () => {
-    const conversation = await ConversationFactory.create(auth, {
-      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
-      messagesCreatedAt: [new Date()],
-    });
+  it("should serve an allowlisted canonical pod path from another pod", async () => {
     const derivedSpaceId = "vlt_derivedSpace";
 
     const { frameFile, accessToken } = await makeFrameAndToken({
-      conversationId: conversation.sId,
+      conversationId: "conv_test",
     });
 
-    mockFetchByShareToken(frameFile, { conversationSpaceId: derivedSpaceId });
+    mockAuthorizedScopedPathAccess(
+      frameFile,
+      `pod-${derivedSpaceId}/shared.md`
+    );
 
     const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
       method: "GET",
@@ -662,28 +553,24 @@ describe("/api/v1/viz/files/[...segments] security tests", () => {
     expect(res._getStatusCode()).toBe(200);
   });
 
-  it("should reject a canonical pod path when the ID does not match the frame", async () => {
+  it("should reject a canonical pod path that is not allowlisted", async () => {
     const { frameFile, accessToken } = await makeFrameAndToken({
       spaceId: "vlt_correctpod",
     });
 
-    mockFetchByShareToken(frameFile);
+    mockAuthorizedScopedPathAccess(frameFile, `pod-vlt_correctpod/allowed.csv`);
 
     const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
       method: "GET",
-      // Intentionally wrong pod ID.
       query: { segments: ["pod-vlt_wrongpod", "data.csv"] },
       headers: { authorization: `Bearer ${accessToken}` },
     });
 
     await handler(req, res);
 
-    expect(res._getStatusCode()).toBe(403);
+    expect(res._getStatusCode()).toBe(404);
     expect(res._getJSONData()).toEqual({
-      error: {
-        type: "workspace_auth_error",
-        message: "Access denied: pod ID does not match frame context.",
-      },
+      error: { type: "file_not_found", message: "File not found." },
     });
   });
 
@@ -769,9 +656,7 @@ describe("/api/v1/viz/files/[...segments] security tests", () => {
         spaceId: framePodId,
       });
 
-      // Share-token fs only mounts the frame pod; cross-pod paths are unreadable there.
       mockFetchByShareToken(frameFile, {
-        fs: makeMockFs({ found: false }),
         authorizedFileAccess: {
           computedByUserId: auth.user()!.sId,
           frameContentHash: "hash",
