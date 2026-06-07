@@ -185,6 +185,7 @@ export function ConversationContainerVirtuoso({
           user={user}
           conversationId={activeConversationId}
           setLimitReachedCode={setLimitReachedCode}
+          limitReachedCode={limitReachedCode}
           key={conversationViewerKey}
           clientSideMCPServerIds={clientSideMCPServerIds}
         />

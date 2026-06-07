@@ -8,6 +8,7 @@ import {
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
 import {
+  AlertCircle,
   Cube01,
   DataTable,
   Hexagon01,
@@ -47,6 +48,7 @@ type Info = CellContext<RowData, string>;
 const SEAT_TYPE_ICONS: Partial<
   Record<MembershipSeatType, React.ComponentType>
 > = {
+  none: AlertCircle,
   max: SeatMax,
   pro: Cube01,
   free: Hexagon01,
