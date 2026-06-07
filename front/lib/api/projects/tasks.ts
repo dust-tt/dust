@@ -1,6 +1,6 @@
 // Shared contract types and schemas for the project_tasks API endpoints.
-// Imported by both the Next.js handlers (front/pages/api/...) and their Hono
-// counterparts (front-api/routes/...) so there is a single source of truth.
+// Imported by the project_tasks API routes (front-api/routes/...) so there is
+// a single source of truth.
 import type { PodTaskType } from "@app/types/project_task";
 import { POD_TASK_STATUSES } from "@app/types/project_task";
 import type { PodType } from "@app/types/space";

@@ -1,8 +1,7 @@
 // Contract types and schemas for the agent memories API endpoints.
 //
-// These are the request/response body schemas shared between the Next.js
-// handlers under `front/pages/api/.../memories` and their Hono counterparts
-// under `front-api/routes/.../memories`.
+// These are the request/response body schemas used by the agent memories API
+// routes under `front-api/routes/.../memories`.
 import { z } from "zod";
 
 export const GetAgentMemoriesResponseBodySchema = z.object({

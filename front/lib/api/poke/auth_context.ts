@@ -1,6 +1,5 @@
-// Contract types for the poke auth-context endpoints, shared between the Next
-// handlers (front/pages/api/poke/...) and their Hono counterparts
-// (front-api/routes/poke/...).
+// Contract types for the poke auth-context endpoints, used by the poke
+// auth-context API routes (front-api/routes/poke/...).
 import type { SubscriptionType } from "@app/types/plan";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 

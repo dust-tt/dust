@@ -43,8 +43,8 @@ import uniq from "lodash/uniq";
 import { Op } from "sequelize";
 import { z } from "zod";
 
-// Contract types and schemas for the spaces API endpoints (shared between the
-// Next handlers under `pages/api/w/[wId]/spaces` and their Hono counterparts).
+// Contract types and schemas for the spaces API endpoints (used by the spaces
+// API routes under `front-api/routes/w/[wId]/spaces`).
 
 export const PostSpaceRequestBodySchema = z.intersection(
   z.object({

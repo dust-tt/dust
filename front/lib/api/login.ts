@@ -39,8 +39,8 @@ export interface PerformLoginOptions {
 
 /**
  * Transport-agnostic input for `performLogin`. Carries only the request
- * fields the login flow actually reads, so both the Next handler and the
- * Hono handler can call into it.
+ * fields the login flow actually reads, so the Hono login route can call
+ * into it.
  */
 export interface PerformLoginRequest {
   cookieHeader: string | undefined;

@@ -1,5 +1,5 @@
 // Contract types for the poke cache endpoint (GET/DELETE /api/poke/cache).
-// Shared between the Next handler and its Hono counterpart.
+// Used by the poke cache API route.
 
 export interface RedisCacheResult {
   value: unknown | null;
