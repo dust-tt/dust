@@ -158,13 +158,18 @@ function makeColumns({
     },
     {
       accessorKey: "memberUsageLimit",
-      header: "Seat allowance",
+      header: "Seat balance / allowance",
       enableSorting: false,
       cell: ({ row }) => {
-        const { memberUsageLimit } = row.original;
+        const { memberUsageLimit, seatBalanceAwu } = row.original;
+        if (memberUsageLimit === null) {
+          return <span>-</span>;
+        }
         return (
           <span>
-            {memberUsageLimit !== null ? formatCredits(memberUsageLimit) : "-"}
+            {seatBalanceAwu !== null ? formatCredits(seatBalanceAwu) : "-"}
+            {" / "}
+            {formatCredits(memberUsageLimit)}
           </span>
         );
       },
