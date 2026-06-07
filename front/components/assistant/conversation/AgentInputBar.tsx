@@ -36,8 +36,6 @@ import {
 } from "@app/types/assistant/mentions";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import {
-  AlertCircleV2,
-  ContentMessage,
   ContentMessageAction,
   ContentMessageInline,
   EmptyCTA,
@@ -496,17 +494,6 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
           />
         )}
       </div>
-      {context.isNoSeat && (
-        <ContentMessage
-          icon={AlertCircleV2}
-          variant="warning"
-          className="mb-3 flex w-full"
-          title="No seat assigned"
-        >
-          You don&apos;t have a seat in this workspace. Contact your admin to
-          send messages.
-        </ContentMessage>
-      )}
       {blockedActions.length > 0 && (
         <ContentMessageInline
           icon={InfoCircle}

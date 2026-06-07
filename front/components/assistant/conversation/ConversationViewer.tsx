@@ -1227,8 +1227,6 @@ export const ConversationViewer = ({
             setLimitReachedCode?.("pool_credits_exhausted");
           } else if (result.error.type === "user_cap_reached_error") {
             setLimitReachedCode?.("user_credits_exhausted");
-          } else if (result.error.type === "no_seat_error") {
-            setLimitReachedCode?.("no_seat");
           } else {
             sendNotification({
               title: result.error.title,
@@ -1237,7 +1235,15 @@ export const ConversationViewer = ({
             });
           }
 
-          // If the API errors, the original data will be rolled back by SWR automatically.
+          // Remove optimistic placeholders — SWR rolls back the server cache but
+          // Virtuoso's in-memory list must be cleaned up manually.
+          const failedPlaceholderSids = [
+            placeholderUserMsg.sId,
+            ...placeholderAgentMessages.map((m) => m.sId),
+          ];
+          virtuosoMessageListRef.current.data.findAndDelete((m) =>
+            failedPlaceholderSids.includes(m.sId)
+          );
           logger.error({ err: result.error }, "Failed to post message");
           return new Err({
             code: "internal_error",

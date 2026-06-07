@@ -119,8 +119,6 @@ export function ConversationContainerVirtuoso({
           setLimitReachedCode("pool_credits_exhausted");
         } else if (conversationRes.error.type === "user_cap_reached_error") {
           setLimitReachedCode("user_credits_exhausted");
-        } else if (conversationRes.error.type === "no_seat_error") {
-          setLimitReachedCode("no_seat");
         } else {
           sendNotification({
             title: conversationRes.error.title,
@@ -200,17 +198,6 @@ export function ConversationContainerVirtuoso({
           >
             <Page.Header title={greeting} />
           </div>
-          {limitReachedCode === "no_seat" && (
-            <ContentMessage
-              icon={AlertCircleV2}
-              variant="warning"
-              className="w-full max-w-conversation"
-              title="No seat assigned"
-            >
-              You don&apos;t have a seat in this workspace. Contact your admin
-              to send messages.
-            </ContentMessage>
-          )}
           <div
             className={classNames(
               "sticky bottom-0 z-20 flex max-h-dvh w-full",
@@ -224,11 +211,6 @@ export function ConversationContainerVirtuoso({
               onSubmit={handleConversationCreation}
               draftKey="home-new-conversation"
               disableAutoFocus={false}
-              submitBlockMessage={
-                limitReachedCode === "no_seat"
-                  ? "You don't have a seat in this workspace."
-                  : null
-              }
             />
           </div>
 
@@ -272,7 +254,7 @@ export function ConversationContainerVirtuoso({
       )}
       <ReachedLimitPopup
         isAdmin={isAdmin(owner)}
-        isOpened={!!limitReachedCode && limitReachedCode !== "no_seat"}
+        isOpened={!!limitReachedCode}
         onClose={() => setLimitReachedCode(null)}
         subscription={subscription}
         owner={owner}
