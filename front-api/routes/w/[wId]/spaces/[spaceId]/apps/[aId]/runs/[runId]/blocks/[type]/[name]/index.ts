@@ -22,6 +22,7 @@ const ParamsSchema = z.object({
 // /api/w/:wId/spaces/:spaceId/apps/:aId/runs/:runId/blocks/:type/:name.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

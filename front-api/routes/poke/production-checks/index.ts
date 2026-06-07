@@ -9,6 +9,7 @@ import run from "./run";
 // Mounted at /api/poke/production-checks.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<GetProductionChecksResponseBody> => {
   const checks = await getCheckSummaries();
   return ctx.json({ checks });

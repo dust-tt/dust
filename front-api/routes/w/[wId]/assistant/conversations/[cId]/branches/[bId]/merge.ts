@@ -13,6 +13,7 @@ const ParamsSchema = z.object({
 // Mounted at /api/w/:wId/assistant/conversations/:cId/branches/:bId/merge.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
   const { cId, bId } = ctx.req.valid("param");

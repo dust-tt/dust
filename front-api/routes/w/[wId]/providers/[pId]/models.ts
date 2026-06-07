@@ -28,6 +28,7 @@ export type GetProviderModelsErrorResponseBody = {
 // Mounted at /api/w/:wId/providers/:pId/models.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

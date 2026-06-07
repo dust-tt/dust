@@ -11,6 +11,7 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 // Mounted at /api/w/:wId/models.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<GetEnabledModelsResponseType> => {
   const auth = ctx.get("auth");
 

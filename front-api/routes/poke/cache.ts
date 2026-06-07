@@ -92,6 +92,7 @@ function resolveCacheKey(
   };
 }
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<GetPokeCacheResponseBody> => {
   const r = resolveCacheKey(ctx);
   if ("err" in r) {

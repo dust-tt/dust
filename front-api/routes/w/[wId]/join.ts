@@ -23,6 +23,7 @@ interface GetJoinErrorBody {
 // Mounted at /api/w/:wId/join (no workspace auth — public endpoint).
 const app = createHono();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

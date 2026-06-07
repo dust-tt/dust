@@ -23,6 +23,7 @@ export type { FileSystemEntry, GCSMountDirectoryEntry };
 // Mounted under /api/w/:wId/spaces/:spaceId/files.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   withSpace({ requireCanRead: true }),

@@ -42,6 +42,7 @@ const ParamsSchema = z.object({
 // Mounted at /api/w/:wId/skills/:sId/reinforcement.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.patch(
   "/",
   validate("param", ParamsSchema),

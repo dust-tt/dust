@@ -69,8 +69,6 @@ const app = publicApiApp();
  *         description: Bad request
  *       401:
  *         description: Unauthorized
- *       405:
- *         description: Method not allowed
  *       500:
  *         description: Internal server error
  */

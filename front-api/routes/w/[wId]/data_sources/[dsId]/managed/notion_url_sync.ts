@@ -83,6 +83,7 @@ function errorJson(
 // Mounted at /api/w/:wId/data_sources/:dsId/managed/notion_url_sync.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
   const { dsId } = ctx.req.valid("param");

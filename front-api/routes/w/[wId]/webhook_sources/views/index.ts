@@ -15,6 +15,7 @@ const GetWebhookSourceViewsQuerySchema = z.object({
 // Mounted at /api/w/:wId/webhook_sources/views.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("query", GetWebhookSourceViewsQuerySchema),

@@ -20,6 +20,7 @@ import { withSpace } from "@front-api/middlewares/with_space";
 // require the space to be a project; this is checked inline per handler.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   withSpace({ requireCanReadOrAdministrate: true }),

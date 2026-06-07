@@ -35,6 +35,7 @@ const ParamsSchema = z.object({
 // Mounted at /api/poke/workspaces/:wId/spaces/:spaceId/data_source_views/:dsvId/content-nodes.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("param", ParamsSchema),

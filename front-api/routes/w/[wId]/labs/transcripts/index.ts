@@ -23,6 +23,7 @@ import {
 // Mounted at /api/w/:wId/labs/transcripts.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   async (ctx): HandlerResult<GetLabsTranscriptsConfigurationResponseBody> => {

@@ -8,6 +8,7 @@ import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 // Mounted at /api/poke/workspaces/:wId/workspace-info.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<PokeGetWorkspaceInfo> => {
   const auth = ctx.get("auth");
 

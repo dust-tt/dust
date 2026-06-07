@@ -29,6 +29,7 @@ const SearchMembersQuerySchema = z.object({
 // Mounted at /api/w/:wId/members/search.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("query", SearchMembersQuerySchema),

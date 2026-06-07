@@ -35,6 +35,7 @@ export type GetDataSourceUpdateResponseBody = {
 // Mounted at /api/w/:wId/data_sources/:dsId/managed/update.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("param", ParamsSchema),

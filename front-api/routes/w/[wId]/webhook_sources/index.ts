@@ -26,6 +26,7 @@ import views from "./views";
 // Mounted at /api/w/:wId/webhook_sources.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   ensureIsAdmin(),

@@ -33,6 +33,7 @@ export type {
 // pokeAuth).
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<GetPokeWorkspacesResponseBody> => {
   const auth = ctx.get("auth");
   const upgradedQuery = ctx.req.query("upgraded");

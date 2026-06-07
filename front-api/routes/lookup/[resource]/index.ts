@@ -57,6 +57,7 @@ const BodySchema = z.union([
 
 const app = createHono();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("param", ResourceParamSchema),

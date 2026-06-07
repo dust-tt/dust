@@ -21,6 +21,7 @@ function buildTemporalLink(workflowId: string): string {
 // Mounted at /api/poke/sandbox_kill/request.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("json", RequestBodySchema),

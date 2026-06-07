@@ -22,6 +22,7 @@ const ProviderCredentialParamsSchema = z.object({
 // Mounted at /api/w/:wId/provider_credentials/:providerId.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   ensureIsAdmin(),

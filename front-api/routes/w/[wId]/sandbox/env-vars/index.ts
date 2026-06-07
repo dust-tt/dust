@@ -26,6 +26,7 @@ const PostWorkspaceSandboxEnvVarBodySchema = z.object({
 // Mounted at /api/w/:wId/sandbox/env-vars.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   async (ctx): HandlerResult<GetWorkspaceSandboxEnvVarsResponseBody> => {

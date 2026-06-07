@@ -8,6 +8,7 @@ import projectId from "./[projectId]";
 // Mounted at /api/poke/workspaces/:wId/projects.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<PokeListProjects> => {
   const auth = ctx.get("auth");
 

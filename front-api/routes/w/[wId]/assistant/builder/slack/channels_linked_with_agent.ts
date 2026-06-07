@@ -11,6 +11,7 @@ import { apiError } from "@front-api/middlewares/utils";
 // Mounted at /api/w/:wId/assistant/builder/slack/channels_linked_with_agent.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   ensureIsBuilder(),

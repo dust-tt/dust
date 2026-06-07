@@ -10,6 +10,7 @@ import { withSpace } from "@front-api/middlewares/with_space";
 // Mounted under /api/w/:wId/spaces/:spaceId/star.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   withSpace({ requireCanReadOrAdministrate: true }),

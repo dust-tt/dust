@@ -11,6 +11,7 @@ const MarkAllAsReadBodySchema = z.object({
 // Mounted at /api/w/:wId/assistant/conversations/bulk-actions.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post("/", validate("json", MarkAllAsReadBodySchema), async (ctx) => {
   const auth = ctx.get("auth");
   const { conversationIds, action } = ctx.req.valid("json");

@@ -51,6 +51,7 @@ async function checkDependency(
  */
 const app = createHono();
 
+/** @ignoreswagger */
 app.get("/", async (ctx) => {
   const startMs = performance.now();
 

@@ -10,6 +10,7 @@ const ParseMentionsRequestBodySchema = z.object({
 // Mounted at /api/w/:wId/assistant/mentions/parse.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post("/", validate("json", ParseMentionsRequestBodySchema), async (ctx) => {
   const auth = ctx.get("auth");
   const { markdown } = ctx.req.valid("json");

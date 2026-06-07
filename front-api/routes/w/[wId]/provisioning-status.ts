@@ -10,6 +10,7 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 // Mounted at /api/w/:wId/provisioning-status.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<GetProvisioningStatusResponseBody> => {
   const auth = ctx.get("auth");
 

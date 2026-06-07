@@ -68,6 +68,7 @@ async function checkAccess(ctx: Context) {
   return { auth, workspace, activeConnection: ssoConnections[0] };
 }
 
+/** @ignoreswagger */
 app.get(
   "/",
   ensureIsAdmin(),

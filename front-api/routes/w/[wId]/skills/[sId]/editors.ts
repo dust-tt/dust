@@ -57,6 +57,7 @@ async function loadSkillAndEditorGroup(
 // Mounted at /api/w/:wId/skills/:sId/editors.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
   const { sId } = ctx.req.valid("param");

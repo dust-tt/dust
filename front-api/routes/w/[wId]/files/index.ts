@@ -80,6 +80,62 @@ const FileUploadUrlRequestSchema = z.discriminatedUnion("useCase", [
 // Mounted at /api/w/:wId/files.
 const app = workspaceApp();
 
+/**
+ * @swagger
+ * /api/w/{wId}/files:
+ *   post:
+ *     summary: Create a file upload
+ *     description: Creates a file record and returns a pre-signed upload URL. The file content should then be uploaded to the returned URL.
+ *     tags:
+ *       - Private Files
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - contentType
+ *               - fileName
+ *               - fileSize
+ *               - useCase
+ *             properties:
+ *               contentType:
+ *                 type: string
+ *               fileName:
+ *                 type: string
+ *               fileSize:
+ *                 type: number
+ *               useCase:
+ *                 type: string
+ *                 enum: [conversation, folders_document, avatar, upsert_document, upsert_table, project_context, skill_attachment]
+ *               useCaseMetadata:
+ *                 type: object
+ *     responses:
+ *       200:
+ *         description: File record created with upload URL
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 file:
+ *                   $ref: '#/components/schemas/PrivateFileWithUploadUrl'
+ *       400:
+ *         description: Invalid request
+ *       429:
+ *         description: Rate limit exceeded
+ */
+
 app.post("/", validate("json", FileUploadUrlRequestSchema), async (ctx) => {
   const auth = ctx.get("auth");
   const user = auth.getNonNullableUser();

@@ -12,6 +12,7 @@ import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 // Mounted at /api/w/:wId/subscriptions/checkout/prepare-payment.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   ensureIsAdmin(),

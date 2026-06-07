@@ -21,6 +21,7 @@ const ParamsSchema = z.object({
 // Mounted at /api/poke/workspaces/:wId/projects/:projectId/tasks-workflow.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

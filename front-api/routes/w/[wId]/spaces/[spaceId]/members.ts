@@ -19,6 +19,7 @@ export type { PatchSpaceMembersRequestBodyType } from "@app/lib/api/spaces/membe
 // Mounted at /api/w/:wId/spaces/:spaceId/members.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.patch(
   "/",
   withSpace({ requireCanReadOrAdministrate: true }),

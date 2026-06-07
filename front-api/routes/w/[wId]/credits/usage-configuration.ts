@@ -15,6 +15,7 @@ import { validate } from "@front-api/middlewares/validator";
 // Mounted at /api/w/:wId/credits/usage-configuration.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   ensureIsAdmin(),

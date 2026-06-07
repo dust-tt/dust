@@ -26,6 +26,7 @@ app.route("/metronome-balances", metronomeBalances);
 app.route("/purchase", purchase);
 app.route("/usage-configuration", usageConfiguration);
 
+/** @ignoreswagger */
 app.get("/", ensureIsAdmin(), async (ctx) => {
   const auth = ctx.get("auth");
 

@@ -19,6 +19,7 @@ const ListAgentConfigurationsQuerySchema = z.object({
 // Mounted at /api/poke/workspaces/:wId/agent_configurations.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("query", ListAgentConfigurationsQuerySchema),

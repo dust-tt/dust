@@ -91,6 +91,7 @@ app.route("/reinforcement", reinforcement);
 app.route("/restore", restore);
 app.route("/files/:fileId/content", filesRoute);
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

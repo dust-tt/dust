@@ -29,6 +29,7 @@ const PostDustAppSecretBodySchema = z.object({
 // Mounted at /api/w/:wId/dust_app_secrets.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   ensureIsBuilder(),

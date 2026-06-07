@@ -40,6 +40,7 @@ function attachmentTitleMatchesQuery(title: string, q: string): boolean {
 // Mounted under /api/w/:wId/spaces/:spaceId/project_context.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   withSpace({ requireCanRead: true }),

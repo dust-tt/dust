@@ -10,6 +10,7 @@ import { getConnInfo } from "@hono/node-server/conninfo";
 // Mounted at /api/geo/location. No workspace auth — top-level route.
 const app = unauthedApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx) => {
   const connInfo = getConnInfo(ctx);
   const headers: Record<string, string> = {};

@@ -95,8 +95,6 @@ const ParamsSchema = z.object({
  *         description: Data source or document not found.
  *       500:
  *         description: Internal Server Error.
- *       405:
- *         description: Method not supported.
  *   post:
  *     summary: Upsert a document in a data source
  *     description: Upsert a document in a data source in the workspace identified by {wId}.
@@ -187,8 +185,6 @@ const ParamsSchema = z.object({
  *         description: Forbidden. The data source is managed.
  *       404:
  *         description: Data source or document not found.
- *       405:
- *         description: Method not supported.
  *       429:
  *         description: Rate limit exceeded.
  *       500:
@@ -244,8 +240,6 @@ const ParamsSchema = z.object({
  *         description: Forbidden. The data source is managed.
  *       404:
  *         description: Data source or document not found.
- *       405:
- *         description: Method not supported.
  *       500:
  *         description: Internal Server Error.
  * components:

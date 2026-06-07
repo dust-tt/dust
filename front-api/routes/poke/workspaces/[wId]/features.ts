@@ -6,6 +6,7 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 // Mounted at /api/poke/workspaces/:wId/features.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<GetPokeFeaturesResponseBody> => {
   const auth = ctx.get("auth");
   const owner = auth.getNonNullableWorkspace();

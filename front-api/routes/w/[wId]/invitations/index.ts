@@ -19,6 +19,7 @@ const app = workspaceApp();
 
 app.use("*", ensureIsAdmin());
 
+/** @ignoreswagger */
 app.get(
   "/",
   async (ctx): HandlerResult<GetWorkspaceInvitationsResponseBody> => {

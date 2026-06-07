@@ -32,6 +32,7 @@ export function sortSpacesSummary<T extends { id: number }>(
 // Mounted under /api/w/:wId/assistant/conversations/spaces.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<GetBySpacesSummaryResponseBody> => {
   const auth = ctx.get("auth");
 

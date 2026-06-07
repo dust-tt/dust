@@ -34,6 +34,7 @@ interface PokeFetchAssistantTemplatesResponse {
 // scope for this PR, so io-ts is used inline here.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   async (ctx): HandlerResult<PokeFetchAssistantTemplatesResponse> => {

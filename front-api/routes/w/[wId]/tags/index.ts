@@ -23,6 +23,7 @@ const PostBodySchema = z.object({
 // Mounted at /api/w/:wId/tags.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<GetTagsResponseBody> => {
   const auth = ctx.get("auth");
 

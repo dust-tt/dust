@@ -30,6 +30,7 @@ const PatchAgentTagsRequestBodySchema = z
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/tags.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.patch(
   "/",
   validate("param", ParamsSchema),

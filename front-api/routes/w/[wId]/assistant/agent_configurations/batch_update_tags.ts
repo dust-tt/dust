@@ -15,6 +15,7 @@ const BatchUpdateAgentTagsRequestBodySchema = z.object({
 // Mounted at /api/w/:wId/assistant/agent_configurations/batch_update_tags.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("json", BatchUpdateAgentTagsRequestBodySchema),

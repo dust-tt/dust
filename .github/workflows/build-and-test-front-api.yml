@@ -79,6 +79,16 @@ jobs:
           node-version: "24.14.0"
           build-sdks: "true"
           build-sparkle: "true"
+      - name: Lint swagger annotations
+        run: npm -w front-api run lint:swagger-annotations
+      - name: Check swagger.json is up to date
+        working-directory: front-api
+        run: |
+          npx next-swagger-doc-cli swagger.json
+          if ! git diff --exit-code public/swagger.json; then
+            echo "Error: public/swagger.json is out of date. Run 'npm run docs' in front-api/ and commit the result."
+            exit 1
+          fi
       - name: Typecheck
         run: npm -w front-api run tsgo -- --version && npm -w front-api run tsgo
       - name: Build

@@ -35,6 +35,7 @@ const ParamsSchema = z.object({
 // `formidable.parse(...)` — matching the Next handler.
 const app = createHono<PokeCtx & { Bindings: HttpBindings }>();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("param", ParamsSchema),

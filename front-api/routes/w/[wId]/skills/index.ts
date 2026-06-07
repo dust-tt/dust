@@ -87,6 +87,7 @@ app.route("/reinforcement_daily_spend", reinforcementDailySpend);
 app.route("/reinforcement_spend", reinforcementSpend);
 app.route("/similar", similar);
 
+/** @ignoreswagger */
 app.get(
   "/",
   async (

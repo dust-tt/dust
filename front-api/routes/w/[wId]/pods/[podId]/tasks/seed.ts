@@ -10,6 +10,7 @@ export type { PostSeedInitialPodTasksResponseBody };
 // Mounted under /api/w/:wId/pods/:podId/tasks/seed.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   withSpace({ requireCanAdministrate: true, routeParam: "podId" }),

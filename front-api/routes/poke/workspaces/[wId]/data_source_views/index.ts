@@ -8,6 +8,7 @@ import dsvId from "./[dsvId]";
 // Mounted at /api/poke/workspaces/:wId/data_source_views.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<PokeListDataSourceViews> => {
   const auth = ctx.get("auth");
 

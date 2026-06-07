@@ -38,6 +38,7 @@ function isValidContentFormat(
 // handler.
 const app = createHono<WorkspaceAwareCtx & { Bindings: HttpBindings }>();
 
+/** @ignoreswagger */
 app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
   const owner = auth.getNonNullableWorkspace();

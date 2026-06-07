@@ -47,6 +47,7 @@ function getUserDisplayName(user: UserResource | undefined): string {
 // Mounted at /api/w/:wId/analytics/top-users.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", ensureIsAdmin(), validate("query", QuerySchema), async (ctx) => {
   const auth = ctx.get("auth");
 

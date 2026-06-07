@@ -41,6 +41,7 @@ const app = workspaceApp();
 app.route("/seat-type", seatType);
 app.route("/spend_limit", spendLimit);
 
+/** @ignoreswagger */
 app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
   const owner = auth.getNonNullableWorkspace();

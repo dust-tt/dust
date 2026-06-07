@@ -44,6 +44,7 @@ function summaryErrorToApi(ctx: Context, err: AwuPoolSummaryError) {
 // Mounted at /api/w/:wId/credits/awu-pool-summary.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   ensureIsAdmin(),

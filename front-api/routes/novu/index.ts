@@ -55,6 +55,7 @@ const handler = new NovuRequestHandler<[Request], Response>({
 
 const app = createHono();
 
+/** @ignoreswagger */
 app.get("/", (ctx) => handler(ctx.req.raw));
 app.post("/", (ctx) => handler(ctx.req.raw));
 app.options("/", (ctx) => handler(ctx.req.raw));

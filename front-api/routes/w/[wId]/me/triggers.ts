@@ -8,6 +8,7 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 // Mounted at /api/w/:wId/me/triggers.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<GetUserTriggersResponseBody> => {
   const auth = ctx.get("auth");
 

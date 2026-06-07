@@ -12,6 +12,7 @@ export type { GetMembersUsageResponseBody };
 // Mounted at /api/poke/workspaces/:wId/credits/members-usage.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("query", MembersUsagePaginationSchema),

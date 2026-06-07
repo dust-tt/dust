@@ -80,6 +80,7 @@ interface PostDataClassificationLabelsResponseBody {
 // Mounted at /api/w/:wId/data-classification-labels.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   ensureIsAdmin(),

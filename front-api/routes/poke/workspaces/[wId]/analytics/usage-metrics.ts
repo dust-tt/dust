@@ -29,6 +29,7 @@ export type PokeGetWorkspaceUsageMetricsResponse = {
 // Mounted at /api/poke/workspaces/:wId/analytics/usage-metrics.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get("/", validate("query", QuerySchema), async (ctx) => {
   const auth = ctx.get("auth");
   const owner = auth.getNonNullableWorkspace();

@@ -12,6 +12,7 @@ const ParamsSchema = z.object({
 // Mounted at /api/poke/plugins/:pluginId/manifest.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

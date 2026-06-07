@@ -32,6 +32,7 @@ const CreateKeyPostBodySchema = z.object({
 // Mounted at /api/w/:wId/keys.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   ensureIsAdmin(),

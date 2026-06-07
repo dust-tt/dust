@@ -82,6 +82,7 @@ async function resolveFs(
   return { fs: fsResult.value, err: null };
 }
 
+/** @ignoreswagger */
 app.get("/:canonicalPath{.+}", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
   const { canonicalPath } = ctx.req.valid("param");

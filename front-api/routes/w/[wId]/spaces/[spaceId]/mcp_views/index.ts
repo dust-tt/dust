@@ -109,6 +109,7 @@ async function notifyWorkspaceAdminsAboutAffectedAgents(
 // Mounted under /api/w/:wId/spaces/:spaceId/mcp_views.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   withSpace({ requireCanReadOrAdministrate: true }),

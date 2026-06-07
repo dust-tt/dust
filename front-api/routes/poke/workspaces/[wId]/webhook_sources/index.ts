@@ -8,6 +8,7 @@ import wsId from "./[wsId]";
 // Mounted at /api/poke/workspaces/:wId/webhook_sources.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<PokeListWebhookSources> => {
   const auth = ctx.get("auth");
 

@@ -27,6 +27,7 @@ export type ConversationFileRelResponseBody = Record<string, never>;
 // Mounted from files/index.ts at the root path.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/:rel{.+}", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
   const { cId, rel } = ctx.req.valid("param");

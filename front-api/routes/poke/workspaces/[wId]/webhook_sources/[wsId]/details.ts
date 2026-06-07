@@ -13,6 +13,7 @@ const ParamsSchema = z.object({
 // Mounted at /api/poke/workspaces/:wId/webhook_sources/:wsId/details.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

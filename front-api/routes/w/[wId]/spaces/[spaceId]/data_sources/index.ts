@@ -67,6 +67,7 @@ export {
 // Mounted under /api/w/:wId/spaces/:spaceId/data_sources.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   withSpace({ requireCanReadOrAdministrate: true }),

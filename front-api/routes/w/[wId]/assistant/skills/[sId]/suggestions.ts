@@ -20,6 +20,7 @@ import { validate } from "@front-api/middlewares/validator";
 // middleware, which also enforces canWrite.
 const app = skillApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<GetSkillSuggestionsResponseBody> => {
   const auth = ctx.get("auth");
   const skill = ctx.get("skill");

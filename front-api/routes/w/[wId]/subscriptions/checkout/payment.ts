@@ -13,6 +13,7 @@ import { validate } from "@front-api/middlewares/validator";
 // Mounted at /api/w/:wId/subscriptions/checkout/payment.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("json", PostCheckoutPaymentBodySchema),

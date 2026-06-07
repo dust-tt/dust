@@ -9,6 +9,7 @@ export type { GetProviderCredentialsResponseBody };
 // Mounted at /api/w/:wId/provider_credentials.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   ensureIsAdmin(),

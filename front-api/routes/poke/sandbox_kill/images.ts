@@ -8,6 +8,7 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 // Mounted at /api/poke/sandbox_kill/images.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<SandboxKillImagesResponseBody> => {
   const images = getRegisteredImages()
     .map((image) => image.imageId)

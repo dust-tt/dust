@@ -10,6 +10,7 @@ const app = sessionApp();
 
 app.use("*", sessionAuth);
 
+/** @ignoreswagger */
 app.get("/", async (ctx) => {
   const session = ctx.get("session");
   const { inviteToken, wId, join, cId } = ctx.req.query();

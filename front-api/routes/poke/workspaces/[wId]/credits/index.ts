@@ -18,6 +18,7 @@ import membersUsage from "./members-usage";
 // Mounted at /api/poke/workspaces/:wId/credits.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<PokeListCreditsResponseBody> => {
   const auth = ctx.get("auth");
   const owner = auth.getNonNullableWorkspace();

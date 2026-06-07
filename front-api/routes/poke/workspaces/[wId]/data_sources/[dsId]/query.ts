@@ -27,6 +27,7 @@ export type PokeQueryResponseBody = {
 // Mounted at /api/poke/workspaces/:wId/data_sources/:dsId/query.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("param", ParamsSchema),

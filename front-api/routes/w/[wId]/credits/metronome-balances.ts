@@ -34,6 +34,7 @@ function balancesErrorToApi(ctx: Context, err: MetronomeBalancesError) {
 // Mounted at /api/w/:wId/credits/metronome-balances.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   ensureIsAdmin(),

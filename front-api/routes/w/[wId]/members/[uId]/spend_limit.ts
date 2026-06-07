@@ -68,6 +68,7 @@ function spendLimitErrorToApiError(
 // Mounted at /api/w/:wId/members/:uId/spend_limit.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

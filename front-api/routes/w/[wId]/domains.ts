@@ -24,6 +24,7 @@ const DeleteWorkspaceDomainRequestBodySchema = z.object({
 // Mounted at /api/w/:wId/domains.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   ensureIsAdmin(),

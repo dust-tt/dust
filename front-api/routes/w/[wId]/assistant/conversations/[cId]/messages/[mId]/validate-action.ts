@@ -19,6 +19,7 @@ const ValidateActionSchema = z.object({
 // Mounted at /api/w/:wId/assistant/conversations/:cId/messages/:mId/validate-action.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("param", ParamsSchema),

@@ -11,6 +11,7 @@ import { validate } from "@front-api/middlewares/validator";
 // Mounted at /api/w/:wId/members/me/agent_favorite.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("json", PostAgentUserFavoriteRequestBodySchema),

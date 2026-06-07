@@ -12,6 +12,7 @@ export type GetCheckoutPaymentStatusResponseBody = {
 // Mounted at /api/w/:wId/subscriptions/checkout/checkout-payment-status.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   ensureIsAdmin(),

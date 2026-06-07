@@ -18,6 +18,7 @@ import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 // Mounted at /api/w/:wId/sandbox/egress-policy.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   async (ctx): HandlerResult<GetWorkspaceEgressPolicyResponseBody> => {

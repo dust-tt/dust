@@ -20,6 +20,7 @@ export type GetOAuthMetadataResponseBody = {
 // Mounted at /api/w/:wId/data_sources/:dsId/managed/oauth-metadata.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

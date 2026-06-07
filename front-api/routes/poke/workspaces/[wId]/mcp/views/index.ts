@@ -13,6 +13,7 @@ const QuerySchema = z.object({
 // Mounted at /api/poke/workspaces/:wId/mcp/views.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("query", QuerySchema),

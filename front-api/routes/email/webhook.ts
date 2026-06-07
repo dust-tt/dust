@@ -52,6 +52,7 @@ function headersToNodeHeaders(webHeaders: Headers): EmailWebhookHeaders {
 // Mounted at /api/email/webhook.
 const app = createHono();
 
+/** @ignoreswagger */
 app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
   const headers = headersToNodeHeaders(ctx.req.raw.headers);
   const authHeader = isString(headers.authorization)

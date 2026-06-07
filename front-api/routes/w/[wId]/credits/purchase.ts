@@ -96,6 +96,7 @@ function purchaseErrorToApi(
 // Mounted at /api/w/:wId/credits/purchase.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   ensureIsAdmin(),

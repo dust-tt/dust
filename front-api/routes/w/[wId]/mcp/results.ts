@@ -13,6 +13,7 @@ const PostMCPResultsBodySchema = z.object({
 // Mounted at /api/w/:wId/mcp/results.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post("/", validate("json", PostMCPResultsBodySchema), async (ctx) => {
   const auth = ctx.get("auth");
   const { serverId, result } = ctx.req.valid("json");

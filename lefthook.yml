@@ -13,7 +13,7 @@
 #   LEFTHOOK_EXCLUDE=ggshield-scan,package-lock-check git commit -m "message"
 #
 # Skip only linting/type-checking (front and connectors):
-#   LEFTHOOK_EXCLUDE=front-lint-test-filenames,front-lint-swagger-annotations,front-typecheck,front-circular,front-docs-check,biome,connectors-typecheck git commit -m "message"
+#   LEFTHOOK_EXCLUDE=front-lint-test-filenames,front-typecheck,front-circular,front-api-docs-check,biome,connectors-typecheck git commit -m "message"
 #
 # Skip only a project:
 #   LEFTHOOK_EXCLUDE=front git commit -m "message"
@@ -72,12 +72,6 @@ pre-commit:
       root: front/
       run: npm run lint:test-filenames
 
-    front-lint-swagger-annotations:
-      tags: front
-      glob: "front/pages/api/v1/**/*.ts"
-      root: front/
-      run: npm run lint:swagger-annotations
-
     front-lint-audit-log-schemas:
       tags: front
       glob: "front/admin/audit_log_schemas/**/*.json"
@@ -90,10 +84,17 @@ pre-commit:
       root: front/
       run: npm run tsgo
 
-    front-docs-check:
-      tags: front
-      glob: "front/pages/api/v1/**/*"
-      root: front/
+    # Front-api directory checks
+    front-api-lint-swagger-annotations:
+      tags: front-api
+      glob: "front-api/routes/**/*.ts"
+      root: front-api/
+      run: npm run lint:swagger-annotations
+
+    front-api-docs-check:
+      tags: front-api
+      glob: "front-api/routes/**/*.ts"
+      root: front-api/
       run: npm run docs:check
 
     # Connectors directory checks

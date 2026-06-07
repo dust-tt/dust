@@ -14,6 +14,7 @@ const GetCheckoutStatusQuerySchema = z.object({
 // for the Stripe-only checkout flow (PaymentProcessingPage).
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   ensureIsAdmin(),

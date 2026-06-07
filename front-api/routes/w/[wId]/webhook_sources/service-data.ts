@@ -19,6 +19,7 @@ const GetServiceDataQuerySchema = z.object({
 // Mounted at /api/w/:wId/webhook_sources/service-data.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   ensureIsAdmin(),

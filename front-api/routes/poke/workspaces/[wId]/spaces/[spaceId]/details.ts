@@ -16,6 +16,7 @@ const ParamsSchema = z.object({
 // Mounted at /api/poke/workspaces/:wId/spaces/:spaceId/details.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

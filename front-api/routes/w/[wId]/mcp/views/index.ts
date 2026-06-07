@@ -33,6 +33,7 @@ function isAllowedAvailability(
 // Mounted at /api/w/:wId/mcp/views.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<GetMCPServerViewsListResponseBody> => {
   const auth = ctx.get("auth");
   const spaceIds = ctx.req.query("spaceIds");

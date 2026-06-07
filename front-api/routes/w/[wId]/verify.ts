@@ -36,6 +36,7 @@ async function detectCountryFromIP(ctx: Context): Promise<Country> {
 // Mounted at /api/w/:wId/verify.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   ensureIsAdmin(),

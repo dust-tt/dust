@@ -8,6 +8,7 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 // Mounted at /api/w/:wId/me/pending-invitations.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<GetPendingInvitationsResponseBody> => {
   const auth = ctx.get("auth");
   const user = auth.getNonNullableUser();

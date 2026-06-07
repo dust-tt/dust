@@ -61,6 +61,7 @@ app.route("/auth-context", authContext);
 // parent /poke `pokeAuth`) to the target workspace.
 app.use("*", withPokeWorkspace);
 
+/** @ignoreswagger */
 app.patch(
   "/",
   validate("json", WorkspaceSegmentationSchema),

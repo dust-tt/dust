@@ -275,6 +275,7 @@ app.use(
 // === Default auth for everything else.
 app.use("*", workspaceAuth());
 
+/** @ignoreswagger */
 app.get(
   "/",
   ensureIsAdmin(),

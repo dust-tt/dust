@@ -32,6 +32,7 @@ const DEFAULT_SUGGESTIONS = [
 // Mounted at /api/w/:wId/tags/suggest_from_agents.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<GetSuggestionsResponseBody> => {
   const auth = ctx.get("auth");
   const owner = auth.getNonNullableWorkspace();

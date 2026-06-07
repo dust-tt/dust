@@ -54,6 +54,7 @@ const GetUsageQueryParamsSchema = z.discriminatedUnion("mode", [
 // Mounted at /api/w/:wId/workspace-usage.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   ensureIsAdmin(),

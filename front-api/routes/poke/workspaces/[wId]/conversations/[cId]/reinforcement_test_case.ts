@@ -44,6 +44,7 @@ function serializeActionOutput(
 // Mounted at /api/poke/workspaces/:wId/conversations/:cId/reinforcement_test_case.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

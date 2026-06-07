@@ -25,6 +25,7 @@ const app = workspaceApp();
 // Generates a WorkOS portal URL on click and emits an audit event.
 // WorkOS portal links are org-scoped (not user-scoped), so this is the
 // only place we can attribute portal access to a specific admin.
+/** @ignoreswagger */
 app.post(
   "/",
   ensureIsAdmin(),

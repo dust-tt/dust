@@ -8,6 +8,7 @@ import tags from "./tags";
 // Mounted under /api/w/:wId/data_source_views.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<GetDataSourceViewsResponseBody> => {
   const auth = ctx.get("auth");
   const dataSourceViews = await DataSourceViewResource.listByWorkspace(auth);

@@ -12,6 +12,7 @@ const ParamsSchema = z.object({
 // Mounted at /api/templates/:tId.
 const app = createHono();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

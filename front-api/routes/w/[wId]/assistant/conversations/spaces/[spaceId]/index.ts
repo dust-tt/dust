@@ -33,6 +33,7 @@ import unread from "./unread";
 // Mounted at /api/w/:wId/assistant/conversations/spaces/:spaceId.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

@@ -190,6 +190,7 @@ async function validateAuthReferenceForMCPConnection(
 // Mounted under /api/w/:wId/mcp/connections/:connectionType.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

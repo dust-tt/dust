@@ -56,6 +56,7 @@ const PatchProjectTaskBodySchema = z
 // Mounted under /api/w/:wId/spaces/:spaceId/project_tasks/:taskId.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.patch(
   "/",
   validate("param", ParamsSchema),

@@ -19,6 +19,7 @@ const PostValidateVerificationRequestBody = z.object({
 // Mounted at /api/w/:wId/verification/validate.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   ensureIsAdmin(),

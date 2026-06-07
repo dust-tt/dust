@@ -29,6 +29,7 @@ const ParamsSchema = z.object({
 // Mounted at /api/w/:wId/files/:fileId/share/grants.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
   const { fileId } = ctx.req.valid("param");

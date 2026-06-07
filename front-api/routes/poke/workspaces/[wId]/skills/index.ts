@@ -9,6 +9,7 @@ import suggestions from "./suggestions";
 // Mounted at /api/poke/workspaces/:wId/skills.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<GetPokeSkillsResponseBody> => {
   const auth = ctx.get("auth");
 

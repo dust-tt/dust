@@ -16,6 +16,7 @@ import { validate } from "@front-api/middlewares/validator";
 // Mounted at /api/poke/plans. pokeAuth is applied by the parent poke sub-app.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<GetPokePlansResponseBody> => {
   const planModels = await PlanModel.findAll({
     order: [["createdAt", "ASC"]],

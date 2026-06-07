@@ -14,6 +14,7 @@ import { validate } from "@front-api/middlewares/validator";
 // Mounted at /api/w/:wId/assistant/conversations/semantic_search.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("query", SearchQuerySchema),

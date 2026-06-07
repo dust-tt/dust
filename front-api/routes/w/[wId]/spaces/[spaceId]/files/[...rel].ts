@@ -100,6 +100,7 @@ async function buildContext(
   };
 }
 
+/** @ignoreswagger */
 app.get(
   "/:rel{.+}",
   validate("param", ParamsSchema),

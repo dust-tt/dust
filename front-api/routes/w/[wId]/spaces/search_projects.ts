@@ -12,6 +12,7 @@ import { apiError } from "@front-api/middlewares/utils";
 // Mounted under /api/w/:wId/spaces/search_projects.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<SearchProjectsResponseBody> => {
   const auth = ctx.get("auth");
 

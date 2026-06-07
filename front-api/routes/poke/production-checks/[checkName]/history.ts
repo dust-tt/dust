@@ -17,6 +17,7 @@ const ParamsSchema = z.object({
 // Mounted at /api/poke/production-checks/:checkName/history.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

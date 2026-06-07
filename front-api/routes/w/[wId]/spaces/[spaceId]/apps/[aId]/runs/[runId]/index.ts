@@ -21,6 +21,7 @@ import status from "./status";
 const app = workspaceApp();
 
 // GET / — get a run.
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

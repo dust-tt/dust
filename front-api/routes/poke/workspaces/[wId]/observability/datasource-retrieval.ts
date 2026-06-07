@@ -16,6 +16,7 @@ const QuerySchema = z.object({
 // Mounted at /api/poke/workspaces/:wId/observability/datasource-retrieval.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("query", QuerySchema),

@@ -93,6 +93,7 @@ async function loadAgentAndMemory(
   return { ok: true, memory };
 }
 
+/** @ignoreswagger */
 app.patch(
   "/",
   validate("param", ParamsSchema),

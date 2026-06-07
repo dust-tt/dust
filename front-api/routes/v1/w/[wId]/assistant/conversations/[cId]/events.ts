@@ -10,6 +10,48 @@ import { publicApiApp } from "@front-api/middlewares/ctx";
 // contract matches the Next middleware redirect at the same path.
 const app = publicApiApp();
 
+/**
+ * @swagger
+ * /api/v1/w/{wId}/assistant/conversations/{cId}/events:
+ *   get:
+ *     summary: Get the events for a conversation
+ *     description: Get the events for a conversation in the workspace identified by {wId}.
+ *     tags:
+ *       - Conversations
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         description: ID of the conversation
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: lastEventId
+ *         required: false
+ *         description: ID of the last event
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Events for the conversation, view the "Events" page from this documentation for more information.
+ *       400:
+ *         description: Bad Request. Missing or invalid parameters.
+ *       401:
+ *         description: Unauthorized. Invalid or missing authentication token.
+ *       404:
+ *         description: Conversation not found.
+ *       500:
+ *         description: Internal Server Error.
+ */
+
 app.get("/", redirectToSse);
 
 export default app;

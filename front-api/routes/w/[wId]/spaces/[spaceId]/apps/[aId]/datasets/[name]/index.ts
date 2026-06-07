@@ -95,6 +95,7 @@ async function loadAppAndDataset(ctx: Context): Promise<
   return { appResource, dataset, aId, name };
 }
 
+/** @ignoreswagger */
 app.get(
   "/",
   withSpace({ requireCanRead: true }),

@@ -15,6 +15,7 @@ const GetCouponValidateQuerySchema = z.object({
 // Mounted at /api/w/:wId/coupon/validate.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   ensureIsAdmin(),
