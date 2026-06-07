@@ -26,6 +26,7 @@ const PostAppBodySchema = z.object({
 const app = workspaceApp();
 
 // GET / — list apps in space.
+/** @ignoreswagger */
 app.get(
   "/",
   withSpace({ requireCanReadOrAdministrate: true }),

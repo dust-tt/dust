@@ -17,6 +17,7 @@ const MAX_ACCESS_REQUESTS_PER_DAY = 30;
 // Mounted at /api/w/:wId/mcp/request_access.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("json", PostRequestActionsAccessBodySchema),

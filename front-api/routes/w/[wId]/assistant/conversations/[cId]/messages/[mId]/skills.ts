@@ -15,6 +15,7 @@ const ParamsSchema = z.object({
 // Mounted at /api/w/:wId/assistant/conversations/:cId/messages/:mId/skills.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

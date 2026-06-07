@@ -19,6 +19,7 @@ const ParamsSchema = z.object({
 // use here to resolve a workspace-scoped Authenticator inline.
 const app = sessionApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

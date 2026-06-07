@@ -19,6 +19,7 @@ export type DeleteMCPServerViewResponseBody = {
 // Mounted under /api/w/:wId/spaces/:spaceId/mcp_views/:svId.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.delete(
   "/",
   validate("param", ParamsSchema),

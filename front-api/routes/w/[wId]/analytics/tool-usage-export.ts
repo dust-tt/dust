@@ -26,6 +26,7 @@ interface ToolUsageExportRow {
 // Mounted at /api/w/:wId/analytics/tool-usage-export.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", ensureIsAdmin(), validate("query", QuerySchema), async (ctx) => {
   const auth = ctx.get("auth");
 

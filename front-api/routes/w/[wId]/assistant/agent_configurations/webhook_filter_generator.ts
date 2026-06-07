@@ -19,6 +19,7 @@ const PostWebhookFilterGeneratorRequestBodySchema = z.object({
 // Mounted at /api/w/:wId/assistant/agent_configurations/webhook_filter_generator.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("json", PostWebhookFilterGeneratorRequestBodySchema),

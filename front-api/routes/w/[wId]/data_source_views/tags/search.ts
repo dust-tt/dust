@@ -12,6 +12,7 @@ import { validate } from "@front-api/middlewares/validator";
 // Mounted at /api/w/:wId/data_source_views/tags/search.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("json", PostTagSearchBodySchema),

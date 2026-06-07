@@ -12,6 +12,7 @@ const ParamsSchema = z.object({
 // Mounted at /api/w/:wId/dust_app_secrets/:name/destroy.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.delete(
   "/",
   validate("param", ParamsSchema),

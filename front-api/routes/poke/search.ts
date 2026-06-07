@@ -8,6 +8,7 @@ import { apiError } from "@front-api/middlewares/utils";
 // Mounted at /api/poke/search. pokeAuth is applied by the parent poke sub-app.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<GetPokeSearchItemsResponseBody> => {
   const auth = ctx.get("auth");
   const search = ctx.req.query("search");

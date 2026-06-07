@@ -14,6 +14,7 @@ const ParamsSchema = z.object({
 // Mounted at /api/w/:wId/data_sources/:dsId/usage.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

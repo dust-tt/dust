@@ -1,6 +1,5 @@
 {
-  "apiFolder": "pages/api",
-  "schemaFolders": ["lib/models/"],
+  "apiFolder": "routes",
   "definition": {
     "openapi": "3.0.0",
     "info": {

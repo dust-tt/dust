@@ -17,6 +17,7 @@ import webhookSourceViewId from "./[webhookSourceViewId]";
 // Mounted under /api/w/:wId/spaces/:spaceId/webhook_source_views.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   withSpace({ requireCanReadOrAdministrate: true }),

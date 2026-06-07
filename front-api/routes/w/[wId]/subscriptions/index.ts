@@ -40,6 +40,7 @@ export type PatchSubscriptionResponseBody = {
 // and PATCH on the workspace's subscription itself; admin-only.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   ensureIsAdmin(),

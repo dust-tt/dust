@@ -23,6 +23,7 @@ const app = workspaceApp();
 
 app.route("/upload", upload);
 
+/** @ignoreswagger */
 app.post(
   "/",
   ensureIsBuilder(),

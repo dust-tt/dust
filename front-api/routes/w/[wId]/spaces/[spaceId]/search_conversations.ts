@@ -26,6 +26,7 @@ const SearchConversationsQuerySchema = z.object({
 // Mounted under /api/w/:wId/spaces/:spaceId/search_conversations.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   withSpace({ requireCanReadOrAdministrate: true }),

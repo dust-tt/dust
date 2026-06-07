@@ -16,6 +16,45 @@ const ParamsSchema = z.object({
 // Mounted at /api/w/:wId/assistant/conversations/:cId/wakeups.
 const app = workspaceApp();
 
+/**
+ * @swagger
+ * /api/w/{wId}/assistant/conversations/{cId}/wakeups:
+ *   get:
+ *     summary: List wake-ups for a conversation
+ *     description: Retrieve all wake-ups scheduled in a conversation (any status).
+ *     tags:
+ *       - Private Conversations
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         description: ID of the conversation
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved wake-ups
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 wakeUps:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/PrivateWakeUp'
+ *       401:
+ *         description: Unauthorized
+ */
+
 app.get(
   "/",
   validate("param", ParamsSchema),

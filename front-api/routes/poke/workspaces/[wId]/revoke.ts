@@ -14,6 +14,7 @@ const RevokeBodySchema = z.object({
 // Mounted at /api/poke/workspaces/:wId/revoke.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("json", RevokeBodySchema),

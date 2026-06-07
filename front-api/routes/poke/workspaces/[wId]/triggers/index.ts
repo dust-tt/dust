@@ -15,6 +15,7 @@ const DeleteTriggerQuerySchema = z.object({
 // Mounted at /api/poke/workspaces/:wId/triggers.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<PokeListTriggers> => {
   const auth = ctx.get("auth");
 

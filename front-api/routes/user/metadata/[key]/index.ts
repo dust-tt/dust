@@ -72,6 +72,7 @@ async function loadUserAndWorkspace(
   return { u, workspaceModelId };
 }
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

@@ -18,6 +18,7 @@ const ParamsSchema = z.object({
 // /api/w/:wId/spaces/:spaceId/data_source_views/:dsvId/documents/:documentId.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

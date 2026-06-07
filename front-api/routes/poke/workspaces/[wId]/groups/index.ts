@@ -8,6 +8,7 @@ import groupId from "./[groupId]";
 // Mounted at /api/poke/workspaces/:wId/groups.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<PokeListGroups> => {
   const auth = ctx.get("auth");
 

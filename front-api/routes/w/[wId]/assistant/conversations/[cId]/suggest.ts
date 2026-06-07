@@ -11,6 +11,7 @@ export type SuggestResponseBody = {
 // underlying suggestion feature has been removed.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<SuggestResponseBody> => {
   return ctx.json({ agentConfigurations: [] });
 });

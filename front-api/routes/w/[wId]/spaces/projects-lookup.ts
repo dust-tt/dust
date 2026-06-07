@@ -10,6 +10,7 @@ import { apiError } from "@front-api/middlewares/utils";
 // Mounted under /api/w/:wId/spaces/projects-lookup.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<SpacesLookupResponseBody> => {
   const auth = ctx.get("auth");
   const ids = ctx.req.queries("ids");

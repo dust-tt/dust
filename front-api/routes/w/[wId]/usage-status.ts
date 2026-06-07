@@ -16,6 +16,7 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 // Mounted at /api/w/:wId/usage-status.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   async (ctx): HandlerResult<GetWorkspaceUsageStatusResponseBody> => {

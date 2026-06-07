@@ -27,6 +27,7 @@ type PatchMemberSeatTypeResponseBody = {
 // Mounted at /api/w/:wId/members/:uId/seat-type.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.patch(
   "/",
   validate("param", ParamsSchema),

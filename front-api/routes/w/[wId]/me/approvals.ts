@@ -19,6 +19,7 @@ const DeleteQuerySchema = z.object({
 // Mounted at /api/w/:wId/me/approvals.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<GetUserApprovalsResponseBody> => {
   const auth = ctx.get("auth");
   const user = auth.getNonNullableUser();

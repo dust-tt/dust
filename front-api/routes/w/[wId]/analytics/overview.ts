@@ -22,6 +22,7 @@ type OverviewAggs = {
 // Mounted at /api/w/:wId/analytics/overview.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", ensureIsAdmin(), validate("query", QuerySchema), async (ctx) => {
   const auth = ctx.get("auth");
 

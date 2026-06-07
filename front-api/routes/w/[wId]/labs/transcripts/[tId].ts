@@ -60,6 +60,7 @@ async function loadOwnedConfiguration(
 // Mounted at /api/w/:wId/labs/transcripts/:tId.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

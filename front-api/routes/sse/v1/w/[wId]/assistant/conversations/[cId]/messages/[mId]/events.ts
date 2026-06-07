@@ -17,6 +17,7 @@ export const V1_OPTIONS: MessageEventsOptions = {
 const app = publicApiApp();
 
 app.use("*", streamingTag);
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", MessageParamSchema),

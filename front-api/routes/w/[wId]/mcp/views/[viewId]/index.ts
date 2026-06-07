@@ -21,6 +21,7 @@ const ParamsSchema = z.object({
 // Mounted at /api/w/:wId/mcp/views/:viewId.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.patch(
   "/",
   validate("param", ParamsSchema),

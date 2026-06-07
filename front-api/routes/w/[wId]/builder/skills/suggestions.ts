@@ -11,6 +11,7 @@ export type { PostSkillSuggestionsRequestBody } from "@app/lib/api/skills/descri
 // Mounted at /api/w/:wId/builder/skills/suggestions.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("json", PostSkillSuggestionsRequestBodySchema),

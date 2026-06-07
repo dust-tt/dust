@@ -13,6 +13,7 @@ export type { GetAwuUsageResponse };
 // Mounted at /api/poke/workspaces/:wId/analytics/awu-usage.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get("/", validate("query", AwuUsageQuerySchema), async (ctx) => {
   const auth = ctx.get("auth");
 

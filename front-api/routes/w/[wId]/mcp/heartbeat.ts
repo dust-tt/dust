@@ -27,6 +27,7 @@ export type HeartbeatMCPResponseType =
 // Mounted at /api/w/:wId/mcp/heartbeat.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("json", PostMCPHeartbeatRequestBodySchema),

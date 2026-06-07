@@ -7,6 +7,7 @@ import { apiError } from "@front-api/middlewares/utils";
 // Mounted under /api/w/:wId/spaces/check-name.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<CheckNameResponseBody> => {
   const auth = ctx.get("auth");
   const name = ctx.req.query("name");

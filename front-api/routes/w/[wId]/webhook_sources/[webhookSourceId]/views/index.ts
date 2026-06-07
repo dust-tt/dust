@@ -13,6 +13,7 @@ const ParamsSchema = z.object({
 // Mounted at /api/w/:wId/webhook_sources/:webhookSourceId/views.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

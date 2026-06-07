@@ -19,6 +19,7 @@ const AnswerQuestionRequestSchema = z.object({
 // Mounted at /api/w/:wId/assistant/conversations/:cId/messages/:mId/answer-question.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("param", ParamsSchema),

@@ -35,6 +35,7 @@ export type PokeExportAgentConfigurationResponseBody = {
 // Mounted at /api/poke/workspaces/:wId/agent_configurations/:aId/export.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

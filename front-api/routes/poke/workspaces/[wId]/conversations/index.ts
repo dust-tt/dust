@@ -19,6 +19,7 @@ const ListConversationsQuerySchema = z.object({
 // Mounted at /api/poke/workspaces/:wId/conversations.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("query", ListConversationsQuerySchema),

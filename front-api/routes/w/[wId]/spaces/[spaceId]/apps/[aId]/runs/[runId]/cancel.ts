@@ -18,6 +18,7 @@ const ParamsSchema = z.object({
 // Mounted under /api/w/:wId/spaces/:spaceId/apps/:aId/runs/:runId/cancel.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("param", ParamsSchema),

@@ -18,6 +18,7 @@ const KeyIdParamSchema = z.object({
 // Mounted at /api/w/:wId/keys/:id/disable.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   ensureIsAdmin(),

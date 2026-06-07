@@ -12,6 +12,7 @@ export type PokeImportAgentConfigurationResponseBody = {
 // Mounted at /api/poke/workspaces/:wId/agent_configurations/import.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("json", PostOrPatchAgentConfigurationRequestBodySchema),

@@ -38,6 +38,7 @@ export type CreatePokeCouponResponseBody = {
 // sub-app.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<GetPokeCouponsResponseBody> => {
   const coupons = await CouponResource.listAll({ includeArchived: true });
   return ctx.json({

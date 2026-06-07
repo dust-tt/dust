@@ -20,6 +20,7 @@ const ParamsSchema = z.object({
 // Mounted at /api/w/:wId/spaces/:spaceId/data_sources/:dsId/documents/:documentId.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.patch(
   "/",
   validate("param", ParamsSchema),

@@ -27,6 +27,7 @@ const app = workspaceApp();
 //
 // Note: callers should not invoke this frequently — the remote server is
 // likely to rate-limit.
+/** @ignoreswagger */
 app.post(
   "/",
   validate("json", PostBodySchema),

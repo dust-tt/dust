@@ -74,6 +74,7 @@ async function loadApp(
   return { appResource, aId };
 }
 
+/** @ignoreswagger */
 app.get(
   "/",
   withSpace({ requireCanWrite: true }),

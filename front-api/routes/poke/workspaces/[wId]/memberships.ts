@@ -8,6 +8,7 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 // Mounted at /api/poke/workspaces/:wId/memberships.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<PokeGetMemberships> => {
   const auth = ctx.get("auth");
   const owner = auth.getNonNullableWorkspace();

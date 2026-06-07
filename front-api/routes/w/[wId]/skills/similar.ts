@@ -7,6 +7,7 @@ import { apiError } from "@front-api/middlewares/utils";
 // Mounted at /api/w/:wId/skills/similar.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post("/", async (ctx) => {
   const auth = ctx.get("auth");
   const owner = auth.getNonNullableWorkspace();

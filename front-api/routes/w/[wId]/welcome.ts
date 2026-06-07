@@ -7,6 +7,7 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 // Mounted at /api/w/:wId/welcome.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<GetWelcomeResponseBody> => {
   const auth = ctx.get("auth");
 

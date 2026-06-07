@@ -45,6 +45,7 @@ export type DeleteAgentConfigurationResponseBody = {
 // `/` handles GET, PATCH, and DELETE on the agent itself.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

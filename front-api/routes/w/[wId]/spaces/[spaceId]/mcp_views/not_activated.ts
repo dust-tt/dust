@@ -9,6 +9,7 @@ import differenceWith from "lodash/differenceWith";
 // Mounted under /api/w/:wId/spaces/:spaceId/mcp_views/not_activated.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   withSpace({ requireCanRead: true }),

@@ -16,6 +16,7 @@ const ParamsSchema = z.object({
 // Mounted at /api/w/:wId/data_sources/:dsId/managed/notion/webhook_config.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

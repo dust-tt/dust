@@ -6,6 +6,7 @@ import { apiError } from "@front-api/middlewares/utils";
 // Mounted at /api/w/:wId/assistant/builder/sidekick/prompt/shrink-wrap.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx) => {
   const auth = ctx.get("auth");
   const conversationId = ctx.req.query("conversationId");

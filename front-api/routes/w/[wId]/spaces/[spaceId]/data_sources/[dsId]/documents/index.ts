@@ -13,6 +13,7 @@ import documentId from "./[documentId]";
 // Mounted under /api/w/:wId/spaces/:spaceId/data_sources/:dsId/documents.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   withSpace({ requireCanRead: true }),

@@ -9,6 +9,7 @@ import { apiError } from "@front-api/middlewares/utils";
 // sub-app.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.post("/", async (ctx): HandlerResult<PullTemplatesResponseBody> => {
   if (!config.getDustRegionSyncEnabled()) {
     return apiError(ctx, {

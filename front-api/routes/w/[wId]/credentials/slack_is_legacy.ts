@@ -20,6 +20,7 @@ const app = workspaceApp();
 
 app.use("*", ensureIsAdmin());
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("query", SlackIsLegacyQuerySchema),

@@ -8,6 +8,7 @@ import { apiError } from "@front-api/middlewares/utils";
 // Mounted at /api/w/:wId/assistant/conversations/search.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<SearchConversationsResponseBody> => {
   const auth = ctx.get("auth");
 

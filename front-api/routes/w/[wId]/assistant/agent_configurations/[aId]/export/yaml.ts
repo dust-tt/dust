@@ -17,6 +17,7 @@ export type GetAgentConfigurationYAMLExportResponseBody = {
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/export/yaml.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

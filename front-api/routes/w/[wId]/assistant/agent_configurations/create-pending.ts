@@ -10,6 +10,7 @@ export type PostPendingAgentResponseBody = {
 // Mounted at /api/w/:wId/assistant/agent_configurations/create-pending.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post("/", async (ctx): HandlerResult<PostPendingAgentResponseBody> => {
   const auth = ctx.get("auth");
 

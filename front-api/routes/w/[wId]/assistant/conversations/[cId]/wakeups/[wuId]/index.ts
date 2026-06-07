@@ -20,6 +20,51 @@ export type DeleteConversationWakeUpResponseBody = {
 // Mounted at /api/w/:wId/assistant/conversations/:cId/wakeups/:wuId.
 const app = workspaceApp();
 
+/**
+ * @swagger
+ * /api/w/{wId}/assistant/conversations/{cId}/wakeups/{wuId}:
+ *   delete:
+ *     summary: Cancel a wake-up
+ *     description: Cancel a scheduled wake-up. Only the wake-up owner or a workspace admin can cancel.
+ *     tags:
+ *       - Private Conversations
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         description: ID of the conversation
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: wuId
+ *         required: true
+ *         description: sId of the wake-up to cancel
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successfully cancelled (or already terminal)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 wakeUp:
+ *                   $ref: '#/components/schemas/PrivateWakeUp'
+ *       403:
+ *         description: Caller is not the wake-up owner or a workspace admin
+ *       404:
+ *         description: Wake-up not found in this conversation
+ */
+
 app.delete(
   "/",
   validate("param", ParamsSchema),

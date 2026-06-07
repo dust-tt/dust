@@ -25,6 +25,7 @@ const GetMCPActionsQuerySchema = z.object({
 // Mounted at /api/w/:wId/labs/mcp_actions/:agentId.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   ensureIsAdmin(),

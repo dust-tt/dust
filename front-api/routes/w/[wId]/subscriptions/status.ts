@@ -8,6 +8,7 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 // Mounted at /api/w/:wId/subscriptions/status.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<GetSubscriptionStatusResponseBody> => {
   const auth = ctx.get("auth");
   const owner = auth.getNonNullableWorkspace();

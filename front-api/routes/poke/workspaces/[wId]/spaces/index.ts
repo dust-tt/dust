@@ -8,6 +8,7 @@ import spaceId from "./[spaceId]";
 // Mounted at /api/poke/workspaces/:wId/spaces.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<PokeListSpaces> => {
   const auth = ctx.get("auth");
 

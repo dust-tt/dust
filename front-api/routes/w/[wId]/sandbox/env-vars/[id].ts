@@ -20,6 +20,7 @@ const ParamsSchema = z.object({
 // Mounted at /api/w/:wId/sandbox/env-vars/:id.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.patch(
   "/",
   validate("param", ParamsSchema),

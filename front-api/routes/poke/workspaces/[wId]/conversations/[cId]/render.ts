@@ -53,6 +53,7 @@ export type PostRenderConversationResponseBody = {
 // Mounted at /api/poke/workspaces/:wId/conversations/:cId/render.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("param", ParamsSchema),

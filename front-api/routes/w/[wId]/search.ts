@@ -29,6 +29,7 @@ interface UnifiedSearchStreamChunk {
 // Mounted at /api/w/:wId/search.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx) => {
   const auth = ctx.get("auth");
 

@@ -12,6 +12,7 @@ export type { PokeGetDataRetentionResponseBody };
 // Mounted at /api/poke/workspaces/:wId/data_retention.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<PokeGetDataRetentionResponseBody> => {
   const auth = ctx.get("auth");
 

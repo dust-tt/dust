@@ -14,6 +14,7 @@ export type { GetAwuUsageResponse };
 // Mounted at /api/w/:wId/analytics/awu-usage.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   ensureIsAdmin(),

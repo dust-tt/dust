@@ -22,6 +22,7 @@ const PostAwuPurchaseBody = z.object({
 // Mounted at /api/w/:wId/subscriptions/awu-purchase.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   ensureIsAdmin(),

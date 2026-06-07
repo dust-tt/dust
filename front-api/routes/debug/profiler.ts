@@ -9,6 +9,7 @@ import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 // Mounted at /api/debug/profiler.
 const app = createHono();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<GetProfilerResponse> => {
   const secret = ctx.req.query("secret");
   const debugSecret = config.getProfilerSecret();

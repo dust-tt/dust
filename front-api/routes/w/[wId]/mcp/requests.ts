@@ -14,6 +14,7 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 //      param route under `/mcp/` does not swallow it as a server id.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", redirectToSse);
 
 export default app;

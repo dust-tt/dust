@@ -31,6 +31,7 @@ function lifecycleErrorToApi(ctx: Context, err: ContractLifecycleError) {
 // Mounted at /api/w/:wId/metronome/contract.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   ensureIsAdmin(),

@@ -26,6 +26,7 @@ const ParamsSchema = z.object({
 const app = workspaceApp();
 
 // GET / — read app.
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

@@ -11,6 +11,7 @@ import { validate } from "@front-api/middlewares/validator";
 // Mounted at /api/poke/stripe/customers/currency.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("json", PostPokeStripeCustomerCurrencyBodySchema),

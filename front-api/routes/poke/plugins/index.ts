@@ -22,6 +22,7 @@ const ListPluginsQuerySchema = z.object({
 // Mounted at /api/poke/plugins.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("query", ListPluginsQuerySchema),

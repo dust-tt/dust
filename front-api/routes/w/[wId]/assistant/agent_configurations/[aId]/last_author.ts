@@ -18,6 +18,7 @@ export type GetAgentLastAuthorResponseBody = {
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/last_author.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

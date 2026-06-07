@@ -22,6 +22,7 @@ import { withSpace } from "@front-api/middlewares/with_space";
 // Poke, so this route is effectively for webcrawler-managed data sources.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   withSpace({ requireCanRead: true }),

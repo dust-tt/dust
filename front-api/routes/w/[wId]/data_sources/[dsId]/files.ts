@@ -14,6 +14,7 @@ const ParamsSchema = z.object({
 // Mounted at /api/w/:wId/data_sources/:dsId/files.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
   const { dsId } = ctx.req.valid("param");

@@ -19,6 +19,7 @@ const ConversationSkillActionRequestSchema = z.object({
 // Mounted at /api/w/:wId/assistant/conversations/:cId/skills.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
   const { cId: conversationId } = ctx.req.valid("param");

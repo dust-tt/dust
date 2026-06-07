@@ -171,19 +171,19 @@ function checkDocumentationLabel() {
 
 function failDocumentationAck() {
   fail(
-    "Files in `**/api/v1/` have been modified. " +
-      `Please add the \`${documentationAckLabel}\` label to acknowledge that if anything changes 
-      in a public endpoint, you need to edit the JSDoc comment 
-      above the handler definition and/or the swagger_schemas.ts file and regenerate the documentation using \`npm run docs\``
+    "Files in `front-api/routes/` have been modified. " +
+      `Please add the \`${documentationAckLabel}\` label to acknowledge that if anything changes
+      in a documented endpoint, you need to edit the JSDoc comment
+      above the handler definition and/or the swagger_schemas.ts file and regenerate the documentation using \`npm -w front-api run docs\``
   );
 }
 
 function warnDocumentationAck(documentationAckLabel: string) {
   warn(
-    "Files in `**/api/v1/` have been modified and the PR has the `" +
+    "Files in `front-api/routes/` have been modified and the PR has the `" +
       documentationAckLabel +
       "` label. \n" +
-      "Don't forget to run `npm run docs` and use the `Deploy OpenAPI Docs` Github action to update https://docs.dust.tt/reference."
+      "Don't forget to run `npm -w front-api run docs` and use the `Deploy OpenAPI Docs` Github action to update https://docs.dust.tt/reference."
   );
 }
 
@@ -562,12 +562,12 @@ async function checkDiffFiles() {
     await checkWorkspaceAwareModels(modifiedModelFiles);
   }
 
-  // Public API files
-  const modifiedPublicApiFiles = diffFiles.filter((path) => {
-    return path.startsWith("front/pages/api/v1/");
+  // Documented API files (front-api owns OpenAPI generation).
+  const modifiedDocumentedApiFiles = diffFiles.filter((path) => {
+    return path.startsWith("front-api/routes/");
   });
 
-  if (modifiedPublicApiFiles.length > 0) {
+  if (modifiedDocumentedApiFiles.length > 0) {
     checkDocumentationLabel();
   }
 

@@ -20,6 +20,7 @@ type ResponseBody = {
 // Mounted at /api/metronome/webhook.
 const app = createHono();
 
+/** @ignoreswagger */
 app.get(
   "/",
   async (ctx): HandlerResult<ResponseBody> => ctx.json({ success: true })

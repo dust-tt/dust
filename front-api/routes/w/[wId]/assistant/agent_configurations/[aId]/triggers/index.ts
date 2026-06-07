@@ -42,6 +42,7 @@ function isWebhookTriggerData(trigger: {
 // Mounted under /api/w/:wId/assistant/agent_configurations/:aId/triggers.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

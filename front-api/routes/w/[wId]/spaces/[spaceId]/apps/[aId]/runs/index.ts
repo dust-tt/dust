@@ -68,6 +68,7 @@ async function loadApp(
   return { appResource };
 }
 
+/** @ignoreswagger */
 app.get(
   "/",
   sessionAuth,

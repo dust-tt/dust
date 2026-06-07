@@ -18,6 +18,7 @@ const QuerySchema = z.object({
 // Mounted at /api/w/:wId/analytics/skill-usage.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", ensureIsAdmin(), validate("query", QuerySchema), async (ctx) => {
   const auth = ctx.get("auth");
 

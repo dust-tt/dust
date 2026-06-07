@@ -39,6 +39,7 @@ const ParamsSchema = z.object({
 // Mounted under /api/w/:wId/mcp/:serverId.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

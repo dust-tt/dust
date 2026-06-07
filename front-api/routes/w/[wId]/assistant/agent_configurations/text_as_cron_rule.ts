@@ -40,6 +40,7 @@ const PostTextAsCronRuleRequestBodySchema = z.object({
 // Mounted at /api/w/:wId/assistant/agent_configurations/text_as_cron_rule.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("json", PostTextAsCronRuleRequestBodySchema),

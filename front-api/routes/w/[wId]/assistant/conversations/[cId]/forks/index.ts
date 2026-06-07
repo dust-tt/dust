@@ -18,6 +18,7 @@ const PostConversationForkBodySchema = z.object({
 // Mounted at /api/w/:wId/assistant/conversations/:cId/forks.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("param", ParamsSchema),

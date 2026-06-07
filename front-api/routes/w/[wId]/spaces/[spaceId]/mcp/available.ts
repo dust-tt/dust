@@ -18,6 +18,7 @@ export type GetMCPServersResponseBody = {
 // space.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   withSpace({ requireCanRead: true }),

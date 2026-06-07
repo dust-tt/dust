@@ -28,6 +28,7 @@ export type PostMCPRegisterRequestBody = z.infer<
 // Mounted at /api/w/:wId/mcp/register.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("json", PostMCPRegisterRequestBodySchema),

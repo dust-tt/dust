@@ -38,6 +38,7 @@ function inferBillingPeriod(startMs: number, endMs: number): BillingPeriod {
 // Mounted at /api/w/:wId/metronome/invoice.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   ensureIsAdmin(),

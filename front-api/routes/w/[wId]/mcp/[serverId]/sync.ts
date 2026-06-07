@@ -16,6 +16,7 @@ const ParamsSchema = z.object({
 // metadata for a remote MCP server.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("param", ParamsSchema),

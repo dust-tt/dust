@@ -35,6 +35,7 @@ const app = workspaceApp();
 // keeping mounts before leaf handlers matches the convention used elsewhere).
 app.route("/grants", grants);
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

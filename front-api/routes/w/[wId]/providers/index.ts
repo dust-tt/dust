@@ -20,6 +20,7 @@ function redactConfig(config: string) {
 // Mounted at /api/w/:wId/providers.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   ensureIsBuilder(),

@@ -19,6 +19,7 @@ type GetResponseBody = {
 // Mounted at /api/w/:wId/labs/transcripts/default.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("query", GetDefaultQuerySchema),

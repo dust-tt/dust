@@ -15,6 +15,7 @@ import { withSpace } from "@front-api/middlewares/with_space";
 // /api/w/:wId/spaces/:spaceId/data_source_views/:dsvId/tables/search.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   withSpace({ requireCanReadOrAdministrate: true }),

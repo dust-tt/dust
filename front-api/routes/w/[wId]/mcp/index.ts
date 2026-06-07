@@ -60,6 +60,7 @@ const PostBodySchema = z.discriminatedUnion("serverType", [
 // workspace sub-app.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<GetMCPServersResponseBody> => {
   const auth = ctx.get("auth");
   const servers = await listMCPServersWithViews(auth);

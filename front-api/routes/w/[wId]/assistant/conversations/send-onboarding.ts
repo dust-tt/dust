@@ -8,6 +8,7 @@ import { apiError } from "@front-api/middlewares/utils";
 // Mounted at /api/w/:wId/assistant/conversations/send-onboarding.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post("/", async (ctx): HandlerResult<PostSendOnboardingResponseBody> => {
   const auth = ctx.get("auth");
 

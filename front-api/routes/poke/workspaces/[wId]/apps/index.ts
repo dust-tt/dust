@@ -10,6 +10,7 @@ import importApp from "./import";
 // the parent workspaces/[wId] sub-app.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<PokeListApps> => {
   const auth = ctx.get("auth");
   const apps = await AppResource.listByWorkspace(auth);

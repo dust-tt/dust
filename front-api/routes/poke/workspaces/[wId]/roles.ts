@@ -21,6 +21,7 @@ const PostRoleUserBodySchema = z.object({
 // Mounted at /api/poke/workspaces/:wId/roles.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("json", PostRoleUserBodySchema),

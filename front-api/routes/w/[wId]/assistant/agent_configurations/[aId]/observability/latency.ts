@@ -22,6 +22,7 @@ const QuerySchema = z.object({
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/observability/latency.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

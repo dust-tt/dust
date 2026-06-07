@@ -13,6 +13,7 @@ const ParamsSchema = z.object({
 // Mounted at /api/w/:wId/skills/:sId/restore.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("param", ParamsSchema),

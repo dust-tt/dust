@@ -28,6 +28,7 @@ export type PostPokeSkillSuggestionResponseBody = {
 // Mounted at /api/poke/workspaces/:wId/skills/suggestions.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("json", PostSkillSuggestionBodySchema),

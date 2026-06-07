@@ -15,6 +15,7 @@ export type { ListTablesResponseBody };
 const app = workspaceApp();
 
 // GET / — list tables.
+/** @ignoreswagger */
 app.get(
   "/",
   withSpace({ requireCanReadOrAdministrate: true }),

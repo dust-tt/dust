@@ -46,6 +46,7 @@ const ALLOWED_CONFIG_KEYS = new Set<string>([
 // Mounted at /api/w/:wId/data_sources/:dsId/managed/config/:key.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

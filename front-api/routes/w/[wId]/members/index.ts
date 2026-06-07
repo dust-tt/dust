@@ -51,6 +51,7 @@ function buildUrlWithParams(
 // Mounted under /api/w/:wId/members.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   ensureIsAdmin(),

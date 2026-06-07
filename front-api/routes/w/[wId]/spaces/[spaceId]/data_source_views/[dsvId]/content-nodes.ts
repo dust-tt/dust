@@ -13,6 +13,7 @@ import { withSpace } from "@front-api/middlewares/with_space";
 // /api/w/:wId/spaces/:spaceId/data_source_views/:dsvId/content-nodes.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   withSpace({ requireCanReadOrAdministrate: true }),
