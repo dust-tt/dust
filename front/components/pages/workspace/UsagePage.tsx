@@ -46,7 +46,6 @@ import {
   SearchInput,
   Spinner,
 } from "@dust-tt/sparkle";
-import { ConfirmContext } from "@app/components/Confirm";
 import type { PaginationState, SortingState } from "@tanstack/react-table";
 import { useCallback, useContext, useEffect, useState } from "react";
 
