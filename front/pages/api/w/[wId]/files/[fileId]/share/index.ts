@@ -1,7 +1,9 @@
 // @migration-status: MIGRATED_TO_HONO
 /** @ignoreswagger */
+
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { ensureAuthorizedFileAccessForShare } from "@app/lib/api/viz/authorized_file_access";
+import { buildShareFileResponse } from "@app/lib/api/viz/share_frame_viewer_files";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { ShareFileResponseBody } from "@app/lib/resources/file_resource";
@@ -122,8 +124,8 @@ async function handler(
         });
       }
 
-      const shareInfo = await file.getShareInfo();
-      if (!shareInfo) {
+      const shareResponse = await buildShareFileResponse(auth, file);
+      if (!shareResponse) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
@@ -133,13 +135,13 @@ async function handler(
         });
       }
 
-      return res.status(200).json(shareInfo);
+      return res.status(200).json(shareResponse);
     }
 
     case "GET": {
-      const shareInfo = await file.getShareInfo();
+      const shareResponse = await buildShareFileResponse(auth, file);
 
-      if (!shareInfo) {
+      if (!shareResponse) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
@@ -149,7 +151,7 @@ async function handler(
         });
       }
 
-      return res.status(200).json(shareInfo);
+      return res.status(200).json(shareResponse);
     }
 
     default:

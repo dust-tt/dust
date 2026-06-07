@@ -186,6 +186,7 @@ export type APIError = {
   app_error?: CoreAPIError;
   connectors_error?: ConnectorsAPIError;
   redirect?: RegionRedirectError;
+  unverifiableRefs?: string[];
 };
 
 export function isAPIError(obj: unknown): obj is APIError {

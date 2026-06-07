@@ -36,6 +36,7 @@ import {
   canAccessFileInConversation,
   canAccessFileInProject,
 } from "@app/lib/api/viz/file_access";
+import type { ShareFrameViewerFile } from "@app/lib/api/viz/share_frame_viewer_files";
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import {
@@ -124,6 +125,7 @@ export type ShareFileResponseBody = {
   scope: FileShareScope;
   sharedAt: number;
   shareUrl: string;
+  viewerFiles: ShareFrameViewerFile[];
 };
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging

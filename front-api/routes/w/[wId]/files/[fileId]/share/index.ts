@@ -1,4 +1,8 @@
 import { ensureAuthorizedFileAccessForShare } from "@app/lib/api/viz/authorized_file_access";
+import {
+  buildShareFileResponse,
+  type ShareFrameViewerFile,
+} from "@app/lib/api/viz/share_frame_viewer_files";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { ShareFileResponseBody } from "@app/lib/resources/file_resource";
@@ -18,6 +22,8 @@ import type { Context, TypedResponse } from "hono";
 import { z } from "zod";
 
 import grants from "./grants";
+
+export type { ShareFrameViewerFile };
 
 const ShareFileRequestBodySchema = z.object({
   shareScope: fileShareScopeSchema,
@@ -48,15 +54,15 @@ app.get(
       return file;
     }
 
-    const shareInfo = await file.getShareInfo();
-    if (!shareInfo) {
+    const shareResponse = await buildShareFileResponse(auth, file);
+    if (!shareResponse) {
       return apiError(ctx, {
         status_code: 404,
         api_error: { type: "file_not_found", message: "File not found." },
       });
     }
 
-    return ctx.json(shareInfo);
+    return ctx.json(shareResponse);
   }
 );
 
@@ -99,15 +105,15 @@ app.post(
       });
     }
 
-    const shareInfo = await file.getShareInfo();
-    if (!shareInfo) {
+    const shareResponse = await buildShareFileResponse(auth, file);
+    if (!shareResponse) {
       return apiError(ctx, {
         status_code: 404,
         api_error: { type: "file_not_found", message: "File not found." },
       });
     }
 
-    return ctx.json(shareInfo);
+    return ctx.json(shareResponse);
   }
 );
 
