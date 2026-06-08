@@ -2,6 +2,7 @@ import {
   buildAuditLogTarget,
   emitAuditLogEvent,
 } from "@app/lib/api/audit/workos_audit";
+import { dispatchProgrammaticCapReset } from "@app/lib/api/metronome/credit_state_dispatcher";
 import type { AuditLogContext } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -9,6 +10,7 @@ import {
   getMetronomeProgrammaticCap,
   upsertMetronomeProgrammaticCapAlerts,
 } from "@app/lib/metronome/alerts/programmatic_cap";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -99,6 +101,14 @@ export async function syncProgrammaticUsageLimit({
         `Failed to sync Metronome programmatic cap alerts: ${alertResult.error.message}`
       )
     );
+  }
+
+  // Reset the state machine so that a stale warning/depleted state from the
+  // previous cap thresholds doesn't linger. Metronome will re-fire webhooks
+  // if the new thresholds are already breached.
+  const workspaceResource = await WorkspaceResource.fetchById(workspace.sId);
+  if (workspaceResource) {
+    await dispatchProgrammaticCapReset({ workspace: workspaceResource });
   }
 
   void emitAuditLogEvent({
