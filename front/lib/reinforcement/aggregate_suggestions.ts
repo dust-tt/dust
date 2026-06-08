@@ -29,7 +29,10 @@ const AGGREGATION_ASSEMBLY_ORDER = [
 
 type AggregationSectionKey = (typeof AGGREGATION_ASSEMBLY_ORDER)[number];
 
-function getReinforcedSkillAggregationSections(): Record<AggregationSectionKey, string> {
+function getReinforcedSkillAggregationSections(): Record<
+  AggregationSectionKey,
+  string
+> {
   return {
     primary: `You improve a skill's configuration by consolidating many draft suggestions. Each draft was produced from a single conversation that used the skill.
 Your job is to produce a subset of the highest quality suggestions for the skill builder to review.

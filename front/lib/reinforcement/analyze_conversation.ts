@@ -142,7 +142,9 @@ export function buildSkillAnalysisPrompt(
 ): { systemPrompt: string; userMessage: string } {
   const systemPrompt = buildSkillAnalysisSystemPrompt();
 
-  const skillContexts = skills.map((s) => formatSkillContext(s)).join("\n\n---\n\n");
+  const skillContexts = skills
+    .map((s) => formatSkillContext(s))
+    .join("\n\n---\n\n");
 
   const userMessage = `<skill_context>
 ${skillContexts}
@@ -202,10 +204,16 @@ export async function buildSkillConversationAnalysisBatchMap(
 
     const skillTypes = resolvedSkills.map((s) => s.toJSON(auth));
 
-    const prompt = buildSkillAnalysisPrompt(conversationRes.value.text, skillTypes);
+    const prompt = buildSkillAnalysisPrompt(
+      conversationRes.value.text,
+      skillTypes
+    );
     batchMap.set(
       conversationId,
-      buildReinforcedSkillsLLMParams(prompt, "reinforcement_analyze_conversation")
+      buildReinforcedSkillsLLMParams(
+        prompt,
+        "reinforcement_analyze_conversation"
+      )
     );
   }
 

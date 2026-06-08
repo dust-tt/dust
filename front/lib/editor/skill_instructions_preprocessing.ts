@@ -51,9 +51,7 @@ function withPreservedToolTags(
 /**
  * Preprocess markdown before loading it into the TipTap editor.
  */
-export function preprocessMarkdownForEditor(
-  markdown: string
-): string {
+export function preprocessMarkdownForEditor(markdown: string): string {
   const preservedTags = ["knowledge", "skill", "unavailable_skill"];
   const preservedTagsPattern = preservedTags.join("|");
   const escapeUnsupportedTags = (markdownToProcess: string) =>

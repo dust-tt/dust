@@ -60,7 +60,10 @@ const SKILL_REFERENCE_ALLOWED_ATTRS = ["id", "name", "icon"];
 
 function getSkillInstructionsSanitizeConfig(): Config {
   return {
-    ADD_TAGS: [...BASE_ALLOWED_INSTRUCTIONS_TAGS, ...SKILL_REFERENCE_ALLOWED_TAGS],
+    ADD_TAGS: [
+      ...BASE_ALLOWED_INSTRUCTIONS_TAGS,
+      ...SKILL_REFERENCE_ALLOWED_TAGS,
+    ],
     ADD_ATTR: [
       ...BASE_ALLOWED_INSTRUCTIONS_ATTRS,
       ...SKILL_REFERENCE_ALLOWED_ATTRS,
@@ -825,13 +828,10 @@ export function SkillBuilderInstructionsEditor({
         const compareText = compareVersion.instructions ?? "";
         const currentText = instructionsField.value ?? "";
 
-        editor.commands.setContent(
-          preprocessMarkdownForEditor(currentText),
-          {
-            emitUpdate: false,
-            contentType: "markdown",
-          }
-        );
+        editor.commands.setContent(preprocessMarkdownForEditor(currentText), {
+          emitUpdate: false,
+          contentType: "markdown",
+        });
         editor.commands.applyDiff(
           preprocessMarkdownForEditor(compareText),
           preprocessMarkdownForEditor(currentText)

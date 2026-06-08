@@ -17,9 +17,7 @@ import type { Editor } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-function useEditorService(
-  editor: Editor | null
-) {
+function useEditorService(editor: Editor | null) {
   return useMemo(() => {
     return {
       getMarkdown() {
@@ -46,13 +44,10 @@ function useEditorService(
       setContent(content: string) {
         // Safety check for Safari: ensure editor and docView are available
         if (editor && !editor.isDestroyed) {
-          editor.commands.setContent(
-            preprocessMarkdownForEditor(content),
-            {
-              emitUpdate: false,
-              contentType: "markdown",
-            }
-          );
+          editor.commands.setContent(preprocessMarkdownForEditor(content), {
+            emitUpdate: false,
+            contentType: "markdown",
+          });
         }
       },
 
@@ -197,12 +192,7 @@ export function useSkillInstructionsEditor({
         onSkillNodeDetails,
         onToolDetails,
       }),
-    [
-      editableExtensions,
-      isReadOnly,
-      onSkillNodeDetails,
-      onToolDetails,
-    ]
+    [editableExtensions, isReadOnly, onSkillNodeDetails, onToolDetails]
   );
 
   // Track if initial content has been set
@@ -239,13 +229,10 @@ export function useSkillInstructionsEditor({
           if (htmlContent) {
             editor.commands.setContent(htmlContent, { emitUpdate: false });
           } else {
-            editor.commands.setContent(
-              preprocessMarkdownForEditor(content),
-              {
-                emitUpdate: false,
-                contentType: "markdown",
-              }
-            );
+            editor.commands.setContent(preprocessMarkdownForEditor(content), {
+              emitUpdate: false,
+              contentType: "markdown",
+            });
           }
           initialContentSetRef.current = true;
           setIsContentReady(true);

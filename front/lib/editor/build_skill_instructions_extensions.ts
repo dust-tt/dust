@@ -35,7 +35,10 @@ interface BuildSkillInstructionsExtensionsOptions {
 export function buildSkillInstructionsExtensions(
   isReadOnly: boolean,
   editableExtensions: Extensions = [],
-  { onSkillNodeDetails, onToolDetails }: BuildSkillInstructionsExtensionsOptions = {}
+  {
+    onSkillNodeDetails,
+    onToolDetails,
+  }: BuildSkillInstructionsExtensionsOptions = {}
 ): Extensions {
   const baseExtensions: Extensions = [
     InstructionsDocumentExtension,
@@ -104,7 +107,9 @@ export function buildSkillInstructionsExtensions(
     ...rawMarkdownBlockParsers
   );
 
-  baseExtensions.push(SkillNode.configure({ onSkillDetails: onSkillNodeDetails }));
+  baseExtensions.push(
+    SkillNode.configure({ onSkillDetails: onSkillNodeDetails })
+  );
 
   if (!isReadOnly) {
     baseExtensions.push(...editableExtensions);
