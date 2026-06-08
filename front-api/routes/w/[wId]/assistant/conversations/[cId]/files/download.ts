@@ -5,6 +5,7 @@ import {
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
+import { readableToReadableStream } from "@app/types/shared/utils/streams";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -97,25 +98,16 @@ app.post(
       `attachment; filename="${encodeURIComponent(fileName)}"`;
 
     const readStream = bucket.file(normalizedPath).createReadStream();
-
-    const webStream = new ReadableStream({
-      start(controller) {
-        readStream.on("data", (chunk) => controller.enqueue(chunk));
-        readStream.on("end", () => controller.close());
-        readStream.on("error", (err) => {
-          logger.error(
-            { err, filePath: normalizedPath },
-            "Error streaming conversation file"
-          );
-          controller.error(err);
-        });
-      },
-      cancel() {
-        readStream.destroy();
-      },
+    readStream.on("error", (err) =>
+      logger.error(
+        { err, filePath: normalizedPath },
+        "Error streaming conversation file"
+      )
+    );
+    return new Response(readableToReadableStream(readStream), {
+      status: 200,
+      headers,
     });
-
-    return new Response(webStream, { status: 200, headers });
   }
 );
 
