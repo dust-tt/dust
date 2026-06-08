@@ -319,7 +319,8 @@ export async function getDataSourceDocumentBlob({
 export async function deleteDataSourceDocument(
   dataSourceConfig: DataSourceConfig,
   documentId: string,
-  loggerArgs: Record<string, string | number> = {}
+  loggerArgs: Record<string, string | number> = {},
+  caller?: string
 ) {
   const localLogger = logger.child({ ...loggerArgs, documentId });
 
@@ -329,6 +330,7 @@ export async function deleteDataSourceDocument(
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
       Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,
+      ...(caller ? { "X-Dust-Caller": caller } : {}),
     },
   };
 

@@ -151,6 +151,7 @@ app.delete(
       projectId: dataSource.dustAPIProjectId,
       dataSourceId: dataSource.dustAPIDataSourceId,
       documentId,
+      caller: "private-api",
     });
     if (deleteRes.isErr()) {
       return apiError(ctx, {

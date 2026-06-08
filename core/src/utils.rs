@@ -180,7 +180,11 @@ impl<B> MakeSpan<B> for CoreRequestMakeSpan {
             dust_client_name = request.extensions()
             .get::<Extension<Arc<String>>>()
             .map(|ext| ext.as_ref().as_str())
-            .unwrap_or("unknown")
+            .unwrap_or("unknown"),
+            dust_caller = request.headers()
+                .get("x-dust-caller")
+                .and_then(|v| v.to_str().ok())
+                .unwrap_or("unknown")
         )
     }
 }

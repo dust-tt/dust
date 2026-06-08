@@ -388,13 +388,16 @@ export class CoreAPI {
 
   async deleteProject({
     projectId,
+    caller,
   }: {
     projectId: string;
+    caller?: string;
   }): Promise<CoreAPIResponse<{ success: true }>> {
     const response = await this._fetchWithError(
       `${this._url}/projects/${encodeURIComponent(projectId)}`,
       {
         method: "DELETE",
+        headers: caller ? { "X-Dust-Caller": caller } : undefined,
       }
     );
 
@@ -916,9 +919,11 @@ export class CoreAPI {
   async deleteDataSource({
     projectId,
     dataSourceId,
+    caller,
   }: {
     projectId: string;
     dataSourceId: string;
+    caller?: string;
   }): Promise<CoreAPIResponse<{ data_source: CoreAPIDataSource }>> {
     const response = await this._fetchWithError(
       `${this._url}/projects/${encodeURIComponent(
@@ -926,6 +931,7 @@ export class CoreAPI {
       )}/data_sources/${encodeURIComponent(dataSourceId)}`,
       {
         method: "DELETE",
+        headers: caller ? { "X-Dust-Caller": caller } : undefined,
       }
     );
 
@@ -1451,10 +1457,12 @@ export class CoreAPI {
     projectId,
     dataSourceId,
     documentId,
+    caller,
   }: {
     projectId: string;
     dataSourceId: string;
     documentId: string;
+    caller?: string;
   }): Promise<CoreAPIResponse<{ data_source: CoreAPIDataSource }>> {
     const response = await this._fetchWithError(
       `${this._url}/projects/${encodeURIComponent(
@@ -1464,6 +1472,7 @@ export class CoreAPI {
       )}/documents/${encodeURIComponent(documentId)}`,
       {
         method: "DELETE",
+        headers: caller ? { "X-Dust-Caller": caller } : undefined,
       }
     );
 
@@ -1797,10 +1806,12 @@ export class CoreAPI {
     projectId,
     dataSourceId,
     tableId,
+    caller,
   }: {
     projectId: string;
     dataSourceId: string;
     tableId: string;
+    caller?: string;
   }): Promise<CoreAPIResponse<{ success: true }>> {
     const response = await this._fetchWithError(
       `${this._url}/projects/${encodeURIComponent(
@@ -1810,6 +1821,7 @@ export class CoreAPI {
       )}/tables/${encodeURIComponent(tableId)}`,
       {
         method: "DELETE",
+        headers: caller ? { "X-Dust-Caller": caller } : undefined,
       }
     );
 
@@ -2027,11 +2039,13 @@ export class CoreAPI {
     dataSourceId,
     tableId,
     rowId,
+    caller,
   }: {
     projectId: string;
     dataSourceId: string;
     tableId: string;
     rowId: string;
+    caller?: string;
   }): Promise<CoreAPIResponse<{ success: true }>> {
     const response = await this._fetchWithError(
       `${this._url}/projects/${encodeURIComponent(
@@ -2043,6 +2057,7 @@ export class CoreAPI {
       )}`,
       {
         method: "DELETE",
+        headers: caller ? { "X-Dust-Caller": caller } : undefined,
       }
     );
 
@@ -2314,10 +2329,12 @@ export class CoreAPI {
     projectId,
     dataSourceId,
     folderId,
+    caller,
   }: {
     projectId: string;
     dataSourceId: string;
     folderId: string;
+    caller?: string;
   }): Promise<CoreAPIResponse<{ data_source: CoreAPIDataSource }>> {
     const response = await this._fetchWithError(
       `${this._url}/projects/${encodeURIComponent(
@@ -2327,6 +2344,7 @@ export class CoreAPI {
       )}/folders/${encodeURIComponent(folderId)}`,
       {
         method: "DELETE",
+        headers: caller ? { "X-Dust-Caller": caller } : undefined,
       }
     );
 

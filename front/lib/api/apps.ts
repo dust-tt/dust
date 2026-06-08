@@ -4,6 +4,7 @@ import { AppResource } from "@app/lib/resources/app_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
+import tracer from "@app/logger/tracer";
 import type { AppType, SpecificationType } from "@app/types/app";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { RunType } from "@app/types/run";
@@ -86,9 +87,18 @@ export async function hardDeleteApp(
 ): Promise<Result<void, Error>> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
-  const deleteProjectRes = await coreAPI.deleteProject({
-    projectId: app.dustAPIProjectId,
-  });
+  const deleteProjectRes = await tracer.trace(
+    "apps.hard_delete_app",
+    async (span) => {
+      span?.setTag("workspace.id", auth.workspace()?.sId ?? "unknown");
+      span?.setTag("app.s_id", app.sId);
+      span?.setTag("core.project_id", app.dustAPIProjectId);
+      return coreAPI.deleteProject({
+        projectId: app.dustAPIProjectId,
+        caller: "apps-api-hard-delete",
+      });
+    }
+  );
   if (deleteProjectRes.isErr()) {
     return new Err(new Error(deleteProjectRes.error.message));
   }

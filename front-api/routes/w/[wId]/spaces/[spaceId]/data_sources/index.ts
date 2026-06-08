@@ -396,6 +396,7 @@ async function handleDataSourceWithProvider({
     const deleteRes = await coreAPI.deleteDataSource({
       projectId: dustProjectId,
       dataSourceId: dustDataSourceId,
+      caller: "private-api-create-rollback",
     });
     if (deleteRes.isErr()) {
       logger.error(
@@ -542,6 +543,7 @@ async function handleDataSourceWithProvider({
       const deleteRes = await coreAPI.deleteDataSource({
         projectId: dustProjectId,
         dataSourceId: dustDataSourceId,
+        caller: "private-api-connector-rollback",
       });
       if (deleteRes.isErr()) {
         logger.error(

@@ -63,6 +63,7 @@ import { copyContent } from "@app/lib/utils/files";
 import { streamToBuffer } from "@app/lib/utils/streams";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import tracer from "@app/logger/tracer";
 import { CoreAPI } from "@app/types/core/core_api";
 import type {
   AuthorizedFileAccessAllowlist,
@@ -2336,51 +2337,66 @@ async function deleteCoreFileArtifactsFromDataSource(
   dataSource: DataSourceResource,
   file: FileResource
 ): Promise<void> {
-  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-  const projectId = dataSource.dustAPIProjectId;
-  const dataSourceId = dataSource.dustAPIDataSourceId;
-  const logCtx = {
-    workspaceId: auth.workspace()?.sId,
-    fileId: file.sId,
-    dataSourceSId: dataSource.sId,
-  };
+  return tracer.trace(
+    "file_resource.delete_core_artifacts",
+    { resource: file.useCase },
+    async (span) => {
+      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+      const projectId = dataSource.dustAPIProjectId;
+      const dataSourceId = dataSource.dustAPIDataSourceId;
+      const logCtx = {
+        workspaceId: auth.workspace()?.sId,
+        fileId: file.sId,
+        dataSourceSId: dataSource.sId,
+      };
 
-  const tableIds = new Set<string>([
-    ...(file.useCaseMetadata?.generatedTables ?? []),
-    file.sId,
-  ]);
+      const tableIds = new Set<string>([
+        ...(file.useCaseMetadata?.generatedTables ?? []),
+        file.sId,
+      ]);
 
-  for (const tableId of tableIds) {
-    const delTableRes = await coreAPI.deleteTable({
-      projectId,
-      dataSourceId,
-      tableId,
-    });
-    if (
-      delTableRes.isErr() &&
-      !isBenignCoreIndexedFileDeleteError(delTableRes.error.code)
-    ) {
-      logger.warn(
-        { ...logCtx, tableId, error: delTableRes.error },
-        "File delete: failed to remove table from Core data source."
-      );
+      span?.setTag("workspace.id", auth.workspace()?.sId ?? "unknown");
+      span?.setTag("file.id", file.sId);
+      span?.setTag("file.use_case", file.useCase);
+      span?.setTag("data_source.s_id", dataSource.sId);
+      span?.setTag("core.project_id", projectId);
+      span?.setTag("core.data_source_id", dataSourceId);
+      span?.setTag("tables.count", tableIds.size);
+
+      for (const tableId of tableIds) {
+        const delTableRes = await coreAPI.deleteTable({
+          projectId,
+          dataSourceId,
+          tableId,
+        });
+        if (
+          delTableRes.isErr() &&
+          !isBenignCoreIndexedFileDeleteError(delTableRes.error.code)
+        ) {
+          logger.warn(
+            { ...logCtx, tableId, error: delTableRes.error },
+            "File delete: failed to remove table from Core data source."
+          );
+        }
+      }
+
+      const delDocRes = await coreAPI.deleteDataSourceDocument({
+        projectId,
+        dataSourceId,
+        documentId: file.sId,
+        caller: "file-resource",
+      });
+      if (
+        delDocRes.isErr() &&
+        !isBenignCoreIndexedFileDeleteError(delDocRes.error.code)
+      ) {
+        logger.warn(
+          { ...logCtx, error: delDocRes.error },
+          "File delete: failed to remove document from Core data source."
+        );
+      }
     }
-  }
-
-  const delDocRes = await coreAPI.deleteDataSourceDocument({
-    projectId,
-    dataSourceId,
-    documentId: file.sId,
-  });
-  if (
-    delDocRes.isErr() &&
-    !isBenignCoreIndexedFileDeleteError(delDocRes.error.code)
-  ) {
-    logger.warn(
-      { ...logCtx, error: delDocRes.error },
-      "File delete: failed to remove document from Core data source."
-    );
-  }
+  );
 }
 
 async function maybeDeleteCoreArtifactsForIndexedFile(

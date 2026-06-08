@@ -4,6 +4,7 @@ import type { DataSourceResource } from "@app/lib/resources/data_source_resource
 import { FileResource } from "@app/lib/resources/file_resource";
 import { cleanTimestamp } from "@app/lib/utils/timestamps";
 import logger from "@app/logger/logger";
+import tracer from "@app/logger/tracer";
 import type { CoreAPIError, CoreAPITable } from "@app/types/core/core_api";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { Result } from "@app/types/shared/result";
@@ -47,12 +48,36 @@ export async function deleteTable({
   dataSource: DataSourceResource;
   tableId: string;
 }): Promise<Result<null, TableOperationError>> {
+  return tracer.trace(
+    "tables.delete_table",
+    { resource: dataSource.connectorProvider ?? "managed-none" },
+    async (span) => {
+      span?.setTag("workspace.id", owner.sId);
+      span?.setTag("data_source.s_id", dataSource.sId);
+      span?.setTag("table.id", tableId);
+      span?.setTag("core.project_id", dataSource.dustAPIProjectId);
+      span?.setTag("core.data_source_id", dataSource.dustAPIDataSourceId);
+      return _deleteTable({ owner, dataSource, tableId });
+    }
+  );
+}
+
+async function _deleteTable({
+  owner,
+  dataSource,
+  tableId,
+}: {
+  owner: WorkspaceType;
+  dataSource: DataSourceResource;
+  tableId: string;
+}): Promise<Result<null, TableOperationError>> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
   const deleteRes = await coreAPI.deleteTable({
     projectId: dataSource.dustAPIProjectId,
     dataSourceId: dataSource.dustAPIDataSourceId,
     tableId,
+    caller: "tables-api-delete-table",
   });
   if (deleteRes.isErr()) {
     logger.error(
@@ -240,6 +265,7 @@ export async function upsertTableFromCsv({
           projectId: dataSource.dustAPIProjectId,
           dataSourceId: dataSource.dustAPIDataSourceId,
           tableId,
+          caller: "tables-api-truncate-on-upsert-fail",
         });
 
         if (delRes.isErr()) {

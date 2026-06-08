@@ -786,6 +786,7 @@ app.delete(
       projectId: dataSource.dustAPIProjectId,
       dataSourceId: dataSource.dustAPIDataSourceId,
       documentId,
+      caller: ctx.req.header("X-Dust-Caller") ?? "public-api",
     });
 
     if (delRes.isErr()) {
