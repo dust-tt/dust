@@ -226,10 +226,12 @@ runs:
             --push \
             .
 
-          # Build front-api target
+          # Build front-api target. Insert `-api` after the base component so the prod image
+          # is `front-api` and the edge image is `front-api-edge` (parallel to `front`/`front-edge`).
+          API_COMPONENT="${BASE_COMPONENT}-api${COMPONENT#${BASE_COMPONENT}}"
           LATEST_TAGS_API=()
           if [[ "$ENV" == "prod" && "$COMPONENT" == "$BASE_COMPONENT" && "${{ github.ref_name }}" == "main" ]]; then
-            LATEST_TAGS_API+=("-t" "${REGISTRY}/${COMPONENT}-api:latest")
+            LATEST_TAGS_API+=("-t" "${REGISTRY}/${API_COMPONENT}:latest")
           fi
           depot build \
             --project $DEPOT_PROJECT_ID \
@@ -241,7 +243,7 @@ runs:
             --cache-to type=gha,mode=max,scope=${{ inputs.component }}-deps \
             --cache-to type=gha,mode=max,scope=${{ inputs.component }}-front-api \
             -f ./dockerfiles/${BASE_COMPONENT}.Dockerfile \
-            -t ${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${COMPONENT}-api:${{ inputs.commit_sha }} \
+            -t ${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${API_COMPONENT}:${{ inputs.commit_sha }} \
             "${LATEST_TAGS_API[@]}" \
             --build-arg COMMIT_HASH=${{ inputs.commit_sha }} \
             --build-arg COMMIT_HASH_LONG=${{ inputs.commit_sha_long }} \
