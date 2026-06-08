@@ -89,6 +89,7 @@ export const NavigationSidebar = React.forwardRef<
               {navs.map((tab) => (
                 <div key={tab.id} ref={tab.ref ?? undefined}>
                   <NavTabPillTrigger
+                    className="notranslate"
                     value={tab.id}
                     icon={tab.icon}
                     href={tab.href}
