@@ -52,24 +52,28 @@ export function AttachmentCitation({
         </div>
       </div>
     );
-    return (
-      <FileCitationCard
-        icon={attachmentCitation.visual}
-        title={attachmentCitation.title}
-        description={attachmentCitation.path ?? attachmentCitation.spaceName}
-        {...(attachmentCitation.sourceUrl
-          ? { href: attachmentCitation.sourceUrl }
-          : {})}
-        onRemove={attachmentCitation.onRemove}
-        compact={compact}
-        tooltipLabel={tooltipContent}
-      />
+    const nodeUrl = attachmentCitation.sourceUrl;
+    const nodeBase = {
+      icon: attachmentCitation.visual,
+      title: attachmentCitation.title,
+      description: attachmentCitation.path ?? attachmentCitation.spaceName,
+      onRemove: attachmentCitation.onRemove,
+      compact,
+      tooltipLabel: tooltipContent,
+    };
+    return nodeUrl ? (
+      <FileCitationCard {...nodeBase} href={nodeUrl} />
+    ) : (
+      <FileCitationCard {...nodeBase} />
     );
   }
 
   const { fileId, contentType, title, sourceUrl } = attachmentCitation;
+  const filePath =
+    "filePath" in attachmentCitation ? attachmentCitation.filePath : undefined;
 
   // Interactive content (spreadsheets etc.): open side panel instead of preview dialog.
+  // Only possible when we have a fileId (the side panel API requires it).
   if (
     fileId &&
     !isLoading &&
@@ -91,11 +95,12 @@ export function AttachmentCitation({
     );
   }
 
-  // Previewable file: delegate entirely to PreviewableCitation.
-  if (fileId) {
+  // Previewable file: identified by fileId or filePath.
+  if (fileId || filePath) {
     return (
       <PreviewableCitation
         fileId={fileId}
+        filePath={filePath}
         contentType={contentType}
         title={title}
         thumbnailUrl={sourceUrl ?? undefined}
@@ -111,18 +116,20 @@ export function AttachmentCitation({
     );
   }
 
-  // Fallback: no fileId (still uploading or external link).
-  return (
-    <FileCitationCard
-      icon={attachmentCitation.visual}
-      title={title}
-      description={attachmentCitation.description}
-      compact={compact}
-      isLoading={isLoading}
-      loadingLabel={loadingLabel}
-      {...(sourceUrl ? { href: sourceUrl } : {})}
-      onRemove={attachmentCitation.onRemove}
-      tooltipLabel={title}
-    />
+  // Fallback: no identifier yet (still uploading) or plain external link.
+  const fallbackBase = {
+    icon: attachmentCitation.visual,
+    title,
+    description: attachmentCitation.description,
+    compact,
+    isLoading,
+    loadingLabel,
+    onRemove: attachmentCitation.onRemove,
+    tooltipLabel: title,
+  };
+  return sourceUrl ? (
+    <FileCitationCard {...fallbackBase} href={sourceUrl} />
+  ) : (
+    <FileCitationCard {...fallbackBase} />
   );
 }
