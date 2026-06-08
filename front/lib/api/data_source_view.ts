@@ -373,9 +373,8 @@ export async function listDataSourceViewsWithUsage(
 }
 
 // Contract types for the data source view API endpoints. These are the
-// request/response body shapes shared between the Next handlers under
-// `pages/api/.../data_source_views/*` and their Hono counterparts under
-// `front-api/routes/.../data_source_views/*`.
+// request/response body shapes used by the data source view API routes
+// under `front-api/routes/.../data_source_views/*`.
 
 export type GetDataSourceViewsResponseBody = {
   dataSourceViews: DataSourceViewType[];

@@ -32,8 +32,6 @@ const ParamsSchema = z.object({
  *   PATCH  /api/w/:wId/files/path/{...canonicalPath}  { action:"rename", fileName }
  *   PATCH  /api/w/:wId/files/path/{...canonicalPath}  { action:"move",   dest }
  *   DELETE /api/w/:wId/files/path/{...canonicalPath}
- *
- * Mirrors pages/api/w/[wId]/files/path/[...canonicalPath].ts
  */
 const app = workspaceApp();
 

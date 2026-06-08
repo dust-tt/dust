@@ -19,7 +19,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Optimize compute resources by verifying changes in SQL models files and front/pages/api/v1/* before running Danger.
+      # Optimize compute resources by verifying changes in SQL models files and API files before running Danger.
       - name: Check for file changes
         id: file_changes
         run: |
@@ -30,7 +30,6 @@ jobs:
           # Define monitored paths
           MONITORED_PATHS=(
             'front/lib/'
-            'front/pages/api/'
             'front-api/'
             'connectors/src/lib/models/'
             'connectors/src/resources/storage/models/'

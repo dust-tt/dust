@@ -1,7 +1,6 @@
 // Contract types (request/response bodies) for the assistant conversation API
-// endpoints. Shared by the Next.js handlers under `front/pages/api` and their
-// Hono counterparts under `front-api/routes` so both sides have a single source
-// of truth.
+// endpoints. Used by the assistant conversation API routes under
+// `front-api/routes` so there is a single source of truth.
 
 import type {
   ConversationListItemType,

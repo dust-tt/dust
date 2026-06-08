@@ -7,21 +7,16 @@ import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant
 import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
 import { resumeAncestorConversations as resumeAncestorConversationsHelper } from "@app/lib/api/assistant/conversation/resume_ancestor_conversations";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import { resolveSandboxChildBlock } from "@app/lib/api/sandbox/sandbox_child_block";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
-import { apiError } from "@app/logger/withlogging";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
-import type { WithAPIErrorResponse } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { isString } from "@app/types/shared/utils/general";
-import type { NextApiHandler, NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
 export type ResolveAuthenticationOutcome = "completed" | "denied";
@@ -229,109 +224,3 @@ export const ResolveAuthenticationSchema = z.object({
   outcome: z.enum(["completed", "denied"]),
   resumeAncestorConversations: z.boolean().optional(),
 });
-
-export type ResolveAuthenticationResponse = {
-  success: boolean;
-};
-
-export function makeResolveAuthenticationHandler(
-  kind: ResolveAuthenticationKind
-): NextApiHandler<WithAPIErrorResponse<ResolveAuthenticationResponse>> {
-  async function handler(
-    req: NextApiRequest,
-    res: NextApiResponse<WithAPIErrorResponse<ResolveAuthenticationResponse>>,
-    auth: Authenticator
-  ): Promise<void> {
-    const { cId, mId } = req.query;
-    if (!isString(cId) || !isString(mId)) {
-      return apiError(req, res, {
-        status_code: 404,
-        api_error: {
-          type: "conversation_not_found",
-          message: "Conversation, message, or workspace not found.",
-        },
-      });
-    }
-
-    if (req.method !== "POST") {
-      return apiError(req, res, {
-        status_code: 405,
-        api_error: {
-          type: "method_not_supported_error",
-          message: "The method passed is not supported, POST is expected.",
-        },
-      });
-    }
-
-    const parseResult = ResolveAuthenticationSchema.safeParse(req.body);
-    if (!parseResult.success) {
-      return apiError(req, res, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: `Invalid request body: ${parseResult.error.message}`,
-        },
-      });
-    }
-
-    const conversation = await ConversationResource.fetchById(auth, cId);
-
-    if (!conversation) {
-      return apiError(req, res, {
-        status_code: 404,
-        api_error: {
-          type: "conversation_not_found",
-          message: "Conversation not found.",
-        },
-      });
-    }
-
-    const { actionId, outcome, resumeAncestorConversations } = parseResult.data;
-
-    const result = await resolveAuthentication(auth, conversation, {
-      actionId,
-      messageId: mId,
-      outcome,
-      kind,
-      resumeAncestorConversations,
-    });
-
-    if (result.isErr()) {
-      switch (result.error.code) {
-        case "action_not_blocked":
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "action_not_blocked",
-              message: result.error.message,
-            },
-          });
-        case "action_not_found":
-          return apiError(req, res, {
-            status_code: 404,
-            api_error: {
-              type: "action_not_found",
-              message: result.error.message,
-            },
-          });
-        default:
-          return apiError(
-            req,
-            res,
-            {
-              status_code: 500,
-              api_error: {
-                type: "internal_server_error",
-                message: `Failed to resolve ${KIND_CONFIG[kind].label}`,
-              },
-            },
-            result.error
-          );
-      }
-    }
-
-    res.status(200).json({ success: true });
-  }
-
-  return withSessionAuthenticationForWorkspace(handler);
-}

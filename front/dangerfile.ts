@@ -7,7 +7,6 @@ const documentationAckLabel = "documentation-ack";
 const rawSqlAckLabel = "raw-sql-ack";
 const sparkleVersionAckLabel = "sparkle-version-ack";
 const sseAckLabel = "sse-ack";
-const skipMigrationCheckLabel = "skip-migration-check";
 const sandboxImageAckLabel = "sandbox-image-ack";
 const auditLogAckLabel = "audit-log-ack";
 
@@ -364,91 +363,6 @@ function warnTriggersWorkflowChanges() {
   );
 }
 
-function failMigrationSync(file: string, counterpart: string) {
-  fail(
-    `\`${file}\` was modified but its migration counterpart \`${counterpart}\` was not. ` +
-      `Both sides of a migrated handler must be updated together (see BACK17). ` +
-      `Add the \`${skipMigrationCheckLabel}\` label if this is intentional.`
-  );
-}
-
-function warnMigrationSync(file: string, counterpart: string) {
-  warn(
-    `\`${file}\` was modified but its migration counterpart \`${counterpart}\` was not. ` +
-      `The \`${skipMigrationCheckLabel}\` label is set — ensure this is intentional.`
-  );
-}
-
-// Returns true if the Next handler at `nextLocalPath` (cwd-relative) is
-// marked as migrated to Hono via the `@migration-status: MIGRATED_TO_HONO`
-// marker.
-function isMigratedToHono(nextLocalPath: string): boolean {
-  let content: string;
-  try {
-    content = fs.readFileSync(nextLocalPath, "utf8");
-  } catch {
-    // File does not exist (or unreadable) — treat as not migrated.
-    return false;
-  }
-  return /^\s*\/\/\s*@migration-status:\s*MIGRATED_TO_HONO\s*$/m.test(content);
-}
-
-function checkHonoMigrationSync() {
-  const diffFiles = danger.git.modified_files.concat(danger.git.created_files);
-
-  // For each modified API file, derive its migration counterpart from the
-  // 1:1 path mapping (Next `pages/api/<path>` ↔ Hono `front-api/routes/<path>`)
-  // and check the counterpart is also in the diff.
-  //
-  // A pair is considered migrated when:
-  //   - both files exist on disk, AND
-  //   - the Next file carries `@migration-status: MIGRATED_TO_HONO`.
-  //
-  // Danger runs with cwd=`front/`; `danger.git.modified_files` is
-  // repo-root relative. We prepend `front/` when crossing that boundary.
-  const checks: { file: string; counterpart: string }[] = [];
-
-  for (const file of diffFiles) {
-    let nextRepoPath: string | null = null;
-    let honoRepoPath: string | null = null;
-
-    if (file.startsWith("front/pages/api/")) {
-      nextRepoPath = file;
-      honoRepoPath = file.replace(/^front\/pages\/api\//, "front-api/routes/");
-    } else if (file.startsWith("front-api/routes/")) {
-      honoRepoPath = file;
-      nextRepoPath = file.replace(/^front-api\/routes\//, "front/pages/api/");
-    } else {
-      continue;
-    }
-
-    const nextLocalPath = nextRepoPath.replace(/^front\//, "");
-    const honoLocalPath = `../${honoRepoPath}`;
-
-    if (!fs.existsSync(nextLocalPath) || !fs.existsSync(honoLocalPath)) {
-      continue;
-    }
-
-    if (!isMigratedToHono(nextLocalPath)) {
-      continue;
-    }
-
-    const counterpart = file === nextRepoPath ? honoRepoPath : nextRepoPath;
-    checks.push({ file, counterpart });
-  }
-
-  for (const { file, counterpart } of checks) {
-    if (diffFiles.includes(counterpart)) {
-      continue;
-    }
-    if (hasLabel(skipMigrationCheckLabel)) {
-      warnMigrationSync(file, counterpart);
-    } else {
-      failMigrationSync(file, counterpart);
-    }
-  }
-}
-
 const AUDIT_SCHEMAS_PREFIX = "front/admin/audit_log_schemas/";
 const AUDIT_VERSION_MAP_REPO_PATH = "front/lib/api/audit/schema_versions.json";
 const AUDIT_VERSION_MAP_LOCAL_PATH = "lib/api/audit/schema_versions.json";
@@ -623,17 +537,11 @@ async function checkDiffFiles() {
     checkSandboxImageLabel();
   }
 
-  // SSE endpoint files — changes here require a front-sse deploy too.
-  const sseEndpointFiles = [
-    "front/pages/api/w/[wId]/assistant/conversations/[cId]/events.ts",
-    "front/pages/api/w/[wId]/assistant/conversations/[cId]/messages/[mId]/events.ts",
-    "front/pages/api/v1/w/[wId]/assistant/conversations/[cId]/events.ts",
-    "front/pages/api/v1/w/[wId]/assistant/conversations/[cId]/messages/[mId]/events.ts",
-    "front/pages/api/w/[wId]/mcp/requests.ts",
-    "front/pages/api/v1/w/[wId]/mcp/requests.ts",
-  ];
+  // SSE endpoint files — changes here require a front-sse deploy too. These
+  // handlers live under `front-api/routes/sse/` and are served by front-sse
+  // pods via the `/api/sse/` prefix.
   const modifiedSseFiles = diffFiles.filter((path) =>
-    sseEndpointFiles.includes(path)
+    path.startsWith("front-api/routes/sse/")
   );
   if (modifiedSseFiles.length > 0) {
     checkSSEEndpointLabel();
@@ -684,9 +592,6 @@ async function checkDiffFiles() {
     );
     await checkAuditSchemaVersions(changedActions);
   }
-
-  // Hono migration sync check (self-gates on diff contents).
-  checkHonoMigrationSync();
 }
 
 void checkDiffFiles();

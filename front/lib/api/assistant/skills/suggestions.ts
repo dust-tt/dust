@@ -1,7 +1,6 @@
 // Contract types and schemas for the skill suggestions endpoint
-// (`/api/w/:wId/assistant/skills/:sId/suggestions`). Shared by the Next.js
-// handler and its Hono counterpart so both validate against a single source of
-// truth.
+// (`/api/w/:wId/assistant/skills/:sId/suggestions`). Used by the skill
+// suggestions route so validation has a single source of truth.
 import { SkillSuggestionSchema } from "@app/types/suggestions/skill_suggestion";
 import { z } from "zod";
 

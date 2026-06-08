@@ -1,5 +1,5 @@
 // Shared contract types and schemas for the agent configurations API,
-// imported by both the Next handler and its Hono counterpart.
+// imported by the agent configurations API routes.
 import { LightAgentConfigurationSchema } from "@app/types/assistant/agent";
 import { z } from "zod";
 

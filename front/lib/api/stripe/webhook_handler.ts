@@ -732,7 +732,7 @@ async function handleStripeCheckoutCompleted({
 }
 
 /**
- * Process a verified Stripe webhook event. The caller (Next or Hono handler)
+ * Process a verified Stripe webhook event. The caller (the Hono webhook route)
  * is responsible for reading the raw body and verifying the signature; once
  * the event is constructed, this function does everything else.
  *
