@@ -1,10 +1,11 @@
 import { Button } from "@sparkle/components/Button";
+import { ImageGenerationPlaceholder } from "@sparkle/components/ImageGenerationPlaceholder";
 import { ImageWrapper } from "@sparkle/components/ImageWrapper";
+import { Spinner } from "@sparkle/components/Spinner";
 import {
   downloadFile,
   ImageZoomDialog,
 } from "@sparkle/components/ImageZoomDialog";
-import { Spinner } from "@sparkle/components/Spinner";
 import { Download01, XClose } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
@@ -94,6 +95,7 @@ interface ImagePreviewProps
   title?: string;
   downloadUrl?: string;
   isLoading?: boolean;
+  isGenerating?: boolean;
   onClose?: (e: React.MouseEvent) => void;
   onClick?: (e: React.MouseEvent) => void;
   className?: string;
@@ -108,6 +110,7 @@ const ImagePreview = React.forwardRef<HTMLDivElement, ImagePreviewProps>(
       title = "",
       downloadUrl,
       isLoading,
+      isGenerating,
       onClose,
       onClick,
       className,
@@ -143,7 +146,7 @@ const ImagePreview = React.forwardRef<HTMLDivElement, ImagePreviewProps>(
       (e: React.MouseEvent) => {
         e.stopPropagation();
         e.preventDefault();
-        if (!isLoading) {
+        if (!isLoading && !isGenerating) {
           if (onClick) {
             onClick(e);
           } else if (manageZoomDialog) {
@@ -151,7 +154,7 @@ const ImagePreview = React.forwardRef<HTMLDivElement, ImagePreviewProps>(
           }
         }
       },
-      [isLoading, onClick, manageZoomDialog]
+      [isLoading, isGenerating, onClick, manageZoomDialog]
     );
 
     return (
@@ -161,7 +164,9 @@ const ImagePreview = React.forwardRef<HTMLDivElement, ImagePreviewProps>(
           onClick={handleImageClick}
           className={cn(containerVariants({ variant }), className)}
         >
-          {isLoading ? (
+          {isGenerating ? (
+            <ImageGenerationPlaceholder fill />
+          ) : isLoading ? (
             <div
               className={cn(
                 "s-flex s-h-full s-w-full s-items-center s-justify-center",

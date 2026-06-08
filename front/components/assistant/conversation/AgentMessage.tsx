@@ -78,6 +78,7 @@ import type {
 } from "@app/types/assistant/mentions";
 import { isActiveWakeUp } from "@app/types/assistant/wakeups";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
+import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   isInteractiveContentType,
   isSupportedImageContentType,
@@ -1327,6 +1328,29 @@ function AgentMessageContent({
     .filter((file) => isSupportedImageContentType(file.contentType))
     .filter((file) => file.fileId && !referencedFileIds.has(file.fileId));
 
+  const inProgressImageCount = Array.from(
+    agentMessage.streaming.actionProgress.values()
+  ).filter(({ progress }) => {
+    const output = progress?._meta?.data?.output;
+    return output !== undefined && isImageProgressOutput(output);
+  }).length;
+
+  const allImages = [
+    ...completedImages.map((image) => ({
+      imageUrl: `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${image.fileId}?action=view&version=processed`,
+      downloadUrl: `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${image.fileId}?action=download`,
+      alt: image.title,
+      title: image.title,
+      isLoading: false as const,
+    })),
+    ...Array.from({ length: inProgressImageCount }, (_, i) => ({
+      imageUrl: "",
+      alt: `Generating image ${i + 1}`,
+      title: `Generating image ${i + 1}`,
+      isGenerating: true as const,
+    })),
+  ];
+
   const generatedFiles = filesFromMessage.filter(
     (file) =>
       !isSupportedImageContentType(file.contentType) &&
@@ -1353,16 +1377,8 @@ function AgentMessageContent({
         <AgentMessageInteractiveContentGeneratedFiles
           files={interactiveFiles}
         />
-        {completedImages.length > 0 && (
-          <InteractiveImageGrid
-            images={completedImages.map((image) => ({
-              imageUrl: `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${image.fileId}?action=view&version=processed`,
-              downloadUrl: `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${image.fileId}?action=download`,
-              alt: image.title,
-              title: image.title,
-              isLoading: false,
-            }))}
-          />
+        {allImages.length > 0 && (
+          <InteractiveImageGrid images={allImages} />
         )}
 
         {agentMessage.content !== null &&
