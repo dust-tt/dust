@@ -39,7 +39,7 @@ export type FileSystemMount = {
   legacyPrefix: string | null;
 
   /**
-   * Legacy sandbox mount point (`/files/conversation` or `/files/project`).
+   * Legacy sandbox mount point (`/files/conversation` or `/files/pod`).
    * The sandbox adapter symlinks this to `sandboxMountPoint` after mounting.
    * Null when there is no legacy counterpart.
    */
