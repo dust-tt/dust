@@ -52,6 +52,8 @@ app.post(
       maxImagesPerWeek: body.limits.capabilities.images.maxImagesPerWeek,
       maxMessages: body.limits.assistant.maxMessages,
       maxMessagesTimeframe: body.limits.assistant.maxMessagesTimeframe,
+      maxAwuCredits: body.limits.assistant.maxAwuCredits,
+      maxAwuCreditsTimeframe: body.limits.assistant.maxAwuCreditsTimeframe,
       isDeepDiveAllowed: body.limits.assistant.isDeepDiveAllowed,
       isManagedConfluenceAllowed: body.limits.connections.isConfluenceAllowed,
       isManagedSlackAllowed: body.limits.connections.isSlackAllowed,

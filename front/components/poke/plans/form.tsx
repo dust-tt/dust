@@ -41,6 +41,8 @@ export type EditingPlanType = {
   maxImagesPerWeek: string | number;
   maxMessages: string | number;
   maxMessagesTimeframe: string;
+  maxAwuCredits: string | number;
+  maxAwuCreditsTimeframe: string;
   isDeepDiveAllowed: boolean;
   maxUsers: string | number;
   maxFreeUsers: string | number;
@@ -69,6 +71,8 @@ export const fromPlanType = (plan: PlanType): EditingPlanType => {
     isAuditLogsAllowed: plan.isAuditLogsAllowed,
     maxMessages: plan.limits.assistant.maxMessages,
     maxMessagesTimeframe: plan.limits.assistant.maxMessagesTimeframe,
+    maxAwuCredits: plan.limits.assistant.maxAwuCredits,
+    maxAwuCreditsTimeframe: plan.limits.assistant.maxAwuCreditsTimeframe,
     isDeepDiveAllowed: plan.limits.assistant.isDeepDiveAllowed,
     dataSourcesCount: plan.limits.dataSources.count,
     dataSourcesDocumentsCount: plan.limits.dataSources.documents.count,
@@ -92,6 +96,9 @@ export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
   if (!isMaxMessagesTimeframeType(editingPlan.maxMessagesTimeframe)) {
     throw new Error("Invalid maxMessagesTimeframe");
   }
+  if (!isMaxMessagesTimeframeType(editingPlan.maxAwuCreditsTimeframe)) {
+    throw new Error("Invalid maxAwuCreditsTimeframe");
+  }
 
   return {
     code: editingPlan.code.trim(),
@@ -101,6 +108,8 @@ export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
         isSlackBotAllowed: editingPlan.isSlackBotAllowed,
         maxMessages: parseMaybeNumber(editingPlan.maxMessages),
         maxMessagesTimeframe: editingPlan.maxMessagesTimeframe,
+        maxAwuCredits: parseMaybeNumber(editingPlan.maxAwuCredits),
+        maxAwuCreditsTimeframe: editingPlan.maxAwuCreditsTimeframe,
         isDeepDiveAllowed: editingPlan.isDeepDiveAllowed,
       },
       connections: {
@@ -167,6 +176,8 @@ const getEmptyPlan = (): EditingPlanType => ({
   maxImagesPerWeek: "",
   maxMessages: "",
   maxMessagesTimeframe: "day",
+  maxAwuCredits: "",
+  maxAwuCreditsTimeframe: "day",
   isDeepDiveAllowed: true,
   maxUsers: "",
   maxFreeUsers: -1,
@@ -278,6 +289,19 @@ export const PLAN_FIELDS = {
     title: "/ Timeframe / Seat",
     error: (plan: EditingPlanType) =>
       errorCheckMaxMessageTimeframe(plan.maxMessagesTimeframe),
+  },
+  maxAwuCredits: {
+    type: "number",
+    width: "small",
+    title: "# AWU Credits (unpooled)",
+    error: (plan: EditingPlanType) => errorCheckNumber(plan.maxAwuCredits),
+  },
+  maxAwuCreditsTimeframe: {
+    type: "string",
+    width: "medium",
+    title: "/ Timeframe / Seat",
+    error: (plan: EditingPlanType) =>
+      errorCheckMaxMessageTimeframe(plan.maxAwuCreditsTimeframe),
   },
   isDeepDiveAllowed: {
     type: "boolean",

@@ -497,6 +497,15 @@ export function PlanLimitationsTable({
               </PokeTableRow>
 
               <PokeTableRow>
+                <PokeTableCell>Max number of AWU credits</PokeTableCell>
+                <PokeTableCell>
+                  {activePlan.limits.assistant.maxAwuCredits === -1
+                    ? "unlimited"
+                    : `${activePlan.limits.assistant.maxAwuCredits} / ${activePlan.limits.assistant.maxAwuCreditsTimeframe}`}
+                </PokeTableCell>
+              </PokeTableRow>
+
+              <PokeTableRow>
                 <PokeTableCell>Is Deep Dive allowed?</PokeTableCell>
                 <PokeTableCell>
                   {activePlan.limits.assistant.isDeepDiveAllowed ? "✅" : "❌"}
