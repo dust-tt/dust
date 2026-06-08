@@ -118,7 +118,7 @@ export const NavigationSidebar = React.forwardRef<
               <NavTabPillContent
                 key={tab.id}
                 value={tab.id}
-                className="mx-sidebar-side-spacing-half"
+                className="mx-sidebar-side-spacing"
               >
                 <NavigationList>
                   {subNavigation &&
