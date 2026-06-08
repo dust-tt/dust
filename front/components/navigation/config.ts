@@ -125,7 +125,6 @@ export type AppLayoutNavigation = {
   icon: React.ComponentType<{ className?: string }>;
   href?: string;
   target?: string;
-  hideLabel?: boolean;
   sizing?: "hug" | "expand";
   hasSeparator?: boolean;
   current: boolean;
@@ -142,7 +141,6 @@ export type TabAppLayoutNavigation = {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   href?: string;
-  hideLabel?: boolean;
   sizing?: "hug" | "expand";
   hasSeparator?: boolean;
   current?: never;
