@@ -142,7 +142,6 @@ export enum GLOBAL_AGENTS_SID {
   // Needed to preserve ongoing chat integrity due to 'sId=mistral' references in legacy messages.
   MISTRAL_SMALL = "mistral",
   GEMINI_PRO = "gemini-pro",
-  DEEPSEEK_R1 = "deepseek-r1",
 
   NOOP = "noop",
 }
@@ -206,8 +205,6 @@ export function getGlobalAgentAuthorName(agentId: string): string {
       return "Mistral";
     case GLOBAL_AGENTS_SID.GEMINI_PRO:
       return "Google";
-    case GLOBAL_AGENTS_SID.DEEPSEEK_R1:
-      return "DeepSeek";
     case GLOBAL_AGENTS_SID.NOOP:
       return "Noop";
     default:

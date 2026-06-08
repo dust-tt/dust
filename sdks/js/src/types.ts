@@ -80,10 +80,7 @@ export type KnownModelLLMId =
   | "Qwen/QwQ-32B-Preview" // togetherai
   | "Qwen/Qwen2-72B-Instruct" // togetherai
   | "deepseek-ai/DeepSeek-V3" // togetherai
-  | "deepseek-ai/DeepSeek-R1" // togetherai
   | "deepseek-chat" // deepseek api
-  | "deepseek-reasoner" // deepseek api
-  | "accounts/fireworks/models/deepseek-r1-0528" // fireworks
   | "accounts/fireworks/models/deepseek-v3p2" // fireworks
   | "accounts/fireworks/models/deepseek-v4-pro" // fireworks
   | "accounts/fireworks/models/kimi-k2-instruct" // fireworks - not supported anymore
@@ -695,7 +692,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "sessions_branching"
   | "databricks_tool"
   | "deepseek_feature"
-  | "deepseek_r1_global_agent_feature"
   | "dev_mcp_actions"
   | "disable_formatting_prompt"
   | "disable_run_logs"

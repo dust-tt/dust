@@ -289,23 +289,9 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     input: 0.27,
     output: 1.1,
   },
-  "deepseek-ai/DeepSeek-R1": {
-    input: 0.55,
-    output: 2.19,
-  },
   "deepseek-chat": {
     input: 0.14,
     output: 0.28,
-  },
-  "deepseek-reasoner": {
-    input: 0.55,
-    output: 2.19,
-  },
-  // https://app.fireworks.ai/models/fireworks/deepseek-r1-0528
-  "accounts/fireworks/models/deepseek-r1-0528": {
-    input: 1.35,
-    output: 5.4,
-    cache_read_input_tokens: 0.68,
   },
   // https://fireworks.ai/models/fireworks/deepseek-v3p2
   "accounts/fireworks/models/deepseek-v3p2": {
