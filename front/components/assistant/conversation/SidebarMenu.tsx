@@ -1403,7 +1403,7 @@ const ConversationListItem = memo(
     );
 
     return isMultiSelect ? (
-      <div className="flex items-center mx-sidebar-side-spacing py-2">
+      <div className="flex items-center mx-2 py-2">
         <Checkbox
           id={`conversation-${conversation.sId}`}
           className="bg-background dark:bg-background-night"
