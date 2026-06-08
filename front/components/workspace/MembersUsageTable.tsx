@@ -178,30 +178,74 @@ function AwuUsageBar({
 
   const total = sections.reduce((sum, s) => sum + s.value, 0);
 
-  return (
-    <div className="flex w-full flex-col gap-1">
-      <div className="flex justify-between text-xs tabular-nums text-foreground dark:text-foreground-night">
-        <span>{formatCredits(consumed)}</span>
-        <span>{limit === null ? "∞" : formatCredits(limit)}</span>
+  const hasSeatSections = seatConsumed > 0 || seatRemaining > 0;
+  const hasPoolSections =
+    poolConsumed > 0 || (poolRemaining !== null && poolRemaining > 0);
+
+  const tooltipLines: Array<{
+    track: string;
+    fill: string;
+    legend: string;
+    usage: string;
+  }> = [];
+  if (hasSeatSections) {
+    tooltipLines.push({
+      track: seatColors.track,
+      fill: seatColors.fill,
+      legend: "Seat usage",
+      usage: `${formatCredits(seatConsumed)} credits used out of ${formatCredits(allowance)}`,
+    });
+  }
+  if (hasPoolSections) {
+    const poolTotal = limit !== null ? limit - allowance : null;
+    tooltipLines.push({
+      track: MUTED_BAR_CLASSES.track,
+      fill: MUTED_BAR_CLASSES.fill,
+      legend: "Pool usage",
+      usage:
+        poolTotal !== null
+          ? `${formatCredits(poolConsumed)} credits used out of ${formatCredits(poolTotal)}`
+          : `${formatCredits(poolConsumed)} credits used`,
+    });
+  }
+
+  const tooltipContent =
+    tooltipLines.length > 0 ? (
+      <div className="flex flex-col gap-1">
+        {tooltipLines.map((line) => (
+          <div key={line.legend} className="flex items-center gap-2">
+            <div className="relative h-2.5 w-2.5 overflow-hidden rounded-sm">
+              <div
+                className={`absolute inset-0 ${line.track}`}
+                style={{ clipPath: "polygon(0 0, 100% 0, 0 100%)" }}
+              />
+              <div
+                className={`absolute inset-0 ${line.fill}`}
+                style={{ clipPath: "polygon(100% 0, 100% 100%, 0 100%)" }}
+              />
+            </div>
+            <span>
+              {line.legend} — {line.usage}
+            </span>
+          </div>
+        ))}
       </div>
+    ) : null;
+
+  const bar = (
+    <div className="flex w-full items-center">
       <div className="flex w-full items-center gap-px">
         {total > 0 ? (
           sections.map((s) => (
-            <Tooltip
+            <div
               key={s.key}
-              tooltipTriggerAsChild
-              label={s.label}
-              trigger={
-                <div
-                  className="flex h-3 items-center"
-                  style={{ width: `${(s.value / total) * 100}%` }}
-                >
-                  <div
-                    className={`h-1 w-full rounded-full ${s.className} transition-all`}
-                  />
-                </div>
-              }
-            />
+              className="flex h-3 items-center"
+              style={{ width: `${(s.value / total) * 100}%` }}
+            >
+              <div
+                className={`h-1 w-full rounded-full ${s.className} transition-all`}
+              />
+            </div>
           ))
         ) : (
           <div
@@ -209,6 +253,20 @@ function AwuUsageBar({
           />
         )}
       </div>
+    </div>
+  );
+
+  return (
+    <div className="flex w-full flex-col gap-1">
+      <div className="flex justify-between text-xs tabular-nums text-foreground dark:text-foreground-night">
+        <span>{formatCredits(consumed)}</span>
+        <span>{limit === null ? "∞" : formatCredits(limit)}</span>
+      </div>
+      {tooltipContent ? (
+        <Tooltip tooltipTriggerAsChild label={tooltipContent} trigger={bar} />
+      ) : (
+        bar
+      )}
     </div>
   );
 }
