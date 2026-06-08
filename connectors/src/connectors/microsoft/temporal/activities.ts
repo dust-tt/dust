@@ -221,82 +221,82 @@ export async function getRootNodesToSyncFromResources(
   // get root folders and drives and drill down site-root and sites to their
   // child drives (converted to MicrosoftNode types)
   const rootFolderAndDriveNodes = removeNulls(
-    await Promise.all(
-      rootResources
-        .filter(
-          (resource) =>
-            resource.nodeType === "folder" || resource.nodeType === "drive"
-        )
-        .map(async (resource) => {
-          try {
-            const item = await getItem(
-              logger,
-              client,
-              typeAndPathFromInternalId(resource.internalId).itemAPIPath
-            );
+    await concurrentExecutor(
+      rootResources.filter(
+        (resource) =>
+          resource.nodeType === "folder" || resource.nodeType === "drive"
+      ),
+      async (resource) => {
+        try {
+          const item = await getItem(
+            logger,
+            client,
+            typeAndPathFromInternalId(resource.internalId).itemAPIPath
+          );
 
-            const node = itemToMicrosoftNode(
-              resource.nodeType as "folder" | "drive",
-              item
-            );
-            return {
-              ...node,
-              name: node.name,
-            };
-          } catch (error) {
-            if (error instanceof GraphError && error.statusCode === 404) {
-              return null;
-            }
-            if (isAccessBlockedError(error)) {
-              logger.warn(
-                {
-                  connectorId,
-                  id: resource.internalId,
-                  error: error.message,
-                },
-                "Root resource access blocked by administrator, skipping"
-              );
-              return null;
-            }
-            if (isGeneralExceptionError(error)) {
-              logger.warn(
-                {
-                  connectorId,
-                  internalId: resource.internalId,
-                  errorCode: error.code,
-                  errorMessage: error.message,
-                },
-                "Skipping root resource due to 401 generalException - possible site permission change. See https://learn.microsoft.com/en-us/answers/questions/5616949/receiving-general-exception-while-processing-when"
-              );
-              return null;
-            }
-            if (isBillingPolicyError(error)) {
-              logger.warn(
-                {
-                  connectorId,
-                  internalId: resource.internalId,
-                  error: error.message,
-                },
-                "Billing policy error from Microsoft, skipping root resource"
-              );
-              return null;
-            }
-            if (error instanceof ExternalOAuthTokenError) {
-              // Do not throw immediately, the token may still be valid for other roots.
-              oauthTokenErrors.push(error);
-              return null;
-            }
-            logger.error(
+          const node = itemToMicrosoftNode(
+            resource.nodeType as "folder" | "drive",
+            item
+          );
+          return {
+            ...node,
+            name: node.name,
+          };
+        } catch (error) {
+          if (error instanceof GraphError && error.statusCode === 404) {
+            return null;
+          }
+          if (isAccessBlockedError(error)) {
+            logger.warn(
               {
                 connectorId,
-                error,
                 id: resource.internalId,
+                error: error.message,
               },
-              "Failed to get item"
+              "Root resource access blocked by administrator, skipping"
             );
-            throw error;
+            return null;
           }
-        })
+          if (isGeneralExceptionError(error)) {
+            logger.warn(
+              {
+                connectorId,
+                internalId: resource.internalId,
+                errorCode: error.code,
+                errorMessage: error.message,
+              },
+              "Skipping root resource due to 401 generalException - possible site permission change. See https://learn.microsoft.com/en-us/answers/questions/5616949/receiving-general-exception-while-processing-when"
+            );
+            return null;
+          }
+          if (isBillingPolicyError(error)) {
+            logger.warn(
+              {
+                connectorId,
+                internalId: resource.internalId,
+                error: error.message,
+              },
+              "Billing policy error from Microsoft, skipping root resource"
+            );
+            return null;
+          }
+          if (error instanceof ExternalOAuthTokenError) {
+            // Do not throw immediately, the token may still be valid for other roots.
+            oauthTokenErrors.push(error);
+            return null;
+          }
+          logger.error(
+            {
+              connectorId,
+              error,
+              id: resource.internalId,
+            },
+            "Failed to get item"
+          );
+          throw error;
+        }
+      },
+      { concurrency: 5 }
     )
   );
 

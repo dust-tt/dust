@@ -8,7 +8,6 @@ import {
   _getClaude4_5SonnetGlobalAgent,
   _getClaude4SonnetGlobalAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/anthropic";
-import { _getDeepSeekR1GlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/deepseek";
 import {
   _getArchivedBrowserSummaryAgent,
   _getDeepDiveGlobalAgent,
@@ -658,12 +657,6 @@ const GLOBAL_AGENT_FLAGS: Record<
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
-  [GLOBAL_AGENTS_SID.DEEPSEEK_R1]: {
-    injectsMemory: false,
-    injectsToolsets: false,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
   [GLOBAL_AGENTS_SID.NOOP]: {
     injectsMemory: false,
     injectsToolsets: false,
@@ -881,9 +874,6 @@ function getGlobalAgent({
         settings,
         mcpServerViews,
       });
-      break;
-    case GLOBAL_AGENTS_SID.DEEPSEEK_R1:
-      agentConfiguration = _getDeepSeekR1GlobalAgent({ auth, settings });
       break;
     case GLOBAL_AGENTS_SID.SLACK:
       agentConfiguration = _getSlackGlobalAgent(auth, {
@@ -1408,11 +1398,6 @@ export async function getGlobalAgents(
   if (!flags.includes("openai_o1_high_reasoning_feature")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
       (sId) => sId !== GLOBAL_AGENTS_SID.O1_HIGH_REASONING
-    );
-  }
-  if (!flags.includes("deepseek_r1_global_agent_feature")) {
-    agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) => sId !== GLOBAL_AGENTS_SID.DEEPSEEK_R1
     );
   }
   const DUST_INTERNAL_AGENTS: readonly GLOBAL_AGENTS_SID[] = [

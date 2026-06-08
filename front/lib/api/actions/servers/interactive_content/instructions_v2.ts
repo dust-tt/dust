@@ -13,7 +13,7 @@ Before declaring a frame done, mentally check both the default panel width and f
 - Import React hooks from \`react\` when using them.
 - Hooks, including \`useState\`, \`useEffect\`, and \`useFile\`, must be called at the top level of the component.
 - \`React.createElement\` is not supported.
-- There is no internet access in the frame environment.
+- Outbound network requests (fetch, XHR, WebSocket) are blocked. connect-src is restricted to the Dust service only. External images can be rendered via <img src="https://..."> tags.
 - External links must include \`target="_blank"\` because frames render inside an iframe.
 - When displaying text with < or > symbols in JSX, use HTML entities such as \`&lt;\` and \`&gt;\`, or wrap the string in braces.
 
@@ -59,6 +59,10 @@ The heading uses an explicit chroma accent (\`text-indigo-700\`). The structural
 - Use shadcn/ui components for a polished baseline. Use Cards for individual charts, data visualizations, and key metrics or KPIs. Do not wrap controls, inputs, navigation, or simple text content in Cards. Avoid nested Cards.
 - For shadcn Buttons, use semantic variants such as \`variant="default"\`, \`variant="secondary"\`, \`variant="outline"\`, and \`variant="destructive"\`. Let shadcn handle hover states unless an active or selected state needs a visible accent.
 
+### Animation
+
+\`motion/react\` is available for animations. Use it for entrance transitions, staggered list or card reveals, and conditional mount/unmount effects via \`AnimatePresence\`. Prefer one well-orchestrated entrance sequence over many scattered micro-interactions. Keep entrance durations between 0.3 s and 0.5 s; interactive feedback between 0.15 s and 0.25 s.
+
 ### Chart Rules
 
 - Use shadcn chart components for charts: \`ChartContainer\`, \`ChartConfig\`, \`ChartTooltip\`, and \`ChartTooltipContent\`.
@@ -100,7 +104,7 @@ The same decision rule applies regardless of where the data came from:
 - Never use bare \`conversation/filename\` or \`pod/filename\` paths. They are context-dependent, non-portable, and can silently load the wrong file.
 - Store file IDs as intact strings such as \`"fil_abc123"\`, not as string concatenation.
 - \`file.text()\` is async. Await it inside \`useEffect\`; never call it directly in render logic.
-- For images, always load with \`useFile\`, create a local object URL with \`URL.createObjectURL(file)\`, and render that URL in \`<img>\` or background styles. Do not fetch remote images.
+- For images from the conversation, load with \`useFile\`, create a local object URL with \`URL.createObjectURL(file)\`, and render that URL in \`<img>\` or background styles. External images can be rendered directly via \`<img src="https://...">\`.
 - Custom components that render files should use \`fileId\` as the prop name so server-side prefetching can work.
 - Other frames can be imported as React components by file ID or explicit scoped path, for example \`import MyComponent from "fil_abc123"\` or \`import MyComponent from "conversation-conv_123/MyFrame.tsx"\`. Transitive imports are supported.
 - To let users download data, import \`triggerUserFileDownload\` from \`@dust/react-hooks\` and expose it through a button or other user action. Never auto-trigger downloads.
@@ -128,7 +132,7 @@ These apply to data from any source: the user's prompt, attached files, tool out
 
 - Default output is a single Frame React component with a default export.
 - Use \`@dust/slideshow/v2\` only when the user explicitly asks for slides, a presentation, a deck, or multi-slide content.
-- Imports are limited to \`react\`, \`recharts\`, \`lucide-react\`, \`papaparse\`, \`shadcn\`, \`@viz/lib/utils\`, \`@dust/react-hooks\`, \`@dust/slideshow/v2\`, legacy \`@dust/slideshow/v1\` imports only when editing an existing v1 slideshow, and frame file references.
+- Imports are limited to \`react\`, \`recharts\`, \`lucide-react\`, \`papaparse\`, \`shadcn\`, \`@viz/lib/utils\`, \`@dust/react-hooks\`, \`@dust/slideshow/v2\`, \`motion/react\`, legacy \`@dust/slideshow/v1\` imports only when editing an existing v1 slideshow, and frame file references.
 - No other third-party libraries are installed or available.
 `;
 

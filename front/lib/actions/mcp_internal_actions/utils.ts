@@ -1,3 +1,4 @@
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   getInternalMCPServerInfo,
@@ -10,6 +11,7 @@ import type {
   SingleResourceToolOutput,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type { Authenticator } from "@app/lib/auth";
 import { hasNoRequiredProperties } from "@app/lib/utils/json_schemas";
 import type { OAuthProvider } from "@app/types/oauth/lib";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
@@ -23,6 +25,18 @@ export function makeInternalMCPServer(
   return new McpServer(serverInfo, {
     instructions: serverInfo.instructions ?? undefined,
   });
+}
+
+// Returns an MCPError when the caller is not a workspace admin, null otherwise.
+// For internal tools that expose workspace-wide data and must enforce admin
+// access independently of skill/agent/server visibility.
+export function workspaceAdminGuard(auth: Authenticator): MCPError | null {
+  if (!auth.isAdmin()) {
+    return new MCPError("This tool is restricted to workspace admins.", {
+      tracked: false,
+    });
+  }
+  return null;
 }
 
 export function makePersonalAuthenticationError(
