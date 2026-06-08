@@ -274,7 +274,7 @@ function SearchResults({
 
   return (
     <div className="h-full overflow-y-auto">
-      <NavigationList className="px-2">
+      <NavigationList className="mx-sidebar-side-spacing">
         <NavigationListCollapsibleSection
           label="Pods"
           type="collapse"
@@ -332,7 +332,7 @@ function SearchResults({
         </NavigationListCollapsibleSection>
       </NavigationList>
 
-      <NavigationList className="px-2">
+      <NavigationList className="mx-sidebar-side-spacing">
         <NavigationListCollapsibleSection
           label="Conversations"
           action={
@@ -716,7 +716,7 @@ export function AgentSidebarMenu({
     );
 
     return (
-      <NavigationList className="px-2">
+      <NavigationList className="mx-sidebar-side-spacing">
         <NavigationListCollapsibleSection
           label={showCount ? `Starred (${starredCountInSummary})` : "Starred"}
           icon={Star01}
@@ -764,7 +764,7 @@ export function AgentSidebarMenu({
     );
 
     return (
-      <NavigationList className="px-2 flex-shrink-0">
+      <NavigationList className="mx-sidebar-side-spacing flex-shrink-0">
         <NavigationListCollapsibleSection
           label={showCount ? `Pods (${podCountInSummary})` : "Pods"}
           type="collapse"
@@ -1403,7 +1403,7 @@ const ConversationListItem = memo(
     );
 
     return isMultiSelect ? (
-      <div className="flex items-center px-2 py-2">
+      <div className="flex items-center mx-sidebar-side-spacing py-2">
         <Checkbox
           id={`conversation-${conversation.sId}`}
           className="bg-background dark:bg-background-night"
@@ -1621,7 +1621,7 @@ function NavigationListWithInbox({
         </AnimatePresence>
         {starredSection}
         {podsSection}
-        <NavigationList className="px-2">
+        <NavigationList className="mx-sidebar-side-spacing">
           <NavigationListCollapsibleSection
             label="Conversations"
             action={
