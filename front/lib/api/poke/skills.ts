@@ -1,7 +1,9 @@
 import type {
   SkillType,
   SkillWithVersionType,
+  UsedBySkillType,
 } from "@app/types/assistant/skill_configuration";
+import type { AgentsUsageType } from "@app/types/data_source";
 import type { SpaceType } from "@app/types/space";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
 import type { UserType } from "@app/types/user";
@@ -26,6 +28,10 @@ export type PokeGetSkillDetails = {
   skill: SkillType;
   editedByUser: UserType | null;
   spaces: SpaceType[];
+  // Agents that use this skill.
+  agentsUsage: AgentsUsageType;
+  // Parent skills that reference this skill.
+  usedBySkills: UsedBySkillType[];
 };
 
 export type PokeGetSkillVersions = {
