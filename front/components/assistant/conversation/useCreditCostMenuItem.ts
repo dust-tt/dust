@@ -2,7 +2,6 @@ import { useAuth } from "@app/lib/auth/AuthContext";
 import { formatCredits } from "@app/lib/client/credits";
 import { isCreditPricedPlan } from "@app/types/plan";
 import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
-import { ActionCreditCoinsIcon } from "@dust-tt/sparkle";
 
 const CREDIT_COST_COPY = {
   label: "Message credit cost",
@@ -27,13 +26,10 @@ export function useCreditCostMenuItem({
     return null;
   }
 
-  const { label, tooltip } = CREDIT_COST_COPY;
-
   return {
-    label,
-    icon: ActionCreditCoinsIcon,
+    label: CREDIT_COST_COPY.label,
     endComponent: formatCredits(credits),
-    tooltip,
+    tooltip: CREDIT_COST_COPY.tooltip,
     className:
       "cursor-default font-normal text-muted-foreground hover:bg-transparent focus:bg-transparent dark:text-muted-foreground-night dark:hover:bg-transparent dark:focus:bg-transparent",
     onSelect: (e) => e.preventDefault(),
