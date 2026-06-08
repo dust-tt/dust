@@ -2,7 +2,14 @@ import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { Authenticator } from "@app/lib/auth";
 import { generateShortBlockId } from "@app/lib/generate_short_block_id";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
+import {
+  CREDIT_PRICED_FREE_PLAN_CODE,
+  FREE_TRIAL_PHONE_PLAN_CODE,
+  FREE_UPGRADED_PLAN_CODE,
+  isFreePlan,
+} from "@app/lib/plans/plan_codes";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -21,6 +28,11 @@ import type { Logger } from "pino";
 const ASSOCIATED_TOOLS_LABEL = "Tools associated with this skill:";
 const TOOLS_SECTION_SEPARATOR = "----";
 const TOOL_ELEMENT_REGEX = /<tool\b([^>]*)>[\s\S]*?<\/tool>/g;
+const TRIAL_PLAN_CODES = new Set([
+  CREDIT_PRICED_FREE_PLAN_CODE,
+  FREE_TRIAL_PHONE_PLAN_CODE,
+  FREE_UPGRADED_PLAN_CODE,
+]);
 
 type WorkspaceStats = {
   changed: number;
@@ -28,6 +40,24 @@ type WorkspaceStats = {
   processed: number;
   skippedWithoutTools: number;
 };
+
+async function isPayingOrTrialWorkspace(
+  workspace: LightWorkspaceType
+): Promise<boolean> {
+  const subscription = await SubscriptionResource.fetchActiveByWorkspaceModelId(
+    workspace.id
+  );
+  if (!subscription) {
+    return false;
+  }
+
+  if (subscription.trialing === true) {
+    return true;
+  }
+
+  const planCode = subscription.getPlan().code;
+  return !isFreePlan(planCode) || TRIAL_PLAN_CODES.has(planCode);
+}
 
 async function processWorkspace(
   workspace: LightWorkspaceType,
@@ -190,18 +220,29 @@ makeScript(
       describe: "Resume from this numeric workspace id.",
       type: "number",
     },
+    payingOrTrialWorkspaces: {
+      choices: ["include", "exclude"],
+      default: "include",
+      describe:
+        "Whether to process only paying/trial workspaces or only the others.",
+      type: "string",
+    },
     wId: {
       describe:
         "Process skills for a single workspace (sId). Omit to run on all workspaces.",
       type: "string",
     },
   },
-  async ({ concurrency, execute, fromWorkspaceId, wId }, logger) => {
+  async (
+    { concurrency, execute, fromWorkspaceId, payingOrTrialWorkspaces, wId },
+    logger
+  ) => {
     logger.info(
       {
         concurrency,
         execute,
         fromWorkspaceId,
+        payingOrTrialWorkspaces,
         workspaceId: wId ?? "all",
       },
       execute
@@ -226,6 +267,12 @@ makeScript(
       },
       {
         concurrency,
+        filter: async (workspace) => {
+          const isPayingOrTrial = await isPayingOrTrialWorkspace(workspace);
+          return payingOrTrialWorkspaces === "include"
+            ? isPayingOrTrial
+            : !isPayingOrTrial;
+        },
         fromWorkspaceId,
         wId,
       }
