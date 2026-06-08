@@ -7,6 +7,10 @@ import type { StepContext } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { isServerSideMCPServerConfigurationWithName } from "@app/lib/actions/types/guards";
 import { computeStepContexts } from "@app/lib/actions/utils";
+import {
+  DUST_DESKTOP_CLIENT_SIDE_MCP_SERVER_NAME,
+  getLatestMCPServerRegistrationByName,
+} from "@app/lib/api/actions/mcp/client_side_registry";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
@@ -244,10 +248,27 @@ export async function runModel(
       }
     );
 
+    const clientSideMCPServerIds = [
+      ...(userMessage.context.clientSideMCPServerIds ?? []),
+    ];
+    const featureFlags = await getFeatureFlags(auth);
+    if (featureFlags.includes("dust_desktop")) {
+      const dustDesktopRegistration =
+        await getLatestMCPServerRegistrationByName(auth, {
+          serverName: DUST_DESKTOP_CLIENT_SIDE_MCP_SERVER_NAME,
+        });
+      if (
+        dustDesktopRegistration &&
+        !clientSideMCPServerIds.includes(dustDesktopRegistration.serverId)
+      ) {
+        clientSideMCPServerIds.push(dustDesktopRegistration.serverId);
+      }
+    }
+
     const clientSideMCPActionConfigurations =
       await createClientSideMCPServerConfigurations(
         auth,
-        userMessage.context.clientSideMCPServerIds
+        clientSideMCPServerIds
       );
 
     const { enabledSkills, systemSkills, equippedSkills } =
