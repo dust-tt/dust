@@ -86,4 +86,10 @@ COPY --from=marketing-build /app/marketing/public ./public
 
 ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
 
+ARG COMMIT_HASH_LONG
+ARG DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust
+ARG DD_GIT_COMMIT_SHA=${COMMIT_HASH_LONG}
+ENV DD_GIT_REPOSITORY_URL=${DD_GIT_REPOSITORY_URL}
+ENV DD_GIT_COMMIT_SHA=${DD_GIT_COMMIT_SHA}
+
 CMD ["node", "server.js"]

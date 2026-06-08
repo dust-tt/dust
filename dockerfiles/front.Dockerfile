@@ -100,8 +100,10 @@ ENV CONTENTFUL_ACCESS_TOKEN=$CONTENTFUL_ACCESS_TOKEN
 
 # Provide git metadata as env constants so `datadog-ci sourcemaps upload` does not
 # try to spawn git (not installed in the slim base) for repo URL / commit lookups.
-ENV DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust
-ENV DD_GIT_COMMIT_SHA=$COMMIT_HASH_LONG
+ARG DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust
+ARG DD_GIT_COMMIT_SHA=${COMMIT_HASH_LONG}
+ENV DD_GIT_REPOSITORY_URL=${DD_GIT_REPOSITORY_URL}
+ENV DD_GIT_COMMIT_SHA=${DD_GIT_COMMIT_SHA}
 
 # Build Next.js application and sitemap (front-nextjs only)
 # Fake PostgreSQL URI is needed because Sequelize validates the connection string
@@ -154,8 +156,10 @@ ARG NEXT_PUBLIC_DATADOG_SERVICE
 
 # Provide git metadata as env constants so `datadog-ci sourcemaps upload` does not
 # try to spawn git (not installed in the slim base) for repo URL / commit lookups.
-ENV DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust
-ENV DD_GIT_COMMIT_SHA=$COMMIT_HASH_LONG
+ARG DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust
+ARG DD_GIT_COMMIT_SHA=${COMMIT_HASH_LONG}
+ENV DD_GIT_REPOSITORY_URL=${DD_GIT_REPOSITORY_URL}
+ENV DD_GIT_COMMIT_SHA=${DD_GIT_COMMIT_SHA}
 
 # Build temporal workers and esbuild workers (workers only)
 RUN FRONT_DATABASE_URI="postgres://fake:fake@localhost:5432/fake" npm run build:temporal-bundles
@@ -215,9 +219,11 @@ ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
 
 ARG COMMIT_HASH
 ARG COMMIT_HASH_LONG
+ARG DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust
+ARG DD_GIT_COMMIT_SHA=${COMMIT_HASH_LONG}
 ENV DD_VERSION=${COMMIT_HASH}
-ENV DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust/
-ENV DD_GIT_COMMIT_SHA=${COMMIT_HASH_LONG}
+ENV DD_GIT_REPOSITORY_URL=${DD_GIT_REPOSITORY_URL}
+ENV DD_GIT_COMMIT_SHA=${DD_GIT_COMMIT_SHA}
 
 # See https://github.com/DataDog/dd-trace-js/issues/4003#issuecomment-3586947577
 CMD ["node", "--require", "dd-trace/init", "server.js"]
@@ -287,9 +293,11 @@ ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
 
 ARG COMMIT_HASH
 ARG COMMIT_HASH_LONG
+ARG DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust
+ARG DD_GIT_COMMIT_SHA=${COMMIT_HASH_LONG}
 ENV DD_VERSION=${COMMIT_HASH}
-ENV DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust/
-ENV DD_GIT_COMMIT_SHA=${COMMIT_HASH_LONG}
+ENV DD_GIT_REPOSITORY_URL=${DD_GIT_REPOSITORY_URL}
+ENV DD_GIT_COMMIT_SHA=${DD_GIT_COMMIT_SHA}
 
 CMD ["node", "--enable-source-maps", "--require", "dd-trace/init", "dist/start_worker.js"]
 
@@ -338,8 +346,10 @@ ENV NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL=$NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL
 
 # Provide git metadata as env constants so `datadog-ci sourcemaps upload` does not
 # try to spawn git (not installed in the slim base) for repo URL / commit lookups.
-ENV DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust
-ENV DD_GIT_COMMIT_SHA=$COMMIT_HASH_LONG
+ARG DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust
+ARG DD_GIT_COMMIT_SHA=${COMMIT_HASH_LONG}
+ENV DD_GIT_REPOSITORY_URL=${DD_GIT_REPOSITORY_URL}
+ENV DD_GIT_COMMIT_SHA=${DD_GIT_COMMIT_SHA}
 
 WORKDIR /app/front-api
 
@@ -409,8 +419,10 @@ ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
 
 ARG COMMIT_HASH
 ARG COMMIT_HASH_LONG
+ARG DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust
+ARG DD_GIT_COMMIT_SHA=${COMMIT_HASH_LONG}
 ENV DD_VERSION=${COMMIT_HASH}
-ENV DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust/
-ENV DD_GIT_COMMIT_SHA=${COMMIT_HASH_LONG}
+ENV DD_GIT_REPOSITORY_URL=${DD_GIT_REPOSITORY_URL}
+ENV DD_GIT_COMMIT_SHA=${DD_GIT_COMMIT_SHA}
 
 CMD ["node", "--enable-source-maps", "--require", "dd-trace/init", "dist/server.js"]
