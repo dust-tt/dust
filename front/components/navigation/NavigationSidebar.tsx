@@ -25,7 +25,7 @@ import {
   NavTabPillTrigger,
   XClose,
 } from "@dust-tt/sparkle";
-import React, { useCallback, useContext, useMemo, useState } from "react";
+import React, { useCallback, useContext, useMemo } from "react";
 
 interface NavigationSidebarProps {
   children: React.ReactNode;
@@ -176,10 +176,8 @@ export const ToggleNavigationSidebarButton = React.forwardRef<
   }: ToggleNavigationSidebarButtonProps,
   ref
 ) {
-
   const handleClick = useCallback(() => {
     toggleNavigationBarVisibility(!isNavigationBarOpened);
-
   }, [isNavigationBarOpened, toggleNavigationBarVisibility]);
 
   if (isNavigationBarOpened) {
@@ -188,7 +186,10 @@ export const ToggleNavigationSidebarButton = React.forwardRef<
 
   return (
     <div ref={ref} onClick={handleClick} className="lg:top-1/2 lg:flex lg:w-5">
-      <CollapseButton direction={isNavigationBarOpened ? "left" : "right"} variant="light" />
+      <CollapseButton
+        direction={isNavigationBarOpened ? "left" : "right"}
+        variant="light"
+      />
     </div>
   );
 });

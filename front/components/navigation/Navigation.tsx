@@ -139,12 +139,12 @@ export function Navigation({
               isNavigationBarOpen ? "lg:ml-80" : ""
             )}
           >
-              <ToggleNavigationSidebarButton
-                isNavigationBarOpened={isNavigationBarOpen}
-                toggleNavigationBarVisibility={(navigationBar) => {
-                  setNavigationBarOpen(navigationBar);
-                }}
-              />
+            <ToggleNavigationSidebarButton
+              isNavigationBarOpened={isNavigationBarOpen}
+              toggleNavigationBarVisibility={(navigationBar) => {
+                setNavigationBarOpen(navigationBar);
+              }}
+            />
           </div>
         </>
       )}
