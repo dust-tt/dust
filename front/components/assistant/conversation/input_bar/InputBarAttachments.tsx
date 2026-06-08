@@ -43,7 +43,6 @@ interface InputBarAttachmentsProps {
   owner: LightWorkspaceType;
   files: FileAttachmentsProps;
   nodes?: NodeAttachmentsProps;
-  conversationId?: string | null;
   disable?: boolean;
 }
 
@@ -51,7 +50,6 @@ export function InputBarAttachments({
   owner,
   files,
   nodes,
-  conversationId,
   disable = false,
 }: InputBarAttachmentsProps) {
   const { spaces } = useSpaces({
@@ -159,9 +157,7 @@ export function InputBarAttachments({
         return (
           <AttachmentCitation
             key={index}
-            owner={owner}
             attachmentCitation={attachmentCitation}
-            conversationId={conversationId}
           />
         );
       })}

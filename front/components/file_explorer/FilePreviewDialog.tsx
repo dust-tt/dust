@@ -257,7 +257,7 @@ function FilePreviewDialogContent({
 
 interface FilePreviewDialogProps {
   entry: FileEntry | null;
-  getFileUrl: (path: string) => string;
+  fileUrl: string | null;
   isOpen: boolean;
   onDownload: (entry: FileEntry) => Promise<void>;
   onNext?: () => void;
@@ -267,7 +267,7 @@ interface FilePreviewDialogProps {
 
 export function FilePreviewDialog({
   entry,
-  getFileUrl,
+  fileUrl,
   isOpen,
   onOpenChange,
   onDownload,
@@ -321,8 +321,6 @@ export function FilePreviewDialog({
     category === "markdown" ||
     category === "text" ||
     category === "delimited";
-
-  const fileUrl = entry ? getFileUrl(entry.path) : null;
 
   const { fileContent, isFileContentLoading, fileContentError } =
     useFileContent({

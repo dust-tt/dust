@@ -104,7 +104,6 @@ export function MCPBrowseActionDetails({
               <ToolGeneratedFileDetails
                 key={file.fileId}
                 resource={file}
-                owner={owner}
               />
             ))}
           </div>

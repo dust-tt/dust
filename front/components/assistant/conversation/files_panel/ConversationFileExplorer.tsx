@@ -3,8 +3,7 @@ import { FileExplorer } from "@app/components/file_explorer/FileExplorer";
 import { useFileDownload } from "@app/components/file_explorer/useFileDownload";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useConversationSandboxFiles } from "@app/hooks/conversations/useConversationSandboxFiles";
-import config from "@app/lib/api/config";
-import { downloadFile } from "@app/lib/swr/files";
+import { downloadFile, getFilePathViewUrl } from "@app/lib/swr/files";
 import { usePodFiles } from "@app/lib/swr/pods";
 import {
   type ConversationWithoutContentType,
@@ -41,11 +40,8 @@ export function ConversationFileExplorer({
   });
 
   const getFileUrl = useCallback(
-    (path: string) => {
-      const encoded = path.split("/").map(encodeURIComponent).join("/");
-      return `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/path/${encoded}`;
-    },
-    [owner.sId]
+    (path: string) => getFilePathViewUrl(owner, path),
+    [owner]
   );
 
   const getFileResponse = useCallback(

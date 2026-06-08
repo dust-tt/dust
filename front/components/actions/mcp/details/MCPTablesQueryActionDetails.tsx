@@ -97,7 +97,6 @@ export function MCPTablesQueryActionDetails({
                 <ToolGeneratedFileDetails
                   key={file.fileId}
                   resource={file}
-                  owner={owner}
                 />
               ))}
             </div>

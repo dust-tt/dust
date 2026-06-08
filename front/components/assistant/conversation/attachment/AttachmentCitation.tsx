@@ -1,73 +1,22 @@
-import { AttachmentViewer } from "@app/components/assistant/conversation/attachment/AttachmentViewer";
+import { FileCitationCard } from "@app/components/assistant/conversation/attachment/FileCitationCard";
+import { PreviewableCitation } from "@app/components/assistant/conversation/attachment/PreviewableCitation";
 import type { AttachmentCitation } from "@app/components/assistant/conversation/attachment/types";
-import {
-  isAudioContentType,
-  isTextualContentType,
-} from "@app/components/assistant/conversation/attachment/utils";
+import { isAudioContentType } from "@app/components/assistant/conversation/attachment/utils";
 import { ConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import {
-  FilePreviewSheet,
-  type MinimalFileForPreview,
-} from "@app/components/spaces/FilePreviewSheet";
-import {
-  getFileFormat,
-  isInteractiveContentType,
-  isSupportedImageContentType,
-} from "@app/types/files";
-import type { LightWorkspaceType } from "@app/types/user";
-import {
-  Citation,
-  CitationClose,
-  CitationDescription,
-  CitationIcons,
-  CitationImage,
-  CitationTitle,
-  cn,
-  Icon,
-  Tooltip,
-  useTranscribingProgress,
-} from "@dust-tt/sparkle";
-import type React from "react";
-import { useContext, useState } from "react";
+import { isInteractiveContentType } from "@app/types/files";
+import { Icon, useTranscribingProgress } from "@dust-tt/sparkle";
+import { useContext } from "react";
 
 interface AttachmentCitationProps {
-  owner: LightWorkspaceType;
   attachmentCitation: AttachmentCitation;
-  conversationId?: string | null;
   compact?: boolean;
 }
 
 export function AttachmentCitation({
-  owner,
   attachmentCitation,
   compact,
 }: AttachmentCitationProps) {
-  const [viewerOpen, setViewerOpen] = useState(false);
-  const [previewFile, setPreviewFile] = useState<MinimalFileForPreview | null>(
-    null
-  );
-  const [showPreviewSheet, setShowPreviewSheet] = useState(false);
   const sidePanel = useContext(ConversationSidePanelContext);
-
-  const tooltipContent =
-    attachmentCitation.type === "file" ? (
-      attachmentCitation.title
-    ) : (
-      <div className="flex flex-col gap-1">
-        <div className="font-bold">{attachmentCitation.title}</div>
-        <div className="flex gap-1 pt-1 text-sm">
-          <Icon visual={attachmentCitation.spaceIcon} />
-          <p>{attachmentCitation.spaceName}</p>
-        </div>
-        <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          {attachmentCitation.path}
-        </div>
-      </div>
-    );
-
-  const isImage =
-    attachmentCitation.type === "file" &&
-    isSupportedImageContentType(attachmentCitation.contentType);
 
   const isLoading =
     attachmentCitation.type === "file" && attachmentCitation.isUploading;
@@ -89,141 +38,89 @@ export function AttachmentCitation({
       ? `${transcriptionProgress}%`
       : undefined;
 
-  const fileResourceId =
-    attachmentCitation.type === "file" && attachmentCitation.fileId
-      ? attachmentCitation.fileId
-      : null;
-
-  const canOpenInDialog =
-    attachmentCitation.type === "file" &&
-    fileResourceId !== null &&
-    getFileFormat(attachmentCitation.contentType)?.isSafeToDisplay &&
-    (isTextualContentType(attachmentCitation) ||
-      isAudioContentType(attachmentCitation));
-
-  const canOpenInteractivePanel =
-    attachmentCitation.type === "file" &&
-    fileResourceId !== null &&
-    !attachmentCitation.isUploading &&
-    isInteractiveContentType(attachmentCitation.contentType) &&
-    sidePanel != null;
-
-  const canOpenInSheet =
-    attachmentCitation.type === "file" &&
-    fileResourceId !== null &&
-    !attachmentCitation.isUploading &&
-    !canOpenInteractivePanel &&
-    !canOpenInDialog &&
-    !isImage;
-
-  const dialogOrDownloadProps = canOpenInteractivePanel
-    ? {
-        onClick: (e: React.MouseEvent<HTMLDivElement>) => {
-          e.preventDefault();
-          sidePanel.openPanel({
-            type: "interactive_content",
-            fileId: fileResourceId,
-          });
-        },
-      }
-    : canOpenInDialog
-      ? {
-          onClick: (e: React.MouseEvent<HTMLDivElement>) => {
-            e.preventDefault();
-            setViewerOpen(true);
-          },
-        }
-      : isImage
-        ? {} // ImagePreview handles click with its own zoom dialog
-        : canOpenInSheet
-          ? {
-              onClick: (e: React.MouseEvent<HTMLDivElement>) => {
-                e.preventDefault();
-                if (!fileResourceId) {
-                  return;
-                }
-                setPreviewFile({
-                  sId: fileResourceId,
-                  fileName: attachmentCitation.title,
-                  contentType: attachmentCitation.contentType,
-                });
-                setShowPreviewSheet(true);
-              },
-            }
-          : {
-              href: attachmentCitation.sourceUrl ?? undefined,
-            };
-
-  return (
-    <>
-      <Tooltip
-        trigger={
-          <Citation
-            {...dialogOrDownloadProps}
-            isLoading={isLoading}
-            loadingLabel={loadingLabel}
-            compact={compact}
-            containerClassName={cn("h-full", isImage && "min-h-24")}
-            action={
-              !isImage &&
-              attachmentCitation.onRemove && (
-                <CitationClose
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    attachmentCitation.onRemove?.();
-                  }}
-                />
-              )
-            }
-          >
-            {isImage ? (
-              <CitationImage
-                imgSrc={`${attachmentCitation.sourceUrl}?action=view&version=processed`}
-                title={attachmentCitation.title}
-                downloadUrl={attachmentCitation.sourceUrl ?? undefined}
-                onClose={attachmentCitation.onRemove}
-              />
-            ) : (
-              <>
-                <CitationIcons>{attachmentCitation.visual}</CitationIcons>
-                <CitationTitle className="truncate text-ellipsis">
-                  {attachmentCitation.title}
-                </CitationTitle>
-                {attachmentCitation.type === "file" &&
-                  attachmentCitation.description && (
-                    <CitationDescription className="truncate text-ellipsis">
-                      {attachmentCitation.description}
-                    </CitationDescription>
-                  )}
-                {attachmentCitation.type === "node" && (
-                  <CitationDescription className="truncate text-ellipsis">
-                    <span>
-                      {attachmentCitation.path ?? attachmentCitation.spaceName}
-                    </span>
-                  </CitationDescription>
-                )}
-              </>
-            )}
-          </Citation>
-        }
-        label={tooltipContent}
+  // Node citation: link to an external datasource document.
+  if (attachmentCitation.type === "node") {
+    const tooltipContent = (
+      <div className="flex flex-col gap-1">
+        <div className="font-bold">{attachmentCitation.title}</div>
+        <div className="flex gap-1 pt-1 text-sm">
+          <Icon visual={attachmentCitation.spaceIcon} />
+          <p>{attachmentCitation.spaceName}</p>
+        </div>
+        <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          {attachmentCitation.path}
+        </div>
+      </div>
+    );
+    return (
+      <FileCitationCard
+        icon={attachmentCitation.visual}
+        title={attachmentCitation.title}
+        description={attachmentCitation.path ?? attachmentCitation.spaceName}
+        href={attachmentCitation.sourceUrl ?? undefined}
+        onRemove={attachmentCitation.onRemove}
+        compact={compact}
+        tooltipLabel={tooltipContent}
       />
-      {canOpenInDialog && (
-        <AttachmentViewer
-          setViewerOpen={setViewerOpen}
-          viewerOpen={viewerOpen}
-          attachmentCitation={attachmentCitation}
-          owner={owner}
-        />
-      )}
-      {canOpenInSheet && (
-        <FilePreviewSheet
-          owner={owner}
-          file={previewFile}
-          isOpen={showPreviewSheet}
-          onOpenChange={setShowPreviewSheet}
-        />
-      )}
-    </>
+    );
+  }
+
+  const { fileId, contentType, title, sourceUrl } = attachmentCitation;
+
+  // Interactive content (spreadsheets etc.): open side panel instead of preview dialog.
+  if (
+    fileId &&
+    !isLoading &&
+    isInteractiveContentType(contentType) &&
+    sidePanel != null
+  ) {
+    return (
+      <FileCitationCard
+        icon={attachmentCitation.visual}
+        title={title}
+        description={attachmentCitation.description}
+        compact={compact}
+        onClick={() =>
+          sidePanel.openPanel({ type: "interactive_content", fileId })
+        }
+        onRemove={attachmentCitation.onRemove}
+        tooltipLabel={title}
+      />
+    );
+  }
+
+  // Previewable file: delegate entirely to PreviewableCitation.
+  if (fileId) {
+    return (
+      <PreviewableCitation
+        fileId={fileId}
+        contentType={contentType}
+        title={title}
+        thumbnailUrl={sourceUrl ?? undefined}
+        downloadUrl={sourceUrl ?? undefined}
+        icon={attachmentCitation.visual}
+        description={attachmentCitation.description}
+        compact={compact}
+        isLoading={isLoading}
+        loadingLabel={loadingLabel}
+        onRemove={attachmentCitation.onRemove}
+        tooltipLabel={title}
+      />
+    );
+  }
+
+  // Fallback: no fileId (still uploading or external link).
+  return (
+    <FileCitationCard
+      icon={attachmentCitation.visual}
+      title={title}
+      description={attachmentCitation.description}
+      compact={compact}
+      isLoading={isLoading}
+      loadingLabel={loadingLabel}
+      href={sourceUrl ?? undefined}
+      onRemove={attachmentCitation.onRemove}
+      tooltipLabel={title}
+    />
   );
 }

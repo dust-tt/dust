@@ -205,11 +205,15 @@ interface CitationImageProps {
   downloadUrl?: string;
   isLoading?: boolean;
   onClose?: () => void;
+  onClick?: (e: React.MouseEvent) => void;
   className?: string;
 }
 
 const CitationImage = React.forwardRef<HTMLDivElement, CitationImageProps>(
-  ({ imgSrc, alt, title, downloadUrl, isLoading, onClose, className }, ref) => {
+  (
+    { imgSrc, alt, title, downloadUrl, isLoading, onClose, onClick, className },
+    ref
+  ) => {
     return (
       <ImagePreview
         ref={ref}
@@ -219,6 +223,7 @@ const CitationImage = React.forwardRef<HTMLDivElement, CitationImageProps>(
         downloadUrl={downloadUrl}
         isLoading={isLoading}
         onClose={onClose ? () => onClose() : undefined}
+        onClick={onClick}
         className={className}
         variant="embedded"
         titlePosition="bottom"

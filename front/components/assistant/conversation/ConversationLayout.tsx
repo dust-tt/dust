@@ -4,6 +4,7 @@ import {
   ErrorDisplay,
 } from "@app/components/assistant/conversation/ConversationError";
 import ConversationSidePanelContainer from "@app/components/assistant/conversation/ConversationSidePanelContainer";
+import { FilePreviewProvider } from "@app/components/assistant/conversation/FilePreviewContext";
 import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { ConversationTitle } from "@app/components/assistant/conversation/ConversationTitle";
 import { FileDropProvider } from "@app/components/assistant/conversation/FileUploaderContext";
@@ -95,6 +96,7 @@ const ConversationLayoutContent = ({
 
   return (
     <AssistantLayout owner={owner} user={user} conversation={conversation}>
+      <FilePreviewProvider owner={owner}>
       <ConversationSidePanelProvider>
         <ConversationInnerLayout
           activeConversationId={activeConversationId}
@@ -105,6 +107,7 @@ const ConversationLayoutContent = ({
           {children}
         </ConversationInnerLayout>
       </ConversationSidePanelProvider>
+      </FilePreviewProvider>
       {shouldDisplayWelcomeTourGuide && (
         <WelcomeTourGuide
           owner={owner}
