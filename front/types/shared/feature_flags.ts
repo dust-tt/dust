@@ -326,6 +326,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Auto-attach the Dust Desktop client-side MCP server to agent runs when registered for the user.",
     stage: "dust_only",
   },
+  admin_governance: {
+    description:
+      "Access to admin governance features, including assigning the business_admin role from the UI",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";

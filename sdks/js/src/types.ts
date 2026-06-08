@@ -763,6 +763,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "metronome_billing_usage_page"
   | "user_settings_v2"
   | "metronome_cp_checkout"
+  | "admin_governance"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -770,7 +771,13 @@ export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
 const WorkspaceSegmentationSchema =
   FlexibleEnumSchema<"interesting">().nullable();
 
-const RoleSchema = z.enum(["admin", "builder", "user", "none"]);
+const RoleSchema = z.enum([
+  "admin",
+  "business_admin",
+  "builder",
+  "user",
+  "none",
+]);
 
 const LightWorkspaceSchema = z.object({
   id: ModelIdSchema,

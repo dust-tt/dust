@@ -204,6 +204,7 @@ export async function getMembers(
     if (!m.isRevoked()) {
       switch (m.role) {
         case "admin":
+        case "business_admin":
         case "builder":
         case "user":
           role = m.role;

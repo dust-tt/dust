@@ -1,4 +1,5 @@
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { ActiveRoleType } from "@app/types/user";
 import { ACTIVE_ROLES } from "@app/types/user";
 import {
@@ -22,6 +23,14 @@ export function RoleDropDown({
   selectedRole,
   disabled = false,
 }: RoleDropDownProps) {
+  const { hasFeature } = useFeatureFlags();
+
+  // `business_admin` can only be assigned when the
+  // workspace has the `admin_governance` feature flag.
+  const availableRoles = hasFeature("admin_governance")
+    ? ACTIVE_ROLES
+    : ACTIVE_ROLES.filter((role) => role !== "business_admin");
+
   if (disabled) {
     return (
       <Chip
@@ -49,7 +58,7 @@ export function RoleDropDown({
         </div>
       </DropdownMenuTrigger>
       <DropdownMenuContent>
-        {ACTIVE_ROLES.map((role) => (
+        {availableRoles.map((role) => (
           <DropdownMenuItem
             key={role}
             onClick={() => onChange(role)}
