@@ -114,8 +114,6 @@ interface DataTableProps<TData extends TBaseData> {
   enableSortingRemoval?: boolean;
   /** Omit the default bottom divider on tbody rows (e.g. dense custom lists). */
   hideRowDivider?: boolean;
-  /** Override the default cell padding class (`s-pl-2`) applied to every cell. */
-  cellClassName?: string;
 }
 
 export function DataTable<TData extends TBaseData>({
@@ -141,7 +139,6 @@ export function DataTable<TData extends TBaseData>({
   getRowId,
   enableSortingRemoval = true,
   hideRowDivider = false,
-  cellClassName,
 }: DataTableProps<TData>) {
   const windowSize = useWindowSize();
 
@@ -320,11 +317,7 @@ export function DataTable<TData extends TBaseData>({
                     return null;
                   }
                   return (
-                    <DataTable.Cell
-                      column={cell.column}
-                      key={cell.id}
-                      cellClassName={cellClassName}
-                    >
+                    <DataTable.Cell column={cell.column} key={cell.id}>
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext()
@@ -1066,22 +1059,19 @@ DataTable.MoreButton = function MoreButton({
 interface CellProps extends React.HTMLAttributes<HTMLTableCellElement> {
   children: ReactNode;
   column: Column<any>; // eslint-disable-line @typescript-eslint/no-explicit-any
-  cellClassName?: string;
 }
 
 DataTable.Cell = function Cell({
   children,
   className,
   column,
-  cellClassName,
   ...props
 }: CellProps) {
   return (
     <td
       className={cn(
         cellHeight,
-        cellClassName ?? "s-pl-2",
-        "s-truncate",
+        "s-truncate px-2 py-2",
         column.columnDef.meta?.className,
         className
       )}
