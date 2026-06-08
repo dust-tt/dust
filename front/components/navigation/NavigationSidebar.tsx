@@ -3,6 +3,7 @@ import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideP
 import { SidebarBanners } from "@app/components/navigation/AppStatusBanner";
 import type { SidebarNavigation } from "@app/components/navigation/config";
 import { getTopNavigationTabs } from "@app/components/navigation/config";
+import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { UserMenu } from "@app/components/UserMenu";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
@@ -12,8 +13,10 @@ import type { SubscriptionType } from "@app/types/plan";
 import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import {
+  Button,
   CollapseButton,
   cn,
+  LayoutLeft,
   NavigationList,
   NavigationListItem,
   NavigationListLabel,
@@ -73,6 +76,7 @@ export const NavigationSidebar = React.forwardRef<
   );
 
   const { setSidebarOpen } = useContext(SidebarContext);
+  const { setIsNavigationBarOpen } = useDesktopNavigation();
 
   return (
     <div ref={ref} className="flex min-w-0 grow flex-col">
@@ -97,15 +101,23 @@ export const NavigationSidebar = React.forwardRef<
                   </NavTabPillTrigger>
                 </div>
               ))}
-              {isMobile && (
-                <div className="flex flex-grow justify-end">
+              <div className="flex flex-grow justify-end">
+                {isMobile ? (
                   <NavTabPillTrigger
                     value="close-icon"
                     icon={XClose}
                     onClick={() => setSidebarOpen(false)}
                   />
-                </div>
-              )}
+                ) : (
+                  <Button
+                    icon={LayoutLeft}
+                    className="h-8"
+                    variant="ghost-secondary"
+                    size="icon-sm"
+                    onClick={() => setIsNavigationBarOpen(false)}
+                  />
+                )}
+              </div>
             </NavTabPillList>
             {navs.map((tab) => (
               <NavTabPillContent key={tab.id} value={tab.id}>
