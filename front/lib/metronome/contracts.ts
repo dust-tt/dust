@@ -223,6 +223,7 @@ export async function provisionMetronomeContract({
   swapAt = "current-hour",
   enableStripeBilling = true,
   planCode,
+  additionalCustomFields,
 }: {
   metronomeCustomerId: string;
   workspace: LightWorkspaceType;
@@ -232,6 +233,7 @@ export async function provisionMetronomeContract({
   swapAt?: "current-hour" | "next-hour";
   enableStripeBilling?: boolean;
   planCode: string;
+  additionalCustomFields?: Record<string, string>;
 }): Promise<Result<{ metronomeContractId: string }, Error>> {
   const alignedStart = new Date(
     swapAt === "current-hour"
@@ -258,6 +260,7 @@ export async function provisionMetronomeContract({
     startingAt: alignedStart,
     enableStripeBilling,
     planCode,
+    additionalCustomFields,
   });
   if (contractResult.isErr()) {
     return new Err(contractResult.error);
