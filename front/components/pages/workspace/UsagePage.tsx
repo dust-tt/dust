@@ -91,6 +91,18 @@ export function UsagePage() {
   const { doUpdateSeatType } = useUpdateMemberSeatType({
     workspaceId: owner.sId,
   });
+  const [seatChangePendingMemberIds, setSeatChangePendingMemberIds] = useState<
+    ReadonlySet<string>
+  >(() => new Set());
+  const handleSeatChangePendingChange = useCallback(
+    (memberId: string, isPending: boolean) =>
+      setSeatChangePendingMemberIds((prev) => {
+        const next = new Set(prev);
+        next[isPending ? "add" : "delete"](memberId);
+        return next;
+      }),
+    []
+  );
   const onRemoveSeat = useCallback(
     async (member: MemberUsageType) => {
       const confirmed = await confirm({
@@ -102,18 +114,36 @@ export function UsagePage() {
       if (!confirmed) {
         return;
       }
-      void doUpdateSeatType({
-        memberId: member.sId,
-        memberName: member.name,
-        seatType: "none",
-        isCancellingScheduledChange: false,
-        hasSeatPool: false,
-      });
+      handleSeatChangePendingChange(member.sId, true);
+      try {
+        await doUpdateSeatType({
+          memberId: member.sId,
+          memberName: member.name,
+          seatType: "none",
+          isCancellingScheduledChange: false,
+          hasSeatPool: false,
+        });
+      } finally {
+        handleSeatChangePendingChange(member.sId, false);
+      }
     },
-    [confirm, doUpdateSeatType]
+    [confirm, doUpdateSeatType, handleSeatChangePendingChange]
   );
   const [editSpendLimitMember, setEditSpendLimitMember] =
     useState<MemberUsageType | null>(null);
+  const [
+    totalAllowedUsagePendingMemberIds,
+    setTotalAllowedUsagePendingMemberIds,
+  ] = useState<ReadonlySet<string>>(() => new Set());
+  const handleUsagePendingChange = useCallback(
+    (memberId: string, isPending: boolean) =>
+      setTotalAllowedUsagePendingMemberIds((prev) => {
+        const next = new Set(prev);
+        next[isPending ? "add" : "delete"](memberId);
+        return next;
+      }),
+    []
+  );
   const [inviteBlockedPopupReason, setInviteBlockedPopupReason] =
     useState<WorkspaceLimit | null>(null);
   useEffect(() => {
@@ -357,6 +387,10 @@ export function UsagePage() {
           <MembersUsageTable
             members={membersUsage}
             isLoading={isMembersUsageLoading}
+            totalAllowedUsagePendingMemberIds={
+              totalAllowedUsagePendingMemberIds
+            }
+            seatChangePendingMemberIds={seatChangePendingMemberIds}
             seatTypeFilter={seatTypeFilter}
             isSeatBased={isSeatBased}
             onChangeSeat={setChangeSeatMember}
@@ -387,6 +421,7 @@ export function UsagePage() {
           member={changeSeatMember}
           owner={owner}
           seatPlans={seatPlans}
+          onSavingChange={handleSeatChangePendingChange}
         />
 
         <EditSpendLimitModal
@@ -394,6 +429,7 @@ export function UsagePage() {
           onClose={() => setEditSpendLimitMember(null)}
           member={editSpendLimitMember}
           owner={owner}
+          onSavingChange={handleUsagePendingChange}
         />
       </div>
     </>
