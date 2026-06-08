@@ -1747,9 +1747,11 @@ export class FileResource extends BaseResource<FileModel> {
 
     let computedByUserId = auth.user()?.sId;
     if (!computedByUserId) {
-      const keyUserId = auth.key()?.userId;
-      if (keyUserId) {
-        const keyUser = await UserResource.fetchByModelId(keyUserId);
+      // Temporary: API keys carry a userId FK to their owner, fall back to it
+      // until authorized file access is reworked to not require a user identity.
+      const keyUserModelId = auth.key()?.userModelId;
+      if (keyUserModelId) {
+        const keyUser = await UserResource.fetchByModelId(keyUserModelId);
         computedByUserId = keyUser?.sId;
       }
     }
