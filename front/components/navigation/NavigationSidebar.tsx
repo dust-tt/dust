@@ -176,18 +176,19 @@ export const ToggleNavigationSidebarButton = React.forwardRef<
   }: ToggleNavigationSidebarButtonProps,
   ref
 ) {
-  const [direction, setDirection] = useState<"left" | "right">("left");
 
   const handleClick = useCallback(() => {
     toggleNavigationBarVisibility(!isNavigationBarOpened);
-    setDirection((prevDirection) =>
-      prevDirection === "left" ? "right" : "left"
-    );
+
   }, [isNavigationBarOpened, toggleNavigationBarVisibility]);
+
+  if (isNavigationBarOpened) {
+    return null;
+  }
 
   return (
     <div ref={ref} onClick={handleClick} className="lg:top-1/2 lg:flex lg:w-5">
-      <CollapseButton direction={direction} variant="light" />
+      <CollapseButton direction={isNavigationBarOpened ? "left" : "right"} variant="light" />
     </div>
   );
 });
