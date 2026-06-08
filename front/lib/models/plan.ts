@@ -6,7 +6,10 @@ import type {
   MaxMessagesTimeframeType,
   SubscriptionStatusType,
 } from "@app/types/plan";
-import { SUBSCRIPTION_STATUSES } from "@app/types/plan";
+import {
+  MAX_AWU_CREDITS_TIMEFRAMES,
+  SUBSCRIPTION_STATUSES,
+} from "@app/types/plan";
 import type {
   CreationOptional,
   ForeignKey,
@@ -102,9 +105,12 @@ PlanModel.init(
       defaultValue: -1,
     },
     maxAwuCreditsTimeframe: {
-      type: DataTypes.ENUM("day", "week", "month", "lifetime"),
+      type: DataTypes.STRING,
       allowNull: false,
       defaultValue: "lifetime",
+      validate: {
+        isIn: [MAX_AWU_CREDITS_TIMEFRAMES],
+      },
     },
     isDeepDiveAllowed: {
       type: DataTypes.BOOLEAN,
