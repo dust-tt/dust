@@ -7,9 +7,10 @@ import { makeScript } from "@app/scripts/helpers";
 // still relying on one of these model ids to the latest DeepSeek model
 // (DeepSeek V4 Pro, served via Fireworks).
 //
-// Model ids are hardcoded on purpose so that this migration stays
-// self-contained after the corresponding model configurations are removed
-// from the codebase.
+// All model ids (sources and target) are hardcoded on purpose so this
+// migration is a frozen snapshot: it keeps working after the source configs
+// are removed from the codebase, and won't silently change target if the
+// "latest DeepSeek model" pointer moves later.
 const TARGET_PROVIDER_ID = "fireworks";
 const TARGET_MODEL_ID = "accounts/fireworks/models/deepseek-v4-pro";
 
