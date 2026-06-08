@@ -213,15 +213,6 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         pictureUrl:
           "https://dust.tt/static/systemavatar/gemini_avatar_full.png",
       };
-    case GLOBAL_AGENTS_SID.DEEPSEEK_R1:
-      return {
-        sId: GLOBAL_AGENTS_SID.DEEPSEEK_R1,
-        name: "DeepSeek R1",
-        description:
-          "DeepSeek's reasoning model. Served from a US inference provider. Cannot use any tools",
-        pictureUrl:
-          "https://dust.tt/static/systemavatar/deepseek_avatar_full.png",
-      };
     case GLOBAL_AGENTS_SID.SLACK:
       return {
         sId: GLOBAL_AGENTS_SID.SLACK,

@@ -52,10 +52,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Access to Fireworks new model",
     stage: "on_demand",
   },
-  deepseek_r1_global_agent_feature: {
-    description: "Access to DeepSeek R1 model as global agent",
-    stage: "on_demand",
-  },
   dev_mcp_actions: {
     description: "MCP tools currently in development",
     stage: "dust_only",
