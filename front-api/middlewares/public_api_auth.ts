@@ -217,10 +217,11 @@ export const publicApiAuth = createMiddleware<PublicApiCtx>(
     if (apiKeyNameFromHeader && key && key.isSystem) {
       workspaceAuth = workspaceAuth.exchangeKey({
         id: key.id,
-        name: apiKeyNameFromHeader,
         isSystem: key.isSystem,
-        role: key.role,
         monthlyCapMicroUsd: key.monthlyCapMicroUsd,
+        name: apiKeyNameFromHeader,
+        role: key.role,
+        userModelId: key.userModelId,
       });
     }
 
