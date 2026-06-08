@@ -45,6 +45,7 @@ import {
   isCreditPurchaseInvoice,
   isEnterpriseSubscription,
   isFirstPeriodInvoice,
+  isSubscriptionActivationInvoice,
 } from "@app/lib/plans/stripe";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -883,6 +884,12 @@ export async function processStripeWebhookEvent({
       // First-invoice failures during metronomone checkout are handled
       // directly in return to failure of pay API — nothing to do.
       if (isFirstPeriodInvoice(invoice)) {
+        break;
+      }
+
+      // Subscription activation invoices are directly handled using
+      // Metronome "payment_gate.payment_status" webhook
+      if (isSubscriptionActivationInvoice(invoice)) {
         break;
       }
 

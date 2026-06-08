@@ -1087,6 +1087,15 @@ export function isCreditPurchaseInvoice(invoice: Stripe.Invoice): boolean {
 }
 
 /**
+ * Checks if a Stripe invoice is for a Metronome subscription activation.
+ */
+export function isSubscriptionActivationInvoice(
+  invoice: Stripe.Invoice
+): boolean {
+  return invoice.metadata?.subscription_activation === "true";
+}
+
+/**
  * Checks if a Stripe invoice is for a Metronome first-period charge.
  */
 export function isFirstPeriodInvoice(invoice: Stripe.Invoice): boolean {
