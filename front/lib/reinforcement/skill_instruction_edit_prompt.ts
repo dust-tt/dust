@@ -102,11 +102,6 @@ Example:
 \`\`\`
 </tool_references>`;
 
-export function buildSkillInstructionHtmlEditPrompt(): string {
-  return `${BASE_SKILL_INSTRUCTION_HTML_EDIT_PROMPT}
+export const SKILL_INSTRUCTION_HTML_EDIT_PROMPT = `${BASE_SKILL_INSTRUCTION_HTML_EDIT_PROMPT}
 
 ${SKILL_TOOL_REFERENCES_INSTRUCTION_PROMPT}`;
-}
-
-export const SKILL_INSTRUCTION_HTML_EDIT_PROMPT =
-  buildSkillInstructionHtmlEditPrompt();

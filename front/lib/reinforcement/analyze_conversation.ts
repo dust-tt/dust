@@ -3,7 +3,7 @@ import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { formatSkillContext } from "@app/lib/reinforcement/format_skill_context";
 import { buildReinforcedSkillsLLMParams } from "@app/lib/reinforcement/run_reinforced_analysis";
-import { buildSkillInstructionHtmlEditPrompt } from "@app/lib/reinforcement/skill_instruction_edit_prompt";
+import { SKILL_INSTRUCTION_HTML_EDIT_PROMPT } from "@app/lib/reinforcement/skill_instruction_edit_prompt";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
@@ -21,9 +21,8 @@ const ASSEMBLY_ORDER = [
 
 type SectionKey = (typeof ASSEMBLY_ORDER)[number];
 
-function getReinforcedSkillAnalysisSections(): Record<SectionKey, string> {
-  return {
-    primary_goal: `You are a Dust skill improvement analyst. Your job is to analyze a conversation that used one or more skills and suggest concrete improvements to those skills.
+const REINFORCED_SKILL_ANALYSIS_SECTIONS: Record<SectionKey, string> = {
+  primary_goal: `You are a Dust skill improvement analyst. Your job is to analyze a conversation that used one or more skills and suggest concrete improvements to those skills.
 A skill bundles tools and instructions that are used by a Dust agent to perform a specific task.
 
 See <skill_usage_analysis> for guidance on how to analyze the relevance of a skill in the conversation.
@@ -41,13 +40,13 @@ Propose configuration changes only when <analysis_workflow> yields concrete evid
 - search_knowledge: ALWAYS call this before embedding any <knowledge> tag in an instruction edit — the tag requires node attributes (id, space, dsv, hasChildren) that must come from this tool. Use this whenever the conversation shows the agent navigating or retrieving specific data nodes that the skill instructions should directly reference. See <knowledge_nodes> for more details.
 `,
 
-    skill_usage_analysis: `In <skill_context>, you have received all custom skills that were enabled in the conversation.
+  skill_usage_analysis: `In <skill_context>, you have received all custom skills that were enabled in the conversation.
 When enabled, skill instructions are rendered in the conversation as dedicated <dust_system> user messages.
 This means that every subsequent agent action can be influenced by each enabled skill in addition to the agent's system prompt.
 The only strong signal of skill influence on the agent behavior is when the agent calls a tool that the skill references in its instructions.
 You will need to infer the impact of the skill on the agent behavior by checking tool calls and agent messages.`,
 
-    analysis_workflow: `Follow this process for every conversation you analyze:
+  analysis_workflow: `Follow this process for every conversation you analyze:
 
 Step 1: Determine which skills were relevant to the conversation.
 For each skill in <skill_context>, ask yourself these questions:
@@ -85,14 +84,14 @@ Step 7: Make suggestions.
 ONLY make suggestions that will affect the skill behavior. NEVER suggest cosmetic-only fixes.
 `,
 
-    conversation_analysis: `ALWAYS inspect the full conversation, which is a chronological timeline of messages. Agent messages may include an Actions section listing tool calls with their inputs and outputs, and a User feedback section with sentiment and comments. Here are key signals of areas where the agent behavior could be improved:
+  conversation_analysis: `ALWAYS inspect the full conversation, which is a chronological timeline of messages. Agent messages may include an Actions section listing tool calls with their inputs and outputs, and a User feedback section with sentiment and comments. Here are key signals of areas where the agent behavior could be improved:
 1. Feedback - If the user provided feedback, it will be included after the agent message in a "User feedback:" section with thumbs up/down ratings and optional comments. This is the MOST important signal as it is directly provided by the user and an explicit signal.
 2. User reaction - Any user indication of confusion, disagreement, or correction is a signal of dissatisfaction. A user follow-up question or request could mean the skill response was useful, but a skill could be improved in terms of proactively providing that information or performing the action without user intervention.
 3. Tool calls - If the tool calls needed to be retried, could a skill's instructions be more clear on how to use that tool?
 4. Sequence - Did the agent call the tools in the correct order?
 `,
 
-    instructions_guidance: `When suggesting instruction improvements for skills, follow these principles:
+  instructions_guidance: `When suggesting instruction improvements for skills, follow these principles:
 
 - Focus on actionable information that changes what the skill does.
 - Preserve the skill's existing goals — NEVER change what the goal is, only improve HOW it achieves it.
@@ -102,9 +101,9 @@ ONLY make suggestions that will affect the skill behavior. NEVER suggest cosmeti
 - Extract the INTENT from examples, not the literal pattern.
 - Filter out information only relevant for humans, not the LLM.`,
 
-    instruction_editing: buildSkillInstructionHtmlEditPrompt(),
+  instruction_editing: SKILL_INSTRUCTION_HTML_EDIT_PROMPT,
 
-    tools_guidance: `Tools provide capabilities to the skill through inline <tool> tags in the instructions. When evaluating tool changes:
+  tools_guidance: `Tools provide capabilities to the skill through inline <tool> tags in the instructions. When evaluating tool changes:
 
 - Discover available tools by calling get_available_tools.
 - Only suggest adding a tool if there is clear evidence from the conversation that the skill needed a capability it did not have.
@@ -113,7 +112,7 @@ ONLY make suggestions that will affect the skill behavior. NEVER suggest cosmeti
 - Suggest tool additions by creating an instruction edit that embeds a self-closing <tool> tag in the relevant instruction block. Suggest tool removals by creating an instruction edit that removes the obsolete <tool> tag and related usage instructions. NEVER use separate tool edits.
 - When the conversation involves a tool call that failed or produced unexpected results, call describe_mcp for the relevant MCP to understand the full list of available tools and their correct usage before suggesting instruction changes.`,
 
-    agent_facing_description_guidance: `The agent-facing description (\`<agentFacingDescription>\` in the skill context) is what the agent reads to decide WHEN to enable the skill. It is NOT the skill's behavior — that lives in \`<instructions>\`.
+  agent_facing_description_guidance: `The agent-facing description (\`<agentFacingDescription>\` in the skill context) is what the agent reads to decide WHEN to enable the skill. It is NOT the skill's behavior — that lives in \`<instructions>\`.
 
 Suggest editing it only when the conversation surfaces clear evidence of a routing problem:
 - The agent enabled the skill in a situation it does not actually cover.
@@ -125,13 +124,11 @@ When suggesting a description edit:
 - Preserve the skill's actual purpose. Sharpen the trigger conditions; do not redefine the skill.
 - Keep it focused on routing signals (when to use, what scenarios). Do not duplicate the instructions.
 - Use the same language as the existing description.`,
-  };
-}
+};
 
 export function buildSkillAnalysisSystemPrompt(): string {
-  const sections = getReinforcedSkillAnalysisSections();
   return ASSEMBLY_ORDER.map((key) => {
-    const body = sections[key].trim();
+    const body = REINFORCED_SKILL_ANALYSIS_SECTIONS[key].trim();
     return `<${key}>\n${body}\n</${key}>`;
   }).join("\n\n");
 }

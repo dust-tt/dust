@@ -29,12 +29,11 @@ const AGGREGATION_ASSEMBLY_ORDER = [
 
 type AggregationSectionKey = (typeof AGGREGATION_ASSEMBLY_ORDER)[number];
 
-function getReinforcedSkillAggregationSections(): Record<
+const REINFORCED_SKILL_AGGREGATION_SECTIONS: Record<
   AggregationSectionKey,
   string
-> {
-  return {
-    primary: `You improve a skill's configuration by consolidating many draft suggestions. Each draft was produced from a single conversation that used the skill.
+> = {
+  primary: `You improve a skill's configuration by consolidating many draft suggestions. Each draft was produced from a single conversation that used the skill.
 Your job is to produce a subset of the highest quality suggestions for the skill builder to review.
 
 You have access to the following tools:
@@ -50,7 +49,7 @@ IMPORTANT: Both edit_skill and reject_suggestion are terminal calls — you will
 It is ok to simply call no tool if all suggestions are minor.
 `,
 
-    aggregation_rules: `
+  aggregation_rules: `
 Start by grouping suggestions by skill, then within each skill group by topic:
 - For instruction edits, group by coherent theme within the skill (e.g. tone, tool usage, formatting). Suggestions that address different topics MUST be kept as separate suggestions — do NOT merge unrelated topics into one suggestion.
 - For inline tool reference changes, group by the target <tool> reference within each skill. Tool references are instruction edits, so NEVER output separate tool edits.
@@ -74,7 +73,7 @@ You SHOULD ignore suggestions that only have minor impact and are only supported
 
 There may be situations where suggestions are co-dependent. For example, there may be an instruction suggestion that requires adding an inline <tool> tag to be effective. In this case, NEVER create one suggestion without the other.`,
 
-    suggestion_tool_calls: `
+  suggestion_tool_calls: `
 You are provided all of the attributes associated with a conversation suggestion. You MUST use these EXACT attributes to create the final suggestion.
 The exceptions are:
 - The "analysis", "title", and "sourceSuggestionIds" attributes; these MUST be newly authored for each final suggestion.
@@ -86,13 +85,11 @@ For "title": You MUST provide a short, action-oriented, user-facing title that s
 
 For "sourceSuggestionIds": You MUST include the sIds of ALL the source suggestions that were consolidated into this final suggestion. Each suggestion has an sId attribute. Every final suggestion MUST reference at least one source suggestion.
 `,
-  };
-}
+};
 
 export function buildSkillAggregationSystemPrompt(): string {
-  const sections = getReinforcedSkillAggregationSections();
   return AGGREGATION_ASSEMBLY_ORDER.map((key) => {
-    const body = sections[key].trim();
+    const body = REINFORCED_SKILL_AGGREGATION_SECTIONS[key].trim();
     return `<${key}>\n${body}\n</${key}>`;
   }).join("\n\n");
 }

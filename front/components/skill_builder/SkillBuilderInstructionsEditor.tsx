@@ -58,19 +58,17 @@ const SKILL_REFERENCE_ALLOWED_TAGS = [
 ];
 const SKILL_REFERENCE_ALLOWED_ATTRS = ["id", "name", "icon"];
 
-function getSkillInstructionsSanitizeConfig(): Config {
-  return {
-    ADD_TAGS: [
-      ...BASE_ALLOWED_INSTRUCTIONS_TAGS,
-      ...SKILL_REFERENCE_ALLOWED_TAGS,
-    ],
-    ADD_ATTR: [
-      ...BASE_ALLOWED_INSTRUCTIONS_ATTRS,
-      ...SKILL_REFERENCE_ALLOWED_ATTRS,
-    ],
-    FORBID_ATTR: ["style", "class"],
-  };
-}
+const SKILL_INSTRUCTIONS_SANITIZE_CONFIG: Config = {
+  ADD_TAGS: [
+    ...BASE_ALLOWED_INSTRUCTIONS_TAGS,
+    ...SKILL_REFERENCE_ALLOWED_TAGS,
+  ],
+  ADD_ATTR: [
+    ...BASE_ALLOWED_INSTRUCTIONS_ATTRS,
+    ...SKILL_REFERENCE_ALLOWED_ATTRS,
+  ],
+  FORBID_ATTR: ["style", "class"],
+};
 
 function collectKnowledgeItems(editor: Editor): KnowledgeItem[] {
   const items: KnowledgeItem[] = [];
@@ -229,7 +227,7 @@ function toReferencedSkill(
 
 function sanitizeSkillInstructionsHtml(html: string): string {
   try {
-    return DOMPurify.sanitize(html, getSkillInstructionsSanitizeConfig());
+    return DOMPurify.sanitize(html, SKILL_INSTRUCTIONS_SANITIZE_CONFIG);
   } catch {
     return html;
   }
