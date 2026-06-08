@@ -802,54 +802,31 @@ export function useAgentMessageStream({
           isStreamTerminated.current = true;
           updateMessageThrottled.cancel();
           const messageSuccess = eventPayload.data;
-          // Flush any remaining CoT (but not content — the final text segment
-          // becomes the message body via the server's canonical message).
-          const cotAtSuccess = chainOfThought.current;
-          chainOfThought.current = "";
-          retryCoTBuffer.current = null;
-          // content.current tracks only the final text segment (intermediate
-          // segments were flushed to content steps). The server's full message
-          // includes ALL text, so we override with the tracked final segment.
-          // Only override when final answer tokens were actually streamed.
-          // Reasoning/activity-only streams still receive the canonical answer
-          // in the success payload; overriding those with the empty token
-          // buffer would hide the final generation until reload.
-          const finalSegment = content.current;
-          const hadStreamedTokens = lastClassification.current === "tokens";
-          lastClassification.current = null;
+          // Trust the server-rendered content view: it is computed from the
+          // same persisted step contents reload uses, so it matches reload
+          // exactly. If an older server omitted it during a deploy window, fall
+          // back to the server's full message (its content/chainOfThought) and
+          // keep the live-built steps; this self-heals on the next reload.
+          const contentView = messageSuccess.contentView;
           mapMessagesWithAutoScroll((m) => {
             if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
               return m;
             }
-            let steps = cotAtSuccess
-              ? appendThinkingStep(
-                  m.streaming.inlineActivitySteps,
-                  cotAtSuccess,
-                  `thinking-final-${Date.now()}`
-                )
-              : m.streaming.inlineActivitySteps;
-            // When no tokens streamed after the last tool call (e.g. the agent
-            // handed off or otherwise terminated right after a tool), the text
-            // we flushed as a content step at the last `tool_params` is also
-            // what the server keeps as the message body. Drop that trailing
-            // content step so the same text isn't rendered twice — aligning
-            // with `contentsToActivitySteps`, which is what runs after reload.
-            if (!hadStreamedTokens) {
-              for (let i = steps.length - 1; i >= 0; i--) {
-                if (steps[i].type === "content") {
-                  steps = [...steps.slice(0, i), ...steps.slice(i + 1)];
-                  break;
-                }
-              }
-            }
             return {
               ...m,
               ...getLightAgentMessageFromAgentMessage(messageSuccess.message),
-              ...(hadStreamedTokens ? { content: finalSegment || null } : {}),
+              ...(contentView
+                ? {
+                    content: contentView.content,
+                    chainOfThought: contentView.chainOfThought,
+                    activitySteps: contentView.activitySteps,
+                  }
+                : {}),
               streaming: {
                 ...m.streaming,
                 agentState: "done",
-                inlineActivitySteps: steps,
+                inlineActivitySteps:
+                  contentView?.activitySteps ?? m.streaming.inlineActivitySteps,
                 pendingToolCalls: [],
               },
             };

@@ -9,7 +9,10 @@ import type {
   AgentReasoningContentType,
   AgentTextContentType,
 } from "@app/types/assistant/agent_message_content";
-import type { AgentMessageType } from "@app/types/assistant/conversation";
+import type {
+  AgentMessageType,
+  InlineActivityStep,
+} from "@app/types/assistant/conversation";
 import type { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
 import { ORDERED_REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
 import type { ModelIdType } from "@app/types/assistant/models/types";
@@ -354,6 +357,16 @@ export type AgentGenerationCancelledEvent = {
   status: "cancelled" | "interrupted";
 };
 
+// Server-rendered view of a finished agent message (the displayed body, chain of
+// thought, and activity steps). Computed from the persisted step contents (the
+// same source reload uses), so the client can trust it wholesale at stream end
+// instead of reconciling its incrementally-built view.
+export type AgentMessageContentView = {
+  content: string | null;
+  chainOfThought: string | null;
+  activitySteps: InlineActivityStep[];
+};
+
 // Event sent when the agent loop was gracefully stopped (current step completed, then exited).
 export type AgentMessageGracefullyStoppedEvent = {
   type: "agent_message_gracefully_stopped";
@@ -361,6 +374,8 @@ export type AgentMessageGracefullyStoppedEvent = {
   configurationId: string;
   messageId: string;
   message: AgentMessageType;
+  // Optional: absent on events from an older server during a deploy window.
+  contentView?: AgentMessageContentView;
   runIds: string[];
 };
 
@@ -371,6 +386,8 @@ export type AgentMessageSuccessEvent = {
   configurationId: string;
   messageId: string;
   message: AgentMessageType;
+  // Optional: absent on events from an older server during a deploy window.
+  contentView?: AgentMessageContentView;
   runIds: string[];
 };
 

@@ -1,3 +1,4 @@
+import { renderAgentMessageContentView } from "@app/lib/api/assistant/activity_steps";
 import { updateAgentMessageWithFinalStatus } from "@app/lib/api/assistant/conversation";
 import { getCompletionDuration } from "@app/lib/api/assistant/messages";
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
@@ -411,6 +412,12 @@ export async function updateResourceAndPublishEvent(
     conversation,
   });
 
+  // For terminal "succeeded" events, attach the fully-rendered content view
+  // (body, chain of thought, activity steps) computed from the persisted step
+  // contents — the same source reload uses. This lets the client trust it
+  // wholesale instead of reconciling its incrementally-built streaming view.
+  const eventToPublish = await withContentView(auth, event, agentMessage);
+
   // All events go through the coalescer, which handles batching logic internally.
   const key = `${conversation.sId}-${event.messageId}-${step}`;
   const flushIntervalMs =
@@ -422,11 +429,52 @@ export async function updateResourceAndPublishEvent(
 
   await globalCoalescer.handleEvent({
     conversationId: conversation.sId,
-    event,
+    event: eventToPublish,
     key,
     step,
     flushIntervalMs,
   });
+}
+
+// Enrich `agent_message_success` / `agent_message_gracefully_stopped` events with
+// the server-rendered content view. Reads the latest persisted step contents
+// (authoritative, identical to reload) so the rendered view never drifts from a
+// reload. Other event types pass through unchanged.
+async function withContentView(
+  auth: Authenticator,
+  event: AgentMessageEvents,
+  agentMessage: AgentMessageType
+): Promise<AgentMessageEvents> {
+  if (
+    event.type !== "agent_message_success" &&
+    event.type !== "agent_message_gracefully_stopped"
+  ) {
+    return event;
+  }
+
+  // Reads the latest persisted step contents (authoritative, identical to
+  // reload). A failure here throws and Temporal retries the activity, like the
+  // other DB operations in this publish path.
+  const stepContents = await AgentStepContentResource.fetchByAgentMessages(
+    auth,
+    {
+      agentMessageIds: [agentMessage.agentMessageId],
+      latestVersionsOnly: true,
+    }
+  );
+  const contents = stepContents.map((sc) => ({
+    step: sc.step,
+    content: sc.value,
+  }));
+
+  const contentView = await renderAgentMessageContentView(
+    contents,
+    agentMessage.actions,
+    agentMessage.configuration,
+    agentMessage.sId
+  );
+
+  return { ...event, contentView };
 }
 
 const DEFAULT_WORKFLOW_ERROR_MESSAGE =
