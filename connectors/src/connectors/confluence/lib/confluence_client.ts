@@ -150,7 +150,7 @@ const ConfluencePageWithBodyCodec = t.intersection([
   ConfluencePageCodec,
   t.type({
     body: t.type({
-      storage: t.type({
+      view: t.type({
         value: t.string,
       }),
     }),

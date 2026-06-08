@@ -88,7 +88,7 @@ export async function confluenceUpsertPageToDataSource({
 }: ConfluenceUpsertPageInput) {
   const localLogger = logger.child(loggerArgs);
 
-  const markdown = turndownService.turndown(page.body.storage.value);
+  const markdown = turndownService.turndown(page.body.view.value);
   const pageCreatedAt = new Date(page.createdAt);
   const lastPageVersionCreatedAt = new Date(page.version.createdAt);
 
