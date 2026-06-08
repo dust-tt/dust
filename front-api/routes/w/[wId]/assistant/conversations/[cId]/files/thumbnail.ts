@@ -5,7 +5,6 @@ import {
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
-import logger from "@app/logger/logger";
 import { isSupportedImageContentType } from "@app/types/files";
 import { isString } from "@app/types/shared/utils/general";
 import { readableToReadableStream } from "@app/types/shared/utils/streams";
@@ -131,25 +130,7 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
   }
 
   const readStream = bucket.file(normalizedPath).createReadStream();
-
-  const webStream = new ReadableStream({
-    start(controller) {
-      readStream.on("data", (chunk) => controller.enqueue(chunk));
-      readStream.on("end", () => controller.close());
-      readStream.on("error", (err) => {
-        logger.error(
-          { err, filePath: normalizedPath },
-          "Error streaming thumbnail (GCS)"
-        );
-        controller.error(err);
-      });
-    },
-    cancel() {
-      readStream.destroy();
-    },
-  });
-
-  return new Response(webStream, {
+  return new Response(readableToReadableStream(readStream), {
     status: 200,
     headers: {
       "Content-Type": contentType,

@@ -15,6 +15,7 @@ import {
   isConversationFileUseCase,
   isPubliclySupportedUseCase,
 } from "@app/types/files";
+import { readableToReadableStream } from "@app/types/shared/utils/streams";
 import { createHono } from "@front-api/lib/hono";
 import type { PublicApiCtx } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
@@ -118,17 +119,7 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
       auth,
       version,
     });
-    const webStream = new ReadableStream({
-      start(controller) {
-        readStream.on("data", (chunk) => controller.enqueue(chunk));
-        readStream.on("end", () => controller.close());
-        readStream.on("error", (err) => controller.error(err));
-      },
-      cancel() {
-        readStream.destroy();
-      },
-    });
-    return new Response(webStream, {
+    return new Response(readableToReadableStream(readStream), {
       status: 200,
       headers: { "Content-Type": file.contentType },
     });

@@ -7,9 +7,9 @@ import {
 import { MoveMountFileRequestBodySchema } from "@app/lib/api/files/mount_schemas";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
+import { readableToReadableStream } from "@app/types/shared/utils/streams";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -94,25 +94,7 @@ app.get("/:rel{.+}", validate("param", ParamsSchema), async (ctx) => {
 
   const contentType = contentTypeResult.value ?? "application/octet-stream";
   const readStream = bucket.file(normalizedGcsPath).createReadStream();
-
-  const webStream = new ReadableStream({
-    start(controller) {
-      readStream.on("data", (chunk) => controller.enqueue(chunk));
-      readStream.on("end", () => controller.close());
-      readStream.on("error", (err) => {
-        logger.error(
-          { err, gcsPath: normalizedGcsPath },
-          "Error streaming conversation file (GCS)"
-        );
-        controller.error(err);
-      });
-    },
-    cancel() {
-      readStream.destroy();
-    },
-  });
-
-  return new Response(webStream, {
+  return new Response(readableToReadableStream(readStream), {
     status: 200,
     headers: { "Content-Type": contentType },
   });
