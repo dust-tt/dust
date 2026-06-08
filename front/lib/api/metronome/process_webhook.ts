@@ -1032,12 +1032,31 @@ export async function processMetronomeWebhook({
     case "commit.segment.end":
     case "contract.archive":
     case "contract.create":
-    case "contract.edit":
     case "credit.archive":
     case "credit.segment.end":
     case "invoice.billing_provider_error":
     case "invoice.finalized":
       break;
+
+    // Editing a live contract (e.g. entitling a new seat type, changing
+    // overrides or subscriptions) keeps it active — so no contract.start /
+    // contract.end fires. The active-contract cache has no TTL and is only
+    // invalidated on those lifecycle events, so without this it would serve
+    // the pre-edit contract indefinitely (e.g. seats/plan and seat sync would
+    // never see a newly-enabled free seat). Invalidate so the next read
+    // refetches the edited contract.
+    case "contract.edit": {
+      await invalidateContractCache(workspace.sId);
+      logger.info(
+        {
+          contractId: event.contract_id,
+          customerId: event.customer_id,
+          workspaceId: workspace.sId,
+        },
+        "[Metronome Webhook] contract.edit: invalidated active-contract cache"
+      );
+      break;
+    }
 
     case "credit.create": {
       logger.info(
