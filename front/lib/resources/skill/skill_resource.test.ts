@@ -945,7 +945,6 @@ describe("SkillResource", () => {
         mcpServerViews: [],
         attachedKnowledge: [],
         requestedSpaceIds: parentSkill.requestedSpaceIds,
-        enableSkillReferences: true,
         referencedSkillIds: [missingSkillId],
       });
 

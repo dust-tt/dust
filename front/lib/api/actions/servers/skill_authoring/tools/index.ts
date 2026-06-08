@@ -16,7 +16,7 @@ import {
 import { makeSkillAuthoringResultOutput } from "@app/lib/api/actions/servers/skill_authoring/rendering";
 import { getUpdatedContentAndOccurrences } from "@app/lib/api/files/utils";
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
-import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
 import { pruneOutdatedSkillEditSuggestions } from "@app/lib/reinforcement/skill_suggestion_pruning";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -297,7 +297,6 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
       {
         mcpServerViews: [],
         attachedKnowledge: [],
-        enableSkillReferences: false,
         referencedSkillIds: [],
       }
     );
@@ -468,9 +467,6 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
       );
     }
 
-    const enableSkillReferences = (await getFeatureFlags(auth)).includes(
-      "nested_skills"
-    );
     const attachedKnowledge = await skill.getAttachedKnowledge(auth);
 
     // When the instructions change, re-derive the referenced skills from the new
@@ -494,7 +490,6 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
       mcpServerViews: skill.mcpServerViews,
       name: trimmedName,
       requestedSpaceIds: skill.requestedSpaceIds,
-      enableSkillReferences,
       referencedSkillIds,
       userFacingDescription:
         userFacingDescription ?? skill.userFacingDescription,
