@@ -33,6 +33,7 @@ import {
   isItemNotFoundError,
   isJSONParsingError,
   isMalformedDriveError,
+  isSiteNotFoundError,
 } from "@connectors/connectors/microsoft/temporal/cast_known_errors";
 // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { launchMicrosoftFullSyncWorkflow } from "@connectors/connectors/microsoft/temporal/client";
@@ -819,6 +820,30 @@ export async function syncFiles({
           error: e.message,
         },
         "Billing policy error from Microsoft, skipping syncFiles"
+      );
+      return {
+        count: 0,
+        childNodes: [],
+        nextLink: undefined,
+      };
+    }
+    // A 404 means the synced drive/folder was deleted upstream ("404 FILE NOT
+    // FOUND"), or the hosting SharePoint site is gone ("Target
+    // '<tenant>.sharepoint.com' is not found."). The resource can no longer be
+    // synced, so skip it instead of throwing, which would otherwise wedge the
+    // workflow in an infinite retry loop.
+    if (
+      (e instanceof GraphError && e.statusCode === 404) ||
+      isSiteNotFoundError(e)
+    ) {
+      logger.warn(
+        {
+          connectorId,
+          dataSourceId: dataSourceConfig.dataSourceId,
+          parent,
+          error: e.message,
+        },
+        "Resource not found (404) from Microsoft, skipping syncFiles"
       );
       return {
         count: 0,
@@ -1772,6 +1797,23 @@ async function getDeltaData({
         "Billing policy error from Microsoft, skipping delta sync for node"
       );
       // Return empty results with current deltaLink so we retry next cycle.
+      return { results: [], deltaLink: node.deltaLink };
+    }
+    // A 404 means the delta-synced drive/folder was deleted upstream ("404 FILE
+    // NOT FOUND"), or the hosting SharePoint site is gone ("Target
+    // '<tenant>.sharepoint.com' is not found."). Skip gracefully so we do not
+    // wedge the incremental sync in an infinite retry loop.
+    if (
+      (e instanceof GraphError && e.statusCode === 404) ||
+      isSiteNotFoundError(e)
+    ) {
+      logger.warn(
+        {
+          internalId: node.internalId,
+          error: e.message,
+        },
+        "Resource not found (404) from Microsoft, skipping delta sync for node"
+      );
       return { results: [], deltaLink: node.deltaLink };
     }
     throw e;
