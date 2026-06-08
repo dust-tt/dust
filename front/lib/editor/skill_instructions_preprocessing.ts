@@ -52,13 +52,9 @@ function withPreservedToolTags(
  * Preprocess markdown before loading it into the TipTap editor.
  */
 export function preprocessMarkdownForEditor(
-  markdown: string,
-  { enableSkillReferences = false }: { enableSkillReferences?: boolean } = {}
+  markdown: string
 ): string {
-  const preservedTags = ["knowledge"];
-  if (enableSkillReferences) {
-    preservedTags.push("skill", "unavailable_skill");
-  }
+  const preservedTags = ["knowledge", "skill", "unavailable_skill"];
   const preservedTagsPattern = preservedTags.join("|");
   const escapeUnsupportedTags = (markdownToProcess: string) =>
     escapeMathEmphasis(
@@ -68,9 +64,7 @@ export function preprocessMarkdownForEditor(
       )
     );
 
-  return enableSkillReferences
-    ? withPreservedToolTags(markdown, escapeUnsupportedTags)
-    : escapeUnsupportedTags(markdown);
+  return withPreservedToolTags(markdown, escapeUnsupportedTags);
 }
 
 /**

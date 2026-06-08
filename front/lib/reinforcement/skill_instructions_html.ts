@@ -178,9 +178,7 @@ function recoverCustomInlineNodes(node: JSONContent): JSONContent {
  * Uses the same extension schema as the browser editor, then strips CSS class attrs.
  */
 export function convertMarkdownToBlockHtml(markdown: string): string {
-  const preprocessed = preprocessMarkdownForEditor(markdown, {
-    enableSkillReferences: true,
-  });
+  const preprocessed = preprocessMarkdownForEditor(markdown);
   const parsedDoc = preprocessed.trim()
     ? MARKDOWN_MANAGER.parse(preprocessed)
     : null;

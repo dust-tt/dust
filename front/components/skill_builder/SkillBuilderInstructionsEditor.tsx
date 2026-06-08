@@ -58,18 +58,13 @@ const SKILL_REFERENCE_ALLOWED_TAGS = [
 ];
 const SKILL_REFERENCE_ALLOWED_ATTRS = ["id", "name", "icon"];
 
-function getSkillInstructionsSanitizeConfig({
-  enableSkillReferences,
-}: {
-  enableSkillReferences: boolean;
-}): Config {
+function getSkillInstructionsSanitizeConfig(): Config {
   return {
-    ADD_TAGS: enableSkillReferences
-      ? [...BASE_ALLOWED_INSTRUCTIONS_TAGS, ...SKILL_REFERENCE_ALLOWED_TAGS]
-      : [...BASE_ALLOWED_INSTRUCTIONS_TAGS],
-    ADD_ATTR: enableSkillReferences
-      ? [...BASE_ALLOWED_INSTRUCTIONS_ATTRS, ...SKILL_REFERENCE_ALLOWED_ATTRS]
-      : [...BASE_ALLOWED_INSTRUCTIONS_ATTRS],
+    ADD_TAGS: [...BASE_ALLOWED_INSTRUCTIONS_TAGS, ...SKILL_REFERENCE_ALLOWED_TAGS],
+    ADD_ATTR: [
+      ...BASE_ALLOWED_INSTRUCTIONS_ATTRS,
+      ...SKILL_REFERENCE_ALLOWED_ATTRS,
+    ],
     FORBID_ATTR: ["style", "class"],
   };
 }
@@ -229,15 +224,9 @@ function toReferencedSkill(
   };
 }
 
-function sanitizeSkillInstructionsHtml(
-  html: string,
-  { enableSkillReferences = false }: { enableSkillReferences?: boolean } = {}
-): string {
+function sanitizeSkillInstructionsHtml(html: string): string {
   try {
-    return DOMPurify.sanitize(
-      html,
-      getSkillInstructionsSanitizeConfig({ enableSkillReferences })
-    );
+    return DOMPurify.sanitize(html, getSkillInstructionsSanitizeConfig());
   } catch {
     return html;
   }
@@ -411,9 +400,7 @@ export function SkillBuilderInstructionsEditor({
         postProcessMarkdown(editor.getMarkdown()).trim()
       );
       instructionsHtmlField.onChange(
-        sanitizeSkillInstructionsHtml(editor.getHTML(), {
-          enableSkillReferences: true,
-        })
+        sanitizeSkillInstructionsHtml(editor.getHTML())
       );
       syncAttachedKnowledgeFromEditor(editor);
       syncInlineReferencesFromEditor(editor);
@@ -530,7 +517,6 @@ export function SkillBuilderInstructionsEditor({
     isReadOnly: hasSuggestions,
     skillReferences: {
       currentSkillId: skillId,
-      enableSkillReferences: true,
       onSkillDetails: handleSkillDetails,
       onSkillNodeDetails: setSelectedSkillIdForDetails,
       onSelectSkill: handleSelectSkillReference,
@@ -815,9 +801,7 @@ export function SkillBuilderInstructionsEditor({
     }
 
     const incomingHtml = instructionsHtmlField.value;
-    const currentHtml = sanitizeSkillInstructionsHtml(editor.getHTML(), {
-      enableSkillReferences: true,
-    });
+    const currentHtml = sanitizeSkillInstructionsHtml(editor.getHTML());
     if (currentHtml !== incomingHtml) {
       editor.commands.setContent(incomingHtml, { emitUpdate: false });
     }
@@ -842,21 +826,15 @@ export function SkillBuilderInstructionsEditor({
         const currentText = instructionsField.value ?? "";
 
         editor.commands.setContent(
-          preprocessMarkdownForEditor(currentText, {
-            enableSkillReferences: true,
-          }),
+          preprocessMarkdownForEditor(currentText),
           {
             emitUpdate: false,
             contentType: "markdown",
           }
         );
         editor.commands.applyDiff(
-          preprocessMarkdownForEditor(compareText, {
-            enableSkillReferences: true,
-          }),
-          preprocessMarkdownForEditor(currentText, {
-            enableSkillReferences: true,
-          })
+          preprocessMarkdownForEditor(compareText),
+          preprocessMarkdownForEditor(currentText)
         );
         editor.setEditable(false);
       } else if (editor.storage.agentInstructionDiff?.isDiffMode) {
@@ -869,9 +847,7 @@ export function SkillBuilderInstructionsEditor({
           });
         } else {
           editor.commands.setContent(
-            preprocessMarkdownForEditor(instructionsField.value ?? "", {
-              enableSkillReferences: true,
-            }),
+            preprocessMarkdownForEditor(instructionsField.value ?? ""),
             {
               emitUpdate: false,
               contentType: "markdown",

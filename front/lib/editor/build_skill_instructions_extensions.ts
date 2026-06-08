@@ -22,7 +22,6 @@ import { StarterKit } from "@tiptap/starter-kit";
 export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
 
 interface BuildSkillInstructionsExtensionsOptions {
-  enableSkillReferences?: boolean;
   onSkillNodeDetails?: (skillId: string) => void;
   onToolDetails?: (tool: MCPServerViewType) => void;
 }
@@ -36,11 +35,7 @@ interface BuildSkillInstructionsExtensionsOptions {
 export function buildSkillInstructionsExtensions(
   isReadOnly: boolean,
   editableExtensions: Extensions = [],
-  {
-    enableSkillReferences = false,
-    onSkillNodeDetails,
-    onToolDetails,
-  }: BuildSkillInstructionsExtensionsOptions = {}
+  { onSkillNodeDetails, onToolDetails }: BuildSkillInstructionsExtensionsOptions = {}
 ): Extensions {
   const baseExtensions: Extensions = [
     InstructionsDocumentExtension,
@@ -100,11 +95,8 @@ export function buildSkillInstructionsExtensions(
     }),
     BlockIdExtension,
     KnowledgeNodeWithView.configure({ readOnly: isReadOnly }),
+    ToolNodeWithView.configure({ onToolDetails }),
   ];
-
-  if (enableSkillReferences) {
-    baseExtensions.push(ToolNodeWithView.configure({ onToolDetails }));
-  }
 
   baseExtensions.push(
     InstructionSuggestionExtension.configure({ showBlockHighlight: false }),
@@ -112,11 +104,7 @@ export function buildSkillInstructionsExtensions(
     ...rawMarkdownBlockParsers
   );
 
-  if (enableSkillReferences) {
-    baseExtensions.push(
-      SkillNode.configure({ onSkillDetails: onSkillNodeDetails })
-    );
-  }
+  baseExtensions.push(SkillNode.configure({ onSkillDetails: onSkillNodeDetails }));
 
   if (!isReadOnly) {
     baseExtensions.push(...editableExtensions);

@@ -52,8 +52,8 @@ IMPORTANT: You must include both REASONING: and SCORE: labels. The score MUST ap
 
 1. **Correct Tool Usage**: Did the analyst call edit_skill with the right fields?
    - instructionEdits for instruction improvements (search-and-replace edits)
-   - toolEdits for tool additions/removals
-   - Both can appear in a single edit_skill call
+   - Inline <tool> tag additions/removals inside instructionEdits for tool reference changes
+   - toolEdits should not be used in final edit_skill calls
 2. **Suggestion Quality**: Are the suggestions specific, actionable, and well-reasoned?
    - Does the analysis field explain WHY the change is needed?
    - Is the suggested content appropriate and well-written?
@@ -64,9 +64,9 @@ IMPORTANT: You must include both REASONING: and SCORE: labels. The score MUST ap
    - Do the edits directly address the identified issue?
    - Are the old_string values accurate matches of the existing instructions?
    - Would the new_string replacements meaningfully improve the skill?
-5. **If toolEdits are present**:
-   - Is the correct toolId used?
-   - Is the action (add/remove) appropriate?
+5. **If tool reference changes are present**:
+   - Is the correct inline <tool> tag used?
+   - Is the add/remove behavior appropriate?
    - Does the analysis explain the use case?
 
 Provide your evaluation using the REASONING: and SCORE: format described above.`;

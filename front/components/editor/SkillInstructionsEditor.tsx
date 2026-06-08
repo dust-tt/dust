@@ -18,8 +18,7 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 function useEditorService(
-  editor: Editor | null,
-  { enableSkillReferences }: { enableSkillReferences: boolean }
+  editor: Editor | null
 ) {
   return useMemo(() => {
     return {
@@ -48,9 +47,7 @@ function useEditorService(
         // Safety check for Safari: ensure editor and docView are available
         if (editor && !editor.isDestroyed) {
           editor.commands.setContent(
-            preprocessMarkdownForEditor(content, {
-              enableSkillReferences,
-            }),
+            preprocessMarkdownForEditor(content),
             {
               emitUpdate: false,
               contentType: "markdown",
@@ -93,12 +90,11 @@ function useEditorService(
         return editor?.isDestroyed ?? true;
       },
     };
-  }, [editor, enableSkillReferences]);
+  }, [editor]);
 }
 
 interface SkillInstructionsSkillReferencesOptions {
   currentSkillId?: string | null;
-  enableSkillReferences: boolean;
   onSelectSkill?: (skill: SlashCommandSkillSuggestion) => void;
   onSelectTool?: (tool: MCPServerViewType) => void;
   onSkillDetails?: (skill: SlashCommandSkillSuggestion) => void;
@@ -165,7 +161,6 @@ export function useSkillInstructionsEditor({
   onBlur,
   onDelete,
 }: UseSkillInstructionsEditorProps) {
-  const enableSkillReferences = skillReferences?.enableSkillReferences === true;
   const currentSkillId = skillReferences?.currentSkillId ?? null;
   const onSelectSkill = skillReferences?.onSelectSkill;
   const onSelectTool = skillReferences?.onSelectTool;
@@ -173,7 +168,7 @@ export function useSkillInstructionsEditor({
   const onSkillNodeDetails = skillReferences?.onSkillNodeDetails;
   const onToolDetails = skillReferences?.onToolDetails;
   const owner = skillReferences?.owner;
-  const includeSkillSuggestions = enableSkillReferences && !!owner;
+  const includeSkillSuggestions = !!owner;
   const editableExtensions = useMemo(
     () =>
       buildSkillInstructionsEditableExtensions({
@@ -199,13 +194,11 @@ export function useSkillInstructionsEditor({
   const extensions = useMemo(
     () =>
       buildSkillInstructionsExtensions(isReadOnly, editableExtensions, {
-        enableSkillReferences,
         onSkillNodeDetails,
         onToolDetails,
       }),
     [
       editableExtensions,
-      enableSkillReferences,
       isReadOnly,
       onSkillNodeDetails,
       onToolDetails,
@@ -228,7 +221,7 @@ export function useSkillInstructionsEditor({
     [extensions, isReadOnly]
   );
 
-  const editorService = useEditorService(editor, { enableSkillReferences });
+  const editorService = useEditorService(editor);
 
   // Set initial content after editor is created
   useEffect(() => {
@@ -247,9 +240,7 @@ export function useSkillInstructionsEditor({
             editor.commands.setContent(htmlContent, { emitUpdate: false });
           } else {
             editor.commands.setContent(
-              preprocessMarkdownForEditor(content, {
-                enableSkillReferences,
-              }),
+              preprocessMarkdownForEditor(content),
               {
                 emitUpdate: false,
                 contentType: "markdown",
@@ -261,7 +252,7 @@ export function useSkillInstructionsEditor({
         }
       });
     }
-  }, [editor, content, htmlContent, enableSkillReferences]);
+  }, [editor, content, htmlContent]);
 
   return { editor, editorService, isContentReady };
 }

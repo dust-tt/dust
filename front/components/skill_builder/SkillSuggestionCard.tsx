@@ -134,9 +134,7 @@ function InstructionEditDiffBlock({
   const editor = useEditor(
     {
       extensions: [
-        ...buildSkillInstructionsExtensions(true, [], {
-          enableSkillReferences: true,
-        }),
+        ...buildSkillInstructionsExtensions(true),
       ],
       editable: false,
       content: blockHtml,

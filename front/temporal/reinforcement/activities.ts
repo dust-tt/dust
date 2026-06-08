@@ -167,7 +167,6 @@ async function runReinforcedSkillsStep({
   source,
   conversation,
   eligibleSkillIds,
-  useInlineTools,
 }: {
   auth: Authenticator;
   reinforcementConversationId: string;
@@ -177,7 +176,6 @@ async function runReinforcedSkillsStep({
   source: "synthetic" | "reinforcement";
   conversation?: ConversationResource;
   eligibleSkillIds: string[];
-  useInlineTools: boolean;
 }): Promise<{
   isTerminal: boolean;
   suggestionsCreated: number;
@@ -207,9 +205,7 @@ async function runReinforcedSkillsStep({
     throw conversationRes.error;
   }
 
-  const specifications = buildReinforcedSkillsSpecifications(operationType, {
-    useInlineTools,
-  });
+  const specifications = buildReinforcedSkillsSpecifications(operationType);
   const modelConfig = llm.getModelConfig();
   const toolsJson = JSON.stringify(
     specifications.map((s) => ({
@@ -293,7 +289,6 @@ async function runReinforcedSkillsStep({
       contextId,
       conversation,
       eligibleSkillIds,
-      useInlineTools,
     });
 
     // Store results for all terminal tool calls so the conversation is complete.
@@ -698,7 +693,6 @@ export async function analyzeConversationStepActivity({
   toolActionInfo?: ReinforcedToolActionInfo;
 }> {
   const auth = await getAuthForWorkspace(workspaceId);
-  const useInlineTools = true;
 
   // On first step, build the analysis prompt and create a reinforcement conversation.
   if (!reinforcementConversationId) {
@@ -737,8 +731,7 @@ export async function analyzeConversationStepActivity({
 
     const prompt = buildSkillAnalysisPrompt(
       conversationRes.value.text,
-      skillTypes,
-      { useInlineTools }
+      skillTypes
     );
     reinforcementConversationId = await createReinforcedSkillsConversation(
       auth,
@@ -747,7 +740,6 @@ export async function analyzeConversationStepActivity({
         operationType: "reinforcement_analyze_conversation",
         contextId: conversationId,
         skillIds: skillIds,
-        useInlineTools,
       }
     );
   }
@@ -760,12 +752,11 @@ export async function analyzeConversationStepActivity({
     auth,
     reinforcementConversationId,
     operationType: "reinforcement_analyze_conversation",
-    systemPrompt: buildSkillAnalysisSystemPrompt({ useInlineTools }),
+    systemPrompt: buildSkillAnalysisSystemPrompt(),
     contextId: conversationId,
     source: "synthetic",
     conversation,
     eligibleSkillIds: skillIds,
-    useInlineTools,
   });
   return { ...result, reinforcementConversationId };
 }
@@ -835,13 +826,10 @@ export async function aggregateSuggestionsForSkillStepActivity({
   toolActionInfo?: ReinforcedToolActionInfo;
 }> {
   const auth = await getAuthForWorkspace(workspaceId);
-  const useInlineTools = true;
 
   // On first step, load aggregation context and create a reinforcement conversation.
   if (!reinforcementConversationId) {
-    const ctx = await loadSkillAggregationContext(auth, skillId, {
-      useInlineTools,
-    });
+    const ctx = await loadSkillAggregationContext(auth, skillId);
     if (!ctx) {
       return {
         isTerminal: true,
@@ -857,7 +845,6 @@ export async function aggregateSuggestionsForSkillStepActivity({
         operationType: "reinforcement_aggregate_suggestions",
         contextId: skillId,
         skillIds: [skillId],
-        useInlineTools,
       }
     );
   }
@@ -866,11 +853,10 @@ export async function aggregateSuggestionsForSkillStepActivity({
     auth,
     reinforcementConversationId,
     operationType: "reinforcement_aggregate_suggestions",
-    systemPrompt: buildSkillAggregationSystemPrompt({ useInlineTools }),
+    systemPrompt: buildSkillAggregationSystemPrompt(),
     contextId: skillId,
     source: "reinforcement",
     eligibleSkillIds: [skillId],
-    useInlineTools,
   });
   return { ...result, reinforcementConversationId };
 }
@@ -992,7 +978,6 @@ export async function startSkillConversationAnalysisBatchActivity({
   reinforcementConversationMap: Record<string, string>;
 } | null> {
   const auth = await getAuthForWorkspace(workspaceId);
-  const useInlineTools = true;
 
   const llm = await getReinforcedSkillsLLM(
     auth,
@@ -1016,15 +1001,13 @@ export async function startSkillConversationAnalysisBatchActivity({
   if (firstTimeConversations.length > 0) {
     batchMap = await buildSkillConversationAnalysisBatchMap(
       auth,
-      firstTimeConversations,
-      { useInlineTools }
+      firstTimeConversations
     );
   }
 
-  const systemPrompt = buildSkillAnalysisSystemPrompt({ useInlineTools });
+  const systemPrompt = buildSkillAnalysisSystemPrompt();
   const specifications = buildReinforcedSkillsSpecifications(
-    "reinforcement_analyze_conversation",
-    { useInlineTools }
+    "reinforcement_analyze_conversation"
   );
 
   const batchConversations: LlmConversationOptions[] = [];
@@ -1128,7 +1111,6 @@ export async function processSkillConversationAnalysisBatchResultActivity({
   conversationSkillMap: Record<string, string[]>;
 }): Promise<ConversationContinuationInfo[]> {
   const auth = await getAuthForWorkspace(workspaceId);
-  const useInlineTools = true;
 
   const llm = await getReinforcedSkillsLLM(
     auth,
@@ -1220,7 +1202,6 @@ export async function processSkillConversationAnalysisBatchResultActivity({
         contextId: analysedConvId,
         conversation: conversationById.get(analysedConvId),
         eligibleSkillIds: conversationSkillMap[analysedConvId] ?? [],
-        useInlineTools,
       });
       totalCreated += result.suggestionsCreated;
 
@@ -1294,7 +1275,6 @@ export async function startSkillAggregationBatchActivity({
   reinforcementConversationIds: string[];
 } | null> {
   const auth = await getAuthForWorkspace(workspaceId);
-  const useInlineTools = true;
 
   const llm = await getReinforcedSkillsLLM(
     auth,
@@ -1309,10 +1289,9 @@ export async function startSkillAggregationBatchActivity({
     return null;
   }
 
-  const systemPrompt = buildSkillAggregationSystemPrompt({ useInlineTools });
+  const systemPrompt = buildSkillAggregationSystemPrompt();
   const specifications = buildReinforcedSkillsSpecifications(
-    "reinforcement_aggregate_suggestions",
-    { useInlineTools }
+    "reinforcement_aggregate_suggestions"
   );
 
   let batchConversations: LlmConversationOptions[];
@@ -1407,7 +1386,6 @@ export async function processSkillAggregationBatchResultActivity({
   toolActionInfo?: ReinforcedToolActionInfo;
 }> {
   const auth = await getAuthForWorkspace(workspaceId);
-  const useInlineTools = true;
 
   const llm = await getReinforcedSkillsLLM(
     auth,
@@ -1480,7 +1458,6 @@ export async function processSkillAggregationBatchResultActivity({
       operationType: "reinforcement_aggregate_suggestions",
       contextId: skillId,
       eligibleSkillIds: [skillId],
-      useInlineTools,
     });
 
     // Store results for all terminal tool calls.
