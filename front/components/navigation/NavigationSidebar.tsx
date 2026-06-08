@@ -109,11 +109,9 @@ export const NavigationSidebar = React.forwardRef<
                     onClick={() => setSidebarOpen(false)}
                   />
                 ) : (
-                  <Button
+                  <NavTabPillTrigger
                     icon={LayoutLeft}
-                    className="h-8"
-                    variant="ghost-secondary"
-                    size="icon-sm"
+                    value="close-icon"
                     onClick={() => setIsNavigationBarOpen(false)}
                   />
                 )}
