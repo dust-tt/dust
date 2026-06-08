@@ -76,8 +76,8 @@ describe("isUserBlocked", () => {
   });
 
   it("returns 'user_cap_reached' from Redis when only the user-cap flag is set", async () => {
-    redisValues.set("metronome:user_cap:ws_test:u_test", "1");
-    redisValues.set("metronome:pool_depleted:ws_test", "0");
+    redisValues.set("metronome:user_credit_state:ws_test:u_test", "capped");
+    redisValues.set("metronome:pool_credit_status:ws_test", "active");
 
     const blocked = await isUserBlocked("ws_test", "u_test");
 
@@ -88,8 +88,8 @@ describe("isUserBlocked", () => {
   });
 
   it("returns 'credits_exhausted' when the pool is depleted, even if user is also capped", async () => {
-    redisValues.set("metronome:user_cap:ws_test:u_test", "1");
-    redisValues.set("metronome:pool_depleted:ws_test", "1");
+    redisValues.set("metronome:user_credit_state:ws_test:u_test", "capped");
+    redisValues.set("metronome:pool_credit_status:ws_test", "depleted");
 
     const blocked = await isUserBlocked("ws_test", "u_test");
 
@@ -97,8 +97,8 @@ describe("isUserBlocked", () => {
   });
 
   it("returns null when neither flag is set", async () => {
-    redisValues.set("metronome:user_cap:ws_test:u_test", "0");
-    redisValues.set("metronome:pool_depleted:ws_test", "0");
+    redisValues.set("metronome:user_credit_state:ws_test:u_test", "on_pool");
+    redisValues.set("metronome:pool_credit_status:ws_test", "active");
 
     const blocked = await isUserBlocked("ws_test", "u_test");
 
@@ -106,8 +106,7 @@ describe("isUserBlocked", () => {
   });
 
   it("does not block a 'user_seat' user when the pool is depleted", async () => {
-    redisValues.set("metronome:user_cap:ws_test:u_test", "0");
-    redisValues.set("metronome:pool_depleted:ws_test", "1");
+    redisValues.set("metronome:pool_credit_status:ws_test", "depleted");
     redisValues.set("metronome:user_credit_state:ws_test:u_test", "user_seat");
 
     const blocked = await isUserBlocked("ws_test", "u_test");
@@ -116,8 +115,7 @@ describe("isUserBlocked", () => {
   });
 
   it("does not block a 'user_seat_low_balance' user when the pool is depleted", async () => {
-    redisValues.set("metronome:user_cap:ws_test:u_test", "0");
-    redisValues.set("metronome:pool_depleted:ws_test", "1");
+    redisValues.set("metronome:pool_credit_status:ws_test", "depleted");
     redisValues.set(
       "metronome:user_credit_state:ws_test:u_test",
       "user_seat_low_balance"
@@ -129,8 +127,7 @@ describe("isUserBlocked", () => {
   });
 
   it("blocks an 'on_pool' user when the pool is depleted", async () => {
-    redisValues.set("metronome:user_cap:ws_test:u_test", "0");
-    redisValues.set("metronome:pool_depleted:ws_test", "1");
+    redisValues.set("metronome:pool_credit_status:ws_test", "depleted");
     redisValues.set("metronome:user_credit_state:ws_test:u_test", "on_pool");
 
     const blocked = await isUserBlocked("ws_test", "u_test");
@@ -139,9 +136,8 @@ describe("isUserBlocked", () => {
   });
 
   it("still blocks a capped 'user_seat' user via their per-user cap when the pool is depleted", async () => {
-    redisValues.set("metronome:user_cap:ws_test:u_test", "1");
-    redisValues.set("metronome:pool_depleted:ws_test", "1");
-    redisValues.set("metronome:user_credit_state:ws_test:u_test", "user_seat");
+    redisValues.set("metronome:pool_credit_status:ws_test", "depleted");
+    redisValues.set("metronome:user_credit_state:ws_test:u_test", "capped");
 
     const blocked = await isUserBlocked("ws_test", "u_test");
 
@@ -162,12 +158,16 @@ describe("isUserBlocked", () => {
     const blocked = await isUserBlocked("ws_test", "u_test");
 
     expect(blocked).toBe("user_cap_reached");
-    expect(redisValues.get("metronome:user_cap:ws_test:u_test")).toBe("1");
-    expect(redisValues.get("metronome:pool_depleted:ws_test")).toBe("0");
+    expect(redisValues.get("metronome:user_credit_state:ws_test:u_test")).toBe(
+      "capped"
+    );
+    expect(redisValues.get("metronome:pool_credit_status:ws_test")).toBe(
+      "active"
+    );
   });
 
   it("falls back to DB when one cache flag is missing and heals the missing flag", async () => {
-    redisValues.set("metronome:user_cap:ws_test:u_test", "0");
+    redisValues.set("metronome:user_credit_state:ws_test:u_test", "on_pool");
 
     mockFetchWorkspaceById.mockResolvedValue({
       sId: "ws_test",
@@ -182,8 +182,12 @@ describe("isUserBlocked", () => {
     const blocked = await isUserBlocked("ws_test", "u_test");
 
     expect(blocked).toBe("credits_exhausted");
-    expect(redisValues.get("metronome:user_cap:ws_test:u_test")).toBe("0");
-    expect(redisValues.get("metronome:pool_depleted:ws_test")).toBe("1");
+    expect(redisValues.get("metronome:user_credit_state:ws_test:u_test")).toBe(
+      "on_pool"
+    );
+    expect(redisValues.get("metronome:pool_credit_status:ws_test")).toBe(
+      "depleted"
+    );
   });
 });
 
