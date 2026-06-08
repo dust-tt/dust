@@ -53,6 +53,7 @@ import { useAgentMessageStream } from "@app/hooks/useAgentMessageStream";
 import { useDeleteAgentMessage } from "@app/hooks/useDeleteAgentMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useRetryMessage } from "@app/hooks/useRetryMessage";
+import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { CONTEXT_WINDOW_DOC_URL } from "@app/lib/api/assistant/errors";
 import type { FetchConversationMessageResponseLight } from "@app/lib/api/assistant/messages";
 import config from "@app/lib/api/config";
@@ -1327,6 +1328,29 @@ function AgentMessageContent({
     .filter((file) => isSupportedImageContentType(file.contentType))
     .filter((file) => file.fileId && !referencedFileIds.has(file.fileId));
 
+  const inProgressImageCount = Array.from(
+    agentMessage.streaming.actionProgress.values()
+  ).filter(({ progress }) => {
+    const output = progress?._meta?.data?.output;
+    return output !== undefined && isImageProgressOutput(output);
+  }).length;
+
+  const allImages = [
+    ...completedImages.map((image) => ({
+      imageUrl: `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${image.fileId}?action=view&version=processed`,
+      downloadUrl: `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${image.fileId}?action=download`,
+      alt: image.title,
+      title: image.title,
+      isLoading: false,
+    })),
+    ...Array.from({ length: inProgressImageCount }, (_, i) => ({
+      imageUrl: "",
+      alt: `Generating image ${i + 1}`,
+      title: `Generating image ${i + 1}`,
+      isGenerating: true,
+    })),
+  ];
+
   const generatedFiles = filesFromMessage.filter(
     (file) =>
       !isSupportedImageContentType(file.contentType) &&
@@ -1353,17 +1377,7 @@ function AgentMessageContent({
         <AgentMessageInteractiveContentGeneratedFiles
           files={interactiveFiles}
         />
-        {completedImages.length > 0 && (
-          <InteractiveImageGrid
-            images={completedImages.map((image) => ({
-              imageUrl: `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${image.fileId}?action=view&version=processed`,
-              downloadUrl: `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${image.fileId}?action=download`,
-              alt: image.title,
-              title: image.title,
-              isLoading: false,
-            }))}
-          />
-        )}
+        {allImages.length > 0 && <InteractiveImageGrid images={allImages} />}
 
         {agentMessage.content !== null &&
           agentMessage.content !== "" &&

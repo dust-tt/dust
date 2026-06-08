@@ -186,6 +186,7 @@ export interface ImageGenerationPlaceholderProps {
   alt?: string;
   label?: string;
   size?: number;
+  fill?: boolean;
   className?: string;
 }
 
@@ -196,6 +197,7 @@ export function ImageGenerationPlaceholder({
   alt = "Generated image",
   label = "Creating image",
   size = 260,
+  fill = false,
   className,
 }: ImageGenerationPlaceholderProps) {
   const shouldReduceMotion = useReducedMotion();
@@ -225,11 +227,12 @@ export function ImageGenerationPlaceholder({
   return (
     <div
       className={cn(
-        "s-relative s-overflow-hidden s-shrink-0 s-rounded-2xl",
+        "s-overflow-hidden s-rounded-2xl",
         "s-bg-muted-background dark:s-bg-muted-background-night",
+        fill ? "s-absolute s-inset-0" : "s-relative s-shrink-0",
         className
       )}
-      style={{ width: size, height: size }}
+      style={fill ? undefined : { width: size, height: size }}
     >
       <div
         style={{
