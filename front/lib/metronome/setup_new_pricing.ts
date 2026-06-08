@@ -401,13 +401,20 @@ const ALL_SEAT_SUBSCRIPTIONS: PackageSubscription[] = [
 ];
 
 // Per-seat INDIVIDUAL AWU credit attached to the Free Seat SEAT_BASED
-// subscription. Issued exactly once per seat:
-//   - `duration: { value: 1, unit: "DAYS" }` stops the recurrence after the
-//     first commit (which fires on contract start / seat assignment), so the
-//     credit is never re-issued.
-//   - `commit_duration: { value: 100, unit: "YEARS" }`... not supported by
-//     Metronome (`PERIODS` only), so we approximate with 100 ANNUAL periods
-//     — effectively the lifetime of any reasonable contract.
+// subscription. Issued exactly once per seat, full 300 AWU:
+//   - `recurrence_frequency: "ANNUAL"` + `duration: { value: 1, unit: "YEARS" }`
+//     makes the schedule one-shot: the recurrence window is exactly one period,
+//     so the first commit fires on contract start (and on each seat increase
+//     within the first contract year) and the schedule closes before a second
+//     annual occurrence would refill it.
+//   - `proration: "NONE"` grants the full `access_amount`. Without it Metronome
+//     defaults to "FIRST_AND_LAST", which prorated the single commit to its
+//     share of the period — a sub-period duration (the previous 1 DAY) then
+//     granted only 1/365 of 300 (≈ 0.82 AWU).
+//   - `commit_duration: { value: 100, unit: "PERIODS" }` keeps the granted
+//     balance valid for ~100 ANNUAL periods — effectively the lifetime of any
+//     reasonable contract (it does NOT expire after the one-year recurrence
+//     window).
 //   - Not prorated on seat increase: a new free seat always gets the full
 //     300 AWU grant regardless of when in the period it was added.
 function getFreeSeatLifetimeAwuCredits(): RecurringCreditDef {
@@ -422,7 +429,8 @@ function getFreeSeatLifetimeAwuCredits(): RecurringCreditDef {
     starting_at_offset: { unit: "DAYS", value: 0 },
     applicable_product_tags: [USAGE_TAG],
     recurrence_frequency: "ANNUAL",
-    duration: { value: 1, unit: "DAYS" },
+    duration: { value: 1, unit: "YEARS" },
+    proration: "NONE",
     name: FREE_SEAT_CREDIT_NAME,
     subscription_config: {
       subscription_temporary_id: FREE_SEAT_SUBSCRIPTION.temporary_id,

@@ -220,7 +220,7 @@ export const getProductSeatSubscriptionCommitId = () =>
 
 // AWU commit priorities — lower number is consumed first.
 // Seat allocations are consumed before purchased top-ups.
-export const AWU_PRIORITY_SEAT_ALLOCATION = 200;
+export const AWU_PRIORITY_SEAT_ALLOCATION = 0;
 export const AWU_PRIORITY_PURCHASED_COMMIT = 300;
 
 // Seat commit/credit priorities
