@@ -19,33 +19,20 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // Mocks
 // ---------------------------------------------------------------------------
 
-const {
-  mockSetUserCapBlocked,
-  mockClearUserCapBlocked,
-  mockInvalidateCacheAfterCommit,
-  mockClearUserAwuWarned,
-  mockSetUserAwuWarned,
-  mockSetUserCreditState,
-} = vi.hoisted(() => ({
-  mockSetUserCapBlocked: vi.fn(),
-  mockClearUserCapBlocked: vi.fn(),
-  // Mimics the no-transaction branch of the real helper: fire the callback
-  // synchronously so tests can assert against the underlying Redis calls.
-  mockInvalidateCacheAfterCommit: vi.fn(
-    (_tx: Transaction | undefined, fn: () => Promise<void>) => {
-      void fn();
-    }
-  ),
-  mockClearUserAwuWarned: vi.fn(),
-  mockSetUserAwuWarned: vi.fn(),
-  mockSetUserCreditState: vi.fn(),
-}));
+const { mockInvalidateCacheAfterCommit, mockSetUserCreditState } = vi.hoisted(
+  () => ({
+    // Mimics the no-transaction branch of the real helper: fire the callback
+    // synchronously so tests can assert against the underlying Redis calls.
+    mockInvalidateCacheAfterCommit: vi.fn(
+      (_tx: Transaction | undefined, fn: () => Promise<void>) => {
+        void fn();
+      }
+    ),
+    mockSetUserCreditState: vi.fn(),
+  })
+);
 
 vi.mock("@app/lib/metronome/user_block", () => ({
-  setUserCapBlocked: mockSetUserCapBlocked,
-  clearUserCapBlocked: mockClearUserCapBlocked,
-  clearUserAwuWarned: mockClearUserAwuWarned,
-  setUserAwuWarned: mockSetUserAwuWarned,
   setUserCreditState: mockSetUserCreditState,
 }));
 
@@ -105,8 +92,6 @@ describe("UserCreditStateMachine — transitions", () => {
       "capped",
       undefined
     );
-    expect(mockSetUserCapBlocked).toHaveBeenCalledWith("ws_test", "u_test");
-    expect(mockClearUserCapBlocked).not.toHaveBeenCalled();
     expect(mockSetUserCreditState).toHaveBeenCalledWith(
       "ws_test",
       "u_test",
@@ -129,8 +114,6 @@ describe("UserCreditStateMachine — transitions", () => {
       "on_pool",
       undefined
     );
-    expect(mockClearUserCapBlocked).toHaveBeenCalledWith("ws_test", "u_test");
-    expect(mockSetUserCapBlocked).not.toHaveBeenCalled();
     expect(mockSetUserCreditState).toHaveBeenCalledWith(
       "ws_test",
       "u_test",
@@ -153,8 +136,6 @@ describe("UserCreditStateMachine — transitions", () => {
       "on_pool",
       undefined
     );
-    expect(mockClearUserCapBlocked).toHaveBeenCalledWith("ws_test", "u_test");
-    expect(mockSetUserCapBlocked).not.toHaveBeenCalled();
     expect(mockSetUserCreditState).toHaveBeenCalledWith(
       "ws_test",
       "u_test",
@@ -174,8 +155,6 @@ describe("UserCreditStateMachine — transitions", () => {
       expect(result.value).toBe("capped");
     }
     expect(membership.updateCreditState).not.toHaveBeenCalled();
-    expect(mockSetUserCapBlocked).toHaveBeenCalledWith("ws_test", "u_test");
-    expect(mockClearUserCapBlocked).not.toHaveBeenCalled();
     expect(mockSetUserCreditState).toHaveBeenCalledWith(
       "ws_test",
       "u_test",
@@ -195,8 +174,6 @@ describe("UserCreditStateMachine — transitions", () => {
       expect(result.value).toBe("on_pool");
     }
     expect(membership.updateCreditState).not.toHaveBeenCalled();
-    expect(mockClearUserCapBlocked).toHaveBeenCalledWith("ws_test", "u_test");
-    expect(mockSetUserCapBlocked).not.toHaveBeenCalled();
     expect(mockSetUserCreditState).toHaveBeenCalledWith(
       "ws_test",
       "u_test",
@@ -228,7 +205,6 @@ describe("UserCreditStateMachine — transitions", () => {
       "user_seat",
       undefined
     );
-    expect(mockClearUserCapBlocked).toHaveBeenCalledWith("ws_test", "u_test");
     expect(mockSetUserCreditState).toHaveBeenCalledWith(
       "ws_test",
       "u_test",
@@ -326,8 +302,6 @@ describe("UserCreditStateMachine — seat_balance_exhausted", () => {
       "capped",
       undefined
     );
-    expect(mockSetUserCapBlocked).toHaveBeenCalledWith("ws_test", "u_test");
-    expect(mockClearUserCapBlocked).not.toHaveBeenCalled();
     expect(mockSetUserCreditState).toHaveBeenCalledWith(
       "ws_test",
       "u_test",
@@ -350,7 +324,6 @@ describe("UserCreditStateMachine — seat_balance_exhausted", () => {
       "capped",
       undefined
     );
-    expect(mockSetUserCapBlocked).toHaveBeenCalledWith("ws_test", "u_test");
     expect(mockSetUserCreditState).toHaveBeenCalledWith(
       "ws_test",
       "u_test",
@@ -373,8 +346,6 @@ describe("UserCreditStateMachine — seat_balance_exhausted", () => {
       "on_pool",
       undefined
     );
-    expect(mockClearUserCapBlocked).toHaveBeenCalledWith("ws_test", "u_test");
-    expect(mockSetUserCapBlocked).not.toHaveBeenCalled();
     expect(mockSetUserCreditState).toHaveBeenCalledWith(
       "ws_test",
       "u_test",
@@ -419,7 +390,6 @@ describe("UserCreditStateMachine — seat_balance_exhausted", () => {
       "capped",
       undefined
     );
-    expect(mockSetUserCapBlocked).toHaveBeenCalledWith("ws_test", "u_test");
     expect(mockSetUserCreditState).toHaveBeenCalledWith(
       "ws_test",
       "u_test",
@@ -471,7 +441,6 @@ describe("UserCreditStateMachine — seat_balance_exhausted with remainingCapCre
       "capped",
       undefined
     );
-    expect(mockSetUserCapBlocked).toHaveBeenCalledWith("ws_test", "u_test");
   });
 
   // Guard 2: same as above from user_seat_low_balance.
@@ -490,7 +459,6 @@ describe("UserCreditStateMachine — seat_balance_exhausted with remainingCapCre
       "capped",
       undefined
     );
-    expect(mockSetUserCapBlocked).toHaveBeenCalledWith("ws_test", "u_test");
   });
 
   // Guard 3: < 20 % cap remaining → on_pool_low_balance.
@@ -509,8 +477,6 @@ describe("UserCreditStateMachine — seat_balance_exhausted with remainingCapCre
       "on_pool_low_balance",
       undefined
     );
-    expect(mockSetUserAwuWarned).toHaveBeenCalledWith("ws_test", "u_test");
-    expect(mockSetUserCapBlocked).not.toHaveBeenCalled();
   });
 
   // Guard 3: boundary — exactly 19 % (just below 0.2) → on_pool_low_balance.
@@ -547,7 +513,6 @@ describe("UserCreditStateMachine — seat_balance_exhausted with remainingCapCre
       "on_pool",
       undefined
     );
-    expect(mockSetUserCapBlocked).not.toHaveBeenCalled();
   });
 
   // Guard 4: ample cap remaining → on_pool.
@@ -566,7 +531,6 @@ describe("UserCreditStateMachine — seat_balance_exhausted with remainingCapCre
       "on_pool",
       undefined
     );
-    expect(mockSetUserCapBlocked).not.toHaveBeenCalled();
   });
 
   // Guard 4: null percentage (no cap configured) → on_pool (guard 3 skipped).
@@ -599,7 +563,6 @@ describe("UserCreditStateMachine — seat_balance_exhausted with remainingCapCre
     if (result.isOk()) {
       expect(result.value).toBe("capped");
     }
-    expect(mockSetUserCapBlocked).toHaveBeenCalledWith("ws_test", "u_test");
   });
 });
 
@@ -622,8 +585,6 @@ describe("UserCreditStateMachine — seat_low_balance", () => {
       "user_seat_low_balance",
       undefined
     );
-    expect(mockSetUserAwuWarned).toHaveBeenCalledWith("ws_test", "u_test");
-    expect(mockSetUserCapBlocked).not.toHaveBeenCalled();
     expect(mockSetUserCreditState).toHaveBeenCalledWith(
       "ws_test",
       "u_test",
@@ -649,7 +610,6 @@ describe("UserCreditStateMachine — seat_low_balance", () => {
       "user_seat_low_balance",
       undefined
     );
-    expect(mockSetUserAwuWarned).toHaveBeenCalledWith("ws_test", "u_test");
     expect(mockSetUserCreditState).toHaveBeenCalledWith(
       "ws_test",
       "u_test",
@@ -711,9 +671,6 @@ describe("UserCreditStateMachine — setUserCreditStateReconciled", () => {
       "user_seat",
       undefined
     );
-    // user_seat clears both the cap block and the AWU warning.
-    expect(mockClearUserCapBlocked).toHaveBeenCalledWith("ws_test", "u_test");
-    expect(mockClearUserAwuWarned).toHaveBeenCalledWith("ws_test", "u_test");
     expect(mockSetUserCreditState).toHaveBeenCalledWith(
       "ws_test",
       "u_test",

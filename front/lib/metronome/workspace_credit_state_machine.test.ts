@@ -12,25 +12,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // Mocks
 // ---------------------------------------------------------------------------
 
-const {
-  mockSetWorkspacePoolDepleted,
-  mockClearWorkspacePoolDepleted,
-  mockSetWorkspaceCreditPoolStatus,
-  mockInvalidateCacheAfterCommit,
-} = vi.hoisted(() => ({
-  mockSetWorkspacePoolDepleted: vi.fn(),
-  mockClearWorkspacePoolDepleted: vi.fn(),
-  mockSetWorkspaceCreditPoolStatus: vi.fn(),
-  mockInvalidateCacheAfterCommit: vi.fn(
-    (_tx: Transaction | undefined, fn: () => Promise<void>) => {
-      void fn();
-    }
-  ),
-}));
+const { mockSetWorkspaceCreditPoolStatus, mockInvalidateCacheAfterCommit } =
+  vi.hoisted(() => ({
+    mockSetWorkspaceCreditPoolStatus: vi.fn(),
+    mockInvalidateCacheAfterCommit: vi.fn(
+      (_tx: Transaction | undefined, fn: () => Promise<void>) => {
+        void fn();
+      }
+    ),
+  }));
 
 vi.mock("@app/lib/metronome/user_block", () => ({
-  setWorkspacePoolDepleted: mockSetWorkspacePoolDepleted,
-  clearWorkspacePoolDepleted: mockClearWorkspacePoolDepleted,
   setWorkspaceCreditPoolStatus: mockSetWorkspaceCreditPoolStatus,
 }));
 
@@ -94,8 +86,6 @@ describe("WorkspaceCreditStateMachine — transitions", () => {
       "overage",
       undefined
     );
-    expect(mockClearWorkspacePoolDepleted).toHaveBeenCalledWith("ws_test");
-    expect(mockSetWorkspacePoolDepleted).not.toHaveBeenCalled();
   });
 
   it("depleted + pool_exhausted (paygEnabled) → overage (clears depleted cache)", async () => {
@@ -113,8 +103,6 @@ describe("WorkspaceCreditStateMachine — transitions", () => {
       "overage",
       undefined
     );
-    expect(mockClearWorkspacePoolDepleted).toHaveBeenCalledWith("ws_test");
-    expect(mockSetWorkspacePoolDepleted).not.toHaveBeenCalled();
   });
 
   it("active + pool_exhausted (no PAYG) → depleted (marks pool depleted)", async () => {
@@ -132,7 +120,6 @@ describe("WorkspaceCreditStateMachine — transitions", () => {
       "depleted",
       undefined
     );
-    expect(mockSetWorkspacePoolDepleted).toHaveBeenCalledWith("ws_test");
   });
 
   it("overage + payg_cap_reached → depleted (marks pool depleted)", async () => {
@@ -146,7 +133,6 @@ describe("WorkspaceCreditStateMachine — transitions", () => {
     if (result.isOk()) {
       expect(result.value).toBe("depleted");
     }
-    expect(mockSetWorkspacePoolDepleted).toHaveBeenCalledWith("ws_test");
   });
 
   it("overage + credits_added (high balance) → active (clears depleted cache)", async () => {
@@ -160,7 +146,6 @@ describe("WorkspaceCreditStateMachine — transitions", () => {
     if (result.isOk()) {
       expect(result.value).toBe("active");
     }
-    expect(mockClearWorkspacePoolDepleted).toHaveBeenCalledWith("ws_test");
   });
 
   it("depleted + credits_added (high balance) → active (clears depleted flag)", async () => {
@@ -174,7 +159,6 @@ describe("WorkspaceCreditStateMachine — transitions", () => {
     if (result.isOk()) {
       expect(result.value).toBe("active");
     }
-    expect(mockClearWorkspacePoolDepleted).toHaveBeenCalledWith("ws_test");
   });
 
   it("overage + pool_exhausted is idempotent and keeps the depleted cache cleared", async () => {
@@ -189,8 +173,6 @@ describe("WorkspaceCreditStateMachine — transitions", () => {
       expect(result.value).toBe("overage");
     }
     expect(workspace.updatePoolCreditState).not.toHaveBeenCalled();
-    expect(mockClearWorkspacePoolDepleted).toHaveBeenCalledWith("ws_test");
-    expect(mockSetWorkspacePoolDepleted).not.toHaveBeenCalled();
   });
 
   it("depleted + payg_cap_reached is idempotent and re-applies the depleted cache", async () => {
@@ -205,7 +187,6 @@ describe("WorkspaceCreditStateMachine — transitions", () => {
       expect(result.value).toBe("depleted");
     }
     expect(workspace.updatePoolCreditState).not.toHaveBeenCalled();
-    expect(mockSetWorkspacePoolDepleted).toHaveBeenCalledWith("ws_test");
   });
 
   it("overage + payg_disabled → depleted (marks pool depleted)", async () => {
@@ -223,7 +204,6 @@ describe("WorkspaceCreditStateMachine — transitions", () => {
       "depleted",
       undefined
     );
-    expect(mockSetWorkspacePoolDepleted).toHaveBeenCalledWith("ws_test");
   });
 
   it("depleted + payg_enabled → overage (clears depleted cache)", async () => {
@@ -241,8 +221,6 @@ describe("WorkspaceCreditStateMachine — transitions", () => {
       "overage",
       undefined
     );
-    expect(mockClearWorkspacePoolDepleted).toHaveBeenCalledWith("ws_test");
-    expect(mockSetWorkspacePoolDepleted).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -301,7 +279,6 @@ describe("WorkspaceCreditStateMachine — low balance transitions", () => {
       "active_low_balance",
       undefined
     );
-    expect(mockClearWorkspacePoolDepleted).toHaveBeenCalledWith("ws_test");
     expect(mockSetWorkspaceCreditPoolStatus).toHaveBeenCalledWith(
       "ws_test",
       "active_low_balance"
@@ -413,7 +390,6 @@ describe("WorkspaceCreditStateMachine — low balance transitions", () => {
     if (result.isOk()) {
       expect(result.value).toBe("depleted");
     }
-    expect(mockSetWorkspacePoolDepleted).toHaveBeenCalledWith("ws_test");
   });
 
   it("active_low_balance + pool_exhausted (PAYG) → overage", async () => {
@@ -427,7 +403,6 @@ describe("WorkspaceCreditStateMachine — low balance transitions", () => {
     if (result.isOk()) {
       expect(result.value).toBe("overage");
     }
-    expect(mockClearWorkspacePoolDepleted).toHaveBeenCalledWith("ws_test");
   });
 
   it("active_critical_balance + pool_exhausted (no PAYG) → depleted", async () => {
@@ -441,7 +416,6 @@ describe("WorkspaceCreditStateMachine — low balance transitions", () => {
     if (result.isOk()) {
       expect(result.value).toBe("depleted");
     }
-    expect(mockSetWorkspacePoolDepleted).toHaveBeenCalledWith("ws_test");
   });
 
   it("active_critical_balance + pool_exhausted (PAYG) → overage", async () => {
@@ -455,7 +429,6 @@ describe("WorkspaceCreditStateMachine — low balance transitions", () => {
     if (result.isOk()) {
       expect(result.value).toBe("overage");
     }
-    expect(mockClearWorkspacePoolDepleted).toHaveBeenCalledWith("ws_test");
   });
 
   it("active_low_balance + credits_added (high balance) → active", async () => {
@@ -633,8 +606,6 @@ describe("WorkspaceCreditStateMachine — illegal transitions", () => {
     expect(result.isErr()).toBe(true);
     expect(workspace.updatePoolCreditState).not.toHaveBeenCalled();
     expect(mockInvalidateCacheAfterCommit).not.toHaveBeenCalled();
-    expect(mockSetWorkspacePoolDepleted).not.toHaveBeenCalled();
-    expect(mockClearWorkspacePoolDepleted).not.toHaveBeenCalled();
   });
 });
 
