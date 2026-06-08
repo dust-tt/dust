@@ -84,9 +84,7 @@ export const NavigationSidebar = React.forwardRef<
           <SidebarBanners />
         </div>
         {navs.length > 1 && (
-          <NavTabPill
-            value={currentTab?.id ?? "conversations"}
-          >
+          <NavTabPill value={currentTab?.id ?? "conversations"}>
             <NavTabPillList className="mx-sidebar-side-spacing">
               {navs.map((tab) => (
                 <div key={tab.id} ref={tab.ref ?? undefined}>
@@ -116,7 +114,11 @@ export const NavigationSidebar = React.forwardRef<
               </div>
             </NavTabPillList>
             {navs.map((tab) => (
-              <NavTabPillContent key={tab.id} value={tab.id} className="mx-sidebar-side-spacing-half">
+              <NavTabPillContent
+                key={tab.id}
+                value={tab.id}
+                className="mx-sidebar-side-spacing-half"
+              >
                 <NavigationList>
                   {subNavigation &&
                     tab.isCurrent(activePath) &&
