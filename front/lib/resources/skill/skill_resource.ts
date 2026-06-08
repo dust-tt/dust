@@ -1750,12 +1750,22 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   private async updateActiveAgentsRequirements(
     auth: Authenticator,
-    { previousRequestedSpaceIds }: { previousRequestedSpaceIds: ModelId[] },
+    {
+      previousRequestedSpaceIds,
+      newRequestedSpaceIds = this.requestedSpaceIds,
+    }: {
+      // The spaces the skill previously contributed before the change
+      previousRequestedSpaceIds: ModelId[];
+      // The spaces the skill contributes after the change. Defaults to the
+      // skill's current `requestedSpaceIds`, but callers can override it (e.g.
+      // archiving treats the skill as contributing no spaces).
+      newRequestedSpaceIds?: ModelId[];
+    },
     { transaction }: { transaction?: Transaction }
   ): Promise<void> {
     if (
-      previousRequestedSpaceIds.length === this.requestedSpaceIds.length &&
-      hasAll(previousRequestedSpaceIds, this.requestedSpaceIds)
+      previousRequestedSpaceIds.length === newRequestedSpaceIds.length &&
+      hasAll(previousRequestedSpaceIds, newRequestedSpaceIds)
     ) {
       // Requested spaces didn't change, skip.
       return;
@@ -1769,7 +1779,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
 
     const spaceIdsRemovedFromThisSkill = previousRequestedSpaceIds.filter(
-      (spaceId) => !this.requestedSpaceIds.includes(spaceId)
+      (spaceId) => !newRequestedSpaceIds.includes(spaceId)
     );
 
     const workspace = auth.getNonNullableWorkspace();
@@ -1852,7 +1862,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       const newSpaceIds = uniq(
         agent.requestedSpaceIds
           .filter((id) => !spaceIdsToRemoveFromAgent.has(id))
-          .concat(this.requestedSpaceIds)
+          .concat(newRequestedSpaceIds)
       );
 
       await updateAgentRequirements(
@@ -2310,9 +2320,23 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       // so they can be restored when the skill is unarchived.
       const [count] = await this.update({ status: "archived" }, transaction);
 
-      // Suspend all editor group memberships for this skill.
-      if (count > 0 && this.editorGroup) {
-        await this.editorGroup.suspendMembers(auth, { transaction });
+      if (count > 0) {
+        // The skill no longer contributes any space requirement: drop its
+        // spaces from the agents using it (unless another active capability
+        // still requires them).
+        await this.updateActiveAgentsRequirements(
+          auth,
+          {
+            previousRequestedSpaceIds: this.requestedSpaceIds,
+            newRequestedSpaceIds: [],
+          },
+          { transaction }
+        );
+
+        // Suspend all editor group memberships for this skill.
+        if (this.editorGroup) {
+          await this.editorGroup.suspendMembers(auth, { transaction });
+        }
       }
 
       return count;
@@ -2324,12 +2348,29 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   async restore(auth: Authenticator): Promise<{ affectedCount: number }> {
     assert(this.canWrite(auth), "User is not authorized to restore this skill");
 
-    const [affectedCount] = await this.update({ status: "active" });
+    const affectedCount = await withTransaction(async (transaction) => {
+      const [count] = await this.update({ status: "active" }, transaction);
 
-    // Restore all editor group memberships (set suspended → active).
-    if (affectedCount > 0 && this.editorGroup) {
-      await this.editorGroup.restoreMembers(auth);
-    }
+      if (count > 0) {
+        // The skill contributes its space requirements again: add them back to
+        // the agents using it.
+        await this.updateActiveAgentsRequirements(
+          auth,
+          {
+            previousRequestedSpaceIds: [],
+            newRequestedSpaceIds: this.requestedSpaceIds,
+          },
+          { transaction }
+        );
+
+        // Restore all editor group memberships (set suspended → active).
+        if (this.editorGroup) {
+          await this.editorGroup.restoreMembers(auth, { transaction });
+        }
+      }
+
+      return count;
+    });
 
     return { affectedCount };
   }

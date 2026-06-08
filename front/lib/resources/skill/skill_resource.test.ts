@@ -1,3 +1,4 @@
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { SkillDataSourceConfigurationModel } from "@app/lib/models/skill";
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
@@ -1002,6 +1003,97 @@ describe("SkillResource", () => {
       expect(membershipsAfterRestore.every((m) => m.status === "active")).toBe(
         true
       );
+    });
+
+    it("removes the skill's space requirements from agents when archiving and adds them back when restoring", async () => {
+      const restrictedSpace = await SpaceFactory.regular(testContext.workspace);
+      await GroupSpaceFactory.associate(
+        restrictedSpace,
+        testContext.globalGroup
+      );
+
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Skill With Space To Archive",
+        requestedSpaceIds: [restrictedSpace.id],
+      });
+
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        {
+          name: "Agent With Skill Space",
+          requestedSpaceIds: [restrictedSpace.id],
+        }
+      );
+
+      await SkillFactory.linkToAgent(testContext.authenticator, {
+        skillId: skill.id,
+        agentConfigurationId: agent.id,
+      });
+
+      // Archiving the skill should drop its space from the agent's requirements.
+      await skill.archive(testContext.authenticator);
+
+      const agentAfterArchive = await getAgentConfiguration(
+        testContext.authenticator,
+        { agentId: agent.sId, variant: "light" }
+      );
+      expect(agentAfterArchive?.requestedSpaceIds).not.toContain(
+        restrictedSpace.sId
+      );
+
+      // Restoring the skill should add its space back to the agent's requirements.
+      await skill.restore(testContext.authenticator);
+
+      const agentAfterRestore = await getAgentConfiguration(
+        testContext.authenticator,
+        { agentId: agent.sId, variant: "light" }
+      );
+      expect(agentAfterRestore?.requestedSpaceIds).toContain(
+        restrictedSpace.sId
+      );
+    });
+
+    it("keeps a space on the agent when archiving a skill if another active skill still requires it", async () => {
+      const sharedSpace = await SpaceFactory.regular(testContext.workspace);
+      await GroupSpaceFactory.associate(sharedSpace, testContext.globalGroup);
+
+      const skill1 = await SkillFactory.create(testContext.authenticator, {
+        name: "Skill 1 Sharing Space",
+        requestedSpaceIds: [sharedSpace.id],
+      });
+      const skill2 = await SkillFactory.create(testContext.authenticator, {
+        name: "Skill 2 Sharing Space",
+        requestedSpaceIds: [sharedSpace.id],
+      });
+
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        {
+          name: "Agent With Two Skills",
+          requestedSpaceIds: [sharedSpace.id],
+        }
+      );
+
+      await SkillFactory.linkToAgent(testContext.authenticator, {
+        skillId: skill1.id,
+        agentConfigurationId: agent.id,
+      });
+      await SkillFactory.linkToAgent(testContext.authenticator, {
+        skillId: skill2.id,
+        agentConfigurationId: agent.id,
+      });
+
+      // Archiving skill1 must not remove sharedSpace because skill2 still requires it.
+      await skill1.archive(testContext.authenticator);
+
+      const agentAfter = await getAgentConfiguration(
+        testContext.authenticator,
+        {
+          agentId: agent.sId,
+          variant: "light",
+        }
+      );
+      expect(agentAfter?.requestedSpaceIds).toContain(sharedSpace.sId);
     });
   });
 
