@@ -106,6 +106,7 @@ import {
   DATA_SOURCE_FILE_NAME_DRAG_MIME,
 } from "./FreeButtonSwitch";
 import { Breadcrumbs, type BreadcrumbsItem } from "./BreadcrumbsDnd";
+import { ConversationTopSection } from "./ConversationTopSection";
 import { DataTable } from "./DataTableDnd";
 import { FilePreviewPanel } from "./FilePreviewPanel";
 import { InputBar, type InputBarTaskCommand } from "./InputBar";
@@ -1268,13 +1269,39 @@ function GroupConversationTabContent({
   value,
   contentClassName,
   fullBleed = false,
+  topBox,
   children,
 }: {
   value: string;
   contentClassName?: string;
   fullBleed?: boolean;
+  topBox?: ReactNode;
   children: ReactNode;
 }) {
+  // When `topBox` is provided, mirror the NewConversation layout: a tall top
+  // region holding the header + input, with the rest of the content scrolling
+  // below as the whole page scrolls.
+  if (topBox) {
+    return (
+      <TabsContent value={value}>
+        <div className="s-flex s-h-full s-w-full s-flex-col s-overflow-y-auto">
+          <ConversationTopSection>{topBox}</ConversationTopSection>
+          {/* Bottom portion: grows with its content; the page scrolls as a whole. */}
+          <div className="s-flex s-flex-none s-justify-center s-px-4 s-pb-8">
+            <div
+              className={cn(
+                "s-flex s-w-full s-max-w-4xl s-flex-col s-gap-3",
+                contentClassName
+              )}
+            >
+              {children}
+            </div>
+          </div>
+        </div>
+      </TabsContent>
+    );
+  }
+
   return (
     <TabsContent value={value}>
       <div
@@ -3557,15 +3584,19 @@ export function GroupConversationView({
         className="s-flex s-min-h-0 s-flex-1 s-flex-col"
       >
         {/* Conversations Tab */}
-        <GroupConversationTabContent value="conversations">
-          {/* New conversation section */}
-          {greeting && (
-            <h2 className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
-              {greeting}
-            </h2>
-          )}
-          <InputBar placeholder={`Start a conversation in ${space.name}`} />
-
+        <GroupConversationTabContent
+          value="conversations"
+          topBox={
+            <>
+              {greeting && (
+                <h2 className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
+                  {greeting}
+                </h2>
+              )}
+              <InputBar placeholder={`Start a conversation in ${space.name}`} />
+            </>
+          }
+        >
           {!hasHistory && (
             <ProjectSetupEmptyState onSetupProject={handleSetupProject} />
           )}
@@ -3898,14 +3929,23 @@ export function GroupConversationView({
         </GroupConversationTabContent>
 
         {/* Tasks Tab */}
-        <GroupConversationTabContent value="todos" contentClassName="s-gap-4">
-          <div className="s-flex s-flex-col s-gap-3">
-            <TodoInputBar
-              placeholder="Describe the tasks to create"
-              onCreateTasks={handleCreateTodoSuggestions}
-            />
-          </div>
-
+        <GroupConversationTabContent
+          value="todos"
+          contentClassName="s-gap-4"
+          topBox={
+            <>
+              {greeting && (
+                <h2 className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
+                  {greeting}
+                </h2>
+              )}
+              <TodoInputBar
+                placeholder="Describe the tasks to create"
+                onCreateTasks={handleCreateTodoSuggestions}
+              />
+            </>
+          }
+        >
           {isShowingTodoSuggestions && (
             <SuggestionBox
               status={todoSuggestionStatus}

@@ -31,6 +31,7 @@ import { type ComponentType, useEffect, useRef, useState } from "react";
 
 import { mockAgents, mockUsers } from "../data";
 import type { Agent, Space } from "../data/types";
+import { ConversationTopSection } from "./ConversationTopSection";
 import { FreeButtonSwitch } from "./FreeButtonSwitch";
 import { InputBar } from "./InputBar";
 
@@ -501,58 +502,55 @@ export function NewConversation({
       ref={scrollRef}
       className="s-flex s-h-full s-w-full s-flex-col s-overflow-y-auto s-bg-background dark:s-bg-background-night"
     >
-      {/* Top portion: 30% of the height, content vertically centered. */}
-      <div className="s-flex s-h-[30%] s-min-h-60 s-flex-none s-items-center s-justify-center s-px-4">
-        <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-4">
-          <div className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
-            {greeting}
-          </div>
-          <div className="s-flex s-items-center s-gap-3">
-            <div className="s-min-w-0 s-flex-1 s-heading-lg s-text-foreground dark:s-text-foreground-night">
-              New conversation
-            </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  isSelect
-                  icon={newPodIcon}
-                  label={newPodLabel}
-                  tooltip="Choose a pod"
-                />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuRadioGroup
-                  value={newConversationPodId ?? "my-pod"}
-                  onValueChange={(v) =>
-                    setNewConversationPodId(v === "my-pod" ? null : v)
-                  }
-                >
-                  <DropdownMenuRadioItem
-                    value="my-pod"
-                    label="My Pod"
-                    icon={User03}
-                  />
-                  {spaces.map((space) => {
-                    const isRestricted =
-                      space.id.charCodeAt(space.id.length - 1) % 2 === 0;
-                    return (
-                      <DropdownMenuRadioItem
-                        key={space.id}
-                        value={space.id}
-                        label={space.name}
-                        icon={isRestricted ? Cube01 : CubeOutline}
-                      />
-                    );
-                  })}
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-          <InputBar placeholder="Ask a question" />
+      <ConversationTopSection>
+        <div className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
+          {greeting}
         </div>
-      </div>
+        <div className="s-flex s-items-center s-gap-3">
+          <div className="s-min-w-0 s-flex-1 s-heading-lg s-text-foreground dark:s-text-foreground-night">
+            New conversation
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                isSelect
+                icon={newPodIcon}
+                label={newPodLabel}
+                tooltip="Choose a pod"
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuRadioGroup
+                value={newConversationPodId ?? "my-pod"}
+                onValueChange={(v) =>
+                  setNewConversationPodId(v === "my-pod" ? null : v)
+                }
+              >
+                <DropdownMenuRadioItem
+                  value="my-pod"
+                  label="My Pod"
+                  icon={User03}
+                />
+                {spaces.map((space) => {
+                  const isRestricted =
+                    space.id.charCodeAt(space.id.length - 1) % 2 === 0;
+                  return (
+                    <DropdownMenuRadioItem
+                      key={space.id}
+                      value={space.id}
+                      label={space.name}
+                      icon={isRestricted ? Cube01 : CubeOutline}
+                    />
+                  );
+                })}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+        <InputBar placeholder="Ask a question" />
+      </ConversationTopSection>
       {/* Bottom portion: grows with its content; the page scrolls as a whole. */}
       <div className="s-flex s-flex-none s-justify-center s-px-4 s-pb-8">
         <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-3">
