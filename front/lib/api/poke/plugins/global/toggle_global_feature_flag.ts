@@ -111,7 +111,10 @@ export const toggleGlobalFeatureFlagPlugin = createPlugin({
       if (launchResult.isErr()) {
         return new Err(launchResult.error);
       }
-      workflowMessage = ` MCP server view backfill workflow started (${launchResult.value}).`;
+      workflowMessage =
+        launchResult.value.outcome === "started"
+          ? ` MCP server view backfill workflow started (${launchResult.value.workflowId}).`
+          : ` MCP server view backfill workflow is already running; newly eligible workspaces will be covered by the daily schedule (${launchResult.value.workflowId}).`;
     }
 
     return new Ok({

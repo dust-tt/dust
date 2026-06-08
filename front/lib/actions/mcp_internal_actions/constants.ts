@@ -235,6 +235,9 @@ export type MCPServerAvailability = (typeof MCP_SERVER_AVAILABILITY)[number];
 export const INTERNAL_MCP_SERVERS = {
   // Note:
   // ids should be stable, do not change them when moving internal servers to production as it would break existing agents.
+  // If an auto/auto_hidden_builder server is gated with isRestricted, update the SQL pre-filter hints in
+  // temporal/ensure_mcp_server_views/activities.ts so the recurring MCP server view backfill can find
+  // affected workspaces without scanning every workspace unnecessarily.
 
   github: {
     id: 1,

@@ -120,6 +120,12 @@ type CandidateAutoMCPServer = {
   feature?: WhitelistableFeature;
 };
 
+type CandidateAutoMCPServerSelection = {
+  candidates: CandidateAutoMCPServer[];
+  skippedRestrictedAutoServerNames: AutoInternalMCPServerNameType[];
+  usedFullScanFallback: boolean;
+};
+
 type DefaultSpacesByWorkspace = {
   systemSpaceModelId?: ModelId;
   globalSpaceModelId?: ModelId;
@@ -142,26 +148,47 @@ function getFeatureHintedAutoMCPServerNames(
   return hint?.serverNames ?? [];
 }
 
+function getAutoMCPServerNames(): AutoInternalMCPServerNameType[] {
+  return AVAILABLE_INTERNAL_MCP_SERVER_NAMES.filter(
+    isAutoInternalMCPServerName
+  );
+}
+
+function getBroadCandidateAutoMCPServers(): CandidateAutoMCPServer[] {
+  return getAutoMCPServerNames().map((name) => ({
+    name,
+    feature: FEATURE_FLAG_BY_AUTO_MCP_SERVER_NAME.get(name),
+  }));
+}
+
 function getCandidateAutoMCPServers({
   triggeringFeature,
 }: {
   triggeringFeature?: WhitelistableFeature;
-}): CandidateAutoMCPServer[] {
+}): CandidateAutoMCPServerSelection {
   if (triggeringFeature) {
-    return getFeatureHintedAutoMCPServerNames(triggeringFeature).map(
-      (name) => ({
+    const hintedNames = getFeatureHintedAutoMCPServerNames(triggeringFeature);
+    if (hintedNames.length === 0) {
+      return {
+        candidates: getBroadCandidateAutoMCPServers(),
+        skippedRestrictedAutoServerNames: [],
+        usedFullScanFallback: true,
+      };
+    }
+
+    return {
+      candidates: hintedNames.map((name) => ({
         name,
         feature: triggeringFeature,
-      })
-    );
+      })),
+      skippedRestrictedAutoServerNames: [],
+      usedFullScanFallback: false,
+    };
   }
 
   const candidates: CandidateAutoMCPServer[] = [];
-  for (const name of AVAILABLE_INTERNAL_MCP_SERVER_NAMES) {
-    if (!isAutoInternalMCPServerName(name)) {
-      continue;
-    }
-
+  const skippedRestrictedAutoServerNames: AutoInternalMCPServerNameType[] = [];
+  for (const name of getAutoMCPServerNames()) {
     if (INTERNAL_MCP_SERVERS[name].isRestricted === undefined) {
       candidates.push({ name });
       continue;
@@ -175,10 +202,17 @@ function getCandidateAutoMCPServers({
 
     if (PLAN_GATED_AUTO_MCP_SERVER_NAMES.has(name)) {
       candidates.push({ name });
+      continue;
     }
+
+    skippedRestrictedAutoServerNames.push(name);
   }
 
-  return candidates;
+  return {
+    candidates,
+    skippedRestrictedAutoServerNames,
+    usedFullScanFallback: false,
+  };
 }
 
 function getFeatureKey({
@@ -201,27 +235,6 @@ function getViewKey({
   spaceModelId: ModelId;
 }): string {
   return `${workspaceModelId}:${internalMCPServerId}:${spaceModelId}`;
-}
-
-function isRolloutIncreaseTarget({
-  workspaceModelId,
-  previousRolloutPercentage,
-  rolloutPercentage,
-}: {
-  workspaceModelId: ModelId;
-  previousRolloutPercentage: number;
-  rolloutPercentage: number;
-}): boolean {
-  return (
-    GlobalFeatureFlagResource.isInRollout(
-      workspaceModelId,
-      rolloutPercentage
-    ) &&
-    !GlobalFeatureFlagResource.isInRollout(
-      workspaceModelId,
-      previousRolloutPercentage
-    )
-  );
 }
 
 function isFeatureEnabledForWorkspace({
@@ -252,11 +265,10 @@ function isFeatureEnabledForWorkspace({
     trigger.triggeringFeature === feature &&
     trigger.rolloutPercentage !== undefined
   ) {
-    return isRolloutIncreaseTarget({
+    return GlobalFeatureFlagResource.isInRollout(
       workspaceModelId,
-      previousRolloutPercentage: trigger.previousRolloutPercentage ?? 0,
-      rolloutPercentage: trigger.rolloutPercentage,
-    });
+      trigger.rolloutPercentage
+    );
   }
 
   const rolloutPercentage = globalRolloutByFeature.get(feature);
@@ -320,7 +332,29 @@ export async function getAffectedMCPServerViewsWorkspaceBatchActivity({
     previousRolloutPercentage,
     rolloutPercentage,
   };
-  const candidates = getCandidateAutoMCPServers({ triggeringFeature });
+  const { candidates, skippedRestrictedAutoServerNames, usedFullScanFallback } =
+    getCandidateAutoMCPServers({ triggeringFeature });
+
+  if (usedFullScanFallback && lastProcessedWorkspaceModelId === 0) {
+    logger.warn(
+      {
+        triggeringFeature,
+        candidates: candidates.map((candidate) => candidate.name),
+      },
+      "[Ensure MCP Server Views] Triggering feature has no MCP server hint, falling back to broad candidate scan."
+    );
+  }
+
+  if (
+    !triggeringFeature &&
+    skippedRestrictedAutoServerNames.length > 0 &&
+    lastProcessedWorkspaceModelId === 0
+  ) {
+    logger.warn(
+      { skippedRestrictedAutoServerNames },
+      "[Ensure MCP Server Views] Restricted auto MCP servers are not covered by SQL pre-filter hints and will be skipped by the daily scan."
+    );
+  }
 
   if (candidates.length === 0) {
     logger.info(
@@ -603,10 +637,13 @@ export async function ensureMCPServerViewsForWorkspaceBatchActivity({
   const results = await concurrentExecutor(
     workspaces,
     async (workspace): Promise<WorkspaceProcessingResult> => {
+      const activityContext = Context.current();
       const workspaceLogger = logger.child({
         workspaceId: workspace.workspaceId,
         workspaceModelId: workspace.workspaceModelId,
       });
+
+      activityContext.heartbeat();
 
       try {
         const auth = await Authenticator.internalAdminForWorkspace(
@@ -620,7 +657,7 @@ export async function ensureMCPServerViewsForWorkspaceBatchActivity({
           { createdViewsCount },
           "[Ensure MCP Server Views] Ensured auto MCP server views."
         );
-        Context.current().heartbeat();
+        activityContext.heartbeat();
 
         return {
           status: "success",
@@ -633,7 +670,7 @@ export async function ensureMCPServerViewsForWorkspaceBatchActivity({
           { error },
           "[Ensure MCP Server Views] Failed ensuring auto MCP server views."
         );
-        Context.current().heartbeat();
+        activityContext.heartbeat();
 
         return {
           status: "failure",
@@ -654,14 +691,22 @@ export async function ensureMCPServerViewsForWorkspaceBatchActivity({
     0
   );
 
-  logger.info(
-    {
-      processedWorkspacesCount: workspaces.length,
-      createdViewsCount,
-      failures,
-    },
-    "[Ensure MCP Server Views] Processed affected workspace batch."
-  );
+  const batchLogPayload = {
+    processedWorkspacesCount: workspaces.length,
+    createdViewsCount,
+    failures,
+  };
+  if (failures.length > 0) {
+    logger.error(
+      batchLogPayload,
+      "[Ensure MCP Server Views] Processed affected workspace batch with failures."
+    );
+  } else {
+    logger.info(
+      batchLogPayload,
+      "[Ensure MCP Server Views] Processed affected workspace batch."
+    );
+  }
 
   return {
     processedWorkspacesCount: workspaces.length,
@@ -673,10 +718,13 @@ export async function ensureMCPServerViewsForWorkspaceBatchActivity({
 export async function logEnsureMCPServerViewsWorkflowSummaryActivity(
   summary: EnsureMCPServerViewsWorkflowSummary
 ): Promise<void> {
-  logger.info(
-    {
-      ...summary,
-    },
-    "[Ensure MCP Server Views] Workflow completed."
-  );
+  if (summary.failuresCount > 0) {
+    logger.error(
+      { ...summary },
+      "[Ensure MCP Server Views] Workflow completed with failures."
+    );
+    return;
+  }
+
+  logger.info({ ...summary }, "[Ensure MCP Server Views] Workflow completed.");
 }

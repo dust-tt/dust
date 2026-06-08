@@ -18,12 +18,21 @@ import {
 import type { EnsureMCPServerViewsWorkflowArgs } from "./workflows";
 import { ensureMCPServerViewsWorkflow } from "./workflows";
 
+export type LaunchEnsureMCPServerViewsWorkflowOutcome =
+  | "started"
+  | "already_running";
+
+export type LaunchEnsureMCPServerViewsWorkflowResult = {
+  workflowId: string;
+  outcome: LaunchEnsureMCPServerViewsWorkflowOutcome;
+};
+
 export async function launchEnsureMCPServerViewsWorkflow(
   args: Omit<
     EnsureMCPServerViewsWorkflowArgs,
     "lastProcessedWorkspaceModelId" | "summary"
   > = {}
-): Promise<Result<string, Error>> {
+): Promise<Result<LaunchEnsureMCPServerViewsWorkflowResult, Error>> {
   invalidateGlobalFeatureFlagsCache();
 
   const client = await getTemporalClientForFrontNamespace();
@@ -43,14 +52,14 @@ export async function launchEnsureMCPServerViewsWorkflow(
       { workflowId, ...args },
       "[Ensure MCP Server Views] Started workflow."
     );
-    return new Ok(workflowId);
+    return new Ok({ workflowId, outcome: "started" });
   } catch (error) {
     if (error instanceof WorkflowExecutionAlreadyStartedError) {
       logger.info(
         { workflowId, ...args },
-        "[Ensure MCP Server Views] Workflow already running, treating as success."
+        "[Ensure MCP Server Views] Workflow already running."
       );
-      return new Ok(workflowId);
+      return new Ok({ workflowId, outcome: "already_running" });
     }
 
     logger.error(
@@ -77,6 +86,9 @@ export async function launchEnsureMCPServerViewsSchedule(): Promise<
     },
     scheduleId,
     policies: {
+      // The schedule overlap policy prevents schedule-vs-schedule overlap. Direct Poke/script launches
+      // use the fixed workflow id; if a schedule action is already running under a generated id, overlap
+      // is tolerated because the activity is idempotent and worker activity concurrency is bounded.
       overlap: ScheduleOverlapPolicy.SKIP,
     },
     spec: {

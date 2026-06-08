@@ -45,6 +45,27 @@ describe("ensure MCP server views activities", () => {
     expect(affectedWorkspaceIds.has(healthyWorkspace.sId)).toBe(false);
   });
 
+  it("falls back to a broad scan for an unhinted triggering feature", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    await SpaceFactory.defaults(auth);
+
+    const result = await getAffectedMCPServerViewsWorkspaceBatchActivity({
+      lastProcessedWorkspaceModelId: workspace.id - 1,
+      batchSize: 1,
+      triggeringFeature: "advanced_notion_management",
+      previousRolloutPercentage: 0,
+      rolloutPercentage: 100,
+    });
+
+    expect(result.affectedWorkspaces).toEqual([
+      {
+        workspaceId: workspace.sId,
+        workspaceModelId: workspace.id,
+      },
+    ]);
+  });
+
   it("creates views idempotently in a batch", async () => {
     const workspace = await WorkspaceFactory.basic();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);

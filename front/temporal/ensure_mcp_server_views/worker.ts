@@ -21,7 +21,7 @@ export async function runEnsureMCPServerViewsWorker() {
     activities,
     taskQueue: QUEUE_NAME,
     maxCachedWorkflows: TEMPORAL_MAXED_CACHED_WORKFLOWS,
-    maxConcurrentActivityTaskExecutions: 4,
+    maxConcurrentActivityTaskExecutions: 2,
     connection,
     namespace,
     interceptors: {

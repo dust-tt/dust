@@ -14,7 +14,7 @@ describe("toggleGlobalFeatureFlagPlugin.execute", () => {
   beforeEach(async () => {
     vi.mocked(launchEnsureMCPServerViewsWorkflow).mockReset();
     vi.mocked(launchEnsureMCPServerViewsWorkflow).mockResolvedValue(
-      new Ok("ensure-mcp-server-views")
+      new Ok({ workflowId: "ensure-mcp-server-views", outcome: "started" })
     );
     await GlobalFeatureFlagResource.setRolloutPercentage("sandbox_tools", 0);
   });
@@ -46,6 +46,33 @@ describe("toggleGlobalFeatureFlagPlugin.execute", () => {
     });
     expect(result.value.value).toContain(
       "MCP server view backfill workflow started"
+    );
+  });
+
+  it("reports when the backfill workflow is already running on rollout increase", async () => {
+    vi.mocked(launchEnsureMCPServerViewsWorkflow).mockResolvedValueOnce(
+      new Ok({
+        workflowId: "ensure-mcp-server-views",
+        outcome: "already_running",
+      })
+    );
+    const workspace = await WorkspaceFactory.basic();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    await GlobalFeatureFlagResource.setRolloutPercentage("sandbox_tools", 10);
+
+    const result = await toggleGlobalFeatureFlagPlugin.execute(auth, null, {
+      feature: ["sandbox_tools"],
+      rolloutPercentage: 20,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (!result.isOk()) {
+      throw result.error;
+    }
+
+    expect(launchEnsureMCPServerViewsWorkflow).toHaveBeenCalledTimes(1);
+    expect(result.value.value).toContain(
+      "MCP server view backfill workflow is already running"
     );
   });
 

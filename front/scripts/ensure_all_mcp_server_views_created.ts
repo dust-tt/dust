@@ -2,7 +2,9 @@ import { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { makeScript } from "@app/scripts/helpers";
+import { getAffectedMCPServerViewsWorkspaceBatchActivity } from "@app/temporal/ensure_mcp_server_views/activities";
 import { launchEnsureMCPServerViewsWorkflow } from "@app/temporal/ensure_mcp_server_views/client";
+import { DEFAULT_SCAN_BATCH_SIZE } from "@app/temporal/ensure_mcp_server_views/config";
 
 makeScript(
   {
@@ -49,9 +51,22 @@ makeScript(
     );
 
     if (!execute) {
+      const scanResult = await getAffectedMCPServerViewsWorkspaceBatchActivity({
+        batchSize: DEFAULT_SCAN_BATCH_SIZE,
+      });
+
       parentLogger.info(
-        { concurrency },
-        "Would launch ensure MCP server views Temporal workflow."
+        {
+          concurrency,
+          scannedWorkspacesCount: scanResult.scannedWorkspacesCount,
+          affectedWorkspacesCount: scanResult.affectedWorkspaces.length,
+          affectedWorkspaceIds: scanResult.affectedWorkspaces.map(
+            (workspace) => workspace.workspaceId
+          ),
+          lastScannedWorkspaceModelId: scanResult.lastScannedWorkspaceModelId,
+          hasMore: scanResult.hasMore,
+        },
+        "Would launch ensure MCP server views Temporal workflow. First scan batch completed."
       );
       return;
     }
@@ -64,7 +79,11 @@ makeScript(
     }
 
     parentLogger.info(
-      { workflowId: launchResult.value, concurrency },
+      {
+        workflowId: launchResult.value.workflowId,
+        outcome: launchResult.value.outcome,
+        concurrency,
+      },
       "Launched ensure MCP server views Temporal workflow."
     );
   }
