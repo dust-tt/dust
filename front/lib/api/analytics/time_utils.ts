@@ -6,7 +6,7 @@ export const DAY_MS = 24 * HOUR_MS;
 
 export type WindowSize = "HOUR" | "FOUR_HOURS" | "DAY";
 
-function getWindowSizeMs(windowSize: WindowSize): number {
+export function getWindowSizeMs(windowSize: WindowSize): number {
   switch (windowSize) {
     case "HOUR":
       return HOUR_MS;

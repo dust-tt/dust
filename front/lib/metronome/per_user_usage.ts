@@ -69,10 +69,20 @@ export async function fetchPerUserAwuUsage({
   }
   const { cycleStart, cycleEnd } = periodResult.value;
   const cycleEndMs = cycleEnd.getTime();
+  const cycleStartMs = cycleStart.getTime();
 
+  // The usage endpoint requires midnight-aligned bounds, so we always query from
+  // the floored start. When the period start is not itself midnight (e.g. a
+  // contract that started mid-day), the floored start pulls in usage from before
+  // the period began. Query at HOUR granularity in that case and drop the
+  // pre-start buckets below, so we count exactly the period — matching the
+  // Metronome spend alert and the seat grant. Steady-state periods start at
+  // midnight, so this stays on DAY.
   const startingOn = floorToMidnightUTC(cycleStart).toISOString();
   const requestEnd = new Date(Math.min(cycleEndMs, Date.now()));
   const endingBefore = ceilToMidnightUTC(requestEnd).toISOString();
+  const windowSize =
+    cycleStartMs === floorToMidnightUTC(cycleStart).getTime() ? "DAY" : "HOUR";
 
   const [aiResult, toolResult] = await Promise.all([
     listMetronomeUsageWithGroups({
@@ -80,7 +90,7 @@ export async function fetchPerUserAwuUsage({
       billableMetricId: getMetricLlmProviderCostAwuId(),
       startingOn,
       endingBefore,
-      windowSize: "DAY",
+      windowSize,
       groupKey: ["user_id", USAGE_TYPE_GROUP_KEY],
       groupFilters: { [USAGE_TYPE_GROUP_KEY]: PAID_USAGE_TYPES },
     }),
@@ -89,7 +99,7 @@ export async function fetchPerUserAwuUsage({
       billableMetricId: getMetricToolInvocationsId(),
       startingOn,
       endingBefore,
-      windowSize: "DAY",
+      windowSize,
       groupKey: ["user_id", USAGE_TYPE_GROUP_KEY, "tool_category"],
       groupFilters: { [USAGE_TYPE_GROUP_KEY]: PAID_USAGE_TYPES },
     }),
@@ -106,7 +116,11 @@ export async function fetchPerUserAwuUsage({
   // AI usage: the value is already AWU spend (cost_awu, priced 1:1).
   for (const entry of aiResult.value) {
     const userId = entry.group?.["user_id"];
-    if (!userId || entry.value === null) {
+    if (
+      !userId ||
+      entry.value === null ||
+      new Date(entry.startingOn).getTime() < cycleStartMs
+    ) {
       continue;
     }
     perUser.set(userId, (perUser.get(userId) ?? 0) + entry.value);
@@ -120,6 +134,7 @@ export async function fetchPerUserAwuUsage({
     if (
       !userId ||
       entry.value === null ||
+      new Date(entry.startingOn).getTime() < cycleStartMs ||
       !category ||
       !isToolCategory(category)
     ) {

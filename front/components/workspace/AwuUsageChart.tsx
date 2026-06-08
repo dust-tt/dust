@@ -282,6 +282,15 @@ export function BaseAwuUsageChart({
   );
   const canGoNext = billingCycle.cycleEnd.getTime() <= nowMs;
 
+  // Block navigating before the contract's first period: the displayed period is
+  // the first one when the contract start falls within it.
+  const contractStartTs = awuUsageData?.contractStartTimestamp ?? null;
+  const isFirstPeriod =
+    contractStartTs !== null &&
+    billingCycle.cycleStart.getTime() <= contractStartTs &&
+    contractStartTs < billingCycle.cycleEnd.getTime();
+  const canGoPrevious = !isFirstPeriod;
+
   const availableGroupsArray = useMemo(
     () => awuUsageData?.availableGroups ?? [],
     [awuUsageData]
@@ -464,13 +473,17 @@ export function BaseAwuUsageChart({
       title={
         <div className="flex items-center gap-2">
           <span>Usage</span>
-          <Button
-            icon={ChevronLeft}
-            size="xs"
-            variant="ghost"
-            onClick={() => setSelectedPeriod(formatPeriod(previousPeriodDate))}
-            tooltip="Previous period"
-          />
+          {canGoPrevious && (
+            <Button
+              icon={ChevronLeft}
+              size="xs"
+              variant="ghost"
+              onClick={() =>
+                setSelectedPeriod(formatPeriod(previousPeriodDate))
+              }
+              tooltip="Previous period"
+            />
+          )}
           <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
             {periodLabel}
           </span>

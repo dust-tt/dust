@@ -1,10 +1,12 @@
 import {
-  aggregateToFourHourBuckets,
+  aggregateToWindowBuckets,
   getMetronomeWindowSize,
 } from "@app/lib/api/analytics/metronome_usage";
 import {
   DAY_MS,
   getTimestampsForWindow,
+  getWindowSizeMs,
+  HOUR_MS,
 } from "@app/lib/api/analytics/time_utils";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
@@ -28,6 +30,7 @@ import {
   isToolCategory,
   TOOL_CATEGORY_AWU_WEIGHTS,
 } from "@app/lib/metronome/events";
+import { getActiveContract } from "@app/lib/metronome/plan_type";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
@@ -128,6 +131,9 @@ export interface AwuUsageAvailableGroup {
 export interface GetAwuUsageResponse {
   points: AwuUsagePoint[];
   availableGroups: AwuUsageAvailableGroup[];
+  // Contract start instant (ms epoch), or null when there's no contract. The
+  // chart uses it to block navigating before the contract's first period.
+  contractStartTimestamp: number | null;
 }
 
 export type AwuUsageError =
@@ -163,10 +169,12 @@ function getLlmQueryConfig(groupBy: AwuUsageGroupByType): {
       };
     case "user":
       // Group by user, excluding programmatic traffic (not user-attributable).
+      // Drop entries with no user_id (the "unknown" bucket).
       return {
         groupKey: ["user_id", USAGE_TYPE_GROUP_KEY],
         bucketProp: "user_id",
         groupFilters: { [USAGE_TYPE_GROUP_KEY]: NON_PROGRAMMATIC_USAGE_TYPES },
+        dropKeys: [UNKNOWN_KEY],
       };
     case "api_key":
       // API-key traffic is programmatic; user traffic carries no api_key (it is
@@ -248,11 +256,15 @@ interface GroupedUsageEntry {
 // Accumulate grouped Metronome entries into bucketKey → (timestamp → value).
 // `weight` returns the value to add, or null to skip the entry. When
 // `bucketKeyOverride` is set, every entry is collapsed into that single bucket.
+// Entries starting before `minTsMs` are dropped (used to trim the pre-start
+// portion of a mid-day-started period). When `aggregateToMs` is set, the
+// per-bucket hourly map is re-bucketed up to that window (DAY/FOUR_HOURS).
 function bucketGroupedEntries(
   entries: GroupedUsageEntry[],
   bucketProp: string,
   weight: (entry: GroupedUsageEntry) => number | null,
-  needsFourHourAggregation: boolean,
+  minTsMs: number,
+  aggregateToMs: number | null,
   bucketKeyOverride?: string
 ): Map<string, Map<number, number>> {
   const map = new Map<string, Map<number, number>>();
@@ -261,8 +273,11 @@ function bucketGroupedEntries(
     if (w === null) {
       continue;
     }
-    const key = bucketKeyOverride ?? entry.group?.[bucketProp] ?? UNKNOWN_KEY;
     const ts = new Date(entry.startingOn).getTime();
+    if (ts < minTsMs) {
+      continue;
+    }
+    const key = bucketKeyOverride ?? entry.group?.[bucketProp] ?? UNKNOWN_KEY;
     let tsMap = map.get(key);
     if (!tsMap) {
       tsMap = new Map();
@@ -270,9 +285,9 @@ function bucketGroupedEntries(
     }
     tsMap.set(ts, (tsMap.get(ts) ?? 0) + w);
   }
-  if (needsFourHourAggregation) {
+  if (aggregateToMs !== null) {
     for (const key of [...map.keys()]) {
-      map.set(key, aggregateToFourHourBuckets(map.get(key)!));
+      map.set(key, aggregateToWindowBuckets(map.get(key)!, aggregateToMs));
     }
   }
   return map;
@@ -382,26 +397,56 @@ export async function getAwuUsage(
   if (selectedPeriod) {
     referenceDate.setUTCDate(billingCycleStartDay);
   }
-  const { cycleStart: periodStart, cycleEnd: periodEnd } =
+  const { cycleStart: clientPeriodStart, cycleEnd: periodEnd } =
     getBillingCycleFromDay(billingCycleStartDay, referenceDate, true);
+
+  // Never show usage from before the contract began. The client-side cycle is
+  // anchored to a day-of-month, so for the contract's first (mid-month) period
+  // it can start before the contract; clamp it up to the real contract start.
+  const contract = await getActiveContract(workspace.sId);
+  const contractStart = contract ? new Date(contract.starting_at) : null;
+  const periodStart =
+    contractStart && contractStart.getTime() > clientPeriodStart.getTime()
+      ? contractStart
+      : clientPeriodStart;
+  const periodStartMs = periodStart.getTime();
 
   const TEN_DAYS_MS = 10 * DAY_MS;
   const cappedEnd = new Date(
     Math.min(periodEnd.getTime(), Date.now() + TEN_DAYS_MS)
   );
 
+  // The usage endpoint requires midnight-aligned bounds. When the period start
+  // is not itself midnight (a mid-day contract start), query hourly so we can
+  // drop the pre-start buckets and aggregate the rest up to the display window.
+  const hourSplit = periodStartMs !== floorToMidnightUTC(periodStart).getTime();
+  const displayWindowMs = getWindowSizeMs(windowSize);
+  const metronomeApiWindowSize = hourSplit
+    ? "HOUR"
+    : getMetronomeWindowSize(windowSize);
+  // Re-bucket hourly fetches up to the display window (covers both the hour-split
+  // case and the pre-existing FOUR_HOURS display, which also fetches hourly).
+  const aggregateToMs =
+    metronomeApiWindowSize === "HOUR" && displayWindowMs > HOUR_MS
+      ? displayWindowMs
+      : null;
+
   const rangeStart = floorToMidnightUTC(periodStart);
   const rangeEnd = ceilToMidnightUTC(cappedEnd);
   const startingOn = rangeStart.toISOString();
   const endingBefore = rangeEnd.toISOString();
 
-  const timestamps = getTimestampsForWindow(rangeStart, rangeEnd, windowSize);
+  // Build the axis from the display-window floor of the period start (never
+  // before it), so we don't emit zero points for the trimmed pre-start span.
+  const displayFloorMs = periodStartMs - (periodStartMs % displayWindowMs);
+  const timestamps = getTimestampsForWindow(
+    new Date(displayFloorMs),
+    rangeEnd,
+    windowSize
+  );
 
   const groupValues: Record<string, Map<number, number>> = {};
   const availableGroups: AwuUsageAvailableGroup[] = [];
-
-  const metronomeApiWindowSize = getMetronomeWindowSize(windowSize);
-  const needsFourHourAggregation = windowSize === "FOUR_HOURS";
 
   if (!groupBy) {
     const result = await listMetronomeUsage({
@@ -422,10 +467,13 @@ export async function getAwuUsage(
     let totalMap = new Map<number, number>();
     for (const entry of result.value) {
       const ts = new Date(entry.startTimestamp).getTime();
+      if (ts < periodStartMs) {
+        continue;
+      }
       totalMap.set(ts, (totalMap.get(ts) ?? 0) + (entry.value ?? 0));
     }
-    if (needsFourHourAggregation) {
-      totalMap = aggregateToFourHourBuckets(totalMap);
+    if (aggregateToMs !== null) {
+      totalMap = aggregateToWindowBuckets(totalMap, aggregateToMs);
     }
     groupValues["total"] = totalMap;
 
@@ -486,7 +534,8 @@ export async function getAwuUsage(
       llmResult.value,
       llmCfg.bucketProp,
       (entry) => entry.value ?? 0,
-      needsFourHourAggregation,
+      periodStartMs,
+      aggregateToMs,
       llmCfg.bucketKeyOverride
     );
 
@@ -503,7 +552,8 @@ export async function getAwuUsage(
           }
           return entry.value * TOOL_CATEGORY_AWU_WEIGHTS[category];
         },
-        needsFourHourAggregation
+        periodStartMs,
+        aggregateToMs
       );
       mergeBuckets(mergedGroupMap, toolMap);
     }
@@ -591,5 +641,9 @@ export async function getAwuUsage(
     availableGroups.push({ groupKey: "others", groupLabel: "Others" });
   }
 
-  return new Ok({ points, availableGroups });
+  return new Ok({
+    points,
+    availableGroups,
+    contractStartTimestamp: contractStart?.getTime() ?? null,
+  });
 }
