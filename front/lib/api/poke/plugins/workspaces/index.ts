@@ -36,6 +36,7 @@ export * from "./revoke_coupon";
 export * from "./revoke_users";
 export * from "./run_reinforcement_workflow";
 export * from "./send_onboarding_conversation";
+export * from "./set_web_providers";
 export * from "./soft_delete_conversation";
 export * from "./switch_to_metronome_billing";
 export * from "./sync_metronome_seats";

@@ -11,12 +11,11 @@ import type {
   ScrapeResponse,
 } from "@mendable/firecrawl-js";
 import FirecrawlApp, { FirecrawlError } from "@mendable/firecrawl-js";
-import { z } from "zod";
+import Exa from "exa-js";
 
 const credentials = dustManagedServiceCredentials();
 
 const SPIDER_API_BASE_URL = "https://api.spider.cloud";
-const EXA_API_BASE_URL = "https://api.exa.ai";
 
 const BINARY_CONTENT_TYPE_PREFIXES = [
   "image/",
@@ -222,23 +221,6 @@ type SpiderScrapeResult = {
 };
 
 type SpiderScrapeResponse = SpiderScrapeResult | SpiderScrapeResult[];
-
-const ExaContentsResponseSchema = z.object({
-  results: z
-    .array(
-      z.object({
-        url: z.string().optional(),
-        text: z.string().optional(),
-        title: z.string().optional(),
-        extras: z
-          .object({
-            links: z.array(z.string()).optional(),
-          })
-          .optional(),
-      })
-    )
-    .optional(),
-});
 
 const normalizeSpiderScrapeResult = (
   json: SpiderScrapeResponse
@@ -626,7 +608,6 @@ const browseUrlExa = async (
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   format: "markdown" | "html" = "markdown",
   options?: {
-    // Currently ignored for Exa; kept for signature parity.
     screenshotMode?: "none" | "viewport" | "fullPage";
     links?: boolean;
   }
@@ -635,26 +616,44 @@ const browseUrlExa = async (
     throw new Error("util/webbrowse: a DUST_MANAGED_EXA_API_KEY is required");
   }
 
-  let res: Response;
+  const exa = new Exa(credentials.EXA_API_KEY);
+
   try {
-    res = await clientFetch(`${EXA_API_BASE_URL}/contents`, {
-      method: "POST",
-      headers: {
-        "x-api-key": credentials.EXA_API_KEY,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        urls: [url],
-        text: true,
-        ...(options?.links ? { extras: { links: true } } : {}),
-      }),
+    const result = await exa.getContents([url], {
+      text: true,
+      extras: { links: options?.links ? 10 : 0 },
     });
+    const content = result.results?.[0];
+
+    if (!content) {
+      logger.error({ url }, "[Exa] Empty scrape response");
+      return {
+        error: "No content found in Exa response",
+        status: 500,
+        url,
+      };
+    }
+
+    if (!content.text) {
+      logger.error({ url }, "[Exa] No text content in response");
+      return {
+        error: "No text content found in Exa response",
+        status: 500,
+        url,
+      };
+    }
+
+    return {
+      markdown: content.text,
+      title: content.title ?? undefined,
+      description: undefined,
+      status: 200,
+      url: content.url ?? url,
+      links: options?.links ? content.extras?.links : undefined,
+    };
   } catch (error) {
     logger.error(
-      {
-        error,
-        url,
-      },
+      { error, url },
       "[Exa] Network or fetch error while scraping URL"
     );
     return {
@@ -663,76 +662,6 @@ const browseUrlExa = async (
       url,
     };
   }
-  let json: unknown;
-
-  if (!res.ok) {
-    logger.error({ url, status: res.status }, "[Exa] Scrape request failed");
-    return {
-      error: `Exa scrape request failed with status ${res.status}`,
-      status: res.status,
-      url,
-    };
-  }
-
-  try {
-    json = await res.json();
-  } catch (error) {
-    logger.error(
-      {
-        error,
-        url,
-        status: res.status,
-      },
-      "[Exa] Failed to parse JSON response"
-    );
-    return {
-      error: `Failed to parse Exa response: ${errorToString(error)}`,
-      status: res.status || 500,
-      url,
-    };
-  }
-  const parsed = ExaContentsResponseSchema.safeParse(json);
-  if (!parsed.success) {
-    logger.error(
-      { url, error: parsed.error },
-      "[Exa] Invalid response format from Exa"
-    );
-    return {
-      error: "Invalid response format from Exa",
-      status: 500,
-      url,
-    };
-  }
-  const result = parsed.data.results?.[0];
-
-  if (!result) {
-    logger.error({ url, status: res.status }, "[Exa] Empty scrape response");
-    return {
-      error: "No content found in Exa response",
-      status: 500,
-      url,
-    };
-  }
-  if (!result.text) {
-    logger.error(
-      { url, status: res.status },
-      "[Exa] No text content in response"
-    );
-    return {
-      error: "No text content found in Exa response",
-      status: 500,
-      url,
-    };
-  }
-
-  return {
-    markdown: result.text,
-    links: options?.links ? result.extras?.links : undefined,
-    title: result.title,
-    description: undefined,
-    status: 200,
-    url: result.url ?? url,
-  };
 };
 
 /**

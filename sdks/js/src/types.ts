@@ -767,8 +767,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "metronome_billing_usage_page"
   | "user_settings_v2"
   | "metronome_cp_checkout"
-  | "exa_search"
-  | "exa_browse"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;

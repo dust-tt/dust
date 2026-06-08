@@ -535,6 +535,8 @@ export interface WorkspaceMetadata {
   sandboxAllowAgentEgressRequests?: boolean;
   reinforcementCapMicroUsd?: number;
   selfImprovementCapPerSkillMicroUsd?: number;
+  webSearchProvider?: "exa" | "firecrawl";
+  webBrowseProvider?: "exa" | "firecrawl" | "spider";
 }
 
 export async function updateWorkspaceMetadata(

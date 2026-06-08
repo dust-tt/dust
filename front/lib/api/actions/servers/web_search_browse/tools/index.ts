@@ -19,7 +19,7 @@ import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/gu
 import { WEB_SEARCH_BROWSE_TOOLS_METADATA } from "@app/lib/api/actions/servers/web_search_browse/metadata";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
-import { hasFeatureFlag } from "@app/lib/auth";
+import type { WorkspaceMetadata } from "@app/lib/api/workspace";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -56,9 +56,10 @@ async function handleWebsearch(
   const { websearchResultCount, citationsOffset } =
     agentLoopRunContext.stepContext;
 
-  const useExa = await hasFeatureFlag(extra.auth, "exa_search");
+  const { webSearchProvider } =
+    (extra.auth.getNonNullableWorkspace().metadata as WorkspaceMetadata) ?? {};
   const websearchRes = await webSearch({
-    provider: useExa ? "exa" : "firecrawl",
+    provider: webSearchProvider ?? "firecrawl",
     query,
     num: websearchResultCount,
   });
@@ -121,12 +122,10 @@ async function handleWebbrowser(
     "global_disable_firecrawl"
   );
 
-  const useExa = await hasFeatureFlag(extra.auth, "exa_browse");
-  const browsingProvider = useExa
-    ? "exa"
-    : isFirecrawlDisabled
-      ? "spider"
-      : "firecrawl";
+  const { webBrowseProvider } =
+    (extra.auth.getNonNullableWorkspace().metadata as WorkspaceMetadata) ?? {};
+  const browsingProvider =
+    webBrowseProvider ?? (isFirecrawlDisabled ? "spider" : "firecrawl");
 
   const results = await browseUrls(urls, 8, "markdown", {
     screenshotMode,

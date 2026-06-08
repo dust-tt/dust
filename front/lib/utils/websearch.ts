@@ -6,6 +6,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import FirecrawlApp from "@mendable/firecrawl-js";
+import Exa from "exa-js";
 import isNil from "lodash/isNil";
 import omitBy from "lodash/omitBy";
 
@@ -13,7 +14,6 @@ const credentials = dustManagedServiceCredentials();
 
 const SERPAPI_BASE_URL = "https://serpapi.com";
 const SERPER_BASE_URL = "https://google.serper.dev";
-const EXA_BASE_URL = "https://api.exa.ai";
 
 export type BaseWebSearchParams = {
   query: string;
@@ -237,51 +237,31 @@ const exaSearch = async ({
       new Error("utils/websearch: a DUST_MANAGED_EXA_API_KEY is required")
     );
   }
-  let res: Response;
+  const exa = new Exa(exaApiKey);
+
   try {
-    // eslint-disable-next-line no-restricted-globals
-    res = await fetch(`${EXA_BASE_URL}/search`, {
-      method: "POST",
-      headers: {
-        "x-api-key": exaApiKey,
-        "Content-Type": "application/json",
+    const res = await exa.search(query, {
+      numResults: num ?? 10,
+      contents: {
+        highlights: true,
       },
-      body: JSON.stringify({
-        query,
-        numResults: num ?? 10,
-        contents: { highlights: true },
-      }),
     });
-  } catch (error: any) {
-    logger.error({ error }, "Unexpected error on Exa search");
-    return new Err(normalizeError(error));
-  }
 
-  if (res.ok) {
-    const json = await res.json();
-    if (!("results" in json) || !Array.isArray(json.results)) {
-      return new Ok([]);
-    }
-
-    const results: SearchResultItem[] = json.results.map((result: any) => ({
+    const results: SearchResultItem[] = res.results.map((result) => ({
       title: result.title ?? result.url ?? "Untitled result",
       link: result.url,
       snippet: result.highlights?.[0] ?? "",
     }));
 
     return new Ok(results);
+  } catch (error) {
+    logger.error({ error }, "Unexpected error on Exa search");
+    return new Err(normalizeError(error));
   }
-
-  logger.error(
-    { status: res.status, statusText: res.statusText },
-    "Bad request on Exa"
-  );
-
-  return new Err(new Error(`Bad request on Exa: ${res.statusText}`));
 };
 
 /**
- * Make a web search using SerpAPI, Serper or Firecrawl
+ * Make a web search using SerpAPI, Serper, Firecrawl or Exa
  * @param {SearchParams} params
  */
 export const webSearch = async (
