@@ -1341,13 +1341,13 @@ function AgentMessageContent({
       downloadUrl: `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${image.fileId}?action=download`,
       alt: image.title,
       title: image.title,
-      isLoading: false as const,
+      isLoading: false,
     })),
     ...Array.from({ length: inProgressImageCount }, (_, i) => ({
       imageUrl: "",
       alt: `Generating image ${i + 1}`,
       title: `Generating image ${i + 1}`,
-      isGenerating: true as const,
+      isGenerating: true,
     })),
   ];
 
