@@ -11,6 +11,7 @@ import { DeletedMessage } from "@app/components/assistant/conversation/DeletedMe
 import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessage";
 import type { FeedbackSelectorBaseProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
+import { useAutoOpenFilesPanel } from "@app/components/assistant/conversation/files_panel/useAutoOpenFilesPanel";
 import { useGenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { useAutoOpenInteractiveContent } from "@app/components/assistant/conversation/interactive_content/useAutoOpenInteractiveContent";
 import type {
@@ -1243,6 +1244,9 @@ function AgentMessageContent({
     agentMessage,
     isLastMessage,
   });
+
+  // Auto-open file explorer panel when regular generated files are available.
+  useAutoOpenFilesPanel({ agentMessage, isLastMessage });
 
   const blockedActionElement = blockedAction ? (
     <BlockedAction
