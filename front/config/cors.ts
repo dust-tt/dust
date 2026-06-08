@@ -19,6 +19,8 @@ const STATIC_ALLOWED_ORIGINS = [
   // Next.js server (landing page, OAuth, API routes).
   "https://dust.tt",
   "https://eu.dust.tt",
+  // Marketing edge (standalone marketing Next.js app).
+  "https://marketing-edge.dust.tt",
 ] as const;
 
 const ALLOWED_ORIGIN_PATTERNS = [
@@ -49,6 +51,9 @@ export const ALLOWED_HEADERS = [
   "x-build-date",
   "x-hackerone-research",
   "x-request-origin",
+  // Marketing site (academy quiz/progress endpoints).
+  "x-academy-browser-id",
+  "x-csrf-token",
   // Datadog RUM tracing headers (injected automatically by the browser SDK).
   "traceparent",
   "tracestate",

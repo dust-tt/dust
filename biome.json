@@ -53,7 +53,8 @@
       "connectors/**",
       "front-spa/**",
       "front/**",
-      "front-api/**"
+      "front-api/**",
+      "marketing/**"
     ],
     "rules": {
       "recommended": false,

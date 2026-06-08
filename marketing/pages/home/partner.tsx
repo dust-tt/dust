@@ -1,0 +1,78 @@
+import { Grid, H2, P } from "@marketing/components/home/ContentComponents";
+import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
+import LandingLayout from "@marketing/components/home/LandingLayout";
+import { PageMetadata } from "@marketing/components/home/PageMetadata";
+import { PartnerForm } from "@marketing/components/home/PartnerForm";
+import {
+  PartnerHero,
+  PartnerIdealPartners,
+  PartnerSocialProof,
+} from "@marketing/components/home/PartnerHero";
+import { Button } from "@dust-tt/sparkle";
+import type { GetStaticProps } from "next";
+import { useRouter } from "next/router";
+import type { ReactElement } from "react";
+
+// Temporarily route partner sign-ups to a HubSpot-hosted form while we fix
+// tracking on the embedded PartnerForm. Flip back to true once resolved.
+const SHOW_PARTNER_FORM = false;
+const PARTNER_HUBSPOT_FORM_URL =
+  "https://share-eu1.hsforms.com/2FctvfmFxRQqllduT_JmlTA2dzwm3";
+
+export const getStaticProps: GetStaticProps = async () => {
+  return {
+    props: {
+      gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
+      shape: 0,
+    },
+  };
+};
+
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
+export default function Partner() {
+  const router = useRouter();
+
+  return (
+    <>
+      <PageMetadata
+        title="Become a Dust Partner: Join Our Partner Network"
+        description="Partner with Dust to help businesses deploy AI agents. Join our network of resellers, implementation partners, and technology partners."
+        pathname={router.asPath}
+      />
+      <div className="flex w-full flex-col justify-center gap-12 pb-24">
+        <PartnerHero />
+        <Grid>
+          <div className="col-span-12 sm:col-span-12 md:col-span-12 lg:col-span-8 lg:col-start-2 xl:col-span-8 xl:col-start-2 2xl:col-start-3">
+            <div className="flex flex-col gap-4 pb-8">
+              <H2>Join the Partner Waitlist</H2>
+              <P size="md" className="text-muted-foreground">
+                Partners are central to our next stage at Dust. Together with
+                agencies, system integrators, consultants, and creators,
+                we&apos;ll accelerate how companies adopt AI and transform how
+                work gets done. Join the waitlist and we&apos;ll reach out as
+                soon as we&apos;re ready to explore a partnership with you.
+              </P>
+            </div>
+            {SHOW_PARTNER_FORM ? (
+              <PartnerForm />
+            ) : (
+              <a
+                href={PARTNER_HUBSPOT_FORM_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Button variant="highlight" size="md" label="Register here" />
+              </a>
+            )}
+          </div>
+        </Grid>
+        <PartnerSocialProof />
+        <PartnerIdealPartners />
+      </div>
+    </>
+  );
+}
+
+Partner.getLayout = (page: ReactElement, pageProps: LandingLayoutProps) => {
+  return <LandingLayout pageProps={pageProps}>{page}</LandingLayout>;
+};
