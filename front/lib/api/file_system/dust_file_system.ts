@@ -50,9 +50,14 @@ export type {
 } from "@app/lib/api/file_system/types";
 export { DustFileSystemError } from "@app/lib/api/file_system/types";
 
-// ---------------------------------------------------------------------------
-// Scoped-path prefix parsing
-// ---------------------------------------------------------------------------
+// eslint-disable-next-line no-control-regex
+const CONTROL_CHAR_RE = /[\x00-\x1F\x7F-\x9F]/g;
+
+// Strip control characters, trim whitespace, and NFC-normalize. macOS uploads commonly arrive
+// in NFD; NFC normalization keeps paths stable when consumers echo them back.
+export function sanitizeFileSystemName(name: string): string {
+  return name.replace(CONTROL_CHAR_RE, "").trim().normalize("NFC");
+}
 
 type ParsedScopedPrefix =
   | { kind: "conversation"; id: string }
@@ -466,7 +471,8 @@ export class DustFileSystem {
    * This is the primary defense against path-traversal attacks.
    */
   static normalizeScopedPath(scopedPath: string): string | null {
-    const normalized = path.posix.normalize(scopedPath);
+    const sanitized = scopedPath.replace(CONTROL_CHAR_RE, "");
+    const normalized = path.posix.normalize(sanitized);
     if (
       normalized === ".." ||
       normalized.startsWith("../") ||
@@ -804,7 +810,10 @@ export class DustFileSystem {
     }
     if (destExists.value) {
       return new Err(
-        new DustFileSystemError("already_exists", `File name already exists`)
+        new DustFileSystemError(
+          "already_exists",
+          "File name already exists in the destination directory."
+        )
       );
     }
 
