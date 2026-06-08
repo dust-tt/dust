@@ -362,8 +362,12 @@ describe("computeAuthorizedFileAccess", () => {
   });
 
   it("uses the key owner's user when auth has no user (API key auth)", async () => {
-    const { authenticator: userAuth, workspace, user, globalGroup } =
-      await createResourceTest({});
+    const {
+      authenticator: userAuth,
+      workspace,
+      user,
+      globalGroup,
+    } = await createResourceTest({});
 
     const key = await KeyResource.makeNew(
       {
