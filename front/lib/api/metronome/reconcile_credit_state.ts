@@ -387,19 +387,7 @@ export async function reconcileWorkspaceUserCreditStates({
     );
     return;
   }
-  const usageResult = await fetchPerUserAwuUsage({
-    metronomeCustomerId,
-    metronomeContractId,
-  });
-  if (usageResult.isErr()) {
-    logger.error(
-      { workspaceId, err: usageResult.error },
-      "[ReconcileCreditState] Failed to load per-user usage"
-    );
-    return;
-  }
   const seatBalances = seatBalancesResult.value;
-  const usageByUser = usageResult.value;
 
   // The cap-threshold caches (Metronome alert list / contract) and the
   // membership query (DB) can genuinely throw, so they stay wrapped — the
@@ -425,6 +413,25 @@ export async function reconcileWorkspaceUserCreditStates({
     );
     return;
   }
+
+  // Per-user usage is scoped to the active members' user ids (an unfiltered
+  // query is capped server-side and omits users), so load memberships first.
+  const memberUserIds = memberships
+    .map((m) => m.user?.sId)
+    .filter((sId): sId is string => sId !== undefined);
+  const usageResult = await fetchPerUserAwuUsage({
+    metronomeCustomerId,
+    metronomeContractId,
+    userIds: memberUserIds,
+  });
+  if (usageResult.isErr()) {
+    logger.error(
+      { workspaceId, err: usageResult.error },
+      "[ReconcileCreditState] Failed to load per-user usage"
+    );
+    return;
+  }
+  const usageByUser = usageResult.value;
 
   // One UPDATE per drifting membership. Bounded by the workspace's seat count
   // and gated on the `continue` above, so steady-state writes are ~zero; even

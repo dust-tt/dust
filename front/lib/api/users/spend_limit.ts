@@ -167,6 +167,7 @@ async function resolveLocalCapState({
   const usageResult = await fetchPerUserAwuUsage({
     metronomeCustomerId,
     metronomeContractId,
+    userIds: [userId],
   });
   if (usageResult.isErr()) {
     logger.warn(

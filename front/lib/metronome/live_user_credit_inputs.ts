@@ -155,6 +155,7 @@ export async function fetchLiveUserCreditInputs({
     const usageResult = await fetchPerUserAwuUsage({
       metronomeCustomerId,
       metronomeContractId,
+      userIds: [userId],
     });
     if (usageResult.isErr()) {
       return new Err(
