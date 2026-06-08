@@ -6,7 +6,6 @@ describe("services", () => {
     it("contains all expected services", () => {
       expect(ALL_SERVICES).toContain("sparkle");
       expect(ALL_SERVICES).toContain("sdk");
-      expect(ALL_SERVICES).toContain("front");
       expect(ALL_SERVICES).toContain("front-api");
       expect(ALL_SERVICES).toContain("core");
       expect(ALL_SERVICES).toContain("oauth");
@@ -17,8 +16,8 @@ describe("services", () => {
       expect(ALL_SERVICES).toContain("viz");
     });
 
-    it("has 11 services total", () => {
-      expect(ALL_SERVICES).toHaveLength(11);
+    it("has 10 services total", () => {
+      expect(ALL_SERVICES).toHaveLength(10);
     });
 
     it("has sdk as first service (start order)", () => {
@@ -38,15 +37,15 @@ describe("services", () => {
     it("defines start order with SDK first, then sparkle", () => {
       const sdkIndex = ALL_SERVICES.indexOf("sdk");
       const sparkleIndex = ALL_SERVICES.indexOf("sparkle");
-      const frontIndex = ALL_SERVICES.indexOf("front");
+      const frontApiIndex = ALL_SERVICES.indexOf("front-api");
       const coreIndex = ALL_SERVICES.indexOf("core");
 
       // SDK should be first
       expect(sdkIndex).toBe(0);
       // Sparkle should be second
       expect(sparkleIndex).toBe(1);
-      // Front and core come after sparkle
-      expect(frontIndex).toBeGreaterThan(sparkleIndex);
+      // front-api and core come after sparkle
+      expect(frontApiIndex).toBeGreaterThan(sparkleIndex);
       expect(coreIndex).toBeGreaterThan(sparkleIndex);
     });
   });
@@ -56,7 +55,6 @@ describe("services", () => {
       const services: ServiceName[] = [
         "sdk",
         "sparkle",
-        "front",
         "front-api",
         "core",
         "oauth",
