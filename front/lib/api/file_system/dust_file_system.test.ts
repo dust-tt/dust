@@ -140,7 +140,7 @@ describe("DustFileSystem.forConversation", () => {
     expect(podMount!.scopedPrefix).toBe(`pod-${projectSpace.sId}`);
     expect(podMount!.sandboxMountPoint).toBe(`/files/pod-${projectSpace.sId}`);
     expect(podMount!.legacyPrefix).toBe("project");
-    expect(podMount!.legacySandboxMountPoint).toBe("/files/project");
+    expect(podMount!.legacySandboxMountPoint).toBe("/files/pod");
   });
 });
 
