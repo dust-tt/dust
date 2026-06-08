@@ -169,6 +169,7 @@ interface ChangeSeatModalProps {
   member: MemberUsageType | null;
   owner: WorkspaceType;
   seatPlans: SeatPlanResponseBody;
+  onSavingChange?: (memberId: string, isSaving: boolean) => void;
 }
 
 export function ChangeSeatModal({
@@ -177,6 +178,7 @@ export function ChangeSeatModal({
   member,
   owner,
   seatPlans,
+  onSavingChange,
 }: ChangeSeatModalProps) {
   // Keep the last non-null member so the dialog can render its content through
   // the exit animation after the parent has cleared `member`.
@@ -340,6 +342,7 @@ export function ChangeSeatModal({
     }
 
     setIsSaving(true);
+    onSavingChange?.(displayedMember.sId, true);
     try {
       const ok = await doUpdateSeatType({
         memberId: displayedMember.sId,
@@ -355,6 +358,7 @@ export function ChangeSeatModal({
       }
     } finally {
       setIsSaving(false);
+      onSavingChange?.(displayedMember.sId, false);
     }
   }
 

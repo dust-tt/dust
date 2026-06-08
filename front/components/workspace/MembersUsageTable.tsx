@@ -15,6 +15,7 @@ import {
   LoadingBlock,
   type MenuItem,
   SeatMax,
+  Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
 import type {
@@ -40,6 +41,8 @@ type RowData = {
   billingFrequency: BillingFrequency | null;
   scheduledSeatType: MembershipSeatType | null;
   scheduledSeatChangeAt: string | null;
+  isTotalAllowedUsagePending: boolean;
+  isSeatChangePending: boolean;
   menuItems: MenuItem[];
 };
 
@@ -90,6 +93,7 @@ interface AwuUsageBarProps {
   memberUsageLimit: number | null;
   limit: number | null;
   seatType: MembershipSeatType | null;
+  isTotalAllowedUsagePending: boolean;
 }
 
 const MUTED_BAR_CLASSES = {
@@ -120,6 +124,7 @@ function AwuUsageBar({
   memberUsageLimit,
   limit,
   seatType,
+  isTotalAllowedUsagePending: isPending,
 }: AwuUsageBarProps) {
   const seatColors = getSeatBarClasses(seatType);
   const allowance = memberUsageLimit ?? 0;
@@ -260,7 +265,11 @@ function AwuUsageBar({
     <div className="flex w-full flex-col gap-1">
       <div className="flex justify-between text-xs tabular-nums text-foreground dark:text-foreground-night">
         <span>{formatCredits(consumed)}</span>
-        <span>{limit === null ? "∞" : formatCredits(limit)}</span>
+        {isPending ? (
+          <Spinner size="xs" />
+        ) : (
+          <span>{limit === null ? "∞" : formatCredits(limit)}</span>
+        )}
       </div>
       {tooltipContent ? (
         <Tooltip tooltipTriggerAsChild label={tooltipContent} trigger={bar} />
@@ -300,6 +309,13 @@ const seatTypeColumn: ColumnDef<RowData, string> = {
   enableSorting: false,
   accessorFn: (row) => row.seatType ?? "",
   cell: (info: Info) => {
+    if (info.row.original.isSeatChangePending) {
+      return (
+        <DataTable.CellContent>
+          <Spinner size="xs" />
+        </DataTable.CellContent>
+      );
+    }
     const seatType = info.row.original.seatType;
     const scheduledSeatType = info.row.original.scheduledSeatType;
     const scheduledSeatChangeAt = info.row.original.scheduledSeatChangeAt;
@@ -381,6 +397,9 @@ const consumedAwuCreditsColumn: ColumnDef<RowData, string> = {
         memberUsageLimit={info.row.original.memberUsageLimit}
         limit={info.row.original.spendLimitAwuCredits}
         seatType={info.row.original.seatType}
+        isTotalAllowedUsagePending={
+          info.row.original.isTotalAllowedUsagePending
+        }
       />
     </div>
   ),
@@ -430,6 +449,8 @@ function buildColumns({
 interface MembersUsageTableProps {
   members: MemberUsageType[];
   isLoading: boolean;
+  totalAllowedUsagePendingMemberIds: ReadonlySet<string>;
+  seatChangePendingMemberIds: ReadonlySet<string>;
   seatTypeFilter: MembershipSeatType | "none" | null;
   isSeatBased: boolean;
   onChangeSeat: (member: MemberUsageType) => void;
@@ -445,6 +466,8 @@ interface MembersUsageTableProps {
 export function MembersUsageTable({
   members,
   isLoading,
+  totalAllowedUsagePendingMemberIds,
+  seatChangePendingMemberIds,
   seatTypeFilter,
   isSeatBased,
   onChangeSeat,
@@ -492,6 +515,10 @@ export function MembersUsageTable({
         billingFrequency: m.billingFrequency,
         scheduledSeatType: m.scheduledSeatType,
         scheduledSeatChangeAt: m.scheduledSeatChangeAt,
+        isTotalAllowedUsagePending: totalAllowedUsagePendingMemberIds.has(
+          m.sId
+        ),
+        isSeatChangePending: seatChangePendingMemberIds.has(m.sId),
         menuItems: [
           ...(isSeatBased
             ? [
@@ -520,7 +547,15 @@ export function MembersUsageTable({
           },
         ],
       })),
-    [filtered, isSeatBased, onChangeSeat, onRemoveSeat, onEditSpendLimit]
+    [
+      filtered,
+      totalAllowedUsagePendingMemberIds,
+      seatChangePendingMemberIds,
+      isSeatBased,
+      onChangeSeat,
+      onRemoveSeat,
+      onEditSpendLimit,
+    ]
   );
 
   const displayPeriodColumn = useMemo(

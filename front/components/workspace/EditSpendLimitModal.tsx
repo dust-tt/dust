@@ -36,6 +36,7 @@ interface EditSpendLimitModalProps {
   onClose: () => void;
   member: MemberUsageType | null;
   owner: WorkspaceType;
+  onSavingChange?: (memberId: string, isSaving: boolean) => void;
 }
 
 export function EditSpendLimitModal({
@@ -43,6 +44,7 @@ export function EditSpendLimitModal({
   onClose,
   member,
   owner,
+  onSavingChange,
 }: EditSpendLimitModalProps) {
   // Keep the last non-null member so the dialog can render its content through
   // the exit animation after the parent has cleared `member`.
@@ -146,6 +148,7 @@ export function EditSpendLimitModal({
     }
 
     setIsSaving(true);
+    onSavingChange?.(displayedMember.sId, true);
     try {
       let limit:
         | { kind: "unlimited" }
@@ -171,6 +174,7 @@ export function EditSpendLimitModal({
       }
     } finally {
       setIsSaving(false);
+      onSavingChange?.(displayedMember.sId, false);
     }
   }
 
