@@ -15,7 +15,9 @@ import {
   isAuthorizedFileRef,
   resolveAllowlistedCanonicalPath,
 } from "@app/lib/api/viz/authorized_file_access_policy";
+import { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { KeyResource } from "@app/lib/resources/key_resource";
 import { AuthorizedFileAccessModel } from "@app/lib/resources/storage/models/files";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
@@ -357,6 +359,65 @@ describe("computeAuthorizedFileAccess", () => {
         fileName: "report.csv",
       },
     ]);
+  });
+
+  it("uses the key owner's user when auth has no user (API key auth)", async () => {
+    const { authenticator: userAuth, workspace, user, globalGroup } =
+      await createResourceTest({});
+
+    const key = await KeyResource.makeNew(
+      {
+        name: "test-api-key",
+        workspaceId: globalGroup.workspaceId,
+        isSystem: false,
+        status: "active",
+        role: "builder",
+        userId: user.id,
+      },
+      [globalGroup]
+    );
+
+    const { workspaceAuth: apiKeyAuth } = await Authenticator.fromKey(
+      key,
+      workspace.sId
+    );
+    expect(apiKeyAuth.user()).toBeNull();
+
+    const conversation = await ConversationFactory.create(userAuth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+    });
+
+    const accessibleFile = await FileFactory.create(userAuth, null, {
+      contentType: "text/plain",
+      fileName: "data.txt",
+      fileSize: 10,
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: conversation.sId },
+    });
+
+    const frameFile = await FileFactory.create(userAuth, null, {
+      contentType: frameContentType,
+      fileName: "Frame.tsx",
+      fileSize: 100,
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: conversation.sId },
+    });
+
+    const frameContent = `
+      export default function Frame() {
+        const data = useFile("${accessibleFile.sId}");
+        return data;
+      }
+    `;
+
+    const result = await frameFile.computeAuthorizedFileAccess(apiKeyAuth, {
+      frameContent,
+    });
+
+    expect(result.computedByUserId).toBe(user.sId);
   });
 });
 
