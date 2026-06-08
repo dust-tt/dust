@@ -4,6 +4,7 @@ import {
 } from "@app/lib/api/files/mount_path";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import logger from "@app/logger/logger";
 import { readableToReadableStream } from "@app/types/shared/utils/streams";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
@@ -97,6 +98,9 @@ app.post(
       `attachment; filename="${encodeURIComponent(fileName)}"`;
 
     const readStream = bucket.file(normalizedPath).createReadStream();
+    readStream.on("error", (err) =>
+      logger.error({ err, filePath: normalizedPath }, "Error streaming conversation file")
+    );
     return new Response(readableToReadableStream(readStream), {
       status: 200,
       headers,

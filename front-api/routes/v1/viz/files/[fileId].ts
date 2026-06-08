@@ -5,6 +5,7 @@ import { assertVizFileAuthorized } from "@app/lib/api/viz/authorized_file_access
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
+import logger from "@app/logger/logger";
 import { isInteractiveContentType } from "@app/types/files";
 import { readableToReadableStream } from "@app/types/shared/utils/streams";
 import { unauthedApp } from "@front-api/middlewares/ctx";
@@ -148,6 +149,9 @@ app.get("/:fileId", validate("param", ParamsSchema), async (ctx) => {
   }
 
   const readStream = targetFile.getSharedReadStream(owner, "original");
+  readStream.on("error", (err) =>
+    logger.error({ err, fileId }, "Error streaming viz file")
+  );
   return new Response(readableToReadableStream(readStream), {
     status: 200,
     headers: { "Content-Type": targetFile.contentType },
