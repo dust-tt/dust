@@ -1,6 +1,7 @@
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 
 /**
@@ -44,17 +45,13 @@ export async function runOnAllWorkspaces(
   }
 
   if (filter) {
-    const filterResults = await concurrentExecutor(
-      workspaces,
-      async (workspace) => ({
-        keep: await filter(workspace),
-        workspace,
-      }),
-      { concurrency }
+    workspaces = removeNulls(
+      await concurrentExecutor(
+        workspaces,
+        async (workspace) => ((await filter(workspace)) ? workspace : null),
+        { concurrency }
+      )
     );
-    workspaces = filterResults
-      .filter(({ keep }) => keep)
-      .map(({ workspace }) => workspace);
   }
 
   await concurrentExecutor(workspaces, (workspace) => worker(workspace), {
