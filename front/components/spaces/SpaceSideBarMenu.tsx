@@ -153,7 +153,7 @@ export default function SpaceSideBarMenu({
   return (
     <div className="flex h-0 min-h-full w-full overflow-y-auto">
       <NavigationList className="w-full">
-        <div className=" mx-sidebar-side-spacing">
+        <div className="mx-sidebar-side-spacing">
           {sortedGroupedSpaces.map(({ section, spaces }, index) => {
             if (section === "restricted" && !spaces.length && !isAdmin) {
               return null;
