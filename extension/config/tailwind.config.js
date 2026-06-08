@@ -365,6 +365,7 @@ module.exports = {
       },
       spacing: {
         "sidebar-side-spacing": "1rem",
+        "sidebar-side-spacing-half": "0.5rem",
       },
       borderRadius: {
         "4xl": "2rem",

@@ -364,6 +364,7 @@ module.exports = {
     extend: {
       spacing: {
         "sidebar-side-spacing": "1rem",
+        "sidebar-side-spacing-half": "0.5rem",
       },
       transitionTimingFunction: {
         "in-quad": "cubic-bezier(.55, .085, .68, .53)",
