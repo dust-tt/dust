@@ -1943,8 +1943,8 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       get_themes: "never_ask",
       get_folders: "never_ask",
       get_generation_status: "never_ask",
-      generate: "high",
-      generate_from_template: "high",
+      generate: "low",
+      generate_from_template: "low",
     },
     toolDisplayLabels: {
       get_gammas: {
