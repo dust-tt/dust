@@ -1933,7 +1933,7 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     name: "Gamma",
     description:
       "Create and manage Gamma presentations directly from your conversations.",
-    url: "https://mcp.gamma.app",
+    url: "https://mcp.gamma.app/mcp",
     icon: "GammaLogo",
     documentationUrl: "https://developers.gamma.app",
     authMethod: "oauth-dynamic",
