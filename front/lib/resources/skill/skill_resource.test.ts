@@ -674,7 +674,6 @@ describe("SkillResource", () => {
         name: "Parent Skill",
         instructions: `Use ${skillReferenceTag}.`,
         instructionsHtml: `<p>Use ${skillReferenceHtmlTag}.</p>`,
-        enableSkillReferences: true,
         referencedSkillIds: [childSkill.sId],
       });
 
@@ -702,7 +701,6 @@ describe("SkillResource", () => {
         mcpServerViews: [],
         attachedKnowledge: [],
         requestedSpaceIds: parentSkill.requestedSpaceIds,
-        enableSkillReferences: true,
         referencedSkillIds: [childSkill.sId],
       });
 
@@ -741,7 +739,6 @@ describe("SkillResource", () => {
       const parentSkill = await SkillFactory.create(testContext.authenticator, {
         name: "Parent Skill",
         instructions: `Use ${SkillFactory.serializeSkillReferenceTag(childSkill)}.`,
-        enableSkillReferences: true,
         referencedSkillIds: [childSkill.sId],
       });
 
@@ -759,7 +756,6 @@ describe("SkillResource", () => {
         mcpServerViews: [],
         attachedKnowledge: [],
         requestedSpaceIds: [restrictedSpace.id],
-        enableSkillReferences: true,
         referencedSkillIds: [childSkill.sId],
       });
 
@@ -790,7 +786,6 @@ describe("SkillResource", () => {
         mcpServerViews: [],
         attachedKnowledge: [],
         requestedSpaceIds: parentSkill.requestedSpaceIds,
-        enableSkillReferences: true,
       });
 
       const updatedParentSkill = await SkillResource.fetchById(
@@ -816,7 +811,6 @@ describe("SkillResource", () => {
         mcpServerViews: [],
         attachedKnowledge: [],
         requestedSpaceIds: updatedParentSkill!.requestedSpaceIds,
-        enableSkillReferences: true,
         referencedSkillIds: [],
       });
 
@@ -838,7 +832,6 @@ describe("SkillResource", () => {
       const parentSkill = await SkillFactory.create(testContext.authenticator, {
         name: "Parent Skill",
         instructions: `Use ${SkillFactory.serializeSkillReferenceTag(childSkill)}.`,
-        enableSkillReferences: true,
         referencedSkillIds: [childSkill.sId],
       });
 
@@ -856,7 +849,6 @@ describe("SkillResource", () => {
         mcpServerViews: [],
         attachedKnowledge: [],
         requestedSpaceIds: [restrictedSpace.id],
-        enableSkillReferences: true,
         referencedSkillIds: [],
       });
 
@@ -879,7 +871,6 @@ describe("SkillResource", () => {
         mcpServerViews: [],
         attachedKnowledge: [],
         requestedSpaceIds: [],
-        enableSkillReferences: true,
         referencedSkillIds: [],
       });
 
@@ -899,7 +890,6 @@ describe("SkillResource", () => {
       const parentSkill = await SkillFactory.create(testContext.authenticator, {
         name: "Parent With Global Skill Reference",
         instructions: `Use ${globalSkillReferenceTag}.`,
-        enableSkillReferences: true,
         referencedSkillIds: ["frames"],
       });
 
@@ -955,7 +945,6 @@ describe("SkillResource", () => {
         mcpServerViews: [],
         attachedKnowledge: [],
         requestedSpaceIds: parentSkill.requestedSpaceIds,
-        enableSkillReferences: true,
         referencedSkillIds: [missingSkillId],
       });
 

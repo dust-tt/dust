@@ -206,11 +206,9 @@ function constructToolsSection({
 
 function constructSkillsSection({
   systemSkills,
-  hasNestedSkills = false,
   useFramesV2,
 }: {
   systemSkills: SkillResource[];
-  hasNestedSkills?: boolean;
   useFramesV2: boolean;
 }): string {
   const toolDisplayName = `${SKILL_MANAGEMENT_SERVER_NAME}${TOOL_NAME_SEPARATOR}${ENABLE_SKILL_TOOL_NAME}`;
@@ -224,21 +222,14 @@ function constructSkillsSection({
     `You can enable them using the \`${toolDisplayName}\` tool when they become relevant to the conversation.\n` +
     "- **Enabled**: Fully active with instructions loaded.\n\n" +
     "Enable skills proactively when a user's request matches a skill's purpose.\n" +
-    (hasNestedSkills
-      ? `Skill references can also appear as \`<skill id=\"...\" name=\"...\" />\` tags in user messages or enabled skill instructions. ` +
-        "These tags are strong hints that the referenced skill is relevant, including when a skill author nested one skill inside another. " +
-        `If the referenced skill would help and is not already enabled, call \`${toolDisplayName}\` with \`skillName\` set to the tag's \`name\` value.\n` +
-        "Referenced skills may not appear in the available-skills list; a tag is enough to enable the skill by name. " +
-        "Only enable skills you actually need, because enabling a skill loads its full instructions into context.\n" +
-        `Enabled skill instructions can also contain \`<unavailable_skill id=\"...\" />\` tags. ` +
-        "These mean the instructions used to reference another skill, but that skill is no longer available to this conversation, for example because skill scope or permissions changed. " +
-        "Do not try to enable unavailable skill tags.\n"
-      : `If a user message contains a \`<skill id=\"...\" name=\"...\" />\` tag, treat it as a strong hint that the ` +
-        "referenced skill is relevant: it means the user specifically mentioned this skill. If the skill is not already " +
-        `enabled, and it would help, enable it with \`${toolDisplayName}\`.\n` +
-        "It is expected that these skills do not appear in the list of available skills, they are specifically requested " +
-        "by the user and can be enabled safely." +
-        "Only enable skills you actually need, enabling a skill loads its full instructions into context.\n") +
+    `Skill references can also appear as \`<skill id=\"...\" name=\"...\" />\` tags in user messages or enabled skill instructions. ` +
+    "These tags are strong hints that the referenced skill is relevant, including when a skill author nested one skill inside another. " +
+    `If the referenced skill would help and is not already enabled, call \`${toolDisplayName}\` with \`skillName\` set to the tag's \`name\` value.\n` +
+    "Referenced skills may not appear in the available-skills list; a tag is enough to enable the skill by name. " +
+    "Only enable skills you actually need, because enabling a skill loads its full instructions into context.\n" +
+    `Enabled skill instructions can also contain \`<unavailable_skill id=\"...\" />\` tags. ` +
+    "These mean the instructions used to reference another skill, but that skill is no longer available to this conversation, for example because skill scope or permissions changed. " +
+    "Do not try to enable unavailable skill tags.\n" +
     "If you need to enable multiple skills, enable them in parallel.\n\n" +
     "When in doubt about enabling a skill, prefer enabling it as it may give you a new " +
     "perspective on the currently available context.\n";
@@ -416,7 +407,6 @@ export function constructPromptMultiActions(
     projectContext,
     isNewFileExplorer = false,
     hasSandboxTools = false,
-    hasNestedSkills = false,
     useFramesV2 = false,
     disableFormattingPrompt = false,
   }: {
@@ -439,7 +429,6 @@ export function constructPromptMultiActions(
     projectContext?: string;
     isNewFileExplorer?: boolean;
     hasSandboxTools?: boolean;
-    hasNestedSkills?: boolean;
     useFramesV2?: boolean;
     disableFormattingPrompt?: boolean;
   }
@@ -480,7 +469,6 @@ export function constructPromptMultiActions(
   });
   const skillsSection = constructSkillsSection({
     systemSkills,
-    hasNestedSkills,
     useFramesV2,
   });
   const attachmentsSection = isNewFileExplorer

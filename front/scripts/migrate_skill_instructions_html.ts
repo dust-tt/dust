@@ -22,7 +22,9 @@ import { MarkdownManager } from "@tiptap/markdown";
 import { unescape } from "html-escaper";
 import { Op } from "sequelize";
 
-const SKILL_EDITOR_EXTENSIONS = buildSkillInstructionsExtensions(true, []);
+const SKILL_EDITOR_EXTENSIONS = buildSkillInstructionsExtensions(true, [], {
+  enableSkillReferences: true,
+});
 const MARKDOWN_MANAGER = new MarkdownManager({
   extensions: SKILL_EDITOR_EXTENSIONS,
 });

@@ -9,7 +9,6 @@ import {
 import { isSkillAuthoringResultOutput } from "@app/lib/api/actions/servers/skill_authoring/rendering";
 import { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
@@ -541,7 +540,6 @@ describe("skill_authoring tools", () => {
 
   it("rejects a targeted edit that drops a nested skill tag", async () => {
     const { authenticator } = await createResourceTest({ role: "builder" });
-    await FeatureFlagFactory.basic(authenticator, "nested_skills");
 
     const childSkill = await SkillFactory.create(authenticator, {
       name: "Child Skill",
@@ -552,7 +550,6 @@ describe("skill_authoring tools", () => {
     const parentSkill = await seedSkill(authenticator, {
       name: "Parent Skill",
       instructions: originalInstructions,
-      enableSkillReferences: true,
       referencedSkillIds: [childSkill.sId],
     });
 
@@ -668,7 +665,6 @@ describe("skill_authoring tools", () => {
 
   it("keeps nested skill references in sync when editing instructions", async () => {
     const { authenticator } = await createResourceTest({ role: "builder" });
-    await FeatureFlagFactory.basic(authenticator, "nested_skills");
 
     const childSkill = await SkillFactory.create(authenticator, {
       name: "Child Skill",
@@ -680,7 +676,6 @@ describe("skill_authoring tools", () => {
     const parentSkill = await seedSkill(authenticator, {
       name: "Parent Skill",
       instructions: `Use ${skillReferenceTag} when needed.`,
-      enableSkillReferences: false,
       referencedSkillIds: [],
     });
 
@@ -756,7 +751,6 @@ describe("skill_authoring tools", () => {
 
   it("rejects creating a skill that embeds a nested skill reference", async () => {
     const { authenticator } = await createResourceTest({ role: "builder" });
-    await FeatureFlagFactory.basic(authenticator, "nested_skills");
 
     const childSkill = await SkillFactory.create(authenticator, {
       name: "Child Skill",

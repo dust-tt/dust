@@ -698,7 +698,7 @@ export async function analyzeConversationStepActivity({
   toolActionInfo?: ReinforcedToolActionInfo;
 }> {
   const auth = await getAuthForWorkspace(workspaceId);
-  const useInlineTools = await hasFeatureFlag(auth, "nested_skills");
+  const useInlineTools = true;
 
   // On first step, build the analysis prompt and create a reinforcement conversation.
   if (!reinforcementConversationId) {
@@ -835,7 +835,7 @@ export async function aggregateSuggestionsForSkillStepActivity({
   toolActionInfo?: ReinforcedToolActionInfo;
 }> {
   const auth = await getAuthForWorkspace(workspaceId);
-  const useInlineTools = await hasFeatureFlag(auth, "nested_skills");
+  const useInlineTools = true;
 
   // On first step, load aggregation context and create a reinforcement conversation.
   if (!reinforcementConversationId) {
@@ -992,7 +992,7 @@ export async function startSkillConversationAnalysisBatchActivity({
   reinforcementConversationMap: Record<string, string>;
 } | null> {
   const auth = await getAuthForWorkspace(workspaceId);
-  const useInlineTools = await hasFeatureFlag(auth, "nested_skills");
+  const useInlineTools = true;
 
   const llm = await getReinforcedSkillsLLM(
     auth,
@@ -1128,7 +1128,7 @@ export async function processSkillConversationAnalysisBatchResultActivity({
   conversationSkillMap: Record<string, string[]>;
 }): Promise<ConversationContinuationInfo[]> {
   const auth = await getAuthForWorkspace(workspaceId);
-  const useInlineTools = await hasFeatureFlag(auth, "nested_skills");
+  const useInlineTools = true;
 
   const llm = await getReinforcedSkillsLLM(
     auth,
@@ -1294,7 +1294,7 @@ export async function startSkillAggregationBatchActivity({
   reinforcementConversationIds: string[];
 } | null> {
   const auth = await getAuthForWorkspace(workspaceId);
-  const useInlineTools = await hasFeatureFlag(auth, "nested_skills");
+  const useInlineTools = true;
 
   const llm = await getReinforcedSkillsLLM(
     auth,
@@ -1407,7 +1407,7 @@ export async function processSkillAggregationBatchResultActivity({
   toolActionInfo?: ReinforcedToolActionInfo;
 }> {
   const auth = await getAuthForWorkspace(workspaceId);
-  const useInlineTools = await hasFeatureFlag(auth, "nested_skills");
+  const useInlineTools = true;
 
   const llm = await getReinforcedSkillsLLM(
     auth,

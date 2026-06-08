@@ -78,7 +78,7 @@ export type UsedBySkillType = {
 };
 
 export type SkillUsageType = AgentsUsageType & {
-  skills?: UsedBySkillType[];
+  skills: UsedBySkillType[];
 };
 
 export type SkillRelations = {
@@ -86,7 +86,7 @@ export type SkillRelations = {
   editors: UserType[] | null;
   editedByUser: UserType | null;
   extendedSkill: SkillType | null;
-  childSkills?: SkillWithoutInstructionsAndToolsType[];
+  childSkills: SkillWithoutInstructionsAndToolsType[];
 };
 
 export type SkillWithRelationsType = SkillType & {

@@ -1,7 +1,6 @@
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { SkillBuilderInstructionsEditor } from "@app/components/skill_builder/SkillBuilderInstructionsEditor";
 import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { SKILL_INSTRUCTIONS_LABEL } from "@app/lib/skills/labels";
 import {
   BookOpen01,
@@ -22,13 +21,10 @@ const INSTRUCTIONS_HTML_FIELD_NAME = "instructionsHtml";
 export function SkillBuilderInstructionsSection() {
   const { setValue, watch } = useFormContext<SkillBuilderFormData>();
   const { compareVersion, exitDiffMode } = useSkillVersionComparisonContext();
-  const { hasFeature } = useFeatureFlags();
   const [addKnowledge, setAddKnowledge] = useState<(() => void) | null>(null);
   const [openCapabilities, setOpenCapabilities] = useState<(() => void) | null>(
     null
   );
-
-  const enableSkillReferences = hasFeature("nested_skills");
 
   const currentInstructions = watch(INSTRUCTIONS_FIELD_NAME);
   const instructionsDiffer =
@@ -75,14 +71,14 @@ export function SkillBuilderInstructionsSection() {
           )}
           {!compareVersion && (
             <Button
-              variant={enableSkillReferences ? "outline" : "primary"}
+              variant="outline"
               label="Attach knowledge"
               icon={BookOpen01}
               onClick={addKnowledge ?? undefined}
               disabled={!addKnowledge}
             />
           )}
-          {!compareVersion && enableSkillReferences && (
+          {!compareVersion && (
             <Button
               variant="primary"
               label="Attach capabilities"

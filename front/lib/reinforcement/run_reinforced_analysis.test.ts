@@ -163,10 +163,11 @@ describe("buildReinforcedSkillsLLMParams edit_skill spec", () => {
     );
   });
 
-  it("exposes toolEdits by default when inline tools are disabled", () => {
+  it("exposes toolEdits when inline tools are disabled", () => {
     const params = buildReinforcedSkillsLLMParams(
       { systemPrompt: "System.", userMessage: "User." },
-      "reinforcement_analyze_conversation"
+      "reinforcement_analyze_conversation",
+      { useInlineTools: false }
     );
     const editSkillSpec = params.specifications?.find(
       (s) => s.name === "edit_skill"

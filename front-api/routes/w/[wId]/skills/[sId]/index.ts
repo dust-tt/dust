@@ -114,40 +114,39 @@ app.get(
     const serializedSkill = skill.toJSON(auth);
 
     if (withRelations === "true") {
-      const featureFlags = await getFeatureFlags(auth);
-      const includeChildSkills = featureFlags.includes("nested_skills");
-
       const usage = await skill.fetchUsage(auth);
       const editors = await skill.listEditors(auth);
       const editedByUser = await skill.fetchEditedByUser(auth);
       const extendedSkill = serializedSkill.extendedSkillId
         ? await SkillResource.fetchById(auth, serializedSkill.extendedSkillId)
         : null;
-      const childSkills = includeChildSkills
-        ? await skill.fetchChildSkills(auth)
-        : [];
+      const childSkills = await skill.fetchChildSkills(auth);
+      const usedBySkills =
+        (await SkillResource.batchFetchUsedBySkills(auth, [skill])).get(
+          skill.sId
+        ) ?? [];
 
       const skillWithRelations: SkillWithRelationsType = {
         ...serializedSkill,
         relations: {
-          usage,
+          usage: {
+            ...usage,
+            count: usage.count + usedBySkills.length,
+            skills: usedBySkills,
+          },
           editors: editors ? editors.map((e) => e.toJSON()) : null,
           editedByUser: editedByUser ? editedByUser.toJSON() : null,
           extendedSkill: extendedSkill ? extendedSkill.toJSON(auth) : null,
-          ...(includeChildSkills
-            ? {
-                childSkills: childSkills.map((childSkill) => {
-                  const {
-                    instructions,
-                    instructionsHtml,
-                    tools,
-                    ...childSkillWithoutInstructionsAndTools
-                  } = childSkill.toJSON(auth);
+          childSkills: childSkills.map((childSkill) => {
+            const {
+              instructions,
+              instructionsHtml,
+              tools,
+              ...childSkillWithoutInstructionsAndTools
+            } = childSkill.toJSON(auth);
 
-                  return childSkillWithoutInstructionsAndTools;
-                }),
-              }
-            : {}),
+            return childSkillWithoutInstructionsAndTools;
+          }),
         },
       };
 
@@ -318,8 +317,15 @@ app.patch(
       ...additionalRequestedSpaceIds,
     ]);
 
+    const referencedSkillIds =
+      body.referencedSkillIds !== undefined
+        ? uniq(
+            body.referencedSkillIds.filter(
+              (referencedSkillId) => referencedSkillId !== skill.sId
+            )
+          )
+        : undefined;
     const featureFlags = await getFeatureFlags(auth);
-    const enableSkillReferences = featureFlags.includes("nested_skills");
 
     // Validate file attachments if provided (gated behind sandbox_tools).
     let files: FileResource[] | undefined;
@@ -387,8 +393,7 @@ app.patch(
       name,
       reinforcement: body.reinforcement,
       requestedSpaceIds,
-      enableSkillReferences,
-      referencedSkillIds: body.referencedSkillIds,
+      referencedSkillIds,
       userFacingDescription: body.userFacingDescription,
       ...(shouldActivate ? { status: "active" as const } : {}),
     });

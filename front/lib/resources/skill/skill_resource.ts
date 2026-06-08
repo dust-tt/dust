@@ -378,14 +378,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       addCurrentUserAsEditor = true,
       attachedKnowledge = [],
       fileAttachments = [],
-      enableSkillReferences = false,
       referencedSkillIds = [],
     }: {
       mcpServerViews: MCPServerViewResource[];
       addCurrentUserAsEditor?: boolean;
       attachedKnowledge?: SkillAttachedKnowledge[];
       fileAttachments?: FileResource[];
-      enableSkillReferences?: boolean;
       referencedSkillIds?: string[];
     }
   ): Promise<SkillResource> {
@@ -451,14 +449,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         })),
       });
 
-      if (enableSkillReferences) {
-        await skillResource.normalizeSkillReferenceTags(auth, { transaction });
-        await skillResource.syncSkillReferences(
-          auth,
-          { referencedSkillIds },
-          { transaction }
-        );
-      }
+      await skillResource.normalizeSkillReferenceTags(auth, { transaction });
+      await skillResource.syncSkillReferences(
+        auth,
+        { referencedSkillIds },
+        { transaction }
+      );
 
       return skillResource;
     });
@@ -2355,7 +2351,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       source,
       sourceMetadata,
       status,
-      enableSkillReferences = false,
       referencedSkillIds,
       userFacingDescription,
     }: {
@@ -2373,7 +2368,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       source?: SkillSourceType;
       sourceMetadata?: SkillSourceMetadata;
       status?: SkillStatus;
-      enableSkillReferences?: boolean;
       referencedSkillIds?: string[];
       userFacingDescription: string;
     }
@@ -2397,15 +2391,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         );
 
       const editedBy = auth.user()?.id;
-      const shouldUpdateInstructionsHtml =
-        instructionsHtml !== undefined || enableSkillReferences;
       await this.update(
         {
           name,
           agentFacingDescription,
           userFacingDescription,
           instructions,
-          ...(shouldUpdateInstructionsHtml
+          ...(instructionsHtml !== undefined
             ? {
                 instructionsHtml:
                   instructionsHtml !== undefined
@@ -2425,27 +2417,25 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         transaction
       );
 
-      if (enableSkillReferences) {
-        await this.normalizeSkillReferenceTags(auth, { transaction });
-        if (referencedSkillIds) {
-          await this.syncSkillReferences(
-            auth,
-            { referencedSkillIds },
-            { transaction }
-          );
-        }
+      await this.normalizeSkillReferenceTags(auth, { transaction });
+      if (referencedSkillIds !== undefined) {
+        await this.syncSkillReferences(
+          auth,
+          { referencedSkillIds },
+          { transaction }
+        );
+      }
 
-        if (name !== previousName || requestedSpaceIdsChanged) {
-          await this.propagateReferenceUpdatesToParentSkills(
-            auth,
-            {
-              icon,
-              name,
-              requestedSpaceIds,
-            },
-            { transaction }
-          );
-        }
+      if (name !== previousName || requestedSpaceIdsChanged) {
+        await this.propagateReferenceUpdatesToParentSkills(
+          auth,
+          {
+            icon,
+            name,
+            requestedSpaceIds,
+          },
+          { transaction }
+        );
       }
 
       await this.updateMCPServerViews(auth, mcpServerViews, { transaction });

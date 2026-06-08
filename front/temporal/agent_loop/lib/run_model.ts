@@ -378,7 +378,6 @@ export async function runModel(
   const isNewFileExplorer = conversation.metadata?.useFileSystem === true;
   const featureFlags = await getFeatureFlags(auth);
   const hasSandboxTools = featureFlags.includes("sandbox_tools");
-  const hasNestedSkills = featureFlags.includes("nested_skills");
   const useFramesV2 = featureFlags.includes("frames_skill_v2");
   const disableFormattingPrompt = featureFlags.includes(
     "disable_formatting_prompt"
@@ -404,7 +403,6 @@ export async function runModel(
     projectContext,
     isNewFileExplorer,
     hasSandboxTools,
-    hasNestedSkills,
     useFramesV2,
     disableFormattingPrompt,
   });

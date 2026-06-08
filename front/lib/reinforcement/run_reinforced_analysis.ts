@@ -6,7 +6,7 @@ import type { LLM } from "@app/lib/api/llm/llm";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
-import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { getLargeWhitelistedModelWithBatchMode } from "@app/lib/reinforcement/models";
 import {
   hasSuggestionSelfConflict,
@@ -106,11 +106,6 @@ function buildReinforcedSkillsToolDefinitions({
   };
 }
 
-async function shouldUseInlineTools(auth: Authenticator): Promise<boolean> {
-  const featureFlags = await getFeatureFlags(auth);
-  return featureFlags.includes("nested_skills");
-}
-
 function getToolEdits(data: Record<string, unknown>) {
   const toolEdits = data.toolEdits;
   if (!Array.isArray(toolEdits)) {
@@ -145,7 +140,7 @@ const AGGREGATION_EXTRA_FIELDS: z.ZodRawShape = {
 
 export function buildReinforcedSkillsSpecifications(
   operationType: ReinforcedSkillsOperationType,
-  { useInlineTools = false }: { useInlineTools?: boolean } = {}
+  { useInlineTools = true }: { useInlineTools?: boolean } = {}
 ): AgentActionSpecification[] {
   const isAggregation = operationType === "reinforcement_aggregate_suggestions";
   const toolDefinitions = buildReinforcedSkillsToolDefinitions({
@@ -246,7 +241,7 @@ export function buildReinforcedSkillsLLMParams(
     userMessage: string;
   },
   operationType: ReinforcedSkillsOperationType,
-  { useInlineTools = false }: { useInlineTools?: boolean } = {}
+  { useInlineTools = true }: { useInlineTools?: boolean } = {}
 ): LLMStreamParameters {
   return {
     conversation: {
@@ -284,8 +279,7 @@ export async function createReinforcedSkillsConversation(
     useInlineTools?: boolean;
   }
 ): Promise<string> {
-  const resolvedUseInlineTools =
-    useInlineTools ?? (await shouldUseInlineTools(auth));
+  const resolvedUseInlineTools = useInlineTools ?? true;
   const llmParams = buildReinforcedSkillsLLMParams(prompt, operationType, {
     useInlineTools: resolvedUseInlineTools,
   });
@@ -400,8 +394,7 @@ export async function processSkillReinforcedEvents({
   const approvedSourceSuggestionIds: string[] = [];
   const successfulToolCalls: TerminalToolCallSuccess[] = [];
   const failedToolCalls: TerminalToolCallFailure[] = [];
-  const resolvedUseInlineTools =
-    useInlineTools ?? (await shouldUseInlineTools(auth));
+  const resolvedUseInlineTools = useInlineTools ?? true;
 
   for (const event of toolCallEvents) {
     const { id, name, arguments: args } = event.content;

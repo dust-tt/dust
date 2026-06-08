@@ -142,12 +142,10 @@ describe("GET /api/w/:wId/skills/:sId", () => {
     expect(data.skill.name).toBe("Test Skill");
   });
 
-  it("should return child skills when nested_skills is enabled", async () => {
+  it("should return child skills", async () => {
     const { workspace, skill, skillOwnerAuth } = await setupTest({
       requestUserRole: "admin",
     });
-
-    await FeatureFlagFactory.basic(skillOwnerAuth, "nested_skills");
 
     const childSkill = await SkillFactory.create(skillOwnerAuth, {
       name: "Child Skill",
@@ -171,27 +169,7 @@ describe("GET /api/w/:wId/skills/:sId", () => {
     expect(data.skill.relations.childSkills[0]).not.toHaveProperty(
       "instructions"
     );
-  });
-
-  it("should not return child skills when nested_skills is disabled", async () => {
-    const { workspace, skill, skillOwnerAuth } = await setupTest({
-      requestUserRole: "admin",
-    });
-
-    const childSkill = await SkillFactory.create(skillOwnerAuth, {
-      name: "Hidden Child Skill",
-    });
-    await SkillFactory.updateNestedSkillReferences(skillOwnerAuth, {
-      parentSkill: skill,
-      childSkills: [childSkill],
-    });
-
-    const response = await getSkillWithRelations(workspace, skill.sId);
-
-    expect(response.status).toBe(200);
-    const data = await response.json();
-
-    expect(data.skill.relations).not.toHaveProperty("childSkills");
+    expect(data.skill.relations.usage.skills).toEqual([]);
   });
 
   it("should return 404 for non-existent skill", async () => {
@@ -349,7 +327,7 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
     expect(updatedSkill?.agentFacingDescription).toBe(newDescription);
   });
 
-  it("syncs nested skill references when the feature is enabled", async () => {
+  it("syncs nested skill references", async () => {
     const { workspace, skill, requestUserAuth } = await setupTest({
       requestUserRole: "admin",
     });
@@ -374,29 +352,12 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
       ...(referencedSkillIds !== undefined ? { referencedSkillIds } : {}),
     });
 
-    const disabledResponse = await patchSkill(
+    const addResponse = await patchSkill(
       workspace,
       skill.sId,
       buildBody(instructionsWithReference, [childSkill.sId])
     );
-    expect(disabledResponse.status).toBe(200);
-    const skillWithoutFeatureFlag = await SkillResource.fetchById(
-      requestUserAuth,
-      skill.sId
-    );
-    expect(skillWithoutFeatureFlag).not.toBeNull();
-    await expect(
-      skillWithoutFeatureFlag!.fetchChildSkills(requestUserAuth)
-    ).resolves.toHaveLength(0);
-
-    await FeatureFlagFactory.basic(requestUserAuth, "nested_skills");
-
-    const enabledResponse = await patchSkill(
-      workspace,
-      skill.sId,
-      buildBody(instructionsWithReference, [childSkill.sId])
-    );
-    expect(enabledResponse.status).toBe(200);
+    expect(addResponse.status).toBe(200);
     const skillWithReference = await SkillResource.fetchById(
       requestUserAuth,
       skill.sId
@@ -450,7 +411,6 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
       requestUserRole: "admin",
     });
 
-    await FeatureFlagFactory.basic(requestUserAuth, "nested_skills");
     const outOfWorkspaceSkillId = SkillResource.modelIdToSId({
       id: skill.id + 1,
       workspaceId: workspace.id + 1,
@@ -486,7 +446,6 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
       requestUserRole: "admin",
     });
 
-    await FeatureFlagFactory.basic(requestUserAuth, "nested_skills");
     const restrictedSpace = await SpaceFactory.regular(workspace);
     const childSkill = await SkillFactory.create(requestUserAuth, {
       name: "Restricted Child Skill",

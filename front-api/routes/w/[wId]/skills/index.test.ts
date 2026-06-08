@@ -407,48 +407,18 @@ describe("GET /api/w/:wId/skills?withRelations=true", () => {
 
     expect(skillResult).toMatchObject({
       relations: {
-        usage: { count: 0, agents: [] },
+        usage: { count: 0, agents: [], skills: [] },
       },
     });
   });
 
-  it("should not return used-by skills without the nested_skills feature flag", async () => {
+  it("should return child skills", async () => {
     const { workspace, user } = await setupTest();
 
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
       workspace.sId
     );
-
-    const { childSkill } = await SkillFactory.createWithNestedSkill(auth, {
-      childOverrides: {
-        name: "Referenced Skill",
-      },
-      parentOverrides: {
-        name: "Parent Skill",
-      },
-    });
-
-    const response = await getSkills(workspace, { withRelations: "true" });
-
-    expect(response.status).toBe(200);
-
-    const skillResult = (await response.json()).skills.find(
-      (s: SkillWithoutInstructionsAndToolsWithRelationsType) =>
-        s.sId === childSkill.sId
-    );
-
-    expect(skillResult.relations.usage).not.toHaveProperty("skills");
-  });
-
-  it("should return child skills when nested_skills is enabled", async () => {
-    const { workspace, user } = await setupTest();
-
-    const auth = await Authenticator.fromUserIdAndWorkspaceId(
-      user.sId,
-      workspace.sId
-    );
-    await FeatureFlagFactory.basic(auth, "nested_skills");
 
     const { parentSkill, childSkill } =
       await SkillFactory.createWithNestedSkill(auth, {
@@ -479,19 +449,18 @@ describe("GET /api/w/:wId/skills?withRelations=true", () => {
         ],
       },
     });
-    expect(skillResult.relations.childSkills?.[0]).not.toHaveProperty(
+    expect(skillResult.relations.childSkills[0]).not.toHaveProperty(
       "instructions"
     );
   });
 
-  it("should return skills that reference a skill when nested_skills is enabled", async () => {
+  it("should return skills that reference a skill", async () => {
     const { workspace, user } = await setupTest();
 
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
       workspace.sId
     );
-    await FeatureFlagFactory.basic(auth, "nested_skills");
 
     const { childSkill, parentSkill } =
       await SkillFactory.createWithNestedSkill(auth, {
@@ -642,10 +611,9 @@ describe("POST /api/w/:wId/skills", () => {
     expect(createdSkill).not.toBeNull();
   });
 
-  it("creates skill references when nested skills is enabled", async () => {
+  it("creates skill references", async () => {
     const { auth, workspace } = await setupTest("admin");
 
-    await FeatureFlagFactory.basic(auth, "nested_skills");
     const childSkill = await SkillFactory.create(auth, {
       name: "Referenced Skill",
     });
@@ -680,8 +648,6 @@ describe("POST /api/w/:wId/skills", () => {
 
   it("drops missing nested skill references", async () => {
     const { auth, workspace } = await setupTest("admin");
-
-    await FeatureFlagFactory.basic(auth, "nested_skills");
 
     const response = await postSkill(workspace, {
       name: "Parent Skill",

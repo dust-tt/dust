@@ -217,11 +217,12 @@ describe("buildSkillAggregationPrompt", () => {
     expect(userMessage).not.toContain("Previously rejected suggestions");
   });
 
-  it("system prompt mentions the suggestion tool", () => {
+  it("system prompt mentions the suggestion tool when inline tools are disabled", () => {
     const { systemPrompt } = buildSkillAggregationPrompt(
       makeSkill(),
       [makeInstructionSuggestion()],
-      { pending: [], rejected: [] }
+      { pending: [], rejected: [] },
+      { useInlineTools: false }
     );
 
     expect(systemPrompt).toContain("edit_skill");
@@ -301,7 +302,7 @@ describe("buildSkillAggregationPrompt", () => {
     expect(userMessage).not.toContain("<title>");
   });
 
-  it("includes skill tools as a separate user message block by default", () => {
+  it("includes skill tools as a separate user message block when inline tools are disabled", () => {
     const skill = makeSkill({
       tools: [
         {
@@ -313,7 +314,8 @@ describe("buildSkillAggregationPrompt", () => {
     const { userMessage } = buildSkillAggregationPrompt(
       skill,
       [makeInstructionSuggestion()],
-      { pending: [], rejected: [] }
+      { pending: [], rejected: [] },
+      { useInlineTools: false }
     );
 
     expect(userMessage).toContain("<tools>");
