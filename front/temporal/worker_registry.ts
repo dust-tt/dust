@@ -4,6 +4,7 @@ import { runAnalyticsWorker } from "@app/temporal/analytics_queue/worker";
 import { runConversationForkQueueWorker } from "@app/temporal/conversation_fork_queue/worker";
 import { runCreditAlertsWorker } from "@app/temporal/credit_alerts/worker";
 import { runDataRetentionWorker } from "@app/temporal/data_retention/worker";
+import { runEnsureMCPServerViewsWorker } from "@app/temporal/ensure_mcp_server_views/worker";
 import { runESIndexationQueueWorker } from "@app/temporal/es_indexation/worker";
 import { runHardDeleteWorker } from "@app/temporal/hard_delete/worker";
 import { runInvitationsWorker } from "@app/temporal/invitations/worker";
@@ -35,6 +36,7 @@ export type WorkerName =
   | "project_task"
   | "credit_alerts"
   | "data_retention"
+  | "ensure_mcp_server_views"
   | "es_indexation_queue"
   | "hard_delete"
   | "labs"
@@ -63,6 +65,7 @@ export const workerFunctions: Record<WorkerName, () => Promise<void>> = {
   conversation_fork_queue: runConversationForkQueueWorker,
   credit_alerts: runCreditAlertsWorker,
   data_retention: runDataRetentionWorker,
+  ensure_mcp_server_views: runEnsureMCPServerViewsWorker,
   hard_delete: runHardDeleteWorker,
   labs: runLabsTranscriptsWorker,
   invitations: runInvitationsWorker,

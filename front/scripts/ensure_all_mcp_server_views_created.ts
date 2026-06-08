@@ -1,8 +1,8 @@
 import { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
+import { launchEnsureMCPServerViewsWorkflow } from "@app/temporal/ensure_mcp_server_views/client";
 
 makeScript(
   {
@@ -19,65 +19,53 @@ makeScript(
     },
   },
   async ({ execute, workspaceId, concurrency }, parentLogger) => {
-    let workspaces: WorkspaceResource[] = [];
     if (workspaceId) {
       const workspace = await WorkspaceResource.fetchById(workspaceId);
       if (!workspace) {
         throw new Error(`Workspace with SID ${workspaceId} not found.`);
       }
-      workspaces = [workspace];
-    } else {
-      // Process all workspaces
-      workspaces = await WorkspaceResource.listAll("ASC");
+
+      const logger = parentLogger.child({
+        workspaceId: workspace.sId,
+      });
+
+      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+      if (execute) {
+        const { createdViewsCount } =
+          await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
+        logger.info(
+          { createdViewsCount },
+          "Successfully ensured MCP server views are created."
+        );
+      } else {
+        logger.info("Would ensure MCP server views are created.");
+      }
+      return;
+    }
+
+    parentLogger.warn(
+      "All-workspace direct mode is deprecated. Launching the resumable Temporal workflow instead."
+    );
+
+    if (!execute) {
+      parentLogger.info(
+        { concurrency },
+        "Would launch ensure MCP server views Temporal workflow."
+      );
+      return;
+    }
+
+    const launchResult = await launchEnsureMCPServerViewsWorkflow({
+      concurrency,
+    });
+    if (launchResult.isErr()) {
+      throw launchResult.error;
     }
 
     parentLogger.info(
-      `Processing ${workspaces.length} workspaces to ensure MCP server views are created.`
+      { workflowId: launchResult.value, concurrency },
+      "Launched ensure MCP server views Temporal workflow."
     );
-
-    const errors: { workspaceId: string; error: unknown }[] = [];
-
-    await concurrentExecutor(
-      workspaces,
-      async (workspace) => {
-        const logger = parentLogger.child({
-          workspaceId: workspace.sId,
-        });
-
-        const auth = await Authenticator.internalAdminForWorkspace(
-          workspace.sId
-        );
-
-        if (execute) {
-          try {
-            const { createdViewsCount } =
-              await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
-            logger.info(
-              { createdViewsCount },
-              "Successfully ensured MCP server views are created."
-            );
-          } catch (e) {
-            logger.error(
-              { error: e },
-              "Error creating MCP server views for workspace."
-            );
-            errors.push({ workspaceId: workspace.sId, error: e });
-          }
-        } else {
-          logger.info("Would ensure MCP server views are created.");
-        }
-      },
-      { concurrency }
-    );
-
-    if (errors.length > 0) {
-      parentLogger.error(
-        `Migration completed with ${errors.length} errors for the following workspaces: ${errors
-          .map((e) => e.workspaceId)
-          .join(", ")}`
-      );
-    } else {
-      parentLogger.info("Migration completed successfully.");
-    }
   }
 );

@@ -1,5 +1,7 @@
 import { createPlugin } from "@app/lib/api/poke/types";
+import { invalidateGlobalFeatureFlagsCache } from "@app/lib/auth";
 import { GlobalFeatureFlagResource } from "@app/lib/resources/global_feature_flag_resource";
+import { launchEnsureMCPServerViewsWorkflow } from "@app/temporal/ensure_mcp_server_views/client";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import {
   FEATURE_FLAG_STAGE_LABELS,
@@ -70,6 +72,10 @@ export const toggleGlobalFeatureFlagPlugin = createPlugin({
     }
     const feature: WhitelistableFeature = featureName;
 
+    const globalFlags = await GlobalFeatureFlagResource.listAll();
+    const previousRolloutPercentage =
+      globalFlags.find((flag) => flag.name === feature)?.rolloutPercentage ?? 0;
+
     const rolloutPercentage = args.rolloutPercentage;
     if (
       !Number.isInteger(rolloutPercentage) ||
@@ -85,6 +91,7 @@ export const toggleGlobalFeatureFlagPlugin = createPlugin({
       feature,
       rolloutPercentage
     );
+    invalidateGlobalFeatureFlagsCache();
 
     if (rolloutPercentage === 0) {
       return new Ok({
@@ -93,9 +100,23 @@ export const toggleGlobalFeatureFlagPlugin = createPlugin({
       });
     }
 
+    const didIncrease = rolloutPercentage > previousRolloutPercentage;
+    let workflowMessage = "";
+    if (didIncrease) {
+      const launchResult = await launchEnsureMCPServerViewsWorkflow({
+        triggeringFeature: feature,
+        previousRolloutPercentage,
+        rolloutPercentage,
+      });
+      if (launchResult.isErr()) {
+        return new Err(launchResult.error);
+      }
+      workflowMessage = ` MCP server view backfill workflow started (${launchResult.value}).`;
+    }
+
     return new Ok({
       display: "text",
-      value: `Global feature flag "${feature}" set to ${rolloutPercentage}% rollout.`,
+      value: `Global feature flag "${feature}" set to ${rolloutPercentage}% rollout.${workflowMessage}`,
     });
   },
 });
