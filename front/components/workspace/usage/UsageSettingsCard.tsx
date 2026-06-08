@@ -6,7 +6,7 @@ import {
   MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
   MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
 } from "@app/types/credits";
-import { Input, Page, SettingsList } from "@dust-tt/sparkle";
+import { Input, Page, SettingsList, Spinner } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
 interface UsageSettingsCardProps {
@@ -82,9 +82,15 @@ export function UsageSettingsCard({ workspaceId }: UsageSettingsCardProps) {
                 disabled={isDefaultLimitInputDisabled}
                 className="pr-16 text-right"
               />
-              <span className="copy-sm pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground dark:text-muted-foreground-night">
-                credits
-              </span>
+              {isSavingLimit ? (
+                <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
+                  <Spinner size="xs" />
+                </div>
+              ) : (
+                <span className="copy-sm pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground dark:text-muted-foreground-night">
+                  credits
+                </span>
+              )}
             </div>
           }
         />
