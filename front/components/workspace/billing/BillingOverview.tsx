@@ -15,6 +15,29 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { Button, Spinner } from "@dust-tt/sparkle";
 import { useState } from "react";
 
+type SubscriptionStatus = "active" | "cancelled" | "ended";
+
+const STATUS_BADGE: Record<
+  SubscriptionStatus,
+  { badgeLabel: string; badgeClassName: string }
+> = {
+  active: {
+    badgeLabel: "ACTIVE",
+    badgeClassName:
+      "rounded-md bg-blue-100 px-1.5 py-1 text-xs font-semibold text-blue-900 dark:bg-blue-100-night dark:text-blue-900-night",
+  },
+  cancelled: {
+    badgeLabel: "CANCELLED",
+    badgeClassName:
+      "rounded-md bg-warning-100 px-1.5 py-1 text-xs font-semibold text-warning-900 dark:bg-warning-100-night dark:text-warning-900-night",
+  },
+  ended: {
+    badgeLabel: "ENDED",
+    badgeClassName:
+      "rounded-md bg-red-100 px-1.5 py-1 text-xs font-semibold text-red-900 dark:bg-red-100-night dark:text-red-900-night",
+  },
+};
+
 interface BillingOverviewProps {
   owner: LightWorkspaceType;
   subscription: SubscriptionType;
@@ -75,21 +98,40 @@ export function BillingOverview({ owner, subscription }: BillingOverviewProps) {
     subscription.endDate ??
     (isCancellationScheduled ? (invoice?.currentPeriodEndMs ?? null) : null);
   const canCancelSubscription = isCancellablePlan && !isCancellationScheduled;
-  const canReactivateSubscription =
-    isCancellablePlan &&
-    isCancellationScheduled &&
-    subscriptionEndsAtMs !== null &&
-    subscriptionEndsAtMs > Date.now();
   const isCancellingSubscription =
     isCancelling || isCancellingMetronomeContract;
   const isReactivatingSubscription =
     isReactivating || isReactivatingMetronomeContract;
+
   const periodEndLabel = invoice
     ? formatTimestampToFriendlyDate(invoice.currentPeriodEndMs, "short")
     : null;
   const subscriptionEndLabel = subscriptionEndsAtMs
     ? formatTimestampToFriendlyDate(subscriptionEndsAtMs, "short")
     : null;
+
+  type SubscriptionStatus = "active" | "cancelled" | "ended";
+  const [subscriptionStatus] = useState<SubscriptionStatus>(() =>
+    isCancellationScheduled && subscriptionEndsAtMs !== null
+      ? subscriptionEndsAtMs <= Date.now()
+        ? "ended"
+        : "cancelled"
+      : "active"
+  );
+  const canReactivateSubscription =
+    isCancellablePlan && subscriptionStatus === "cancelled";
+
+  const periodLabel: Record<SubscriptionStatus, string | null> = {
+    active: invoice
+      ? `${formatBillingPeriod(invoice.billingPeriod)} - Next billing date: ${periodEndLabel}`
+      : null,
+    cancelled: subscriptionEndLabel
+      ? `Your subscription ends on ${subscriptionEndLabel}. Until then, everything works as normal. Resume anytime before that date to keep your plan with no interruption.`
+      : null,
+    ended: subscriptionEndLabel
+      ? `Your subscription ended on ${subscriptionEndLabel}.`
+      : null,
+  };
 
   if (isMetronomeInvoiceLoading) {
     return (
@@ -116,14 +158,8 @@ export function BillingOverview({ owner, subscription }: BillingOverviewProps) {
               <span className="text-lg font-semibold text-foreground dark:text-foreground-night">
                 Next Bill preview
               </span>
-              <span
-                className={
-                  isCancellationScheduled
-                    ? "rounded-md bg-warning-100 px-1.5 py-1 text-xs text-warning-900 dark:bg-warning-100-night dark:text-warning-900-night font-semibold"
-                    : "rounded-md bg-blue-100 px-1.5 py-1 text-xs text-blue-900 dark:bg-blue-100-night dark:text-blue-900-night font-semibold"
-                }
-              >
-                {isCancellationScheduled ? "CANCELLED" : "ACTIVE"}
+              <span className={STATUS_BADGE[subscriptionStatus].badgeClassName}>
+                {STATUS_BADGE[subscriptionStatus].badgeLabel}
               </span>
             </div>
             <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
@@ -168,10 +204,7 @@ export function BillingOverview({ owner, subscription }: BillingOverviewProps) {
               {formatAmount(invoice.estimatedAmountCents, invoice.currency)}
             </div>
             <div className="text-xs text-faint dark:text-faint-night">
-              {formatBillingPeriod(invoice.billingPeriod)}
-              {isCancellationScheduled && subscriptionEndLabel
-                ? ` - Subscription ends: ${subscriptionEndLabel}`
-                : ` - Next billing date: ${formatTimestampToFriendlyDate(invoice.currentPeriodEndMs, "short")}`}
+              {periodLabel[subscriptionStatus]}
             </div>
           </div>
         ) : (
