@@ -3291,3 +3291,5 @@ export default function AdminGovernanceM1() {
     </>
   );
 }
+
+export const storyName = "Admin Governance M1 Only";
