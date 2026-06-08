@@ -176,6 +176,7 @@ Object.assign(colors, {
   green: customColors.green,
   blue: customColors.blue,
   gray: customColors.gray,
+  stone: customColors.stone,
   rose: customColors.rose,
   golden: customColors.golden,
   //For compatibility, to be removed after all direct color ref are edited for golden
@@ -604,8 +605,14 @@ module.exports = {
         },
         background: { DEFAULT: colors.white, night: colors.gray[950] },
         "app-background": {
-          DEFAULT: "#FAFAF9",
-          night: customColors.stone[900],
+          DEFAULT: customColors.stone[50],
+          night: colors.gray[900], // to be updated
+        },
+        content: {
+          background: {
+            DEFAULT: "#FFF",
+            night: colors.gray[950],
+          },
         },
         foreground: {
           DEFAULT: colors.gray[950],
@@ -714,10 +721,6 @@ module.exports = {
           hover: {
             DEFAULT: customColors.stone[100],
             night: colors.gray[800], // to be updated,
-          },
-          background: {
-            DEFAULT: customColors.stone[50],
-            night: colors.gray[900], // to be updated
           },
         },
         info: {

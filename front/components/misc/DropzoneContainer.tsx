@@ -1,5 +1,6 @@
 import { useFileDrop } from "@app/components/assistant/conversation/FileUploaderContext";
-import { DropzoneOverlay } from "@dust-tt/sparkle";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
+import { cn, DropzoneOverlay } from "@dust-tt/sparkle";
 import { useDropzone } from "react-dropzone";
 
 interface DropzoneContainerProps {
@@ -16,6 +17,7 @@ export function DropzoneContainer({
   disabled,
 }: DropzoneContainerProps) {
   const { setDroppedFiles } = useFileDrop();
+  const isMobile = useIsMobile();
 
   const onDrop = (acceptedFiles: File[]) => {
     setDroppedFiles(acceptedFiles);
@@ -54,7 +56,10 @@ export function DropzoneContainer({
   return (
     <div
       {...getRootProps()}
-      className="flex h-full min-h-0 w-full flex-col items-center"
+      className={cn(
+        isMobile ? "h-full" : "h-[calc(100dvh-48px-0.5rem)]",
+        "flex min-h-0 w-full flex-col items-center"
+      )}
       onPaste={onPaste}
     >
       <DropzoneOverlay

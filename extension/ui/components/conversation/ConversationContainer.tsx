@@ -118,7 +118,7 @@ export const ConversationContainer = ({
       {conversation && currentPanel && (
         <div className="fixed inset-0 z-50 flex flex-col bg-background dark:bg-background-night">
           {/* Hamburger button overlaid in the pl-14 area of AppLayoutTitle header */}
-          <div className="absolute left-0 top-0 z-10 flex h-[58px] shrink-0 items-center px-2">
+          <div className="absolute left-0 top-0 z-10 flex h-[48px] shrink-0 items-center px-2">
             <Button
               variant="ghost"
               icon={Menu01}
