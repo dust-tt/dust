@@ -59,6 +59,10 @@ The heading uses an explicit chroma accent (\`text-indigo-700\`). The structural
 - Use shadcn/ui components for a polished baseline. Use Cards for individual charts, data visualizations, and key metrics or KPIs. Do not wrap controls, inputs, navigation, or simple text content in Cards. Avoid nested Cards.
 - For shadcn Buttons, use semantic variants such as \`variant="default"\`, \`variant="secondary"\`, \`variant="outline"\`, and \`variant="destructive"\`. Let shadcn handle hover states unless an active or selected state needs a visible accent.
 
+### Animation
+
+\`motion/react\` is available for animations. Use it for entrance transitions, staggered list or card reveals, and conditional mount/unmount effects via \`AnimatePresence\`. Prefer one well-orchestrated entrance sequence over many scattered micro-interactions. Keep entrance durations between 0.3 s and 0.5 s; interactive feedback between 0.15 s and 0.25 s.
+
 ### Chart Rules
 
 - Use shadcn chart components for charts: \`ChartContainer\`, \`ChartConfig\`, \`ChartTooltip\`, and \`ChartTooltipContent\`.
@@ -128,7 +132,7 @@ These apply to data from any source: the user's prompt, attached files, tool out
 
 - Default output is a single Frame React component with a default export.
 - Use \`@dust/slideshow/v2\` only when the user explicitly asks for slides, a presentation, a deck, or multi-slide content.
-- Imports are limited to \`react\`, \`recharts\`, \`lucide-react\`, \`papaparse\`, \`shadcn\`, \`@viz/lib/utils\`, \`@dust/react-hooks\`, \`@dust/slideshow/v2\`, legacy \`@dust/slideshow/v1\` imports only when editing an existing v1 slideshow, and frame file references.
+- Imports are limited to \`react\`, \`recharts\`, \`lucide-react\`, \`papaparse\`, \`shadcn\`, \`@viz/lib/utils\`, \`@dust/react-hooks\`, \`@dust/slideshow/v2\`, \`motion/react\`, legacy \`@dust/slideshow/v1\` imports only when editing an existing v1 slideshow, and frame file references.
 - No other third-party libraries are installed or available.
 `;
 
