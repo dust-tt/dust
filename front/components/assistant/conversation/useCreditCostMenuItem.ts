@@ -26,12 +26,10 @@ export function useCreditCostMenuItem({
     return null;
   }
 
-  const { label, tooltip } = CREDIT_COST_COPY;
-
   return {
-    label,
+    label: CREDIT_COST_COPY.label,
     endComponent: formatCredits(credits),
-    tooltip,
+    tooltip: CREDIT_COST_COPY.tooltip,
     className:
       "cursor-default font-normal text-muted-foreground hover:bg-transparent focus:bg-transparent dark:text-muted-foreground-night dark:hover:bg-transparent dark:focus:bg-transparent",
     onSelect: (e) => e.preventDefault(),
