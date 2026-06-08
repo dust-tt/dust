@@ -15,10 +15,10 @@ export function BillingPage() {
       <Page.Header
         title="Billing"
         icon={CreditCard01}
-        description="Edit your subscription and billing information."
+        description="Change your subscription and edit your billing information."
       />
       <BillingOverview owner={owner} subscription={subscription} />
-      <BillingSeatsOverview owner={owner} />
+      <BillingSeatsOverview owner={owner} subscription={subscription} />
       <BillingUpgrade owner={owner} subscription={subscription} />
       <BillingInformation owner={owner} />
       <RecentInvoices owner={owner} />

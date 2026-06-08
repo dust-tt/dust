@@ -3,7 +3,6 @@ import {
   useCancelMetronomeContract,
   useReactivateMetronomeContract,
 } from "@app/hooks/useMetronomeContractLifecycleAction";
-import { getPriceAsString } from "@app/lib/client/subscription";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { isBusinessPlanPrefix } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
@@ -13,14 +12,7 @@ import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { SubscriptionType } from "@app/types/plan";
 import { isSubscriptionMetronomeBilled } from "@app/types/plan";
 import type { LightWorkspaceType } from "@app/types/user";
-import {
-  Button,
-  Calendar,
-  ClockRewind,
-  Icon,
-  Spinner,
-  Upload01,
-} from "@dust-tt/sparkle";
+import { Button, Spinner } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 interface BillingOverviewProps {
@@ -32,6 +24,16 @@ function formatBillingPeriod(period: string): string {
   return period.charAt(0).toUpperCase() + period.slice(1);
 }
 
+function formatAmount(cents: number, currency: string): string {
+  const locale = currency.toUpperCase() === "USD" ? "en-US" : "fr-FR";
+  return new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(cents / 100);
+}
+
 export function BillingOverview({ owner, subscription }: BillingOverviewProps) {
   const router = useAppRouter();
   const [showCancelDialog, setShowCancelDialog] = useState(false);
@@ -41,13 +43,10 @@ export function BillingOverview({ owner, subscription }: BillingOverviewProps) {
     disabled: !subscription.metronomeContractId,
   });
   const { cancelMetronomeContract, isCancellingMetronomeContract } =
-    useCancelMetronomeContract({
-      workspaceId: owner.sId,
-    });
+    useCancelMetronomeContract({ workspaceId: owner.sId });
   const { reactivateMetronomeContract, isReactivatingMetronomeContract } =
-    useReactivateMetronomeContract({
-      workspaceId: owner.sId,
-    });
+    useReactivateMetronomeContract({ workspaceId: owner.sId });
+
   const { submit: cancelSubscription, isSubmitting: isCancelling } =
     useSubmitFunction(async () => {
       try {
@@ -94,7 +93,7 @@ export function BillingOverview({ owner, subscription }: BillingOverviewProps) {
 
   if (isMetronomeInvoiceLoading) {
     return (
-      <div className="w-full rounded-lg bg-muted-background p-6 dark:bg-muted-background-night">
+      <div className="w-full p-6">
         <Spinner />
       </div>
     );
@@ -110,20 +109,26 @@ export function BillingOverview({ owner, subscription }: BillingOverviewProps) {
         periodEndLabel={periodEndLabel}
       />
 
-      <div className="flex flex-col gap-4 rounded-lg bg-muted-background p-4 dark:bg-muted-background-night">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex min-w-0 items-center gap-2">
-            <div className="truncate text-base font-semibold text-foreground dark:text-foreground-night">
-              {subscription.plan.name}
+      <div className="flex flex-col gap-6">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <span className="text-lg font-semibold text-foreground dark:text-foreground-night">
+                Next Bill preview
+              </span>
+              <span
+                className={
+                  isCancellationScheduled
+                    ? "rounded-md bg-warning-100 px-1.5 py-1 text-xs text-warning-900 dark:bg-warning-100-night dark:text-warning-900-night font-semibold"
+                    : "rounded-md bg-blue-100 px-1.5 py-1 text-xs text-blue-900 dark:bg-blue-100-night dark:text-blue-900-night font-semibold"
+                }
+              >
+                {isCancellationScheduled ? "CANCELLED" : "ACTIVE"}
+              </span>
             </div>
-            <div
-              className={
-                isCancellationScheduled
-                  ? "rounded-md bg-warning-100 px-2 py-1 text-xs text-warning-900 dark:bg-warning-100-night dark:text-warning-900-night"
-                  : "rounded-md bg-gray-100 px-2 py-1 text-xs text-gray-900 dark:bg-gray-100-night dark:text-gray-900-night"
-              }
-            >
-              {isCancellationScheduled ? "Cancelled" : "Current"}
+            <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+              A preview of what your invoice will look like based on your recent
+              usage.
             </div>
           </div>
           {canReactivateSubscription ? (
@@ -158,44 +163,19 @@ export function BillingOverview({ owner, subscription }: BillingOverviewProps) {
         </div>
 
         {invoice ? (
-          <div className="flex flex-col gap-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
-            {subscriptionEndLabel && (
-              <div className="flex items-center gap-2 font-semibold text-foreground dark:text-foreground-night">
-                <Icon visual={Calendar} size="xs" />
-                <span>Subscription end: {subscriptionEndLabel}</span>
-              </div>
-            )}
-            <div className="flex items-center gap-2">
-              <Icon visual={ClockRewind} size="xs" />
-              <span>
-                Frequency: {formatBillingPeriod(invoice.billingPeriod)}
-              </span>
+          <div className="flex flex-col gap-1">
+            <div className="text-4xl text-foreground dark:text-foreground-night">
+              {formatAmount(invoice.estimatedAmountCents, invoice.currency)}
             </div>
-            {!isCancellationScheduled && (
-              <div className="flex items-center gap-2">
-                <Icon visual={Calendar} size="xs" />
-                <span>
-                  Next billing date:{" "}
-                  {formatTimestampToFriendlyDate(
-                    invoice.currentPeriodEndMs,
-                    "short"
-                  )}
-                </span>
-              </div>
-            )}
-            <div className="flex items-center gap-2">
-              <Icon visual={Upload01} size="xs" />
-              <span>
-                Amount:{" "}
-                {getPriceAsString({
-                  currency: invoice.currency,
-                  priceInCents: invoice.estimatedAmountCents,
-                })}
-              </span>
+            <div className="text-xs text-faint dark:text-faint-night">
+              {formatBillingPeriod(invoice.billingPeriod)}
+              {isCancellationScheduled && subscriptionEndLabel
+                ? ` - Subscription ends: ${subscriptionEndLabel}`
+                : ` - Next billing date: ${formatTimestampToFriendlyDate(invoice.currentPeriodEndMs, "short")}`}
             </div>
           </div>
         ) : (
-          <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+          <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
             No billing information available for this period yet.
           </div>
         )}

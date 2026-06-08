@@ -60,6 +60,7 @@ declare module "@tanstack/react-table" {
     className?: string;
     tooltip?: string;
     sizeRatio?: number;
+    headerAlign?: "left" | "right" | "center";
   }
 }
 
@@ -113,6 +114,8 @@ interface DataTableProps<TData extends TBaseData> {
   enableSortingRemoval?: boolean;
   /** Omit the default bottom divider on tbody rows (e.g. dense custom lists). */
   hideRowDivider?: boolean;
+  /** Override the default cell padding class (`s-pl-2`) applied to every cell. */
+  cellClassName?: string;
 }
 
 export function DataTable<TData extends TBaseData>({
@@ -138,6 +141,7 @@ export function DataTable<TData extends TBaseData>({
   getRowId,
   enableSortingRemoval = true,
   hideRowDivider = false,
+  cellClassName,
 }: DataTableProps<TData>) {
   const windowSize = useWindowSize();
 
@@ -246,7 +250,17 @@ export function DataTable<TData extends TBaseData>({
                       header.column.getCanSort() && "s-cursor-pointer"
                     )}
                   >
-                    <div className="s-flex s-items-center s-space-x-1 s-whitespace-nowrap">
+                    <div
+                      className={cn(
+                        "s-flex s-items-center s-space-x-1 s-whitespace-nowrap",
+                        header.column.columnDef.meta?.headerAlign === "right"
+                          ? "s-justify-end"
+                          : header.column.columnDef.meta?.headerAlign ===
+                              "center"
+                            ? "s-justify-center"
+                            : undefined
+                      )}
+                    >
                       {flexRender(
                         header.column.columnDef.header,
                         header.getContext()
@@ -306,7 +320,11 @@ export function DataTable<TData extends TBaseData>({
                     return null;
                   }
                   return (
-                    <DataTable.Cell column={cell.column} key={cell.id}>
+                    <DataTable.Cell
+                      column={cell.column}
+                      key={cell.id}
+                      cellClassName={cellClassName}
+                    >
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext()
@@ -784,7 +802,12 @@ DataTable.Head = function Head({
   return (
     <th
       className={cn(
-        "s-heading-xs s-py-2 s-pl-2 s-pr-3 s-text-left s-capitalize",
+        "s-heading-xs s-py-2 s-pl-2 s-pr-3 s-capitalize",
+        column.columnDef.meta?.headerAlign === "right"
+          ? "s-text-right"
+          : column.columnDef.meta?.headerAlign === "center"
+            ? "s-text-center"
+            : "s-text-left",
         "s-text-foreground dark:s-text-foreground-night",
         column.columnDef.meta?.className,
         className
@@ -1043,19 +1066,22 @@ DataTable.MoreButton = function MoreButton({
 interface CellProps extends React.HTMLAttributes<HTMLTableCellElement> {
   children: ReactNode;
   column: Column<any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+  cellClassName?: string;
 }
 
 DataTable.Cell = function Cell({
   children,
   className,
   column,
+  cellClassName,
   ...props
 }: CellProps) {
   return (
     <td
       className={cn(
         cellHeight,
-        "s-truncate s-pl-2",
+        cellClassName ?? "s-pl-2",
+        "s-truncate",
         column.columnDef.meta?.className,
         className
       )}
