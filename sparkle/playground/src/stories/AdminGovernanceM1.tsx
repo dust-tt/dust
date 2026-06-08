@@ -22,10 +22,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Fingerprint04V2,
+  FolderIcon,
   Globe01V2,
   Input,
   Key01V2,
   Label,
+  ListGroup,
+  ListItem,
   Lock01V2,
   NavigationList,
   NavigationListCollapsibleSection,
@@ -59,6 +62,19 @@ import {
   Users01V2,
   XMarkIcon,
 } from "@dust-tt/sparkle";
+import {
+  BigQueryLogo,
+  ConfluenceLogo,
+  GithubLogo,
+  GongLogo,
+  DriveLogo,
+  IntercomLogo,
+  MicrosoftLogo,
+  NotionLogo,
+  SlackLogo,
+  SnowflakeLogo,
+  ZendeskLogo,
+} from "@dust-tt/sparkle/logo/platforms";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useMemo, useRef, useState } from "react";
 
@@ -136,7 +152,7 @@ const ANIMATION_CSS = `
 // --- Types --------------------------------------------------------------------
 
 // M1: two roles with admin panel access
-type Role = "admin" | "operator";
+type Role = "admin" | "manager";
 
 type AdminPage =
   | "people"
@@ -153,7 +169,7 @@ type AdminPage =
   | "usage";
 
 // Full member role set
-type MemberRole = "admin" | "operator" | "builder" | "user";
+type MemberRole = "admin" | "manager" | "builder" | "user";
 
 interface MemberRow {
   id: string;
@@ -210,7 +226,7 @@ const INITIAL_MEMBERS: MemberRow[] = [
     id: "m2",
     name: "Phoenix Baker",
     email: "phoenix@acme.com",
-    role: "operator",
+    role: "manager",
     status: "active",
     groupCount: 1,
     groupIds: ["g2"],
@@ -220,7 +236,7 @@ const INITIAL_MEMBERS: MemberRow[] = [
     id: "m3",
     name: "Lana Steiner",
     email: "lana@acme.com",
-    role: "operator",
+    role: "manager",
     status: "active",
     groupCount: 3,
     groupIds: ["g1", "g2", "g3"],
@@ -270,7 +286,7 @@ const INITIAL_MEMBERS: MemberRow[] = [
     id: "m8",
     name: "Orlando Diggs",
     email: "orlando@acme.com",
-    role: "operator",
+    role: "manager",
     status: "active",
     groupCount: 2,
     groupIds: ["g1", "g3"],
@@ -430,12 +446,12 @@ const USAGE_MEMBERS: UsageMemberRow[] = [
 // Role labels for the admin panel role switcher
 const ROLE_LABELS: Record<Role, string> = {
   admin: "Admin",
-  operator: "Operator",
+  manager: "Manager",
 };
 
 // M1 access model:
 // admin: full access to everything
-// operator: people + analytics only
+// manager: people + analytics only
 const ROLE_ACCESS: Record<Role, AdminPage[]> = {
   admin: [
     "people",
@@ -450,7 +466,7 @@ const ROLE_ACCESS: Record<Role, AdminPage[]> = {
     "billing",
     "usage",
   ],
-  operator: ["people", "analytics"],
+  manager: ["people", "analytics"],
 };
 
 const STATUS_LABELS: Record<MemberRow["status"], string> = {
@@ -468,7 +484,7 @@ const ROLE_DISPLAY: Record<
   }
 > = {
   admin: { label: "Admin", color: "green" },
-  operator: { label: "Operator", color: "warning" },
+  manager: { label: "Manager", color: "warning" },
   builder: { label: "Builder", color: "primary" },
   user: { label: "User", color: "blue" },
 };
@@ -476,7 +492,7 @@ const ROLE_DISPLAY: Record<
 const ROLE_DESCRIPTIONS: Record<MemberRole, string> = {
   admin:
     "Full access: SSO, billing, connectors, members, spaces, groups, analytics and workspace settings.",
-  operator:
+  manager:
     "Can manage members, spaces, groups and analytics. No access to SSO, billing, connectors or infrastructure settings.",
   builder: "Can create and publish agents. No admin access.",
   user: "Can use agents in the workspace.",
@@ -642,12 +658,12 @@ function PeoplePage({
   const [search, setSearch] = useState("");
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmails, setInviteEmails] = useState("");
-  const [inviteRole, setInviteRole] = useState("Operator");
+  const [inviteRole, setInviteRole] = useState("Manager");
   const [selectedGroup, setSelectedGroup] = useState<GroupRow | null>(null);
   const [selectedMember, setSelectedMember] = useState<MemberRow | null>(null);
   const [memberPlan, setMemberPlan] = useState<MemberRole>("user");
   const [confirmAdmin, setConfirmAdmin] = useState(false);
-  const canEdit = role === "admin" || role === "operator";
+  const canEdit = role === "admin" || role === "manager";
 
   const memberColumns = useMemo<ColumnDef<MemberRow>[]>(
     () => [
@@ -760,8 +776,8 @@ function PeoplePage({
     const invitedRole: MemberRole =
       inviteRole === "Admin"
         ? "admin"
-        : inviteRole === "Operator"
-          ? "operator"
+        : inviteRole === "Manager"
+          ? "manager"
           : inviteRole === "Builder"
             ? "builder"
             : "user";
@@ -864,7 +880,7 @@ function PeoplePage({
                   />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
-                  {(["Admin", "Operator", "Builder", "User"] as const).map(
+                  {(["Admin", "Manager", "Builder", "User"] as const).map(
                     (r) => (
                       <DropdownMenuItem
                         key={r}
@@ -878,8 +894,8 @@ function PeoplePage({
               <Page.P variant="secondary" size="sm">
                 {inviteRole === "Admin"
                   ? ROLE_DESCRIPTIONS.admin
-                  : inviteRole === "Operator"
-                    ? ROLE_DESCRIPTIONS.operator
+                  : inviteRole === "Manager"
+                    ? ROLE_DESCRIPTIONS.manager
                     : inviteRole === "Builder"
                       ? ROLE_DESCRIPTIONS.builder
                       : ROLE_DESCRIPTIONS.user}
@@ -992,7 +1008,7 @@ function PeoplePage({
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
                     {(
-                      ["admin", "operator", "builder", "user"] as MemberRole[]
+                      ["admin", "manager", "builder", "user"] as MemberRole[]
                     ).map((p) => (
                       <DropdownMenuItem
                         key={p}
@@ -2283,10 +2299,607 @@ interface NavSpec {
   icon: React.ComponentType<{ className?: string }>;
 }
 
-// M1 nav: two sections
-// "Workspace" -- visible to both admin and operator (people, analytics)
-// "Infrastructure" -- admin only
-// M1: mirrors the current admin panel structure exactly.
+// ─── Spaces sidebar data ──────────────────────────────────────────────────────
+
+const OPEN_SPACES = ["Company Data", "GTM", "ProjectManagement", "Shell_Space"];
+const RESTRICTED_SPACES_MEMBER = [
+  "Adèle",
+  "Alex's test space",
+  "Alexandre",
+  "AlexTest With a Very long space name",
+  "aubin",
+  "aubin 2",
+];
+const RESTRICTED_SPACES_NO_ACCESS = [
+  "Abboud's Space",
+  "Adrien",
+  "alban",
+  "Ambra",
+  "Amelie",
+  "Anas",
+  "Anya",
+  "ap",
+  "Area Leads",
+  "Ben",
+];
+
+// ─── Connections data ─────────────────────────────────────────────────────────
+
+interface ConnectionRow {
+  name: string;
+  usedBy: number;
+  lastSync: string;
+  managedByAvatar: string;
+  delegates: string[];
+  logo: React.ComponentType<{ className?: string }>;
+  onClick?: () => void;
+}
+
+const INITIAL_CONNECTIONS: Omit<ConnectionRow, "onClick">[] = [
+  {
+    name: "BigQuery",
+    usedBy: 43,
+    lastSync: "12min ago",
+    managedByAvatar: "OL",
+    delegates: [],
+    logo: BigQueryLogo,
+  },
+  {
+    name: "Confluence",
+    usedBy: 117,
+    lastSync: "7min ago",
+    managedByAvatar: "FR",
+    delegates: [],
+    logo: ConfluenceLogo,
+  },
+  {
+    name: "GitHub",
+    usedBy: 254,
+    lastSync: "<1m ago",
+    managedByAvatar: "GH",
+    delegates: [],
+    logo: GithubLogo,
+  },
+  {
+    name: "Gong",
+    usedBy: 115,
+    lastSync: "46min ago",
+    managedByAvatar: "GO",
+    delegates: [],
+    logo: GongLogo,
+  },
+  {
+    name: "Google Drive",
+    usedBy: 442,
+    lastSync: "1min ago",
+    managedByAvatar: "OL",
+    delegates: [],
+    logo: DriveLogo,
+  },
+  {
+    name: "Intercom",
+    usedBy: 116,
+    lastSync: "14min ago",
+    managedByAvatar: "IN",
+    delegates: [],
+    logo: IntercomLogo,
+  },
+  {
+    name: "Microsoft",
+    usedBy: 113,
+    lastSync: "2min ago",
+    managedByAvatar: "MS",
+    delegates: [],
+    logo: MicrosoftLogo,
+  },
+  {
+    name: "Notion",
+    usedBy: 533,
+    lastSync: "<1m ago",
+    managedByAvatar: "OL",
+    delegates: [],
+    logo: NotionLogo,
+  },
+  {
+    name: "Slack",
+    usedBy: 393,
+    lastSync: "<1m ago",
+    managedByAvatar: "OL",
+    delegates: [],
+    logo: SlackLogo,
+  },
+  {
+    name: "Slack (community)",
+    usedBy: 124,
+    lastSync: "11m ago",
+    managedByAvatar: "SC",
+    delegates: [],
+    logo: SlackLogo,
+  },
+  {
+    name: "Snowflake",
+    usedBy: 233,
+    lastSync: "3h ago",
+    managedByAvatar: "SW",
+    delegates: [],
+    logo: SnowflakeLogo,
+  },
+  {
+    name: "Zendesk",
+    usedBy: 121,
+    lastSync: "17min ago",
+    managedByAvatar: "ZD",
+    delegates: [],
+    logo: ZendeskLogo,
+  },
+];
+
+// ─── Spaces sidebar nav ───────────────────────────────────────────────────────
+
+function SpacesSidebarNav({
+  onConnectionsClick,
+}: {
+  onConnectionsClick: () => void;
+}) {
+  return (
+    <ScrollArea className="s-flex-1">
+      <ScrollBar orientation="vertical" size="minimal" />
+      <NavigationList className="s-px-2 s-py-2">
+        <NavigationListCollapsibleSection label="Administration" defaultOpen>
+          <NavigationListItem
+            icon={PuzzlePiece01V2}
+            label="Connections"
+            onClick={onConnectionsClick}
+          />
+          <NavigationListItem
+            icon={Tool01V2}
+            label="Tools"
+            onClick={() => {}}
+          />
+          <NavigationListItem
+            icon={Code01V2}
+            label="Triggers"
+            onClick={() => {}}
+          />
+        </NavigationListCollapsibleSection>
+
+        <NavigationListCollapsibleSection label="Open Spaces" defaultOpen>
+          {OPEN_SPACES.map((s) => (
+            <NavigationListItem
+              key={s}
+              icon={Globe01V2}
+              label={s}
+              onClick={() => {}}
+            />
+          ))}
+        </NavigationListCollapsibleSection>
+
+        <NavigationListCollapsibleSection label="Restricted Spaces" defaultOpen>
+          {RESTRICTED_SPACES_MEMBER.map((s) => (
+            <NavigationListItem
+              key={s}
+              icon={Lock01V2}
+              label={s}
+              onClick={() => {}}
+            />
+          ))}
+          {RESTRICTED_SPACES_NO_ACCESS.map((s) => (
+            <div key={s} className="s-opacity-50">
+              <NavigationListItem
+                icon={Lock01V2}
+                label={s}
+                onClick={() => {}}
+              />
+            </div>
+          ))}
+        </NavigationListCollapsibleSection>
+      </NavigationList>
+    </ScrollArea>
+  );
+}
+
+// ─── Manage Connection Sheet ──────────────────────────────────────────────────
+
+function ManageConnectionSheet({
+  connection,
+  open,
+  onClose,
+  onUpdateDelegates,
+  role,
+  managers,
+}: {
+  connection: ConnectionRow | null;
+  open: boolean;
+  onClose: () => void;
+  onUpdateDelegates: (name: string, delegates: string[]) => void;
+  role: Role;
+  managers: MemberRow[];
+}) {
+  const managerMembers = managers.filter((m) => m.role === "manager");
+  const [selectedIds, setSelectedIds] = useState<string[]>(
+    managerMembers
+      .filter((m) => connection?.delegates.includes(m.name))
+      .map((m) => m.id)
+  );
+  const [delegateSearch, setDelegateSearch] = useState("");
+
+  const filteredManagers = managerMembers.filter(
+    (m) =>
+      !delegateSearch ||
+      m.name.toLowerCase().includes(delegateSearch.toLowerCase()) ||
+      m.email.toLowerCase().includes(delegateSearch.toLowerCase())
+  );
+
+  const toggle = (id: string) =>
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+
+  const handleSave = () => {
+    if (connection) {
+      const names = managerMembers
+        .filter((m) => selectedIds.includes(m.id))
+        .map((m) => m.name);
+      onUpdateDelegates(connection.name, names);
+    }
+    onClose();
+  };
+
+  if (!connection) return null;
+
+  return (
+    <Sheet open={open} onOpenChange={onClose}>
+      <SheetContent side="right" size="lg">
+        <SheetHeader>
+          <SheetTitle>Manage {connection.name} connection</SheetTitle>
+        </SheetHeader>
+        <div className="s-flex s-flex-col s-gap-6 s-px-6 s-py-4 s-flex-1 s-overflow-auto">
+          {/* Edit / Delete */}
+          <div className="s-flex s-gap-2">
+            <Button variant="outline" size="sm" label="Edit connection" />
+            <Button variant="warning" size="sm" label="Delete connection" />
+          </div>
+
+          {/* Connection options */}
+          <Page.Vertical gap="sm">
+            <Page.SectionHeader title="Connection options" />
+            <div className="s-flex s-w-full s-items-center s-justify-between s-rounded-xl s-border s-border-border dark:s-border-border-night s-p-4">
+              <div className="s-flex s-flex-col s-gap-0.5">
+                <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                  Use descriptions
+                </span>
+                <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                  Your tables and columns description set in {connection.name}{" "}
+                  will be used to describe the schemas to Agents.
+                </span>
+              </div>
+              <SliderToggle selected={true} onClick={() => {}} />
+            </div>
+          </Page.Vertical>
+
+          {/* Delegate management — inline list, admin only */}
+          {role === "admin" && (
+            <Page.Vertical gap="sm">
+              <Page.SectionHeader
+                title="Delegate to Managers"
+                description="Managers selected here can edit this connection's settings and select which data is synced."
+              />
+              <SearchInput
+                name="delegate-search"
+                placeholder="Search by name or email"
+                value={delegateSearch}
+                onChange={setDelegateSearch}
+                className="s-w-full"
+              />
+              {filteredManagers.length === 0 ? (
+                <p className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night s-py-2">
+                  No managers found
+                </p>
+              ) : (
+                <ListGroup className="s-w-full">
+                  {filteredManagers.map((m, i) => (
+                    <ListItem
+                      key={m.id}
+                      onClick={() => toggle(m.id)}
+                      hasSeparator={i < filteredManagers.length - 1}
+                      itemsAlignment="center"
+                    >
+                      <Checkbox
+                        checked={selectedIds.includes(m.id)}
+                        onCheckedChange={() => toggle(m.id)}
+                      />
+                      <Avatar
+                        size="sm"
+                        name={m.name}
+                        visual={m.visual}
+                        isRounded
+                      />
+                      <div className="s-flex s-flex-col s-flex-1 s-min-w-0">
+                        <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                          {m.name}
+                        </span>
+                        <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                          {m.email}
+                        </span>
+                      </div>
+                      <Chip
+                        label={ROLE_DISPLAY[m.role].label}
+                        color={ROLE_DISPLAY[m.role].color}
+                        size="xs"
+                      />
+                    </ListItem>
+                  ))}
+                </ListGroup>
+              )}
+            </Page.Vertical>
+          )}
+
+          {/* Select tables */}
+          <Page.Vertical gap="sm">
+            <Page.SectionHeader title="Select tables" />
+            <div className="s-w-full s-rounded-xl s-border s-border-border dark:s-border-border-night s-divide-y s-divide-border dark:s-divide-border-night">
+              {["or1g1n-186209", "dust-dev"].map((table, i) => (
+                <div
+                  key={table}
+                  className="s-flex s-items-center s-gap-3 s-px-4 s-py-3"
+                >
+                  <Checkbox checked={i === 1} onCheckedChange={() => {}} />
+                  <span className="s-text-sm s-text-foreground dark:s-text-foreground-night">
+                    {table}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </Page.Vertical>
+        </div>
+        <SheetFooter
+          leftButtonProps={{
+            label: "Cancel",
+            onClick: onClose,
+            variant: "outline",
+          }}
+          rightButtonProps={{
+            label: "Save",
+            onClick: handleSave,
+            variant: "primary",
+          }}
+        />
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+// ─── Connections Page ─────────────────────────────────────────────────────────
+
+function ConnectionsPage({
+  connections,
+  onManage,
+  onOpenDetail,
+  role,
+}: {
+  connections: ConnectionRow[];
+  onManage: (conn: ConnectionRow) => void;
+  onOpenDetail: (conn: ConnectionRow) => void;
+  role: Role;
+}) {
+  const columns = useMemo<ColumnDef<ConnectionRow>[]>(
+    () => [
+      {
+        accessorKey: "name",
+        header: "Name",
+        meta: { className: "s-w-full" },
+        cell: (info) => {
+          const row = info.row.original;
+          const Logo = row.logo;
+          return (
+            <DataTable.CellContent>
+              <div className="s-flex s-items-center s-gap-3">
+                <div className="s-h-6 s-w-6 s-shrink-0">
+                  <Logo className="s-h-6 s-w-6" />
+                </div>
+                <span className="s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                  {row.name}
+                </span>
+              </div>
+            </DataTable.CellContent>
+          );
+        },
+      },
+      {
+        accessorKey: "usedBy",
+        header: "Used By",
+        meta: { className: "s-w-28" },
+        cell: (info) => (
+          <DataTable.CellContent>
+            <div className="s-flex s-items-center s-gap-1 s-text-muted-foreground dark:s-text-muted-foreground-night">
+              <UserGroupIcon className="s-h-3.5 s-w-3.5" />
+              <span>{info.getValue() as number}</span>
+            </div>
+          </DataTable.CellContent>
+        ),
+      },
+      {
+        accessorKey: "managedByAvatar",
+        header: "Managed By",
+        meta: { className: "s-w-28" },
+        cell: (info) => (
+          <DataTable.CellContent>
+            <Avatar name={info.getValue() as string} size="xs" isRounded />
+          </DataTable.CellContent>
+        ),
+      },
+      {
+        accessorKey: "lastSync",
+        header: "Last Sync",
+        meta: { className: "s-w-32" },
+        cell: (info) => (
+          <DataTable.CellContent>
+            <span className="s-text-muted-foreground dark:s-text-muted-foreground-night s-whitespace-nowrap">
+              {info.getValue() as string}
+            </span>
+          </DataTable.CellContent>
+        ),
+      },
+      ...(role === "admin"
+        ? [
+            {
+              id: "manage",
+              header: "",
+              meta: { className: "s-w-24" },
+              cell: (info: { row: { original: ConnectionRow } }) => (
+                <DataTable.CellContent>
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    icon={Cog6ToothIcon}
+                    label="Manage"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onManage(info.row.original);
+                    }}
+                  />
+                </DataTable.CellContent>
+              ),
+            } as ColumnDef<ConnectionRow>,
+          ]
+        : []),
+    ],
+    [role, onManage]
+  );
+
+  const rows = connections.map((c) => ({
+    ...c,
+    onClick: () => onOpenDetail(c),
+  }));
+
+  return (
+    <div className="s-flex s-flex-col s-h-full">
+      <Page>
+        <div className="s-flex s-items-start s-justify-between">
+          <Page.Header
+            title="Connections Admin"
+            description="Authorize connections and control what data Dust can access."
+            icon={PuzzlePiece01V2}
+          />
+          <Button
+            variant="primary"
+            size="sm"
+            label="Add Connections"
+            icon={PlusIcon}
+          />
+        </div>
+        <DataTable data={rows} columns={columns} className="s-w-full" />
+      </Page>
+    </div>
+  );
+}
+
+// ─── Connection Detail Page ───────────────────────────────────────────────────
+
+interface FolderRow {
+  id: string;
+  name: string;
+  lastUpdated: string;
+  onClick?: () => void;
+}
+
+const CONNECTION_FOLDERS: Record<string, FolderRow[]> = {
+  BigQuery: [
+    { id: "f1", name: "dust-dev", lastUpdated: "Mar 10, 2026" },
+    { id: "f2", name: "or1g1n-186209", lastUpdated: "Oct 29, 2025" },
+  ],
+  default: [
+    { id: "f1", name: "Main folder", lastUpdated: "Jun 1, 2026" },
+    { id: "f2", name: "Archive", lastUpdated: "Apr 15, 2026" },
+  ],
+};
+
+function ConnectionDetailPage({
+  connection,
+  onBack,
+  onManage,
+  role,
+}: {
+  connection: ConnectionRow;
+  onBack: () => void;
+  onManage: (conn: ConnectionRow) => void;
+  role: Role;
+}) {
+  const Logo = connection.logo;
+  const folders = (
+    CONNECTION_FOLDERS[connection.name] ?? CONNECTION_FOLDERS.default
+  ).map((f) => ({ ...f, onClick: () => {} }));
+
+  const folderColumns = useMemo<ColumnDef<FolderRow>[]>(
+    () => [
+      {
+        accessorKey: "name",
+        header: "Name",
+        meta: { className: "s-w-full" },
+        cell: (info) => (
+          <DataTable.CellContent>
+            <div className="s-flex s-items-center s-gap-2">
+              <FolderIcon className="s-h-4 s-w-4 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+              <span className="s-font-medium s-text-foreground dark:s-text-foreground-night">
+                {info.getValue() as string}
+              </span>
+            </div>
+          </DataTable.CellContent>
+        ),
+      },
+      {
+        accessorKey: "lastUpdated",
+        header: "Last Updated",
+        meta: { className: "s-w-40" },
+        cell: (info) => (
+          <DataTable.CellContent>
+            <span className="s-text-muted-foreground dark:s-text-muted-foreground-night">
+              {info.getValue() as string}
+            </span>
+          </DataTable.CellContent>
+        ),
+      },
+    ],
+    []
+  );
+
+  return (
+    <Page>
+      {/* Breadcrumb */}
+      <div className="s-flex s-items-center s-gap-1.5 s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+        <button
+          type="button"
+          className="s-hover:underline s-cursor-pointer"
+          onClick={onBack}
+        >
+          Connected Data
+        </button>
+        <span>/</span>
+        <div className="s-flex s-items-center s-gap-1.5 s-font-medium s-text-foreground dark:s-text-foreground-night">
+          <Logo className="s-h-4 s-w-4" />
+          <span>{connection.name}</span>
+        </div>
+      </div>
+
+      <div className="s-flex s-items-center s-justify-between">
+        <Page.SectionHeader title={connection.name} />
+        {role === "admin" && (
+          <Button
+            variant="primary"
+            size="sm"
+            icon={Cog6ToothIcon}
+            label={`Manage ${connection.name}`}
+            onClick={() => onManage(connection)}
+          />
+        )}
+      </div>
+
+      <DataTable data={folders} columns={folderColumns} className="s-w-full" />
+    </Page>
+  );
+}
+
+// M1 nav: mirrors the current admin panel structure exactly.
 // "People & Security" is split into People (operator+) and Identity & SSO (admin only).
 const NAV_SECTIONS: { title: string; items: NavSpec[] }[] = [
   {
@@ -2320,12 +2933,25 @@ const NAV_SECTIONS: { title: string; items: NavSpec[] }[] = [
 export default function AdminGovernanceM1() {
   const sidebarRef = useRef<SidebarLayoutRef>(null);
   const [role, setRole] = useState<Role>("admin");
+  const [activeTab, setActiveTab] = useState<"chat" | "spaces" | "admin">(
+    "admin"
+  );
   const [activePage, setActivePage] = useState<AdminPage>("people");
-  const [lockedItem, setLockedItem] = useState<{
-    label: string;
-  } | null>(null);
+  const [lockedItem, setLockedItem] = useState<{ label: string } | null>(null);
   const [members, setMembers] = useState<MemberRow[]>(INITIAL_MEMBERS);
   const [groups, setGroups] = useState<GroupRow[]>(GROUPS);
+  // Spaces / Connections state
+  const [spacesPage, setSpacesPage] = useState<
+    "list" | "connections" | "connection_detail"
+  >("list");
+  const [connections, setConnections] = useState<ConnectionRow[]>([
+    ...INITIAL_CONNECTIONS,
+  ]);
+  const [activeConnection, setActiveConnection] =
+    useState<ConnectionRow | null>(null);
+  const [managingConn, setManagingConn] = useState<ConnectionRow | null>(null);
+
+  const managers = members.filter((m) => m.role === "manager");
 
   const access = ROLE_ACCESS[role];
   const effectivePage = access.includes(activePage)
@@ -2334,7 +2960,11 @@ export default function AdminGovernanceM1() {
 
   const sidebar = (
     <div className="s-flex s-h-full s-flex-col s-border-r s-border-border s-bg-muted-background dark:s-border-border-night dark:s-bg-muted-background-night">
-      <Tabs value="admin" className="s-flex s-min-h-0 s-flex-1 s-flex-col">
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => setActiveTab(v as typeof activeTab)}
+        className="s-flex s-min-h-0 s-flex-1 s-flex-col"
+      >
         <TabsList className="s-mt-3 s-px-2">
           <TabsTrigger
             value="chat"
@@ -2344,6 +2974,19 @@ export default function AdminGovernanceM1() {
           <TabsTrigger value="spaces" label="Spaces" icon={SpaceOpenIcon} />
           <TabsTrigger value="admin" icon={Cog6ToothIcon} />
         </TabsList>
+
+        {/* Spaces sidebar */}
+        <TabsContent
+          value="spaces"
+          className="s-flex s-min-h-0 s-flex-1 s-flex-col"
+        >
+          <SpacesSidebarNav
+            onConnectionsClick={() => {
+              setSpacesPage("connections");
+              setActiveTab("spaces");
+            }}
+          />
+        </TabsContent>
 
         <TabsContent
           value="admin"
@@ -2432,7 +3075,7 @@ export default function AdminGovernanceM1() {
   const content = (
     <ScrollArea className="s-h-full s-bg-background dark:s-bg-background-night">
       <ScrollBar orientation="vertical" size="minimal" />
-      {/* Role switcher at top-right of content area */}
+      {/* Role switcher */}
       <div className="s-flex s-justify-end s-px-6 s-pt-4 s-pb-0">
         <div className="s-flex s-items-center s-gap-2">
           <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
@@ -2444,67 +3087,155 @@ export default function AdminGovernanceM1() {
             onValueChange={(v) => setRole(v as Role)}
           >
             <ButtonsSwitch value="admin" label="Admin" />
-            <ButtonsSwitch value="operator" label="Operator" />
+            <ButtonsSwitch value="manager" label="Manager" />
           </ButtonsSwitchList>
         </div>
       </div>
-      <div key={effectivePage} className="ag-page-in">
-        {effectivePage === "people" ? (
-          <PeoplePage
-            role={role}
-            members={members}
-            setMembers={setMembers}
-            groups={groups}
-            setGroups={setGroups}
-          />
-        ) : effectivePage === "analytics" ? (
-          <AnalyticsPage />
-        ) : effectivePage === "identity" ? (
-          <IdentityPage role={role} />
-        ) : effectivePage === "billing" ? (
-          <BillingPage />
-        ) : effectivePage === "usage" ? (
-          <UsagePage />
-        ) : effectivePage === "workspace" ? (
-          <PlaceholderPage
-            title="Workspace Settings"
-            description="Configure your workspace preferences."
-            icon={Cog6ToothIcon}
-          />
-        ) : effectivePage === "models" ? (
-          <ModelProvidersPage />
-        ) : effectivePage === "api_keys" ? (
-          <PlaceholderPage
-            title="API Keys"
-            description="Manage API keys for programmatic access."
-            icon={Key01V2}
-          />
-        ) : effectivePage === "programmatic" ? (
-          <PlaceholderPage
-            title="Programmatic usage"
-            description="Track API usage and quotas."
-            icon={Code01V2}
-          />
-        ) : effectivePage === "credentials" ? (
-          <PlaceholderPage
-            title="App Credentials"
-            description="Manage application credentials."
-            icon={PuzzlePiece01V2}
-          />
-        ) : (
-          <PlaceholderPage
-            title="Secrets"
-            description="Manage workspace secrets."
-            icon={Lock01V2}
-          />
-        )}
-      </div>
+
+      {/* Spaces content */}
+      {activeTab === "spaces" && (
+        <div key={spacesPage} className="ag-page-in">
+          {spacesPage === "connections" ? (
+            (() => {
+              // Managers only see connections they've been delegated to
+              const visibleConnections =
+                role === "admin"
+                  ? connections
+                  : connections.filter((c) =>
+                      c.delegates.some((d) =>
+                        members.find(
+                          (m) => m.name === d && m.role === "manager"
+                        )
+                      )
+                    );
+
+              if (role === "manager" && visibleConnections.length === 0) {
+                return (
+                  <Page>
+                    <Page.Header
+                      title="Connections"
+                      description="Manage data source connections for your workspace."
+                      icon={PuzzlePiece01V2}
+                    />
+                    <div className="s-flex s-flex-col s-items-center s-justify-center s-rounded-xl s-border s-border-dashed s-border-border dark:s-border-border-night s-py-16 s-gap-3 s-text-center">
+                      <Lock01V2 className="s-h-6 s-w-6 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+                      <Page.P variant="secondary">
+                        You have not been granted access to any connections.
+                        <br />
+                        Contact an Admin to request access.
+                      </Page.P>
+                    </div>
+                  </Page>
+                );
+              }
+
+              return (
+                <ConnectionsPage
+                  connections={visibleConnections}
+                  role={role}
+                  onManage={(conn) => setManagingConn(conn)}
+                  onOpenDetail={(conn) => {
+                    setActiveConnection(conn);
+                    setSpacesPage("connection_detail");
+                  }}
+                />
+              );
+            })()
+          ) : spacesPage === "connection_detail" && activeConnection ? (
+            <ConnectionDetailPage
+              connection={activeConnection}
+              role={role}
+              onBack={() => setSpacesPage("connections")}
+              onManage={(conn) => setManagingConn(conn)}
+            />
+          ) : (
+            <Page>
+              <Page.Header
+                title="Spaces"
+                description="Manage your workspace spaces."
+                icon={SpaceOpenIcon}
+              />
+              <div className="s-flex s-items-center s-justify-center s-rounded-xl s-border s-border-dashed s-border-border dark:s-border-border-night s-p-12">
+                <Page.P variant="secondary">
+                  Select a space from the sidebar
+                </Page.P>
+              </div>
+            </Page>
+          )}
+        </div>
+      )}
+      {/* Admin content */}
+      {activeTab === "admin" && (
+        <div key={effectivePage} className="ag-page-in">
+          {effectivePage === "people" ? (
+            <PeoplePage
+              role={role}
+              members={members}
+              setMembers={setMembers}
+              groups={groups}
+              setGroups={setGroups}
+            />
+          ) : effectivePage === "analytics" ? (
+            <AnalyticsPage />
+          ) : effectivePage === "identity" ? (
+            <IdentityPage role={role} />
+          ) : effectivePage === "billing" ? (
+            <BillingPage />
+          ) : effectivePage === "usage" ? (
+            <UsagePage />
+          ) : effectivePage === "workspace" ? (
+            <PlaceholderPage
+              title="Workspace Settings"
+              description="Configure your workspace preferences."
+              icon={Cog6ToothIcon}
+            />
+          ) : effectivePage === "models" ? (
+            <ModelProvidersPage />
+          ) : effectivePage === "api_keys" ? (
+            <PlaceholderPage
+              title="API Keys"
+              description="Manage API keys for programmatic access."
+              icon={Key01V2}
+            />
+          ) : effectivePage === "programmatic" ? (
+            <PlaceholderPage
+              title="Programmatic usage"
+              description="Track API usage and quotas."
+              icon={Code01V2}
+            />
+          ) : effectivePage === "credentials" ? (
+            <PlaceholderPage
+              title="App Credentials"
+              description="Manage application credentials."
+              icon={PuzzlePiece01V2}
+            />
+          ) : (
+            <PlaceholderPage
+              title="Secrets"
+              description="Manage workspace secrets."
+              icon={Lock01V2}
+            />
+          )}
+        </div>
+      )}
     </ScrollArea>
   );
 
   return (
     <>
       <style>{ANIMATION_CSS}</style>
+      <ManageConnectionSheet
+        connection={managingConn}
+        open={!!managingConn}
+        onClose={() => setManagingConn(null)}
+        role={role}
+        managers={managers}
+        onUpdateDelegates={(name, delegates) => {
+          setConnections(
+            connections.map((c) => (c.name === name ? { ...c, delegates } : c))
+          );
+        }}
+      />
 
       {/* Locked section dialog */}
       <Dialog
@@ -2531,7 +3262,7 @@ export default function AdminGovernanceM1() {
                   role.
                 </Page.P>
                 <Page.P variant="secondary" size="sm">
-                  Operators cannot access Infrastructure settings. Contact your
+                  Managers cannot access Infrastructure settings. Contact your
                   Admin to get access.
                 </Page.P>
               </div>
