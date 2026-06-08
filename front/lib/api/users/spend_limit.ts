@@ -5,6 +5,7 @@ import {
 import {
   dispatchPerUserCapReached,
   dispatchPerUserCapResolved,
+  dispatchPerUserCapWarningResolved,
 } from "@app/lib/api/metronome/credit_state_dispatcher";
 import { getUserForWorkspace } from "@app/lib/api/user";
 import type { AuditLogContext } from "@app/lib/api/workos/organization";
@@ -18,7 +19,6 @@ import {
 } from "@app/lib/metronome/alerts/spend_limits";
 import { fetchPerUserAwuUsage } from "@app/lib/metronome/per_user_usage";
 import { getSeatAllowancesByNormalizedSeatType } from "@app/lib/metronome/seat_types";
-import { clearUserAwuWarned } from "@app/lib/metronome/user_block";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
@@ -291,7 +291,7 @@ export async function setUserSpendLimit(
     limit.kind === "limited" ? limit.awuCredits : null
   );
 
-  let transitionedTo: "reached" | "resolved" | null;
+  let transitionedTo: "reached" | "resolved" | null = null;
 
   switch (limit.kind) {
     case "unlimited": {
@@ -331,7 +331,14 @@ export async function setUserSpendLimit(
           "[Metronome PerUserCap] Failed to clear warning alert; continuing"
         );
       }
-      void clearUserAwuWarned(workspace.sId, user.sId);
+      void dispatchPerUserCapResolved({
+        workspace: workspaceResource,
+        userId,
+      });
+      void dispatchPerUserCapWarningResolved({
+        workspace: workspaceResource,
+        userId,
+      });
 
       // Look up the user's seat type to find the matching default cap.
       const normalizedSeatType = normalizeToPoolLimitSeatType(

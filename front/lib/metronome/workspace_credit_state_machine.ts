@@ -1,15 +1,10 @@
-import {
-  clearWorkspacePoolDepleted,
-  setWorkspaceCreditPoolStatus,
-  setWorkspacePoolDepleted,
-} from "@app/lib/metronome/user_block";
+import { setWorkspaceCreditPoolStatus } from "@app/lib/metronome/user_block";
 import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { invalidateCacheAfterCommit } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import type { WorkspacePoolCreditState } from "@app/types/credits";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { Transaction } from "sequelize";
 
 export type WorkspaceCreditContext = {
@@ -97,46 +92,6 @@ type WorkspaceCreditTransition = {
 function balanceAtMost(threshold: number): WorkspaceCreditGuard {
   return (_ctx, event) =>
     "balanceAwu" in event && event.balanceAwu <= threshold;
-}
-
-function syncWorkspacePoolCacheForState(
-  state: WorkspacePoolCreditState,
-  ctx: WorkspaceCreditContext,
-  transaction: Transaction | undefined
-): void {
-  switch (state) {
-    case "active":
-    case "overage":
-      invalidateCacheAfterCommit(transaction, () =>
-        clearWorkspacePoolDepleted(ctx.workspaceId)
-      );
-      invalidateCacheAfterCommit(transaction, () =>
-        setWorkspaceCreditPoolStatus(ctx.workspaceId, state)
-      );
-      return;
-
-    case "active_low_balance":
-    case "active_critical_balance":
-      invalidateCacheAfterCommit(transaction, () =>
-        clearWorkspacePoolDepleted(ctx.workspaceId)
-      );
-      invalidateCacheAfterCommit(transaction, () =>
-        setWorkspaceCreditPoolStatus(ctx.workspaceId, state)
-      );
-      return;
-
-    case "depleted":
-      invalidateCacheAfterCommit(transaction, () =>
-        setWorkspacePoolDepleted(ctx.workspaceId)
-      );
-      invalidateCacheAfterCommit(transaction, () =>
-        setWorkspaceCreditPoolStatus(ctx.workspaceId, state)
-      );
-      return;
-
-    default:
-      assertNever(state);
-  }
 }
 
 const TRANSITIONS: WorkspaceCreditTransition[] = [
@@ -357,7 +312,9 @@ export async function transitionWorkspaceCreditState(
   if (currentState !== match.to) {
     await workspace.updatePoolCreditState(match.to, transaction);
   }
-  syncWorkspacePoolCacheForState(match.to, ctx, transaction);
+  invalidateCacheAfterCommit(transaction, () =>
+    setWorkspaceCreditPoolStatus(ctx.workspaceId, match.to)
+  );
   logger.info(
     {
       workspaceId: ctx.workspaceId,
@@ -389,7 +346,9 @@ export async function setWorkspacePoolCreditStateReconciled(
   if (currentState !== targetState) {
     await workspace.updatePoolCreditState(targetState, transaction);
   }
-  syncWorkspacePoolCacheForState(targetState, ctx, transaction);
+  invalidateCacheAfterCommit(transaction, () =>
+    setWorkspaceCreditPoolStatus(ctx.workspaceId, targetState)
+  );
   logger.info(
     {
       workspaceId: ctx.workspaceId,

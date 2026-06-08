@@ -1,16 +1,11 @@
 import { CRITICAL_BALANCE_OFFSET } from "@app/lib/metronome/alerts/programmatic_cap";
-import {
-  clearWorkspaceProgrammaticDepleted,
-  setWorkspaceProgrammaticCreditStatus,
-  setWorkspaceProgrammaticDepleted,
-} from "@app/lib/metronome/user_block";
+import { setWorkspaceProgrammaticCreditStatus } from "@app/lib/metronome/user_block";
 import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { invalidateCacheAfterCommit } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import type { WorkspaceProgrammaticCreditState } from "@app/types/credits";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { Transaction } from "sequelize";
 
 export type ProgrammaticCreditEvent =
@@ -71,37 +66,6 @@ function remainingAtMost(threshold: number): ProgrammaticCreditGuard {
   return (event) =>
     event.type === "programmatic_low_balance" &&
     event.remainingCredits <= threshold;
-}
-
-function syncProgrammaticCacheForState(
-  state: WorkspaceProgrammaticCreditState,
-  workspaceId: string,
-  transaction: Transaction | undefined
-): void {
-  switch (state) {
-    case "active":
-    case "active_low_balance":
-    case "active_critical_balance":
-      invalidateCacheAfterCommit(transaction, () =>
-        clearWorkspaceProgrammaticDepleted(workspaceId)
-      );
-      invalidateCacheAfterCommit(transaction, () =>
-        setWorkspaceProgrammaticCreditStatus(workspaceId, state)
-      );
-      return;
-
-    case "depleted":
-      invalidateCacheAfterCommit(transaction, () =>
-        setWorkspaceProgrammaticDepleted(workspaceId)
-      );
-      invalidateCacheAfterCommit(transaction, () =>
-        setWorkspaceProgrammaticCreditStatus(workspaceId, state)
-      );
-      return;
-
-    default:
-      assertNever(state);
-  }
 }
 
 const TRANSITIONS: ProgrammaticCreditTransition[] = [
@@ -199,7 +163,9 @@ export async function transitionProgrammaticCreditState(
   if (currentState !== match.to) {
     await workspace.updateProgrammaticCreditState(match.to, transaction);
   }
-  syncProgrammaticCacheForState(match.to, workspaceId, transaction);
+  invalidateCacheAfterCommit(transaction, () =>
+    setWorkspaceProgrammaticCreditStatus(workspaceId, match.to)
+  );
   logger.info(
     {
       workspaceId,
@@ -232,7 +198,9 @@ export async function setProgrammaticCreditStateReconciled(
   if (currentState !== targetState) {
     await workspace.updateProgrammaticCreditState(targetState, transaction);
   }
-  syncProgrammaticCacheForState(targetState, workspaceId, transaction);
+  invalidateCacheAfterCommit(transaction, () =>
+    setWorkspaceProgrammaticCreditStatus(workspaceId, targetState)
+  );
   logger.info(
     {
       workspaceId,

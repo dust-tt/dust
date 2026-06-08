@@ -1,10 +1,4 @@
-import {
-  clearUserAwuWarned,
-  clearUserCapBlocked,
-  setUserAwuWarned,
-  setUserCapBlocked,
-  setUserCreditState,
-} from "@app/lib/metronome/user_block";
+import { setUserCreditState } from "@app/lib/metronome/user_block";
 import type { MembershipResource } from "@app/lib/resources/membership_resource";
 import { invalidateCacheAfterCommit } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
@@ -19,7 +13,6 @@ import {
 } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { Transaction } from "sequelize";
 import {
   MAX_SEAT_MONTHLY_AWU_CREDITS,
@@ -97,7 +90,12 @@ export type UserCreditEvent =
    * spend cap. Moves `on_pool` → `on_pool_low_balance` to surface the
    * low-balance warning without blocking the user.
    */
-  | { type: "per_user_cap_warning" };
+  | { type: "per_user_cap_warning" }
+  /**
+   * The 80% warning was cleared (e.g. admin raised or removed the per-user cap).
+   * Moves `on_pool_low_balance` → `on_pool`; idempotent from `on_pool`.
+   */
+  | { type: "per_user_cap_warning_resolved" };
 
 type UserCreditGuard = (
   ctx: UserCreditContext,
@@ -124,58 +122,6 @@ function targetAfterCapResolved(ctx: UserCreditContext): UserCreditState {
     seatType: ctx.seatType ?? null,
     ...ctx.liveBalance,
   });
-}
-
-function syncUserCapCacheForState(
-  state: UserCreditState,
-  ctx: UserCreditContext,
-  transaction: Transaction | undefined
-): void {
-  switch (state) {
-    // Spending normally (personal credits or workspace pool): not capped, no
-    // low-balance warning. "normal" is the legacy alias of "on_pool" kept
-    // during the migration window (see USER_CREDIT_STATES).
-    case "normal":
-    case "user_seat":
-    case "on_pool":
-      invalidateCacheAfterCommit(transaction, () =>
-        clearUserCapBlocked(ctx.workspaceId, ctx.userId)
-      );
-      invalidateCacheAfterCommit(transaction, () =>
-        clearUserAwuWarned(ctx.workspaceId, ctx.userId)
-      );
-      invalidateCacheAfterCommit(transaction, () =>
-        setUserCreditState(ctx.workspaceId, ctx.userId, state)
-      );
-      return;
-
-    // Still spending, but ≥80% of the personal balance / per-user cap used:
-    // not capped, but the low-balance warning is active.
-    case "user_seat_low_balance":
-    case "on_pool_low_balance":
-      invalidateCacheAfterCommit(transaction, () =>
-        clearUserCapBlocked(ctx.workspaceId, ctx.userId)
-      );
-      invalidateCacheAfterCommit(transaction, () =>
-        setUserAwuWarned(ctx.workspaceId, ctx.userId)
-      );
-      invalidateCacheAfterCommit(transaction, () =>
-        setUserCreditState(ctx.workspaceId, ctx.userId, state)
-      );
-      return;
-
-    case "capped":
-      invalidateCacheAfterCommit(transaction, () =>
-        setUserCapBlocked(ctx.workspaceId, ctx.userId)
-      );
-      invalidateCacheAfterCommit(transaction, () =>
-        setUserCreditState(ctx.workspaceId, ctx.userId, state)
-      );
-      return;
-
-    default:
-      assertNever(state);
-  }
 }
 
 const TRANSITIONS: UserCreditTransition[] = [
@@ -318,6 +264,13 @@ const TRANSITIONS: UserCreditTransition[] = [
     to: "on_pool_low_balance",
   },
 
+  // Per-user cap warning cleared (admin raised/removed cap): move on_pool_low_balance → on_pool.
+  {
+    from: ["on_pool", "on_pool_low_balance"],
+    event: "per_user_cap_warning_resolved",
+    to: "on_pool",
+  },
+
   // Billing-period renewal for pro/max seats: reset to user_seat regardless
   // of current state. Workspace seats are reset by per_user_cap_resolved;
   // free seats are not reset.
@@ -389,7 +342,9 @@ export async function transitionUserCreditState(
   if (rawState !== match.to) {
     await membership.updateCreditState(match.to, transaction);
   }
-  syncUserCapCacheForState(match.to, ctx, transaction);
+  invalidateCacheAfterCommit(transaction, () =>
+    setUserCreditState(ctx.workspaceId, ctx.userId, match.to)
+  );
   logger.info(
     {
       workspaceId: ctx.workspaceId,
@@ -426,7 +381,9 @@ export async function setUserCreditStateReconciled(
   if (rawState !== targetState) {
     await membership.updateCreditState(targetState, transaction);
   }
-  syncUserCapCacheForState(targetState, ctx, transaction);
+  invalidateCacheAfterCommit(transaction, () =>
+    setUserCreditState(ctx.workspaceId, ctx.userId, targetState)
+  );
   logger.info(
     {
       workspaceId: ctx.workspaceId,

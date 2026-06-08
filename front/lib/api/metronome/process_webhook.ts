@@ -65,10 +65,6 @@ import {
 import { invalidateContractCache } from "@app/lib/metronome/plan_type";
 import type { ProgrammaticCreditEvent } from "@app/lib/metronome/programmatic_credit_state_machine";
 import { isMetronomeFreeCredit } from "@app/lib/metronome/types";
-import {
-  clearUserAwuWarned,
-  setUserAwuWarned,
-} from "@app/lib/metronome/user_block";
 import type { MetronomeWebhookEvent } from "@app/lib/metronome/webhook_events";
 import { PlanModel } from "@app/lib/models/plan";
 import { notifyUserAwuCapReached } from "@app/lib/notifications/workflows/user-awu-cap-reached";
@@ -734,11 +730,9 @@ async function handlePerUserSpendThresholdEvent({
           )
         );
       }
-      void clearUserAwuWarned(workspace.sId, userId);
     }
   } else if (eventAlertId === warningAlertId && isReached) {
     // Warning alert (80%) fired — notify but don't block.
-    void setUserAwuWarned(workspace.sId, userId);
     void dispatchPerUserCapWarning({ workspace, userId });
     const user = await UserResource.fetchById(userId);
     if (user) {

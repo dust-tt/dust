@@ -19,9 +19,8 @@ import {
   getProductSeatTypes,
 } from "@app/lib/metronome/seat_types";
 import {
-  clearUserCapBlocked,
-  clearWorkspaceProgrammaticWarned,
-  setWorkspaceProgrammaticWarned,
+  setUserCreditState,
+  setWorkspaceProgrammaticCreditStatus,
 } from "@app/lib/metronome/user_block";
 import type { LiveUserSeatBalance } from "@app/lib/metronome/user_credit_state_machine";
 import { transitionUserCreditState } from "@app/lib/metronome/user_credit_state_machine";
@@ -398,6 +397,53 @@ export async function dispatchPerUserCapWarning({
   }
 }
 
+export async function dispatchPerUserCapWarningResolved({
+  workspace,
+  userId,
+}: {
+  workspace: WorkspaceResource;
+  userId: string;
+}): Promise<void> {
+  const user = await UserResource.fetchById(userId);
+  if (!user) {
+    logger.warn(
+      { workspaceId: workspace.sId, userId },
+      "[CreditStateDispatcher] per_user_cap_warning_resolved: user not found, skipping"
+    );
+    return;
+  }
+
+  const lightWorkspace = renderLightWorkspaceType({ workspace });
+  const membership =
+    await MembershipResource.getActiveMembershipOfUserInWorkspace({
+      user,
+      workspace: lightWorkspace,
+    });
+  if (!membership) {
+    logger.warn(
+      { workspaceId: workspace.sId, userId },
+      "[CreditStateDispatcher] per_user_cap_warning_resolved: no active membership, skipping"
+    );
+    return;
+  }
+
+  const result = await transitionUserCreditState(
+    membership,
+    { type: "per_user_cap_warning_resolved" },
+    { workspaceId: workspace.sId, userId }
+  );
+  if (result.isErr()) {
+    logger.warn(
+      {
+        workspaceId: workspace.sId,
+        userId,
+        creditState: membership.creditState,
+      },
+      "[CreditStateDispatcher] per_user_cap_warning_resolved: transition skipped"
+    );
+  }
+}
+
 export async function dispatchPerUserCapResolved({
   workspace,
   userId,
@@ -409,9 +455,9 @@ export async function dispatchPerUserCapResolved({
   if (!user) {
     logger.warn(
       { workspaceId: workspace.sId, userId },
-      "[CreditStateDispatcher] per_user_cap_resolved: user not found, clearing legacy block"
+      "[CreditStateDispatcher] per_user_cap_resolved: user not found, resetting credit state"
     );
-    await clearUserCapBlocked(workspace.sId, userId);
+    await setUserCreditState(workspace.sId, userId, "on_pool");
     return new Ok(undefined);
   }
 
@@ -425,9 +471,9 @@ export async function dispatchPerUserCapResolved({
   if (!membership) {
     logger.warn(
       { workspaceId: workspace.sId, userId },
-      "[CreditStateDispatcher] per_user_cap_resolved: no active membership, clearing legacy block"
+      "[CreditStateDispatcher] per_user_cap_resolved: no active membership, resetting credit state"
     );
-    await clearUserCapBlocked(workspace.sId, userId);
+    await setUserCreditState(workspace.sId, userId, "on_pool");
     return new Ok(undefined);
   }
 
@@ -621,7 +667,6 @@ export async function dispatchProgrammaticCapReset({
   await transitionProgrammaticCreditState(workspace, {
     type: "programmatic_cap_reset",
   });
-  void clearWorkspaceProgrammaticWarned(workspace.sId);
 }
 
 /**
@@ -638,7 +683,10 @@ export async function dispatchProgrammaticWarning({
   workspace: WorkspaceResource;
   eventId: string;
 }): Promise<void> {
-  void setWorkspaceProgrammaticWarned(workspace.sId);
+  void setWorkspaceProgrammaticCreditStatus(
+    workspace.sId,
+    "active_low_balance"
+  );
   void notifyAdminsProgrammaticCapAboutStatus({
     workspace,
     isBlocked: false,

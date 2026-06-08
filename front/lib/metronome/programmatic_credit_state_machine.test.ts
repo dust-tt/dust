@@ -12,13 +12,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // ---------------------------------------------------------------------------
 
 const {
-  mockSetWorkspaceProgrammaticDepleted,
-  mockClearWorkspaceProgrammaticDepleted,
   mockSetWorkspaceProgrammaticCreditStatus,
   mockInvalidateCacheAfterCommit,
 } = vi.hoisted(() => ({
-  mockSetWorkspaceProgrammaticDepleted: vi.fn(),
-  mockClearWorkspaceProgrammaticDepleted: vi.fn(),
   mockSetWorkspaceProgrammaticCreditStatus: vi.fn(),
   mockInvalidateCacheAfterCommit: vi.fn(
     (_tx: Transaction | undefined, fn: () => Promise<void>) => {
@@ -28,8 +24,6 @@ const {
 }));
 
 vi.mock("@app/lib/metronome/user_block", () => ({
-  setWorkspaceProgrammaticDepleted: mockSetWorkspaceProgrammaticDepleted,
-  clearWorkspaceProgrammaticDepleted: mockClearWorkspaceProgrammaticDepleted,
   setWorkspaceProgrammaticCreditStatus:
     mockSetWorkspaceProgrammaticCreditStatus,
 }));
@@ -82,9 +76,6 @@ describe("ProgrammaticCreditStateMachine — low balance", () => {
     expect(workspace.updateProgrammaticCreditState).toHaveBeenCalledWith(
       "active_low_balance",
       undefined
-    );
-    expect(mockClearWorkspaceProgrammaticDepleted).toHaveBeenCalledWith(
-      "ws_test"
     );
   });
 
@@ -165,9 +156,6 @@ describe("ProgrammaticCreditStateMachine — cap reached", () => {
     if (result.isOk()) {
       expect(result.value).toBe("depleted");
     }
-    expect(mockSetWorkspaceProgrammaticDepleted).toHaveBeenCalledWith(
-      "ws_test"
-    );
   });
 
   it("depleted + cap_reached is idempotent", async () => {
@@ -180,9 +168,6 @@ describe("ProgrammaticCreditStateMachine — cap reached", () => {
       expect(result.value).toBe("depleted");
     }
     expect(workspace.updateProgrammaticCreditState).not.toHaveBeenCalled();
-    expect(mockSetWorkspaceProgrammaticDepleted).toHaveBeenCalledWith(
-      "ws_test"
-    );
   });
 });
 
@@ -211,9 +196,6 @@ describe("ProgrammaticCreditStateMachine — cap reset", () => {
         undefined
       );
     }
-    expect(mockClearWorkspaceProgrammaticDepleted).toHaveBeenCalledWith(
-      "ws_test"
-    );
   });
 });
 

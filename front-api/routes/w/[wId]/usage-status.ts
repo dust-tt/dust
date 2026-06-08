@@ -7,7 +7,6 @@ import {
   getWorkspaceProgrammaticCreditStatus,
   isUserAwuWarned,
   isUserBlocked,
-  isWorkspaceProgrammaticWarned,
 } from "@app/lib/metronome/user_block";
 import { isCreditPricedPlan } from "@app/types/plan";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -52,7 +51,10 @@ app.get(
     let programmaticCreditStatus: ProgrammaticCreditStatus = "active";
     if (programmaticState === "depleted") {
       programmaticCreditStatus = "depleted";
-    } else if (await isWorkspaceProgrammaticWarned(workspace.sId)) {
+    } else if (
+      programmaticState === "active_low_balance" ||
+      programmaticState === "active_critical_balance"
+    ) {
       programmaticCreditStatus = "warned";
     }
 
