@@ -72,6 +72,10 @@ async function processWorkspace(
       continue;
     }
 
+    if (skill.instructions.startsWith(ASSOCIATED_TOOLS_LABEL)) {
+      continue;
+    }
+
     const tools = skill.mcpServerViews.map((view): ToolReference => {
       const viewType = view.toJSON();
 
