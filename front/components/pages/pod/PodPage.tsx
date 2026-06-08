@@ -54,7 +54,7 @@ export function PodPage() {
 
   if (isPodsInfoLoading) {
     return (
-      <div className="flex h-full w-full items-center justify-center">
+      <div className="flex h-full w-full items-center justify-center mt-4">
         <Spinner />
       </div>
     );
