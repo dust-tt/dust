@@ -321,6 +321,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable the Metronome-owned payment-gated checkout flow for Business plan activation (replaces direct Stripe charge).",
     stage: "dust_only",
   },
+  dust_desktop: {
+    description:
+      "Auto-attach the Dust Desktop client-side MCP server to agent runs when registered for the user.",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
