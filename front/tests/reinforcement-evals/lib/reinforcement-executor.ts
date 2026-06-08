@@ -2,7 +2,7 @@ import {
   formatAvailableTools,
   formatMcpDescription,
 } from "@app/lib/api/assistant/global_agents/sidekick_context";
-import { getLLM } from "@app/lib/api/llm";
+import { getBatchLLM, getLLM } from "@app/lib/api/llm";
 import type { LLM } from "@app/lib/api/llm/llm";
 import type { BatchResultWithRunIds } from "@app/lib/api/llm/types/batch";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
@@ -304,15 +304,22 @@ async function executeMultiStep(
   return { toolCalls: allToolCalls, responseText: lastResponseText };
 }
 
-async function getLLMInstance(auth: Authenticator): Promise<LLM> {
+async function getLLMInstance(
+  auth: Authenticator,
+  surface: "stream" | "batch" = "stream"
+): Promise<LLM> {
   const credentials = await getLlmCredentials(auth, {
     skipEmbeddingApiKeyRequirement: true,
   });
-  const llm = await getLLM(auth, {
+  const llmParameters = {
     credentials,
     modelId: MODEL_ID,
     bypassFeatureFlag: true,
-  });
+  };
+  const llm =
+    surface === "batch"
+      ? await getBatchLLM(auth, llmParameters)
+      : await getLLM(auth, llmParameters);
   if (!llm) {
     throw new Error(
       `Failed to initialize LLM for reinforcement eval (model: ${MODEL_ID})`
@@ -369,7 +376,7 @@ export async function executeBatch(
   auth: Authenticator,
   testCases: CategorizedTestCase[]
 ): Promise<Map<string, ExecutionResult>> {
-  const llm = await getLLMInstance(auth);
+  const llm = await getLLMInstance(auth, "batch");
 
   const testCaseById = new Map<string, CategorizedTestCase>();
   for (const tc of testCases) {

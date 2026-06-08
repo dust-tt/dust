@@ -320,6 +320,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable the Metronome-owned payment-gated checkout flow for Business plan activation (replaces direct Stripe charge).",
     stage: "dust_only",
   },
+  use_new_llm_router: {
+    description: "Use the new LLM router for model selection and routing",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
