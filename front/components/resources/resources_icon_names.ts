@@ -205,6 +205,7 @@ export const INTERNAL_ALLOWED_ICONS = [
   "FathomLogo",
   "FreshserviceLogo",
   "FrontLogo",
+  "GammaLogo",
   "GcalLogo",
   "GithubLogo",
   "GitlabLogo",
