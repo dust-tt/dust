@@ -734,6 +734,16 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         pictureUrl:
           "https://dust.tt/static/systemavatar/dust-task_avatar_full.png",
       };
+    case GLOBAL_AGENTS_SID.ANALYST:
+      return {
+        sId: GLOBAL_AGENTS_SID.ANALYST,
+        name: "analyst",
+        description:
+          "Admin-only agent that answers questions about how your workspace " +
+          "is being used.",
+        pictureUrl: DUST_AVATAR_URL,
+        audience: "admins",
+      };
     default:
       assertNever(sId);
   }
