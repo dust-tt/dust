@@ -15,7 +15,7 @@ import { listMetronomeSeatBalances } from "@app/lib/metronome/client";
 import { getCreditTypeAwuId } from "@app/lib/metronome/constants";
 import {
   fetchPerUserAwuUsage,
-  getCachedPerUserAwuUsage,
+  getPerUserAwuUsage,
 } from "@app/lib/metronome/per_user_usage";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import { getSeatAllowancesByNormalizedSeatType } from "@app/lib/metronome/seat_types";
@@ -126,13 +126,16 @@ export type MembersUsagePaginationInput = z.infer<
 async function fetchPerUserUsageCreditsForMembersTableUncached({
   metronomeCustomerId,
   metronomeContractId,
+  userIds,
 }: {
   metronomeCustomerId: string;
   metronomeContractId: string;
+  userIds: string[];
 }): Promise<Map<string, number>> {
   const result = await fetchPerUserAwuUsage({
     metronomeCustomerId,
     metronomeContractId,
+    userIds,
   });
   if (result.isErr()) {
     logger.warn(
@@ -147,22 +150,21 @@ async function fetchPerUserUsageCreditsForMembersTableUncached({
 async function fetchPerUserUsageCreditsForMembersTable({
   metronomeCustomerId,
   metronomeContractId,
+  userIds,
 }: {
   metronomeCustomerId: string | null;
   metronomeContractId: string | null;
+  userIds: string[];
 }): Promise<Map<string, number>> {
-  if (!metronomeCustomerId || !metronomeContractId) {
+  if (!metronomeCustomerId || !metronomeContractId || userIds.length === 0) {
     return new Map();
   }
   try {
-    return new Map(
-      Object.entries(
-        await getCachedPerUserAwuUsage({
-          metronomeCustomerId,
-          metronomeContractId,
-        })
-      )
-    );
+    return await getPerUserAwuUsage({
+      metronomeCustomerId,
+      metronomeContractId,
+      userIds,
+    });
   } catch (err) {
     logger.warn(
       { err: normalizeError(err), metronomeCustomerId },
@@ -171,6 +173,7 @@ async function fetchPerUserUsageCreditsForMembersTable({
     return fetchPerUserUsageCreditsForMembersTableUncached({
       metronomeCustomerId,
       metronomeContractId,
+      userIds,
     });
   }
 }
@@ -488,6 +491,7 @@ export async function fetchRemainingCapCreditsPercentageForUser({
     fetchPerUserUsageCreditsForMembersTable({
       metronomeCustomerId,
       metronomeContractId,
+      userIds: [userId],
     }),
     fetchEffectivePerUserSpendLimits({
       metronomeCustomerId,
@@ -575,6 +579,7 @@ export async function getMembersUsage({
     fetchPerUserUsageCreditsForMembersTable({
       metronomeCustomerId: metronomeCustomerId ?? null,
       metronomeContractId,
+      userIds: users.map((u) => u.sId),
     }),
     fetchSeatDataForMembersTable({
       metronomeCustomerId: metronomeCustomerId ?? null,

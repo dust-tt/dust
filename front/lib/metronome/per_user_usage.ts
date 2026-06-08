@@ -1,3 +1,4 @@
+import { runOnRedisCache } from "@app/lib/api/redis";
 import {
   ceilToMidnightUTC,
   floorToMidnightUTC,
@@ -6,23 +7,17 @@ import {
 import {
   getMetricLlmProviderCostAwuId,
   getMetricToolInvocationsId,
+  USAGE_TYPE_FREE,
   USAGE_TYPE_GROUP_KEY,
-  USAGE_TYPE_PROGRAMMATIC,
-  USAGE_TYPE_USER,
 } from "@app/lib/metronome/constants";
 import { getMetronomeCurrentBillingPeriod } from "@app/lib/metronome/contracts";
 import {
   isToolCategory,
   TOOL_CATEGORY_AWU_WEIGHTS,
 } from "@app/lib/metronome/events";
-import { cacheWithRedis } from "@app/lib/utils/cache";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-
-// usage_type slices that incur AWU spend. The "free" slice is priced at 0 AWU
-// on every rate card, so it's excluded to mirror the per-user
-// `spend_threshold_reached` alert (AWU credit type) that backs per-user caps.
-const PAID_USAGE_TYPES = [USAGE_TYPE_USER, USAGE_TYPE_PROGRAMMATIC];
 
 /**
  * Per-user AWU consumption for the current billing period.
@@ -48,15 +43,30 @@ const PAID_USAGE_TYPES = [USAGE_TYPE_USER, USAGE_TYPE_PROGRAMMATIC];
  *     value is already AWU spend.
  *   - Tool Usage: an invocation count, priced per category (basic ×1,
  *     advanced ×3), so the count is weighted by the category price.
- * Free usage is excluded server-side via `group_filters`.
+ *
+ * Scoped to `userIds` via a `user_id` `group_filters`. We deliberately do NOT
+ * filter on `usage_type`: filtering the query on `usage_type` makes Metronome
+ * under-aggregate some `user`-tagged buckets (its per-usage_type and per-user_id
+ * rollups disagree), silently undercounting real spend. A query with no filter
+ * at all is capped server-side (~hundreds of groups) and silently omits users,
+ * so we must scope by `user_id`. Free usage is excluded by dropping
+ * `usage_type === "free"` buckets in code (we still group by `usage_type` so
+ * each bucket carries it).
  */
 export async function fetchPerUserAwuUsage({
   metronomeCustomerId,
   metronomeContractId,
+  userIds,
 }: {
   metronomeCustomerId: string;
   metronomeContractId: string;
+  // Users to scope the usage query to (the `user_id` group filter). Required:
+  // an unfiltered query is capped and omits users. Empty → empty result.
+  userIds: string[];
 }): Promise<Result<Map<string, number>, Error>> {
+  if (userIds.length === 0) {
+    return new Ok(new Map());
+  }
   const periodResult = await getMetronomeCurrentBillingPeriod({
     metronomeCustomerId,
     metronomeContractId,
@@ -92,7 +102,7 @@ export async function fetchPerUserAwuUsage({
       endingBefore,
       windowSize,
       groupKey: ["user_id", USAGE_TYPE_GROUP_KEY],
-      groupFilters: { [USAGE_TYPE_GROUP_KEY]: PAID_USAGE_TYPES },
+      groupFilters: { user_id: userIds },
     }),
     listMetronomeUsageWithGroups({
       customerId: metronomeCustomerId,
@@ -101,7 +111,7 @@ export async function fetchPerUserAwuUsage({
       endingBefore,
       windowSize,
       groupKey: ["user_id", USAGE_TYPE_GROUP_KEY, "tool_category"],
-      groupFilters: { [USAGE_TYPE_GROUP_KEY]: PAID_USAGE_TYPES },
+      groupFilters: { user_id: userIds },
     }),
   ]);
   if (aiResult.isErr()) {
@@ -119,6 +129,7 @@ export async function fetchPerUserAwuUsage({
     if (
       !userId ||
       entry.value === null ||
+      entry.group?.[USAGE_TYPE_GROUP_KEY] === USAGE_TYPE_FREE ||
       new Date(entry.startingOn).getTime() < cycleStartMs
     ) {
       continue;
@@ -134,6 +145,7 @@ export async function fetchPerUserAwuUsage({
     if (
       !userId ||
       entry.value === null ||
+      entry.group?.[USAGE_TYPE_GROUP_KEY] === USAGE_TYPE_FREE ||
       new Date(entry.startingOn).getTime() < cycleStartMs ||
       !category ||
       !isToolCategory(category)
@@ -147,22 +159,90 @@ export async function fetchPerUserAwuUsage({
   return new Ok(perUser);
 }
 
-const MEMBERS_USAGE_PER_USER_CACHE_TTL_MS = 60 * 1000;
+const PER_USER_AWU_USAGE_CACHE_TTL_MS = 60 * 1000;
 
-async function fetchPerUserAwuUsageRecord(args: {
-  metronomeCustomerId: string;
-  metronomeContractId: string;
-}): Promise<Record<string, number>> {
-  const result = await fetchPerUserAwuUsage(args);
-  if (result.isErr()) {
-    throw result.error;
-  }
-  return Object.fromEntries(result.value);
+function perUserAwuUsageCacheKey(
+  metronomeCustomerId: string,
+  metronomeContractId: string,
+  userId: string
+): string {
+  return `per-user-awu-usage:${metronomeCustomerId}:${metronomeContractId}:${userId}`;
 }
 
-export const getCachedPerUserAwuUsage = cacheWithRedis(
-  fetchPerUserAwuUsageRecord,
-  ({ metronomeCustomerId, metronomeContractId }) =>
-    `${metronomeCustomerId}-${metronomeContractId}`,
-  { ttlMs: MEMBERS_USAGE_PER_USER_CACHE_TTL_MS }
-);
+/**
+ * Per-user-cached AWU consumption for the current billing period. Each user is
+ * cached under its own key (60s TTL); the users not in cache are fetched in ONE
+ * batched Metronome query and written back — including 0 for users with no
+ * usage, so they don't perpetually miss. Caching per user (rather than per
+ * requested set) lets the members table, single-user cap checks and reconcile
+ * reuse each other's entries. Throws if the batched fetch fails.
+ */
+export async function getPerUserAwuUsage({
+  metronomeCustomerId,
+  metronomeContractId,
+  userIds,
+}: {
+  metronomeCustomerId: string;
+  metronomeContractId: string;
+  userIds: string[];
+}): Promise<Map<string, number>> {
+  if (userIds.length === 0) {
+    return new Map();
+  }
+  return runOnRedisCache(
+    { origin: "metronome_credit_cache" },
+    async (redis) => {
+      const result = new Map<string, number>();
+      const cached = await redis.mGet(
+        userIds.map((userId) =>
+          perUserAwuUsageCacheKey(
+            metronomeCustomerId,
+            metronomeContractId,
+            userId
+          )
+        )
+      );
+      const misses: string[] = [];
+      userIds.forEach((userId, i) => {
+        const raw = cached[i];
+        if (raw !== null) {
+          result.set(userId, JSON.parse(raw) as number);
+        } else {
+          misses.push(userId);
+        }
+      });
+
+      if (misses.length > 0) {
+        const fetched = await fetchPerUserAwuUsage({
+          metronomeCustomerId,
+          metronomeContractId,
+          userIds: misses,
+        });
+        if (fetched.isErr()) {
+          throw fetched.error;
+        }
+        await concurrentExecutor(
+          misses,
+          async (userId) => {
+            // Cache 0 too: a user with no usage this period would otherwise
+            // miss on every request.
+            const value = fetched.value.get(userId) ?? 0;
+            result.set(userId, value);
+            await redis.set(
+              perUserAwuUsageCacheKey(
+                metronomeCustomerId,
+                metronomeContractId,
+                userId
+              ),
+              JSON.stringify(value),
+              { PX: PER_USER_AWU_USAGE_CACHE_TTL_MS }
+            );
+          },
+          { concurrency: 16 }
+        );
+      }
+
+      return result;
+    }
+  );
+}
