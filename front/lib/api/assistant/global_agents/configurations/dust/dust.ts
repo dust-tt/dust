@@ -939,6 +939,91 @@ export function _getDustNextHighGlobalAgent(
   });
 }
 
+// Formerly custom-model dust-* global agents (soupinou, sundae, pistache,
+// chalom). Their eval models were removed from the infra custom-models config
+// (GCS), so they no longer resolve to a custom model. They remain callable for
+// past conversations via a concrete fallback model and are listed in
+// RETIRED_GLOBAL_AGENTS_SID (see global_agents.ts). We may revive them as
+// custom-model agents in the future by moving them back into
+// CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS.
+type RetiredDustGlobalAgentConfig = {
+  name: string;
+  preferredReasoningEffort: ReasoningEffort;
+};
+
+const RETIRED_DUST_GLOBAL_AGENT_CONFIGS = new Map<
+  GLOBAL_AGENTS_SID,
+  RetiredDustGlobalAgentConfig
+>([
+  [
+    GLOBAL_AGENTS_SID.DUST_SOUPINOU,
+    { name: "dust-soupinou", preferredReasoningEffort: "light" },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_SOUPINOU_MEDIUM,
+    { name: "dust-soupinou-medium", preferredReasoningEffort: "medium" },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_SOUPINOU_HIGH,
+    { name: "dust-soupinou-high", preferredReasoningEffort: "high" },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_SUNDAE,
+    { name: "dust-sundae", preferredReasoningEffort: "light" },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_SUNDAE_MEDIUM,
+    { name: "dust-sundae-medium", preferredReasoningEffort: "medium" },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_SUNDAE_HIGH,
+    { name: "dust-sundae-high", preferredReasoningEffort: "high" },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_PISTACHE,
+    { name: "dust-pistache", preferredReasoningEffort: "light" },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_PISTACHE_MEDIUM,
+    { name: "dust-pistache-medium", preferredReasoningEffort: "medium" },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_PISTACHE_HIGH,
+    { name: "dust-pistache-high", preferredReasoningEffort: "high" },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_CHALOM,
+    { name: "dust-chalom", preferredReasoningEffort: "light" },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_CHALOM_MEDIUM,
+    { name: "dust-chalom-medium", preferredReasoningEffort: "medium" },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_CHALOM_HIGH,
+    { name: "dust-chalom-high", preferredReasoningEffort: "high" },
+  ],
+]);
+
+export function _getRetiredDustLikeGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs,
+  agentId: GLOBAL_AGENTS_SID
+): AgentConfigurationType | null {
+  const config = RETIRED_DUST_GLOBAL_AGENT_CONFIGS.get(agentId);
+
+  if (!config) {
+    return null;
+  }
+
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId,
+    name: config.name,
+    preferredModelConfiguration: GPT_5_5_MODEL_CONFIG,
+    preferredReasoningEffort: config.preferredReasoningEffort,
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Active custom-model dust-* global agents.
 // ---------------------------------------------------------------------------
@@ -1005,106 +1090,10 @@ export const CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS = new Map<
     },
   ],
   [
-    GLOBAL_AGENTS_SID.DUST_SOUPINOU,
-    {
-      name: "dust-soupinou",
-      customModelIndex: 1,
-      preferredReasoningEffort: "light",
-    },
-  ],
-  [
-    GLOBAL_AGENTS_SID.DUST_SOUPINOU_MEDIUM,
-    {
-      name: "dust-soupinou-medium",
-      customModelIndex: 1,
-      preferredReasoningEffort: "medium",
-    },
-  ],
-  [
-    GLOBAL_AGENTS_SID.DUST_SOUPINOU_HIGH,
-    {
-      name: "dust-soupinou-high",
-      customModelIndex: 1,
-      preferredReasoningEffort: "high",
-    },
-  ],
-  [
-    GLOBAL_AGENTS_SID.DUST_SUNDAE,
-    {
-      name: "dust-sundae",
-      customModelIndex: 2,
-      preferredReasoningEffort: "light",
-    },
-  ],
-  [
-    GLOBAL_AGENTS_SID.DUST_SUNDAE_MEDIUM,
-    {
-      name: "dust-sundae-medium",
-      customModelIndex: 2,
-      preferredReasoningEffort: "medium",
-    },
-  ],
-  [
-    GLOBAL_AGENTS_SID.DUST_SUNDAE_HIGH,
-    {
-      name: "dust-sundae-high",
-      customModelIndex: 2,
-      preferredReasoningEffort: "high",
-    },
-  ],
-  [
-    GLOBAL_AGENTS_SID.DUST_PISTACHE,
-    {
-      name: "dust-pistache",
-      customModelIndex: 3,
-      preferredReasoningEffort: "light",
-    },
-  ],
-  [
-    GLOBAL_AGENTS_SID.DUST_PISTACHE_MEDIUM,
-    {
-      name: "dust-pistache-medium",
-      customModelIndex: 3,
-      preferredReasoningEffort: "medium",
-    },
-  ],
-  [
-    GLOBAL_AGENTS_SID.DUST_PISTACHE_HIGH,
-    {
-      name: "dust-pistache-high",
-      customModelIndex: 3,
-      preferredReasoningEffort: "high",
-    },
-  ],
-  [
-    GLOBAL_AGENTS_SID.DUST_CHALOM,
-    {
-      name: "dust-chalom",
-      customModelIndex: 4,
-      preferredReasoningEffort: "light",
-    },
-  ],
-  [
-    GLOBAL_AGENTS_SID.DUST_CHALOM_MEDIUM,
-    {
-      name: "dust-chalom-medium",
-      customModelIndex: 4,
-      preferredReasoningEffort: "medium",
-    },
-  ],
-  [
-    GLOBAL_AGENTS_SID.DUST_CHALOM_HIGH,
-    {
-      name: "dust-chalom-high",
-      customModelIndex: 4,
-      preferredReasoningEffort: "high",
-    },
-  ],
-  [
     GLOBAL_AGENTS_SID.DUST_LIONEL,
     {
       name: "dust-lionel",
-      customModelIndex: 5,
+      customModelIndex: 1,
       preferredReasoningEffort: "light",
     },
   ],
@@ -1112,7 +1101,7 @@ export const CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS = new Map<
     GLOBAL_AGENTS_SID.DUST_LIONEL_MEDIUM,
     {
       name: "dust-lionel-medium",
-      customModelIndex: 5,
+      customModelIndex: 1,
       preferredReasoningEffort: "medium",
     },
   ],
@@ -1120,7 +1109,7 @@ export const CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS = new Map<
     GLOBAL_AGENTS_SID.DUST_LIONEL_HIGH,
     {
       name: "dust-lionel-high",
-      customModelIndex: 5,
+      customModelIndex: 1,
       preferredReasoningEffort: "high",
     },
   ],
