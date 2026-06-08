@@ -802,7 +802,7 @@ DataTable.Head = function Head({
   return (
     <th
       className={cn(
-        "s-heading-xs s-py-2 s-pl-2 s-pr-3 s-capitalize",
+        "s-heading-xs s-py-2 s-px-2 s-capitalize",
         column.columnDef.meta?.headerAlign === "right"
           ? "s-text-right"
           : column.columnDef.meta?.headerAlign === "center"

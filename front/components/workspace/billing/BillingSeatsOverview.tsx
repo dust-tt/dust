@@ -14,17 +14,18 @@ import {
   Avatar,
   Cube01,
   DataTable,
-  Hexagon01,
-  SeatMax,
+  LayerSingle,
+  LayersThree01,
+  LayersTwo01,
   Spinner,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import type React from "react";
 
 const SEAT_TYPE_ICONS: Record<string, React.ComponentType> = {
-  free: Hexagon01,
-  pro: Cube01,
-  max: SeatMax,
+  free: LayerSingle,
+  pro: LayersTwo01,
+  max: LayersThree01,
 };
 
 function seatTypeAvatarColors(seatType: MembershipSeatType) {
@@ -294,7 +295,7 @@ export function BillingSeatsOverview({
       data={rows}
       columns={columns}
       hideRowDivider={false}
-      cellClassName="px-3 py-2"
+      cellClassName="px-2 py-2"
     />
   );
 }
