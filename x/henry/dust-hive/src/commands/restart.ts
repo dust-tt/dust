@@ -5,12 +5,12 @@ import { stopService } from "../lib/process";
 import { restoreTerminal } from "../lib/prompt";
 import { startService, waitForServiceReady } from "../lib/registry";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
-import { ALL_SERVICES, type ServiceName, getActiveServices, isServiceName } from "../lib/services";
+import { ALL_SERVICES, type ServiceName, isServiceName } from "../lib/services";
 
 async function selectService(): Promise<ServiceName | null> {
   const result = await p.select({
     message: "Select service to restart",
-    options: getActiveServices().map((name) => ({ value: name, label: name })),
+    options: ALL_SERVICES.map((name) => ({ value: name, label: name })),
   });
 
   if (p.isCancel(result)) {

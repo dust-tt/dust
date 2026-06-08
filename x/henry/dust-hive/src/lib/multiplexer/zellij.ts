@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { logger } from "../logger";
 import { getInstallInstructions as getPlatformInstallInstructions } from "../platform";
 import { restoreTerminal } from "../prompt";
-import { type ServiceName, getActiveServices } from "../services";
+import { ALL_SERVICES, type ServiceName } from "../services";
 import { shellQuote } from "../shell";
 import type {
   InstallCheckResult,
@@ -245,9 +245,9 @@ export class ZellijAdapter implements MultiplexerAdapter {
     }`;
     } else {
       // Individual service tabs (default)
-      logsTabs = getActiveServices()
-        .map((service) => this.generateServiceTab(envName, service, worktreePath))
-        .join("\n\n");
+      logsTabs = ALL_SERVICES.map((service) =>
+        this.generateServiceTab(envName, service, worktreePath)
+      ).join("\n\n");
     }
 
     // When compact mode is enabled, use bottom bar; otherwise use top bar

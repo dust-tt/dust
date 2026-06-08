@@ -24,10 +24,10 @@
 #   dhcd  - cd into environment worktree (changes dir in current shell)
 
 _dust_hive_services=(
-  sdk sparkle front core oauth connectors front-workers front-spa-poke front-spa-app viz
+  sdk sparkle front-api core oauth connectors front-workers front-spa-poke front-spa-app viz
 )
 _dust_hive_warm_state_services=(
-  front front-api core oauth connectors front-workers front-spa-poke front-spa-app viz
+  front-api core oauth connectors front-workers front-spa-poke front-spa-app viz
 )
 # Avoid invoking the Bun CLI from completion; derive state from PID files plus one Docker scan.
 
@@ -248,6 +248,7 @@ _dust-hive() {
         'sync:Pull latest main, rebuild binaries, refresh deps'
         'temporal:Manage Temporal server'
         'seed-config:Extract user data from existing DB'
+        'env:Manage config.env vars (list|get|set|unset)'
         'feed:Run seed script for a scenario'
         'flag:Toggle a feature flag on the workspace'
         'help:Show help'
@@ -389,6 +390,12 @@ _dust-hive() {
           ;;
         seed-config)
           _arguments '1:postgres-uri:'
+          ;;
+        env)
+          _arguments \
+            '1::subcommand:(list get set unset)' \
+            '2::key:' \
+            '3::value:'
           ;;
         feed)
           _arguments \

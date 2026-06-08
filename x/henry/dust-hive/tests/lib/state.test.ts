@@ -69,7 +69,13 @@ describe("state", () => {
     });
 
     it("returns empty array for warm state (all running)", () => {
-      const allServices: ServiceName[] = ["front", "core", "oauth", "connectors", "front-workers"];
+      const allServices: ServiceName[] = [
+        "front-api",
+        "core",
+        "oauth",
+        "connectors",
+        "front-workers",
+      ];
       const warnings = detectWarnings(true, true, true, allServices);
       expect(warnings).toEqual([]);
     });
@@ -80,7 +86,7 @@ describe("state", () => {
     });
 
     it("warns when Build watchers not running but app services are", () => {
-      const warnings = detectWarnings(false, false, true, ["front"]);
+      const warnings = detectWarnings(false, false, true, ["front-api"]);
       expect(warnings).toContain("Build watchers not running");
     });
 
@@ -90,20 +96,20 @@ describe("state", () => {
     });
 
     it("warns when app services running but docker is not", () => {
-      const warnings = detectWarnings(true, false, true, ["front"]);
+      const warnings = detectWarnings(true, false, true, ["front-api"]);
       expect(warnings).toContain("App services running but Docker is not");
     });
 
     it("warns about missing services when some are running in inconsistent state", () => {
       // Build watchers not running creates an inconsistent state where missing services warning triggers
-      const partial: ServiceName[] = ["front", "core"];
+      const partial: ServiceName[] = ["front-api", "core"];
       const warnings = detectWarnings(false, true, true, partial);
       expect(warnings.some((w) => w.includes("Missing services"))).toBe(true);
     });
 
     it("lists specific missing services in inconsistent state", () => {
       // Build watchers not running creates an inconsistent state where missing services warning triggers
-      const partial: ServiceName[] = ["front"];
+      const partial: ServiceName[] = ["front-api"];
       const warnings = detectWarnings(false, true, true, partial);
       const missingWarning = warnings.find((w) => w.includes("Missing services"));
       expect(missingWarning).toBeDefined();
@@ -114,7 +120,7 @@ describe("state", () => {
     it("does not warn about missing services in consistent warm state", () => {
       // When all consistent (buildWatchers + docker + appServices all true), even with partial
       // services, the early return prevents missing services warning
-      const partial: ServiceName[] = ["front", "core"];
+      const partial: ServiceName[] = ["front-api", "core"];
       const warnings = detectWarnings(true, true, true, partial);
       expect(warnings.some((w) => w.includes("Missing services"))).toBe(false);
     });
@@ -127,7 +133,7 @@ describe("state", () => {
 
     it("can have multiple warnings", () => {
       // Build watchers not running, no docker, but app services running
-      const warnings = detectWarnings(false, false, true, ["front"]);
+      const warnings = detectWarnings(false, false, true, ["front-api"]);
       expect(warnings.length).toBeGreaterThanOrEqual(1);
       // Should have both "Build watchers not running" and "App services running but Docker is not"
       expect(warnings).toContain("Build watchers not running");
