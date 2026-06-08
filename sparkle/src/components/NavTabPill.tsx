@@ -62,7 +62,7 @@ const NavTabPillTrigger = React.forwardRef<
       "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-2",
       "disabled:s-pointer-events-none disabled:s-opacity-100",
       "data-[state=active]:s-overflow-hidden data-[state=active]:s-shrink",
-      "s-transition-[padding] s-duration-200",
+      "s-transition-[padding] s-duration-200 motion-reduce:s-transition-none",
       className
     );
 
@@ -88,7 +88,7 @@ const NavTabPillTrigger = React.forwardRef<
         {iconElement}
         <div
           className={cn(
-            "s-relative s-grid s-grid-cols-[0fr] s-transition-[grid-template-columns] s-duration-200 group-data-[state=active]:s-grid-cols-[1fr] s-overflow-hidden",
+            "s-relative s-grid s-grid-cols-[0fr] s-transition-[grid-template-columns] s-duration-200 group-data-[state=active]:s-grid-cols-[1fr] s-overflow-hidden motion-reduce:s-transition-none",
           )}
         >
           <span
