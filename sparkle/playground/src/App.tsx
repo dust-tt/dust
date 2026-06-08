@@ -18,15 +18,15 @@ const storyModules = import.meta.glob("./stories/*.tsx", { eager: true });
 // Extract story names and components (exclude TemplateSelection - only reachable via dropdown in Projects)
 const stories = Object.entries(storyModules)
   .map(([path, module]: [string, any]) => {
-    const name = path.split("/").pop()?.replace(".tsx", "") || "";
+    const fileName = path.split("/").pop()?.replace(".tsx", "") || "";
+    const displayName = (module as { storyName?: string }).storyName ?? fileName;
     return {
-      name,
+      name: fileName,
+      displayName,
       component: (module as { default: React.ComponentType }).default,
     };
   })
-  .filter(
-    (s) => s.name !== "TemplateSelection" && s.name !== "AdminGovernanceV2"
-  );
+  .filter((s) => s.name !== "TemplateSelection");
 
 type Theme = "light" | "dark";
 const THEME_STORAGE_KEY = "sparkle-playground-theme";
@@ -82,7 +82,7 @@ function StoryList({
               hasSeparator={index < stories.length - 1}
             >
               <div className="s-text-foreground dark:s-text-foreground-night">
-                {story.name}
+                {story.displayName}
               </div>
             </ListItem>
           ))}
