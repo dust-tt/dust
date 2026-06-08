@@ -88,6 +88,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
   get isBuilder(): boolean {
     switch (this.role) {
       case "admin":
+      case "business_admin":
       case "builder":
         return true;
       case "user":

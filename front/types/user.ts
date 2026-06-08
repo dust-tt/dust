@@ -13,8 +13,19 @@ import { assertNever } from "./shared/utils/assert_never";
 
 export type WorkspaceSegmentationType = "interesting" | null;
 
-export const ROLES = ["admin", "builder", "user", "none"] as const;
-export const ACTIVE_ROLES = ["admin", "builder", "user"] as const;
+export const ROLES = [
+  "admin",
+  "business_admin",
+  "builder",
+  "user",
+  "none",
+] as const;
+export const ACTIVE_ROLES = [
+  "admin",
+  "business_admin",
+  "builder",
+  "user",
+] as const;
 export const ANONYMOUS_USER_IMAGE_URL = "/static/humanavatar/anonymous.png";
 
 function keyObject<T extends readonly string[]>(
@@ -192,6 +203,7 @@ export function isAdmin(
   switch (owner.role) {
     case "admin":
       return true;
+    case "business_admin":
     case "builder":
     case "user":
     case "none":
@@ -209,6 +221,7 @@ export function isBuilder(
   }
   switch (owner.role) {
     case "admin":
+    case "business_admin":
     case "builder":
       return true;
     case "user":
@@ -227,6 +240,7 @@ export function isUser(
   }
   switch (owner.role) {
     case "admin":
+    case "business_admin":
     case "builder":
     case "user":
       return true;
