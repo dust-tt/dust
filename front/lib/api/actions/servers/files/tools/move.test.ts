@@ -75,7 +75,7 @@ describe("moveHandler", () => {
     }
     expect(result.value[0]).toEqual({
       type: "text",
-      text: `Moved \`conversation-${conversation.sId}/report.pdf\` to \`pod-${spaceId}/report.pdf\`.`,
+      text: `Moved \`conversation-${conversation.sId}/report.pdf\` to \`pod-${spaceId}/report.pdf\`. The user is presented with an attachment to download the file, do not attempt to generate a link to it.`,
     });
   });
 
