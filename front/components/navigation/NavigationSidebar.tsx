@@ -14,7 +14,11 @@ import { isAdmin } from "@app/types/user";
 import {
   CollapseButton,
   cn,
+  NavigationList,
+  NavigationListItem,
+  NavigationListLabel,
   NavTabPill,
+  NavTabPillContent,
   NavTabPillList,
   NavTabPillTrigger,
   XClose,
@@ -63,14 +67,10 @@ export const NavigationSidebar = React.forwardRef<
     [owner, spaceMenuButtonRef]
   );
 
-  console.log("navs", navs);
-
   const currentTab = useMemo(
     () => navs.find((n) => n.isCurrent(activePath)),
     [navs, activePath]
   );
-
-  console.log("currentTab", currentTab?.id);
 
   const { setSidebarOpen } = useContext(SidebarContext);
 
@@ -80,8 +80,8 @@ export const NavigationSidebar = React.forwardRef<
         <div className={cn("flex flex-col gap-2")}>
           <SidebarBanners />
         </div>
-        {navs.length > 1 && 
-        <NavTabPill
+        {navs.length > 1 && (
+          <NavTabPill
             value={currentTab?.id ?? "conversations"}
             className="mx-sidebar-side-spacing"
           >
@@ -107,8 +107,38 @@ export const NavigationSidebar = React.forwardRef<
                 </div>
               )}
             </NavTabPillList>
-            </NavTabPill>
-            }</div>
+            {navs.map((tab) => (
+              <NavTabPillContent key={tab.id} value={tab.id}>
+                <NavigationList>
+                  {subNavigation &&
+                    tab.isCurrent(activePath) &&
+                    subNavigation.map((nav) => (
+                      <React.Fragment key={`nav-${nav.label}`}>
+                        {nav.label && <NavigationListLabel label={nav.label} />}
+                        {nav.menus
+                          .filter(
+                            (menu) =>
+                              !menu.featureFlag ||
+                              featureFlags.includes(menu.featureFlag)
+                          )
+                          .map((menu) => (
+                            <NavigationListItem
+                              key={menu.id}
+                              selected={menu.current}
+                              label={menu.label}
+                              icon={menu.icon}
+                              href={menu.href}
+                              target={menu.target}
+                            />
+                          ))}
+                      </React.Fragment>
+                    ))}
+                </NavigationList>
+              </NavTabPillContent>
+            ))}
+          </NavTabPill>
+        )}
+      </div>
       <div className="flex grow flex-col">{children}</div>
       {subscription.plan.code === FREE_TRIAL_PHONE_PLAN_CODE && (
         <div className="mx-3 mb-3">

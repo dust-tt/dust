@@ -88,7 +88,7 @@ const NavTabPillTrigger = React.forwardRef<
         {iconElement}
         <div
           className={cn(
-            "s-relative s-grid s-grid-cols-[0fr] s-transition-[grid-template-columns] s-duration-200 group-data-[state=active]:s-grid-cols-[1fr] s-overflow-hidden motion-reduce:s-transition-none",
+            "s-relative s-grid s-grid-cols-[0fr] s-transition-[grid-template-columns] s-duration-200 group-data-[state=active]:s-grid-cols-[1fr] s-overflow-hidden motion-reduce:s-transition-none"
           )}
         >
           <span
