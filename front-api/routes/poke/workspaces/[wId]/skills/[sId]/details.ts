@@ -39,10 +39,18 @@ app.get(
       serializedSkill.requestedSpaceIds
     );
 
+    const agentsUsage = await skill.fetchUsage(auth);
+    const usedBySkillsMap = await SkillResource.batchFetchUsedBySkills(auth, [
+      skill,
+    ]);
+    const usedBySkills = usedBySkillsMap.get(skill.sId) ?? [];
+
     return ctx.json({
       skill: serializedSkill,
       editedByUser: editedByUser ? editedByUser.toJSON() : null,
       spaces: spaces.map((s) => s.toJSON()),
+      agentsUsage,
+      usedBySkills,
     });
   }
 );
