@@ -15,10 +15,11 @@ import {
 import {
   CURRENCY_TO_CREDIT_TYPE_ID,
   getProductSeatSubscriptionCreditsId,
-  getProductWorkspaceSeatId,
+  SEAT_PRIORITY_COUPON_CREDIT,
 } from "@app/lib/metronome/constants";
 import type { CachedContract } from "@app/lib/metronome/plan_type";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
+import { SEAT_TAG } from "@app/lib/metronome/setup_common";
 import { CouponRedemptionResource } from "@app/lib/resources/coupon_redemption_resource";
 import type {
   CouponResource,
@@ -92,12 +93,12 @@ export async function getCreditTypeFromPackage(
   return getCreditTypeFromRateCardId(pkg.rateCardId);
 }
 
-function getApplicableProductIdsForDiscountType(
+function getApplicableProductTagsForDiscountType(
   discountType: CouponDiscountType
 ): string[] {
   switch (discountType) {
     case "seat":
-      return [getProductWorkspaceSeatId()];
+      return [SEAT_TAG];
     default:
       return assertNever(discountType);
   }
@@ -128,8 +129,8 @@ export async function createCouponCredit({
     endingBefore: ceilToHourISO(addMonths(redeemedAt, durationMonths)),
     name: `Coupon: ${coupon.code}`,
     idempotencyKey: `coupon-${redemptionId}-0`,
-    priority: 0,
-    applicableProductIds: getApplicableProductIdsForDiscountType(
+    priority: SEAT_PRIORITY_COUPON_CREDIT,
+    applicableProductTags: getApplicableProductTagsForDiscountType(
       coupon.discountType
     ),
   });

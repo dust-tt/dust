@@ -1,3 +1,7 @@
+import {
+  handleSubscriptionActivationFailure,
+  handleSubscriptionActivationSuccess,
+} from "@app/lib/api/checkout/business_activation";
 import { maybeNotifyAdminsBalanceThresholdReached } from "@app/lib/api/credits/balance_threshold_alert";
 import {
   dispatchCreditsAdded,
@@ -1116,6 +1120,12 @@ export async function processMetronomeWebhook({
           contractId,
           invoiceId,
         });
+        // Resolve a subscription activation if one is pending on this contract.
+        await handleSubscriptionActivationSuccess({
+          workspace,
+          contractId,
+          invoiceId,
+        });
       } else if (paymentStatus === "failed") {
         logger.warn(
           {
@@ -1133,6 +1143,12 @@ export async function processMetronomeWebhook({
           contractId,
           errorMessage: errorMessage ?? "Payment failed",
           invoiceId: invoiceId || undefined,
+        });
+        await handleSubscriptionActivationFailure({
+          workspace,
+          contractId,
+          invoiceId: invoiceId || undefined,
+          errorMessage: errorMessage ?? "Payment failed",
         });
       } else {
         // Non-terminal `payment_status` values — log and leave the attempt

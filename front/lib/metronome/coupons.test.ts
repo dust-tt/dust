@@ -349,8 +349,8 @@ describe("createCouponCredit", () => {
     expect(mockCreateMetronomeCredit).toHaveBeenCalledWith(
       expect.objectContaining({
         idempotencyKey: `coupon-${REDEMPTION_ID}-0`,
-        priority: 0,
-        applicableProductIds: ["workspace-seat-prod"],
+        priority: 300,
+        applicableProductTags: ["seat"],
         creditTypeId: CREDIT_TYPE_USD_ID,
         productId: "seat-subscription-credits-prod",
         amount: 1000,

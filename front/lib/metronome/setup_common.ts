@@ -238,7 +238,7 @@ export const USAGE_TAG = "usage";
 
 // Tag shared by all seat SUBSCRIPTION products (Workspace / Pro / Max / Free,
 // monthly + yearly).
-const SEAT_TAG = "seat";
+export const SEAT_TAG = "seat";
 
 // Billing-frequency tags stamped on seat products alongside SEAT_TAG so credits
 // / commits can target a single cadence (e.g. `applicable_product_tags:

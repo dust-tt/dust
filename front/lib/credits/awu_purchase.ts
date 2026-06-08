@@ -19,6 +19,7 @@ import {
   getCreditTypeAwuId,
   getProductPrepaidCommitId,
 } from "@app/lib/metronome/constants";
+import { USAGE_TAG } from "@app/lib/metronome/setup_common";
 import { isEnterprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import { getStripeClient } from "@app/lib/plans/stripe";
 import logger from "@app/logger/logger";
@@ -341,6 +342,7 @@ export async function purchaseAwuCredits(
     invoiceCreditTypeId: CURRENCY_TO_CREDIT_TYPE_ID[currency],
     invoiceTimestamp: now,
     priority: AWU_PRIORITY_PURCHASED_COMMIT,
+    applicableProducTags: [USAGE_TAG],
     name:
       discountPercent > 0
         ? `Credit top-up: ${amountCredits.toLocaleString()} credits (${discountPercent}% discount)`

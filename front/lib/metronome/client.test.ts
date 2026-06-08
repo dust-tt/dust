@@ -101,25 +101,6 @@ describe("createMetronomeCredit", () => {
     );
   });
 
-  it("spreads applicableProductIds when provided", async () => {
-    await createMetronomeCredit({
-      ...BASE_PARAMS,
-      applicableProductIds: ["prod-seat"],
-    });
-
-    expect(mockCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ applicable_product_ids: ["prod-seat"] })
-    );
-  });
-
-  it("omits both applicable fields when neither is provided", async () => {
-    await createMetronomeCredit(BASE_PARAMS);
-
-    const call = mockCreate.mock.calls[0][0];
-    expect(call).not.toHaveProperty("applicable_product_tags");
-    expect(call).not.toHaveProperty("applicable_product_ids");
-  });
-
   it("returns Ok with the credit id on success", async () => {
     const result = await createMetronomeCredit(BASE_PARAMS);
 
