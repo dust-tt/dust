@@ -340,6 +340,7 @@ export async function moveCanonicalFile(
  * the path corresponds to one. If no FileResource exists (for example a file
  * created directly in the sandbox), falls back to deleting the raw GCS object.
  */
+// TODO(FILE_SYSTEM): Remove once no more dependencies on FileResource.
 export async function deleteCanonicalFile(
   auth: Authenticator,
   dustFs: DustFileSystem,

@@ -1,4 +1,7 @@
-import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
+import {
+  DustFileSystem,
+  sanitizeFileSystemName,
+} from "@app/lib/api/file_system/dust_file_system";
 import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
@@ -1505,5 +1508,58 @@ describe("DustFileSystem.rename", () => {
     }
     // Delete must not be called when the copy failed.
     expect(deleteMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("sanitizeFileSystemName", () => {
+  it("leaves a plain ASCII name unchanged", () => {
+    expect(sanitizeFileSystemName("quarterly-report.pdf")).toBe(
+      "quarterly-report.pdf"
+    );
+  });
+
+  it("strips leading control characters", () => {
+    expect(sanitizeFileSystemName("\n\tsummary.txt")).toBe("summary.txt");
+  });
+
+  it("strips embedded control characters", () => {
+    expect(sanitizeFileSystemName("my\x00file\x1Fname.txt")).toBe(
+      "myfilename.txt"
+    );
+  });
+
+  it("trims surrounding whitespace", () => {
+    expect(sanitizeFileSystemName("  notes.md  ")).toBe("notes.md");
+  });
+
+  it("preserves accented and non-ASCII printable characters", () => {
+    const name = "données — résumé.csv";
+    expect(sanitizeFileSystemName(name)).toBe(name);
+  });
+
+  it("NFC-normalizes the result", () => {
+    const nfd = "café".normalize("NFD");
+    const nfc = "café".normalize("NFC");
+    expect(sanitizeFileSystemName(nfd)).toBe(nfc);
+  });
+});
+
+describe("DustFileSystem.normalizeScopedPath strips control characters", () => {
+  it("strips leading control characters from the filename segment", () => {
+    expect(
+      DustFileSystem.normalizeScopedPath("conversation-abc/\n\tsummary.txt")
+    ).toBe("conversation-abc/summary.txt");
+  });
+
+  it("strips control characters embedded in the mount prefix", () => {
+    expect(
+      DustFileSystem.normalizeScopedPath("conversation-abc\x00/notes.txt")
+    ).toBe("conversation-abc/notes.txt");
+  });
+
+  it("still rejects path traversal after stripping controls", () => {
+    expect(
+      DustFileSystem.normalizeScopedPath("conversation-abc/\n../../etc/passwd")
+    ).toBeNull();
   });
 });
