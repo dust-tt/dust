@@ -152,43 +152,45 @@ export default function SpaceSideBarMenu({
 
   return (
     <div className="flex h-0 min-h-full w-full overflow-y-auto">
-      <NavigationList className="w-full mx-sidebar-side-spacing">
-        {sortedGroupedSpaces.map(({ section, spaces }, index) => {
-          if (section === "restricted" && !spaces.length && !isAdmin) {
-            return null;
-          }
+      <NavigationList className="w-full">
+        <div className="mx-sidebar-side-spacing">
+          {sortedGroupedSpaces.map(({ section, spaces }, index) => {
+            if (section === "restricted" && !spaces.length && !isAdmin) {
+              return null;
+            }
 
-          const sectionDetails = getSpaceSectionDetails(section);
+            const sectionDetails = getSpaceSectionDetails(section);
 
-          return (
-            <Fragment key={`space-section-${index}`}>
-              <div className="flex items-center justify-between pr-1">
-                <NavigationListLabel label={sectionDetails.label} />
-                {sectionDetails.displayCreateSpaceButton &&
-                  isAdmin &&
-                  openSpaceCreationModal && (
-                    <Button
-                      className="mt-1"
-                      size="xs"
-                      variant="ghost"
-                      label="New"
-                      icon={Plus}
-                      onClick={() =>
-                        openSpaceCreationModal({
-                          defaultRestricted: sectionDetails.defaultRestricted,
-                        })
-                      }
-                    />
-                  )}
-              </div>
-              {renderSpaceItems(
-                spaces.toSorted(compareSpaces),
-                spacesAsUser,
-                owner
-              )}
-            </Fragment>
-          );
-        })}
+            return (
+              <Fragment key={`space-section-${index}`}>
+                <div className="flex items-center justify-between pr-1">
+                  <NavigationListLabel label={sectionDetails.label} />
+                  {sectionDetails.displayCreateSpaceButton &&
+                    isAdmin &&
+                    openSpaceCreationModal && (
+                      <Button
+                        className="mt-1"
+                        size="xs"
+                        variant="ghost"
+                        label="New"
+                        icon={Plus}
+                        onClick={() =>
+                          openSpaceCreationModal({
+                            defaultRestricted: sectionDetails.defaultRestricted,
+                          })
+                        }
+                      />
+                    )}
+                </div>
+                {renderSpaceItems(
+                  spaces.toSorted(compareSpaces),
+                  spacesAsUser,
+                  owner
+                )}
+              </Fragment>
+            );
+          })}
+        </div>
       </NavigationList>
     </div>
   );
