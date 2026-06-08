@@ -36,7 +36,7 @@ type CachedKeyData = Omit<
 
 export interface KeyAuthType {
   id: ModelId;
-  userModelId?: ModelId | null;
+  userModelId: ModelId | null;
   name: string;
   isSystem: boolean;
   role: RoleType;
