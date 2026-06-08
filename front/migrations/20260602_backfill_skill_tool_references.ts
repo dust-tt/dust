@@ -41,16 +41,9 @@ type WorkspaceStats = {
   skippedWithoutTools: number;
 };
 
-async function isPayingOrTrialWorkspace(
-  workspace: LightWorkspaceType
-): Promise<boolean> {
-  const subscription = await SubscriptionResource.fetchActiveByWorkspaceModelId(
-    workspace.id
-  );
-  if (!subscription) {
-    return false;
-  }
-
+function isPayingOrTrialSubscription(
+  subscription: SubscriptionResource
+): boolean {
   if (subscription.trialing === true) {
     return true;
   }
@@ -267,11 +260,22 @@ makeScript(
       },
       {
         concurrency,
-        filter: async (workspace) => {
-          const isPayingOrTrial = await isPayingOrTrialWorkspace(workspace);
-          return payingOrTrialWorkspaces === "include"
-            ? isPayingOrTrial
-            : !isPayingOrTrial;
+        filter: async (workspaces) => {
+          const subscriptionsByWorkspaceModelId =
+            await SubscriptionResource.fetchActiveByWorkspacesModelId(
+              workspaces.map((workspace) => workspace.id)
+            );
+
+          return workspaces.filter((workspace) => {
+            const subscription = subscriptionsByWorkspaceModelId[workspace.id];
+            const isPayingOrTrial = subscription
+              ? isPayingOrTrialSubscription(subscription)
+              : false;
+
+            return payingOrTrialWorkspaces === "include"
+              ? isPayingOrTrial
+              : !isPayingOrTrial;
+          });
         },
         fromWorkspaceId,
         wId,

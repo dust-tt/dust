@@ -20,7 +20,9 @@ export async function runOnAllWorkspaces(
     fromWorkspaceId,
   }: {
     concurrency?: number;
-    filter?: (workspace: LightWorkspaceType) => boolean | Promise<boolean>;
+    filter?: (
+      workspaces: LightWorkspaceType[]
+    ) => LightWorkspaceType[] | Promise<LightWorkspaceType[]>;
     wId?: string;
     fromWorkspaceId?: number;
   } = {}
@@ -44,17 +46,7 @@ export async function runOnAllWorkspaces(
   }
 
   if (filter) {
-    const filterResults = await concurrentExecutor(
-      workspaces,
-      async (workspace) => ({
-        keep: await filter(workspace),
-        workspace,
-      }),
-      { concurrency }
-    );
-    workspaces = filterResults
-      .filter(({ keep }) => keep)
-      .map(({ workspace }) => workspace);
+    workspaces = await filter(workspaces);
   }
 
   await concurrentExecutor(workspaces, (workspace) => worker(workspace), {
