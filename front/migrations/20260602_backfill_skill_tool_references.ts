@@ -10,7 +10,6 @@ import {
 } from "@app/lib/plans/plan_codes";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -23,7 +22,6 @@ import {
   type ToolReference,
 } from "@app/lib/tools/format";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
-import type { ModelId } from "@app/types/shared/model_id";
 import * as cheerio from "cheerio";
 import type { Logger } from "pino";
 
@@ -252,35 +250,6 @@ makeScript(
       skippedWithoutTools: 0,
     };
 
-    let workspaceModelIds: ModelId[];
-    if (wId) {
-      const workspace = await WorkspaceResource.fetchById(wId);
-      if (!workspace) {
-        throw new Error(`Workspace not found: ${wId}`);
-      }
-      workspaceModelIds = [workspace.id];
-    } else {
-      const allWorkspaceModelIds =
-        await WorkspaceResource.listAllModelIds("ASC");
-      workspaceModelIds = fromWorkspaceId
-        ? allWorkspaceModelIds.filter(
-            (workspaceModelId) => workspaceModelId >= fromWorkspaceId
-          )
-        : allWorkspaceModelIds;
-    }
-
-    const subscriptionsByWorkspaceModelId =
-      await SubscriptionResource.fetchActiveByWorkspacesModelId(
-        workspaceModelIds
-      );
-    const payingOrTrialWorkspaceModelIds = new Set(
-      workspaceModelIds.filter((workspaceModelId) =>
-        isPayingOrTrialSubscription(
-          subscriptionsByWorkspaceModelId[workspaceModelId]
-        )
-      )
-    );
-
     await runOnAllWorkspaces(
       async (workspace) => {
         const stats = await processWorkspace(workspace, { execute }, logger);
@@ -291,10 +260,15 @@ makeScript(
       },
       {
         concurrency,
-        filter: (workspace) => {
-          const isPayingOrTrial = payingOrTrialWorkspaceModelIds.has(
-            workspace.id
-          );
+        filter: async (workspace) => {
+          const subscription =
+            await SubscriptionResource.fetchActiveByWorkspaceModelId(
+              workspace.id
+            );
+          const isPayingOrTrial = subscription
+            ? isPayingOrTrialSubscription(subscription)
+            : false;
+
           return payingOrTrialWorkspaces === "include"
             ? isPayingOrTrial
             : !isPayingOrTrial;
