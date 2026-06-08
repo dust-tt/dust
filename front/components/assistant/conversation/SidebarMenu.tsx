@@ -1245,7 +1245,8 @@ function UnreadConversationsSection({
 
   return (
     <NavigationListCollapsibleSection
-      label={`${label} (${totalCount})`}
+      label={label}
+      count={totalCount}
       className="bg-background dark:bg-background-night rounded-xl border border-border dark:border-border-night p-1 mx-sidebar-side-spacing"
       action={
         shouldShowMarkAllAsReadButton ? (
@@ -1279,6 +1280,7 @@ function UnreadConversationsSection({
                 toggleConversationSelection={toggleConversationSelection}
                 activeConversationId={activeConversationId}
                 owner={owner}
+                showStatusDot={false}
               />
             </div>
           </motion.div>
@@ -1343,6 +1345,7 @@ const ConversationListItem = memo(
     toggleConversationSelection,
     activeConversationId,
     owner,
+    showStatusDot = true,
   }: {
     conversation: ConversationListItemType;
     isMultiSelect: boolean;
@@ -1350,6 +1353,7 @@ const ConversationListItem = memo(
     toggleConversationSelection: (c: ConversationListItemType) => void;
     activeConversationId: string | null;
     owner: WorkspaceType;
+    showStatusDot?: boolean;
   }) => {
     const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
     const {
@@ -1417,7 +1421,7 @@ const ConversationListItem = memo(
       <NavigationListItem
         key={conversation.sId}
         selected={activeConversationId === conversation.sId}
-        status={getConversationDotStatus(conversation)}
+        status={showStatusDot ? getConversationDotStatus(conversation) : "idle"}
         label={conversationLabel}
         labelAnimation={
           showTypingAnimation

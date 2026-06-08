@@ -300,6 +300,8 @@ interface NavigationListCollapsibleSectionProps
   extends React.HTMLAttributes<HTMLDivElement> {
   label: string;
   icon?: React.ComponentType;
+  /** Count badge shown next to the label (e.g. number of unread items). */
+  count?: number;
   action?: React.ReactNode;
   actionOnHover?: boolean;
   defaultOpen?: boolean;
@@ -348,6 +350,7 @@ const NavigationListCollapsibleSection = React.forwardRef<
     {
       label,
       icon,
+      count,
       action,
       actionOnHover = true,
       children,
@@ -378,16 +381,16 @@ const NavigationListCollapsibleSection = React.forwardRef<
       : [];
 
     const isCollapsible = type !== "static";
+    const counterValue = count && count > 0 ? count : undefined;
     const labelElement = (
       <div className={cn("notranslate", collapseableStyles({ isCollapsible }))}>
-        {icon ? (
-          <span className="s-flex s-items-center s-gap-1.5">
-            <Icon visual={icon} size="xs" />
-            <span className="s-overflow-hidden s-text-ellipsis">{label}</span>
-          </span>
-        ) : (
-          label
-        )}
+        <span className="s-flex s-items-center s-gap-1.5">
+          {icon && <Icon visual={icon} size="xs" />}
+          <span className="s-overflow-hidden s-text-ellipsis">{label}</span>
+          {counterValue !== undefined && (
+            <Counter value={counterValue} size="xs" variant="highlight" />
+          )}
+        </span>
       </div>
     );
 
