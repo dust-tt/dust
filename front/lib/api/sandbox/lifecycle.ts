@@ -2,10 +2,6 @@ import {
   ensureSandboxEgressOnExec,
   prepareSandboxEgressBeforeMount,
 } from "@app/lib/api/sandbox/egress";
-import {
-  mountConversationFiles,
-  refreshGcsToken,
-} from "@app/lib/api/sandbox/gcs/mount";
 import { getSandboxImage } from "@app/lib/api/sandbox/image";
 import {
   recordSandboxStartupTotal,
@@ -13,6 +9,7 @@ import {
 } from "@app/lib/api/sandbox/instrumentation";
 import { startTelemetry } from "@app/lib/api/sandbox/telemetry";
 import type { Authenticator } from "@app/lib/auth";
+import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import logger from "@app/logger/logger";
 import type { ConversationType } from "@app/types/assistant/conversation";
@@ -83,9 +80,16 @@ export async function ensureSandboxReady(
           traceSandboxStartupPhase("egress_prep", () =>
             prepareSandboxEgressBeforeMount(auth, sandbox)
           ),
-          traceSandboxStartupPhase("gcs_mount", () =>
-            mountConversationFiles(auth, sandbox, conversation, image)
-          ),
+          traceSandboxStartupPhase("gcs_mount", async () => {
+            const fsResult = await DustFileSystem.forConversation(
+              auth,
+              conversation
+            );
+            if (fsResult.isErr()) {
+              return fsResult;
+            }
+            return fsResult.value.setupSandboxMount(sandbox, image);
+          }),
         ]);
         if (prepResult.isErr()) {
           status = "error";
@@ -98,7 +102,16 @@ export async function ensureSandboxReady(
       } else {
         const refreshResult = await traceSandboxStartupPhase(
           "gcs_refresh",
-          () => refreshGcsToken(auth, sandbox, conversation, image)
+          async () => {
+            const fsResult = await DustFileSystem.forConversation(
+              auth,
+              conversation
+            );
+            if (fsResult.isErr()) {
+              return fsResult;
+            }
+            return fsResult.value.refreshSandboxMount(sandbox, image);
+          }
         );
         if (refreshResult.isErr()) {
           status = "error";

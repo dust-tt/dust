@@ -106,7 +106,7 @@ function createPodMount(
     scopedPrefix: `${SCOPED_PREFIX_POD}${space.sId}`,
     sandboxMountPoint: `/files/${SCOPED_PREFIX_POD}${space.sId}`,
     legacyPrefix: LEGACY_PREFIX_PROJECT,
-    legacySandboxMountPoint: `/files/${LEGACY_PREFIX_PROJECT}`,
+    legacySandboxMountPoint: `/files/pod`,
     permissions: {
       canRead: space.canRead(auth),
       canWrite: space.canWrite(auth),
