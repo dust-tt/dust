@@ -473,22 +473,32 @@ export async function handleMembershipInvitations(
     ...emailResults,
   ];
 
+  // Emit one member.invited event per invited user, each recording the invitee
+  // as the user target and the role they were invited with. A single event with
+  // one target per invite would exceed WorkOS's `maxItems: 20` targets limit on
+  // bulk invites (causing `invalid_audit_log`). Bulk vs. individual is captured
+  // separately by `member.bulk_invited`, so it is not duplicated here.
+  // Key on the sanitized email (trim + lowercase) since that is how invitation
+  // emails are normalized when stored, so the role lookup matches both the
+  // freshly-emailed invites and the unrevoked ones.
+  const roleByEmail = new Map(
+    invitationRequests.map((r) => [sanitizeString(r.email), r.role])
+  );
   const successfulInvites = allResults.filter((r) => r.success);
-  if (successfulInvites.length > 0) {
+  for (const invite of successfulInvites) {
+    const role = roleByEmail.get(sanitizeString(invite.email));
     void emitAuditLogEvent({
       auth,
       action: "member.invited",
       targets: [
         buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
-        ...successfulInvites.map((r) =>
-          buildAuditLogTarget("user", { sId: r.email, name: r.email })
-        ),
+        buildAuditLogTarget("user", {
+          sId: invite.email,
+          name: invite.email,
+        }),
       ],
       context: getAuditLogContext(auth),
-      metadata: {
-        invited_count: String(successfulInvites.length),
-        emails: successfulInvites.map((r) => r.email).join(","),
-      },
+      metadata: role ? { role } : {},
     });
   }
 
