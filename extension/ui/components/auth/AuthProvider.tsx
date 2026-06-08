@@ -56,6 +56,8 @@ const EXTENSION_SUBSCRIPTION: SubscriptionType = {
         isSlackBotAllowed: false,
         maxMessages: -1,
         maxMessagesTimeframe: "lifetime",
+        maxAwuCredits: -1,
+        maxAwuCreditsTimeframe: "lifetime",
         isDeepDiveAllowed: false,
       },
       connections: {
