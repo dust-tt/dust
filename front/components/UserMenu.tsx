@@ -24,7 +24,12 @@ import { isAgentMention } from "@app/types/assistant/mentions";
 import type { SubscriptionType } from "@app/types/plan";
 import { isDevelopment } from "@app/types/shared/env";
 import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
-import { isOnlyAdmin, isOnlyBuilder, isOnlyUser } from "@app/types/user";
+import {
+  isOnlyAdmin,
+  isOnlyBuilder,
+  isOnlyBusinessAdmin,
+  isOnlyUser,
+} from "@app/types/user";
 import { datadogLogs } from "@datadog/browser-logs";
 import {
   Avatar,
@@ -161,7 +166,7 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
     typeof navigator !== "undefined" && /firefox/i.test(navigator.userAgent);
 
   const forceRoleUpdate = useMemo(
-    () => async (role: "user" | "builder" | "admin") => {
+    () => async (role: "user" | "builder" | "admin" | "business_admin") => {
       const result = await forceUserRole(user, owner, role, featureFlags);
       if (result.isOk()) {
         sendNotification({
@@ -446,6 +451,13 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
                       <DropdownMenuItem
                         label="Become Admin"
                         onClick={() => forceRoleUpdate("admin")}
+                        icon={Star01}
+                      />
+                    )}
+                    {!isOnlyBusinessAdmin(owner) && (
+                      <DropdownMenuItem
+                        label="Become Business Admin"
+                        onClick={() => forceRoleUpdate("business_admin")}
                         icon={Star01}
                       />
                     )}
