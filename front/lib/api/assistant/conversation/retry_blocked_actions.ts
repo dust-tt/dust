@@ -19,6 +19,7 @@ async function findUserMessageForRetry(
     {
       agentMessageId: string;
       agentMessageVersion: number;
+      branchId: string | null;
       lastStep: number;
       userMessageId: string;
       userMessageVersion: number;
@@ -35,7 +36,14 @@ async function findUserMessageForRetry(
       sId: messageId,
       workspaceId,
     },
-    attributes: ["agentMessageId", "parentId", "version", "sId"],
+    attributes: [
+      "agentMessageId",
+      "parentId",
+      "version",
+      "sId",
+      "branchId",
+      "workspaceId",
+    ],
   });
 
   if (!agentMessage || !agentMessage.parentId || !agentMessage.agentMessageId) {
@@ -77,6 +85,7 @@ async function findUserMessageForRetry(
   return new Ok({
     agentMessageId: agentMessage.sId,
     agentMessageVersion: agentMessage.version,
+    branchId: agentMessage.getBranchId(),
     lastStep: blockedActions[blockedActions.length - 1].stepContent.step,
     userMessageId: parentMessage.sId,
     userMessageVersion: parentMessage.version,
@@ -94,11 +103,7 @@ export async function retryBlockedActions(
     waitForCompletion?: boolean;
   }
 ): Promise<Result<void, Error | DustError<"agent_loop_already_running">>> {
-  const {
-    sId: conversationId,
-    title: conversationTitle,
-    branchId: conversationBranchId,
-  } = conversation;
+  const { sId: conversationId, title: conversationTitle } = conversation;
 
   const getUserMessageIdRes = await findUserMessageForRetry(
     auth,
@@ -115,6 +120,7 @@ export async function retryBlockedActions(
   const {
     agentMessageId,
     agentMessageVersion,
+    branchId: conversationBranchId,
     lastStep,
     userMessageId,
     userMessageVersion,
