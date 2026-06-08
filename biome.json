@@ -132,6 +132,7 @@
         "sparkle/**/*.{js,jsx,ts,tsx}",
         "!front/pages/**",
         "!front/lib/api/sse.ts",
+        "!front/lib/api/auth_wrappers.ts",
         "!front-api/server.ts",
         "!sparkle/.storybook/**",
         "!sparkle/playground/**"
