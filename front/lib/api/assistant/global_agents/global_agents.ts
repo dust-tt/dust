@@ -52,6 +52,7 @@ import {
   _getDustOmittedGlobalAgent,
   _getDustQuickGlobalAgent,
   _getDustQuickMediumGlobalAgent,
+  _getRetiredDustLikeGlobalAgent,
   getCustomModelDustGlobalAgentIndex,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
 import { _getNoopAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/noop";
@@ -1205,9 +1206,27 @@ function getGlobalAgent({
         hasDeepDive,
       });
       break;
+    // Active custom-model dust-* agents.
     case GLOBAL_AGENTS_SID.DUST_CHAWI:
     case GLOBAL_AGENTS_SID.DUST_CHAWI_MEDIUM:
     case GLOBAL_AGENTS_SID.DUST_CHAWI_HIGH:
+    case GLOBAL_AGENTS_SID.DUST_LIONEL:
+    case GLOBAL_AGENTS_SID.DUST_LIONEL_MEDIUM:
+    case GLOBAL_AGENTS_SID.DUST_LIONEL_HIGH:
+      agentConfiguration = _getCustomModelDustLikeGlobalAgent(
+        auth,
+        {
+          settings,
+          preFetchedDataSources,
+          mcpServerViews,
+          hasDeepDive,
+        },
+        sId
+      );
+      break;
+    // Retired custom-model dust-* agents: their eval models were removed from
+    // the infra config, so they resolve to a fallback model for past
+    // conversations only (see RETIRED_GLOBAL_AGENTS_SID).
     case GLOBAL_AGENTS_SID.DUST_SOUPINOU:
     case GLOBAL_AGENTS_SID.DUST_SOUPINOU_MEDIUM:
     case GLOBAL_AGENTS_SID.DUST_SOUPINOU_HIGH:
@@ -1220,10 +1239,7 @@ function getGlobalAgent({
     case GLOBAL_AGENTS_SID.DUST_CHALOM:
     case GLOBAL_AGENTS_SID.DUST_CHALOM_MEDIUM:
     case GLOBAL_AGENTS_SID.DUST_CHALOM_HIGH:
-    case GLOBAL_AGENTS_SID.DUST_LIONEL:
-    case GLOBAL_AGENTS_SID.DUST_LIONEL_MEDIUM:
-    case GLOBAL_AGENTS_SID.DUST_LIONEL_HIGH:
-      agentConfiguration = _getCustomModelDustLikeGlobalAgent(
+      agentConfiguration = _getRetiredDustLikeGlobalAgent(
         auth,
         {
           settings,
@@ -1319,6 +1335,20 @@ const RETIRED_GLOBAL_AGENTS_SID = [
   GLOBAL_AGENTS_SID.DUST_QUICK_MEDIUM,
   GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM_OMITTED,
   GLOBAL_AGENTS_SID.DUST_ANT_HIGH_OMITTED,
+  // Custom-model dust-* agents whose eval models were removed from the infra
+  // config. Kept callable for past conversations; may be revived in the future.
+  GLOBAL_AGENTS_SID.DUST_SOUPINOU,
+  GLOBAL_AGENTS_SID.DUST_SOUPINOU_MEDIUM,
+  GLOBAL_AGENTS_SID.DUST_SOUPINOU_HIGH,
+  GLOBAL_AGENTS_SID.DUST_SUNDAE,
+  GLOBAL_AGENTS_SID.DUST_SUNDAE_MEDIUM,
+  GLOBAL_AGENTS_SID.DUST_SUNDAE_HIGH,
+  GLOBAL_AGENTS_SID.DUST_PISTACHE,
+  GLOBAL_AGENTS_SID.DUST_PISTACHE_MEDIUM,
+  GLOBAL_AGENTS_SID.DUST_PISTACHE_HIGH,
+  GLOBAL_AGENTS_SID.DUST_CHALOM,
+  GLOBAL_AGENTS_SID.DUST_CHALOM_MEDIUM,
+  GLOBAL_AGENTS_SID.DUST_CHALOM_HIGH,
 ];
 
 function getCustomModelIndexForGlobalAgent(sId: string): number | null {
