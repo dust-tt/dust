@@ -13,7 +13,6 @@ import type { SubscriptionType } from "@app/types/plan";
 import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import {
-  Button,
   CollapseButton,
   cn,
   LayoutLeft,
