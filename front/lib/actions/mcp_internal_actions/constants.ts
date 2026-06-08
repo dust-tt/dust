@@ -1139,11 +1139,13 @@ export const INTERNAL_MCP_SERVERS = {
   },
   workspace_analytics: {
     id: 1035,
-    // Available so the Workspace Analytics skill can wire it, but hidden from
-    // the builder tool-picker. Access is enforced per-tool via auth.isAdmin().
+    // Gated by the workspace_analytics feature flag (off by default) and hidden
+    // from the builder tool-picker; the skill wires it by name. Data access is
+    // enforced per-tool via auth.isAdmin().
     availability: "auto_hidden_builder",
     allowMultipleInstances: false,
-    isRestricted: undefined,
+    isRestricted: ({ featureFlags }) =>
+      !featureFlags.includes("workspace_analytics"),
     isPreview: false,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
