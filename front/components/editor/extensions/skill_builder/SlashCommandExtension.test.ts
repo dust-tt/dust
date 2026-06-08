@@ -114,11 +114,8 @@ describe("buildSkillBuilderSlashCommandItems", () => {
       ],
     });
 
-    expect(result.map((item) => item.id)).toEqual([
-      "add-knowledge",
-      "skill_create_memo",
-    ]);
-    expect(result[1]).toMatchObject({
+    expect(result.map((item) => item.id)).toEqual(["skill_create_memo"]);
+    expect(result[0]).toMatchObject({
       action: "select-skill",
       data: {
         skill: {

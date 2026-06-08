@@ -167,6 +167,7 @@ export function buildSkillBuilderSlashCommandItems({
     return baseItems;
   }
 
+  const visibleBaseItems = query.trim().length === 0 ? baseItems : [];
   const capabilityItems = filterSkillBuilderSlashCommandCapabilities({
     currentSkillId,
     query,
@@ -180,7 +181,7 @@ export function buildSkillBuilderSlashCommandItems({
       : getToolSlashCommandItem(capability.tool, { sectionLabel });
   });
 
-  return [...baseItems, ...capabilityItems];
+  return [...visibleBaseItems, ...capabilityItems];
 }
 
 interface SkillBuilderSlashCommandDropdownProps
