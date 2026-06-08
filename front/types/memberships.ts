@@ -52,6 +52,21 @@ export function isMembershipSeatType(
   );
 }
 
+// Relative tier ordering of seat types, from lowest to highest. Yearly variants
+// share their base tier. Used both to sort seat plans for display and to tell
+// whether a scheduled seat change is an upgrade or a downgrade. `none` is the
+// lowest (no seat) and `workspace` the highest (platform/enterprise seat).
+export const SEAT_TYPE_ORDER: Record<MembershipSeatType, number> = {
+  none: 0,
+  free: 1,
+  pro: 2,
+  pro_yearly: 2,
+  max: 3,
+  max_yearly: 3,
+  workspace: 4,
+  workspace_yearly: 4,
+};
+
 // Normalized seat types for pool credit limits. Monthly and yearly variants
 // share a single pool limit. Free seats are excluded (lifetime allocation,
 // no pool access).

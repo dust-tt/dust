@@ -3,6 +3,7 @@ import { useMembersSeats, useSeatPlan } from "@app/lib/swr/credits";
 import {
   isMembershipSeatType,
   type MembershipSeatType,
+  SEAT_TYPE_ORDER,
 } from "@app/types/memberships";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -16,12 +17,6 @@ import {
   User01,
 } from "@dust-tt/sparkle";
 import type React from "react";
-
-const SEAT_TYPE_ORDER: Record<string, number> = {
-  free: 0,
-  pro: 1,
-  max: 2,
-};
 
 const SEAT_TYPE_ICONS: Record<string, React.ComponentType> = {
   free: Hexagon01,
