@@ -1,4 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
+import { listPerUserCreditBalanceAlertsForWorkspace } from "@app/lib/metronome/alerts/per_user_credit_balance";
 import type {
   MetronomeCapAlertIds,
   MetronomeCapAlertInfo,
@@ -11,8 +12,15 @@ import {
   listMetronomePerUserCapsForWorkspace,
   listMetronomePerUserWarningAlertsForWorkspace,
 } from "@app/lib/metronome/alerts/spend_limits";
-import { listMetronomeSeatBalances } from "@app/lib/metronome/client";
-import { getCreditTypeAwuId } from "@app/lib/metronome/constants";
+import type { MetronomeAlertRef } from "@app/lib/metronome/alerts/types";
+import {
+  listContractPerUserCreditBalances,
+  listMetronomeSeatBalances,
+} from "@app/lib/metronome/client";
+import {
+  FREE_SEAT_LIFETIME_AWU_CREDITS,
+  getCreditTypeAwuId,
+} from "@app/lib/metronome/constants";
 import {
   fetchPerUserAwuUsage,
   getPerUserAwuUsage,
@@ -91,6 +99,11 @@ export type MemberUsageType = {
   // Id of the companion 80% warning alert for the effective cap. Null when
   // uncapped or no warning alert exists.
   spendLimitWarningAlertId: string | null;
+  // Per-user free-credit balance alerts (low at 20%, empty at 0), each with its
+  // current Metronome status for the `AlertChip` badges. Free seats only, and
+  // only populated when alert links are requested (poke). Null otherwise.
+  freeCreditLowAlert: MetronomeAlertRef | null;
+  freeCreditEmptyAlert: MetronomeAlertRef | null;
   // Per-user credit state machine state (personal-credits → pool → capped
   // progression) persisted on the membership. Surfaced for debugging.
   creditState: UserCreditState;
@@ -279,6 +292,30 @@ async function fetchSeatBalancesForMembersTable({
       balanceByUserId.set(seat.seat_id, awu.balance);
     }
   }
+
+  // Free seats hold a per-user contract credit rather than a seat balance, so
+  // they're absent from `listMetronomeSeatBalances`. Fill their remaining
+  // balance in from the per-user credits — but only when the user has no seat
+  // balance: a user who switched free → pro/max still has a leftover free
+  // credit, and it must not overwrite their (real) pro/max seat balance.
+  // Degrades silently on read failure.
+  const perUserCreditBalances = await listContractPerUserCreditBalances({
+    metronomeCustomerId,
+    metronomeContractId,
+  });
+  if (perUserCreditBalances.isOk()) {
+    for (const [userId, { balanceAwu }] of perUserCreditBalances.value) {
+      if (!balanceByUserId.has(userId)) {
+        balanceByUserId.set(userId, balanceAwu);
+      }
+    }
+  } else {
+    logger.warn(
+      { err: perUserCreditBalances.error, metronomeCustomerId },
+      "[MembersUsage] Failed to fetch per-user credit balances, skipping"
+    );
+  }
+
   return balanceByUserId;
 }
 
@@ -623,10 +660,18 @@ export async function getMemberUsage({
           ? (seatAllowanceBySeatType[normalizedSeatType] ?? 0)
           : 0)
       : null;
+  // Free seats have no pool, so their total spend cap is just the seat
+  // allowance (allowance + 0 pool) — like every other seat the cap includes the
+  // allowance, it just has no pool headroom on top. There's no default cap alert
+  // for free (normalizeToPoolLimitSeatType is null), so we supply it explicitly.
+  const effectiveDefaultAwuCredits =
+    membership.seatType === "free"
+      ? FREE_SEAT_LIFETIME_AWU_CREDITS
+      : (defaultCap?.threshold ?? null);
 
   const spendLimitSource = resolveEffectiveSpendLimitSource({
     overrideAwuCredits,
-    defaultAwuCredits: defaultCap?.threshold ?? null,
+    defaultAwuCredits: effectiveDefaultAwuCredits,
   });
 
   return {
@@ -648,11 +693,13 @@ export async function getMemberUsage({
       scheduledSeatChangeAt: null,
       spendLimitAwuCredits: resolveEffectiveSpendLimitAwuCredits({
         overrideAwuCredits,
-        defaultAwuCredits: defaultCap?.threshold ?? null,
+        defaultAwuCredits: effectiveDefaultAwuCredits,
       }),
       spendLimitSource,
       spendLimitAlertId: null,
       spendLimitWarningAlertId: null,
+      freeCreditLowAlert: null,
+      freeCreditEmptyAlert: null,
       creditState: membership.creditState,
     },
   };
@@ -704,6 +751,7 @@ export async function getMembersUsage({
     seatDataByUserId,
     seatBalanceByUserId,
     perUserSpendLimits,
+    freeCreditAlertIdsByUserId,
   ] = await Promise.all([
     MembershipResource.getActiveMemberships({ workspace, users }),
     fetchPerUserUsageCreditsForMembersTable({
@@ -726,7 +774,20 @@ export async function getMembersUsage({
       workspaceId: workspace.sId,
       includeAlertLinks,
     }),
+    // Free-seat balance-alert ids (low + empty) for deep-linking — poke-only,
+    // gated on `includeAlertLinks` so the customer page doesn't pay the extra
+    // alert-list call.
+    includeAlertLinks && metronomeCustomerId
+      ? listPerUserCreditBalanceAlertsForWorkspace({
+          metronomeCustomerId,
+          workspaceId: workspace.sId,
+        })
+      : Promise.resolve(null),
   ]);
+  const freeCreditAlertIds =
+    freeCreditAlertIdsByUserId?.isOk() === true
+      ? freeCreditAlertIdsByUserId.value
+      : null;
   const {
     perUserOverrideAlerts,
     defaultAwuCreditsBySeatType,
@@ -780,10 +841,17 @@ export async function getMembersUsage({
             ? (seatAllowanceBySeatType[normalizedSeatType] ?? 0)
             : 0)
         : null;
+    // Free seats have no pool, so their total spend cap is just the seat
+    // allowance (allowance + 0 pool) — the cap includes the allowance like every
+    // other seat, it just has no pool headroom on top.
+    const effectiveDefaultAwuCredits =
+      membership.seatType === "free"
+        ? FREE_SEAT_LIFETIME_AWU_CREDITS
+        : (defaultCap?.threshold ?? null);
 
     const spendLimitSource = resolveEffectiveSpendLimitSource({
       overrideAwuCredits,
-      defaultAwuCredits: defaultCap?.threshold ?? null,
+      defaultAwuCredits: effectiveDefaultAwuCredits,
     });
     const effectiveCapAlert =
       spendLimitSource === "override"
@@ -797,6 +865,13 @@ export async function getMembersUsage({
     const spendLimitWarningAlertId = includeAlertLinks
       ? (effectiveCapAlert?.warningAlertId ?? null)
       : null;
+
+    // Free-seat balance-alert deep links (poke-only). Only free seats have
+    // these per-user credit-balance alerts.
+    const freeCreditAlerts =
+      membership.seatType === "free"
+        ? (freeCreditAlertIds?.get(userId) ?? null)
+        : null;
 
     return [
       {
@@ -820,11 +895,13 @@ export async function getMembersUsage({
         scheduledSeatChangeAt: scheduled?.startAt.toISOString() ?? null,
         spendLimitAwuCredits: resolveEffectiveSpendLimitAwuCredits({
           overrideAwuCredits,
-          defaultAwuCredits: defaultCap?.threshold ?? null,
+          defaultAwuCredits: effectiveDefaultAwuCredits,
         }),
         spendLimitSource,
         spendLimitAlertId,
         spendLimitWarningAlertId,
+        freeCreditLowAlert: freeCreditAlerts?.low ?? null,
+        freeCreditEmptyAlert: freeCreditAlerts?.empty ?? null,
         creditState: membership.creditState,
       },
     ];

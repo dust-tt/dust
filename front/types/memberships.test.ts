@@ -106,6 +106,20 @@ describe("expectedUserCreditState", () => {
     ).toBe("capped");
   });
 
+  it("free seat with unknown balance → user_seat (never on_pool)", () => {
+    // A free seat has no pool fallback, so an unknown (null) balance must not
+    // route to on_pool — it stays on the seat until the balance is known 0.
+    expect(
+      expectedUserCreditState({
+        seatType: "free",
+        seatBalanceAwu: null,
+        seatStartingBalanceAwu: null,
+        perUserCapAwuCredits: null,
+        consumedAwuCredits: null,
+      })
+    ).toBe("user_seat");
+  });
+
   it("pool-based (workspace) seat → on_pool (no personal seat balance)", () => {
     expect(
       expectedUserCreditState({

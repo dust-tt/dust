@@ -129,14 +129,24 @@ export interface RecurringCreditDef {
   }>;
   recurrence_frequency?: "MONTHLY" | "QUARTERLY" | "ANNUAL" | "WEEKLY";
   // Optional. Offset relative to the recurring credit start that determines
-  // when the contract will stop creating recurring commits. Use a very small
-  // value (e.g. 1 day) to make the credit one-shot — Metronome fires the
-  // first commit on contract start, then the duration expires before the
-  // next would be issued.
+  // when the contract will stop creating recurring commits. Set the duration to
+  // exactly one recurrence period (e.g. 1 year for an ANNUAL credit) to make the
+  // credit one-shot: Metronome fires the first commit on contract start, and the
+  // schedule closes before the next occurrence would be issued.
+  //
+  // A duration SHORTER than the recurrence period also stops recurrence, but
+  // prorates the single commit down to the duration's fraction of the period
+  // (e.g. ANNUAL + 1 DAY granted 1/365 of the amount). Pair a sub-period
+  // duration with `proration: "NONE"` if you need the full amount.
   duration?: {
     unit: "DAYS" | "WEEKS" | "MONTHS" | "YEARS";
     value: number;
   };
+  // Whether the first and/or last commit is prorated by time. Metronome
+  // defaults to "FIRST_AND_LAST" when omitted, which prorates the first commit
+  // to its share of the recurrence period — set "NONE" to grant the full
+  // `access_amount` on a one-shot credit.
+  proration?: "NONE" | "FIRST" | "LAST" | "FIRST_AND_LAST";
   name?: string;
   // Attach the credit to a SEAT_BASED subscription so each seat gets its own
   // allocation (INDIVIDUAL) or all seats share one pool (POOLED).

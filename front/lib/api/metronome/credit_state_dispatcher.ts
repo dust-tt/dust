@@ -9,7 +9,10 @@ import {
   getMetronomePerUserCap,
 } from "@app/lib/metronome/alerts/spend_limits";
 import { getNetBalance } from "@app/lib/metronome/client";
-import { getCreditTypeAwuId } from "@app/lib/metronome/constants";
+import {
+  FREE_SEAT_LIFETIME_AWU_CREDITS,
+  getCreditTypeAwuId,
+} from "@app/lib/metronome/constants";
 import { invalidateWorkspacePoolCredits } from "@app/lib/metronome/credit_balance";
 import { fetchLiveUserCreditInputs } from "@app/lib/metronome/live_user_credit_inputs";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
@@ -62,6 +65,15 @@ async function resolvePoolLimitForUser({
     return null;
   }
 
+  // Free seats have no pool access — their pool limit is always 0, regardless
+  // of any per-user cap override (a cap bounds personal spend; it is not a pool
+  // budget). This is the single source of "free has no pool": downstream
+  // routing (capped vs on_pool) then falls out of `poolLimit === 0` with no
+  // seat-type special-casing.
+  if (seatType === "free") {
+    return 0;
+  }
+
   // 1. Per-user override.
   const userCapResult = await getMetronomePerUserCap({
     metronomeCustomerId,
@@ -108,6 +120,11 @@ async function getSeatAllowance(
   workspace: WorkspaceResource,
   seatType: MembershipSeatType | null | undefined
 ): Promise<number> {
+  // Free seats carry a fixed personal allocation that isn't a contract
+  // recurring credit, so it's a code constant rather than a contract lookup.
+  if (seatType === "free") {
+    return FREE_SEAT_LIFETIME_AWU_CREDITS;
+  }
   const normalizedSeatType = normalizeToPoolLimitSeatType(seatType);
   if (!normalizedSeatType) {
     return 0;
@@ -179,12 +196,13 @@ export async function dispatchSeatBalanceExhausted({
 
   const result = await transitionUserCreditState(
     membership,
-    { type: "seat_balance_exhausted", poolLimitAwuCredits },
+    { type: "seat_balance_exhausted" },
     {
       workspaceId: workspace.sId,
       userId,
       seatType: membership.seatType,
       remainingCapCreditsPercentage,
+      poolLimitAwuCredits,
     }
   );
   if (result.isErr()) {
@@ -241,10 +259,25 @@ export async function dispatchSeatBalanceResolved({
     userId,
   });
 
+  // The seat balance came back; the band the user lands in depends on how much
+  // is left. Read the live balance so the state machine can route to
+  // `user_seat` vs `user_seat_low_balance` (or the pool for non-seat users).
+  const liveBalance = await resolveLiveUserBalance({
+    workspace,
+    userId,
+    seatType: membership.seatType,
+    poolCapOverrideAwuCredits: membership.poolCapOverrideAwuCredits,
+  });
+
   const result = await transitionUserCreditState(
     membership,
     { type: "seat_balance_resolved" },
-    { workspaceId: workspace.sId, userId, seatType: membership.seatType }
+    {
+      workspaceId: workspace.sId,
+      userId,
+      seatType: membership.seatType,
+      liveBalance,
+    }
   );
   if (result.isErr()) {
     logger.warn(
@@ -484,7 +517,7 @@ export async function dispatchPerUserCapResolved({
   // `user_seat_low_balance`; otherwise the pool). When the live read isn't
   // available the transition defaults to `on_pool` and the reconcile / billing
   // webhooks correct it later.
-  const liveBalance = await resolveLiveBalanceForCapResolved({
+  const liveBalance = await resolveLiveUserBalance({
     workspace,
     userId,
     seatType: membership.seatType,
@@ -507,10 +540,11 @@ export async function dispatchPerUserCapResolved({
   return new Ok(undefined);
 }
 
-// Read the live per-user balance snapshot used to resolve the seat↔pool band on
-// cap resolution. Returns `undefined` when there's no Metronome customer or the
-// live read fails — the transition then defaults to `on_pool`.
-async function resolveLiveBalanceForCapResolved({
+// Read the live per-user balance snapshot used to recompute the seat↔pool band
+// when a per-user cap resolves or a seat balance is replenished. Returns
+// `undefined` when there's no Metronome customer or the live read fails — the
+// transition then falls back to its unguarded default.
+async function resolveLiveUserBalance({
   workspace,
   userId,
   seatType,
@@ -542,7 +576,7 @@ async function resolveLiveBalanceForCapResolved({
   if (liveResult.isErr()) {
     logger.warn(
       { workspaceId: workspace.sId, userId, seatType, err: liveResult.error },
-      "[CreditStateDispatcher] per_user_cap_resolved: live balance read failed, defaulting to on_pool"
+      "[CreditStateDispatcher] live balance read failed; transition uses default band"
     );
     return undefined;
   }

@@ -120,6 +120,22 @@ export const CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY =
   "DUST_CONTRACT_CREDIT_TYPE";
 export const CONTRACT_CREDIT_TYPE_EXCESS = "excess";
 export const CONTRACT_CREDIT_TYPE_POOL = "pool";
+// Per-user free-seat credits. Stamped at creation so they're explicitly typed
+// (not just "unstamped") and excluded from the pool balance — the pool filter
+// matches "pool", so "free_seat" never counts. Lets the credit.create /
+// credit.segment.start webhook leave them alone via its existing
+// already-stamped early-return, with no per-credit special-casing.
+export const CONTRACT_CREDIT_TYPE_FREE_SEAT = "free_seat";
+
+// Custom field stamped on a per-user (free) seat credit, carrying the seat's
+// user sId. Metronome alerts can filter on custom fields but not on a credit's
+// presentation specifier, so this is what lets a per-user
+// `low_remaining_contract_credit_balance_reached` alert fire as each free
+// user depletes their individual credit. The key must be registered with
+// Metronome (see `CUSTOM_FIELD_KEYS` in `scripts/metronome_setup.ts`) before it
+// can be stamped, or the create is rejected with "Invalid custom field keys".
+export const PER_USER_CREDIT_USER_CUSTOM_FIELD_KEY =
+  "DUST_PER_USER_CREDIT_USER";
 
 // Pricing/billable-metric group key that splits AWU usage into "user",
 // "programmatic", and "free" slices. Emitted on every usage event and used
@@ -225,8 +241,22 @@ export const getProductSeatSubscriptionCommitId = () =>
 
 // AWU commit priorities — lower number is consumed first.
 // Seat allocations are consumed before purchased top-ups.
-export const AWU_PRIORITY_SEAT_ALLOCATION = 200;
+export const AWU_PRIORITY_SEAT_ALLOCATION = 0;
+// Free-seat per-user credits are a non-seat-based credit (created via
+// `add_credits` with a `user_id` specifier, not a SEAT_BASED subscription).
+// Metronome forbids a non-seat-based commit/credit from being prioritized over
+// a seat-based one, so this MUST be strictly greater than
+// `AWU_PRIORITY_SEAT_ALLOCATION`. Kept below `AWU_PRIORITY_PURCHASED_COMMIT` so
+// a free user's free allowance is consumed before any purchased top-up.
+export const AWU_PRIORITY_FREE_SEAT_CREDIT = 100;
 export const AWU_PRIORITY_PURCHASED_COMMIT = 300;
+
+// Per-seat AWU grant for free seats. Granted once per seat as a per-user
+// contract credit at seat-assignment time (see `grantFreeSeatCredits`) rather
+// than via a recurring credit, so this constant is also the authoritative
+// source for the free seat's displayed allowance (see
+// `getAwuAllocationInfoForSeatType`).
+export const FREE_SEAT_LIFETIME_AWU_CREDITS = 300;
 
 // Seat commit/credit priorities
 export const SEAT_PRIORITY_SUBSCRIPTION_COMMIT = 300;

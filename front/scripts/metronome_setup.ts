@@ -21,6 +21,7 @@ import {
   CREDIT_TYPE_USD_ID,
   DEV_CREDIT_TYPE_AWU_ID,
   PAYMENT_GATE_TYPE_CUSTOM_FIELD_KEY,
+  PER_USER_CREDIT_USER_CUSTOM_FIELD_KEY,
   PLAN_CODE_CUSTOM_FIELD_KEY,
   PROD_CREDIT_TYPE_AWU_ID,
   SEAT_TYPE_CUSTOM_FIELD_KEY,
@@ -862,6 +863,8 @@ interface ExistingPackage {
     starting_at_offset: { unit: string; value: number };
     applicable_product_tags?: string[];
     recurrence_frequency?: string;
+    duration?: { unit: string; value: number };
+    proration?: "NONE" | "FIRST" | "LAST" | "FIRST_AND_LAST";
     name?: string;
     // Metronome returns the resolved subscription identifier (post-create) plus
     // the allocation mode for credits attached to a SEAT_BASED subscription.
@@ -1119,6 +1122,29 @@ function packageMatches(ex: ExistingPackage, desired: PackageDef): boolean {
       );
       return false;
     }
+    if (
+      (match.duration?.unit ?? undefined) !==
+        (desiredCredit.duration?.unit ?? undefined) ||
+      (match.duration ? Number(match.duration.value) : undefined) !==
+        (desiredCredit.duration ? desiredCredit.duration.value : undefined)
+    ) {
+      console.log(
+        `    [diff] ${desired.name}: recurring credit "${desiredCredit.name}" duration ${match.duration?.unit}:${match.duration?.value} → ${desiredCredit.duration?.unit}:${desiredCredit.duration?.value}`
+      );
+      return false;
+    }
+    // Metronome defaults an unset proration to "FIRST_AND_LAST", so compare
+    // against that default on both sides to avoid a spurious diff (and to detect
+    // a credit still on the prorated default vs. our desired "NONE").
+    if (
+      (match.proration ?? "FIRST_AND_LAST") !==
+      (desiredCredit.proration ?? "FIRST_AND_LAST")
+    ) {
+      console.log(
+        `    [diff] ${desired.name}: recurring credit "${desiredCredit.name}" proration ${match.proration ?? "FIRST_AND_LAST"} → ${desiredCredit.proration ?? "FIRST_AND_LAST"}`
+      );
+      return false;
+    }
     // Compare subscription_config presence and allocation mode. We can't match
     // the subscription_id directly (the existing credit holds a resolved ID
     // while the desired def references a temporary_id), but the allocation mode
@@ -1323,6 +1349,7 @@ async function syncPackages(): Promise<void> {
                 ? { recurrence_frequency: credit.recurrence_frequency }
                 : {}),
               ...(credit.duration ? { duration: credit.duration } : {}),
+              ...(credit.proration ? { proration: credit.proration } : {}),
               ...(credit.name ? { name: credit.name } : {}),
               ...(subscriptionConfig
                 ? { subscription_config: subscriptionConfig }
@@ -1439,6 +1466,16 @@ const CUSTOM_FIELD_KEYS: Array<{
   {
     entity: "commit",
     key: CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
+  },
+  // Stamped per-instance on each free-seat per-user credit, carrying the seat's
+  // user sId (see `addPerUserCreditToContract`). Lets a per-user
+  // `low_remaining_contract_credit_balance_reached` alert filter on the
+  // custom field (the only filter a credit-balance alert supports — presentation
+  // specifiers can't be filtered) so it fires as each free user depletes their
+  // individual credit.
+  {
+    entity: "contract_credit",
+    key: PER_USER_CREDIT_USER_CUSTOM_FIELD_KEY,
   },
   // Stamped on each seat-style product (Workspace / Pro / Max / Free).
   // Runtime code reads `product.custom_fields.DUST_SEAT_TYPE` (cached in
