@@ -10,6 +10,10 @@ html {
   font-synthesis: none;
 }
 
+body {
+  font-family: inherit;
+}
+
 @supports (font-synthesis-weight: none) {
   html {
     font-synthesis: initial;
