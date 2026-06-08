@@ -11,7 +11,7 @@ export function showDebugTools(flags: WhitelistableFeature[]) {
 export async function forceUserRole(
   user: UserType,
   owner: LightWorkspaceType,
-  role: "user" | "builder" | "admin",
+  role: "user" | "builder" | "admin" | "business_admin",
   featureFlags: WhitelistableFeature[]
 ) {
   // Ideally we should check if the user is dust super user but we don't have this information in the front-end

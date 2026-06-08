@@ -278,6 +278,15 @@ export function isOnlyAdmin(
   return owner.role === "admin";
 }
 
+export function isOnlyBusinessAdmin(
+  owner: WorkspaceType | null
+): owner is WorkspaceType & { role: "business_admin" } {
+  if (!owner) {
+    return false;
+  }
+  return owner.role === "business_admin";
+}
+
 const DustUserEmailHeader = "x-api-user-email";
 
 export function getUserEmailFromHeaders(headers: {
