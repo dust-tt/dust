@@ -8,18 +8,14 @@ import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import type { estypes } from "@elastic/elasticsearch";
 
-type TopAgentsAggs = {
-  by_agent?: estypes.AggregationsMultiBucketAggregateBase<{
-    key: string;
-    doc_count: number;
-    unique_users?: estypes.AggregationsCardinalityAggregate;
-  }>;
-};
-
 type TopAgentBucket = {
   key: string;
   doc_count: number;
   unique_users?: estypes.AggregationsCardinalityAggregate;
+};
+
+type TopAgentsAggs = {
+  by_agent?: estypes.AggregationsMultiBucketAggregateBase<TopAgentBucket>;
 };
 
 // Ranks agents by message count over a time window, with unique-user counts and
