@@ -57,7 +57,9 @@ export function AttachmentCitation({
         icon={attachmentCitation.visual}
         title={attachmentCitation.title}
         description={attachmentCitation.path ?? attachmentCitation.spaceName}
-        href={attachmentCitation.sourceUrl ?? undefined}
+        {...(attachmentCitation.sourceUrl
+          ? { href: attachmentCitation.sourceUrl }
+          : {})}
         onRemove={attachmentCitation.onRemove}
         compact={compact}
         tooltipLabel={tooltipContent}
@@ -118,7 +120,7 @@ export function AttachmentCitation({
       compact={compact}
       isLoading={isLoading}
       loadingLabel={loadingLabel}
-      href={sourceUrl ?? undefined}
+      {...(sourceUrl ? { href: sourceUrl } : {})}
       onRemove={attachmentCitation.onRemove}
       tooltipLabel={title}
     />

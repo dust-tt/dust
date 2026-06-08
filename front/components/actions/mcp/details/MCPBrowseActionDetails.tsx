@@ -101,10 +101,7 @@ export function MCPBrowseActionDetails({
               Files
             </span>
             {generatedFiles.map((file) => (
-              <ToolGeneratedFileDetails
-                key={file.fileId}
-                resource={file}
-              />
+              <ToolGeneratedFileDetails key={file.fileId} resource={file} />
             ))}
           </div>
         )}

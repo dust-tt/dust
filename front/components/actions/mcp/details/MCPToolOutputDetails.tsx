@@ -77,14 +77,21 @@ export function SqlQueryBlock({ resource }: SqlQueryBlockProps) {
 }
 
 interface ToolGeneratedFileDetailsProps {
-  resource: ToolGeneratedFileType | ActionGeneratedFileType;
+  resource:
+    | ToolGeneratedFileType
+    | ActionGeneratedFileType
+    | Omit<ActionGeneratedFileType, "snippet">;
 }
 
 export function ToolGeneratedFileDetails({
   resource,
 }: ToolGeneratedFileDetailsProps) {
   const snippet =
-    "text" in resource ? resource.text : (resource.snippet ?? undefined);
+    "text" in resource
+      ? resource.text
+      : "snippet" in resource
+        ? (resource.snippet ?? undefined)
+        : undefined;
 
   return (
     <PreviewableCitation
