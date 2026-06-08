@@ -395,6 +395,10 @@ type FileFormat = {
    * - Any file type that could contain executable code
    */
   isSafeToDisplay: boolean;
+  // When set, restricts which upload use cases expose this format in their file picker.
+  // Possible values: conversation, avatar, tool_output, skill_attachment, upsert_document,
+  // folders_document, upsert_table, project_context. Omit to allow in all contexts.
+  allowedFileUploadUseCases?: readonly FileUseCase[];
 };
 
 // NOTE: if we add more content types, we need to update the public api package. (but the
@@ -594,15 +598,36 @@ export const FILE_FORMATS = {
   // Chrome sometimes uses video/webm for audio files, and we can still process them as audio only files
   "video/webm": { cat: "audio", exts: [".webm"], isSafeToDisplay: true },
 
-  // Fonts (binary assets used as-is by skill attachments / Frames).
-  "font/woff": { cat: "data", exts: [".woff"], isSafeToDisplay: false },
-  "font/woff2": { cat: "data", exts: [".woff2"], isSafeToDisplay: false },
-  "font/otf": { cat: "data", exts: [".otf"], isSafeToDisplay: false },
-  "font/ttf": { cat: "data", exts: [".ttf"], isSafeToDisplay: false },
+  // Fonts — skill attachments only.
+  "font/woff": {
+    cat: "data",
+    exts: [".woff"],
+    isSafeToDisplay: false,
+    allowedFileUploadUseCases: ["skill_attachment"],
+  },
+  "font/woff2": {
+    cat: "data",
+    exts: [".woff2"],
+    isSafeToDisplay: false,
+    allowedFileUploadUseCases: ["skill_attachment"],
+  },
+  "font/otf": {
+    cat: "data",
+    exts: [".otf"],
+    isSafeToDisplay: false,
+    allowedFileUploadUseCases: ["skill_attachment"],
+  },
+  "font/ttf": {
+    cat: "data",
+    exts: [".ttf"],
+    isSafeToDisplay: false,
+    allowedFileUploadUseCases: ["skill_attachment"],
+  },
   "font/collection": {
     cat: "data",
     exts: [".ttc", ".otc"],
     isSafeToDisplay: false,
+    allowedFileUploadUseCases: ["skill_attachment"],
   },
 
   // Unknown.
@@ -834,7 +859,9 @@ export function getSupportedFileExtensions(
   return uniq(
     removeNulls(
       Object.values(FILE_FORMATS).flatMap((format) =>
-        !cat || format.cat === cat ? format.exts : []
+        !("allowedFileUploadUseCases" in format) && (!cat || format.cat === cat)
+          ? format.exts
+          : []
       )
     )
   );
@@ -844,7 +871,9 @@ export function getSupportedNonImageFileExtensions() {
   return uniq(
     removeNulls(
       Object.values(FILE_FORMATS).flatMap((format) =>
-        format.cat !== "image" ? format.exts : []
+        !("allowedFileUploadUseCases" in format) && format.cat !== "image"
+          ? format.exts
+          : []
       )
     )
   );
@@ -854,7 +883,9 @@ export function getSupportedNonImageMimeTypes() {
   return uniq(
     removeNulls(
       Object.entries(FILE_FORMATS).map(([key, value]) =>
-        value.cat !== "image" ? (key as SupportedNonImageContentType) : null
+        !("allowedFileUploadUseCases" in value) && value.cat !== "image"
+          ? (key as SupportedNonImageContentType)
+          : null
       )
     )
   );
