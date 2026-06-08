@@ -3329,6 +3329,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "FathomLogo"
   | "FreshserviceLogo"
   | "FrontLogo"
+  | "GammaLogo"
   | "GcalLogo"
   | "GithubLogo"
   | "GitlabLogo"

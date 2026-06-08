@@ -1928,6 +1928,55 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       },
     },
   },
+  {
+    id: 10024,
+    name: "Gamma",
+    description:
+      "Create and manage Gamma presentations directly from your conversations.",
+    url: "https://mcp.gamma.app",
+    icon: "GammaLogo",
+    documentationUrl: "https://developers.gamma.app",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      get_gammas: "never_ask",
+      read_gamma: "never_ask",
+      get_themes: "never_ask",
+      get_folders: "never_ask",
+      get_generation_status: "never_ask",
+      generate: "low",
+      generate_from_template: "low",
+    },
+    toolDisplayLabels: {
+      get_gammas: {
+        running: "Browsing Gammas",
+        done: "Browsed Gammas",
+      },
+      read_gamma: {
+        running: "Reading Gamma",
+        done: "Read Gamma",
+      },
+      get_themes: {
+        running: "Loading Gamma themes",
+        done: "Loaded Gamma themes",
+      },
+      get_folders: {
+        running: "Loading Gamma folders",
+        done: "Loaded Gamma folders",
+      },
+      get_generation_status: {
+        running: "Checking generation status",
+        done: "Checked generation status",
+      },
+      generate: {
+        running: "Generating Gamma presentation",
+        done: "Generated Gamma presentation",
+      },
+      generate_from_template: {
+        running: "Generating Gamma from template",
+        done: "Generated Gamma from template",
+      },
+    },
+  },
 ];
 
 export const isDefaultRemoteMcpServerURL = (url: string | undefined) => {
