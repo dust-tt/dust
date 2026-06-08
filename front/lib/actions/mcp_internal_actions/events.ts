@@ -3,6 +3,7 @@ import type {
   MCPValidationMetadataType,
 } from "@app/lib/actions/constants";
 import type { UserQuestion } from "@app/lib/actions/types";
+import type { EditableToolConfig } from "@app/lib/api/mcp";
 import type { OAuthProvider } from "@app/types/oauth/lib";
 
 export interface ToolExecution<
@@ -73,6 +74,7 @@ export interface ToolFileAuthRequiredEvent
 
 export interface MCPApproveExecutionEvent extends ToolExecution {
   type: "tool_approve_execution";
+  editable?: EditableToolConfig;
 }
 
 export interface ToolAskUserQuestionEvent extends ToolExecution {
