@@ -1,3 +1,4 @@
+import { maybePersistDustDesktopClientSideMCPServerRegistration } from "@app/lib/api/actions/mcp/dust_desktop";
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types/shared/result";
@@ -36,23 +37,6 @@ export function getMCPServerRegistryKey({
 }
 
 /**
- * Redis SCAN pattern for all registry keys sharing a server name's base id.
- * Used only by {@link getLatestMCPServerRegistrationByName} (temporary).
- */
-export function getMCPServerRegistryKeyPatternForServerName({
-  workspaceId,
-  userId,
-  serverName,
-}: {
-  workspaceId: string;
-  userId: string;
-  serverName: string;
-}): string {
-  const baseServerId = getMCPServerIdFromServerName({ serverName });
-  return `w:${workspaceId}:mcp:reg:u:${userId}:s:${baseServerId}*`;
-}
-
-/**
  * Get the base serverId by removing any numeric suffix.
  * For example: "mcp-client-side:my-server.1" -> "mcp-client-side:my-server"
  * This is safe because:
@@ -71,16 +55,6 @@ export function getMCPServerIdFromServerName({
   serverName: string;
 }): string {
   return `mcp-client-side:${slugify(serverName)}`;
-}
-
-/** Registration name used by Dust Desktop (slug → mcp-client-side:dust_desktop). */
-export const DUST_DESKTOP_CLIENT_SIDE_MCP_SERVER_NAME = "dust-desktop";
-
-function clientSideMCPServerNamesMatch(
-  requestedName: string,
-  storedName: string
-): boolean {
-  return slugify(requestedName) === slugify(storedName);
 }
 
 /**
@@ -170,6 +144,11 @@ export async function registerMCPServer(
     now + MCP_SERVER_REGISTRATION_TTL_SECONDS * 1000
   ).toISOString();
 
+  await maybePersistDustDesktopClientSideMCPServerRegistration(auth, {
+    serverName,
+    serverId,
+  });
+
   return new Ok({
     expiresAt,
     serverId,
@@ -208,90 +187,6 @@ export async function getMCPServersMetadata(
         return [serverId, result ? JSON.parse(result) : null];
       })
     );
-  });
-}
-
-/**
- * Return the registered instance with the most recent heartbeat for a server name.
- *
- * TODO: Temporary helper to make Dust Desktop testing easier (reconnect without a
- * persisted serverId). Do not keep long term — it relies on a Redis SCAN over the
- * full keyspace. Replace with client-side serverId persistence or a bounded lookup.
- */
-export async function getLatestMCPServerRegistrationByName(
-  auth: Authenticator,
-  {
-    serverName,
-    workspaceId,
-  }: {
-    serverName: string;
-    workspaceId?: string;
-  }
-): Promise<MCPServerRegistration | null> {
-  const user = auth.getNonNullableUser();
-  const userId = user.id.toString();
-  const resolvedWorkspaceId = workspaceId ?? auth.getNonNullableWorkspace().sId;
-
-  const pattern = getMCPServerRegistryKeyPatternForServerName({
-    workspaceId: resolvedWorkspaceId,
-    userId,
-    serverName,
-  });
-
-  return runOnRedis({ origin: "mcp_client_side_request" }, async (redis) => {
-    const keys: string[] = [];
-    for await (const key of redis.scanIterator({ MATCH: pattern })) {
-      keys.push(key);
-    }
-
-    if (keys.length === 0) {
-      return null;
-    }
-
-    const results = await redis.mGet(keys);
-    let latest: MCPServerRegistration | null = null;
-    const scannedRegistrations: Array<{
-      key: string;
-      serverId: string;
-      storedServerName: string;
-      lastHeartbeat: number;
-      matchesRequestedName: boolean;
-    }> = [];
-
-    for (let i = 0; i < results.length; i++) {
-      const result = results[i];
-      const key = keys[i];
-      if (!result) {
-        scannedRegistrations.push({
-          key,
-          serverId: "missing",
-          storedServerName: "missing",
-          lastHeartbeat: 0,
-          matchesRequestedName: false,
-        });
-        continue;
-      }
-      const metadata = JSON.parse(result) as MCPServerRegistration;
-      const matchesRequestedName = clientSideMCPServerNamesMatch(
-        serverName,
-        metadata.serverName
-      );
-      scannedRegistrations.push({
-        key,
-        serverId: metadata.serverId,
-        storedServerName: metadata.serverName,
-        lastHeartbeat: metadata.lastHeartbeat,
-        matchesRequestedName,
-      });
-      if (!matchesRequestedName) {
-        continue;
-      }
-      if (!latest || metadata.lastHeartbeat > latest.lastHeartbeat) {
-        latest = metadata;
-      }
-    }
-
-    return latest;
   });
 }
 
@@ -336,13 +231,18 @@ export async function updateMCPServerHeartbeat(
         EX: MCP_SERVER_REGISTRATION_TTL_SECONDS,
       });
 
-      return true;
+      return metadata;
     }
   );
 
   if (!result) {
     return null;
   }
+
+  await maybePersistDustDesktopClientSideMCPServerRegistration(auth, {
+    serverName: result.serverName,
+    serverId: result.serverId,
+  });
 
   const expiresAt = new Date(
     now + MCP_SERVER_REGISTRATION_TTL_SECONDS * 1000
