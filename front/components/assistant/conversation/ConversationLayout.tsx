@@ -6,6 +6,7 @@ import {
 import ConversationSidePanelContainer from "@app/components/assistant/conversation/ConversationSidePanelContainer";
 import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { ConversationTitle } from "@app/components/assistant/conversation/ConversationTitle";
+import { FilePreviewProvider } from "@app/components/assistant/conversation/FilePreviewContext";
 import { FileDropProvider } from "@app/components/assistant/conversation/FileUploaderContext";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { WelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuide";
@@ -95,16 +96,18 @@ const ConversationLayoutContent = ({
 
   return (
     <AssistantLayout owner={owner} user={user} conversation={conversation}>
-      <ConversationSidePanelProvider>
-        <ConversationInnerLayout
-          activeConversationId={activeConversationId}
-          conversation={conversation}
-          conversationError={conversationError}
-          owner={owner}
-        >
-          {children}
-        </ConversationInnerLayout>
-      </ConversationSidePanelProvider>
+      <FilePreviewProvider owner={owner}>
+        <ConversationSidePanelProvider>
+          <ConversationInnerLayout
+            activeConversationId={activeConversationId}
+            conversation={conversation}
+            conversationError={conversationError}
+            owner={owner}
+          >
+            {children}
+          </ConversationInnerLayout>
+        </ConversationSidePanelProvider>
+      </FilePreviewProvider>
       {shouldDisplayWelcomeTourGuide && (
         <WelcomeTourGuide
           owner={owner}

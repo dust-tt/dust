@@ -94,11 +94,7 @@ export function MCPTablesQueryActionDetails({
                 Results
               </span>
               {generatedFiles.map((file) => (
-                <ToolGeneratedFileDetails
-                  key={file.fileId}
-                  resource={file}
-                  owner={owner}
-                />
+                <ToolGeneratedFileDetails key={file.fileId} resource={file} />
               ))}
             </div>
           )}

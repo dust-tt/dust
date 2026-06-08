@@ -485,7 +485,6 @@ export function GenericActionDetails({
                     <ToolGeneratedFileDetails
                       key={file.fileId}
                       resource={file}
-                      owner={owner}
                     />
                   ))}
               </div>

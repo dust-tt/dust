@@ -218,6 +218,7 @@ export function contentFragmentToAttachmentCitation(
       ),
       description: description ?? null,
       fileId: contentFragment.fileId,
+      filePath: contentFragment.path ?? undefined,
       contentType: contentFragment.contentType,
       attachmentCitationType: "fragment",
       provider: contentFragment.sourceProvider ?? undefined,

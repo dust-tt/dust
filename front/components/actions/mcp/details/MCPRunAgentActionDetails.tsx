@@ -436,8 +436,6 @@ function MCPRunAgentActionDetailsDisplay({
                                   attachmentCitation={markdownCitationToAttachmentCitation(
                                     document
                                   )}
-                                  owner={owner}
-                                  conversationId={null}
                                 />
                               ))}
                           </CitationGrid>
@@ -450,11 +448,7 @@ function MCPRunAgentActionDetailsDisplay({
             {generatedFiles.length > 0 && (
               <div className="flex flex-col gap-2">
                 {generatedFiles.map((file) => (
-                  <ToolGeneratedFileDetails
-                    key={file.fileId}
-                    resource={file}
-                    owner={owner}
-                  />
+                  <ToolGeneratedFileDetails key={file.fileId} resource={file} />
                 ))}
               </div>
             )}

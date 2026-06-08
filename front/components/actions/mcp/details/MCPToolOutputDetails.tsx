@@ -1,8 +1,6 @@
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ActionDetailsDisplayContext } from "@app/components/actions/mcp/details/types";
-import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
-import { markdownCitationToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
-import type { MCPReferenceCitation } from "@app/components/markdown/MCPReferenceCitation";
+import { PreviewableCitation } from "@app/components/assistant/conversation/attachment/PreviewableCitation";
 import type {
   SqlQueryOutputType,
   ThinkingOutputType,
@@ -17,10 +15,8 @@ import {
   isWebsearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
-import config from "@app/lib/api/config";
 import { getDocumentIcon } from "@app/lib/content_nodes";
 import { removeNulls } from "@app/types/shared/utils/general";
-import type { LightWorkspaceType } from "@app/types/user";
 import {
   Chip,
   CodeBlock,
@@ -81,31 +77,30 @@ export function SqlQueryBlock({ resource }: SqlQueryBlockProps) {
 }
 
 interface ToolGeneratedFileDetailsProps {
-  resource: ToolGeneratedFileType | ActionGeneratedFileType;
-  owner: LightWorkspaceType;
+  resource:
+    | ToolGeneratedFileType
+    | ActionGeneratedFileType
+    | Omit<ActionGeneratedFileType, "snippet">;
 }
 
 export function ToolGeneratedFileDetails({
   resource,
-  owner,
 }: ToolGeneratedFileDetailsProps) {
-  const citation: MCPReferenceCitation = {
-    fileId: resource.fileId ?? undefined,
-    title: resource.title,
-    contentType: resource.contentType,
-    href: resource.fileId
-      ? `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${resource.fileId}`
-      : undefined,
-    description:
-      "text" in resource ? resource.text : (resource.snippet ?? undefined),
-  };
+  const snippet =
+    "text" in resource
+      ? resource.text
+      : "snippet" in resource
+        ? (resource.snippet ?? undefined)
+        : undefined;
 
   return (
-    <AttachmentCitation
-      attachmentCitation={markdownCitationToAttachmentCitation(citation)}
-      owner={owner}
-      conversationId={null}
+    <PreviewableCitation
       compact
+      fileId={resource.fileId ?? null}
+      filePath={"filePath" in resource ? resource.filePath : undefined}
+      contentType={resource.contentType}
+      title={resource.title}
+      description={snippet}
     />
   );
 }

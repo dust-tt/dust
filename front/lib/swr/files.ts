@@ -44,6 +44,22 @@ export const getFileViewUrl = (
   fileId: string | null | undefined
 ) => `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=view`;
 
+export const getFilePathViewUrl = (
+  owner: LightWorkspaceType,
+  filePath: string
+) => {
+  const encoded = filePath.split("/").map(encodeURIComponent).join("/");
+  return `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/path/${encoded}`;
+};
+
+export const getFilePathDownloadUrl = (
+  owner: LightWorkspaceType,
+  filePath: string
+) => {
+  const encoded = filePath.split("/").map(encodeURIComponent).join("/");
+  return `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/path/${encoded}?download=1`;
+};
+
 export async function downloadFile(
   owner: LightWorkspaceType,
   canonicalPath: string

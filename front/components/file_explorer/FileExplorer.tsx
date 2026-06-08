@@ -331,7 +331,7 @@ export function FileExplorer({
 
       <FilePreviewDialog
         entry={previewFile}
-        getFileUrl={getFileUrl}
+        fileUrl={previewFile ? getFileUrl(previewFile.path) : null}
         isOpen={showPreviewSheet}
         onOpenChange={setShowPreviewSheet}
         onDownload={onFileDownload}

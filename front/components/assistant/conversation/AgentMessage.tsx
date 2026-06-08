@@ -1,3 +1,4 @@
+import { ToolGeneratedFileDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
 import { AgentMessageMarkdown } from "@app/components/assistant/AgentMessageMarkdown";
 import { AgentHandle } from "@app/components/assistant/conversation/AgentHandle";
 import { AgentMessageInteractiveContentGeneratedFiles } from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
@@ -173,44 +174,6 @@ function PrunedContextChip() {
       }
     />
   );
-}
-
-function buildMountFilePreviewHref({
-  apiBaseUrl,
-  ownerId,
-  conversationId,
-  spaceId,
-  filePath,
-}: {
-  apiBaseUrl: string;
-  ownerId: string;
-  conversationId: string;
-  spaceId: string | null;
-  filePath: string;
-}): string | undefined {
-  // Canonical paths go straight to the global file-path endpoint.
-  if (filePath.startsWith("conversation-") || filePath.startsWith("pod-")) {
-    return `${apiBaseUrl}/api/w/${ownerId}/files/path/${filePath}`;
-  }
-
-  // Normalize legacy "conversation/<rel>" to canonical before routing.
-  if (filePath.startsWith("conversation/")) {
-    const rel = filePath.slice("conversation/".length);
-    return `${apiBaseUrl}/api/w/${ownerId}/files/path/conversation-${conversationId}/${rel}`;
-  }
-
-  // Normalize legacy "pod/<rel>" and "project/<rel>" to canonical before routing.
-  if (filePath.startsWith("pod/") || filePath.startsWith("project/")) {
-    if (!spaceId) {
-      return undefined;
-    }
-    const rel = filePath.startsWith("pod/")
-      ? filePath.slice("pod/".length)
-      : filePath.slice("project/".length);
-    return `${apiBaseUrl}/api/w/${ownerId}/files/path/pod-${spaceId}/${rel}`;
-  }
-
-  return undefined;
 }
 
 interface AgentMessageProps {
@@ -1416,32 +1379,15 @@ function AgentMessageContent({
           )}
         {generatedFiles.length > 0 && (
           <div className="mt-2 grid grid-cols-2 gap-2 @xs:grid-cols-3 @sm:grid-cols-4 @md:grid-cols-5">
-            {getCitations({
-              activeReferences: generatedFiles.map((file) => {
-                const href = file.fileId
-                  ? `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${file.fileId}`
-                  : file.filePath
-                    ? buildMountFilePreviewHref({
-                        apiBaseUrl: config.getApiBaseUrl(),
-                        ownerId: owner.sId,
-                        conversationId,
-                        spaceId,
-                        filePath: file.filePath,
-                      })
-                    : undefined;
-                return {
-                  index: -1,
-                  document: {
-                    fileId: file.fileId ?? undefined,
-                    contentType: file.contentType,
-                    href,
-                    title: file.title,
-                  },
-                };
-              }),
-              owner,
-              conversationId,
-            })}
+            {generatedFiles.map((file) => (
+              <ToolGeneratedFileDetails
+                key={
+                  file.fileId ??
+                  ("filePath" in file ? file.filePath : file.title)
+                }
+                resource={file}
+              />
+            ))}
           </div>
         )}
         {(agentMessage.status === "cancelled" ||
@@ -1506,8 +1452,6 @@ function getCitations({
         key={index}
         attachmentCitation={attachmentCitation}
         compact
-        owner={owner}
-        conversationId={conversationId}
       />
     );
   });

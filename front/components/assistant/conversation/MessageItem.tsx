@@ -171,10 +171,8 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
 
             return (
               <AttachmentCitation
-                owner={context.owner}
                 key={index}
                 attachmentCitation={attachmentCitation}
-                conversationId={context.conversation?.sId}
                 compact={!hasImageCitation}
               />
             );

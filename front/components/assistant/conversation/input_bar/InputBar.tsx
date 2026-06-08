@@ -470,7 +470,6 @@ export const InputBar = React.memo(function InputBar({
                 items: attachedNodes,
                 onRemove: handleNodesAttachmentRemove,
               }}
-              conversationId={conversation?.sId}
             />
           )}
           <InputBarContainer
