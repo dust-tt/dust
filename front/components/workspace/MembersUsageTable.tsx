@@ -1,17 +1,25 @@
+import {
+  getSeatBarClasses,
+  getSeatIconColorClass,
+  MUTED_BAR_CLASSES,
+} from "@app/components/workspace/seat_styles";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { formatCredits } from "@app/lib/client/credits";
 import type { BillingFrequency } from "@app/lib/metronome/types";
 import {
   isMembershipSeatType,
   type MembershipSeatType,
+  SEAT_TYPE_ORDER,
 } from "@app/types/memberships";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
 import {
   AlertCircle,
+  Clock,
   Cube01,
   DataTable,
   Hexagon01,
+  Icon,
   LoadingBlock,
   type MenuItem,
   SeatMax,
@@ -49,7 +57,7 @@ type RowData = {
 type Info = CellContext<RowData, string>;
 
 const SEAT_TYPE_ICONS: Partial<
-  Record<MembershipSeatType, React.ComponentType>
+  Record<MembershipSeatType, React.ComponentType<{ className?: string }>>
 > = {
   none: AlertCircle,
   max: SeatMax,
@@ -68,6 +76,33 @@ function getDisplaySeatType(seatType: MembershipSeatType): MembershipSeatType {
   return seatType;
 }
 
+// Builds the tooltip explaining a scheduled seat change, e.g.
+// "This user will be downgraded to Free at the end of the billing period (July 1)".
+function getScheduledSeatChangeLabel(
+  currentSeatType: MembershipSeatType | null,
+  scheduledSeatType: MembershipSeatType,
+  scheduledSeatChangeAt: string | null
+): string {
+  const currentRank = currentSeatType ? SEAT_TYPE_ORDER[currentSeatType] : 0;
+  const scheduledRank = SEAT_TYPE_ORDER[scheduledSeatType];
+  const verb =
+    scheduledRank > currentRank
+      ? "upgraded"
+      : scheduledRank < currentRank
+        ? "downgraded"
+        : "changed";
+  const target = getDisplaySeatType(scheduledSeatType);
+  const targetLabel = target.charAt(0).toUpperCase() + target.slice(1);
+  const dateSuffix = scheduledSeatChangeAt
+    ? ` (${new Date(scheduledSeatChangeAt).toLocaleDateString("en-US", {
+        month: "long",
+        day: "numeric",
+        timeZone: "UTC",
+      })})`
+    : "";
+  return `This user will be ${verb} to ${targetLabel} at the end of the billing period${dateSuffix}`;
+}
+
 interface SeatTypeIconProps {
   seatType: MembershipSeatType | null;
 }
@@ -76,11 +111,18 @@ function SeatTypeIcon({ seatType }: SeatTypeIconProps) {
   if (!seatType) {
     return null;
   }
-  const Icon = SEAT_TYPE_ICONS[getDisplaySeatType(seatType)];
-  if (!Icon) {
+  const displaySeatType = getDisplaySeatType(seatType);
+  const visual = SEAT_TYPE_ICONS[displaySeatType];
+  if (!visual) {
     return null;
   }
-  return <Icon />;
+  return (
+    <Icon
+      visual={visual}
+      size="sm"
+      className={getSeatIconColorClass(displaySeatType)}
+    />
+  );
 }
 
 interface AwuUsageBarProps {
@@ -94,27 +136,6 @@ interface AwuUsageBarProps {
   limit: number | null;
   seatType: MembershipSeatType | null;
   isTotalAllowedUsagePending: boolean;
-}
-
-const MUTED_BAR_CLASSES = {
-  track: "bg-muted-background dark:bg-muted-background-night",
-  fill: "bg-muted-foreground dark:bg-muted-foreground-night",
-};
-
-function getSeatBarClasses(seatType: MembershipSeatType | null) {
-  if (seatType?.startsWith("pro")) {
-    return {
-      track: "bg-blue-100 dark:bg-blue-100-night",
-      fill: "bg-highlight dark:bg-highlight-night",
-    };
-  }
-  if (seatType?.startsWith("max")) {
-    return {
-      track: "bg-golden-100 dark:bg-golden-100-night",
-      fill: "bg-brand-orange-golden",
-    };
-  }
-  return MUTED_BAR_CLASSES;
 }
 
 function AwuUsageBar({
@@ -319,31 +340,32 @@ const seatTypeColumn: ColumnDef<RowData, string> = {
     const seatType = info.row.original.seatType;
     const scheduledSeatType = info.row.original.scheduledSeatType;
     const scheduledSeatChangeAt = info.row.original.scheduledSeatChangeAt;
-    const scheduledDate = scheduledSeatChangeAt
-      ? new Date(scheduledSeatChangeAt).toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          timeZone: "UTC",
-        })
-      : null;
     return (
       <DataTable.CellContent>
-        <span className="flex flex-col">
-          <span className="flex items-center gap-1.5 text-sm font-semibold capitalize text-muted-foreground dark:text-muted-foreground-night">
-            <SeatTypeIcon seatType={seatType} />
-            {seatType ? getDisplaySeatType(seatType) : "—"}
-          </span>
-          {scheduledSeatType && scheduledDate && (
-            <span className="text-xs capitalize text-amber-600 dark:text-amber-400">
-              → {getDisplaySeatType(scheduledSeatType)} on {scheduledDate}
-            </span>
+        <span className="flex items-center gap-1.5 text-sm font-semibold capitalize text-muted-foreground dark:text-muted-foreground-night">
+          <SeatTypeIcon seatType={seatType} />
+          {seatType ? getDisplaySeatType(seatType) : "—"}
+          {scheduledSeatType && (
+            <Tooltip
+              label={getScheduledSeatChangeLabel(
+                seatType,
+                scheduledSeatType,
+                scheduledSeatChangeAt
+              )}
+              tooltipTriggerAsChild
+              trigger={
+                <span className="cursor-default">
+                  <Icon visual={Clock} size="xs" />
+                </span>
+              }
+            />
           )}
         </span>
       </DataTable.CellContent>
     );
   },
   meta: {
-    className: "w-28",
+    className: "w-36",
   },
 };
 
@@ -527,17 +549,6 @@ export function MembersUsageTable({
                   label: m.seatType ? "Change seat type" : "Assign seat",
                   onClick: () => onChangeSeat(m),
                 },
-                // Only members who currently hold a billable seat can have it removed.
-                ...(m.seatType && m.seatType !== "none"
-                  ? [
-                      {
-                        kind: "item" as const,
-                        label: "Remove seat",
-                        variant: "warning" as const,
-                        onClick: () => onRemoveSeat(m),
-                      },
-                    ]
-                  : []),
               ]
             : []),
           {
@@ -545,6 +556,17 @@ export function MembersUsageTable({
             label: "Edit spend limit",
             onClick: () => onEditSpendLimit(m),
           },
+          // Only members who currently hold a billable seat can have it removed.
+          ...(isSeatBased && m.seatType && m.seatType !== "none"
+            ? [
+                {
+                  kind: "item" as const,
+                  label: "Remove seat",
+                  variant: "warning" as const,
+                  onClick: () => onRemoveSeat(m),
+                },
+              ]
+            : []),
         ],
       })),
     [

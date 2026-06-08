@@ -101,6 +101,23 @@ export type GetMembersUsageResponseBody = {
   total: number;
 };
 
+// Workspace seats have a zero AWU allocation, so `buildSeatDataByUserId` skips
+// them and we never get a Metronome-derived billing frequency. The cadence is
+// still encoded in the seat type itself, so derive it from there as a fallback
+// to display the period like for other seats.
+function deriveWorkspaceSeatBillingFrequency(
+  seatType: MembershipSeatType | null
+): BillingFrequency | null {
+  switch (seatType) {
+    case "workspace":
+      return "MONTHLY";
+    case "workspace_yearly":
+      return "ANNUAL";
+    default:
+      return null;
+  }
+}
+
 export const DEFAULT_MEMBERS_USAGE_PAGE_LIMIT = 50;
 export const MAX_MEMBERS_USAGE_PAGE_LIMIT = 150;
 
@@ -678,7 +695,9 @@ export async function getMembersUsage({
         consumedAwuCredits: totalConsumedCredits,
         consumedFromAllowanceAwuCredits,
         consumedFromPoolAwuCredits,
-        billingFrequency: seatData?.billingFrequency ?? null,
+        billingFrequency:
+          seatData?.billingFrequency ??
+          deriveWorkspaceSeatBillingFrequency(membership.seatType ?? null),
         scheduledSeatType: scheduled?.seatType ?? null,
         scheduledSeatChangeAt: scheduled?.startAt.toISOString() ?? null,
         spendLimitAwuCredits: resolveEffectiveSpendLimitAwuCredits({
