@@ -226,6 +226,105 @@ The following skills are available for use with the skill_management__enable_ski
     });
   });
 
+  it("renders user-edited tool inputs as user messages", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      {
+        name: "Test Agent",
+        description: "A test agent for editable tool input rendering",
+      }
+    );
+    const model = getSupportedModelConfig(agentConfig.model);
+    assert(model, "Expected a supported model configuration.");
+
+    const message = {
+      id: 1,
+      agentMessageId: 1,
+      type: "agent_message",
+      sId: "agent_msg_1",
+      version: 1,
+      rank: 1,
+      branchId: null,
+      created: Date.now(),
+      completedTs: null,
+      parentMessageId: "user_msg_1",
+      parentAgentMessageId: null,
+      status: "succeeded",
+      content: null,
+      chainOfThought: null,
+      error: null,
+      visibility: "visible",
+      configuration: agentConfig,
+      skipToolsValidation: false,
+      actions: [
+        {
+          id: 1,
+          sId: "action_1",
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          agentMessageId: 1,
+          internalMCPServerName: "gmail",
+          toolName: "send_mail",
+          mcpServerId: null,
+          functionCallName: "gmail__send_mail",
+          functionCallId: "toolu_send_mail",
+          params: { subject: "New subject" },
+          userEditedInputs: { subject: "New subject" },
+          citationsAllocated: 0,
+          status: "succeeded",
+          step: 0,
+          executionDurationMs: null,
+          displayLabels: null,
+          generatedFiles: [],
+          output: [{ type: "text", text: "Email sent." }],
+          citations: null,
+        },
+      ],
+      contents: [
+        {
+          step: 0,
+          content: {
+            type: "function_call",
+            value: {
+              id: "toolu_send_mail",
+              name: "gmail__send_mail",
+              arguments: '{"subject":"Old subject"}',
+            },
+          },
+        },
+      ],
+      modelInteractionDurationMs: null,
+      richMentions: [],
+      completionDurationMs: null,
+      reactions: [],
+    } satisfies AgentMessageType;
+
+    const steps = await getSteps(authenticator, {
+      enabledSkillById: new Map(),
+      model,
+      message,
+      workspaceId: "workspace_123",
+      conversationId: "conv_1",
+      onMissingAction: "skip",
+    });
+
+    expect(steps).toHaveLength(1);
+    expect(steps[0].actions).toHaveLength(1);
+    expect(steps[0].actions[0].toolInputEditMessages).toEqual([
+      {
+        role: "user",
+        name: "system",
+        content: [
+          {
+            type: "text",
+            text: `<dust_system>\nThe user edited the inputs of this pending tool call before approving it.\n\nThe tool was executed with these user-edited input values:\n- subject: "New subject"\n\nThe tool result above corresponds to the edited inputs.\n</dust_system>`,
+          },
+        ],
+      },
+    ]);
+  });
+
   it("renders enabled skills as user messages", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
     const agentConfig = await AgentConfigurationFactory.createTestAgent(
