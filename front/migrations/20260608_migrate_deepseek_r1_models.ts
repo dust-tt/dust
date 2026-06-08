@@ -51,13 +51,16 @@ makeScript({}, async ({ execute }, logger) => {
         },
         `Migrating agent ${agent.sId} (version ${agent.version}) from ${from} to ${TARGET_MODEL_ID}.`
       );
+    }
 
-      if (execute) {
-        await agent.update({
-          providerId: TARGET_PROVIDER_ID,
-          modelId: TARGET_MODEL_ID,
-        });
-      }
+    if (execute && agents.length > 0) {
+      // Single batched UPDATE instead of one query per row (GEN14). Scoped to
+      // the exact ids gathered above, so no workspace isolation bypass is
+      // needed (the cross-workspace scan happened in the findAll).
+      await AgentConfigurationModelWithBypass.update(
+        { providerId: TARGET_PROVIDER_ID, modelId: TARGET_MODEL_ID },
+        { where: { id: agents.map((agent) => agent.id) } }
+      );
     }
   }
 
