@@ -840,7 +840,7 @@ export class ConfluenceClient {
 
   async getPageById(pageId: string) {
     const params = new URLSearchParams({
-      "body-format": "storage", // Returns HTML.
+      "body-format": "view", // Returns HTML.
       "include-labels": "true", // Include labels.
     });
 
