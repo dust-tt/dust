@@ -53,6 +53,7 @@ export const VIZ_STYLING_GUIDELINES = `
   - Always use padding around plots to ensure elements are fully visible and labels/legends do not overlap with the plot or with each other.
   - Use shadcn's background classes (bg-background, bg-card) instead of hardcoded bg-white for automatic theme compatibility.
   - If you need to generate a legend for a chart, ensure it uses relative positioning or follows the natural flow of the layout, avoiding \`position: absolute\`, to maintain responsiveness and adaptability.
+  - **Animation**: \`motion/react\` is available for animations. Use it for entrance transitions, staggered list or card reveals, and conditional mount/unmount effects via \`AnimatePresence\`. Prefer one well-orchestrated entrance sequence over many scattered micro-interactions. Keep entrance durations between 0.3 s and 0.5 s; interactive feedback between 0.15 s and 0.25 s.
 `;
 
 export const VIZ_FILE_HANDLING_GUIDELINES = `
