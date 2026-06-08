@@ -1,14 +1,23 @@
+import { shouldForceClientReload } from "@app/lib/api/force_client_reload";
 import { queryTracker } from "@app/lib/api/query_tracker";
+import type { BearerTokenError } from "@app/lib/auth";
+import { getSession, getSessionFromBearerToken } from "@app/lib/auth";
+import type { SessionWithUser } from "@app/lib/iam/provider";
 import type {
   CustomGetServerSideProps,
   UserPrivilege,
 } from "@app/lib/iam/session";
+import type {
+  BaseResource,
+  ResourceLogJSON,
+} from "@app/lib/resources/base_resource";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import tracer from "@app/logger/tracer";
 import type {
   APIErrorWithStatusCode,
   WithAPIErrorResponse,
 } from "@app/types/error";
+import { Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import type {
@@ -17,6 +26,19 @@ import type {
   NextApiResponse,
 } from "next";
 import logger from "./logger";
+
+export type RequestContext = {
+  [key: string]: ResourceLogJSON;
+};
+
+const BEARER_TOKEN_ERROR_MESSAGES: Record<BearerTokenError, string> = {
+  expired_oauth_token_error: "The access token expired.",
+  invalid_oauth_token_error:
+    "The request does not have valid authentication credentials.",
+  user_not_found: "The user is not registered.",
+  not_authenticated:
+    "The request does not have valid authentication credentials.",
+};
 
 // Sequelize errors (ValidationError, UniqueConstraintError, etc.) have a
 // generic .message ("Validation error") but carry field-level detail in
@@ -38,6 +60,8 @@ export function getSequelizeErrorDetails(error: Error) {
   return undefined;
 }
 
+const EMPTY_LOG_CONTEXT = Object.freeze({});
+
 function getClientIp(
   req: GetServerSidePropsContext["req"] | NextApiRequest
 ): string | undefined {
@@ -46,6 +70,240 @@ function getClientIp(
   return isString(forwarded)
     ? forwarded.split(",")[0].trim()
     : req.socket.remoteAddress;
+}
+
+// Make the elements undefined temporarily avoid updating all NextApiRequest to NextApiRequestWithContext.
+export interface NextApiRequestWithContext extends NextApiRequest {
+  logContext?: RequestContext;
+  // We don't care about the sequelize type, any is ok
+  addResourceToLog?: (resource: BaseResource<any>) => void;
+}
+
+export function withLogging<T>(
+  handler: (
+    req: NextApiRequestWithContext,
+    res: NextApiResponse<WithAPIErrorResponse<T>>,
+    context: { session: SessionWithUser | null }
+  ) => Promise<void>,
+  streaming = false
+) {
+  return async (
+    req: NextApiRequestWithContext,
+    res: NextApiResponse<WithAPIErrorResponse<T>>
+  ): Promise<void> => {
+    const ddtraceNextRequestSpan = tracer.scope().active();
+    if (ddtraceNextRequestSpan) {
+      // Tag the current active span (usually `next.request`) with a "streaming" flag
+      // so we can filter these requests later in Datadog traces and analytics.
+      ddtraceNextRequestSpan.setTag("streaming", streaming);
+
+      if (streaming) {
+        // For streaming requests, change the operation name of the *current span*
+        // from `next.request` to `next.request.streaming` so that:
+        //   1. It appears as a separate operation in the Datadog APM "operation" dropdown,
+        //      making it easy to isolate streaming traffic from regular requests.
+        //   2. You can analyze streaming request performance and error rates independently,
+        //      without mixing them into standard request metrics.
+        //   3. Without this separation, the long-lived nature of streaming requests would
+        //      inflate and skew p95/p99 latency metrics, making them unrepresentative of
+        //      typical request performance.
+        //
+        // Note: This changes only the Next.js request span, not the root `web.request` span.
+        // That means streaming requests will still be counted in `web.request` service-level
+        // latency metrics unless you also update the root span.
+        ddtraceNextRequestSpan.setOperationName("next.request.streaming");
+      }
+    }
+    const clientIp = getClientIp(req);
+    const now = new Date();
+
+    // Try bearer token first, then fall back to cookie-based session.
+    const sessionResult = await tracer.trace("auth.getSession", async () => {
+      const bearerTokenRes = await getSessionFromBearerToken(
+        req.headers.authorization
+      );
+      if (bearerTokenRes.isErr() || bearerTokenRes.value) {
+        return bearerTokenRes;
+      }
+      // No bearer token present — try cookie-based session.
+      const cookieSession = await getSession(req, res);
+      return new Ok(cookieSession);
+    });
+
+    if (sessionResult.isErr()) {
+      apiError(req, res, {
+        status_code: 401,
+        api_error: {
+          type: sessionResult.error,
+          message: BEARER_TOKEN_ERROR_MESSAGES[sessionResult.error],
+        },
+      });
+      return;
+    }
+    const session = sessionResult.value;
+
+    const sessionId = session?.sessionId ?? "unknown";
+
+    // Use freeze to make sure we cannot update `req.logContext` down the callstack
+    req.logContext = EMPTY_LOG_CONTEXT;
+    req.addResourceToLog = (resource) => {
+      const logContext = resource.toLogJSON();
+
+      req.logContext = Object.freeze({
+        ...(req.logContext ?? {}),
+        [resource.className()]: logContext,
+      });
+    };
+
+    let route = req.url;
+    let workspaceId: string | null = null;
+    if (route) {
+      route = route.split("?")[0];
+      for (const key in req.query) {
+        if (key === "wId") {
+          workspaceId = req.query[key] as string;
+        }
+
+        const value = req.query[key];
+        if (typeof value === "string" && value.length > 0) {
+          route = route.replaceAll(encodeURIComponent(value), `[${key}]`);
+        }
+      }
+    }
+
+    // Extract commit hash from headers or query params.
+    const commitHash = req.headers["x-commit-hash"] ?? req.query.commitHash;
+    const extensionVersion =
+      req.headers["x-dust-extension-version"] ?? req.query.extensionVersion;
+    const cliVersion =
+      req.headers["x-dust-cli-version"] ?? req.query.cliVersion;
+
+    // Key the browser cache by X-Commit-Hash
+    res.setHeader("Vary", "X-Commit-Hash");
+
+    if (typeof commitHash === "string" && commitHash.length > 0) {
+      if (await shouldForceClientReload(commitHash)) {
+        logger.info(
+          {
+            clientIp,
+            cliVersion,
+            commitHash,
+            method: req.method,
+            route,
+            sessionId,
+            url: req.url,
+            workspaceId,
+            ...req.logContext,
+          },
+          "Force client reload"
+        );
+        res.setHeader("X-Reload-Required", "true");
+        // Flagged-commit responses must never be cached: the flag can be
+        // cleared in Redis at any time, but a cached "true" response would
+        // keep the tab in a reload loop until it expires.
+        res.setHeader("Cache-Control", "no-store");
+      } else {
+        // Always emit an explicit "false" so 304 revalidations can heal
+        // poisoned cache entries: per HTTP spec, the browser merges 304
+        // response headers into the stored entry. If we leave the header
+        // off, a cached "true" persists forever across revalidations.
+        res.setHeader("X-Reload-Required", "false");
+      }
+    }
+
+    const queryTrackerStore = { concurrent: 0, peak: 0 };
+    try {
+      await queryTracker.run(queryTrackerStore, () =>
+        handler(req, res, { session })
+      );
+    } catch (err) {
+      const elapsed = new Date().getTime() - now.getTime();
+      const error = normalizeError(err);
+
+      const sequelizeDetails = getSequelizeErrorDetails(error);
+
+      logger.error(
+        {
+          clientIp,
+          cliVersion,
+          commitHash,
+          durationMs: elapsed,
+          extensionVersion,
+          method: req.method,
+          peakConcurrentQueries: queryTrackerStore.peak,
+          route,
+          sessionId,
+          streaming,
+          url: req.url,
+          error: {
+            name: error.name,
+            message: error.message || "unknown",
+            stack: error.stack,
+            ...(sequelizeDetails ? { sequelizeDetails } : {}),
+          },
+          error_stack: error.stack,
+          workspaceId,
+          ...req.logContext,
+        },
+        "Unhandled API Error"
+      );
+
+      const tags = [
+        `method:${req.method}`,
+        `route:${route}`,
+        `status_code:500`,
+        `error_type:unhandled_internal_server_error`,
+      ];
+
+      getStatsDClient().increment("api_errors.count", 1, tags);
+
+      // Try to return a 500 as it's likely nothing was returned yet.
+      res.status(500).json({
+        error: {
+          type: "internal_server_error",
+          message: `Unhandled internal server error: ${err}`,
+        },
+      });
+      return;
+    }
+
+    const elapsed = new Date().getTime() - now.getTime();
+
+    // Keep metric cardinality low for cost optimization
+    // Previously tagging by route created high cardinality (~$3k/month for 2 metrics)
+    const tags = [
+      `method:${req.method}`,
+      streaming ? `streaming:true` : `streaming:false`,
+      `status_code:${res.statusCode}`,
+    ];
+
+    getStatsDClient().increment("requests.count", 1, tags);
+    getStatsDClient().distribution(
+      "requests.duration.distribution",
+      elapsed,
+      tags
+    );
+
+    logger.info(
+      {
+        clientIp,
+        cliVersion,
+        commitHash,
+        durationMs: elapsed,
+        extensionVersion,
+        method: req.method,
+        peakConcurrentQueries: queryTrackerStore.peak,
+        route,
+        sessionId,
+        statusCode: res.statusCode,
+        streaming,
+        url: req.url,
+        workspaceId,
+        ...req.logContext,
+      },
+      "Processed request"
+    );
+  };
 }
 
 export function apiError<T>(
