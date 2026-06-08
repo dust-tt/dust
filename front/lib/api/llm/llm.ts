@@ -385,7 +385,7 @@ export abstract class LLM<TPayload = unknown> {
   ): Promise<string> {
     const batchId = await this.internalSendBatchProcessing(conversations);
     if (this.context) {
-      this.traceBatchInputs(conversations);
+      await this.traceBatchInputs(conversations);
     }
     return batchId;
   }
@@ -404,13 +404,13 @@ export abstract class LLM<TPayload = unknown> {
   /**
    * Traces batch inputs by creating one Langfuse generation per conversation entry.
    */
-  private traceBatchInputs(
+  private async traceBatchInputs(
     conversations: Map<string, LLMStreamParameters>
-  ): void {
+  ): Promise<void> {
     const workspaceId = this.authenticator.getNonNullableWorkspace().sId;
 
     for (const [customId, params] of conversations) {
-      const payload = this.buildStreamRequestPayload(params);
+      const payload = await this.buildStreamRequestPayload(params);
 
       const generation = startObservation(
         `llm-batch-input-${customId}`,
@@ -647,7 +647,7 @@ export abstract class LLM<TPayload = unknown> {
   protected abstract buildStreamRequestPayload(
     streamParameters: LLMStreamParameters,
     metadata?: LLMStreamMetadata
-  ): TPayload;
+  ): TPayload | Promise<TPayload>;
 
   /**
    * Send the request to the LLM provider and yield events.
@@ -664,7 +664,10 @@ export abstract class LLM<TPayload = unknown> {
     streamParameters: LLMStreamParameters,
     metadata?: LLMStreamMetadata
   ): AsyncGenerator<LLMEvent> {
-    const payload = this.buildStreamRequestPayload(streamParameters, metadata);
+    const payload = await this.buildStreamRequestPayload(
+      streamParameters,
+      metadata
+    );
 
     // Update the generation span with the actual payload.
     this.generation?.update({ input: payload });

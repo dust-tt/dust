@@ -101,7 +101,7 @@ function buildSystemBlocks(
   return system;
 }
 
-export class AnthropicLLM extends LLM<LLMStreamParameters> {
+export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
   private client: Anthropic;
   private inferenceClient: Anthropic | AnthropicVertex;
   private omittedThinking: boolean;
@@ -183,22 +183,15 @@ export class AnthropicLLM extends LLM<LLMStreamParameters> {
     };
   }
 
-  protected buildStreamRequestPayload(
+  protected async buildStreamRequestPayload(
     streamParameters: LLMStreamParameters
-  ): LLMStreamParameters {
-    // Just capture the parameters; message conversion (async) happens in sendRequest.
-    return streamParameters;
-  }
-
-  protected async *sendRequest(
-    streamParameters: LLMStreamParameters
-  ): AsyncGenerator<LLMEvent> {
+  ): Promise<BetaMessageStreamParams> {
     const betas = this.modelConfig.customBetas;
 
     const basePayload = await this.buildBaseRequestPayload(streamParameters);
     const outputFormat = toOutputFormatParam(this.responseFormat);
 
-    const payload: BetaMessageStreamParams = {
+    return {
       ...basePayload,
       stream: true,
       betas,
@@ -208,7 +201,11 @@ export class AnthropicLLM extends LLM<LLMStreamParameters> {
       cache_control: { type: "ephemeral" },
       model: getModel(this.useVertex, { modelId: this.modelId }),
     };
+  }
 
+  protected async *sendRequest(
+    payload: BetaMessageStreamParams
+  ): AsyncGenerator<LLMEvent> {
     try {
       const events = this.inferenceClient.beta.messages.stream(payload);
 
