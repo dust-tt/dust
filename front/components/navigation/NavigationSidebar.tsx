@@ -14,13 +14,9 @@ import { isAdmin } from "@app/types/user";
 import {
   CollapseButton,
   cn,
-  NavigationList,
-  NavigationListItem,
-  NavigationListLabel,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
+  NavTabPill,
+  NavTabPillList,
+  NavTabPillTrigger,
   XClose,
 } from "@dust-tt/sparkle";
 import React, { useCallback, useContext, useMemo, useState } from "react";
@@ -66,10 +62,15 @@ export const NavigationSidebar = React.forwardRef<
     () => getTopNavigationTabs(owner, spaceMenuButtonRef),
     [owner, spaceMenuButtonRef]
   );
+
+  console.log("navs", navs);
+
   const currentTab = useMemo(
     () => navs.find((n) => n.isCurrent(activePath)),
     [navs, activePath]
   );
+
+  console.log("currentTab", currentTab?.id);
 
   const { setSidebarOpen } = useContext(SidebarContext);
 
@@ -79,67 +80,35 @@ export const NavigationSidebar = React.forwardRef<
         <div className={cn("flex flex-col gap-2")}>
           <SidebarBanners />
         </div>
-        {navs.length > 1 && (
-          <Tabs value={currentTab?.id ?? "conversations"}>
-            <div className="border-b border-separator px-sidebar-side-spacing dark:border-separator-night">
-              <TabsList border={false}>
-                {navs.map((tab) => (
-                  <div key={tab.id} ref={tab.ref ?? undefined}>
-                    <TabsTrigger
-                      className="notranslate"
-                      key={tab.id}
-                      value={tab.id}
-                      label={tab.hideLabel ? undefined : tab.label}
-                      tooltip={tab.hideLabel ? tab.label : undefined}
-                      icon={tab.icon}
-                      href={tab.href}
-                    />
-                  </div>
-                ))}
-                {isMobile && (
-                  <div className="flex flex-grow justify-end">
-                    <TabsTrigger
-                      value="close-icon"
-                      icon={XClose}
-                      onClick={() => setSidebarOpen(false)}
-                    />
-                  </div>
-                )}
-              </TabsList>
-            </div>
-            {navs.map((tab) => (
-              <TabsContent key={tab.id} value={tab.id}>
-                <NavigationList className="px-3">
-                  {subNavigation &&
-                    tab.isCurrent(activePath) &&
-                    subNavigation.map((nav) => (
-                      <React.Fragment key={`nav-${nav.label}`}>
-                        {nav.label && <NavigationListLabel label={nav.label} />}
-                        {nav.menus
-                          .filter(
-                            (menu) =>
-                              !menu.featureFlag ||
-                              featureFlags.includes(menu.featureFlag)
-                          )
-                          .map((menu) => (
-                            <React.Fragment key={menu.id}>
-                              <NavigationListItem
-                                selected={menu.current}
-                                label={menu.label}
-                                icon={menu.icon}
-                                href={menu.href}
-                                target={menu.target}
-                              />
-                            </React.Fragment>
-                          ))}
-                      </React.Fragment>
-                    ))}
-                </NavigationList>
-              </TabsContent>
-            ))}
-          </Tabs>
-        )}
-      </div>
+        {navs.length > 1 && 
+        <NavTabPill
+            value={currentTab?.id ?? "conversations"}
+            className="mx-sidebar-side-spacing"
+          >
+            <NavTabPillList>
+              {navs.map((tab) => (
+                <div key={tab.id} ref={tab.ref ?? undefined}>
+                  <NavTabPillTrigger
+                    value={tab.id}
+                    icon={tab.icon}
+                    href={tab.href}
+                  >
+                    {tab.label}
+                  </NavTabPillTrigger>
+                </div>
+              ))}
+              {isMobile && (
+                <div className="flex flex-grow justify-end">
+                  <NavTabPillTrigger
+                    value="close-icon"
+                    icon={XClose}
+                    onClick={() => setSidebarOpen(false)}
+                  />
+                </div>
+              )}
+            </NavTabPillList>
+            </NavTabPill>
+            }</div>
       <div className="flex grow flex-col">{children}</div>
       {subscription.plan.code === FREE_TRIAL_PHONE_PLAN_CODE && (
         <div className="mx-3 mb-3">

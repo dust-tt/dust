@@ -181,6 +181,12 @@ export {
 export * from "./markdown";
 export { markdownStyles } from "./markdown/styles";
 export * from "./NavigationList";
+export {
+  NavTabPill,
+  NavTabPillContent,
+  NavTabPillList,
+  NavTabPillTrigger,
+} from "./NavTabPill";
 export type { NotificationType } from "./Notification";
 export { Notification, useSendNotification } from "./Notification";
 export { NotificationButton } from "./NotificationButton";
