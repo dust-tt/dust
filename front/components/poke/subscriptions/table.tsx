@@ -488,7 +488,7 @@ export function PlanLimitationsTable({
               </PokeTableRow>
 
               <PokeTableRow>
-                <PokeTableCell>Max number of messages</PokeTableCell>
+                <PokeTableCell>Messages (pooled) fair use</PokeTableCell>
                 <PokeTableCell>
                   {activePlan.limits.assistant.maxMessages === -1
                     ? "unlimited"
@@ -497,7 +497,7 @@ export function PlanLimitationsTable({
               </PokeTableRow>
 
               <PokeTableRow>
-                <PokeTableCell>Max number of AWU credits</PokeTableCell>
+                <PokeTableCell>AWUCredits (unpooled) fair use</PokeTableCell>
                 <PokeTableCell>
                   {activePlan.limits.assistant.maxAwuCredits === -1
                     ? "unlimited"

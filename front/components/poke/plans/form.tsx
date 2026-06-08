@@ -280,7 +280,7 @@ export const PLAN_FIELDS = {
   maxMessages: {
     type: "number",
     width: "small",
-    title: "# Messages",
+    title: "Messages (pooled) fair use",
     error: (plan: EditingPlanType) => errorCheckNumber(plan.maxMessages),
   },
   maxMessagesTimeframe: {
@@ -293,7 +293,7 @@ export const PLAN_FIELDS = {
   maxAwuCredits: {
     type: "number",
     width: "small",
-    title: "# AWU Credits (unpooled)",
+    title: "AWUCredits (unpooled) fair use",
     error: (plan: EditingPlanType) => errorCheckNumber(plan.maxAwuCredits),
   },
   maxAwuCreditsTimeframe: {
